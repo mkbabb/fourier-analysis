@@ -180,7 +180,7 @@ That is, $u$ is not a function of time; it is unchanging in this dimension. Equa
 \end{aside}
 
 \section{A Solution}
-To solve \eqref{eq:f2}, we'll as proceed Fourier did, utilizing separation of variables. To do as such, we will make the assumption that $u(x, y)$ may be represented by the product of two potential functions as follows:
+To solve \eqref{eq:f2}, we'll proceed as Fourier did, utilizing separation of variables. To do as such, we will make the assumption that $u(x, y)$ may be represented by the product of two potential functions as follows:
 \begin{align}
     u      & = X(x)Y(y)\label{eq:assum1} \\
     u_{xx} & = X''(x)Y(y)\label{eq:xx}   \\
@@ -581,7 +581,7 @@ Different metrics may thereby be used on the same set. Take the $\ell^1$ metric 
     \end{align}
 \end{definition}
 
-To further our descent into normed vector, spaces, we will use a special case of a metric space: the Cauchy metric space.
+To further our descent into normed vector spaces, we will use a special case of a metric space: the Cauchy metric space.
 
 First, recall the definition of a Cauchy sequence in the context of metric spaces:
 
@@ -877,7 +877,7 @@ It can be easily shown that the above are orthogonal on any interval that both c
     Ce^{i\sqrt{\lambda}y} + De^{-i\sqrt{\lambda}y}
 \end{equation}
 
-Though the above did not yield a sine term in Chapter~\ref{ch:origin}, it can be postulated that a similar equation, given the appropriate boundary conditions, could. Therefor, it can be concluded that, as both $e^{ix}$ and $e^{-ix}$ are potential solutions to a Sturm-Liouville differential equation, that they must then be orthogonal on some predefined interval.\\
+Though the above did not yield a sine term in Chapter~\ref{ch:origin}, it can be postulated that a similar equation, given the appropriate boundary conditions, could. Therefore, it can be concluded that, as both $e^{ix}$ and $e^{-ix}$ are potential solutions to a Sturm-Liouville differential equation, that they must then be orthogonal on some predefined interval.\\
 
 Though the orthogonality of the two equations above is trivial, transforming the final result into its complex form requires a bit more work. We may continue using the same approach that was used in the derivation of \eqref{defn:real_fourier} with only slight modification. Thereupon our operation in a complex vector space, we must first define a new complex inner product:
 
@@ -1003,7 +1003,7 @@ Using this, we can find the values of $a_n$ and $b_n$:
     b_n & = \dfrac{1}{2\pi}\int_{-\pi}^{\pi}f(x)e^{inx}\deriv{x}
 \end{align}
 
-Notice that: $a_n = \overline{b_n}$. Using this, a beautiful simplification can be made:
+Notice that: $a_n = \overline{b_n}$. Using this, a clean simplification follows:
 
 \begin{align}
     a_{-n} & = \dfrac{1}{2\pi}\int_{-\pi}^{\pi}f(x)e^{inx}\deriv{x} \\
@@ -1016,7 +1016,7 @@ Which implies:
 \end{equation}
 
 
-Notice that this equation equals exactly what was derived in \eqref{eq:bad_fourier}, but is much more succinct. At long last, we arrive at our definition of the complex form of the Fourier series of $f$:
+Notice that this equation equals exactly what was derived in \eqref{eq:bad_fourier}, but is much more succinct. We can now state the complex Fourier series of $f$:
 \begin{definition}[Fourier Series; Complex Form]
     \begin{equation}
         f(x) = \sum_{n=-\infty}^{\infty} c_ne^{inx}
@@ -1112,7 +1112,7 @@ Earlier, the calculation of the coefficients was called the Fourier transform of
 \end{proof}
 See \cite{strauss_fourier} for more details regarding the above proof.\\
 
-Then, at long last, our quest is complete. We have arrived at both the Fourier series representation of $f$, and the subsequent canonical Fourier transformation of $f$. One last definition:
+With this, we've arrived at both the Fourier series representation of $f$ and its canonical Fourier transform. One last definition:
 
 \begin{definition}[Fourier Transform of $f$]
     Let $f(x)$ be a square-integrable function on $\mathbf{L}^2[\mathbb{R}]$. The Fourier transform of $f(x)$ is then:
@@ -1126,12 +1126,12 @@ Then, at long last, our quest is complete. We have arrived at both the Fourier s
     \end{equation}
 \end{definition}
 
-Which is fantastic! For further reading regarding metric spaces and normed vector spaces, see \cite{kreyszig_functional}. For further reading regarding Hilbert spaces, see \cite{holland_schwarz}. And finally, for further reading regarding the linear algebra viewpoint of the Fourier Transform and Series see \cite{axler_linear}.
+For further reading regarding metric spaces and normed vector spaces, see \cite{kreyszig_functional}. For further reading regarding Hilbert spaces, see \cite{holland_schwarz}. And finally, for further reading regarding the linear algebra viewpoint of the Fourier Transform and Series see \cite{axler_linear}.
 
 \section{Convergence of Fourier Series}
 \label{sec:convergence}
 
-Having derived the Fourier series representation of a function, a rather pressing question emerges: under what conditions does this series actually converge to $f$? The answer is subtler than one might expect, and it's a question that occupied mathematicians from Fourier's era through the better part of the twentieth century.
+Having derived the Fourier series representation of a function, an important question follows: under what conditions does this series actually converge to $f$? The answer is subtler than one might expect, and it's a question that occupied mathematicians from Fourier's era through the better part of the twentieth century.
 
 \subsection*{Pointwise Convergence}
 The first rigorous convergence result is due to Dirichlet \cite{dirichlet_convergence}:
@@ -1161,7 +1161,7 @@ A particularly important consequence of $\mathbf{L}^2$ convergence is Parseval's
     \label{thm:parseval}
 \end{theorem}
 
-This is the infinite-dimensional analogue of the Pythagorean theorem: the ``energy'' of $f$ (its squared norm) equals the sum of the squared magnitudes of its Fourier coefficients. One can also view this as a statement of energy conservation---no energy is lost or gained in the passage between time and frequency domains. A rather satisfying bookkeeping identity.
+This is the infinite-dimensional analogue of the Pythagorean theorem: the ``energy'' of $f$ (its squared norm) equals the sum of the squared magnitudes of its Fourier coefficients. One can also view this as a statement of energy conservation---no energy is lost or gained in the passage between time and frequency domains.
 
 \begin{figure}[htbp]
     \centering
@@ -1171,7 +1171,7 @@ This is the infinite-dimensional analogue of the Pythagorean theorem: the ``ener
 \end{figure}
 
 \subsection*{The Gibbs Phenomenon}
-At jump discontinuities, the partial sums of a Fourier series exhibit a rather curious misbehavior known as the Gibbs phenomenon: the overshoots near the discontinuity don't vanish as $N \to \infty$, but instead converge to approximately $9\%$ of the jump height. More precisely, if $f$ has a jump of size $J$ at $x_0$, then:
+At jump discontinuities, the partial sums of a Fourier series exhibit a well-known misbehavior known as the Gibbs phenomenon: the overshoots near the discontinuity don't vanish as $N \to \infty$, but instead converge to approximately $9\%$ of the jump height. More precisely, if $f$ has a jump of size $J$ at $x_0$, then:
 \begin{equation}
     \lim_{N\to\infty} \max_{x \text{ near } x_0} |S_N(x) - f(x)| \approx 0.0895 \cdot J
 \end{equation}
@@ -1319,7 +1319,7 @@ Now, parametrize the unit circle via $z = e^{i\theta}$, where $\theta \in [0, 2\
     f(e^{i\theta}) = \sum_{n=-\infty}^{\infty} c_n e^{in\theta}
 \end{equation}
 
-And there it is---exactly the complex Fourier series! The Laurent coefficients \eqref{eq:laurent_coeff}, evaluated on the unit circle ($\gamma: \zeta = e^{i\phi}$, $\deriv{\zeta} = ie^{i\phi}\deriv{\phi}$), become:
+Which is precisely the complex Fourier series. The Laurent coefficients \eqref{eq:laurent_coeff}, evaluated on the unit circle ($\gamma: \zeta = e^{i\phi}$, $\deriv{\zeta} = ie^{i\phi}\deriv{\phi}$), become:
 \begin{align}
     c_n & = \dfrac{1}{2\pi i}\oint_{|\zeta|=1} \dfrac{f(\zeta)}{\zeta^{n+1}}\deriv{\zeta}                           \\
         & = \dfrac{1}{2\pi i}\int_0^{2\pi} \dfrac{f(e^{i\phi})}{e^{i(n+1)\phi}} ie^{i\phi}\deriv{\phi}              \\
@@ -1480,7 +1480,7 @@ where $E_k$ and $O_k$ are the length-$M$ DFTs of the even and odd samples, and $
     X_k     & = E_k + \omega_N^k O_k \\
     X_{k+M} & = E_k - \omega_N^k O_k
 \end{align}
-computes two outputs from each pair. Applying this recursively yields $\log_2 N$ stages of $N/2$ butterflies each, for a total of $O(N \log N)$ operations. This is the Cooley--Tukey radix-2 decimation-in-time (DIT) algorithm---elegant, but limited to power-of-two lengths. We'll now generalize.
+computes two outputs from each pair. Applying this recursively yields $\log_2 N$ stages of $N/2$ butterflies each, for a total of $O(N \log N)$ operations. This is the Cooley--Tukey radix-2 decimation-in-time (DIT) algorithm---limited to power-of-two lengths. We'll now generalize.
 
 \begin{figure}[htbp]
     \centering
@@ -1612,7 +1612,7 @@ The dimensional gliding algorithm proceeds as follows. For each axis $a$ with si
     \item Write results back to the same positions.
 \end{enumerate}
 
-No reshaping. No transposing. No intermediate buffers. The stride system that powers element access and iteration is the same system that enables fiber extraction for the $N$-D transform. This is the architectural through-line: the strided hypercube is the universal data structure, and dimensional gliding is the universal traversal primitive.
+The algorithm requires no reshaping, transposing, or intermediate buffers. The stride system that powers element access and iteration is the same system that enables fiber extraction for the $N$-D transform. This is the architectural through-line: the strided hypercube is the universal data structure, and dimensional gliding is the universal traversal primitive.
 
 The inverse $N$-D transform uses the conjugate trick: $\mathrm{IDFT}(\vec{X}) = \overline{\mathrm{DFT}(\overline{\vec{X}})} / N$, inheriting the same dimensional gliding algorithm from the forward transform.
 
@@ -1649,7 +1649,7 @@ where $\chi_n = e^{-i\pi n^2/N}$ is the chirp sequence. The inner sum is a \text
 
 Since $M$ is a power of two, the staged algorithm handles the inner FFTs efficiently (all radix-2 butterflies). Phase reduction ($n^2 \bmod 2N$) keeps exponents small for numerical stability.
 
-An important structural note: Bluestein's algorithm calls the staged FFT on power-of-two lengths (always composite). The staged FFT dispatches to the generic quadratic butterfly for prime factors \textit{within} a composite $N$---it never calls Bluestein. There is no circular dependency.
+An important structural note: Bluestein's algorithm calls the staged FFT on power-of-two lengths (always composite). The staged FFT dispatches to the generic quadratic butterfly for prime factors \textit{within} a composite $N$---it never invokes Bluestein, so there's no circular dependency.
 
 \begin{figure}[htbp]
     \centering
