@@ -8,7 +8,14 @@
 \usepackage{commath}
 \usepackage{setspace}
 \usepackage{mathtools,amsthm}
-\usepackage{hyperref}
+\usepackage[
+    colorlinks=true,
+    linkcolor={purple!70!black},
+    citecolor={teal!70!black},
+    urlcolor={teal!80!black},
+    bookmarks=true,
+    bookmarksnumbered=true,
+]{hyperref}
 \usepackage{pgfplots}
 
 
@@ -104,6 +111,7 @@ For theorems involving said prerequisite material, they will be labeled then as 
 
 
 \chapter{Origin and Derivation}
+\label{ch:origin}
 
 Jean-Baptiste Joseph Fourier (21 March 1768 – 16 May 1830), was a pioneer in the fields of harmonic analysis and heat propagation, and creator of the field which bears his name: Fourier analysis. Throughout his colorful career as mathematician and Prefect, Fourier published many revolutionary mathematical treatises; but it is however his 1822 publication, "Théorie analytique de la chaleur", or "The Analytic Theory of Heat", that is indubitably one his most important: for it is in this publication that Fourier introduces the notion that \textit{any} well-behaved function can be thereby expanded into a series of sinusoidal waves. Though this has proven to not be a general truth; notwithstanding, many functions, provided certain conditions are met, can be expanded into an infinite sum of sinusoids.
 
@@ -116,7 +124,7 @@ Given a well behaved function, $f(x)$, $f$, can thereby be expanded into the fol
     \end{equation}
 \end{theorem}
 
-This will be proved in chapter II.
+This will be proved in Chapter~\ref{ch:linear_algebra}.
 
 \section{Fourier's Problem}
 All of the content introduced in Fourier's "Théorie analytique de la chaleur" is fascinating, however it is Chapter III, "Propagation of Heat in an infinite rectangular solid", that is of most relevance to us; the first section, Fourier states the problem at hand:
@@ -434,6 +442,7 @@ The above two assertions will be explained formally in the proceeding chapters. 
 
 
 \chapter{Lens I: Linear Algebra}
+\label{ch:linear_algebra}
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.6\textwidth]{../assets/f03_projection.pdf}
@@ -725,7 +734,7 @@ For further reading regarding $\mathbf{L}^p$ space, see \cite{holland_schwarz_l2
 
 Now that we have successfully extended the notion of vectors to that of continuous functions, we must now find suitable orthogonal basis vectors to represent a given function, $f$. The only condition on what function we may represent is that it $\textbf{must}$ be square integrable; else wise, we would not be operating within $\mathbf{L}^2$, and our careful construction of this lovely space would crumble!
 
-After reading chapter I, one may be able to surmise as to what our orthogonal basis vectors will be. Though there are many potential candidates that suit this need, such as Legendre or Hermite polynomials, we seek to first derive the original Fourier series and subsequent transform.
+After reading Chapter~\ref{ch:origin}, one may be able to surmise as to what our orthogonal basis vectors will be. Though there are many potential candidates that suit this need, such as Legendre or Hermite polynomials, we seek to first derive the original Fourier series and subsequent transform.
 
 Using the result from chapter I, let's try a series of cosine functions. Instead of the original interval used by Fourier, we'll use the interval from $[-\pi, \pi]$; thereon being located in $\mathbf{L}^2[-\pi, \pi]$ space. The interval was chosen for simplicity, but any arbitrary interval may not be used, as the basis function of one's choosing must be orthogonal on said interval. The subsequent proof of cosine's orthogonality on said this interval will be left as an exercise to the reader.
 
@@ -752,7 +761,7 @@ This yields:
     f(x) = \sum_{n=0}^{\infty}c_n\cos(nx)
 \end{equation}
 
-Like the result found at the end of chapter one, this is the Fourier cosine series representation of $f$. Amazing! To find the constants, simply dot both sides of the equation by $\cos(mx)$:
+Like the result found at the end of Chapter~\ref{ch:origin}, this is the Fourier cosine series representation of $f$. Amazing! To find the constants, simply dot both sides of the equation by $\cos(mx)$:
 
 \begin{align}
     \langle f(x), \cos(mx) \rangle & = \sum_{n=0}^{\infty}a_n \langle \cos(nx), \cos(mx) \rangle
@@ -866,7 +875,7 @@ It can be easily shown that the above are orthogonal on any interval that both c
     Ce^{i\sqrt{\lambda}y} + De^{-i\sqrt{\lambda}y}
 \end{equation}
 
-Though the above did not yield a sine term in chapter 1, it can be postulated that a similar equation, given the appropriate boundary conditions, could. Therefor, it can be concluded that, as both $e^{ix}$ and $e^{-ix}$ are potential solutions to a Sturm-Liouville differential equation, that they must then be orthogonal on some predefined interval.\\
+Though the above did not yield a sine term in Chapter~\ref{ch:origin}, it can be postulated that a similar equation, given the appropriate boundary conditions, could. Therefor, it can be concluded that, as both $e^{ix}$ and $e^{-ix}$ are potential solutions to a Sturm-Liouville differential equation, that they must then be orthogonal on some predefined interval.\\
 
 Though the orthogonality of the two equations above is trivial, transforming the final result into its complex form requires a bit more work. We may continue using the same approach that was used in the derivation of \eqref{defn:real_fourier} with only slight modification. Thereupon our operation in a complex vector space, we must first define a new complex inner product:
 
@@ -1192,6 +1201,7 @@ The deepest result in this direction is due to Carleson \cite{carleson_convergen
 This landmark theorem settled a conjecture that had been open for over a century. The proof is famously difficult---it remains one of the great achievements of twentieth-century harmonic analysis. For further reading regarding convergence of Fourier series, see \cite{stein_fourier}.
 
 \chapter{Lens II: Complex Analysis}
+\label{ch:complex_analysis}
 Recall that if a function, $f$, is relatively ``\textit{well behaved}'' about a point, $x_0$, it may thereby be represented by a Taylor series about $x_0$. ``\textit{Well behaved}'' in this sense means that if $f$ is expanded about $x_0$, then $x_0$ must \textbf{not} be a singularity of $f$. If the above holds, $f$ is then called analytic:
 
 \begin{theorem}[Analyticity of a Function]
@@ -1323,12 +1333,13 @@ Which is precisely the formula for the Fourier coefficients! The Fourier series 
     \label{fig:laurent_to_fourier}
 \end{figure}
 
-This perspective also clarifies \textit{why} the Fourier series works: the completeness of the Fourier system $\{e^{in\theta}\}$ follows from the completeness of the Laurent series on the annulus. The linear algebra viewpoint of chapter II and the complex analysis viewpoint heretofore are thus two facets of the same underlying structure---two lenses, as promised, trained on a single object.
+This perspective also clarifies \textit{why} the Fourier series works: the completeness of the Fourier system $\{e^{in\theta}\}$ follows from the completeness of the Laurent series (Theorem~\ref{thm:laurent}) on the annulus. The linear algebra viewpoint of Chapter~\ref{ch:linear_algebra} and the complex analysis viewpoint heretofore are thus two facets of the same underlying structure---two lenses, as promised, trained on a single object.
 
 For further reading regarding Laurent series and their connection to Fourier analysis, see \cite{ahlfors_complex} and \cite{brown_churchill}.
 
 \chapter{Interpreting The Results}
-With the more rigorous mathematics out of the way, let's look visually now and interpret Fourier series and transform. Earlier, in chapter two, the Fourier transform in $\mathbf{L}^2[a, b]$ was viewed simply as the coefficients of its corresponding Fourier series. Recall that it was then these same coefficients that were derived via vector projection. In figure \eqref{fig:proj}, we saw visually what vector projection looked like in $\mathbb{R}^2$, but what does it look like in $\mathbf{L}^2$?
+\label{ch:interpreting}
+With the more rigorous mathematics out of the way, let's look visually now and interpret Fourier series and transform. Earlier, in Chapter~\ref{ch:linear_algebra}, the Fourier transform in $\mathbf{L}^2[a, b]$ was viewed simply as the coefficients of its corresponding Fourier series. Recall that it was then these same coefficients that were derived via vector projection. In Figure~\ref{fig:proj}, we saw visually what vector projection looked like in $\mathbb{R}^2$, but what does it look like in $\mathbf{L}^2$?
 
 Recall the formula for $f$'s Fourier series expansion:
 
@@ -1348,7 +1359,7 @@ Remember that $c_n$ was simple the inner product between $f$ and our basis vecto
     c_n                        & = \dfrac{\langle f(x), e^{\pi inx/L} \rangle}{||e^{\pi inx/L}||^2}
 \end{align}
 
-Though this may look different in comparison to standard vector projection in $\mathbb{C}^n$, it truly is not. The mathematics proved this to be so in chapter II, but let's see a visual example.
+Though this may look different in comparison to standard vector projection in $\mathbb{C}^n$, it truly is not. The mathematics proved this to be so in Chapter~\ref{ch:linear_algebra}, but let's see a visual example.
 
 \begin{example}["Infinite Vectors"]
     In this example, we will be operating on $\mathbf{L}^2[-\pi, \pi]$.\\
@@ -1368,7 +1379,7 @@ Though this may look different in comparison to standard vector projection in $\
         \dfrac{3098\sinh(\pi)}{3737} \approx 9.57398836735
     \end{equation}
 
-    We can instead use the vector forms of $f$ and $g$ to approximate the above. Figure \eqref{fig:example2} displays a visual representation then of $\langle f, g \rangle$:
+    We can instead use the vector forms of $f$ and $g$ to approximate the above. Figure~\ref{fig:example2} displays a visual representation then of $\langle f, g \rangle$:
 
     This should make sense to any student that has completed a course in elementary calculus: the above sum was nothing more than an approximation of an integral via Riemann sums. The difference here is the data is entirely discretized: no where is a continuous function being used for the above calculations. Instead, we are operating on a discrete approximation of a continuous function, which, in the limit as our sample rate $\to \infty$, becomes therein the continuous function.
 
@@ -1386,7 +1397,7 @@ Though this may look different in comparison to standard vector projection in $\
 \end{example}
 
 \begin{example}[Fourier Transform Projection]
-    Remembering that the Fourier transform was nothing more than simple vector projection, we can illustrate just what that looks like graphically. We'll use the same $f$ as in \eqref{ex:ex1}. First, we'll project a pure complex exponential, $e^{2\pi ix}$ onto $f$, which can be seen in the following figure:
+    Remembering that the Fourier transform was nothing more than simple vector projection, we can illustrate just what that looks like graphically. We'll use the same $f$ as in Example~\ref{ex:ex1}. First, we'll project a pure complex exponential, $e^{2\pi ix}$ onto $f$, which can be seen in the following figure:
 
     \begin{figure}[h]
         \centering
@@ -1400,7 +1411,7 @@ Though this may look different in comparison to standard vector projection in $\
 \chapter{The Discrete Fourier Transform}
 \label{ch:dft}
 
-Throughout the preceding chapters, we derived the Fourier series and transform for continuous functions in $\mathbf{L}^2$. In practice, however, one works with discrete, finite data. The natural question is: what is the discrete analogue of the Fourier transform? The answer is the Discrete Fourier Transform (DFT), which is not merely an approximation of the continuous transform, but a rich algebraic object in its own right.
+Throughout the preceding chapters (Chapters~\ref{ch:linear_algebra}--\ref{ch:complex_analysis}), we derived the Fourier series and transform for continuous functions in $\mathbf{L}^2$. In practice, however, one works with discrete, finite data. The natural question is: what is the discrete analogue of the Fourier transform? The answer is the Discrete Fourier Transform (DFT), which is not merely an approximation of the continuous transform, but a rich algebraic object in its own right.
 
 \section{DFT as Matrix Multiplication}
 \label{sec:dft_matrix}
@@ -1651,7 +1662,7 @@ The inverse $N$-D transform uses the conjugate trick: $\mathrm{IDFT}(\vec{X}) = 
 
 \medskip
 
-The companion implementation of the algorithms described in this section can be found in the author's \texttt{mdarray} library.
+The companion implementation of the algorithms described in this section can be found in the author's \href{https://github.com/mkbabb/mdarray}{\texttt{mdarray}} library.
 
 \chapter{Applications}
 \label{ch:applications}
@@ -1707,7 +1718,7 @@ The pipeline for reconstructing an arbitrary image via epicycles is as follows:
     \item \textbf{Epicycle rendering}: animate the rotating vectors, tracing the reconstruction.
 \end{enumerate}
 
-As $N$ increases, the reconstruction converges to the original contour---a direct consequence of the completeness results from Chapter II. In practice, $N \approx 100\text{--}500$ harmonics suffices for visually faithful reproductions of most images, which is rather remarkable.
+As $N$ increases, the reconstruction converges to the original contour---a direct consequence of the completeness results from Chapter~\ref{ch:linear_algebra} (Theorem~\ref{thm:sturm_completeness}). In practice, $N \approx 100\text{--}500$ harmonics suffices for visually faithful reproductions of most images, which is rather remarkable.
 
 \begin{figure}[htbp]
     \centering
