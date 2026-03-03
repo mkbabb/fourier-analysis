@@ -29,6 +29,7 @@ from fourier_analysis.figures import (
     f18_epicycle_annotated,
     f19_epicycle_convergence,
     f20_contour_pipeline,
+    f21_epicycle_portraits,
 )
 
 GENERATORS = [
@@ -51,6 +52,7 @@ GENERATORS = [
     ("F18", f18_epicycle_annotated),
     ("F19", f19_epicycle_convergence),
     ("F20", f20_contour_pipeline),
+    ("F21", f21_epicycle_portraits),
 ]
 
 

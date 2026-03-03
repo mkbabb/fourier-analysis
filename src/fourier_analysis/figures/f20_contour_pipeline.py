@@ -1,10 +1,11 @@
-"""F20: Image → contour → Fourier pipeline.
+"""F20: Image -> contour -> Fourier pipeline.
 
 Referenced in §6.2. 4-panel showing: (a) original image, (b) edge
-detection, (c) ordered contour path, (d) Fourier reconstruction.
+detection / Otsu threshold, (c) ordered contour path, (d) Fourier
+reconstruction.
 
-Note: This figure requires an input image. If no image is available,
-it generates a synthetic shape instead.
+Uses the Fourier portrait as the default input image. Falls back to
+a synthetic trefoil if no portrait is available.
 """
 
 from __future__ import annotations
@@ -13,35 +14,48 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
+from skimage import filters, measure  # type: ignore[import-untyped]
 
+from fourier_analysis.contours import extract_contours, resample_arc_length
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.figures.style import BLUE, RED, save_figure, setup_style
+from fourier_analysis.shortest_tour import order_contours
+
+PORTRAIT_PATH = Path(__file__).resolve().parents[3] / "paper" / "assets" / "portraits" / "joseph-fourier.jpg"
 
 
 def generate(image_path: str | Path | None = None) -> None:
     setup_style()
+
+    if image_path is None and PORTRAIT_PATH.exists():
+        image_path = PORTRAIT_PATH
+
     fig, axes = plt.subplots(2, 2, figsize=(10, 10))
 
     if image_path is not None:
-        from fourier_analysis.contours import extract_contours
-        from fourier_analysis.shortest_tour import order_contours
-
-        contours = extract_contours(image_path, canny_sigma=2.0, resize=256)
+        contours = extract_contours(image_path, resize=256)
         path = order_contours(contours)
+        path = resample_arc_length(path, 1024)
 
         # (a) Original image
-        from PIL import Image
-
         img = Image.open(image_path).convert("L")
         axes[0, 0].imshow(np.array(img), cmap="gray")
         axes[0, 0].set_title("(a) Original image")
+        axes[0, 0].axis("off")
 
-        # (b) Edge detection
-        from skimage import feature  # type: ignore[import-untyped]
-
-        edges = feature.canny(np.array(img.resize((256, 256)), dtype=np.float64), sigma=2.0)
-        axes[0, 1].imshow(edges, cmap="gray")
-        axes[0, 1].set_title("(b) Canny edge detection")
+        # (b) Otsu threshold visualization
+        img_resized = img.resize((256, 256), Image.Resampling.LANCZOS)
+        arr = np.array(img_resized, dtype=np.float64)
+        arr = arr / arr.max() if arr.max() > 0 else arr
+        thresh = filters.threshold_otsu(arr)
+        binary = arr < thresh
+        contours_vis = measure.find_contours(binary.astype(float), level=0.5)
+        axes[0, 1].imshow(binary, cmap="gray")
+        for cv in contours_vis:
+            axes[0, 1].plot(cv[:, 1], cv[:, 0], color=RED, linewidth=0.5, alpha=0.6)
+        axes[0, 1].set_title("(b) Otsu threshold + marching squares")
+        axes[0, 1].axis("off")
     else:
         # Synthetic shape: trefoil knot
         N = 1024
@@ -65,7 +79,7 @@ def generate(image_path: str | Path | None = None) -> None:
     axes[1, 0].grid(True, alpha=0.2)
 
     # (d) Fourier reconstruction
-    n_harmonics = min(100, len(path) // 2)
+    n_harmonics = min(200, len(path) // 2)
     chain = EpicycleChain.from_signal(path, n_harmonics=n_harmonics)
     ts = np.linspace(0, 1, 2000)
     recon = chain.evaluate(ts)

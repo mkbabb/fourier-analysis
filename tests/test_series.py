@@ -88,3 +88,53 @@ class TestParseval:
         energy_freq = np.sum(np.abs(coeffs) ** 2)
 
         np.testing.assert_allclose(energy_time, energy_freq, rtol=1e-10)
+
+
+class TestShiftTheorem:
+    def test_shift_theorem(self):
+        """Shifting a signal by k samples should multiply coefficients by phase factors."""
+        N = 64
+        signal = np.random.randn(N) + 1j * np.random.randn(N)
+        k = 5
+        shifted = np.roll(signal, k)
+
+        coeffs_orig = fourier_coefficients(signal)
+        coeffs_shifted = fourier_coefficients(shifted)
+
+        # c_n(shifted) = c_n(orig) * exp(-2πi n k / N)
+        freqs = np.fft.fftfreq(N, d=1.0 / N)  # [0, 1, ..., N/2, -N/2+1, ..., -1]
+        phase_factors = np.exp(-2j * np.pi * freqs * k / N)
+        expected = coeffs_orig * phase_factors
+
+        np.testing.assert_allclose(coeffs_shifted, expected, atol=1e-10)
+
+
+class TestLinearity:
+    def test_linearity(self):
+        """Coefficients of (a*f + b*g) should equal a*coeffs(f) + b*coeffs(g)."""
+        N = 128
+        f = np.random.randn(N) + 1j * np.random.randn(N)
+        g = np.random.randn(N) + 1j * np.random.randn(N)
+        a, b = 2.5 + 0.3j, -1.2 + 0.7j
+
+        coeffs_combined = fourier_coefficients(a * f + b * g)
+        coeffs_f = fourier_coefficients(f)
+        coeffs_g = fourier_coefficients(g)
+
+        np.testing.assert_allclose(coeffs_combined, a * coeffs_f + b * coeffs_g, atol=1e-10)
+
+
+class TestConjugateSymmetry:
+    def test_conjugate_symmetry_for_real_signal(self):
+        """For a real signal, c_{-n} = conj(c_n)."""
+        N = 128
+        signal = np.random.randn(N)
+        coeffs = fourier_coefficients(signal)
+
+        # Check: coeffs[n] should equal conj(coeffs[N-n]) = conj(coeffs[-n])
+        for n in range(1, N // 2):
+            np.testing.assert_allclose(
+                coeffs[n], np.conj(coeffs[-n % N]),
+                atol=1e-10,
+                err_msg=f"Conjugate symmetry failed at n={n}",
+            )

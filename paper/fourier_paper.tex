@@ -1700,8 +1700,9 @@ represents $\gamma$ as a sum of $2N + 1$ rotating vectors. Each term $c_n e^{2\p
 
 The pipeline for reconstructing an arbitrary image via epicycles is as follows:
 \begin{enumerate}
-    \item \textbf{Edge detection}: extract edges using the Canny algorithm.
-    \item \textbf{Contour ordering}: order the edge points into a continuous path via nearest-neighbor traversal.
+    \item \textbf{Contour extraction}: binarize the image via Otsu thresholding (for portraits and silhouettes) or Canny edge detection with morphological closing (for line drawings), then extract ordered contour paths via marching squares (\texttt{skimage.measure.find\_contours}).
+    \item \textbf{Tour ordering}: concatenate contour segments into a single path using KDTree-accelerated nearest-neighbor initialization, refined by 2-opt local search to minimize inter-contour gaps.
+    \item \textbf{Arc-length resampling}: resample the path to uniform arc-length spacing---essential for accurate Fourier coefficients, since the FFT assumes uniform sampling.
     \item \textbf{Fourier decomposition}: compute the Fourier coefficients of the complex path.
     \item \textbf{Epicycle rendering}: animate the rotating vectors, tracing the reconstruction.
 \end{enumerate}
@@ -1718,15 +1719,22 @@ As $N$ increases, the reconstruction converges to the original contour---a direc
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{assets/f19_epicycle_convergence.pdf}
-    \caption{Epicycle reconstruction with increasing numbers of harmonics. As $N$ grows, the reconstruction converges to the original shape.}
+    \caption{Epicycle reconstruction of Fourier's portrait with increasing numbers of harmonics ($N = 3, 10, 50, 200$). As $N$ grows, the reconstruction converges to the original contour---a visual confirmation of the completeness of the Fourier basis.}
     \label{fig:epicycle_convergence}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{assets/f20_contour_pipeline.pdf}
-    \caption{The contour tracing pipeline: (a) target shape, (b) ordered contour points, (c) contour path, (d) Fourier reconstruction from the extracted contour.}
+    \caption{The contour tracing pipeline applied to Fourier's portrait: (a) original image, (b) Otsu threshold with marching-squares contours, (c) ordered contour path after 2-opt tour refinement, (d) Fourier reconstruction at $N = 200$ harmonics.}
     \label{fig:contour_pipeline}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{assets/f21_epicycle_portraits.pdf}
+    \caption{Epicycle portrait reconstructions at $N = 200$ harmonics. From left to right: Joseph Fourier, Augustin-Louis Cauchy, and the NES R.O.B\@. Each panel shows the reconstructed contour with the original image inset---a direct consequence of the completeness of the Fourier basis (Theorem~\ref{thm:sturm_completeness}).}
+    \label{fig:epicycle_portraits}
 \end{figure}
 
 \section{Spectral Analysis}

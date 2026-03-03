@@ -31,23 +31,39 @@ class NumpyBackend:
 
 
 class MdarrayBackend:
-    """FFT backend using mdarray (optional dependency)."""
+    """FFT backend using mdarray's mixed-radix FFT (Temperton + Bluestein).
+
+    Converts between numpy arrays and mdarray objects at the boundary,
+    since mdarray's FFT routines operate on their own array type.
+    """
 
     def __init__(self) -> None:
         try:
-            import mdarray  # noqa: F401
+            from mdarray import mdarray as mdarray_cls
+            from mdarray.fft import cfft, ifft
 
-            self._mdarray = mdarray
+            self._mdarray_cls = mdarray_cls
+            self._cfft = cfft
+            self._ifft = ifft
         except ImportError as e:
             raise ImportError(
-                "mdarray is not installed. Install with: pip install mdarray"
+                "mdarray is not installed. Install from source: "
+                "uv pip install -e ~/Programming/mdarray"
             ) from e
 
+    def _to_mdarray(self, x: NDArray[np.complex128]):
+        """Wrap a numpy array as an mdarray."""
+        return self._mdarray_cls(shape=[len(x)], data=list(x))
+
+    def _to_numpy(self, md) -> NDArray[np.complex128]:
+        """Extract an mdarray's data back into a numpy array."""
+        return np.array(list(md.data), dtype=np.complex128)
+
     def fft(self, x: NDArray[np.complex128]) -> NDArray[np.complex128]:
-        return np.asarray(self._mdarray.fft.fft(x), dtype=np.complex128)
+        return self._to_numpy(self._cfft(self._to_mdarray(x)))
 
     def ifft(self, x: NDArray[np.complex128]) -> NDArray[np.complex128]:
-        return np.asarray(self._mdarray.fft.ifft(x), dtype=np.complex128)
+        return self._to_numpy(self._ifft(self._to_mdarray(x)))
 
 
 _current_backend: FFTBackend = NumpyBackend()

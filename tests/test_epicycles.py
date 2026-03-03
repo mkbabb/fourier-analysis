@@ -53,3 +53,43 @@ class TestEpicycleChain:
         signal = np.ones(16, dtype=complex)
         chain = EpicycleChain.from_signal(signal, n_harmonics=3)
         assert len(chain) > 0
+
+    def test_circle_reconstruction_accuracy(self):
+        """Unit circle -> chain -> evaluate at N points -> max error < 1e-6."""
+        N = 256
+        t = np.linspace(0, 2 * np.pi, N, endpoint=False)
+        signal = np.exp(1j * t)
+
+        chain = EpicycleChain.from_signal(signal)
+        ts = np.linspace(0, 1, N, endpoint=False)
+        recon = chain.evaluate(ts)
+
+        np.testing.assert_allclose(recon.real, signal.real, atol=1e-6)
+        np.testing.assert_allclose(recon.imag, signal.imag, atol=1e-6)
+
+    def test_square_wave_harmonics_decrease(self):
+        """Coefficients of a square wave should decrease roughly as 1/n."""
+        N = 512
+        t = np.linspace(0, 2 * np.pi, N, endpoint=False)
+        signal = np.sign(np.sin(t)).astype(complex)
+
+        chain = EpicycleChain.from_signal(signal, n_harmonics=50)
+        amplitudes = sorted(
+            [(abs(c.frequency), c.amplitude) for c in chain.components if c.frequency != 0],
+            key=lambda x: x[0],
+        )
+        # The dominant harmonics (odd frequencies) should decrease
+        if len(amplitudes) >= 10:
+            assert amplitudes[0][1] > amplitudes[9][1]
+
+    def test_known_shape_roundtrip(self):
+        """A cardioid path should roundtrip through epicycle decomposition."""
+        N = 256
+        t = np.linspace(0, 2 * np.pi, N, endpoint=False)
+        signal = (1 + 0.5 * np.cos(t)) * np.exp(1j * t)
+
+        chain = EpicycleChain.from_signal(signal)
+        ts = np.linspace(0, 1, N, endpoint=False)
+        recon = chain.evaluate(ts)
+
+        np.testing.assert_allclose(recon, signal, atol=1e-6)
