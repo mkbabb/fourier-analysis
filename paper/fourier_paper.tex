@@ -58,7 +58,7 @@
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\textwidth]{assets/fourier.png}
+    \includegraphics[width=0.5\textwidth]{../assets/fourier.png}
 \end{figure}
 
 
@@ -143,7 +143,7 @@ Starting from the general heat equation $u_t = \Delta u$ where $u = u(x, y, t)$,
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.7\textwidth]{assets/f08_heat_plate.pdf}
+    \includegraphics[width=0.7\textwidth]{../assets/f08_heat_plate.pdf}
     \caption{Steady-state heat distribution on Fourier's rectangular plate with boundary conditions: $u(0, y) = 1$ and $u(x, \pm\pi/2) = 0$.}
     \label{fig:heat_plate}
 \end{figure}
@@ -369,7 +369,7 @@ Wonderful, a general solution! But what of the constants $c_n$? Fourier uses a s
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/f02_partial_sums.pdf}
+    \includegraphics[width=0.8\textwidth]{../assets/f02_partial_sums.pdf}
     \caption{The partial sums of the above equation converging to 1}
     \label{fig:partial_sums}
 \end{figure}
@@ -436,7 +436,7 @@ The above two assertions will be explained formally in the proceeding chapters. 
 \chapter{Lens I: Linear Algebra}
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.6\textwidth]{assets/f03_projection.pdf}
+    \includegraphics[width=0.6\textwidth]{../assets/f03_projection.pdf}
     \caption{Vector Projection of vectors $\vec{u}$ and $\vec{v}$. Recall that vector or subspace projection can be viewed as a way to discern "how much" of one vector is represented in another.}
     \label{fig:proj}
 \end{figure}
@@ -503,7 +503,7 @@ Notice the vector space that one is operating in is $\mathbb{R}^N$. The above lo
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.6\textwidth]{assets/f04_function_as_vector.pdf}
+    \includegraphics[width=0.6\textwidth]{../assets/f04_function_as_vector.pdf}
     \caption{Vector representation of a given $f$. The intensity of the vector is proportional to the value of $f$ at that point.}
 \end{figure}
 
@@ -1154,7 +1154,7 @@ This is the infinite-dimensional analogue of the Pythagorean theorem: the ``ener
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.7\textwidth]{assets/f11_parseval.pdf}
+    \includegraphics[width=0.7\textwidth]{../assets/f11_parseval.pdf}
     \caption{Parseval's identity: the squared magnitudes $|c_n|^2$ of the Fourier coefficients sum to the energy of $f$ in the time domain.}
     \label{fig:parseval}
 \end{figure}
@@ -1169,14 +1169,14 @@ This was first observed by Wilbraham in 1848 and later rediscovered by Gibbs in 
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/f09_gibbs.pdf}
+    \includegraphics[width=0.8\textwidth]{../assets/f09_gibbs.pdf}
     \caption{The Gibbs phenomenon: partial sums of a square wave for $N = 5, 10, 25, 100$. The $\approx 9\%$ overshoot at each discontinuity persists regardless of $N$.}
     \label{fig:gibbs}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/f10_fejer_vs_partial.pdf}
+    \includegraphics[width=0.8\textwidth]{../assets/f10_fejer_vs_partial.pdf}
     \caption{Fej\'{e}r summation (Ces\`{a}ro means) versus partial sums: the Ces\`{a}ro means converge smoothly without the Gibbs overshoot.}
     \label{fig:fejer}
 \end{figure}
@@ -1288,7 +1288,7 @@ Notice the striking similarity between \eqref{eq:laurent} and the Taylor series:
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\textwidth]{assets/f12_laurent_annulus.pdf}
+    \includegraphics[width=0.5\textwidth]{../assets/f12_laurent_annulus.pdf}
     \caption{The annulus of convergence $A = \{z : r_1 < |z - z_0| < r_2\}$ for the Laurent series. The unit circle $|z| = 1$ (highlighted) lies within the annulus, and $z_0$ is an isolated singularity at the origin.}
     \label{fig:laurent_annulus}
 \end{figure}
@@ -1318,7 +1318,7 @@ Which is precisely the formula for the Fourier coefficients! The Fourier series 
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/f13_laurent_to_fourier.pdf}
+    \includegraphics[width=0.8\textwidth]{../assets/f13_laurent_to_fourier.pdf}
     \caption{The substitution $z = e^{i\theta}$ maps the unit circle in $\mathbb{C}$ (left) to a periodic function on $[0, 2\pi)$ (right), converting the Laurent series into a Fourier series.}
     \label{fig:laurent_to_fourier}
 \end{figure}
@@ -1358,7 +1358,7 @@ Though this may look different in comparison to standard vector projection in $\
     With 1000 vectors representing $f$, here is what it looks like:
     \begin{figure}[h]
         \centering
-        \includegraphics[width=0.8\textwidth]{assets/f05_inner_product_1.pdf}
+        \includegraphics[width=0.8\textwidth]{../assets/f05_inner_product_1.pdf}
         \label{fig:example1}
         \caption{On the left, $f$ is represented with 1000 sample vectors. On the right $f$ is shown fully.}
     \end{figure}
@@ -1374,7 +1374,7 @@ Though this may look different in comparison to standard vector projection in $\
 
     \begin{figure}[h]
         \centering
-        \includegraphics[width=0.8\textwidth]{assets/f06_inner_product_2.pdf}
+        \includegraphics[width=0.8\textwidth]{../assets/f06_inner_product_2.pdf}
         \label{fig:example2}
 
         \caption{On the left, $f \cdot g$ is represented with $40,000$ sample vectors. On the right, the sum of this vector product, multiplied by a factor of $\Delta x = \dfrac{b - a}{N}$ is shown. Notice the error using this approximation is $-1.5\cdot 10^{-3}$.}
@@ -1390,7 +1390,7 @@ Though this may look different in comparison to standard vector projection in $\
 
     \begin{figure}[h]
         \centering
-        \includegraphics[width=0.8\textwidth]{assets/f07_fourier_projection.pdf}
+        \includegraphics[width=0.8\textwidth]{../assets/f07_fourier_projection.pdf}
         \label{fig:example3}
         \caption{}
     \end{figure}
@@ -1442,7 +1442,7 @@ The connection to the continuous Fourier transform is immediate: as the sampling
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{assets/f14_dft_matrix.pdf}
+    \includegraphics[width=0.85\textwidth]{../assets/f14_dft_matrix.pdf}
     \caption{The DFT matrix $F_N$ for $N = 8$: real part, imaginary part, and magnitude. The structured pattern of roots of unity is plainly visible.}
     \label{fig:dft_matrix}
 \end{figure}
@@ -1471,7 +1471,7 @@ computes two outputs from each pair. Applying this recursively yields $\log_2 N$
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{assets/f15_butterfly.pdf}
+    \includegraphics[width=0.85\textwidth]{../assets/f15_butterfly.pdf}
     \caption{Butterfly diagram for the radix-2 Cooley--Tukey FFT with $N = 8$. Bit-reversed input on the left, natural-order output on the right, with twiddle factors $W^k_N$ annotated at each stage.}
     \label{fig:butterfly}
 \end{figure}
@@ -1596,7 +1596,7 @@ An important structural note: Bluestein's algorithm calls the staged FFT on powe
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{assets/f16_bluestein.pdf}
+    \includegraphics[width=0.85\textwidth]{../assets/f16_bluestein.pdf}
     \caption{Left: the chirp signal $\omega^{n^2/2}$ for $N = 32$. Right: verification that the Bluestein identity $nk = -(k-n)^2/2 + n^2/2 + k^2/2$ holds exactly.}
     \label{fig:bluestein}
 \end{figure}
@@ -1684,7 +1684,7 @@ The discrete analogue holds for the DFT: circular convolution in the time domain
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/f17_convolution_theorem.pdf}
+    \includegraphics[width=0.8\textwidth]{../assets/f17_convolution_theorem.pdf}
     \caption{The convolution theorem visualized: a Gaussian $f$ and a rectangular pulse $g$ in the time domain (top), their Fourier transforms multiplied pointwise in the frequency domain (bottom left), and the resulting convolution $(f * g)(x)$ (bottom right).}
     \label{fig:convolution_theorem}
 \end{figure}
@@ -1711,28 +1711,28 @@ As $N$ increases, the reconstruction converges to the original contour---a direc
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/f18_epicycle_annotated.pdf}
+    \includegraphics[width=0.8\textwidth]{../assets/f18_epicycle_annotated.pdf}
     \caption{Epicycle decomposition: individual rotating vectors chained tip-to-tail. Each vector $c_n e^{2\pi int}$ traces a circle of radius $|c_n|$ at frequency $n$.}
     \label{fig:epicycle_annotated}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/f19_epicycle_convergence.pdf}
+    \includegraphics[width=0.8\textwidth]{../assets/f19_epicycle_convergence.pdf}
     \caption{Epicycle reconstruction of Fourier's portrait with increasing numbers of harmonics ($N = 3, 10, 50, 200$). As $N$ grows, the reconstruction converges to the original contour---a visual confirmation of the completeness of the Fourier basis.}
     \label{fig:epicycle_convergence}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{assets/f20_contour_pipeline.pdf}
+    \includegraphics[width=0.8\textwidth]{../assets/f20_contour_pipeline.pdf}
     \caption{The contour tracing pipeline applied to Fourier's portrait: (a) original image, (b) Otsu threshold with marching-squares contours, (c) ordered contour path after 2-opt tour refinement, (d) Fourier reconstruction at $N = 200$ harmonics.}
     \label{fig:contour_pipeline}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{assets/f21_epicycle_portraits.pdf}
+    \includegraphics[width=\textwidth]{../assets/f21_epicycle_portraits.pdf}
     \caption{Epicycle portrait reconstructions at $N = 200$ harmonics. From left to right: Joseph Fourier, Augustin-Louis Cauchy, and the NES R.O.B\@. Each panel shows the reconstructed contour with the original image inset---a direct consequence of the completeness of the Fourier basis (Theorem~\ref{thm:sturm_completeness}).}
     \label{fig:epicycle_portraits}
 \end{figure}

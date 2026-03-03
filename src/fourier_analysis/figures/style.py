@@ -12,7 +12,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 # Output directory for generated figures
-ASSETS_DIR = Path(__file__).resolve().parents[3] / "paper" / "assets"
+ASSETS_DIR = Path(__file__).resolve().parents[3] / "assets"
 
 # Color palette — vibrant, bold, Memphis/mid-century modern
 PURPLE = "#7B2D8E"      # Deep royal purple

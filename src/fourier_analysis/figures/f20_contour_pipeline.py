@@ -22,7 +22,7 @@ from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.figures.style import BLUE, RED, save_figure, setup_style
 from fourier_analysis.shortest_tour import order_contours
 
-PORTRAIT_PATH = Path(__file__).resolve().parents[3] / "paper" / "assets" / "portraits" / "joseph-fourier.jpg"
+PORTRAIT_PATH = Path(__file__).resolve().parents[3] / "assets" / "portraits" / "joseph-fourier.jpg"
 
 
 def generate(image_path: str | Path | None = None) -> None:

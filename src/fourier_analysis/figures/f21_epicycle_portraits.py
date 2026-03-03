@@ -23,7 +23,7 @@ from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.figures.style import COLORS, BLUE, save_figure, setup_style
 from fourier_analysis.shortest_tour import order_contours
 
-PORTRAITS_DIR = Path(__file__).resolve().parents[3] / "paper" / "assets" / "portraits"
+PORTRAITS_DIR = Path(__file__).resolve().parents[3] / "assets" / "portraits"
 
 SUBJECTS = [
     ("Joseph Fourier", "joseph-fourier.jpg", 200),
