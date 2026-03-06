@@ -13,7 +13,7 @@ defineProps<{
                 <span class="section-number fira-code text-[0.9rem] font-normal text-muted-foreground/70 mr-1.5 select-none">{{ number }}.</span>
                 <span class="section-title">{{ title }}</span>
             </h2>
-            <div class="section-divider mt-5" />
+            <div class="section-divider mt-4" />
         </div>
         <div class="section-body mt-6 text-[0.938rem] leading-[1.8] text-foreground/90">
             <slot />
@@ -28,8 +28,10 @@ defineProps<{
     top: 3.5rem;
     z-index: 10;
     background: hsl(var(--background));
-    padding-top: 0.75rem;
-    padding-bottom: 0.25rem;
+    padding: 0.75rem 1rem 0.25rem;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-radius: var(--radius);
     border-bottom: 1px solid transparent;
     transition: border-color 0.2s ease;
 }
