@@ -38,7 +38,7 @@ async function copySlug() {
                         <path d="M2 12c2-4 4-8 6-8s4 8 6 8 4-8 6-8 2 4 2 8" />
                     </svg>
                 </div>
-                <span class="fraunces text-lg font-semibold tracking-tight">
+                <span class="cm-serif text-lg font-semibold tracking-tight">
                     Fourier Analysis
                 </span>
             </router-link>
@@ -90,7 +90,7 @@ async function copySlug() {
             </Transition>
 
             <!-- Dark mode toggle -->
-            <DarkModeToggle />
+            <DarkModeToggle style="--toggle-size: 2.25rem" />
         </div>
     </header>
 </template>

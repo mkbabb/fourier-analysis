@@ -35,7 +35,7 @@ function onScrub(e: Event) {
                 <RotateCcw class="h-4 w-4" />
             </button>
 
-            <!-- Timeline scrubber -->
+            <!-- Timeline scrubber — green like keyframes.js -->
             <div class="flex-1">
                 <input
                     type="range"
@@ -43,7 +43,7 @@ function onScrub(e: Event) {
                     max="1"
                     step="0.001"
                     :value="anim.t"
-                    class="w-full"
+                    class="timeline-slider w-full"
                     @input="onScrub"
                 />
             </div>
@@ -69,6 +69,67 @@ function onScrub(e: Event) {
 </template>
 
 <style scoped>
+/* Green timeline slider — matching keyframes.js time scrubber */
+.timeline-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(
+        to right,
+        #22c55e v-bind('(anim.t * 100) + "%"'),
+        hsl(var(--border)) v-bind('(anim.t * 100) + "%"')
+    );
+    outline: none;
+    cursor: pointer;
+    transition: background 0.05s ease;
+}
+
+.timeline-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #22c55e;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                box-shadow 0.15s ease;
+}
+
+.timeline-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+}
+
+.timeline-slider::-webkit-slider-thumb:active {
+    transform: scale(0.95);
+}
+
+.timeline-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #22c55e;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.timeline-slider::-moz-range-progress {
+    background: #22c55e;
+    border-radius: 3px;
+    height: 6px;
+}
+
+.timeline-slider::-moz-range-track {
+    background: hsl(var(--border));
+    border-radius: 3px;
+    height: 6px;
+}
+
 .icon-swap-enter-active,
 .icon-swap-leave-active {
     transition: all 0.15s ease;

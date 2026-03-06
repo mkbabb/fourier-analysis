@@ -9,25 +9,26 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "vue": "^3.5",
-        "vue-router": "^4.5",
-        "pinia": "^2.3",
-        "katex": "^0.16",
+        "@mkbabb/keyframes.js": "latest",
+        "@mkbabb/pencil-boil": "^0.2.0",
         "@vueuse/core": "^14.0",
-        "@mkbabb/keyframes.js": "latest"
+        "katex": "^0.16",
+        "pinia": "^2.3",
+        "vue": "^3.5",
+        "vue-router": "^4.5"
     },
     "devDependencies": {
-        "typescript": "^5.8",
-        "vue-tsc": "^2.0",
-        "vite": "^7.0",
-        "@vitejs/plugin-vue": "^6.0",
         "@tailwindcss/postcss": "^4.1",
-        "tailwindcss": "^4.1",
-        "reka-ui": "^2.0",
-        "lucide-vue-next": "latest",
+        "@types/katex": "^0.16",
+        "@vitejs/plugin-vue": "^6.0",
         "class-variance-authority": "^0.7",
         "clsx": "^2.1",
+        "lucide-vue-next": "latest",
+        "reka-ui": "^2.0",
         "tailwind-merge": "^3.0",
-        "@types/katex": "^0.16"
+        "tailwindcss": "^4.1",
+        "typescript": "^5.8",
+        "vite": "^7.0",
+        "vue-tsc": "^2.0"
     }
 }

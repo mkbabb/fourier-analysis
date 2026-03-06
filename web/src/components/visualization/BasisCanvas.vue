@@ -13,7 +13,6 @@ const containerRef = ref<HTMLDivElement>();
 const maxCircles = ref(80);
 
 let ctx: CanvasRenderingContext2D | null = null;
-let rafId: number | null = null;
 let width = 800;
 let height = 800;
 
@@ -37,6 +36,7 @@ function setupCanvas() {
     ctx.scale(dpr, dpr);
 }
 
+/* Offset epicycles to bottom-left on desktop (wide viewports) */
 function getViewBounds() {
     const data = store.epicycleData;
     if (!data) return { cx: 0, cy: 0, scale: 1 };
@@ -49,14 +49,23 @@ function getViewBounds() {
     const maxY = Math.max(...ys);
     const rangeX = maxX - minX || 1;
     const rangeY = maxY - minY || 1;
-    const margin = 0.2;
+    const margin = 0.15;
     const scale = Math.min(
         width / (rangeX * (1 + margin * 2)),
         height / (rangeY * (1 + margin * 2)),
     );
+
+    const dataCx = (minX + maxX) / 2;
+    const dataCy = (minY + maxY) / 2;
+
+    // On wide viewports, offset center toward top-right so drawing sits bottom-left
+    const isDesktop = width >= 500;
+    const offsetX = isDesktop ? rangeX * 0.12 : 0;
+    const offsetY = isDesktop ? -rangeY * 0.10 : 0;
+
     return {
-        cx: (minX + maxX) / 2,
-        cy: (minY + maxY) / 2,
+        cx: dataCx + offsetX,
+        cy: dataCy + offsetY,
         scale,
     };
 }
@@ -83,10 +92,10 @@ function drawFrame() {
         ];
     }
 
-    // Draw original path (faint)
+    // Draw original path (faint but bolder)
     ctx.beginPath();
-    ctx.strokeStyle = "rgba(150, 150, 150, 0.25)";
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = "rgba(150, 150, 150, 0.3)";
+    ctx.lineWidth = 1.5;
     for (let i = 0; i < data.path.x.length; i++) {
         const [sx, sy] = toScreen(data.path.x[i], data.path.y[i]);
         if (i === 0) ctx.moveTo(sx, sy);
@@ -99,7 +108,7 @@ function drawFrame() {
     const nVis = Math.min(maxCircles.value, components.length);
     const positions = fourierPositionsAt(components, anim.t, nVis);
 
-    // Draw circles and arms
+    // Draw circles and arms — bolder strokes
     for (let i = 0; i < nVis; i++) {
         const [ccx, ccy] = toScreen(positions[i][0], positions[i][1]);
         const [tx, ty] = toScreen(positions[i + 1][0], positions[i + 1][1]);
@@ -110,8 +119,8 @@ function drawFrame() {
         ctx.beginPath();
         ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
         ctx.strokeStyle = color;
-        ctx.globalAlpha = 0.4;
-        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.45;
+        ctx.lineWidth = 1.8;
         ctx.stroke();
         ctx.globalAlpha = 1;
 
@@ -120,16 +129,16 @@ function drawFrame() {
         ctx.moveTo(ccx, ccy);
         ctx.lineTo(tx, ty);
         ctx.strokeStyle = color;
-        ctx.globalAlpha = 0.5;
-        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.6;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
         ctx.globalAlpha = 1;
 
         // Center dot
         ctx.beginPath();
-        ctx.arc(ccx, ccy, Math.max(r * 0.03, 1.2), 0, Math.PI * 2);
+        ctx.arc(ccx, ccy, Math.max(r * 0.04, 1.5), 0, Math.PI * 2);
         ctx.fillStyle = color;
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 0.6;
         ctx.fill();
         ctx.globalAlpha = 1;
     }
@@ -147,8 +156,10 @@ function drawFrame() {
     if (trailX.length > 1) {
         ctx.beginPath();
         ctx.strokeStyle = "#ff3412";
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 2.5;
+        ctx.globalAlpha = 0.92;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
         const [sx0, sy0] = toScreen(trailX[0], trailY[0]);
         ctx.moveTo(sx0, sy0);
         for (let i = 1; i < trailX.length; i++) {
@@ -162,13 +173,13 @@ function drawFrame() {
     // Tip dot
     const [tipSx, tipSy] = toScreen(tip[0], tip[1]);
     ctx.beginPath();
-    ctx.arc(tipSx, tipSy, 4, 0, Math.PI * 2);
+    ctx.arc(tipSx, tipSy, 5, 0, Math.PI * 2);
     ctx.fillStyle = "#ff3412";
     ctx.fill();
     // Glow
     ctx.beginPath();
-    ctx.arc(tipSx, tipSy, 8, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 52, 18, 0.15)";
+    ctx.arc(tipSx, tipSy, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 52, 18, 0.18)";
     ctx.fill();
 }
 
@@ -204,22 +215,10 @@ function drawPlaceholder() {
     );
 }
 
-function renderLoop() {
-    drawFrame();
-    if (anim.playing) {
-        rafId = requestAnimationFrame(renderLoop);
-    }
-}
-
+// keyframes.js drives the animation loop via the store's reactive t
 watch(() => anim.t, () => {
-    if (!anim.playing) drawFrame();
-});
-
-watch(() => anim.playing, (isPlaying) => {
-    if (isPlaying) {
-        rafId = requestAnimationFrame(renderLoop);
-    }
-});
+    drawFrame();
+}, { flush: "sync" });
 
 watch(() => store.epicycleData, () => {
     trailX.length = 0;
@@ -235,7 +234,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    if (rafId !== null) cancelAnimationFrame(rafId);
     window.removeEventListener("resize", setupCanvas);
 });
 
