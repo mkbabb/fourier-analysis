@@ -510,15 +510,22 @@ function drawMultiBasesFrame(
         ctx.stroke();
     }
 
-    // Determine the current level
+    // Determine the current level with smooth interpolation
     let level = 1;
+    let levelFrac = 0; // interpolation fraction between level and next level
+    let levelNext = 1;
     if (basesData && basesData.levels.length > 0) {
         const levels = basesData.levels;
-        const levelIdx = Math.max(0, Math.min(levels.length - 1, Math.floor(anim.t * levels.length)));
-        level = levels[levelIdx];
+        const pos = anim.t * (levels.length - 1);
+        const lo = Math.floor(pos);
+        const hi = Math.min(lo + 1, levels.length - 1);
+        levelFrac = pos - lo;
+        level = levels[lo];
+        levelNext = levels[hi];
     } else if (epicycleData) {
         const components: BasisComponent[] = epicycleData.components;
         level = Math.max(1, Math.ceil(anim.t * components.length));
+        levelNext = level;
     }
 
     const clipMinX = -width;
@@ -539,47 +546,49 @@ function drawMultiBasesFrame(
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
 
-        if (basisName === "fourier") {
-            // Prefer precomputed Fourier partial sums
-            const fourierSums = basesData?.partial_sums?.fourier;
-            const sumData = (fourierSums as any)?.[level] ?? (fourierSums as any)?.[String(level)];
-            if (sumData) {
-                for (let i = 0; i < sumData.x.length; i++) {
-                    const [sx, sy] = toScreen(sumData.x[i], sumData.y[i]);
-                    if (i === 0) ctx.moveTo(sx, sy);
-                    else ctx.lineTo(sx, sy);
+        // Look up partial sum data for current and next level
+        const sumsForBasis = basisName === "fourier"
+            ? basesData?.partial_sums?.fourier
+            : basesData?.partial_sums[basisName];
+        const sumLo = (sumsForBasis as any)?.[level] ?? (sumsForBasis as any)?.[String(level)];
+        const sumHi = levelFrac > 0.001
+            ? ((sumsForBasis as any)?.[levelNext] ?? (sumsForBasis as any)?.[String(levelNext)])
+            : null;
+
+        if (sumLo) {
+            const doInterp = sumHi && sumHi.x.length === sumLo.x.length && levelFrac > 0.001;
+            const isPolynomial = basisName !== "fourier";
+            let needsMove = true;
+            for (let i = 0; i < sumLo.x.length; i++) {
+                let px = sumLo.x[i];
+                let py = sumLo.y[i];
+                if (doInterp) {
+                    px += levelFrac * (sumHi.x[i] - px);
+                    py += levelFrac * (sumHi.y[i] - py);
                 }
-            } else if (epicycleData) {
-                // Fallback: client-side evaluation
-                const components: BasisComponent[] = epicycleData.components;
-                const nTerms = Math.min(level, components.length);
-                const nEval = 500;
-                for (let i = 0; i <= nEval; i++) {
-                    const tEval = i / nEval;
-                    const [re, im] = evaluateFourier(components, tEval, nTerms);
-                    const [sx, sy] = toScreen(re, im);
-                    if (i === 0) ctx.moveTo(sx, sy);
-                    else ctx.lineTo(sx, sy);
+                const [sx, sy] = toScreen(px, py);
+                if (isPolynomial && (sx < clipMinX || sx > clipMaxX || sy < clipMinY || sy > clipMaxY)) {
+                    needsMove = true;
+                    continue;
+                }
+                if (needsMove || i === 0) {
+                    ctx.moveTo(sx, sy);
+                    needsMove = false;
+                } else {
+                    ctx.lineTo(sx, sy);
                 }
             }
-        } else {
-            // Polynomial bases: clip extreme values to prevent wild diagonal lines (Runge phenomenon)
-            const sumData = (basesData?.partial_sums[basisName] as any)?.[level] ?? (basesData?.partial_sums[basisName] as any)?.[String(level)];
-            if (sumData) {
-                let needsMove = true;
-                for (let i = 0; i < sumData.x.length; i++) {
-                    const [sx, sy] = toScreen(sumData.x[i], sumData.y[i]);
-                    if (sx < clipMinX || sx > clipMaxX || sy < clipMinY || sy > clipMaxY) {
-                        needsMove = true;
-                        continue;
-                    }
-                    if (needsMove) {
-                        ctx.moveTo(sx, sy);
-                        needsMove = false;
-                    } else {
-                        ctx.lineTo(sx, sy);
-                    }
-                }
+        } else if (basisName === "fourier" && epicycleData) {
+            // Fallback: client-side evaluation
+            const components: BasisComponent[] = epicycleData.components;
+            const nTerms = Math.min(level, components.length);
+            const nEval = 500;
+            for (let i = 0; i <= nEval; i++) {
+                const tEval = i / nEval;
+                const [re, im] = evaluateFourier(components, tEval, nTerms);
+                const [sx, sy] = toScreen(re, im);
+                if (i === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
             }
         }
         ctx.stroke();

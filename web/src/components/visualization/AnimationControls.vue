@@ -38,8 +38,12 @@ const nComponents = computed(() => store.epicycleData?.components?.length ?? 0);
 const seriesN = computed(() => {
     if (store.basesData) {
         const levels = store.basesData.levels;
-        const idx = Math.max(0, Math.min(levels.length - 1, Math.floor(anim.t * levels.length)));
-        return levels[idx];
+        // Smooth interpolation: map t to a continuous position in levels
+        const pos = anim.t * (levels.length - 1);
+        const lo = Math.floor(pos);
+        const hi = Math.min(lo + 1, levels.length - 1);
+        const frac = pos - lo;
+        return Math.round(levels[lo] + frac * (levels[hi] - levels[lo]));
     }
     return Math.max(1, Math.ceil(anim.t * nComponents.value));
 });
@@ -56,8 +60,25 @@ function onScrub(e: Event) {
 </script>
 
 <template>
-    <div class="px-3 py-2 backdrop-blur-sm bg-background/60 border-t border-foreground/10">
-        <div class="flex items-center gap-2.5">
+    <div class="anim-controls px-3 py-2 backdrop-blur-sm bg-background/60 border-t border-foreground/10">
+        <!-- Timeline scrubber — own row on mobile, inline on desktop -->
+        <div class="timeline-row">
+            <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.001"
+                :value="anim.t"
+                class="timeline-slider w-full"
+                @input="onScrub"
+                @pointerdown="anim.startScrub"
+                @pointerup="anim.endScrub"
+                @pointercancel="anim.endScrub"
+            />
+        </div>
+
+        <!-- Controls row -->
+        <div class="controls-row">
             <!-- Play/Pause -->
             <button
                 class="play-btn flex-shrink-0"
@@ -72,24 +93,8 @@ function onScrub(e: Event) {
                 <span class="play-label">{{ anim.playing ? 'Pause' : 'Play' }}</span>
             </button>
 
-            <!-- Timeline scrubber -->
-            <div class="flex-1 px-1">
-                <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.001"
-                    :value="anim.t"
-                    class="timeline-slider w-full"
-                    @input="onScrub"
-                    @pointerdown="anim.startScrub"
-                    @pointerup="anim.endScrub"
-                    @pointercancel="anim.endScrub"
-                />
-            </div>
-
             <!-- Time display -->
-            <span class="w-20 text-right fira-code text-xs text-muted-foreground tabular-nums flex-shrink-0">
+            <span class="fira-code text-xs text-muted-foreground tabular-nums">
                 <template v-if="props.activeBases.length === 1 && props.activeBases[0] === 'fourier-epicycles' && !store.basesData">
                     {{ (anim.t * 100).toFixed(1) }}%
                 </template>
@@ -138,6 +143,46 @@ function onScrub(e: Event) {
 </template>
 
 <style scoped>
+/* Two-row mobile layout, single-row desktop */
+.anim-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.timeline-row {
+    padding: 0 0.125rem;
+}
+
+.controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .anim-controls {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.625rem;
+    }
+    .timeline-row {
+        order: 2;
+        flex: 1;
+    }
+    .controls-row {
+        order: 1;
+        flex-shrink: 0;
+        justify-content: flex-start;
+        gap: 0.625rem;
+    }
+    /* Move timeline between play and time display on desktop */
+    .controls-row {
+        contents: unset;
+    }
+}
+
 /* Rainbow gradient play button */
 .play-btn {
     position: relative;
