@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-vue-next'
 
 const props = withDefaults(defineProps<{
     title: string;
+    subtitle?: string;
     defaultOpen?: boolean;
 }>(), {
     defaultOpen: true,
@@ -15,9 +16,12 @@ const open = ref(props.defaultOpen)
 
 <template>
   <CollapsibleRoot v-model:open="open" class="collapsible-section">
-    <CollapsibleTrigger class="collapsible-trigger group flex w-full items-center gap-2 py-2 text-base font-semibold tracking-tight cursor-pointer select-none">
+    <CollapsibleTrigger class="collapsible-trigger group flex w-full items-center gap-2 py-2 cursor-pointer select-none">
       <ChevronRight class="h-4 w-4 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-90': open }" />
-      <span class="cm-serif">{{ title }}</span>
+      <span>
+        <span class="cm-serif text-sm font-semibold tracking-tight">{{ title }}</span>
+        <span v-if="subtitle" class="ml-1.5 text-xs font-normal text-muted-foreground/70">&mdash; {{ subtitle }}</span>
+      </span>
     </CollapsibleTrigger>
     <CollapsibleContent class="collapsible-content">
       <div class="pb-1">

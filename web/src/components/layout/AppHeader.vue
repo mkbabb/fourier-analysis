@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useHoverCard } from "@/composables/useHoverCard";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import BouncyToggle from "@/components/ui/BouncyToggle.vue";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const route = useRoute();
 const router = useRouter();
@@ -83,7 +84,9 @@ function onTabChange(path: string) {
             />
 
             <div class="ml-auto flex items-center gap-1.5">
-                <DarkModeToggle style="--toggle-size: 2.75rem" />
+                <Tooltip text="Toggle light / dark mode">
+                    <DarkModeToggle style="--toggle-size: 2.75rem" />
+                </Tooltip>
             </div>
         </div>
     </header>

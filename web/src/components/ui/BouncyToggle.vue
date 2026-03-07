@@ -110,7 +110,7 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
     background: none;
     font-family: "CMU Serif", "Computer Modern", Georgia, serif;
     font-size: 0.8125rem;
-    font-weight: 700;
+    font-weight: 500;
     color: hsl(var(--muted-foreground));
     cursor: pointer;
     transition: color 0.2s ease;
