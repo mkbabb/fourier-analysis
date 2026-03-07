@@ -423,10 +423,7 @@ watch(activeTopId, () => {
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     hyphens: auto;
-    width: 100%;
-    max-width: 48rem;
     min-width: 0;
-    margin: 0 auto;
     border-radius: 0.75rem;
     border: 2px solid hsl(var(--foreground) / 0.15);
     background: hsl(var(--card));
@@ -451,8 +448,8 @@ watch(activeTopId, () => {
 
 @media (min-width: 1024px) {
     .paper-grid {
-        grid-template-columns: 220px 1fr;
-        gap: 3rem;
+        grid-template-columns: 220px minmax(0, 48rem);
+        gap: 2rem;
     }
 }
 
