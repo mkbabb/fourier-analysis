@@ -42,6 +42,9 @@ export interface PaperSectionData {
  * delimiters verbatim so KaTeX can render them later.
  */
 function cleanLatex(text: string): string {
+    // Strip \section/\subsection commands (including those with inline math)
+    // before splitting on $...$, since the command may span math boundaries.
+    text = stripSectionCommands(text);
     // Split on $...$ boundaries. Odd-indexed segments are math.
     const parts = text.split(/(\$[^$]*\$)/g);
     for (let i = 0; i < parts.length; i++) {
@@ -49,6 +52,29 @@ function cleanLatex(text: string): string {
         parts[i] = cleanProseSegment(parts[i]);
     }
     return parts.join("").replace(/  +/g, " ").trim();
+}
+
+/** Strip \chapter/\section/\subsection{...} commands using brace-depth tracking. */
+function stripSectionCommands(text: string): string {
+    const cmdRe = /\\(?:chapter|section|subsection|subsubsection)\*?\{/g;
+    let result = "";
+    let lastEnd = 0;
+    let m: RegExpExecArray | null;
+    while ((m = cmdRe.exec(text)) !== null) {
+        result += text.slice(lastEnd, m.index);
+        // Find the matching closing brace
+        let depth = 1;
+        let i = m.index + m[0].length;
+        while (i < text.length && depth > 0) {
+            if (text[i] === "{") depth++;
+            else if (text[i] === "}") depth--;
+            i++;
+        }
+        lastEnd = i;
+        cmdRe.lastIndex = i; // resume scanning after the command
+    }
+    result += text.slice(lastEnd);
+    return result;
 }
 
 /** Unicode accent map for LaTeX diaeresis (\") */
@@ -146,8 +172,7 @@ function cleanProseSegment(text: string): string {
             // \begin{quote}...\end{quote} -> strip environment delimiters
             .replace(/\\begin\{quote\}/g, "")
             .replace(/\\end\{quote\}/g, "")
-            // Remove section/subsection commands that leak into paragraph text
-            .replace(/\\(?:chapter|section|subsection|subsubsection)\*?\{[^{}]*(?:\{[^}]*\}[^{}]*)*\}/g, "")
+            // (section commands already stripped by stripSectionCommands in cleanLatex)
             // Remove \begin{figure}...\end{figure} blocks (figures extracted separately)
             .replace(/\\begin\{figure\}[\s\S]*?\\end\{figure\}/g, "")
             // Remove \begin{center}...\end{center} tables (too complex for web)
