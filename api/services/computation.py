@@ -78,7 +78,7 @@ async def compute_epicycles(
 
         components = [
             {
-                "frequency": c.frequency,
+                "index": c.frequency,
                 "coefficient": [c.coefficient.real, c.coefficient.imag],
                 "amplitude": c.amplitude,
                 "phase": c.phase,

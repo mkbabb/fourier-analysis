@@ -42,6 +42,18 @@ async def upload_image(slug: str, file: UploadFile):
         raise HTTPException(status_code=400, detail=f"File too large (max {settings.max_upload_mb}MB)")
 
     sha = hashlib.sha256(content).hexdigest()
+
+    # Deduplicate: if an image with the same hash already exists, return that session
+    existing = await db.sessions.find_one({"image.sha256": sha})
+    if existing:
+        return {
+            "status": "ok",
+            "slug": existing["slug"],
+            "filename": existing["image"]["filename"],
+            "sha256": sha,
+            "existing": True,
+        }
+
     filename = f"{slug}_{sha[:12]}{ext}"
     filepath = _upload_dir() / filename
 
@@ -65,7 +77,7 @@ async def upload_image(slug: str, file: UploadFile):
         },
     )
 
-    return {"status": "ok", "filename": filename, "sha256": sha}
+    return {"status": "ok", "slug": slug, "filename": filename, "sha256": sha}
 
 
 @router.get("/image")

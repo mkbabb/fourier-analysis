@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from api.services.database import get_db
 
-SLUG_PATTERN = re.compile(r"^[a-zA-Z0-9]{8}$")
+SLUG_PATTERN = re.compile(r"^[a-zA-Z0-9][-a-zA-Z0-9]{2,80}$")
 
 
 def validate_slug(slug: str) -> str:

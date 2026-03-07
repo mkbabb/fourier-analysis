@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
-import string
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException
@@ -17,23 +15,18 @@ from api.models.session import (
     SessionUpdate,
 )
 from api.services.database import get_db
+from api.slugs import generate_slug
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
-
-ALPHABET = string.ascii_letters + string.digits
-
-
-def _generate_slug(length: int = 8) -> str:
-    return "".join(secrets.choice(ALPHABET) for _ in range(length))
 
 
 @router.post("", response_model=SessionResponse)
 async def create_session():
     db = get_db()
-    slug = _generate_slug()
+    slug = generate_slug()
     # Ensure uniqueness
     while await db.sessions.find_one({"slug": slug}):
-        slug = _generate_slug()
+        slug = generate_slug()
 
     now = datetime.now(timezone.utc)
     doc = {

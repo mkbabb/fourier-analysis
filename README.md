@@ -1,4 +1,4 @@
-# fourier_analysis
+# `fourier-analysis`
 
 Companion code for [*An Introduction to Fourier Analysis*](paper/fourier_paper.pdf). Fourier series computation, epicycle decomposition, contour tracing, and all paper figures.
 
