@@ -14,6 +14,8 @@ const props = defineProps<{
 
 const { renderInline } = useKatex();
 
+const baseUrl = import.meta.env.BASE_URL;
+
 function renderParagraph(text: string): string {
     return text.replace(/\$([^$]+)\$/g, (_, tex) => {
         return `<span class="math-inline">${renderInline(tex)}</span>`;
@@ -45,7 +47,7 @@ function renderParagraph(text: string): string {
                 class="my-6 flex flex-col items-center gap-2"
             >
                 <img
-                    :src="`${import.meta.env.BASE_URL}assets/${fig.filename}`"
+                    :src="`${baseUrl}assets/${fig.filename}`"
                     :alt="fig.caption"
                     class="max-w-full rounded-lg border border-border/50 shadow-sm"
                     style="max-height: 400px"
