@@ -45,7 +45,7 @@ function renderParagraph(text: string): string {
                 class="my-6 flex flex-col items-center gap-2"
             >
                 <img
-                    :src="`/assets/${fig.filename}`"
+                    :src="`${import.meta.env.BASE_URL}assets/${fig.filename}`"
                     :alt="fig.caption"
                     class="max-w-full rounded-lg border border-border/50 shadow-sm"
                     style="max-height: 400px"

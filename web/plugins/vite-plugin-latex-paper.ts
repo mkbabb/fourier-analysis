@@ -51,10 +51,71 @@ function cleanLatex(text: string): string {
     return parts.join("").replace(/  +/g, " ").trim();
 }
 
+/** Unicode accent map for LaTeX diaeresis (\") */
+const UMLAUT_MAP: Record<string, string> = {
+    a: "ä", o: "ö", u: "ü", e: "ë", i: "ï", y: "ÿ",
+    A: "Ä", O: "Ö", U: "Ü", E: "Ë", I: "Ï", Y: "Ÿ",
+};
+
+/** Unicode accent map for LaTeX acute (\') */
+const ACUTE_MAP: Record<string, string> = {
+    a: "á", e: "é", i: "í", o: "ó", u: "ú",
+    A: "Á", E: "É", I: "Í", O: "Ó", U: "Ú",
+};
+
+/** Unicode accent map for LaTeX grave (\`) */
+const GRAVE_MAP: Record<string, string> = {
+    a: "à", e: "è", i: "ì", o: "ò", u: "ù",
+    A: "À", E: "È", I: "Ì", O: "Ò", U: "Ù",
+};
+
+/** Unicode accent map for LaTeX circumflex (\^) */
+const CIRCUMFLEX_MAP: Record<string, string> = {
+    a: "â", e: "ê", i: "î", o: "ô", u: "û",
+    A: "Â", E: "Ê", I: "Î", O: "Ô", U: "Û",
+};
+
+/** Unicode accent map for LaTeX tilde (\~) */
+const TILDE_MAP: Record<string, string> = {
+    a: "ã", n: "ñ", o: "õ",
+    A: "Ã", N: "Ñ", O: "Õ",
+};
+
+/** Unicode accent map for LaTeX cedilla (\c) */
+const CEDILLA_MAP: Record<string, string> = {
+    c: "ç", C: "Ç",
+};
+
+/** Apply LaTeX accent command replacements to a prose segment. */
+function replaceAccents(text: string): string {
+    // Helper to apply a single accent type (both braced and non-braced forms)
+    function applyAccent(t: string, cmd: string, map: Record<string, string>): string {
+        // Braced form: \"{a}  or \'{e}  etc.
+        const bracedRe = new RegExp(`\\\\${cmd}\\{([a-zA-Z])\\}`, "g");
+        t = t.replace(bracedRe, (_, c: string) => map[c] ?? c);
+        // Non-braced form: \"a  or \'e  etc.
+        const unbracedRe = new RegExp(`\\\\${cmd}([a-zA-Z])`, "g");
+        t = t.replace(unbracedRe, (_, c: string) => map[c] ?? c);
+        return t;
+    }
+
+    text = applyAccent(text, '"', UMLAUT_MAP);
+    text = applyAccent(text, "'", ACUTE_MAP);
+    text = applyAccent(text, "`", GRAVE_MAP);
+    text = applyAccent(text, "\\^", CIRCUMFLEX_MAP);
+    text = applyAccent(text, "~", TILDE_MAP);
+    // Cedilla: \c{c} — only braced form is standard
+    text = text.replace(/\\c\{([a-zA-Z])\}/g, (_, c: string) => CEDILLA_MAP[c] ?? c);
+
+    return text;
+}
+
 /** Clean a prose (non-math) segment of LaTeX formatting. */
 function cleanProseSegment(text: string): string {
     return (
         text
+            // LaTeX accent commands → Unicode (must come before backslash stripping)
+            .replace(/[\s\S]*/, (m) => replaceAccents(m))
             // \textit{...} / \textbf{...} / \emph{...}
             .replace(/\\textit\{([^}]*)\}/g, "$1")
             .replace(/\\textbf\{([^}]*)\}/g, "$1")
@@ -367,25 +428,49 @@ function parseLatexPaper(texPath: string): PaperSectionData[] {
         content: string; // set later
     }
 
-    const sectionRe =
-        /\\(chapter|section|subsection)\*?\{([^}]*)\}/g;
+    /**
+     * Extract a brace-balanced argument from `source` starting at `pos`,
+     * which should point to the opening '{'. Returns the content inside
+     * the braces and the index just past the closing '}'.
+     */
+    function extractBracedArg(src: string, pos: number): { content: string; end: number } | null {
+        if (src[pos] !== "{") return null;
+        let depth = 0;
+        for (let i = pos; i < src.length; i++) {
+            if (src[i] === "{") depth++;
+            else if (src[i] === "}") {
+                depth--;
+                if (depth === 0) {
+                    return { content: src.slice(pos + 1, i), end: i + 1 };
+                }
+            }
+        }
+        return null; // unbalanced
+    }
+
+    // Match the command prefix, then extract the brace-balanced title
+    const sectionCmdRe = /\\(chapter|section|subsection)\*?\{/g;
     const rawSections: RawSection[] = [];
     let match: RegExpExecArray | null;
 
-    while ((match = sectionRe.exec(source)) !== null) {
+    while ((match = sectionCmdRe.exec(source)) !== null) {
+        const openBraceIdx = match.index + match[0].length - 1; // points to '{'
+        const extracted = extractBracedArg(source, openBraceIdx);
+        if (!extracted) continue;
+
         const levelMap: Record<string, number> = {
             chapter: 0,
             section: 1,
             subsection: 2,
         };
         const level = levelMap[match[1]];
-        const title = cleanLatex(match[2]);
+        const title = cleanLatex(extracted.content);
 
         // Skip the Introduction \section (it's level 1 but acts as a chapter)
         rawSections.push({
             level,
             title,
-            startIdx: match.index + match[0].length,
+            startIdx: extracted.end,
             endIdx: source.length,
             content: "",
         });
