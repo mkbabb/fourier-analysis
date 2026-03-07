@@ -146,6 +146,8 @@ function cleanProseSegment(text: string): string {
             // \begin{quote}...\end{quote} -> strip environment delimiters
             .replace(/\\begin\{quote\}/g, "")
             .replace(/\\end\{quote\}/g, "")
+            // Remove section/subsection commands that leak into paragraph text
+            .replace(/\\(?:chapter|section|subsection|subsubsection)\*?\{[^{}]*(?:\{[^}]*\}[^{}]*)*\}/g, "")
             // Remove \begin{figure}...\end{figure} blocks (figures extracted separately)
             .replace(/\\begin\{figure\}[\s\S]*?\\end\{figure\}/g, "")
             // Remove \begin{center}...\end{center} tables (too complex for web)
