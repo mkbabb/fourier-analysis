@@ -77,6 +77,21 @@ export const useAnimationStore = defineStore("animation", () => {
         else play();
     }
 
+    // Scrubbing state — pauses the rAF loop while the user drags
+    const scrubbing = ref(false);
+
+    function startScrub() {
+        scrubbing.value = true;
+        stopRAF();
+    }
+
+    function endScrub() {
+        scrubbing.value = false;
+        if (playing.value) {
+            startLoop();
+        }
+    }
+
     function seek(normalizedT: number) {
         t.value = Math.max(0, Math.min(1, normalizedT));
     }
@@ -94,5 +109,5 @@ export const useAnimationStore = defineStore("animation", () => {
         }
     });
 
-    return { t, playing, speed, duration, play, pause, toggle, seek, reset };
+    return { t, playing, speed, duration, scrubbing, play, pause, toggle, seek, startScrub, endScrub, reset };
 });

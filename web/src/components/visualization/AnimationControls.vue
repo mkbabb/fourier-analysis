@@ -72,7 +72,7 @@ function onScrub(e: Event) {
                 <span class="play-label">{{ anim.playing ? 'Pause' : 'Play' }}</span>
             </button>
 
-            <!-- Timeline scrubber — green -->
+            <!-- Timeline scrubber -->
             <div class="flex-1 px-1">
                 <input
                     type="range"
@@ -82,6 +82,9 @@ function onScrub(e: Event) {
                     :value="anim.t"
                     class="timeline-slider w-full"
                     @input="onScrub"
+                    @pointerdown="anim.startScrub"
+                    @pointerup="anim.endScrub"
+                    @pointercancel="anim.endScrub"
                 />
             </div>
 
