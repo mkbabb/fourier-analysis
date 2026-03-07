@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { useSessionStore } from "@/stores/session";
 import { useImageUpload } from "@/composables/useImageUpload";
 import { imageUrl } from "@/lib/api";
@@ -21,7 +21,7 @@ function openFilePicker() {
 
 <template>
     <div
-        class="rounded-xl border border-border bg-card p-4 card-hover"
+        class="cartoon-card p-3"
         @drop="handleDrop"
         @dragover="handleDragOver"
         @dragleave="handleDragLeave"
@@ -73,7 +73,7 @@ function openFilePicker() {
         <!-- Drop zone: only shown when no image is loaded -->
         <div
             v-else
-            class="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-all duration-200"
+            class="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 min-h-[200px] transition-all duration-200"
             :class="{
                 'border-primary bg-primary/5 scale-[1.01]': isDragging,
                 'border-border hover:border-muted-foreground hover:bg-muted/30': !isDragging,
@@ -95,6 +95,13 @@ function openFilePicker() {
             </p>
         </div>
 
+        <!-- Rainbow computing bar — below the card content -->
+        <Transition name="rainbow-fade">
+            <div v-if="store.computing" class="rainbow-track">
+                <div class="rainbow-bar" />
+            </div>
+        </Transition>
+
         <input
             ref="fileInput"
             type="file"
@@ -106,6 +113,54 @@ function openFilePicker() {
 </template>
 
 <style scoped>
+.rainbow-track {
+    margin-top: 0.5rem;
+    height: 4px;
+    border-radius: 9999px;
+    overflow: hidden;
+    background: hsl(var(--muted));
+}
+
+.rainbow-bar {
+    height: 100%;
+    width: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(
+        90deg,
+        #ff3412 0%,
+        #f59e0b 17%,
+        #10b981 33%,
+        #3b82f6 50%,
+        #a855f7 67%,
+        #ec4899 83%,
+        #ff3412 100%
+    );
+    background-size: 200% 100%;
+    animation: rainbow-slide 1.4s linear infinite;
+}
+
+@keyframes rainbow-slide {
+    0% { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.rainbow-fade-enter-active {
+    transition: all 0.3s ease-out;
+}
+.rainbow-fade-leave-active {
+    transition: all 0.4s ease-in;
+}
+.rainbow-fade-enter-from {
+    opacity: 0;
+    height: 0;
+    margin-top: 0;
+}
+.rainbow-fade-leave-to {
+    opacity: 0;
+    height: 0;
+    margin-top: 0;
+}
+
 .ring-dashed {
     --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
     --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useSessionStore } from "@/stores/session";
-import { BarChart3, ChevronDown, ChevronUp } from "lucide-vue-next";
+import { ChevronDown, ChevronUp } from "lucide-vue-next";
+import { Collapsible } from "@/components/ui/collapsible";
 
 const store = useSessionStore();
 const expanded = ref(false);
@@ -22,60 +23,85 @@ function spectrumColor(i: number, total: number): string {
     const hue = (1 - i / Math.max(total - 1, 1)) * 300;
     return `hsl(${hue}, 85%, 55%)`;
 }
+
+function formatPhase(phase: number): string {
+    return `${(phase * 180 / Math.PI).toFixed(1)}°`;
+}
+
+function formatPercent(amplitude: number): string {
+    if (!maxAmplitude.value) return "0%";
+    return `${((amplitude / maxAmplitude.value) * 100).toFixed(1)}%`;
+}
 </script>
 
 <template>
-    <div class="rounded-xl border border-border bg-card p-4 card-hover animate-fade-in">
-        <div class="flex items-center justify-between mb-3">
-            <h3 class="fraunces text-sm font-semibold tracking-tight flex items-center gap-2">
-                <BarChart3 class="h-4 w-4 text-muted-foreground" />
-                Coefficients
-            </h3>
-            <span class="fira-code text-xs text-muted-foreground">
-                {{ topComponents.length }} / {{ totalComponents }}
-            </span>
-        </div>
-
-        <div v-if="topComponents.length" class="space-y-1">
-            <TransitionGroup name="coeff-list">
-                <div
-                    v-for="(comp, i) in topComponents"
-                    :key="`${comp.index}-${i}`"
-                    class="flex items-center gap-2 text-xs group"
-                >
-                    <span class="w-8 text-right fira-code text-muted-foreground tabular-nums">
-                        {{ comp.index >= 0 ? "+" : "" }}{{ comp.index }}
-                    </span>
-                    <div class="flex-1 h-3 rounded-full bg-muted/50 overflow-hidden">
-                        <div
-                            class="h-full rounded-full transition-all duration-500 ease-out"
-                            :style="{
-                                width: `${(comp.amplitude / maxAmplitude) * 100}%`,
-                                backgroundColor: spectrumColor(i, topComponents.length),
-                                minWidth: '2px',
-                            }"
-                        />
-                    </div>
-                    <span class="w-16 text-right fira-code text-muted-foreground tabular-nums">
-                        {{ comp.amplitude.toFixed(2) }}
+    <div class="cartoon-card p-3">
+        <Collapsible title="Coefficients" :default-open="true">
+            <div class="pt-1">
+                <div class="flex items-center justify-end mb-2">
+                    <span class="fira-code text-xs text-muted-foreground">
+                        {{ topComponents.length }} / {{ totalComponents }}
                     </span>
                 </div>
-            </TransitionGroup>
 
-            <!-- Expand/collapse -->
-            <button
-                v-if="totalComponents > 12"
-                class="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 hover:text-foreground hover:bg-muted btn-press"
-                @click="expanded = !expanded"
-            >
-                <component :is="expanded ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
-                {{ expanded ? "Show less" : `Show more (${totalComponents} total)` }}
-            </button>
-        </div>
+                <div v-if="topComponents.length" class="space-y-1 max-h-[300px] overflow-y-auto">
+                    <TransitionGroup name="coeff-list">
+                        <div
+                            v-for="(comp, i) in topComponents"
+                            :key="`${comp.index}-${i}`"
+                            class="coeff-row flex items-center gap-2 text-xs group relative"
+                        >
+                            <span class="w-8 text-right fira-code text-muted-foreground tabular-nums">
+                                {{ comp.index >= 0 ? "+" : "" }}{{ comp.index }}
+                            </span>
+                            <div class="flex-1 h-3 rounded-full bg-muted/50 overflow-hidden">
+                                <div
+                                    class="h-full rounded-full transition-all duration-500 ease-out"
+                                    :style="{
+                                        width: `${(comp.amplitude / maxAmplitude) * 100}%`,
+                                        backgroundColor: spectrumColor(i, topComponents.length),
+                                        minWidth: '2px',
+                                    }"
+                                />
+                            </div>
+                            <span class="w-16 text-right fira-code text-muted-foreground tabular-nums">
+                                {{ comp.amplitude.toFixed(2) }}
+                            </span>
+                            <!-- Hover tooltip -->
+                            <div class="coeff-tooltip">
+                                <div class="flex items-center gap-1.5 mb-1">
+                                    <span class="inline-block w-2 h-2 rounded-full" :style="{ backgroundColor: spectrumColor(i, topComponents.length) }" />
+                                    <span class="font-semibold">n = {{ comp.index }}</span>
+                                </div>
+                                <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[10px]">
+                                    <span class="text-muted-foreground">Amplitude</span>
+                                    <span class="fira-code">{{ comp.amplitude.toFixed(4) }}</span>
+                                    <span class="text-muted-foreground">Phase</span>
+                                    <span class="fira-code">{{ formatPhase(comp.phase) }}</span>
+                                    <span class="text-muted-foreground">Relative</span>
+                                    <span class="fira-code">{{ formatPercent(comp.amplitude) }}</span>
+                                    <span class="text-muted-foreground">Re / Im</span>
+                                    <span class="fira-code">{{ comp.coefficient[0].toFixed(3) }} / {{ comp.coefficient[1].toFixed(3) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </TransitionGroup>
 
-        <p v-else class="text-xs text-muted-foreground py-3 text-center">
-            Compute epicycles to see coefficients
-        </p>
+                    <button
+                        v-if="totalComponents > 12"
+                        class="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 hover:text-foreground hover:bg-muted cursor-pointer"
+                        @click="expanded = !expanded"
+                    >
+                        <component :is="expanded ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
+                        {{ expanded ? "Show less" : `Show more (${totalComponents} total)` }}
+                    </button>
+                </div>
+
+                <p v-else class="text-xs text-muted-foreground py-3 text-center">
+                    Compute epicycles to see coefficients
+                </p>
+            </div>
+        </Collapsible>
     </div>
 </template>
 
@@ -96,5 +122,29 @@ function spectrumColor(i: number, total: number): string {
 }
 .coeff-list-move {
     transition: transform 0.3s ease;
+}
+
+/* Hover tooltip */
+.coeff-row {
+    cursor: default;
+}
+.coeff-tooltip {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    z-index: 20;
+    background: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+    border: 1.5px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.6875rem;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    pointer-events: none;
+}
+.coeff-row:hover .coeff-tooltip {
+    display: block;
 }
 </style>
