@@ -35,6 +35,80 @@ export interface PaperSectionData {
     callout?: { text: string; link: string };
 }
 
+// ── BibTeX Parser ────────────────────────────────────────────────────
+
+interface BibEntry {
+    key: string;
+    author: string;
+    year: string;
+    title: string;
+}
+
+/**
+ * Parse a .bib file into a map of key → {author, year, title}.
+ * Minimal parser — handles the format used in fourier_paper.bib.
+ */
+function parseBibFile(bibPath: string): Map<string, BibEntry> {
+    let source: string;
+    try {
+        source = readFileSync(bibPath, "utf-8");
+    } catch {
+        return new Map();
+    }
+
+    const entries = new Map<string, BibEntry>();
+    // Match @type{ key, ... }
+    const entryRe = /@\w+\{\s*(\w+)\s*,([\s\S]*?)(?=\n@|\n*$)/g;
+    let m: RegExpExecArray | null;
+
+    while ((m = entryRe.exec(source)) !== null) {
+        const key = m[1];
+        const body = m[2];
+
+        function getField(name: string): string {
+            const re = new RegExp(`${name}\\s*=\\s*\\{([^}]*(?:\\{[^}]*\\}[^}]*)*)\\}`, "i");
+            const fm = body.match(re);
+            if (!fm) return "";
+            // Clean LaTeX accents from bib fields
+            return fm[1]
+                .replace(/\\['`"^~]\{?(\w)\}?/g, "$1")
+                .replace(/\\[Hcuv]\{(\w)\}/g, "$1")
+                .replace(/\{|\}/g, "")
+                .trim();
+        }
+
+        const author = getField("author");
+        const year = getField("year");
+        const title = getField("title");
+
+        // Extract short author: last name of first author
+        let shortAuthor = author;
+        const multiAuthor = author.includes(" and ");
+        if (multiAuthor) {
+            shortAuthor = author.split(" and ")[0].trim();
+        }
+        // Get last name (last word, skipping suffixes like Jr./Sr./III)
+        if (shortAuthor.includes(",")) {
+            shortAuthor = shortAuthor.split(",")[0].trim();
+        } else {
+            const parts = shortAuthor.split(/\s+/);
+            const suffixes = new Set(["Jr.", "Sr.", "Jr", "Sr", "II", "III", "IV"]);
+            let lastIdx = parts.length - 1;
+            while (lastIdx > 0 && suffixes.has(parts[lastIdx])) lastIdx--;
+            shortAuthor = parts[lastIdx];
+        }
+        if (multiAuthor) {
+            shortAuthor += " et al.";
+        }
+
+        entries.set(key, { key, author: shortAuthor, year, title });
+    }
+
+    return entries;
+}
+
+let bibEntries: Map<string, BibEntry> = new Map();
+
 // ── LaTeX Parser ─────────────────────────────────────────────────────
 
 /**
@@ -45,6 +119,13 @@ function cleanLatex(text: string): string {
     // Strip \section/\subsection commands (including those with inline math)
     // before splitting on $...$, since the command may span math boundaries.
     text = stripSectionCommands(text);
+    // Convert \paragraph{...} to bold headings BEFORE splitting on $...$,
+    // since the content may contain inline math spanning the braces.
+    text = convertParagraphCommands(text);
+    // Handle \S\ref{...} -> "§" BEFORE splitting, since \S and \ref may span segments
+    text = text.replace(/\\S\s*\\ref\{[^}]*\}/g, "§");
+    // Handle standalone \S -> §
+    text = text.replace(/\\S(?![a-zA-Z])/g, "§");
     // Split on $...$ boundaries. Odd-indexed segments are math.
     const parts = text.split(/(\$[^$]*\$)/g);
     for (let i = 0; i < parts.length; i++) {
@@ -72,6 +153,31 @@ function stripSectionCommands(text: string): string {
         }
         lastEnd = i;
         cmdRe.lastIndex = i; // resume scanning after the command
+    }
+    result += text.slice(lastEnd);
+    return result;
+}
+
+/** Convert \paragraph{...} to <strong>...</strong> using brace-depth tracking. */
+function convertParagraphCommands(text: string): string {
+    const cmdRe = /\\paragraph\{/g;
+    let result = "";
+    let lastEnd = 0;
+    let m: RegExpExecArray | null;
+    while ((m = cmdRe.exec(text)) !== null) {
+        result += text.slice(lastEnd, m.index);
+        // Find the matching closing brace
+        let depth = 1;
+        let i = m.index + m[0].length;
+        while (i < text.length && depth > 0) {
+            if (text[i] === "{") depth++;
+            else if (text[i] === "}") depth--;
+            i++;
+        }
+        const content = text.slice(m.index + m[0].length, i - 1);
+        result += `<strong>${content}</strong> `;
+        lastEnd = i;
+        cmdRe.lastIndex = i;
     }
     result += text.slice(lastEnd);
     return result;
@@ -143,19 +249,34 @@ function cleanProseSegment(text: string): string {
             // LaTeX accent commands → Unicode (must come before backslash stripping)
             .replace(/[\s\S]*/, (m) => replaceAccents(m))
             // \textit{...} / \textbf{...} / \emph{...}
-            .replace(/\\textit\{([^}]*)\}/g, "$1")
-            .replace(/\\textbf\{([^}]*)\}/g, "$1")
-            .replace(/\\emph\{([^}]*)\}/g, "$1")
+            .replace(/\\textit\{([^}]*)\}/g, "<em>$1</em>")
+            .replace(/\\textbf\{([^}]*)\}/g, "<strong>$1</strong>")
+            .replace(/\\emph\{([^}]*)\}/g, "<em>$1</em>")
+            .replace(/\\texttt\{([^}]*)\}/g, '<code class="paper-code">$1</code>')
             .replace(/\\text\{([^}]*)\}/g, "$1")
-            // \cite{...} -> ""
-            .replace(/\\cite\{[^}]*\}/g, "")
-            // \ref/\eqref/\label -> ""
-            .replace(/\\(?:ref|eqref|label|hyperref)\{[^}]*\}/g, "")
-            // Chapter~/Section~ refs
-            .replace(/(?:Chapters?|Sections?|Theorem|Figure)~\\ref\{[^}]*\}/g, "")
-            .replace(/\\S\\ref\{[^}]*\}/g, "")
-            // \S ref (§)
-            .replace(/\\S\\/g, "§")
+            .replace(/\\mathit\{([^}]*)\}/g, "<em>$1</em>")
+            // \href{url}{text} -> <a href="url">text</a>
+            .replace(/\\href\{([^}]*)\}\{([^}]*)\}/g, '<a href="$1" target="_blank" rel="noopener" class="text-primary hover:underline">$2</a>')
+            // LaTeX dashes: --- → em-dash, -- → en-dash (must come before smart quotes)
+            .replace(/---/g, "\u2014")
+            .replace(/--/g, "\u2013")
+            // LaTeX smart quotes: `` → left double quote, '' → right double quote
+            .replace(/``/g, "\u201C")
+            .replace(/''/g, "\u201D")
+            // \cite{key} -> [Author, Year] styled reference marker
+            .replace(/\\cite\{([^}]*)\}/g, (_, key: string) => {
+                const entry = bibEntries.get(key.trim());
+                if (entry) {
+                    return `<cite class="paper-cite">[${entry.author}, ${entry.year}]</cite>`;
+                }
+                return ""; // unknown key — strip silently
+            })
+            // Chapter~/Section~/Theorem/Figure refs -> keep label, strip \ref
+            .replace(/(Chapters?|Sections?|Theorem|Figure)[~\s]+\\ref\{([^}]*)\}/g, '$1')
+            // \eqref{...} -> strip (no equation numbering in web)
+            .replace(/\\eqref\{[^}]*\}/g, "")
+            // bare \ref/\label/\hyperref -> "" (\S\ref handled in cleanLatex)
+            .replace(/\\(?:ref|label|hyperref)\{[^}]*\}/g, "")
             // ~ -> space
             .replace(/~/g, " ")
             // \, \; \: \! -> space or nothing
@@ -166,12 +287,15 @@ function cleanProseSegment(text: string): string {
             .replace(/\\\\/g, " ")
             // \newline
             .replace(/\\newline/g, " ")
-            // \noindent, \paragraph{...}
+            // \noindent, \hfill (\paragraph handled in cleanLatex)
             .replace(/\\noindent\s*/g, "")
-            .replace(/\\paragraph\{([^}]*)\}/g, "$1.")
-            // \begin{quote}...\end{quote} -> strip environment delimiters
-            .replace(/\\begin\{quote\}/g, "")
-            .replace(/\\end\{quote\}/g, "")
+            .replace(/\\hfill\s*/g, " ")
+            // Vertical spacing commands -> strip
+            .replace(/\\(?:medskip|smallskip|bigskip|vfill)\s*/g, "")
+            .replace(/\\vspace\*?\{[^}]*\}/g, "")
+            // \begin{quote}...\end{quote} -> blockquote
+            .replace(/\\begin\{quote\}/g, '<blockquote class="paper-quote">')
+            .replace(/\\end\{quote\}/g, '</blockquote>')
             // (section commands already stripped by stripSectionCommands in cleanLatex)
             // Remove \begin{figure}...\end{figure} blocks (figures extracted separately)
             .replace(/\\begin\{figure\}[\s\S]*?\\end\{figure\}/g, "")
@@ -179,9 +303,20 @@ function cleanProseSegment(text: string): string {
             .replace(/\\begin\{center\}[\s\S]*?\\end\{center\}/g, "")
             // \@ -> nothing
             .replace(/\\@/g, "")
+            // \& -> &
+            .replace(/\\&/g, "&amp;")
+            // \bibliographystyle{...}, \bibliography{...}, \end{document}
+            .replace(/\\bibliographystyle\{[^}]*\}/g, "")
+            .replace(/\\bibliography\{[^}]*\}/g, "")
+            .replace(/\\end\{document\}/g, "")
             // Arrow symbols (prose only — KaTeX handles these in math)
             .replace(/\\implies/g, "⇒")
             .replace(/\\iff/g, "⇔")
+            .replace(/\\Rightarrow/g, "⇒")
+            .replace(/\\Leftarrow/g, "⇐")
+            .replace(/\\rightarrow/g, "→")
+            .replace(/\\leftrightarrow/g, "↔")
+            .replace(/\\to(?![a-zA-Z])/g, "→")
             .replace(/\\infty/g, "∞")
             .replace(/\\ldots/g, "…")
             .replace(/\\cdots/g, "⋯")
@@ -337,11 +472,43 @@ function extractParagraphs(text: string): string[] {
         "",
     );
 
-    // Remove \begin{enumerate}...\end{enumerate} and \begin{itemize}...\end{itemize}
-    // and \begin{description}...\end{description}
+    // Convert enumerate to ordered list
     cleaned = cleaned.replace(
-        /\\begin\{(enumerate|itemize|description)\}[\s\S]*?\\end\{\1\}/g,
-        "",
+        /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
+        (_, content) => {
+            const items = content.split(/\\item\s*/).filter((s: string) => s.trim());
+            const lis = items.map((item: string) => `<li>${cleanLatex(item.trim())}</li>`).join('');
+            return `<ol class="paper-list">${lis}</ol>`;
+        }
+    );
+
+    // Convert itemize to unordered list
+    cleaned = cleaned.replace(
+        /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
+        (_, content) => {
+            const items = content.split(/\\item\s*/).filter((s: string) => s.trim());
+            const lis = items.map((item: string) => `<li>${cleanLatex(item.trim())}</li>`).join('');
+            return `<ul class="paper-list">${lis}</ul>`;
+        }
+    );
+
+    // Convert description to definition list
+    cleaned = cleaned.replace(
+        /\\begin\{description\}([\s\S]*?)\\end\{description\}/g,
+        (_, content) => {
+            const entries = content.split(/\\item\[/).filter((s: string) => s.trim());
+            let html = '<dl class="paper-description">';
+            for (const entry of entries) {
+                const closeBracket = entry.indexOf(']');
+                if (closeBracket >= 0) {
+                    const term = cleanLatex(entry.slice(0, closeBracket).trim());
+                    const desc = cleanLatex(entry.slice(closeBracket + 1).trim());
+                    html += `<dt>${term}</dt><dd>${desc}</dd>`;
+                }
+            }
+            html += '</dl>';
+            return html;
+        }
     );
 
     // Remove center environments (tables)
@@ -396,6 +563,21 @@ function extractTheorems(text: string): PaperTheoremData[] {
     return theorems;
 }
 
+/** Extract brace-balanced content starting at `\command{` in text. */
+function extractCommandArg(text: string, command: string): string | null {
+    const idx = text.indexOf(`\\${command}{`);
+    if (idx === -1) return null;
+    const start = idx + command.length + 2; // skip \command{
+    let depth = 1;
+    let i = start;
+    while (i < text.length && depth > 0) {
+        if (text[i] === "{") depth++;
+        else if (text[i] === "}") depth--;
+        i++;
+    }
+    return depth === 0 ? text.slice(start, i - 1) : null;
+}
+
 /** Extract figure environments from a block of text. */
 function extractFigures(text: string): PaperFigureData[] {
     const figures: PaperFigureData[] = [];
@@ -405,8 +587,8 @@ function extractFigures(text: string): PaperFigureData[] {
         const block = m[0];
         // Extract filename from \includegraphics[...]{filename}
         const fileMatch = block.match(/\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}/);
-        // Extract caption from \caption{...}
-        const capMatch = block.match(/\\caption\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/);
+        // Extract caption using brace-depth tracking (handles nested math like \dfrac{}{})
+        const rawCaption = extractCommandArg(block, "caption");
         // Extract label
         const labelMatch = block.match(/\\label\{([^}]*)\}/);
 
@@ -420,7 +602,7 @@ function extractFigures(text: string): PaperFigureData[] {
 
             figures.push({
                 filename,
-                caption: capMatch ? cleanLatex(capMatch[1]) : '',
+                caption: rawCaption ? cleanLatex(rawCaption) : '',
                 ...(labelMatch && { label: labelMatch[1] }),
             });
         }
@@ -668,8 +850,13 @@ export default function latexPaperPlugin(): Plugin {
         load(id) {
             if (id !== RESOLVED_ID) return;
 
-            // Watch the .tex file for HMR
+            // Watch the .tex and .bib files for HMR
             this.addWatchFile(texPath);
+            const bibPath = texPath.replace(/\.tex$/, ".bib");
+            this.addWatchFile(bibPath);
+
+            // Parse bibliography first so citations resolve during tex parsing
+            bibEntries = parseBibFile(bibPath);
 
             const sections = parseLatexPaper(texPath);
 
