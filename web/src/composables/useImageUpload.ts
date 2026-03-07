@@ -1,14 +1,29 @@
 import { ref } from "vue";
 
+const IMAGE_EXTENSIONS = new Set([
+    "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "tiff", "tif",
+]);
+
+/** Safari-safe image detection: fall back to extension when MIME type is empty. */
+function isImageFile(file: File): boolean {
+    if (file.type.startsWith("image/")) return true;
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    return IMAGE_EXTENSIONS.has(ext);
+}
+
 export function useImageUpload(onFile: (file: File) => void) {
     const isDragging = ref(false);
     const preview = ref<string | null>(null);
 
+    // Counter-based drag tracking to handle child element enter/leave events
+    let dragCounter = 0;
+
     function handleDrop(e: DragEvent) {
         e.preventDefault();
+        dragCounter = 0;
         isDragging.value = false;
         const file = e.dataTransfer?.files[0];
-        if (file && file.type.startsWith("image/")) {
+        if (file && isImageFile(file)) {
             setPreview(file);
             onFile(file);
         }
@@ -16,17 +31,32 @@ export function useImageUpload(onFile: (file: File) => void) {
 
     function handleDragOver(e: DragEvent) {
         e.preventDefault();
+        // Safari fallback: dragenter may not fire reliably
+        if (!isDragging.value && dragCounter === 0) {
+            dragCounter = 1;
+            isDragging.value = true;
+        }
+    }
+
+    function handleDragEnter(e: DragEvent) {
+        e.preventDefault();
+        dragCounter++;
         isDragging.value = true;
     }
 
-    function handleDragLeave() {
-        isDragging.value = false;
+    function handleDragLeave(e: DragEvent) {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            isDragging.value = false;
+        }
     }
 
     function handleFileSelect(e: Event) {
         const input = e.target as HTMLInputElement;
         const file = input.files?.[0];
-        if (file) {
+        if (file && isImageFile(file)) {
             setPreview(file);
             onFile(file);
         }
@@ -45,6 +75,7 @@ export function useImageUpload(onFile: (file: File) => void) {
         preview,
         handleDrop,
         handleDragOver,
+        handleDragEnter,
         handleDragLeave,
         handleFileSelect,
     };

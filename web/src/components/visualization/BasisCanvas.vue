@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from "vue";
+import { easeInOutCubic } from "@mkbabb/value.js";
 import { useSessionStore } from "@/stores/session";
 import { useAnimationStore } from "@/stores/animation";
 import { fourierPositionsAt, evaluateFourier } from "@/lib/bases";
@@ -24,6 +25,7 @@ const canvasRef = ref<HTMLCanvasElement>();
 const containerRef = ref<HTMLDivElement>();
 
 const maxCircles = ref(80);
+const showGhost = ref(true);
 
 let ctx: CanvasRenderingContext2D | null = null;
 let width = 0;
@@ -36,21 +38,21 @@ let mouseX = -1;
 let mouseY = -1;
 
 // Epicycles always visible at base size, grow on hover
-const BASE_EPICYCLE_SCALE = 0.2;
-const HOVER_EPICYCLE_SCALE = 0.35;
+const BASE_EPICYCLE_SCALE = 0.42;
+const HOVER_EPICYCLE_SCALE = 0.6;
 let currentEpicycleScale = BASE_EPICYCLE_SCALE;
 let targetEpicycleScale = BASE_EPICYCLE_SCALE;
 let hoverAnimFrame: number | null = null;
 
-// Smoothed epicycle bounding — lerp toward dynamic bounds each frame to prevent jitter
-let smoothedFitScale = 0;
-let smoothedChainCx = 0;
-let smoothedChainCy = 0;
-let smoothedInited = false;
-const SMOOTH_FACTOR = 0.08; // lower = smoother but slower to track
+// Fixed epicycle display scale (no dynamic tracking — prevents jitter/drift)
+const EPICYCLE_DISPLAY_SCALE = 0.85;
 
 function spectrumColor(i: number, total: number): string {
-    const hue = (1 - i / Math.max(total - 1, 1)) * 300;
+    // Non-linear mapping: stretch warm colors (red/orange/yellow), compress cool
+    const t = i / Math.max(total - 1, 1);
+    // Use a power curve to bias toward warm colors for high-amplitude components
+    const curved = Math.pow(t, 0.6);
+    const hue = (1 - curved) * 300;
     return `hsl(${hue}, 85%, 55%)`;
 }
 
@@ -117,22 +119,40 @@ function getEpicycleRegion() {
     const isDesktop = width >= 768;
 
     if (!isDesktop) {
-        return { anchorX: 0, anchorY: height, regionScale: 0.3 };
+        // Mobile: fixed center at bottom-left
+        const mobileS = 0.3;
+        return {
+            centerX: width * mobileS / 2,
+            centerY: height - height * mobileS / 2,
+            regionScale: mobileS,
+        };
     }
 
     const s = currentEpicycleScale;
-    // Anchor point: bottom-left corner with padding
-    const pad = 16;
+    const pad = 8;
+
+    // Fixed pivot: center of the epicycle region at BASE scale
+    // This ensures hover scaling expands from center, not from anchor
+    const baseW = width * BASE_EPICYCLE_SCALE;
+    const baseH = height * BASE_EPICYCLE_SCALE;
+    // Bias towards bottom-left: use 0.4 of region width/height instead of 0.5
+    const pivotX = pad + baseW * 0.4;
+    const pivotY = height - pad - baseH * 0.4;
+
     return {
-        anchorX: pad,
-        anchorY: height - pad,
+        centerX: pivotX,
+        centerY: pivotY,
         regionScale: s,
     };
 }
 
 function isMouseInEpicycleRegion(): boolean {
     if (mouseX < 0 || mouseY < 0) return false;
-    return mouseX < width * 0.4 && mouseY > height * 0.6;
+    // Check if mouse is within the epicycle display area
+    const pad = 12;
+    const regionW = width * HOVER_EPICYCLE_SCALE;
+    const regionH = height * HOVER_EPICYCLE_SCALE;
+    return mouseX < pad + regionW && mouseY > height - pad - regionH;
 }
 
 function onCanvasMouseMove(e: MouseEvent) {
@@ -175,6 +195,22 @@ function updateHoverScale() {
 const trailX: number[] = [];
 const trailY: number[] = [];
 let lastTrailT = -1;
+
+// Pre-computed trail for fast scrubbing
+let precomputedTrailX: Float64Array | null = null;
+let precomputedTrailY: Float64Array | null = null;
+const TRAIL_RESOLUTION = 1200;
+
+function precomputeTrail(components: BasisComponent[]) {
+    const n = TRAIL_RESOLUTION;
+    precomputedTrailX = new Float64Array(n + 1);
+    precomputedTrailY = new Float64Array(n + 1);
+    for (let i = 0; i <= n; i++) {
+        const [re, im] = evaluateFourier(components, i / n);
+        precomputedTrailX[i] = re;
+        precomputedTrailY[i] = im;
+    }
+}
 
 function drawGrid(
     toScreen: (x: number, y: number) => [number, number],
@@ -279,23 +315,19 @@ function drawEpicycleFrame(
     if (!ctx) return;
 
     // Draw original path (faint)
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(150, 150, 150, 0.25)";
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    for (let i = 0; i < data.path.x.length; i++) {
-        const [sx, sy] = toScreen(data.path.x[i], data.path.y[i]);
-        if (i === 0) ctx.moveTo(sx, sy);
-        else ctx.lineTo(sx, sy);
-    }
-    ctx.closePath();
-    ctx.stroke();
-
-    // Trail management
-    if (anim.t < lastTrailT - 0.01) {
-        trailX.length = 0;
-        trailY.length = 0;
+    if (showGhost.value) {
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(150, 150, 150, 0.25)";
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        for (let i = 0; i < data.path.x.length; i++) {
+            const [sx, sy] = toScreen(data.path.x[i], data.path.y[i]);
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.stroke();
     }
 
     const components: BasisComponent[] = data.components;
@@ -308,8 +340,35 @@ function drawEpicycleFrame(
     // Use nVis components for epicycle visualization
     const visPositions = fourierPositionsAt(components, anim.t, nVis);
 
-    trailX.push(tip[0]);
-    trailY.push(tip[1]);
+    // Trail management: rebuild if scrubbing or if t jumped backwards
+    const isScrubbing = anim.scrubbing;
+    if (isScrubbing || anim.t < lastTrailT - 0.01) {
+        trailX.length = 0;
+        trailY.length = 0;
+        if (precomputedTrailX && precomputedTrailY) {
+            // Fast path: slice pre-computed trail
+            const endIdx = Math.min(
+                Math.ceil(anim.t * TRAIL_RESOLUTION),
+                TRAIL_RESOLUTION,
+            );
+            for (let i = 0; i <= endIdx; i++) {
+                trailX.push(precomputedTrailX[i]);
+                trailY.push(precomputedTrailY[i]);
+            }
+        } else {
+            // Fallback: compute on the fly (shouldn't normally happen)
+            const nTrailPoints = Math.max(2, Math.ceil(anim.t * 600));
+            for (let i = 0; i <= nTrailPoints; i++) {
+                const tEval = (i / nTrailPoints) * anim.t;
+                const [re, im] = evaluateFourier(components, tEval);
+                trailX.push(re);
+                trailY.push(im);
+            }
+        }
+    } else {
+        trailX.push(tip[0]);
+        trailY.push(tip[1]);
+    }
     lastTrailT = anim.t;
 
     // Draw trail (thick, smooth)
@@ -330,62 +389,21 @@ function drawEpicycleFrame(
         ctx.globalAlpha = 1;
     }
 
-    // Draw epicycles — always visible, more defined on hover
+    // Draw epicycles — fixed center in bottom-left, no drifting
     {
-        const { anchorX, anchorY, regionScale } = getEpicycleRegion();
+        const { centerX, centerY, regionScale } = getEpicycleRegion();
         const isDesktop = width >= 768;
-        // Alpha: 0.5 at base scale, 1.0 at hover scale
         const hoverT = (currentEpicycleScale - BASE_EPICYCLE_SCALE) / (HOVER_EPICYCLE_SCALE - BASE_EPICYCLE_SCALE);
-        const epicycleAlpha = 0.5 + 0.5 * Math.max(0, Math.min(1, hoverT));
+        const epicycleAlpha = 0.65 + 0.35 * Math.max(0, Math.min(1, hoverT));
 
-        // Dynamic bounding box of the epicycle chain in screen space
-        let chainMinX = Infinity, chainMaxX = -Infinity;
-        let chainMinY = Infinity, chainMaxY = -Infinity;
-        for (let i = 0; i <= nVis; i++) {
-            const [sx, sy] = toScreen(visPositions[i][0], visPositions[i][1]);
-            // Include the radius of each circle in the bounds
-            const r = i < nVis ? components[i].amplitude * scale : 0;
-            chainMinX = Math.min(chainMinX, sx - r);
-            chainMaxX = Math.max(chainMaxX, sx + r);
-            chainMinY = Math.min(chainMinY, sy - r);
-            chainMaxY = Math.max(chainMaxY, sy + r);
-        }
-        const chainW = Math.max(chainMaxX - chainMinX, 1);
-        const chainH = Math.max(chainMaxY - chainMinY, 1);
-        const chainCxNow = (chainMinX + chainMaxX) / 2;
-        const chainCyNow = (chainMinY + chainMaxY) / 2;
-
-        // Compute raw fit scale for this frame
-        const targetW = width * regionScale;
-        const targetH = height * regionScale;
-        const rawFitScale = Math.min(targetW / chainW, targetH / chainH, 1.0);
-
-        // Smooth the values to prevent jitter as phases rotate
-        if (!smoothedInited) {
-            smoothedFitScale = rawFitScale;
-            smoothedChainCx = chainCxNow;
-            smoothedChainCy = chainCyNow;
-            smoothedInited = true;
-        } else {
-            smoothedFitScale += (rawFitScale - smoothedFitScale) * SMOOTH_FACTOR;
-            smoothedChainCx += (chainCxNow - smoothedChainCx) * SMOOTH_FACTOR;
-            smoothedChainCy += (chainCyNow - smoothedChainCy) * SMOOTH_FACTOR;
-        }
-
-        const fitScale = smoothedFitScale;
-        const chainCx = smoothedChainCx;
-        const chainCy = smoothedChainCy;
+        const epicycleFitScale = regionScale * EPICYCLE_DISPLAY_SCALE;
 
         ctx.save();
         if (isDesktop) {
-            const scaledW = chainW * fitScale;
-            const scaledH = chainH * fitScale;
-            // Position in bottom-left corner
-            const destCx = anchorX + scaledW / 2;
-            const destCy = anchorY - scaledH / 2;
-            ctx.translate(destCx, destCy);
-            ctx.scale(fitScale, fitScale);
-            ctx.translate(-chainCx, -chainCy);
+            // Scale from the fixed center point
+            ctx.translate(centerX, centerY);
+            ctx.scale(epicycleFitScale, epicycleFitScale);
+            ctx.translate(-width / 2, -height / 2);
         }
 
         // Draw circles and arms (with fade based on hover)
@@ -420,7 +438,7 @@ function drawEpicycleFrame(
 
             // Center dot
             ctx.beginPath();
-            ctx.arc(ccx, ccy, Math.max(r * 0.08, 4.5), 0, Math.PI * 2);
+            ctx.arc(ccx, ccy, Math.max(r * 0.1, 5.5), 0, Math.PI * 2);
             ctx.fillStyle = color;
             ctx.globalAlpha = 0.75 * epicycleAlpha;
             ctx.fill();
@@ -428,7 +446,7 @@ function drawEpicycleFrame(
 
             // Endpoint dot
             ctx.beginPath();
-            ctx.arc(tx, ty, Math.max(r * 0.06, 3.5), 0, Math.PI * 2);
+            ctx.arc(tx, ty, Math.max(r * 0.08, 4.5), 0, Math.PI * 2);
             ctx.fillStyle = color;
             ctx.globalAlpha = 0.6 * epicycleAlpha;
             ctx.fill();
@@ -442,13 +460,8 @@ function drawEpicycleFrame(
             const visTip = visPositions[visPositions.length - 1];
             const [rawX, rawY] = toScreen(visTip[0], visTip[1]);
 
-            const scaledW2 = chainW * fitScale;
-            const scaledH2 = chainH * fitScale;
-            const destCx2 = anchorX + scaledW2 / 2;
-            const destCy2 = anchorY - scaledH2 / 2;
-
-            const tipSx = destCx2 + (rawX - chainCx) * fitScale;
-            const tipSy = destCy2 + (rawY - chainCy) * fitScale;
+            const tipSx = centerX + (rawX - width / 2) * epicycleFitScale;
+            const tipSy = centerY + (rawY - height / 2) * epicycleFitScale;
             const [traceSx, traceSy] = toScreen(tip[0], tip[1]);
 
             ctx.beginPath();
@@ -487,27 +500,29 @@ function drawMultiBasesFrame(
     const epicycleData = store.epicycleData;
 
     // Draw original path (faint)
-    let origX: number[] | undefined;
-    let origY: number[] | undefined;
-    if (basesData) {
-        origX = basesData.original.x;
-        origY = basesData.original.y;
-    } else if (epicycleData) {
-        origX = epicycleData.path.x;
-        origY = epicycleData.path.y;
-    }
-    if (origX && origY) {
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(150, 150, 150, 0.2)";
-        ctx.lineWidth = 2;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        for (let i = 0; i < origX.length; i++) {
-            const [sx, sy] = toScreen(origX[i], origY[i]);
-            if (i === 0) ctx.moveTo(sx, sy);
-            else ctx.lineTo(sx, sy);
+    if (showGhost.value) {
+        let origX: number[] | undefined;
+        let origY: number[] | undefined;
+        if (basesData) {
+            origX = basesData.original.x;
+            origY = basesData.original.y;
+        } else if (epicycleData) {
+            origX = epicycleData.path.x;
+            origY = epicycleData.path.y;
         }
-        ctx.stroke();
+        if (origX && origY) {
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(150, 150, 150, 0.2)";
+            ctx.lineWidth = 2;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            for (let i = 0; i < origX.length; i++) {
+                const [sx, sy] = toScreen(origX[i], origY[i]);
+                if (i === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.stroke();
+        }
     }
 
     // Determine the current level with smooth interpolation
@@ -519,7 +534,7 @@ function drawMultiBasesFrame(
         const pos = anim.t * (levels.length - 1);
         const lo = Math.floor(pos);
         const hi = Math.min(lo + 1, levels.length - 1);
-        levelFrac = pos - lo;
+        levelFrac = easeInOutCubic(pos - lo);
         level = levels[lo];
         levelNext = levels[hi];
     } else if (epicycleData) {
@@ -582,7 +597,7 @@ function drawMultiBasesFrame(
             // Fallback: client-side evaluation
             const components: BasisComponent[] = epicycleData.components;
             const nTerms = Math.min(level, components.length);
-            const nEval = 500;
+            const nEval = 800;
             for (let i = 0; i <= nEval; i++) {
                 const tEval = i / nEval;
                 const [re, im] = evaluateFourier(components, tEval, nTerms);
@@ -603,13 +618,35 @@ function drawMultiBasesFrame(
         const allPositions = fourierPositionsAt(components, anim.t, components.length);
         const tip = allPositions[allPositions.length - 1];
 
-        // Trail management
-        if (anim.t < lastTrailT - 0.01) {
+        // Trail management: rebuild if scrubbing or jumped backwards
+        const isScrubbing = anim.scrubbing;
+        if (isScrubbing || anim.t < lastTrailT - 0.01) {
             trailX.length = 0;
             trailY.length = 0;
+            if (precomputedTrailX && precomputedTrailY) {
+                // Fast path: slice pre-computed trail
+                const endIdx = Math.min(
+                    Math.ceil(anim.t * TRAIL_RESOLUTION),
+                    TRAIL_RESOLUTION,
+                );
+                for (let i = 0; i <= endIdx; i++) {
+                    trailX.push(precomputedTrailX[i]);
+                    trailY.push(precomputedTrailY[i]);
+                }
+            } else {
+                // Fallback: compute on the fly (shouldn't normally happen)
+                const nTrailPoints = Math.max(2, Math.ceil(anim.t * 600));
+                for (let i = 0; i <= nTrailPoints; i++) {
+                    const tEval = (i / nTrailPoints) * anim.t;
+                    const [re, im] = evaluateFourier(components, tEval);
+                    trailX.push(re);
+                    trailY.push(im);
+                }
+            }
+        } else {
+            trailX.push(tip[0]);
+            trailY.push(tip[1]);
         }
-        trailX.push(tip[0]);
-        trailY.push(tip[1]);
         lastTrailT = anim.t;
 
         // Draw trail
@@ -641,58 +678,22 @@ function drawMultiBasesFrame(
         ctx.fillStyle = "rgba(255, 52, 18, 0.15)";
         ctx.fill();
 
-        // Epicycle circles/arms overlay — always visible
+        // Epicycle circles/arms overlay — fixed center in bottom-left
         {
             const visPositions = fourierPositionsAt(components, anim.t, nVis);
-            const { anchorX, anchorY, regionScale } = getEpicycleRegion();
+            const { centerX, centerY, regionScale } = getEpicycleRegion();
             const isDesktop = width >= 768;
             const hoverT = (currentEpicycleScale - BASE_EPICYCLE_SCALE) / (HOVER_EPICYCLE_SCALE - BASE_EPICYCLE_SCALE);
-            const epicycleAlpha = 0.5 + 0.5 * Math.max(0, Math.min(1, hoverT));
+            const epicycleAlpha = 0.65 + 0.35 * Math.max(0, Math.min(1, hoverT));
 
-            // Dynamic bounding box of the epicycle chain
-            let chainMinX2 = Infinity, chainMaxX2 = -Infinity;
-            let chainMinY2 = Infinity, chainMaxY2 = -Infinity;
-            for (let i = 0; i <= nVis; i++) {
-                const [sx, sy] = toScreen(visPositions[i][0], visPositions[i][1]);
-                const r = i < nVis ? components[i].amplitude * scale : 0;
-                chainMinX2 = Math.min(chainMinX2, sx - r);
-                chainMaxX2 = Math.max(chainMaxX2, sx + r);
-                chainMinY2 = Math.min(chainMinY2, sy - r);
-                chainMaxY2 = Math.max(chainMaxY2, sy + r);
-            }
-            const chainW2 = Math.max(chainMaxX2 - chainMinX2, 1);
-            const chainH2 = Math.max(chainMaxY2 - chainMinY2, 1);
-            const chainCxNow2 = (chainMinX2 + chainMaxX2) / 2;
-            const chainCyNow2 = (chainMinY2 + chainMaxY2) / 2;
-
-            const targetW = width * regionScale;
-            const targetH = height * regionScale;
-            const rawFitScale2 = Math.min(targetW / chainW2, targetH / chainH2, 1.0);
-
-            if (!smoothedInited) {
-                smoothedFitScale = rawFitScale2;
-                smoothedChainCx = chainCxNow2;
-                smoothedChainCy = chainCyNow2;
-                smoothedInited = true;
-            } else {
-                smoothedFitScale += (rawFitScale2 - smoothedFitScale) * SMOOTH_FACTOR;
-                smoothedChainCx += (chainCxNow2 - smoothedChainCx) * SMOOTH_FACTOR;
-                smoothedChainCy += (chainCyNow2 - smoothedChainCy) * SMOOTH_FACTOR;
-            }
-
-            const fitScale = smoothedFitScale;
-            const chainCx2 = smoothedChainCx;
-            const chainCy2 = smoothedChainCy;
+            const epicycleFitScale2 = regionScale * EPICYCLE_DISPLAY_SCALE;
 
             ctx.save();
             if (isDesktop) {
-                const scaledW = chainW2 * fitScale;
-                const scaledH = chainH2 * fitScale;
-                const destCx = anchorX + scaledW / 2;
-                const destCy = anchorY - scaledH / 2;
-                ctx.translate(destCx, destCy);
-                ctx.scale(fitScale, fitScale);
-                ctx.translate(-chainCx2, -chainCy2);
+                // Scale from the fixed center point
+                ctx.translate(centerX, centerY);
+                ctx.scale(epicycleFitScale2, epicycleFitScale2);
+                ctx.translate(-width / 2, -height / 2);
             }
 
             for (let i = 0; i < nVis; i++) {
@@ -705,7 +706,7 @@ function drawMultiBasesFrame(
                 ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
                 ctx.strokeStyle = color;
                 ctx.globalAlpha = 0.5 * epicycleAlpha;
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 5;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
                 ctx.stroke();
@@ -716,21 +717,21 @@ function drawMultiBasesFrame(
                 ctx.lineTo(tx, ty);
                 ctx.strokeStyle = color;
                 ctx.globalAlpha = 0.75 * epicycleAlpha;
-                ctx.lineWidth = 3.5;
+                ctx.lineWidth = 4.5;
                 ctx.lineCap = "round";
                 ctx.lineJoin = "round";
                 ctx.stroke();
                 ctx.globalAlpha = 1;
 
                 ctx.beginPath();
-                ctx.arc(ccx, ccy, Math.max(r * 0.08, 4.5), 0, Math.PI * 2);
+                ctx.arc(ccx, ccy, Math.max(r * 0.1, 5.5), 0, Math.PI * 2);
                 ctx.fillStyle = color;
                 ctx.globalAlpha = 0.75 * epicycleAlpha;
                 ctx.fill();
                 ctx.globalAlpha = 1;
 
                 ctx.beginPath();
-                ctx.arc(tx, ty, Math.max(r * 0.06, 3.5), 0, Math.PI * 2);
+                ctx.arc(tx, ty, Math.max(r * 0.08, 4.5), 0, Math.PI * 2);
                 ctx.fillStyle = color;
                 ctx.globalAlpha = 0.6 * epicycleAlpha;
                 ctx.fill();
@@ -742,12 +743,8 @@ function drawMultiBasesFrame(
             if (isDesktop) {
                 const visTip = visPositions[visPositions.length - 1];
                 const [rawX, rawY] = toScreen(visTip[0], visTip[1]);
-                const scaledW2 = chainW2 * fitScale;
-                const scaledH2 = chainH2 * fitScale;
-                const destCx2 = anchorX + scaledW2 / 2;
-                const destCy2 = anchorY - scaledH2 / 2;
-                const tipSx = destCx2 + (rawX - chainCx2) * fitScale;
-                const tipSy = destCy2 + (rawY - chainCy2) * fitScale;
+                const tipSx = centerX + (rawX - width / 2) * epicycleFitScale2;
+                const tipSy = centerY + (rawY - height / 2) * epicycleFitScale2;
 
                 ctx.beginPath();
                 ctx.moveTo(tipSx, tipSy);
@@ -807,15 +804,43 @@ function drawPlaceholder() {
         ctx.stroke();
     }
 
-    ctx.fillStyle = "#999";
-    ctx.font = "500 14px 'Fira Code', monospace";
+    // Dashed rounded rect in center
+    const boxW = Math.min(280, width * 0.6);
+    const boxH = 100;
+    const bx = (width - boxW) / 2;
+    const by = (height - boxH) / 2;
+    const r = 12;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, boxW, boxH, r);
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = "rgba(150, 150, 150, 0.25)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Upload arrow icon (simple)
+    const cx = width / 2;
+    const cy = height / 2 - 12;
+    ctx.strokeStyle = "rgba(150, 150, 150, 0.4)";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 10);
+    ctx.lineTo(cx, cy + 10);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, cy - 3);
+    ctx.lineTo(cx, cy - 10);
+    ctx.lineTo(cx + 7, cy - 3);
+    ctx.stroke();
+
+    // Text
+    ctx.fillStyle = "rgba(150, 150, 150, 0.6)";
+    ctx.font = "500 13px 'Fira Code', monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(
-        store.hasImage ? "Click compute to begin" : "Upload an image to begin",
-        width / 2,
-        height / 2,
-    );
+    const msg = store.hasImage ? "Computing..." : "Drag & drop an image here";
+    ctx.fillText(msg, cx, height / 2 + 18);
 }
 
 watch(
@@ -832,7 +857,13 @@ watch(
         trailX.length = 0;
         trailY.length = 0;
         lastTrailT = -1;
-        smoothedInited = false;
+        // Pre-compute trail for fast scrubbing
+        if (store.epicycleData) {
+            precomputeTrail(store.epicycleData.components);
+        } else {
+            precomputedTrailX = null;
+            precomputedTrailY = null;
+        }
         if (!ctx || width === 0) {
             setupCanvas();
         } else {
@@ -935,7 +966,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
     document.body.removeChild(a);
 }
 
-defineExpose({ anim, exportFrame });
+defineExpose({ anim, exportFrame, showGhost });
 </script>
 
 <template>

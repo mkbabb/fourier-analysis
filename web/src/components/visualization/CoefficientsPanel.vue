@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { useSessionStore } from "@/stores/session";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { Collapsible } from "@/components/ui/collapsible";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const store = useSessionStore();
 const expanded = ref(false);
@@ -36,7 +37,7 @@ function formatPercent(amplitude: number): string {
 
 <template>
     <div class="cartoon-card p-3">
-        <Collapsible title="Coefficients" :default-open="true">
+        <Collapsible title="Coefficients" subtitle="Fourier spectrum" :default-open="true">
             <div class="pt-1">
                 <div class="flex items-center justify-end mb-2">
                     <span class="fira-code text-xs text-muted-foreground">
@@ -87,14 +88,16 @@ function formatPercent(amplitude: number): string {
                         </div>
                     </TransitionGroup>
 
-                    <button
-                        v-if="totalComponents > 12"
-                        class="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 hover:text-foreground hover:bg-muted cursor-pointer"
-                        @click="expanded = !expanded"
-                    >
-                        <component :is="expanded ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
-                        {{ expanded ? "Show less" : `Show more (${totalComponents} total)` }}
-                    </button>
+                    <Tooltip :text="expanded ? 'Collapse to top 12 coefficients' : `Show top 40 of ${totalComponents} coefficients`">
+                        <button
+                            v-if="totalComponents > 12"
+                            class="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 hover:text-foreground hover:bg-muted cursor-pointer"
+                            @click="expanded = !expanded"
+                        >
+                            <component :is="expanded ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
+                            {{ expanded ? "Show less" : `Show more (${totalComponents} total)` }}
+                        </button>
+                    </Tooltip>
                 </div>
 
                 <p v-else class="text-xs text-muted-foreground py-3 text-center">

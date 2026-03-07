@@ -11,14 +11,18 @@ import {
     SelectTrigger,
 } from "@/components/ui/select";
 import { Wand2 } from "lucide-vue-next";
+import { Tooltip } from "@/components/ui/tooltip";
+
+const props = defineProps<{
+    nHarmonics: number;
+    nPoints: number;
+}>();
 
 const store = useSessionStore();
 const anim = useAnimationStore();
 
 const strategy = ref(store.session?.parameters.strategy ?? "auto");
 const blurSigma = ref(store.session?.parameters.blur_sigma ?? 1.0);
-const nHarmonics = ref(store.session?.parameters.n_harmonics ?? 200);
-const nPoints = ref(store.session?.parameters.n_points ?? 1024);
 
 const computing = computed({
     get: () => store.computing,
@@ -43,8 +47,6 @@ const strategyLabel = computed(() => strategyLabels[strategy.value] ?? strategy.
 
 // Slider gradient progress
 const blurProgress = computed(() => ((blurSigma.value - 0) / 5) * 100);
-const harmonicsProgress = computed(() => ((nHarmonics.value - 1) / 499) * 100);
-const pointsProgress = computed(() => ((nPoints.value - 128) / (4096 - 128)) * 100);
 
 async function runCompute() {
     if (!store.hasImage || computing.value) return;
@@ -53,18 +55,18 @@ async function runCompute() {
         parameters: {
             strategy: strategy.value,
             blur_sigma: blurSigma.value,
-            n_harmonics: nHarmonics.value,
-            n_points: nPoints.value,
+            n_harmonics: props.nHarmonics,
+            n_points: props.nPoints,
         },
     });
     await Promise.all([
         store.runEpicycles({
-            n_harmonics: nHarmonics.value,
-            n_points: nPoints.value,
+            n_harmonics: props.nHarmonics,
+            n_points: props.nPoints,
         }),
         store.runBases({
-            max_degree: nHarmonics.value,
-            n_points: nPoints.value,
+            max_degree: props.nHarmonics,
+            n_points: props.nPoints,
         }),
     ]);
     computing.value = false;
@@ -74,7 +76,7 @@ async function runCompute() {
 
 // Auto-compute on settings change (debounced 800ms)
 watchDebounced(
-    () => [strategy.value, blurSigma.value, nHarmonics.value, nPoints.value],
+    () => [strategy.value, blurSigma.value, props.nHarmonics, props.nPoints],
     () => runCompute(),
     { debounce: 800, immediate: false },
 );
@@ -89,13 +91,13 @@ onMounted(() => {
 
 <template>
     <div class="cartoon-card p-3">
-        <Collapsible title="Contour" :default-open="true">
+        <Collapsible title="Contour" subtitle="edge extraction settings" :default-open="true">
             <div class="space-y-3 pt-1">
                 <!-- Strategy -->
                 <div>
-                    <label class="mb-1.5 block text-xs font-medium text-muted-foreground">Strategy</label>
+                    <label class="mb-1.5 block text-sm font-medium text-muted-foreground">Strategy</label>
                     <Select v-model="strategy">
-                        <SelectTrigger class="w-full h-9 text-sm border-2 border-foreground/15 rounded-lg">
+                        <SelectTrigger class="w-full h-10 text-sm border-2 border-foreground/15 rounded-lg">
                             <div class="inline-flex items-center gap-1.5">
                                 <Wand2 v-if="strategy === 'auto'" class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                 {{ strategyLabel }}
@@ -113,55 +115,25 @@ onMounted(() => {
                 </div>
 
                 <!-- Blur Sigma -->
-                <div>
-                    <label class="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground">
-                        <span>Blur Sigma</span>
-                        <span class="fira-code text-foreground">{{ blurSigma.toFixed(1) }}</span>
-                    </label>
-                    <input
-                        v-model.number="blurSigma"
-                        type="range"
-                        min="0"
-                        max="5"
-                        step="0.1"
-                        class="styled-slider w-full"
-                        :style="{ '--progress': blurProgress + '%', '--slider-color': '#f59e0b' }"
-                    />
-                </div>
+                <Tooltip text="Gaussian blur before edge detection — higher = smoother contours">
+                    <div>
+                        <label class="mb-1.5 flex items-center justify-between text-sm font-medium text-muted-foreground">
+                            <span>Blur Sigma</span>
+                            <span class="fira-code text-foreground">{{ blurSigma.toFixed(1) }}</span>
+                        </label>
+                        <input
+                            :value="blurSigma"
+                            @input="blurSigma = parseFloat(($event.target as HTMLInputElement).value)"
+                            type="range"
+                            min="0"
+                            max="5"
+                            step="0.1"
+                            class="styled-slider w-full"
+                            :style="{ '--progress': blurProgress + '%', '--slider-color': '#f59e0b' }"
+                        />
+                    </div>
+                </Tooltip>
 
-                <!-- Harmonics -->
-                <div>
-                    <label class="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground">
-                        <span>Harmonics (N)</span>
-                        <span class="fira-code text-foreground">{{ nHarmonics }}</span>
-                    </label>
-                    <input
-                        v-model.number="nHarmonics"
-                        type="range"
-                        min="1"
-                        max="500"
-                        step="1"
-                        class="styled-slider w-full"
-                        :style="{ '--progress': harmonicsProgress + '%', '--slider-color': '#ff3412' }"
-                    />
-                </div>
-
-                <!-- Points -->
-                <div>
-                    <label class="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground">
-                        <span>Sample Points</span>
-                        <span class="fira-code text-foreground">{{ nPoints }}</span>
-                    </label>
-                    <input
-                        v-model.number="nPoints"
-                        type="range"
-                        min="128"
-                        max="4096"
-                        step="128"
-                        class="styled-slider w-full"
-                        :style="{ '--progress': pointsProgress + '%', '--slider-color': '#3b82f6' }"
-                    />
-                </div>
             </div>
         </Collapsible>
 
@@ -173,8 +145,9 @@ onMounted(() => {
 .styled-slider {
     -webkit-appearance: none;
     appearance: none;
-    height: 10px;
-    border-radius: 5px;
+    height: 12px;
+    border-radius: 6px;
+    touch-action: none;
     background: linear-gradient(
         to right,
         var(--slider-color) var(--progress),
@@ -187,8 +160,8 @@ onMounted(() => {
 .styled-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: var(--slider-color);
     cursor: pointer;
@@ -208,8 +181,8 @@ onMounted(() => {
 }
 
 .styled-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: var(--slider-color);
     cursor: pointer;
@@ -219,13 +192,13 @@ onMounted(() => {
 
 .styled-slider::-moz-range-progress {
     background: var(--slider-color);
-    border-radius: 5px;
-    height: 10px;
+    border-radius: 6px;
+    height: 12px;
 }
 
 .styled-slider::-moz-range-track {
     background: hsl(var(--secondary));
-    border-radius: 5px;
-    height: 10px;
+    border-radius: 6px;
+    height: 12px;
 }
 </style>

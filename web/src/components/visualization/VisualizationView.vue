@@ -3,7 +3,8 @@ import { ref, watch, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useImageUpload } from "@/composables/useImageUpload";
-import { Upload } from "lucide-vue-next";
+import { Upload, AlertTriangle, X } from "lucide-vue-next";
+import { Tooltip } from "@/components/ui/tooltip";
 import ImageUpload from "./ImageUpload.vue";
 import ContourSettings from "./ContourSettings.vue";
 import BasisCanvas from "./BasisCanvas.vue";
@@ -16,7 +17,7 @@ import BouncyToggle from "@/components/ui/BouncyToggle.vue";
 const route = useRoute();
 const store = useSessionStore();
 
-const { isDragging: globalDragging, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragLeave: globalDragLeave } =
+const { isDragging: globalDragging, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave } =
     useImageUpload(async (file: File) => {
         await store.uploadImage(file);
     });
@@ -51,24 +52,56 @@ onMounted(async () => {
     const slug = route.params.slug as string | undefined;
     if (slug) {
         await store.load(slug);
+        // If load failed (stale/invalid slug), create a fresh session
+        if (!store.session && store.error) {
+            store.error = null;
+            await store.create();
+        }
     } else if (!store.slug) {
         await store.create();
     }
 });
 
+// Shared N/points state — lifted so both ContourSettings and BasisSelector can bind
+const nHarmonics = ref(store.session?.parameters?.n_harmonics ?? 200);
+const nPoints = ref(store.session?.parameters?.n_points ?? 1024);
+
+// Seed from session once it loads (e.g. after store.load())
+{
+    let seeded = !!store.session;
+    watch(() => store.session, (s) => {
+        if (!seeded && s?.parameters) {
+            nHarmonics.value = s.parameters.n_harmonics ?? 200;
+            nPoints.value = s.parameters.n_points ?? 1024;
+            seeded = true;
+        }
+    });
+}
+
 const hasData = () => store.epicycleData || store.basesData;
 const hasEpicycles = () => activeBases.value.includes("fourier-epicycles");
+
+const showGhost = ref(true);
+watch(showGhost, (v) => {
+    if (canvasComponent.value) canvasComponent.value.showGhost = v;
+});
+
+function dismissError() {
+    store.error = null;
+}
 </script>
 
 <template>
     <div class="viz-container"
         @drop="globalDrop"
         @dragover="globalDragOver"
+        @dragenter="globalDragEnter"
         @dragleave="globalDragLeave"
     >
         <!-- Global drag overlay -->
         <Transition name="fade">
-            <div v-if="globalDragging" class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+            <div v-if="globalDragging" class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+                @drop="globalDrop" @dragover.prevent>
                 <div class="flex flex-col items-center gap-3 text-muted-foreground">
                     <Upload class="h-12 w-12" />
                     <p class="text-lg font-medium">Drop image anywhere</p>
@@ -82,13 +115,23 @@ const hasEpicycles = () => activeBases.value.includes("fourier-epicycles");
             <p class="text-sm text-muted-foreground fira-code">Initializing session...</p>
         </div>
 
-        <!-- Error -->
+        <!-- Error (no session) -->
         <div
             v-else-if="store.error && !store.session"
             class="flex items-center justify-center flex-1"
         >
-            <div class="mx-auto max-w-md cartoon-card p-6 text-center">
-                <p class="text-sm text-accent-red">{{ store.error }}</p>
+            <div class="mx-auto max-w-md cartoon-card p-6 text-center space-y-3">
+                <AlertTriangle class="h-8 w-8 text-amber-500 mx-auto" />
+                <p class="text-sm font-medium text-foreground">Could not connect to the server</p>
+                <p class="text-xs text-muted-foreground fira-code break-all">{{ store.error }}</p>
+                <Tooltip text="Try connecting to the server again">
+                    <button
+                        class="mt-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-foreground/15 bg-background hover:bg-muted transition-colors cursor-pointer"
+                        @click="store.create()"
+                    >
+                        Retry
+                    </button>
+                </Tooltip>
             </div>
         </div>
 
@@ -107,18 +150,36 @@ const hasEpicycles = () => activeBases.value.includes("fourier-epicycles");
                 />
             </div>
 
+            <!-- Inline error banner -->
+            <Transition name="slide-down">
+                <div v-if="store.error && store.session" class="error-banner">
+                    <AlertTriangle class="h-4 w-4 text-amber-500 flex-shrink-0" />
+                    <p class="flex-1 text-xs fira-code truncate">{{ store.error }}</p>
+                    <Tooltip text="Dismiss error">
+                        <button class="flex-shrink-0 p-0.5 rounded hover:bg-foreground/10 cursor-pointer" @click="dismissError">
+                            <X class="h-3.5 w-3.5" />
+                        </button>
+                    </Tooltip>
+                </div>
+            </Transition>
+
             <div class="viz-grid">
                 <!-- Left panel: Controls -->
                 <div class="viz-panel-left-wrap" :class="{ 'mobile-hidden': mobileView !== 'controls' }">
                     <div class="viz-panel-left">
                         <ImageUpload />
                         <Transition name="slide-down">
-                            <ContourSettings v-if="store.hasImage" />
+                            <ContourSettings v-if="store.hasImage"
+                                v-model:n-harmonics="nHarmonics"
+                                v-model:n-points="nPoints"
+                            />
                         </Transition>
                         <Transition name="slide-down">
                             <BasisSelector
                                 v-if="hasData()"
                                 :active-bases="activeBases"
+                                v-model:n-harmonics="nHarmonics"
+                                v-model:n-points="nPoints"
                                 @update:active-bases="activeBases = $event"
                             />
                         </Transition>
@@ -134,7 +195,9 @@ const hasEpicycles = () => activeBases.value.includes("fourier-epicycles");
                     <AnimationControls
                         v-if="hasData()"
                         :active-bases="activeBases"
+                        :show-ghost="showGhost"
                         @export-frame="handleExportFrame"
+                        @toggle-ghost="showGhost = !showGhost"
                     />
                 </div>
             </div>
@@ -250,6 +313,7 @@ const hasEpicycles = () => activeBases.value.includes("fourier-epicycles");
     flex-direction: column;
     gap: 0;
     min-height: 0;
+    min-width: 0;
     overflow: hidden;
     flex: 1;
 }
@@ -274,6 +338,19 @@ const hasEpicycles = () => activeBases.value.includes("fourier-epicycles");
     .mobile-hidden {
         display: none;
     }
+}
+
+/* ── Error banner ── */
+.error-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0.75rem 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background: hsl(var(--destructive) / 0.08);
+    border: 1.5px solid hsl(var(--destructive) / 0.2);
+    color: hsl(var(--foreground));
 }
 
 /* ── Shared ──────────────────────────────────── */

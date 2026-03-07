@@ -46,6 +46,9 @@ export const useSessionStore = defineStore("session", () => {
             router.replace(`/s/${sessionSlug}`);
         } catch (e: any) {
             error.value = e.message;
+            // Clear stale session so the UI can recover
+            session.value = null;
+            localStorage.removeItem("fourier_last_slug");
         } finally {
             loading.value = false;
         }
