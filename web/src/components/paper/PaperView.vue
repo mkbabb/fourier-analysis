@@ -5,6 +5,9 @@ import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useKatex } from "@/composables/useKatex";
 import { ChevronDown } from "lucide-vue-next";
+import { useLazyLoader } from "@/composables/useLazyLoader";
+import { useTableOfContents } from "@/composables/useTableOfContents";
+import { useScrollTracking } from "@/composables/useScrollTracking";
 
 const { renderInline } = useKatex();
 const sections = computed(() => paperSections);
@@ -15,187 +18,19 @@ function renderTitle(text: string): string {
     });
 }
 
-// ── Progressive loading: mount sections as they approach viewport ──
-const visibleCount = ref(2); // start with first 2 sections rendered
-const loadSentinel = ref<HTMLElement | null>(null);
-let loadObserver: IntersectionObserver | null = null;
+// ── Composables ─────────────────────────────────────────────
+const { visibleCount, loadSentinel } = useLazyLoader(paperSections.length);
+const { tocIndex, isActive, isInActiveChain } = useTableOfContents(paperSections);
+const { activeId, activeTopId, sidebarNav } = useScrollTracking(
+    paperSections,
+    tocIndex,
+    visibleCount,
+);
 
-onMounted(() => {
-    loadObserver = new IntersectionObserver(
-        (entries) => {
-            for (const entry of entries) {
-                if (entry.isIntersecting && visibleCount.value < paperSections.length) {
-                    visibleCount.value = Math.min(visibleCount.value + 2, paperSections.length);
-                }
-            }
-        },
-        { rootMargin: "0px 0px 600px 0px" },
-    );
-    nextTick(() => {
-        if (loadSentinel.value) loadObserver!.observe(loadSentinel.value);
-    });
-});
-
-onUnmounted(() => {
-    loadObserver?.disconnect();
-});
-
-// Re-observe the sentinel when it moves (after new sections mount)
-watch(visibleCount, () => {
-    if (!loadObserver) return;
-    loadObserver.disconnect();
-    nextTick(() => {
-        if (loadSentinel.value) loadObserver!.observe(loadSentinel.value);
-    });
-});
-
-// ── Build a flat index of ALL sections at every depth ──────
-interface TocEntry {
-    section: PaperSectionData;
-    depth: number;
-    parentId: string | null; // top-level parent id
-    topIndex: number;       // top-level section index (for color)
-}
-
-const tocIndex = new Map<string, TocEntry>();
-
-function indexSections(
-    list: PaperSectionData[],
-    depth: number,
-    parentId: string | null,
-    topIndex: number,
-) {
-    for (const s of list) {
-        const ti = depth === 0 ? list.indexOf(s) : topIndex;
-        tocIndex.set(s.id, { section: s, depth, parentId: depth === 0 ? s.id : parentId, topIndex: ti });
-        if (s.subsections) {
-            indexSections(s.subsections, depth + 1, depth === 0 ? s.id : parentId, ti);
-        }
-    }
-}
-indexSections(paperSections, 0, null, 0);
-
-// ── Scroll-tracked active section ──────────────────────────
-const activeId = ref<string | null>(paperSections[0]?.id ?? null);
-let observer: IntersectionObserver | null = null;
-const sectionVisibility = new Map<string, boolean>();
-
-/** Walk the tree bottom-up: the deepest visible section wins. */
-function findDeepestVisible(list: PaperSectionData[]): string | null {
-    for (const s of list) {
-        if (s.subsections) {
-            const deep = findDeepestVisible(s.subsections);
-            if (deep) return deep;
-        }
-        if (sectionVisibility.get(s.id)) return s.id;
-    }
-    return null;
-}
-
-function updateActive() {
-    const found = findDeepestVisible(paperSections);
-    if (found) activeId.value = found;
-}
-
-// Derived: which top-level section is active?
-const activeTopId = computed(() => {
-    if (!activeId.value) return null;
-    return tocIndex.get(activeId.value)?.parentId ?? null;
-});
-
-// Which IDs are "active" at any level? (the active item + all its ancestors)
-function isActive(id: string): boolean {
-    return id === activeId.value;
-}
-
-function isInActiveChain(id: string): boolean {
-    if (!activeId.value) return false;
-    const entry = tocIndex.get(activeId.value);
-    if (!entry) return false;
-    // Check if id is the active item or its top-level parent
-    if (id === activeId.value) return true;
-    if (id === entry.parentId) return true;
-    // Check if activeId is a descendant of id
-    // Walk the section's subsections
-    const target = tocIndex.get(id);
-    if (!target) return false;
-    return isDescendant(activeId.value, id);
-}
-
-function isDescendant(childId: string, ancestorId: string): boolean {
-    const ancestor = tocIndex.get(ancestorId);
-    if (!ancestor) return false;
-    const section = ancestor.section;
-    if (!section.subsections) return false;
-    for (const sub of section.subsections) {
-        if (sub.id === childId) return true;
-        if (sub.subsections && isDescendant(childId, sub.id)) return true;
-    }
-    return false;
-}
-
-// ── Observe section elements for scroll tracking ──────────
-const observedIds = new Set<string>();
-
-function observeTree(list: PaperSectionData[]) {
-    for (const s of list) {
-        if (!observedIds.has(s.id)) {
-            const el = document.getElementById(s.id);
-            if (el) {
-                observer!.observe(el);
-                observedIds.add(s.id);
-            }
-        }
-        if (s.subsections) observeTree(s.subsections);
-    }
-}
-
-onMounted(() => {
-    observer = new IntersectionObserver(
-        (entries) => {
-            for (const entry of entries) {
-                sectionVisibility.set(
-                    (entry.target as HTMLElement).id,
-                    entry.isIntersecting,
-                );
-            }
-            updateActive();
-        },
-        { rootMargin: "-20% 0px -60% 0px", threshold: 0 },
-    );
-    nextTick(() => observeTree(paperSections));
-});
-
-onUnmounted(() => {
-    observer?.disconnect();
-});
-
-// Re-observe when new sections mount from progressive loading
-watch(visibleCount, () => {
-    if (!observer) return;
-    nextTick(() => observeTree(paperSections));
-});
-
-// ── Auto-scroll sidebar to keep active item visible ────────
-const sidebarNav = ref<HTMLElement | null>(null);
-
-watch(activeId, (id) => {
-    if (!id || !sidebarNav.value) return;
-    nextTick(() => {
-        const el = sidebarNav.value?.querySelector(`[data-toc-id="${id}"]`) as HTMLElement | null;
-        if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
-    });
-});
-
+// ── Scroll to section ───────────────────────────────────────
 function scrollToSection(id: string) {
-    // Load all sections so the target is guaranteed to be in the DOM
     visibleCount.value = paperSections.length;
 
-    // Wait for Vue to finish mounting all sections, then scroll.
-    // We poll until the target element is in the DOM and its position
-    // has stabilized (stops shifting as sections above it render).
     let attempts = 0;
     let lastY = -1;
 
@@ -212,7 +47,6 @@ function scrollToSection(id: string) {
         const absoluteTop = elRect.top - scrollerRect.top + scroller.scrollTop;
 
         if (Math.abs(absoluteTop - lastY) < 1 && attempts > 2) {
-            // Position stabilized — jump instantly
             scroller.scrollTo({ top: Math.max(0, absoluteTop - 16), behavior: "instant" });
             return;
         }
@@ -225,8 +59,8 @@ function scrollToSection(id: string) {
 
 function getPreview(section: PaperSectionData): string {
     const text = section.paragraphs?.[0] ?? '';
-    const clean = text.replace(/\$[^$]+\$/g, '…').replace(/<[^>]+>/g, '');
-    return clean.length > 120 ? clean.slice(0, 120) + '…' : clean;
+    const clean = text.replace(/\$[^$]+\$/g, '\u2026').replace(/<[^>]+>/g, '');
+    return clean.length > 120 ? clean.slice(0, 120) + '\u2026' : clean;
 }
 
 // ── Mobile floating TOC ─────────────────────────────────────
@@ -260,7 +94,6 @@ onUnmounted(() => {
     mobileTocObserver?.disconnect();
 });
 
-// Close the floating dropdown when user scrolls to a new section
 watch(activeTopId, () => {
     floatingTocOpen.value = false;
 });
@@ -327,10 +160,10 @@ watch(activeTopId, () => {
                                                 :data-toc-id="sub.id"
                                                 @click="scrollToSection(sub.id)"
                                                 class="sidebar-link sidebar-sublink cm-serif"
-                                                :class="{ 'is-active-sub': isActive(sub.id) || isInActiveChain(sub.id) }"
-                                                :style="isActive(sub.id)
+                                                :class="{ 'is-active-sub': isActive(sub.id, activeId) || isInActiveChain(sub.id, activeId) }"
+                                                :style="isActive(sub.id, activeId)
                                                     ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
-                                                    : isInActiveChain(sub.id)
+                                                    : isInActiveChain(sub.id, activeId)
                                                         ? { color: `color-mix(in srgb, var(--section-color-${si}) 70%, hsl(var(--muted-foreground)))` }
                                                         : activeTopId === section.id
                                                             ? { color: `color-mix(in srgb, var(--section-color-${si}) 50%, hsl(var(--muted-foreground)))` }
@@ -341,13 +174,13 @@ watch(activeTopId, () => {
                                                 <span v-html="renderTitle(sub.title)" />
                                             </button>
                                             <!-- Sub-subsections -->
-                                            <ol v-if="sub.subsections && isInActiveChain(sub.id)" class="sidebar-subsublist">
+                                            <ol v-if="sub.subsections && isInActiveChain(sub.id, activeId)" class="sidebar-subsublist">
                                                 <li v-for="subsub in sub.subsections" :key="subsub.id">
                                                     <button
                                                         :data-toc-id="subsub.id"
                                                         @click="scrollToSection(subsub.id)"
                                                         class="sidebar-link sidebar-subsublink cm-serif"
-                                                        :style="isActive(subsub.id)
+                                                        :style="isActive(subsub.id, activeId)
                                                             ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
                                                             : { color: `color-mix(in srgb, var(--section-color-${si}) 40%, hsl(var(--muted-foreground)))` }"
                                                     >
