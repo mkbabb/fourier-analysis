@@ -133,6 +133,19 @@
     }
 }
 
+/* Mobile-first responsive font sizing (outside @layer for specificity) */
+html {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
+}
+
 /* ── Typography utilities ───────────────────────────────────── */
 
 /* Computer Modern — the LaTeX body font. Default for all prose. */
