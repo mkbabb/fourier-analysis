@@ -3,27 +3,15 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import io
-import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-from cachetools import TTLCache
 
 from fourier_analysis.bases import approximate_curve, build_animation_data
-from fourier_analysis.contours import ContourStrategy, extract_contours, resample_arc_length
+from fourier_analysis.contours import extract_contours, resample_arc_length
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.shortest_tour import order_contours
-
-_cache: TTLCache = TTLCache(maxsize=100, ttl=3600)
-
-
-def _cache_key(image_bytes: bytes, params: dict) -> str:
-    h = hashlib.sha256(image_bytes)
-    h.update(json.dumps(params, sort_keys=True).encode())
-    return h.hexdigest()
 
 
 async def compute_contours(
