@@ -10,7 +10,7 @@
     },
     "dependencies": {
         "@mkbabb/keyframes.js": "latest",
-        "@mkbabb/pencil-boil": "^0.2.0",
+        "@mkbabb/pencil-boil": "file:../../pencil-boil",
         "@vueuse/core": "^14.0",
         "katex": "^0.16",
         "pinia": "^2.3",
