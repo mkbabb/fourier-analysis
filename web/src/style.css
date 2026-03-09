@@ -68,7 +68,6 @@
         --destructive-foreground: 210 40% 98%;
         --ring: 222.2 84% 4.9%;
         --radius: 0.625rem;
-        --accent-red: 0 72% 63%;
         --accent-pink: 330 65% 55%;
         --section-heading: 328 60% 46%;
 
@@ -79,10 +78,11 @@
         --section-color-3: hsl(190 60% 38%);  /* teal */
         --section-color-4: hsl(160 50% 38%);  /* green */
         --section-color-5: hsl(30 65% 45%);   /* amber */
-        --section-color-6: hsl(0 55% 50%);    /* red */
+        --section-color-6: hsl(0 72% 50%);    /* red — single source for accent-red + viz-fourier */
         --section-color-7: hsl(290 45% 48%);  /* violet */
 
-        /* Viz colors — aliases into section palette */
+        /* Derived aliases */
+        --accent-red: 0 72% 50%;
         --viz-fourier: var(--section-color-6);
         --viz-chebyshev: var(--section-color-2);
         --viz-legendre: var(--section-color-7);
@@ -112,7 +112,6 @@
         --destructive: 0 62.8% 30.6%;
         --destructive-foreground: 48 10% 90%;
         --ring: 48 8% 83%;
-        --accent-red: 5 55% 50%;
         --accent-pink: 335 55% 65%;
         --section-heading: 330 55% 68%;
 
@@ -123,10 +122,11 @@
         --section-color-3: hsl(190 55% 60%);  /* teal */
         --section-color-4: hsl(160 50% 58%);  /* green */
         --section-color-5: hsl(35 60% 65%);   /* amber */
-        --section-color-6: hsl(5 55% 65%);    /* red */
+        --section-color-6: hsl(0 68% 62%);    /* red — single source for accent-red + viz-fourier */
         --section-color-7: hsl(290 50% 70%);  /* violet */
 
-        /* Viz colors — aliases into section palette */
+        /* Derived aliases */
+        --accent-red: 0 68% 62%;
         --viz-fourier: var(--section-color-6);
         --viz-chebyshev: var(--section-color-2);
         --viz-legendre: var(--section-color-7);
@@ -327,6 +327,7 @@ input[type="range"]:not(.styled-slider)::-webkit-slider-thumb:active {
     cursor: pointer;
     border: none;
     box-shadow: none;
+    margin-left: -3px;
     opacity: 0;
     transition: opacity 0.15s ease, transform 0.15s ease;
 }
@@ -347,6 +348,7 @@ input[type="range"]:not(.styled-slider)::-webkit-slider-thumb:active {
     cursor: pointer;
     border: none;
     box-shadow: none;
+    margin-left: -3px;
     opacity: 0;
     transition: opacity 0.15s ease;
 }

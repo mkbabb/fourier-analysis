@@ -233,7 +233,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
     z-index: 20;
 }
 
-/* Play/Pause — wide rounded-rect pill (keyframes.js style) */
+/* Play/Pause — glassmorphic rainbow pill */
 .play-btn {
     position: relative;
     display: inline-flex;
@@ -244,14 +244,16 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
     border-radius: 0.5rem;
     cursor: pointer;
     overflow: hidden;
-    border: none;
-    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: hsl(var(--foreground) / 0.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: #fff;
     flex-shrink: 0;
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
-/* Vivid rainbow background */
+/* Semi-transparent rainbow overlay */
 .play-btn::before {
     content: "";
     position: absolute;
@@ -259,18 +261,18 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
     border-radius: 0.5rem;
     background: linear-gradient(
         90deg,
-        hsl(0 78% 68%),
-        hsl(30 85% 65%),
-        hsl(55 80% 62%),
-        hsl(120 55% 58%),
-        hsl(200 70% 62%),
-        hsl(270 60% 65%),
-        hsl(330 72% 66%),
-        hsl(0 78% 68%)
+        hsl(0 78% 68% / 0.45),
+        hsl(30 85% 65% / 0.45),
+        hsl(55 80% 62% / 0.45),
+        hsl(120 55% 58% / 0.45),
+        hsl(200 70% 62% / 0.45),
+        hsl(270 60% 65% / 0.45),
+        hsl(330 72% 66% / 0.45),
+        hsl(0 78% 68% / 0.45)
     );
     background-size: 200% 100%;
     z-index: -1;
-    transition: filter 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 /* Animated shift when playing */
 .play-btn.is-playing::before {
@@ -279,8 +281,9 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
 
 .play-btn:hover {
     transform: scale(1.08);
-    box-shadow: 0 2px 16px rgba(255, 100, 100, 0.25),
-        0 2px 16px rgba(100, 100, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 2px 16px rgba(255, 100, 100, 0.2),
+        0 2px 16px rgba(100, 100, 255, 0.15);
 }
 .play-btn:active {
     transform: scale(0.93);
@@ -375,7 +378,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
 .glass-thumb {
     position: absolute;
     top: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(calc(-50% - 3px), -50%);
     width: 4px;
     height: 12px;
     border-radius: 2px;
