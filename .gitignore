@@ -47,6 +47,9 @@ uploads/
 # Environment
 .env
 
+# Scripts
+scripts/
+
 # Docker
 mongo_data/
 .playwright-mcp/
