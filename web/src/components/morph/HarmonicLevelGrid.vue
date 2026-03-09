@@ -120,8 +120,15 @@ function getPath(level: number): string {
 
 <style scoped>
 .levels-card {
-    padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
+    padding: 0.75rem;
+    margin-bottom: 0;
+}
+
+@media (min-width: 640px) {
+    .levels-card {
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+    }
 }
 
 .card-title {
@@ -243,9 +250,16 @@ function getPath(level: number): string {
 }
 
 .grid-svg {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     overflow: visible;
+}
+
+@media (min-width: 640px) {
+    .grid-svg {
+        width: 64px;
+        height: 64px;
+    }
 }
 
 .grid-label {

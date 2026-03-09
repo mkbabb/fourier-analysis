@@ -100,7 +100,13 @@ const easingNames = EASING_PRESET_NAMES;
 
 <style scoped>
 .config-card {
-    padding: 1rem 1.25rem;
+    padding: 0.75rem;
+}
+
+@media (min-width: 640px) {
+    .config-card {
+        padding: 1rem 1.25rem;
+    }
 }
 
 .config-card-title {
