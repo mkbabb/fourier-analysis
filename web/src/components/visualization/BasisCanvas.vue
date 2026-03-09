@@ -16,7 +16,6 @@ import {
     drawEpicycleCircles,
     drawConnectingLine,
     drawBasisLabels,
-    drawEpicycleLabel,
     TrailManager,
     BASE_EPICYCLE_SCALE,
     HOVER_EPICYCLE_SCALE,
@@ -146,6 +145,10 @@ function drawEpicycleFrame(
     data: typeof store.epicycleData & {},
     view: ViewTransform,
 ) {
+    const hoveredBasis = hover.getHoveredBasis();
+    const epicycleHovered = hoveredBasis === "fourier-epicycles";
+    const trailColor = epicycleHovered ? VIZ_COLORS.golden : VIZ_COLORS.fourier;
+
     // Ghost path
     if (showGhost.value) {
         drawGhostPath(s, view, data.path.x, data.path.y, true);
@@ -158,9 +161,9 @@ function drawEpicycleFrame(
     const allPositions = fourierPositionsAt(components, anim.t, components.length);
     const tip = allPositions[allPositions.length - 1];
 
-    // Trail
+    // Trail — golden when hovered
     trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
-    trail.draw(s, view, VIZ_COLORS.fourier);
+    trail.draw(s, view, trailColor);
 
     // Epicycle circles
     const visPositions = fourierPositionsAt(components, anim.t, nVis);
@@ -181,7 +184,13 @@ function drawEpicycleFrame(
         }
     }
 
-    drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 4, arm: 3.5 });
+    // Golden shimmer on epicycle circles when hovered
+    if (epicycleHovered) {
+        const shimmer = 0.85 + 0.15 * Math.sin(performance.now() / 200);
+        s.ctx.globalAlpha = shimmer;
+    }
+    drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 4, arm: 3.5 }, epicycleHovered ? VIZ_COLORS.golden : undefined);
+    s.ctx.globalAlpha = 1;
 
     // Update epicycle bounds for hover detection
     if (fit) {
@@ -203,8 +212,10 @@ function drawEpicycleFrame(
     // Tip dot
     drawTipDot(s, view, tip[0], tip[1]);
 
-    // Label
-    drawEpicycleLabel(s, anim.t);
+    // Label with hit regions for hover detection
+    const level = Math.max(1, Math.ceil(anim.t * components.length));
+    const { hitRegions } = drawBasisLabels(s, ["fourier-epicycles"], `N = ${level}`, hoveredBasis);
+    hover.setLabelHitRegions(hitRegions);
 }
 
 // ── Multi-basis mode ──
