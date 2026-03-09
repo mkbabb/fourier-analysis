@@ -1,10 +1,25 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { fileURLToPath, URL } from "node:url";
-import latexPaperPlugin from "./plugins/vite-plugin-latex-paper";
+import latexPaperPlugin from "@mkbabb/latex-paper/vite";
 
 export default defineConfig({
-    plugins: [latexPaperPlugin(), vue()],
+    plugins: [
+        latexPaperPlugin({
+            texPath: "../paper/fourier_paper.tex",
+            callouts: {
+                applications: {
+                    text: "Upload an image and watch epicycles trace its contour",
+                    link: "/visualize",
+                },
+                "image-reconstruction-via-epicycles": {
+                    text: "Try the epicycle reconstruction yourself",
+                    link: "/visualize",
+                },
+            },
+        }),
+        vue(),
+    ],
     base: process.env.VITE_BASE_URL || "/",
     resolve: {
         alias: {

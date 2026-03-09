@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import PaperSectionContent from "./PaperSectionContent.vue";
-import { paperSections } from "@/lib/paperContent";
+import { paperSections, labelMap } from "@/lib/paperContent";
 import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useKatex } from "@/composables/useKatex";
@@ -76,6 +76,19 @@ const currentSection = computed(() => {
     return entry.section;
 });
 
+// ── Cross-reference click handling ──────────────────────────
+function handleRefClick(e: MouseEvent) {
+    const target = (e.target as HTMLElement).closest<HTMLAnchorElement>(".paper-ref");
+    if (!target) return;
+    e.preventDefault();
+    const refKey = target.dataset.ref;
+    if (!refKey) return;
+    const info = labelMap[refKey];
+    if (info?.sectionId) {
+        scrollToSection(info.sectionId);
+    }
+}
+
 onMounted(() => {
     mobileTocObserver = new IntersectionObserver(
         (entries) => {
@@ -88,10 +101,13 @@ onMounted(() => {
     nextTick(() => {
         if (mobileNavRef.value) mobileTocObserver!.observe(mobileNavRef.value);
     });
+    // Delegated click handler for cross-reference links
+    document.querySelector(".paper-scroll")?.addEventListener("click", handleRefClick);
 });
 
 onUnmounted(() => {
     mobileTocObserver?.disconnect();
+    document.querySelector(".paper-scroll")?.removeEventListener("click", handleRefClick);
 });
 
 watch(activeTopId, () => {
@@ -524,5 +540,19 @@ watch(activeTopId, () => {
 .toc-expand-leave-to {
     opacity: 0;
     transform: translateY(-0.5rem);
+}
+
+/* Cross-reference links — :deep() because they're in v-html content */
+.paper-article :deep(.paper-ref) {
+    color: hsl(var(--primary));
+    text-decoration: none;
+    cursor: pointer;
+    border-bottom: 1px dashed hsl(var(--primary) / 0.4);
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.paper-article :deep(.paper-ref:hover) {
+    border-bottom-style: solid;
+    border-bottom-color: hsl(var(--primary));
 }
 </style>

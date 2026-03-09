@@ -1,7 +1,7 @@
 /**
  * Paper content — auto-parsed from fourier_paper.tex at build time.
- * See plugins/vite-plugin-latex-paper.ts for the parser.
+ * See @mkbabb/latex-paper for the parser.
  */
 
-export type { PaperSectionData, PaperTheoremData, PaperFigureData } from "../../plugins/vite-plugin-latex-paper";
-export { paperSections } from "virtual:paper-content";
+export type { PaperSectionData, PaperTheoremData, PaperFigureData, PaperLabelInfo } from "@mkbabb/latex-paper";
+export { paperSections, labelMap } from "virtual:paper-content";
