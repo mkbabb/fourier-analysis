@@ -11,15 +11,25 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 
-        <!-- Preload critical font files -->
+        <!-- Preload critical font files (CM Serif body + bold used on every page) -->
         <link rel="preload" href="https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Serif/cmunrm.woff" as="font" type="font/woff" crossorigin />
         <link rel="preload" href="https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Serif/cmunbx.woff" as="font" type="font/woff" crossorigin />
+        <link rel="preload" href="https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/font/Serif/cmunti.woff" as="font" type="font/woff" crossorigin />
 
+        <!-- KaTeX stylesheet (render-blocking — needed before first paint for math layout) -->
         <link
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css"
             crossorigin="anonymous"
         />
+
+        <!-- Google Fonts — loaded as <link> to avoid render-blocking @import chains -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&display=swap" />
+
+        <!-- Computer Modern web fonts -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/aaaakshat/cm-web-fonts@latest/fonts.css" />
+
         <script>
             // Init dark mode before first paint to prevent flash
             (function() {
