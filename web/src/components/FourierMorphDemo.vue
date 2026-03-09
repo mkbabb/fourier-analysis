@@ -11,7 +11,7 @@
             <button class="morph-button cartoon-card" @click="handleToggle" :disabled="isAnimating">
                 <FourierMorphSvg
                     :path="morph.currentPath.value"
-                    :stroke-width="3"
+                    :stroke-width="4.5"
                     view-box="0 0 200 200"
                 />
             </button>
@@ -204,12 +204,13 @@ function handleReset() {
     margin: 0 auto;
     padding: 2rem;
     padding-bottom: 4rem;
+    font-family: var(--font-serif);
 }
 
 .demo-title {
-    font-family: var(--font-display);
+    font-family: var(--font-serif);
     font-size: 2rem;
-    font-weight: 700;
+    font-weight: 400;
     margin-bottom: 0.5rem;
     color: hsl(var(--foreground));
 }

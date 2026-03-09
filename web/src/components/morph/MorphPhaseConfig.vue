@@ -104,9 +104,9 @@ const easingNames = EASING_PRESET_NAMES;
 }
 
 .config-card-title {
-    font-family: var(--font-display);
+    font-family: var(--font-serif);
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 400;
     color: hsl(var(--foreground));
     margin-bottom: 0.125rem;
 }

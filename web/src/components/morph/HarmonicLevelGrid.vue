@@ -66,7 +66,7 @@
                         :d="getPath(level)"
                         fill="none"
                         stroke="hsl(var(--accent-red))"
-                        stroke-width="2.5"
+                        stroke-width="4"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                     />
@@ -124,9 +124,9 @@ function getPath(level: number): string {
 }
 
 .card-title {
-    font-family: var(--font-display);
+    font-family: var(--font-serif);
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 400;
     color: hsl(var(--foreground));
     margin-bottom: 0.75rem;
 }
