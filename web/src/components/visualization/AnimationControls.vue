@@ -3,11 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useSessionStore } from "@/stores/session";
 import {
-    Play,
-    Pause,
     Download,
-    Copy,
-    Check,
     Eye,
     EyeOff,
     EllipsisVertical,
@@ -37,14 +33,29 @@ const emit = defineEmits<{
 const anim = useAnimationStore();
 const store = useSessionStore();
 
-const copied = ref(false);
-async function copySlug() {
-    if (!store.slug) return;
-    const url = `${window.location.origin}/s/${store.slug}`;
-    await navigator.clipboard.writeText(url);
-    copied.value = true;
-    setTimeout(() => (copied.value = false), 2000);
-}
+const isEpicycleOnly = computed(() =>
+    props.activeBases.includes("fourier-epicycles") && props.activeBases.length === 1,
+);
+
+const currentLevel = computed(() => {
+    const basesData = store.basesData;
+    const epicycleData = store.epicycleData;
+    if (basesData && basesData.levels.length > 0) {
+        const levels = basesData.levels;
+        const pos = anim.t * (levels.length - 1);
+        return levels[Math.round(pos)];
+    } else if (epicycleData) {
+        return Math.max(1, Math.ceil(anim.t * epicycleData.components.length));
+    }
+    return 1;
+});
+
+const caretLabel = computed(() => {
+    if (isEpicycleOnly.value) {
+        return `t = ${anim.t.toFixed(2)}`;
+    }
+    return `N = ${currentLevel.value}`;
+});
 
 const speedStr = computed({
     get: () => String(anim.speed),
@@ -99,8 +110,8 @@ onUnmounted(() =>
                 @click="anim.toggle"
             >
                 <Transition name="icon-swap" mode="out-in">
-                    <Pause v-if="anim.playing" class="h-4 w-4" />
-                    <Play v-else class="h-4 w-4" />
+                    <svg v-if="anim.playing" class="play-icon" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
+                    <svg v-else class="play-icon" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
                 </Transition>
             </button>
         </Tooltip>
@@ -108,7 +119,7 @@ onUnmounted(() =>
         <!-- Timeline slider — fills remaining space -->
         <div class="timeline-row">
             <div class="timeline-caret" :style="{ left: (anim.t * 100) + '%' }">
-                <span class="caret-value fira-code">{{ anim.t.toFixed(2) }}</span>
+                <span class="caret-value fira-code">{{ caretLabel }}</span>
             </div>
             <input
                 type="range"
@@ -174,19 +185,6 @@ onUnmounted(() =>
                             </SelectContent>
                         </Select>
                     </div>
-                    <Tooltip text="Copy shareable link">
-                        <button
-                            v-if="store.slug && store.hasImage"
-                            @click="copySlug"
-                            class="menu-item"
-                        >
-                            <Transition name="icon-swap" mode="out-in">
-                                <Check v-if="copied" class="h-4 w-4 text-green-500" />
-                                <Copy v-else class="h-4 w-4" />
-                            </Transition>
-                            <span class="menu-label">{{ copied ? 'Copied' : 'Share' }}</span>
-                        </button>
-                    </Tooltip>
                     <Tooltip :text="props.showGhost ? 'Hide original contour' : 'Show original contour'">
                         <button
                             @click="emit('toggleGhost')"
@@ -218,99 +216,68 @@ onUnmounted(() =>
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
-    backdrop-filter: blur(8px);
-    background: hsl(var(--background) / 0.6);
-    border-top: 1px solid hsl(var(--foreground) / 0.1);
+    backdrop-filter: blur(12px);
+    background: hsl(var(--background) / 0.65);
+    border-top: 1px solid hsl(var(--foreground) / 0.08);
     min-width: 0;
 }
 
-/* Play/Pause — icon-only pill */
+/* Play/Pause — wide rounded-rect pill (keyframes.js style) */
 .play-btn {
     position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 9999px;
+    height: 2.25rem;
+    border-radius: 0.625rem;
     cursor: pointer;
     overflow: hidden;
     border: none;
     background: transparent;
-    color: #000;
+    color: #fff;
     flex-shrink: 0;
     transition: transform 0.2s, box-shadow 0.2s;
 }
-:where(.dark) .play-btn {
-    color: #fff;
-}
 
-/* Pastel rainbow background (paused) */
+/* Vivid rainbow background */
 .play-btn::before {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 9999px;
+    border-radius: 0.625rem;
     background: linear-gradient(
-        135deg,
-        hsl(0 60% 82%),
-        hsl(40 55% 80%),
-        hsl(120 40% 78%),
-        hsl(200 50% 80%),
-        hsl(280 45% 82%),
-        hsl(340 55% 80%)
+        90deg,
+        hsl(0 85% 60%),
+        hsl(30 90% 55%),
+        hsl(55 85% 52%),
+        hsl(120 65% 48%),
+        hsl(200 75% 52%),
+        hsl(270 65% 55%),
+        hsl(330 80% 58%),
+        hsl(0 85% 60%)
     );
+    background-size: 200% 100%;
     z-index: -1;
     transition: filter 0.3s ease;
 }
-/* Animated vivid rainbow when playing */
+/* Animated shift when playing */
 .play-btn.is-playing::before {
-    background: linear-gradient(
-        90deg,
-        hsl(0 80% 68%),
-        hsl(40 80% 65%),
-        hsl(120 60% 60%),
-        hsl(200 70% 62%),
-        hsl(280 60% 65%),
-        hsl(340 75% 68%),
-        hsl(0 80% 68%)
-    );
-    background-size: 200% 100%;
-    animation: rainbow-shift 3s linear infinite;
-}
-:where(.dark) .play-btn::before {
-    background: linear-gradient(
-        135deg,
-        hsl(0 30% 40%),
-        hsl(40 28% 38%),
-        hsl(120 22% 36%),
-        hsl(200 28% 38%),
-        hsl(280 24% 40%),
-        hsl(340 28% 38%)
-    );
-}
-:where(.dark) .play-btn.is-playing::before {
-    background: linear-gradient(
-        90deg,
-        hsl(0 65% 50%),
-        hsl(40 65% 48%),
-        hsl(120 50% 45%),
-        hsl(200 55% 48%),
-        hsl(280 50% 50%),
-        hsl(340 60% 50%),
-        hsl(0 65% 50%)
-    );
-    background-size: 200% 100%;
     animation: rainbow-shift 3s linear infinite;
 }
 
 .play-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 12px rgba(255, 100, 100, 0.15),
-        0 0 12px rgba(100, 100, 255, 0.15);
+    transform: scale(1.08);
+    box-shadow: 0 2px 16px rgba(255, 100, 100, 0.25),
+        0 2px 16px rgba(100, 100, 255, 0.2);
 }
 .play-btn:active {
-    transform: scale(0.92);
+    transform: scale(0.93);
+}
+
+.play-icon {
+    width: 13px;
+    height: 13px;
 }
 
 @keyframes rainbow-shift {
