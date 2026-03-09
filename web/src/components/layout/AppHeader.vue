@@ -106,14 +106,19 @@ async function copyShareUrl() {
             </div>
 
             <div class="ml-auto flex items-center gap-1.5 shrink-0">
-                <Tooltip v-if="sessionStore.slug && sessionStore.hasImage" :text="copied ? 'Copied!' : 'Share'">
-                    <button class="share-btn" @click="copyShareUrl">
-                        <Transition name="icon-swap" mode="out-in">
-                            <Check v-if="copied" class="h-5 w-5 text-green-500" />
-                            <Share2 v-else class="h-5 w-5" />
-                        </Transition>
-                    </button>
-                </Tooltip>
+                <Transition name="share-pop">
+                    <Tooltip
+                        v-if="activeTab === '/visualize' && sessionStore.slug && sessionStore.hasImage"
+                        :text="copied ? 'Copied!' : 'Share'"
+                    >
+                        <button class="share-btn" @click="copyShareUrl">
+                            <Transition name="icon-swap" mode="out-in">
+                                <Check v-if="copied" class="h-5 w-5 text-green-500" />
+                                <Share2 v-else class="h-5 w-5" />
+                            </Transition>
+                        </button>
+                    </Tooltip>
+                </Transition>
                 <DarkModeToggle style="--toggle-size: 2.75rem" />
             </div>
         </div>
@@ -231,6 +236,22 @@ async function copyShareUrl() {
 
 .share-btn:active {
     transform: scale(0.95);
+}
+
+/* Share button enter/leave */
+.share-pop-enter-active {
+    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.share-pop-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.share-pop-enter-from {
+    opacity: 0;
+    transform: scale(0.5);
+}
+.share-pop-leave-to {
+    opacity: 0;
+    transform: scale(0.5);
 }
 
 /* Icon swap transition */
