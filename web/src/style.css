@@ -306,7 +306,6 @@ input[type="range"]:not(.styled-slider)::-webkit-slider-thumb:active {
     );
     outline: none;
     cursor: pointer;
-    transition: background 0.2s ease;
 }
 
 .styled-slider:hover {
@@ -324,12 +323,16 @@ input[type="range"]:not(.styled-slider)::-webkit-slider-thumb:active {
     height: 14px;
     border-radius: 3px;
     background: var(--slider-color);
-    cursor: pointer;
+    cursor: grab;
     border: none;
     box-shadow: none;
     margin-left: -3px;
     opacity: 0;
     transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.styled-slider:active::-webkit-slider-thumb {
+    cursor: grabbing;
 }
 
 .styled-slider:hover::-webkit-slider-thumb {

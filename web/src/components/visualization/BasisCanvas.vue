@@ -501,6 +501,8 @@ defineExpose({ anim, exportFrame, showGhost });
     min-height: 0;
     box-shadow: 3px 3px 0px 0px hsl(var(--foreground) / 0.08);
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 :where(.dark) .canvas-container {

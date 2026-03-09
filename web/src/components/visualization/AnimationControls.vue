@@ -245,9 +245,9 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
     cursor: pointer;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    background: hsl(var(--foreground) / 0.06);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: hsl(var(--foreground) / 0.04);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     color: #fff;
     flex-shrink: 0;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -261,14 +261,14 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
     border-radius: 0.5rem;
     background: linear-gradient(
         90deg,
-        hsl(0 78% 68% / 0.45),
-        hsl(30 85% 65% / 0.45),
-        hsl(55 80% 62% / 0.45),
-        hsl(120 55% 58% / 0.45),
-        hsl(200 70% 62% / 0.45),
-        hsl(270 60% 65% / 0.45),
-        hsl(330 72% 66% / 0.45),
-        hsl(0 78% 68% / 0.45)
+        hsl(0 78% 60% / 0.7),
+        hsl(30 85% 58% / 0.7),
+        hsl(55 80% 52% / 0.7),
+        hsl(120 55% 48% / 0.7),
+        hsl(200 70% 55% / 0.7),
+        hsl(270 60% 58% / 0.7),
+        hsl(330 72% 58% / 0.7),
+        hsl(0 78% 60% / 0.7)
     );
     background-size: 200% 100%;
     z-index: -1;
