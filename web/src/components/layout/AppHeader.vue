@@ -97,7 +97,7 @@ async function copyShareUrl() {
 
             <div class="h-5 w-px bg-foreground/15 shrink-0" />
 
-            <div class="min-w-0 overflow-x-auto scrollbar-hidden">
+            <div class="tab-scroll-container">
                 <BouncyToggle
                     :options="tabOptions"
                     :model-value="activeTab"
@@ -123,6 +123,38 @@ async function copyShareUrl() {
 <style scoped>
 .app-header {
     font-feature-settings: "liga", "kern";
+}
+
+/* ── Scrollable tab container with edge fade ── */
+.tab-scroll-container {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    mask-image: linear-gradient(
+        to right,
+        transparent,
+        black 0.75rem,
+        black calc(100% - 0.75rem),
+        transparent
+    );
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent,
+        black 0.75rem,
+        black calc(100% - 0.75rem),
+        transparent
+    );
+}
+.tab-scroll-container::-webkit-scrollbar {
+    display: none;
+}
+/* Remove mask when not overflowing (enough room for all tabs) */
+@media (min-width: 400px) {
+    .tab-scroll-container {
+        mask-image: none;
+        -webkit-mask-image: none;
+    }
 }
 
 /* Mobile: hide "ourier analysis" text */
