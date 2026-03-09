@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class ComputeContourRequest(BaseModel):
@@ -11,6 +11,31 @@ class ComputeContourRequest(BaseModel):
     blur_sigma: float = 1.0
     n_classes: int = 3
     min_contour_length: int = 40
+    min_contour_area: float = 0.0
+    max_contours: int | None = None
+    smooth_contours: float = 0.0
+
+    @field_validator("blur_sigma", mode="before")
+    @classmethod
+    def _clamp_blur(cls, v: float) -> float:
+        return max(0.0, float(v))
+
+    @field_validator("min_contour_area", mode="before")
+    @classmethod
+    def _clamp_area(cls, v: float) -> float:
+        return max(0.0, min(1.0, float(v)))
+
+    @field_validator("smooth_contours", mode="before")
+    @classmethod
+    def _clamp_smooth(cls, v: float) -> float:
+        return max(0.0, min(1.0, float(v)))
+
+    @field_validator("max_contours", mode="before")
+    @classmethod
+    def _clamp_max_contours(cls, v: int | None) -> int | None:
+        if v is None or v <= 0:
+            return None
+        return int(v)
 
 
 class ComputeEpicyclesRequest(BaseModel):

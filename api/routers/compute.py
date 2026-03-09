@@ -31,6 +31,9 @@ async def compute_contours(slug: str, req: ComputeContourRequest):
             blur_sigma=req.blur_sigma,
             n_classes=req.n_classes,
             min_contour_length=req.min_contour_length,
+            min_contour_area=req.min_contour_area,
+            max_contours=req.max_contours,
+            smooth_contours=req.smooth_contours,
         )
     finally:
         os.unlink(image_path)
@@ -51,6 +54,9 @@ async def compute_epicycles(slug: str, req: ComputeEpicyclesRequest):
             resize=params.get("resize", 512),
             blur_sigma=params.get("blur_sigma", 1.0),
             min_contour_length=params.get("min_contour_length", 40),
+            min_contour_area=params.get("min_contour_area", 0.0),
+            max_contours=params.get("max_contours"),
+            smooth_contours=params.get("smooth_contours", 0.0),
         )
     finally:
         os.unlink(image_path)
@@ -71,6 +77,9 @@ async def compute_bases(slug: str, req: ComputeBasesRequest):
             resize=params.get("resize", 512),
             blur_sigma=params.get("blur_sigma", 1.0),
             min_contour_length=params.get("min_contour_length", 40),
+            min_contour_area=params.get("min_contour_area", 0.0),
+            max_contours=params.get("max_contours"),
+            smooth_contours=params.get("smooth_contours", 0.0),
             levels=req.levels,
             n_eval=req.n_eval,
         )

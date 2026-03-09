@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from fastapi import HTTPException
 
 from fourier_analysis.bases import approximate_curve, build_animation_data
 from fourier_analysis.contours import extract_contours, resample_arc_length
@@ -21,6 +22,9 @@ async def compute_contours(
     blur_sigma: float = 1.0,
     n_classes: int = 3,
     min_contour_length: int = 40,
+    min_contour_area: float = 0.0,
+    max_contours: int | None = None,
+    smooth_contours: float = 0.0,
 ) -> dict[str, Any]:
     def _run():
         contours = extract_contours(
@@ -30,6 +34,9 @@ async def compute_contours(
             blur_sigma=blur_sigma,
             n_classes=n_classes,
             min_contour_length=min_contour_length,
+            min_contour_area=min_contour_area,
+            max_contours=max_contours,
+            smooth_contours=smooth_contours,
         )
         return [
             {"x": c.real.tolist(), "y": c.imag.tolist(), "n_points": len(c)}
@@ -48,6 +55,9 @@ async def compute_epicycles(
     resize: int = 512,
     blur_sigma: float = 1.0,
     min_contour_length: int = 40,
+    min_contour_area: float = 0.0,
+    max_contours: int | None = None,
+    smooth_contours: float = 0.0,
 ) -> dict[str, Any]:
     def _run():
         contours = extract_contours(
@@ -56,9 +66,15 @@ async def compute_epicycles(
             resize=resize,
             blur_sigma=blur_sigma,
             min_contour_length=min_contour_length,
+            min_contour_area=min_contour_area,
+            max_contours=max_contours,
+            smooth_contours=smooth_contours,
         )
         if not contours:
-            return {"error": "No contours extracted"}
+            raise HTTPException(
+                status_code=422,
+                detail="No contours extracted — try lowering min area or changing strategy",
+            )
 
         path = order_contours(contours)
         path = resample_arc_length(path, n_points)
@@ -95,6 +111,9 @@ async def compute_bases(
     resize: int = 512,
     blur_sigma: float = 1.0,
     min_contour_length: int = 40,
+    min_contour_area: float = 0.0,
+    max_contours: int | None = None,
+    smooth_contours: float = 0.0,
     levels: list[int] | None = None,
     n_eval: int = 1000,
 ) -> dict[str, Any]:
@@ -105,9 +124,15 @@ async def compute_bases(
             resize=resize,
             blur_sigma=blur_sigma,
             min_contour_length=min_contour_length,
+            min_contour_area=min_contour_area,
+            max_contours=max_contours,
+            smooth_contours=smooth_contours,
         )
         if not contours:
-            return {"error": "No contours extracted"}
+            raise HTTPException(
+                status_code=422,
+                detail="No contours extracted — try lowering min area or changing strategy",
+            )
 
         path = order_contours(contours)
         path = resample_arc_length(path, n_points)
