@@ -9,14 +9,9 @@ import {
     EyeOff,
     EllipsisVertical,
 } from "lucide-vue-next";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
+import EasingPicker from "./EasingPicker.vue";
+import SpeedSelect from "./SpeedSelect.vue";
 
 const props = withDefaults(
     defineProps<{
@@ -43,10 +38,10 @@ const currentLevel = computed(() => {
     const epicycleData = store.epicycleData;
     if (basesData && basesData.levels.length > 0) {
         const levels = basesData.levels;
-        const pos = anim.t * (levels.length - 1);
+        const pos = anim.easedT * (levels.length - 1);
         return levels[Math.round(pos)];
     } else if (epicycleData) {
-        return Math.max(1, Math.ceil(anim.t * epicycleData.components.length));
+        return Math.max(1, Math.ceil(anim.easedT * epicycleData.components.length));
     }
     return 1;
 });
@@ -56,13 +51,6 @@ const caretLabel = computed(() => {
         return `t = ${anim.t.toFixed(2)}`;
     }
     return `N = ${currentLevel.value}`;
-});
-
-const speedStr = computed({
-    get: () => String(anim.speed),
-    set: (v: string) => {
-        anim.speed = parseFloat(v);
-    },
 });
 
 /* ── Glass timeline slider ────────────────────────────── */
@@ -152,19 +140,8 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
 
         <!-- Speed dropdown — visible on desktop only -->
         <Tooltip text="Playback speed">
-            <div class="speed-desktop">
-                <Select v-model="speedStr">
-                    <SelectTrigger class="speed-trigger">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="0.25">0.25&times;</SelectItem>
-                        <SelectItem value="0.5">0.5&times;</SelectItem>
-                        <SelectItem value="1">1&times;</SelectItem>
-                        <SelectItem value="2">2&times;</SelectItem>
-                        <SelectItem value="4">4&times;</SelectItem>
-                    </SelectContent>
-                </Select>
+            <div class="desktop-only">
+                <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" />
             </div>
         </Tooltip>
 
@@ -180,22 +157,14 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
             </Tooltip>
             <Transition name="popup">
                 <div v-if="menuOpen" class="menu-popup">
-                    <!-- Speed — mobile only (inside menu) -->
-                    <div class="speed-mobile">
+                    <!-- Speed — mobile only -->
+                    <div class="mobile-only menu-row">
                         <span class="menu-label text-muted-foreground">Speed</span>
-                        <Select v-model="speedStr">
-                            <SelectTrigger class="speed-trigger-compact">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="0.25">0.25&times;</SelectItem>
-                                <SelectItem value="0.5">0.5&times;</SelectItem>
-                                <SelectItem value="1">1&times;</SelectItem>
-                                <SelectItem value="2">2&times;</SelectItem>
-                                <SelectItem value="4">4&times;</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" compact />
                     </div>
+
+                    <EasingPicker />
+
                     <Tooltip :text="props.showGhost ? 'Hide original contour' : 'Show original contour'">
                         <button
                             @click="emit('toggleGhost')"
@@ -396,52 +365,33 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
     background: hsl(var(--foreground) / 0.4);
 }
 
-/* Speed dropdown — desktop only */
-.speed-desktop {
+/* Desktop-only controls */
+.desktop-only {
     display: none;
 }
 @media (min-width: 640px) {
-    .speed-desktop {
+    .desktop-only {
         display: block;
     }
 }
 
-/* Speed dropdown — mobile only (inside menu) */
-.speed-mobile {
+/* Mobile-only controls (inside menu) */
+.mobile-only {
     display: flex;
+}
+@media (min-width: 640px) {
+    .mobile-only {
+        display: none;
+    }
+}
+
+.menu-row {
     align-items: center;
     gap: 0.5rem;
     padding: 0.375rem 0.75rem;
     border-bottom: 1px solid hsl(var(--border) / 0.5);
     margin-bottom: 0.125rem;
     padding-bottom: 0.5rem;
-}
-@media (min-width: 640px) {
-    .speed-mobile {
-        display: none;
-    }
-}
-
-.speed-trigger {
-    height: 1.75rem;
-    width: 3.5rem;
-    flex-shrink: 0;
-    font-family: "Fira Code", monospace;
-    font-size: 0.75rem;
-    border: none;
-    background: none;
-    border-radius: 0.375rem;
-    color: hsl(var(--muted-foreground));
-}
-
-.speed-trigger-compact {
-    height: 2rem;
-    width: 4rem;
-    flex-shrink: 0;
-    font-family: "Fira Code", monospace;
-    font-size: 0.75rem;
-    border: 1.5px solid hsl(var(--foreground) / 0.15);
-    border-radius: 0.375rem;
 }
 
 /* Three-dot menu */
