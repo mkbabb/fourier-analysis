@@ -6,13 +6,15 @@ export { TrailManager } from "./trail";
 export {
     BASE_EPICYCLE_SCALE,
     HOVER_EPICYCLE_SCALE,
-    EPICYCLE_DISPLAY_SCALE,
-    getEpicycleRegion,
-    isMouseInEpicycleRegion,
+    computeStableEpicycleBbox,
+    computeEpicycleFit,
+    isMouseInEpicycleBounds,
+    epicycleAlphaFromScale,
     drawEpicycleCircles,
     drawConnectingLine,
     drawTipDot,
 } from "./epicycles";
-export type { EpicycleRegion } from "./epicycles";
-export { drawBasisLabels } from "./labels";
+export type { EpicycleFit, EpicycleBbox } from "./epicycles";
+export { drawBasisLabels, drawEpicycleLabel } from "./labels";
+export type { LabelDrawResult } from "./labels";
 export { drawPlaceholder } from "./placeholder";

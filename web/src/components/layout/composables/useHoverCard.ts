@@ -1,8 +1,12 @@
-import { ref } from "vue";
+import { ref, onUnmounted } from "vue";
 
 export function useHoverCard(closeDelay = 150) {
     const isOpen = ref(false);
     let closeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    onUnmounted(() => {
+        if (closeTimer) clearTimeout(closeTimer);
+    });
 
     function toggle() {
         isOpen.value = !isOpen.value;

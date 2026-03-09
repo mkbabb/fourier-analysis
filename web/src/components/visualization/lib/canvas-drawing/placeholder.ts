@@ -53,7 +53,7 @@ export function drawPlaceholder(surface: CanvasSurface, hasImage: boolean): void
 
     // Text
     ctx.fillStyle = "rgba(150, 150, 150, 0.6)";
-    ctx.font = "500 13px 'Fira Code', monospace";
+    ctx.font = "500 15px 'Fira Code', monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const msg = hasImage ? "Computing..." : "Drag & drop an image here";
