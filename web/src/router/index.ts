@@ -11,54 +11,32 @@ export const router = createRouter({
             path: "/",
             redirect: () => {
                 const saved = localStorage.getItem("fourier_active_tab");
-                if (saved === "/visualize" || saved === "/demo/fourier-morph") return saved;
+                if (saved === "/visualize" || saved === "/morph") return saved;
                 return "/paper";
             },
         },
-        {
-            path: "/paper",
-            name: "paper",
-            component: PaperView,
-        },
+        { path: "/paper", name: "paper", component: PaperView },
         {
             path: "/visualize",
             name: "visualize",
             component: VisualizationView,
             beforeEnter: (_to, _from, next) => {
-                // If a session slug is stored, redirect to /s/:slug
                 const slug = localStorage.getItem("fourier_last_slug");
-                if (slug) {
-                    next(`/s/${slug}`);
-                } else {
-                    next();
-                }
+                slug ? next(`/s/${slug}`) : next();
             },
         },
-        {
-            path: "/s/:slug",
-            name: "session",
-            component: VisualizationView,
-        },
-        {
-            path: "/demo/fourier-morph",
-            name: "fourier-morph-demo",
-            component: FourierMorphDemo,
-        },
-        {
-            path: "/demo/shape-extractor",
-            name: "shape-extractor",
-            component: FourierShapeExtractor,
-        },
+        { path: "/s/:slug", name: "session", component: VisualizationView },
+        { path: "/morph", name: "morph", component: FourierMorphDemo },
+        { path: "/demo/fourier-morph", redirect: "/morph" },
+        { path: "/demo/shape-extractor", name: "shape-extractor", component: FourierShapeExtractor },
     ],
 });
 
-// Persist active tab on navigation
 router.afterEach((to) => {
-    if (to.path === "/paper" || to.path === "/visualize" || to.path === "/demo/fourier-morph") {
+    if (to.path === "/paper" || to.path === "/visualize" || to.path === "/morph") {
         localStorage.setItem("fourier_active_tab", to.path);
     } else if (to.path.startsWith("/s/")) {
         localStorage.setItem("fourier_active_tab", "/visualize");
-        // Extract and save the slug for tab-switching
         const slug = to.params.slug as string;
         if (slug) localStorage.setItem("fourier_last_slug", slug);
     }

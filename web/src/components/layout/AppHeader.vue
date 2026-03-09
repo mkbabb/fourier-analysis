@@ -16,13 +16,13 @@ const { isOpen: cardOpen, toggle: toggleCard, onHoverEnter, onHoverLeave } = use
 const tabOptions = [
     { label: "Paper", value: "/paper" },
     { label: "Visualize", value: "/visualize" },
-    { label: "Morph", value: "/demo/fourier-morph" },
+    { label: "Morph", value: "/morph" },
 ];
 
 const activeTab = computed(() => {
     if (route.path === "/paper") return "/paper";
     if (route.path === "/visualize" || route.path.startsWith("/s/")) return "/visualize";
-    if (route.path === "/demo/fourier-morph") return "/demo/fourier-morph";
+    if (route.path === "/morph") return "/morph";
     return "/paper";
 });
 
