@@ -120,7 +120,15 @@ onMounted(() => {
                     <div>
                         <label class="mb-1.5 flex items-center justify-between text-sm font-medium text-muted-foreground">
                             <span>Blur Sigma</span>
-                            <span class="fira-code text-foreground">{{ blurSigma.toFixed(1) }}</span>
+                            <input
+                                type="number"
+                                class="inline-number fira-code"
+                                :value="blurSigma.toFixed(1)"
+                                min="0"
+                                max="5"
+                                step="0.1"
+                                @input="blurSigma = Math.max(0, Math.min(5, parseFloat(($event.target as HTMLInputElement).value) || 0))"
+                            />
                         </label>
                         <input
                             :value="blurSigma"
@@ -142,4 +150,26 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.inline-number {
+    width: 2.75rem;
+    text-align: right;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: hsl(var(--foreground));
+    font-size: inherit;
+    padding: 0;
+    outline: none;
+    -moz-appearance: textfield;
+    transition: border-color 0.15s;
+}
+.inline-number:hover,
+.inline-number:focus {
+    border-bottom-color: hsl(var(--foreground) / 0.3);
+}
+.inline-number::-webkit-inner-spin-button,
+.inline-number::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
 </style>

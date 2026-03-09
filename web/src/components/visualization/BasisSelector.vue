@@ -166,7 +166,7 @@ function toggleBasis(key: string) {
 
 <style scoped>
 .inline-number {
-    width: 3.5rem;
+    width: 2.75rem;
     text-align: right;
     background: transparent;
     border: none;

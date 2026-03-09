@@ -2,7 +2,7 @@
 import { TooltipRoot, TooltipTrigger, TooltipContent, TooltipPortal } from 'reka-ui'
 
 defineProps<{
-    text: string
+    text?: string
     side?: 'top' | 'right' | 'bottom' | 'left'
 }>()
 </script>
@@ -19,7 +19,7 @@ defineProps<{
                 :side-offset="6"
                 :collision-padding="8"
             >
-                {{ text }}
+                <slot name="content">{{ text }}</slot>
             </TooltipContent>
         </TooltipPortal>
     </TooltipRoot>
