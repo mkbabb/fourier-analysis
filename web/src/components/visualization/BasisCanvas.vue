@@ -473,6 +473,7 @@ defineExpose({ anim, exportFrame, showGhost });
         class="canvas-container"
         @mousemove="hover.onMouseMove"
         @mouseleave="hover.onMouseLeave"
+        @click="hover.onClick"
     >
         <canvas ref="canvasRef" class="canvas-el" />
     </div>

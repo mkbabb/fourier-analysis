@@ -130,6 +130,58 @@ export function useCanvasHover(options: {
         }
     }
 
+    // ── Touch / click toggle for mobile ──
+
+    let pinnedBasis: string | null = null;
+
+    function onClick(e: MouseEvent | TouchEvent) {
+        const el = getContainerEl();
+        const rect = el?.getBoundingClientRect();
+        if (!rect) return;
+
+        let cx: number, cy: number;
+        if ("touches" in e) {
+            const t = e.changedTouches[0];
+            cx = t.clientX - rect.left;
+            cy = t.clientY - rect.top;
+        } else {
+            cx = e.clientX - rect.left;
+            cy = e.clientY - rect.top;
+        }
+
+        // Check if tap/click hit a label region
+        let tapped: string | null = null;
+        for (const region of labelHitRegions) {
+            if (cx >= region.x && cx <= region.x + region.w &&
+                cy >= region.y && cy <= region.y + region.h) {
+                tapped = region.key;
+                break;
+            }
+        }
+
+        if (tapped) {
+            // Toggle: if already pinned to this basis, unpin; otherwise pin
+            if (pinnedBasis === tapped) {
+                pinnedBasis = null;
+                hoveredBasis = null;
+                stopShimmer();
+                onRedraw();
+            } else {
+                pinnedBasis = tapped;
+                hoveredBasis = tapped;
+                startShimmer();
+            }
+        } else {
+            // Tap outside labels: clear pin
+            if (pinnedBasis) {
+                pinnedBasis = null;
+                hoveredBasis = null;
+                stopShimmer();
+                onRedraw();
+            }
+        }
+    }
+
     function cleanup() {
         if (hoverAnimFrame) cancelAnimationFrame(hoverAnimFrame);
         stopShimmer();
@@ -144,6 +196,7 @@ export function useCanvasHover(options: {
         setLabelHitRegions,
         onMouseMove,
         onMouseLeave,
+        onClick,
         cleanup,
     };
 }
