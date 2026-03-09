@@ -189,19 +189,8 @@ function getPath(level: number): string {
     box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.15);
 }
 
-/* HarmonicLevelGrid slider overrides — slightly smaller thumb */
 .styled-slider {
     flex: 1;
-}
-
-.styled-slider::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
-}
-
-.styled-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
 }
 
 /* ── Preview grid ────────────────────────────── */

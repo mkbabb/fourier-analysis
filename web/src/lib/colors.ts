@@ -1,48 +1,96 @@
 /**
  * Centralized color palette for the visualization UI.
  *
- * All viz-layer colors live here so they're easy to tweak in one place.
- * These are intentionally slightly pastel / muted compared to raw
- * Tailwind defaults — softer on the eyes while still readable.
+ * Primary viz colors are derived from CSS custom properties (--viz-*)
+ * so they automatically adapt to light/dark mode via section-color aliases.
  */
 
-export const VIZ_COLORS = {
-    /** Fourier basis / epicycles — warm coral */
-    fourier: "#f87171",
-    /** Chebyshev basis — soft blue */
-    chebyshev: "#60a5fa",
-    /** Legendre basis — soft purple */
-    legendre: "#c084fc",
-    /** Blur-sigma / contour — muted amber */
-    amber: "#e5a820",
-    /** Timeline slider (epicycle mode) — muted sage green */
-    green: "#6ec89b",
-    /** Timeline slider dark-mode (epicycle mode) */
-    greenDark: "#4aa878",
-    /** Timeline slider (non-epicycle mode) — uses fourier color */
-    get red() { return this.fourier; },
-    /** Timeline slider dark-mode (non-epicycle mode) */
-    redDark: "#ef4444",
-    /** Hover / golden shimmer */
+import { reactive } from "vue";
+
+/** Static accent colors (not section-derived) */
+const STATIC = {
     golden: "#f0b632",
-    /** Rainbow gradient stops (loading bar, play button, etc.) */
     rainbow: [
-        "#f87171",  // red
-        "#fbbf24",  // amber
-        "#34d399",  // emerald
-        "#60a5fa",  // blue
-        "#c084fc",  // purple
-        "#f472b6",  // pink
+        "#f87171", "#fbbf24", "#34d399",
+        "#60a5fa", "#c084fc", "#f472b6",
     ] as const,
-    /** Pink (rainbow accent) */
     pink: "#f472b6",
-    /** Emerald (rainbow accent) */
     emerald: "#34d399",
-} as const;
+};
+
+/** Resolve a CSS custom property to a hex string. */
+function cssVarToHex(varName: string): string {
+    const raw = getComputedStyle(document.documentElement)
+        .getPropertyValue(varName)
+        .trim();
+    if (!raw) return "#888888";
+
+    // If already hex
+    if (raw.startsWith("#")) return raw;
+
+    // Parse hsl(...) or raw "h s% l%" from computed style
+    const hslMatch = raw.match(
+        /hsl\(\s*([\d.]+)\s*[ ,]\s*([\d.]+)%?\s*[ ,]\s*([\d.]+)%?\s*\)/,
+    );
+    if (hslMatch) {
+        return hslToHex(+hslMatch[1], +hslMatch[2], +hslMatch[3]);
+    }
+
+    // Parse rgb(...)
+    const rgbMatch = raw.match(
+        /rgb\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/,
+    );
+    if (rgbMatch) {
+        return rgbToHex(+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]);
+    }
+
+    return "#888888";
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+    s /= 100;
+    l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color)
+            .toString(16)
+            .padStart(2, "0");
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+    const hex = (v: number) =>
+        Math.round(v).toString(16).padStart(2, "0");
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+/** Reactive VIZ_COLORS — same API as before (VIZ_COLORS.fourier etc.) */
+export const VIZ_COLORS = reactive({
+    fourier: "#bf4040",
+    chebyshev: "#3d72b8",
+    legendre: "#9545b8",
+    amber: "#b37a2d",
+    green: "#4d8f66",
+    golden: STATIC.golden,
+    rainbow: STATIC.rainbow,
+    pink: STATIC.pink,
+    emerald: STATIC.emerald,
+});
+
+/** Read --viz-* CSS vars and update VIZ_COLORS. Call on mount + theme toggle. */
+export function resolveVizColors(): void {
+    VIZ_COLORS.fourier = cssVarToHex("--viz-fourier");
+    VIZ_COLORS.chebyshev = cssVarToHex("--viz-chebyshev");
+    VIZ_COLORS.legendre = cssVarToHex("--viz-legendre");
+    VIZ_COLORS.amber = cssVarToHex("--viz-amber");
+    VIZ_COLORS.green = cssVarToHex("--viz-green");
+}
 
 /**
  * Return an rgba() string from a hex color + alpha.
- * Useful for canvas drawing where you need transparency variants.
  */
 export function hexToRgba(hex: string, alpha: number): string {
     const r = parseInt(hex.slice(1, 3), 16);

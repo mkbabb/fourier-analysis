@@ -81,6 +81,13 @@
         --section-color-5: hsl(30 65% 45%);   /* amber */
         --section-color-6: hsl(0 55% 50%);    /* red */
         --section-color-7: hsl(290 45% 48%);  /* violet */
+
+        /* Viz colors — aliases into section palette */
+        --viz-fourier: var(--section-color-6);
+        --viz-chebyshev: var(--section-color-2);
+        --viz-legendre: var(--section-color-7);
+        --viz-amber: var(--section-color-5);
+        --viz-green: var(--section-color-4);
     }
 
     .dark {
@@ -118,6 +125,13 @@
         --section-color-5: hsl(35 60% 65%);   /* amber */
         --section-color-6: hsl(5 55% 65%);    /* red */
         --section-color-7: hsl(290 50% 70%);  /* violet */
+
+        /* Viz colors — aliases into section palette */
+        --viz-fourier: var(--section-color-6);
+        --viz-chebyshev: var(--section-color-2);
+        --viz-legendre: var(--section-color-7);
+        --viz-amber: var(--section-color-5);
+        --viz-green: var(--section-color-4);
     }
 }
 
@@ -244,7 +258,7 @@ html {
 
 /* ── Range slider ───────────────────────────────────────────── */
 
-input[type="range"] {
+input[type="range"]:not(.styled-slider) {
     -webkit-appearance: none;
     appearance: none;
     height: 6px;
@@ -255,7 +269,7 @@ input[type="range"] {
     transition: background 0.2s ease;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+input[type="range"]:not(.styled-slider)::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     width: 18px;
@@ -268,12 +282,12 @@ input[type="range"]::-webkit-slider-thumb {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
-input[type="range"]::-webkit-slider-thumb:hover {
+input[type="range"]:not(.styled-slider)::-webkit-slider-thumb:hover {
     transform: scale(1.2);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
-input[type="range"]::-webkit-slider-thumb:active {
+input[type="range"]:not(.styled-slider)::-webkit-slider-thumb:active {
     transform: scale(0.95);
 }
 
@@ -282,61 +296,75 @@ input[type="range"]::-webkit-slider-thumb:active {
 .styled-slider {
     -webkit-appearance: none;
     appearance: none;
-    height: 10px;
-    border-radius: 5px;
+    height: 16px;
+    border-radius: 8px;
     touch-action: none;
     background: linear-gradient(
         to right,
-        var(--slider-color) var(--progress),
-        hsl(var(--secondary)) var(--progress)
+        color-mix(in srgb, var(--slider-color) 30%, transparent) var(--progress),
+        hsl(var(--foreground) / 0.06) var(--progress)
     );
     outline: none;
     cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.styled-slider:hover {
+    background: linear-gradient(
+        to right,
+        color-mix(in srgb, var(--slider-color) 45%, transparent) var(--progress),
+        hsl(var(--foreground) / 0.08) var(--progress)
+    );
 }
 
 .styled-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
+    width: 6px;
+    height: 14px;
+    border-radius: 3px;
     background: var(--slider-color);
     cursor: pointer;
-    border: 2px solid hsl(var(--background));
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-                box-shadow 0.15s ease;
+    border: none;
+    box-shadow: none;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.styled-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.15);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+.styled-slider:hover::-webkit-slider-thumb {
+    opacity: 1;
 }
 
 .styled-slider::-webkit-slider-thumb:active {
-    transform: scale(0.95);
+    transform: scaleY(0.92);
 }
 
 .styled-slider::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
+    width: 6px;
+    height: 14px;
+    border-radius: 3px;
     background: var(--slider-color);
     cursor: pointer;
-    border: 2px solid hsl(var(--background));
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    border: none;
+    box-shadow: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.styled-slider:hover::-moz-range-thumb {
+    opacity: 1;
 }
 
 .styled-slider::-moz-range-progress {
-    background: var(--slider-color);
-    border-radius: 5px;
-    height: 10px;
+    background: color-mix(in srgb, var(--slider-color) 30%, transparent);
+    border-radius: 8px;
+    height: 16px;
 }
 
 .styled-slider::-moz-range-track {
-    background: hsl(var(--secondary));
-    border-radius: 5px;
-    height: 10px;
+    background: hsl(var(--foreground) / 0.06);
+    border-radius: 8px;
+    height: 16px;
 }
 
 /* ── KaTeX styling — LaTeX-faithful rendering ───────────────── */

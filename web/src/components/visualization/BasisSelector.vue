@@ -149,40 +149,6 @@ function toggleBasis(key: string) {
 </template>
 
 <style scoped>
-/* BasisSelector slider overrides — slightly larger than default */
-.styled-slider {
-    height: 12px;
-    border-radius: 6px;
-    background: linear-gradient(
-        to right,
-        var(--slider-color) var(--progress),
-        hsl(var(--secondary)) var(--progress)
-    );
-}
-
-.styled-slider::-webkit-slider-thumb {
-    width: 24px;
-    height: 24px;
-    border-width: 2.5px;
-    background: var(--slider-color);
-}
-
-.styled-slider::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
-    border-width: 2.5px;
-    background: var(--slider-color);
-}
-
-.styled-slider::-moz-range-progress {
-    border-radius: 6px;
-    height: 12px;
-}
-
-.styled-slider::-moz-range-track {
-    border-radius: 6px;
-    height: 12px;
-}
 
 .basis-icon {
     display: inline-flex;

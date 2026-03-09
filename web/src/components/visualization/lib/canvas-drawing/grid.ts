@@ -26,7 +26,7 @@ export function drawGrid(surface: CanvasSurface, view: ViewTransform): void {
     const gridYEnd = Math.ceil(yMax / step) * step;
 
     // Minor grid lines
-    ctx.strokeStyle = "rgba(150, 150, 150, 0.06)";
+    ctx.strokeStyle = "rgba(150, 150, 150, 0.09)";
     ctx.lineWidth = 1;
     for (let x = gridXStart; x <= gridXEnd; x += step) {
         const [sx] = toScreen(x, 0);
@@ -44,20 +44,63 @@ export function drawGrid(surface: CanvasSurface, view: ViewTransform): void {
     }
 
     // Axes (if visible)
-    ctx.strokeStyle = "rgba(150, 150, 150, 0.15)";
-    ctx.lineWidth = 1.5;
+    const axisColor = "rgba(150, 150, 150, 0.25)";
+    ctx.strokeStyle = axisColor;
+    ctx.lineWidth = 1.8;
     const [axisX] = toScreen(0, 0);
     const [, axisY] = toScreen(0, 0);
+
+    const arrowSize = 8;
+
+    // Y-axis
     if (axisX > 0 && axisX < width) {
         ctx.beginPath();
-        ctx.moveTo(axisX, 0);
-        ctx.lineTo(axisX, height);
+        ctx.moveTo(axisX, height);
+        ctx.lineTo(axisX, 0);
         ctx.stroke();
+
+        // Upward arrowhead
+        ctx.fillStyle = axisColor;
+        ctx.beginPath();
+        ctx.moveTo(axisX, 8);
+        ctx.lineTo(axisX - arrowSize * 0.5, 8 + arrowSize);
+        ctx.lineTo(axisX + arrowSize * 0.5, 8 + arrowSize);
+        ctx.closePath();
+        ctx.fill();
     }
+
+    // X-axis
     if (axisY > 0 && axisY < height) {
         ctx.beginPath();
         ctx.moveTo(0, axisY);
         ctx.lineTo(width, axisY);
         ctx.stroke();
+
+        // Rightward arrowhead
+        ctx.fillStyle = axisColor;
+        ctx.beginPath();
+        ctx.moveTo(width - 8, axisY);
+        ctx.lineTo(width - 8 - arrowSize, axisY - arrowSize * 0.5);
+        ctx.lineTo(width - 8 - arrowSize, axisY + arrowSize * 0.5);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Axis labels
+    const labelColor = "rgba(150, 150, 150, 0.35)";
+    ctx.fillStyle = labelColor;
+    ctx.font = "italic 13px 'Computer Modern Serif', Georgia, serif";
+    ctx.textBaseline = "middle";
+
+    // "x" near right arrowhead
+    if (axisY > 0 && axisY < height) {
+        ctx.textAlign = "right";
+        ctx.fillText("x", width - 8 - arrowSize - 4, axisY - 10);
+    }
+
+    // "y" near top arrowhead
+    if (axisX > 0 && axisX < width) {
+        ctx.textAlign = "left";
+        ctx.fillText("y", axisX + 10, 8 + arrowSize + 2);
     }
 }

@@ -193,18 +193,7 @@ const easingNames = EASING_PRESET_NAMES;
     flex-shrink: 0;
 }
 
-/* MorphPhaseConfig slider overrides — smaller thumb */
 .styled-slider {
     flex: 1;
-}
-
-.styled-slider::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
-}
-
-.styled-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
 }
 </style>

@@ -3,7 +3,6 @@ import { ref, computed } from "vue";
 import { onClickOutside } from "@vueuse/core";
 import { useAnimationStore } from "@/stores/animation";
 import { useSessionStore } from "@/stores/session";
-import { VIZ_COLORS } from "@/lib/colors";
 import {
     Download,
     Eye,
@@ -66,21 +65,42 @@ const speedStr = computed({
     },
 });
 
-function onScrub(e: Event) {
-    const input = e.target as HTMLInputElement;
-    anim.seek(parseFloat(input.value));
+/* ── Glass timeline slider ────────────────────────────── */
+const trackRef = ref<HTMLElement>();
+const scrubbing = ref(false);
+
+function tFromPointer(e: PointerEvent): number {
+    const rect = trackRef.value!.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 }
 
-/* Slider color: green for epicycles, red otherwise */
-const isEpicycleMode = computed(() =>
-    props.activeBases.includes("fourier-epicycles"),
-);
-const sliderColor = computed(() =>
-    isEpicycleMode.value ? VIZ_COLORS.green : VIZ_COLORS.fourier,
-);
-const sliderColorDark = computed(() =>
-    isEpicycleMode.value ? VIZ_COLORS.greenDark : VIZ_COLORS.redDark,
-);
+function onTrackDown(e: PointerEvent) {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    scrubbing.value = true;
+    anim.startScrub();
+    anim.seek(tFromPointer(e));
+}
+
+function onTrackMove(e: PointerEvent) {
+    if (!scrubbing.value) return;
+    anim.seek(tFromPointer(e));
+}
+
+function onTrackUp() {
+    scrubbing.value = false;
+    anim.endScrub();
+}
+
+function onTrackKeydown(e: KeyboardEvent) {
+    const step = e.shiftKey ? 0.1 : 0.01;
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+        e.preventDefault();
+        anim.seek(Math.min(1, anim.t + step));
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+        e.preventDefault();
+        anim.seek(Math.max(0, anim.t - step));
+    }
+}
 
 /* Three-dot menu */
 const menuOpen = ref(false);
@@ -105,27 +125,29 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
             </button>
         </Tooltip>
 
-        <!-- Timeline slider — fills remaining space -->
+        <!-- Timeline slider — glassmorphic custom track -->
         <div class="timeline-row">
             <div class="timeline-caret" :style="{ left: (anim.t * 100) + '%' }">
                 <span class="caret-value fira-code">{{ caretLabel }}</span>
             </div>
-            <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.001"
-                :value="anim.t"
-                class="timeline-slider styled-slider w-full"
-                :style="{
-                    '--slider-color': sliderColor,
-                    '--slider-color-dark': sliderColorDark,
-                }"
-                @input="onScrub"
-                @pointerdown="anim.startScrub"
-                @pointerup="anim.endScrub"
-                @pointercancel="anim.endScrub"
-            />
+            <div
+                ref="trackRef"
+                class="glass-track"
+                role="slider"
+                tabindex="0"
+                :aria-valuenow="anim.t"
+                aria-valuemin="0"
+                aria-valuemax="1"
+                aria-label="Timeline"
+                @pointerdown="onTrackDown"
+                @pointermove="onTrackMove"
+                @pointerup="onTrackUp"
+                @pointercancel="onTrackUp"
+                @keydown="onTrackKeydown"
+            >
+                <div class="glass-fill" :style="{ width: (anim.t * 100) + '%' }" />
+                <div class="glass-thumb" :style="{ left: (anim.t * 100) + '%' }" />
+            </div>
         </div>
 
         <!-- Speed dropdown — visible on desktop only -->
@@ -300,7 +322,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
 
 /* Show caret on hover or when scrubbing */
 .timeline-row:hover .timeline-caret,
-.timeline-row:has(input:active) .timeline-caret {
+.timeline-row:has(.glass-track:active) .timeline-caret {
     opacity: 1;
 }
 
@@ -317,50 +339,56 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
     white-space: nowrap;
 }
 
-/* Timeline slider overrides — custom track background with v-bind progress */
-.timeline-slider {
-    --progress: v-bind('(anim.t * 100) + "%"');
+/* Glassmorphic timeline track */
+.glass-track {
+    position: relative;
+    width: 100%;
+    height: 18px;
+    border-radius: 9px;
+    background: hsl(var(--foreground) / 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    cursor: pointer;
+    touch-action: none;
+    overflow: hidden;
+    transition: background 0.2s;
+    outline: none;
+}
+.glass-track:hover,
+.glass-track:focus-visible {
+    background: hsl(var(--foreground) / 0.08);
+}
+.glass-track:focus-visible {
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+}
+
+.glass-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    background: hsl(var(--foreground) / 0.07);
+    border-radius: 9px;
+    pointer-events: none;
+}
+
+.glass-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
     height: 12px;
-    border-radius: 6px;
-    background: linear-gradient(
-        to right,
-        var(--slider-color) var(--progress),
-        hsl(var(--foreground) / 0.12) var(--progress)
-    );
+    border-radius: 2px;
+    background: hsl(var(--foreground) / 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.15s ease;
 }
-
-.timeline-slider::-webkit-slider-thumb {
-    background: var(--slider-color);
-}
-
-.timeline-slider::-moz-range-thumb {
-    background: var(--slider-color);
-}
-
-.timeline-slider::-moz-range-progress {
-    border-radius: 6px;
-    height: 12px;
-}
-
-.timeline-slider::-moz-range-track {
-    border-radius: 6px;
-    height: 12px;
-}
-
-:where(.dark) .timeline-slider {
-    background: linear-gradient(
-        to right,
-        var(--slider-color-dark) var(--progress),
-        hsl(var(--foreground) / 0.1) var(--progress)
-    );
-}
-
-:where(.dark) .timeline-slider::-webkit-slider-thumb {
-    background: var(--slider-color-dark);
-}
-
-:where(.dark) .timeline-slider::-moz-range-progress {
-    background: var(--slider-color-dark);
+.glass-track:hover .glass-thumb {
+    opacity: 1;
+    width: 6px;
+    height: 14px;
+    background: hsl(var(--foreground) / 0.4);
 }
 
 /* Speed dropdown — desktop only */

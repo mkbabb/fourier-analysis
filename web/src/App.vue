@@ -1,8 +1,20 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { RouterView } from "vue-router";
 import { TooltipProvider } from "reka-ui";
 import AppHeader from "@/components/layout/AppHeader.vue";
 import SvgFilters from "@/components/decorative/SvgFilters.vue";
+import { resolveVizColors } from "@/lib/colors";
+
+onMounted(() => {
+    resolveVizColors();
+    // Re-resolve when dark mode class changes
+    const observer = new MutationObserver(() => resolveVizColors());
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+    });
+});
 </script>
 
 <template>
