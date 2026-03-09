@@ -282,7 +282,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
 .timeline-row {
     flex: 1;
     min-width: 0;
-    padding: 0 0.25rem;
+    padding: 0 0.25rem 0.5rem;
     position: relative;
 }
 

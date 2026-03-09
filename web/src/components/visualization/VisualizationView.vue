@@ -79,7 +79,7 @@ if (!store.session) {
 // Reset harmonics to 1 on new image upload to avoid flash from high N
 watch(() => store.hasImage, (has, prevHas) => {
     if (has && !prevHas) {
-        nHarmonics.value = 1;
+        nHarmonics.value = 50;
     }
 });
 
