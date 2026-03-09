@@ -5,8 +5,8 @@
         :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
     >
         <FourierMorphSvg
-            :path="boiledPath"
-            :stroke-width="8"
+            :path="morph.currentPath.value"
+            :stroke-width="14"
             :stroke-color="strokeColor"
             view-box="0 0 200 200"
         />
@@ -17,8 +17,7 @@
 import { ref, computed, onMounted } from "vue";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
 import { useFourierMorph } from "@/composables/useFourierMorph";
-import { prepareFourierShape, pointsToSvgPath } from "@/lib/svg-fourier";
-import { useLineBoil, perturbPointsClosed } from "@mkbabb/pencil-boil";
+import { prepareFourierShape } from "@/lib/svg-fourier";
 
 import sunData from "@/assets/fourier-paths/sun.json";
 import moonData from "@/assets/fourier-paths/moon.json";
@@ -30,22 +29,11 @@ const moonShape = prepareFourierShape(moonData as any);
 const SUN_COLOR = [232, 136, 69] as const;   // #E88845
 const MOON_COLOR = [180, 140, 220] as const; // #B48CDC
 
-const BOIL_FRAMES = 4;
-const BOIL_AMOUNT = 1.2;
-
 const isDark = ref(false);
 /** true when morphing toward dark (moon), false when morphing toward light (sun) */
 const morphingToDark = ref(false);
 
 const morph = useFourierMorph();
-const { currentFrame } = useLineBoil(BOIL_FRAMES, 150);
-
-const boiledPath = computed(() => {
-    const pts = morph.currentPoints.value;
-    if (pts.length < 3) return morph.currentPath.value;
-    const perturbed = perturbPointsClosed(pts, BOIL_AMOUNT, 1000 + currentFrame.value);
-    return pointsToSvgPath(perturbed);
-});
 
 function lerpColor(a: readonly number[], b: readonly number[], t: number): string {
     const r = Math.round(a[0] + (b[0] - a[0]) * t);
@@ -102,7 +90,7 @@ async function handleToggle() {
 
 .sun-moon-toggle:hover {
     outline: none;
-    transform: scale(1.08);
+    transform: scale(1.12);
 }
 
 .sun-moon-toggle:focus {
