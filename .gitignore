@@ -37,8 +37,8 @@ Thumbs.db
 # mypy
 .mypy_cache/
 
-# Web frontend
-web/node_modules/
+# Node
+node_modules/
 web/dist/
 
 # Uploads
@@ -54,5 +54,12 @@ scripts/
 mongo_data/
 .playwright-mcp/
 .vite/
+
+# Dev
+.dev.pids
+
+# Playwright
+web/test-results/
+web/playwright-report/
 
 
