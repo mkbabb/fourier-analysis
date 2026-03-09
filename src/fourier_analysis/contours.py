@@ -88,6 +88,25 @@ def _bimodality_coefficient(data: NDArray[np.floating]) -> float:
     return float((skew**2 + 1) / kurt)
 
 
+def _find_contours_padded(
+    binary: NDArray[np.bool_],
+    pad: int = 1,
+) -> list[NDArray[np.floating]]:
+    """Find contours on a binary mask, padding edges so border-touching
+    shapes produce closed contours.
+
+    ``skimage.measure.find_contours`` cannot close a contour that exits
+    the image boundary — it returns two open segments instead. Padding
+    the mask with a 1-pixel ring of ``False`` guarantees every shape
+    boundary is fully enclosed, yielding proper closed contours. The
+    coordinates are shifted back to the original frame afterwards.
+    """
+    padded = np.pad(binary, pad, mode="constant", constant_values=False)
+    raw = measure.find_contours(padded.astype(float), level=0.5)
+    # Shift coordinates back to the original image frame
+    return [rc - pad for rc in raw]
+
+
 def extract_contours(
     image_path: str | Path,
     *,
@@ -215,7 +234,7 @@ def extract_contours(
     # reliable than any luminance-based threshold for transparent PNGs.
     if is_auto and alpha_arr is not None:
         binary = alpha_arr > 0.5
-        raw_contours = measure.find_contours(binary.astype(float), level=0.5)
+        raw_contours = _find_contours_padded(binary)
         # Skip the normal threshold path entirely
         strategy = ContourStrategy.THRESHOLD  # prevent falling into blocks below
 
@@ -234,10 +253,10 @@ def extract_contours(
                 b = morphology.closing(binary, morphology.disk(morph_r))
                 b = morphology.opening(b, morphology.disk(max(1, morph_r // 3)))
                 b = morphology.remove_small_objects(b, max_size=min_obj_size)
-                raw_contours.extend(measure.find_contours(b.astype(float), level=0.5))
+                raw_contours.extend(_find_contours_padded(b))
         else:
             binary = arr < thresh  # foreground = dark pixels (portraits)
-            raw_contours = measure.find_contours(binary.astype(float), level=0.5)
+            raw_contours = _find_contours_padded(binary)
 
         # AUTO fallback: if threshold produced nothing substantial, try
         # multi-threshold which captures interior detail better.
@@ -254,12 +273,12 @@ def extract_contours(
         regions = np.digitize(arr, bins=thresholds)
         raw_contours = []
         for level in range(len(thresholds)):
-            binary_level = (regions > level).astype(float)
-            raw_contours.extend(measure.find_contours(binary_level, level=0.5))
+            binary_level = regions > level
+            raw_contours.extend(_find_contours_padded(binary_level))
     elif strategy == ContourStrategy.CANNY:
         edges = feature.canny(arr, sigma=canny_sigma)
         closed = morphology.closing(edges, morphology.disk(closing_radius))
-        raw_contours = measure.find_contours(closed.astype(float), level=0.5)
+        raw_contours = _find_contours_padded(closed)
 
     # Center coordinates and convert to complex
     cy, cx = arr.shape[0] / 2, arr.shape[1] / 2
