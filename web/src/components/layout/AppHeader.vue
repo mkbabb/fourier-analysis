@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useHoverCard } from "@/composables/useHoverCard";
+import { useSessionStore } from "@/stores/session";
+import { Share2, Check } from "lucide-vue-next";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import BouncyToggle from "@/components/ui/BouncyToggle.vue";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -26,6 +28,17 @@ const activeTab = computed(() => {
 
 function onTabChange(path: string) {
     router.push(path);
+}
+
+const sessionStore = useSessionStore();
+const copied = ref(false);
+
+async function copyShareUrl() {
+    if (!sessionStore.slug || !sessionStore.hasImage) return;
+    const url = `${window.location.origin}/s/${sessionStore.slug}`;
+    await navigator.clipboard.writeText(url);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 2000);
 }
 </script>
 
@@ -60,7 +73,7 @@ function onTabChange(path: string) {
                                 href="https://github.com/mkbabb"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="fira-code text-sm font-semibold text-foreground hover:underline"
+                                class="fira-code text-sm font-normal text-foreground hover:underline"
                                 @click.stop
                             >@mbabb</a>
                             <p class="mt-0.5 text-xs italic text-muted-foreground">Fourier analysis &amp; orthogonal decomposition</p>
@@ -86,9 +99,15 @@ function onTabChange(path: string) {
             />
 
             <div class="ml-auto flex items-center gap-1.5">
-                <Tooltip text="Toggle light / dark mode">
-                    <DarkModeToggle style="--toggle-size: 2.75rem" />
+                <Tooltip v-if="sessionStore.slug && sessionStore.hasImage" :text="copied ? 'Copied!' : 'Share'">
+                    <button class="share-btn" @click="copyShareUrl">
+                        <Transition name="icon-swap" mode="out-in">
+                            <Check v-if="copied" class="h-5 w-5 text-green-500" />
+                            <Share2 v-else class="h-5 w-5" />
+                        </Transition>
+                    </button>
                 </Tooltip>
+                <DarkModeToggle style="--toggle-size: 2.75rem" />
             </div>
         </div>
     </header>
@@ -159,4 +178,49 @@ function onTabChange(path: string) {
     -webkit-backdrop-filter: blur(16px);
 }
 
+.share-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: none;
+    background: none;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+}
+
+.share-btn:hover {
+    color: hsl(var(--foreground));
+    transform: scale(1.1);
+}
+
+.share-btn:active {
+    transform: scale(0.95);
+}
+
+/* Icon swap transition */
+.icon-swap-enter-active,
+.icon-swap-leave-active {
+    transition: all 0.15s ease;
+}
+.icon-swap-enter-from {
+    opacity: 0;
+    transform: scale(0.7);
+}
+.icon-swap-leave-to {
+    opacity: 0;
+    transform: scale(0.7);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
 </style>
