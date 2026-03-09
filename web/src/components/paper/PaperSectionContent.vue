@@ -55,7 +55,8 @@ function isBlockHtml(text: string): boolean {
             <figure
                 v-for="(fig, fi) in section.figures"
                 :key="fi"
-                class="my-6 flex flex-col items-center gap-2"
+                :id="fig.label ? fig.label.replace(/:/g, '-') : undefined"
+                class="my-6 flex flex-col items-center gap-2 scroll-mt-24"
             >
                 <img
                     :src="`${baseUrl}assets/${fig.filename}`"
@@ -76,6 +77,8 @@ function isBlockHtml(text: string): boolean {
                 :key="ti"
                 :type="thm.type"
                 :name="thm.name"
+                :number="thm.number"
+                :label="thm.label"
             >
                 <p v-if="thm.body.trim()" v-html="renderParagraph(thm.body)" />
                 <MathBlock

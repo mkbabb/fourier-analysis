@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PaperSectionContent from "./PaperSectionContent.vue";
+import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
 import { paperSections, labelMap } from "@/lib/paperContent";
 import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
@@ -60,7 +61,13 @@ function scrollToSection(id: string) {
 function getPreview(section: PaperSectionData): string {
     const text = section.paragraphs?.[0] ?? '';
     const clean = text.replace(/\$[^$]+\$/g, '\u2026').replace(/<[^>]+>/g, '');
-    return clean.length > 120 ? clean.slice(0, 120) + '\u2026' : clean;
+    const preview = clean.length > 100 ? clean.slice(0, 100) + '\u2026' : clean;
+
+    const parts: string[] = [];
+    if (preview) parts.push(preview);
+    if (section.summary) parts.push(section.summary);
+
+    return parts.join(' · ');
 }
 
 // ── Mobile floating TOC ─────────────────────────────────────
@@ -84,9 +91,9 @@ function handleRefClick(e: MouseEvent) {
     const refKey = target.dataset.ref;
     if (!refKey) return;
     const info = labelMap[refKey];
-    if (info?.sectionId) {
-        scrollToSection(info.sectionId);
-    }
+    if (!info) return;
+    // Use elementId for precise targeting (theorem/figure), fall back to sectionId
+    scrollToSection(info.elementId ?? info.sectionId);
 }
 
 onMounted(() => {
@@ -153,17 +160,18 @@ watch(activeTopId, () => {
                         <p class="sidebar-label cm-serif">Contents</p>
                         <ol class="sidebar-list">
                             <li v-for="(section, si) in sections" :key="section.id">
-                                <button
-                                    :data-toc-id="section.id"
-                                    @click="scrollToSection(section.id)"
-                                    class="sidebar-link cm-serif"
-                                    :class="{ 'is-active': activeTopId === section.id }"
-                                    :style="activeTopId === section.id ? { color: `var(--section-color-${si})` } : {}"
-                                    :title="getPreview(section)"
-                                >
-                                    <span class="sidebar-number fira-code">{{ section.number }}.</span>
-                                    <span v-html="renderTitle(section.title)" />
-                                </button>
+                                <Tooltip :text="getPreview(section)" side="right">
+                                    <button
+                                        :data-toc-id="section.id"
+                                        @click="scrollToSection(section.id)"
+                                        class="sidebar-link cm-serif"
+                                        :class="{ 'is-active': activeTopId === section.id }"
+                                        :style="activeTopId === section.id ? { color: `var(--section-color-${si})` } : {}"
+                                    >
+                                        <span class="sidebar-number fira-code">{{ section.number }}.</span>
+                                        <span v-html="renderTitle(section.title)" />
+                                    </button>
+                                </Tooltip>
                                 <!-- Subsections (animated expand) -->
                                 <div
                                     v-if="section.subsections"
@@ -172,23 +180,24 @@ watch(activeTopId, () => {
                                 >
                                     <ol class="sidebar-sublist">
                                         <li v-for="sub in section.subsections" :key="sub.id">
-                                            <button
-                                                :data-toc-id="sub.id"
-                                                @click="scrollToSection(sub.id)"
-                                                class="sidebar-link sidebar-sublink cm-serif"
-                                                :class="{ 'is-active-sub': isActive(sub.id, activeId) || isInActiveChain(sub.id, activeId) }"
-                                                :style="isActive(sub.id, activeId)
-                                                    ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
-                                                    : isInActiveChain(sub.id, activeId)
-                                                        ? { color: `color-mix(in srgb, var(--section-color-${si}) 70%, hsl(var(--muted-foreground)))` }
-                                                        : activeTopId === section.id
-                                                            ? { color: `color-mix(in srgb, var(--section-color-${si}) 50%, hsl(var(--muted-foreground)))` }
-                                                            : {}"
-                                                :title="getPreview(sub)"
-                                            >
-                                                <span class="sidebar-number fira-code">{{ sub.number }}.</span>
-                                                <span v-html="renderTitle(sub.title)" />
-                                            </button>
+                                            <Tooltip :text="getPreview(sub)" side="right">
+                                                <button
+                                                    :data-toc-id="sub.id"
+                                                    @click="scrollToSection(sub.id)"
+                                                    class="sidebar-link sidebar-sublink cm-serif"
+                                                    :class="{ 'is-active-sub': isActive(sub.id, activeId) || isInActiveChain(sub.id, activeId) }"
+                                                    :style="isActive(sub.id, activeId)
+                                                        ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
+                                                        : isInActiveChain(sub.id, activeId)
+                                                            ? { color: `color-mix(in srgb, var(--section-color-${si}) 70%, hsl(var(--muted-foreground)))` }
+                                                            : activeTopId === section.id
+                                                                ? { color: `color-mix(in srgb, var(--section-color-${si}) 50%, hsl(var(--muted-foreground)))` }
+                                                                : {}"
+                                                >
+                                                    <span class="sidebar-number fira-code">{{ sub.number }}.</span>
+                                                    <span v-html="renderTitle(sub.title)" />
+                                                </button>
+                                            </Tooltip>
                                             <!-- Sub-subsections -->
                                             <ol v-if="sub.subsections && isInActiveChain(sub.id, activeId)" class="sidebar-subsublist">
                                                 <li v-for="subsub in sub.subsections" :key="subsub.id">
@@ -252,6 +261,8 @@ watch(activeTopId, () => {
                     >
                         <span class="text-muted-foreground/50 text-sm cm-serif">Loading…</span>
                     </div>
+                    <!-- Bottom spacer so the last section can scroll fully into view -->
+                    <div v-else class="last-section-spacer" />
                 </article>
             </div>
         </div>
@@ -425,6 +436,10 @@ watch(activeTopId, () => {
     display: flex;
     justify-content: center;
     padding: 2rem 0;
+}
+
+.last-section-spacer {
+    height: 50vh;
 }
 
 /* ── Mobile floating TOC bar ───────────────────────────────── */

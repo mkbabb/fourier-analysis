@@ -4,6 +4,8 @@ import { useKatex } from "@/composables/useKatex";
 defineProps<{
     type: "theorem" | "definition" | "lemma" | "proposition" | "corollary" | "aside" | "example";
     name?: string;
+    number?: string;
+    label?: string;
 }>();
 
 const { renderInline } = useKatex();
@@ -37,7 +39,8 @@ function renderName(text: string): string {
 
 <template>
     <div
-        class="theorem-block my-4 rounded-lg border-l-[3px] bg-card paper-texture px-5 py-3 transition-all duration-300"
+        :id="label ? label.replace(/:/g, '-') : undefined"
+        class="theorem-block my-4 rounded-lg border-l-[3px] bg-card paper-texture px-5 py-3 transition-all duration-300 scroll-mt-24"
         :class="accentColors[type]"
     >
         <p class="theorem-label mb-1 cm-serif"
@@ -47,7 +50,9 @@ function renderName(text: string): string {
                'text-muted-foreground': type === 'lemma' || type === 'aside',
            }"
         >
-            <span class="font-bold" style="font-variant: small-caps;">{{ labels[type] }}</span><template v-if="name"> — <em class="font-normal" v-html="renderName(name)" /></template>
+            <span class="font-bold" style="font-variant: small-caps;">{{ labels[type] }}</span>
+            <span v-if="number" class="theorem-number fira-code">&nbsp;{{ number }}</span>
+            <template v-if="name"> — <em class="font-normal" v-html="renderName(name)" /></template>
         </p>
         <div class="theorem-body text-[0.938rem] leading-[1.75] text-foreground/90"
              :class="{ 'italic': type === 'theorem' || type === 'lemma' || type === 'proposition' || type === 'corollary' }"
@@ -95,6 +100,11 @@ function renderName(text: string): string {
 
 .theorem-block:hover::before {
     opacity: 0.8;
+}
+
+.theorem-number {
+    font-size: 0.85em;
+    opacity: 0.7;
 }
 
 /* Tighter spacing for math blocks within theorems */
