@@ -78,6 +78,13 @@ const nPoints = ref(store.session?.parameters?.n_points ?? 1024);
     });
 }
 
+// Reset harmonics to 1 on new image upload to avoid flash from high N
+watch(() => store.hasImage, (has, prevHas) => {
+    if (has && !prevHas) {
+        nHarmonics.value = 1;
+    }
+});
+
 const hasData = () => store.epicycleData || store.basesData;
 const hasEpicycles = () => activeBases.value.includes("fourier-epicycles");
 
@@ -189,16 +196,17 @@ function dismissError() {
                     </div>
                 </div>
 
-                <!-- Right panel: Canvas + transport -->
+                <!-- Right panel: Canvas with overlaid controls -->
                 <div class="viz-panel-right" :class="{ 'mobile-hidden': mobileView !== 'canvas' }">
                     <BasisCanvas ref="canvasComponent" :active-bases="activeBases" />
-                    <AnimationControls
-                        v-if="hasData()"
-                        :active-bases="activeBases"
-                        :show-ghost="showGhost"
-                        @export-frame="handleExportFrame"
-                        @toggle-ghost="showGhost = !showGhost"
-                    />
+                    <div v-if="hasData()" class="controls-overlay">
+                        <AnimationControls
+                            :active-bases="activeBases"
+                            :show-ghost="showGhost"
+                            @export-frame="handleExportFrame"
+                            @toggle-ghost="showGhost = !showGhost"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
@@ -318,7 +326,19 @@ function dismissError() {
     min-width: 0;
     overflow: hidden;
     flex: 1;
+    position: relative;
 }
+
+/* Controls overlaid at bottom of canvas */
+.controls-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    transition: opacity 0.2s ease;
+}
+
 
 
 /* ── Mobile tab bar ── */
