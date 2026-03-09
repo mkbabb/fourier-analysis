@@ -31,6 +31,10 @@ from fourier_analysis.figures import (
     f19_epicycle_convergence,
     f20_contour_pipeline,
     f21_epicycle_portraits,
+    f22_svd_ellipsoid,
+    f23_pca_ellipse,
+    f24_runge_phenomenon,
+    f25_hermite_eigenfunctions,
 )
 
 GENERATORS = [
@@ -55,6 +59,10 @@ GENERATORS = [
     ("F19", f19_epicycle_convergence),
     ("F20", f20_contour_pipeline),
     ("F21", f21_epicycle_portraits),
+    ("F22", f22_svd_ellipsoid),
+    ("F23", f23_pca_ellipse),
+    ("F24", f24_runge_phenomenon),
+    ("F25", f25_hermite_eigenfunctions),
 ]
 
 
