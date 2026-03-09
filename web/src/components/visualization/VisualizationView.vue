@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useSessionStore } from "@/stores/session";
 import { useImageUpload } from "./composables/useImageUpload";
-import { Upload, AlertTriangle, X } from "lucide-vue-next";
+import { Upload, AlertTriangle, X, Maximize2 } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
 import ImageUpload from "./ImageUpload.vue";
 import ContourSettings from "./ContourSettings.vue";
@@ -12,6 +12,7 @@ import BasisSelector from "./BasisSelector.vue";
 import AnimationControls from "./AnimationControls.vue";
 import CoefficientsPanel from "./CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
+import FullscreenViewer from "./FullscreenViewer.vue";
 import BouncyToggle from "@/components/ui/BouncyToggle.vue";
 
 const route = useRoute();
@@ -34,6 +35,7 @@ const mobileView = ref<"controls" | "canvas">("canvas");
 
 // Export modal
 const showExport = ref(false);
+const showFullscreen = ref(false);
 
 function handleExportFrame() {
     showExport.value = true;
@@ -197,6 +199,13 @@ function dismissError() {
                 <!-- Right panel: Canvas with overlaid controls -->
                 <div class="viz-panel-right" :class="{ 'mobile-hidden': mobileView !== 'canvas' }">
                     <BasisCanvas ref="canvasComponent" :active-bases="activeBases" />
+                    <Transition name="expand-pop" appear>
+                        <Tooltip v-if="hasData" text="Fullscreen" side="left">
+                            <button class="expand-btn" @click="showFullscreen = true">
+                                <Maximize2 class="h-4 w-4" />
+                            </button>
+                        </Tooltip>
+                    </Transition>
                     <div v-if="hasData" class="controls-overlay">
                         <AnimationControls
                             :active-bases="activeBases"
@@ -215,6 +224,15 @@ function dismissError() {
             :has-epicycles="hasEpicycles"
             @export="doExport"
             @close="showExport = false"
+        />
+
+        <!-- Fullscreen viewer -->
+        <FullscreenViewer
+            :visible="showFullscreen"
+            :active-bases="activeBases"
+            :show-ghost="showGhost"
+            @close="showFullscreen = false"
+            @toggle-ghost="showGhost = !showGhost"
         />
     </div>
 </template>
@@ -325,6 +343,54 @@ function dismissError() {
     overflow: hidden;
     flex: 1;
     position: relative;
+}
+
+/* Expand button — top-right of canvas */
+.expand-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    border: 1.5px solid hsl(var(--foreground) / 0.1);
+    background: hsl(var(--background) / 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.expand-btn:hover {
+    background: hsl(var(--background) / 0.85);
+    border-color: hsl(var(--foreground) / 0.2);
+    color: hsl(var(--foreground));
+    transform: scale(1.08);
+}
+
+.expand-btn:active {
+    transform: scale(0.95);
+}
+
+/* Expand button enter animation */
+.expand-pop-enter-active {
+    transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.expand-pop-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.expand-pop-enter-from {
+    opacity: 0;
+    transform: scale(0.3);
+}
+.expand-pop-leave-to {
+    opacity: 0;
+    transform: scale(0.3);
 }
 
 /* Controls overlaid at bottom of canvas — floats over grid */
