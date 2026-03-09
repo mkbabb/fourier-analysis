@@ -40,7 +40,7 @@ def setup_style() -> None:
     mpl.rcParams.update(
         {
             "text.usetex": True,
-            "text.latex.preamble": r"\usepackage{amsfonts}\usepackage{amssymb}",
+            "text.latex.preamble": r"\usepackage{amsfonts}\usepackage{amssymb}\usepackage{amsmath}",
             "font.family": "serif",
             "font.serif": ["Computer Modern Roman"],
             "font.size": 11,
