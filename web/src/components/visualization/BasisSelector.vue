@@ -112,7 +112,15 @@ function toggleBasis(key: string) {
                 <div>
                     <label class="mb-1.5 flex items-center justify-between text-sm font-medium text-muted-foreground">
                         <span>Harmonics (N)</span>
-                        <span class="fira-code text-foreground">{{ nHarmonics }}</span>
+                        <input
+                            type="number"
+                            class="inline-number fira-code"
+                            :value="nHarmonics"
+                            min="1"
+                            max="500"
+                            step="1"
+                            @input="emit('update:nHarmonics', Math.max(1, Math.min(500, parseInt(($event.target as HTMLInputElement).value) || 1)))"
+                        />
                     </label>
                     <input
                         :value="nHarmonics"
@@ -130,7 +138,15 @@ function toggleBasis(key: string) {
                 <div>
                     <label class="mb-1.5 flex items-center justify-between text-sm font-medium text-muted-foreground">
                         <span>Sample Points</span>
-                        <span class="fira-code text-foreground">{{ nPoints }}</span>
+                        <input
+                            type="number"
+                            class="inline-number fira-code"
+                            :value="nPoints"
+                            min="128"
+                            max="4096"
+                            step="128"
+                            @input="emit('update:nPoints', Math.max(128, Math.min(4096, parseInt(($event.target as HTMLInputElement).value) || 128)))"
+                        />
                     </label>
                     <input
                         :value="nPoints"
@@ -149,6 +165,28 @@ function toggleBasis(key: string) {
 </template>
 
 <style scoped>
+.inline-number {
+    width: 3.5rem;
+    text-align: right;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: hsl(var(--foreground));
+    font-size: inherit;
+    padding: 0;
+    outline: none;
+    -moz-appearance: textfield;
+    transition: border-color 0.15s;
+}
+.inline-number:hover,
+.inline-number:focus {
+    border-bottom-color: hsl(var(--foreground) / 0.3);
+}
+.inline-number::-webkit-inner-spin-button,
+.inline-number::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
 
 .basis-icon {
     display: inline-flex;

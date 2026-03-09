@@ -321,6 +321,8 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false });
     opacity: 0;
     transition: opacity 0.2s ease;
     z-index: 30;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 /* Show caret on hover or when scrubbing */

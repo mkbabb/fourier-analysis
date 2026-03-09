@@ -109,7 +109,7 @@ async function copyShareUrl() {
                 <Transition name="share-pop">
                     <Tooltip
                         v-if="activeTab === '/visualize' && sessionStore.slug && sessionStore.hasImage"
-                        :text="copied ? 'Copied!' : 'Share'"
+                        :text="copied ? 'Copied!' : `Copy share link (${sessionStore.slug})`"
                     >
                         <button class="share-btn" @click="copyShareUrl">
                             <Transition name="icon-swap" mode="out-in">
