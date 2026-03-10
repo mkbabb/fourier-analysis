@@ -225,10 +225,10 @@ def extract_contours(
         strategy = ContourStrategy.THRESHOLD
         # Default area filter for AUTO to suppress background noise
         if min_contour_area == 0.0:
-            min_contour_area = 0.01
+            min_contour_area = 0.005
         # Mild smoothing to reduce jaggedness from fur/texture edges
         if smooth_contours == 0.0:
-            smooth_contours = 0.1
+            smooth_contours = 0.05
 
     # AUTO + alpha channel: use the alpha mask directly — it's far more
     # reliable than any luminance-based threshold for transparent PNGs.
@@ -246,7 +246,7 @@ def extract_contours(
             # Dark-foreground (arr < thresh) works for portraits/silhouettes;
             # light-foreground (arr > thresh) catches bright subjects on
             # medium backgrounds (e.g. white llama on grass).
-            morph_r = max(1, int(0.015 * max(arr.shape)))  # ~8 for 512px
+            morph_r = max(1, int(0.008 * max(arr.shape)))  # ~4 for 512px
             min_obj_size = max(500, int(0.002 * arr.shape[0] * arr.shape[1]))
             raw_contours = []
             for binary in [arr < thresh, arr > thresh]:
@@ -309,7 +309,7 @@ def extract_contours(
         if is_auto:
             perimeter = np.sum(np.abs(np.diff(z)))
             compactness = 4 * np.pi * area / max(perimeter**2, 1.0)
-            if compactness < 0.08:
+            if compactness < 0.04:
                 continue
 
         # Savitzky-Golay smoothing
