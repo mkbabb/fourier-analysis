@@ -67,12 +67,26 @@ const {
 const TELEPORT_THRESHOLD = 1200;
 const SCROLL_OFFSET = 16;
 
+function ensureTargetLoaded(id: string) {
+    const entry = treeIndex.get(id);
+    if (entry) {
+        // Load up to target's root section + 1 buffer
+        const needed = entry.rootIndex + 2;
+        visibleCount.value = Math.max(
+            visibleCount.value,
+            Math.min(needed, paperSections.length),
+        );
+    } else {
+        visibleCount.value = paperSections.length;
+    }
+}
+
 function scrollTo(id: string) {
     const scroller = scrollContainer.value;
     if (!scroller) { rawScrollTo(id); return; }
 
-    // Ensure all sections are rendered (mirrors rawScrollTo behavior)
-    visibleCount.value = paperSections.length;
+    // Load only up to the target section instead of all content
+    ensureTargetLoaded(id);
 
     // Wait for the element to appear, then decide smooth vs teleport
     let attempts = 0;

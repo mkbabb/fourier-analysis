@@ -134,14 +134,11 @@ function selectSection(id: string) {
     border-bottom: 1px solid hsl(var(--border));
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     max-height: 60vh;
-    overflow-y: visible;
-    padding: 0.5rem;
-}
-
-.floating-toc-dropdown.is-scrollable {
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding: 0.5rem;
 }
 
 .floating-toc-item {
