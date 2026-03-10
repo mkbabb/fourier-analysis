@@ -11,13 +11,13 @@ from pydantic import BaseModel, Field, field_validator
 class ContourSettings(BaseModel):
     strategy: str = "auto"
     resize: int = 512
-    blur_sigma: float = 1.0
+    blur_sigma: float = 2.0
     n_harmonics: int = 50
     n_points: int = 1024
     n_classes: int = 3
     min_contour_length: int = 40
     min_contour_area: float = 0.01
-    max_contours: int | None = 10
+    max_contours: int | None = 5
     smooth_contours: float = 0.1
 
     @field_validator("blur_sigma", mode="before")

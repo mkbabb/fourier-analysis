@@ -63,29 +63,6 @@ class ContourStrategy(Enum):
     AUTO = "auto"
 
 
-def _bimodality_coefficient(data: NDArray[np.floating]) -> float:
-    """Compute the bimodality coefficient of a 1-D distribution.
-
-    BC = (skewness^2 + 1) / kurtosis, where kurtosis here is the
-    *excess* kurtosis + 3 (i.e., the regular kurtosis). A value > 0.555
-    suggests bimodality---meaning Otsu thresholding is likely to produce
-    a clean split.
-    """
-    n = len(data)
-    if n < 4:
-        return 0.0
-    mean = np.mean(data)
-    centered = data - mean
-    m2 = np.mean(centered**2)
-    if m2 < 1e-12:
-        return 0.0
-    m3 = np.mean(centered**3)
-    m4 = np.mean(centered**4)
-    skew = m3 / (m2**1.5)
-    kurt = m4 / (m2**2)  # regular (not excess) kurtosis
-    return float((skew**2 + 1) / kurt)
-
-
 def _find_contours_padded(
     binary: NDArray[np.bool_],
     pad: int = 1,
@@ -111,13 +88,13 @@ def extract_contours(
     strategy: ContourStrategy | str = ContourStrategy.AUTO,
     resize: int | None = 512,
     min_contour_length: int = 40,
-    blur_sigma: float = 1.0,
+    blur_sigma: float = 2.0,
     canny_sigma: float = 2.0,
     closing_radius: int = 3,
     n_classes: int = 3,
-    min_contour_area: float = 0.0,
-    max_contours: int | None = None,
-    smooth_contours: float = 0.0,
+    min_contour_area: float = 0.01,
+    max_contours: int | None = 5,
+    smooth_contours: float = 0.1,
 ) -> list[NDArray[np.complex128]]:
     """Extract edge contours from an image as complex paths.
 
@@ -254,8 +231,8 @@ def extract_contours(
         regions = np.digitize(arr, bins=thresholds)
         raw_contours = []
         for level in range(len(thresholds)):
-            binary_level = (regions > level).astype(float)
-            raw_contours.extend(measure.find_contours(binary_level, level=0.5))
+            binary_level = regions > level
+            raw_contours.extend(_find_contours_padded(binary_level))
     elif strategy == ContourStrategy.THRESHOLD:
         thresh = filters.threshold_otsu(arr)
         binary = arr < thresh  # foreground = dark pixels (portraits)
@@ -311,7 +288,13 @@ def extract_contours(
     if max_contours is not None and max_contours > 0:
         candidates = candidates[:max_contours]
 
-    return [z for z, _ in candidates]
+    # Ensure each contour is closed (first point == last point) for clean FFT
+    result = []
+    for z, _ in candidates:
+        if len(z) > 1 and abs(z[0] - z[-1]) > 1e-10:
+            z = np.append(z, z[0])
+        result.append(z)
+    return result
 
 
 def resample_arc_length(
