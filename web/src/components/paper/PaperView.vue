@@ -57,6 +57,7 @@ const {
     activeId,
     activeRootId,
     scrollTo: rawScrollTo,
+    forceRecalculate,
 } = usePaperReader({
     context: paperContext,
     scrollContainer,
@@ -103,36 +104,37 @@ function performScroll(id: string) {
 
         const scrollerRect = s.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
-        const distance = Math.abs(elRect.top - scrollerRect.top);
         const offset = getScrollOffset();
+        const absoluteTop = elRect.top - scrollerRect.top + s.scrollTop;
+        const distance = Math.abs(absoluteTop - s.scrollTop);
 
         if (distance < TELEPORT_THRESHOLD) {
-            const absoluteTop = elRect.top - scrollerRect.top + s.scrollTop;
             s.scrollTo({ top: Math.max(0, absoluteTop - offset), behavior: "smooth" });
             return;
         }
 
-        // Far — fade out, teleport, fade in
-        s.style.transition = "opacity 0.15s ease-out";
-        s.style.opacity = "0";
+        // Far — fast fade out, teleport, fade in
+        s.classList.add("teleport-out");
 
-        setTimeout(() => {
+        // One rAF to ensure the opacity transition starts, then jump
+        requestAnimationFrame(() => requestAnimationFrame(() => {
             const sc = scrollContainer.value;
             if (!sc) return;
+            // Recompute position (layout may have shifted)
             const freshRect = el.getBoundingClientRect();
             const off = getScrollOffset();
-            const absoluteTop = freshRect.top - sc.getBoundingClientRect().top + sc.scrollTop;
-            sc.scrollTo({ top: Math.max(0, absoluteTop - off), behavior: "instant" });
+            const top = freshRect.top - sc.getBoundingClientRect().top + sc.scrollTop;
+            sc.scrollTo({ top: Math.max(0, top - off), behavior: "instant" });
 
-            requestAnimationFrame(() => {
-                sc.style.transition = "opacity 0.25s ease-in";
-                sc.style.opacity = "1";
-                setTimeout(() => {
-                    sc.style.transition = "";
-                    sc.style.opacity = "";
-                }, 300);
-            });
-        }, 150);
+            // Clear stale tracking state and recalculate from new position
+            forceRecalculate();
+
+            sc.classList.remove("teleport-out");
+            sc.classList.add("teleport-in");
+            sc.addEventListener("transitionend", () => {
+                sc.classList.remove("teleport-in");
+            }, { once: true });
+        }));
     }
 
     nextTick(() => requestAnimationFrame(tryNavigate));
@@ -166,16 +168,16 @@ function scrollToTop() {
     const s = scrollContainer.value;
     if (!s) return;
     if (s.scrollTop > TELEPORT_THRESHOLD) {
-        s.style.transition = "opacity 0.15s ease-out";
-        s.style.opacity = "0";
-        setTimeout(() => {
+        s.classList.add("teleport-out");
+        requestAnimationFrame(() => requestAnimationFrame(() => {
             s.scrollTo({ top: 0, behavior: "instant" });
-            requestAnimationFrame(() => {
-                s.style.transition = "opacity 0.25s ease-in";
-                s.style.opacity = "1";
-                setTimeout(() => { s.style.transition = ""; s.style.opacity = ""; }, 300);
-            });
-        }, 150);
+            forceRecalculate();
+            s.classList.remove("teleport-out");
+            s.classList.add("teleport-in");
+            s.addEventListener("transitionend", () => {
+                s.classList.remove("teleport-in");
+            }, { once: true });
+        }));
     } else {
         s.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -355,8 +357,12 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- Bottom overlay: back button + page indicator (outside scroll container for iOS) -->
+        <!-- Bottom overlay: page indicator (left) + back button (right) -->
         <div class="paper-bottom-overlay">
+            <div class="overlay-page fira-code">
+                pg {{ currentPage }}<span class="overlay-page-sep">/</span>{{ totalPages }}
+            </div>
+
             <Transition name="fade-scale">
                 <button
                     v-if="navStack.length > 0"
@@ -364,14 +370,10 @@ onUnmounted(() => {
                     @click="navigateBack"
                     :title="`Back (${navStack.length} in history)`"
                 >
-                    <Undo2 class="h-4 w-4" />
+                    <Undo2 class="h-3.5 w-3.5" />
                     <span v-if="navStack.length > 1" class="overlay-badge">{{ navStack.length }}</span>
                 </button>
             </Transition>
-
-            <div class="overlay-page fira-code">
-                pg {{ currentPage }}<span class="overlay-page-sep">/</span>{{ totalPages }}
-            </div>
         </div>
     </div>
 </template>
@@ -391,6 +393,16 @@ onUnmounted(() => {
     overflow-y: auto;
     overflow-x: hidden;
     max-width: 100vw;
+}
+
+.paper-scroll.teleport-out {
+    opacity: 0;
+    transition: opacity 60ms ease-out;
+}
+
+.paper-scroll.teleport-in {
+    opacity: 1;
+    transition: opacity 100ms ease-in;
 }
 
 .paper-article {
@@ -459,8 +471,8 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     position: relative;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2rem;
+    height: 2rem;
     border-radius: 50%;
     border: 1.5px solid hsl(var(--border));
     background: hsl(var(--background) / 0.92);

@@ -25,15 +25,15 @@ defineExpose({ sidebarNav });
 <template>
     <aside class="paper-sidebar">
         <nav ref="sidebarNav" class="sidebar-nav scrollbar-thin">
+            <button
+                class="sidebar-top-btn"
+                @click="scrollToTop"
+                title="Scroll to top"
+            >
+                <ChevronUp class="h-3 w-3" />
+            </button>
             <div class="sidebar-header">
                 <p class="sidebar-label cm-serif">Contents</p>
-                <button
-                    class="sidebar-top-btn"
-                    @click="scrollToTop"
-                    title="Scroll to top"
-                >
-                    <ChevronUp class="h-3 w-3" />
-                </button>
             </div>
             <ol class="sidebar-list">
                 <li v-for="(section, si) in sections" :key="section.id">
@@ -141,6 +141,10 @@ defineExpose({ sidebarNav });
 }
 
 .sidebar-top-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -148,7 +152,7 @@ defineExpose({ sidebarNav });
     height: 1.375rem;
     border-radius: 0.25rem;
     border: 1px solid hsl(var(--border) / 0.5);
-    background: none;
+    background: hsl(var(--card));
     color: hsl(var(--muted-foreground) / 0.5);
     cursor: pointer;
     transition: all 0.15s ease;
