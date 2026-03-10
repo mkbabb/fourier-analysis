@@ -11,7 +11,7 @@ import {
     SelectItem,
     SelectTrigger,
 } from "@/components/ui/select";
-import { Wand2, ChevronRight } from "lucide-vue-next";
+import { Wand2, ChevronRight, RotateCcw } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from "reka-ui";
 import SliderControl from "@/components/ui/SliderControl.vue";
@@ -52,6 +52,30 @@ const strategyDescriptions: Record<string, string> = {
 };
 
 const strategyLabel = computed(() => strategyLabels[strategy.value] ?? strategy.value);
+
+const DEFAULTS = {
+    strategy: "auto",
+    blurSigma: 1.0,
+    minContourArea: 0,
+    maxContours: 0,
+    smoothContours: 0.1,
+} as const;
+
+const isDefault = computed(() =>
+    strategy.value === DEFAULTS.strategy
+    && blurSigma.value === DEFAULTS.blurSigma
+    && minContourArea.value === DEFAULTS.minContourArea
+    && maxContours.value === DEFAULTS.maxContours
+    && smoothContours.value === DEFAULTS.smoothContours,
+);
+
+function resetDefaults() {
+    strategy.value = DEFAULTS.strategy;
+    blurSigma.value = DEFAULTS.blurSigma;
+    minContourArea.value = DEFAULTS.minContourArea;
+    maxContours.value = DEFAULTS.maxContours;
+    smoothContours.value = DEFAULTS.smoothContours;
+}
 
 async function runCompute() {
     if (!store.hasImage || computing.value) return;
@@ -194,6 +218,12 @@ onMounted(() => {
                     </CollapsibleContent>
                 </CollapsibleRoot>
 
+                <Transition name="fade">
+                    <button v-if="!isDefault" class="reset-btn" @click="resetDefaults">
+                        <RotateCcw class="h-3 w-3" />
+                        Reset
+                    </button>
+                </Transition>
             </div>
         </Collapsible>
 
@@ -257,5 +287,34 @@ onMounted(() => {
 }
 .advanced-grid > :last-child:nth-child(odd) {
     grid-column: 1 / -1;
+}
+
+.reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1.5px solid hsl(var(--foreground) / 0.12);
+    background: none;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.reset-btn:hover {
+    border-color: hsl(var(--foreground) / 0.25);
+    color: hsl(var(--foreground));
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>

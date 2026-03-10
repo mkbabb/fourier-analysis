@@ -4,6 +4,7 @@ import { Collapsible } from "@/components/ui/collapsible";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
+import { RotateCcw } from "lucide-vue-next";
 
 const fourierModes = ["fourier-epicycles", "fourier-series"] as const;
 
@@ -56,6 +57,26 @@ const basisTooltips: Record<string, string> = {
 
 function getBasisTooltip(key: string): string {
     return basisTooltips[key] ?? key;
+}
+
+const DEFAULTS = {
+    activeBases: ["fourier-epicycles"],
+    nHarmonics: 50,
+    nPoints: 1024,
+} as const;
+
+const isDefault = computed(() =>
+    (props.nHarmonics ?? 50) === DEFAULTS.nHarmonics
+    && (props.nPoints ?? 1024) === DEFAULTS.nPoints
+    && selected.value.length === 1
+    && selected.value[0] === "fourier-epicycles",
+);
+
+function resetDefaults() {
+    selected.value = [...DEFAULTS.activeBases];
+    emit("update:activeBases", [...DEFAULTS.activeBases]);
+    emit("update:nHarmonics", DEFAULTS.nHarmonics);
+    emit("update:nPoints", DEFAULTS.nPoints);
 }
 
 function toggleBasis(key: string) {
@@ -159,6 +180,12 @@ function toggleBasis(key: string) {
                         :style="{ '--progress': pointsProgress + '%', '--slider-color': VIZ_COLORS.chebyshev }"
                     />
                 </div>
+                <Transition name="fade">
+                    <button v-if="!isDefault" class="reset-btn" @click="resetDefaults">
+                        <RotateCcw class="h-3 w-3" />
+                        Reset
+                    </button>
+                </Transition>
             </div>
         </Collapsible>
     </div>
@@ -191,7 +218,7 @@ function toggleBasis(key: string) {
 .basis-icon {
     display: inline-flex;
     align-items: center;
-    font-size: 1.5em;
+    font-size: 3em;
     line-height: 1;
     min-width: 1.2em;
     justify-content: center;
@@ -219,5 +246,34 @@ function toggleBasis(key: string) {
     background: color-mix(in srgb, var(--pill-color) 12%, transparent);
     border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);
     color: var(--pill-color);
+}
+
+.reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1.5px solid hsl(var(--foreground) / 0.12);
+    background: none;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.reset-btn:hover {
+    border-color: hsl(var(--foreground) / 0.25);
+    color: hsl(var(--foreground));
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>
