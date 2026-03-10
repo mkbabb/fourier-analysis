@@ -46,10 +46,10 @@ export function drawBasisLabels(
         const labelW = ctx.measureText(` ${modeLabel}`).width;
         ctx.fillText(` ${modeLabel}`, width - 48, yOff);
 
-        // Draw icon — fourier ℱ is larger
+        // Draw icon — fourier ℱ is slightly larger
         const isFourier = basisName === "fourier";
-        const iconSize = isFourier ? 44 : 22;
-        const iconYAdj = isFourier ? 14 : 2;
+        const iconSize = isFourier ? 30 : 22;
+        const iconYAdj = isFourier ? 8 : 2;
         ctx.font = `bold ${iconSize}px 'Computer Modern Serif', Georgia, serif`;
         const iconW = ctx.measureText(cfg.icon).width;
         ctx.fillText(cfg.icon, width - 48 - labelW, yOff - iconYAdj);
@@ -57,11 +57,11 @@ export function drawBasisLabels(
         ctx.shadowColor = "transparent";
         ctx.shadowBlur = 0;
 
-        // Store hit region
+        // Store hit region — uniform row height for all bases
         const totalW = iconW + labelW;
-        const rowH = isFourier ? 46 : 26;
+        const rowH = 26;
         hitRegions.push({ key: basisKey, x: width - 48 - totalW, y: yOff - iconYAdj, w: totalW + 8, h: rowH });
-        yOff += isFourier ? 44 : 24;
+        yOff += 26;
     }
 
     // N count as another legend row — same 24px row spacing as non-fourier items
