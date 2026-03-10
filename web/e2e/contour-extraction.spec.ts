@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
-import path from "path";
-import fs from "fs";
+import * as path from "node:path";
+import * as fs from "node:fs";
 
-const ANIMALS_DIR = path.resolve(__dirname, "../../assets/animals");
+const ANIMALS_DIR = path.resolve(import.meta.dirname, "../../assets/animals");
 
 const animalImages = fs.readdirSync(ANIMALS_DIR).filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f));
 

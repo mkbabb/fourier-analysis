@@ -79,11 +79,10 @@ if (!store.session) {
     }, { once: true });
 }
 
-// Reset harmonics to 1 on new image upload to avoid flash from high N
-watch(() => store.hasImage, (has, prevHas) => {
-    if (has && !prevHas) {
-        nHarmonics.value = 50;
-    }
+// Reset harmonics on new image upload (not session reload).
+// imageVersion only increments on actual uploads, not on store.load().
+watch(() => store.imageVersion, () => {
+    nHarmonics.value = 50;
 });
 
 const hasData = computed(() => store.epicycleData || store.basesData);
