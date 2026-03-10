@@ -66,14 +66,14 @@ onMounted(async () => {
 });
 
 // Shared N/points state — lifted so both ContourSettings and BasisSelector can bind
-const nHarmonics = ref(store.session?.parameters?.n_harmonics ?? 200);
+const nHarmonics = ref(store.session?.parameters?.n_harmonics ?? 50);
 const nPoints = ref(store.session?.parameters?.n_points ?? 1024);
 
 // Seed from session once it loads (e.g. after store.load())
 if (!store.session) {
     watch(() => store.session, (s) => {
         if (s?.parameters) {
-            nHarmonics.value = s.parameters.n_harmonics ?? 200;
+            nHarmonics.value = s.parameters.n_harmonics ?? 50;
             nPoints.value = s.parameters.n_points ?? 1024;
         }
     }, { once: true });
