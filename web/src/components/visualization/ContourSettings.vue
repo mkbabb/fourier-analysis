@@ -28,8 +28,8 @@ const anim = useAnimationStore();
 
 const strategy = ref(store.session?.parameters.strategy ?? "auto");
 const blurSigma = ref(store.session?.parameters.blur_sigma ?? 1.0);
-const minContourArea = ref((store.session?.parameters.min_contour_area ?? 0) * 100);
-const maxContours = ref<number>(store.session?.parameters.max_contours ?? 0);
+const minContourArea = ref((store.session?.parameters.min_contour_area ?? 0.01) * 100);
+const maxContours = ref<number>(store.session?.parameters.max_contours ?? 10);
 const smoothContours = ref(store.session?.parameters.smooth_contours ?? 0.1);
 
 const computing = computed({
@@ -56,8 +56,8 @@ const strategyLabel = computed(() => strategyLabels[strategy.value] ?? strategy.
 const DEFAULTS = {
     strategy: "auto",
     blurSigma: 1.0,
-    minContourArea: 0,
-    maxContours: 0,
+    minContourArea: 1,
+    maxContours: 10,
     smoothContours: 0.1,
 } as const;
 

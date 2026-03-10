@@ -219,7 +219,6 @@ def extract_contours(
         binary = alpha_arr > 0.5
         raw_contours = _find_contours_padded(binary)
     elif is_auto or strategy == ContourStrategy.MULTI_THRESHOLD:
-        # AUTO delegates to MULTI_THRESHOLD
         try:
             thresholds = filters.threshold_multiotsu(arr, classes=n_classes)
         except ValueError:
@@ -232,11 +231,11 @@ def extract_contours(
     elif strategy == ContourStrategy.THRESHOLD:
         thresh = filters.threshold_otsu(arr)
         binary = arr < thresh  # foreground = dark pixels (portraits)
-        raw_contours = measure.find_contours(binary.astype(float), level=0.5)
+        raw_contours = _find_contours_padded(binary)
     else:  # CANNY
         edges = feature.canny(arr, sigma=canny_sigma)
         closed = morphology.closing(edges, morphology.disk(closing_radius))
-        raw_contours = measure.find_contours(closed.astype(float), level=0.5)
+        raw_contours = _find_contours_padded(closed)
 
     # Center coordinates and convert to complex
     cy, cx = arr.shape[0] / 2, arr.shape[1] / 2
@@ -259,6 +258,9 @@ def extract_contours(
         )
 
         if area_threshold > 0 and area < area_threshold:
+            continue
+        # Discard border-hugging contours (area ≥ 90% of image area)
+        if area > 0.9 * image_area:
             continue
 
         # Savitzky-Golay smoothing
