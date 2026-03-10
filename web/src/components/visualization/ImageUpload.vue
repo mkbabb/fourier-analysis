@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useSessionStore } from "@/stores/session";
 import { useImageUpload } from "./composables/useImageUpload";
 import { imageUrl } from "@/lib/api";
@@ -8,6 +8,9 @@ import { ImagePlus, Upload, ImageOff } from "lucide-vue-next";
 const store = useSessionStore();
 const fileInput = ref<HTMLInputElement>();
 const imgError = ref(false);
+
+// Reset error state when a new image is uploaded (including via global drag)
+watch(() => store.imageVersion, () => { imgError.value = false; });
 
 const { isDragging, preview, handleDrop, handleDragOver, handleDragEnter, handleDragLeave, handleFileSelect } =
     useImageUpload(async (file: File) => {
@@ -54,7 +57,7 @@ function onImgError() {
             </div>
             <img
                 v-else
-                :src="preview || (store.slug ? imageUrl(store.slug) : '')"
+                :src="preview || (store.slug ? `${imageUrl(store.slug)}?v=${store.imageVersion}` : '')"
                 alt="Uploaded image"
                 class="w-full max-h-[200px] object-contain transition-all duration-300"
                 @error="onImgError"

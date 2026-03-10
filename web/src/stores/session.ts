@@ -22,6 +22,8 @@ export const useSessionStore = defineStore("session", () => {
 
     const slug = computed(() => session.value?.slug ?? null);
     const hasImage = computed(() => session.value?.has_image ?? false);
+    /** Bumped on each image upload to bust browser cache on the image URL. */
+    const imageVersion = ref(0);
 
     async function create() {
         loading.value = true;
@@ -86,10 +88,11 @@ export const useSessionStore = defineStore("session", () => {
             localStorage.setItem("fourier_last_slug", activeSlug);
             router.replace(`/s/${activeSlug}`);
 
-            // Clear old computation data
+            // Clear old computation data and bust image cache
             epicycleData.value = null;
             basesData.value = null;
             contourData.value = null;
+            imageVersion.value++;
         } catch (e: any) {
             error.value = e.message;
         } finally {
@@ -156,6 +159,7 @@ export const useSessionStore = defineStore("session", () => {
         loading,
         computing,
         error,
+        imageVersion,
         create,
         load,
         updateSettings,
