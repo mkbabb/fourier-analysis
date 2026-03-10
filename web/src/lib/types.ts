@@ -57,4 +57,7 @@ export interface AnimationSettings {
     fps: number;
     duration: number;
     max_circles: number;
+    easing: string;
+    speed: number;
+    active_bases: string[];
 }

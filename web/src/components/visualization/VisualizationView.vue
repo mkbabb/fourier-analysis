@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
+import { watchDebounced } from "@vueuse/core";
 import { useRoute } from "vue-router";
 import { useSessionStore } from "@/stores/session";
+import { useAnimationStore, type EasingName } from "@/stores/animation";
 import { useImageUpload } from "./composables/useImageUpload";
 import { Upload, Maximize2 } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -18,15 +20,15 @@ import BouncyToggle from "@/components/ui/BouncyToggle.vue";
 
 const route = useRoute();
 const store = useSessionStore();
+const anim = useAnimationStore();
 
 const { isDragging: globalDragging, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave } =
     useImageUpload(async (file: File) => {
         await store.uploadImage(file);
     });
 
-const savedBases = localStorage.getItem("fourier_active_bases");
 const activeBases = ref<string[]>(
-    savedBases ? JSON.parse(savedBases) : ["fourier-epicycles"],
+    store.session?.animation_settings?.active_bases ?? ["fourier-epicycles"],
 );
 
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
@@ -47,9 +49,21 @@ function doExport(options: Record<string, boolean>) {
     showExport.value = false;
 }
 
-watch(activeBases, (v) => {
-    localStorage.setItem("fourier_active_bases", JSON.stringify(v));
-}, { deep: true });
+// Persist animation settings (bases, easing, speed) to session on change
+watchDebounced(
+    () => [activeBases.value, anim.easing, anim.speed] as const,
+    () => {
+        if (!store.slug) return;
+        store.updateSettings({
+            animation_settings: {
+                active_bases: [...activeBases.value],
+                easing: anim.easing,
+                speed: anim.speed,
+            },
+        });
+    },
+    { debounce: 500, deep: true },
+);
 
 onMounted(async () => {
     const slug = route.params.slug as string | undefined;
@@ -75,6 +89,12 @@ if (!store.session) {
         if (s?.parameters) {
             nHarmonics.value = s.parameters.n_harmonics ?? 50;
             nPoints.value = s.parameters.n_points ?? 1024;
+        }
+        if (s?.animation_settings) {
+            const as = s.animation_settings;
+            if (as.active_bases?.length) activeBases.value = [...as.active_bases];
+            if (as.easing) anim.easing = as.easing as EasingName;
+            if (as.speed) anim.speed = as.speed;
         }
     }, { once: true });
 }

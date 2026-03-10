@@ -167,4 +167,78 @@ test.describe("Settings persistence across page reload", () => {
 
         await newPage.close();
     });
+
+    test("easing, speed, and active bases persist across reload", async ({ page }) => {
+        await page.goto("/visualize");
+        await page.waitForURL(/\/s\//);
+
+        const fileInput = page.locator('input[type="file"]');
+        await fileInput.setInputFiles(TEST_IMAGE);
+
+        const canvas = page.locator("canvas").first();
+        await expect(canvas).toBeVisible({ timeout: 30_000 });
+        await page.waitForTimeout(2000);
+
+        const url = page.url();
+        const slug = url.match(/\/s\/(.+)/)?.[1];
+        expect(slug).toBeTruthy();
+
+        // Open the three-dot menu (contains easing + speed on mobile, easing on desktop)
+        const menuBtn = page.locator("button.menu-btn").first();
+        await menuBtn.click();
+        await page.waitForTimeout(300);
+
+        // Change easing by clicking the "Linear" chip inside the menu
+        const linearChip = page.locator(".easing-chip-label").filter({ hasText: "Linear" }).first();
+        await linearChip.click();
+        await page.waitForTimeout(300);
+
+        // Change speed to 2x via the speed select (desktop: inline, may also be in menu)
+        const speedTrigger = page.locator('[role="combobox"]').filter({ hasText: /×/ }).first();
+        await speedTrigger.click();
+        await page.locator('[role="option"]').filter({ hasText: "2×" }).click();
+        await page.waitForTimeout(500);
+
+        // Close menu by clicking outside
+        await page.locator("canvas").first().click({ position: { x: 10, y: 10 } });
+        await page.waitForTimeout(300);
+
+        // Toggle Chebyshev basis on
+        const chebyshevPill = page.locator("button.basis-pill").filter({ hasText: "Chebyshev" });
+        await chebyshevPill.click();
+        await page.waitForTimeout(500);
+
+        // Wait for debounced save (500ms debounce + network)
+        await page.waitForTimeout(2000);
+
+        // Verify in API
+        const apiResponse = await page.evaluate(async (s) => {
+            const res = await fetch(`/api/sessions/${s}`);
+            return res.json();
+        }, slug);
+
+        expect(apiResponse.animation_settings.speed).toBe(2);
+        expect(apiResponse.animation_settings.easing).toBe("linear");
+        expect(apiResponse.animation_settings.active_bases).toContain("chebyshev");
+        expect(apiResponse.animation_settings.active_bases).toContain("fourier-epicycles");
+
+        // Reload the page
+        await page.reload();
+        await page.waitForURL(/\/s\//);
+        await expect(canvas).toBeVisible({ timeout: 30_000 });
+        await page.waitForTimeout(3000);
+
+        // Verify Chebyshev pill is active
+        const chebyshevAfter = page.locator("button.basis-pill.active").filter({ hasText: "Chebyshev" });
+        await expect(chebyshevAfter).toBeVisible();
+
+        // Verify API returns persisted values
+        const apiAfter = await page.evaluate(async (s) => {
+            const res = await fetch(`/api/sessions/${s}`);
+            return res.json();
+        }, slug);
+        expect(apiAfter.animation_settings.speed).toBe(2);
+        expect(apiAfter.animation_settings.easing).toBe("linear");
+        expect(apiAfter.animation_settings.active_bases).toContain("chebyshev");
+    });
 });

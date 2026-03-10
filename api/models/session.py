@@ -47,6 +47,9 @@ class AnimationSettings(BaseModel):
     fps: int = 30
     duration: float = 30.0
     max_circles: int = 80
+    easing: str = "sine"
+    speed: float = 1.0
+    active_bases: list[str] = ["fourier-epicycles"]
 
 
 class SessionCreate(BaseModel):
