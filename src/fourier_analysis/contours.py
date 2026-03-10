@@ -16,20 +16,18 @@ Four strategies are available:
   mid-tone structure (mechanical parts, shaded illustrations).
 - **CANNY** (Canny edges + morphological closing): best for line drawings
   and images with subtle gradients.
-- **AUTO** (default): uses Otsu thresholding with morphological cleanup
-  (close + open) to produce clean subject silhouettes. Falls back to
-  MULTI_THRESHOLD only when the thresholded result contains no
-  substantial contour. This works well for natural photographs where
-  the subject has internal texture (fur, patterns, foliage).
+- **AUTO** (default): uses MULTI_THRESHOLD, which subsumes plain
+  THRESHOLD while also capturing interior detail when it exists.
+  For images with an alpha channel (transparent PNGs), the alpha mask
+  is used directly for a clean extraction.
 
 Post-extraction filtering and smoothing:
 
 - **min_contour_area**: discard contours whose enclosed area is below a
-  fraction of the image area (removes background noise like grass, fur,
-  fences in natural photos).
+  fraction of the image area (removes background noise).
 - **max_contours**: keep only the *N* largest contours by area.
 - **smooth_contours**: apply Savitzky--Golay smoothing to contour paths
-  before resampling, reducing jaggedness from texture/fur edges.
+  before resampling, reducing jaggedness from texture edges.
 
 Arc-length resampling uses cubic interpolation for smoother output.
 
@@ -133,9 +131,8 @@ def extract_contours(
     image_path : str or Path
         Path to the input image.
     strategy : ContourStrategy or str
-        Extraction strategy. ``"auto"`` (default) uses Otsu thresholding
-        with morphological cleanup for clean subject silhouettes, falling
-        back to MULTI_THRESHOLD if no substantial contour is found.
+        Extraction strategy. ``"auto"`` (default) inspects the histogram
+        to pick THRESHOLD or MULTI_THRESHOLD automatically.
     resize : int, optional
         Resize the longest dimension to this value. ``None`` to skip.
     min_contour_length : int
@@ -153,8 +150,7 @@ def extract_contours(
         Number of intensity classes for MULTI_THRESHOLD (default 3).
     min_contour_area : float
         Minimum enclosed area as a fraction of total image area. Contours
-        smaller than this are discarded. 0 disables filtering. When AUTO
-        strategy is used and this is 0, defaults to 0.01 (1%).
+        smaller than this are discarded. 0 disables filtering.
     max_contours : int or None
         Keep only the *N* largest contours by enclosed area. ``None``
         keeps all contours that pass the area filter.
@@ -187,8 +183,6 @@ def extract_contours(
     alpha_arr: NDArray[np.float64] | None = None
     if has_alpha:
         alpha_arr = np.array(img_raw.split()[-1], dtype=np.float64) / 255.0
-        # Only use alpha if it actually separates content from background:
-        # need both transparent and opaque regions.
         opaque_frac = np.mean(alpha_arr > 0.5)
         if opaque_frac < 0.01 or opaque_frac > 0.99:
             alpha_arr = None  # degenerate — fall through to luminance
@@ -216,69 +210,33 @@ def extract_contours(
     # picks up on painted portraits (Fourier, Cauchy, etc.).
     if blur_sigma > 0:
         arr = filters.gaussian(arr, sigma=blur_sigma)
-        if alpha_arr is not None:
-            alpha_arr = filters.gaussian(alpha_arr, sigma=blur_sigma)
 
     # Strategy dispatch
     is_auto = strategy == ContourStrategy.AUTO
-    if is_auto:
-        strategy = ContourStrategy.THRESHOLD
-        # Default area filter for AUTO to suppress background noise
-        if min_contour_area == 0.0:
-            min_contour_area = 0.005
-        # Mild smoothing to reduce jaggedness from fur/texture edges
-        if smooth_contours == 0.0:
-            smooth_contours = 0.05
 
-    # AUTO + alpha channel: use the alpha mask directly — it's far more
-    # reliable than any luminance-based threshold for transparent PNGs.
+    # AUTO with alpha channel: use the alpha mask directly
     if is_auto and alpha_arr is not None:
         binary = alpha_arr > 0.5
         raw_contours = _find_contours_padded(binary)
-        # Skip the normal threshold path entirely
-        strategy = ContourStrategy.THRESHOLD  # prevent falling into blocks below
-
-    elif strategy == ContourStrategy.THRESHOLD:
-        thresh = filters.threshold_otsu(arr)
-
-        if is_auto:
-            # AUTO: try both threshold polarities with morphological cleanup.
-            # Dark-foreground (arr < thresh) works for portraits/silhouettes;
-            # light-foreground (arr > thresh) catches bright subjects on
-            # medium backgrounds (e.g. white llama on grass).
-            morph_r = max(1, int(0.008 * max(arr.shape)))  # ~4 for 512px
-            min_obj_size = max(500, int(0.002 * arr.shape[0] * arr.shape[1]))
-            raw_contours = []
-            for binary in [arr < thresh, arr > thresh]:
-                b = morphology.closing(binary, morphology.disk(morph_r))
-                b = morphology.opening(b, morphology.disk(max(1, morph_r // 3)))
-                b = morphology.remove_small_objects(b, max_size=min_obj_size)
-                raw_contours.extend(_find_contours_padded(b))
-        else:
-            binary = arr < thresh  # foreground = dark pixels (portraits)
-            raw_contours = _find_contours_padded(binary)
-
-        # AUTO fallback: if threshold produced nothing substantial, try
-        # multi-threshold which captures interior detail better.
-        if is_auto and not any(len(rc) >= min_contour_length for rc in raw_contours):
-            strategy = ContourStrategy.MULTI_THRESHOLD
-
-    if strategy == ContourStrategy.MULTI_THRESHOLD:
+    elif is_auto or strategy == ContourStrategy.MULTI_THRESHOLD:
+        # AUTO delegates to MULTI_THRESHOLD
         try:
             thresholds = filters.threshold_multiotsu(arr, classes=n_classes)
         except ValueError:
-            # Too few distinct intensity values for the requested class count;
-            # fall back to single Otsu.
             thresholds = np.array([filters.threshold_otsu(arr)])
         regions = np.digitize(arr, bins=thresholds)
         raw_contours = []
         for level in range(len(thresholds)):
-            binary_level = regions > level
-            raw_contours.extend(_find_contours_padded(binary_level))
-    elif strategy == ContourStrategy.CANNY:
+            binary_level = (regions > level).astype(float)
+            raw_contours.extend(measure.find_contours(binary_level, level=0.5))
+    elif strategy == ContourStrategy.THRESHOLD:
+        thresh = filters.threshold_otsu(arr)
+        binary = arr < thresh  # foreground = dark pixels (portraits)
+        raw_contours = measure.find_contours(binary.astype(float), level=0.5)
+    else:  # CANNY
         edges = feature.canny(arr, sigma=canny_sigma)
         closed = morphology.closing(edges, morphology.disk(closing_radius))
-        raw_contours = _find_contours_padded(closed)
+        raw_contours = measure.find_contours(closed.astype(float), level=0.5)
 
     # Center coordinates and convert to complex
     cy, cx = arr.shape[0] / 2, arr.shape[1] / 2
@@ -303,15 +261,6 @@ def extract_contours(
         if area_threshold > 0 and area < area_threshold:
             continue
 
-        # AUTO: filter wiggly zone-boundary contours by compactness
-        # (circularity = 4*pi*area / perimeter^2). Real subject outlines
-        # typically have compactness > 0.05; thin zone boundaries score < 0.03.
-        if is_auto:
-            perimeter = np.sum(np.abs(np.diff(z)))
-            compactness = 4 * np.pi * area / max(perimeter**2, 1.0)
-            if compactness < 0.04:
-                continue
-
         # Savitzky-Golay smoothing
         if smooth_contours > 0 and len(z) >= 5:
             window = int(smooth_contours * len(z))
@@ -326,68 +275,13 @@ def extract_contours(
 
         candidates.append((z, area))
 
-    # Sort by area descending
+    # Sort by area descending and apply max_contours limit
     candidates.sort(key=lambda pair: pair[1], reverse=True)
-
-    # AUTO: deduplicate overlapping contours from dual polarity.
-    # When both arr<thresh and arr>thresh produce contours covering the
-    # same region, keep only the larger one.
-    if is_auto and len(candidates) > 1:
-        candidates = _deduplicate_overlapping(candidates, iou_threshold=0.3)
-
-    # AUTO: default to single best contour — for epicycle tracing, one clean
-    # silhouette is almost always better than multiple overlapping outlines
-    # with long connecting lines between them.
-    if is_auto and max_contours is None:
-        max_contours = 1
 
     if max_contours is not None and max_contours > 0:
         candidates = candidates[:max_contours]
 
     return [z for z, _ in candidates]
-
-
-def _bbox_iou(z1: NDArray[np.complex128], z2: NDArray[np.complex128]) -> float:
-    """Compute intersection-over-union of two contours' bounding boxes."""
-    x1_min, x1_max = z1.real.min(), z1.real.max()
-    y1_min, y1_max = z1.imag.min(), z1.imag.max()
-    x2_min, x2_max = z2.real.min(), z2.real.max()
-    y2_min, y2_max = z2.imag.min(), z2.imag.max()
-
-    ix_min = max(x1_min, x2_min)
-    ix_max = min(x1_max, x2_max)
-    iy_min = max(y1_min, y2_min)
-    iy_max = min(y1_max, y2_max)
-
-    if ix_max <= ix_min or iy_max <= iy_min:
-        return 0.0
-
-    intersection = (ix_max - ix_min) * (iy_max - iy_min)
-    a1 = (x1_max - x1_min) * (y1_max - y1_min)
-    a2 = (x2_max - x2_min) * (y2_max - y2_min)
-    union = a1 + a2 - intersection
-    return intersection / max(union, 1e-12)
-
-
-def _deduplicate_overlapping(
-    candidates: list[tuple[NDArray[np.complex128], float]],
-    iou_threshold: float = 0.3,
-) -> list[tuple[NDArray[np.complex128], float]]:
-    """Remove contours whose bounding boxes overlap significantly.
-
-    Candidates must be sorted by area descending. For each pair, if bbox
-    IoU > threshold, the smaller contour is dropped (greedy NMS-style).
-    """
-    keep: list[tuple[NDArray[np.complex128], float]] = []
-    for z, area in candidates:
-        overlaps = False
-        for kept_z, _ in keep:
-            if _bbox_iou(z, kept_z) > iou_threshold:
-                overlaps = True
-                break
-        if not overlaps:
-            keep.append((z, area))
-    return keep
 
 
 def resample_arc_length(
