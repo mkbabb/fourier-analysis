@@ -87,6 +87,8 @@ const shortError = computed(() => {
 async function runCompute() {
     if (!store.hasImage) return;
 
+    const hadData = !!(store.epicycleData || store.basesData);
+
     computing.value = true;
     store.error = null;
 
@@ -119,8 +121,15 @@ async function runCompute() {
         computing.value = false;
         const anyOk = results.some((r) => r.status === "fulfilled");
         if (anyOk && (store.epicycleData || store.basesData)) {
-            anim.reset();
-            anim.play();
+            if (hadData) {
+                // Mid-animation recompute: keep current t, just ensure playing.
+                // Canvas redraws at current position with new data automatically.
+                if (!anim.playing) anim.play();
+            } else {
+                // First compute after image upload — start from beginning
+                anim.reset();
+                anim.play();
+            }
         }
     } catch {
         computing.value = false;
