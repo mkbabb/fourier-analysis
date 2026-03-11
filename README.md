@@ -2,6 +2,8 @@
 
 Companion code for [*An Introduction to Fourier Analysis*](paper/fourier_paper.pdf). Fourier series computation, basis decomposition (Chebyshev, Legendre), epicycle reconstruction, contour tracing, and an interactive web demo.
 
+See [docs/paper-windowing.md](docs/paper-windowing.md) for the current paper-view pipeline.
+
 ## About
 
 This package implements the computational backbone for the paper *An Introduction to Fourier Analysis* by me, Michael Babb—a mathematical exposition that develops Fourier series from the dual vantage of linear algebra and complex analysis, proceeding through the DFT and its applications. The code here generates every figure in the paper and exposes the core operations (coefficient extraction, reconstruction, partial sums, epicycle chains, multi-basis decomposition) as a usable library.
@@ -188,9 +190,17 @@ The deploy script (`scripts/deploy.sh`) pushes to GitHub, SSHs to the production
 
 ### Frontend features
 
-- **Paper view**: the LaTeX paper parsed at build time into navigable, collapsible sections with KaTeX-rendered math and theorem blocks
+- **Paper view**: the LaTeX paper parsed at build time into deterministic section data, flattened for navigation, windowed at render time, and overlaid with stable page numbers
 - **Visualization view**: image upload (drag-and-drop), contour parameter tuning (strategy, blur, area filtering, max contours, contour smoothing), basis selection (Fourier/Chebyshev/Legendre), animated epicycle canvas, coefficient panel, frame export
 - **Session persistence**: slug-based URLs (`/s/big-red-angry-python`), stored in MongoDB with GridFS-backed images
+
+### Paper pipeline
+
+The paper route is split across the two repos:
+
+1. `latex-paper` parses `paper/fourier_paper.tex`, resolves labels, flattens the section tree, and emits `virtual:paper-content`.
+2. The web app consumes that module, windows the flat section list, renders only the active neighborhood, and derives page numbers from LaTeX TOC artifacts rather than heading text.
+3. Far TOC jumps warm a small target window, jump immediately, and use a short overlay fade instead of mounting the whole paper.
 
 ### API endpoints
 
