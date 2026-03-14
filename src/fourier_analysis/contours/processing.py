@@ -124,8 +124,10 @@ def _postprocess_raw_contours(
             z = resample_arc_length(z, max_pts)
 
         # Simplify: remove points on near-straight segments.
-        # Keeps corners and sharp features, discards redundant points.
-        z = _simplify_contour(z, angle_threshold=2.0)
+        # Keeps corners, sharp features, and gentle curves; discards only
+        # points on truly straight runs.  1.0° preserves circle detail
+        # (a 360-point circle has ~1° between consecutive tangents).
+        z = _simplify_contour(z, angle_threshold=1.0)
 
         if len(z) > 1 and abs(z[0] - z[-1]) > 1e-10:
             z = np.append(z, z[0])
