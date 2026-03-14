@@ -1,0 +1,90 @@
+/* ── Shared dock icon button styles ──
+   Used by AnimationControls and EditorControlsDock */
+
+.dock-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    border: none;
+    background: transparent;
+    color: hsl(var(--foreground) / 0.7);
+    cursor: pointer;
+    transition: all var(--duration-fast, 0.15s) var(--ease-standard, ease);
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.dock-icon-btn:hover:not(:disabled) {
+    background: hsl(var(--foreground) / 0.08);
+    color: hsl(var(--foreground));
+    transform: scale(1.1);
+}
+
+.dock-icon-btn:active:not(:disabled) {
+    transform: scale(0.92);
+}
+
+.dock-icon-btn:focus-visible {
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+    outline: none;
+}
+
+.dock-icon-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.dock-icon-btn.is-active,
+.dock-icon-btn.active {
+    background: hsl(var(--foreground) / 0.08);
+    color: hsl(var(--foreground));
+}
+
+/* Color variants */
+.dock-icon-btn.is-amber:hover:not(:disabled) {
+    color: var(--viz-amber);
+}
+
+.dock-icon-btn.is-sky:hover:not(:disabled) {
+    color: var(--viz-chebyshev);
+}
+
+.dock-icon-btn.is-rose:hover:not(:disabled) {
+    color: hsl(var(--accent-pink));
+}
+
+.dock-icon-btn.is-save {
+    background: hsl(var(--foreground) / 0.06);
+}
+
+.dock-icon-btn.is-save:hover:not(:disabled) {
+    background: hsl(var(--viz-fourier) / 0.15);
+    color: hsl(var(--viz-fourier));
+}
+
+.dock-icon-btn.saved {
+    color: hsl(var(--success, 142 71% 45%));
+}
+
+/* ── Separator & spacer ── */
+.dock-separator {
+    width: 1px;
+    height: 1.5rem;
+    background: hsl(var(--foreground) / 0.2);
+    flex-shrink: 0;
+}
+
+.dock-spacer {
+    flex: 1;
+}
+
+.dock-badge {
+    font-size: 0.8125rem;
+    color: hsl(var(--foreground) / 0.5);
+    font-variant-numeric: tabular-nums;
+    padding: 0 0.375rem;
+    white-space: nowrap;
+}

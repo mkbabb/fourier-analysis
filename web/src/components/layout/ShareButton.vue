@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useSessionStore } from "@/stores/session";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { Share2, Check } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
 import PathPreview from "@/components/ui/PathPreview.vue";
 import { VIZ_COLORS } from "@/lib/colors";
 
-const store = useSessionStore();
+const store = useWorkspaceStore();
 const copied = ref(false);
 
 async function copyShareUrl() {
-    if (!store.slug || !store.hasImage) return;
-    const url = `${window.location.origin}/s/${store.slug}`;
+    if (!store.imageSlug || !store.imageMeta) return;
+    const url = `${window.location.origin}/w/${store.imageSlug}`;
     await navigator.clipboard.writeText(url);
     copied.value = true;
     setTimeout(() => (copied.value = false), 2000);
@@ -151,6 +151,6 @@ async function copyShareUrl() {
 
 @keyframes gold-pulse {
     0%, 100% { color: inherit; }
-    50% { color: #f0b632; }
+    50% { color: var(--viz-amber); }
 }
 </style>

@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref, onUnmounted } from "vue";
 
 const IMAGE_EXTENSIONS = new Set([
     "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "tiff", "tif",
@@ -14,6 +14,16 @@ function isImageFile(file: File): boolean {
 export function useImageUpload(onFile: (file: File) => void) {
     const isDragging = ref(false);
     const preview = ref<string | null>(null);
+
+    // Track active FileReader so we can abort on new selection or unmount
+    let activeReader: FileReader | null = null;
+
+    onUnmounted(() => {
+        if (activeReader && activeReader.readyState === FileReader.LOADING) {
+            activeReader.abort();
+        }
+        activeReader = null;
+    });
 
     // Counter-based drag tracking to handle child element enter/leave events
     let dragCounter = 0;
@@ -63,7 +73,12 @@ export function useImageUpload(onFile: (file: File) => void) {
     }
 
     function setPreview(file: File) {
+        // Abort any in-progress read
+        if (activeReader && activeReader.readyState === FileReader.LOADING) {
+            activeReader.abort();
+        }
         const reader = new FileReader();
+        activeReader = reader;
         reader.onload = (e) => {
             preview.value = e.target?.result as string;
         };

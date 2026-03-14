@@ -19,7 +19,8 @@ export function drawBasisLabels(
     const { ctx, width, height } = surface;
     const hitRegions: LabelHitRegion[] = [];
 
-    ctx.textAlign = "right";
+    const xBase = 16;
+    ctx.textAlign = "left";
     ctx.textBaseline = "top";
     let yOff = 16;
 
@@ -41,35 +42,35 @@ export function drawBasisLabels(
             ctx.shadowBlur = 5;
         }
 
-        // Draw mode label
-        ctx.font = "bold 16px 'Fira Code', monospace";
-        const labelW = ctx.measureText(` ${modeLabel}`).width;
-        ctx.fillText(` ${modeLabel}`, width - 48, yOff);
-
         // Draw icon — fourier ℱ is slightly larger
         const isFourier = basisName === "fourier";
         const iconSize = isFourier ? 30 : 22;
         const iconYAdj = isFourier ? 8 : 2;
         ctx.font = `bold ${iconSize}px 'Computer Modern Serif', Georgia, serif`;
         const iconW = ctx.measureText(cfg.icon).width;
-        ctx.fillText(cfg.icon, width - 48 - labelW, yOff - iconYAdj);
+        ctx.fillText(cfg.icon, xBase, yOff - iconYAdj);
+
+        // Draw mode label
+        ctx.font = "bold 16px 'Fira Code', monospace";
+        ctx.fillText(` ${modeLabel}`, xBase + iconW, yOff);
 
         ctx.shadowColor = "transparent";
         ctx.shadowBlur = 0;
 
         // Store hit region — uniform row height for all bases
+        const labelW = ctx.measureText(` ${modeLabel}`).width;
         const totalW = iconW + labelW;
         const rowH = 26;
-        hitRegions.push({ key: basisKey, x: width - 48 - totalW, y: yOff - iconYAdj, w: totalW + 8, h: rowH });
+        hitRegions.push({ key: basisKey, x: xBase, y: yOff - iconYAdj, w: totalW + 8, h: rowH });
         yOff += 26;
     }
 
-    // N count as another legend row — same 24px row spacing as non-fourier items
+    // N count as another legend row
     ctx.globalAlpha = 1;
     ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
     ctx.font = "bold 16px 'Fira Code', monospace";
     ctx.textBaseline = "top";
-    ctx.fillText(levelText, width - 48, yOff - 4);
+    ctx.fillText(levelText, xBase, yOff - 4);
 
     return { hitRegions };
 }
@@ -83,21 +84,20 @@ export function drawEpicycleLabel(
 ): void {
     const { ctx, width, height } = surface;
 
-    ctx.textAlign = "right";
+    ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillStyle = VIZ_COLORS.fourier;
     ctx.globalAlpha = 0.9;
-    ctx.font = "bold 16px 'Fira Code', monospace";
-    const epicLabel = " Epicycles";
-    const eLabelW = ctx.measureText(epicLabel).width;
-    ctx.fillText(epicLabel, width - 48, 16);
     ctx.font = "bold 44px 'Computer Modern Serif', Georgia, serif";
-    ctx.fillText("\u2131", width - 48 - eLabelW, 2);
+    const iconW = ctx.measureText("\u2131").width;
+    ctx.fillText("\u2131", 16, 2);
+    ctx.font = "bold 16px 'Fira Code', monospace";
+    ctx.fillText(" Epicycles", 16 + iconW, 16);
 
     // t value tight below the label
     ctx.globalAlpha = 1;
     ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
     ctx.font = "bold 16px 'Fira Code', monospace";
     ctx.textBaseline = "top";
-    ctx.fillText(`t = ${tValue.toFixed(2)}`, width - 48, 40);
+    ctx.fillText(`t = ${tValue.toFixed(2)}`, 16, 40);
 }

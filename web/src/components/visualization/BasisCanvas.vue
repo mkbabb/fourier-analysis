@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { useSessionStore } from "@/stores/session";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { fourierPositionsAt, evaluateFourier } from "@/lib/bases";
 import { VIZ_COLORS, hexToRgba } from "@/lib/colors";
@@ -26,21 +26,24 @@ import {
 import type { EpicycleFit } from "./lib/canvas-drawing";
 import { useCanvasSetup } from "./composables/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
+import { useImageOverlay } from "./composables/useImageOverlay";
+import { useViewTransform } from "./composables/useViewTransform";
 
 const props = withDefaults(
     defineProps<{
         activeBases?: string[];
+        showGhost?: boolean;
+        showImageOverlay?: boolean;
     }>(),
-    { activeBases: () => ["fourier-epicycles"] },
+    { activeBases: () => ["fourier-epicycles"], showGhost: true, showImageOverlay: false },
 );
 
-const store = useSessionStore();
+const store = useWorkspaceStore();
 const anim = useAnimationStore();
 const canvasRef = ref<HTMLCanvasElement>();
 const containerRef = ref<HTMLDivElement>();
 
 const maxCircles = ref(80);
-const showGhost = ref(true);
 
 // ── Cached epicycle state ──
 let stableEpicycleBbox: EpicycleBbox | null = null;
@@ -70,48 +73,17 @@ const hover = useCanvasHover({
     onRedraw: () => { if (surface.value) drawFrame(); },
 });
 
-// ── Path bounds ──
-function getViewTransform(s: CanvasSurface): ViewTransform {
-    let xs: number[];
-    let ys: number[];
-    if (store.epicycleData) {
-        xs = store.epicycleData.path.x;
-        ys = store.epicycleData.path.y;
-    } else if (store.basesData) {
-        xs = store.basesData.original.x;
-        ys = store.basesData.original.y;
-    } else {
-        const noop: ViewTransform = { cx: 0, cy: 0, scale: 1, toScreen: (x, y) => [x, y] };
-        return noop;
-    }
+// ── View transform (extracted composable) ──
+const { getViewTransform } = useViewTransform();
 
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    const rangeX = maxX - minX || 1;
-    const rangeY = maxY - minY || 1;
-    const margin = 0.15;
-    const scale = Math.min(
-        s.width / (rangeX * (1 + margin * 2)),
-        s.height / (rangeY * (1 + margin * 2)),
-    );
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    const w = s.width;
-    const h = s.height;
-
-    return {
-        cx, cy, scale,
-        toScreen(x: number, y: number): [number, number] {
-            return [w / 2 + (x - cx) * scale, h / 2 - (y - cy) * scale];
-        },
-    };
-}
+// ── Image overlay (extracted composable) ──
+const { drawImageOverlay } = useImageOverlay(() => {
+    if (surface.value) drawFrame();
+});
 
 // ── Draw placeholder ──
 function drawPlaceholderFrame(s: CanvasSurface) {
-    drawPlaceholder(s, store.hasImage);
+    drawPlaceholder(s, !!store.imageMeta);
 }
 
 // ── Main draw frame ──
@@ -127,6 +99,11 @@ function drawFrame() {
 
     // Background grid
     drawGrid(s, view);
+
+    // Image overlay (behind curves)
+    if (props.showImageOverlay) {
+        drawImageOverlay(s, view);
+    }
 
     const hasEpicycles = props.activeBases.includes("fourier-epicycles");
     const onlyEpicycles = hasEpicycles && props.activeBases.length === 1;
@@ -149,7 +126,7 @@ function drawEpicycleFrame(
     const trailColor = epicycleHovered ? VIZ_COLORS.golden : VIZ_COLORS.fourier;
 
     // Ghost path
-    if (showGhost.value) {
+    if (props.showGhost) {
         drawGhostPath(s, view, data.path.x, data.path.y, true);
     }
 
@@ -225,7 +202,7 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
     const hoveredBasis = hover.getHoveredBasis();
 
     // Ghost path
-    if (showGhost.value) {
+    if (props.showGhost) {
         let origX: number[] | undefined;
         let origY: number[] | undefined;
         if (basesData) {
@@ -390,9 +367,12 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
 }
 
 // ── Watchers (consolidated) ──
-// Data watcher: resets trail, invalidates bbox, triggers draw
+// Data watcher: resets trail, invalidates bbox, triggers draw.
+// Watches epicycleData and basesData by identity (both are always replaced
+// wholesale, never mutated) — deep comparison on these large arrays would be
+// a serious performance hit.
 watch(
-    [() => store.epicycleData, () => props.activeBases],
+    [() => store.epicycleData, () => store.basesData, () => props.activeBases],
     () => {
         trail.clearTrail();
         stableEpicycleBbox = null;
@@ -410,12 +390,13 @@ watch(
             drawFrame();
         }
     },
-    { deep: true },
 );
 
-// Render watcher: just calls drawFrame()
+// Render watcher: fires at 60 fps while animating.  Keep it to the bare
+// minimum: animation clock ticks and the two display-toggle props.
+// basesData is intentionally NOT here — it belongs in the data watcher above.
 watch(
-    [() => anim.t, () => anim.easedT, () => store.basesData],
+    [() => anim.t, () => anim.easedT, () => props.showGhost, () => props.showImageOverlay],
     () => {
         if (surface.value) drawFrame();
     },
@@ -459,7 +440,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
         }
 
         if (!showLabels) {
-            offCtx.clearRect(s.width - 200, 0, 200, 100);
+            offCtx.clearRect(0, 0, 200, 100);
         }
     }
 
@@ -475,13 +456,13 @@ function exportFrame(options: Record<string, boolean> = {}) {
     document.body.removeChild(a);
 }
 
-defineExpose({ anim, exportFrame, showGhost });
+defineExpose({ anim, exportFrame, drawImageOverlay });
 </script>
 
 <template>
     <div
         ref="containerRef"
-        class="canvas-container"
+        class="canvas-container cartoon-card"
         @mousemove="hover.onMouseMove"
         @mouseleave="hover.onMouseLeave"
         @click="hover.onClick"
@@ -494,30 +475,10 @@ defineExpose({ anim, exportFrame, showGhost });
 .canvas-container {
     position: relative;
     overflow: hidden;
-    border-radius: 0.75rem;
-    border: 2px solid hsl(var(--foreground) / 0.15);
-    background: hsl(var(--card));
     flex: 1;
     min-height: 0;
-    box-shadow: 3px 3px 0px 0px hsl(var(--foreground) / 0.08);
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
     user-select: none;
     -webkit-user-select: none;
-}
-
-:where(.dark) .canvas-container {
-    border-color: hsl(var(--foreground) / 0.12);
-    box-shadow: 3px 3px 0px 0px hsl(var(--foreground) / 0.06);
-}
-
-.canvas-container:hover {
-    border-color: hsl(var(--foreground) / 0.25);
-    box-shadow: 4px 4px 0px 0px hsl(var(--foreground) / 0.1);
-}
-
-:where(.dark) .canvas-container:hover {
-    border-color: hsl(var(--foreground) / 0.18);
-    box-shadow: 4px 4px 0px 0px hsl(var(--foreground) / 0.08);
 }
 
 .canvas-el {

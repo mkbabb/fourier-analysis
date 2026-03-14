@@ -1,18 +1,25 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { Minimize2 } from "lucide-vue-next";
+import type { ContourAsset } from "@/lib/types";
 import BasisCanvas from "./BasisCanvas.vue";
+import ContourEditorCanvas from "./ContourEditorCanvas.vue";
 import AnimationControls from "./AnimationControls.vue";
 
 const props = defineProps<{
     visible: boolean;
     activeBases: string[];
     showGhost: boolean;
+    showImageOverlay?: boolean;
+    isEditing?: boolean;
+    contour?: ContourAsset;
+    imageSlug?: string | null;
 }>();
 
 const emit = defineEmits<{
     (e: "close"): void;
     (e: "toggleGhost"): void;
+    (e: "toggleImageOverlay"): void;
 }>();
 
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
@@ -49,17 +56,28 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
                     </button>
 
                     <!-- Canvas fills the viewport -->
+                    <ContourEditorCanvas
+                        v-if="isEditing && contour"
+                        :contour="contour"
+                        :image-slug="imageSlug ?? null"
+                        :show-image-overlay="showImageOverlay"
+                    />
                     <BasisCanvas
+                        v-else
                         ref="canvasComponent"
                         :active-bases="activeBases"
+                        :show-ghost="showGhost"
+                        :show-image-overlay="showImageOverlay"
                     />
 
                     <!-- Timeline overlaid at the bottom -->
-                    <div class="fs-controls">
+                    <div v-if="!isEditing" class="fs-controls">
                         <AnimationControls
                             :active-bases="activeBases"
                             :show-ghost="showGhost"
+                            :show-image-overlay="showImageOverlay"
                             @toggle-ghost="emit('toggleGhost')"
+                            @toggle-image-overlay="emit('toggleImageOverlay')"
                             @export-frame="canvasComponent?.exportFrame()"
                         />
                     </div>
@@ -73,7 +91,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
 .fs-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 200;
+    z-index: var(--z-fullscreen);
     background: hsl(var(--background));
 }
 
@@ -85,11 +103,13 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     flex-direction: column;
 }
 
-.fs-container :deep(.canvas-container) {
+.fs-container :deep(.canvas-container),
+.fs-container :deep(.editor-shell) {
     flex: 1;
     border: none;
     border-radius: 0;
     box-shadow: none;
+    min-height: 0;
 }
 
 .fs-container :deep(.canvas-container:hover) {
@@ -101,13 +121,13 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     position: absolute;
     top: 0.75rem;
     right: 0.75rem;
-    z-index: 210;
+    z-index: calc(var(--z-fullscreen) + 10);
     display: flex;
     align-items: center;
     justify-content: center;
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: 0.625rem;
+    border-radius: 9999px;
     border: 1.5px solid hsl(var(--foreground) / 0.12);
     background: hsl(var(--background) / 0.7);
     backdrop-filter: blur(12px);
@@ -132,8 +152,10 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 210;
+    z-index: calc(var(--z-fullscreen) + 10);
     padding: 0 1rem 0.75rem;
+    display: flex;
+    justify-content: center;
 }
 
 @media (min-width: 640px) {
@@ -143,9 +165,8 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
 }
 
 /* Make controls a bit wider in fullscreen */
-.fs-controls :deep(.anim-controls) {
+.fs-controls :deep(.glass-dock) {
     max-width: 60rem;
-    margin: 0 auto;
 }
 
 /* ── Fullscreen enter/leave transitions ── */

@@ -1,134 +1,105 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch } from "vue";
 import { watchDebounced } from "@vueuse/core";
-import { useRoute } from "vue-router";
-import { useSessionStore } from "@/stores/session";
-import { useAnimationStore, type EasingName } from "@/stores/animation";
+import { useRouter } from "vue-router";
+import { useWorkspaceStore } from "@/stores/workspace";
+import { useAnimationStore } from "@/stores/animation";
 import { useImageUpload } from "./composables/useImageUpload";
-import { Upload, Maximize2 } from "lucide-vue-next";
+import { useViewState } from "./composables/useViewState";
+import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
+import { Upload, Maximize2, Pencil } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useToast } from "@/composables/useToast";
 import ImageUpload from "./ImageUpload.vue";
 import ContourSettings from "./ContourSettings.vue";
 import BasisCanvas from "./BasisCanvas.vue";
 import BasisSelector from "./BasisSelector.vue";
 import AnimationControls from "./AnimationControls.vue";
+import ContourEditorCanvas from "./ContourEditorCanvas.vue";
+import EditorControlsDock from "./EditorControlsDock.vue";
+import EditorToolsPanel from "./EditorToolsPanel.vue";
+import ContourPreview from "./ContourPreview.vue";
+import CanvasOverlayButton from "./CanvasOverlayButton.vue";
 import CoefficientsPanel from "./CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
 import BouncyToggle from "@/components/ui/BouncyToggle.vue";
 
-const route = useRoute();
-const store = useSessionStore();
+const router = useRouter();
+const store = useWorkspaceStore();
 const anim = useAnimationStore();
 
-const { isDragging: globalDragging, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave } =
-    useImageUpload(async (file: File) => {
-        await store.uploadImage(file);
-    });
+// ── View state (editing, ghost, overlay — persisted to localStorage) ──
+const { isEditing, showGhost, showImageOverlay } = useViewState();
 
+// ── Image drag-and-drop ──
+const { isDragging: globalDragging, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave } =
+    useImageUpload(async (file: File) => { await store.uploadImage(file); });
+
+// ── Active bases ──
 const activeBases = ref<string[]>(
-    store.session?.animation_settings?.active_bases ?? ["fourier-epicycles"],
+    store.animationSettings?.active_bases ?? ["fourier-epicycles"],
 );
 
+// ── Workspace loading, contour settings, auto-play ──
+const { nHarmonics, nPoints } = useWorkspaceLoader(activeBases);
+
+// ── Persist animation settings to workspace on change ──
+watchDebounced(
+    () => [activeBases.value, anim.easing, anim.speed] as const,
+    () => {
+        if (!store.imageSlug) return;
+        store.animationSettings = {
+            ...store.animationSettings,
+            active_bases: [...activeBases.value],
+            easing: anim.easing,
+            speed: anim.speed,
+        };
+    },
+    { debounce: 500, deep: true },
+);
+
+// ── Canvas + modals ──
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
-
-// Mobile tab: Controls vs Canvas
 const mobileView = ref<"controls" | "canvas">("canvas");
-
-// Export modal
 const showExport = ref(false);
 const showFullscreen = ref(false);
 
-function handleExportFrame() {
-    showExport.value = true;
+// ── Editor state ──
+const editorState = ref({ canUndo: false, canRedo: false, canDelete: false, pointCount: 0 });
+const editorRef = ref<InstanceType<typeof ContourEditorCanvas> | null>(null);
+const editorSaved = ref(false);
+const magnetRadius = computed({
+    get: () => editorRef.value?.magnetRadius ?? 0,
+    set: (v: number) => { if (editorRef.value) editorRef.value.magnetRadius = v; },
+});
+
+function onEditorStateChange(state: typeof editorState.value) {
+    editorState.value = state;
+    editorSaved.value = false;
 }
 
+async function onEditorSave() {
+    if (!editorRef.value) return;
+    await store.saveContourPoints(editorRef.value.getPoints());
+    editorSaved.value = true;
+}
+
+function handleExportFrame() { showExport.value = true; }
 function doExport(options: Record<string, boolean>) {
     canvasComponent.value?.exportFrame(options);
     showExport.value = false;
 }
 
-// Persist animation settings (bases, easing, speed) to session on change
-watchDebounced(
-    () => [activeBases.value, anim.easing, anim.speed] as const,
-    () => {
-        if (!store.slug) return;
-        store.updateSettings({
-            animation_settings: {
-                active_bases: [...activeBases.value],
-                easing: anim.easing,
-                speed: anim.speed,
-            },
-        });
-    },
-    { debounce: 500, deep: true },
-);
-
-onMounted(async () => {
-    const slug = route.params.slug as string | undefined;
-    if (slug) {
-        await store.load(slug);
-        // If load failed (stale/invalid slug), create a fresh session
-        if (!store.session && store.error) {
-            store.error = null;
-            await store.create();
-        }
-    } else if (!store.slug) {
-        await store.create();
-    }
-});
-
-// Shared N/points state — lifted so both ContourSettings and BasisSelector can bind
-const nHarmonics = ref(store.session?.parameters?.n_harmonics ?? 50);
-const nPoints = ref(store.session?.parameters?.n_points ?? 1024);
-
-// Seed from session once it loads (e.g. after store.load())
-if (!store.session) {
-    watch(() => store.session, (s) => {
-        if (s?.parameters) {
-            nHarmonics.value = s.parameters.n_harmonics ?? 50;
-            nPoints.value = s.parameters.n_points ?? 1024;
-        }
-        if (s?.animation_settings) {
-            const as = s.animation_settings;
-            if (as.active_bases?.length) activeBases.value = [...as.active_bases];
-            if (as.easing) anim.easing = as.easing as EasingName;
-            if (as.speed) anim.speed = as.speed;
-        }
-    }, { once: true });
-}
-
-// Reset harmonics on new image upload (not session reload).
-// imageVersion only increments on actual uploads, not on store.load().
-watch(() => store.imageVersion, () => {
-    nHarmonics.value = 50;
-});
-
-const hasData = computed(() => store.epicycleData || store.basesData);
+// ── Derived state ──
+const hasData = computed(() => store.epicycleData || store.basesData || store.computing);
 const hasEpicycles = computed(() => activeBases.value.includes("fourier-epicycles"));
-
-const showGhost = ref(true);
-watch(showGhost, (v) => {
-    if (canvasComponent.value) canvasComponent.value.showGhost = v;
-});
-
-const { toast } = useToast();
-
-watch(() => store.error, (err) => {
-    if (err && store.session) {
-        toast(err, "error");
-        store.error = null;
-    }
-});
+const hasImage = computed(() => !!store.imageMeta);
 </script>
 
 <template>
-    <div class="viz-container"
-        @drop="globalDrop"
-        @dragover="globalDragOver"
-        @dragenter="globalDragEnter"
-        @dragleave="globalDragLeave"
+    <div class="flex flex-col flex-1 min-h-0"
+        @drop="globalDrop" @dragover="globalDragOver"
+        @dragenter="globalDragEnter" @dragleave="globalDragLeave"
     >
         <!-- Global drag overlay -->
         <Transition name="fade">
@@ -142,128 +113,127 @@ watch(() => store.error, (err) => {
         </Transition>
 
         <!-- Loading -->
-        <div v-if="store.loading && !store.session" class="flex flex-col items-center justify-center flex-1 gap-3">
+        <div v-if="store.loading && !store.imageSlug" class="flex flex-col items-center justify-center flex-1 gap-3">
             <div class="h-8 w-8 animate-spin rounded-full border-[2.5px] border-border border-t-primary" />
-            <p class="text-sm text-muted-foreground fira-code">Initializing session...</p>
+            <p class="text-sm text-muted-foreground fira-code">Loading workspace...</p>
         </div>
 
-        <!-- Error (no session) -->
-        <div
-            v-else-if="store.error && !store.session"
-            class="flex items-center justify-center flex-1"
-        >
+        <!-- Error (no workspace) -->
+        <div v-else-if="store.error && !store.imageSlug" class="flex items-center justify-center flex-1">
             <div class="mx-auto max-w-md cartoon-card p-6 text-center space-y-3">
-                <AlertTriangle class="h-8 w-8 text-amber-500 mx-auto" />
-                <p class="text-sm font-medium text-foreground">Could not connect to the server</p>
+                <p class="text-sm font-medium text-foreground">Could not load workspace</p>
                 <p class="text-xs text-muted-foreground fira-code break-all">{{ store.error }}</p>
-                <Tooltip text="Try connecting to the server again">
-                    <button
-                        class="mt-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-foreground/15 bg-background hover:bg-muted transition-colors cursor-pointer"
-                        @click="store.create()"
-                    >
-                        Retry
+                <Tooltip text="Go back to upload a new image">
+                    <button class="mt-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-foreground/15 bg-background hover:bg-muted transition-colors cursor-pointer"
+                        @click="store.reset(); router.push('/visualize')">
+                        Start fresh
                     </button>
                 </Tooltip>
             </div>
         </div>
 
         <!-- Main workspace -->
-        <div v-else-if="store.session" class="viz-workspace">
+        <div v-else class="flex flex-col flex-1 min-h-0">
             <!-- Mobile tab bar -->
-            <div class="mobile-tab-bar">
-                <BouncyToggle
-                    class="w-full"
-                    :options="[
-                        { label: 'Controls', value: 'controls' },
-                        { label: 'Canvas', value: 'canvas' },
-                    ]"
+            <div class="flex justify-center px-2 py-0.5 bg-background lg:hidden">
+                <BouncyToggle class="w-full"
+                    :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
                     :model-value="mobileView"
-                    @update:model-value="mobileView = $event as 'controls' | 'canvas'"
-                />
+                    @update:model-value="mobileView = $event as 'controls' | 'canvas'" />
             </div>
 
             <div class="viz-grid">
                 <!-- Left panel: Controls -->
-                <div class="viz-panel-left-wrap" :class="{ 'mobile-hidden': mobileView !== 'controls' }">
-                    <div class="viz-panel-left">
-                        <ImageUpload />
-                        <Transition name="slide-down">
-                            <BasisSelector
-                                v-if="hasData"
-                                :active-bases="activeBases"
-                                v-model:n-harmonics="nHarmonics"
-                                v-model:n-points="nPoints"
-                                @update:active-bases="activeBases = $event"
+                <div class="viz-panel-left-wrap" :class="{ 'max-lg:hidden': mobileView !== 'controls' }">
+                    <Transition name="panel-swap" mode="out-in">
+                        <div v-if="isEditing" key="editor-panel" class="viz-panel-left">
+                            <!-- Preview above tools -->
+                            <ContourPreview :points="editorRef?.points" />
+                            <!-- Editor tools card -->
+                            <EditorToolsPanel
+                                :magnet-radius="magnetRadius"
+                                @smooth="editorRef?.applySmooth()"
+                                @simplify="editorRef?.applySimplify()"
+                                @update:magnet-radius="magnetRadius = $event"
                             />
-                        </Transition>
-                        <Transition name="slide-down">
-                            <ContourSettings v-if="store.hasImage"
-                                v-model:n-harmonics="nHarmonics"
-                                v-model:n-points="nPoints"
-                            />
-                        </Transition>
-                        <Transition name="slide-down">
-                            <CoefficientsPanel v-if="store.epicycleData" />
-                        </Transition>
-                    </div>
+                            <ContourSettings v-if="hasImage" v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
+                        </div>
+                        <div v-else key="viz-panel" class="viz-panel-left">
+                            <ImageUpload />
+                            <Transition name="slide-down">
+                                <BasisSelector v-if="hasData" :active-bases="activeBases"
+                                    v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints"
+                                    @update:active-bases="activeBases = $event" />
+                            </Transition>
+                            <Transition name="slide-down">
+                                <ContourSettings v-if="hasImage" v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
+                            </Transition>
+                            <Transition name="slide-down">
+                                <CoefficientsPanel v-if="store.epicycleData" />
+                            </Transition>
+                        </div>
+                    </Transition>
                 </div>
 
                 <!-- Right panel: Canvas with overlaid controls -->
-                <div class="viz-panel-right" :class="{ 'mobile-hidden': mobileView !== 'canvas' }">
-                    <BasisCanvas ref="canvasComponent" :active-bases="activeBases" />
+                <div class="viz-panel-right canvas-stage" :class="{ 'max-lg:hidden': mobileView !== 'canvas' }">
+                    <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
+                        <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
+                            :show-ghost="showGhost" :show-image-overlay="showImageOverlay" />
+                    </div>
+                    <div v-if="store.contour" class="editor-shell" :class="{ 'is-hidden': !isEditing }">
+                        <ContourEditorCanvas ref="editorRef" :contour="store.contour"
+                            :image-slug="store.imageSlug" :show-image-overlay="showImageOverlay"
+                            @state-change="onEditorStateChange" />
+                    </div>
+
+                    <!-- Edit & fullscreen buttons -->
                     <Transition name="expand-pop" appear>
-                        <Tooltip v-if="hasData" text="Fullscreen" side="left">
-                            <button class="expand-btn" @click="showFullscreen = true">
-                                <Maximize2 class="h-4 w-4" />
-                            </button>
+                        <Tooltip v-if="isEditing || (hasImage && store.contour)" text="Edit contour" side="left">
+                            <CanvasOverlayButton position="edit" :active="isEditing" @click="isEditing = !isEditing">
+                                <Pencil class="h-5 w-5" />
+                            </CanvasOverlayButton>
                         </Tooltip>
                     </Transition>
-                    <div v-if="hasData" class="controls-overlay">
-                        <AnimationControls
-                            :active-bases="activeBases"
-                            :show-ghost="showGhost"
-                            @export-frame="handleExportFrame"
-                            @toggle-ghost="showGhost = !showGhost"
-                        />
+                    <Transition name="expand-pop" appear>
+                        <Tooltip v-if="hasData || (isEditing && store.contour)" text="Fullscreen" side="left">
+                            <CanvasOverlayButton position="expand" @click="showFullscreen = true">
+                                <Maximize2 class="h-5 w-5" />
+                            </CanvasOverlayButton>
+                        </Tooltip>
+                    </Transition>
+
+                    <!-- Bottom dock -->
+                    <div v-if="hasData && !isEditing" class="controls-overlay">
+                        <AnimationControls :active-bases="activeBases" :show-ghost="showGhost"
+                            :show-image-overlay="showImageOverlay" @export-frame="handleExportFrame"
+                            @toggle-ghost="showGhost = !showGhost" @toggle-image-overlay="showImageOverlay = !showImageOverlay" />
+                    </div>
+                    <div v-if="isEditing && store.contour" class="controls-overlay">
+                        <EditorControlsDock :can-undo="editorState.canUndo" :can-redo="editorState.canRedo"
+                            :can-delete="editorState.canDelete" :point-count="editorState.pointCount"
+                            :show-image-overlay="showImageOverlay" :show-ghost="showGhost"
+                            :magnet-radius="magnetRadius" :is-saved="editorSaved"
+                            @undo="editorRef?.undo()" @redo="editorRef?.redo()" @smooth="editorRef?.applySmooth()"
+                            @simplify="editorRef?.applySimplify()" @delete="editorRef?.deleteSelected()"
+                            @toggle-overlay="showImageOverlay = !showImageOverlay" @toggle-ghost="showGhost = !showGhost"
+                            @update:magnet-radius="magnetRadius = $event"
+                            @reset="editorRef?.resetToExtraction()" @save="onEditorSave" />
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Export modal -->
-        <ExportModal
-            v-if="showExport"
-            :has-epicycles="hasEpicycles"
-            @export="doExport"
-            @close="showExport = false"
-        />
-
-        <!-- Fullscreen viewer -->
-        <FullscreenViewer
-            :visible="showFullscreen"
-            :active-bases="activeBases"
-            :show-ghost="showGhost"
-            @close="showFullscreen = false"
-            @toggle-ghost="showGhost = !showGhost"
-        />
+        <ExportModal v-if="showExport" :has-epicycles="hasEpicycles" @export="doExport" @close="showExport = false" />
+        <FullscreenViewer :visible="showFullscreen" :active-bases="activeBases" :show-ghost="showGhost"
+            :show-image-overlay="showImageOverlay" :is-editing="isEditing" :contour="store.contour ?? undefined"
+            :image-slug="store.imageSlug" @close="showFullscreen = false"
+            @toggle-ghost="showGhost = !showGhost" @toggle-image-overlay="showImageOverlay = !showImageOverlay" />
     </div>
 </template>
 
 <style scoped>
-.viz-container {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.viz-workspace {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
+/* ── Grid layout ── */
 .viz-grid {
     display: flex;
     flex-direction: column;
@@ -284,19 +254,10 @@ watch(() => store.error, (err) => {
         overflow: hidden;
     }
 }
+@media (min-width: 1280px) { .viz-grid { grid-template-columns: 400px 1fr; } }
+@media (min-width: 1536px) { .viz-grid { grid-template-columns: 440px 1fr; } }
 
-@media (min-width: 1280px) {
-    .viz-grid {
-        grid-template-columns: 400px 1fr;
-    }
-}
-
-@media (min-width: 1536px) {
-    .viz-grid {
-        grid-template-columns: 440px 1fr;
-    }
-}
-
+/* ── Left panel ── */
 .viz-panel-left-wrap {
     position: relative;
     display: flex;
@@ -308,39 +269,19 @@ watch(() => store.error, (err) => {
     overflow: clip;
     flex: 1;
 }
+@media (max-width: 1023px) { .viz-panel-left-wrap { overflow: visible; flex: none; } }
+@media (min-width: 1024px) { .viz-panel-left-wrap { max-width: none; margin: 0; } }
 
-@media (max-width: 1023px) {
-    .viz-panel-left-wrap {
-        overflow: visible;
-        flex: none;
-    }
-}
-
-/* Bottom fade overlay — desktop only (mobile scrolls naturally) */
 .viz-panel-left-wrap::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0; left: 0; right: 0;
     height: 2.5rem;
     background: linear-gradient(to bottom, transparent, hsl(var(--background)));
     pointer-events: none;
     z-index: 2;
 }
-
-@media (max-width: 1023px) {
-    .viz-panel-left-wrap::after {
-        display: none;
-    }
-}
-
-@media (min-width: 1024px) {
-    .viz-panel-left-wrap {
-        max-width: none;
-        margin: 0;
-    }
-}
+@media (max-width: 1023px) { .viz-panel-left-wrap::after { display: none; } }
 
 .viz-panel-left {
     display: flex;
@@ -352,17 +293,12 @@ watch(() => store.error, (err) => {
     min-height: 0;
     flex: 1;
 }
+@media (min-width: 1024px) { .viz-panel-left { padding-right: 0.25rem; } }
 
-@media (min-width: 1024px) {
-    .viz-panel-left {
-        padding-right: 0.25rem;
-    }
-}
-
+/* ── Right panel ── */
 .viz-panel-right {
     display: flex;
     flex-direction: column;
-    gap: 0;
     min-height: 0;
     min-width: 0;
     overflow: hidden;
@@ -370,108 +306,62 @@ watch(() => store.error, (err) => {
     position: relative;
 }
 
-/* Expand button — top-right of canvas */
-.expand-btn {
+/* ── Canvas crossfade ── */
+/* Both canvases are always absolutely positioned so switching between them
+   is a pure opacity crossfade with no layout shift. */
+.canvas-stage > .canvas-container,
+.canvas-stage > .editor-shell {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    z-index: 20;
+    inset: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.5rem;
-    border: 1.5px solid hsl(var(--foreground) / 0.1);
-    background: hsl(var(--background) / 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: hsl(var(--muted-foreground));
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    flex-direction: column;
+    min-height: 0;
+    opacity: 1;
+    z-index: 1;
+    pointer-events: auto;
+    transition: opacity var(--duration-mid, 0.24s) ease;
 }
-
-.expand-btn:hover {
-    background: hsl(var(--background) / 0.85);
-    border-color: hsl(var(--foreground) / 0.2);
-    color: hsl(var(--foreground));
-    transform: scale(1.08);
-}
-
-.expand-btn:active {
-    transform: scale(0.95);
-}
-
-/* Expand button enter animation */
-.expand-pop-enter-active {
-    transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.expand-pop-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.expand-pop-enter-from {
+.canvas-stage > .canvas-container.is-hidden,
+.canvas-stage > .editor-shell.is-hidden {
     opacity: 0;
-    transform: scale(0.3);
-}
-.expand-pop-leave-to {
-    opacity: 0;
-    transform: scale(0.3);
+    z-index: 0;
+    pointer-events: none;
 }
 
-/* Controls overlaid at bottom of canvas — floats over grid */
+/* ── Controls overlay ── */
 .controls-overlay {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0.75rem;
+    left: 0.375rem;
+    right: 0.375rem;
     z-index: 20;
-    border-radius: 0 0 0.75rem 0.75rem;
-    overflow: visible;
-}
-
-
-
-/* ── Mobile tab bar ── */
-.mobile-tab-bar {
     display: flex;
     justify-content: center;
-    padding: 0.125rem 0.5rem;
-    background: hsl(var(--background));
+    pointer-events: none;
+    overflow: visible;
 }
+.controls-overlay > * { pointer-events: auto; }
 
-@media (min-width: 1024px) {
-    .mobile-tab-bar {
-        display: none;
-    }
-}
+/* ── Transitions ── */
+.expand-pop-enter-active { transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.expand-pop-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.expand-pop-enter-from, .expand-pop-leave-to { opacity: 0; transform: scale(0.3); }
 
-/* Hide inactive panel on mobile only */
-@media (max-width: 1023px) {
-    .mobile-hidden {
-        display: none;
-    }
-}
+.panel-swap-enter-active, .panel-swap-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.panel-swap-enter-from { opacity: 0; transform: translateY(4px); }
+.panel-swap-leave-to { opacity: 0; transform: translateY(-4px); }
 
-.slide-down-enter-active {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.slide-down-leave-active {
-    transition: all 0.2s ease;
-}
-.slide-down-enter-from {
-    opacity: 0;
-    transform: translateY(-8px);
-}
-.slide-down-leave-to {
-    opacity: 0;
-    transform: translateY(-4px);
-}
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
+.slide-down-enter-active { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.slide-down-leave-active { transition: all 0.2s ease; }
+.slide-down-enter-from { opacity: 0; transform: translateY(-8px); }
+.slide-down-leave-to { opacity: 0; transform: translateY(-4px); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* ── Mobile ── */
+@media (max-width: 900px) {
+    .viz-grid { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
+    .controls-overlay { left: 0.5rem; right: 0.5rem; bottom: 0.75rem; }
 }
 </style>

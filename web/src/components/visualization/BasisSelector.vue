@@ -89,19 +89,13 @@ function toggleBasis(key: string) {
         if (hasEpi) {
             selected.value.push("fourier-series");
         } else if (hasSeries) {
-            // Go to "off" only if other bases keep the selection non-empty
-            if (otherBases.length === 0) {
-                // Can't be empty — cycle back to epicycles
-                selected.value.push("fourier-epicycles");
-            }
-            // else: fourier is off, other bases remain
+            // Go to "off" — allow empty selection (canvas handles it gracefully)
         } else {
             selected.value.push("fourier-epicycles");
         }
     } else {
         const idx = selected.value.indexOf(key);
         if (idx >= 0) {
-            if (selected.value.length <= 1) return;
             selected.value.splice(idx, 1);
         } else {
             selected.value.push(key);
@@ -113,7 +107,7 @@ function toggleBasis(key: string) {
 
 <template>
     <div class="cartoon-card px-3 py-2">
-        <Collapsible title="Basis" subtitle="decomposition & resolution" :default-open="true">
+        <Collapsible title="Decomposition" subtitle="basis & resolution" :default-open="true">
             <template #actions>
                 <button
                     class="reset-icon-btn"
@@ -248,6 +242,9 @@ function toggleBasis(key: string) {
     transition: all 0.2s;
     white-space: nowrap;
     flex-shrink: 0;
+    min-width: 5.5rem;
+    text-align: center;
+    justify-content: center;
 }
 
 /* Compact pills on mobile so all three fit on one line */

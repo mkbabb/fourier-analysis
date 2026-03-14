@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useAnimationStore, EASING_OPTIONS, getEasingSVGPath, type EasingName } from "@/stores/animation";
+import { useAnimationStore, EASING_OPTIONS, type EasingName } from "@/stores/animation";
+import EasingCurvePreview from "./EasingCurvePreview.vue";
 
 const anim = useAnimationStore();
 </script>
@@ -15,16 +16,11 @@ const anim = useAnimationStore();
                 :class="{ 'is-active': anim.easing === key }"
                 @click="anim.easing = key as EasingName"
             >
-                <svg viewBox="-0.05 -0.3 1.1 1.6" class="easing-curve-svg">
-                    <path
-                        :d="getEasingSVGPath(key as EasingName)"
-                        fill="none"
-                        class="easing-curve-path"
-                        stroke-width="0.15"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    />
-                </svg>
+                <EasingCurvePreview
+                    :easing="(key as EasingName)"
+                    :size="28"
+                    :color="anim.easing === key ? 'hsl(var(--easing-accent))' : 'hsl(var(--muted-foreground))'"
+                />
                 <span class="easing-chip-label">{{ opt.label }}</span>
             </button>
         </div>
@@ -67,21 +63,8 @@ const anim = useAnimationStore();
     background: hsl(var(--muted));
 }
 .easing-chip.is-active {
-    border-color: hsl(248 88% 71% / 0.6);
-    background: hsl(248 88% 71% / 0.08);
-}
-.easing-curve-svg {
-    width: 1.75rem;
-    height: 1.25rem;
-    flex-shrink: 0;
-}
-.easing-curve-path {
-    stroke: hsl(var(--muted-foreground));
-    transition: stroke 0.15s;
-}
-.easing-chip:hover .easing-curve-path,
-.easing-chip.is-active .easing-curve-path {
-    stroke: hsl(248 88% 71%);
+    border-color: hsl(var(--easing-accent) / 0.6);
+    background: hsl(var(--easing-accent) / 0.08);
 }
 .easing-chip-label {
     font-size: 0.5625rem;
@@ -91,6 +74,6 @@ const anim = useAnimationStore();
     transition: color 0.15s;
 }
 .easing-chip.is-active .easing-chip-label {
-    color: hsl(248 88% 71%);
+    color: hsl(var(--easing-accent));
 }
 </style>

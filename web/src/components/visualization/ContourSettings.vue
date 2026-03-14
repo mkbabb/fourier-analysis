@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { watchDebounced } from "@vueuse/core";
-import { useSessionStore } from "@/stores/session";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { VIZ_COLORS } from "@/lib/colors";
 import { Collapsible } from "@/components/ui/collapsible";
@@ -23,21 +23,21 @@ const props = defineProps<{
     nPoints: number;
 }>();
 
-const store = useSessionStore();
+const store = useWorkspaceStore();
 const anim = useAnimationStore();
 
-const strategy = ref(store.session?.parameters.strategy ?? "auto");
-const blurSigma = ref(store.session?.parameters.blur_sigma ?? 1.0);
-const minContourArea = ref((store.session?.parameters.min_contour_area ?? 0.01) * 100);
-const maxContours = ref<number>(store.session?.parameters.max_contours ?? 5);
-const smoothContours = ref(store.session?.parameters.smooth_contours ?? 0.0);
+const strategy = ref(store.contourSettings?.strategy ?? "auto");
+const blurSigma = ref(store.contourSettings?.blur_sigma ?? 1.0);
+const minContourArea = ref(store.contourSettings?.min_contour_area ?? 0.1);
+const maxContours = ref<number>(store.contourSettings?.max_contours ?? 12);
+const smoothContours = ref(store.contourSettings?.smooth_contours ?? 0.0);
 
 const computing = computed({
     get: () => store.computing,
     set: (v: boolean) => { store.computing = v; },
 });
 
-const mlThreshold = ref(store.session?.parameters.ml_threshold ?? 0.5);
+const mlThreshold = ref(store.contourSettings?.ml_threshold ?? 0.5);
 
 const strategyLabels: Record<string, string> = {
     auto: "Auto",
@@ -94,7 +94,7 @@ const shortError = computed(() => {
 });
 
 async function runCompute() {
-    if (!store.hasImage) return;
+    if (!store.imageMeta) return;
 
     const hadData = !!(store.epicycleData || store.basesData);
 
@@ -102,42 +102,34 @@ async function runCompute() {
     store.error = null;
 
     try {
-        // Save settings (fire-and-forget) and run both computes in parallel.
-        // The API layer handles per-endpoint abort automatically.
-        store.updateSettings({
-            parameters: {
-                strategy: strategy.value,
-                blur_sigma: blurSigma.value,
-                min_contour_area: minContourArea.value / 100,
-                max_contours: maxContours.value === 0 ? null : maxContours.value,
-                smooth_contours: smoothContours.value,
-                n_harmonics: props.nHarmonics,
-                n_points: props.nPoints,
-                ml_threshold: mlThreshold.value,
-                ml_detail_threshold: mlThreshold.value * 0.6,
-            },
-        });
+        // Update contour settings with ML params
+        store.contourSettings = {
+            ...store.contourSettings,
+            strategy: strategy.value,
+            blur_sigma: blurSigma.value,
+            min_contour_area: minContourArea.value,
+            max_contours: maxContours.value === 0 ? null : maxContours.value,
+            smooth_contours: smoothContours.value as any,
+            n_harmonics: props.nHarmonics,
+            n_points: props.nPoints,
+            ml_threshold: mlThreshold.value,
+            ml_detail_threshold: mlThreshold.value * 0.6,
+        };
+
+        // Extract contour first, then compute in parallel
+        await store.extractContour();
 
         const results = await Promise.allSettled([
-            store.runEpicycles({
-                n_harmonics: props.nHarmonics,
-                n_points: props.nPoints,
-            }),
-            store.runBases({
-                max_degree: props.nHarmonics,
-                n_points: props.nPoints,
-            }),
+            store.computeEpicycles(),
+            store.computeBases(),
         ]);
 
         computing.value = false;
         const anyOk = results.some((r) => r.status === "fulfilled");
         if (anyOk && (store.epicycleData || store.basesData)) {
             if (hadData) {
-                // Mid-animation recompute: keep current t, just ensure playing.
-                // Canvas redraws at current position with new data automatically.
                 if (!anim.playing) anim.play();
             } else {
-                // First compute after image upload — start from beginning
                 anim.reset();
                 anim.play();
             }
@@ -156,7 +148,7 @@ watchDebounced(
 
 // Compute on mount if image exists but no data
 onMounted(() => {
-    if (store.hasImage && !store.epicycleData && !store.basesData) {
+    if (store.imageMeta && !store.epicycleData && !store.basesData) {
         runCompute();
     }
 });

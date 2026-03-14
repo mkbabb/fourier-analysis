@@ -36,7 +36,7 @@ export function computeStableEpicycleBbox(
     scale: number,
 ): EpicycleBbox {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const nSamples = 64;
+    const nSamples = 32;
     for (let s = 0; s <= nSamples; s++) {
         const t = s / nSamples;
         const positions = fourierPositionsAt(components, t, nVis);
@@ -243,14 +243,22 @@ export function drawTipDot(
     const { toScreen } = view;
     const [sx, sy] = toScreen(tipX, tipY);
 
+    // Pulsing glow
+    const glowAlpha = 0.2 + 0.1 * Math.sin(performance.now() / 300);
     ctx.beginPath();
-    ctx.arc(sx, sy, 7, 0, Math.PI * 2);
-    ctx.fillStyle = VIZ_COLORS.fourier;
+    ctx.arc(sx, sy, 20, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(VIZ_COLORS.fourier, glowAlpha);
     ctx.fill();
 
-    // Glow
+    // Solid dot
     ctx.beginPath();
-    ctx.arc(sx, sy, 15, 0, Math.PI * 2);
-    ctx.fillStyle = hexToRgba(VIZ_COLORS.fourier, 0.15);
+    ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+    ctx.fillStyle = "#ff3b3b";
+    ctx.fill();
+
+    // White highlight
+    ctx.beginPath();
+    ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
     ctx.fill();
 }
