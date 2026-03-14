@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, watch, toRaw } from "vue";
+import { ref, watch, toRaw, onScopeDispose } from "vue";
 import { useRouter } from "vue-router";
 import type {
     ImageMeta,
@@ -56,9 +56,19 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const computing = ref(false);
     const error = ref<string | null>(null);
     const revision = ref(0);
+    // Separate revision counters for compute methods so that
+    // loadWorkspace incrementing `revision` doesn't cause compute
+    // results to be silently discarded, which triggers an infinite
+    // retry loop in the auto-compute watcher.
+    let epicycleRevision = 0;
+    let basesRevision = 0;
 
     // Draft auto-save (debounced)
     let draftTimer: ReturnType<typeof setTimeout> | null = null;
+
+    onScopeDispose(() => {
+        if (draftTimer) clearTimeout(draftTimer);
+    });
 
     function scheduleDraftSave() {
         if (!imageSlug.value) return;
@@ -230,7 +240,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         if (!contour.value) return;
         computing.value = true;
         error.value = null;
-        const rev = ++revision.value;
+        const rev = ++epicycleRevision;
         try {
             const result = await api.computeEpicycles(
                 contour.value.contour_hash,
@@ -239,7 +249,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
                     n_points: contourSettings.value.n_points,
                 },
             );
-            if (revision.value !== rev) return;
+            if (epicycleRevision !== rev) return;
             epicycleData.value = result;
             scheduleDraftSave();
         } catch (e: any) {
@@ -255,7 +265,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         if (!contour.value) return;
         computing.value = true;
         error.value = null;
-        const rev = ++revision.value;
+        const rev = ++basesRevision;
         try {
             const result = await api.computeBases(
                 contour.value.contour_hash,
@@ -268,7 +278,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
                     n_eval: contourSettings.value.n_points,
                 },
             );
-            if (revision.value !== rev) return;
+            if (basesRevision !== rev) return;
             basesData.value = result;
             scheduleDraftSave();
         } catch (e: any) {

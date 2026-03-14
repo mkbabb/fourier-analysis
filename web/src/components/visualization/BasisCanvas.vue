@@ -27,6 +27,7 @@ import type { EpicycleFit } from "./lib/canvas-drawing";
 import { useCanvasSetup } from "./composables/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";
+import { useViewTransform } from "./composables/useViewTransform";
 
 const props = withDefaults(
     defineProps<{
@@ -72,44 +73,8 @@ const hover = useCanvasHover({
     onRedraw: () => { if (surface.value) drawFrame(); },
 });
 
-// ── Path bounds ──
-function getViewTransform(s: CanvasSurface): ViewTransform {
-    let xs: number[];
-    let ys: number[];
-    if (store.epicycleData) {
-        xs = store.epicycleData.path.x;
-        ys = store.epicycleData.path.y;
-    } else if (store.basesData) {
-        xs = store.basesData.original.x;
-        ys = store.basesData.original.y;
-    } else {
-        const noop: ViewTransform = { cx: 0, cy: 0, scale: 1, toScreen: (x, y) => [x, y] };
-        return noop;
-    }
-
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    const rangeX = maxX - minX || 1;
-    const rangeY = maxY - minY || 1;
-    const margin = 0.15;
-    const scale = Math.min(
-        s.width / (rangeX * (1 + margin * 2)),
-        s.height / (rangeY * (1 + margin * 2)),
-    );
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    const w = s.width;
-    const h = s.height;
-
-    return {
-        cx, cy, scale,
-        toScreen(x: number, y: number): [number, number] {
-            return [w / 2 + (x - cx) * scale, h / 2 - (y - cy) * scale];
-        },
-    };
-}
+// ── View transform (extracted composable) ──
+const { getViewTransform } = useViewTransform();
 
 // ── Image overlay (extracted composable) ──
 const { drawImageOverlay } = useImageOverlay(() => {
@@ -497,7 +462,7 @@ defineExpose({ anim, exportFrame, drawImageOverlay });
 <template>
     <div
         ref="containerRef"
-        class="canvas-container"
+        class="canvas-container cartoon-card"
         @mousemove="hover.onMouseMove"
         @mouseleave="hover.onMouseLeave"
         @click="hover.onClick"
@@ -510,30 +475,10 @@ defineExpose({ anim, exportFrame, drawImageOverlay });
 .canvas-container {
     position: relative;
     overflow: hidden;
-    border-radius: 0.75rem;
-    border: 2px solid hsl(var(--foreground) / 0.15);
-    background: hsl(var(--card));
     flex: 1;
     min-height: 0;
-    box-shadow: 3px 3px 0px 0px hsl(var(--foreground) / 0.08);
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
     user-select: none;
     -webkit-user-select: none;
-}
-
-:where(.dark) .canvas-container {
-    border-color: hsl(var(--foreground) / 0.12);
-    box-shadow: 3px 3px 0px 0px hsl(var(--foreground) / 0.06);
-}
-
-.canvas-container:hover {
-    border-color: hsl(var(--foreground) / 0.25);
-    box-shadow: 4px 4px 0px 0px hsl(var(--foreground) / 0.1);
-}
-
-:where(.dark) .canvas-container:hover {
-    border-color: hsl(var(--foreground) / 0.18);
-    box-shadow: 4px 4px 0px 0px hsl(var(--foreground) / 0.08);
 }
 
 .canvas-el {

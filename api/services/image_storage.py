@@ -5,8 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import tempfile
-from datetime import datetime
-from pathlib import Path
+from datetime import UTC, datetime
 
 from bson import Binary
 
@@ -35,7 +34,7 @@ async def store_image_asset(
     while await db.images.find_one({"image_slug": slug}):
         slug = generate_slug()
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     doc = {
         "image_slug": slug,
         "sha256": sha256,
@@ -100,7 +99,7 @@ async def store_contour_asset(
         "maxY": max(ys) if ys else 0.0,
     }
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     doc = {
         "contour_hash": contour_hash,
         "image_slug": image_slug,

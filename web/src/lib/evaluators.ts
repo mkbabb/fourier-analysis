@@ -30,13 +30,16 @@ export function evaluateChebyshev(
     components: BasisComponent[],
     s: number,
     maxTerms?: number,
+    buffer?: Float64Array,
 ): number {
     const n = maxTerms ?? components.length;
     let maxDeg = 0;
     for (let i = 0; i < n && i < components.length; i++) {
         if (components[i].index > maxDeg) maxDeg = components[i].index;
     }
-    const coeffs = new Float64Array(maxDeg + 1);
+    const coeffs = buffer && buffer.length >= maxDeg + 1
+        ? (buffer.fill(0, 0, maxDeg + 1), buffer)
+        : new Float64Array(maxDeg + 1);
     for (let i = 0; i < n && i < components.length; i++) {
         const c = components[i];
         if (c.index >= 0 && c.index <= maxDeg) {
@@ -59,13 +62,16 @@ export function evaluateLegendre(
     components: BasisComponent[],
     s: number,
     maxTerms?: number,
+    buffer?: Float64Array,
 ): number {
     const n = maxTerms ?? components.length;
     let maxDeg = 0;
     for (let i = 0; i < n && i < components.length; i++) {
         if (components[i].index > maxDeg) maxDeg = components[i].index;
     }
-    const coeffs = new Float64Array(maxDeg + 1);
+    const coeffs = buffer && buffer.length >= maxDeg + 1
+        ? (buffer.fill(0, 0, maxDeg + 1), buffer)
+        : new Float64Array(maxDeg + 1);
     for (let i = 0; i < n && i < components.length; i++) {
         const c = components[i];
         if (c.index >= 0 && c.index <= maxDeg) {

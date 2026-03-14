@@ -43,6 +43,13 @@ function onLeave() {
     scheduleCollapse();
 }
 
+function onFocusOut(e: FocusEvent) {
+    // Don't collapse if focus moved to another element inside the dock
+    const root = e.currentTarget as HTMLElement;
+    if (e.relatedTarget && root.contains(e.relatedTarget as Node)) return;
+    scheduleCollapse();
+}
+
 function onClickSummary() {
     clearTimer();
     expanded.value = true;
@@ -60,16 +67,20 @@ onUnmounted(clearTimer);
         @mouseenter="onEnter"
         @mouseleave="onLeave"
         @focusin="onEnter"
-        @focusout="onLeave"
+        @focusout="onFocusOut"
     >
         <!-- Full-width expanded content -->
-        <div v-show="expanded" class="dock-layer dock-layer--full">
-            <slot />
-        </div>
+        <Transition name="dock-fade">
+            <div v-if="expanded" class="dock-layer dock-layer--full">
+                <slot />
+            </div>
+        </Transition>
         <!-- Compact-width collapsed summary -->
-        <div v-show="!expanded" class="dock-layer dock-layer--summary" @click="onClickSummary">
-            <slot name="collapsed" />
-        </div>
+        <Transition name="dock-fade">
+            <div v-if="!expanded" class="dock-layer dock-layer--summary" @click="onClickSummary">
+                <slot name="collapsed" />
+            </div>
+        </Transition>
     </div>
 </template>
 
@@ -91,7 +102,8 @@ onUnmounted(clearTimer);
         max-width 0.4s cubic-bezier(0.22, 1.6, 0.36, 1),
         padding 0.25s cubic-bezier(0.22, 1.6, 0.36, 1),
         box-shadow 0.2s ease,
-        transform 0.25s cubic-bezier(0.22, 1.6, 0.36, 1);
+        transform 0.25s cubic-bezier(0.22, 1.6, 0.36, 1),
+        opacity 0.2s ease;
 }
 
 /* fit-content: skip width/max-width animation since auto→auto can't be animated */
@@ -148,9 +160,23 @@ onUnmounted(clearTimer);
 .dock-layer--full {
     width: 100%;
     overflow: visible;
+    transition: opacity 0.2s ease;
 }
 
 .dock-layer--summary {
     gap: 0.5rem;
+    transition: opacity 0.15s ease;
+}
+
+.dock-fade-enter-active {
+    transition: opacity 0.2s ease 0.08s;
+}
+.dock-fade-leave-active {
+    transition: opacity 0.12s ease;
+    position: absolute;
+}
+.dock-fade-enter-from,
+.dock-fade-leave-to {
+    opacity: 0;
 }
 </style>

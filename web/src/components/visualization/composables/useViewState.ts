@@ -19,7 +19,7 @@ export function useViewState() {
     const showGhost = ref(true);
     const showImageOverlay = ref(typeof saved.overlay === "boolean" ? saved.overlay : false);
 
-    // Restore editing once contour is available
+    // Restore editing immediately once contour is available
     if (saved.editing) {
         let restored = false;
         watch(
@@ -27,7 +27,7 @@ export function useViewState() {
             (contour) => {
                 if (contour && !restored) {
                     restored = true;
-                    setTimeout(() => { isEditing.value = true; }, 300);
+                    isEditing.value = true;
                 }
             },
             { immediate: true },

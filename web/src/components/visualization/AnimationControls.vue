@@ -236,7 +236,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
     border: 2px solid hsl(var(--foreground) / 0.15);
     border-radius: 0.75rem;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
-    z-index: 50;
+    z-index: var(--z-popover);
     pointer-events: auto;
 }
 .menu-item {

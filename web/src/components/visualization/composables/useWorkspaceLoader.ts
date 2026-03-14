@@ -5,6 +5,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import type { EasingName } from "@/stores/animation";
 import { useToast } from "@/composables/useToast";
+import { isAbortError } from "@/lib/api";
 
 export function useWorkspaceLoader(activeBases: Ref<string[]>) {
     const route = useRoute();
@@ -81,32 +82,42 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
         },
     );
 
-    // Auto-compute epicycles when contour exists but epicycleData doesn't.
-    // Watch both contour AND computing so we retry after any in-flight computation finishes.
+    // Auto-compute epicycles when a new contour arrives without epicycleData.
+    // Only watches contour (not computing) to avoid re-trigger loops from the
+    // shared `computing` flag toggling during parallel compute calls.
     watch(
-        () => [store.contour, store.computing] as const,
-        ([contour, computing]) => {
-            if (contour && !store.epicycleData && !computing) {
+        () => store.contour,
+        (contour) => {
+            if (contour && !store.epicycleData && !store.computing) {
                 store.computeEpicycles().catch((e) => {
-                    console.warn("[auto-compute] epicycles failed:", e);
+                    if (!isAbortError(e)) {
+                        console.warn("[auto-compute] epicycles failed:", e);
+                    }
                 });
             }
         },
         { immediate: true },
     );
 
-    // Auto-play when any computation data arrives (epicycles or bases).
-    // Ensures fourier-epicycles is active and animation is playing.
+    // Auto-play when computation data first arrives.
+    // Does NOT override the user's basis selection on recomputes.
+    let hadDataBefore = false;
     watch(
         () => [store.epicycleData, store.basesData] as const,
         ([epicData, basesData]) => {
-            if (!epicData && !basesData) return;
-            // Always ensure fourier-epicycles is selected
-            if (!activeBases.value.includes("fourier-epicycles")) {
-                activeBases.value = [
-                    "fourier-epicycles",
-                    ...activeBases.value.filter((b) => !b.startsWith("fourier")),
-                ];
+            if (!epicData && !basesData) {
+                hadDataBefore = false;
+                return;
+            }
+            if (!hadDataBefore) {
+                hadDataBefore = true;
+                // First data arrival: ensure fourier-epicycles is selected
+                if (!activeBases.value.includes("fourier-epicycles")) {
+                    activeBases.value = [
+                        "fourier-epicycles",
+                        ...activeBases.value.filter((b) => !b.startsWith("fourier")),
+                    ];
+                }
             }
             // Start playing if not already
             if (!anim.playing) {

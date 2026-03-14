@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 from api.config import settings
 from api.dependencies import get_image_asset, get_image_meta
 from api.models.assets import (
-    ContourSettings,
     ExtractContourRequest,
     ImageAssetResponse,
 )
@@ -29,7 +28,7 @@ from api.services.image_storage import (
     store_image_asset,
 )
 from fourier_analysis.contours import resample_arc_length
-from fourier_analysis.shortest_tour import order_contours
+from fourier_analysis.shortest_tour import build_contour_tour
 
 import numpy as np
 
@@ -136,7 +135,7 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest):
     complex_contours = [
         np.array(c["x"]) + 1j * np.array(c["y"]) for c in contours
     ]
-    path = order_contours(complex_contours)
+    path = build_contour_tour(complex_contours).path
     path = resample_arc_length(path, cs.n_points)
     xs = path.real.tolist()
     ys = path.imag.tolist()

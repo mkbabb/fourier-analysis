@@ -89,7 +89,7 @@ function onTrackKeydown(e: KeyboardEvent) {
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease;
-    z-index: 50;
+    z-index: var(--z-popover);
     user-select: none;
     -webkit-user-select: none;
 }

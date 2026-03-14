@@ -91,7 +91,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
 .fs-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 200;
+    z-index: var(--z-fullscreen);
     background: hsl(var(--background));
 }
 
@@ -121,7 +121,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     position: absolute;
     top: 0.75rem;
     right: 0.75rem;
-    z-index: 210;
+    z-index: calc(var(--z-fullscreen) + 10);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -152,7 +152,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 210;
+    z-index: calc(var(--z-fullscreen) + 10);
     padding: 0 1rem 0.75rem;
     display: flex;
     justify-content: center;

@@ -76,7 +76,7 @@ defineExpose({ expanded, expand: onEnter, collapse: () => { expanded.value = fal
     align-items: stretch;
     gap: 0.125rem;
     padding: 0.25rem;
-    z-index: 50;
+    z-index: var(--z-popover);
     pointer-events: auto;
 
     background: hsl(var(--card) / 0.95);

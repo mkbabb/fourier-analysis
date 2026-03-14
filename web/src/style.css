@@ -34,10 +34,10 @@
     --color-accent-pink: hsl(var(--accent-pink));
     --color-section-heading: hsl(var(--section-heading));
 
-    --radius-xl: calc(var(--radius) + 4px);
-    --radius-lg: var(--radius);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-sm: calc(var(--radius) - 4px);
+    --radius-xl: 0.875rem;
+    --radius-lg: 0.625rem;
+    --radius-md: 0.4375rem;
+    --radius-sm: 0.25rem;
 
     /* Paper textures — SVG noise as data URI, matching words project */
     --paper-clean-texture: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
@@ -101,6 +101,16 @@
         --duration-fast: 0.15s;
         --duration-mid: 0.24s;
         --duration-slow: 0.36s;
+
+        /* Z-index scale */
+        --z-canvas-layer: 1;
+        --z-canvas-overlay: 20;
+        --z-popover: 50;
+        --z-modal: 100;
+        --z-fullscreen: 200;
+
+        /* Easing accent */
+        --easing-accent: 248 88% 71%;
     }
 
     .dark {

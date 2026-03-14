@@ -137,7 +137,7 @@ function timeAgo(iso: string): string {
                             <span class="meta-dot">·</span>
                             <span class="fira-code">{{ item.animationSettings?.speed ?? 1 }}×</span>
                         </div>
-                        <EasingCurvePreview :easing="easingName(item)" :size="28" color="hsl(248 88% 71% / 0.5)" />
+                        <EasingCurvePreview :easing="easingName(item)" :size="28" color="hsl(var(--easing-accent) / 0.5)" />
                     </div>
                 </div>
             </div>
@@ -160,9 +160,10 @@ function timeAgo(iso: string): string {
                         </div>
 
                         <div class="modal-body">
-                            <!-- Header: slug + copy -->
+                            <!-- Header: slug + time + copy -->
                             <div class="modal-header">
                                 <span class="modal-slug fira-code">{{ selectedItem.imageSlug }}</span>
+                                <span class="card-time">{{ timeAgo(selectedItem.lastOpenedAt) }}</span>
                                 <button class="card-copy" @click="copySlug(selectedItem.imageSlug, $event)">
                                     <Check v-if="copiedSlug === selectedItem.imageSlug" :size="14" class="text-green-500" />
                                     <Copy v-else :size="14" />
@@ -182,7 +183,7 @@ function timeAgo(iso: string): string {
                             <div class="modal-stats">
                                 <div class="stat-cell">
                                     <span class="stat-label">Harmonics</span>
-                                    <span class="stat-value fira-code" :style="{ color: VIZ_COLORS.fourier }">{{ selectedItem.contourSettings?.n_harmonics ?? '?' }}</span>
+                                    <span class="stat-value fira-code" :style="{ color: VIZ_COLORS.fourier }">N={{ selectedItem.contourSettings?.n_harmonics ?? '?' }}</span>
                                 </div>
                                 <div class="stat-cell">
                                     <span class="stat-label">Points</span>
@@ -195,7 +196,7 @@ function timeAgo(iso: string): string {
                                 <div class="stat-cell">
                                     <span class="stat-label">Easing</span>
                                     <div class="flex items-center gap-1.5">
-                                        <EasingCurvePreview :easing="easingName(selectedItem)" :size="22" />
+                                        <EasingCurvePreview :easing="easingName(selectedItem)" :size="22" color="hsl(var(--easing-accent))" />
                                         <span class="stat-value">{{ EASING_OPTIONS[easingName(selectedItem)]?.label }}</span>
                                     </div>
                                 </div>
@@ -307,7 +308,7 @@ function timeAgo(iso: string): string {
 
 /* ═══ Modal ═══ */
 .modal-backdrop {
-    position: fixed; inset: 0; z-index: 1000; padding: 1rem;
+    position: fixed; inset: 0; z-index: var(--z-modal); padding: 1rem;
     background: hsl(var(--background) / 0.7); backdrop-filter: blur(8px);
     display: flex; align-items: center; justify-content: center;
 }
@@ -337,7 +338,7 @@ function timeAgo(iso: string): string {
 
 .modal-body { padding: 1rem 1.25rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .modal-header { display: flex; align-items: center; gap: 0.375rem; }
-.modal-slug { font-size: 0.8125rem; color: hsl(var(--foreground) / 0.7); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal-slug { font-size: 0.75rem; color: hsl(var(--muted-foreground)); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .modal-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .stat-cell {

@@ -65,11 +65,20 @@ async function apiFetch<T>(
     });
 
     if (!res.ok) {
-        const text = await res.text();
+        let text: string;
+        try {
+            text = await res.text();
+        } catch {
+            text = "(could not read response body)";
+        }
         throw new Error(`API ${res.status}: ${text}`);
     }
 
-    return res.json();
+    try {
+        return await res.json();
+    } catch {
+        throw new Error(`API ${res.status}: invalid JSON response`);
+    }
 }
 
 // ── Images ──

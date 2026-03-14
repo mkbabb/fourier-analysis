@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
@@ -49,5 +49,5 @@ def get_db() -> AsyncIOMotorDatabase:
 async def touch_document(collection_name: str, filter_: dict) -> None:
     db = get_db()
     await db[collection_name].update_one(
-        filter_, {"$set": {"last_accessed_at": datetime.utcnow()}}
+        filter_, {"$set": {"last_accessed_at": datetime.now(UTC)}}
     )

@@ -1,6 +1,11 @@
-import { watch } from "vue";
+import { ref, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { CanvasSurface, ViewTransform } from "../lib/canvas-drawing";
+
+const MAX_CACHE_SIZE = 10;
+
+// Module-scoped cache survives component unmount/remount (e.g. gallery → visualizer)
+const cache = new Map<string, HTMLImageElement>();
 
 /**
  * Eagerly preloads the image overlay as soon as imageSlug is known.
@@ -9,31 +14,41 @@ import type { CanvasSurface, ViewTransform } from "../lib/canvas-drawing";
  */
 export function useImageOverlay(onImageLoaded?: () => void) {
     const store = useWorkspaceStore();
-
-    const cache = new Map<string, HTMLImageElement>();
+    const loading = ref(false);
     let currentImage: HTMLImageElement | null = null;
 
     watch(
         () => store.imageSlug,
         (slug) => {
-            if (!slug) { currentImage = null; return; }
+            if (!slug) { currentImage = null; loading.value = false; return; }
             if (cache.has(slug)) {
                 currentImage = cache.get(slug)!;
+                loading.value = false;
                 onImageLoaded?.();
                 return;
             }
             currentImage = null;
+            loading.value = true;
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.onload = () => {
+                // Evict oldest entry if cache is full
+                if (cache.size >= MAX_CACHE_SIZE) {
+                    const oldest = cache.keys().next().value!;
+                    cache.delete(oldest);
+                }
                 cache.set(slug, img);
                 if (store.imageSlug === slug) {
                     currentImage = img;
+                    loading.value = false;
                     onImageLoaded?.();
                 }
             };
             img.onerror = () => {
-                if (store.imageSlug === slug) currentImage = null;
+                if (store.imageSlug === slug) {
+                    currentImage = null;
+                    loading.value = false;
+                }
             };
             img.src = `/api/images/${slug}/blob`;
         },
@@ -90,5 +105,5 @@ export function useImageOverlay(onImageLoaded?: () => void) {
         s.ctx.restore();
     }
 
-    return { drawImageOverlay };
+    return { drawImageOverlay, loading };
 }

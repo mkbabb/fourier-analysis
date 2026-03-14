@@ -19,7 +19,7 @@ const anim = useAnimationStore();
                 <EasingCurvePreview
                     :easing="(key as EasingName)"
                     :size="28"
-                    :color="anim.easing === key ? 'hsl(248 88% 71%)' : 'hsl(var(--muted-foreground))'"
+                    :color="anim.easing === key ? 'hsl(var(--easing-accent))' : 'hsl(var(--muted-foreground))'"
                 />
                 <span class="easing-chip-label">{{ opt.label }}</span>
             </button>
@@ -63,8 +63,8 @@ const anim = useAnimationStore();
     background: hsl(var(--muted));
 }
 .easing-chip.is-active {
-    border-color: hsl(248 88% 71% / 0.6);
-    background: hsl(248 88% 71% / 0.08);
+    border-color: hsl(var(--easing-accent) / 0.6);
+    background: hsl(var(--easing-accent) / 0.08);
 }
 .easing-chip-label {
     font-size: 0.5625rem;
@@ -74,6 +74,6 @@ const anim = useAnimationStore();
     transition: color 0.15s;
 }
 .easing-chip.is-active .easing-chip-label {
-    color: hsl(248 88% 71%);
+    color: hsl(var(--easing-accent));
 }
 </style>

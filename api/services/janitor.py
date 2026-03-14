@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from api.config import get_settings
 from api.services.database import get_db
@@ -25,16 +25,13 @@ async def run_janitor() -> None:
 async def _cleanup_cycle() -> None:
     settings = get_settings()
     db = get_db()
-    cutoff = datetime.utcnow() - timedelta(days=settings.asset_max_age_days)
+    cutoff = datetime.now(UTC) - timedelta(days=settings.asset_max_age_days)
 
-    # Get pinned contour hashes from snapshots
+    # Get pinned contour hashes and image slugs from snapshots
     pinned_contours: set[str] = set()
-    async for snap in db.snapshots.find({}, {"contour_hash": 1}):
-        pinned_contours.add(snap["contour_hash"])
-
-    # Get pinned image slugs from snapshots
     pinned_images: set[str] = set()
-    async for snap in db.snapshots.find({}, {"image_slug": 1}):
+    async for snap in db.snapshots.find({}, {"contour_hash": 1, "image_slug": 1}):
+        pinned_contours.add(snap["contour_hash"])
         if snap.get("image_slug"):
             pinned_images.add(snap["image_slug"])
 

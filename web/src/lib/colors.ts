@@ -36,6 +36,12 @@ function cssVarToHex(varName: string): string {
         return hslToHex(+hslMatch[1], +hslMatch[2], +hslMatch[3]);
     }
 
+    // Bare HSL triplet: "6 72% 49%" (Tailwind v4 convention)
+    const bareMatch = raw.match(/^([\d.]+)\s+([\d.]+)%\s+([\d.]+)%$/);
+    if (bareMatch) {
+        return hslToHex(+bareMatch[1], +bareMatch[2], +bareMatch[3]);
+    }
+
     // Parse rgb(...)
     const rgbMatch = raw.match(
         /rgb\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/,

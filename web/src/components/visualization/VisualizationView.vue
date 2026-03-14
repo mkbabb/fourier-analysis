@@ -7,8 +7,7 @@ import { useAnimationStore } from "@/stores/animation";
 import { useImageUpload } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
-import { Upload, Maximize2, Pencil, Wand2, Minimize2, Magnet } from "lucide-vue-next";
-import { VIZ_COLORS } from "@/lib/colors";
+import { Upload, Maximize2, Pencil } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
 import ImageUpload from "./ImageUpload.vue";
 import ContourSettings from "./ContourSettings.vue";
@@ -17,13 +16,13 @@ import BasisSelector from "./BasisSelector.vue";
 import AnimationControls from "./AnimationControls.vue";
 import ContourEditorCanvas from "./ContourEditorCanvas.vue";
 import EditorControlsDock from "./EditorControlsDock.vue";
+import EditorToolsPanel from "./EditorToolsPanel.vue";
 import ContourPreview from "./ContourPreview.vue";
 import CanvasOverlayButton from "./CanvasOverlayButton.vue";
 import CoefficientsPanel from "./CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
 import BouncyToggle from "@/components/ui/BouncyToggle.vue";
-import { Collapsible } from "@/components/ui/collapsible";
 
 const router = useRouter();
 const store = useWorkspaceStore();
@@ -92,7 +91,7 @@ function doExport(options: Record<string, boolean>) {
 }
 
 // ── Derived state ──
-const hasData = computed(() => store.epicycleData || store.basesData);
+const hasData = computed(() => store.epicycleData || store.basesData || store.computing);
 const hasEpicycles = computed(() => activeBases.value.includes("fourier-epicycles"));
 const hasImage = computed(() => !!store.imageMeta);
 </script>
@@ -151,49 +150,12 @@ const hasImage = computed(() => !!store.imageMeta);
                             <!-- Preview above tools -->
                             <ContourPreview :points="editorRef?.points" />
                             <!-- Editor tools card -->
-                            <div class="cartoon-card px-3 py-2">
-                                <Collapsible title="Tools" subtitle="contour refinement" :default-open="true">
-                                    <div class="flex flex-col gap-2 pt-1">
-                                        <button class="flex items-center gap-3 w-full rounded-xl border-[1.5px] border-border bg-card px-3 py-2.5 text-left transition-all hover:border-foreground/20 hover:-translate-y-px hover:shadow-md active:scale-[0.98] cursor-pointer"
-                                            @click="editorRef?.applySmooth()">
-                                            <Wand2 class="w-5 h-5 shrink-0 text-[var(--viz-amber)]" />
-                                            <div class="flex flex-col gap-0.5 min-w-0">
-                                                <span class="text-sm font-semibold text-foreground">Smooth</span>
-                                                <span class="text-[0.6875rem] text-muted-foreground leading-tight whitespace-normal">Laplacian filter removes noise while preserving shape</span>
-                                            </div>
-                                        </button>
-                                        <button class="flex items-center gap-3 w-full rounded-xl border-[1.5px] border-border bg-card px-3 py-2.5 text-left transition-all hover:border-foreground/20 hover:-translate-y-px hover:shadow-md active:scale-[0.98] cursor-pointer"
-                                            @click="editorRef?.applySimplify()">
-                                            <Minimize2 class="w-5 h-5 shrink-0 text-[var(--viz-chebyshev)]" />
-                                            <div class="flex flex-col gap-0.5 min-w-0">
-                                                <span class="text-sm font-semibold text-foreground">Simplify</span>
-                                                <span class="text-[0.6875rem] text-muted-foreground leading-tight whitespace-normal">Reduce point count while preserving curvature</span>
-                                            </div>
-                                        </button>
-                                        <!-- Magnet mode -->
-                                        <div class="rounded-xl border-[1.5px] border-border bg-card px-3 py-2.5">
-                                            <div class="flex items-center gap-3">
-                                                <Magnet class="w-5 h-5 shrink-0" :class="magnetRadius > 0 ? 'text-[var(--viz-fourier)]' : 'text-muted-foreground'" />
-                                                <div class="flex flex-col gap-0.5 min-w-0 flex-1">
-                                                    <div class="flex items-center justify-between">
-                                                        <span class="text-sm font-semibold text-foreground">Magnet</span>
-                                                        <span class="text-xs fira-code text-muted-foreground tabular-nums">{{ editorRef?.magnetRadius ?? 0 }}</span>
-                                                    </div>
-                                                    <span class="text-[0.6875rem] text-muted-foreground leading-tight whitespace-normal">Drag adjacent points together with falloff</span>
-                                                    <input
-                                                        type="range"
-                                                        min="0" max="10" step="1"
-                                                        :value="editorRef?.magnetRadius ?? 0"
-                                                        class="styled-slider w-full mt-1"
-                                                        :style="{ '--progress': ((editorRef?.magnetRadius ?? 0) / 10 * 100) + '%', '--slider-color': VIZ_COLORS.fourier }"
-                                                        @input="editorRef && (editorRef.magnetRadius = parseInt(($event.target as HTMLInputElement).value))"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Collapsible>
-                            </div>
+                            <EditorToolsPanel
+                                :magnet-radius="magnetRadius"
+                                @smooth="editorRef?.applySmooth()"
+                                @simplify="editorRef?.applySimplify()"
+                                @update:magnet-radius="magnetRadius = $event"
+                            />
                             <ContourSettings v-if="hasImage" v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
                         </div>
                         <div v-else key="viz-panel" class="viz-panel-left">

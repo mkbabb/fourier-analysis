@@ -36,7 +36,7 @@ export function computeStableEpicycleBbox(
     scale: number,
 ): EpicycleBbox {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const nSamples = 64;
+    const nSamples = 32;
     for (let s = 0; s <= nSamples; s++) {
         const t = s / nSamples;
         const positions = fourierPositionsAt(components, t, nVis);
