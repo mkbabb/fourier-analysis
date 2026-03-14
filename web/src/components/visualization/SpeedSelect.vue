@@ -50,7 +50,7 @@ const speedStr = computed({
     font-size: 0.75rem;
     border: none;
     background: none;
-    border-radius: 0.375rem;
+    border-radius: 9999px;
     color: hsl(var(--muted-foreground));
 }
 
@@ -61,6 +61,6 @@ const speedStr = computed({
     font-family: "Fira Code", monospace;
     font-size: 0.75rem;
     border: 1.5px solid hsl(var(--foreground) / 0.15);
-    border-radius: 0.375rem;
+    border-radius: 9999px;
 }
 </style>

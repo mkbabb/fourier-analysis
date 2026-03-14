@@ -2,10 +2,10 @@
 import { computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useHoverCard } from "./composables/useHoverCard";
-import { useSessionStore } from "@/stores/session";
+import { useWorkspaceStore } from "@/stores/workspace";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import BouncyToggle from "@/components/ui/BouncyToggle.vue";
-import ShareButton from "./ShareButton.vue";
+// ShareButton moved to timeline dock
 
 const route = useRoute();
 const router = useRouter();
@@ -20,12 +20,14 @@ onUnmounted(() => document.removeEventListener("click", onDocClick));
 const tabOptions = [
     { label: "Paper", value: "/paper" },
     { label: "Visualize", value: "/visualize" },
+    { label: "Gallery", value: "/gallery" },
     { label: "Morph", value: "/morph" },
 ];
 
 const activeTab = computed(() => {
     if (route.path === "/paper") return "/paper";
-    if (route.path === "/visualize" || route.path.startsWith("/s/")) return "/visualize";
+    if (route.path === "/visualize" || route.path.startsWith("/s/") || route.path.startsWith("/w/")) return "/visualize";
+    if (route.path === "/gallery") return "/gallery";
     if (route.path === "/morph") return "/morph";
     return "/paper";
 });
@@ -34,7 +36,7 @@ function onTabChange(path: string) {
     router.push(path);
 }
 
-const sessionStore = useSessionStore();
+const workspaceStore = useWorkspaceStore();
 </script>
 
 <template>
@@ -95,10 +97,7 @@ const sessionStore = useSessionStore();
                 />
             </div>
 
-            <div class="ml-auto flex items-center gap-0.5 sm:gap-1.5 shrink-0">
-                <Transition name="share-pop">
-                    <ShareButton v-if="activeTab === '/visualize' && sessionStore.slug && sessionStore.hasImage" />
-                </Transition>
+            <div class="ml-auto flex items-center gap-1.5 shrink-0">
                 <DarkModeToggle class="dark-mode-toggle" />
             </div>
         </div>

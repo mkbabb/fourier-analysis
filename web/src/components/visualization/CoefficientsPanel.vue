@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useSessionStore } from "@/stores/session";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { Collapsible } from "@/components/ui/collapsible";
 import { Tooltip } from "@/components/ui/tooltip";
 
-const store = useSessionStore();
+const store = useWorkspaceStore();
 const expanded = ref(false);
 
 const topComponents = computed(() => {

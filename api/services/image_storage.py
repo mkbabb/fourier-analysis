@@ -1,87 +1,125 @@
-"""Centralized GridFS image storage operations."""
+"""Asset-based image and contour storage (MongoDB documents with Binary blobs)."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
-import bson.errors
-import gridfs.errors
-from bson import ObjectId
-from fastapi import HTTPException
+from bson import Binary
 
-from api.dependencies import get_gridfs
+from api.services.database import get_db
+from api.slugs import generate_slug
 
 
-async def download_to_tempfile(session: dict) -> Path:
-    """Download a session's image from GridFS to a temporary file.
+async def store_image_asset(
+    sha256: str,
+    content: bytes,
+    original_name: str,
+    content_type: str,
+) -> dict:
+    """Store an image blob in MongoDB, deduplicating by sha256.
 
-    Raises HTTPException if no image is attached or the file is missing.
+    Returns the full document (including blob).
     """
-    if not session.get("image"):
-        raise HTTPException(
-            status_code=400, detail="No image uploaded for this session"
-        )
+    db = get_db()
 
-    image_meta = session["image"]
-    if "file_id" not in image_meta:
-        raise HTTPException(
-            status_code=400,
-            detail="Image stored in legacy format — please re-upload",
-        )
+    existing = await db.images.find_one({"sha256": sha256})
+    if existing is not None:
+        return existing
 
-    bucket = get_gridfs()
-    file_id = image_meta["file_id"]
+    slug = generate_slug()
+    # Ensure slug uniqueness
+    while await db.images.find_one({"image_slug": slug}):
+        slug = generate_slug()
 
-    try:
-        grid_out = await bucket.open_download_stream(ObjectId(file_id))
-    except (bson.errors.InvalidId, gridfs.errors.NoFile):
-        raise HTTPException(status_code=404, detail="Image file not found in storage")
+    now = datetime.utcnow()
+    doc = {
+        "image_slug": slug,
+        "sha256": sha256,
+        "original_name": original_name,
+        "content_type": content_type,
+        "bytes": len(content),
+        "blob": Binary(content),
+        "created_at": now,
+        "last_accessed_at": now,
+    }
+    await db.images.insert_one(doc)
+    return doc
 
-    data = await grid_out.read()
 
-    original = image_meta.get("original_name", "image.png")
-    ext = Path(original).suffix.lower() or ".png"
+def image_bytes(asset: dict) -> tuple[bytes, str]:
+    """Extract raw bytes and content_type from an image document."""
+    blob = asset["blob"]
+    data = bytes(blob) if isinstance(blob, Binary) else blob
+    return data, asset.get("content_type", "image/png")
 
+
+def image_tempfile(asset: dict) -> tempfile.NamedTemporaryFile:
+    """Write image blob to a temporary file for compute.
+
+    Returns the open NamedTemporaryFile (caller should close/delete when done).
+    """
+    data, content_type = image_bytes(asset)
+    ext_map = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/bmp": ".bmp",
+        "image/tiff": ".tiff",
+        "image/webp": ".webp",
+    }
+    ext = ext_map.get(content_type, ".png")
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
     tmp.write(data)
-    tmp.close()
-    return Path(tmp.name)
+    tmp.flush()
+    return tmp
 
 
-async def stream_image(session: dict) -> tuple[bytes, str]:
-    """Read a session's image from GridFS, returning (data, content_type).
+async def store_contour_asset(
+    xs: list[float],
+    ys: list[float],
+    image_slug: str,
+    source: str,
+) -> dict:
+    """Store contour points in MongoDB, deduplicating by contour_hash.
 
-    Raises HTTPException if no image or file not found.
+    Returns the full document.
     """
-    if not session.get("image"):
-        raise HTTPException(status_code=404, detail="No image uploaded")
+    db = get_db()
 
-    image_meta = session["image"]
+    # Compute deterministic hash from sorted points
+    points_payload = json.dumps({"x": sorted(xs), "y": sorted(ys)}, sort_keys=True)
+    contour_hash = hashlib.sha256(points_payload.encode()).hexdigest()
 
-    if "file_id" not in image_meta:
-        raise HTTPException(
-            status_code=404,
-            detail="Image stored in legacy format — please re-upload",
-        )
+    bbox = {
+        "minX": min(xs) if xs else 0.0,
+        "maxX": max(xs) if xs else 0.0,
+        "minY": min(ys) if ys else 0.0,
+        "maxY": max(ys) if ys else 0.0,
+    }
 
-    bucket = get_gridfs()
-    try:
-        grid_out = await bucket.open_download_stream(ObjectId(image_meta["file_id"]))
-    except (bson.errors.InvalidId, gridfs.errors.NoFile):
-        raise HTTPException(status_code=404, detail="Image file not found in storage")
+    now = datetime.utcnow()
+    doc = {
+        "contour_hash": contour_hash,
+        "image_slug": image_slug,
+        "source": source,
+        "point_count": len(xs),
+        "bbox": bbox,
+        "preview_path": "",
+        "points": {"x": xs, "y": ys},
+        "created_at": now,
+        "last_accessed_at": now,
+    }
 
-    data = await grid_out.read()
-    content_type = image_meta.get("content_type", "image/png")
-    return data, content_type
+    # Upsert: if the hash already exists, just touch last_accessed_at
+    set_on_insert = {k: v for k, v in doc.items() if k != "last_accessed_at"}
+    result = await db.contours.update_one(
+        {"contour_hash": contour_hash},
+        {"$setOnInsert": set_on_insert, "$set": {"last_accessed_at": now}},
+        upsert=True,
+    )
 
-
-async def delete_image(session: dict) -> None:
-    """Best-effort deletion of a session's GridFS image file."""
-    if not session.get("image") or not session["image"].get("file_id"):
-        return
-    bucket = get_gridfs()
-    try:
-        await bucket.delete(ObjectId(session["image"]["file_id"]))
-    except Exception:
-        pass  # Best-effort cleanup — GridFS delete shouldn't block session deletion
+    # Return the document
+    return await db.contours.find_one({"contour_hash": contour_hash})

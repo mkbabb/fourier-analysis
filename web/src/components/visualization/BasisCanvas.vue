@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { useSessionStore } from "@/stores/session";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { fourierPositionsAt, evaluateFourier } from "@/lib/bases";
 import { VIZ_COLORS, hexToRgba } from "@/lib/colors";
@@ -26,21 +26,23 @@ import {
 import type { EpicycleFit } from "./lib/canvas-drawing";
 import { useCanvasSetup } from "./composables/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
+import { useImageOverlay } from "./composables/useImageOverlay";
 
 const props = withDefaults(
     defineProps<{
         activeBases?: string[];
+        showGhost?: boolean;
+        showImageOverlay?: boolean;
     }>(),
-    { activeBases: () => ["fourier-epicycles"] },
+    { activeBases: () => ["fourier-epicycles"], showGhost: true, showImageOverlay: false },
 );
 
-const store = useSessionStore();
+const store = useWorkspaceStore();
 const anim = useAnimationStore();
 const canvasRef = ref<HTMLCanvasElement>();
 const containerRef = ref<HTMLDivElement>();
 
 const maxCircles = ref(80);
-const showGhost = ref(true);
 
 // ── Cached epicycle state ──
 let stableEpicycleBbox: EpicycleBbox | null = null;
@@ -109,9 +111,14 @@ function getViewTransform(s: CanvasSurface): ViewTransform {
     };
 }
 
+// ── Image overlay (extracted composable) ──
+const { drawImageOverlay } = useImageOverlay(() => {
+    if (surface.value) drawFrame();
+});
+
 // ── Draw placeholder ──
 function drawPlaceholderFrame(s: CanvasSurface) {
-    drawPlaceholder(s, store.hasImage);
+    drawPlaceholder(s, !!store.imageMeta);
 }
 
 // ── Main draw frame ──
@@ -127,6 +134,11 @@ function drawFrame() {
 
     // Background grid
     drawGrid(s, view);
+
+    // Image overlay (behind curves)
+    if (props.showImageOverlay) {
+        drawImageOverlay(s, view);
+    }
 
     const hasEpicycles = props.activeBases.includes("fourier-epicycles");
     const onlyEpicycles = hasEpicycles && props.activeBases.length === 1;
@@ -149,7 +161,7 @@ function drawEpicycleFrame(
     const trailColor = epicycleHovered ? VIZ_COLORS.golden : VIZ_COLORS.fourier;
 
     // Ghost path
-    if (showGhost.value) {
+    if (props.showGhost) {
         drawGhostPath(s, view, data.path.x, data.path.y, true);
     }
 
@@ -225,7 +237,7 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
     const hoveredBasis = hover.getHoveredBasis();
 
     // Ghost path
-    if (showGhost.value) {
+    if (props.showGhost) {
         let origX: number[] | undefined;
         let origY: number[] | undefined;
         if (basesData) {
@@ -390,9 +402,12 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
 }
 
 // ── Watchers (consolidated) ──
-// Data watcher: resets trail, invalidates bbox, triggers draw
+// Data watcher: resets trail, invalidates bbox, triggers draw.
+// Watches epicycleData and basesData by identity (both are always replaced
+// wholesale, never mutated) — deep comparison on these large arrays would be
+// a serious performance hit.
 watch(
-    [() => store.epicycleData, () => props.activeBases],
+    [() => store.epicycleData, () => store.basesData, () => props.activeBases],
     () => {
         trail.clearTrail();
         stableEpicycleBbox = null;
@@ -410,12 +425,13 @@ watch(
             drawFrame();
         }
     },
-    { deep: true },
 );
 
-// Render watcher: just calls drawFrame()
+// Render watcher: fires at 60 fps while animating.  Keep it to the bare
+// minimum: animation clock ticks and the two display-toggle props.
+// basesData is intentionally NOT here — it belongs in the data watcher above.
 watch(
-    [() => anim.t, () => anim.easedT, () => store.basesData],
+    [() => anim.t, () => anim.easedT, () => props.showGhost, () => props.showImageOverlay],
     () => {
         if (surface.value) drawFrame();
     },
@@ -459,7 +475,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
         }
 
         if (!showLabels) {
-            offCtx.clearRect(s.width - 200, 0, 200, 100);
+            offCtx.clearRect(0, 0, 200, 100);
         }
     }
 
@@ -475,7 +491,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
     document.body.removeChild(a);
 }
 
-defineExpose({ anim, exportFrame, showGhost });
+defineExpose({ anim, exportFrame, drawImageOverlay });
 </script>
 
 <template>

@@ -31,15 +31,6 @@ export interface ContourData {
     contours: { x: number[]; y: number[]; n_points: number }[];
 }
 
-export interface SessionData {
-    slug: string;
-    created_at: string;
-    parameters: ContourSettings;
-    animation_settings: AnimationSettings;
-    has_image: boolean;
-    has_results: boolean;
-}
-
 export interface ContourSettings {
     strategy: string;
     resize: number;
@@ -62,4 +53,46 @@ export interface AnimationSettings {
     easing: string;
     speed: number;
     active_bases: string[];
+}
+
+export interface ImageMeta {
+    image_slug: string;
+    sha256: string;
+    original_name: string;
+    content_type: string;
+    bytes: number;
+    created_at: string;
+    last_accessed_at: string;
+}
+
+export interface ContourAsset {
+    contour_hash: string;
+    image_slug: string | null;
+    source: string;
+    point_count: number;
+    bbox: { minX: number; maxX: number; minY: number; maxY: number };
+    preview_path: string;
+    created_at: string;
+    last_accessed_at: string;
+    points: { x: number[]; y: number[] };
+}
+
+export interface Snapshot {
+    snapshot_hash: string;
+    image_slug: string;
+    contour_hash: string;
+    contour_settings: ContourSettings;
+    animation_settings: AnimationSettings;
+    created_at: string;
+}
+
+export interface WorkspaceDraft {
+    imageSlug: string;
+    contour: ContourAsset | null;
+    contourSettings: ContourSettings;
+    animationSettings: AnimationSettings;
+    epicycleData: EpicycleData | null;
+    basesData: AnimationData | null;
+    savedSnapshots: string[];
+    lastOpenedAt: string;
 }

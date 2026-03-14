@@ -9,9 +9,16 @@ class Settings(BaseSettings):
     mongo_uri: str = "mongodb://localhost:27017/fourier"
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
     max_upload_mb: int = 10
-    session_ttl_days: int = 30
+    compute_timeout_s: int = 300
+    compute_concurrency: int = 4
+    asset_max_age_days: int = 30
+    storage_budget_gb: float = 5.0
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 
 
 settings = Settings()
+
+
+def get_settings() -> Settings:
+    return settings

@@ -1,8 +1,4 @@
-import { createRouter, createWebHistory } from "vue-router";
-import PaperView from "@/components/paper/PaperView.vue";
-import VisualizationView from "@/components/visualization/VisualizationView.vue";
-import FourierMorphDemo from "@/components/FourierMorphDemo.vue";
-import FourierShapeExtractor from "@/components/FourierShapeExtractor.vue";
+import { createRouter, createWebHistory, type RouteLocationNormalized } from "vue-router";
 
 export const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -11,33 +7,58 @@ export const router = createRouter({
             path: "/",
             redirect: () => {
                 const saved = localStorage.getItem("fourier_active_tab");
-                if (saved === "/visualize" || saved === "/morph") return saved;
+                if (saved === "/visualize" || saved === "/morph" || saved === "/gallery")
+                    return saved;
                 return "/paper";
             },
         },
-        { path: "/paper", name: "paper", component: PaperView },
         {
-            path: "/visualize",
-            name: "visualize",
-            component: VisualizationView,
-            beforeEnter: (_to, _from, next) => {
-                const slug = localStorage.getItem("fourier_last_slug");
-                slug ? next(`/s/${slug}`) : next();
-            },
+            path: "/paper",
+            name: "paper",
+            component: () => import("@/components/paper/PaperView.vue"),
         },
-        { path: "/s/:slug", name: "session", component: VisualizationView },
-        { path: "/morph", name: "morph", component: FourierMorphDemo },
-        { path: "/demo/fourier-morph", redirect: "/morph" },
-        { path: "/demo/shape-extractor", name: "shape-extractor", component: FourierShapeExtractor },
+        {
+            path: "/w/:imageSlug?/:snapshotHash?",
+            name: "workspace",
+            alias: ["/visualize"],
+            component: () =>
+                import("@/components/visualization/VisualizationView.vue"),
+        },
+        {
+            path: "/gallery",
+            name: "gallery",
+            component: () =>
+                import("@/components/visualization/GalleryView.vue"),
+        },
+        {
+            path: "/morph",
+            name: "morph",
+            component: () => import("@/components/FourierMorphDemo.vue"),
+        },
+        {
+            path: "/demo/shape-extractor",
+            name: "shape-extractor",
+            component: () => import("@/components/FourierShapeExtractor.vue"),
+        },
+        {
+            path: "/s/:slug",
+            redirect: (to) => `/w/${to.params.slug}`,
+        },
     ],
 });
 
-router.afterEach((to) => {
-    if (to.path === "/paper" || to.path === "/visualize" || to.path === "/morph") {
-        localStorage.setItem("fourier_active_tab", to.path);
-    } else if (to.path.startsWith("/s/")) {
+router.afterEach((to: RouteLocationNormalized) => {
+    const tab = to.path;
+    if (
+        tab === "/paper" ||
+        tab === "/visualize" ||
+        tab === "/morph" ||
+        tab === "/gallery"
+    ) {
+        localStorage.setItem("fourier_active_tab", tab);
+    } else if (tab.startsWith("/w/")) {
         localStorage.setItem("fourier_active_tab", "/visualize");
-        const slug = to.params.slug as string;
-        if (slug) localStorage.setItem("fourier_last_slug", slug);
     }
 });
+
+export default router;
