@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Locator } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const MAX_MOUNTED_SECTIONS = 18;
 const DESKTOP_SCROLL_OFFSET_PX = 16;
@@ -41,6 +41,7 @@ async function waitForPaperReady(page: Page) {
     await expect(page.locator(".overlay-page")).toHaveText(/pg\s*4\s*\/\s*97/i, {
         timeout: 15_000,
     });
+    await expect(page.locator("#introduction .section-heading")).toContainText("0.1.Introduction");
 }
 
 async function mountedSectionCount(page: Page): Promise<number> {
@@ -89,24 +90,6 @@ async function activateTocEntry(page: Page, id: string) {
         .locator(`[data-toc-id="${id}"]`)
         .evaluate((element) => (element as HTMLButtonElement).click());
     await expect(page.locator(`#${id}`)).toBeVisible({ timeout: 10_000 });
-}
-
-async function scrollUntilVisible(
-    page: Page,
-    locator: Locator,
-    checkpoints: number[],
-): Promise<boolean> {
-    for (const top of checkpoints) {
-        await scrollPaperTo(page, top);
-        if (await locator.count()) {
-            const target = locator.first();
-            if (await target.isVisible().catch(() => false)) {
-                return true;
-            }
-        }
-    }
-
-    return false;
 }
 
 test.describe("Paper performance", () => {
@@ -208,41 +191,89 @@ test.describe("Paper performance", () => {
         ).toEqual([]);
     });
 
-    test("appendix proofs, code listings, and bibliography render real content", async ({ page }) => {
+    test("appendix proofs, proof math, code listings, and bibliography render canonically", async ({ page }) => {
         await waitForPaperReady(page);
+
+        await activateTocEntry(page, "alternative-orthogonal-bases");
+        const orthogonalSection = page.locator("#alternative-orthogonal-bases");
+        await expect(orthogonalSection.locator(".paper-basis-term--fourier").first()).toBeVisible({
+            timeout: 10_000,
+        });
+        const chebyshevSection = page.locator("#chebyshev-polynomials");
+        await expect(chebyshevSection).toBeVisible({ timeout: 10_000 });
+        await expect(chebyshevSection.locator(".paper-basis-term--chebyshev").first()).toBeVisible({
+            timeout: 10_000,
+        });
 
         await activateTocEntry(page, "sturm-liouville-completeness");
         const sturmSection = page.locator("#sturm-liouville-completeness");
         await expect(sturmSection.locator(".paper-proof-block")).toContainText("Proof of Theorem", {
             timeout: 10_000,
         });
+        await expect(sturmSection.locator(".paper-proof-title .paper-ref")).toHaveText("1.2.2", {
+            timeout: 10_000,
+        });
         await expect(sturmSection.locator(".paper-proof-body")).toContainText("This operator is:", {
+            timeout: 10_000,
+        });
+        await expect(sturmSection.locator(".math-block__number")).toContainText("(A.1)", {
             timeout: 10_000,
         });
 
         await activateTocEntry(page, "chebyshev-and-legendre-series-via-polynomial-fitting");
-        const chebyshevSection = page.locator("#chebyshev-and-legendre-series-via-polynomial-fitting");
-        await expect(chebyshevSection.locator(".paper-code-caption").filter({
+        const fittingSection = page.locator("#chebyshev-and-legendre-series-via-polynomial-fitting");
+        await expect(fittingSection.locator(".paper-code-caption").filter({
             hasText: "Chebyshev coefficient computation",
         })).toBeVisible({ timeout: 10_000 });
-        await expect(chebyshevSection.locator(".paper-code-pre").filter({
+        await expect(fittingSection.locator(".paper-code-pre").filter({
             hasText: "def chebyshev_fit(signal, degree):",
         })).toBeVisible({ timeout: 10_000 });
-
-        const { maxScrollTop } = await getScrollMetrics(page);
-        const referencesHeading = page.locator(".paper-bibliography-heading", {
-            hasText: "References",
+        await expect(fittingSection.locator(".paper-code-pre.hljs").first()).toBeVisible({
+            timeout: 10_000,
         });
-        const bibliographyFound = await scrollUntilVisible(
-            page,
-            referencesHeading,
-            Array.from({ length: 18 }, (_, index) =>
-                Math.round((maxScrollTop * index) / 17),
-            ),
-        );
 
-        expect(bibliographyFound).toBe(true);
-        await expect(page.locator(".paper-bibliography")).toContainText("Fourier", {
+        await activateTocEntry(page, "contour-extraction-and-fft-pipeline");
+        const strategyBlock = page.locator("#contour-extraction-and-fft-pipeline .paper-code-pre").first();
+        await expect(strategyBlock).toHaveAttribute("data-language", "python");
+        await expect(page.locator("#contour-extraction-and-fft-pipeline .hljs-keyword").first()).toBeVisible({
+            timeout: 10_000,
+        });
+
+        const lightCodeTheme = await strategyBlock.evaluate((element) => {
+            const style = getComputedStyle(element as HTMLElement);
+            return {
+                color: style.color,
+                backgroundColor: style.backgroundColor,
+            };
+        });
+
+        await page.getByRole("button", { name: /switch to dark mode/i }).click();
+        await page.waitForTimeout(250);
+
+        const darkCodeTheme = await strategyBlock.evaluate((element) => {
+            const style = getComputedStyle(element as HTMLElement);
+            return {
+                color: style.color,
+                backgroundColor: style.backgroundColor,
+            };
+        });
+
+        expect(darkCodeTheme.backgroundColor).not.toBe(lightCodeTheme.backgroundColor);
+        expect(darkCodeTheme.color).not.toBe(lightCodeTheme.color);
+
+        await activateTocEntry(page, "epicycle-chain-computation");
+        const epicycleBlock = page.locator("#epicycle-chain-computation .paper-code-pre").first();
+        await expect(epicycleBlock).toHaveAttribute("data-language", "python");
+        await expect(page.locator("#epicycle-chain-computation .hljs-meta").first()).toBeVisible({
+            timeout: 10_000,
+        });
+
+        await activateTocEntry(page, "bibliography");
+        const bibliographySection = page.locator("#bibliography");
+        await expect(bibliographySection.locator(".section-heading")).toContainText("Bibliography", {
+            timeout: 10_000,
+        });
+        await expect(bibliographySection.locator(".paper-bibliography")).toContainText("Fourier", {
             timeout: 5_000,
         });
     });

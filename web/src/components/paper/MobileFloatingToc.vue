@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted } from "vue";
-import { ChevronDown, ChevronUp } from "lucide-vue-next";
+import { ChevronDown, ChevronUp, Search, X } from "lucide-vue-next";
+import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
+import type { PaperSearchState } from "./usePaperSearch";
 
 const props = defineProps<{
     sections: PaperSectionData[];
@@ -11,10 +13,13 @@ const props = defineProps<{
     scrollToTop: () => void;
     renderTitle: (title: string) => string;
     scrollContainer: HTMLElement | null;
+    search: PaperSearchState;
 }>();
 
 const floatingTocOpen = ref(false);
+const searchActive = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
+const mobileSearchRef = ref<InstanceType<typeof PaperSearch> | null>(null);
 
 // Lock scroll container when dropdown is open (critical for iOS WebKit)
 watch(floatingTocOpen, (open) => {
@@ -39,17 +44,49 @@ function handleScrollToTop() {
     floatingTocOpen.value = false;
     props.scrollToTop();
 }
+
+function openMobileSearch() {
+    floatingTocOpen.value = false;
+    searchActive.value = true;
+    props.search.open();
+    nextTick(() => mobileSearchRef.value?.focus());
+}
+
+function closeMobileSearch() {
+    searchActive.value = false;
+    props.search.close();
+}
+
+// Close search when a result is selected (navigateTo triggers)
+watch(() => props.search.isOpen.value, (open) => {
+    if (!open && searchActive.value) {
+        searchActive.value = false;
+    }
+});
 </script>
 
 <template>
     <div class="floating-toc lg:hidden">
         <div class="floating-toc-anchor">
-            <button class="floating-toc-bar" @click="floatingTocOpen = !floatingTocOpen">
+            <!-- Search mode: input replaces section title -->
+            <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search">
+                <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" />
+                <button class="floating-toc-search-close" @click="closeMobileSearch" title="Close search">
+                    <X class="h-4 w-4" />
+                </button>
+            </div>
+            <!-- Normal mode: section title + search icon -->
+            <button v-else class="floating-toc-bar" @click="floatingTocOpen = !floatingTocOpen">
                 <span class="floating-toc-section cm-serif">
                     <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
                     {{ currentSection?.title }}
                 </span>
-                <ChevronDown class="floating-toc-chevron" :class="{ 'rotate-180': floatingTocOpen }" />
+                <span class="floating-toc-actions">
+                    <span class="floating-toc-search-btn" @click.stop="openMobileSearch" title="Search paper">
+                        <Search class="h-3.5 w-3.5" />
+                    </span>
+                    <ChevronDown class="floating-toc-chevron" :class="{ 'rotate-180': floatingTocOpen }" />
+                </span>
             </button>
             <Transition name="toc-expand">
                 <div
@@ -132,6 +169,56 @@ function handleScrollToTop() {
     white-space: nowrap;
     flex: 1;
     min-width: 0;
+}
+
+.floating-toc-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+}
+
+.floating-toc-search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    color: hsl(var(--muted-foreground) / 0.5);
+    transition: all 0.15s;
+}
+
+.floating-toc-search-btn:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted) / 0.5);
+}
+
+.floating-toc-bar--search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: default;
+}
+
+.floating-toc-bar--search > :first-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.floating-toc-search-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    color: hsl(var(--muted-foreground) / 0.6);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.floating-toc-search-close:hover {
+    color: hsl(var(--foreground));
 }
 
 .floating-toc-chevron {

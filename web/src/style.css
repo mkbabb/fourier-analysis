@@ -71,21 +71,26 @@
         --accent-pink: 330 65% 55%;
         --section-heading: 328 60% 46%;
 
-        /* Per-section color palette (light) — easy to customize */
-        --section-color-0: hsl(328 60% 46%);  /* magenta-pink */
-        --section-color-1: hsl(260 50% 50%);  /* purple */
-        --section-color-2: hsl(220 55% 48%);  /* blue */
-        --section-color-3: hsl(190 60% 38%);  /* teal */
-        --section-color-4: hsl(160 50% 38%);  /* green */
-        --section-color-5: hsl(30 65% 45%);   /* amber */
-        --section-color-6: hsl(0 72% 50%);    /* red — single source for accent-red + viz-fourier */
-        --section-color-7: hsl(290 45% 48%);  /* violet */
+        /* Per-section color palette (light) — roots, bibliography, and appendices */
+        --section-color-0: hsl(334 63% 47%);  /* introduction */
+        --section-color-1: hsl(272 44% 47%);  /* fundamentals */
+        --section-color-2: hsl(224 58% 46%);  /* orthogonality */
+        --section-color-3: hsl(194 62% 36%);  /* spectral methods */
+        --section-color-4: hsl(163 46% 35%);  /* interpolation */
+        --section-color-5: hsl(35 70% 42%);   /* quadrature */
+        --section-color-6: hsl(6 72% 49%);    /* fourier / trig */
+        --section-color-7: hsl(286 46% 47%);  /* transforms */
+        --section-color-8: hsl(342 62% 44%);  /* applications */
+        --section-color-9: hsl(205 20% 38%);  /* bibliography */
+        --section-color-10: hsl(86 38% 36%);  /* appendix A */
+        --section-color-11: hsl(187 58% 39%); /* appendix B */
+        --section-color-12: hsl(256 44% 52%); /* appendix C */
 
         /* Derived aliases */
         --accent-red: 0 72% 50%;
-        --viz-fourier: var(--section-color-6);
-        --viz-chebyshev: var(--section-color-2);
-        --viz-legendre: var(--section-color-7);
+        --viz-fourier: 6 72% 49%;
+        --viz-chebyshev: 224 58% 46%;
+        --viz-legendre: 286 46% 47%;
         --viz-amber: var(--section-color-5);
         --viz-green: var(--section-color-4);
     }
@@ -115,21 +120,26 @@
         --accent-pink: 335 55% 65%;
         --section-heading: 330 55% 68%;
 
-        /* Per-section color palette (dark) — lighter for contrast */
-        --section-color-0: hsl(330 65% 68%);  /* magenta-pink */
-        --section-color-1: hsl(265 55% 72%);  /* purple */
-        --section-color-2: hsl(220 60% 70%);  /* blue */
-        --section-color-3: hsl(190 55% 60%);  /* teal */
-        --section-color-4: hsl(160 50% 58%);  /* green */
-        --section-color-5: hsl(35 60% 65%);   /* amber */
-        --section-color-6: hsl(0 68% 62%);    /* red — single source for accent-red + viz-fourier */
-        --section-color-7: hsl(290 50% 70%);  /* violet */
+        /* Per-section color palette (dark) — brighter for contrast */
+        --section-color-0: hsl(334 72% 70%);  /* introduction */
+        --section-color-1: hsl(272 54% 73%);  /* fundamentals */
+        --section-color-2: hsl(224 67% 72%);  /* orthogonality */
+        --section-color-3: hsl(194 61% 64%);  /* spectral methods */
+        --section-color-4: hsl(163 50% 60%);  /* interpolation */
+        --section-color-5: hsl(37 73% 67%);   /* quadrature */
+        --section-color-6: hsl(6 77% 66%);    /* fourier / trig */
+        --section-color-7: hsl(286 58% 72%);  /* transforms */
+        --section-color-8: hsl(342 71% 69%);  /* applications */
+        --section-color-9: hsl(205 24% 70%);  /* bibliography */
+        --section-color-10: hsl(86 44% 63%);  /* appendix A */
+        --section-color-11: hsl(187 63% 65%); /* appendix B */
+        --section-color-12: hsl(256 60% 74%); /* appendix C */
 
         /* Derived aliases */
         --accent-red: 0 68% 62%;
-        --viz-fourier: var(--section-color-6);
-        --viz-chebyshev: var(--section-color-2);
-        --viz-legendre: var(--section-color-7);
+        --viz-fourier: 6 77% 66%;
+        --viz-chebyshev: 224 67% 72%;
+        --viz-legendre: 286 58% 72%;
         --viz-amber: var(--section-color-5);
         --viz-green: var(--section-color-4);
     }

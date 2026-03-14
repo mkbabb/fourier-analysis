@@ -108,7 +108,7 @@ function bindSection(
 }
 
 .paper-window-footer-spacer {
-    height: 50vh;
+    height: clamp(3.5rem, 8vh, 5rem);
 }
 
 .interactive-callout {

@@ -15,6 +15,7 @@ import MobileFloatingToc from "./MobileFloatingToc.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
 import { getPaperPreview, paperSectionToTreeNode } from "./paperTree";
 import { useScrollNavigation } from "./useScrollNavigation";
+import { usePaperSearch } from "./usePaperSearch";
 import { paperSections, labelMap, totalPages, pageMap } from "@/lib/paperContent";
 import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
@@ -37,6 +38,7 @@ const { renderInline, renderDisplay, renderTitle } = useKatex(macros);
 const scrollContainer = ref<HTMLElement | null>(null);
 const sectionWindowRoot = ref<HTMLElement | null>(null);
 const sectionStartOffsetPx = ref(0);
+const scrollViewportHeightPx = ref(0);
 const sidebarRef = ref<InstanceType<typeof PaperSidebar> | null>(null);
 const baseUrl = import.meta.env.BASE_URL;
 const flatSections = flattenPaperSections(paperSections);
@@ -85,7 +87,7 @@ useClickDelegate({
     resolve: (refKey) => {
         const info = labelMap[refKey];
         if (!info) return null;
-        return info.elementId ?? info.sectionId;
+        return info.anchorId ?? info.elementId ?? info.sectionId;
     },
     scrollTo: (id) => _scrollTo(id),
 });
@@ -102,8 +104,23 @@ const { navigateTo, navigateBack, scrollToTop, navStack } = useScrollNavigation(
 // Wire all navigation (TOC clicks, cross-references) through navigateTo
 _scrollTo = navigateTo;
 
+const search = usePaperSearch({ sections: paperSections, navigateTo });
+
+function handleGlobalKeydown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        search.open();
+    }
+}
+
 const sections = computed(() => paperSections);
 const currentPage = ref(pageMap[flatSections[0]?.id] ?? 1);
+const paperRootStyle = computed(() =>
+    scrollViewportHeightPx.value > 0
+        ? { "--paper-scroll-viewport-height": `${scrollViewportHeightPx.value}px` }
+        : {},
+);
+let scrollContainerResizeObserver: ResizeObserver | null = null;
 
 watch(
     activeId,
@@ -130,6 +147,11 @@ function updateSectionStartOffset() {
         scroller.scrollTop;
 }
 
+function updateScrollViewportHeight() {
+    const scroller = scrollContainer.value;
+    scrollViewportHeightPx.value = scroller?.clientHeight ?? 0;
+}
+
 function registerWindowRoot(el: HTMLElement | null) {
     if (sectionWindowRoot.value === el) return;
     sectionWindowRoot.value = el;
@@ -141,8 +163,21 @@ function registerWindowRoot(el: HTMLElement | null) {
 }
 
 function handleWindowResize() {
+    updateScrollViewportHeight();
     updateSectionStartOffset();
     recalculate();
+}
+
+function bindScrollContainerObserver(scroller: HTMLElement | null) {
+    scrollContainerResizeObserver?.disconnect();
+    scrollContainerResizeObserver = null;
+    if (!scroller || typeof ResizeObserver === "undefined") return;
+    scrollContainerResizeObserver = new ResizeObserver(() => {
+        updateScrollViewportHeight();
+        updateSectionStartOffset();
+        recalculate();
+    });
+    scrollContainerResizeObserver.observe(scroller);
 }
 
 const sidebarNavEl = computed(() => sidebarRef.value?.sidebarNav ?? null);
@@ -171,18 +206,23 @@ onMounted(() => {
     );
     nextTick(() => {
         if (mobileNavRef.value) mobileTocObserver!.observe(mobileNavRef.value);
+        updateScrollViewportHeight();
         updateSectionStartOffset();
         recalculate();
         queueSidebarFollow(true);
     });
     window.addEventListener("resize", handleWindowResize);
+    window.addEventListener("keydown", handleGlobalKeydown);
 });
 
 watch([scrollContainer, sectionWindowRoot], ([scroller, root]) => {
+    bindScrollContainerObserver(scroller);
     if (!scroller || !root) {
+        updateScrollViewportHeight();
         updateSectionStartOffset();
         return;
     }
+    updateScrollViewportHeight();
     updateSectionStartOffset();
     nextTick(() => {
         recalculate();
@@ -192,12 +232,14 @@ watch([scrollContainer, sectionWindowRoot], ([scroller, root]) => {
 
 onUnmounted(() => {
     mobileTocObserver?.disconnect();
+    scrollContainerResizeObserver?.disconnect();
     window.removeEventListener("resize", handleWindowResize);
+    window.removeEventListener("keydown", handleGlobalKeydown);
 });
 </script>
 
 <template>
-    <div class="paper-root">
+    <div class="paper-root" :style="paperRootStyle">
         <div ref="scrollContainer" class="paper-scroll">
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
@@ -211,6 +253,7 @@ onUnmounted(() => {
                     :scroll-to-top="scrollToTop"
                     :render-title="renderTitle"
                     :scroll-container="scrollContainer"
+                    :search="search"
                 />
             </Transition>
 
@@ -229,6 +272,7 @@ onUnmounted(() => {
                         :is-active="isActive"
                         :is-in-active-chain="isInActiveChain"
                         :get-preview="getPaperPreview"
+                        :search="search"
                     />
 
                     <!-- Main article -->
@@ -249,7 +293,10 @@ onUnmounted(() => {
                                         @click="navigateTo(section.id)"
                                         class="text-left hover:text-foreground transition-colors duration-150 cursor-pointer"
                                     >
-                                        <span>{{ section.number }}. </span><span v-html="renderTitle(section.title)" />
+                                        <template v-if="section.number">
+                                            <span>{{ section.number }}. </span>
+                                        </template>
+                                        <span v-html="renderTitle(section.title)" />
                                     </button>
                                 </li>
                             </ol>
@@ -297,11 +344,46 @@ onUnmounted(() => {
     flex-direction: column;
 }
 
+/* Subtle top/bottom edge fade when content is clipped */
+.paper-root::before,
+.paper-root::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2rem;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.paper-root::before {
+    top: 0;
+    background: linear-gradient(
+        to bottom,
+        hsl(var(--background) / 0.55),
+        hsl(var(--background) / 0) 70%
+    );
+    mask-image: linear-gradient(to bottom, black, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+}
+
+.paper-root::after {
+    bottom: 0;
+    background: linear-gradient(
+        to top,
+        hsl(var(--background) / 0.55),
+        hsl(var(--background) / 0) 70%
+    );
+    mask-image: linear-gradient(to top, black, transparent);
+    -webkit-mask-image: linear-gradient(to top, black, transparent);
+}
+
 .paper-scroll {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    overscroll-behavior-y: contain;
     max-width: 100vw;
 }
 
@@ -309,10 +391,12 @@ onUnmounted(() => {
     position: fixed;
     inset: 0;
     z-index: 50;
-    background: hsl(var(--background));
+    background:
+        radial-gradient(circle at center, hsl(var(--background) / 0.92), hsl(var(--background) / 0.985) 68%),
+        hsl(var(--background));
     opacity: 0;
     pointer-events: none;
-    transition: opacity 120ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 70ms cubic-bezier(0.22, 1, 0.36, 1);
     will-change: opacity;
 }
 

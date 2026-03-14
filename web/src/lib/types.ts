@@ -51,6 +51,8 @@ export interface ContourSettings {
     min_contour_area: number;
     max_contours: number | null;
     smooth_contours: number;
+    ml_threshold: number;
+    ml_detail_threshold: number;
 }
 
 export interface AnimationSettings {

@@ -27,21 +27,25 @@ const store = useSessionStore();
 const anim = useAnimationStore();
 
 const strategy = ref(store.session?.parameters.strategy ?? "auto");
-const blurSigma = ref(store.session?.parameters.blur_sigma ?? 2.0);
+const blurSigma = ref(store.session?.parameters.blur_sigma ?? 1.0);
 const minContourArea = ref((store.session?.parameters.min_contour_area ?? 0.01) * 100);
 const maxContours = ref<number>(store.session?.parameters.max_contours ?? 5);
-const smoothContours = ref(store.session?.parameters.smooth_contours ?? 0.1);
+const smoothContours = ref(store.session?.parameters.smooth_contours ?? 0.0);
 
 const computing = computed({
     get: () => store.computing,
     set: (v: boolean) => { store.computing = v; },
 });
 
+const mlThreshold = ref(store.session?.parameters.ml_threshold ?? 0.5);
+
 const strategyLabels: Record<string, string> = {
     auto: "Auto",
     threshold: "Otsu Threshold",
     multi_threshold: "Multi-threshold",
     canny: "Canny Edges",
+    edge_aware: "Edge-aware",
+    ml: "ML (Neural Net)",
 };
 
 const strategyDescriptions: Record<string, string> = {
@@ -49,16 +53,19 @@ const strategyDescriptions: Record<string, string> = {
     threshold: "Otsu's method — optimal single-threshold binary segmentation",
     multi_threshold: "Multiple thresholds for complex images with many intensity levels",
     canny: "Edge detection — best for line drawings and high-contrast boundaries",
+    edge_aware: "Hull + interior regions — captures facial features like eyes, nose, chin",
+    ml: "U²-Net saliency model for subject isolation — best when subject blends with background",
 };
 
 const strategyLabel = computed(() => strategyLabels[strategy.value] ?? strategy.value);
 
 const DEFAULTS = {
     strategy: "auto",
-    blurSigma: 2.0,
-    minContourArea: 1,
-    maxContours: 5,
-    smoothContours: 0.1,
+    blurSigma: 1.0,
+    minContourArea: 0.1,
+    maxContours: 12,
+    smoothContours: 0.0,
+    mlThreshold: 0.5,
 } as const;
 
 const isDefault = computed(() =>
@@ -66,7 +73,8 @@ const isDefault = computed(() =>
     && blurSigma.value === DEFAULTS.blurSigma
     && minContourArea.value === DEFAULTS.minContourArea
     && maxContours.value === DEFAULTS.maxContours
-    && smoothContours.value === DEFAULTS.smoothContours,
+    && smoothContours.value === DEFAULTS.smoothContours
+    && mlThreshold.value === DEFAULTS.mlThreshold,
 );
 
 function resetDefaults() {
@@ -75,6 +83,7 @@ function resetDefaults() {
     minContourArea.value = DEFAULTS.minContourArea;
     maxContours.value = DEFAULTS.maxContours;
     smoothContours.value = DEFAULTS.smoothContours;
+    mlThreshold.value = DEFAULTS.mlThreshold;
 }
 
 const shortError = computed(() => {
@@ -104,6 +113,8 @@ async function runCompute() {
                 smooth_contours: smoothContours.value,
                 n_harmonics: props.nHarmonics,
                 n_points: props.nPoints,
+                ml_threshold: mlThreshold.value,
+                ml_detail_threshold: mlThreshold.value * 0.6,
             },
         });
 
@@ -138,7 +149,7 @@ async function runCompute() {
 
 // Auto-compute on settings change (debounced 1s to reduce request volume)
 watchDebounced(
-    () => [strategy.value, blurSigma.value, minContourArea.value, maxContours.value, smoothContours.value, props.nHarmonics, props.nPoints],
+    () => [strategy.value, blurSigma.value, minContourArea.value, maxContours.value, smoothContours.value, mlThreshold.value, props.nHarmonics, props.nPoints],
     () => runCompute(),
     { debounce: 1000, immediate: false },
 );
@@ -185,6 +196,19 @@ onMounted(() => {
                         </SelectContent>
                     </Select>
                 </div>
+
+                <!-- ML Threshold (visible for ml or auto) -->
+                <Tooltip v-if="strategy === 'ml' || strategy === 'auto'" text="Saliency cutoff — lower values capture more background detail">
+                    <SliderControl
+                        v-model="mlThreshold"
+                        label="ML Threshold"
+                        :min="0.1"
+                        :max="0.9"
+                        :step="0.05"
+                        :color="VIZ_COLORS.amber"
+                        :format-value="(v: number) => v.toFixed(2)"
+                    />
+                </Tooltip>
 
                 <!-- Blur Sigma -->
                 <Tooltip text="Soften before tracing — crank it up for furry subjects or noisy backgrounds">

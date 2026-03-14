@@ -39,7 +39,7 @@ const sessionStore = useSessionStore();
 
 <template>
     <header class="app-header sticky top-0 z-50 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-        <div class="flex h-14 items-center gap-2 sm:gap-4 px-2 sm:px-6">
+        <div class="header-inner">
             <!-- Logo with attribution hover card -->
             <div
                 class="logo-trigger relative shrink-0"
@@ -51,7 +51,7 @@ const sessionStore = useSessionStore();
                 @mouseenter="onHoverEnter"
                 @mouseleave="onHoverLeave"
             >
-                <span class="cm-serif text-lg font-semibold tracking-tight cursor-pointer select-none">
+                <span class="logo-mark cm-serif font-semibold tracking-tight cursor-pointer select-none">
                     <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
                 </span>
 
@@ -85,7 +85,7 @@ const sessionStore = useSessionStore();
                 </div>
             </div>
 
-            <div class="h-5 w-px bg-foreground/15 shrink-0" />
+            <div class="header-divider" />
 
             <div class="tab-scroll-container">
                 <BouncyToggle
@@ -95,11 +95,11 @@ const sessionStore = useSessionStore();
                 />
             </div>
 
-            <div class="ml-auto flex items-center gap-1.5 shrink-0">
+            <div class="ml-auto flex items-center gap-0.5 sm:gap-1.5 shrink-0">
                 <Transition name="share-pop">
                     <ShareButton v-if="activeTab === '/visualize' && sessionStore.slug && sessionStore.hasImage" />
                 </Transition>
-                <DarkModeToggle style="--toggle-size: 2.75rem" />
+                <DarkModeToggle class="dark-mode-toggle" />
             </div>
         </div>
     </header>
@@ -108,6 +108,21 @@ const sessionStore = useSessionStore();
 <style scoped>
 .app-header {
     font-feature-settings: "liga", "kern";
+}
+
+.header-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .header-inner {
+        height: 3.5rem;
+        gap: 1rem;
+        padding: 0 1.5rem;
+    }
 }
 
 /* ── Scrollable tab container with edge fade ── */
@@ -142,13 +157,38 @@ const sessionStore = useSessionStore();
     }
 }
 
-/* Mobile: hide "ourier analysis" text */
+/* Mobile: compact logo, divider, toggle sizing */
+.logo-mark {
+    font-size: 1rem;
+}
+
 .logo-text {
     display: none;
 }
+
+.header-divider {
+    width: 1px;
+    height: 1rem;
+    background: hsl(var(--foreground) / 0.15);
+    flex-shrink: 0;
+}
+
+.dark-mode-toggle {
+    --toggle-size: 2.25rem;
+}
+
 @media (min-width: 640px) {
+    .logo-mark {
+        font-size: 1.125rem;
+    }
     .logo-text {
         display: inline;
+    }
+    .header-divider {
+        height: 1.25rem;
+    }
+    .dark-mode-toggle {
+        --toggle-size: 2.75rem;
     }
 }
 

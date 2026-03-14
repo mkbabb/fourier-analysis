@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
+import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
+import type { PaperSearchState } from "./usePaperSearch";
 import { ChevronUp } from "lucide-vue-next";
 
 import { ref } from "vue";
@@ -16,6 +18,7 @@ const props = defineProps<{
     isActive: (id: string, activeId: string | null) => boolean;
     isInActiveChain: (id: string, activeId: string | null) => boolean;
     getPreview: (section: PaperSectionData) => string;
+    search: PaperSearchState;
 }>();
 
 const sidebarNav = ref<HTMLElement | null>(null);
@@ -25,15 +28,16 @@ defineExpose({ sidebarNav });
 <template>
     <aside class="paper-sidebar">
         <nav ref="sidebarNav" class="sidebar-nav scrollbar-thin">
-            <button
-                class="sidebar-top-btn"
-                @click="scrollToTop"
-                title="Scroll to top"
-            >
-                <ChevronUp class="h-3 w-3" />
-            </button>
+            <PaperSearch :search="search" variant="sidebar" />
             <div class="sidebar-header">
                 <p class="sidebar-label cm-serif">Contents</p>
+                <button
+                    class="sidebar-top-btn"
+                    @click="scrollToTop"
+                    title="Scroll to top"
+                >
+                    <ChevronUp class="h-3 w-3" />
+                </button>
             </div>
             <ol class="sidebar-list">
                 <li v-for="(section, si) in sections" :key="section.id">
@@ -45,7 +49,7 @@ defineExpose({ sidebarNav });
                             :class="{ 'is-active': activeRootId === section.id }"
                             :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
                         >
-                            <span class="sidebar-number fira-code">{{ section.number }}.</span>
+                            <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
                             <span v-html="renderTitle(section.title)" />
                         </button>
                     </Tooltip>
@@ -63,15 +67,11 @@ defineExpose({ sidebarNav });
                                         @click="scrollTo(sub.id)"
                                         class="sidebar-link sidebar-sublink cm-serif"
                                         :class="{ 'is-active-sub': isActive(sub.id, activeId) || isInActiveChain(sub.id, activeId) }"
-                                        :style="isActive(sub.id, activeId)
-                                            ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
-                                            : isInActiveChain(sub.id, activeId)
-                                                ? { color: `color-mix(in srgb, var(--section-color-${si}) 70%, hsl(var(--muted-foreground)))` }
-                                                : activeRootId === section.id
-                                                    ? { color: `color-mix(in srgb, var(--section-color-${si}) 50%, hsl(var(--muted-foreground)))` }
-                                                    : {}"
+                                            :style="isActive(sub.id, activeId)
+                                                ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
+                                                : {}"
                                     >
-                                        <span class="sidebar-number fira-code">{{ sub.number }}.</span>
+                                        <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
                                         <span v-html="renderTitle(sub.title)" />
                                     </button>
                                 </Tooltip>
@@ -84,9 +84,9 @@ defineExpose({ sidebarNav });
                                             class="sidebar-link sidebar-subsublink cm-serif"
                                             :style="isActive(subsub.id, activeId)
                                                 ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
-                                                : { color: `color-mix(in srgb, var(--section-color-${si}) 40%, hsl(var(--muted-foreground)))` }"
+                                                : {}"
                                         >
-                                            <span class="sidebar-number fira-code">{{ subsub.number }}.</span>
+                                            <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
                                             <span v-html="renderTitle(subsub.title)" />
                                         </button>
                                     </li>
@@ -102,21 +102,35 @@ defineExpose({ sidebarNav });
 
 <style scoped>
 .paper-sidebar {
+    --sidebar-top-inset: 1rem;
+    --sidebar-bottom-inset: 1.5rem;
     display: none;
 }
 
 @media (min-width: 1024px) {
     .paper-sidebar {
         display: block;
+        position: sticky;
+        top: var(--sidebar-top-inset);
+        align-self: start;
+        min-height: 0;
+        max-height: calc(
+            var(--paper-scroll-viewport-height, 100dvh) - var(--sidebar-top-inset) - var(--sidebar-bottom-inset)
+        );
     }
 }
 
 .sidebar-nav {
-    position: sticky;
-    top: 1.5rem;
-    max-height: calc(100dvh - 5rem);
+    max-height: calc(
+        var(--paper-scroll-viewport-height, 100dvh) - var(--sidebar-top-inset) - var(--sidebar-bottom-inset)
+    );
     overflow-y: auto;
-    padding: 0.75rem;
+    overscroll-behavior-y: contain;
+    overscroll-behavior-x: contain;
+    scrollbar-gutter: stable;
+    scroll-padding-bottom: var(--sidebar-bottom-inset);
+    touch-action: pan-y;
+    padding: 0.625rem 0.625rem var(--sidebar-bottom-inset);
     border-radius: 0.75rem;
     border: 2px solid hsl(var(--foreground) / 0.15);
     background: hsl(var(--card));
@@ -127,8 +141,8 @@ defineExpose({ sidebarNav });
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 0.75rem;
-    margin-bottom: 0.75rem;
+    padding: 0 0.625rem;
+    margin-bottom: 0.5rem;
 }
 
 .sidebar-label {
@@ -141,19 +155,16 @@ defineExpose({ sidebarNav });
 }
 
 .sidebar-top-btn {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    z-index: 1;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.375rem;
-    height: 1.375rem;
+    width: 1.25rem;
+    height: 1.25rem;
     border-radius: 0.25rem;
-    border: 1px solid hsl(var(--border) / 0.5);
-    background: hsl(var(--card));
-    color: hsl(var(--muted-foreground) / 0.5);
+    border: 1px solid hsl(var(--border) / 0.4);
+    background: none;
+    color: hsl(var(--muted-foreground) / 0.45);
     cursor: pointer;
     transition: all 0.15s ease;
 }
@@ -170,7 +181,7 @@ defineExpose({ sidebarNav });
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
+    gap: 0.0625rem;
 }
 
 .sidebar-link {
@@ -180,10 +191,10 @@ defineExpose({ sidebarNav });
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.84rem;
     font-weight: 500;
-    line-height: 1.45;
-    padding: 0.375rem 0.75rem;
+    line-height: 1.35;
+    padding: 0.28rem 0.625rem;
     border-radius: calc(var(--radius) - 2px);
     color: hsl(var(--muted-foreground));
     transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
@@ -202,8 +213,8 @@ defineExpose({ sidebarNav });
 }
 
 .sidebar-number {
-    font-size: 0.75rem;
-    margin-right: 0.25rem;
+    font-size: 0.72rem;
+    margin-right: 0.22rem;
     opacity: 0.5;
 }
 
@@ -231,23 +242,23 @@ defineExpose({ sidebarNav });
 
 .sidebar-sublist {
     list-style: none;
-    padding: 0 0 0 0.75rem;
-    margin: 0.125rem 0 0.25rem;
-}
-
-.sidebar-sublink {
-    font-size: 0.8125rem;
-    padding: 0.25rem 0.5rem;
-}
-
-.sidebar-subsublist {
-    list-style: none;
     padding: 0 0 0 0.625rem;
     margin: 0.0625rem 0 0.125rem;
 }
 
+.sidebar-sublink {
+    font-size: 0.78rem;
+    padding: 0.2rem 0.45rem;
+}
+
+.sidebar-subsublist {
+    list-style: none;
+    padding: 0 0 0 0.5rem;
+    margin: 0.03125rem 0 0.0625rem;
+}
+
 .sidebar-subsublink {
-    font-size: 0.75rem;
-    padding: 0.1875rem 0.375rem;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.32rem;
 }
 </style>

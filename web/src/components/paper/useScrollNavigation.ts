@@ -11,150 +11,200 @@ export interface ScrollNavigationOptions {
 }
 
 export function useScrollNavigation(opts: ScrollNavigationOptions) {
-    const TELEPORT_THRESHOLD = 1400;
     const MAX_STACK = 20;
-    const MIN_OVERLAY_VISIBLE_MS = 90;
+    const MIN_OVERLAY_MS = 40;
+    const MAX_CORRECTIONS = 10;
+    const STABLE_TARGET = 2;
+    const STABILITY_PX = 6;
+
     const navStack = reactive<string[]>([]);
     let isBackNavigation = false;
 
     function getScrollOffset(): number {
         const bar = document.querySelector(".floating-toc-bar") as HTMLElement | null;
-        if (bar) return bar.offsetHeight + 8;
-        return 16;
+        return bar ? bar.offsetHeight + 8 : 16;
     }
 
-    function computeAbsoluteTargetTop(
+    /**
+     * Compute the absolute scroll target for a section. Prefers real DOM position
+     * when the element is mounted, falls back to layout estimate.
+     */
+    function computeAbsoluteTop(
         scroller: HTMLElement,
         id: string,
     ): number | null {
         const layoutOffset = opts.getOffsetFor(id);
         if (layoutOffset == null) return null;
 
-        const target = document.getElementById(id);
-        const absoluteTop = target
-            ? target.getBoundingClientRect().top -
+        const el = document.getElementById(id);
+        const rawTop = el
+            ? el.getBoundingClientRect().top -
               scroller.getBoundingClientRect().top +
               scroller.scrollTop
             : opts.contentStartOffsetPx.value + layoutOffset;
 
-        return Math.max(0, absoluteTop - getScrollOffset());
+        return Math.max(0, rawTop - getScrollOffset());
     }
 
-    function withTeleportOverlay(
+    /**
+     * Fast layout-only estimate — no DOM query, works even when target
+     * section isn't mounted. Used to decide teleport vs smooth and to
+     * provide the initial teleport scroll position.
+     */
+    function estimateAbsoluteTop(id: string): number | null {
+        const layoutOffset = opts.getOffsetFor(id);
+        if (layoutOffset == null) return null;
+        return Math.max(
+            0,
+            opts.contentStartOffsetPx.value + layoutOffset - getScrollOffset(),
+        );
+    }
+
+    function teleportThreshold(scroller: HTMLElement): number {
+        return Math.max(scroller.clientHeight * 1.5, 1200);
+    }
+
+    // ── Teleport overlay ─────────────────────────────────────
+
+    function withOverlay(
         scroller: HTMLElement,
         run: (finish: () => void) => void,
     ) {
-        const overlay = scroller.querySelector(".teleport-overlay") as HTMLElement | null;
+        const overlay = scroller.querySelector(
+            ".teleport-overlay",
+        ) as HTMLElement | null;
         if (!overlay) {
-            run(() => {
-                opts.recalculate();
-            });
+            run(() => opts.recalculate());
             return;
         }
 
         let finished = false;
         const shownAt = performance.now();
+
         const finish = () => {
             if (finished) return;
             finished = true;
-            const finalize = () => {
+            const hide = () => {
                 opts.recalculate();
                 requestAnimationFrame(() => {
                     overlay.style.opacity = "0";
                     overlay.style.pointerEvents = "none";
                 });
             };
-            const remaining = Math.max(0, MIN_OVERLAY_VISIBLE_MS - (performance.now() - shownAt));
-            if (remaining === 0) {
-                finalize();
-                return;
-            }
-            window.setTimeout(finalize, remaining);
+            const remaining = Math.max(
+                0,
+                MIN_OVERLAY_MS - (performance.now() - shownAt),
+            );
+            if (remaining === 0) hide();
+            else setTimeout(hide, remaining);
         };
 
         overlay.style.pointerEvents = "auto";
         overlay.style.opacity = "1";
 
-        // Let the fade paint for a frame before the jump starts.
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                run(finish);
-            });
-        });
+        // One frame for the browser to paint the overlay, then run
+        requestAnimationFrame(() => run(finish));
     }
 
-    function teleportTo(scroller: HTMLElement, id: string) {
-        const jumpUntilStable = (onDone: () => void) => {
-            let lastTop = -1;
+    // ── Teleport (far jump) ──────────────────────────────────
+
+    /**
+     * Immediately scrolls to `initialTop` behind the overlay, then mounts
+     * the target section and runs a correction loop until stable.
+     */
+    function teleportTo(
+        scroller: HTMLElement,
+        id: string,
+        initialTop: number,
+    ) {
+        withOverlay(scroller, (finish) => {
+            // 1. Scroll to the layout estimate immediately (behind overlay)
+            scroller.scrollTo({ top: initialTop, behavior: "instant" as ScrollBehavior });
+
+            // 2. Now mount the target section — Vue will process this during
+            //    the microtask queue, so the DOM updates before our next rAF.
+            opts.ensureTargetWindow(id);
+
+            // 3. Correction loop: refine position as sections mount & get measured
+            let lastTop = initialTop;
             let stableFrames = 0;
             let frames = 0;
 
             const correct = () => {
-                const targetTop = computeAbsoluteTargetTop(scroller, id);
-                if (targetTop == null) {
-                    if (frames++ < 30) requestAnimationFrame(correct);
-                    else onDone();
+                opts.recalculate();
+                const top = computeAbsoluteTop(scroller, id);
+                if (top == null) {
+                    // Section not in layout yet — unlikely but retry
+                    if (frames++ < 20) requestAnimationFrame(correct);
+                    else finish();
                     return;
                 }
 
-                scroller.scrollTo({ top: targetTop, behavior: "instant" });
-                opts.recalculate();
+                scroller.scrollTo({ top, behavior: "instant" as ScrollBehavior });
 
-                if (Math.abs(targetTop - lastTop) < 2) {
-                    stableFrames += 1;
+                if (Math.abs(top - lastTop) < STABILITY_PX) {
+                    stableFrames++;
                 } else {
                     stableFrames = 0;
                 }
-                lastTop = targetTop;
+                lastTop = top;
 
-                if (stableFrames >= 3 || frames++ >= 24) {
-                    onDone();
+                if (
+                    stableFrames >= STABLE_TARGET ||
+                    frames++ >= MAX_CORRECTIONS
+                ) {
+                    finish();
                     return;
                 }
                 requestAnimationFrame(correct);
             };
 
-            correct();
-        };
-
-        withTeleportOverlay(scroller, (finish) => {
-            jumpUntilStable(() => {
-                finish();
-            });
+            // Wait one frame for Vue's DOM patch from ensureTargetWindow
+            requestAnimationFrame(correct);
         });
     }
+
+    // ── Main navigation entry point ──────────────────────────
 
     function performScroll(id: string) {
         const scroller = opts.scrollContainer.value;
         if (!scroller) return;
 
-        opts.ensureTargetWindow(id);
-
-        let attempts = 0;
-        function tryNavigate() {
-            const container = opts.scrollContainer.value;
-            if (!container) return;
-
-            const targetTop = computeAbsoluteTargetTop(container, id);
-            if (targetTop == null) {
-                if (attempts++ < 60) requestAnimationFrame(tryNavigate);
-                return;
-            }
-
-            const distance = Math.abs(targetTop - container.scrollTop);
-            if (distance < TELEPORT_THRESHOLD) {
-                container.scrollTo({ top: targetTop, behavior: "smooth" });
-                return;
-            }
-
-            teleportTo(container, id);
+        // Compute estimated position from layout (pure math, < 1ms)
+        const estimated = estimateAbsoluteTop(id);
+        if (estimated == null) {
+            // Unknown section — mount and hope
+            opts.ensureTargetWindow(id);
+            return;
         }
 
-        nextTick(() => requestAnimationFrame(tryNavigate));
+        const distance = Math.abs(estimated - scroller.scrollTop);
+
+        if (distance < teleportThreshold(scroller)) {
+            // Short jump: mount target, wait for DOM, smooth scroll
+            opts.ensureTargetWindow(id);
+            nextTick(() => {
+                requestAnimationFrame(() => {
+                    const s = opts.scrollContainer.value;
+                    if (!s) return;
+                    const top = computeAbsoluteTop(s, id) ?? estimated;
+                    s.scrollTo({ top, behavior: "smooth" });
+                });
+            });
+        } else {
+            // Far jump: teleport immediately with layout estimate.
+            // The overlay shows and scrolls BEFORE mounting heavy sections,
+            // eliminating the perceived freeze.
+            teleportTo(scroller, id, estimated);
+        }
     }
 
     function navigateTo(id: string) {
-        if (!isBackNavigation && opts.activeId.value && opts.activeId.value !== id) {
+        if (
+            !isBackNavigation &&
+            opts.activeId.value &&
+            opts.activeId.value !== id
+        ) {
             navStack.push(opts.activeId.value);
             if (navStack.length > MAX_STACK) navStack.shift();
         }
@@ -174,14 +224,17 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
     function scrollToTop() {
         const scroller = opts.scrollContainer.value;
         if (!scroller) return;
-        if (scroller.scrollTop > TELEPORT_THRESHOLD) {
-            if (!scroller.querySelector(".teleport-overlay")) {
-                scroller.scrollTo({ top: 0, behavior: "instant" });
+
+        if (scroller.scrollTop > teleportThreshold(scroller)) {
+            const overlay = scroller.querySelector(
+                ".teleport-overlay",
+            ) as HTMLElement | null;
+            if (!overlay) {
+                scroller.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
                 return;
             }
-
-            withTeleportOverlay(scroller, (finish) => {
-                scroller.scrollTo({ top: 0, behavior: "instant" });
+            withOverlay(scroller, (finish) => {
+                scroller.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
                 finish();
             });
             return;

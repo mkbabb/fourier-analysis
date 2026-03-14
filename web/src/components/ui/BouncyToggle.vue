@@ -84,15 +84,22 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
     display: inline-grid;
     grid-auto-columns: 1fr;
     grid-auto-flow: column;
-    padding: 0.25rem;
-    border-radius: 0.5rem;
+    padding: 0.1875rem;
+    border-radius: 0.4375rem;
     background: hsl(var(--muted) / 0.5);
+}
+
+@media (min-width: 640px) {
+    .bouncy-toggle {
+        padding: 0.25rem;
+        border-radius: 0.5rem;
+    }
 }
 
 .bouncy-slider {
     position: absolute;
-    inset-block: 0.25rem;
-    border-radius: 0.375rem;
+    inset-block: 0.1875rem;
+    border-radius: 0.3125rem;
     background: hsl(var(--background));
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px hsl(var(--border) / 0.3);
     transition:
@@ -101,15 +108,22 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
     z-index: 0;
 }
 
+@media (min-width: 640px) {
+    .bouncy-slider {
+        inset-block: 0.25rem;
+        border-radius: 0.375rem;
+    }
+}
+
 .bouncy-btn {
     position: relative;
     z-index: 1;
-    padding: 0.375rem 0.875rem;
-    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.3125rem;
     border: none;
     background: none;
     font-family: "CMU Serif", "Computer Modern", Georgia, serif;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
     cursor: pointer;
@@ -117,6 +131,14 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
     white-space: nowrap;
     text-align: center;
     -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 640px) {
+    .bouncy-btn {
+        padding: 0.375rem 0.875rem;
+        border-radius: 0.375rem;
+        font-size: 0.8125rem;
+    }
 }
 
 .bouncy-btn:hover:not(.is-active) {
