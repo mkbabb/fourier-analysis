@@ -180,7 +180,11 @@ That is, $u$ is not a function of time; it is unchanging in this dimension. Equa
         \nabla \dott \nabla u(x, y)                                                         & = 0 \\
         \nabla^2u(x, y)                                                                     & = 0
     \end{align}
-    Equivalently, the Laplacian is the trace of the Hessian matrix: $\Delta u = \tr(H_u) = \sum_i \partial^2 u / \partial x_i^2$. The trace captures the average curvature of $u$ across coordinate directions---a connection developed further in Chapters~\ref{ch:eigentheory_foundations} and \ref{ch:eigentheory}.
+    Equivalently, the Laplacian is the trace of the Hessian matrix:
+    \[
+        \Delta u = \tr(H_u) = \sum_i \dfrac{\partial^2 u}{\partial x_i^2}.
+    \]
+    The trace captures the average curvature of $u$ across coordinate directions---a connection developed further in Chapters~\ref{ch:eigentheory_foundations} and \ref{ch:eigentheory}.
 \end{aside}
 
 \section{A Solution}
@@ -2101,8 +2105,8 @@ Though this may look different in comparison to standard vector projection in $\
     \begin{figure}[h]
         \centering
         \includegraphics[width=0.8\textwidth]{../assets/f05_inner_product_1.pdf}
-        \label{fig:example1}
         \caption{On the left, $f$ is represented with 1000 sample vectors. On the right $f$ is shown fully.}
+        \label{fig:example1}
     \end{figure}
 
     To dot $f$ with another function, say $g(x) = e^x$, we multiply pointwise and sum---the discrete inner product. The exact value is:
@@ -2117,9 +2121,8 @@ Though this may look different in comparison to standard vector projection in $\
     \begin{figure}[h]
         \centering
         \includegraphics[width=0.8\textwidth]{../assets/f06_inner_product_2.pdf}
-        \label{fig:example2}
-
         \caption{On the left, $f \cdot g$ is represented with $40,000$ sample vectors. On the right, the sum of this vector product, multiplied by a factor of $\Delta x = \dfrac{b - a}{N}$ is shown. Notice the error using this approximation is $-1.5\cdot 10^{-3}$.}
+        \label{fig:example2}
     \end{figure}
 
     \newpage
@@ -2133,8 +2136,8 @@ Though this may look different in comparison to standard vector projection in $\
     \begin{figure}[h]
         \centering
         \includegraphics[width=0.8\textwidth]{../assets/f07_fourier_projection.pdf}
+        \caption{Projection of $e^{2\pi ix}$ onto $f$: the pointwise product $f(x)\overline{e^{2\pi ix}}$ whose integral yields the Fourier coefficient.}
         \label{fig:example3}
-        \caption{}
     \end{figure}
 \end{example}
 
@@ -2958,13 +2961,52 @@ The inter-class variance $\sigma_B^2(t) = w_0 w_1 (\mu_0 - \mu_1)^2$ is maximize
 
 After thresholding, morphological closing (dilation followed by erosion) fills gaps in interior texture, and opening (erosion followed by dilation) removes small protrusions. The marching squares algorithm extracts sub-pixel contour paths from the binary image.
 
-\section{Contour Filtering}
+\section{Subject Isolation}
+\label{sec:subject_isolation}
 
-A circularity filter removes wiggly zone-boundary contours that lack coherent shape. Circularity is defined as:
+Prior to contour extraction, the pipeline isolates the primary subject from the background via a learned saliency map. A lightweight U\textsuperscript{2}-Net~\cite{u2net} model (the ``lite'' variant, distributed as an ONNX checkpoint) computes a per-pixel probability map $\sigma(x,y) \in [0,1]$ indicating salient-object membership. The subject mask is obtained by thresholding:
 \begin{equation}
-    C = \dfrac{4\pi A}{P^2}
+    M_{\mathrm{subject}}(x,y) = \mathbf{1}\!\bigl[\sigma(x,y) \geq \tau\bigr], \qquad \tau = 0.5 \text{ (default)}.
 \end{equation}
-where $A$ is the enclosed area and $P$ is the perimeter. By the isoperimetric inequality, $C \leq 1$ with equality for circles. Contours with $C$ below a threshold (typically $0.1$--$0.3$) are rejected. An area-based filter then removes contours smaller than a fraction of the image area.
+When the input image carries a non-trivial alpha channel (opaque fraction between 5\% and 98\%), the alpha mask $M_\alpha = \mathbf{1}[\alpha > 0.5]$ is intersected with the saliency mask to yield a tighter boundary:
+\begin{equation}
+    M_{\mathrm{subject}} \leftarrow M_\alpha \cap M_{\mathrm{subject}}.
+\end{equation}
+If the resulting mask covers less than 12\% of the image area, the ML model is deemed to have failed and the mask is disabled; subsequent stages then operate on the full image. Otherwise, the largest contour of $M_{\mathrm{subject}}$ (extracted via marching squares at level $0.5$) serves as the \emph{silhouette}---the authoritative subject boundary that anchors all later stages.
+
+\section{Structure and Feature Contours}
+\label{sec:structure_feature_contours}
+
+With the subject mask in hand, contour extraction proceeds in two complementary passes, each targeting a different spatial scale of image structure.
+
+\paragraph{Structure contours (iso-intensity).} Sixteen quantile thresholds are computed at equi-spaced percentiles (5th through 95th) of the subject-pixel intensity distribution. At each level, marching squares extracts iso-intensity contours---akin to the level sets of a topographic map. Contours are retained only if more than 70\% of their sample points fall inside the subject mask, preventing background leakage where iso-levels extend beyond the subject boundary. Near-concentric duplicates (area ratio $\in [0.65, 1.55]$ and bounding-box IoU $\geq 0.55$) are collapsed, and the remaining contours are sorted by enclosed area descending.
+
+\paragraph{Feature contours (edge density).} A density field is constructed by taking the pointwise maximum of two smoothed edge maps:
+\begin{equation}
+    D(x,y) = \max\!\bigl(G_{\sigma_1} * \lVert\nabla I_{\mathrm{color}}\rVert,\; G_{\sigma_2} * \mathbf{1}[\text{Canny}(I_{\mathrm{gray}})]\bigr),
+\end{equation}
+where $G_{\sigma}$ denotes Gaussian convolution, $\lVert\nabla I_{\mathrm{color}}\rVert$ is the per-pixel maximum gradient across RGB channels, and the Canny indicator is blurred into a smooth density. Color gradients detect boundaries (e.g.\ blue irises on yellow skin) that are invisible in a grayscale Canny pass. Iso-contours of $D$ are extracted at nine density levels (from $0.06$ to $0.78$), then filtered by subject overlap ($> 50\%$), feature-scale band (area between $0.03\%$ of image area and $40\%$ of silhouette area), and deduplication against the structure set.
+
+Additionally, region-based features are detected as connected components whose intensity deviates from the subject median by at least one standard deviation (e.g.\ dark eye sockets, bright highlights), cleaned by morphological opening, and merged into the feature candidate pool after deduplication.
+
+\paragraph{Sorting and spatial diversity.} Feature candidates are ranked by a composite key of compactness $C = 4\pi A / P^{2}$ and proximity to the subject centroid, so that compact, centrally located features (eyes, nose) outrank peripheral ones. A spatial diversity constraint enforces a minimum separation of $4\%$ of the image diagonal between selected features, preventing redundant contours from clustering in texture-rich regions.
+
+\paragraph{Budget allocation.} The total contour budget (default 16) is split 30\% structure, 70\% feature. Dynamic reallocation ensures that when one pool yields fewer contours than budgeted (e.g.\ a uniformly colored subject producing few iso-intensity contours), the surplus is redirected to the other pool.
+
+\section{Contour Filtering and Deduplication}
+\label{sec:contour_filtering}
+
+Multiple filtering criteria are applied throughout the pipeline to ensure each retained contour is both individually meaningful and collectively non-redundant:
+
+\begin{enumerate}
+    \item \textbf{Area filtering}: contours whose enclosed area (computed via the shoelace formula) falls below $0.1\%$ of the image area are discarded.
+    \item \textbf{Subject overlap}: structure contours require $> 70\%$ of sample points inside the ML mask; feature contours require $> 50\%$.
+    \item \textbf{Angle-threshold simplification}: points on near-straight segments are removed when the direction change between consecutive tangent vectors is below $1.0^{\circ}$. This preserves corners and sharp features while discarding redundant collinear points---a $360$-point circle has approximately $1^{\circ}$ between consecutive tangents, so circular detail is retained.
+    \item \textbf{Deduplication}: two contours are declared near-duplicates and one is discarded when their area ratio exceeds $0.88$, their centroid distance is below $3.5\%$ of the image diagonal, and their bounding-box IoU exceeds $0.9$.
+    \item \textbf{Spatial outlier pruning}: contours whose centroid falls outside the union of the silhouette bounding box and the top-3 contour bounding boxes (expanded by a $25\%$ margin) are removed.
+\end{enumerate}
+
+The compactness metric $C = 4\pi A / P^{2}$ remains central to the ranking of feature contours. By the isoperimetric inequality, $C \leq 1$ with equality for circles; compact contours correspond to coherent visual features, while low-compactness contours tend to be wiggly zone-boundary artifacts.
 
 \section{Savitzky-Golay Smoothing}
 
@@ -2981,7 +3023,7 @@ The ordered path is resampled to $N$ points at uniform arc-length spacing via cu
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{../assets/f20_contour_pipeline.pdf}
-    \caption{The contour tracing pipeline applied to Fourier's portrait: (a) original image, (b) Otsu threshold with marching-squares contours, (c) ordered contour path after 2-opt tour refinement, (d) Fourier reconstruction at $N = 200$ harmonics.}
+    \caption{The contour tracing pipeline applied to Fourier's portrait: (a) original image, (b) subject isolation and multi-level contour extraction, (c) ordered contour path after 2-opt tour refinement, (d) Fourier reconstruction at $N = 200$ harmonics.}
     \label{fig:contour_pipeline}
 \end{figure}
 
@@ -3001,29 +3043,53 @@ The interactive web companion at \url{https://fourier.babb.dev} implements the p
 \section{Contour Extraction and FFT Pipeline}
 \label{app:contour_fft}
 
-The epicycle reconstruction of Chapter~\ref{ch:applications} begins with extracting a closed curve from an image. The ``auto'' strategy first checks for an alpha channel (transparent background)---if present, the alpha mask is used directly. Otherwise, it defaults to multi-threshold Otsu binarization, which segments the image into multiple intensity classes and extracts contours at each level boundary. This handles images with complex interior detail better than single-threshold Otsu. The strategy dispatch is:
+The epicycle reconstruction of Chapter~\ref{ch:applications} begins with extracting a closed curve from an image. The default ``auto'' strategy runs a deterministic five-stage pipeline (documented fully in Appendix~\ref{app:image_pipeline}):
 
-\begin{lstlisting}[caption={Strategy dispatch (\texttt{contours.py})}]
-if is_auto and alpha_arr is not None:
-    binary = alpha_arr > 0.5
-    raw_contours = _find_contours_padded(binary)
-elif is_auto or strategy == ContourStrategy.MULTI_THRESHOLD:
-    thresholds = filters.threshold_multiotsu(arr, classes=n_classes)
-    regions = np.digitize(arr, bins=thresholds)
-    raw_contours = []
-    for level in range(len(thresholds)):
-        binary_level = regions > level
-        raw_contours.extend(_find_contours_padded(binary_level))
-elif strategy == ContourStrategy.THRESHOLD:
-    binary = arr < filters.threshold_otsu(arr)
-    raw_contours = _find_contours_padded(binary)
-else:  # CANNY
-    edges = feature.canny(arr, sigma=canny_sigma)
-    closed = morphology.closing(edges, morphology.disk(closing_radius))
-    raw_contours = _find_contours_padded(closed)
+\begin{enumerate}
+    \item \textbf{Subject isolation}: a U\textsuperscript{2}-Net-lite ONNX model computes a saliency map; thresholding at $\tau = 0.5$ yields the subject mask, optionally intersected with the alpha channel. The largest contour of this mask becomes the \emph{silhouette}.
+    \item \textbf{Structure contours}: 16 iso-intensity levels (5th--95th percentile quantiles of subject pixels) are traced via marching squares, filtered by subject overlap ($> 70\%$), and deduplicated.
+    \item \textbf{Feature contours}: a density field built from the color gradient and Canny edges is contoured at 9 levels, filtered to a feature-scale band, ranked by compactness $\times$ proximity, and spatially diversified.
+    \item \textbf{Assembly}: silhouette, structure, and feature contours are merged under a budget of 16, with 30/70 structure/feature allocation and dynamic reallocation of surplus.
+    \item \textbf{Tour ordering}: a greedy nearest-neighbor ordering refined by 2-opt local search concatenates contours into a single path.
+\end{enumerate}
+
+The pipeline orchestrator (\texttt{contours/pipeline.py}) ties these stages together:
+
+\begin{lstlisting}[caption={Five-stage pipeline orchestrator (\texttt{contours/pipeline.py})}]
+def extract_contours_pipeline(image, config):
+    max_contours = config.max_contours or 16
+    structure_fraction = 0.3
+
+    # Stage 1: Subject isolation.
+    isolation = isolate_subject(image, config)
+
+    # Budget allocation.
+    structure_budget = max(1, int(max_contours * structure_fraction))
+    feature_budget = max(1, max_contours - structure_budget)
+
+    # Stage 2: Structure contours (iso-intensity).
+    structure = extract_structure_contours(
+        image, isolation, structure_budget, config)
+
+    # Dynamic reallocation of surplus.
+    structure_surplus = structure_budget - len(structure)
+    if structure_surplus > 0:
+        feature_budget += structure_surplus
+
+    # Stage 3: Feature contours (edge density).
+    features = extract_feature_contours(
+        image, isolation, structure, feature_budget, config)
+
+    # Stage 4: Assembly.
+    contours = assemble_contours(
+        isolation, structure, features, max_contours, image)
+
+    # Stage 5: Tour ordering.
+    tour = build_contour_tour(contours, method=config.tour_method)
+    ...
 \end{lstlisting}
 
-A compactness filter (circularity $= 4\pi A/P^2$, Appendix~\ref{app:image_pipeline}) rejects wiggly zone-boundary contours, an area-based filter removes small spurious contours, and optional Savitzky--Golay smoothing reduces jagged edges before tour ordering and cubic arc-length resampling.
+Area-based filtering, angle-threshold simplification ($1.0^{\circ}$), and near-duplicate deduplication (area ratio, centroid distance, bounding-box IoU) operate throughout the pipeline; compactness ranking and spatial diversity enforcement are applied specifically to feature contours. Full details of each criterion appear in Appendix~\ref{app:image_pipeline}, \S\ref{sec:contour_filtering}. After assembly, Savitzky--Golay smoothing and cubic arc-length resampling prepare the ordered path for the FFT.
 
 The Fourier coefficients of the resulting complex path $\gamma(t)$ are computed via the FFT. The DFT definition (Definition~\ref{eq:dft}) gives $c_n = \frac{1}{N}\sum_{k=0}^{N-1}\gamma(k/N)\,e^{-2\pi ink/N}$, which is $\frac{1}{N}$ times the FFT output:
 
