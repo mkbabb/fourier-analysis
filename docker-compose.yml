@@ -4,12 +4,13 @@ services:
       context: .
       dockerfile: api/Dockerfile
       target: development
+    ports: ["${API_PORT:-8000}:8000"]
     volumes:
       - ./src:/app/src
       - ./api:/app/api
       - ./assets:/app/assets
     environment:
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - CORS_ORIGINS=http://localhost:${WEB_PORT:-3000},http://localhost:5173
       - MONGO_URI=mongodb://mongo:27017/fourier
     depends_on: [mongo]
     networks: [app-network]
@@ -19,10 +20,11 @@ services:
       context: .
       dockerfile: web/Dockerfile
       target: development
+    ports: ["${WEB_PORT:-3000}:3000"]
     volumes:
       - ./web/src:/app/src
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_PROXY_API=http://backend:8000
     networks: [app-network]
 
   mongo:
