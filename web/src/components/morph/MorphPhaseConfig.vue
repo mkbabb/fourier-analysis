@@ -99,6 +99,7 @@ const easingNames = EASING_PRESET_NAMES;
 </script>
 
 <style scoped>
+@reference "tailwindcss";
 .config-card {
     padding: 0.75rem;
 }
@@ -111,14 +112,14 @@ const easingNames = EASING_PRESET_NAMES;
 
 .config-card-title {
     font-family: var(--font-serif);
-    font-size: 1rem;
+    @apply text-lg;
     font-weight: 400;
     color: hsl(var(--foreground));
     margin-bottom: 0.125rem;
 }
 
 .config-card-desc {
-    font-size: 0.75rem;
+    @apply text-sm;
     color: hsl(var(--muted-foreground));
     margin-bottom: 0.875rem;
 }
@@ -139,7 +140,7 @@ const easingNames = EASING_PRESET_NAMES;
 
 .config-label {
     display: block;
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
     margin-bottom: 0.375rem;
@@ -163,7 +164,7 @@ const easingNames = EASING_PRESET_NAMES;
     border-radius: 0.375rem;
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 600;
     text-align: right;
     outline: none;
@@ -183,7 +184,7 @@ const easingNames = EASING_PRESET_NAMES;
 }
 
 .input-unit {
-    font-size: 0.75rem;
+    @apply text-sm;
     color: hsl(var(--muted-foreground));
 }
 

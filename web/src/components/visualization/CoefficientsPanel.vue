@@ -109,6 +109,7 @@ function formatPercent(amplitude: number): string {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .coeff-list-enter-active {
     transition: all 0.3s ease;
 }
@@ -142,7 +143,7 @@ function formatPercent(amplitude: number): string {
     border: 1.5px solid hsl(var(--border));
     border-radius: 0.5rem;
     padding: 0.5rem 0.625rem;
-    font-size: 0.6875rem;
+    @apply text-sm;
     white-space: nowrap;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     pointer-events: none;

@@ -101,6 +101,7 @@ defineExpose({ sidebarNav });
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .paper-sidebar {
     --sidebar-top-inset: 1rem;
     --sidebar-bottom-inset: 1.5rem;
@@ -146,7 +147,7 @@ defineExpose({ sidebarNav });
 }
 
 .sidebar-label {
-    font-size: 0.75rem;
+    @apply text-sm;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -191,7 +192,7 @@ defineExpose({ sidebarNav });
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 0.84rem;
+    @apply text-base;
     font-weight: 500;
     line-height: 1.35;
     padding: 0.28rem 0.625rem;

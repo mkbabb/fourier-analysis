@@ -273,6 +273,7 @@ function escapeHtml(s: string): string {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .paper-search {
     position: relative;
 }
@@ -410,7 +411,7 @@ function escapeHtml(s: string): string {
 .paper-search-label {
     flex: 1;
     min-width: 0;
-    font-size: 0.75rem;
+    @apply text-sm;
     color: hsl(var(--foreground) / 0.85);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -445,7 +446,7 @@ function escapeHtml(s: string): string {
 }
 
 .paper-search--floating .paper-search-input {
-    font-size: 0.8125rem;
+    @apply text-base;
 }
 
 .paper-search--floating .paper-search-results {
@@ -519,7 +520,7 @@ function escapeHtml(s: string): string {
     border: none;
     outline: none;
     background: transparent;
-    font-size: 0.9375rem;
+    @apply text-base;
     color: hsl(var(--foreground));
     font-family: inherit;
 }
@@ -550,14 +551,14 @@ function escapeHtml(s: string): string {
 }
 
 .search-modal-result .paper-search-label {
-    font-size: 0.8125rem;
+    @apply text-base;
 }
 
 .search-modal-empty {
     padding: 2rem 1rem;
     text-align: center;
     color: hsl(var(--muted-foreground) / 0.5);
-    font-size: 0.8125rem;
+    @apply text-base;
 }
 
 .search-modal-footer {
@@ -569,7 +570,7 @@ function escapeHtml(s: string): string {
 }
 
 .search-modal-hint {
-    font-size: 0.625rem;
+    @apply text-sm;
     color: hsl(var(--muted-foreground) / 0.45);
     display: flex;
     align-items: center;

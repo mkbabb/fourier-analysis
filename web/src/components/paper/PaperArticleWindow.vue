@@ -94,6 +94,7 @@ function bindSection(
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .paper-window-root {
     min-width: 0;
 }
@@ -125,7 +126,7 @@ function bindSection(
     align-items: center;
     gap: 0.5rem;
     padding: 0.625rem 1.5rem;
-    font-size: 0.9375rem;
+    @apply text-base;
     font-weight: 600;
     color: hsl(var(--primary-foreground));
     background: hsl(var(--primary));

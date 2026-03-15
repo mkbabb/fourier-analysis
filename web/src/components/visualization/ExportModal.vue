@@ -93,6 +93,7 @@ function doExport() {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -171,7 +172,7 @@ function doExport() {
 }
 
 .option-label {
-    font-size: 0.875rem;
+    @apply text-base;
     font-weight: 500;
 }
 
@@ -218,7 +219,7 @@ function doExport() {
 
 .btn-cancel {
     padding: 0.5rem 1rem;
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 500;
     border-radius: 0.5rem;
     border: 2px solid hsl(var(--foreground) / 0.15);
@@ -237,7 +238,7 @@ function doExport() {
     align-items: center;
     gap: 0.375rem;
     padding: 0.5rem 1rem;
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 600;
     border-radius: 0.5rem;
     border: none;

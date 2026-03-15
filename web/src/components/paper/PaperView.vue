@@ -337,6 +337,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .paper-root {
     position: relative;
     flex: 1;
@@ -490,7 +491,7 @@ onUnmounted(() => {
     border-radius: 8px;
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
-    font-size: 0.625rem;
+    @apply text-sm;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -501,7 +502,7 @@ onUnmounted(() => {
 
 .overlay-page {
     pointer-events: auto;
-    font-size: 0.6875rem;
+    @apply text-sm;
     color: hsl(var(--muted-foreground) / 0.7);
     background: hsl(var(--background) / 0.85);
     backdrop-filter: blur(8px);

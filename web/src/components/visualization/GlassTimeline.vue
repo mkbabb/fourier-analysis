@@ -73,6 +73,7 @@ function onTrackKeydown(e: KeyboardEvent) {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .timeline-row {
     flex: 1 1 0;
     min-width: 0;
@@ -102,7 +103,7 @@ function onTrackKeydown(e: KeyboardEvent) {
 .caret-value {
     display: block;
     padding: 0.125rem 0.375rem;
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 500;
     color: hsl(var(--popover-foreground));
     background: hsl(var(--popover));

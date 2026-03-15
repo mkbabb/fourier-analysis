@@ -42,12 +42,13 @@ const speedStr = computed({
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .speed-trigger {
     height: 1.75rem;
     width: 3.5rem;
     flex-shrink: 0;
     font-family: "Fira Code", monospace;
-    font-size: 0.75rem;
+    @apply text-sm;
     border: none;
     background: none;
     border-radius: 9999px;
@@ -59,7 +60,7 @@ const speedStr = computed({
     width: 4rem;
     flex-shrink: 0;
     font-family: "Fira Code", monospace;
-    font-size: 0.75rem;
+    @apply text-sm;
     border: 1.5px solid hsl(var(--foreground) / 0.15);
     border-radius: 9999px;
 }

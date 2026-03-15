@@ -28,6 +28,7 @@ const anim = useAnimationStore();
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .easing-section {
     padding: 0.375rem 0.5rem;
     border-bottom: 1px solid hsl(var(--border) / 0.5);
@@ -36,7 +37,7 @@ const anim = useAnimationStore();
 }
 .easing-heading {
     display: block;
-    font-size: 0.6875rem;
+    @apply text-sm;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
     margin-bottom: 0.375rem;

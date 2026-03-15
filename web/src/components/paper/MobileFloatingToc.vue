@@ -130,6 +130,7 @@ watch(() => props.search.isOpen.value, (open) => {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .floating-toc {
     position: sticky;
     top: 0;
@@ -156,7 +157,7 @@ watch(() => props.search.isOpen.value, (open) => {
     border-bottom: 1px solid hsl(var(--border) / 0.5);
     cursor: pointer;
     text-align: left;
-    font-size: 0.875rem;
+    @apply text-base;
     font-weight: 500;
     color: hsl(var(--foreground));
     position: relative;
@@ -263,6 +264,7 @@ watch(() => props.search.isOpen.value, (open) => {
     gap: 0.375rem;
     color: hsl(var(--muted-foreground) / 0.7) !important;
     font-size: 0.75rem !important;
+    line-height: 1rem !important;
 }
 
 .floating-toc-top-icon {
@@ -286,7 +288,7 @@ watch(() => props.search.isOpen.value, (open) => {
     background: none;
     cursor: pointer;
     text-align: left;
-    font-size: 0.8125rem;
+    @apply text-base;
     color: hsl(var(--muted-foreground));
     transition: all 0.15s;
 }

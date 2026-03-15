@@ -169,7 +169,7 @@ const hasImage = computed(() => !!store.imageMeta);
                                 <ContourSettings v-if="hasImage" v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
                             </Transition>
                             <Transition name="slide-down">
-                                <CoefficientsPanel v-if="store.epicycleData" />
+                                <CoefficientsPanel v-if="store.epicycleData || store.computing" />
                             </Transition>
                         </div>
                     </Transition>

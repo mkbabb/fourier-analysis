@@ -171,6 +171,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
 </style>
 
 <style scoped>
+@reference "tailwindcss";
 /* ── Play button ── */
 .play-btn {
     position: relative;
@@ -221,7 +222,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
 /* ── Collapsed summary ── */
 .mini-progress { width: 3rem; height: 4px; border-radius: 2px; background: hsl(var(--foreground) / 0.08); overflow: hidden; flex-shrink: 0; }
 .mini-fill { height: 100%; border-radius: 2px; background: hsl(var(--foreground) / 0.25); transition: width 0.1s linear; }
-.summary-speed { font-size: 0.8125rem; color: hsl(var(--foreground) / 0.35); }
+.summary-speed { @apply text-base; color: hsl(var(--foreground) / 0.35); }
 
 /* ── Menu popup ── */
 .menu-popup {

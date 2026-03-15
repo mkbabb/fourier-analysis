@@ -119,6 +119,7 @@ function getPath(level: number): string {
 </script>
 
 <style scoped>
+@reference "tailwindcss";
 .levels-card {
     padding: 0.75rem;
     margin-bottom: 0;
@@ -133,7 +134,7 @@ function getPath(level: number): string {
 
 .card-title {
     font-family: var(--font-serif);
-    font-size: 1rem;
+    @apply text-lg;
     font-weight: 400;
     color: hsl(var(--foreground));
     margin-bottom: 0.75rem;
@@ -155,7 +156,7 @@ function getPath(level: number): string {
 }
 
 .level-label {
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
     white-space: nowrap;
@@ -169,7 +170,7 @@ function getPath(level: number): string {
     border-radius: 0.375rem;
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 600;
     text-align: center;
     outline: none;
@@ -253,7 +254,7 @@ function getPath(level: number): string {
 
 .grid-label {
     font-family: var(--font-mono);
-    font-size: 0.625rem;
+    @apply text-sm;
     color: hsl(var(--muted-foreground));
     transition: color 0.15s;
 }

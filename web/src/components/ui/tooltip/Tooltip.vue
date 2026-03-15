@@ -26,12 +26,13 @@ defineProps<{
 </template>
 
 <style>
+@reference "tailwindcss";
 /* Global (not scoped) so it applies inside the portal */
 .tooltip-content {
     z-index: 100;
     max-width: 280px;
     padding: 0.375rem 0.625rem;
-    font-size: 0.75rem;
+    @apply text-sm;
     font-weight: 500;
     line-height: 1.4;
     color: hsl(var(--popover-foreground));

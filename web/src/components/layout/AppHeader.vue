@@ -105,6 +105,7 @@ const workspaceStore = useWorkspaceStore();
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .app-header {
     font-feature-settings: "liga", "kern";
 }
@@ -158,7 +159,7 @@ const workspaceStore = useWorkspaceStore();
 
 /* Mobile: compact logo, divider, toggle sizing */
 .logo-mark {
-    font-size: 1rem;
+    @apply text-lg;
 }
 
 .logo-text {
@@ -178,7 +179,7 @@ const workspaceStore = useWorkspaceStore();
 
 @media (min-width: 640px) {
     .logo-mark {
-        font-size: 1.125rem;
+        @apply text-xl;
     }
     .logo-text {
         display: inline;

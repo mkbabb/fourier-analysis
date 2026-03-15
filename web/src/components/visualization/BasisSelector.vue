@@ -190,6 +190,7 @@ function toggleBasis(key: string) {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .inline-number {
     width: 2.75rem;
     text-align: right;
@@ -233,7 +234,7 @@ function toggleBasis(key: string) {
     gap: 0.25rem;
     padding: 0.35rem 0.625rem;
     border-radius: 9999px;
-    font-size: 0.75rem;
+    @apply text-sm;
     font-weight: 500;
     border: 2px solid hsl(var(--foreground) / 0.12);
     background: transparent;
@@ -251,7 +252,7 @@ function toggleBasis(key: string) {
 @media (max-width: 639px) {
     .basis-pill {
         padding: 0.25rem 0.5rem;
-        font-size: 0.6875rem;
+        @apply text-sm;
         gap: 0.125rem;
         border-width: 1.5px;
     }

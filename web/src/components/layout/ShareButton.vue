@@ -53,6 +53,7 @@ async function copyShareUrl() {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .share-btn {
     display: flex;
     align-items: center;
@@ -142,7 +143,7 @@ async function copyShareUrl() {
     margin: 0;
 }
 .share-tooltip-desc {
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 500;
     white-space: nowrap;
     animation: gold-pulse 2.5s ease-in-out infinite;

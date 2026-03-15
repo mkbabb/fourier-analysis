@@ -4,6 +4,7 @@ import { watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { VIZ_COLORS } from "@/lib/colors";
+import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { Collapsible } from "@/components/ui/collapsible";
 import {
     Select,
@@ -26,18 +27,13 @@ const props = defineProps<{
 const store = useWorkspaceStore();
 const anim = useAnimationStore();
 
-const strategy = ref(store.contourSettings?.strategy ?? "auto");
-const blurSigma = ref(store.contourSettings?.blur_sigma ?? 1.0);
-const minContourArea = ref(store.contourSettings?.min_contour_area ?? 0.1);
-const maxContours = ref<number>(store.contourSettings?.max_contours ?? 12);
-const smoothContours = ref(store.contourSettings?.smooth_contours ?? 0.0);
+const strategy = ref(store.contourSettings?.strategy ?? CONTOUR_DEFAULTS.strategy);
+const blurSigma = ref(store.contourSettings?.blur_sigma ?? CONTOUR_DEFAULTS.blur_sigma);
+const minContourArea = ref(store.contourSettings?.min_contour_area ?? CONTOUR_DEFAULTS.min_contour_area);
+const maxContours = ref<number>(store.contourSettings?.max_contours ?? CONTOUR_DEFAULTS.max_contours ?? 16);
+const smoothContours = ref(store.contourSettings?.smooth_contours ?? CONTOUR_DEFAULTS.smooth_contours);
 
-const computing = computed({
-    get: () => store.computing,
-    set: (v: boolean) => { store.computing = v; },
-});
-
-const mlThreshold = ref(store.contourSettings?.ml_threshold ?? 0.5);
+const mlThreshold = ref(store.contourSettings?.ml_threshold ?? CONTOUR_DEFAULTS.ml_threshold);
 
 const strategyLabels: Record<string, string> = {
     auto: "Auto",
@@ -59,31 +55,22 @@ const strategyDescriptions: Record<string, string> = {
 
 const strategyLabel = computed(() => strategyLabels[strategy.value] ?? strategy.value);
 
-const DEFAULTS = {
-    strategy: "auto",
-    blurSigma: 1.0,
-    minContourArea: 0.1,
-    maxContours: 12,
-    smoothContours: 0.0,
-    mlThreshold: 0.5,
-} as const;
-
 const isDefault = computed(() =>
-    strategy.value === DEFAULTS.strategy
-    && blurSigma.value === DEFAULTS.blurSigma
-    && minContourArea.value === DEFAULTS.minContourArea
-    && maxContours.value === DEFAULTS.maxContours
-    && smoothContours.value === DEFAULTS.smoothContours
-    && mlThreshold.value === DEFAULTS.mlThreshold,
+    strategy.value === CONTOUR_DEFAULTS.strategy
+    && blurSigma.value === CONTOUR_DEFAULTS.blur_sigma
+    && minContourArea.value === CONTOUR_DEFAULTS.min_contour_area
+    && maxContours.value === (CONTOUR_DEFAULTS.max_contours ?? 16)
+    && smoothContours.value === CONTOUR_DEFAULTS.smooth_contours
+    && mlThreshold.value === CONTOUR_DEFAULTS.ml_threshold,
 );
 
 function resetDefaults() {
-    strategy.value = DEFAULTS.strategy;
-    blurSigma.value = DEFAULTS.blurSigma;
-    minContourArea.value = DEFAULTS.minContourArea;
-    maxContours.value = DEFAULTS.maxContours;
-    smoothContours.value = DEFAULTS.smoothContours;
-    mlThreshold.value = DEFAULTS.mlThreshold;
+    strategy.value = CONTOUR_DEFAULTS.strategy;
+    blurSigma.value = CONTOUR_DEFAULTS.blur_sigma;
+    minContourArea.value = CONTOUR_DEFAULTS.min_contour_area;
+    maxContours.value = CONTOUR_DEFAULTS.max_contours ?? 16;
+    smoothContours.value = CONTOUR_DEFAULTS.smooth_contours;
+    mlThreshold.value = CONTOUR_DEFAULTS.ml_threshold;
 }
 
 const shortError = computed(() => {
@@ -98,7 +85,7 @@ async function runCompute() {
 
     const hadData = !!(store.epicycleData || store.basesData);
 
-    computing.value = true;
+    store.beginCompute();
     store.error = null;
 
     try {
@@ -124,7 +111,6 @@ async function runCompute() {
             store.computeBases(),
         ]);
 
-        computing.value = false;
         const anyOk = results.some((r) => r.status === "fulfilled");
         if (anyOk && (store.epicycleData || store.basesData)) {
             if (hadData) {
@@ -134,8 +120,8 @@ async function runCompute() {
                 anim.play();
             }
         }
-    } catch {
-        computing.value = false;
+    } finally {
+        store.endCompute();
     }
 }
 
@@ -277,8 +263,8 @@ onMounted(() => {
         <Transition name="slide-down">
             <div v-if="store.error" class="retry-banner">
                 <span class="retry-msg fira-code">{{ shortError }}</span>
-                <button class="retry-btn" @click="runCompute" :disabled="computing">
-                    <RefreshCw class="h-3.5 w-3.5" :class="{ 'animate-spin': computing }" />
+                <button class="retry-btn" @click="runCompute" :disabled="store.computing">
+                    <RefreshCw class="h-3.5 w-3.5" :class="{ 'animate-spin': store.computing }" />
                     Retry
                 </button>
             </div>
@@ -287,6 +273,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 /* Advanced section */
 .advanced-divider {
     display: flex;
@@ -305,7 +292,7 @@ onMounted(() => {
     gap: 0.25rem;
     cursor: pointer;
     user-select: none;
-    font-size: 0.6875rem;
+    @apply text-sm;
     font-weight: 500;
     letter-spacing: 0.03em;
     color: hsl(var(--foreground) / 0.4);
@@ -379,7 +366,7 @@ onMounted(() => {
 }
 
 .retry-msg {
-    font-size: 0.6875rem;
+    @apply text-sm;
     color: hsl(var(--destructive));
     flex: 1;
     min-width: 0;
@@ -397,7 +384,7 @@ onMounted(() => {
     border: 1px solid hsl(var(--destructive) / 0.3);
     background: hsl(var(--destructive) / 0.1);
     color: hsl(var(--destructive));
-    font-size: 0.75rem;
+    @apply text-sm;
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;

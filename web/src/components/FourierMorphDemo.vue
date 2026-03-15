@@ -212,6 +212,7 @@ function handleReset() {
 </script>
 
 <style scoped>
+@reference "tailwindcss";
 .demo-page {
     max-width: 960px;
     width: 100%;
@@ -245,7 +246,7 @@ function handleReset() {
 
 .demo-title {
     font-family: var(--font-serif);
-    font-size: 1.375rem;
+    @apply text-2xl;
     font-weight: 400;
     margin-bottom: 0.25rem;
     color: hsl(var(--foreground));
@@ -260,13 +261,13 @@ function handleReset() {
 
 .demo-subtitle {
     color: hsl(var(--muted-foreground));
-    font-size: 0.8125rem;
+    @apply text-base;
     max-width: 36rem;
 }
 
 @media (min-width: 640px) {
     .demo-subtitle {
-        font-size: 1rem;
+        @apply text-lg;
         margin-bottom: 0;
     }
 }
@@ -353,7 +354,7 @@ function handleReset() {
 
 .info-chip {
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    @apply text-sm;
     font-weight: 500;
     padding: 0.1875rem 0.5rem;
     border-radius: 0.375rem;
@@ -364,7 +365,7 @@ function handleReset() {
 
 @media (min-width: 640px) {
     .info-chip {
-        font-size: 0.8rem;
+        @apply text-base;
         padding: 0.25rem 0.625rem;
     }
 }
@@ -434,7 +435,7 @@ function handleReset() {
     background: hsl(var(--foreground));
     color: hsl(var(--background));
     font-family: var(--font-mono);
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.15s ease, opacity 0.15s ease;
@@ -458,7 +459,7 @@ function handleReset() {
     background: none;
     color: hsl(var(--muted-foreground));
     font-family: var(--font-mono);
-    font-size: 0.8125rem;
+    @apply text-base;
     font-weight: 500;
     cursor: pointer;
     transition: border-color 0.15s ease, color 0.15s ease;

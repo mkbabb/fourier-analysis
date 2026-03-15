@@ -29,6 +29,7 @@ const { toasts, dismiss } = useToast();
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .toast-container {
     position: fixed;
     top: 1rem;
@@ -69,7 +70,7 @@ const { toasts, dismiss } = useToast();
 
 .toast-msg {
     flex: 1;
-    font-size: 0.75rem;
+    @apply text-sm;
     line-height: 1.4;
     word-break: break-word;
 }

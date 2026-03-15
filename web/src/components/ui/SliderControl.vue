@@ -57,6 +57,7 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .slider-control {
     display: flex;
     flex-direction: column;
@@ -67,7 +68,7 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.75rem;
+    @apply text-sm;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
 }
