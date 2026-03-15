@@ -4,4 +4,5 @@ declare module "virtual:paper-content" {
     export const labelMap: Record<string, PaperLabelInfo>;
     export const totalPages: number;
     export const pageMap: Record<string, number>;
+    export const extractedMacros: Record<string, string>;
 }

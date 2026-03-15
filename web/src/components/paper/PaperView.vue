@@ -16,13 +16,14 @@ import PaperArticleWindow from "./PaperArticleWindow.vue";
 import { getPaperPreview, paperSectionToTreeNode } from "./paperTree";
 import { useScrollNavigation } from "./useScrollNavigation";
 import { usePaperSearch } from "./usePaperSearch";
-import { paperSections, labelMap, totalPages, pageMap } from "@/lib/paperContent";
+import { paperSections, labelMap, totalPages, pageMap, extractedMacros } from "@/lib/paperContent";
 import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Undo2 } from "lucide-vue-next";
 
 // ── KaTeX with app-specific macros ─────────────────────────
 const macros: Record<string, string> = {
+    ...extractedMacros,
     "\\deriv": "\\mathrm{d}",
     "\\ihat": "\\boldsymbol{\\hat{\\imath}}",
     "\\jhat": "\\boldsymbol{\\hat{\\jmath}}",
