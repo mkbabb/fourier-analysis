@@ -39,7 +39,7 @@ function select(value: string, idx: number) {
                 { transform: "scale(1.02)", offset: 0.7 },
                 { transform: "scale(1)" },
             ],
-            { duration: 300, easing: "ease-out" },
+            { duration: 180, easing: "ease-out" },
         );
     }
     emit("update:modelValue", value);
@@ -79,6 +79,7 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .bouncy-toggle {
     position: relative;
     display: inline-grid;
@@ -103,8 +104,8 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
     background: hsl(var(--background));
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px hsl(var(--border) / 0.3);
     transition:
-        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-        width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+        width 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     z-index: 0;
 }
 
@@ -123,7 +124,7 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
     border: none;
     background: none;
     font-family: "CMU Serif", "Computer Modern", Georgia, serif;
-    font-size: 0.75rem;
+    @apply text-xs;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
     cursor: pointer;
@@ -137,7 +138,7 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
     .bouncy-btn {
         padding: 0.375rem 0.875rem;
         border-radius: 0.375rem;
-        font-size: 0.8125rem;
+        @apply text-sm;
     }
 }
 
