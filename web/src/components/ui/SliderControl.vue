@@ -3,6 +3,8 @@ import { computed } from "vue";
 
 const props = defineProps<{
     label: string;
+    /** Optional short description shown as muted text after the label */
+    subtitle?: string;
     modelValue: number;
     min: number;
     max: number;
@@ -32,7 +34,10 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
 <template>
     <div class="slider-control">
         <label class="slider-label">
-            <span><slot>{{ label }}</slot></span>
+            <span>
+                <slot>{{ label }}</slot>
+                <span v-if="subtitle" class="slider-subtitle"> — {{ subtitle }}</span>
+            </span>
             <input
                 :type="isNumericDisplay ? 'number' : 'text'"
                 class="inline-number fira-code"
@@ -71,6 +76,12 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
     @apply text-sm;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
+}
+
+.slider-subtitle {
+    font-weight: 400;
+    font-size: 0.75em;
+    opacity: 0.7;
 }
 
 .inline-number {
