@@ -61,6 +61,8 @@ const paperContext: PaperContext = {
 
 provide(PAPER_CONTEXT, paperContext);
 
+const SCROLL_POS_KEY = "paper-active-section";
+
 const {
     visibleItems,
     topSpacerPx,
@@ -70,7 +72,6 @@ const {
     getOffsetFor,
     activeId,
     activeRootId,
-    savedActiveId,
     recalculate,
 } = useVirtualSectionWindow({
     items: flatSections,
@@ -80,7 +81,6 @@ const {
     leadingOffsetPx: sectionStartOffsetPx,
     warmTargetBefore: 2,
     warmTargetAfter: 3,
-    persistKey: "paper-active-section",
 });
 
 useClickDelegate({
@@ -131,6 +131,7 @@ watch(
         if (!id) return;
         const page = pageMap[id];
         if (page !== undefined) currentPage.value = page;
+        try { sessionStorage.setItem(SCROLL_POS_KEY, id); } catch {}
     },
     { immediate: true },
 );
@@ -214,10 +215,13 @@ onMounted(() => {
         recalculate();
         queueSidebarFollow(true);
 
-        // Restore scroll position from session (savedActiveId comes from the library)
-        if (savedActiveId.value) {
-            performScroll(savedActiveId.value);
-        }
+        // Restore scroll position from session
+        try {
+            const saved = sessionStorage.getItem(SCROLL_POS_KEY);
+            if (saved && flatSections.some((s) => s.id === saved)) {
+                performScroll(saved);
+            }
+        } catch {}
     });
     window.addEventListener("resize", handleWindowResize);
     window.addEventListener("keydown", handleGlobalKeydown);
