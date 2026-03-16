@@ -7,7 +7,7 @@ export const router = createRouter({
             path: "/",
             redirect: () => {
                 const saved = localStorage.getItem("fourier_active_tab");
-                if (saved === "/visualize" || saved === "/morph" || saved === "/gallery")
+                if (saved === "/visualize" || saved === "/morph" || saved === "/gallery" || saved === "/equation")
                     return saved;
                 return "/paper";
             },
@@ -29,6 +29,11 @@ export const router = createRouter({
             name: "gallery",
             component: () =>
                 import("@/components/visualization/GalleryView.vue"),
+        },
+        {
+            path: "/equation",
+            name: "equation",
+            component: () => import("@/components/equation/EquationView.vue"),
         },
         {
             path: "/morph",
@@ -53,7 +58,8 @@ router.afterEach((to: RouteLocationNormalized) => {
         tab === "/paper" ||
         tab === "/visualize" ||
         tab === "/morph" ||
-        tab === "/gallery"
+        tab === "/gallery" ||
+        tab === "/equation"
     ) {
         localStorage.setItem("fourier_active_tab", tab);
     } else if (tab.startsWith("/w/")) {

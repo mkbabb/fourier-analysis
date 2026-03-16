@@ -423,7 +423,7 @@ input[type="range"]:not(.styled-slider)::-webkit-slider-thumb:active {
 
 .katex-display {
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible;
     padding: 0.75rem 0;
     margin: 1rem 0;
 }
@@ -489,6 +489,44 @@ input[type="range"]:not(.styled-slider)::-webkit-slider-thumb:active {
 .dark .cartoon-card:hover {
     border-color: hsl(var(--foreground) / 0.18);
     box-shadow: 4px 4px 0px 0px hsl(var(--foreground) / 0.08);
+}
+
+/* ── Glassmorphic overlay button ─────────────────────────────
+   Shared style for circular floating buttons (canvas overlays,
+   equation card buttons, etc.). Use with .glass-btn class.     */
+
+.glass-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    border: 1.5px solid hsl(var(--foreground) / 0.1);
+    background: hsl(var(--background) / 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.glass-btn:hover {
+    background: hsl(var(--background) / 0.85);
+    border-color: hsl(var(--foreground) / 0.2);
+    color: hsl(var(--foreground));
+    transform: scale(1.08);
+}
+.glass-btn:active {
+    transform: scale(0.95);
+}
+.glass-btn.is-active {
+    background: hsl(var(--foreground) / 0.1);
+    border-color: hsl(var(--foreground) / 0.25);
+    color: hsl(var(--foreground));
 }
 
 /* ── Interactive utilities ──────────────────────────────────── */

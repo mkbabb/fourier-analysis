@@ -3,7 +3,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 
 const VIEW_STATE_KEY = "fourier_visualizer_view_state";
 
-function loadViewState(): { editing?: boolean; overlay?: boolean } {
+function loadViewState(): { editing?: boolean; overlay?: boolean; equation?: boolean } {
     try {
         return JSON.parse(localStorage.getItem(VIEW_STATE_KEY) ?? "{}");
     } catch {
@@ -18,6 +18,7 @@ export function useViewState() {
     const isEditing = ref(false);
     const showGhost = ref(true);
     const showImageOverlay = ref(typeof saved.overlay === "boolean" ? saved.overlay : false);
+    const showEquation = ref(typeof saved.equation === "boolean" ? saved.equation : false);
 
     // Restore editing immediately once contour is available
     if (saved.editing) {
@@ -39,12 +40,13 @@ export function useViewState() {
         if (!c && isEditing.value) isEditing.value = false;
     });
 
-    watch([isEditing, showImageOverlay], () => {
+    watch([isEditing, showImageOverlay, showEquation], () => {
         localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({
             editing: isEditing.value,
             overlay: showImageOverlay.value,
+            equation: showEquation.value,
         }));
     });
 
-    return { isEditing, showGhost, showImageOverlay };
+    return { isEditing, showGhost, showImageOverlay, showEquation };
 }

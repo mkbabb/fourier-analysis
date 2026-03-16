@@ -94,6 +94,9 @@ export interface Snapshot {
     created_at: string;
 }
 
+export type NotationMode = "trig" | "exponential" | "polar";
+export type EquationTier = "symbolic" | "identified" | "spline";
+
 export interface WorkspaceDraft {
     imageSlug: string;
     contour: ContourAsset | null;

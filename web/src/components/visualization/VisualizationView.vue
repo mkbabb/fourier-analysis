@@ -7,7 +7,7 @@ import { useAnimationStore } from "@/stores/animation";
 import { useImageUpload } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
-import { Upload, Maximize2, Pencil } from "lucide-vue-next";
+import { Upload, Maximize2, Pencil, Sigma } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
 import ImageUpload from "./ImageUpload.vue";
 import ContourSettings from "./ContourSettings.vue";
@@ -22,6 +22,7 @@ import CanvasOverlayButton from "./CanvasOverlayButton.vue";
 import CoefficientsPanel from "./CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
+import EquationPanel from "./EquationPanel.vue";
 import BouncyToggle from "@/components/ui/BouncyToggle.vue";
 
 const router = useRouter();
@@ -29,7 +30,7 @@ const store = useWorkspaceStore();
 const anim = useAnimationStore();
 
 // ── View state (editing, ghost, overlay — persisted to localStorage) ──
-const { isEditing, showGhost, showImageOverlay } = useViewState();
+const { isEditing, showGhost, showImageOverlay, showEquation } = useViewState();
 
 // ── Image drag-and-drop ──
 const { isDragging: globalDragging, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave } =
@@ -201,6 +202,18 @@ const hasImage = computed(() => !!store.imageMeta);
                                 <Maximize2 class="h-5 w-5" />
                             </CanvasOverlayButton>
                         </Tooltip>
+                    </Transition>
+                    <Transition name="expand-pop" appear>
+                        <Tooltip v-if="store.epicycleData && !isEditing" text="Equation" side="left">
+                            <CanvasOverlayButton position="equation" :active="showEquation" @click="showEquation = !showEquation">
+                                <Sigma class="h-5 w-5" />
+                            </CanvasOverlayButton>
+                        </Tooltip>
+                    </Transition>
+
+                    <!-- Equation overlay panel -->
+                    <Transition name="fade">
+                        <EquationPanel v-if="showEquation && store.epicycleData && !isEditing" @close="showEquation = false" />
                     </Transition>
 
                     <!-- Bottom dock -->

@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useWorkspaceStore } from "@/stores/workspace";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { Collapsible } from "@/components/ui/collapsible";
 import { Tooltip } from "@/components/ui/tooltip";
-import FrequencyGraph from "@/components/equation/FrequencyGraph.vue";
+import type { BasisComponent } from "@/lib/types";
 
-const store = useWorkspaceStore();
+const props = defineProps<{
+    components: BasisComponent[];
+}>();
+
 const expanded = ref(false);
 
-const topComponents = computed(() => {
-    if (!store.epicycleData) return [];
-    return store.epicycleData.components.slice(0, expanded.value ? 40 : 12);
-});
+const topComponents = computed(() =>
+    props.components.slice(0, expanded.value ? 40 : 12),
+);
 
-const totalComponents = computed(() => store.epicycleData?.components.length ?? 0);
+const totalComponents = computed(() => props.components.length);
 
-const maxAmplitude = computed(() => {
-    if (!topComponents.value.length) return 1;
-    return topComponents.value[0].amplitude;
-});
+const maxAmplitude = computed(() =>
+    topComponents.value.length ? topComponents.value[0].amplitude : 1,
+);
 
 function spectrumColor(i: number, total: number): string {
     const hue = (1 - i / Math.max(total - 1, 1)) * 300;
@@ -27,7 +27,7 @@ function spectrumColor(i: number, total: number): string {
 }
 
 function formatPhase(phase: number): string {
-    return `${(phase * 180 / Math.PI).toFixed(1)}°`;
+    return `${((phase * 180) / Math.PI).toFixed(1)}°`;
 }
 
 function formatPercent(amplitude: number): string {
@@ -40,14 +40,6 @@ function formatPercent(amplitude: number): string {
     <div class="cartoon-card px-3 py-2">
         <Collapsible title="Coefficients" subtitle="Fourier spectrum" :default-open="false">
             <div class="pt-1">
-                <!-- Frequency graph -->
-                <FrequencyGraph
-                    v-if="store.epicycleData?.components.length"
-                    :components="store.epicycleData.components"
-                    :max-bars="40"
-                    class="mb-2"
-                />
-
                 <div class="flex items-center justify-end mb-2">
                     <span class="fira-code text-xs text-muted-foreground">
                         {{ topComponents.length }} / {{ totalComponents }}
@@ -77,7 +69,6 @@ function formatPercent(amplitude: number): string {
                             <span class="w-16 text-right fira-code text-muted-foreground tabular-nums">
                                 {{ comp.amplitude.toFixed(2) }}
                             </span>
-                            <!-- Hover tooltip -->
                             <div class="coeff-tooltip">
                                 <div class="flex items-center gap-1.5 mb-1">
                                     <span class="inline-block w-2 h-2 rounded-full" :style="{ backgroundColor: spectrumColor(i, topComponents.length) }" />
@@ -97,10 +88,12 @@ function formatPercent(amplitude: number): string {
                         </div>
                     </TransitionGroup>
 
-                    <Tooltip :text="expanded ? 'Collapse to top 12 coefficients' : `Show top 40 of ${totalComponents} coefficients`">
+                    <Tooltip :text="expanded ? 'Collapse to top 12' : `Show top 40 of ${totalComponents}`">
                         <button
                             v-if="totalComponents > 12"
-                            class="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 hover:text-foreground hover:bg-muted cursor-pointer"
+                            class="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1.5
+                                   text-xs font-medium text-muted-foreground transition-all duration-200
+                                   hover:text-foreground hover:bg-muted cursor-pointer"
                             @click="expanded = !expanded"
                         >
                             <component :is="expanded ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
@@ -110,7 +103,7 @@ function formatPercent(amplitude: number): string {
                 </div>
 
                 <p v-else class="text-xs text-muted-foreground py-3 text-center">
-                    Compute epicycles to see coefficients
+                    Compute to see coefficients
                 </p>
             </div>
         </Collapsible>
@@ -119,28 +112,13 @@ function formatPercent(amplitude: number): string {
 
 <style scoped>
 @reference "tailwindcss";
-.coeff-list-enter-active {
-    transition: all 0.3s ease;
-}
-.coeff-list-leave-active {
-    transition: all 0.2s ease;
-}
-.coeff-list-enter-from {
-    opacity: 0;
-    transform: translateX(-8px);
-}
-.coeff-list-leave-to {
-    opacity: 0;
-    transform: translateX(8px);
-}
-.coeff-list-move {
-    transition: transform 0.3s ease;
-}
+.coeff-list-enter-active { transition: all 0.3s ease; }
+.coeff-list-leave-active { transition: all 0.2s ease; }
+.coeff-list-enter-from { opacity: 0; transform: translateX(-8px); }
+.coeff-list-leave-to { opacity: 0; transform: translateX(8px); }
+.coeff-list-move { transition: transform 0.3s ease; }
 
-/* Hover tooltip */
-.coeff-row {
-    cursor: default;
-}
+.coeff-row { cursor: default; }
 .coeff-tooltip {
     display: none;
     position: absolute;
@@ -157,7 +135,5 @@ function formatPercent(amplitude: number): string {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     pointer-events: none;
 }
-.coeff-row:hover .coeff-tooltip {
-    display: block;
-}
+.coeff-row:hover .coeff-tooltip { display: block; }
 </style>

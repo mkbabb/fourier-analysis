@@ -20,6 +20,7 @@ onUnmounted(() => document.removeEventListener("click", onDocClick));
 const tabOptions = [
     { label: "Paper", value: "/paper" },
     { label: "Visualize", value: "/visualize" },
+    { label: "Equation", value: "/equation" },
     { label: "Gallery", value: "/gallery" },
     { label: "Morph", value: "/morph" },
 ];
@@ -27,6 +28,7 @@ const tabOptions = [
 const activeTab = computed(() => {
     if (route.path === "/paper") return "/paper";
     if (route.path === "/visualize" || route.path.startsWith("/s/") || route.path.startsWith("/w/")) return "/visualize";
+    if (route.path === "/equation") return "/equation";
     if (route.path === "/gallery") return "/gallery";
     if (route.path === "/morph") return "/morph";
     return "/paper";
