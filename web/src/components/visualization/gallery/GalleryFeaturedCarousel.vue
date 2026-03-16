@@ -35,7 +35,7 @@ const emit = defineEmits<{
                     :liked-hashes="likedHashes"
                     @click="emit('card-click', entry)"
                     @like="emit('like', $event)"
-                    @set-tier="emit('set-tier', $event, $event)"
+                    @set-tier="(h, t) => emit('set-tier', h, t)"
                     @delete="emit('delete', $event)"
                 />
             </div>
