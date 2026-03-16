@@ -107,3 +107,50 @@ export interface WorkspaceDraft {
     savedSnapshots: string[];
     lastOpenedAt: string;
 }
+
+// ── Gallery ──
+
+export type GalleryTier = "featured" | "saved" | "normal";
+
+export interface GalleryEntry {
+    snapshot_hash: string;
+    image_slug: string;
+    contour_hash: string;
+    user_slug: string | null;
+    tier: GalleryTier;
+    views: number;
+    likes: number;
+    active_bases: string[];
+    n_harmonics: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface GalleryListResponse {
+    items: GalleryEntry[];
+    total: number;
+    page: number;
+    pages: number;
+}
+
+// ── Session/Auth ──
+
+export interface SessionResponse {
+    token: string;
+    user_slug: string;
+}
+
+export interface UserInfo {
+    user_slug: string;
+    created_at: string;
+}
+
+export interface AdminStats {
+    total_entries: number;
+    featured: number;
+    saved: number;
+    normal: number;
+    total_views: number;
+    total_likes: number;
+    storage_bytes: number;
+}

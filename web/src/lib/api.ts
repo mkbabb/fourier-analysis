@@ -6,9 +6,23 @@ import type {
     EpicycleData,
     ImageMeta,
     Snapshot,
+    GalleryEntry,
+    GalleryListResponse,
+    GalleryTier,
+    SessionResponse,
+    UserInfo,
+    AdminStats,
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL || "";
+
+// ── Session token management ──
+
+let sessionToken: string | null = null;
+
+export function setSessionToken(token: string | null) {
+    sessionToken = token;
+}
 
 /**
  * Per-key AbortController registry. Calling `abortable(key)` cancels any
@@ -41,6 +55,10 @@ async function apiFetch<T>(
         ...((options?.headers as Record<string, string>) ?? {}),
     };
 
+    if (sessionToken) {
+        headers["X-Session-Token"] = sessionToken;
+    }
+
     const rawBody = options?.body;
     const isFormData = rawBody instanceof FormData;
 
@@ -62,6 +80,56 @@ async function apiFetch<T>(
         headers,
         body,
         signal: options?.signal ?? abortable(abortKey),
+    });
+
+    if (!res.ok) {
+        let text: string;
+        try {
+            text = await res.text();
+        } catch {
+            text = "(could not read response body)";
+        }
+        throw new Error(`API ${res.status}: ${text}`);
+    }
+
+    try {
+        return await res.json();
+    } catch {
+        throw new Error(`API ${res.status}: invalid JSON response`);
+    }
+}
+
+async function adminFetch<T>(
+    path: string,
+    adminToken: string,
+    options?: ApiFetchOptions,
+): Promise<T> {
+    const headers: Record<string, string> = {
+        Authorization: `Bearer ${adminToken}`,
+        ...((options?.headers as Record<string, string>) ?? {}),
+    };
+
+    if (sessionToken) {
+        headers["X-Session-Token"] = sessionToken;
+    }
+
+    const rawBody = options?.body;
+    const isFormData = rawBody instanceof FormData;
+
+    let body: BodyInit | undefined;
+    if (isFormData) {
+        body = rawBody;
+    } else if (rawBody != null && typeof rawBody === "object" && !(rawBody instanceof Blob) && !(rawBody instanceof ArrayBuffer) && !(rawBody instanceof ReadableStream)) {
+        headers["Content-Type"] ??= "application/json";
+        body = JSON.stringify(rawBody);
+    } else {
+        body = rawBody as BodyInit | undefined;
+    }
+
+    const res = await fetch(`${BASE}${path}`, {
+        method: options?.method,
+        headers,
+        body,
     });
 
     if (!res.ok) {
@@ -216,4 +284,117 @@ export async function getSnapshot(
         `/api/images/${imageSlug}/snapshots/${snapshotHash}`,
         "getSnapshot",
     );
+}
+
+// ── Sessions ──
+
+export async function createSession(): Promise<SessionResponse> {
+    return apiFetch<SessionResponse>("/api/sessions", "createSession", {
+        method: "POST",
+    });
+}
+
+export async function loginWithSlug(slug: string): Promise<SessionResponse> {
+    return apiFetch<SessionResponse>("/api/sessions/login", "loginWithSlug", {
+        method: "POST",
+        body: { slug },
+    });
+}
+
+export async function getMe(): Promise<UserInfo> {
+    return apiFetch<UserInfo>("/api/sessions/me", "getMe");
+}
+
+export async function deleteSession(): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>("/api/sessions", "deleteSession", {
+        method: "DELETE",
+    });
+}
+
+// ── Gallery ──
+
+export async function listGallery(params: {
+    page?: number;
+    limit?: number;
+    sort?: string;
+    tier?: GalleryTier;
+    q?: string;
+    basis?: string;
+}): Promise<GalleryListResponse> {
+    const qs = new URLSearchParams();
+    if (params.page != null) qs.set("page", String(params.page));
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.sort) qs.set("sort", params.sort);
+    if (params.tier) qs.set("tier", params.tier);
+    if (params.q) qs.set("q", params.q);
+    if (params.basis) qs.set("basis", params.basis);
+    const query = qs.toString();
+    return apiFetch<GalleryListResponse>(
+        `/api/gallery${query ? `?${query}` : ""}`,
+        "listGallery",
+    );
+}
+
+export async function getGalleryEntry(hash: string): Promise<GalleryEntry> {
+    return apiFetch<GalleryEntry>(`/api/gallery/${hash}`, "getGalleryEntry");
+}
+
+export async function publishToGallery(
+    snapshotHash: string,
+    imageSlug: string,
+): Promise<GalleryEntry> {
+    return apiFetch<GalleryEntry>("/api/gallery", "publishToGallery", {
+        method: "POST",
+        body: { snapshot_hash: snapshotHash, image_slug: imageSlug },
+    });
+}
+
+export async function recordView(hash: string): Promise<{ views: number }> {
+    return apiFetch<{ views: number }>(
+        `/api/gallery/${hash}/view`,
+        "recordView",
+        { method: "POST" },
+    );
+}
+
+export async function toggleLike(
+    hash: string,
+): Promise<{ liked: boolean; likes: number }> {
+    return apiFetch<{ liked: boolean; likes: number }>(
+        `/api/gallery/${hash}/like`,
+        "toggleLike",
+        { method: "POST" },
+    );
+}
+
+// ── Admin ──
+
+export async function verifyAdmin(
+    token: string,
+): Promise<{ ok: boolean }> {
+    return adminFetch<{ ok: boolean }>("/api/admin/verify", token);
+}
+
+export async function getAdminStats(token: string): Promise<AdminStats> {
+    return adminFetch<AdminStats>("/api/admin/stats", token);
+}
+
+export async function setGalleryTier(
+    token: string,
+    hash: string,
+    tier: GalleryTier,
+): Promise<GalleryEntry> {
+    return adminFetch<GalleryEntry>(`/api/admin/gallery/${hash}/tier`, token, {
+        method: "PUT",
+        body: { tier },
+    });
+}
+
+export async function deleteGalleryEntry(
+    token: string,
+    hash: string,
+): Promise<{ ok: boolean }> {
+    return adminFetch<{ ok: boolean }>(`/api/admin/gallery/${hash}`, token, {
+        method: "DELETE",
+    });
 }
