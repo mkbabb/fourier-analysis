@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, watch, computed } from "vue";
 import { watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useAnimationStore } from "@/stores/animation";
 import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { Collapsible } from "@/components/ui/collapsible";
@@ -25,7 +24,6 @@ const props = defineProps<{
 }>();
 
 const store = useWorkspaceStore();
-const anim = useAnimationStore();
 
 const strategy = ref(store.contourSettings?.strategy ?? CONTOUR_DEFAULTS.strategy);
 const blurSigma = ref(store.contourSettings?.blur_sigma ?? CONTOUR_DEFAULTS.blur_sigma);
@@ -83,8 +81,6 @@ const shortError = computed(() => {
 async function runCompute() {
     if (!store.imageMeta) return;
 
-    const hadData = !!(store.epicycleData || store.basesData);
-
     store.beginCompute();
     store.error = null;
 
@@ -106,20 +102,10 @@ async function runCompute() {
         // Extract contour first, then compute in parallel
         await store.extractContour();
 
-        const results = await Promise.allSettled([
+        await Promise.allSettled([
             store.computeEpicycles(),
             store.computeBases(),
         ]);
-
-        const anyOk = results.some((r) => r.status === "fulfilled");
-        if (anyOk && (store.epicycleData || store.basesData)) {
-            if (hadData) {
-                if (!anim.playing) anim.play();
-            } else {
-                anim.reset();
-                anim.play();
-            }
-        }
     } finally {
         store.endCompute();
     }
@@ -132,12 +118,16 @@ watchDebounced(
     { debounce: 1000, immediate: false },
 );
 
-// Compute on mount if image exists but no data
-onMounted(() => {
-    if (store.imageMeta && !store.epicycleData && !store.basesData) {
-        runCompute();
-    }
-});
+// Compute when imageMeta arrives (handles both initial mount and subsequent uploads)
+watch(
+    () => store.imageMeta,
+    (meta) => {
+        if (meta && !store.epicycleData && !store.basesData && !store.computing) {
+            runCompute();
+        }
+    },
+    { immediate: true },
+);
 </script>
 
 <template>
