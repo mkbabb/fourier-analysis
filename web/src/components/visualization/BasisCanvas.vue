@@ -4,6 +4,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { fourierPositionsAt, evaluateFourier } from "@/lib/bases";
 import { VIZ_COLORS, hexToRgba } from "@/lib/colors";
+import { goldenShimmerAlpha, clearShimmer } from "@/lib/golden-shimmer";
 import { basisDisplay } from "./lib/basis-display";
 import type { BasisComponent } from "@/lib/types";
 import type { CanvasSurface, ViewTransform, EpicycleBbox } from "./lib/canvas-drawing";
@@ -162,8 +163,7 @@ function drawEpicycleFrame(
 
     // Golden shimmer on epicycle circles when hovered
     if (epicycleHovered) {
-        const shimmer = 0.85 + 0.15 * Math.sin(performance.now() / 200);
-        s.ctx.globalAlpha = shimmer;
+        s.ctx.globalAlpha = goldenShimmerAlpha();
     }
     drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 4, arm: 3.5 }, epicycleHovered ? VIZ_COLORS.golden : undefined);
     s.ctx.globalAlpha = 1;
@@ -248,14 +248,14 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
         if (!cfg) continue;
 
         const isHovered = hoveredBasis === basisKey;
-        const shimmer = isHovered ? 0.85 + 0.15 * Math.sin(performance.now() / 200) : 0;
+        const shimmer = isHovered ? goldenShimmerAlpha() : 0;
         ctx.beginPath();
         ctx.strokeStyle = isHovered ? VIZ_COLORS.golden : cfg.color;
         ctx.lineWidth = isHovered ? 4 : 3;
         ctx.globalAlpha = isHovered ? shimmer : 0.85;
         if (isHovered) {
-            ctx.shadowColor = hexToRgba(VIZ_COLORS.golden, shimmer * 0.4);
-            ctx.shadowBlur = 6;
+            ctx.shadowColor = hexToRgba(VIZ_COLORS.golden, shimmer * 0.5);
+            ctx.shadowBlur = 10;
         }
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
@@ -306,9 +306,7 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
             }
         }
         ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.shadowColor = "transparent";
-        ctx.shadowBlur = 0;
+        clearShimmer(ctx);
     }
 
     // Epicycle trail + tip + hover overlay when fourier-epicycles is active
