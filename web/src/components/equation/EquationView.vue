@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { watchDebounced } from "@vueuse/core";
+import { watchDebounced, useMediaQuery } from "@vueuse/core";
 import { computeEquation, simplifyCoefficients, isAbortError } from "@/lib/equation/api";
 import type { NotationMode, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
@@ -8,6 +8,7 @@ import { TIER_INFO, energyColor } from "@/lib/equation/notation";
 import { HoverCardRoot, HoverCardTrigger, HoverCardPortal, HoverCardContent } from "reka-ui";
 import { Info } from "lucide-vue-next";
 
+import UnderlineTabs from "@/components/ui/UnderlineTabs.vue";
 import FunctionInput from "./FunctionInput.vue";
 import EquationResult from "./EquationResult.vue";
 import EquationModeToggle from "./EquationModeToggle.vue";
@@ -38,6 +39,8 @@ const displayEnergy = ref(cachedRes?.energy ?? 1);
 const effectiveN = ref(cachedRes?.result?.effective_n ?? 20);
 const autoHarmonics = ref(true);
 const eqMode = ref<EquationDisplayMode>("sigma");
+const mobileView = ref<"controls" | "canvas">("canvas");
+const isDesktop = useMediaQuery("(min-width: 1024px)");
 const eqCardRef = ref<HTMLDivElement>();
 
 // ── Derived state ──
@@ -46,7 +49,7 @@ const activeLatex = computed(() =>
 );
 
 const vizHarmonics = computed(() =>
-    autoHarmonics.value ? Math.min(effectiveN.value + 3, nHarmonics.value) : nHarmonics.value,
+    autoHarmonics.value ? Math.min(effectiveN.value, nHarmonics.value) : nHarmonics.value,
 );
 
 const loading = computed(() => computing.value || simplifying.value);
@@ -141,8 +144,14 @@ async function doSimplify() {
 
 // ── Watches ──
 
-watch(vizHarmonics, (v) => {
-    if (budget.value > v) budget.value = Math.max(2, v);
+watch(vizHarmonics, (v, oldV) => {
+    if (budget.value > v) {
+        budget.value = Math.max(2, v);
+    } else if (oldV != null && oldV > 0 && budget.value <= oldV) {
+        // Budget was at or near the old cap — scale it up proportionally
+        const ratio = budget.value / oldV;
+        budget.value = Math.max(2, Math.round(v * ratio));
+    }
 });
 
 watch(
@@ -170,9 +179,17 @@ watchDebounced(
 
 <template>
     <div class="flex flex-col flex-1 min-h-0">
+        <!-- Mobile tab bar -->
+        <div class="flex px-3 py-1 bg-background lg:hidden">
+            <UnderlineTabs
+                :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
+                :model-value="mobileView"
+                @update:model-value="mobileView = $event as 'controls' | 'canvas'" />
+        </div>
+
         <div class="eq-grid">
             <!-- Left panel -->
-            <div class="eq-panel-left-wrap">
+            <div class="eq-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
                 <div class="eq-panel-left">
                     <FunctionInput
                         v-model:expression="expression"
@@ -195,7 +212,7 @@ watchDebounced(
             </div>
 
             <!-- Right panel -->
-            <div class="eq-panel-right">
+            <div class="eq-panel-right" :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop }">
                 <!-- Loading -->
                 <div v-if="computing && !result" class="flex items-center justify-center flex-1">
                     <div class="flex flex-col items-center gap-3">
@@ -322,7 +339,8 @@ watchDebounced(
     @apply relative flex flex-col w-full min-h-0;
     max-width: 480px;
     margin: 0 auto;
-    overflow: clip;
+    overflow-x: visible;
+    overflow-y: clip;
     flex: 1;
 }
 @media (max-width: 1023px) { .eq-panel-left-wrap { overflow: visible; flex: none; } }
@@ -401,6 +419,13 @@ watchDebounced(
     @apply absolute top-2;
     right: 3.25rem;
     z-index: 30;
+}
+
+/* ── Mobile panel toggle ── */
+@media (max-width: 1023px) {
+    .panel-inactive {
+        display: none;
+    }
 }
 
 /* ── Transitions ── */
