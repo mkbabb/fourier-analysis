@@ -67,7 +67,7 @@ def simplify_series(
 
 def compute_effective_n(
     terms: list[FourierTerm],
-    threshold: float = 0.999,
+    threshold: float = 0.9999,
     minimum: int = 3,
 ) -> int:
     """Find the minimum number of harmonics capturing ≥ threshold of total energy.

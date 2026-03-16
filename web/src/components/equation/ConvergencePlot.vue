@@ -33,7 +33,11 @@ const mousePos = ref<{ x: number; y: number } | null>(null);
 const easedT = computed(() => easeInOutSine(t.value));
 const trigHarmonics = computed(() => groupTrigHarmonics(props.coefficients, props.nHarmonics));
 const dcTerm = computed(() => props.coefficients.find((c) => c.n === 0));
-const animDuration = computed(() => Math.max(6_000, Math.min(30_000, trigHarmonics.value.length * 4_000)));
+const animDuration = computed(() => {
+    const n = trigHarmonics.value.length;
+    // Few harmonics: slower to appreciate each term; many: faster per-term
+    return Math.max(2_000, Math.min(12_000, 3_000 + Math.max(0, n - 3) * 200));
+});
 
 // ── Transition state ──
 const transition = createTransitionState();

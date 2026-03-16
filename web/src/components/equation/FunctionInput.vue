@@ -194,7 +194,7 @@ const activePreset = computed(() =>
                                     <p class="font-semibold mb-1">Auto (Parseval's theorem)</p>
                                     <p class="text-muted-foreground">
                                         Sets N to the minimum harmonics capturing
-                                        ≥99.9% of total energy ‖f‖².
+                                        ≥99.99% of total energy ‖f‖².
                                     </p>
                                     <p v-if="effectiveN" class="mt-1 fira-code text-xs">
                                         N<sub>eff</sub> = {{ effectiveN }}
