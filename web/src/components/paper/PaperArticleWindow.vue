@@ -59,7 +59,7 @@ function bindSection(
                 <PaperSectionBlocks :section="item.section">
                     <template #figure="{ figure }">
                         <img
-                            :src="`${baseUrl}assets/${figure.filename}`"
+                            :src="`${baseUrl}assets/${figure.filename.replace(/\.pdf$/, '.png')}`"
                             :alt="figure.caption"
                             class="max-w-full rounded-lg shadow-sm"
                             :class="figure.filename.includes('portrait') ? 'paper-portrait' : 'paper-figure'"

@@ -5,7 +5,7 @@ import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./usePaperSearch";
 import { ChevronUp } from "lucide-vue-next";
 
-import { ref } from "vue";
+import { ref, reactive } from "vue";
 
 const props = defineProps<{
     sections: PaperSectionData[];
@@ -23,6 +23,28 @@ const props = defineProps<{
 
 const sidebarNav = ref<HTMLElement | null>(null);
 defineExpose({ sidebarNav });
+
+// Tracks user overrides for section expand/collapse state
+const userExpanded = reactive(new Set<string>());
+const userCollapsed = reactive(new Set<string>());
+
+function isSectionExpanded(sectionId: string): boolean {
+    if (userCollapsed.has(sectionId)) return false;
+    if (userExpanded.has(sectionId)) return true;
+    return props.activeRootId === sectionId;
+}
+
+function handleSectionClick(sectionId: string) {
+    if (isSectionExpanded(sectionId)) {
+        // Currently expanded → collapse
+        userExpanded.delete(sectionId);
+        userCollapsed.add(sectionId);
+    } else {
+        // Currently collapsed → expand
+        userCollapsed.delete(sectionId);
+        userExpanded.add(sectionId);
+    }
+}
 </script>
 
 <template>
@@ -44,7 +66,7 @@ defineExpose({ sidebarNav });
                     <Tooltip :text="getPreview(section)" side="right">
                         <button
                             :data-toc-id="section.id"
-                            @click="scrollTo(section.id)"
+                            @click="handleSectionClick(section.id)"
                             class="sidebar-link cm-serif"
                             :class="{ 'is-active': activeRootId === section.id }"
                             :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
@@ -57,7 +79,7 @@ defineExpose({ sidebarNav });
                     <div
                         v-if="section.subsections"
                         class="sidebar-sublist-wrapper"
-                        :class="{ 'is-expanded': activeRootId === section.id }"
+                        :class="{ 'is-expanded': isSectionExpanded(section.id) }"
                     >
                         <ol class="sidebar-sublist">
                             <li v-for="sub in section.subsections" :key="sub.id">

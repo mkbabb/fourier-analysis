@@ -70,6 +70,7 @@ const {
     getOffsetFor,
     activeId,
     activeRootId,
+    savedActiveId,
     recalculate,
 } = useVirtualSectionWindow({
     items: flatSections,
@@ -79,6 +80,7 @@ const {
     leadingOffsetPx: sectionStartOffsetPx,
     warmTargetBefore: 2,
     warmTargetAfter: 3,
+    persistKey: "paper-active-section",
 });
 
 useClickDelegate({
@@ -93,7 +95,7 @@ useClickDelegate({
     scrollTo: (id) => _scrollTo(id),
 });
 
-const { navigateTo, navigateBack, scrollToTop, navStack } = useScrollNavigation({
+const { navigateTo, navigateBack, scrollToTop, performScroll, navStack } = useScrollNavigation({
     scrollContainer,
     contentStartOffsetPx: sectionStartOffsetPx,
     activeId,
@@ -211,6 +213,11 @@ onMounted(() => {
         updateSectionStartOffset();
         recalculate();
         queueSidebarFollow(true);
+
+        // Restore scroll position from session (savedActiveId comes from the library)
+        if (savedActiveId.value) {
+            performScroll(savedActiveId.value);
+        }
     });
     window.addEventListener("resize", handleWindowResize);
     window.addEventListener("keydown", handleGlobalKeydown);
@@ -398,7 +405,7 @@ onUnmounted(() => {
         hsl(var(--background));
     opacity: 0;
     pointer-events: none;
-    transition: opacity 70ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
     will-change: opacity;
 }
 

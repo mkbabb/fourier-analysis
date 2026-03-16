@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onUnmounted } from "vue";
-import { ChevronDown, ChevronUp, Search, X } from "lucide-vue-next";
+import { ref, reactive, watch, nextTick, onUnmounted } from "vue";
+import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-vue-next";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./usePaperSearch";
@@ -34,6 +34,28 @@ onUnmounted(() => {
         props.scrollContainer.style.overflow = '';
     }
 });
+
+// Tracks user overrides for section expand/collapse state
+const userExpanded = reactive(new Set<string>());
+const userCollapsed = reactive(new Set<string>());
+
+function isSectionExpanded(sectionId: string): boolean {
+    if (userCollapsed.has(sectionId)) return false;
+    if (userExpanded.has(sectionId)) return true;
+    return props.activeRootId === sectionId;
+}
+
+function selectRootSection(sectionId: string) {
+    if (isSectionExpanded(sectionId)) {
+        // Currently expanded → collapse, stay in dropdown
+        userExpanded.delete(sectionId);
+        userCollapsed.add(sectionId);
+    } else {
+        // Currently collapsed → expand, stay in dropdown
+        userCollapsed.delete(sectionId);
+        userExpanded.add(sectionId);
+    }
+}
 
 function selectSection(id: string) {
     floatingTocOpen.value = false;
@@ -105,17 +127,33 @@ watch(() => props.search.isOpen.value, (open) => {
 
                     <div class="floating-toc-divider" />
 
-                    <button
-                        v-for="(section, si) in sections"
-                        :key="section.id"
-                        class="floating-toc-item cm-serif"
-                        :class="{ 'is-active': activeRootId === section.id }"
-                        :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
-                        @click="selectSection(section.id)"
-                    >
-                        <span class="fira-code text-xs opacity-50">{{ section.number }}.</span>
-                        {{ section.title }}
-                    </button>
+                    <template v-for="(section, si) in sections" :key="section.id">
+                        <button
+                            class="floating-toc-item floating-toc-root cm-serif"
+                            :class="{ 'is-active': activeRootId === section.id }"
+                            :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
+                            @click="selectRootSection(section.id)"
+                        >
+                            <component
+                                :is="isSectionExpanded(section.id) ? ChevronDown : ChevronRight"
+                                v-if="section.subsections?.length"
+                                class="floating-toc-collapse-icon"
+                            />
+                            <span class="fira-code text-xs opacity-50">{{ section.number }}.</span>
+                            {{ section.title }}
+                        </button>
+                        <template v-if="isSectionExpanded(section.id)">
+                            <button
+                                v-for="sub in section.subsections"
+                                :key="sub.id"
+                                class="floating-toc-item floating-toc-sub cm-serif"
+                                @click="selectSection(sub.id)"
+                            >
+                                <span class="fira-code text-xs opacity-40">{{ sub.number }}.</span>
+                                {{ sub.title }}
+                            </button>
+                        </template>
+                    </template>
                 </div>
             </Transition>
 
@@ -291,6 +329,25 @@ watch(() => props.search.isOpen.value, (open) => {
     @apply text-base;
     color: hsl(var(--muted-foreground));
     transition: all 0.15s;
+}
+
+.floating-toc-root {
+    display: flex !important;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.floating-toc-collapse-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    opacity: 0.45;
+}
+
+.floating-toc-sub {
+    padding-left: 2.25rem;
+    font-size: 0.8125rem;
+    color: hsl(var(--muted-foreground) / 0.7);
 }
 
 .floating-toc-item:hover,

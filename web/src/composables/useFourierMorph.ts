@@ -85,7 +85,7 @@ export const DEFAULT_MORPH_CONFIG: MorphConfig = {
     morphMs: 50,
     settleInMs: 150,
     lowLevel: 5,
-    highLevel: 35,
+    highLevel: 50,
     settleOutEasing: "linear",
     morphEasing: "linear",
     settleInEasing: "linear",

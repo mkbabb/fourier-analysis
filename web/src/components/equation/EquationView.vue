@@ -39,7 +39,7 @@ const displayEnergy = ref(cachedRes?.energy ?? 1);
 const effectiveN = ref(cachedRes?.result?.effective_n ?? 20);
 const autoHarmonics = ref(true);
 const eqMode = ref<EquationDisplayMode>("sigma");
-const mobileView = ref<"controls" | "canvas">("canvas");
+const mobileView = ref<"controls" | "canvas">("controls");
 const isDesktop = useMediaQuery("(min-width: 1024px)");
 const eqCardRef = ref<HTMLDivElement>();
 

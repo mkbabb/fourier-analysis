@@ -1974,7 +1974,11 @@ Recall that holomorphism is a much more stringent requirement than its real coun
         f'(z_0) = \lim_{\Delta y \to 0} \dfrac{u(x_0, y_0 + \Delta y) - u(x_0, y_0)}{i\Delta y} + i\,\dfrac{v(x_0, y_0 + \Delta y) - v(x_0, y_0)}{i\Delta y} = \dfrac{u_y}{i} + v_y = v_y - iu_y
     \end{equation}
 
-    Equating real and imaginary parts of $u_x + iv_x = v_y - iu_y$ gives $u_x = v_y$ and $v_x = -u_y$—the Cauchy-Riemann equations. Conversely, if $u$ and $v$ have continuous partial derivatives satisfying C-R, one can verify directly that the difference quotient $\frac{f(z_0 + h) - f(z_0)}{h}$ converges to $u_x(x_0, y_0) + iv_x(x_0, y_0)$ as $h \to 0$ along any direction, establishing holomorphicity. (The full converse, requiring only the existence—not continuity—of the partials, is the Looman-Menchoff theorem; see \cite{ahlfors_complex}.)
+    Equating real and imaginary parts of $u_x + iv_x = v_y - iu_y$ gives the \emph{Cauchy-Riemann equations}:
+    \begin{equation}
+        u_x = v_y, \qquad v_x = -u_y.
+    \end{equation}
+    Conversely, if $u$ and $v$ have continuous partial derivatives satisfying C-R, one can verify directly that the difference quotient $\frac{f(z_0 + h) - f(z_0)}{h}$ converges to $u_x(x_0, y_0) + iv_x(x_0, y_0)$ as $h \to 0$ along any direction, establishing holomorphicity. (The full converse, requiring only the existence—not continuity—of the partials, is the Looman-Menchoff theorem; see \cite{ahlfors_complex}.)
 \end{proof}
 
 As an example: consider $f(z) = e^z = e^x(\cos y + i\sin y)$. Here $u = e^x\cos y$ and $v = e^x\sin y$. One can verify that $u_x = e^x\cos y = v_y$ and $u_y = -e^x\sin y = -v_x$, confirming that $e^z$ is entire (holomorphic on all of $\mathbb{C}$). This'll be relevant shortly—the complex exponentials $e^{inz}$ that form the basis of Fourier series are themselves entire functions.

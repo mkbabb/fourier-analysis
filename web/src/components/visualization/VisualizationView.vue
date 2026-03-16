@@ -65,12 +65,14 @@ watchDebounced(
 
 // ── Canvas + modals ──
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
-const mobileView = ref<"controls" | "canvas">("canvas");
+const mobileView = ref<"controls" | "canvas">("controls");
 const isDesktop = useMediaQuery("(min-width: 1024px)");
 const showExport = ref(false);
 const showFullscreen = ref(false);
 
 // ── Editor state ──
+const canvasDockRef = ref<InstanceType<typeof CanvasControlsDock>>();
+const dockExpanded = computed(() => canvasDockRef.value?.dockExpanded ?? false);
 const editorState = ref({ canUndo: false, canRedo: false, canDelete: false, pointCount: 0 });
 const editorRef = ref<InstanceType<typeof ContourEditorCanvas> | null>(null);
 const editorSaved = ref(false);
@@ -116,6 +118,19 @@ async function handlePublish() {
 const hasData = computed(() => store.epicycleData || store.basesData || store.computing);
 const hasEpicycles = computed(() => activeBases.value.includes("fourier-epicycles"));
 const hasImage = computed(() => !!store.imageMeta);
+
+// ── Mobile canvas click-to-upload ──
+const canvasFileInput = ref<HTMLInputElement>();
+function onCanvasClick() {
+    if (!hasImage.value && !hasData.value) {
+        canvasFileInput.value?.click();
+    }
+}
+async function onCanvasFileSelect(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (file) await store.uploadImage(file);
+    if (canvasFileInput.value) canvasFileInput.value.value = "";
+}
 </script>
 
 <template>
@@ -199,9 +214,10 @@ const hasImage = computed(() => !!store.imageMeta);
 
                 <!-- Right panel: Canvas with overlaid controls -->
                 <div class="viz-panel-right canvas-stage" :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop }">
-                    <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
+                    <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour, 'canvas-clickable': !hasImage && !hasData }" @click="onCanvasClick">
                         <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
                             :show-ghost="showGhost" :show-image-overlay="showImageOverlay" />
+                        <input ref="canvasFileInput" type="file" accept="image/*" class="hidden" @change="onCanvasFileSelect" />
                     </div>
                     <div v-if="store.contour" class="editor-shell" :class="{ 'is-hidden': !isEditing }">
                         <ContourEditorCanvas ref="editorRef" :contour="store.contour"
@@ -209,9 +225,10 @@ const hasImage = computed(() => !!store.imageMeta);
                             @state-change="onEditorStateChange" />
                     </div>
 
-                    <!-- Top-right controls dock -->
-                    <div v-if="hasData || (isEditing && store.contour)" class="absolute top-2 right-2 z-20">
+                    <!-- Top controls dock -->
+                    <div v-if="hasData || (isEditing && store.contour)" class="controls-dock-anchor" :class="{ 'dock-centered': dockExpanded }">
                         <CanvasControlsDock
+                            ref="canvasDockRef"
                             :is-editing="isEditing"
                             :show-image-overlay="showImageOverlay"
                             :show-ghost="showGhost"
@@ -393,6 +410,37 @@ const hasImage = computed(() => !!store.imageMeta);
     .panel-inactive {
         display: none;
     }
+}
+
+/* ── Controls dock positioning ── */
+.controls-dock-anchor {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 20;
+    transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                right 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.controls-dock-anchor.dock-centered {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+}
+
+@media (min-width: 1024px) {
+    .controls-dock-anchor,
+    .controls-dock-anchor.dock-centered {
+        left: auto;
+        right: 0.5rem;
+        transform: none;
+    }
+}
+
+/* ── Clickable canvas placeholder ── */
+.canvas-clickable {
+    cursor: pointer;
 }
 
 /* ── Mobile ── */

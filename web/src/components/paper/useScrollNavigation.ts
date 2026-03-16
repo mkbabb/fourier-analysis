@@ -12,7 +12,7 @@ export interface ScrollNavigationOptions {
 
 export function useScrollNavigation(opts: ScrollNavigationOptions) {
     const MAX_STACK = 20;
-    const MIN_OVERLAY_MS = 40;
+    const MIN_OVERLAY_MS = 200;
     const MAX_CORRECTIONS = 10;
     const STABLE_TARGET = 2;
     const STABILITY_PX = 6;
@@ -242,5 +242,5 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
         scroller.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    return { navigateTo, navigateBack, scrollToTop, navStack };
+    return { navigateTo, navigateBack, scrollToTop, performScroll, navStack };
 }

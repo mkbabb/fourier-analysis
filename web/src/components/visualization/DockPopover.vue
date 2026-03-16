@@ -2,10 +2,12 @@
 /**
  * Compact popover that expands from a dock button.
  * Stays open while mouse is inside. Click to toggle.
+ * Integrates with parent GlassDock via inject("dockKeepOpen"/"dockRelease"/"dockExpanded").
  */
-import { ref, onUnmounted } from "vue";
+import { ref, watch, inject, nextTick, onUnmounted } from "vue";
+import type { Ref } from "vue";
 
-withDefaults(
+const props = withDefaults(
     defineProps<{
         direction?: "up" | "down";
         collapseDelay?: number;
@@ -15,31 +17,94 @@ withDefaults(
 
 const expanded = ref(false);
 let collapseTimer: ReturnType<typeof setTimeout> | null = null;
+let removeClickAway: (() => void) | null = null;
+
+// Injected from parent GlassDock (via useDockState)
+const dockKeepOpen = inject<(() => void) | undefined>("dockKeepOpen", undefined);
+const dockRelease = inject<(() => void) | undefined>("dockRelease", undefined);
+const dockExpanded = inject<Ref<boolean> | undefined>("dockExpanded", undefined);
 
 function clearTimer() {
-    if (collapseTimer) { clearTimeout(collapseTimer); collapseTimer = null; }
+    if (collapseTimer) {
+        clearTimeout(collapseTimer);
+        collapseTimer = null;
+    }
+}
+
+function close() {
+    clearTimer();
+    expanded.value = false;
 }
 
 function onEnter() {
+    // Don't open popover if parent dock is collapsed
+    if (dockExpanded && !dockExpanded.value) return;
     clearTimer();
     expanded.value = true;
 }
 
 function scheduleCollapse(delay: number) {
     clearTimer();
-    collapseTimer = setTimeout(() => { expanded.value = false; }, delay);
+    collapseTimer = setTimeout(() => {
+        expanded.value = false;
+    }, delay);
 }
 
 function toggle() {
     expanded.value ? scheduleCollapse(0) : onEnter();
 }
 
-onUnmounted(clearTimer);
-defineExpose({ expanded, expand: onEnter, collapse: () => { expanded.value = false; } });
+const popoverRoot = ref<HTMLElement | null>(null);
+
+watch(expanded, (isOpen) => {
+    if (isOpen) {
+        // Hold parent dock open while popover is expanded
+        dockKeepOpen?.();
+
+        // Defer click-away attachment so the opening click doesn't trigger close
+        nextTick(() => {
+            const handler = (e: PointerEvent) => {
+                const root = popoverRoot.value;
+                if (!root || root.contains(e.target as Node)) return;
+                close();
+            };
+            document.addEventListener("pointerdown", handler, true);
+            removeClickAway = () => {
+                document.removeEventListener("pointerdown", handler, true);
+                removeClickAway = null;
+            };
+        });
+    } else {
+        // Release parent dock hold
+        dockRelease?.();
+        removeClickAway?.();
+    }
+});
+
+// When parent dock collapses, force-close this popover
+if (dockExpanded) {
+    watch(dockExpanded, (dockOpen) => {
+        if (!dockOpen && expanded.value) {
+            close();
+        }
+    });
+}
+
+onUnmounted(() => {
+    clearTimer();
+    removeClickAway?.();
+    // Release hold if still active
+    if (expanded.value) {
+        dockRelease?.();
+    }
+});
+
+defineExpose({ expanded, expand: onEnter, collapse: close });
 </script>
 
 <template>
     <div
+        ref="popoverRoot"
         class="dock-popover"
         :class="{ expanded, ['dir-' + direction]: true }"
         @mouseenter="onEnter"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from "vue";
+import { ref } from "vue";
+import { useDockState } from "@/composables/useDockState";
 
 const props = withDefaults(
     defineProps<{
@@ -17,56 +18,36 @@ const props = withDefaults(
     },
 );
 
-const expanded = ref(!props.startCollapsed);
-let collapseTimer: ReturnType<typeof setTimeout> | null = null;
+const rootEl = ref<HTMLElement | null>(null);
 
-function clearTimer() {
-    if (collapseTimer) {
-        clearTimeout(collapseTimer);
-        collapseTimer = null;
-    }
-}
+const {
+    expanded,
+    isPinned,
+    onMouseEnter,
+    onMouseLeave,
+    onFocusIn,
+    onFocusOut,
+    onClickCollapsed,
+    expand,
+    collapse,
+    keepOpen,
+    release,
+} = useDockState({
+    collapseDelay: props.collapseDelay,
+    rootEl,
+});
 
-function scheduleCollapse() {
-    clearTimer();
-    collapseTimer = setTimeout(() => {
-        expanded.value = false;
-    }, props.collapseDelay);
-}
-
-function onEnter() {
-    clearTimer();
-    expanded.value = true;
-}
-
-function onLeave() {
-    scheduleCollapse();
-}
-
-function onFocusOut(e: FocusEvent) {
-    // Don't collapse if focus moved to another element inside the dock
-    const root = e.currentTarget as HTMLElement;
-    if (e.relatedTarget && root.contains(e.relatedTarget as Node)) return;
-    scheduleCollapse();
-}
-
-function onClickSummary() {
-    clearTimer();
-    expanded.value = true;
-    scheduleCollapse();
-}
-
-defineExpose({ expanded, expand: onEnter, collapse: () => { expanded.value = false; } });
-onUnmounted(clearTimer);
+defineExpose({ expanded, isPinned, expand, collapse, keepOpen, release });
 </script>
 
 <template>
     <div
+        ref="rootEl"
         class="glass-dock"
         :class="{ expanded, collapsed: !expanded, 'fit-content': fitContent }"
-        @mouseenter="onEnter"
-        @mouseleave="onLeave"
-        @focusin="onEnter"
+        @mouseenter="onMouseEnter"
+        @mouseleave="onMouseLeave"
+        @focusin="onFocusIn"
         @focusout="onFocusOut"
     >
         <!-- Full-width expanded content -->
@@ -77,7 +58,12 @@ onUnmounted(clearTimer);
         </Transition>
         <!-- Compact-width collapsed summary -->
         <Transition name="dock-fade">
-            <div v-if="!expanded" class="dock-layer dock-layer--summary" @click="onClickSummary">
+            <div
+                v-if="!expanded"
+                class="dock-layer dock-layer--summary"
+                inert
+                @click="onClickCollapsed"
+            >
                 <slot name="collapsed" />
             </div>
         </Transition>
