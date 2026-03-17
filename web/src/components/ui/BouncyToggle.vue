@@ -123,7 +123,7 @@ watch(() => props.modelValue, () => nextTick(() => updateSlider(true)));
     border-radius: 0.3125rem;
     border: none;
     background: none;
-    font-family: "CMU Serif", "Computer Modern", Georgia, serif;
+    font-family: var(--font-serif);
     @apply text-xs;
     font-weight: 500;
     color: hsl(var(--muted-foreground));

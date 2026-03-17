@@ -37,7 +37,7 @@ const { toasts, dismiss } = useToast();
     position: fixed;
     top: 1rem;
     right: 1rem;
-    z-index: 9999;
+    z-index: var(--z-toast);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -57,21 +57,21 @@ const { toasts, dismiss } = useToast();
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     color: hsl(var(--foreground));
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-soft);
     pointer-events: auto;
 }
 
 .toast-success {
-    border-left-color: hsl(142 71% 45%);
+    border-left-color: hsl(var(--success));
 }
 
 .toast-error {
     border-color: hsl(var(--destructive) / 0.25);
-    border-left-color: hsl(38 92% 50%);
+    border-left-color: hsl(var(--warning));
 }
 
 .toast-info {
-    border-left-color: hsl(217 91% 60%);
+    border-left-color: hsl(var(--info));
 }
 
 .toast-icon {

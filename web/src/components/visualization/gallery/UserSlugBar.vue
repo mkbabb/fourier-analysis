@@ -107,7 +107,7 @@ function onKeydown(e: KeyboardEvent) {
                 @click="showLogin = true"
             >
                 <LogIn :size="14" />
-                <span>Log in</span>
+                <span class="hidden sm:inline">Log in</span>
             </button>
 
             <div v-else class="flex items-center gap-1">

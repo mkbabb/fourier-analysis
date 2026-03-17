@@ -29,10 +29,9 @@
     transform: scale(0.92);
 }
 
-.dock-icon-btn:focus,
 .dock-icon-btn:focus-visible {
-    outline: none;
-    box-shadow: none;
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
 }
 
 .dock-icon-btn:disabled {
@@ -69,7 +68,7 @@
 }
 
 .dock-icon-btn.saved {
-    color: hsl(var(--success, 142 71% 45%));
+    color: hsl(var(--success));
 }
 
 /* ── Separator & spacer ── */

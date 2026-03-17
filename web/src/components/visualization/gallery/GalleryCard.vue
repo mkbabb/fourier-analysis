@@ -111,29 +111,29 @@ function timeAgo(iso: string): string {
 
                 <!-- Tier badge -->
                 <div v-if="entry.tier !== 'normal'" class="flex items-center justify-center w-6 h-6 rounded-full" :data-tier="entry.tier">
-                    <Crown v-if="entry.tier === 'featured'" :size="12" class="text-[hsl(45,100%,50%)]" />
-                    <Bookmark v-else-if="entry.tier === 'saved'" :size="12" class="text-[hsl(210,100%,60%)]" />
+                    <Crown v-if="entry.tier === 'featured'" :size="12" class="text-tier-featured" />
+                    <Bookmark v-else-if="entry.tier === 'saved'" :size="12" class="text-tier-saved" />
                 </div>
             </div>
 
             <!-- Admin overlay -->
             <div v-if="adminMode" class="absolute top-1.5 right-1.5 flex gap-1 z-5" @click.stop>
                 <button
-                    class="admin-btn flex items-center justify-center w-7 h-7 rounded-full p-0 cursor-pointer text-[hsl(45,100%,50%)] border-[1.5px] border-foreground/10 bg-background/80 backdrop-blur-sm transition-all duration-150 hover:scale-110"
+                    class="btn-icon-admin text-tier-featured"
                     title="Toggle featured"
                     @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'featured' ? 'normal' : 'featured')"
                 >
                     <Crown :size="14" />
                 </button>
                 <button
-                    class="admin-btn flex items-center justify-center w-7 h-7 rounded-full p-0 cursor-pointer text-[hsl(210,100%,60%)] border-[1.5px] border-foreground/10 bg-background/80 backdrop-blur-sm transition-all duration-150 hover:scale-110"
+                    class="btn-icon-admin text-tier-saved"
                     title="Toggle saved"
                     @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'saved' ? 'normal' : 'saved')"
                 >
                     <Bookmark :size="14" />
                 </button>
                 <button
-                    class="admin-btn flex items-center justify-center w-7 h-7 rounded-full p-0 cursor-pointer text-[hsl(0,70%,55%)] border-[1.5px] border-foreground/10 bg-background/80 backdrop-blur-sm transition-all duration-150 hover:scale-110"
+                    class="btn-icon-admin text-delete"
                     title="Delete"
                     @click="emit('delete', entry.snapshot_hash)"
                 >
@@ -148,7 +148,7 @@ function timeAgo(iso: string): string {
 @reference "tailwindcss";
 
 .gallery-card {
-    box-shadow: 3px 3px 0px 0px hsl(var(--foreground) / 0.08);
+    box-shadow: var(--shadow-cartoon);
     transition:
         transform 0.25s cubic-bezier(0.22, 1.6, 0.36, 1),
         box-shadow 0.2s ease,
@@ -158,7 +158,7 @@ function timeAgo(iso: string): string {
 .gallery-card:hover {
     transform: translateY(-4px) scale(1.02);
     border-color: hsl(var(--foreground) / 0.25);
-    box-shadow: 4px 4px 0px 0px hsl(var(--foreground) / 0.1);
+    box-shadow: var(--shadow-cartoon-hover);
 }
 
 .gallery-card:active {
@@ -167,13 +167,13 @@ function timeAgo(iso: string): string {
 
 /* Tier styling */
 .gallery-card[data-tier="featured"] {
-    border-color: hsl(45, 100%, 50%);
-    box-shadow: 0 0 12px hsla(45, 100%, 50%, 0.3);
+    border-color: hsl(var(--tier-featured));
+    box-shadow: 0 0 12px hsl(var(--tier-featured) / 0.3);
 }
 
 .gallery-card[data-tier="saved"] {
-    border-color: hsl(210, 100%, 60%);
-    box-shadow: 0 0 8px hsla(210, 100%, 60%, 0.2);
+    border-color: hsl(var(--tier-saved));
+    box-shadow: 0 0 8px hsl(var(--tier-saved) / 0.2);
 }
 
 /* Image frame grid background */
@@ -191,17 +191,10 @@ function timeAgo(iso: string): string {
     background-size: 16px 16px, 16px 16px, auto;
 }
 
-/* Basis pill color-mix */
-.basis-pill {
-    background: color-mix(in srgb, var(--pill-c) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--pill-c) 30%, transparent);
-    color: var(--pill-c);
-}
-
 /* Like button */
 .like-btn:hover,
 .like-btn.liked {
-    color: hsl(0, 80%, 60%);
+    color: hsl(var(--like));
 }
 
 .like-btn.liked :deep(svg) {

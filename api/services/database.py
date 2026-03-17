@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 
 import logging
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from pymongo.errors import OperationFailure
+from pymongo.errors import ConnectionFailure, OperationFailure, ServerSelectionTimeoutError
 
 from api.config import settings
 
@@ -16,11 +17,26 @@ logger = logging.getLogger(__name__)
 _client: AsyncIOMotorClient | None = None
 _db: AsyncIOMotorDatabase | None = None
 
+_CONNECT_RETRIES = 5
+_CONNECT_BACKOFF = 2  # seconds, doubles each retry
+
 
 async def connect_db() -> None:
     global _client, _db
-    _client = AsyncIOMotorClient(settings.mongo_uri)
+    _client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
     _db = _client.get_default_database()
+
+    # Wait for MongoDB to become reachable
+    for attempt in range(1, _CONNECT_RETRIES + 1):
+        try:
+            await _client.admin.command("ping")
+            break
+        except (ConnectionFailure, ServerSelectionTimeoutError):
+            if attempt == _CONNECT_RETRIES:
+                raise
+            delay = _CONNECT_BACKOFF * attempt
+            logger.warning("MongoDB not ready (attempt %d/%d), retrying in %ds...", attempt, _CONNECT_RETRIES, delay)
+            await asyncio.sleep(delay)
 
     # Images indexes
     await _db.images.create_index("image_slug", unique=True)

@@ -202,7 +202,7 @@ defineExpose({ dockExpanded });
     border: none;
     background: none;
     color: hsl(var(--foreground) / 0.65);
-    font-family: "CMU Serif", "Computer Modern", Georgia, serif;
+    font-family: var(--font-serif);
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;

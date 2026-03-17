@@ -163,23 +163,19 @@ const galleryStore = useGalleryStore();
 .nav-trigger {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.375rem 0.625rem;
+    gap: 0.25rem;
+    padding: 0.25rem;
     border-radius: 0.4375rem;
     border: none;
-    background: hsl(var(--muted) / 0.5);
+    background: none;
     color: hsl(var(--foreground));
-    font-family: "CMU Serif", "Computer Modern", Georgia, serif;
-    font-size: 0.8125rem;
-    font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s ease, box-shadow 0.15s ease;
-    white-space: nowrap;
+    transition: color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 .nav-trigger:hover {
-    background: hsl(var(--muted) / 0.8);
+    color: hsl(var(--foreground) / 0.7);
 }
 
 .nav-trigger:focus-visible {
@@ -214,11 +210,7 @@ const galleryStore = useGalleryStore();
 
 @media (min-width: 640px) {
     .nav-trigger {
-        padding: 0.375rem 0.75rem;
-        font-size: 0.875rem;
-    }
-    .nav-trigger-label {
-        display: inline;
+        padding: 0.25rem;
     }
 }
 
@@ -232,9 +224,9 @@ const galleryStore = useGalleryStore();
 }
 
 .header-divider {
-    width: 1px;
-    height: 1rem;
-    background: hsl(var(--foreground) / 0.15);
+    width: 1.5px;
+    height: 1.5rem;
+    background: hsl(var(--foreground) / 0.18);
     flex-shrink: 0;
 }
 
@@ -250,7 +242,7 @@ const galleryStore = useGalleryStore();
         display: inline;
     }
     .header-divider {
-        height: 1.25rem;
+        height: 1.75rem;
     }
     .dark-mode-toggle {
         --toggle-size: 2.75rem;
@@ -265,8 +257,8 @@ const galleryStore = useGalleryStore();
     width: 1.75rem;
     height: 1.75rem;
     border-radius: 9999px;
-    background: hsl(45, 100%, 50%, 0.1);
-    color: hsl(45, 100%, 50%);
+    background: hsl(var(--tier-featured) / 0.1);
+    color: hsl(var(--tier-featured));
     flex-shrink: 0;
 }
 
@@ -290,9 +282,9 @@ const galleryStore = useGalleryStore();
     pointer-events: none;
     transform: scale(0.92) translateY(6px);
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 60;
+    z-index: var(--z-popover);
     min-width: 17rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-elevated);
 }
 
 /* Bridge gap so hover doesn't drop */
@@ -341,16 +333,17 @@ const galleryStore = useGalleryStore();
 
 <!-- Global style for portaled dropdown -->
 <style>
+/* @global — portaled reka-ui DropdownMenuContent */
 .nav-dropdown {
-    z-index: 100;
+    z-index: var(--z-modal);
     min-width: 12rem;
     padding: 0.5rem;
     background: color-mix(in srgb, hsl(var(--popover)) 85%, transparent);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1.5px solid hsl(var(--border) / 0.4);
-    border-radius: 0.75rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-elevated);
     animation: nav-dropdown-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -374,7 +367,7 @@ const galleryStore = useGalleryStore();
     border: none;
     background: none;
     color: hsl(var(--foreground) / 0.6);
-    font-family: "CMU Serif", "Computer Modern", Georgia, serif;
+    font-family: var(--font-serif);
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;

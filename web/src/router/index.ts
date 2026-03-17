@@ -1,16 +1,19 @@
 import { createRouter, createWebHistory, type RouteLocationNormalized } from "vue-router";
 
+const SAVED_TAB_KEY = "fourier_active_tab";
+const VALID_TABS = new Set(["/paper", "/visualize", "/morph", "/gallery", "/equation"]);
+
+function getSavedTab(): string {
+    const saved = localStorage.getItem(SAVED_TAB_KEY);
+    return saved && VALID_TABS.has(saved) ? saved : "/paper";
+}
+
 export const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
         {
             path: "/",
-            redirect: () => {
-                const saved = localStorage.getItem("fourier_active_tab");
-                if (saved === "/visualize" || saved === "/morph" || saved === "/gallery" || saved === "/equation")
-                    return saved;
-                return "/paper";
-            },
+            redirect: () => getSavedTab(),
         },
         {
             path: "/paper",

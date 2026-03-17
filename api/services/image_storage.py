@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 
 from bson import Binary
 from PIL import Image
+from pymongo.errors import DuplicateKeyError
 
 from api.services.database import get_db
 from api.slugs import generate_slug
@@ -99,7 +100,14 @@ async def store_image_asset(
         "created_at": now,
         "last_accessed_at": now,
     }
-    await db.images.insert_one(doc)
+    try:
+        await db.images.insert_one(doc)
+    except DuplicateKeyError:
+        # Race: another request inserted the same sha256 between our check and insert
+        existing = await db.images.find_one({"sha256": sha256})
+        if existing is not None:
+            return existing
+        raise
     return doc
 
 

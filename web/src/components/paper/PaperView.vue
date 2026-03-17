@@ -131,7 +131,11 @@ watch(
         if (!id) return;
         const page = pageMap[id];
         if (page !== undefined) currentPage.value = page;
-        try { sessionStorage.setItem(SCROLL_POS_KEY, id); } catch {}
+        // Don't persist the first section — it's the top of the page
+        try {
+            if (id === flatSections[0]?.id) sessionStorage.removeItem(SCROLL_POS_KEY);
+            else sessionStorage.setItem(SCROLL_POS_KEY, id);
+        } catch {}
     },
     { immediate: true },
 );
@@ -215,10 +219,10 @@ onMounted(() => {
         recalculate();
         queueSidebarFollow(true);
 
-        // Restore scroll position from session
+        // Restore scroll position from session (skip first section — that's the top)
         try {
             const saved = sessionStorage.getItem(SCROLL_POS_KEY);
-            if (saved && flatSections.some((s) => s.id === saved)) {
+            if (saved && saved !== flatSections[0]?.id && flatSections.some((s) => s.id === saved)) {
                 performScroll(saved);
             }
         } catch {}

@@ -29,7 +29,7 @@ defineProps<{
 @reference "tailwindcss";
 /* Global (not scoped) so it applies inside the portal */
 .tooltip-content {
-    z-index: 100;
+    z-index: var(--z-modal);
     max-width: 280px;
     padding: 0.375rem 0.625rem;
     @apply text-sm;
@@ -39,13 +39,9 @@ defineProps<{
     background: hsl(var(--popover));
     border: 1.5px solid hsl(var(--border));
     border-radius: 0.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-soft);
     animation: tooltip-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     user-select: none;
-}
-
-.dark .tooltip-content {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes tooltip-in {

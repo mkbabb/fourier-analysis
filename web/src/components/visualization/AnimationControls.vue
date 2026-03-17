@@ -166,7 +166,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
 .play-btn.is-playing::before { animation: rainbow-drift 2.5s ease infinite; }
 .play-btn:hover { transform: scale(1.08); border-color: rgba(255, 255, 255, 0.4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 20px rgba(200, 100, 255, 0.2), 0 2px 12px rgba(100, 180, 255, 0.15); }
 .play-btn:active { transform: scale(0.93); }
-.play-btn:focus, .play-btn:focus-visible { outline: none; box-shadow: none; }
+.play-btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
 .play-btn--mini { width: 2.5rem; height: 2rem; }
 .play-btn--mini .play-icon { width: 14px; height: 14px; }
 .play-icon { width: 17px; height: 17px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15)); }
@@ -188,8 +188,8 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
     padding: 0.375rem;
     background: hsl(var(--card));
     border: 2px solid hsl(var(--foreground) / 0.15);
-    border-radius: 0.75rem;
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-elevated);
     z-index: var(--z-popover);
     pointer-events: auto;
 }

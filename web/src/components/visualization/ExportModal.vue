@@ -28,67 +28,69 @@ function doExport() {
 
 <template>
     <Teleport to="body">
-        <div class="modal-backdrop" @click.self="emit('close')">
-            <div class="modal-card">
-                <div class="modal-header">
-                    <h3 class="cm-serif text-lg font-semibold">Export Frame</h3>
-                    <button class="modal-close" @click="emit('close')">
-                        <X class="h-4 w-4" />
-                    </button>
-                </div>
+        <Transition name="modal">
+            <div class="modal-backdrop" @click.self="emit('close')">
+                <div class="modal-card" @click.stop>
+                    <div class="modal-header">
+                        <h3 class="cm-serif text-lg font-semibold">Export Frame</h3>
+                        <button class="glass-btn w-8 h-8" @click="emit('close')">
+                            <X class="h-4 w-4" />
+                        </button>
+                    </div>
 
-                <div class="option-list">
-                    <label v-if="hasEpicycles" class="option-row">
-                        <span class="option-label">Epicycles</span>
-                        <button
-                            class="toggle"
-                            :class="{ 'is-on': withEpicycles }"
-                            @click="withEpicycles = !withEpicycles"
-                        >
-                            <span class="toggle-thumb" />
-                        </button>
-                    </label>
-                    <label class="option-row">
-                        <span class="option-label">Trace path</span>
-                        <button
-                            class="toggle"
-                            :class="{ 'is-on': withTrail }"
-                            @click="withTrail = !withTrail"
-                        >
-                            <span class="toggle-thumb" />
-                        </button>
-                    </label>
-                    <label class="option-row">
-                        <span class="option-label">Grid lines</span>
-                        <button
-                            class="toggle"
-                            :class="{ 'is-on': withGrid }"
-                            @click="withGrid = !withGrid"
-                        >
-                            <span class="toggle-thumb" />
-                        </button>
-                    </label>
-                    <label class="option-row">
-                        <span class="option-label">Labels</span>
-                        <button
-                            class="toggle"
-                            :class="{ 'is-on': withLabels }"
-                            @click="withLabels = !withLabels"
-                        >
-                            <span class="toggle-thumb" />
-                        </button>
-                    </label>
-                </div>
+                    <div class="option-list">
+                        <label v-if="hasEpicycles" class="option-row">
+                            <span class="option-label">Epicycles</span>
+                            <button
+                                class="toggle"
+                                :class="{ 'is-on': withEpicycles }"
+                                @click="withEpicycles = !withEpicycles"
+                            >
+                                <span class="toggle-thumb" />
+                            </button>
+                        </label>
+                        <label class="option-row">
+                            <span class="option-label">Trace path</span>
+                            <button
+                                class="toggle"
+                                :class="{ 'is-on': withTrail }"
+                                @click="withTrail = !withTrail"
+                            >
+                                <span class="toggle-thumb" />
+                            </button>
+                        </label>
+                        <label class="option-row">
+                            <span class="option-label">Grid lines</span>
+                            <button
+                                class="toggle"
+                                :class="{ 'is-on': withGrid }"
+                                @click="withGrid = !withGrid"
+                            >
+                                <span class="toggle-thumb" />
+                            </button>
+                        </label>
+                        <label class="option-row">
+                            <span class="option-label">Labels</span>
+                            <button
+                                class="toggle"
+                                :class="{ 'is-on': withLabels }"
+                                @click="withLabels = !withLabels"
+                            >
+                                <span class="toggle-thumb" />
+                            </button>
+                        </label>
+                    </div>
 
-                <div class="modal-footer">
-                    <button class="btn-cancel" @click="emit('close')">Cancel</button>
-                    <button class="btn-export" @click="doExport">
-                        <Download class="h-3.5 w-3.5" />
-                        Save PNG
-                    </button>
+                    <div class="modal-footer">
+                        <button class="btn-ghost" @click="emit('close')">Cancel</button>
+                        <button class="btn-solid" @click="doExport">
+                            <Download class="h-3.5 w-3.5" />
+                            Save PNG
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </Transition>
     </Teleport>
 </template>
 
@@ -101,28 +103,19 @@ function doExport() {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    animation: fade-in 0.15s ease;
-}
-
-@keyframes fade-in {
-    from { opacity: 0; }
+    background: hsl(var(--background) / 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .modal-card {
     background: hsl(var(--card));
     border: 2px solid hsl(var(--foreground) / 0.15);
-    border-radius: 0.75rem;
-    box-shadow: 4px 4px 0px 0px hsl(var(--foreground) / 0.08);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-modal);
     padding: 1.25rem;
     min-width: 300px;
     max-width: 90vw;
-    animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes scale-in {
-    from { opacity: 0; transform: scale(0.95); }
 }
 
 .modal-header {
@@ -132,24 +125,15 @@ function doExport() {
     margin-bottom: 1rem;
 }
 
-.modal-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border: none;
-    background: none;
-    border-radius: 0.375rem;
-    color: hsl(var(--muted-foreground));
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+/* Transitions — unified with GalleryCardModal */
+.modal-enter-active {
+    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-
-.modal-close:hover {
-    background: hsl(var(--muted));
-    color: hsl(var(--foreground));
+.modal-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
 }
+.modal-enter-from { opacity: 0; transform: scale(0.92); }
+.modal-leave-to { opacity: 0; transform: scale(0.95); }
 
 .option-list {
     display: flex;
@@ -201,8 +185,8 @@ function doExport() {
     width: 0.875rem;
     height: 0.875rem;
     border-radius: 50%;
-    background: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    background: hsl(var(--background));
+    box-shadow: var(--shadow-soft);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -217,38 +201,4 @@ function doExport() {
     margin-top: 1.25rem;
 }
 
-.btn-cancel {
-    padding: 0.5rem 1rem;
-    @apply text-base;
-    font-weight: 500;
-    border-radius: 0.5rem;
-    border: 2px solid hsl(var(--foreground) / 0.15);
-    background: none;
-    color: hsl(var(--foreground));
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.btn-cancel:hover {
-    background: hsl(var(--muted) / 0.5);
-}
-
-.btn-export {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    @apply text-base;
-    font-weight: 600;
-    border-radius: 0.5rem;
-    border: none;
-    background: hsl(var(--foreground));
-    color: hsl(var(--background));
-    cursor: pointer;
-    transition: opacity 0.15s;
-}
-
-.btn-export:hover {
-    opacity: 0.9;
-}
 </style>

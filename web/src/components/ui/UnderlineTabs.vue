@@ -90,7 +90,7 @@ watch(() => props.modelValue, () => nextTick(() => updateUnderline()));
     padding: 0.25rem 0.75rem;
     border: none;
     background: none;
-    font-family: "CMU Serif", "Computer Modern", Georgia, serif;
+    font-family: var(--font-serif);
     font-size: 1.125rem;
     font-weight: 500;
     color: hsl(var(--muted-foreground));
@@ -98,6 +98,7 @@ watch(() => props.modelValue, () => nextTick(() => updateUnderline()));
     transition: color 0.2s ease;
     white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
+    border-radius: 0.25rem;
 }
 
 .underline-tab:hover:not(.is-active) {
@@ -106,5 +107,10 @@ watch(() => props.modelValue, () => nextTick(() => updateUnderline()));
 
 .underline-tab.is-active {
     color: hsl(var(--foreground));
+}
+
+.underline-tab:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
 }
 </style>

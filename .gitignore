@@ -47,8 +47,10 @@ uploads/
 # Environment
 .env
 
-# Scripts
+# Scripts (private/local only — tracked scripts use negation)
 scripts/
+!scripts/dev.sh
+!scripts/deploy.sh
 
 # Docker
 mongo_data/
@@ -67,3 +69,5 @@ web/test-results/
 web/playwright-report/
 
 
+.mongo-data/
+.dev.ports

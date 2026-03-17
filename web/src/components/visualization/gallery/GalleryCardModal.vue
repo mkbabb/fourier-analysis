@@ -73,7 +73,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             >
                 <div class="modal-card relative bg-card rounded-xl border-2 border-foreground/15 overflow-hidden max-w-[28rem] w-full max-h-[90vh] overflow-y-auto" @click.stop>
                     <button
-                        class="modal-close absolute top-2.5 right-2.5 z-10 flex items-center justify-center w-8 h-8 rounded-full border-none bg-background/70 backdrop-blur-sm text-foreground cursor-pointer transition-all duration-150 hover:bg-background/90 focus:outline-none focus-visible:outline-none"
+                        class="glass-btn w-8 h-8 absolute top-2.5 right-2.5 z-10"
                         @click="emit('close')"
                     >
                         <X :size="18" />
@@ -193,26 +193,17 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
 /* Card shadow */
 .modal-card {
-    box-shadow:
-        4px 4px 0px 0px hsl(var(--foreground) / 0.08),
-        0 24px 64px hsl(var(--foreground) / 0.12);
+    box-shadow: var(--shadow-modal);
 }
 
 /* Tier badge colors */
-.modal-tier-badge[data-tier="featured"] { color: hsl(45, 100%, 50%); }
-.modal-tier-badge[data-tier="saved"] { color: hsl(210, 100%, 60%); }
-
-/* Basis pill color-mix */
-.basis-pill {
-    background: color-mix(in srgb, var(--pill-c) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--pill-c) 30%, transparent);
-    color: var(--pill-c);
-}
+.modal-tier-badge[data-tier="featured"] { color: hsl(var(--tier-featured)); }
+.modal-tier-badge[data-tier="saved"] { color: hsl(var(--tier-saved)); }
 
 /* Like button */
 .like-btn:hover,
 .like-btn.liked {
-    color: hsl(0, 80%, 60%);
+    color: hsl(var(--like));
 }
 
 /* Tier button */
