@@ -225,7 +225,8 @@ const galleryStore = useGalleryStore();
 
 .header-divider {
     width: 1.5px;
-    height: 1.5rem;
+    height: 1.25rem;
+    align-self: center;
     background: hsl(var(--foreground) / 0.18);
     flex-shrink: 0;
 }

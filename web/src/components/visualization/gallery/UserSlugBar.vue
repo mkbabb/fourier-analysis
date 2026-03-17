@@ -103,10 +103,10 @@ function onKeydown(e: KeyboardEvent) {
         <template v-else>
             <button
                 v-if="!showLogin"
-                class="inline-flex items-center gap-1 rounded-full border border-foreground/12 bg-transparent px-2.5 py-1 text-sm text-muted-foreground cursor-pointer transition-all duration-150 hover:text-foreground hover:border-foreground/25"
+                class="inline-flex items-center justify-center size-10 sm:size-auto sm:px-2.5 sm:py-1 gap-1 rounded-full border-none bg-transparent text-sm text-muted-foreground cursor-pointer transition-all duration-150 hover:text-foreground"
                 @click="showLogin = true"
             >
-                <LogIn :size="14" />
+                <LogIn class="size-5 sm:size-3.5" />
                 <span class="hidden sm:inline">Log in</span>
             </button>
 

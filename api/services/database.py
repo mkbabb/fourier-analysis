@@ -45,6 +45,7 @@ async def connect_db() -> None:
 
     # Contours indexes
     await _db.contours.create_index("contour_hash", unique=True)
+    await _db.contours.create_index("extraction_cache_key", sparse=True)
     await _db.contours.create_index("image_slug")
     await _db.contours.create_index("last_accessed_at")
 

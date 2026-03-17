@@ -24,6 +24,7 @@ from api.responses import contour_response
 from api.services import computation
 from api.services.database import get_db
 from api.services.image_storage import (
+    extraction_cache_key,
     image_bytes,
     image_tempfile,
     store_contour_asset,
@@ -179,9 +180,21 @@ async def get_image_overlay(imageSlug: str, resize: int = 768):
 @router.post("/{imageSlug}/extract-contour")
 async def extract_contour(imageSlug: str, req: ExtractContourRequest):
     doc = await get_image_asset(imageSlug)
+    cs = req.contour_settings
+    db = get_db()
+
+    # Check extraction cache before running the expensive pipeline
+    cache_key = extraction_cache_key(doc["sha256"], cs)
+    existing = await db.contours.find_one({"extraction_cache_key": cache_key})
+    if existing:
+        from api.services.database import touch_document
+
+        await touch_document("contours", {"_id": existing["_id"]})
+        logger.info("extraction cache hit for %s (key=%s…)", imageSlug, cache_key[:12])
+        return contour_response(existing)
+
     tmp = image_tempfile(doc)
     try:
-        cs = req.contour_settings
         result = await computation.compute_contours(
             Path(tmp.name),
             strategy=cs.strategy,
@@ -222,5 +235,6 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest):
 
     contour_doc = await store_contour_asset(
         xs, ys, imageSlug, source="extract", image_bounds=image_bounds,
+        extraction_cache_key_value=cache_key,
     )
     return contour_response(contour_doc)

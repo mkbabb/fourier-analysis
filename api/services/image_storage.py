@@ -142,12 +142,33 @@ def image_tempfile(asset: dict) -> tempfile.NamedTemporaryFile:
     return tmp
 
 
+def extraction_cache_key(image_sha256: str, settings) -> str:
+    """Deterministic key from image identity + extraction parameters."""
+    payload = json.dumps(
+        {
+            "image_sha256": image_sha256,
+            "strategy": settings.strategy,
+            "resize": settings.resize,
+            "blur_sigma": settings.blur_sigma,
+            "n_classes": settings.n_classes,
+            "min_contour_length": settings.min_contour_length,
+            "min_contour_area": settings.min_contour_area,
+            "max_contours": settings.max_contours,
+            "smooth_contours": settings.smooth_contours,
+            "n_points": settings.n_points,
+        },
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
 async def store_contour_asset(
     xs: list[float],
     ys: list[float],
     image_slug: str,
     source: str,
     image_bounds: dict | None = None,
+    extraction_cache_key_value: str | None = None,
 ) -> dict:
     """Store contour points in MongoDB, deduplicating by contour_hash.
 
@@ -179,6 +200,8 @@ async def store_contour_asset(
         "created_at": now,
         "last_accessed_at": now,
     }
+    if extraction_cache_key_value:
+        doc["extraction_cache_key"] = extraction_cache_key_value
 
     # Upsert: if the hash already exists, just touch last_accessed_at
     set_on_insert = {k: v for k, v in doc.items() if k != "last_accessed_at"}
