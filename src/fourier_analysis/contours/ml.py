@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
-from PIL import Image
+from PIL import Image, ImageOps
 
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.models import ContourConfig
@@ -83,9 +83,9 @@ def _predict_probability_map(image: LoadedImage) -> NDArray[np.float64]:
 
     # Load original RGB from source path — U²-Net was trained on color images.
     if image.source_path is not None:
-        pil = Image.open(image.source_path).convert("RGB")
+        pil = ImageOps.exif_transpose(Image.open(image.source_path)).convert("RGB")
     else:
-        # Fallback: grayscale → 3-channel
+        # Fallback: grayscale → 3-channel (already transposed by load_image_inputs)
         pil = Image.fromarray((image.grayscale * 255).astype(np.uint8)).convert("RGB")
 
     pil = pil.resize((_MODEL_INPUT_SIZE, _MODEL_INPUT_SIZE), Image.Resampling.BILINEAR)

@@ -10,7 +10,7 @@ import tempfile
 from datetime import UTC, datetime
 
 from bson import Binary
-from PIL import Image
+from PIL import Image, ImageOps
 from pymongo.errors import DuplicateKeyError
 
 from api.services.database import get_db
@@ -34,6 +34,7 @@ def _generate_thumbnail(content: bytes, content_type: str) -> tuple[bytes, str]:
     Returns (thumbnail_bytes, "image/avif").
     """
     img = Image.open(io.BytesIO(content))
+    img = ImageOps.exif_transpose(img)
     img = img.convert("RGB")
     img.thumbnail((_THUMBNAIL_MAX_DIM, _THUMBNAIL_MAX_DIM), Image.LANCZOS)
     buf = io.BytesIO()
@@ -55,21 +56,19 @@ async def store_image_asset(
 
     existing = await db.images.find_one({"sha256": sha256})
     if existing is not None:
-        # Backfill thumbnail for pre-migration images
-        if not existing.get("thumbnail"):
-            try:
-                thumb_bytes, thumb_ct = _generate_thumbnail(
-                    bytes(existing["blob"]) if isinstance(existing["blob"], Binary) else existing["blob"],
-                    existing.get("content_type", "image/png"),
-                )
-                await db.images.update_one(
-                    {"_id": existing["_id"]},
-                    {"$set": {"thumbnail": Binary(thumb_bytes), "thumbnail_content_type": thumb_ct}},
-                )
-                existing["thumbnail"] = Binary(thumb_bytes)
-                existing["thumbnail_content_type"] = thumb_ct
-            except Exception:
-                logger.warning("Thumbnail backfill failed for %s", existing.get("image_slug"), exc_info=True)
+        try:
+            thumb_bytes, thumb_ct = _generate_thumbnail(
+                bytes(existing["blob"]) if isinstance(existing["blob"], Binary) else existing["blob"],
+                existing.get("content_type", "image/png"),
+            )
+            await db.images.update_one(
+                {"_id": existing["_id"]},
+                {"$set": {"thumbnail": Binary(thumb_bytes), "thumbnail_content_type": thumb_ct}},
+            )
+            existing["thumbnail"] = Binary(thumb_bytes)
+            existing["thumbnail_content_type"] = thumb_ct
+        except Exception:
+            logger.warning("Thumbnail regeneration failed for %s", existing.get("image_slug"), exc_info=True)
         return existing
 
     slug = generate_slug()
@@ -146,6 +145,7 @@ def extraction_cache_key(image_sha256: str, settings) -> str:
     """Deterministic key from image identity + extraction parameters."""
     payload = json.dumps(
         {
+            "_v": 2,
             "image_sha256": image_sha256,
             "strategy": settings.strategy,
             "resize": settings.resize,
