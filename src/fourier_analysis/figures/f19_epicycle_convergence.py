@@ -12,7 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from fourier_analysis.contours import extract_contours, resample_arc_length
+from fourier_analysis.contours import ContourConfig, extract_contours, resample_arc_length
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.figures.style import BLUE, save_figure, setup_style
 from fourier_analysis.shortest_tour import build_contour_tour
@@ -23,7 +23,7 @@ PORTRAIT_PATH = Path(__file__).resolve().parents[3] / "assets" / "portraits" / "
 def _load_contour(n_points: int = 1024) -> np.ndarray:
     """Load the Fourier portrait contour, or fall back to a synthetic shape."""
     if PORTRAIT_PATH.exists():
-        contours = extract_contours(PORTRAIT_PATH, resize=256)
+        contours = extract_contours(PORTRAIT_PATH, ContourConfig(resize=256))
         if contours:
             path = build_contour_tour(contours).path
             return resample_arc_length(path, n_points)

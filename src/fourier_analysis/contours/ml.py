@@ -1,8 +1,9 @@
-"""Salient object detection via U2-Net-lite ONNX for contour extraction."""
+"""Salient object detection (U2-Net-lite) and edge detection (PiDiNet) via ONNX."""
 
 from __future__ import annotations
 
 import hashlib
+import logging
 import threading
 import urllib.request
 from pathlib import Path
@@ -13,6 +14,12 @@ from PIL import Image, ImageOps
 
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.models import ContourConfig
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# U2-Net-lite (saliency / subject isolation)
+# ---------------------------------------------------------------------------
 
 _MODEL_URL = (
     "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx"
@@ -120,13 +127,13 @@ def ml_masks(
     # Multiple thresholds on the saliency map — analogous to multi-Otsu
     # but on the probability map instead of grayscale intensity.
     thresholds = [
-        config.ml_detail_threshold,   # broad: peripheral detail
-        config.ml_threshold,          # primary silhouette
-        min(0.85, config.ml_threshold + 0.2),  # tighter core
+        config.ml.detail_threshold,   # broad: peripheral detail
+        config.ml.threshold,          # primary silhouette
+        min(0.85, config.ml.threshold + 0.2),  # tighter core
     ]
     # Optionally add a very tight threshold for prominent features
-    if config.ml_threshold < 0.7:
-        thresholds.append(min(0.92, config.ml_threshold + 0.35))
+    if config.ml.threshold < 0.7:
+        thresholds.append(min(0.92, config.ml.threshold + 0.35))
 
     thresholds = sorted(set(thresholds))
 
@@ -143,4 +150,112 @@ def ml_masks(
         masks.append(mask)
         prev_count = count
 
-    return tuple(masks) if masks else (prob >= config.ml_threshold,)
+    return tuple(masks) if masks else (prob >= config.ml.threshold,)
+
+
+# ---------------------------------------------------------------------------
+# PiDiNet-tiny (learned edge detection)
+# ---------------------------------------------------------------------------
+
+_PIDINET_MODEL_URL = (
+    "https://github.com/mkbabb/fourier-analysis/releases/download/v0.1.0/pidinet-tiny.onnx"
+)
+_PIDINET_SHA256 = ""  # Populated after first export; empty disables hash check.
+_PIDINET_INPUT_SIZE = 512
+
+_pidinet_session_lock = threading.Lock()
+_pidinet_session = None
+
+
+def _pidinet_model_path() -> Path:
+    return _CACHE_DIR / "pidinet-tiny.onnx"
+
+
+def ensure_pidinet_downloaded() -> Path:
+    """Download the PiDiNet-tiny ONNX weights if not already cached."""
+    path = _pidinet_model_path()
+    if path.exists():
+        if _PIDINET_SHA256:
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            if digest == _PIDINET_SHA256:
+                return path
+        else:
+            return path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    urllib.request.urlretrieve(_PIDINET_MODEL_URL, tmp)  # noqa: S310
+    if _PIDINET_SHA256:
+        digest = hashlib.sha256(tmp.read_bytes()).hexdigest()
+        if digest != _PIDINET_SHA256:
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"SHA-256 mismatch for pidinet-tiny.onnx: "
+                f"expected {_PIDINET_SHA256}, got {digest}"
+            )
+    tmp.rename(path)
+    return path
+
+
+def pidinet_available() -> bool:
+    """Check whether the PiDiNet ONNX model is cached (does not download)."""
+    return _pidinet_model_path().exists()
+
+
+def _get_pidinet_session():
+    """Lazy singleton ONNX inference session for PiDiNet."""
+    global _pidinet_session
+    if _pidinet_session is not None:
+        return _pidinet_session
+    with _pidinet_session_lock:
+        if _pidinet_session is not None:
+            return _pidinet_session
+        try:
+            import onnxruntime as ort
+        except ImportError:
+            return None
+
+        model_path = _pidinet_model_path()
+        if not model_path.exists():
+            return None
+
+        _pidinet_session = ort.InferenceSession(
+            str(model_path), providers=["CPUExecutionProvider"]
+        )
+        return _pidinet_session
+
+
+def predict_edge_map(image: LoadedImage) -> NDArray[np.float64] | None:
+    """Run PiDiNet-tiny and return a [0,1] edge probability map at input resolution.
+
+    Returns None if the model is not available or inference fails.
+    """
+    session = _get_pidinet_session()
+    if session is None:
+        return None
+
+    try:
+        h, w = image.grayscale.shape
+
+        if image.source_path is not None:
+            pil = ImageOps.exif_transpose(Image.open(image.source_path)).convert("RGB")
+        else:
+            pil = Image.fromarray(
+                (image.grayscale * 255).astype(np.uint8)
+            ).convert("RGB")
+
+        pil = pil.resize((_PIDINET_INPUT_SIZE, _PIDINET_INPUT_SIZE), Image.Resampling.BILINEAR)
+        blob = np.array(pil, dtype=np.float32) / 255.0
+        blob = blob.transpose(2, 0, 1)[np.newaxis, ...]
+
+        input_name = session.get_inputs()[0].name
+        outputs = session.run(None, {input_name: blob})
+        edge_map = outputs[0].squeeze().astype(np.float64)
+        edge_map = np.clip(edge_map, 0.0, 1.0)
+
+        # Resize back to input resolution.
+        edge_pil = Image.fromarray((edge_map * 255).astype(np.uint8))
+        edge_pil = edge_pil.resize((w, h), Image.Resampling.BILINEAR)
+        return np.array(edge_pil, dtype=np.float64) / 255.0
+    except Exception:
+        logger.debug("PiDiNet inference failed, falling back to Canny", exc_info=True)
+        return None

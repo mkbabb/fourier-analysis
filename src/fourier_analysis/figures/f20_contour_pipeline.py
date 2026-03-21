@@ -17,7 +17,7 @@ import numpy as np
 from PIL import Image
 from skimage import filters, measure  # type: ignore[import-untyped]
 
-from fourier_analysis.contours import extract_contours, resample_arc_length
+from fourier_analysis.contours import ContourConfig, extract_contours, resample_arc_length
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.figures.style import BLUE, RED, save_figure, setup_style
 from fourier_analysis.shortest_tour import build_contour_tour
@@ -34,7 +34,7 @@ def generate(image_path: str | Path | None = None) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(10, 10))
 
     if image_path is not None:
-        contours = extract_contours(image_path, resize=256)
+        contours = extract_contours(image_path, ContourConfig(resize=256))
         path = build_contour_tour(contours).path
         path = resample_arc_length(path, 1024)
 

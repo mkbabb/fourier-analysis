@@ -14,22 +14,30 @@ from fourier_analysis.contours.masks import (
 )
 from fourier_analysis.contours.models import (
     AlphaMode,
+    CannyConfig,
     ContourCandidateDiagnostics,
     ContourConfig,
     ContourDiagnostics,
     ContourExtractionResult,
     ContourStrategy,
     DEFAULT_CONTOUR_CONFIG,
+    FeatureConfig,
+    MLConfig,
+    ThresholdConfig,
 )
 
 __all__ = [
     "AlphaMode",
+    "CannyConfig",
     "ContourCandidateDiagnostics",
     "ContourConfig",
     "ContourDiagnostics",
     "ContourExtractionResult",
     "ContourStrategy",
     "DEFAULT_CONTOUR_CONFIG",
+    "FeatureConfig",
+    "MLConfig",
+    "ThresholdConfig",
     "LoadedImage",
     "adaptive_threshold_masks",
     "alpha_masks",

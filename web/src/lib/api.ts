@@ -194,7 +194,7 @@ export function thumbnailUrl(imageSlug: string): string {
     return `${BASE}/api/images/${imageSlug}/thumbnail`;
 }
 
-export function overlayUrl(imageSlug: string, resize: number = 768): string {
+export function overlayUrl(imageSlug: string, resize: number = 1024): string {
     return `${BASE}/api/images/${imageSlug}/overlay?resize=${resize}`;
 }
 
@@ -207,7 +207,7 @@ export async function extractContour(
         "extractContour",
         {
             method: "POST",
-            body: { ...settings },
+            body: { contour_settings: { ...settings } },
         },
     );
 }

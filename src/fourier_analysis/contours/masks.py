@@ -51,7 +51,7 @@ def multi_threshold_masks(
 ) -> tuple[NDArray[np.bool_], ...]:
     """Build nested Multi-Otsu masks across intensity levels."""
     source = image.detail_grayscale if use_detail else image.grayscale
-    classes = n_classes if n_classes is not None else config.n_classes
+    classes = n_classes if n_classes is not None else config.threshold.n_classes
     try:
         thresholds = filters.threshold_multiotsu(source, classes=classes)
     except ValueError:
@@ -118,8 +118,8 @@ def canny_masks(
     config: ContourConfig,
 ) -> tuple[NDArray[np.bool_], ...]:
     """Build an edge mask from Canny plus morphological closing."""
-    edges = feature.canny(image.detail_grayscale, sigma=config.canny_sigma)
-    closed = morphology.closing(edges, morphology.disk(config.closing_radius))
+    edges = feature.canny(image.detail_grayscale, sigma=config.canny.sigma)
+    closed = morphology.closing(edges, morphology.disk(config.canny.closing_radius))
     cleaned = _remove_small_components(closed, max(4, int(image.image_area * 0.0001)))
     return (cleaned,)
 
@@ -133,10 +133,10 @@ def detail_canny_masks(
     Uses a lower sigma and heavier closing to bridge gaps, producing
     more interior edge loops (eyes, nose, clothing folds).
     """
-    sigma = max(0.8, config.canny_sigma * 0.5)
+    sigma = max(0.8, config.canny.sigma * 0.5)
     edges = feature.canny(image.detail_grayscale, sigma=sigma)
     # Heavier closing to bridge small edge gaps into closed loops
-    radius = max(config.closing_radius, 4)
+    radius = max(config.canny.closing_radius, 4)
     closed = morphology.closing(edges, morphology.disk(radius))
     cleaned = _remove_small_components(closed, max(4, int(image.image_area * 0.0002)))
     return (cleaned,)
@@ -154,16 +154,16 @@ def edge_aware_masks(
     Only the *strongest* edges (top 40% by gradient magnitude) are carved,
     preventing dense-edge images from being shattered into fragments.
     """
-    canny_kwargs: dict = {"sigma": config.canny_sigma}
-    if config.canny_low is not None:
-        canny_kwargs["low_threshold"] = config.canny_low
-    if config.canny_high is not None:
-        canny_kwargs["high_threshold"] = config.canny_high
+    canny_kwargs: dict = {"sigma": config.canny.sigma}
+    if config.canny.low is not None:
+        canny_kwargs["low_threshold"] = config.canny.low
+    if config.canny.high is not None:
+        canny_kwargs["high_threshold"] = config.canny.high
 
     edges = feature.canny(image.edge_grayscale, **canny_kwargs)
 
-    if config.closing_radius > 0:
-        closed = morphology.closing(edges, morphology.disk(config.closing_radius))
+    if config.canny.closing_radius > 0:
+        closed = morphology.closing(edges, morphology.disk(config.canny.closing_radius))
     else:
         closed = edges
 
@@ -338,7 +338,7 @@ def _cleanup_binary_mask(
     hole_fraction = 0.0008 if preserve_detail else 0.0015
     hole_area = max(8 if preserve_detail else 16, int(image.image_area * hole_fraction))
     radius_cap = 2 if preserve_detail else 4
-    radius = max(1, min(radius_cap, config.closing_radius))
+    radius = max(1, min(radius_cap, config.canny.closing_radius))
 
     cleaned = _remove_small_components(binary, min_region)
     cleaned = _fill_small_holes(cleaned, hole_area)

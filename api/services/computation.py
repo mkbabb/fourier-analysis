@@ -10,7 +10,7 @@ import numpy as np
 from fastapi import HTTPException
 
 from fourier_analysis.bases import build_animation_data
-from fourier_analysis.contours import extract_contours, resample_arc_length
+from fourier_analysis.contours import ContourConfig, extract_contours, resample_arc_length
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.shortest_tour import build_contour_tour
 
@@ -55,26 +55,18 @@ async def submit_compute_job(name: str, fn: Callable[[], Any]) -> Any:
 
 async def compute_contours(
     image_path: Path,
-    strategy: str = "auto",
-    resize: int = 512,
-    blur_sigma: float = 1.0,
-    n_classes: int = 3,
-    min_contour_length: int = 40,
-    min_contour_area: float = 0.001,
-    max_contours: int | None = 12,
-    smooth_contours: float = 0.0,
-    ml_threshold: float = 0.5,
-    ml_detail_threshold: float = 0.3,
+    config: ContourConfig,
 ) -> dict[str, Any]:
+    """Extract contours using the given config, returning serializable results."""
     def _run():
         from PIL import Image, ImageOps
 
         # Get resized dimensions without running the full extraction pipeline.
-        # Mirrors the resize logic in load_image_inputs (including EXIF transpose).
         img = Image.open(image_path)
         img = ImageOps.exif_transpose(img)
         orig_w, orig_h = img.size
         img.close()
+        resize = config.resize
         if resize is not None:
             ratio = resize / max(orig_w, orig_h)
             rw = int(orig_w * ratio)
@@ -82,26 +74,12 @@ async def compute_contours(
         else:
             rw, rh = orig_w, orig_h
 
-        contours = extract_contours(
-            image_path,
-            strategy=strategy,
-            resize=resize,
-            blur_sigma=blur_sigma,
-            n_classes=n_classes,
-            min_contour_length=min_contour_length,
-            min_contour_area=min_contour_area,
-            max_contours=max_contours,
-            smooth_contours=smooth_contours,
-            ml_threshold=ml_threshold,
-            ml_detail_threshold=ml_detail_threshold,
-        )
+        contours = extract_contours(image_path, config)
         contour_data = [
             {"x": c.real.tolist(), "y": c.imag.tolist(), "n_points": len(c)}
             for c in contours
         ]
 
-        # Image bounds in contour data space:
-        # x = col - w/2, y = h/2 - row
         image_bounds = {
             "minX": -rw / 2,
             "maxX": rw / 2,

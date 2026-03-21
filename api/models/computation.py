@@ -7,12 +7,12 @@ from pydantic import BaseModel, field_validator
 
 class ComputeContourRequest(BaseModel):
     strategy: str = "auto"
-    resize: int = 768
+    resize: int = 1024
     blur_sigma: float = 0.5
     n_classes: int = 3
     min_contour_length: int = 40
     min_contour_area: float = 0.001
-    max_contours: int | None = 16
+    max_contours: int | None = 24
     smooth_contours: float = 0.03
     ml_threshold: float = 0.5
     ml_detail_threshold: float = 0.3

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
-from fourier_analysis.contours import extract_contours, resample_arc_length
+from fourier_analysis.contours import ContourConfig, extract_contours, resample_arc_length
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.figures.style import COLORS, BLUE, save_figure, setup_style
 from fourier_analysis.shortest_tour import build_contour_tour
@@ -48,7 +48,7 @@ def _process_portrait(
     else:
         img_arr = np.array(img.convert("L"))
 
-    contours = extract_contours(image_path, resize=256)
+    contours = extract_contours(image_path, ContourConfig(resize=256))
     path = build_contour_tour(contours).path
     path = resample_arc_length(path, n_points)
 

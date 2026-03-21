@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from fourier_analysis.contours import extract_contours, resample_arc_length
+from fourier_analysis.contours import ContourConfig, ThresholdConfig, extract_contours, resample_arc_length
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.figures.style import BLUE, save_figure, setup_style
 from fourier_analysis.shortest_tour import build_contour_tour
@@ -20,10 +20,8 @@ def generate() -> None:
 
     contours = extract_contours(
         PORTRAIT_PATH,
-        resize=512,
-        blur_sigma=1.4,
-        min_contour_length=50,
-        n_classes=5,
+        ContourConfig(resize=512, blur_sigma=1.4, min_contour_length=50,
+                      threshold=ThresholdConfig(n_classes=5)),
     )
     path = build_contour_tour(contours).path
     signal = resample_arc_length(path, 4096)

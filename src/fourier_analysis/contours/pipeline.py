@@ -5,11 +5,13 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
+from skimage import feature as skfeature
+
 from fourier_analysis.contours.assembly import assemble_contours
 from fourier_analysis.contours.features import extract_feature_contours
 from fourier_analysis.contours.geometry import _polygon_area
 from fourier_analysis.contours.image import LoadedImage, load_image_inputs
-from fourier_analysis.contours.isolation import isolate_subject
+from fourier_analysis.contours.isolation import SubjectIsolation, isolate_subject
 from fourier_analysis.contours.models import (
     ContourConfig,
     ContourDiagnostics,
@@ -17,6 +19,29 @@ from fourier_analysis.contours.models import (
 )
 from fourier_analysis.contours.structure import extract_structure_contours
 from fourier_analysis.shortest_tour import build_contour_tour
+
+
+def _compute_structure_fraction(
+    image: LoadedImage,
+    isolation: SubjectIsolation,
+) -> float:
+    """Determine structure/feature budget split based on edge density within subject.
+
+    High edge density (faces, detailed subjects) → more feature budget.
+    Low edge density (simple shapes) → more structure budget.
+    """
+    subject_edges = skfeature.canny(image.detail_grayscale, sigma=0.8)
+    if isolation.subject_mask is not None and np.any(isolation.subject_mask):
+        edge_density = float(np.mean(subject_edges[isolation.subject_mask]))
+    else:
+        edge_density = float(np.mean(subject_edges))
+
+    if edge_density > 0.08:
+        return 0.15  # Face-like: 15% structure / 85% features
+    elif edge_density > 0.04:
+        return 0.25  # Moderate detail: 25/75
+    else:
+        return 0.35  # Simple subjects: 35/65
 
 
 def extract_contours_pipeline(
@@ -27,13 +52,13 @@ def extract_contours_pipeline(
 
     Image -> Isolate Subject -> Extract Structure -> Extract Features -> Assemble -> Tour
     """
-    max_contours = config.max_contours or 16
-    structure_fraction = 0.3  # Favor features (edges/regions) over structure (blobs).
+    max_contours = config.max_contours or 24
 
     # Stage 1: Subject isolation.
     isolation = isolate_subject(image, config)
 
-    # Budget allocation.
+    # A7: Content-adaptive budget split based on edge density.
+    structure_fraction = _compute_structure_fraction(image, isolation)
     structure_budget = max(1, int(max_contours * structure_fraction))
     feature_budget = max(1, max_contours - structure_budget)
 

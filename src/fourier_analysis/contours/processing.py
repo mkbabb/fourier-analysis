@@ -103,8 +103,11 @@ def _postprocess_raw_contours(
         ):
             continue
 
-        if config.smooth_contours > 0 and len(z) >= 5:
-            window = int(config.smooth_contours * len(z))
+        # A6: area-aware smoothing — small contours get halved Savgol window.
+        is_small = area < 0.01 * image.image_area
+        smooth_factor = config.smooth_contours * (0.5 if is_small else 1.0)
+        if smooth_factor > 0 and len(z) >= 5:
+            window = int(smooth_factor * len(z))
             window = max(5, window)
             if window % 2 == 0:
                 window += 1
@@ -123,11 +126,11 @@ def _postprocess_raw_contours(
         if len(z) > max_pts:
             z = resample_arc_length(z, max_pts)
 
-        # Simplify: remove points on near-straight segments.
-        # Keeps corners, sharp features, and gentle curves; discards only
-        # points on truly straight runs.  1.0° preserves circle detail
-        # (a 360-point circle has ~1° between consecutive tangents).
-        z = _simplify_contour(z, angle_threshold=1.0)
+        # A6: area-aware simplification — very small contours use looser
+        # angle threshold to preserve fine asymmetries.
+        is_very_small = area < 0.005 * image.image_area
+        angle_thresh = 2.0 if is_very_small else 1.0
+        z = _simplify_contour(z, angle_threshold=angle_thresh)
 
         if len(z) > 1 and abs(z[0] - z[-1]) > 1e-10:
             z = np.append(z, z[0])

@@ -31,25 +31,41 @@ def extract_feature_contours(
     deduplicates against structure contours, sorts by compactness,
     enforces spatial diversity, and returns up to *budget* contours.
     """
-    # Build density field: color gradient + Canny edges.
+    # Build density field: color gradient + learned/Canny edges.
     color_grad = image.color_gradient
-    gray_edges = feature.canny(image.detail_grayscale, sigma=0.8)
-    density = filters.gaussian(color_grad, sigma=1.5)
-    canny_density = filters.gaussian(gray_edges.astype(np.float64), sigma=2.0)
-    density = np.maximum(density, canny_density)
+
+    # Try learned edge detector first (B3 integration).
+    learned_edges = None
+    if config.feature.edge_model != "canny":
+        from fourier_analysis.contours.ml import predict_edge_map
+        learned_edges = predict_edge_map(image)
+
+    if learned_edges is not None:
+        density = filters.gaussian(learned_edges, sigma=0.5)
+        color_density = filters.gaussian(color_grad, sigma=1.0)
+        density = np.maximum(density, color_density * 0.5)
+    else:
+        # Canny path with configurable sigma (A3).
+        gray_edges = feature.canny(image.detail_grayscale, sigma=0.8)
+        density = filters.gaussian(color_grad, sigma=1.5)
+        canny_density = filters.gaussian(
+            gray_edges.astype(np.float64), sigma=config.feature.density_sigma,
+        )
+        density = np.maximum(density, canny_density)
 
     # Normalize to [0, 1].
     d_max = float(density.max())
     if d_max > 0:
         density = density / d_max
 
-    # Extract contours at multiple density levels.
-    levels = [0.06, 0.10, 0.15, 0.22, 0.30, 0.40, 0.52, 0.65, 0.78]
+    # Extract contours at multiple density levels (A3: 13 levels).
+    levels = [0.04, 0.07, 0.10, 0.15, 0.20, 0.27, 0.35, 0.44, 0.54, 0.64, 0.74, 0.84, 0.92]
 
     min_length = max(config.min_contour_length, 60)
     min_bbox_area = image.image_area * 0.0005
-    # Feature-scale band: too small is noise, too large repeats silhouette.
-    min_feature_area = image.image_area * 0.0003
+    # Feature-scale band (A4): hard floor at 0.01% with compactness guard.
+    min_feature_area_hard = image.image_area * 0.0001
+    min_feature_area_soft = image.image_area * 0.0003
     # Cap at 40% of silhouette area (if known) to allow large features
     # like mouths and eyes while excluding near-silhouette duplicates.
     if isolation.silhouette_area > 0:
@@ -82,11 +98,17 @@ def extract_feature_contours(
     uncapped_config = _replace(config, max_contours=None)
     processed, areas = _postprocess_raw_contours(raw_contours, image, uncapped_config)
 
-    # Filter to feature-scale band.
-    candidates: list[tuple[NDArray[np.complex128], float]] = [
-        (c, a) for c, a in zip(processed, areas)
-        if min_feature_area <= a <= max_feature_area
-    ]
+    # Filter to feature-scale band (A4: compactness guard for small features).
+    candidates: list[tuple[NDArray[np.complex128], float]] = []
+    for c, a in zip(processed, areas):
+        if a > max_feature_area:
+            continue
+        if a < min_feature_area_hard:
+            continue
+        if a < min_feature_area_soft:
+            if _compactness(c, a) < 0.15:
+                continue
+        candidates.append((c, a))
 
     # Merge in region-based feature candidates (dark/light patches).
     region_candidates = _extract_region_features(image, isolation, config)
@@ -134,19 +156,34 @@ def extract_feature_contours(
 
     candidates.sort(key=_compactness_key, reverse=True)
 
-    # Enforce spatial diversity: min 4% diagonal between picked features.
-    min_spacing = image.diagonal * 0.04
+    # Enforce spatial diversity (A2: configurable + adaptive relaxation).
+    min_spacing = image.diagonal * config.feature.spatial_diversity_fraction
     picked: list[tuple[NDArray[np.complex128], float]] = []
     picked_centers: list[complex] = []
+    skipped: list[tuple[NDArray[np.complex128], float]] = []
 
     for c, a in candidates:
         if len(picked) >= budget:
             break
         center = complex(float(c.real.mean()), float(c.imag.mean()))
         if any(abs(center - pc) < min_spacing for pc in picked_centers):
+            skipped.append((c, a))
             continue
         picked.append((c, a))
         picked_centers.append(center)
+
+    # Second-pass relaxation: if first pass picked < 60% of budget,
+    # re-scan skipped candidates at half spacing (allows clustered features).
+    if len(picked) < budget * 0.6 and skipped:
+        relaxed_spacing = min_spacing * 0.5
+        for c, a in skipped:
+            if len(picked) >= budget:
+                break
+            center = complex(float(c.real.mean()), float(c.imag.mean()))
+            if any(abs(center - pc) < relaxed_spacing for pc in picked_centers):
+                continue
+            picked.append((c, a))
+            picked_centers.append(center)
 
     return picked
 
@@ -176,13 +213,14 @@ def _extract_region_features(
     dark_mask = (source < median - std) & isolation.subject_mask
     light_mask = (source > median + std) & isolation.subject_mask
 
-    # Morphological cleanup: remove noise fragments.
-    selem = morphology.disk(2)
+    # Morphological cleanup (A5: disk(1) preserves thin features like eyebrows/lips).
+    selem = morphology.disk(1)
     dark_mask = morphology.opening(dark_mask, selem)
     light_mask = morphology.opening(light_mask, selem)
 
-    # Feature-scale bounds.
-    min_feature_area = image.image_area * 0.0003
+    # Feature-scale bounds (A4: lowered hard floor with compactness guard).
+    min_feature_area_hard = image.image_area * 0.0001
+    min_feature_area_soft = image.image_area * 0.0003
     if isolation.silhouette_area > 0:
         max_feature_area = isolation.silhouette_area * 0.40
     else:
@@ -192,7 +230,6 @@ def _extract_region_features(
 
     raw_contours: list[NDArray[np.floating]] = []
     for mask in (dark_mask, light_mask):
-        # Find contours on the binary mask at 0.5 level.
         contours = measure.find_contours(mask.astype(np.float64), level=0.5)
         for c in contours:
             if len(c) < min_length:
@@ -202,15 +239,19 @@ def _extract_region_features(
     if not raw_contours:
         return []
 
-    # Postprocess: convert to complex, smooth, resample, simplify, dedup.
     from dataclasses import replace as _replace
     uncapped_config = _replace(config, max_contours=None)
     processed, areas = _postprocess_raw_contours(raw_contours, image, uncapped_config)
 
-    # Filter to feature-scale band.
-    candidates: list[tuple[NDArray[np.complex128], float]] = [
-        (c, a) for c, a in zip(processed, areas)
-        if min_feature_area <= a <= max_feature_area
-    ]
+    candidates: list[tuple[NDArray[np.complex128], float]] = []
+    for c, a in zip(processed, areas):
+        if a > max_feature_area:
+            continue
+        if a < min_feature_area_hard:
+            continue
+        if a < min_feature_area_soft:
+            if _compactness(c, a) < 0.15:
+                continue
+        candidates.append((c, a))
 
     return candidates

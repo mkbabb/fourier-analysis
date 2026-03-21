@@ -134,7 +134,7 @@ async def get_image_thumbnail(imageSlug: str):
 
 
 @router.get("/{imageSlug}/overlay")
-async def get_image_overlay(imageSlug: str, resize: int = 768):
+async def get_image_overlay(imageSlug: str, resize: int = 1024):
     """Serve the image resized to match contour extraction dimensions.
 
     The returned image is in the same pixel space that contour coordinates
@@ -197,14 +197,7 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest):
     try:
         result = await computation.compute_contours(
             Path(tmp.name),
-            strategy=cs.strategy,
-            resize=cs.resize,
-            blur_sigma=cs.blur_sigma,
-            n_classes=cs.n_classes,
-            min_contour_length=cs.min_contour_length,
-            min_contour_area=cs.min_contour_area,
-            max_contours=cs.max_contours,
-            smooth_contours=cs.smooth_contours,
+            cs.to_contour_config(),
         )
     except HTTPException:
         raise

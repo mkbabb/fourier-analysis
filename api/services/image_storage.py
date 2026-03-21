@@ -145,7 +145,7 @@ def extraction_cache_key(image_sha256: str, settings) -> str:
     """Deterministic key from image identity + extraction parameters."""
     payload = json.dumps(
         {
-            "_v": 2,
+            "_v": 3,
             "image_sha256": image_sha256,
             "strategy": settings.strategy,
             "resize": settings.resize,

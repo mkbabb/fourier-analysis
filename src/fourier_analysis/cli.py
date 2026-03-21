@@ -61,13 +61,28 @@ def _cmd_figures(args: argparse.Namespace) -> int:
     return gen_main()
 
 
+def _contour_config_from_args(args: argparse.Namespace):
+    """Build a ContourConfig from CLI arguments."""
+    from fourier_analysis.contours import ContourConfig, FeatureConfig
+
+    kwargs: dict = {
+        "strategy": args.strategy,
+        "resize": args.resize,
+        "blur_sigma": args.blur,
+    }
+    if hasattr(args, "min_length"):
+        kwargs["min_contour_length"] = args.min_length
+    if hasattr(args, "max_contours"):
+        kwargs["max_contours"] = args.max_contours
+    if hasattr(args, "edge_model"):
+        kwargs["feature"] = FeatureConfig(edge_model=args.edge_model)
+
+    return ContourConfig(**kwargs)
+
+
 def _cmd_epicycles(args: argparse.Namespace) -> int:
     """Extract contours from an image and reconstruct via epicycles."""
-    from fourier_analysis.contours import (
-        ContourStrategy,
-        extract_contours,
-        resample_arc_length,
-    )
+    from fourier_analysis.contours import extract_contours, resample_arc_length
     from fourier_analysis.epicycles import EpicycleChain
     from fourier_analysis.shortest_tour import build_contour_tour
 
@@ -76,13 +91,8 @@ def _cmd_epicycles(args: argparse.Namespace) -> int:
         print(f"Image not found: {image_path}")
         return 1
 
-    contours = extract_contours(
-        image_path,
-        strategy=args.strategy,
-        resize=args.resize,
-        blur_sigma=args.blur,
-        min_contour_length=args.min_length,
-    )
+    config = _contour_config_from_args(args)
+    contours = extract_contours(image_path, config)
 
     if not contours:
         print("No contours extracted.")
@@ -153,7 +163,7 @@ def _cmd_series(args: argparse.Namespace) -> int:
 def _cmd_animate(args: argparse.Namespace) -> int:
     """Render an epicycle animation from an image."""
     from fourier_analysis.animation import FourierAnimation
-    from fourier_analysis.contours import extract_contours, resample_arc_length
+    from fourier_analysis.contours import ContourConfig, extract_contours, resample_arc_length
     from fourier_analysis.epicycles import EpicycleChain
     from fourier_analysis.shortest_tour import build_contour_tour
 
@@ -162,12 +172,8 @@ def _cmd_animate(args: argparse.Namespace) -> int:
         print(f"Image not found: {image_path}")
         return 1
 
-    contours = extract_contours(
-        image_path,
-        strategy=args.strategy,
-        resize=args.resize,
-        blur_sigma=args.blur,
-    )
+    config = _contour_config_from_args(args)
+    contours = extract_contours(image_path, config)
 
     if not contours:
         print("No contours extracted.")
@@ -224,9 +230,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_epi.add_argument("-o", "--output", help="Output image path (PNG/PDF); omit for interactive display")
     p_epi.add_argument("--strategy", default="auto", choices=["auto", "threshold", "adaptive_threshold", "multi_threshold", "canny", "edge_aware", "ml"],
                         help="Contour extraction strategy (default: auto)")
-    p_epi.add_argument("--resize", type=int, default=768, help="Resize longest dimension (default: 768)")
+    p_epi.add_argument("--resize", type=int, default=1024, help="Resize longest dimension (default: 1024)")
     p_epi.add_argument("--blur", type=float, default=0.5, help="Gaussian pre-blur sigma (default: 0.5)")
     p_epi.add_argument("--min-length", type=int, default=40, help="Minimum contour length (default: 40)")
+    p_epi.add_argument("--edge-model", default="auto", choices=["auto", "pidinet", "canny"],
+                        help="Edge detection model (default: auto)")
+    p_epi.add_argument("--max-contours", type=int, default=24, help="Maximum contours (default: 24)")
 
     # -- series --
     p_ser = sub.add_parser("series", help="Fourier coefficients from signal file")
@@ -243,11 +252,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_anim.add_argument("-o", "--output", help="Output video path (MP4/GIF); omit for interactive")
     p_anim.add_argument("--strategy", default="auto", choices=["auto", "threshold", "adaptive_threshold", "multi_threshold", "canny", "edge_aware", "ml"],
                         help="Contour extraction strategy (default: auto)")
-    p_anim.add_argument("--resize", type=int, default=768, help="Resize longest dimension (default: 768)")
+    p_anim.add_argument("--resize", type=int, default=1024, help="Resize longest dimension (default: 1024)")
     p_anim.add_argument("--blur", type=float, default=0.5, help="Gaussian pre-blur sigma (default: 0.5)")
     p_anim.add_argument("--duration", type=float, default=30.0, help="Animation duration in seconds (default: 30)")
     p_anim.add_argument("--fps", type=int, default=30, help="Frames per second (default: 30)")
     p_anim.add_argument("--max-circles", type=int, default=80, help="Max visible epicycles (default: 80)")
+
+    # -- download-models --
+    sub.add_parser("download-models", help="Pre-download all ONNX models")
 
     # -- bases --
     p_bases = sub.add_parser("bases", help="Compare basis approximations for an image")
@@ -275,13 +287,8 @@ def _cmd_bases(args: argparse.Namespace) -> int:
         print(f"Image not found: {image_path}")
         return 1
 
-    contours = extract_contours(
-        image_path,
-        strategy=args.strategy,
-        resize=args.resize,
-        blur_sigma=args.blur,
-        min_contour_length=args.min_length,
-    )
+    config = _contour_config_from_args(args)
+    contours = extract_contours(image_path, config)
 
     if not contours:
         print("No contours extracted.")
@@ -302,12 +309,34 @@ def _cmd_bases(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_download_models(args: argparse.Namespace) -> int:
+    """Pre-download all ONNX models."""
+    from fourier_analysis.contours.ml import ensure_model_downloaded, ensure_pidinet_downloaded
+
+    print("Downloading U2-Net-lite...", end=" ", flush=True)
+    try:
+        ensure_model_downloaded()
+        print("OK")
+    except Exception as e:
+        print(f"FAILED: {e}")
+
+    print("Downloading PiDiNet-tiny...", end=" ", flush=True)
+    try:
+        ensure_pidinet_downloaded()
+        print("OK")
+    except Exception as e:
+        print(f"FAILED: {e}")
+
+    return 0
+
+
 DISPATCH = {
     "figures": _cmd_figures,
     "epicycles": _cmd_epicycles,
     "series": _cmd_series,
     "animate": _cmd_animate,
     "bases": _cmd_bases,
+    "download-models": _cmd_download_models,
 }
 
 

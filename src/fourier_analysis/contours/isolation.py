@@ -31,13 +31,13 @@ def isolate_subject(
     """Isolate the primary subject using ML saliency and optional alpha.
 
     1. Run U2-Net to get a probability map.
-    2. Threshold at config.ml_threshold to get a subject mask.
+    2. Threshold at config.ml.threshold to get a subject mask.
     3. If alpha exists with 5-98% coverage, intersect with mask.
     4. If mask coverage < 12%, disable it (ML failed to isolate).
     5. Extract largest contour of mask as silhouette.
     """
     saliency = _predict_probability_map(image)
-    subject_mask: NDArray[np.bool_] = saliency >= config.ml_threshold
+    subject_mask: NDArray[np.bool_] = saliency >= config.ml.threshold
 
     # Intersect with alpha if available and meaningful.
     if image.alpha is not None:

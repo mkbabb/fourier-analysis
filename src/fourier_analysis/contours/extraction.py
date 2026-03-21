@@ -22,55 +22,11 @@ def _enum_value(value: Enum | str) -> str:
     return value.value if isinstance(value, Enum) else value
 
 
-def _coerce_config(
-    config: ContourConfig | None,
-    *,
-    strategy: ContourStrategy | str = DEFAULT_CONTOUR_CONFIG.strategy,
-    resize: int | None = DEFAULT_CONTOUR_CONFIG.resize,
-    min_contour_length: int = DEFAULT_CONTOUR_CONFIG.min_contour_length,
-    blur_sigma: float = DEFAULT_CONTOUR_CONFIG.blur_sigma,
-    canny_sigma: float = DEFAULT_CONTOUR_CONFIG.canny_sigma,
-    closing_radius: int = DEFAULT_CONTOUR_CONFIG.closing_radius,
-    n_classes: int = DEFAULT_CONTOUR_CONFIG.n_classes,
-    min_contour_area: float = DEFAULT_CONTOUR_CONFIG.min_contour_area,
-    max_contours: int | None = DEFAULT_CONTOUR_CONFIG.max_contours,
-    smooth_contours: float = DEFAULT_CONTOUR_CONFIG.smooth_contours,
-    contrast_enhance: bool = DEFAULT_CONTOUR_CONFIG.contrast_enhance,
-    canny_low: float | None = DEFAULT_CONTOUR_CONFIG.canny_low,
-    canny_high: float | None = DEFAULT_CONTOUR_CONFIG.canny_high,
-    alpha_mode: AlphaMode | str = DEFAULT_CONTOUR_CONFIG.alpha_mode,
-    ml_threshold: float = DEFAULT_CONTOUR_CONFIG.ml_threshold,
-    ml_detail_threshold: float = DEFAULT_CONTOUR_CONFIG.ml_detail_threshold,
-) -> ContourConfig:
-    if config is not None:
-        return config.normalized()
-
-    return ContourConfig(
-        strategy=strategy,
-        resize=resize,
-        min_contour_length=min_contour_length,
-        blur_sigma=blur_sigma,
-        canny_sigma=canny_sigma,
-        closing_radius=closing_radius,
-        n_classes=n_classes,
-        min_contour_area=min_contour_area,
-        max_contours=max_contours,
-        smooth_contours=smooth_contours,
-        contrast_enhance=contrast_enhance,
-        canny_low=canny_low,
-        canny_high=canny_high,
-        alpha_mode=alpha_mode,
-        ml_threshold=ml_threshold,
-        ml_detail_threshold=ml_detail_threshold,
-    ).normalized()
-
-
 def _select_explicit_candidate(
     image: LoadedImage,
     config: ContourConfig,
 ) -> ContourExtractionResult:
     """Handle non-AUTO strategies via simple mask-based extraction."""
-    from fourier_analysis.contours.geometry import _polygon_area
     from fourier_analysis.contours.masks import (
         adaptive_threshold_masks,
         alpha_masks,
@@ -196,92 +152,21 @@ def _empty_result(
 
 def extract_contours_result(
     image_path: str | Path,
-    *,
-    config: ContourConfig | None = None,
-    strategy: ContourStrategy | str = DEFAULT_CONTOUR_CONFIG.strategy,
-    resize: int | None = DEFAULT_CONTOUR_CONFIG.resize,
-    min_contour_length: int = DEFAULT_CONTOUR_CONFIG.min_contour_length,
-    blur_sigma: float = DEFAULT_CONTOUR_CONFIG.blur_sigma,
-    canny_sigma: float = DEFAULT_CONTOUR_CONFIG.canny_sigma,
-    closing_radius: int = DEFAULT_CONTOUR_CONFIG.closing_radius,
-    n_classes: int = DEFAULT_CONTOUR_CONFIG.n_classes,
-    min_contour_area: float = DEFAULT_CONTOUR_CONFIG.min_contour_area,
-    max_contours: int | None = DEFAULT_CONTOUR_CONFIG.max_contours,
-    smooth_contours: float = DEFAULT_CONTOUR_CONFIG.smooth_contours,
-    contrast_enhance: bool = DEFAULT_CONTOUR_CONFIG.contrast_enhance,
-    canny_low: float | None = DEFAULT_CONTOUR_CONFIG.canny_low,
-    canny_high: float | None = DEFAULT_CONTOUR_CONFIG.canny_high,
-    alpha_mode: AlphaMode | str = DEFAULT_CONTOUR_CONFIG.alpha_mode,
-    ml_threshold: float = DEFAULT_CONTOUR_CONFIG.ml_threshold,
-    ml_detail_threshold: float = DEFAULT_CONTOUR_CONFIG.ml_detail_threshold,
+    config: ContourConfig = DEFAULT_CONTOUR_CONFIG,
 ) -> ContourExtractionResult:
-    """Extract contours plus ordered-path diagnostics."""
-    contour_config = _coerce_config(
-        config,
-        strategy=strategy,
-        resize=resize,
-        min_contour_length=min_contour_length,
-        blur_sigma=blur_sigma,
-        canny_sigma=canny_sigma,
-        closing_radius=closing_radius,
-        n_classes=n_classes,
-        min_contour_area=min_contour_area,
-        max_contours=max_contours,
-        smooth_contours=smooth_contours,
-        contrast_enhance=contrast_enhance,
-        canny_low=canny_low,
-        canny_high=canny_high,
-        alpha_mode=alpha_mode,
-        ml_threshold=ml_threshold,
-        ml_detail_threshold=ml_detail_threshold,
-    )
-    image = load_image_inputs(image_path, contour_config)
+    """Extract contours from an image, returning the full result with diagnostics."""
+    config = config.normalized()
+    image = load_image_inputs(image_path, config)
 
-    if contour_config.strategy == ContourStrategy.AUTO and contour_config.alpha_mode != AlphaMode.ONLY:
-        return extract_contours_pipeline(image, contour_config)
+    if config.strategy == ContourStrategy.AUTO and config.alpha_mode != AlphaMode.ONLY:
+        return extract_contours_pipeline(image, config)
     else:
-        return _select_explicit_candidate(image, contour_config)
+        return _select_explicit_candidate(image, config)
 
 
 def extract_contours(
     image_path: str | Path,
-    *,
-    config: ContourConfig | None = None,
-    strategy: ContourStrategy | str = DEFAULT_CONTOUR_CONFIG.strategy,
-    resize: int | None = DEFAULT_CONTOUR_CONFIG.resize,
-    min_contour_length: int = DEFAULT_CONTOUR_CONFIG.min_contour_length,
-    blur_sigma: float = DEFAULT_CONTOUR_CONFIG.blur_sigma,
-    canny_sigma: float = DEFAULT_CONTOUR_CONFIG.canny_sigma,
-    closing_radius: int = DEFAULT_CONTOUR_CONFIG.closing_radius,
-    n_classes: int = DEFAULT_CONTOUR_CONFIG.n_classes,
-    min_contour_area: float = DEFAULT_CONTOUR_CONFIG.min_contour_area,
-    max_contours: int | None = DEFAULT_CONTOUR_CONFIG.max_contours,
-    smooth_contours: float = DEFAULT_CONTOUR_CONFIG.smooth_contours,
-    contrast_enhance: bool = DEFAULT_CONTOUR_CONFIG.contrast_enhance,
-    canny_low: float | None = DEFAULT_CONTOUR_CONFIG.canny_low,
-    canny_high: float | None = DEFAULT_CONTOUR_CONFIG.canny_high,
-    alpha_mode: AlphaMode | str = DEFAULT_CONTOUR_CONFIG.alpha_mode,
-    ml_threshold: float = DEFAULT_CONTOUR_CONFIG.ml_threshold,
-    ml_detail_threshold: float = DEFAULT_CONTOUR_CONFIG.ml_detail_threshold,
+    config: ContourConfig = DEFAULT_CONTOUR_CONFIG,
 ) -> list[NDArray[np.complex128]]:
-    """Extract contours and return only the selected contour list."""
-    return extract_contours_result(
-        image_path,
-        config=config,
-        strategy=strategy,
-        resize=resize,
-        min_contour_length=min_contour_length,
-        blur_sigma=blur_sigma,
-        canny_sigma=canny_sigma,
-        closing_radius=closing_radius,
-        n_classes=n_classes,
-        min_contour_area=min_contour_area,
-        max_contours=max_contours,
-        smooth_contours=smooth_contours,
-        contrast_enhance=contrast_enhance,
-        canny_low=canny_low,
-        canny_high=canny_high,
-        alpha_mode=alpha_mode,
-        ml_threshold=ml_threshold,
-        ml_detail_threshold=ml_detail_threshold,
-    ).contours
+    """Extract contours from an image, returning only the contour list."""
+    return extract_contours_result(image_path, config).contours

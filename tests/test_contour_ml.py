@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from fourier_analysis.contours import ContourStrategy, ContourConfig
+from fourier_analysis.contours import ContourStrategy, ContourConfig, MLConfig
 
 
 def _save_image(arr: np.ndarray, path: Path) -> Path:
@@ -22,17 +22,17 @@ class TestContourML:
         assert ContourStrategy.ML.value == "ml"
 
     def test_config_ml_fields(self):
-        """ContourConfig should have ml_threshold and ml_detail_threshold."""
+        """ContourConfig.ml should have threshold and detail_threshold."""
         config = ContourConfig()
-        assert config.ml_threshold == 0.5
-        assert config.ml_detail_threshold == 0.3
+        assert config.ml.threshold == 0.5
+        assert config.ml.detail_threshold == 0.3
 
     def test_config_normalized_clamps_ml(self):
         """Normalized config should clamp ML thresholds to [0, 1]."""
-        config = ContourConfig(ml_threshold=1.5, ml_detail_threshold=-0.1)
+        config = ContourConfig(ml=MLConfig(threshold=1.5, detail_threshold=-0.1))
         normed = config.normalized()
-        assert normed.ml_threshold == 1.0
-        assert normed.ml_detail_threshold == 0.0
+        assert normed.ml.threshold == 1.0
+        assert normed.ml.detail_threshold == 0.0
 
     def test_explicit_ml_strategy_import(self):
         """ML strategy should be dispatchable."""
@@ -48,9 +48,8 @@ class TestContourML:
         arr[30:100, 30:100] = 200
         img_path = _save_image(arr, tmp_path / "test.png")
 
-        result = extract_contours_result(img_path, strategy="auto", resize=None)
+        result = extract_contours_result(img_path, ContourConfig(strategy="auto", resize=None))
         assert isinstance(result.contours, list)
-        # Pipeline should produce contours via ML-guided isolation.
         assert result.diagnostics.selected_candidate == "pipeline"
 
     def test_ml_masks_returns_multiple_thresholds(self, tmp_path: Path):
@@ -58,7 +57,6 @@ class TestContourML:
         from fourier_analysis.contours.image import load_image_inputs
         from fourier_analysis.contours.ml import ml_masks
 
-        # Use a real image for meaningful saliency
         portraits = Path(__file__).resolve().parents[1] / "assets" / "portraits"
         img_path = portraits / "joseph-fourier.png"
         if not img_path.exists():
@@ -69,7 +67,6 @@ class TestContourML:
         masks = ml_masks(image, config)
 
         assert len(masks) >= 2, "ML should produce multiple iso-probability masks"
-        # Masks should be nested: broader mask contains tighter ones
         for i in range(1, len(masks)):
             broader = np.count_nonzero(masks[i - 1])
             tighter = np.count_nonzero(masks[i])

@@ -10,7 +10,7 @@ import argparse
 from pathlib import Path
 
 from fourier_analysis.animation import FourierAnimation
-from fourier_analysis.contours import extract_contours
+from fourier_analysis.contours import CannyConfig, ContourConfig, extract_contours
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.shortest_tour import build_contour_tour
 
@@ -29,7 +29,7 @@ def main() -> None:
     args = parser.parse_args()
 
     print(f"Extracting contours from {args.image}...")
-    contours = extract_contours(args.image, canny_sigma=2.0, resize=256)
+    contours = extract_contours(args.image, ContourConfig(resize=256, canny=CannyConfig(sigma=2.0)))
     print(f"Found {len(contours)} contours, {sum(len(c) for c in contours)} total points")
 
     path = build_contour_tour(contours).path

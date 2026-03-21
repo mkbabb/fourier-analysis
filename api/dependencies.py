@@ -86,8 +86,8 @@ async def _backfill_image_bounds(db, contour_doc: dict) -> dict:
         orig_w, orig_h = img.size
         img.close()
 
-        # Use default extraction resize of 768
-        resize = 768
+        # Use default extraction resize of 1024
+        resize = 1024
         ratio = resize / max(orig_w, orig_h)
         rw = int(orig_w * ratio)
         rh = int(orig_h * ratio)
