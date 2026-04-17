@@ -12,60 +12,23 @@
 
 import { ref, computed, onUnmounted, type Ref } from "vue";
 import { Animation } from "@mkbabb/keyframes.js";
-import { timingFunctions } from "@mkbabb/value.js";
 import type { FourierShape } from "@/lib/svg-fourier";
 import {
     interpolateAtHarmonicLevel,
     lerpPoints,
     pointsToSvgPath,
 } from "@/lib/svg-fourier";
+import {
+    EASING_PRESETS,
+    EASING_PRESET_NAMES,
+    getEasingFn,
+    type EasingFn,
+    type EasingPreset,
+} from "@/lib/easings";
+
+export { EASING_PRESETS, EASING_PRESET_NAMES, type EasingFn, type EasingPreset };
 
 export type MorphPhase = "idle" | "settle-out" | "morph" | "settle-in";
-
-// ── Easing presets ──────────────────────────────────────────────────
-
-export type EasingFn = (t: number) => number;
-
-/** Display labels for easing preset names. */
-const EASING_LABELS: Record<string, string> = {
-    linear: "Linear",
-    "ease-in": "Ease In",
-    "ease-out": "Ease Out",
-    "ease-in-out": "Ease In-Out",
-    "ease-in-back": "Back In",
-    "ease-out-back": "Back Out",
-    "ease-in-out-back": "Back In-Out",
-    "ease-in-quad": "Ease In Quad",
-    "ease-out-quad": "Ease Out Quad",
-    "ease-in-out-quad": "Ease In-Out Quad",
-    "ease-in-cubic": "Ease In Cubic",
-    "ease-out-cubic": "Ease Out Cubic",
-    "ease-in-out-cubic": "Ease In-Out Cubic",
-    "ease-in-sine": "Ease In Sine",
-    "ease-out-sine": "Ease Out Sine",
-    "ease-in-out-sine": "Ease In-Out Sine",
-    "ease-in-expo": "Ease In Expo",
-    "ease-out-expo": "Ease Out Expo",
-    "ease-in-out-expo": "Ease In-Out Expo",
-    "ease-in-circ": "Ease In Circ",
-    "ease-out-circ": "Ease Out Circ",
-    "ease-in-out-circ": "Ease In-Out Circ",
-};
-
-export interface EasingPreset {
-    label: string;
-    fn: EasingFn;
-}
-
-/** All available easing presets, backed by value.js timing functions. */
-export const EASING_PRESETS: Record<string, EasingPreset> = Object.fromEntries(
-    Object.entries(EASING_LABELS).map(([name, label]) => [
-        name,
-        { label, fn: timingFunctions[name as keyof typeof timingFunctions] as EasingFn },
-    ]),
-);
-
-export const EASING_PRESET_NAMES = Object.keys(EASING_PRESETS);
 
 // ── Config type ─────────────────────────────────────────────────────
 
@@ -90,10 +53,6 @@ export const DEFAULT_MORPH_CONFIG: MorphConfig = {
     morphEasing: "linear",
     settleInEasing: "linear",
 };
-
-function getEasingFn(name: string): EasingFn {
-    return EASING_PRESETS[name]?.fn ?? EASING_PRESETS.linear.fn;
-}
 
 // ── Composable ──────────────────────────────────────────────────────
 
