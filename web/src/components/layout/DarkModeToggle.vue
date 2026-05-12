@@ -15,6 +15,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
 import { useFourierMorph } from "@/composables/useFourierMorph";
 import { prepareFourierShape } from "@/lib/svg-fourier";
@@ -29,7 +30,7 @@ const moonShape = prepareFourierShape(moonData as any);
 const SUN_COLOR = [232, 136, 69] as const;   // #E88845
 const MOON_COLOR = [192, 132, 252] as const; // #c084fc — matches VIZ_COLORS.legendre
 
-const isDark = ref(false);
+const { isDark, toggleDark } = useGlobalDark();
 /** true when morphing toward dark (moon), false when morphing toward light (sun) */
 const morphingToDark = ref(false);
 
@@ -55,7 +56,6 @@ const strokeColor = computed(() => {
 });
 
 onMounted(() => {
-    isDark.value = document.documentElement.classList.contains("dark");
     morph.setShape(isDark.value ? moonShape : sunShape);
 });
 
@@ -66,9 +66,7 @@ async function handleToggle() {
     const to = isDark.value ? sunShape : moonShape;
 
     morphingToDark.value = !isDark.value;
-    isDark.value = !isDark.value;
-    document.documentElement.classList.toggle("dark", isDark.value);
-    localStorage.setItem("theme", isDark.value ? "dark" : "light");
+    toggleDark();
 
     await morph.morphTo(from, to);
 }

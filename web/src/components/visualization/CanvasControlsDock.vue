@@ -1,25 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, computed } from "vue";
 import {
-    Maximize2,
-    Pencil,
-    Sigma,
-    Upload,
-    Eye,
-    ImageIcon,
-    Check,
-    Spline,
-} from "lucide-vue-next";
+    Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
-import GlassDock from "@/components/ui/GlassDock.vue";
-import {
-    DropdownMenuRoot,
-    DropdownMenuTrigger,
-    DropdownMenuPortal,
-    DropdownMenuContent,
-    DropdownMenuCheckboxItem,
-    DropdownMenuItemIndicator,
-} from "reka-ui";
+import { GlassDock, DockIconButton } from "@mkbabb/glass-ui/dock";
+import { HoverPopover } from "@mkbabb/glass-ui/hover-popover";
 
 const props = defineProps<{
     isEditing: boolean;
@@ -41,13 +26,6 @@ defineEmits<{
 }>();
 
 const dockRef = ref<InstanceType<typeof GlassDock>>();
-const overlayMenuOpen = ref(false);
-
-// Keep the GlassDock open while the portaled dropdown is visible
-watch(overlayMenuOpen, (open) => {
-    if (open) dockRef.value?.keepOpen();
-    else dockRef.value?.release();
-});
 
 const dockExpanded = computed(() => dockRef.value?.expanded ?? false);
 defineExpose({ dockExpanded });
@@ -56,69 +34,43 @@ defineExpose({ dockExpanded });
 <template>
     <GlassDock ref="dockRef" fit-content :start-collapsed="true">
         <template v-if="!isEditing">
-            <!-- View options dropdown (image overlay + contour trace) -->
-            <DropdownMenuRoot v-model:open="overlayMenuOpen">
-                <DropdownMenuTrigger as-child>
-                    <Tooltip text="View options" side="bottom">
-                        <button
-                            class="dock-icon-btn"
-                            :class="{ 'is-active': showImageOverlay || showGhost }"
-                        >
-                            <span class="view-btn-wrap">
-                                <Eye class="h-4.5 w-4.5" />
-                                <span
-                                    v-if="showImageOverlay || showGhost"
-                                    class="view-dot"
-                                />
-                            </span>
-                        </button>
-                    </Tooltip>
-                </DropdownMenuTrigger>
-                <DropdownMenuPortal>
-                    <DropdownMenuContent
-                        class="overlay-dropdown"
-                        :side-offset="8"
-                        align="center"
-                    >
-                        <DropdownMenuCheckboxItem
-                            class="overlay-dropdown-item"
-                            :checked="showImageOverlay"
-                            @select.prevent="$emit('toggleImageOverlay')"
-                        >
-                            <ImageIcon class="overlay-item-icon" />
-                            <span>Image Overlay</span>
-                            <DropdownMenuItemIndicator class="overlay-check">
-                                <Check class="h-3.5 w-3.5" />
-                            </DropdownMenuItemIndicator>
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                            class="overlay-dropdown-item"
-                            :checked="showGhost"
-                            @select.prevent="$emit('toggleGhost')"
-                        >
-                            <Spline class="overlay-item-icon" />
-                            <span>Contour Trace</span>
-                            <DropdownMenuItemIndicator class="overlay-check">
-                                <Check class="h-3.5 w-3.5" />
-                            </DropdownMenuItemIndicator>
-                        </DropdownMenuCheckboxItem>
-                    </DropdownMenuContent>
-                </DropdownMenuPortal>
-            </DropdownMenuRoot>
+            <!-- View options popover (image overlay + contour trace) -->
+            <HoverPopover side="top" align="center" keep-dock-open>
+                <template #trigger>
+                    <DockIconButton class="view-btn-wrap" aria-label="View options">
+                        <Eye class="h-4.5 w-4.5" />
+                        <span v-if="showImageOverlay || showGhost" class="view-dot" />
+                    </DockIconButton>
+                </template>
+                <template #content>
+                    <div class="flex flex-col gap-1 p-1">
+                        <Tooltip text="Image overlay">
+                            <DockIconButton :class="{ 'is-active': showImageOverlay }" @click="$emit('toggleImageOverlay')">
+                                <ImageIcon :size="20" />
+                            </DockIconButton>
+                        </Tooltip>
+                        <Tooltip text="Contour trace">
+                            <DockIconButton :class="{ 'is-active': showGhost }" @click="$emit('toggleGhost')">
+                                <Spline :size="20" />
+                            </DockIconButton>
+                        </Tooltip>
+                    </div>
+                </template>
+            </HoverPopover>
 
             <div class="dock-separator" />
 
             <!-- Publish -->
             <Tooltip v-if="hasContour" text="Publish to Gallery" side="bottom">
-                <button class="dock-icon-btn" :class="{ 'is-active': publishing }" @click="$emit('publish')">
+                <DockIconButton :class="{ 'is-active': publishing }" @click="$emit('publish')">
                     <Upload class="h-4.5 w-4.5" :class="{ 'animate-pulse': publishing }" />
-                </button>
+                </DockIconButton>
             </Tooltip>
             <!-- Equation -->
             <Tooltip v-if="hasData" text="Equation" side="bottom">
-                <button class="dock-icon-btn" :class="{ 'is-active': showEquation }" @click="$emit('toggleEquation')">
+                <DockIconButton :class="{ 'is-active': showEquation }" @click="$emit('toggleEquation')">
                     <Sigma class="h-4.5 w-4.5" />
-                </button>
+                </DockIconButton>
             </Tooltip>
 
             <div class="dock-separator" />
@@ -126,15 +78,15 @@ defineExpose({ dockExpanded });
 
         <!-- Edit (always visible when contour exists) -->
         <Tooltip v-if="hasContour" text="Edit contour" side="bottom">
-            <button class="dock-icon-btn" :class="{ 'is-active': isEditing }" @click="$emit('toggleEdit')">
+            <DockIconButton :class="{ 'is-active': isEditing }" @click="$emit('toggleEdit')">
                 <Pencil class="h-4.5 w-4.5" />
-            </button>
+            </DockIconButton>
         </Tooltip>
         <!-- Fullscreen -->
         <Tooltip text="Fullscreen" side="bottom">
-            <button class="dock-icon-btn" @click="$emit('toggleFullscreen')">
+            <DockIconButton @click="$emit('toggleFullscreen')">
                 <Maximize2 class="h-4.5 w-4.5" />
-            </button>
+            </DockIconButton>
         </Tooltip>
 
         <template #collapsed>
@@ -144,19 +96,13 @@ defineExpose({ dockExpanded });
     </GlassDock>
 </template>
 
-<style>
-@import "./lib/dock-buttons.css";
-</style>
-
 <style scoped>
-.dock-icon-btn {
-    width: 2.5rem;
-    height: 2.5rem;
-}
-
 .dock-separator {
+    width: 1px;
     height: 1.5rem;
     margin: 0 0.125rem;
+    background: color-mix(in srgb, var(--foreground) 20%, transparent);
+    flex-shrink: 0;
 }
 
 .view-btn-wrap {
@@ -178,58 +124,3 @@ defineExpose({ dockExpanded });
 }
 </style>
 
-<!-- Global style for portaled overlay dropdown -->
-<style>
-.overlay-dropdown {
-    z-index: 100;
-    min-width: 10rem;
-    padding: 0.375rem;
-    background: color-mix(in srgb, hsl(var(--popover)) 85%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1.5px solid hsl(var(--border) / 0.4);
-    border-radius: 0.625rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    animation: nav-dropdown-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.overlay-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4375rem 0.625rem;
-    border-radius: 0.4375rem;
-    border: none;
-    background: none;
-    color: hsl(var(--foreground) / 0.65);
-    font-family: var(--font-serif);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.12s ease, color 0.12s ease;
-    outline: none;
-}
-
-.overlay-dropdown-item:hover,
-.overlay-dropdown-item[data-highlighted] {
-    background: hsl(var(--foreground) / 0.06);
-    color: hsl(var(--foreground));
-}
-
-.overlay-dropdown-item[data-state="checked"] {
-    color: hsl(var(--foreground));
-}
-
-.overlay-item-icon {
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-}
-
-.overlay-check {
-    margin-left: auto;
-    color: var(--viz-amber);
-    display: inline-flex;
-    align-items: center;
-}
-</style>
