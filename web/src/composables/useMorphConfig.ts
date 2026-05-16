@@ -5,34 +5,20 @@
  * and syncing with a useFourierMorph instance.
  */
 
-import { reactive, ref, computed, watch, onUnmounted } from "vue";
+import { reactive, computed, watch } from "vue";
+import { useClipboard } from "@mkbabb/glass-ui";
 import {
     DEFAULT_MORPH_CONFIG,
-    EASING_PRESETS,
-    EASING_PRESET_NAMES,
     type MorphConfig,
 } from "@/composables/useFourierMorph";
+import {
+    EASING_PRESETS,
+    EASING_PRESET_NAMES,
+    easingCurvePath,
+} from "@/lib/easings";
 
-export { EASING_PRESETS, EASING_PRESET_NAMES, DEFAULT_MORPH_CONFIG };
+export { EASING_PRESETS, EASING_PRESET_NAMES, DEFAULT_MORPH_CONFIG, easingCurvePath };
 export type { MorphConfig };
-
-/**
- * Generate an SVG path `d` string for an easing curve preview.
- * Draws the easing function as a polyline in a 40×20 viewBox.
- */
-export function easingCurvePath(name: string): string {
-    const fn = EASING_PRESETS[name]?.fn ?? ((t: number) => t);
-    const steps = 24;
-    let d = "";
-    for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const v = fn(t);
-        const x = 2 + t * 36;
-        const y = 18 - v * 16;
-        d += i === 0 ? `M${x},${y}` : ` L${x},${y}`;
-    }
-    return d;
-}
 
 /**
  * Compute slider CSS custom properties for the styled-slider pattern.
@@ -82,12 +68,10 @@ export function useMorphConfig(initialConfig?: Partial<MorphConfig>) {
         computePreviewLevels(config.lowLevel, config.highLevel),
     );
 
-    const copied = ref(false);
-    let copiedTimer: ReturnType<typeof setTimeout> | null = null;
-
-    onUnmounted(() => {
-        if (copiedTimer) clearTimeout(copiedTimer);
-    });
+    /* P.W5 Lane B.2 — replaced manual `copied` ref + 2s timeout + onUnmounted
+       cleanup with glass-ui's `useClipboard` composable (auto-resets `copied`
+       and owns timer-cleanup discipline). */
+    const { copied, copy } = useClipboard({ resetMs: 2000 });
 
     function reset() {
         Object.assign(config, DEFAULT_MORPH_CONFIG);
@@ -103,11 +87,7 @@ export function useMorphConfig(initialConfig?: Partial<MorphConfig>) {
     }
 
     function copyToClipboard() {
-        navigator.clipboard.writeText(toJSON()).then(() => {
-            copied.value = true;
-            if (copiedTimer) clearTimeout(copiedTimer);
-            copiedTimer = setTimeout(() => (copied.value = false), 2000);
-        });
+        copy(toJSON());
     }
 
     /** Create a watcher that syncs config changes into a morph composable. */

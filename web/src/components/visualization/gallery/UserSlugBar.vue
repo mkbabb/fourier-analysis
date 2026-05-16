@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useUserAuth } from "@/composables/useUserAuth";
+import { storeToRefs } from "pinia";
+import { useClipboard } from "@mkbabb/glass-ui";
+import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import { User, LogIn, LogOut, Copy, Check, Dices } from "lucide-vue-next";
 
-const { userSlug, isLoggedIn, login, logout, register } = useUserAuth();
+const auth = useAuthStore();
+const { userSlug, isLoggedIn } = storeToRefs(auth);
+const { login, logout, register } = auth;
 const { toast } = useToast();
 
 const slugInput = ref("");
 const showLogin = ref(false);
 const loggingIn = ref(false);
-const copied = ref(false);
+
+/* P.W5 Lane B.2 — migrated from bare `navigator.clipboard.writeText` + manual
+   `copied` ref + setTimeout to glass-ui's `useClipboard` composable (the
+   reactive `copied` flag drives the Check/Copy icon swap below). 1.5 s reset
+   preserved from HEAD. */
+const { copied, copy } = useClipboard({ resetMs: 1500 });
 
 const canSubmit = computed(() => slugInput.value.trim().length > 0);
 
@@ -54,11 +63,9 @@ async function handleLogout() {
     toast("Logged out", "info");
 }
 
-async function copySlug() {
+function copySlug() {
     if (!userSlug.value) return;
-    await navigator.clipboard.writeText(userSlug.value);
-    copied.value = true;
-    setTimeout(() => (copied.value = false), 1500);
+    copy(userSlug.value);
 }
 
 function onKeydown(e: KeyboardEvent) {

@@ -1,5 +1,24 @@
 <script setup lang="ts">
-import { ref } from "vue";
+/**
+ * Timeline scrub bar — animation `t` ∈ [0, 1] with caret-label readout.
+ *
+ * P.W5 Lane B.4 + B.1 — migrated from the 175 LOC shadow recipe (manual
+ * pointer-state-machine + `glass-track`/`glass-fill`/`glass-thumb` paints +
+ * legacy string-key dock injects) to `<Slider variant="glass-scrubber">`.
+ * The variant ships the 3-layer track + thumb + halo paints, the dock
+ * keep-open contract (via `useOptionalDockContext()` internally), focus
+ * ring, ARIA wiring, and keyboard step. We retain the caret-label which is
+ * the only divergent surface vs the canonical variant.
+ *
+ * Dock-keep-open: the v1.8.x `<Slider>` acquires the typed `DockContext`
+ * token internally, so we no longer inject `dockKeepOpen`/`dockRelease`
+ * by string-key (CR-2 silent regression at v1.7.0 — keys retired at O.W2).
+ * The store's `startScrub`/`endScrub`/`seek` axis is fed via a `valueCommit`
+ * trio on `<Slider>`: pointerdown opens scrub, drag emits seek, pointerup
+ * closes scrub.
+ */
+import { computed, ref } from "vue";
+import { Slider } from "@mkbabb/glass-ui";
 import { useAnimationStore } from "@/stores/animation";
 
 defineProps<{
@@ -8,41 +27,33 @@ defineProps<{
 
 const anim = useAnimationStore();
 
-/* ── Glass timeline slider ────────────────────────────── */
-const trackRef = ref<HTMLElement>();
 const scrubbing = ref(false);
 
-function tFromPointer(e: PointerEvent): number {
-    const rect = trackRef.value!.getBoundingClientRect();
-    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-}
+/* Slider models `t` as a single-element `[0..100]` int array (reka-ui's
+   SliderRoot uses integers; we scale by 100 to give 1 % granularity).
+   Two-way binding adapts the store's `[0..1]` t-axis to the slider scale. */
+const tArr = computed<number[]>({
+    get: () => [Math.round(anim.t * 100)],
+    set: (arr) => {
+        const next = Math.max(0, Math.min(1, (arr[0] ?? 0) / 100));
+        anim.seek(next);
+    },
+});
 
-function onTrackDown(e: PointerEvent) {
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+function onValueCommitStart() {
+    if (scrubbing.value) return;
     scrubbing.value = true;
     anim.startScrub();
-    anim.seek(tFromPointer(e));
 }
 
-function onTrackMove(e: PointerEvent) {
+function onPointerDown() {
+    onValueCommitStart();
+}
+
+function onValueCommit() {
     if (!scrubbing.value) return;
-    anim.seek(tFromPointer(e));
-}
-
-function onTrackUp() {
     scrubbing.value = false;
     anim.endScrub();
-}
-
-function onTrackKeydown(e: KeyboardEvent) {
-    const step = e.shiftKey ? 0.1 : 0.01;
-    if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-        e.preventDefault();
-        anim.seek(Math.min(1, anim.t + step));
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-        e.preventDefault();
-        anim.seek(Math.max(0, anim.t - step));
-    }
 }
 </script>
 
@@ -51,24 +62,17 @@ function onTrackKeydown(e: KeyboardEvent) {
         <div class="timeline-caret" :style="{ left: (anim.t * 100) + '%' }">
             <span class="caret-value fira-code">{{ label }}</span>
         </div>
-        <div
-            ref="trackRef"
-            class="glass-track"
-            role="slider"
-            tabindex="0"
-            :aria-valuenow="anim.t"
-            aria-valuemin="0"
-            aria-valuemax="1"
+        <Slider
+            v-model="tArr"
+            variant="glass-scrubber"
+            :min="0"
+            :max="100"
+            :step="1"
             aria-label="Timeline"
-            @pointerdown="onTrackDown"
-            @pointermove="onTrackMove"
-            @pointerup="onTrackUp"
-            @pointercancel="onTrackUp"
-            @keydown="onTrackKeydown"
-        >
-            <div class="glass-fill" :style="{ width: (anim.t * 100) + '%' }" />
-            <div class="glass-thumb" :style="{ left: (anim.t * 100) + '%' }" />
-        </div>
+            class="timeline-slider"
+            @pointerdown="onPointerDown"
+            @value-commit="onValueCommit"
+        />
     </div>
 </template>
 
@@ -96,7 +100,7 @@ function onTrackKeydown(e: KeyboardEvent) {
 }
 
 .timeline-row:hover .timeline-caret,
-.timeline-row:has(.glass-track:active) .timeline-caret {
+.timeline-row:has(.glass-slider[data-held]) .timeline-caret {
     opacity: 1;
 }
 
@@ -105,65 +109,19 @@ function onTrackKeydown(e: KeyboardEvent) {
     padding: 0.125rem 0.375rem;
     @apply text-base;
     font-weight: 500;
-    color: hsl(var(--popover-foreground));
-    background: hsl(var(--popover));
-    border: 1px solid hsl(var(--border));
+    color: var(--popover-foreground);
+    background: var(--popover);
+    border: 1px solid var(--border);
     border-radius: 0.25rem;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     white-space: nowrap;
 }
 
-.glass-track {
-    position: relative;
-    width: 100%;
-    height: 24px;
-    border-radius: 12px;
-    background: hsl(var(--foreground) / 0.05);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    cursor: pointer;
-    touch-action: none;
-    overflow: hidden;
-    transition: background 0.2s;
-    outline: none;
-}
-
-.glass-track:hover,
-.glass-track:focus-visible {
-    background: hsl(var(--foreground) / 0.08);
-}
-
-.glass-track:focus-visible {
-    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
-}
-
-.glass-fill {
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    background: hsl(var(--foreground) / 0.07);
-    border-radius: 12px;
-    pointer-events: none;
-}
-
-.glass-thumb {
-    position: absolute;
-    top: 50%;
-    transform: translate(calc(-50% - 3px), -50%);
-    width: 6px;
-    height: 16px;
-    border-radius: 2px;
-    background: hsl(var(--foreground) / 0.25);
-    opacity: 0;
-    pointer-events: none;
-    transition: all 0.15s ease;
-}
-
-.glass-track:hover .glass-thumb {
-    opacity: 1;
-    width: 8px;
-    height: 18px;
-    background: hsl(var(--foreground) / 0.4);
+/* Retint the glass-scrubber variant tokens to match HEAD's foreground-tinted
+   recipe (the variant defaults compose `--surface-tint-*`; HEAD used
+   `color-mix(in srgb, var(--foreground) N%, transparent)` which is
+   equivalent to surface-tint at the same N%). */
+.timeline-slider {
+    --slider-scrub-track-height: 24px;
 }
 </style>

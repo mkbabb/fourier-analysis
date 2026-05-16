@@ -1,18 +1,40 @@
 <script setup lang="ts">
+/**
+ * Labeled slider chassis — label + inline numeric input + glass-scrubber track.
+ *
+ * P.W5 Lane B.4 + B.1 — migrated from the 221 LOC shadow recipe (manual
+ * pointer-state-machine + `glass-track`/`glass-fill`/`glass-thumb` paints +
+ * legacy string-key dock injects) to `<Slider variant="glass-scrubber">`
+ * with the canonical label + numeric-input chassis preserved as the wrapper.
+ *
+ * The wrapper's contract (label, subtitle, numeric input, min/max/step,
+ * color, formatValue, variant) is unchanged. The variant token (`timeline`
+ * vs `default`) is now COSMETIC ONLY — both branches map to the same
+ * `glass-scrubber` variant. The legacy `variant="default"` survives only
+ * to remain backward-compatible with the 7 SliderControl instantiations
+ * across FunctionInput / EquationPanel / ContourSettings.
+ *
+ * Dock-keep-open: the v1.8.x `<Slider>` acquires the typed `DockContext`
+ * token internally, so we no longer inject `dockKeepOpen`/`dockRelease`
+ * by string-key (CR-2 silent regression at v1.7.0 — keys retired at O.W2).
+ */
 import { computed } from "vue";
+import { Slider } from "@mkbabb/glass-ui";
 
-const props = defineProps<{
-    label: string;
-    /** Optional short description shown as muted text after the label */
-    subtitle?: string;
-    modelValue: number;
-    min: number;
-    max: number;
-    step: number;
-    color: string;
-    /** Format the display value (default: raw number) */
-    formatValue?: (v: number) => string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        label: string;
+        subtitle?: string;
+        modelValue: number;
+        min: number;
+        max: number;
+        step: number;
+        color: string;
+        formatValue?: (v: number) => string;
+        variant?: "timeline" | "default";
+    }>(),
+    { variant: "timeline" },
+);
 
 const emit = defineEmits<{
     (e: "update:modelValue", v: number): void;
@@ -23,11 +45,22 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 function onInput(e: Event) {
-    emit("update:modelValue", clamp(parseFloat((e.target as HTMLInputElement).value), props.min, props.max));
+    emit(
+        "update:modelValue",
+        clamp(parseFloat((e.target as HTMLInputElement).value), props.min, props.max),
+    );
 }
 
-const progress = computed(() => ((props.modelValue - props.min) / (props.max - props.min)) * 100);
-const displayValue = computed(() => props.formatValue ? props.formatValue(props.modelValue) : String(props.modelValue));
+/* reka-ui's SliderRoot accepts an array model; we adapt the scalar binding
+   here so the surrounding API surface (scalar `modelValue`) is preserved. */
+const sliderModel = computed<number[]>({
+    get: () => [props.modelValue],
+    set: (arr) => emit("update:modelValue", clamp(arr[0] ?? props.min, props.min, props.max)),
+});
+
+const displayValue = computed(() =>
+    props.formatValue ? props.formatValue(props.modelValue) : String(props.modelValue),
+);
 const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)));
 </script>
 
@@ -48,15 +81,15 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
                 @input="onInput"
             />
         </label>
-        <input
-            :value="modelValue"
-            @input="onInput"
-            type="range"
+        <Slider
+            v-model="sliderModel"
+            variant="glass-scrubber"
             :min="min"
             :max="max"
             :step="step"
-            class="styled-slider w-full"
-            :style="{ '--progress': progress + '%', '--slider-color': color }"
+            :aria-label="label"
+            class="slider-track-host"
+            :style="{ '--track-color': color }"
         />
     </div>
 </template>
@@ -75,7 +108,7 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
     justify-content: space-between;
     @apply text-sm;
     font-weight: 500;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
 }
 
 .slider-subtitle {
@@ -90,7 +123,7 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
     background: transparent;
     border: none;
     border-bottom: 1px solid transparent;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     font-size: inherit;
     padding: 0;
     outline: none;
@@ -99,11 +132,22 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
 }
 .inline-number:hover,
 .inline-number:focus {
-    border-bottom-color: hsl(var(--foreground) / 0.3);
+    border-bottom-color: color-mix(in srgb, var(--foreground) 30%, transparent);
 }
 .inline-number::-webkit-inner-spin-button,
 .inline-number::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
+}
+
+/* Retint the glass-scrubber variant tokens for the per-instance color hook
+   (`--track-color`). The variant defaults compose `--surface-tint-*`; we
+   project the per-color tint onto the range + thumb. */
+.slider-track-host {
+    --slider-scrub-track-height: 16px;
+    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 25%, transparent);
+    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 35%, transparent);
+    --slider-scrub-thumb-bg: var(--track-color);
+    --slider-scrub-thumb-bg-hover: var(--track-color);
 }
 </style>

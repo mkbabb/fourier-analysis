@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
+import { useClipboard } from "@mkbabb/glass-ui";
 import { Check, Copy } from "lucide-vue-next";
 import katex from "katex";
 
@@ -7,7 +8,10 @@ const props = defineProps<{
     latex: string;
 }>();
 
-const copied = ref(false);
+/* P.W5 Lane B.2 — migrated from bare `navigator.clipboard.writeText` + manual
+   `copied` ref + setTimeout to glass-ui's `useClipboard` composable (the
+   reactive `copied` flag here drives the Check/Copy icon swap below). */
+const { copied, copy } = useClipboard({ resetMs: 2000 });
 
 const renderedHtml = computed(() => {
     if (!props.latex) return "";
@@ -22,10 +26,8 @@ const renderedHtml = computed(() => {
     }
 });
 
-async function copyLatex() {
-    await navigator.clipboard.writeText(props.latex);
-    copied.value = true;
-    setTimeout(() => (copied.value = false), 2000);
+function copyLatex() {
+    copy(props.latex);
 }
 </script>
 
@@ -82,7 +84,7 @@ async function copyLatex() {
 
 .copy-pos {
     position: absolute;
-    z-index: 20;
+    z-index: var(--z-controls);
     top: 0.5rem;
     right: 0.5rem;
 }

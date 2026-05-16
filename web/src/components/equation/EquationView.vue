@@ -5,10 +5,10 @@ import { computeEquation, simplifyCoefficients, isAbortError } from "@/lib/equat
 import type { NotationMode, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
 import { TIER_INFO, energyColor } from "@/lib/equation/notation";
-import { HoverCardRoot, HoverCardTrigger, HoverCardPortal, HoverCardContent } from "reka-ui";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@mkbabb/glass-ui";
 import { Info } from "lucide-vue-next";
 
-import UnderlineTabs from "@/components/ui/UnderlineTabs.vue";
+import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
 import FunctionInput from "./FunctionInput.vue";
 import EquationResult from "./EquationResult.vue";
 import EquationModeToggle from "./EquationModeToggle.vue";
@@ -256,7 +256,7 @@ watchDebounced(
                         <Transition name="pop">
                             <div
                                 v-if="hoveredCoeff && popoverHtml"
-                                class="coeff-popover"
+                                class="coeff-popover glass-elevated"
                                 :style="{ left: `${popoverPos.x}px`, top: `${popoverPos.y}px` }"
                             >
                                 <div class="coeff-popover-inner" v-html="popoverHtml" />
@@ -269,7 +269,7 @@ watchDebounced(
                         </div>
 
                         <!-- Info hover card -->
-                        <HoverCardRoot v-if="tierInfo" :open-delay="200" :close-delay="150">
+                        <HoverCard v-if="tierInfo" :open-delay="200" :close-delay="150">
                             <HoverCardTrigger as-child>
                                 <button class="glass-btn info-anchor">
                                     <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -277,28 +277,26 @@ watchDebounced(
                                     </svg>
                                 </button>
                             </HoverCardTrigger>
-                            <HoverCardPortal>
-                                <HoverCardContent class="info-hovercard" side="bottom" :side-offset="6" :collision-padding="12" align="end">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span
-                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border-[1.5px]"
-                                            :style="{
-                                                background: `color-mix(in srgb, ${tierInfo.color} 15%, transparent)`,
-                                                borderColor: `color-mix(in srgb, ${tierInfo.color} 30%, transparent)`,
-                                                color: tierInfo.color,
-                                            }"
-                                        >{{ tierInfo.label }}</span>
-                                        <span class="text-sm font-medium fira-code" :style="{ color: eColor }">
-                                            {{ (displayEnergy * 100).toFixed(1) }}% energy
-                                        </span>
-                                    </div>
-                                    <div class="flex gap-1.5 items-start text-sm text-muted-foreground mt-2">
-                                        <Info class="size-3.5 shrink-0 mt-0.5" />
-                                        <p>{{ tierInfo.description }}</p>
-                                    </div>
-                                </HoverCardContent>
-                            </HoverCardPortal>
-                        </HoverCardRoot>
+                            <HoverCardContent class="info-hovercard" side="bottom" :side-offset="6" :collision-padding="12" align="end">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border-[1.5px]"
+                                        :style="{
+                                            background: `color-mix(in srgb, ${tierInfo.color} 15%, transparent)`,
+                                            borderColor: `color-mix(in srgb, ${tierInfo.color} 30%, transparent)`,
+                                            color: tierInfo.color,
+                                        }"
+                                    >{{ tierInfo.label }}</span>
+                                    <span class="text-sm font-medium fira-code" :style="{ color: eColor }">
+                                        {{ (displayEnergy * 100).toFixed(1) }}% energy
+                                    </span>
+                                </div>
+                                <div class="flex gap-1.5 items-start text-sm text-muted-foreground mt-2">
+                                    <Info class="size-3.5 shrink-0 mt-0.5" />
+                                    <p>{{ tierInfo.description }}</p>
+                                </div>
+                            </HoverCardContent>
+                        </HoverCard>
                     </div>
 
                     <!-- Convergence plot -->
@@ -362,7 +360,7 @@ watchDebounced(
     content: '';
     @apply absolute bottom-0 left-0 right-0 pointer-events-none;
     height: 2.5rem;
-    background: linear-gradient(to bottom, transparent, hsl(var(--background)));
+    background: linear-gradient(to bottom, transparent, var(--background));
     z-index: 2;
 }
 @media (max-width: 1023px) { .eq-panel-left-wrap::after { display: none; } }
@@ -390,14 +388,11 @@ watchDebounced(
 .coeff-popover {
     @apply absolute pointer-events-none rounded-lg;
     transform: translateX(-50%);
-    z-index: 25;
+    z-index: var(--z-bar);
     min-width: 160px;
     max-width: 320px;
     padding: 0.5rem 0.75rem;
-    background: hsl(var(--background) / 0.95);
-    backdrop-filter: blur(16px);
-    border: 1px solid hsl(var(--border));
-    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.08);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 .coeff-popover-inner :deep(.katex-display) {
@@ -425,12 +420,12 @@ watchDebounced(
 /* ── Anchors ── */
 .eq-mode-anchor {
     @apply absolute top-2 left-2;
-    z-index: 20;
+    z-index: var(--z-controls);
 }
 .info-anchor {
     @apply absolute top-2;
     right: 3.25rem;
-    z-index: 30;
+    z-index: var(--z-bar);
 }
 
 /* ── Mobile panel toggle ── */
@@ -455,12 +450,12 @@ watchDebounced(
 <!-- Global style for portaled HoverCard content -->
 <style>
 .info-hovercard {
-    z-index: 100;
+    z-index: var(--z-modal);
     width: 300px;
     padding: 0.75rem;
-    color: hsl(var(--popover-foreground));
-    background: hsl(var(--popover));
-    border: 1.5px solid hsl(var(--border));
+    color: var(--popover-foreground);
+    background: var(--popover);
+    border: 1.5px solid var(--border);
     border-radius: 0.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     animation: tooltip-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
