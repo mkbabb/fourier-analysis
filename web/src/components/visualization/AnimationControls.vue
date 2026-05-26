@@ -4,11 +4,10 @@ import { onClickOutside } from "@vueuse/core";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
 import {
-    Download,
-    EllipsisVertical,
-} from "lucide-vue-next";
+    Download, EllipsisVertical, } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
-import GlassDock from "@/components/ui/GlassDock.vue";
+import { GlassDock } from "@mkbabb/glass-ui/dock";
+import { DockIconButton } from "@mkbabb/glass-ui/dock";
 import GlassTimeline from "./GlassTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
 import SpeedSelect from "./SpeedSelect.vue";
@@ -55,7 +54,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
 </script>
 
 <template>
-    <GlassDock :collapse-delay="2000" :start-collapsed="true">
+    <GlassDock class="animation-dock" :collapse-delay="2000" :start-collapsed="true">
         <!-- ═══ COLLAPSED SUMMARY ═══ -->
         <template #collapsed>
             <Tooltip :text="anim.playing ? 'Pause' : 'Play'">
@@ -95,9 +94,9 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
             <!-- Three-dot menu -->
             <div ref="menuAnchor" class="relative">
                 <Tooltip text="More options">
-                    <button class="dock-icon-btn" @click.stop="menuOpen = !menuOpen">
+                    <DockIconButton :aria-expanded="menuOpen" @click.stop="menuOpen = !menuOpen">
                         <EllipsisVertical class="h-4 w-4" />
-                    </button>
+                    </DockIconButton>
                 </Tooltip>
                 <Transition name="popup">
                     <div v-if="menuOpen" class="menu-popup">
@@ -119,12 +118,14 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
     </GlassDock>
 </template>
 
-<style>
-@import "./lib/dock-buttons.css";
-</style>
-
 <style scoped>
 @reference "tailwindcss";
+
+/* ── Dock width: stretch to fill container when expanded ── */
+.animation-dock:where(.expanded) {
+    width: min(var(--animation-dock-max-width, 960px), calc(100dvw - 1rem));
+}
+
 /* ── Play button ── */
 .play-btn {
     position: relative;
@@ -173,9 +174,9 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
 @keyframes rainbow-drift { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
 
 /* ── Collapsed summary ── */
-.mini-progress { width: 3rem; height: 4px; border-radius: 2px; background: hsl(var(--foreground) / 0.08); overflow: hidden; flex-shrink: 0; }
-.mini-fill { height: 100%; border-radius: 2px; background: hsl(var(--foreground) / 0.25); transition: width 0.1s linear; }
-.summary-speed { @apply text-base; color: hsl(var(--foreground) / 0.35); }
+.mini-progress { width: 3rem; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
+.mini-fill { height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 25%, transparent); transition: width 0.1s linear; }
+.summary-speed { @apply text-base; color: color-mix(in srgb, var(--foreground) 35%, transparent); }
 
 /* ── Menu popup ── */
 .menu-popup {
@@ -186,8 +187,8 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
     flex-direction: column;
     gap: 0.125rem;
     padding: 0.375rem;
-    background: hsl(var(--card));
-    border: 2px solid hsl(var(--foreground) / 0.15);
+    background: var(--card);
+    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-elevated);
     z-index: var(--z-popover);
@@ -201,12 +202,12 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
     border-radius: 0.5rem;
     border: none;
     background: none;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     cursor: pointer;
     transition: background 0.15s;
     white-space: nowrap;
 }
-.menu-item:hover { background: hsl(var(--muted)); }
+.menu-item:hover { background: var(--muted); }
 
 /* ── Transitions ── */
 .popup-enter-active, .popup-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }

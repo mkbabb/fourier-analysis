@@ -41,12 +41,12 @@ export const router = createRouter({
         {
             path: "/morph",
             name: "morph",
-            component: () => import("@/components/FourierMorphDemo.vue"),
+            component: () => import("@/components/morph/FourierMorphDemo.vue"),
         },
         {
             path: "/demo/shape-extractor",
             name: "shape-extractor",
-            component: () => import("@/components/FourierShapeExtractor.vue"),
+            component: () => import("@/components/morph/FourierShapeExtractor.vue"),
         },
         {
             path: "/s/:slug",

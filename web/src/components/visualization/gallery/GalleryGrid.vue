@@ -101,8 +101,8 @@ const emit = defineEmits<{
 .loading-spinner {
     width: 2rem;
     height: 2rem;
-    border: 2.5px solid hsl(var(--foreground) / 0.1);
-    border-top-color: hsl(var(--foreground) / 0.5);
+    border: 2.5px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+    border-top-color: color-mix(in srgb, var(--foreground) 50%, transparent);
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
 }

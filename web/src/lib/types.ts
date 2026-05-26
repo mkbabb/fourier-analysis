@@ -154,3 +154,77 @@ export interface AdminStats {
     total_likes: number;
     storage_bytes: number;
 }
+
+// ── Cursor Pagination ──
+
+export interface CursorInfo {
+    next_cursor: string | null;
+    has_more: boolean;
+}
+
+export interface GalleryCursorResponse {
+    items: GalleryEntry[];
+    cursor: CursorInfo;
+    total: number;
+}
+
+// ── Admin User Management ──
+
+export interface AdminUserInfo {
+    user_slug: string;
+    created_at: string;
+    last_seen_at: string;
+    entry_count: number;
+    status: string;
+}
+
+export interface AdminUserListResponse {
+    items: AdminUserInfo[];
+    total: number;
+    page: number;
+    pages: number;
+}
+
+// ── Content Flagging ──
+
+export type FlagReason = "inappropriate" | "spam" | "copyright" | "other";
+
+export interface FlagInfo {
+    reporter_slug: string;
+    reason: FlagReason;
+    detail: string | null;
+    created_at: string;
+}
+
+export interface FlaggedEntryInfo {
+    snapshot_hash: string;
+    flag_count: number;
+    flags: FlagInfo[];
+    image_slug: string | null;
+    user_slug: string | null;
+    tier: string | null;
+    created_at: string | null;
+}
+
+export interface FlaggedListResponse {
+    items: FlaggedEntryInfo[];
+    total: number;
+    page: number;
+    pages: number;
+}
+
+// ── Audit Log ──
+
+export interface AuditEntry {
+    timestamp: string;
+    action: string;
+    target: string;
+    ip_hash: string;
+}
+
+export interface AuditListResponse {
+    items: AuditEntry[];
+    total: number;
+    page: number;
+    pages: number;
+}

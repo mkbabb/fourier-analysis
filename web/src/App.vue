@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { RouterView } from "vue-router";
-import { TooltipProvider } from "reka-ui";
+import { TooltipProvider, Toaster } from "@mkbabb/glass-ui";
 import AppHeader from "@/components/layout/AppHeader.vue";
 import SvgFilters from "@/components/decorative/SvgFilters.vue";
-import ToastContainer from "@/components/ui/ToastContainer.vue";
 import { resolveVizColors } from "@/lib/colors";
 
 onMounted(() => {
@@ -28,5 +27,5 @@ onMounted(() => {
             </main>
         </div>
     </TooltipProvider>
-    <ToastContainer />
+    <Toaster />
 </template>

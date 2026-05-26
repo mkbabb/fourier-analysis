@@ -2,8 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import type { GalleryEntry, GalleryTier, AdminStats, WorkspaceDraft } from "@/lib/types";
 import * as api from "@/lib/api";
-import { useUserAuth } from "@/composables/useUserAuth";
-import { useAdminAuth } from "@/composables/useAdminAuth";
+import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 
 export const useGalleryStore = defineStore("gallery", () => {
@@ -22,6 +21,11 @@ export const useGalleryStore = defineStore("gallery", () => {
     const adminMode = ref(false);
     const adminStats = ref<AdminStats | null>(null);
     const adminStatsLoading = ref(false);
+
+    // Cursor pagination state
+    const nextCursor = ref<string | null>(null);
+    const hasMore = ref(true);
+    const loadingMore = ref(false);
 
     // Actions
 
@@ -47,10 +51,57 @@ export const useGalleryStore = defineStore("gallery", () => {
         }
     }
 
+    async function fetchNextPage() {
+        if (!hasMore.value || loadingMore.value) return;
+        loadingMore.value = true;
+        try {
+            const result = await api.listGalleryCursor({
+                limit: 20,
+                sort: sort.value,
+                cursor: nextCursor.value || undefined,
+                tier: tierFilter.value === "all" ? undefined : tierFilter.value,
+                q: searchQuery.value || undefined,
+                basis: basisFilter.value || undefined,
+            });
+            entries.value = [...entries.value, ...result.items];
+            nextCursor.value = result.cursor.next_cursor;
+            hasMore.value = result.cursor.has_more;
+            total.value = result.total;
+        } catch (e: any) {
+            if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
+        } finally {
+            loadingMore.value = false;
+        }
+    }
+
+    async function resetAndFetch() {
+        entries.value = [];
+        nextCursor.value = null;
+        hasMore.value = true;
+        loading.value = true;
+        try {
+            const result = await api.listGalleryCursor({
+                limit: 20,
+                sort: sort.value,
+                tier: tierFilter.value === "all" ? undefined : tierFilter.value,
+                q: searchQuery.value || undefined,
+                basis: basisFilter.value || undefined,
+            });
+            entries.value = result.items;
+            nextCursor.value = result.cursor.next_cursor;
+            hasMore.value = result.cursor.has_more;
+            total.value = result.total;
+        } catch (e: any) {
+            if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
+        } finally {
+            loading.value = false;
+        }
+    }
+
     async function activateAdmin(token: string) {
         try {
             await api.verifyAdmin(token);
-            useAdminAuth().login(token);
+            useAuthStore().adminLogin(token);
             adminMode.value = true;
             toast("Admin mode activated", "success");
             await refreshAdminStats();
@@ -60,13 +111,13 @@ export const useGalleryStore = defineStore("gallery", () => {
     }
 
     function deactivateAdmin() {
-        useAdminAuth().logout();
+        useAuthStore().adminLogout();
         adminMode.value = false;
         adminStats.value = null;
     }
 
     async function refreshAdminStats() {
-        const token = useAdminAuth().getToken();
+        const token = useAuthStore().getAdminToken();
         if (!token) return;
         adminStatsLoading.value = true;
         try {
@@ -79,7 +130,7 @@ export const useGalleryStore = defineStore("gallery", () => {
     }
 
     async function setTier(hash: string, tier: GalleryTier) {
-        const token = useAdminAuth().getToken();
+        const token = useAuthStore().getAdminToken();
         if (!token) return;
         try {
             await api.setGalleryTier(token, hash, tier);
@@ -91,7 +142,7 @@ export const useGalleryStore = defineStore("gallery", () => {
     }
 
     async function deleteEntry(hash: string) {
-        const token = useAdminAuth().getToken();
+        const token = useAuthStore().getAdminToken();
         if (!token) return;
         try {
             await api.deleteGalleryEntry(token, hash);
@@ -131,8 +182,8 @@ export const useGalleryStore = defineStore("gallery", () => {
 
     async function publish(snapshotHash: string, imageSlug: string) {
         try {
-            const userAuth = useUserAuth();
-            const slug = await userAuth.ensureUser();
+            const auth = useAuthStore();
+            const slug = await auth.ensureUser();
             await api.publishToGallery(snapshotHash, imageSlug);
             toast("Published!", "success", { slug });
             await fetchPage();
@@ -144,8 +195,8 @@ export const useGalleryStore = defineStore("gallery", () => {
     async function publishDraft(draft: WorkspaceDraft) {
         if (!draft.contour) throw new Error("Draft has no contour");
         try {
-            const userAuth = useUserAuth();
-            const slug = await userAuth.ensureUser();
+            const auth = useAuthStore();
+            const slug = await auth.ensureUser();
             const snapshot = await api.saveSnapshot(draft.imageSlug, {
                 contour_hash: draft.contour.contour_hash,
                 contour_settings: draft.contourSettings,
@@ -172,7 +223,12 @@ export const useGalleryStore = defineStore("gallery", () => {
         adminMode,
         adminStats,
         adminStatsLoading,
+        nextCursor,
+        hasMore,
+        loadingMore,
         fetchPage,
+        fetchNextPage,
+        resetAndFetch,
         activateAdmin,
         deactivateAdmin,
         refreshAdminStats,

@@ -1,42 +1,37 @@
-import { ref, readonly } from "vue";
+import {
+    toast as glassToast,
+    useToast as glassUseToast,
+    type ToastVariant,
+} from "@mkbabb/glass-ui";
 
-export interface Toast {
-    id: number;
-    message: string;
-    type: "error" | "info" | "success";
-    slug?: string;
-}
+export type ToastType = "error" | "info" | "success";
 
-let nextId = 0;
-const toasts = ref<Toast[]>([]);
-const timers = new Map<number, ReturnType<typeof setTimeout>>();
-
-const DEFAULT_DURATION: Record<Toast["type"], number> = {
-    error: 6000,
-    info: 4000,
-    success: 3000,
+const VARIANT_MAP: Record<ToastType, ToastVariant> = {
+    error: "destructive",
+    info: "default",
+    success: "default",
 };
 
-function addToast(message: string, type: Toast["type"] = "info", options?: { duration?: number; slug?: string }) {
-    const id = nextId++;
-    toasts.value.push({ id, message, type, slug: options?.slug });
-    const timer = setTimeout(() => dismiss(id), options?.duration ?? DEFAULT_DURATION[type]);
-    timers.set(id, timer);
-}
+const TITLE_MAP: Record<ToastType, string> = {
+    error: "Error",
+    info: "Info",
+    success: "Success",
+};
 
-function dismiss(id: number) {
-    const timer = timers.get(id);
-    if (timer !== undefined) {
-        clearTimeout(timer);
-        timers.delete(id);
-    }
-    const idx = toasts.value.findIndex((t) => t.id === id);
-    if (idx !== -1) toasts.value.splice(idx, 1);
+function addToast(message: string, type: ToastType = "info", options?: { duration?: number; slug?: string }) {
+    const description = options?.slug ? `${message} (${options.slug})` : message;
+
+    glassToast({
+        title: TITLE_MAP[type],
+        description,
+        variant: VARIANT_MAP[type],
+    });
 }
 
 export function useToast() {
+    const { dismiss } = glassUseToast();
+
     return {
-        toasts: readonly(toasts),
         toast: addToast,
         dismiss,
     };

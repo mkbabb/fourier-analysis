@@ -175,7 +175,7 @@ onMounted(() => draw());
         <!-- Tooltip -->
         <div
             v-if="hoveredBar !== null && displayComponents[hoveredBar]"
-            class="absolute z-20 px-2 py-1.5 rounded-lg text-xs whitespace-nowrap
+            class="absolute z-[var(--z-controls)] px-2 py-1.5 rounded-lg text-xs whitespace-nowrap
                    pointer-events-none -translate-x-1/2
                    bg-popover text-popover-foreground border-[1.5px] border-border
                    shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
@@ -188,7 +188,7 @@ onMounted(() => draw());
                 />
                 <span class="font-semibold">n = {{ displayComponents[hoveredBar].index }}</span>
             </div>
-            <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[10px]">
+            <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-admin-label">
                 <span class="text-muted-foreground">Amplitude</span>
                 <span class="fira-code">{{ displayComponents[hoveredBar].amplitude.toFixed(4) }}</span>
                 <span class="text-muted-foreground">Phase</span>
@@ -207,7 +207,7 @@ onMounted(() => draw());
     height: 4px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
+    background: var(--border);
     border-radius: 2px;
 }
 </style>

@@ -4,16 +4,18 @@ import { watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
-import { Collapsible } from "@/components/ui/collapsible";
+import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import {
+    Collapsible,
+    CollapsibleTrigger,
+    CollapsibleContent,
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
-} from "@/components/ui/select";
+} from "@mkbabb/glass-ui";
 import { Wand2, ChevronRight, RotateCcw, RefreshCw } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from "reka-ui";
 import SliderControl from "@/components/ui/SliderControl.vue";
 
 const advancedOpen = ref(false);
@@ -183,7 +185,7 @@ watch(
 
 <template>
     <div class="cartoon-card px-3 py-2">
-        <Collapsible title="Contour" subtitle="edge extraction settings" :default-open="false">
+        <CollapsibleSection title="Contour" subtitle="edge extraction settings" :default-open="false">
             <template #actions>
                 <button
                     class="reset-icon-btn"
@@ -243,7 +245,7 @@ watch(
                 </Tooltip>
 
                 <!-- Advanced divider + collapsible -->
-                <CollapsibleRoot v-model:open="advancedOpen">
+                <Collapsible v-model:open="advancedOpen">
                     <div class="advanced-divider">
                         <div class="divider-line" />
                         <CollapsibleTrigger class="advanced-trigger">
@@ -295,10 +297,10 @@ watch(
                             </Tooltip>
                         </div>
                     </CollapsibleContent>
-                </CollapsibleRoot>
+                </Collapsible>
 
             </div>
-        </Collapsible>
+        </CollapsibleSection>
 
         <!-- Retry banner for transient errors -->
         <Transition name="slide-down">
@@ -325,7 +327,7 @@ watch(
 .divider-line {
     flex: 1;
     height: 1px;
-    background: hsl(var(--foreground) / 0.1);
+    background: color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 .advanced-trigger {
     display: inline-flex;
@@ -336,13 +338,13 @@ watch(
     @apply text-sm;
     font-weight: 500;
     letter-spacing: 0.03em;
-    color: hsl(var(--foreground) / 0.4);
+    color: color-mix(in srgb, var(--foreground) 40%, transparent);
     transition: color 0.15s;
     white-space: nowrap;
     padding: 0.125rem 0;
 }
 .advanced-trigger:hover {
-    color: hsl(var(--foreground) / 0.6);
+    color: color-mix(in srgb, var(--foreground) 60%, transparent);
 }
 
 .advanced-content {
@@ -380,7 +382,7 @@ watch(
     padding: 0.25rem;
     border: none;
     background: none;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     cursor: pointer;
     border-radius: 0.25rem;
     transition: color 0.15s, opacity 0.2s;
@@ -390,7 +392,7 @@ watch(
     pointer-events: none;
 }
 .reset-icon-btn:hover {
-    color: hsl(var(--foreground));
+    color: var(--foreground);
 }
 
 /* Retry banner */
@@ -402,13 +404,13 @@ watch(
     padding: 0.5rem 0.75rem;
     margin-top: 0.5rem;
     border-radius: 0.5rem;
-    background: hsl(var(--destructive) / 0.08);
-    border: 1px solid hsl(var(--destructive) / 0.2);
+    background: color-mix(in srgb, var(--destructive) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--destructive) 20%, transparent);
 }
 
 .retry-msg {
     @apply text-sm;
-    color: hsl(var(--destructive));
+    color: var(--destructive);
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -422,9 +424,9 @@ watch(
     gap: 0.25rem;
     padding: 0.25rem 0.625rem;
     border-radius: 0.375rem;
-    border: 1px solid hsl(var(--destructive) / 0.3);
-    background: hsl(var(--destructive) / 0.1);
-    color: hsl(var(--destructive));
+    border: 1px solid color-mix(in srgb, var(--destructive) 30%, transparent);
+    background: color-mix(in srgb, var(--destructive) 10%, transparent);
+    color: var(--destructive);
     @apply text-sm;
     font-weight: 500;
     cursor: pointer;
@@ -433,8 +435,8 @@ watch(
     transition: background 0.15s, border-color 0.15s;
 }
 .retry-btn:hover {
-    background: hsl(var(--destructive) / 0.18);
-    border-color: hsl(var(--destructive) / 0.4);
+    background: color-mix(in srgb, var(--destructive) 18%, transparent);
+    border-color: color-mix(in srgb, var(--destructive) 40%, transparent);
 }
 .retry-btn:disabled {
     opacity: 0.5;

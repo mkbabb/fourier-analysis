@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@mkbabb/glass-ui'
 import { ref, watch } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
 
@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<{
 })
 
 const open = ref(props.defaultOpen)
-const rootEl = ref<InstanceType<typeof CollapsibleRoot> | null>(null)
+const rootEl = ref<InstanceType<typeof Collapsible> | null>(null)
 
 watch(open, (isOpen) => {
     if (isOpen) {
@@ -31,7 +31,7 @@ watch(open, (isOpen) => {
 </script>
 
 <template>
-  <CollapsibleRoot ref="rootEl" v-model:open="open" class="collapsible-section">
+  <Collapsible ref="rootEl" v-model:open="open" class="collapsible-section">
     <div class="flex w-full items-center">
       <CollapsibleTrigger class="collapsible-trigger group flex flex-1 items-center gap-2 py-1.5 cursor-pointer select-none">
         <ChevronRight class="h-4 w-4 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-90': open }" />
@@ -47,7 +47,7 @@ watch(open, (isOpen) => {
         <slot />
       </div>
     </CollapsibleContent>
-  </CollapsibleRoot>
+  </Collapsible>
 </template>
 
 <style scoped>

@@ -65,7 +65,7 @@
                     <path
                         :d="getPath(level)"
                         fill="none"
-                        stroke="hsl(var(--accent-red))"
+                        stroke="var(--accent-red)"
                         stroke-width="4"
                         stroke-linecap="round"
                         stroke-linejoin="round"
@@ -136,7 +136,7 @@ function getPath(level: number): string {
     font-family: var(--font-serif);
     @apply text-lg;
     font-weight: 400;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     margin-bottom: 0.75rem;
 }
 
@@ -158,7 +158,7 @@ function getPath(level: number): string {
 .level-label {
     @apply text-base;
     font-weight: 500;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     white-space: nowrap;
     min-width: 2.5rem;
 }
@@ -166,10 +166,10 @@ function getPath(level: number): string {
 .level-input {
     width: 3.5rem;
     padding: 0.125rem 0.375rem;
-    border: 1.5px solid hsl(var(--foreground) / 0.15);
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     border-radius: 0.375rem;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: var(--background);
+    color: var(--foreground);
     @apply text-base;
     font-weight: 600;
     text-align: center;
@@ -212,16 +212,16 @@ function getPath(level: number): string {
     align-items: center;
     gap: 0.125rem;
     padding: 0.375rem;
-    border: 1.5px solid hsl(var(--foreground) / 0.12);
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 12%, transparent);
     border-radius: 0.5rem;
-    background: hsl(var(--card));
+    background: var(--card);
     cursor: pointer;
     flex-shrink: 0;
     transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
 }
 
 .grid-cell:hover {
-    border-color: hsl(var(--accent-red) / 0.5);
+    border-color: color-mix(in srgb, var(--accent-red) 50%, transparent);
     transform: scale(1.04);
 }
 
@@ -230,8 +230,8 @@ function getPath(level: number): string {
 }
 
 .grid-cell.active {
-    border-color: hsl(var(--accent-red));
-    box-shadow: 0 0 0 2px hsl(var(--accent-red) / 0.15);
+    border-color: var(--accent-red);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-red) 15%, transparent);
 }
 
 .grid-cell.is-bound {
@@ -255,12 +255,12 @@ function getPath(level: number): string {
 .grid-label {
     font-family: var(--font-mono);
     @apply text-sm;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     transition: color 0.15s;
 }
 
 .grid-label-active {
-    color: hsl(var(--accent-red));
+    color: var(--accent-red);
     font-weight: 600;
 }
 

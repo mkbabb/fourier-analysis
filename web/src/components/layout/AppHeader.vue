@@ -1,29 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
+import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useHoverCard } from "./composables/useHoverCard";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useGalleryStore } from "@/stores/gallery";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/visualization/gallery/UserSlugBar.vue";
 import { Shield, ChevronDown, FileText, Eye, LayoutGrid, Sigma, Shuffle } from "lucide-vue-next";
 import {
-    DropdownMenuRoot,
+    DropdownMenu,
     DropdownMenuTrigger,
-    DropdownMenuPortal,
     DropdownMenuContent,
     DropdownMenuItem,
-} from "reka-ui";
+    HoverCard,
+    HoverCardTrigger,
+    HoverCardContent,
+} from "@mkbabb/glass-ui";
 
 const route = useRoute();
 const router = useRouter();
-
-const { isOpen: cardOpen, toggle: toggleCard, close: closeCard, onHoverEnter, onHoverLeave } = useHoverCard();
-
-// Close hover card on outside click (for touch devices)
-function onDocClick() { closeCard(); }
-onMounted(() => document.addEventListener("click", onDocClick));
-onUnmounted(() => document.removeEventListener("click", onDocClick));
 
 const tabs = [
     { label: "Paper", value: "/paper", icon: FileText },
@@ -53,25 +47,25 @@ const galleryStore = useGalleryStore();
 </script>
 
 <template>
-    <header class="app-header sticky top-0 z-50 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+    <header class="app-header sticky top-0 z-[var(--z-overlay)] bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div class="header-inner">
             <!-- Logo with attribution hover card -->
-            <div
-                class="logo-trigger relative shrink-0"
-                role="button"
-                tabindex="0"
-                aria-label="Go to paper"
-                @click.stop="router.push('/paper')"
-                @keydown.enter="router.push('/paper')"
-                @mouseenter="onHoverEnter"
-                @mouseleave="onHoverLeave"
-            >
-                <span class="logo-mark cm-serif font-semibold tracking-tight cursor-pointer select-none">
-                    <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
-                </span>
-
-                <!-- Hover card -->
-                <div class="hover-card" :class="{ 'is-open': cardOpen }">
+            <HoverCard>
+                <HoverCardTrigger as-child>
+                    <div
+                        class="logo-trigger relative shrink-0"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Go to paper"
+                        @click.stop="router.push('/paper')"
+                        @keydown.enter="router.push('/paper')"
+                    >
+                        <span class="logo-mark cm-serif font-semibold tracking-tight cursor-pointer select-none">
+                            <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
+                        </span>
+                    </div>
+                </HoverCardTrigger>
+                <HoverCardContent class="hover-card-content" align="start" :side-offset="6">
                     <div class="flex items-center gap-3">
                         <img
                             src="https://avatars.githubusercontent.com/u/2848617?v=4"
@@ -97,12 +91,12 @@ const galleryStore = useGalleryStore();
                         class="block text-sm text-foreground hover:underline"
                         @click.stop
                     >View project on GitHub 🎉</a>
-                </div>
-            </div>
+                </HoverCardContent>
+            </HoverCard>
 
             <div class="header-divider" />
 
-            <DropdownMenuRoot>
+            <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                     <button class="nav-trigger">
                         <component :is="activeTabData.icon" class="nav-trigger-icon" />
@@ -110,21 +104,19 @@ const galleryStore = useGalleryStore();
                         <ChevronDown class="nav-trigger-chevron" />
                     </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuPortal>
-                    <DropdownMenuContent class="nav-dropdown" :side-offset="6" align="start">
-                        <DropdownMenuItem
-                            v-for="tab in tabs"
-                            :key="tab.value"
-                            class="nav-dropdown-item"
-                            :class="{ 'is-active': activeTab === tab.value }"
-                            @select="onTabSelect(tab.value)"
-                        >
-                            <component :is="tab.icon" class="nav-item-icon" />
-                            <span>{{ tab.label }}</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenuPortal>
-            </DropdownMenuRoot>
+                <DropdownMenuContent class="nav-dropdown" :side-offset="6" align="start">
+                    <DropdownMenuItem
+                        v-for="tab in tabs"
+                        :key="tab.value"
+                        class="nav-dropdown-item"
+                        :class="{ 'is-active': activeTab === tab.value }"
+                        @select="onTabSelect(tab.value)"
+                    >
+                        <component :is="tab.icon" class="nav-item-icon" />
+                        <span>{{ tab.label }}</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
 
             <div class="ml-auto flex items-center gap-1.5 shrink-0">
                 <div v-if="galleryStore.adminMode" class="admin-badge" title="Admin mode active">
@@ -168,18 +160,18 @@ const galleryStore = useGalleryStore();
     border-radius: 0.4375rem;
     border: none;
     background: none;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     cursor: pointer;
     transition: color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 .nav-trigger:hover {
-    color: hsl(var(--foreground) / 0.7);
+    color: color-mix(in srgb, var(--foreground) 70%, transparent);
 }
 
 .nav-trigger:focus-visible {
-    outline: 2px solid hsl(var(--ring));
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
 }
 
@@ -227,7 +219,7 @@ const galleryStore = useGalleryStore();
     width: 1.5px;
     height: 1.25rem;
     align-self: center;
-    background: hsl(var(--foreground) / 0.18);
+    background: color-mix(in srgb, var(--foreground) 18%, transparent);
     flex-shrink: 0;
 }
 
@@ -258,52 +250,14 @@ const galleryStore = useGalleryStore();
     width: 1.75rem;
     height: 1.75rem;
     border-radius: 9999px;
-    background: hsl(var(--tier-featured) / 0.1);
-    color: hsl(var(--tier-featured));
+    background: color-mix(in srgb, var(--tier-featured) 10%, transparent);
+    color: var(--tier-featured);
     flex-shrink: 0;
 }
 
 /* ── Attribution hover card ── */
 .logo-trigger {
     cursor: pointer;
-}
-
-.hover-card {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 0.25rem;
-    padding: 0.875rem 1rem;
-    background: color-mix(in srgb, hsl(var(--popover)) 85%, transparent);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border: 1.5px solid hsl(var(--border) / 0.4);
-    border-radius: 0.75rem;
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.92) translateY(6px);
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: var(--z-popover);
-    min-width: 17rem;
-    box-shadow: var(--shadow-elevated);
-}
-
-/* Bridge gap so hover doesn't drop */
-.hover-card::before {
-    content: '';
-    position: absolute;
-    top: -0.75rem;
-    left: 0;
-    right: 0;
-    height: 0.75rem;
-}
-
-.hover-card.is-open {
-    opacity: 1;
-    pointer-events: auto;
-    transform: scale(1) translateY(0);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
 }
 
 /* Share button enter/leave */
@@ -332,31 +286,17 @@ const galleryStore = useGalleryStore();
 }
 </style>
 
-<!-- Global style for portaled dropdown -->
+<!-- Global style for portaled components -->
 <style>
-/* @global — portaled reka-ui DropdownMenuContent */
-.nav-dropdown {
-    z-index: var(--z-modal);
-    min-width: 12rem;
-    padding: 0.5rem;
-    background: color-mix(in srgb, hsl(var(--popover)) 85%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1.5px solid hsl(var(--border) / 0.4);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-elevated);
-    animation: nav-dropdown-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+/* @global — portaled glass-ui HoverCardContent */
+.hover-card-content {
+    min-width: 17rem;
 }
 
-@keyframes nav-dropdown-in {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(-4px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+/* @global — portaled glass-ui DropdownMenuContent */
+.nav-dropdown {
+    min-width: 12rem;
+    padding: 0.5rem;
 }
 
 .nav-dropdown-item {
@@ -367,7 +307,7 @@ const galleryStore = useGalleryStore();
     border-radius: 0.5rem;
     border: none;
     background: none;
-    color: hsl(var(--foreground) / 0.6);
+    color: color-mix(in srgb, var(--foreground) 60%, transparent);
     font-family: var(--font-serif);
     font-size: 1rem;
     font-weight: 500;
@@ -378,8 +318,8 @@ const galleryStore = useGalleryStore();
 
 .nav-dropdown-item:hover,
 .nav-dropdown-item[data-highlighted] {
-    background: hsl(var(--foreground) / 0.06);
-    color: hsl(var(--foreground));
+    background: color-mix(in srgb, var(--foreground) 6%, transparent);
+    color: var(--foreground);
 }
 
 .nav-dropdown-item.is-active {

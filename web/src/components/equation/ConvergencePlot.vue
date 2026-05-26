@@ -10,6 +10,9 @@ import { hitTestCurves, type CurveHitRegion } from "./lib/hit-test";
 import { groupTrigHarmonics, harmonicProgress, spectrumColor, type TrigHarmonic } from "./lib/harmonics";
 import { createTransitionState, startTransition, snapshotForTransition, lerp } from "./composables/useCurveTransition";
 
+import ConvergenceLegend from "./convergence/ConvergenceLegend.vue";
+import ConvergenceTimeline from "./convergence/ConvergenceTimeline.vue";
+
 const props = defineProps<{
     originalPoints: { x: number[]; y: number[] };
     coefficients: FourierTermDTO[];
@@ -21,11 +24,9 @@ const props = defineProps<{
 // ── Refs ──
 const canvasRef = ref<HTMLCanvasElement>();
 const containerRef = ref<HTMLDivElement>();
-const trackRef = ref<HTMLElement>();
 
 const t = ref(0);
 const playing = ref(false);
-const scrubbing = ref(false);
 const hoveredCurve = ref<string | null>(null);
 const mousePos = ref<{ x: number; y: number } | null>(null);
 
@@ -265,16 +266,16 @@ function togglePlay() {
 
 // ── Scrubbing ──
 
-function tFromPointer(e: PointerEvent): number {
-    const r = trackRef.value!.getBoundingClientRect();
-    return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+function onScrubStart() {
+    stopLoop();
 }
-function onTrackDown(e: PointerEvent) {
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    scrubbing.value = true; stopLoop(); t.value = tFromPointer(e); draw();
+function onScrubMove(newT: number) {
+    t.value = newT;
+    draw();
 }
-function onTrackMove(e: PointerEvent) { if (!scrubbing.value) return; t.value = tFromPointer(e); draw(); }
-function onTrackUp() { scrubbing.value = false; if (playing.value) startLoop(); }
+function onScrubEnd() {
+    if (playing.value) startLoop();
+}
 
 // ── Legend ──
 
@@ -340,62 +341,25 @@ onUnmounted(() => {
         />
 
         <!-- Legend -->
-        <div v-if="trigHarmonics.length" class="legend-overlay">
-            <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'sum' }"
-                @pointerenter="onLegendEnter('sum')" @pointerleave="onLegendLeave()">
-                <span class="legend-dot legend-dot--golden" />
-                <span class="legend-label legend-label--golden">Sum</span>
-            </div>
-            <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'original' }"
-                @pointerenter="onLegendEnter('original')" @pointerleave="onLegendLeave()">
-                <span class="legend-dot legend-dot--dashed" />
-                <span class="legend-label">f(x)</span>
-            </div>
-            <div class="legend-divider" />
-            <div
-                v-for="(h, i) in trigHarmonics" :key="h.k"
-                class="legend-entry"
-                :class="{ 'is-hovered': hoveredCurve === `h-${i}` }"
-                @pointerenter="onLegendEnter(`h-${i}`)"
-                @pointerleave="onLegendLeave()"
-            >
-                <span class="legend-dot" :style="{ background: spectrumColor(i, trigHarmonics.length) }" />
-                <span class="legend-label">n={{ h.k }}</span>
-            </div>
-        </div>
+        <ConvergenceLegend
+            :harmonics="trigHarmonics"
+            :hovered-curve="hoveredCurve"
+            @hover="onLegendEnter"
+            @leave="onLegendLeave"
+        />
     </div>
 
     <!-- Timeline -->
-    <div class="timeline-dock">
-        <button class="play-btn" :class="{ 'is-playing': playing }" @click="togglePlay">
-            <Transition name="icon-swap" mode="out-in">
-                <svg v-if="playing" class="size-3" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
-                <svg v-else class="size-3" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
-            </Transition>
-        </button>
-
-        <div class="timeline-track-wrap">
-            <div
-                ref="trackRef"
-                class="glass-track"
-                role="slider"
-                tabindex="0"
-                :aria-valuenow="activeCount"
-                aria-valuemin="0"
-                :aria-valuemax="trigHarmonics.length"
-                aria-label="Harmonics timeline"
-                @pointerdown="onTrackDown"
-                @pointermove="onTrackMove"
-                @pointerup="onTrackUp"
-                @pointercancel="onTrackUp"
-            >
-                <div class="glass-fill" :style="{ width: `${t * 100}%` }" />
-                <div class="glass-thumb" :style="{ left: `${t * 100}%` }" />
-            </div>
-        </div>
-
-        <span class="timeline-count">N={{ activeCount }}/{{ trigHarmonics.length }}</span>
-    </div>
+    <ConvergenceTimeline
+        :t="t"
+        :playing="playing"
+        :active-count="activeCount"
+        :total-harmonics="trigHarmonics.length"
+        @toggle-play="togglePlay"
+        @scrub-start="onScrubStart"
+        @scrub-move="onScrubMove"
+        @scrub-end="onScrubEnd"
+    />
 </template>
 
 <style scoped>
@@ -414,12 +378,12 @@ onUnmounted(() => {
     font-size: 13px;
     line-height: 1.4;
     padding: 5px 10px;
-    background: hsl(var(--popover) / 0.92);
-    color: hsl(var(--popover-foreground));
-    border: 1.5px solid hsl(var(--border));
+    background: color-mix(in srgb, var(--popover) 92%, transparent);
+    color: var(--popover-foreground);
+    border: 1.5px solid var(--border);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     white-space: nowrap;
-    z-index: 20;
+    z-index: var(--z-controls);
     animation: tooltip-in 0.1s ease;
 }
 
@@ -427,150 +391,4 @@ onUnmounted(() => {
     from { opacity: 0; transform: scale(0.96); }
     to   { opacity: 1; transform: scale(1); }
 }
-
-/* ── Legend ── */
-.legend-overlay {
-    @apply absolute top-2 right-2 flex flex-col gap-0.5 pointer-events-auto;
-    max-height: calc(100% - 16px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: hsl(var(--background) / 0.75);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid hsl(var(--foreground) / 0.06);
-    scrollbar-width: thin;
-    z-index: 5;
-    min-width: 100px;
-}
-
-.legend-entry {
-    @apply flex items-center gap-2.5 px-2 py-1 rounded cursor-default;
-    transition: background 0.1s;
-}
-.legend-entry:hover,
-.legend-entry.is-hovered {
-    background: hsl(var(--foreground) / 0.06);
-}
-
-.legend-divider {
-    height: 1px;
-    margin: 3px 0;
-    background: hsl(var(--foreground) / 0.06);
-}
-
-.legend-dot {
-    @apply shrink-0 rounded-full;
-    width: 10px;
-    height: 10px;
-}
-.legend-dot--golden {
-    background: #f0b632;
-    box-shadow: 0 0 4px rgba(240, 182, 50, 0.4);
-}
-.legend-dot--dashed {
-    background: transparent;
-    border: 2px dashed rgba(180, 180, 180, 0.6);
-}
-
-.legend-label {
-    @apply select-none;
-    font-family: "Fira Code", monospace;
-    color: hsl(var(--muted-foreground));
-    font-size: 13px;
-    line-height: 1.3;
-}
-.legend-label--golden {
-    color: #f0b632;
-    font-weight: 600;
-}
-
-/* ── Timeline ── */
-.timeline-dock {
-    @apply flex items-center gap-2 mt-2;
-}
-
-.timeline-count {
-    font-family: "Fira Code", monospace;
-    font-size: 12px;
-    color: hsl(var(--muted-foreground));
-    width: 3.5rem;
-    text-align: right;
-    flex-shrink: 0;
-    font-variant-numeric: tabular-nums;
-}
-
-.play-btn {
-    @apply flex items-center justify-center shrink-0 rounded-full cursor-pointer;
-    width: 1.75rem;
-    height: 1.75rem;
-    border: 1.5px solid hsl(var(--foreground) / 0.1);
-    background: hsl(var(--background) / 0.6);
-    backdrop-filter: blur(8px);
-    color: hsl(var(--muted-foreground));
-    transition: all 0.15s ease;
-}
-.play-btn:hover {
-    background: hsl(var(--background) / 0.85);
-    color: hsl(var(--foreground));
-}
-.play-btn.is-playing {
-    background: hsl(var(--foreground) / 0.08);
-    border-color: hsl(var(--foreground) / 0.2);
-    color: hsl(var(--foreground));
-}
-
-.timeline-track-wrap {
-    @apply flex-1 min-w-0 relative flex items-center;
-    padding: 0 0.125rem;
-}
-
-.glass-track {
-    @apply relative w-full rounded-xl cursor-pointer outline-none;
-    height: 20px;
-    background: hsl(var(--foreground) / 0.05);
-    backdrop-filter: blur(12px);
-    touch-action: none;
-    overflow: hidden;
-    transition: background 0.2s;
-}
-.glass-track:hover,
-.glass-track:focus-visible {
-    background: hsl(var(--foreground) / 0.08);
-}
-.glass-track:focus-visible {
-    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
-}
-
-.glass-fill {
-    @apply absolute inset-y-0 left-0 rounded-xl pointer-events-none;
-    background: hsl(var(--foreground) / 0.07);
-}
-
-.glass-thumb {
-    @apply absolute pointer-events-none;
-    top: 50%;
-    transform: translate(calc(-50% - 3px), -50%);
-    width: 6px;
-    height: 14px;
-    border-radius: 2px;
-    background: hsl(var(--foreground) / 0.25);
-    opacity: 0;
-    transition: all 0.15s ease;
-}
-.glass-track:hover .glass-thumb {
-    opacity: 1;
-    width: 7px;
-    height: 16px;
-    background: hsl(var(--foreground) / 0.4);
-}
-
-/* ── Transitions ── */
-.icon-swap-enter-active,
-.icon-swap-leave-active {
-    transition: opacity 0.1s ease, transform 0.1s ease;
-}
-.icon-swap-enter-from { opacity: 0; transform: scale(0.7); }
-.icon-swap-leave-to   { opacity: 0; transform: scale(0.7); }
 </style>

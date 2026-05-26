@@ -157,7 +157,7 @@ function timeAgo(iso: string): string {
 
 .gallery-card:hover {
     transform: translateY(-4px) scale(1.02);
-    border-color: hsl(var(--foreground) / 0.25);
+    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
     box-shadow: var(--shadow-cartoon-hover);
 }
 
@@ -167,34 +167,34 @@ function timeAgo(iso: string): string {
 
 /* Tier styling */
 .gallery-card[data-tier="featured"] {
-    border-color: hsl(var(--tier-featured));
-    box-shadow: 0 0 12px hsl(var(--tier-featured) / 0.3);
+    border-color: var(--tier-featured);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--tier-featured) 30%, transparent);
 }
 
 .gallery-card[data-tier="saved"] {
-    border-color: hsl(var(--tier-saved));
-    box-shadow: 0 0 8px hsl(var(--tier-saved) / 0.2);
+    border-color: var(--tier-saved);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--tier-saved) 20%, transparent);
 }
 
 /* Image frame grid background */
 .card-image-frame {
     background: linear-gradient(
-            hsl(var(--foreground) / 0.04) 1px,
+            color-mix(in srgb, var(--foreground) 4%, transparent) 1px,
             transparent 1px
         ),
         linear-gradient(
             90deg,
-            hsl(var(--foreground) / 0.04) 1px,
+            color-mix(in srgb, var(--foreground) 4%, transparent) 1px,
             transparent 1px
         ),
-        hsl(var(--muted));
+        var(--muted);
     background-size: 16px 16px, 16px 16px, auto;
 }
 
 /* Like button */
 .like-btn:hover,
 .like-btn.liked {
-    color: hsl(var(--like));
+    color: var(--like);
 }
 
 .like-btn.liked :deep(svg) {

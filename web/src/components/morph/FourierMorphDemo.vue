@@ -9,49 +9,15 @@
         </div>
 
         <!-- ── Preview stage ──────────────────────────────────── -->
-        <div class="demo-stage">
-            <div class="stage-row">
-                <button class="morph-button cartoon-card" @click="handleToggle" :disabled="isAnimating">
-                    <FourierMorphSvg
-                        :path="morph.currentPath.value"
-                        :stroke-width="4.5"
-                        view-box="0 0 200 200"
-                    />
-                </button>
-
-                <!-- Desktop: info chips stacked beside button -->
-                <div class="demo-info desktop-info">
-                    <div class="info-chip" :class="morph.phase.value">
-                        {{ morph.phase.value }}
-                    </div>
-                    <div class="info-chip">
-                        n={{ Math.round(morph.harmonicLevel.value) }}
-                    </div>
-                    <div class="info-chip">
-                        {{ currentShapeName }}
-                    </div>
-                    <div class="info-chip">
-                        {{ morphConfig.totalMs.value }}ms
-                    </div>
-                </div>
-            </div>
-
-            <!-- Mobile: info chips inline below button -->
-            <div class="demo-info mobile-info">
-                <div class="info-chip" :class="morph.phase.value">
-                    {{ morph.phase.value }}
-                </div>
-                <div class="info-chip">
-                    n={{ Math.round(morph.harmonicLevel.value) }}
-                </div>
-                <div class="info-chip">
-                    {{ currentShapeName }}
-                </div>
-                <div class="info-chip">
-                    {{ morphConfig.totalMs.value }}ms
-                </div>
-            </div>
-        </div>
+        <MorphShapePreview
+            :current-path="morph.currentPath.value"
+            :phase="morph.phase.value"
+            :harmonic-level="Math.round(morph.harmonicLevel.value)"
+            :shape-name="currentShapeName"
+            :total-ms="morphConfig.totalMs.value"
+            :disabled="isAnimating"
+            @toggle="handleToggle"
+        />
 
         <!-- ── Controls section ────────────────────────────────── -->
         <div class="controls-section">
@@ -62,7 +28,7 @@
                     description="Shape degrades to low harmonics"
                     :duration="morphConfig.config.settleOutMs"
                     :easing="morphConfig.config.settleOutEasing"
-                    slider-color="hsl(var(--accent-red))"
+                    slider-color="var(--accent-red)"
                     @update:duration="morphConfig.config.settleOutMs = $event"
                     @update:easing="morphConfig.config.settleOutEasing = $event"
                 />
@@ -72,7 +38,7 @@
                     description="Cross-fade at low harmonics"
                     :duration="morphConfig.config.morphMs"
                     :easing="morphConfig.config.morphEasing"
-                    slider-color="hsl(var(--accent-pink))"
+                    slider-color="var(--accent-pink)"
                     @update:duration="morphConfig.config.morphMs = $event"
                     @update:easing="morphConfig.config.morphEasing = $event"
                 />
@@ -82,7 +48,7 @@
                     description="Resolves to full fidelity"
                     :duration="morphConfig.config.settleInMs"
                     :easing="morphConfig.config.settleInEasing"
-                    slider-color="hsl(var(--accent-red))"
+                    slider-color="var(--accent-red)"
                     @update:duration="morphConfig.config.settleInMs = $event"
                     @update:easing="morphConfig.config.settleInEasing = $event"
                 />
@@ -118,7 +84,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { ClipboardCopy, Check, RotateCcw } from "lucide-vue-next";
-import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
+import MorphShapePreview from "@/components/morph/MorphShapePreview.vue";
 import MorphPhaseConfig from "@/components/morph/MorphPhaseConfig.vue";
 import HarmonicLevelGrid from "@/components/morph/HarmonicLevelGrid.vue";
 import { useFourierMorph } from "@/composables/useFourierMorph";
@@ -249,7 +215,7 @@ function handleReset() {
     @apply text-2xl;
     font-weight: 400;
     margin-bottom: 0.25rem;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
 }
 
 @media (min-width: 640px) {
@@ -260,7 +226,7 @@ function handleReset() {
 }
 
 .demo-subtitle {
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     @apply text-base;
     max-width: 36rem;
 }
@@ -270,115 +236,6 @@ function handleReset() {
         @apply text-lg;
         margin-bottom: 0;
     }
-}
-
-/* ── Preview stage ──────────────────────────── */
-
-.demo-stage {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-@media (min-width: 640px) {
-    .demo-stage {
-        align-items: flex-start;
-        margin-bottom: 2rem;
-    }
-}
-
-.stage-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2rem;
-}
-
-.morph-button {
-    width: 120px;
-    height: 120px;
-    cursor: pointer;
-    padding: 0.625rem;
-    flex-shrink: 0;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
-}
-
-@media (min-width: 640px) {
-    .morph-button {
-        width: 180px;
-        height: 180px;
-        padding: 1rem;
-    }
-}
-
-.morph-button:hover:not(:disabled) {
-    border-color: hsl(var(--accent-red));
-    box-shadow: 0 0 0 3px hsl(var(--accent-red) / 0.15);
-    transform: scale(1.02);
-}
-
-.morph-button:active:not(:disabled) {
-    transform: scale(0.98);
-}
-
-.morph-button:disabled {
-    cursor: wait;
-}
-
-/* ── Info chips ─────────────────────────────── */
-
-.desktop-info {
-    display: none;
-}
-
-.mobile-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.375rem;
-    justify-content: center;
-}
-
-@media (min-width: 640px) {
-    .desktop-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .mobile-info {
-        display: none;
-    }
-}
-
-.info-chip {
-    font-family: var(--font-mono);
-    @apply text-sm;
-    font-weight: 500;
-    padding: 0.1875rem 0.5rem;
-    border-radius: 0.375rem;
-    background: hsl(var(--muted) / 0.6);
-    color: hsl(var(--foreground));
-    white-space: nowrap;
-}
-
-@media (min-width: 640px) {
-    .info-chip {
-        @apply text-base;
-        padding: 0.25rem 0.625rem;
-    }
-}
-
-.info-chip.settle-out,
-.info-chip.settle-in {
-    background: hsl(var(--accent-red) / 0.12);
-    color: hsl(var(--accent-red));
-}
-
-.info-chip.morph {
-    background: hsl(var(--accent-pink) / 0.12);
-    color: hsl(var(--accent-pink));
 }
 
 /* ── Controls section ───────────────────────── */
@@ -432,8 +289,8 @@ function handleReset() {
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     border: 0;
-    background: hsl(var(--foreground));
-    color: hsl(var(--background));
+    background: var(--foreground);
+    color: var(--background);
     font-family: var(--font-mono);
     @apply text-base;
     font-weight: 600;
@@ -455,9 +312,9 @@ function handleReset() {
     gap: 0.375rem;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    border: 2px solid hsl(var(--foreground) / 0.15);
+    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     background: none;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     font-family: var(--font-mono);
     @apply text-base;
     font-weight: 500;
@@ -466,7 +323,7 @@ function handleReset() {
 }
 
 .btn-reset:hover {
-    border-color: hsl(var(--foreground) / 0.3);
-    color: hsl(var(--foreground));
+    border-color: color-mix(in srgb, var(--foreground) 30%, transparent);
+    color: var(--foreground);
 }
 </style>

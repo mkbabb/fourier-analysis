@@ -79,7 +79,7 @@ const emit = defineEmits<{
 }
 
 .featured-scroll::-webkit-scrollbar-thumb {
-    background: hsl(var(--foreground) / 0.15);
+    background: color-mix(in srgb, var(--foreground) 15%, transparent);
     border-radius: 2px;
 }
 

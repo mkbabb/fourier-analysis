@@ -73,7 +73,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             >
                 <div class="modal-card relative bg-card rounded-xl border-2 border-foreground/15 overflow-hidden max-w-[28rem] w-full max-h-[90vh] overflow-y-auto" @click.stop>
                     <button
-                        class="glass-btn w-8 h-8 absolute top-2.5 right-2.5 z-10"
+                        class="glass-btn w-8 h-8 absolute top-2.5 right-2.5 z-[var(--z-content)]"
                         @click="emit('close')"
                     >
                         <X :size="18" />
@@ -174,7 +174,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
                         <!-- CTA -->
                         <button
-                            class="callout-btn inline-flex items-center justify-center gap-1.5 mt-2.5 px-5 py-2 rounded-[0.625rem] border-2 border-foreground/12 text-base font-semibold text-foreground bg-foreground/3 cursor-pointer transition-all duration-150 hover:bg-foreground/7 hover:border-foreground/20 active:scale-[0.98]"
+                            class="callout-btn inline-flex items-center justify-center gap-1.5 mt-2.5 px-5 py-2 rounded-lg border-2 border-foreground/12 text-base font-semibold text-foreground bg-foreground/3 cursor-pointer transition-all duration-150 hover:bg-foreground/7 hover:border-foreground/20 active:scale-[0.98]"
                             @click="emit('open-visualizer', entry.image_slug)"
                         >
                             <span class="fourier-f">&Fscr;</span>
@@ -197,21 +197,21 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 }
 
 /* Tier badge colors */
-.modal-tier-badge[data-tier="featured"] { color: hsl(var(--tier-featured)); }
-.modal-tier-badge[data-tier="saved"] { color: hsl(var(--tier-saved)); }
+.modal-tier-badge[data-tier="featured"] { color: var(--tier-featured); }
+.modal-tier-badge[data-tier="saved"] { color: var(--tier-saved); }
 
 /* Like button */
 .like-btn:hover,
 .like-btn.liked {
-    color: hsl(var(--like));
+    color: var(--like);
 }
 
 /* Tier button */
 .tier-btn {
-    border: 1.5px solid hsl(var(--foreground) / 0.12);
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 12%, transparent);
 }
-.tier-btn:hover { border-color: hsl(var(--foreground) / 0.25); }
-.tier-btn.active { background: hsl(var(--foreground) / 0.06); color: hsl(var(--foreground)); }
+.tier-btn:hover { border-color: color-mix(in srgb, var(--foreground) 25%, transparent); }
+.tier-btn.active { background: color-mix(in srgb, var(--foreground) 6%, transparent); color: var(--foreground); }
 
 /* Transitions */
 .modal-enter-active {

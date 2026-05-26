@@ -136,7 +136,7 @@ function onImgError() {
     height: 6px;
     border-radius: 9999px;
     overflow: hidden;
-    background: hsl(var(--muted));
+    background: var(--muted);
 }
 
 .rainbow-bar {
@@ -177,7 +177,7 @@ function onImgError() {
     --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
     --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
-    outline: 2px dashed hsl(var(--primary));
+    outline: 2px dashed var(--primary);
     outline-offset: 3px;
 }
 </style>

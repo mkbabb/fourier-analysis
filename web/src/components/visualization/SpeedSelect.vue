@@ -6,7 +6,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from "@mkbabb/glass-ui";
 
 const props = withDefaults(
     defineProps<{
@@ -52,7 +52,7 @@ const speedStr = computed({
     border: none;
     background: none;
     border-radius: 9999px;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
 }
 
 .speed-trigger-compact {
@@ -61,7 +61,7 @@ const speedStr = computed({
     flex-shrink: 0;
     font-family: "Fira Code", monospace;
     @apply text-sm;
-    border: 1.5px solid hsl(var(--foreground) / 0.15);
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     border-radius: 9999px;
 }
 </style>

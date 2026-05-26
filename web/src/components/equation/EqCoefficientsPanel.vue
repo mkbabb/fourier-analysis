@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
-import { Collapsible } from "@/components/ui/collapsible";
+import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { BasisComponent } from "@/lib/types";
 
@@ -38,7 +38,7 @@ function formatPercent(amplitude: number): string {
 
 <template>
     <div class="cartoon-card px-3 py-2">
-        <Collapsible title="Coefficients" subtitle="Fourier spectrum" :default-open="false">
+        <CollapsibleSection title="Coefficients" subtitle="Fourier spectrum" :default-open="false">
             <div class="pt-1">
                 <div class="flex items-center justify-end mb-2">
                     <span class="fira-code text-xs text-muted-foreground">
@@ -74,7 +74,7 @@ function formatPercent(amplitude: number): string {
                                     <span class="inline-block w-2 h-2 rounded-full" :style="{ backgroundColor: spectrumColor(i, topComponents.length) }" />
                                     <span class="font-semibold">n = {{ comp.index }}</span>
                                 </div>
-                                <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[10px]">
+                                <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-admin-label">
                                     <span class="text-muted-foreground">Amplitude</span>
                                     <span class="fira-code">{{ comp.amplitude.toFixed(4) }}</span>
                                     <span class="text-muted-foreground">Phase</span>
@@ -106,7 +106,7 @@ function formatPercent(amplitude: number): string {
                     Compute to see coefficients
                 </p>
             </div>
-        </Collapsible>
+        </CollapsibleSection>
     </div>
 </template>
 
@@ -124,10 +124,10 @@ function formatPercent(amplitude: number): string {
     position: absolute;
     left: 0;
     top: calc(100% + 4px);
-    z-index: 20;
-    background: hsl(var(--popover));
-    color: hsl(var(--popover-foreground));
-    border: 1.5px solid hsl(var(--border));
+    z-index: var(--z-controls);
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border: 1.5px solid var(--border);
     border-radius: 0.5rem;
     padding: 0.5rem 0.625rem;
     @apply text-sm;

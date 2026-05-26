@@ -15,7 +15,7 @@ import MobileFloatingToc from "./MobileFloatingToc.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
 import { getPaperPreview, paperSectionToTreeNode } from "./paperTree";
 import { useScrollNavigation } from "./useScrollNavigation";
-import { usePaperSearch } from "./usePaperSearch";
+import { usePaperSearch } from "./search/usePaperSearch";
 import { paperSections, labelMap, totalPages, pageMap, extractedMacros } from "@/lib/paperContent";
 import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
@@ -332,7 +332,7 @@ onUnmounted(() => {
 
         <!-- Bottom overlay: page indicator (left) + back button (right) -->
         <div class="paper-bottom-overlay">
-            <div class="overlay-page fira-code">
+            <div class="overlay-page glass-subtle fira-code">
                 pg {{ currentPage }}<span class="overlay-page-sep">/</span>{{ totalPages }}
             </div>
 
@@ -369,7 +369,7 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     height: 2rem;
-    z-index: 10;
+    z-index: var(--z-content);
     pointer-events: none;
 }
 
@@ -377,8 +377,8 @@ onUnmounted(() => {
     top: 0;
     background: linear-gradient(
         to bottom,
-        hsl(var(--background) / 0.55),
-        hsl(var(--background) / 0) 70%
+        color-mix(in srgb, var(--background) 55%, transparent),
+        transparent 70%
     );
     mask-image: linear-gradient(to bottom, black, transparent);
     -webkit-mask-image: linear-gradient(to bottom, black, transparent);
@@ -388,8 +388,8 @@ onUnmounted(() => {
     bottom: 0;
     background: linear-gradient(
         to top,
-        hsl(var(--background) / 0.55),
-        hsl(var(--background) / 0) 70%
+        color-mix(in srgb, var(--background) 55%, transparent),
+        transparent 70%
     );
     mask-image: linear-gradient(to top, black, transparent);
     -webkit-mask-image: linear-gradient(to top, black, transparent);
@@ -401,16 +401,16 @@ onUnmounted(() => {
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior-y: contain;
-    max-width: 100vw;
+    max-width: 100dvw;
 }
 
 .teleport-overlay {
     position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: var(--z-overlay);
     background:
-        radial-gradient(circle at center, hsl(var(--background) / 0.92), hsl(var(--background) / 0.985) 68%),
-        hsl(var(--background));
+        radial-gradient(circle at center, color-mix(in srgb, var(--background) 92%, transparent), color-mix(in srgb, var(--background) 98%, transparent) 68%),
+        var(--background);
     opacity: 0;
     pointer-events: none;
     transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -424,9 +424,9 @@ onUnmounted(() => {
     hyphens: auto;
     min-width: 0;
     border-radius: 0.75rem;
-    border: 2px solid hsl(var(--foreground) / 0.15);
-    background: hsl(var(--card));
-    box-shadow: 3px 3px 0px 0px hsl(var(--foreground) / 0.08);
+    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+    background: var(--card);
+    box-shadow: 3px 3px 0px 0px color-mix(in srgb, var(--foreground) 8%, transparent);
     padding: 1.25rem 1rem;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -458,7 +458,7 @@ onUnmounted(() => {
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 15;
+    z-index: var(--z-controls);
     pointer-events: none;
     display: flex;
     justify-content: space-between;
@@ -476,19 +476,19 @@ onUnmounted(() => {
     width: 2rem;
     height: 2rem;
     border-radius: 50%;
-    border: 1.5px solid hsl(var(--border));
-    background: hsl(var(--background) / 0.92);
+    border: 1.5px solid var(--border);
+    background: color-mix(in srgb, var(--background) 92%, transparent);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    color: hsl(var(--foreground) / 0.7);
+    color: color-mix(in srgb, var(--foreground) 70%, transparent);
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .overlay-btn:hover {
-    color: hsl(var(--foreground));
-    border-color: hsl(var(--foreground) / 0.25);
+    color: var(--foreground);
+    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     transform: scale(1.05);
 }
@@ -504,8 +504,8 @@ onUnmounted(() => {
     min-width: 16px;
     height: 16px;
     border-radius: 8px;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    background: var(--primary);
+    color: var(--primary-foreground);
     @apply text-sm;
     font-weight: 700;
     display: flex;
@@ -518,11 +518,7 @@ onUnmounted(() => {
 .overlay-page {
     pointer-events: auto;
     @apply text-sm;
-    color: hsl(var(--muted-foreground) / 0.7);
-    background: hsl(var(--background) / 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid hsl(var(--border) / 0.5);
+    color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
     border-radius: 0.375rem;
     padding: 0.25rem 0.5rem;
     letter-spacing: 0.02em;

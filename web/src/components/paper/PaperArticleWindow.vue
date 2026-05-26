@@ -115,9 +115,9 @@ function bindSection(
 .interactive-callout {
     margin: 1.5rem 0;
     padding: 1.25rem 1.5rem;
-    border: 1px solid hsl(var(--border));
+    border: 1px solid var(--border);
     border-radius: 0.75rem;
-    background: hsl(var(--muted) / 0.25);
+    background: color-mix(in srgb, var(--muted) 25%, transparent);
     text-align: center;
 }
 
@@ -128,17 +128,17 @@ function bindSection(
     padding: 0.625rem 1.5rem;
     @apply text-base;
     font-weight: 600;
-    color: hsl(var(--primary-foreground));
-    background: hsl(var(--primary));
+    color: var(--primary-foreground);
+    background: var(--primary);
     border-radius: 9999px;
     text-decoration: none;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 2px 8px hsl(var(--primary) / 0.25);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
 .callout-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.35);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 .callout-btn .fourier-f {

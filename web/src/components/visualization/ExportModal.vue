@@ -103,14 +103,14 @@ function doExport() {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: hsl(var(--background) / 0.7);
+    background: color-mix(in srgb, var(--background) 70%, transparent);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
 }
 
 .modal-card {
-    background: hsl(var(--card));
-    border: 2px solid hsl(var(--foreground) / 0.15);
+    background: var(--card);
+    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-modal);
     padding: 1.25rem;
@@ -152,7 +152,7 @@ function doExport() {
 }
 
 .option-row:hover {
-    background: hsl(var(--muted) / 0.5);
+    background: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
 .option-label {
@@ -166,16 +166,16 @@ function doExport() {
     width: 2.5rem;
     height: 1.375rem;
     border-radius: 9999px;
-    border: 2px solid hsl(var(--foreground) / 0.15);
-    background: hsl(var(--muted));
+    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+    background: var(--muted);
     cursor: pointer;
     transition: background 0.2s, border-color 0.2s;
     flex-shrink: 0;
 }
 
 .toggle.is-on {
-    background: hsl(var(--primary));
-    border-color: hsl(var(--primary));
+    background: var(--primary);
+    border-color: var(--primary);
 }
 
 .toggle-thumb {
@@ -185,7 +185,7 @@ function doExport() {
     width: 0.875rem;
     height: 0.875rem;
     border-radius: 50%;
-    background: hsl(var(--background));
+    background: var(--background);
     box-shadow: var(--shadow-soft);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }

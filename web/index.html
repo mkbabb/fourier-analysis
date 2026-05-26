@@ -32,8 +32,11 @@
 
         <script>
             // Init dark mode before first paint to prevent flash
+            // Checks both legacy key ("theme") and VueUse key ("vueuse-color-scheme")
             (function() {
-                var saved = localStorage.getItem("theme");
+                var legacy = localStorage.getItem("theme");
+                var vueuse = localStorage.getItem("vueuse-color-scheme");
+                var saved = vueuse || legacy;
                 if (saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
                     document.documentElement.classList.add("dark");
                 }

@@ -3,7 +3,7 @@ import { ref, reactive, watch, nextTick, onUnmounted } from "vue";
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-vue-next";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
-import type { PaperSearchState } from "./usePaperSearch";
+import type { PaperSearchState } from "./search/usePaperSearch";
 
 const props = defineProps<{
     sections: PaperSectionData[];
@@ -91,14 +91,14 @@ watch(() => props.search.isOpen.value, (open) => {
     <div class="floating-toc lg:hidden">
         <div class="floating-toc-anchor">
             <!-- Search mode: input replaces section title -->
-            <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search">
+            <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search glass-medium">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" />
                 <button class="floating-toc-search-close" @click="closeMobileSearch" title="Close search">
                     <X class="h-4 w-4" />
                 </button>
             </div>
             <!-- Normal mode: section title + search icon -->
-            <button v-else class="floating-toc-bar" @click="floatingTocOpen = !floatingTocOpen">
+            <button v-else class="floating-toc-bar glass-medium" @click="floatingTocOpen = !floatingTocOpen">
                 <span class="floating-toc-section cm-serif">
                     <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
                     {{ currentSection?.title }}
@@ -114,7 +114,7 @@ watch(() => props.search.isOpen.value, (open) => {
                 <div
                     v-if="floatingTocOpen"
                     ref="dropdownRef"
-                    class="floating-toc-dropdown"
+                    class="floating-toc-dropdown glass-medium"
                 >
                     <!-- Scroll to top -->
                     <button
@@ -172,7 +172,7 @@ watch(() => props.search.isOpen.value, (open) => {
 .floating-toc {
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: var(--z-controls);
     height: 0;
     overflow: visible;
 }
@@ -188,16 +188,13 @@ watch(() => props.search.isOpen.value, (open) => {
     gap: 0.5rem;
     width: 100%;
     padding: 0.625rem 1rem;
-    background: hsl(var(--background) / 0.92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border: none;
-    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
     cursor: pointer;
     text-align: left;
     @apply text-base;
     font-weight: 500;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     position: relative;
     z-index: 2;
 }
@@ -223,13 +220,13 @@ watch(() => props.search.isOpen.value, (open) => {
     justify-content: center;
     padding: 0.25rem;
     border-radius: 0.25rem;
-    color: hsl(var(--muted-foreground) / 0.5);
+    color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
     transition: all 0.15s;
 }
 
 .floating-toc-search-btn:hover {
-    color: hsl(var(--foreground));
-    background: hsl(var(--muted) / 0.5);
+    color: var(--foreground);
+    background: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
 .floating-toc-bar--search {
@@ -251,13 +248,13 @@ watch(() => props.search.isOpen.value, (open) => {
     padding: 0.25rem;
     border: none;
     background: none;
-    color: hsl(var(--muted-foreground) / 0.6);
+    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
     cursor: pointer;
     flex-shrink: 0;
 }
 
 .floating-toc-search-close:hover {
-    color: hsl(var(--foreground));
+    color: var(--foreground);
 }
 
 .floating-toc-chevron {
@@ -277,10 +274,7 @@ watch(() => props.search.isOpen.value, (open) => {
     left: 0;
     right: 0;
     z-index: 2;
-    background: hsl(var(--background) / 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid hsl(var(--border));
+    border-bottom: 1px solid var(--border);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     max-height: 60vh;
     overflow-y: auto;
@@ -297,12 +291,12 @@ watch(() => props.search.isOpen.value, (open) => {
 }
 
 .floating-toc-top {
-    display: flex !important;
+    display: flex;
     align-items: center;
     gap: 0.375rem;
-    color: hsl(var(--muted-foreground) / 0.7) !important;
-    font-size: 0.75rem !important;
-    line-height: 1rem !important;
+    color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+    font-size: 0.75rem;
+    line-height: 1rem;
 }
 
 .floating-toc-top-icon {
@@ -313,7 +307,7 @@ watch(() => props.search.isOpen.value, (open) => {
 
 .floating-toc-divider {
     height: 1px;
-    background: hsl(var(--border) / 0.5);
+    background: color-mix(in srgb, var(--border) 50%, transparent);
     margin: 0.25rem 0.75rem;
 }
 
@@ -327,12 +321,12 @@ watch(() => props.search.isOpen.value, (open) => {
     cursor: pointer;
     text-align: left;
     @apply text-base;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     transition: all 0.15s;
 }
 
 .floating-toc-root {
-    display: flex !important;
+    display: flex;
     align-items: center;
     gap: 0.25rem;
 }
@@ -347,13 +341,13 @@ watch(() => props.search.isOpen.value, (open) => {
 .floating-toc-sub {
     padding-left: 2.25rem;
     font-size: 0.8125rem;
-    color: hsl(var(--muted-foreground) / 0.7);
+    color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
 }
 
 .floating-toc-item:hover,
 .floating-toc-item.is-active {
-    background: hsl(var(--muted) / 0.5);
-    color: hsl(var(--foreground));
+    background: color-mix(in srgb, var(--muted) 50%, transparent);
+    color: var(--foreground);
 }
 
 .floating-toc-item.is-active {

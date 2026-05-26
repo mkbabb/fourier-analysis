@@ -19,7 +19,7 @@ const anim = useAnimationStore();
                 <EasingCurvePreview
                     :easing="(key as EasingName)"
                     :size="28"
-                    :color="anim.easing === key ? 'hsl(var(--easing-accent))' : 'hsl(var(--muted-foreground))'"
+                    :color="anim.easing === key ? 'var(--easing-accent)' : 'var(--muted-foreground)'"
                 />
                 <span class="easing-chip-label">{{ opt.label }}</span>
             </button>
@@ -31,7 +31,7 @@ const anim = useAnimationStore();
 @reference "tailwindcss";
 .easing-section {
     padding: 0.375rem 0.5rem;
-    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
     margin-bottom: 0.125rem;
     padding-bottom: 0.5rem;
 }
@@ -39,7 +39,7 @@ const anim = useAnimationStore();
     display: block;
     @apply text-sm;
     font-weight: 500;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     margin-bottom: 0.375rem;
     letter-spacing: 0.02em;
 }
@@ -61,20 +61,20 @@ const anim = useAnimationStore();
     transition: all 0.15s;
 }
 .easing-chip:hover {
-    background: hsl(var(--muted));
+    background: var(--muted);
 }
 .easing-chip.is-active {
-    border-color: hsl(var(--easing-accent) / 0.6);
-    background: hsl(var(--easing-accent) / 0.08);
+    border-color: color-mix(in srgb, var(--easing-accent) 60%, transparent);
+    background: color-mix(in srgb, var(--easing-accent) 8%, transparent);
 }
 .easing-chip-label {
     font-size: 0.5625rem;
     font-weight: 500;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     line-height: 1;
     transition: color 0.15s;
 }
 .easing-chip.is-active .easing-chip-label {
-    color: hsl(var(--easing-accent));
+    color: var(--easing-accent);
 }
 </style>

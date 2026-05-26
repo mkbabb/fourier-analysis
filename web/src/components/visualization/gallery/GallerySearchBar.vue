@@ -8,7 +8,7 @@ import {
     SelectContent,
     SelectItem,
     SelectValue,
-} from "@/components/ui/select";
+} from "@mkbabb/glass-ui";
 
 const props = defineProps<{
     searchQuery: string;
@@ -71,7 +71,7 @@ const hasActiveFilters = computed(() =>
         <!-- Filter drawer (overlaid, does not affect flow) -->
         <Transition name="filter-drawer">
             <div v-if="showFilters" class="filter-anchor">
-                <div class="filter-panel">
+                <div class="filter-panel glass-medium">
                     <div class="flex items-center gap-2">
                         <Select
                             :model-value="tierFilter"
@@ -139,17 +139,17 @@ const hasActiveFilters = computed(() =>
     max-width: 32rem;
     padding: 0.375rem 0.75rem;
     border-radius: 0.5rem;
-    background: hsl(var(--muted) / 0.5);
-    border: 1px solid hsl(var(--border) / 0.35);
+    background: color-mix(in srgb, var(--muted) 50%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
 }
 
 .search-input::placeholder {
-    color: hsl(var(--muted-foreground) / 0.5);
+    color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }
 
 .filter-toggle.is-active {
-    color: hsl(var(--foreground));
-    background: hsl(var(--foreground) / 0.08);
+    color: var(--foreground);
+    background: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 /* Filter drawer — absolutely positioned overlay */
@@ -157,7 +157,7 @@ const hasActiveFilters = computed(() =>
     position: absolute;
     top: 100%;
     left: 0;
-    z-index: 30;
+    z-index: var(--z-bar);
     width: 100%;
     max-width: 32rem;
     padding-top: 0.5rem;
@@ -170,11 +170,7 @@ const hasActiveFilters = computed(() =>
     width: 100%;
     padding: 0.75rem;
     border-radius: 0.75rem;
-    border: 1px solid hsl(var(--border) / 0.5);
-    background: hsl(var(--card) / 0.92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 8px 24px hsl(var(--foreground) / 0.08);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 /* Filter drawer transition */

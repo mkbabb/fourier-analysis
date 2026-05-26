@@ -27,7 +27,7 @@ withDefaults(
     }>(),
     {
         viewBox: "0 0 200 200",
-        strokeColor: "hsl(var(--accent-red))",
+        strokeColor: "var(--accent-red)",
         strokeWidth: 3,
     },
 );

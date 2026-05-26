@@ -26,7 +26,7 @@
                     max="800"
                     step="10"
                     class="styled-slider"
-                    :style="sliderStyle(duration, 50, 800, sliderColor ?? 'hsl(var(--accent-red))')"
+                    :style="sliderStyle(duration, 50, 800, sliderColor ?? 'var(--accent-red)')"
                 />
             </div>
         </div>
@@ -68,7 +68,7 @@ import {
     SelectContent,
     SelectItem,
     SelectValue,
-} from "@/components/ui/select";
+} from "@mkbabb/glass-ui";
 import {
     EASING_PRESETS,
     EASING_PRESET_NAMES,
@@ -114,13 +114,13 @@ const easingNames = EASING_PRESET_NAMES;
     font-family: var(--font-serif);
     @apply text-lg;
     font-weight: 400;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     margin-bottom: 0.125rem;
 }
 
 .config-card-desc {
     @apply text-sm;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     margin-bottom: 0.875rem;
 }
 
@@ -142,7 +142,7 @@ const easingNames = EASING_PRESET_NAMES;
     display: block;
     @apply text-base;
     font-weight: 500;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     margin-bottom: 0.375rem;
 }
 
@@ -160,10 +160,10 @@ const easingNames = EASING_PRESET_NAMES;
 .num-input {
     width: 3.5rem;
     padding: 0.125rem 0.375rem;
-    border: 1.5px solid hsl(var(--foreground) / 0.15);
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     border-radius: 0.375rem;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: var(--background);
+    color: var(--foreground);
     @apply text-base;
     font-weight: 600;
     text-align: right;
@@ -179,13 +179,13 @@ const easingNames = EASING_PRESET_NAMES;
 }
 
 .num-input:focus {
-    border-color: hsl(var(--accent-red));
-    box-shadow: 0 0 0 2px hsl(var(--accent-red) / 0.12);
+    border-color: var(--accent-red);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-red) 12%, transparent);
 }
 
 .input-unit {
     @apply text-sm;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
 }
 
 .easing-preview {

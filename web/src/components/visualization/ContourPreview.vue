@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { type Point2D, closedSplinePath } from "@/lib/contourEditing";
-import { Collapsible } from "@/components/ui/collapsible";
+import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 
 const props = defineProps<{
     points: Point2D[] | undefined;
@@ -31,7 +31,7 @@ const previewViewBox = computed(() => {
 
 <template>
     <div class="cartoon-card px-3 py-2">
-        <Collapsible title="Preview" subtitle="live contour shape" :default-open="true">
+        <CollapsibleSection title="Preview" subtitle="live contour shape" :default-open="true">
             <div class="flex items-center justify-center p-2">
                 <svg
                     :viewBox="previewViewBox"
@@ -49,7 +49,7 @@ const previewViewBox = computed(() => {
                     </g>
                 </svg>
             </div>
-        </Collapsible>
+        </CollapsibleSection>
     </div>
 </template>
 

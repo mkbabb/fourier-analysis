@@ -64,7 +64,7 @@ watchDebounced(
 </script>
 
 <template>
-    <div class="eq-panel">
+    <div class="eq-panel glass-subtle">
         <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-medium text-foreground">Equation</span>
             <div class="flex items-center gap-2">
@@ -88,7 +88,7 @@ watchDebounced(
                 label="Terms"
                 :model-value="budget"
                 :min="2" :max="20" :step="1"
-                color="hsl(var(--viz-fourier))"
+                color="var(--viz-fourier)"
                 @update:model-value="budget = $event"
             />
         </div>
@@ -110,10 +110,6 @@ watchDebounced(
     top: 3.5rem;
     left: 0.5rem;
     max-width: min(28rem, calc(100% - 1rem));
-    background: color-mix(in srgb, hsl(var(--background)) 75%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1.5px solid hsl(var(--border) / 0.3);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 

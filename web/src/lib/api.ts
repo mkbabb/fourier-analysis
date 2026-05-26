@@ -8,10 +8,15 @@ import type {
     Snapshot,
     GalleryEntry,
     GalleryListResponse,
+    GalleryCursorResponse,
     GalleryTier,
+    FlagReason,
     SessionResponse,
     UserInfo,
     AdminStats,
+    AdminUserListResponse,
+    FlaggedListResponse,
+    AuditListResponse,
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL || "";
@@ -404,4 +409,190 @@ export async function deleteGalleryEntry(
     return adminFetch<{ ok: boolean }>(`/api/admin/gallery/${hash}`, token, {
         method: "DELETE",
     });
+}
+
+// ── Cursor pagination ──
+
+export async function listGalleryCursor(params: {
+    limit?: number;
+    sort?: string;
+    cursor?: string;
+    tier?: GalleryTier;
+    q?: string;
+    basis?: string;
+    user_slug?: string;
+}): Promise<GalleryCursorResponse> {
+    const qs = new URLSearchParams();
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.sort) qs.set("sort", params.sort);
+    if (params.cursor) qs.set("cursor", params.cursor);
+    if (params.tier) qs.set("tier", params.tier);
+    if (params.q) qs.set("q", params.q);
+    if (params.basis) qs.set("basis", params.basis);
+    if (params.user_slug) qs.set("user_slug", params.user_slug);
+    const query = qs.toString();
+    return apiFetch<GalleryCursorResponse>(
+        `/api/gallery/cursor${query ? `?${query}` : ""}`,
+        "listGalleryCursor",
+    );
+}
+
+// ── User entry ownership ──
+
+export async function deleteOwnGalleryEntry(
+    hash: string,
+): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>(`/api/gallery/${hash}`, "deleteOwnEntry", {
+        method: "DELETE",
+    });
+}
+
+export async function updateGalleryEntry(
+    hash: string,
+    data: { image_slug?: string },
+): Promise<GalleryEntry> {
+    return apiFetch<GalleryEntry>(`/api/gallery/${hash}`, "updateEntry", {
+        method: "PUT",
+        body: data,
+    });
+}
+
+// ── Content flagging ──
+
+export async function flagGalleryEntry(
+    hash: string,
+    reason: FlagReason,
+    detail?: string,
+): Promise<{ flagged: boolean }> {
+    return apiFetch<{ flagged: boolean }>(`/api/gallery/${hash}/flag`, "flagEntry", {
+        method: "POST",
+        body: { reason, detail: detail || null },
+    });
+}
+
+// ── Admin: user management ──
+
+export async function listAdminUsers(
+    token: string,
+    params: { page?: number; limit?: number; sort?: string; q?: string },
+): Promise<AdminUserListResponse> {
+    const qs = new URLSearchParams();
+    if (params.page != null) qs.set("page", String(params.page));
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.sort) qs.set("sort", params.sort);
+    if (params.q) qs.set("q", params.q);
+    const query = qs.toString();
+    return adminFetch<AdminUserListResponse>(
+        `/api/admin/users${query ? `?${query}` : ""}`,
+        token,
+    );
+}
+
+export async function setAdminUserStatus(
+    token: string,
+    slug: string,
+    status: "active" | "suspended",
+): Promise<{ slug: string; status: string }> {
+    return adminFetch<{ slug: string; status: string }>(
+        `/api/admin/users/${slug}/status`,
+        token,
+        { method: "POST", body: { status } },
+    );
+}
+
+export async function deleteAdminUser(
+    token: string,
+    slug: string,
+): Promise<{ deleted: boolean; entries_deleted: number }> {
+    return adminFetch<{ deleted: boolean; entries_deleted: number }>(
+        `/api/admin/users/${slug}`,
+        token,
+        { method: "DELETE" },
+    );
+}
+
+export async function pruneEmptyUsers(
+    token: string,
+): Promise<{ pruned: number }> {
+    return adminFetch<{ pruned: number }>(
+        "/api/admin/users/prune-empty",
+        token,
+        { method: "POST" },
+    );
+}
+
+// ── Admin: batch operations ──
+
+export async function batchGallery(
+    token: string,
+    action: "delete" | "feature" | "unfeature",
+    hashes: string[],
+): Promise<{ processed: number }> {
+    return adminFetch<{ processed: number }>("/api/admin/gallery/batch", token, {
+        method: "POST",
+        body: { action, hashes },
+    });
+}
+
+export async function batchUsers(
+    token: string,
+    action: "delete" | "suspend" | "unsuspend",
+    slugs: string[],
+): Promise<{ processed: number }> {
+    return adminFetch<{ processed: number }>("/api/admin/users/batch", token, {
+        method: "POST",
+        body: { action, slugs },
+    });
+}
+
+// ── Admin: flagged content ──
+
+export async function listFlaggedEntries(
+    token: string,
+    params: { page?: number; limit?: number },
+): Promise<FlaggedListResponse> {
+    const qs = new URLSearchParams();
+    if (params.page != null) qs.set("page", String(params.page));
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return adminFetch<FlaggedListResponse>(
+        `/api/admin/flagged${query ? `?${query}` : ""}`,
+        token,
+    );
+}
+
+export async function dismissFlags(
+    token: string,
+    hash: string,
+): Promise<{ dismissed: number }> {
+    return adminFetch<{ dismissed: number }>(`/api/admin/flags/${hash}`, token, {
+        method: "DELETE",
+    });
+}
+
+// ── Admin: audit log ──
+
+export async function listAuditLog(
+    token: string,
+    params: {
+        page?: number;
+        limit?: number;
+        action?: string;
+        after?: string;
+        before?: string;
+        target?: string;
+    },
+): Promise<AuditListResponse> {
+    const qs = new URLSearchParams();
+    if (params.page != null) qs.set("page", String(params.page));
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.action) qs.set("action", params.action);
+    if (params.after) qs.set("after", params.after);
+    if (params.before) qs.set("before", params.before);
+    if (params.target) qs.set("target", params.target);
+    const query = qs.toString();
+    return adminFetch<AuditListResponse>(
+        `/api/admin/audit${query ? `?${query}` : ""}`,
+        token,
+    );
 }

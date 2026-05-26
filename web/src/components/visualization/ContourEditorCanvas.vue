@@ -286,13 +286,13 @@ defineExpose({
     flex: 1;
     min-height: 0;
     border-radius: var(--radius);
-    border: 1px solid hsl(var(--border));
+    border: 1px solid var(--border);
     overflow: hidden;
     outline: none;
     background:
-        linear-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px),
-        linear-gradient(90deg, hsl(var(--foreground) / 0.05) 1px, transparent 1px),
-        hsl(var(--card));
+        linear-gradient(color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px),
+        var(--card);
     background-size: 28px 28px, 28px 28px, auto;
 }
 
@@ -331,7 +331,7 @@ defineExpose({
 
 .control-point.selected {
     fill: hsl(40 90% 55%);
-    stroke: hsl(var(--background));
+    stroke: var(--background);
 }
 
 .control-point:active {

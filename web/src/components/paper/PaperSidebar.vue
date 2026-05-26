@@ -2,7 +2,7 @@
 import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
-import type { PaperSearchState } from "./usePaperSearch";
+import type { PaperSearchState } from "./search/usePaperSearch";
 import { ChevronUp } from "lucide-vue-next";
 
 import { ref, reactive } from "vue";
@@ -90,7 +90,7 @@ function handleSectionClick(sectionId: string) {
                                         class="sidebar-link sidebar-sublink cm-serif"
                                         :class="{ 'is-active-sub': isActive(sub.id, activeId) || isInActiveChain(sub.id, activeId) }"
                                             :style="isActive(sub.id, activeId)
-                                                ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
+                                                ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
                                                 : {}"
                                     >
                                         <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
@@ -105,7 +105,7 @@ function handleSectionClick(sectionId: string) {
                                             @click="scrollTo(subsub.id)"
                                             class="sidebar-link sidebar-subsublink cm-serif"
                                             :style="isActive(subsub.id, activeId)
-                                                ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'hsl(var(--muted) / 0.4)' }
+                                                ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
                                                 : {}"
                                         >
                                             <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
@@ -155,9 +155,9 @@ function handleSectionClick(sectionId: string) {
     touch-action: pan-y;
     padding: 0.625rem 0.625rem var(--sidebar-bottom-inset);
     border-radius: 0.75rem;
-    border: 2px solid hsl(var(--foreground) / 0.15);
-    background: hsl(var(--card));
-    box-shadow: 3px 3px 0px 0px hsl(var(--foreground) / 0.08);
+    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+    background: var(--card);
+    box-shadow: 3px 3px 0px 0px color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 .sidebar-header {
@@ -173,7 +173,7 @@ function handleSectionClick(sectionId: string) {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: hsl(var(--muted-foreground) / 0.6);
+    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
     margin: 0;
 }
 
@@ -185,17 +185,17 @@ function handleSectionClick(sectionId: string) {
     width: 1.25rem;
     height: 1.25rem;
     border-radius: 0.25rem;
-    border: 1px solid hsl(var(--border) / 0.4);
+    border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
     background: none;
-    color: hsl(var(--muted-foreground) / 0.45);
+    color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
 .sidebar-top-btn:hover {
-    color: hsl(var(--foreground));
-    border-color: hsl(var(--border));
-    background: hsl(var(--muted) / 0.5);
+    color: var(--foreground);
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
 .sidebar-list {
@@ -219,15 +219,15 @@ function handleSectionClick(sectionId: string) {
     line-height: 1.35;
     padding: 0.28rem 0.625rem;
     border-radius: calc(var(--radius) - 2px);
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
                 background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
                 font-weight 0.15s ease;
 }
 
 .sidebar-link:hover {
-    color: hsl(var(--foreground));
-    background: hsl(var(--muted) / 0.5);
+    color: var(--foreground);
+    background: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
 .sidebar-link.is-active {

@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { PRESETS } from "@/lib/equation/presets";
 import type { NotationMode, PresetFunction } from "@/lib/equation/types";
 import { Wand2, Play } from "lucide-vue-next";
-import { Collapsible } from "@/components/ui/collapsible";
+import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import NotationPills from "./NotationPills.vue";
@@ -90,7 +90,7 @@ const activePreset = computed(() =>
     <div class="space-y-3">
         <!-- Function definition -->
         <div class="cartoon-card px-3 py-2">
-            <Collapsible title="Function" subtitle="f(x)" :default-open="true">
+            <CollapsibleSection title="Function" subtitle="f(x)" :default-open="true">
                 <div class="space-y-3 pt-1">
                     <div>
                         <label class="text-sm font-medium text-muted-foreground mb-1 block">Expression</label>
@@ -153,7 +153,7 @@ const activePreset = computed(() =>
                                            text-sm font-medium border-2 whitespace-nowrap cursor-pointer
                                            transition-all duration-200"
                                     :class="activePreset?.name === preset.name
-                                        ? 'bg-[color-mix(in_srgb,hsl(var(--viz-fourier))_12%,transparent)] border-[color-mix(in_srgb,hsl(var(--viz-fourier))_40%,transparent)] text-[hsl(var(--viz-fourier))]'
+                                        ? 'bg-[color-mix(in_srgb,var(--viz-fourier)_12%,transparent)] border-[color-mix(in_srgb,var(--viz-fourier)_40%,transparent)] text-[var(--viz-fourier)]'
                                         : 'border-foreground/12 bg-transparent text-muted-foreground hover:border-foreground/25 hover:text-foreground'"
                                     @click="applyPreset(preset)"
                                 >
@@ -163,12 +163,12 @@ const activePreset = computed(() =>
                         </div>
                     </div>
                 </div>
-            </Collapsible>
+            </CollapsibleSection>
         </div>
 
         <!-- Controls -->
         <div class="cartoon-card px-3 py-2">
-            <Collapsible title="Controls" subtitle="harmonics & display" :default-open="true">
+            <CollapsibleSection title="Controls" subtitle="harmonics & display" :default-open="true">
                 <div class="space-y-3 pt-1">
                     <div class="flex items-end gap-2">
                         <SliderControl
@@ -177,7 +177,7 @@ const activePreset = computed(() =>
                             subtitle="terms in the Fourier sum"
                             :model-value="autoHarmonics && vizHarmonics ? vizHarmonics : nHarmonics"
                             :min="1" :max="100" :step="1"
-                            color="hsl(var(--viz-fourier))"
+                            color="var(--viz-fourier)"
                             @update:model-value="(v: number) => { nHarmonics = v; emit('update:autoHarmonics', false); }"
                         />
                         <Tooltip side="bottom">
@@ -209,7 +209,7 @@ const activePreset = computed(() =>
                         subtitle="shown in expanded (a+b) view"
                         :model-value="Math.min(budget, vizHarmonics ?? nHarmonics)"
                         :min="2" :max="Math.max(2, vizHarmonics ?? nHarmonics)" :step="1"
-                        color="hsl(var(--viz-fourier))"
+                        color="var(--viz-fourier)"
                         @update:model-value="budget = $event"
                     />
                     <div>
@@ -217,7 +217,7 @@ const activePreset = computed(() =>
                         <NotationPills v-model="notation" />
                     </div>
                 </div>
-            </Collapsible>
+            </CollapsibleSection>
         </div>
     </div>
 </template>
@@ -233,16 +233,16 @@ const activePreset = computed(() =>
     border-radius: 0.5rem;
     font-size: 0.8125rem;
     font-weight: 600;
-    color: hsl(var(--foreground));
-    border: 1.5px solid hsl(var(--foreground) / 0.12);
-    background: hsl(var(--foreground) / 0.04);
+    color: var(--foreground);
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+    background: color-mix(in srgb, var(--foreground) 4%, transparent);
     cursor: pointer;
     transition: all 0.15s ease;
 }
 .compute-btn:hover {
-    border-color: hsl(var(--viz-fourier) / 0.5);
-    background: hsl(var(--viz-fourier) / 0.08);
-    color: hsl(var(--viz-fourier));
+    border-color: color-mix(in srgb, var(--viz-fourier) 50%, transparent);
+    background: color-mix(in srgb, var(--viz-fourier) 8%, transparent);
+    color: var(--viz-fourier);
 }
 .compute-btn:active {
     transform: scale(0.98);

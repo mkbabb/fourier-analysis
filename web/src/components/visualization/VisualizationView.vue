@@ -25,7 +25,7 @@ import CoefficientsPanel from "./CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
-import UnderlineTabs from "@/components/ui/UnderlineTabs.vue";
+import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
 
 const router = useRouter();
 const store = useWorkspaceStore();
@@ -140,7 +140,7 @@ async function onCanvasFileSelect(e: Event) {
     >
         <!-- Global drag overlay -->
         <Transition name="fade">
-            <div v-if="globalDragging" class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+            <div v-if="globalDragging" class="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-background/80 backdrop-blur-sm"
                 @drop="globalDrop" @dragover.prevent>
                 <div class="flex flex-col items-center gap-3 text-muted-foreground">
                     <Upload class="h-12 w-12" />
@@ -323,7 +323,7 @@ async function onCanvasFileSelect(e: Event) {
     position: absolute;
     bottom: 0; left: 0; right: 0;
     height: 2.5rem;
-    background: linear-gradient(to bottom, transparent, hsl(var(--background)));
+    background: linear-gradient(to bottom, transparent, var(--background));
     pointer-events: none;
     z-index: 2;
 }
@@ -380,7 +380,7 @@ async function onCanvasFileSelect(e: Event) {
     bottom: 0.75rem;
     left: 0.375rem;
     right: 0.375rem;
-    z-index: 20;
+    z-index: var(--z-controls);
     display: flex;
     justify-content: center;
     pointer-events: none;
@@ -417,7 +417,7 @@ async function onCanvasFileSelect(e: Event) {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
-    z-index: 20;
+    z-index: var(--z-controls);
     transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1),
                 right 0.3s cubic-bezier(0.22, 1, 0.36, 1),
                 transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);

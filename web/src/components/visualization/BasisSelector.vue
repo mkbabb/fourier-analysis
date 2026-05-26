@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { Collapsible } from "@/components/ui/collapsible";
+import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
@@ -107,7 +107,7 @@ function toggleBasis(key: string) {
 
 <template>
     <div class="cartoon-card px-3 py-2">
-        <Collapsible title="Decomposition" subtitle="basis & resolution" :default-open="true">
+        <CollapsibleSection title="Decomposition" subtitle="basis & resolution" :default-open="true">
             <template #actions>
                 <button
                     class="reset-icon-btn"
@@ -185,7 +185,7 @@ function toggleBasis(key: string) {
                     />
                 </div>
             </div>
-        </Collapsible>
+        </CollapsibleSection>
     </div>
 </template>
 
@@ -197,7 +197,7 @@ function toggleBasis(key: string) {
     background: transparent;
     border: none;
     border-bottom: 1px solid transparent;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     font-size: inherit;
     padding: 0;
     outline: none;
@@ -206,7 +206,7 @@ function toggleBasis(key: string) {
 }
 .inline-number:hover,
 .inline-number:focus {
-    border-bottom-color: hsl(var(--foreground) / 0.3);
+    border-bottom-color: color-mix(in srgb, var(--foreground) 30%, transparent);
 }
 .inline-number::-webkit-inner-spin-button,
 .inline-number::-webkit-outer-spin-button {
@@ -236,9 +236,9 @@ function toggleBasis(key: string) {
     border-radius: 9999px;
     @apply text-sm;
     font-weight: 500;
-    border: 2px solid hsl(var(--foreground) / 0.12);
+    border: 2px solid color-mix(in srgb, var(--foreground) 12%, transparent);
     background: transparent;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
@@ -266,7 +266,7 @@ function toggleBasis(key: string) {
     }
 }
 .basis-pill:hover {
-    border-color: hsl(var(--foreground) / 0.25);
+    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
 }
 .basis-pill.active {
     background: color-mix(in srgb, var(--pill-color) 12%, transparent);
@@ -281,7 +281,7 @@ function toggleBasis(key: string) {
     padding: 0.25rem;
     border: none;
     background: none;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     cursor: pointer;
     border-radius: 0.25rem;
     transition: color 0.15s, opacity 0.2s;
@@ -291,6 +291,6 @@ function toggleBasis(key: string) {
     pointer-events: none;
 }
 .reset-icon-btn:hover {
-    color: hsl(var(--foreground));
+    color: var(--foreground);
 }
 </style>

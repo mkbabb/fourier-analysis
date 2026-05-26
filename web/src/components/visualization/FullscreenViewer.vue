@@ -51,7 +51,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
             <div v-if="show" class="fs-backdrop" @click.self="emit('close')">
                 <div class="fs-container">
                     <!-- Close button -->
-                    <button class="fs-close" @click="emit('close')">
+                    <button class="fs-close glass-subtle" @click="emit('close')">
                         <Minimize2 class="h-5 w-5" />
                     </button>
 
@@ -92,7 +92,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     position: fixed;
     inset: 0;
     z-index: var(--z-fullscreen);
-    background: hsl(var(--background));
+    background: var(--background);
 }
 
 .fs-container {
@@ -128,18 +128,14 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 9999px;
-    border: 1.5px solid hsl(var(--foreground) / 0.12);
-    background: hsl(var(--background) / 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
 .fs-close:hover {
-    background: hsl(var(--background) / 0.9);
-    border-color: hsl(var(--foreground) / 0.25);
+    background: color-mix(in srgb, var(--background) 90%, transparent);
+    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
     transform: scale(1.05);
 }
 
@@ -164,9 +160,9 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     }
 }
 
-/* Make controls a bit wider in fullscreen */
-.fs-controls :deep(.glass-dock) {
-    max-width: 60rem;
+/* Make controls a bit wider in fullscreen — consumed by AnimationControls scoped styles */
+.fs-controls {
+    --animation-dock-max-width: 60rem;
 }
 
 /* ── Fullscreen enter/leave transitions ── */

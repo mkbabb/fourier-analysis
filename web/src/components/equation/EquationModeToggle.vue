@@ -5,7 +5,7 @@ const model = defineModel<EquationDisplayMode>({ required: true });
 </script>
 
 <template>
-    <div class="eq-toggle">
+    <div class="eq-toggle glass-subtle">
         <button
             class="eq-toggle-btn"
             :class="{ 'is-active': model === 'sigma' }"
@@ -29,10 +29,6 @@ const model = defineModel<EquationDisplayMode>({ required: true });
 .eq-toggle {
     display: flex;
     border-radius: 9999px;
-    border: 1.5px solid hsl(var(--foreground) / 0.1);
-    background: hsl(var(--background) / 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     overflow: hidden;
     transition:
         border-color 0.15s ease;
@@ -45,7 +41,7 @@ const model = defineModel<EquationDisplayMode>({ required: true });
     padding: 0 0.6rem;
     height: 2.25rem;
     font-weight: 600;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
     cursor: pointer;
     transition: all 0.15s ease;
     border: none;
@@ -54,13 +50,13 @@ const model = defineModel<EquationDisplayMode>({ required: true });
 }
 
 .eq-toggle-btn:hover {
-    color: hsl(var(--foreground));
+    color: var(--foreground);
 }
 
 /* Active: golden accent */
 .eq-toggle-btn.is-active {
     color: #f0b632;
-    background: hsl(var(--foreground) / 0.08);
+    background: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 .eq-toggle-icon {
