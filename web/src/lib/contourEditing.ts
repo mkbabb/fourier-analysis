@@ -70,9 +70,27 @@ function pointToSegmentDist(p: Point2D, a: Point2D, b: Point2D): number {
 }
 
 /**
- * Visvalingam-Whyatt simplification for closed curves.
- * Removes ~20% of points per call, prioritizing those whose removal
- * causes the least area change (i.e. nearly-collinear neighbors).
+ * Visvalingam-Whyatt simplification for closed curves — heap-driven.
+ *
+ * Each interior triangle's area lives in an indexed binary min-heap keyed
+ * by the node index. Extracting the minimum, splicing the node from the
+ * circular doubly linked list, and re-keying the two neighbours is
+ * O(log n) per removal, yielding O(n log n) overall. The prior
+ * implementation scanned the full node array on every removal: O(n²) on
+ * each call and effectively O(n³) when removal fractions scale with n.
+ *
+ * Storage is parallel typed arrays — Float64Array for coordinates and
+ * triangle areas, Int32Array for the prev/next linked-list pointers and
+ * the indexed-heap permutation, Uint8Array for the live-flag bitmap.
+ * Avoiding per-node object allocations keeps the inner loop in a tight
+ * cache-friendly working set.
+ *
+ * On the heap re-key strategy: strict VW lifts a node's recomputed area
+ * to its parent's area whenever the former is smaller (preserving the
+ * total ordering of removal). The unrestricted form — used here — simply
+ * re-keys to the recomputed triangle area. For resampled contours the
+ * visual difference is imperceptible whilst the implementation is
+ * substantially simpler.
  */
 export function simplifyClosedPoints(
     points: Point2D[],
@@ -80,60 +98,91 @@ export function simplifyClosedPoints(
 ): Point2D[] {
     if (points.length <= 6) return points;
 
-    // Work on a mutable linked structure for efficient removal
     const n = points.length;
     const toRemove = Math.max(1, Math.floor(n * removalFraction));
     const targetCount = Math.max(4, n - toRemove);
 
-    // Copy points with prev/next indices for circular linked list
-    interface Node { pt: Point2D; prev: number; next: number; area: number; alive: boolean }
-    const nodes: Node[] = points.map((pt, i) => ({
-        pt: { ...pt },
-        prev: (i - 1 + n) % n,
-        next: (i + 1) % n,
-        area: 0,
-        alive: true,
-    }));
-
-    function triangleArea(a: Point2D, b: Point2D, c: Point2D): number {
-        return Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
-    }
-
-    // Compute initial areas
+    // Circular linked list as parallel arrays (cache-friendly; no Node objects)
+    const px = new Float64Array(n);
+    const py = new Float64Array(n);
+    const prev = new Int32Array(n);
+    const next = new Int32Array(n);
+    const area = new Float64Array(n);
+    const alive = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
-        nodes[i].area = triangleArea(nodes[nodes[i].prev].pt, nodes[i].pt, nodes[nodes[i].next].pt);
+        px[i] = points[i].x;
+        py[i] = points[i].y;
+        prev[i] = (i - 1 + n) % n;
+        next[i] = (i + 1) % n;
+        alive[i] = 1;
     }
 
-    let alive = n;
-    while (alive > targetCount) {
-        // Find node with smallest area (least important)
-        let minArea = Infinity;
-        let minIdx = -1;
-        for (let i = 0; i < n; i++) {
-            if (nodes[i].alive && nodes[i].area < minArea) {
-                minArea = nodes[i].area;
-                minIdx = i;
-            }
+    const triArea = (i: number): number => {
+        const a = prev[i], c = next[i];
+        return Math.abs((px[i] - px[a]) * (py[c] - py[a]) - (px[c] - px[a]) * (py[i] - py[a])) * 0.5;
+    };
+    for (let i = 0; i < n; i++) area[i] = triArea(i);
+
+    // Indexed binary min-heap over node indices. `pos[i]` is the position of
+    // node `i` in `heap`; `-1` signals "not in heap" (already extracted).
+    const heap = new Int32Array(n);
+    const pos = new Int32Array(n);
+    let heapSize = n;
+    for (let i = 0; i < n; i++) { heap[i] = i; pos[i] = i; }
+
+    const swap = (a: number, b: number) => {
+        const ia = heap[a], ib = heap[b];
+        heap[a] = ib; heap[b] = ia;
+        pos[ia] = b; pos[ib] = a;
+    };
+    const siftUp = (k: number) => {
+        while (k > 0) {
+            const parent = (k - 1) >> 1;
+            if (area[heap[parent]] <= area[heap[k]]) break;
+            swap(k, parent); k = parent;
         }
-        if (minIdx === -1) break;
+    };
+    const siftDown = (k: number) => {
+        while (true) {
+            const l = 2 * k + 1, r = l + 1;
+            let smallest = k;
+            if (l < heapSize && area[heap[l]] < area[heap[smallest]]) smallest = l;
+            if (r < heapSize && area[heap[r]] < area[heap[smallest]]) smallest = r;
+            if (smallest === k) break;
+            swap(k, smallest); k = smallest;
+        }
+    };
+    const reheapify = (k: number) => { siftUp(k); siftDown(pos[heap[k]]); };
+    // Build initial heap in O(n).
+    for (let i = (heapSize >> 1) - 1; i >= 0; i--) siftDown(i);
 
-        // Remove it
-        const node = nodes[minIdx];
-        node.alive = false;
-        nodes[node.prev].next = node.next;
-        nodes[node.next].prev = node.prev;
-        alive--;
+    let liveCount = n;
+    while (liveCount > targetCount && heapSize > 0) {
+        // Extract-min: the node whose removal perturbs the curve least.
+        const idx = heap[0];
+        heapSize--;
+        if (heapSize > 0) {
+            swap(0, heapSize);
+            pos[idx] = -1;
+            siftDown(0);
+        } else {
+            pos[idx] = -1;
+        }
 
-        // Recompute areas of neighbors
-        const p = node.prev;
-        const nx = node.next;
-        nodes[p].area = triangleArea(nodes[nodes[p].prev].pt, nodes[p].pt, nodes[nodes[p].next].pt);
-        nodes[nx].area = triangleArea(nodes[nodes[nx].prev].pt, nodes[nx].pt, nodes[nodes[nx].next].pt);
+        if (!alive[idx]) continue;
+        alive[idx] = 0;
+        liveCount--;
+
+        // Splice out + re-key neighbours.
+        const a = prev[idx], c = next[idx];
+        next[a] = c; prev[c] = a;
+        if (pos[a] >= 0) { area[a] = triArea(a); reheapify(pos[a]); }
+        if (pos[c] >= 0) { area[c] = triArea(c); reheapify(pos[c]); }
     }
 
     const result: Point2D[] = [];
     for (let i = 0; i < n; i++) {
-        if (nodes[i].alive) result.push(nodes[i].pt);
+        if (alive[i]) result.push({ x: px[i], y: py[i] });
     }
     return result.length >= 3 ? result : points;
 }

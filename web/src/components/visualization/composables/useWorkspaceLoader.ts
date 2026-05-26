@@ -5,7 +5,6 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import type { EasingName } from "@/stores/animation";
 import { useToast } from "@/composables/useToast";
-import { isAbortError } from "@/lib/api";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 
 export function useWorkspaceLoader(activeBases: Ref<string[]>) {
@@ -78,30 +77,27 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
         { once: true },
     );
 
-    // Reset harmonics on new image
+    // Reset harmonics when the *image* identity changes mid-session — not on
+    // initial mount. The contour-settings watcher above seeds nHarmonics from
+    // any persisted draft via `{ once: true }`; firing this reset on the
+    // first slug assignment would clobber that seed before the user sees
+    // their previous configuration.
+    let priorSlug: string | null = store.imageSlug;
     watch(
         () => store.imageSlug,
-        () => {
-            nHarmonics.value = CONTOUR_DEFAULTS.n_harmonics;
+        (slug) => {
+            if (priorSlug !== null && slug !== priorSlug) {
+                nHarmonics.value = CONTOUR_DEFAULTS.n_harmonics;
+            }
+            priorSlug = slug;
         },
     );
 
-    // Auto-compute epicycles when a new contour arrives without epicycleData.
-    // Only watches contour (not computing) to avoid re-trigger loops from the
-    // shared `computing` flag toggling during parallel compute calls.
-    watch(
-        () => store.contour,
-        (contour) => {
-            if (contour && !store.epicycleData && !store.computing) {
-                store.computeEpicycles().catch((e) => {
-                    if (!isAbortError(e)) {
-                        console.warn("[auto-compute] epicycles failed:", e);
-                    }
-                });
-            }
-        },
-        { immediate: true },
-    );
+    // Auto-compute is owned solely by ContourSettings.vue, which holds the
+    // canonical settings state. A prior duplicate watcher here on
+    // `store.contour` raced with ContourSettings' settings watcher: both
+    // would fire on a fresh upload, producing the bases-compute ERR_ABORTED
+    // observed in the W3.5 e2e network log.
 
     // Auto-play when computation data first arrives.
     // Does NOT override the user's basis selection on recomputes.

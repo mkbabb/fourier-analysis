@@ -731,3 +731,17 @@ contract was discharged at `926ca6a` — a separate consumer-side concern).
 - `7936137` `fix(A.W4.b): contour-hash collision — hash on ordered coordinate pairs at image_storage.py:180`
 - `2d7e24e` `refactor(A.W4.b): consolidate gallery to cursor pagination — drop offset endpoint + count_documents`
 - `0e016aa` `feat(A.W4.b): contour-hash regression test pair + admin-caller cursor migration`
+
+### 2026-05-26 — W3.5.d visualization pipeline inspection + refinement
+
+The visualisation pipeline (upload → contour → coefficient → epicycle render) inspected end-to-end through Docker + Playwright; four architectural refinements landed; three defects routed to subsequent tranches.
+
+**Defects identified.** Five high/medium-severity defects across the pipeline: Visvalingam–Whyatt simplification was O(n³) per call (linear-scan min on every removal); `BasisCanvas.drawFrame` traversed the full N=200 epicycle chain twice per frame; two duplicate auto-compute watchers raced on fresh upload (the bases-compute `ERR_ABORTED` observed in the network log); `nHarmonics` reset watcher clobbered the draft-seeded value on initial mount; `Animation` from keyframes.js dead substrate persisted after the manual-rAF migration.
+
+**Refinements applied.** Heap-driven VW → O(n log n); single-pass epicycle position computation with prefix slice; auto-compute deduplicated to the `ContourSettings.vue` seam; `priorSlug` gate on the nHarmonics reset; dead substrate excised.
+
+**Inspection artefact.** [`docs/tranches/A/audit/W3.5-pipeline.md`](audit/W3.5-pipeline.md) — pipeline data-flow graph, defect-disposition table, before+after screenshots, residual-item routing.
+
+**Routed onward.** Levels-derivation drift → **B** (CRUD convergence); backend `--reload` aborts in-flight compute on file write → **C** (infra); onnxruntime CPU warnings flood → **C**; `web/src/style.css:3` glass-ui `@import` resolution races on cold dev-server boot → **W3.5.ab**.
+
+**Screenshots.** `docs/tranches/A/audit/W3.5-screenshots/pipeline-{01..04}-{uploaded,contoured,computed,animated}{,-after}.png`.

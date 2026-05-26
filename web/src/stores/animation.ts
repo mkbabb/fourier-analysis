@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch } from "vue";
-import { Animation } from "@mkbabb/keyframes.js";
 import {
     ANIMATION_EASINGS,
     getEasingSVGPath,
@@ -24,34 +23,13 @@ export const useAnimationStore = defineStore("animation", () => {
         return fn(t.value);
     });
 
-    let anim: Animation | null = null;
     let rafId: number | null = null;
 
-    function createAnim(): Animation {
-        if (anim) {
-            anim.stop();
-        }
-        stopRAF();
-
-        const a = new Animation({
-            duration: duration.value / speed.value,
-            iterationCount: 1,
-            timingFunction: "linear",
-            fillMode: "forwards",
-            useWAAPI: false,
-        });
-
-        a.addFrame("0%", { t: "0px" }, (_vars: any, time: number) => {
-            t.value = Math.min(time / a.options.duration, 1);
-        });
-        a.addFrame("100%", { t: "1px" });
-        a.parse();
-
-        anim = a;
-        return a;
-    }
-
-    // Manual rAF loop with alternate (ping-pong)
+    // Manual rAF loop with alternate (ping-pong).
+    // The previous incarnation imported `Animation` from `@mkbabb/keyframes.js`
+    // and constructed a parallel `createAnim()` graph that was never invoked
+    // — the rAF loop below has been the sole driver since the auto-play
+    // migration. Dead substrate excised.
     function startLoop() {
         let startTime: number | null = null;
         const dur = duration.value / speed.value;

@@ -134,7 +134,9 @@ function drawEpicycleFrame(
     const components: BasisComponent[] = data.components;
     const nVis = Math.min(maxCircles.value, components.length);
 
-    // All components for accurate tip position
+    // Single pass over the full chain: the tip is the last cumulative
+    // position; the visible-circles overlay is the same array sliced.
+    // (Prior implementation traversed N components twice per frame.)
     const allPositions = fourierPositionsAt(components, anim.t, components.length);
     const tip = allPositions[allPositions.length - 1];
 
@@ -142,8 +144,10 @@ function drawEpicycleFrame(
     trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
     trail.draw(s, view, trailColor);
 
-    // Epicycle circles
-    const visPositions = fourierPositionsAt(components, anim.t, nVis);
+    // Epicycle circles — prefix of the cumulative-position array
+    const visPositions = nVis === components.length
+        ? allPositions
+        : allPositions.slice(0, nVis + 1);
     const isDesktop = s.width >= 768;
     const currentScale = hover.getScale();
     const eAlpha = epicycleAlphaFromScale(currentScale);
@@ -327,8 +331,10 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
         // Tip dot
         drawTipDot(s, view, tip[0], tip[1]);
 
-        // Epicycle overlay
-        const visPositions = fourierPositionsAt(components, anim.t, nVis);
+        // Epicycle overlay — prefix slice, no recomputation
+        const visPositions = nVis === components.length
+            ? allPositions
+            : allPositions.slice(0, nVis + 1);
         const isDesktop = width >= 768;
         const currentScale = hover.getScale();
         const eAlpha = epicycleAlphaFromScale(currentScale);
