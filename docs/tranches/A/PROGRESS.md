@@ -841,3 +841,36 @@ In-band scope-reveal absorbing three user directives that arrived mid-W4 dispatc
 The W3.5 polish wave is recorded as an inline scope-reveal in this PROGRESS log; A.md §4's seven-wave schedule remains W0–W6 with the W3.5 work absorbed under W3's broader interactive-primitive-adoption umbrella (the scope expansion authorized by the user directive). The W6 close ceremony AMEND ledger inherits the W3.5 scope-reveal as a context observation.
 
 **Next action**: dispatch **W5 — Admin parity and functionality close**. Four parallel agents per W5.md: W5.a (admin idiom lift — native `confirm()` / `<select>` / pagination → glass-ui primitives), W5.b (audit-log viewer for `/api/admin/audit`), W5.c (batch multi-select + the H3-flagged `api.ts:526,:537` contract-bug fix from `{ processed }` to `{ ok, affected }`), W5.d (math-honesty fixes — FrequencyGraph log axis + ConvergencePlot off-by-one). The cross-repo CRUD/identity carry hands off to tranche B at W6 close.
+
+### 2026-05-26 — W5.b audit-log viewer
+
+`AdminAuditLog.vue` lands as the fifth admin-only tab in `GalleryView.vue`, consuming the already-shipped `/api/admin/audit` route and the pre-existing `api.listAuditLog` wrapper at `web/src/lib/api.ts:552`. The wrapper was already structured to the backend's page/limit/action/target/after/before contract; the W5.b agent therefore consumed it as-is — no api.ts modification was required, eliminating the merge-overlap risk with W5.c's batch wrappers.
+
+Scope-reveal: the W5.b charter anticipated cursor pagination (per W4.b gallery), but the backend at `api/routers/admin.py:542` ships page-based pagination matching `AuditListResponse`'s `{ items, total, page, pages }` shape. The viewer therefore uses the existing `useOffsetPagination` composable — same idiom as `AdminFlaggedPanel.vue`, ensuring zero new navigation primitives.
+
+| Artefact | Path | LOC |
+|---|---|---|
+| Component | `web/src/components/visualization/gallery/AdminAuditLog.vue` | 190 |
+| Host tab wire-up | `web/src/components/visualization/GalleryView.vue` (UnderlineTabs option + async-loaded panel) | +5 |
+
+The component renders timestamp (locale-formatted), action chip (color-tinted by category — destructive, status-change, moderative, batch, default), target (truncated with full-text tooltip), and the leading 10 chars of `ip_hash` (full hash on tooltip). Filter bar carries action + target substring inputs with Apply / Clear. Empty state distinguishes "no entries" from "no entries matching filter".
+
+`vue-tsc -b --force` exit 0; `npm run build` exit 0; AdminAuditLog chunk emits at 4.86 kB / 2.16 kB gzip. Browser smoke: navigated to `/gallery?admin=dev`, activated admin mode, switched to Audit Log tab, observed 5 seeded entries rendered with correct action tones and timestamps. Screenshot: `docs/tranches/A/audit/W5-screenshots/audit-log.png`.
+
+### 2026-05-26 — W5.a admin idiom lift
+
+Sub-agent **A.W5.a** lifted the admin moderation surface onto glass-ui idioms — discharging W5.md scope item 1 and hard-gate items 1 + 2. The three target files (`AdminUserList.vue`, `AdminFlaggedPanel.vue`, `GalleryAdminBanner.vue`) shed every native `confirm()` and every native `<select>` in favour of `<Dialog>` (destructive 2-step) and `<Select>` (reka-ui-backed `SelectTrigger` + `SelectContent` + `SelectItem`). The hand-rolled `<button>Prev</button>` / `<button>Next</button>` pagination retired in favour of icon-only `<Button variant="ghost" size="icon">` wrapped by `<nav aria-label="…">`; a canonical glass-ui `<Pagination>` primitive is filed as a constellation-Q carry, the present icon-button pair being the named consumer-side fallback. The bare `border bg-card/50` row idiom retired for the shared `cartoon-card` surface; every icon-only destructive button carries an interpolated `:aria-label`; rows declare `role="list"` / `role="listitem"`; loading spinners announce via `role="status"` + `aria-live="polite"`; landmarks (`<nav>`, `<section>`) bracket the banner and the paginators.
+
+**a11y verdict**: PASS — recorded at `docs/tranches/A/audit/W5-a11y.md`. The `@axe-core/playwright` automated pass is absent from the project (no Playwright harness shipped); the sanctioned manual-checklist fallback applies per W5.md §"Hard gate" item 2 and §"Verification artefacts", with axe adoption filed as a tranche-B carry at the natural Playwright-harness seam.
+
+**Overlap discipline**: W5.c (`d88969c`) landed first on `AdminUserList.vue` with batch multi-select state + a select-all-on-page checkbox + a floating batch-action toolbar; W5.a's idiom-lift hunks rebased atop. The destructive `<Dialog>` now routes the singular `delete` / `prune` paths together with W5.c's `batch` action through a single `PendingAction` union, with the Dialog title / description / footer-button variant branching on the `kind` discriminant. Both agents' hunks are semantically orthogonal (idiom replacement vs. batch UI) and live coherently in the merged file.
+
+**Hard-gate item-by-item progress**:
+1. No native `confirm()` or `<select>` in the admin tree — `git grep` returns zero. **SATISFIED** (this agent).
+2. The admin moderation surface passes an a11y check — manual checklist at `audit/W5-a11y.md` per the W5.md fallback clause. **SATISFIED** (this agent).
+3. `AdminAuditLog.vue` exists, has a tab, renders live `/api/admin/audit` data. **SATISFIED** (W5.b sibling).
+4. Batch multi-select round-trips against `batch_gallery` / `batch_users`. **W5.c** (sibling — `d88969c` landed wrapper contract fix; multi-select UI co-lives in `AdminUserList.vue`).
+5. `FrequencyGraph` log axis labeled; `ConvergencePlot` original curve closes. **W5.d** (sibling).
+6. `npm run build` and `vue-tsc -b --force` green — confirmed at this agent's commit time. **SATISFIED for this surface**.
+
+**Build state at W5.a commit**: `vue-tsc -b --force` exit 0; `npm run build` exit 0 (9.7 s; bundle sizes within the W3-established envelope).
