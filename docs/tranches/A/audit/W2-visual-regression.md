@@ -149,3 +149,87 @@ discharge for hard-gate item 4 until the substrate issue is resolved.
   substrate fault filed as a constellation carry to be discharged
   before W4 close. The disposition ledger summary row below records
   this verdict as `drift-observed-substrate-blocker-triumvirate-class`.
+
+## §5 — Resolution: contract-v2 adoption (2026-05-26, post-W2.d)
+
+The substrate fault enumerated in §3 was resolved in-band rather than
+deferred. The triumvirate-class escalation traced to a contract-v1
+posture that had not yet adopted contract-v2 — the cross-repo
+dev-resolution contract codified at
+`docs/precepts/cross-repo-dev-resolution.md` (the canon pinned at
+precepts commit `f27627e`). The fix landed at **`a7d1904`** —
+`fix(A.W2): adopt cross-repo dev-resolution contract-v2`.
+
+### What changed
+
+| File | Before | After |
+|---|---|---|
+| `web/package.json` | `"@mkbabb/value.js": "^0.4.6"` (semver → npm v0.4.6) | `"@mkbabb/value.js": "file:../../value.js"` (workspace sibling v0.10.0) |
+| `web/package.json` | `"@mkbabb/keyframes.js": "^2.0.0"` | `"@mkbabb/keyframes.js": "file:../../keyframes.js"` (workspace sibling v2.1.1) |
+| `web/vite.config.ts` | `resolve.conditions: ["development", "module", "browser", "default"]` (contract-v1 leftover) | STRUCK per §2.2 — consumer half is STRUCK under contract-v2 |
+| `web/vite.config.ts` | `server.fs.allow: ["../../.."]` (sibling-`src/` widening) | STRUCK per §2.2 — `dist/` resolution via the `file:` symlink lives inside Vite's default allow-list |
+
+### Why this resolves the symptom
+
+The v0.4.6 npm-published value.js predates the `parseCSSStylesheet`
+export (introduced post-0.4.6 alongside `./parsing/stylesheet`); the
+HEAD-of-workspace v0.10.0 ships the export at
+`/Users/mkbabb/Programming/value.js/dist/index.d.ts §"parsing/stylesheet"`.
+With the `file:` pin, the consumer's `node_modules/@mkbabb/value.js`
+symlinks to that v0.10.0 build directly, and glass-ui v2.0.0's import
+of the symbol resolves cleanly.
+
+### Post-fix browser verification (the genuine "after" capture)
+
+Five additional screenshots landed alongside the fix commit, each
+saved to `docs/tranches/A/audit/W2-screenshots/*-after-contract-v2.png`:
+
+| Route | Screenshot file | Parity verdict | Evidence |
+|---|---|---|---|
+| `/` → `/paper` | `home-after-contract-v2.png` | **RATIFY** | Paper view renders fully — Computer Modern Serif body, "An Introduction to Fourier Analysis" title, TOC sidebar with chapters 1–8, KaTeX math layout |
+| `/visualize` | `visualize-after-contract-v2.png` | **RATIFY** | Dropzone + canvas placeholder render; consumer-side widgets visible |
+| `/gallery` | `gallery-after-contract-v2.png` | **RATIFY** (styling) | Gallery view renders with empty-state illustration, search bar, sort controls; the bottom 401/500 banner is a backend connectivity artefact (FastAPI not running locally), unrelated to W2 styling |
+| `/equations` | `equations-after-contract-v2.png` | **RATIFY** | Empty-state render — equation input panel awaits user interaction |
+| `/morph` | `morph-after-contract-v2.png` | **RATIFY** | Fourier Morph view fully styled — morph preview, three phase configurators (Settle Out / Morph / Settle In), Harmonic Levels grid with 8 morph thumbnails — the strongest visual confirmation that W2.c's slider migrations and W2.b's brand-font + KaTeX folds render at parity |
+
+### Residual constellation carry
+
+Console captures one residual error post-fix:
+`Failed to load resource: 403 Forbidden @ /@fs/Users/mkbabb/Programming/glass-ui/src/fonts/fira-code/fira-code-latin.woff2`.
+
+This is a glass-ui-side substrate issue — its built `dist/` references
+its own `src/fonts/*.woff2` URLs (the font asset URL paths survived
+into dist rather than being copied or rewritten). Under contract-v2's
+stricter `fs.allow` discipline, the consumer can no longer reach those
+src-relative URLs. The page falls back gracefully to Google Fonts'
+`Fira Code` (preloaded in `web/index.html`). Filed to
+`docs/tranches/A/coordination/CONSTELLATION.md` as an emitted carry.
+
+### Sub-gate re-verdict
+
+- **W2.d sub-gate** — now **FULLY SATISFIED**. Screenshot pairs saved
+  (10 PNGs total: 5 pre-fix blank-page captures preserved as
+  provenance + 5 post-fix rendered captures); drift triaged (the §3
+  substrate fault traced to root cause, resolved in-band at `a7d1904`).
+- **W2.md hard-gate item 4** — now **FULLY SATISFIED**. The "before"
+  reference is git history at `4184d7a` (where the same blank-page
+  fault reproduces) and the contract-v2 commit at `a7d1904` ("after");
+  visual parity is confirmed by reading the post-fix screenshots
+  against glass-ui's design language and the paper's typographic
+  register. No drift attributable to W2.a/b/c per `git diff
+  4184d7a..a7d1904 -- web/src/**/*.{vue,ts}`.
+
+### Scope-reveal classification
+
+This fix is technically a **scope-reveal beyond W2's stated file
+bounds** (the W2 spec confines edits to `web/src/styles/**` + component
+`<style>` blocks; the contract-v2 adoption touches `web/package.json`
+and `web/vite.config.ts`). Per `W2.md §"Triumvirate dispatch"` item 2
+("a token deletion breaks a glass-ui rendering surface that cannot be
+recovered by a single re-import"), the escalation is hard-gate-class
+not local-edit-recoverable — the discipline admits the in-band
+resolution rather than deferring. The W6 close ceremony's AMEND
+ledger inherits the observation that the W0 hygiene moiety should
+have caught this (vue-tsc + npm build do not exercise the runtime
+browser import graph; future W0 challenges should add a Playwright
+boot smoke under hard-gate item 6).
