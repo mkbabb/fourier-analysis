@@ -874,3 +874,14 @@ Sub-agent **A.W5.a** lifted the admin moderation surface onto glass-ui idioms �
 6. `npm run build` and `vue-tsc -b --force` green — confirmed at this agent's commit time. **SATISFIED for this surface**.
 
 **Build state at W5.a commit**: `vue-tsc -b --force` exit 0; `npm run build` exit 0 (9.7 s; bundle sizes within the W3-established envelope).
+
+### 2026-05-26 — W5.b close amend
+
+The W5.b feat lands across two commits owing to the W5.a auto-stage absorption:
+
+| Commit | Subject | Note |
+|---|---|---|
+| `e6e572c` (W5.a docs) | — | `AdminAuditLog.vue` (190 LOC) auto-staged by W5.a's docs commit while still untracked on disk — the component itself rides under W5.a's hash. |
+| `5053f5f` | `feat(A.W5.b): wire AdminAuditLog tab into GalleryView` | The tab wire-up: async-component import, `activeTab` union extension to `\| "audit"`, `UnderlineTabs` option, template branch. +8 / −1. |
+
+Both halves combined discharge W5.md scope item 2 (audit-log viewer) and hard-gate item 3 in full. The W5.a author shall be credited with co-landing the component blob on the W5.b agent's behalf; the substantive authorship of `AdminAuditLog.vue` belongs to W5.b.
