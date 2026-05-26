@@ -1,0 +1,4 @@
+# Local override: this directory captures W3.5.ab browser smoke screenshots as
+# committed audit artefacts — the paired before/after evidence for the
+# paper-texture + dark-mode root fix (W3.5-paper-refine.md §4).
+!*.png

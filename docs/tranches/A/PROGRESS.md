@@ -562,3 +562,76 @@ The test runs under a hand-rolled async fake DB (motor surface in the small — 
 - The `_recompute_pin_flags` aggregation requires MongoDB 4.2+ for pipeline-style updates and 4.4+ for `$unionWith`; the prod stack ships `mongo:8.0` per `docker-compose.yml:33`.
 
 **Bounds discipline.** W4.a's scope was strictly `api/services/janitor.py`, `api/services/database.py` (the two pin indexes), `api/services/rate_limiter.py` (read-only — no source mutation under Option A), `api/services/__tests__/test_janitor.py`, `docs/tranches/A/audit/W4-deploy-note.md` (the §1a/§1b additions), and this PROGRESS entry. Sibling territory (W4.b: `image_storage.py`, `gallery.py`, `stores/gallery.ts`; W4.c: compose files, `logo.ts`, `math-worker.ts`, `compute.py`) was left untouched.
+
+### 2026-05-26 — W3.5.ab paper-texture + dark-mode root fix
+
+A.W3.5.ab — the cross-repo substrate-fix discipline applied to the
+paper-texture opacity disparity flagged by the user as "FAR too extreme".
+Per `docs/precepts/cross-repo-dev-resolution.md` and the user's explicit
+directive to fix at the root, the fix lands in `@mkbabb/glass-ui`; no
+fourier-side override of the texture opacity is introduced.
+
+**Root cause.** `glass-ui/src/styles/tokens.css:1023-1024` shipped the
+`--paper-clean-texture` and `--paper-aged-texture` SVG-noise data URIs
+with `opacity='1'` baked into the rect element, producing an overt grainy
+field at every consumer of `.paper-texture` (the fourier App.vue shell
+consumes it at `web/src/App.vue:23`; the class is defined upstream at
+`glass-ui/src/styles/cards.css:10-15`). The fourier-original pin at
+`4df1a06:web/src/style.css:53-54` carried `opacity='0.04'` (clean) and
+`opacity='0.06'` (aged) — the canonical subtle register.
+
+**The dark-mode "salmon/orange section headings" claim — investigated, no
+root fix needed.** Glass-ui's dark-mode `.dark` block ships
+`--section-color-0..12` and `--accent-pink` with bit-identical values to
+fourier-original. The "salmon" perception was a downstream consequence of
+the heavy grain field multiplying against the warm dark cream background;
+fixing the texture dissolves the perception artefact. The W2.a token-de-fork
+posture stands — fourier's dark palette is canonically glass-ui's.
+
+**The fix.** Option A (chosen) — restore canonical subtle opacity inline
+at the URI source in `glass-ui/src/styles/tokens.css`. SVG presentation
+attributes do not resolve CSS vars, so the subtle value must be baked;
+heavier-overlay consumers should layer a wrapper element rather than
+override the texture token. Option B (CSS-var tunability) is structurally
+impossible without rewriting the texture-application channel at every
+consumer; Option A is the smallest correct intervention. The unrelated
+`.paper-underpaint` and `.paper-grain-overlay::after` utilities at
+`glass-ui/src/styles/paper.css` were left alone — they scale via
+`opacity: var(--glass-grain-opacity)` (default 0.025) at the host element,
+which is a structurally sound channel.
+
+**Cross-repo commits.**
+- glass-ui: `9cf88e6` — `fix(styles): restore canonical subtle paper-texture opacity (0.04 / 0.06)`. Single-file change to `src/styles/tokens.css` (the two URIs + a seven-line comment block documenting the substrate constraint).
+- fourier-analysis: this commit — `docs(A.W3.5.ab): discharge paper-texture root fix carry`. Audit-only — adds `audit/W3.5-paper-refine.md`, eight before/after screenshots under `audit/W3.5-screenshots/`, the CONSTELLATION emitted-row addition, and this PROGRESS entry.
+
+**Build state.** Glass-ui's `npm run build` step crashes during the dts
+(api-extractor) validation phase with an unrelated pre-W2.f plugin defect
+(referencing a missing `dist/src/components/ui/tooltip/Tooltip.vue.d.ts`).
+The crash is downstream of `closeBundle` where the `publishStyleAssets`
+plugin runs — `dist/styles/tokens.css` is regenerated BEFORE dts fails,
+so the consumer-visible CSS surface ships correctly with the new opacity
+values (confirmed by `grep` against the rebuilt artefact). The dts crash
+is an upstream glass-ui concern outside this work's bounds.
+
+**Verification.** Captured at `localhost:3000` (vite dev) at `1440×900`:
+
+- `audit/W3.5-screenshots/paper-light-{before,after}.png` — paper view light mode
+- `audit/W3.5-screenshots/paper-dark-{before,after}.png` — paper view dark mode
+- `audit/W3.5-screenshots/visualize-light-{before,after}.png` — visualize view light mode
+- `audit/W3.5-screenshots/visualize-dark-{before,after}.png` — visualize view dark mode
+
+The `-after` captures show clean cream paper (light) and clean dark cream
+(dark) with the canonical warm rose section heading reading as the
+deliberate `--section-color-0` value `hsl(334 72% 70%)`. The grain field
+is gone.
+
+**Discipline.** `web/src/style.css` carries ZERO new paper-texture override
+(verified by `git status` — the file is unchanged). The W2.a token-de-fork
+posture is preserved; the W3.5.ab fix flows from upstream.
+
+**Bounds.** W3.5.ab touched `glass-ui/src/styles/tokens.css` (the
+substrate edit), plus four fourier-side audit-only files:
+`docs/tranches/A/audit/W3.5-paper-refine.md` (new),
+`docs/tranches/A/audit/W3.5-screenshots/*.png` (8 new),
+`docs/tranches/A/coordination/CONSTELLATION.md` (one new Emitted row), and
+this PROGRESS entry. No fourier source code was modified.
