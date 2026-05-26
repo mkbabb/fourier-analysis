@@ -108,7 +108,9 @@ function draw() {
     const nPts = 500;
     const tp = transition.progress;
 
-    // X-grid (endpoint=false to match backend)
+    // X-grid for the partial-sum curve (endpoint=false matches backend convention:
+    // the canonical equispaced Fourier sampling drops x = domB since the periodic wrap
+    // identifies it with x = domA — see api/routers/equations.py:61).
     const xGrid: number[] = [];
     for (let i = 0; i < nPts; i++) xGrid.push(domA + (i / nPts) * (domB - domA));
 
@@ -117,6 +119,14 @@ function draw() {
         if (tp >= 1 || !transition.prevOrigY.length) return y;
         return lerp(i < transition.prevOrigY.length ? transition.prevOrigY[i] : y, y, tp);
     });
+
+    // Closed grid for the ORIGINAL curve only (endpoint=true) — visual closure
+    // over [a, b]. The Fourier expansion treats f as periodic with period (b - a)
+    // (paper §ch:interpreting, f(x) = Σ c_n e^(πinx/L) on [-L, L]), hence the wrap
+    // sample y(b) = y(a). The partial-sum curve below retains the backend's
+    // endpoint=false grid so the numerical convention is preserved.
+    const oxClosed = ox.length ? [...ox, domB] : ox;
+    const oyClosed = oyLerped.length ? [...oyLerped, oyLerped[0]] : oyLerped;
 
     // Lerp harmonic coefficients
     const lerpH: TrigHarmonic[] = harmonics.map((h, i) => {
@@ -161,7 +171,9 @@ function draw() {
         maxY = lerp(transition.prevMaxY, tMaxY + yP, tp);
     }
 
-    const minX = ox[0], maxX = ox[ox.length - 1];
+    // Plot extent spans the full closed domain [a, b]; the closed-original grid
+    // reaches domB while the partial-sum grid stops one sample short by convention.
+    const minX = ox[0], maxX = domB;
     const plotW = w - PAD.left - PAD.right, plotH = h - PAD.top - PAD.bottom;
     const toScreen = (xv: number, yv: number): [number, number] => [
         PAD.left + ((xv - minX) / (maxX - minX)) * plotW,
@@ -171,15 +183,16 @@ function draw() {
     // Grid
     drawPlotGrid(ctx, w, h, PAD, minX, maxX, minY, maxY, toScreen);
 
-    // Original f(x)
+    // Original f(x) — rendered over the closed [a, b] grid so the curve visually
+    // closes (periodic wrap appended as final sample).
     const isOrigHov = hoveredCurve.value === "original";
     ctx.strokeStyle = isOrigHov ? "rgba(220,220,220,0.85)" : "rgba(180,180,180,0.55)";
     ctx.lineWidth = isOrigHov ? 3.5 : 2.5;
     ctx.setLineDash([6, 4]);
     const origPts: [number, number][] = [];
     ctx.beginPath();
-    for (let i = 0; i < ox.length; i++) {
-        const pt = toScreen(ox[i], oyLerped[i]);
+    for (let i = 0; i < oxClosed.length; i++) {
+        const pt = toScreen(oxClosed[i], oyClosed[i]);
         origPts.push(pt);
         i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
     }

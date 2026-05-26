@@ -160,45 +160,79 @@ onMounted(() => draw());
 </script>
 
 <template>
-    <div
-        ref="scrollRef"
-        class="overflow-x-auto overflow-y-hidden scrollbar-thin"
-        :style="{ height: `${HEIGHT}px` }"
-    >
-        <canvas
-            ref="canvasRef"
-            class="block cursor-pointer text-muted-foreground"
-            @mousemove="onMouseMove"
-            @mouseleave="onMouseLeave"
-            @click="onClick"
-        />
-        <!-- Tooltip -->
+    <div class="freq-graph-host">
+        <!-- Axis annotation (W5.d) — the transform applied to bar heights is named
+             explicitly so the viewer is not left to infer a silent log mapping. The
+             `+1` shift is the canonical convention for log-magnitude bar charts
+             (permits zero amplitudes without diverging). -->
+        <div class="freq-graph-axis-label" :title="logScale ? 'Log-magnitude axis: each bar height is log₁₀(|c_n| + 1). The +1 shift admits zero amplitudes.' : 'Linear-magnitude axis: each bar height is the raw |c_n|.'">
+            <span v-if="logScale">log<sub>10</sub>(|c<sub>n</sub>| + 1)</span>
+            <span v-else>|c<sub>n</sub>|</span>
+        </div>
         <div
-            v-if="hoveredBar !== null && displayComponents[hoveredBar]"
-            class="absolute z-[var(--z-controls)] px-2 py-1.5 rounded-lg text-xs whitespace-nowrap
-                   pointer-events-none -translate-x-1/2
-                   bg-popover text-popover-foreground border-[1.5px] border-border
-                   shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
-            :style="{ left: `${tooltipPos.x}px`, top: `${Math.max(tooltipPos.y - 56, 4)}px` }"
+            ref="scrollRef"
+            class="overflow-x-auto overflow-y-hidden scrollbar-thin"
+            :style="{ height: `${HEIGHT}px` }"
         >
-            <div class="flex items-center gap-1.5 mb-0.5">
-                <span
-                    class="inline-block w-2 h-2 rounded-full"
-                    :style="{ backgroundColor: spectrumColor(hoveredBar, displayComponents.length) }"
-                />
-                <span class="font-semibold">n = {{ displayComponents[hoveredBar].index }}</span>
-            </div>
-            <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-admin-label">
-                <span class="text-muted-foreground">Amplitude</span>
-                <span class="fira-code">{{ displayComponents[hoveredBar].amplitude.toFixed(4) }}</span>
-                <span class="text-muted-foreground">Phase</span>
-                <span class="fira-code">{{ (displayComponents[hoveredBar].phase * 180 / Math.PI).toFixed(1) }}°</span>
+            <canvas
+                ref="canvasRef"
+                class="block cursor-pointer text-muted-foreground"
+                @mousemove="onMouseMove"
+                @mouseleave="onMouseLeave"
+                @click="onClick"
+            />
+            <!-- Tooltip -->
+            <div
+                v-if="hoveredBar !== null && displayComponents[hoveredBar]"
+                class="absolute z-[var(--z-controls)] px-2 py-1.5 rounded-lg text-xs whitespace-nowrap
+                       pointer-events-none -translate-x-1/2
+                       bg-popover text-popover-foreground border-[1.5px] border-border
+                       shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+                :style="{ left: `${tooltipPos.x}px`, top: `${Math.max(tooltipPos.y - 56, 4)}px` }"
+            >
+                <div class="flex items-center gap-1.5 mb-0.5">
+                    <span
+                        class="inline-block w-2 h-2 rounded-full"
+                        :style="{ backgroundColor: spectrumColor(hoveredBar, displayComponents.length) }"
+                    />
+                    <span class="font-semibold">n = {{ displayComponents[hoveredBar].index }}</span>
+                </div>
+                <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-admin-label">
+                    <span class="text-muted-foreground">Amplitude</span>
+                    <span class="fira-code">{{ displayComponents[hoveredBar].amplitude.toFixed(4) }}</span>
+                    <template v-if="logScale">
+                        <span class="text-muted-foreground">log₁₀(·+1)</span>
+                        <span class="fira-code">{{ Math.log10(displayComponents[hoveredBar].amplitude + 1).toFixed(4) }}</span>
+                    </template>
+                    <span class="text-muted-foreground">Phase</span>
+                    <span class="fira-code">{{ (displayComponents[hoveredBar].phase * 180 / Math.PI).toFixed(1) }}°</span>
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <style scoped>
+.freq-graph-host {
+    position: relative;
+}
+.freq-graph-axis-label {
+    /* W5.d — the transform annotation. Computer Modern Serif matches the paper's
+       typographic register (the equation surface elsewhere uses EB Garamond as
+       the cross-walk substitute on the web; Fira Code carries the numerics). */
+    font-family: "EB Garamond", "Computer Modern Serif", serif;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--muted-foreground);
+    opacity: 0.75;
+    padding: 0 4px 2px;
+    user-select: none;
+    cursor: help;
+}
+.freq-graph-axis-label sub {
+    font-size: 0.7em;
+    vertical-align: sub;
+}
 .scrollbar-thin {
     scrollbar-width: thin;
     position: relative;
