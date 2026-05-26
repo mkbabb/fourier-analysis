@@ -20,10 +20,9 @@ The eleven columns are the format mandated by `A.md §3` W1 row plus
 The `disposition` column is typed: `verified-clean` /
 `verified-with-route-evidence` / `flagged-for-rework` / `flagged-for-retire`.
 The `commit_chunk` column cites the short hash of the commit that landed
-the retirement; per the W1.a closure note, `web/src/style.css` was
-absorbed into `A.W1.b` (`e904401`) rather than the W1.a.2 chunk named in
-`W1.md §Scope item 3`, but every web-component retirement lands under
-`A.W1.a.1` (`ffba307`) as planned.
+the retirement; every web-component retirement lands under `A.W1.a.1`
+(`ffba307`) as planned, and the `web/src/style.css` decomposition lands
+under `A.W1.a.2` (`83c3bf8`).
 
 ## Ledger
 
@@ -83,7 +82,9 @@ substrate carries the bouncy-toggle affordance at v2.0.0 / `5e79443`.
 | Chunk | Hash | Subject |
 |---|---|---|
 | `A.W1.a.1` | `ffba307` | `feat(A.W1.a.1): land web migration cohort — deletions + rewires` |
-| `A.W1.a.2` (absorbed by A.W1.b) | `e904401` | `feat(A.W1.b): land api admin/auth/gallery feature cohort` (style.css decomposition rode the W1.b commit; see W1.a closure log for the scope-collision note) |
+| `A.W1.a.2` | `83c3bf8` | `feat(A.W1.a.2): style.css decomposition` (lands the 723 → 8-line orchestrator collapse; the `web/src/styles/` shards remain untracked pending W2 abrogation) |
+| `A.W1.a.3` | `6a2cfcc` | `docs(A.W1.a.3): land W1 deletion ledger` (this artefact) |
+| `A.W1.b` | `05f5025` | `feat(A.W1.b): land api admin/auth/gallery feature cohort` |
 | `A.W1.c` | `e02c4cf` | `feat(A.W1.c): land docker/nginx/env-example infra cohort` |
 
 The W1.a sub-gate (per `W1.md §"A.W1.a — Web migration cohort"`) closes
