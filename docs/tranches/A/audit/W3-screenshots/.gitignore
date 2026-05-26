@@ -1,0 +1,3 @@
+# Local override: this directory captures W3 close-ceremony browser smoke
+# screenshots as committed audit artefacts, per W3.md hard gate 5 / verification artefacts.
+!*.png
