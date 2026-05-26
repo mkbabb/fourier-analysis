@@ -32,13 +32,6 @@ class GalleryEntryResponse(BaseModel):
     updated_at: datetime
 
 
-class GalleryListResponse(BaseModel):
-    items: list[GalleryEntryResponse]
-    total: int
-    page: int
-    pages: int
-
-
 class AdminStatsResponse(BaseModel):
     total_entries: int
     featured: int

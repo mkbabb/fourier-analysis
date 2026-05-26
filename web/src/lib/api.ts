@@ -7,7 +7,6 @@ import type {
     ImageMeta,
     Snapshot,
     GalleryEntry,
-    GalleryListResponse,
     GalleryCursorResponse,
     GalleryTier,
     FlagReason,
@@ -324,28 +323,6 @@ export async function deleteSession(): Promise<{ ok: boolean }> {
 }
 
 // ── Gallery ──
-
-export async function listGallery(params: {
-    page?: number;
-    limit?: number;
-    sort?: string;
-    tier?: GalleryTier;
-    q?: string;
-    basis?: string;
-}): Promise<GalleryListResponse> {
-    const qs = new URLSearchParams();
-    if (params.page != null) qs.set("page", String(params.page));
-    if (params.limit != null) qs.set("limit", String(params.limit));
-    if (params.sort) qs.set("sort", params.sort);
-    if (params.tier) qs.set("tier", params.tier);
-    if (params.q) qs.set("q", params.q);
-    if (params.basis) qs.set("basis", params.basis);
-    const query = qs.toString();
-    return apiFetch<GalleryListResponse>(
-        `/api/gallery${query ? `?${query}` : ""}`,
-        "listGallery",
-    );
-}
 
 export async function getGalleryEntry(hash: string): Promise<GalleryEntry> {
     return apiFetch<GalleryEntry>(`/api/gallery/${hash}`, "getGalleryEntry");

@@ -126,13 +126,6 @@ export interface GalleryEntry {
     updated_at: string;
 }
 
-export interface GalleryListResponse {
-    items: GalleryEntry[];
-    total: number;
-    page: number;
-    pages: number;
-}
-
 // ── Session/Auth ──
 
 export interface SessionResponse {
@@ -165,7 +158,6 @@ export interface CursorInfo {
 export interface GalleryCursorResponse {
     items: GalleryEntry[];
     cursor: CursorInfo;
-    total: number;
 }
 
 // ── Admin User Management ──

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import json
-import math
 import logging
 import re
 from datetime import UTC, datetime
@@ -22,7 +21,6 @@ from api.dependencies import (
 from api.models.admin import CursorInfo, FlagRequest, GalleryCursorResponse
 from api.models.gallery import (
     GalleryEntryResponse,
-    GalleryListResponse,
     PublishRequest,
     UpdateEntryRequest,
 )
@@ -74,48 +72,6 @@ def _decode_cursor(raw: str) -> dict | None:
 # ---------------------------------------------------------------------------
 # Public gallery endpoints
 # ---------------------------------------------------------------------------
-
-
-@gallery_router.get("", response_model=GalleryListResponse)
-async def list_gallery(
-    page: int = Query(default=1, ge=1),
-    limit: int = Query(default=20, ge=1, le=100),
-    sort: str = Query(default="newest"),
-    tier: str = Query(default="all"),
-    q: str = Query(default=""),
-    basis: str = Query(default=""),
-    user_slug: str = Query(default=""),
-):
-    """List gallery entries with filtering, sorting, and pagination."""
-    db = get_db()
-
-    # Build filter
-    query_filter: dict = {}
-    if tier != "all":
-        query_filter["tier"] = tier
-    if q:
-        query_filter["image_slug"] = {"$regex": re.escape(q), "$options": "i"}
-    if basis:
-        query_filter["active_bases"] = basis
-    if user_slug:
-        query_filter["user_slug"] = user_slug
-
-    # Sort
-    sort_field, sort_dir = SORT_KEYS.get(sort, SORT_KEYS["newest"])
-
-    total = await db.gallery.count_documents(query_filter)
-    pages = math.ceil(total / limit) if total > 0 else 1
-    skip = (page - 1) * limit
-
-    cursor = (
-        db.gallery.find(query_filter, {"liked_ips": 0})
-        .sort(sort_field, sort_dir)
-        .skip(skip)
-        .limit(limit)
-    )
-    items = [_entry_from_doc(doc) async for doc in cursor]
-
-    return GalleryListResponse(items=items, total=total, page=page, pages=pages)
 
 
 @gallery_router.get("/cursor")
@@ -177,12 +133,12 @@ async def list_gallery_cursor(
 
     next_cursor = _encode_cursor(docs[-1], sort_field) if has_more and docs else None
 
-    total = await db.gallery.count_documents(base_filter)
-
+    # No `count_documents` on the hot path — cursor pagination needs no total.
+    # The previous O(n) count drag is dropped; the UI shows the loaded entries
+    # and the cursor's has_more flag tells the reader whether more remain.
     return GalleryCursorResponse(
         items=items,
         cursor=CursorInfo(next_cursor=next_cursor, has_more=has_more),
-        total=total,
     )
 
 

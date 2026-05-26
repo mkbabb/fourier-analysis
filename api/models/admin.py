@@ -116,4 +116,3 @@ class CursorInfo(BaseModel):
 class GalleryCursorResponse(BaseModel):
     items: list  # GalleryEntryResponse list, imported at usage site
     cursor: CursorInfo
-    total: int
