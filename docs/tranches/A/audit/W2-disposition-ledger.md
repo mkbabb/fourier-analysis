@@ -108,7 +108,27 @@ The two H1-flagged silent-deferral risks per `docs/audits/runs/2026-05-18-tranch
 
 ## §W2.b — Fold-to-component (`fourier-overrides.css`)
 
-_Reserved for W2.b._
+Commit: `f934ff2` — `refactor(A.W2.b): fold-to-component the surviving fourier-overrides rules + delete the file`.
+
+Discharge tally: 5 fold-to-entry + 1 fold-to-component + 2 lift-to-glass-ui (each as a documented local carry) + 1 dead-token-delete + 1 file deletion.
+
+The brief allotted "7 fold-to-component + 4 lift candidates". The empirical home for the brand fork, the app-shell pair, the KaTeX block, and the `::selection` rule is the entry stylesheet — these are app-wide concerns and the per-component fold would have fragmented a single global decision across many `<style scoped>` blocks (DRY violation). One lift candidate (`--easing-accent`) folds to its sole consumer; one (canvas-layer z-rungs) is dead surface and retires outright per W2.md scope item 8's no-silent-deferral discipline.
+
+### W2.b — fold rows
+
+| # | rule | original lines (`fourier-overrides.css` post-W2.a) | disposition | destination | citing commit | notes |
+|---|---|---|---|---|---|---|
+| b1 | `@theme { --font-sans: "Computer Modern Serif", … }` (brand fork) | 22–24 | fold-to-entry | `web/src/style.css:11-13` (`@theme` block at the entry) | `f934ff2` | `@theme` is a Tailwind-theme directive; it acts globally — folding to a per-component `<style scoped>` block would not register with Tailwind. The entry is its only valid home. |
+| b2 | `@layer base { html, body { @apply bg-background text-foreground font-serif; min-height: 100dvh } }` | 43–48 | fold-to-entry | `web/src/style.css:17-22` (`@layer base`) | `f934ff2` | app-shell concern — the entry is the canonical home; `App.vue` template already carries `class="bg-background text-foreground"` so the base-layer rule is the substrate guarantee. |
+| b3 | `body { padding-bottom: env(safe-area-inset-bottom) }` | 50–52 | fold-to-entry | `web/src/style.css:24-26` (paired with b2 inside `@layer base`) | `f934ff2` | safe-area inset is a viewport-level concern; pairs with b2 in the same `@layer base` block. |
+| b4 | KaTeX `@font-face` swap (12 families) + `.katex` / `.katex-display` / `.dark .katex` sizing | 57–87 | fold-to-entry | `web/src/style.css:52-87` | `f934ff2` | KaTeX renders math across ≥6 components (`PaperView`, `EquationPanel`, `EquationResult`, `ConvergencePlot`, `EqCoefficientsPanel`, et al.); per-component folding would duplicate the font-face block 6× (DRY violation). Single entry is canonical. |
+| b5 | `::selection` (light + dark, `color-mix(--primary 12%/20%, transparent)`) | 91–98 | lift-to-glass-ui (as documented local carry) | `web/src/style.css:28-34` (local carry inside `@layer base`) + `coordination/CONSTELLATION.md` row "A → glass-ui `::selection` base" | `f934ff2` | the upstream destination is the glass-ui base layer; until that lands, the carry is at the entry because `::selection` is a document-level pseudo-element with no scoped surface. |
+| b6 | `[data-state="active"][role="tabpanel"] { animation: tab-slide-in 0.18s }` + `@keyframes tab-slide-in` + paired PRM guard | 102–116 | lift-to-glass-ui (as documented local carry) | `web/src/style.css:89-102` (local carry) + `coordination/CONSTELLATION.md` row "A → glass-ui Tabs entry animation" | `f934ff2` | the selector targets a glass-ui primitive's data-attribute (`UnderlineTabs` ships the `data-state`); the animation belongs on the upstream primitive. 3 in-tree consumers. Until upstream lands, the rule lives at the entry rather than fragmenting across 3 consumer `<style>` blocks. |
+| b7 | `--easing-accent: hsl(248 88% 71%)` | 32 | lift-to-glass-ui (as scoped local carry) | `web/src/components/visualization/EasingPicker.vue:37-44` (scoped to `.easing-section`) + `coordination/CONSTELLATION.md` row "A → glass-ui `--viz-easing`" | `f934ff2` | sole-consumer rule — 4 references all inside `EasingPicker.vue`. Scoping the carry to the component is tighter than the entry-level form previously used. |
+| b8 | `--z-canvas-layer: 1`, `--z-canvas-overlay: 20` | 36–37 | dead-token-delete | (deleted; not relocated) | `f934ff2` | zero in-tree consumers (`git grep z-canvas-layer\\|z-canvas-overlay` returned empty); the rule was dead surface even pre-W2.a. The constellation row that W2.a previously filed (l2 — propose `--z-canvas` / `--z-canvas-overlay` rungs in `tokens.css §3`) is withdrawn since the consumer never used the names. Per the brief's "discover dead → delete outright with rationale". |
+| b9 | `fourier-overrides.css` (entire file) | 117 lines (post-W2.a) | retire | deleted; `style.css` import line elided (the import had already been removed by W2.a's pass; verified absent) | `f934ff2` | with b1–b7 relocated and b8 retired outright, the file is empty of named surface and is deleted in full per W2.md hard gate #1. |
+
+**W2.b discharge tally:** 9 rows — 4 fold-to-entry (b1–b4) + 2 lift-as-documented-local-carry-at-entry (b5–b6) + 1 lift-as-scoped-local-carry (b7) + 1 dead-token-delete (b8) + 1 file deletion (b9). Hard gate #1 satisfied (file does not exist); hard gate #2 satisfied (every rule discharged); invariant 7 satisfied (every lift names its upstream destination).
 
 ## §W2.d — Visual regression evidence
 

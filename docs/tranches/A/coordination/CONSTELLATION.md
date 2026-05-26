@@ -35,12 +35,15 @@ This document closes at W6 (the close wave) with both **Emitted** rows updated t
 
 ## Emitted to the glass-ui stream
 
-A surfaces two cross-repo carries. Neither is a fourier-side fix; both are filed for the relevant upstream's next tranche.
+A surfaces several cross-repo carries. None is a fourier-side fix; all are filed for the relevant upstream's next tranche.
 
 | Carry | Target | Detail |
 |---|---|---|
 | A → glass-ui press-scale | glass-ui | three primitives express the press affordance three ways (`button/index.ts:9` token, `toggle/index.ts:33` bare `active:scale-95`, `ConfiguratorRow.vue:91` hardcoded fallback). Unify on `--scale-press*`. Audit `d-style-glassui.md` rows S1 + S2. |
 | A → value.js color / path | value.js | value.js 0.4.6 lacks `colorScale(stops, t)` (a palette primitive) and a generic `sampleToSVGPath(fn, n)`. A.W4 (the *Scaling, KISS and correctness pass* wave) converges onto value.js's existing colour surface and files these two additions. |
+| A → glass-ui `--viz-easing` | glass-ui `tokens.css` (viz-token block, alongside `--viz-fourier / -chebyshev / -legendre / -amber / -green`) | the viz-easing accent colour. 4 in-tree consumers at `EasingPicker.vue:22,67,68,78`. Until upstream ships it, the carry lives as a scoped CSS variable on `.easing-section` in `EasingPicker.vue`. Filed at A.W2.b. |
+| A → glass-ui `::selection` base | glass-ui base layer (alongside the global border reset shipped by canon) | a canonical `::selection` palette. Consumer's local carry is `::selection { color-mix(--primary 12%/20%, transparent) }` in light + dark. Until upstream lands it, the rule lives in `web/src/style.css @layer base`. Filed at A.W2.b. |
+| A → glass-ui Tabs entry animation | glass-ui Tabs primitive (UnderlineTabs / Tabs panel slot) | the tab-panel entry slide animation (`[data-state="active"][role="tabpanel"] { animation: tab-slide-in 0.18s }`) belongs on the upstream primitive. 3 in-tree consumers via `UnderlineTabs` (`EquationView.vue`, `VisualizationView.vue`, `GalleryView.vue`). Until upstream lands it, the rule lives in `web/src/style.css` as a documented local carry alongside its PRM guard. Filed at A.W2.b. |
 
 ## Sibling constellation — the CRUD cohort (tranche B)
 
