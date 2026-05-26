@@ -29,7 +29,13 @@ const anim = useAnimationStore();
 
 <style scoped>
 @reference "tailwindcss";
+
+/* `--easing-accent` is the viz-easing accent colour. Filed upstream as a
+   glass-ui `--viz-easing` token; see `coordination/CONSTELLATION.md`.
+   Until that lands, the carry lives here because EasingPicker is the
+   sole in-tree consumer. */
 .easing-section {
+    --easing-accent: hsl(248 88% 71%);
     padding: 0.375rem 0.5rem;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
     margin-bottom: 0.125rem;

@@ -1,10 +1,40 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@mkbabb/glass-ui/styles";
-
-/* Project-specific tokens, components, and typography */
-@import "./styles/fourier-overrides.css";
 @import "./styles/buttons.css";
+
+/* A.W2.b — folded from `styles/fourier-overrides.css` (deleted). The brand
+   fork remaps the `font-sans` Tailwind utility onto Computer Modern Serif;
+   the global app shell, the safe-area inset, the KaTeX font-face swap +
+   sizing, the `::selection` palette, and the tab-panel entry animation
+   are app-wide concerns and therefore live at the entry. The `::selection`
+   block and `[data-state="active"][role="tabpanel"]` animation are filed
+   upstream as glass-ui carries — see `coordination/CONSTELLATION.md`. */
+
+@theme {
+    --font-sans: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
+}
+
+@layer base {
+    html,
+    body {
+        @apply bg-background text-foreground font-serif;
+        min-height: 100dvh;
+    }
+
+    body {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    ::selection {
+        background: color-mix(in srgb, var(--primary) 12%, transparent);
+        color: inherit;
+    }
+
+    .dark ::selection {
+        background: color-mix(in srgb, var(--primary) 20%, transparent);
+    }
+}
 
 /* A.W2.c — folded from `styles/ios-fixes.css` (deleted): mobile-first
    responsive root font sizing. Global concern, hosted at the entry. */
@@ -17,5 +47,60 @@ html {
     html {
         font-size: 1rem;
         line-height: 1.5rem;
+    }
+}
+
+/* KaTeX font-face swap — load local copies of the KaTeX font families so
+   formula glyphs do not block on network. KaTeX is third-party; its
+   surface is app-wide via `<EquationResult>`, `<EquationPanel>`,
+   `<ConvergencePlot>`, `<PaperView>` etc. */
+@font-face { font-family: KaTeX_Main; font-display: swap; src: local("KaTeX_Main"); }
+@font-face { font-family: KaTeX_Math; font-display: swap; src: local("KaTeX_Math"); }
+@font-face { font-family: KaTeX_AMS; font-display: swap; src: local("KaTeX_AMS"); }
+@font-face { font-family: KaTeX_Size1; font-display: swap; src: local("KaTeX_Size1"); }
+@font-face { font-family: KaTeX_Size2; font-display: swap; src: local("KaTeX_Size2"); }
+@font-face { font-family: KaTeX_Size3; font-display: swap; src: local("KaTeX_Size3"); }
+@font-face { font-family: KaTeX_Size4; font-display: swap; src: local("KaTeX_Size4"); }
+@font-face { font-family: KaTeX_Caligraphic; font-display: swap; src: local("KaTeX_Caligraphic"); }
+@font-face { font-family: KaTeX_Fraktur; font-display: swap; src: local("KaTeX_Fraktur"); }
+@font-face { font-family: KaTeX_SansSerif; font-display: swap; src: local("KaTeX_SansSerif"); }
+@font-face { font-family: KaTeX_Script; font-display: swap; src: local("KaTeX_Script"); }
+@font-face { font-family: KaTeX_Typewriter; font-display: swap; src: local("KaTeX_Typewriter"); }
+
+.katex {
+    font-size: 1.02em;
+}
+
+.katex-display {
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 0.75rem 0;
+    margin: 1rem 0;
+}
+
+.katex-display > .katex {
+    font-size: 1.1em;
+}
+
+.dark .katex {
+    color: var(--foreground);
+}
+
+/* Tab-panel entry animation — local carry pending glass-ui's Tabs
+   primitive shipping this on its own. Selector targets the data-attribute
+   the upstream UnderlineTabs primitive sets; cite `EquationView`,
+   `VisualizationView`, `GalleryView`. */
+[data-state="active"][role="tabpanel"] {
+    animation: tab-slide-in 0.18s ease-out;
+}
+
+@keyframes tab-slide-in {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-state="active"][role="tabpanel"] {
+        animation: none;
     }
 }

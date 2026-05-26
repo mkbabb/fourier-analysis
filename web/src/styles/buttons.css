@@ -4,7 +4,8 @@
  * Project-specific button variants. The slider recipes (.styled-slider +
  * the `:not(.styled-slider)` native-range fallback) retired at A.W2.c
  * once all 7 consumer sites migrated to `<Slider variant="glass-scrubber">`.
- * Component classes live here; global utilities live in fourier-overrides.css.
+ * Global utilities formerly in `fourier-overrides.css` folded to `style.css`
+ * at A.W2.b (file deleted).
  *
  * W3 completes the remaining `.btn-*` + `.basis-pill` migrations and then
  * retires this file.
