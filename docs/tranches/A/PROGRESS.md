@@ -172,7 +172,7 @@ Per user directive of 2026-05-26 the W2/W3 split for `buttons.css` is
 revoked: the entire `.btn-*` + `.basis-pill` migration is pulled into
 W2, the file deletes here, and W3 retains the native-`<button>`
 migration scope only. Agent A.W2.e discharged the abrogation at commit
-`<COMMIT_HASH_PENDING>` — `refactor(A.W2.e): fully abrogate buttons.css
+`10e616c` — `refactor(A.W2.e): fully abrogate buttons.css
 — migrate .btn-* and .basis-pill consumers to <Button>/<Badge>`.
 
 Architectural transposition: each consumer-side recipe migrates to the
