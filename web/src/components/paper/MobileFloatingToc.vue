@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, reactive, watch, nextTick, onUnmounted } from "vue";
+import { ref, watch, nextTick, onUnmounted } from "vue";
 import { Button } from "@mkbabb/glass-ui";
+import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-vue-next";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
@@ -36,27 +37,20 @@ onUnmounted(() => {
     }
 });
 
-// Tracks user overrides for section expand/collapse state
-const userExpanded = reactive(new Set<string>());
-const userCollapsed = reactive(new Set<string>());
-
-function isSectionExpanded(sectionId: string): boolean {
-    if (userCollapsed.has(sectionId)) return false;
-    if (userExpanded.has(sectionId)) return true;
-    return props.activeRootId === sectionId;
-}
-
-function selectRootSection(sectionId: string) {
-    if (isSectionExpanded(sectionId)) {
-        // Currently expanded → collapse, stay in dropdown
-        userExpanded.delete(sectionId);
-        userCollapsed.add(sectionId);
-    } else {
-        // Currently collapsed → expand, stay in dropdown
-        userCollapsed.delete(sectionId);
-        userExpanded.add(sectionId);
-    }
-}
+// ── Section expand/collapse — delegated to glass-ui's `useSidebarState`
+//    (W3.5.c). Discharges the user-expanded/user-collapsed reactive Sets
+//    that previously lived locally; symmetric with the desktop sidebar.
+//    `activeId` is unused on mobile (no nested highlighting) — pass
+//    `activeRootId` as a stand-in so the composable's default-expansion
+//    rule still pivots on the user's current section.
+const sidebarState = useSidebarState<PaperSectionData>({
+    sections: props.sections,
+    activeId: () => props.activeRootId,
+    activeRootId: () => props.activeRootId,
+    scrollTo: (id) => props.scrollTo(id),
+    scrollToTop: () => props.scrollToTop(),
+    getChildren: (n) => n.subsections,
+});
 
 function selectSection(id: string) {
     floatingTocOpen.value = false;
@@ -135,17 +129,17 @@ watch(() => props.search.isOpen.value, (open) => {
                             class="floating-toc-item floating-toc-root cm-serif"
                             :class="{ 'is-active': activeRootId === section.id }"
                             :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
-                            @click="selectRootSection(section.id)"
+                            @click="sidebarState.toggleSection(section.id)"
                         >
                             <component
-                                :is="isSectionExpanded(section.id) ? ChevronDown : ChevronRight"
+                                :is="sidebarState.isExpanded(section.id) ? ChevronDown : ChevronRight"
                                 v-if="section.subsections?.length"
                                 class="floating-toc-collapse-icon"
                             />
                             <span class="fira-code text-xs opacity-50">{{ section.number }}.</span>
                             {{ section.title }}
                         </Button>
-                        <template v-if="isSectionExpanded(section.id)">
+                        <template v-if="sidebarState.isExpanded(section.id)">
                             <Button
                                 v-for="sub in section.subsections"
                                 :key="sub.id"

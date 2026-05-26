@@ -745,3 +745,20 @@ The visualisation pipeline (upload → contour → coefficient → epicycle rend
 **Routed onward.** Levels-derivation drift → **B** (CRUD convergence); backend `--reload` aborts in-flight compute on file write → **C** (infra); onnxruntime CPU warnings flood → **C**; `web/src/style.css:3` glass-ui `@import` resolution races on cold dev-server boot → **W3.5.ab**.
 
 **Screenshots.** `docs/tranches/A/audit/W3.5-screenshots/pipeline-{01..04}-{uploaded,contoured,computed,animated}{,-after}.png`.
+
+### 2026-05-26 — W3.5.c sidebar glass-ui leverage
+
+`PaperSidebar.vue` and `MobileFloatingToc.vue` heretofore rolled their own table-of-contents expand/collapse state (`userExpanded` / `userCollapsed` reactive-Set pairs, an `isSectionExpanded` predicate, a `handleSectionClick` / `selectRootSection` toggle) and the desktop sidebar's subsection-row reveal was a hand-rolled `grid-template-rows: 0fr → 1fr` shim. None of this leveraged glass-ui — whose `@mkbabb/glass-ui/sidebar` subpath already ships `useSidebarState` and whose `@mkbabb/glass-ui` barrel already ships `Collapsible` + `CollapsibleContent`.
+
+**Substrate gap.** `useSidebarState` was hard-pinned to `sections: SidebarSection[]` (i.e. trees whose children live under `node.children`). `PaperSectionData` stores children under `subsections`. The two sibling composables in the same subpath — `useTreeIndex<T>` and `useScrollTracker<T>` — were already generic with a `getChildren` override; only `useSidebarState` was not. **Augment at root.**
+
+**Augmentation (glass-ui).** `useSidebarState` was made generic over `T extends TreeNode`; it now accepts an optional `getChildren` forwarded into the inner `useTreeIndex<T>`; `activeId` / `activeRootId` widen to `MaybeRefOrGetter<string | null>` (which also discharges the cross-package `@vue/reactivity` patch-version skew at the call site, 3.5.30 vs. 3.5.34); a new `GenericSidebarState<T>` return type lands via overload; the prior `SidebarSection` overload is preserved verbatim. Re-export added at `composables/sidebar/index.ts`.
+
+**Adoption (fourier).** Both consumers call `useSidebarState<PaperSectionData>` with `getChildren: (n) => n.subsections` and getter-form active ids; `PaperSidebar.vue` additionally wraps each subsection column in `<Collapsible :open=… @update:open=…>` + `<CollapsibleContent>`, retiring the hand-rolled grid-row animation (and its `opacity` co-animation) for the canonical `data-state="open"|"closed"` channel.
+
+**LOC delta.** `PaperSidebar.vue` 296 → 282 (−14); `MobileFloatingToc.vue` 380 → 374 (−6); total **−20** lines. The contraction is modest because the duplicated state lived in two files and the visual structure of `PaperSidebar.vue` is unchanged.
+
+**Verification.** `vue-tsc -b --force` exit 0; `npm run build` exit 0; Playwright over `/paper` at 1440×900 and 390×844 confirms active-section indication, click-to-scroll, Collapsible open/close on root-click, and the mobile dropdown's expand/collapse all preserve the pre-refactor UX. Screenshots at `docs/tranches/A/audit/W3.5-screenshots/paper-sidebar-{light,scrolled,dark,mobile}.png`. Discharge artefact at [`audit/W3.5-sidebar.md`](audit/W3.5-sidebar.md).
+
+**Routed onward.** `latex-paper`'s `vue/index.ts` re-exports its own `useSidebarFollow` and `useTreeIndex` rather than re-exporting glass-ui's — filed for `latex-paper`'s next wave (sibling concern; outside W3.5.c's bounds).
+

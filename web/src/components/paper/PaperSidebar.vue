@@ -3,10 +3,11 @@ import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
-import { Button } from "@mkbabb/glass-ui";
+import { Button, Collapsible, CollapsibleContent } from "@mkbabb/glass-ui";
+import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import { ChevronUp } from "lucide-vue-next";
 
-import { ref, reactive } from "vue";
+import { ref } from "vue";
 
 const props = defineProps<{
     sections: PaperSectionData[];
@@ -25,27 +26,22 @@ const props = defineProps<{
 const sidebarNav = ref<HTMLElement | null>(null);
 defineExpose({ sidebarNav });
 
-// Tracks user overrides for section expand/collapse state
-const userExpanded = reactive(new Set<string>());
-const userCollapsed = reactive(new Set<string>());
-
-function isSectionExpanded(sectionId: string): boolean {
-    if (userCollapsed.has(sectionId)) return false;
-    if (userExpanded.has(sectionId)) return true;
-    return props.activeRootId === sectionId;
-}
-
-function handleSectionClick(sectionId: string) {
-    if (isSectionExpanded(sectionId)) {
-        // Currently expanded → collapse
-        userExpanded.delete(sectionId);
-        userCollapsed.add(sectionId);
-    } else {
-        // Currently collapsed → expand
-        userCollapsed.delete(sectionId);
-        userExpanded.add(sectionId);
-    }
-}
+// ── Section expand/collapse — delegated to glass-ui's `useSidebarState`
+//    (W3.5.c). The composable encapsulates the userExpanded/userCollapsed
+//    reactive Sets + isExpanded/toggleSection logic that previously lived
+//    in both `PaperSidebar.vue` and `MobileFloatingToc.vue`. We supply
+//    `getChildren` because `PaperSectionData` stores children under
+//    `subsections` rather than the canonical `children` key — glass-ui's
+//    composable was augmented (same commit) to accept this override,
+//    symmetric with `useTreeIndex` / `useScrollTracker`.
+const sidebarState = useSidebarState<PaperSectionData>({
+    sections: props.sections,
+    activeId: () => props.activeId,
+    activeRootId: () => props.activeRootId,
+    scrollTo: (id) => props.scrollTo(id),
+    scrollToTop: () => props.scrollToTop(),
+    getChildren: (n) => n.subsections,
+});
 </script>
 
 <template>
@@ -66,62 +62,64 @@ function handleSectionClick(sectionId: string) {
             </div>
             <ol class="sidebar-list">
                 <li v-for="(section, si) in sections" :key="section.id">
-                    <Tooltip :text="getPreview(section)" side="right">
-                        <Button
-                            variant="ghost"
-                            :data-toc-id="section.id"
-                            @click="handleSectionClick(section.id)"
-                            class="sidebar-link cm-serif"
-                            :class="{ 'is-active': activeRootId === section.id }"
-                            :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
-                        >
-                            <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
-                            <span v-html="renderTitle(section.title)" />
-                        </Button>
-                    </Tooltip>
-                    <!-- Subsections (animated expand) -->
-                    <div
-                        v-if="section.subsections"
-                        class="sidebar-sublist-wrapper"
-                        :class="{ 'is-expanded': isSectionExpanded(section.id) }"
+                    <Collapsible
+                        :open="sidebarState.isExpanded(section.id)"
+                        @update:open="sidebarState.toggleSection(section.id)"
                     >
-                        <ol class="sidebar-sublist">
-                            <li v-for="sub in section.subsections" :key="sub.id">
-                                <Tooltip :text="getPreview(sub)" side="right">
-                                    <Button
-                                        variant="ghost"
-                                        :data-toc-id="sub.id"
-                                        @click="scrollTo(sub.id)"
-                                        class="sidebar-link sidebar-sublink cm-serif"
-                                        :class="{ 'is-active-sub': isActive(sub.id, activeId) || isInActiveChain(sub.id, activeId) }"
-                                            :style="isActive(sub.id, activeId)
-                                                ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
-                                                : {}"
-                                    >
-                                        <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
-                                        <span v-html="renderTitle(sub.title)" />
-                                    </Button>
-                                </Tooltip>
-                                <!-- Sub-subsections -->
-                                <ol v-if="sub.subsections && isInActiveChain(sub.id, activeId)" class="sidebar-subsublist">
-                                    <li v-for="subsub in sub.subsections" :key="subsub.id">
+                        <Tooltip :text="getPreview(section)" side="right">
+                            <Button
+                                variant="ghost"
+                                :data-toc-id="section.id"
+                                @click="sidebarState.toggleSection(section.id)"
+                                class="sidebar-link cm-serif"
+                                :class="{ 'is-active': activeRootId === section.id }"
+                                :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
+                            >
+                                <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
+                                <span v-html="renderTitle(section.title)" />
+                            </Button>
+                        </Tooltip>
+                        <!-- Subsections — glass-ui Collapsible drives the
+                             expand/collapse animation via `data-state`. -->
+                        <CollapsibleContent v-if="section.subsections" class="sidebar-sublist-wrapper">
+                            <ol class="sidebar-sublist">
+                                <li v-for="sub in section.subsections" :key="sub.id">
+                                    <Tooltip :text="getPreview(sub)" side="right">
                                         <Button
                                             variant="ghost"
-                                            :data-toc-id="subsub.id"
-                                            @click="scrollTo(subsub.id)"
-                                            class="sidebar-link sidebar-subsublink cm-serif"
-                                            :style="isActive(subsub.id, activeId)
-                                                ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
-                                                : {}"
+                                            :data-toc-id="sub.id"
+                                            @click="scrollTo(sub.id)"
+                                            class="sidebar-link sidebar-sublink cm-serif"
+                                            :class="{ 'is-active-sub': isActive(sub.id, activeId) || isInActiveChain(sub.id, activeId) }"
+                                                :style="isActive(sub.id, activeId)
+                                                    ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
+                                                    : {}"
                                         >
-                                            <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
-                                            <span v-html="renderTitle(subsub.title)" />
+                                            <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
+                                            <span v-html="renderTitle(sub.title)" />
                                         </Button>
-                                    </li>
-                                </ol>
-                            </li>
-                        </ol>
-                    </div>
+                                    </Tooltip>
+                                    <!-- Sub-subsections -->
+                                    <ol v-if="sub.subsections && isInActiveChain(sub.id, activeId)" class="sidebar-subsublist">
+                                        <li v-for="subsub in sub.subsections" :key="subsub.id">
+                                            <Button
+                                                variant="ghost"
+                                                :data-toc-id="subsub.id"
+                                                @click="scrollTo(subsub.id)"
+                                                class="sidebar-link sidebar-subsublink cm-serif"
+                                                :style="isActive(subsub.id, activeId)
+                                                    ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
+                                                    : {}"
+                                            >
+                                                <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
+                                                <span v-html="renderTitle(subsub.title)" />
+                                            </Button>
+                                        </li>
+                                    </ol>
+                                </li>
+                            </ol>
+                        </CollapsibleContent>
+                    </Collapsible>
                 </li>
             </ol>
         </nav>
@@ -253,22 +251,10 @@ function handleSectionClick(sectionId: string) {
     opacity: 0.8;
 }
 
-/* Animated subsection expand/collapse */
+/* W3.5.c — Collapsible animation driven by glass-ui `CollapsibleContent`
+   (reka-ui's `--reka-collapsible-content-height` CSS var). The previous
+   hand-rolled `grid-template-rows: 0fr → 1fr` shim is retired. */
 .sidebar-sublist-wrapper {
-    display: grid;
-    grid-template-rows: 0fr;
-    opacity: 0;
-    /* A.W3.d — bezier→`--ease-out-expo`. */
-    transition: grid-template-rows 0.4s var(--ease-out-expo),
-                opacity 0.3s var(--ease-out-expo);
-}
-
-.sidebar-sublist-wrapper.is-expanded {
-    grid-template-rows: 1fr;
-    opacity: 1;
-}
-
-.sidebar-sublist-wrapper > .sidebar-sublist {
     overflow: hidden;
 }
 
