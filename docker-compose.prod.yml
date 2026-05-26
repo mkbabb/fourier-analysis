@@ -5,9 +5,10 @@ services:
     ports: !reset []
     environment:
       - CORS_ORIGINS=${CORS_ORIGINS:-https://fourier.babb.dev}
-      - MONGO_URI=mongodb://fourier-admin:cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb@mongo:27017/fourier?authSource=admin&tls=true&tlsAllowInvalidCertificates=true
+      - MONGO_URI=mongodb://${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}@mongo:27017/fourier?authSource=admin&tls=true&tlsAllowInvalidCertificates=true
     restart: unless-stopped
     deploy:
+      replicas: 1
       resources:
         limits:
           memory: 2G
@@ -38,13 +39,16 @@ services:
   mongo:
     ports:
       - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-fourier-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}
     command: ["mongod", "--tlsMode", "requireTLS",
               "--tlsCertificateKeyFile", "/etc/ssl/mongo.pem",
               "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
               "--tlsAllowConnectionsWithoutCertificates",
               "--auth"]
     healthcheck:
-      test: ["CMD", "mongosh", "-u", "fourier-admin", "-p", "cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb",
+      test: ["CMD", "mongosh", "-u", "${MONGO_USER:-fourier-admin}", "-p", "${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}",
              "--authenticationDatabase", "admin",
              "--tls", "--tlsAllowInvalidCertificates",
              "--eval", "db.runCommand('ping').ok", "--quiet"]

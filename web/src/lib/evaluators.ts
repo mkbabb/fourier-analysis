@@ -1,6 +1,6 @@
 /**
  * Shared basis evaluation functions.
- * Used by both the main thread (bases.ts) and the web worker (math-worker.ts).
+ * Consumed by the main-thread basis layer (bases.ts).
  */
 
 import type { BasisComponent } from "./types";
