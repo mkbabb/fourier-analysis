@@ -10,13 +10,13 @@
 
 ## §1 — Thesis
 
-fourier-analysis has shipped real work through three glass-ui constellation tranches (O, P, Q) without once owning a plan folder. The cost is by now visible and chronic: a 109-file glass-ui-v1.8.5 migration cohort (the *cohort* being the dispatchable group of file changes catalogued under one architectural intent — see `glossary/meta-terms.md §"Agent unit"` for the kindred granularity term) has sat uncommitted across O, P, and Q, named "working tree DIRTY — same in-flight refactor" at *every* constellation audit; and the repo has accreted a stale fork of glass-ui's token system alongside an admin view built in a visibly lower-fidelity design language than the app it administers.
+fourier-analysis has shipped real work through three glass-ui constellation tranches (O, P, Q) without once owning a plan folder. The cost is by now visible and chronic: a 110-file glass-ui-v2.0.0 migration cohort (the *cohort* being the dispatchable group of file changes catalogued under one architectural intent — see `glossary/meta-terms.md §"Agent unit"` for the kindred granularity term) has sat uncommitted across O, P, and Q, named "working tree DIRTY — same in-flight refactor" at *every* constellation audit; and the repo has accreted a stale fork of glass-ui's token system alongside an admin view built in a visibly lower-fidelity design language than the app it administers. (W6 reconciliation note: the cohort and pin were initially documented as 109-file / v1.8.5 / `7e2e385`; W0-challenge §4 row 20 discovered the consumer was in fact compiling against v2.0.0 / `5e79443` with 110 paths under `--untracked-files=all`. The amended figures stand and the migration targets named in W3 hold under v2.0.0.)
 
 This is the **fourth recurrence** of the K-invariant-3 shadow-execution anti-pattern (glass-ui V → AB → AB+1, and now fourier). The remedy is not another retrospective. fourier is a product with its own architecture, and it needs its own tranche to land that architecture honestly.
 
 Tranche A is therefore the **charter tranche**: it makes the repo plannable, then closes the surface-level drift. It does four things, in dependency order:
 
-1. **Attribute and land the migration cohort.** The 109 uncommitted files (62 modified + 31 deleted + 16 untracked, as observed at the H1 hardening pass) form a near-complete, internally clean glass-ui v1.x migration. They are committed under a plan, not shadow-executed. Every deletion is verified to have a wired replacement, with the lone exception of `BouncyToggle.vue` — which W1 (the *Attribute and land the glass-ui migration cohort* wave) flags for explicit rework. This closes chronic item C1.
+1. **Attribute and land the migration cohort.** The 110 uncommitted files (60 modified + 31 deleted + 19 untracked, as ratified at W0-challenge §2 row 1 under `--untracked-files=all`; the H1 hardening pass observed 109 under default-untracked counting) form a near-complete, internally clean glass-ui v2.0.0 migration. They are committed under a plan, not shadow-executed. Every deletion is verified to have a wired replacement, with the lone exception of `BouncyToggle.vue` — which W1 (the *Attribute and land the glass-ui migration cohort* wave) flags for explicit rework. This closes chronic item C1.
 2. **Abrogate the override stylesheets.** `fourier-overrides.css` is a stale fork of `glass-ui/tokens.css` — roughly 70% of its lines re-declare tokens glass-ui already ships, and two of its forks have *regressed* (the `fourier-f` utility, and the neutral ladder). It is deleted in full; `ios-fixes.css` likewise; `buttons.css` exists only because the consumer reinvented the button system across 89 native `<button>` elements. Every surviving rule is folded idiomatically into its owning component or lifted to glass-ui. No override layer survives.
 3. **Pass the repo for scale, KISS, and correctness.** The janitor builds an unbounded `$nin` set; the rate-limiter holds process-local state with no replica story; dead code (`logo.ts`, `math-worker.ts`, `compute.py`) ships with no consumer; `store_contour_asset` carries a coordinate-hash collision bug that mis-serves contours. A fixes each with the smallest honest change — no superfluous cloud, no contrivance.
 4. **Lift the admin surface and close functionality gaps.** The admin view drops to native `confirm()` / `<select>`, hand-rolled pagination, and zero `aria-*`; a complete audit-log backend ships with no viewer. A brings the admin *UI* to glass-ui parity on the current data models and wires the dead halves.
@@ -133,13 +133,13 @@ A opens with debt inherited from the constellation and closes by either landing 
 
 **Inherited (absorbed into A):**
 
-- **C1** — the 107-file migration cohort uncommitted across glass-ui's O / P / Q tranches → **lands at W1**.
-- **P12** — the AB+1 primitive-adoption cohort (`AnimatedDigit`, `MetricRow / Stack`, `MetricCell`) never adopted → **lands at W3**.
-- **P CR-2** — dock typed-context + `useClipboard` + HoverCard + GlassScrubber → **verified discharged** by audit `d-…md`; A re-confirms at W0 challenge, no further work.
+- **C1** — the 110-file migration cohort (60 M + 31 D + 19 ?? under `--untracked-files=all`; 109 under the H1 default-untracked counting) uncommitted across glass-ui's O / P / Q tranches → **landed at W1 `83e3a14`**.
+- **P12** — the AB+1 primitive-adoption cohort (`AnimatedDigit`, `MetricRow / Stack`, `MetricCell`) never adopted → **partially discharged at W3.c `6049995`** (13 MetricBadge sites adopted; remaining primitives retire-with-rationale per `audit/W3-adoption-ledger.md` substrate-shape mismatch).
+- **P CR-2** — dock typed-context + `useClipboard` + HoverCard + GlassScrubber → **verified discharged** by audit `d-…md`; A re-confirmed at W0 challenge `87472d1`; no further work.
 
 **Emitted by A (cross-repo, to the constellation):**
 
-- **A → glass-ui press-scale unification** — three glass-ui primitives express the press affordance three ways (`button/index.ts:9`, `toggle/index.ts:33`, `ConfiguratorRow.vue:91`); audit `d-…md` S1+S2. Filed to glass-ui's next tranche; not a fourier-side fix.
+- **A → glass-ui press-scale unification** — three glass-ui primitives express the press affordance three ways (`glass-ui/src/components/ui/button/index.ts:9`, `glass-ui/src/components/ui/toggle/index.ts:33`, `glass-ui/src/components/custom/configurator/ConfiguratorRow.vue:91` per W0-challenge §4 row 21 path correction); audit `d-…md` S1+S2. Filed to glass-ui's next tranche; not a fourier-side fix. STILL FILED at W6 close — no upstream commit.
 
 **Extracted from A — tranche B (CRUD / identity convergence, cross-repo with value.js):**
 
