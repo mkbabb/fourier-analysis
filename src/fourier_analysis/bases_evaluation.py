@@ -58,10 +58,10 @@ def evaluate_partial_sum(
             result += c * np.exp(2j * np.pi * k * t)
         return result
 
-    # Polynomial bases — trim endpoints to mitigate Runge phenomenon
-    # on closed contours (which have an inherent discontinuity at s=±1)
-    eps = 0.03
-    s = np.linspace(-1 + eps, 1 - eps, n_eval)
+    # Polynomial bases — evaluate over the canonical orthogonality domain
+    # [-1, 1]. Endpoint conditioning for closed-contour visualization is a
+    # plotting concern and lives in the caller, not in the evaluator.
+    s = np.linspace(-1, 1, n_eval)
     max_k = max(coeff_dict.keys()) if coeff_dict else 0
     coeffs_arr = np.zeros(max_k + 1, dtype=np.float64)
     for k, c in coeff_dict.items():

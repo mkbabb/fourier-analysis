@@ -59,3 +59,7 @@ Build state captured at the W0.a close:
 - `uv run ruff check api` — 23 pre-existing errors (W4 territory per A.md §6, not W0's scope).
 
 The W0 close gate (per A.md §3, W0 row) is **partial**: the submodule wiring is committed, the tsbuildinfo is untracked-and-gitignored, the build is verified green, and the brittleness window is observed and recorded. The remaining gates — the `audit/W0-challenge.md` artefact and the two `test_bases.py` repairs — fall to W0.b and W0.c respectively. The W0 row in the status board flips only at the W0.d close ceremony, after all three serial agents return.
+
+### 2026-05-26 — W0.c numerical-test repair landed
+
+Agent A.W0.c discharged the brittleness window declared at A.md §10. Root cause: `evaluate_partial_sum` in `src/fourier_analysis/bases_evaluation.py` evaluated the polynomial bases on a trimmed domain `[-1+ε, 1-ε]` with `ε = 0.03` — a closed-contour Runge-mitigation heuristic that corrupted the function's contract (the evaluator must compute the canonical partial sum at evenly spaced points of the orthogonality interval `[-1, 1]`). The trim shifted every sample point inward, so the returned values did not coincide with the caller's `np.linspace(-1, 1, n_eval)`. Fix path (a): the trim was excised from the evaluator; the heuristic, if needed for visualization, belongs in the calling plotter rather than the synthesis primitive. Whole-suite reports **89 passed, 0 failed** (W0.a had observed 87 + 2). The §10 suspended gates are restored; W0.d may close the wave.
