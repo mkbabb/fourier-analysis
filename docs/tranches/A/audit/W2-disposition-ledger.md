@@ -283,3 +283,36 @@ sibling-`src/`-widening `fs.allow` back to its own `vite.config`
 - `du -h /Users/mkbabb/Programming/glass-ui/dist/styles/typography.css` → 154K (was ~26K pre-inline; 128K of base64 woff2 payload + the pre-existing utility classes).
 - fourier dev server (`pkill vite; rm -rf node_modules/.vite; npm run dev`) boots clean — `tail /tmp/fourier-dev.log` shows no 403 / `outside of Vite serving allow list` errors.
 - Playwright probe at `/morph` (the route that previously surfaced the 403 against `fira-code-latin.woff2`): zero console errors, zero font-request 403s; full-page screenshot at `audit/W2-screenshots/font-fix-after.png`.
+
+## §W2.g — Backend Docker validation (W1.b cohort exercise)
+
+Cross-wave dispatch operating on read-only authority across `api/**`,
+`docker-compose.yml`, `docker-compose.prod.yml`, `nginx/`, `web/**`,
+`scripts/dev.sh`. The W2.g agent exercises (does not edit) the docker
+substrate to validate that the W1.b api feature cohort (`05f5025`,
+the +897-line admin / auth / gallery delta) actually runs end to end.
+Full account at `docs/tranches/A/audit/W2-backend-validation.md`.
+
+| # | concern | exercise mode | finding | disposition | destination / successor | citing commit |
+| - | - | - | - | - | - | - |
+| g1 | Docker daemon availability on the validation host | `docker info` probe, `open -a Docker` launch, 11-iteration `until docker info` poll | daemon never spawned — `/Users/mkbabb/.docker/run/` carries zero entries; no `Docker Desktop` / `com.docker.backend` / `qemu` / `com.docker.virtualization` process observed; `~/Library/Containers/com.docker.docker/` does not exist | ESCALATE — host-environment failure, not substrate-attributable | A.W2.h re-dispatch on a daemon-bearing host, OR absorption into the W4 deploy-surface rehearsal | this commit |
+| g2 | `docker-compose.yml` config parse | `docker compose -f docker-compose.yml config` (no daemon required) | green — three services (backend, frontend, mongo) on `app-network` bridge; the Mongo URI literal at `:14` echoes unchanged through the resolved plan | RATIFY (compose YAML is well-formed) | n/a | this commit |
+| g3 | Stack boot — `docker compose up -d --build` | not exercised | NOT EXERCISED — daemon down | DEFERRED | W2.h | this commit |
+| g4 | Endpoint validation matrix (8 endpoints: health, sessions, gallery list, gallery cursor, contours, equations, admin batch, admin audit) | not exercised; source-side reachability verified by grep against `api/routers/*.py` | 0/8 exercised; 8/8 reachable in source | DEFERRED — validation matrix intact for W2.h inheritance | W2.h | this commit |
+| g5 | Mongo connectivity from api container | not exercised | NOT EXERCISED — daemon down | DEFERRED | W2.h | this commit |
+| g6 | Rate-limiter operation (Option A single-replica per W0-challenge §3) | not exercised | NOT EXERCISED — daemon down | DEFERRED | W2.h | this commit |
+| g7 | Janitor / cron registration (`api/main.py:42` `asyncio.create_task(run_janitor())`) | not exercised | NOT EXERCISED — daemon down | DEFERRED | W2.h | this commit |
+| g8 | Web-frontend network forensics — `/gallery` view against missing backend | `curl` + Playwright `browser_navigate` + `browser_network_requests` + `browser_console_messages` | the `/api/gallery/cursor?limit=20&sort=newest` GET returns 500; 1 console error; the precipitating-symptom shape is empirically confirmed. Screenshot at `audit/W2-screenshots/gallery-no-backend.png` | DOCUMENTED — the 500 banner is downstream of the daemon-down state; once W2.h runs the stack, the call shape matches `gallery.py:121` and should return 200 | W2.h captures `gallery-with-backend.png` | this commit |
+| g9 | Preserved-bug row W0-challenge §2 #14 (Mongo password literal) | static confirmation via compose-config resolved plan | CONFIRMED — `docker-compose.yml:14` reads the literal verbatim; resolved plan unchanged | unchanged from W0-challenge | W4 deploy-surface env-reference migration | this commit |
+| g10 | Preserved-bug row W0-challenge §2 #16 (gallery.ts:32 fetchPage callers) | Playwright network capture | the gallery view already calls the cursor endpoint; the 4 admin callers remain on the offset path per source — unchanged at HEAD `88c1858` | unchanged from W0-challenge | W4.b migration | this commit |
+| g11 | Preserved-bug row W0-challenge §2 #17 (batch contract `{ok,affected}` vs `{processed}`) | static confirmation via `api/routers/admin.py:362,397` + reference to `api.ts:526,537` declarations | CONFIRMED in source; latent under empirical exercise (returns `{ok: true, affected: 0}` against an empty DB; `processed` would parse as `undefined` and silently mis-type) | unchanged from W0-challenge | W5.c wrapper-type repair | this commit |
+
+**W2.g discharge tally:** 11 rows — 1 ESCALATE (g1, the daemon-down
+host-environment failure that blocks empirical exercise) + 1 RATIFY
+(g2, compose-config parse green) + 5 DEFERRED to W2.h (g3, g4, g5,
+g6, g7) + 1 DOCUMENTED forensic (g8, the 500-banner causation chain) +
+3 preserved-bug rows unchanged from W0-challenge (g9, g10, g11). The
+W1.b cohort remains *probably* sound — the compose-config parse is
+green and no static fault was discoverable — but empirical RATIFY
+defers to the W2.h re-dispatch (or W4 absorption per §7 of the
+validation report).

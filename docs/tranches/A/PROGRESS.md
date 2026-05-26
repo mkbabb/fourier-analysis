@@ -232,3 +232,89 @@ W2 closing the override-stylesheet abrogation chapter in full: every
 override stylesheet authored under the consumer fork
 (`fourier-overrides.css`, `ios-fixes.css`, `buttons.css`) is now
 deleted, and `web/src/styles/` no longer exists.
+
+### 2026-05-26 — W2.g backend Docker validation
+
+Agent A.W2.g — the backend Docker validation moiety of W2, dispatched
+cross-wave on read-only authority across `api/**`,
+`docker-compose.yml`, `docker-compose.prod.yml`, `nginx/`, `web/**`,
+`scripts/dev.sh` — exercises (does not edit) the docker substrate to
+validate that the W1.b api feature cohort (`05f5025`, the +897-line
+admin / auth / gallery delta) runs end to end. Full account at
+`docs/tranches/A/audit/W2-backend-validation.md`; per-row dispositions
+at `audit/W2-disposition-ledger.md §W2.g`.
+
+**Disposition: ESCALATE.** The Docker daemon would not initialise on
+the validation host. Empirical record: `/Users/mkbabb/.docker/run/`
+carries zero entries; `docker info` returns "Cannot connect to the
+Docker daemon"; `open -a Docker` and the AppleScript `tell application
+"Docker" to launch` both completed silently with no daemon process
+spawned across ~90s of observation; `~/Library/Containers/com.docker.docker/`
+does not exist on this host. The failure is host-environmental, not
+substrate-attributable — the compose-config parse (`docker compose
+config`) is green and the source-side endpoint table is intact at HEAD
+`88c1858`. Per the brief's STOP discipline (*"If Docker daemon is
+unavailable, document that explicitly in §2 and STOP — don't try to
+run the stack outside docker"*) the validation halted at the boot
+stage. The W1.b cohort remains *probably* sound; empirical RATIFY
+defers to the named successor.
+
+**Findings that did discharge:**
+
+- **Compose-config parse**: green. Three services (backend / frontend
+  / mongo) on `app-network` bridge; backend on `${API_PORT:-8000}:8000`;
+  Mongo healthcheck `mongosh --eval "db.runCommand('ping').ok"` with
+  interval 5s / start_period 10s; `depends_on.mongo.condition:
+  service_healthy`. The resolved plan echoes the Mongo URI literal at
+  `:14` unchanged.
+- **Web-frontend network forensics (Playwright)**: the
+  `/api/gallery/cursor?limit=20&sort=newest` GET that the gallery view
+  fires returns **500** (the vite dev proxy attempts to forward to the
+  absent backend; the upstream is dead; vite emits 500). 1 console
+  error. The precipitating-symptom shape the brief named is
+  empirically confirmed downstream of the daemon-down state. Screenshot
+  at `audit/W2-screenshots/gallery-no-backend.png`. Once the api
+  service is reachable, the call shape matches the cursor route at
+  `api/routers/gallery.py:121` and should return 200; the banner
+  should disappear.
+- **Endpoint table (8 endpoints)**: enumerated for W2.h inheritance —
+  `/api/health` (`main.py:111`), `POST /api/sessions`
+  (`sessions.py:36`), `GET /api/gallery` (`gallery.py:79`), `GET
+  /api/gallery/cursor` (`gallery.py:121`), the contour surface
+  (`contours.py:22,30`), the equation-compute surface
+  (`equations.py:31,136`), `POST /api/admin/gallery/batch`
+  (`admin.py:362,397` — the H3 batch-contract divergence site), `GET
+  /api/admin/audit` (`admin.py:542`). 0/8 exercised; 8/8 reachable in
+  source.
+
+**Preserved-bug confirmations (W0-challenge §2 rows 14, 16, 17):**
+
+- **Row 14 (Mongo password literal)** — CONFIRMED statically; the
+  literal `mongodb://fourier-admin:cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb@…`
+  appears verbatim at `docker-compose.yml:14` and propagates unchanged
+  through the resolved compose plan. The W4 deploy-surface
+  env-reference migration stands.
+- **Row 16 (gallery.ts:32 fetchPage admin callers)** — the gallery
+  view already calls the cursor endpoint per the Playwright capture;
+  the 4 admin callers remain on the offset path per the source at HEAD
+  `88c1858`. The W4.b migration target stands.
+- **Row 17 (batch contract divergence — `{ok,affected}` vs
+  `{processed}`)** — CONFIRMED in source (`admin.py:397` returns `{ok:
+  True, affected: …}`; the W0-challenge ratification documented the
+  consumer-side `Promise<{processed: number}>` at `api.ts:526,537`).
+  Latent under empirical exercise (returns `{ok: true, affected: 0}`
+  against an empty DB; the consumer would silently mis-type
+  `processed: undefined`). W5.c repairs the wrapper return types.
+
+**Named successor**: **A.W2.h — backend Docker validation re-dispatch
+on a daemon-bearing host**. Inheritance surface: the 8-endpoint
+validation table (§3), the three runtime-integrity probes (§4 — Mongo
+connect, rate-limiter operation, janitor registration), the
+complementary `gallery-with-backend.png` capture (§5), and the
+empirical-exercise rows for preserved-bugs 16 + 17 (§6). Alternative
+absorption path: the W4 infra-pass deployment rehearsal already
+exercises `docker-compose.prod.yml` per A.md §6; if W4 can host the
+validation matrix as a sub-step (deploy → endpoint sweep →
+preserved-bug rows), W2.h can collapse into the W4 wave rather than
+landing standalone. The W2.g artefact lands as a single commit:
+`docs(A.W2.g): land backend Docker validation report`.
