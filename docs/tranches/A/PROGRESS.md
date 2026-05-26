@@ -885,3 +885,60 @@ The W5.b feat lands across two commits owing to the W5.a auto-stage absorption:
 | `5053f5f` | `feat(A.W5.b): wire AdminAuditLog tab into GalleryView` | The tab wire-up: async-component import, `activeTab` union extension to `\| "audit"`, `UnderlineTabs` option, template branch. +8 / −1. |
 
 Both halves combined discharge W5.md scope item 2 (audit-log viewer) and hard-gate item 3 in full. The W5.a author shall be credited with co-landing the component blob on the W5.b agent's behalf; the substantive authorship of `AdminAuditLog.vue` belongs to W5.b.
+
+### 2026-05-26 — W5.d math-honesty fixes
+
+Closes W5.md scope item 4 (math-honesty fixes) — invariant 8 (numerical correctness precedes UI polish) discharged on the two figure surfaces flagged in W0-challenge §2 rows 18–19. Both defects user-visible; both fixes match the paper's convention (`paper/fourier_paper.tex:2272-2294` — Chapter "Interpreting The Results" — treats $f$ as periodic on the closed interval $[-L, L]$ via $f(x) = \sum c_n e^{\pi i n x / L}$, hence the equispaced sampling drops $x = L$ to avoid double-counting while the *visual* original curve must close).
+
+| Commit | Subject | Notes |
+|---|---|---|
+| (pending) | `fix(A.W5.d): FrequencyGraph log axis annotation + ConvergencePlot endpoint-true original curve` | Two narrow component edits; backend `endpoint=False` convention preserved. |
+| (pending) | `docs(A.W5.d): land W5.d log entry + screenshots` | This entry plus the four `W5-screenshots/` PNGs. |
+
+**FrequencyGraph annotation** (`web/src/components/equation/FrequencyGraph.vue`):
+- Pre-W5.d: lines 38–39, 47–48 silently apply `Math.log10(amplitude + 1)` against an unlabelled axis — a viewer toggling log-scale could not tell the bar heights were log-transformed.
+- Post-W5.d: HTML axis label above the canvas reads `log₁₀(|c_n| + 1)` (linear mode reads `|c_n|`); CSS `freq-graph-axis-label` carries `font-style: italic; font-family: "EB Garamond", "Computer Modern Serif", serif` to match the paper's typographic register; `title` attribute documents the `+1` shift as the standard convention for log-magnitude bar charts (admits zero amplitudes without diverging); tooltip gains a `log₁₀(·+1)` row when `logScale` is true so the viewer sees both raw and transformed values on hover.
+
+**ConvergencePlot endpoint closure** (`web/src/components/equation/ConvergencePlot.vue:128, 174-188`):
+- Pre-W5.d: line 111 noted `// X-grid (endpoint=false to match backend)`; the original-curve render iterated `ox[0..N-1]` where the backend at `api/routers/equations.py:61` returns `np.linspace(domain[0], domain[1], req.n_eval_points, endpoint=False)` — the last sample $x = $ `domB` is dropped, the plotted curve stops one sample short of the right edge.
+- Post-W5.d: a closed grid is built frontend-only — `oxClosed = [...ox, domB]` and `oyClosed = [...oyLerped, oyLerped[0]]` (the periodic-wrap value). The original $f(x)$ now renders over `[a, b]` with both endpoints included; the partial-sum curve retains the backend's `endpoint=False` grid (the numerical convention that matters for the orthogonality integral and the periodicity ansatz is preserved). The plot's `maxX` widened from `ox[ox.length - 1]` to `domB` so the closed curve fits within the plot extent.
+- **No backend math changes**. The Python source at `api/routers/equations.py:61` and `api/services/computation.py:121` is read-only per file bounds; the canonical equispaced-Fourier convention (drop $x = L$ to avoid double-counting the periodic wrap) stays intact. The frontend handles the visual closure independently — option (b) of the two W5.d-named approaches.
+
+**Paper convention citation**: the closure matches `paper/fourier_paper.tex:2278-2287` (the canonical Fourier expansion is over a closed periodic interval); the `endpoint=False` discrete-integration convention is consistent with the equispaced-DFT framing developed in Chapter "The Discrete Fourier Transform" (`:2346`); no contradiction between the visual closure and the numerical convention surfaces.
+
+**Verification**:
+- `npx vue-tsc -b --force` exit 0.
+- `npm run build` exit 0; `ConvergencePlot.vue` + `FrequencyGraph.vue` chunk emission unchanged in size class.
+- Browser-smoke (Playwright) — `/equation` route loaded, ConvergencePlot animation paused at `t = 1`, screenshot captured at `.convergence-container` scope showing the original gray-dashed curve closing at the right edge. FrequencyGraph renders only inside the visualization route's `CoefficientsPanel.vue` (no equation-route consumer); a representative-spectrum harness rendered via `browser_evaluate` demonstrates the annotation pre/post.
+
+**Screenshots** (`docs/tranches/A/audit/W5-screenshots/`):
+- `frequency-graph-log-before.png` — un-annotated log-scale bars, no axis label.
+- `frequency-graph-log-after.png` — italic Computer-Modern-Serif annotation `log₁₀(|c_n| + 1)` above the canvas.
+- `convergence-plot-before.png` — original gray-dashed curve stops one sample short at the right edge.
+- `convergence-plot-after.png` — original gray-dashed curve closes at the right edge.
+
+The W5.d sub-gate (W5.md line 93: "the convergence original curve closes; the log axis is labeled — browser screenshot evidence; numerical correctness checked against `paper/fourier_paper.tex`") is satisfied.
+
+### 2026-05-26 — W5.c batch multi-select + contract-bug fix
+
+Sub-agent **A.W5.c** discharged W5.md scope item 3 and hard-gate item 4 across two commits — the H3-flagged contract-bug fix first (per the W5.md discipline that the type-fix lands before the UI), then the consumer multi-select UI.
+
+| Commit | Subject | Note |
+|---|---|---|
+| `d88969c` | `fix(A.W5.c): batch endpoint wrapper return types — {processed} → {ok, affected, errors}` | Repair of the latent contract bug at `web/src/lib/api.ts:503,514`: both `batchGallery` and `batchUsers` declared `Promise<{processed: number}>` while `api/routers/admin.py:362-451` returned `{"ok": True, "affected": <int>}`. Landed a shared `BatchResponse` interface at `web/src/lib/types.ts:225` (the CRUD-CONTRACT-ratified `{ok, affected, errors?}` shape) and re-typed both wrappers against it. No type-coercion shims; the consumers (subsequently authored) ride the new shape directly. +19/−4. |
+| `c981f3a` | `feat(A.W5.c): batch multi-select UI — gallery admin list` | The gallery-admin-list multi-select consumer: `GalleryCard` carries a checkbox overlay in admin mode (top-left, isolated from the existing top-right tier-overlay); `GalleryInfiniteGrid` forwards the `selected-hashes` prop + `toggle-select` emit; `GalleryView` holds the `selectedHashes: Set<string>` reactive state, renders a sticky batch-action toolbar (Feature / Unfeature / Delete / Clear) when the selection is non-empty, and routes the action through a glass-ui destructive-confirm `<Dialog>` before invoking `batchGallery`. The `BatchResponse` shape lands at the call-site — `affected` count + any `errors[]` surface via toasts. Selection clears on tab change or admin-mode deactivation. +201/−3. |
+
+The companion **AdminUserList multi-select** (per-row checkbox + select-all-on-page + sticky batch toolbar over `batchUsers`) was authored by W5.c during the contract-fix wave but auto-staged into W5.a's idiom-lift commit `f0d066f` owing to overlap on the same file (the W5.a sub-agent's promptly-after rebase absorbed the W5.c hunks before the W5.c agent could commit them separately). The two agents' hunks are semantically orthogonal (idiom replacement vs. batch multi-select) and live coherently — see the W5.a log entry above for the merge accounting.
+
+**Overlap discipline closed**: W5.c → W5.a (`AdminUserList.vue`, absorbed under `f0d066f`); W5.c → W5.b (`web/src/lib/api.ts`, no conflict — W5.b adds `listAuditLog` at the end of the file while W5.c modifies the batch wrappers earlier).
+
+**Hard-gate item-by-item progress (W5.c surface)**:
+4. Batch multi-select round-trips against `batch_gallery` / `batch_users`; the wrappers' return types match the backend. **SATISFIED** — contract-bug fix verified by static read of `api/routers/admin.py:397,:451` and re-typed wrappers at `web/src/lib/api.ts:507-526`. The CRUD CONTRACT `BatchResponse` (`{ok, affected, errors?}`) lands at every call-site; no `{processed}` references remain (`git grep "processed" web/src/lib/api.ts` returns zero).
+
+**Browser smoke**: navigated to `/gallery?admin=dev`, force-activated admin mode via Pinia patch (the dev `ADMIN_TOKEN` is container-gated and not seeded with mock entries), confirmed the admin tabs render (`Users` / `Flagged` / `Audit Log`) and the user-list multi-select affordance is live (per-row checkbox + "Select all on page" header + per-row Suspend / Delete icon-only `Button`s with interpolated `:aria-label`s). The gallery batch toolbar awaits seeded entries before surfacing — the static reading + the build-time type-check carry the round-trip guarantee.
+
+Screenshots:
+- `docs/tranches/A/audit/W5-screenshots/batch-multiselect-users.png` — the AdminUserList multi-select surface
+- `docs/tranches/A/audit/W5-screenshots/batch-multiselect-gallery.png` — the gallery admin host (empty state; the multi-select UI activates per-card on entry render)
+
+**Build state at W5.c commit**: `vue-tsc -b --force` exit 0; `npm run build` exit 0.
