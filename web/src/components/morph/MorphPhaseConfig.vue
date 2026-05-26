@@ -18,15 +18,15 @@
                     />
                     <span class="input-unit fira-code">ms</span>
                 </div>
-                <input
-                    type="range"
-                    :value="duration"
-                    @input="$emit('update:duration', Number(($event.target as HTMLInputElement).value))"
-                    min="50"
-                    max="800"
-                    step="10"
-                    class="styled-slider"
-                    :style="sliderStyle(duration, 50, 800, sliderColor ?? 'var(--accent-red)')"
+                <Slider
+                    v-model="durationModel"
+                    variant="glass-scrubber"
+                    :min="50"
+                    :max="800"
+                    :step="10"
+                    aria-label="Duration (ms)"
+                    class="duration-slider-track"
+                    :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }"
                 />
             </div>
         </div>
@@ -62,18 +62,19 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import {
     Select,
     SelectTrigger,
     SelectContent,
     SelectItem,
     SelectValue,
+    Slider,
 } from "@mkbabb/glass-ui";
 import {
     EASING_PRESETS,
     EASING_PRESET_NAMES,
     easingCurvePath,
-    sliderStyle,
 } from "@/composables/useMorphConfig";
 
 const props = defineProps<{
@@ -93,6 +94,12 @@ function emitDuration(raw: string) {
     const v = Math.max(50, Math.min(800, Math.round(Number(raw) || 50)));
     emit("update:duration", v);
 }
+
+/* A.W2.c — adapt the scalar `duration` to glass-scrubber's array model. */
+const durationModel = computed<number[]>({
+    get: () => [props.duration],
+    set: (arr) => emitDuration(String(arr[0] ?? 50)),
+});
 
 const presets = EASING_PRESETS;
 const easingNames = EASING_PRESET_NAMES;
@@ -194,7 +201,12 @@ const easingNames = EASING_PRESET_NAMES;
     flex-shrink: 0;
 }
 
-.styled-slider {
+/* A.W2.c — glass-scrubber per-instance retint hook + flex stretch. */
+.duration-slider-track {
     flex: 1;
+    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
+    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
+    --slider-scrub-thumb-bg: var(--track-color);
+    --slider-scrub-thumb-bg-hover: var(--track-color);
 }
 </style>

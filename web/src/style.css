@@ -5,4 +5,17 @@
 /* Project-specific tokens, components, and typography */
 @import "./styles/fourier-overrides.css";
 @import "./styles/buttons.css";
-@import "./styles/ios-fixes.css";
+
+/* A.W2.c — folded from `styles/ios-fixes.css` (deleted): mobile-first
+   responsive root font sizing. Global concern, hosted at the entry. */
+html {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
+}

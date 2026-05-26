@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { Slider } from "@mkbabb/glass-ui";
 import { GlassDock, DockIconButton } from "@mkbabb/glass-ui/dock";
 import { HoverPopover } from "@mkbabb/glass-ui/hover-popover";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -41,6 +43,12 @@ const emit = defineEmits<{
     reset: [];
     save: [];
 }>();
+
+/* A.W2.c — adapt the scalar `magnetRadius` to glass-scrubber's array model. */
+const magnetModel = computed<number[]>({
+    get: () => [props.magnetRadius],
+    set: (arr) => emit("update:magnetRadius", Math.max(0, Math.min(10, arr[0] ?? 0))),
+});
 </script>
 
 <template>
@@ -103,15 +111,17 @@ const emit = defineEmits<{
                             <span class="text-xs font-medium text-foreground whitespace-nowrap">Magnet</span>
                             <span class="text-xs fira-code text-muted-foreground tabular-nums">{{ magnetRadius }}</span>
                         </div>
-                        <input
-                            type="range" min="0" max="10" step="1"
-                            :value="magnetRadius"
-                            class="styled-slider w-full"
-                            :style="{ '--progress': (magnetRadius / 10 * 100) + '%', '--slider-color': VIZ_COLORS.fourier }"
-                            @input.stop="emit('update:magnetRadius', parseInt(($event.target as HTMLInputElement).value))"
+                        <Slider
+                            v-model="magnetModel"
+                            variant="glass-scrubber"
+                            :min="0"
+                            :max="10"
+                            :step="1"
+                            aria-label="Magnet radius"
+                            class="magnet-slider-track"
+                            :style="{ '--track-color': VIZ_COLORS.fourier }"
                             @mousedown.stop
                             @pointerdown.stop
-                            @change.stop
                         />
                     </div>
                 </template>
@@ -207,11 +217,13 @@ const emit = defineEmits<{
     width: 9rem;
     padding: 0.375rem 0.5rem;
 }
-/* Force the range input to render at full width with visible height */
-.magnet-popover-content input[type="range"] {
+
+/* A.W2.c — glass-scrubber per-instance retint hook + full-width sizing. */
+.magnet-slider-track {
     width: 100%;
-    display: block;
-    height: 16px;
-    margin: 0;
+    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
+    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
+    --slider-scrub-thumb-bg: var(--track-color);
+    --slider-scrub-thumb-bg-hover: var(--track-color);
 }
 </style>

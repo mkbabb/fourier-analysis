@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { Slider } from "@mkbabb/glass-ui";
 import { Wand2, Minimize2, Magnet } from "lucide-vue-next";
 import { VIZ_COLORS } from "@/lib/colors";
 import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
@@ -12,6 +14,12 @@ const emit = defineEmits<{
     simplify: [];
     "update:magnetRadius": [value: number];
 }>();
+
+/* A.W2.c — adapt the scalar `magnetRadius` to glass-scrubber's array model. */
+const magnetModel = computed<number[]>({
+    get: () => [props.magnetRadius],
+    set: (arr) => emit("update:magnetRadius", Math.max(0, Math.min(10, arr[0] ?? 0))),
+});
 </script>
 
 <template>
@@ -45,13 +53,15 @@ const emit = defineEmits<{
                                 <span class="text-xs fira-code text-muted-foreground tabular-nums">{{ magnetRadius }}</span>
                             </div>
                             <span class="text-micro text-muted-foreground whitespace-normal">Drag adjacent points together with falloff</span>
-                            <input
-                                type="range"
-                                min="0" max="10" step="1"
-                                :value="magnetRadius"
-                                class="styled-slider w-full mt-1"
-                                :style="{ '--progress': (magnetRadius / 10 * 100) + '%', '--slider-color': VIZ_COLORS.fourier }"
-                                @input="emit('update:magnetRadius', parseInt(($event.target as HTMLInputElement).value))"
+                            <Slider
+                                v-model="magnetModel"
+                                variant="glass-scrubber"
+                                :min="0"
+                                :max="10"
+                                :step="1"
+                                aria-label="Magnet radius"
+                                class="magnet-slider-track mt-1"
+                                :style="{ '--track-color': VIZ_COLORS.fourier }"
                             />
                         </div>
                     </div>
@@ -89,5 +99,13 @@ const emit = defineEmits<{
 .tool-btn--static:hover {
     transform: none;
     box-shadow: none;
+}
+
+/* A.W2.c — glass-scrubber per-instance retint hook. */
+.magnet-slider-track {
+    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
+    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
+    --slider-scrub-thumb-bg: var(--track-color);
+    --slider-scrub-thumb-bg-hover: var(--track-color);
 }
 </style>

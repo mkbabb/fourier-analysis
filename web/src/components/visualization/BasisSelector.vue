@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
+import { Slider } from "@mkbabb/glass-ui";
 import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
@@ -20,8 +21,17 @@ const emit = defineEmits<{
     (e: "update:nPoints", v: number): void;
 }>();
 
-const harmonicsProgress = computed(() => (((props.nHarmonics ?? 50) - 1) / 499) * 100);
-const pointsProgress = computed(() => (((props.nPoints ?? 1024) - 128) / (4096 - 128)) * 100);
+/* A.W2.c — `<Slider variant="glass-scrubber">` accepts an array model; the
+   parent's scalar `nHarmonics` / `nPoints` are adapted via paired computed
+   getters/setters that wrap the emit. */
+const harmonicsModel = computed<number[]>({
+    get: () => [props.nHarmonics ?? 50],
+    set: (arr) => emit("update:nHarmonics", Math.max(1, Math.min(500, arr[0] ?? 50))),
+});
+const pointsModel = computed<number[]>({
+    get: () => [props.nPoints ?? 1024],
+    set: (arr) => emit("update:nPoints", Math.max(128, Math.min(4096, arr[0] ?? 1024))),
+});
 
 const selected = ref<string[]>(props.activeBases ?? ["fourier-epicycles"]);
 
@@ -147,15 +157,15 @@ function toggleBasis(key: string) {
                             @input="emit('update:nHarmonics', Math.max(1, Math.min(500, parseInt(($event.target as HTMLInputElement).value) || 1)))"
                         />
                     </label>
-                    <input
-                        :value="nHarmonics"
-                        @input="emit('update:nHarmonics', parseInt(($event.target as HTMLInputElement).value))"
-                        type="range"
-                        min="1"
-                        max="500"
-                        step="1"
-                        class="styled-slider w-full"
-                        :style="{ '--progress': harmonicsProgress + '%', '--slider-color': VIZ_COLORS.fourier }"
+                    <Slider
+                        v-model="harmonicsModel"
+                        variant="glass-scrubber"
+                        :min="1"
+                        :max="500"
+                        :step="1"
+                        aria-label="Harmonics"
+                        class="basis-slider-track"
+                        :style="{ '--track-color': VIZ_COLORS.fourier }"
                     />
                 </div>
 
@@ -173,15 +183,15 @@ function toggleBasis(key: string) {
                             @input="emit('update:nPoints', Math.max(128, Math.min(4096, parseInt(($event.target as HTMLInputElement).value) || 128)))"
                         />
                     </label>
-                    <input
-                        :value="nPoints"
-                        @input="emit('update:nPoints', parseInt(($event.target as HTMLInputElement).value))"
-                        type="range"
-                        min="128"
-                        max="4096"
-                        step="128"
-                        class="styled-slider w-full"
-                        :style="{ '--progress': pointsProgress + '%', '--slider-color': VIZ_COLORS.chebyshev }"
+                    <Slider
+                        v-model="pointsModel"
+                        variant="glass-scrubber"
+                        :min="128"
+                        :max="4096"
+                        :step="128"
+                        aria-label="Sample Points"
+                        class="basis-slider-track"
+                        :style="{ '--track-color': VIZ_COLORS.chebyshev }"
                     />
                 </div>
             </div>
@@ -292,5 +302,15 @@ function toggleBasis(key: string) {
 }
 .reset-icon-btn:hover {
     color: var(--foreground);
+}
+
+/* A.W2.c — glass-scrubber per-instance retint hook. The variant ships
+   neutral defaults; we project `--track-color` onto the range fill + thumb
+   so each slider inherits its corresponding `VIZ_COLORS` palette entry. */
+.basis-slider-track {
+    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
+    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
+    --slider-scrub-thumb-bg: var(--track-color);
+    --slider-scrub-thumb-bg-hover: var(--track-color);
 }
 </style>

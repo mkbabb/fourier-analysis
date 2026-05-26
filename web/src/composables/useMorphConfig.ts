@@ -21,22 +21,6 @@ export { EASING_PRESETS, EASING_PRESET_NAMES, DEFAULT_MORPH_CONFIG, easingCurveP
 export type { MorphConfig };
 
 /**
- * Compute slider CSS custom properties for the styled-slider pattern.
- */
-export function sliderStyle(
-    value: number,
-    min: number,
-    max: number,
-    color: string,
-): Record<string, string> {
-    const progress = ((value - min) / (max - min)) * 100;
-    return {
-        "--progress": progress + "%",
-        "--slider-color": color,
-    };
-}
-
-/**
  * Generate a nice spread of preview levels from 1 to highLevel,
  * including the low and high bookends.
  */

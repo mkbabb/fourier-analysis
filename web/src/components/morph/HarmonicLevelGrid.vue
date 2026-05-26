@@ -14,15 +14,15 @@
                     step="1"
                     class="level-input fira-code"
                 />
-                <input
-                    type="range"
-                    :value="lowLevel"
-                    @input="emitLow(($event.target as HTMLInputElement).value)"
-                    min="1"
+                <Slider
+                    v-model="lowModel"
+                    variant="glass-scrubber"
+                    :min="1"
                     :max="highLevel - 1"
-                    step="1"
-                    class="styled-slider"
-                    :style="sliderStyle(lowLevel, 1, highLevel - 1, VIZ_COLORS.chebyshev)"
+                    :step="1"
+                    aria-label="Low harmonic level"
+                    class="level-slider-track"
+                    :style="{ '--track-color': VIZ_COLORS.chebyshev }"
                 />
             </div>
 
@@ -37,15 +37,15 @@
                     step="1"
                     class="level-input fira-code"
                 />
-                <input
-                    type="range"
-                    :value="highLevel"
-                    @input="emitHigh(($event.target as HTMLInputElement).value)"
+                <Slider
+                    v-model="highModel"
+                    variant="glass-scrubber"
                     :min="lowLevel + 1"
-                    max="100"
-                    step="1"
-                    class="styled-slider"
-                    :style="sliderStyle(highLevel, lowLevel + 1, 100, VIZ_COLORS.chebyshev)"
+                    :max="100"
+                    :step="1"
+                    aria-label="High harmonic level"
+                    class="level-slider-track"
+                    :style="{ '--track-color': VIZ_COLORS.chebyshev }"
                 />
             </div>
         </div>
@@ -83,7 +83,8 @@
 </template>
 
 <script setup lang="ts">
-import { sliderStyle } from "@/composables/useMorphConfig";
+import { computed } from "vue";
+import { Slider } from "@mkbabb/glass-ui";
 import { VIZ_COLORS } from "@/lib/colors";
 import type { FourierShape } from "@/lib/svg-fourier";
 import { interpolateAtHarmonicLevel, pointsToSvgPath } from "@/lib/svg-fourier";
@@ -111,6 +112,16 @@ function emitHigh(raw: string) {
     const v = Math.max(props.lowLevel + 1, Math.min(100, Number(raw) || 1));
     emit("update:highLevel", v);
 }
+
+/* A.W2.c — adapt the scalar level bounds to glass-scrubber's array model. */
+const lowModel = computed<number[]>({
+    get: () => [props.lowLevel],
+    set: (arr) => emitLow(String(arr[0] ?? 1)),
+});
+const highModel = computed<number[]>({
+    get: () => [props.highLevel],
+    set: (arr) => emitHigh(String(arr[0] ?? 1)),
+});
 
 function getPath(level: number): string {
     const points = interpolateAtHarmonicLevel(props.shape, level);
@@ -190,8 +201,13 @@ function getPath(level: number): string {
     box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.15);
 }
 
-.styled-slider {
+/* A.W2.c — glass-scrubber per-instance retint hook + flex stretch. */
+.level-slider-track {
     flex: 1;
+    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
+    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
+    --slider-scrub-thumb-bg: var(--track-color);
+    --slider-scrub-thumb-bg-hover: var(--track-color);
 }
 
 /* ── Preview grid ────────────────────────────── */

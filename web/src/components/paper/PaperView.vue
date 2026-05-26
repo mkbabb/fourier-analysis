@@ -438,6 +438,22 @@ onUnmounted(() => {
     }
 }
 
+/* A.W2.c — folded from `styles/ios-fixes.css` (deleted): iOS-Safari + small-
+   viewport code-block overflow. Co-located with `.paper-article` so the
+   element and its mobile fix share an owner. */
+@media (max-width: 640px) {
+    .paper-article :deep(pre),
+    .paper-article :deep(code) {
+        font-size: 0.75rem;
+        line-height: 1.4;
+    }
+    .paper-article :deep(pre) {
+        max-width: calc(100dvw - 2rem);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 .paper-grid {
     display: grid;
     grid-template-columns: 1fr;
