@@ -210,3 +210,76 @@ native-`<button>` migration.
 - `npx vue-tsc -b --force` exits 0 (clean typecheck across the post-W2.e consumer surface).
 - `npm run build` carries the W2.d-documented pre-existing substrate blocker (`@mkbabb/glass-ui → @mkbabb/value.js: parseCSSStylesheet` import fault); reproduced on baseline `88c1858` via `git stash` to confirm the blocker is not attributable to W2.e — the build-green surrogate is the typecheck per W2.d row d1's precedent.
 - Browser smoke: `/gallery` and `/visualize` render the surrounding chrome cleanly with zero console errors (dev DB empty so the live `.basis-pill` / `.btn-icon-admin` / ExportModal surfaces could not be exercised against entries — the cleanly-rendered router + header + upload pipeline confirms no broken cascade from the CSS migration); screenshots at `audit/W2-screenshots/buttons-abrogated-{gallery,visualize-basis,visualize-chrome}.png`.
+
+## §W2.f — Cross-repo glass-ui font-asset URL discharge
+
+The fourier dev log surfaced a contract-v2-side font fault on every
+boot: `request id "/Users/mkbabb/Programming/glass-ui/src/fonts/fira-code/fira-code-latin.woff2" is outside of Vite serving allow list`,
+issuing a 403 against the woff2 face on first paint. Per the standing
+CONSTELLATION.md carry row (filed at A.W2.d, "A → glass-ui font-asset
+URL hygiene"), the fault lives at the publisher (glass-ui) — the
+contract-v2 strike of the consumer-side sibling-`src/` `fs.allow`
+widening makes the substrate-side font-URL hygiene a contract-level
+obligation. The W2.f wave is the cross-repo discharge of that row.
+
+The architectural diagnosis distinguished two candidate fixes:
+
+- **Option A** — copy `src/fonts/` → `dist/fonts/`, preserve relative
+  `url("../fonts/...")` form. Structural blocker: Vite resolves CSS
+  `url()` against the file's `realpath`, which under the consumer's
+  `file:` symlink resolves the relative path back to the sibling's
+  filesystem (`/Users/.../glass-ui/dist/fonts/...`) — OUTSIDE the
+  consumer's project root; the `/@fs/` channel still gates on
+  `server.fs.allow` and 403s. Bare-package-specifier URLs
+  (`url("@mkbabb/glass-ui/fonts/...")`) likewise fail — Vite's CSS
+  pipeline does not resolve bare specifiers inside `url()` the way it
+  does inside `@import`. The relative URL is structurally locked to
+  the sibling's realpath; no source-side rewrite escapes it.
+
+- **Option B** — inline the woff2 files as
+  `url("data:font/woff2;base64,…")` in the published CSS at build
+  time. The font request layer dissolves; the `fs.allow` triangle
+  dissolves with it. Total font corpus is 124 KB raw → ~165 KB
+  base64-encoded → ~120 KB gzipped. Within the inline-asset register
+  for a once-loaded design-system CSS, and self-contained for cdn /
+  npm-published consumers alike.
+
+Option B selected — Option A's blocker is structural (Vite's
+symlink-realpath resolution axis), not a glass-ui-internal config
+defect. Glass-ui's `vite.config.ts` gains a small `closeBundle`
+plugin (`publishStyleAssets`) that cpSyncs `src/fonts/` →
+`dist/fonts/` + `src/styles/` → `dist/styles/`, then walks every
+`*.css` in `dist/styles/` and substitutes
+`url("@mkbabb/glass-ui/fonts/<family>/<face>.woff2")` with a base64
+data URI built from `src/fonts/<family>/<face>.woff2`. The
+`typography.css` source adopts the package-specifier URL form (4
+substitutions: Plus Jakarta latin + latin-ext, Fira Code latin +
+latin-ext). `package.json` exports updates `"./styles"` from
+`./src/styles/index.css` to `./dist/styles/index.css` (§2.1
+conformant) and adds `"./fonts/*": "./dist/fonts/*"` for any future
+per-asset consumer of the raw woff2.
+
+| # | source | concern | disposition | target | citing commit |
+| - | - | - | - | - | - |
+| f1 | `glass-ui/src/styles/typography.css:56,72,137,152` (pre) | 4 `@font-face` `url("../fonts/<family>/<face>.woff2")` source paths reaching back into `src/fonts/` from a `dist/`-published CSS | rewrite-and-inline | source CSS adopts package-specifier form `url("@mkbabb/glass-ui/fonts/...")`; `publishStyleAssets` plugin substitutes each at build time with `url("data:font/woff2;base64,…")` baked into `dist/styles/typography.css` | glass-ui `e123dc1` |
+| f2 | `glass-ui/vite.config.ts` (pre) | library-mode build emitted neither `dist/fonts/` nor `dist/styles/`, leaving the `./styles` export pointed at `src/` | plugin-add | `publishStyleAssets` plugin (closeBundle hook) cpSyncs both directories into `dist/` and walks the CSS to inline woff2 face assets; reads `__dirname` to scope to the package root, no new dep introduced | glass-ui `e123dc1` |
+| f3 | `glass-ui/package.json:217` (pre) | `"./styles": "./src/styles/index.css"` — exports key pointed into `src/`, violating contract-v2 §2.1 (every exports key MUST point into `dist/`) | repair-in-place | rewrite to `"./styles": "./dist/styles/index.css"`; add `"./fonts/*": "./dist/fonts/*"` subpath pattern for per-asset font specifier consumers | glass-ui `e123dc1` |
+| f4 | `fourier-analysis/docs/tranches/A/coordination/CONSTELLATION.md:47` (pre) | the `A → glass-ui font-asset URL hygiene` carry row was filed (W2.d) but unresolved | discharge | row annotated **DISCHARGED at glass-ui `e123dc1`** with Option-B rationale + cross-reference to W2.f | this commit |
+
+**W2.f discharge tally:** 4 rows — 3 cross-repo glass-ui edits
+(f1 typography.css URL rewrite, f2 vite.config.ts plugin, f3
+package.json exports repair) all landed in glass-ui `e123dc1` +
+1 fourier-side coordination update (f4 CONSTELLATION row
+discharge). The cross-repo write is deliberate per the
+scope-reveal protocol (W2.md §Triumvirate, instructions/tranche
+SPEC.md §"Scope Reveal"): substrate-side failures escalate to
+substrate-side fixes; fourier does NOT add the
+sibling-`src/`-widening `fs.allow` back to its own `vite.config`
+(contract-v2 strikes that — §2.2 is firm).
+
+**Verification:**
+- `ls /Users/mkbabb/Programming/glass-ui/dist/fonts/{fira-code,plus-jakarta-sans}/*.woff2` returns all 4 face files (cpSync emitted them post-build).
+- `grep -c 'data:font/woff2' /Users/mkbabb/Programming/glass-ui/dist/styles/typography.css` → 4 (one per face; the source `url(...)` rewrites are inlined verbatim by the plugin's `closeBundle` walk).
+- `du -h /Users/mkbabb/Programming/glass-ui/dist/styles/typography.css` → 154K (was ~26K pre-inline; 128K of base64 woff2 payload + the pre-existing utility classes).
+- fourier dev server (`pkill vite; rm -rf node_modules/.vite; npm run dev`) boots clean — `tail /tmp/fourier-dev.log` shows no 403 / `outside of Vite serving allow list` errors.
+- Playwright probe at `/morph` (the route that previously surfaced the 403 against `fira-code-latin.woff2`): zero console errors, zero font-request 403s; full-page screenshot at `audit/W2-screenshots/font-fix-after.png`.
