@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from "@mkbabb/glass-ui";
 import { useAnimationStore, EASING_OPTIONS, type EasingName } from "@/stores/animation";
 import EasingCurvePreview from "./EasingCurvePreview.vue";
 
@@ -9,11 +10,14 @@ const anim = useAnimationStore();
     <div class="easing-section">
         <span class="easing-heading">Easing</span>
         <div class="easing-grid">
-            <button
+            <Button
                 v-for="(opt, key) in EASING_OPTIONS"
                 :key="key"
+                variant="ghost"
+                size="sm"
                 class="easing-chip"
                 :class="{ 'is-active': anim.easing === key }"
+                :aria-pressed="anim.easing === key"
                 @click="anim.easing = key as EasingName"
             >
                 <EasingCurvePreview
@@ -22,7 +26,7 @@ const anim = useAnimationStore();
                     :color="anim.easing === key ? 'var(--easing-accent)' : 'var(--muted-foreground)'"
                 />
                 <span class="easing-chip-label">{{ opt.label }}</span>
-            </button>
+            </Button>
         </div>
     </div>
 </template>
@@ -64,7 +68,8 @@ const anim = useAnimationStore();
     border: 1.5px solid transparent;
     background: none;
     cursor: pointer;
-    transition: all 0.15s;
+    /* A.W3.d — named properties + canonical token, no `transition: all`. */
+    transition: background-color 0.15s var(--ease-standard), border-color 0.15s var(--ease-standard);
 }
 .easing-chip:hover {
     background: var(--muted);

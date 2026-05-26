@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from "vue";
-import { Badge } from "@mkbabb/glass-ui";
+import { Badge, Button } from "@mkbabb/glass-ui";
 import type { GalleryEntry } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
@@ -73,12 +73,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                 @click="emit('close')"
             >
                 <div class="modal-card relative bg-card rounded-xl border-2 border-foreground/15 overflow-hidden max-w-[28rem] w-full max-h-[90vh] overflow-y-auto" @click.stop>
-                    <button
-                        class="glass-btn w-8 h-8 absolute top-2.5 right-2.5 z-[var(--z-content)]"
+                    <Button
+                        variant="glass"
+                        size="icon"
+                        class="absolute top-2.5 right-2.5 z-[var(--z-content)] h-8 w-8"
                         @click="emit('close')"
                     >
                         <X :size="18" />
-                    </button>
+                    </Button>
 
                     <!-- Image frame -->
                     <div class="relative aspect-[16/10] border-b border-foreground/8 bg-muted overflow-hidden">
@@ -113,15 +115,18 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                                 <span class="font-mono">{{ entry.views }}</span>
                                 <span class="text-muted-foreground/60">views</span>
                             </span>
-                            <button
-                                class="like-btn inline-flex items-center gap-[0.3rem] text-sm text-muted-foreground border-none bg-transparent cursor-pointer p-0 transition-all duration-150"
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                class="like-btn"
                                 :class="{ liked: isLiked }"
+                                :aria-pressed="isLiked"
                                 @click="emit('like', entry.snapshot_hash)"
                             >
                                 <Heart :size="16" :fill="isLiked ? 'currentColor' : 'none'" />
                                 <span class="font-mono">{{ entry.likes }}</span>
                                 <span class="text-muted-foreground/60">likes</span>
-                            </button>
+                            </Button>
                         </div>
 
                         <!-- Decomposition -->
@@ -159,31 +164,39 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
                         <!-- Admin tier controls -->
                         <div v-if="adminMode" class="flex gap-2">
-                            <button
-                                class="tier-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground cursor-pointer transition-all duration-150 bg-transparent"
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="tier-btn"
                                 :class="{ active: entry.tier === 'featured' }"
+                                :aria-pressed="entry.tier === 'featured'"
                                 @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'featured' ? 'normal' : 'featured')"
                             >
                                 <Crown :size="14" /> Featured
-                            </button>
-                            <button
-                                class="tier-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground cursor-pointer transition-all duration-150 bg-transparent"
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="tier-btn"
                                 :class="{ active: entry.tier === 'saved' }"
+                                :aria-pressed="entry.tier === 'saved'"
                                 @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'saved' ? 'normal' : 'saved')"
                             >
                                 <Bookmark :size="14" /> Saved
-                            </button>
+                            </Button>
                         </div>
 
                         <!-- CTA -->
-                        <button
-                            class="callout-btn inline-flex items-center justify-center gap-1.5 mt-2.5 px-5 py-2 rounded-lg border-2 border-foreground/12 text-base font-semibold text-foreground bg-foreground/3 cursor-pointer transition-all duration-150 hover:bg-foreground/7 hover:border-foreground/20 active:scale-[0.98]"
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            class="callout-btn mt-2.5 gap-1.5 text-base font-semibold"
                             @click="emit('open-visualizer', entry.image_slug)"
                         >
                             <span class="fourier-f">&Fscr;</span>
                             <span>Open Visualizer</span>
                             <ArrowRight class="h-4 w-4" />
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -212,22 +225,49 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 .modal-tier-badge[data-tier="featured"] { color: var(--tier-featured); }
 .modal-tier-badge[data-tier="saved"] { color: var(--tier-saved); }
 
-/* Like button */
+/* `<Button variant="ghost" size="sm">` chassis; `.like-btn` narrows to a
+   stat-counter row, mirroring GalleryCard's recipe. */
+.like-btn {
+    height: auto;
+    padding: 0;
+    gap: 0.3rem;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+}
 .like-btn:hover,
 .like-btn.liked {
     color: var(--like);
+    background: transparent;
 }
 
-/* Tier button */
+/* `<Button variant="outline" size="sm">` chassis; `.tier-btn` softens the
+   border weight and projects the `active` state as a foreground-tint plate. */
 .tier-btn {
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+    border-width: 1.5px;
+    border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
+    color: var(--muted-foreground);
 }
 .tier-btn:hover { border-color: color-mix(in srgb, var(--foreground) 25%, transparent); }
-.tier-btn.active { background: color-mix(in srgb, var(--foreground) 6%, transparent); color: var(--foreground); }
+.tier-btn[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--foreground) 6%, transparent);
+    color: var(--foreground);
+}
 
-/* Transitions */
+/* `<Button variant="outline" size="lg">` chassis; `.callout-btn` thickens
+   the border and adds the cartoon-card foreground/3 plate. */
+.callout-btn {
+    border-width: 2px;
+    border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
+    background: color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+.callout-btn:hover {
+    background: color-mix(in srgb, var(--foreground) 7%, transparent);
+    border-color: color-mix(in srgb, var(--foreground) 20%, transparent);
+}
+
+/* Transitions (A.W3.d — bezier→`--ease-apple-spring`) */
 .modal-enter-active {
-    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: opacity 0.25s var(--ease-standard), transform 0.3s var(--ease-apple-spring);
 }
 .modal-leave-active {
     transition: opacity 0.2s ease, transform 0.2s ease;

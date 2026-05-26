@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from "@mkbabb/glass-ui";
 import type { GalleryEntry } from "@/lib/types";
 import GalleryCard from "./GalleryCard.vue";
 import { ChevronLeft, ChevronRight } from "lucide-vue-next";
@@ -52,23 +53,27 @@ const emit = defineEmits<{
 
         <!-- Pagination -->
         <div v-if="pages > 1" class="flex items-center justify-center gap-3 py-4">
-            <button
-                class="page-btn flex items-center justify-center w-8 h-8 rounded-md border-[1.5px] border-foreground/12 bg-card text-foreground cursor-pointer transition-all duration-150 hover:not-disabled:border-foreground/25 hover:not-disabled:bg-foreground/5 disabled:opacity-30 disabled:cursor-not-allowed"
+            <Button
+                variant="outline"
+                size="icon"
+                class="page-btn h-8 w-8"
                 :disabled="page <= 1"
                 @click="emit('page-change', page - 1)"
             >
                 <ChevronLeft :size="16" />
-            </button>
+            </Button>
             <span class="text-sm text-muted-foreground fira-code">
                 {{ page }} / {{ pages }}
             </span>
-            <button
-                class="page-btn flex items-center justify-center w-8 h-8 rounded-md border-[1.5px] border-foreground/12 bg-card text-foreground cursor-pointer transition-all duration-150 hover:not-disabled:border-foreground/25 hover:not-disabled:bg-foreground/5 disabled:opacity-30 disabled:cursor-not-allowed"
+            <Button
+                variant="outline"
+                size="icon"
+                class="page-btn h-8 w-8"
                 :disabled="page >= pages"
                 @click="emit('page-change', page + 1)"
             >
                 <ChevronRight :size="16" />
-            </button>
+            </Button>
             <span class="text-sm text-muted-foreground/50 ml-1">
                 {{ total }} total
             </span>

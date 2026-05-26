@@ -8,6 +8,8 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock } from "@mkbabb/glass-ui/dock";
 import { DockIconButton } from "@mkbabb/glass-ui/dock";
+import { Button } from "@mkbabb/glass-ui";
+import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import GlassTimeline from "./GlassTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
 import SpeedSelect from "./SpeedSelect.vue";
@@ -66,7 +68,7 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
                 </button>
             </Tooltip>
             <div class="mini-progress"><div class="mini-fill" :style="{ width: (anim.t * 100) + '%' }" /></div>
-            <span class="summary-speed fira-code">{{ anim.speed }}&times;</span>
+            <MetricBadge :amount="anim.speed" unit="×" size="sm" class="summary-speed" />
         </template>
 
         <!-- ═══ EXPANDED FULL CONTROLS ═══ -->
@@ -106,10 +108,10 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
                         </div>
                         <EasingPicker />
                         <Tooltip text="Export frame as PNG">
-                            <button @click="emit('exportFrame')" class="menu-item">
+                            <Button variant="ghost" size="sm" class="menu-item" @click="emit('exportFrame')">
                                 <Download class="h-4 w-4" />
                                 <span class="text-sm font-medium">Export</span>
-                            </button>
+                            </Button>
                         </Tooltip>
                     </div>
                 </Transition>
@@ -164,7 +166,11 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%);
     pointer-events: none;
 }
-.play-btn.is-playing::before { animation: rainbow-drift 2.5s ease infinite; }
+.play-btn.is-playing::before { animation: rainbow-drift 2.5s var(--ease-standard) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+    .play-btn.is-playing::before { animation: none; }
+}
 .play-btn:hover { transform: scale(1.08); border-color: rgba(255, 255, 255, 0.4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 20px rgba(200, 100, 255, 0.2), 0 2px 12px rgba(100, 180, 255, 0.15); }
 .play-btn:active { transform: scale(0.93); }
 .play-btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
@@ -194,24 +200,22 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
     z-index: var(--z-popover);
     pointer-events: auto;
 }
+/* `<Button variant="ghost" size="sm">` ships the focus-ring + hover + press;
+   the `.menu-item` hook widens the chassis to the full menu width and pins
+   the gap + left-aligned text + nowrap layout the menu pattern requires. */
 .menu-item {
-    display: flex;
-    align-items: center;
+    width: 100%;
+    justify-content: flex-start;
     gap: 0.375rem;
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
-    border: none;
-    background: none;
-    color: var(--foreground);
-    cursor: pointer;
-    transition: background 0.15s;
     white-space: nowrap;
 }
-.menu-item:hover { background: var(--muted); }
 
 /* ── Transitions ── */
 .popup-enter-active, .popup-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .popup-enter-from, .popup-leave-to { opacity: 0; transform: translateY(4px) scale(0.95); }
-.icon-swap-enter-active, .icon-swap-leave-active { transition: all 0.15s ease; }
+/* A.W3.d — named properties + canonical token, no `transition: all`. */
+.icon-swap-enter-active, .icon-swap-leave-active { transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard); }
 .icon-swap-enter-from, .icon-swap-leave-to { opacity: 0; transform: scale(0.7); }
 </style>

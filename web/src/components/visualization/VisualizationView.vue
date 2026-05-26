@@ -26,6 +26,7 @@ import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
 import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
+import { Button } from "@mkbabb/glass-ui";
 
 const router = useRouter();
 const store = useWorkspaceStore();
@@ -161,10 +162,13 @@ async function onCanvasFileSelect(e: Event) {
                 <p class="text-sm font-medium text-foreground">Could not load workspace</p>
                 <p class="text-xs text-muted-foreground fira-code break-all">{{ store.error }}</p>
                 <Tooltip text="Go back to upload a new image">
-                    <button class="mt-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-foreground/15 bg-background hover:bg-muted transition-colors cursor-pointer"
-                        @click="store.reset(); router.push('/visualize')">
+                    <Button
+                        variant="outline"
+                        class="mt-2 border-2 border-foreground/15"
+                        @click="store.reset(); router.push('/visualize')"
+                    >
                         Start fresh
-                    </button>
+                    </Button>
                 </Tooltip>
             </div>
         </div>
@@ -388,21 +392,21 @@ async function onCanvasFileSelect(e: Event) {
 }
 .controls-overlay > * { pointer-events: auto; }
 
-/* ── Transitions ── */
-.expand-pop-enter-active { transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.expand-pop-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+/* ── Transitions (A.W3.d — bezier→tokens; transition:all→named properties) ── */
+.expand-pop-enter-active { transition: opacity 0.3s var(--ease-standard), transform 0.35s var(--ease-apple-spring); }
+.expand-pop-leave-active { transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard); }
 .expand-pop-enter-from, .expand-pop-leave-to { opacity: 0; transform: scale(0.3); }
 
-.panel-swap-enter-active, .panel-swap-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.panel-swap-enter-active, .panel-swap-leave-active { transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard); }
 .panel-swap-enter-from { opacity: 0; transform: translateY(4px); }
 .panel-swap-leave-to { opacity: 0; transform: translateY(-4px); }
 
-.slide-down-enter-active { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.slide-down-leave-active { transition: all 0.2s ease; }
+.slide-down-enter-active { transition: opacity 0.3s var(--ease-standard), transform 0.3s var(--ease-standard); }
+.slide-down-leave-active { transition: opacity 0.2s var(--ease-in), transform 0.2s var(--ease-in); }
 .slide-down-enter-from { opacity: 0; transform: translateY(-8px); }
 .slide-down-leave-to { opacity: 0; transform: translateY(-4px); }
 
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s var(--ease-standard); }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
 /* ── Mobile panel toggle ── */
@@ -418,9 +422,10 @@ async function onCanvasFileSelect(e: Event) {
     top: 0.5rem;
     right: 0.5rem;
     z-index: var(--z-controls);
-    transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-                right 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-                transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    /* A.W3.d — bezier→`--ease-out-expo`. */
+    transition: left 0.3s var(--ease-out-expo),
+                right 0.3s var(--ease-out-expo),
+                transform 0.3s var(--ease-out-expo);
 }
 
 .controls-dock-anchor.dock-centered {

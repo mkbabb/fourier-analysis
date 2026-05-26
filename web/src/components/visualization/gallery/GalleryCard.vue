@@ -102,14 +102,17 @@ function timeAgo(iso: string): string {
                         <Eye :size="14" />
                         <span class="font-mono">{{ entry.views }}</span>
                     </span>
-                    <button
-                        class="like-btn inline-flex items-center gap-1 text-sm text-muted-foreground border-none bg-transparent cursor-pointer p-0 transition-all duration-150"
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="like-btn"
                         :class="{ liked: isLiked }"
+                        :aria-pressed="isLiked"
                         @click.stop="emit('like', entry.snapshot_hash)"
                     >
                         <Heart :size="14" :fill="isLiked ? 'currentColor' : 'none'" />
                         <span class="font-mono">{{ entry.likes }}</span>
-                    </button>
+                    </Button>
                 </div>
 
                 <!-- Tier badge -->
@@ -158,10 +161,11 @@ function timeAgo(iso: string): string {
 
 .gallery-card {
     box-shadow: var(--shadow-cartoon);
+    /* A.W3.d — bezier→`--ease-apple-spring` (closest canonical overshoot). */
     transition:
-        transform 0.25s cubic-bezier(0.22, 1.6, 0.36, 1),
-        box-shadow 0.2s ease,
-        border-color 0.2s ease;
+        transform 0.25s var(--ease-apple-spring),
+        box-shadow 0.2s var(--ease-standard),
+        border-color 0.2s var(--ease-standard);
 }
 
 .gallery-card:hover {
@@ -223,19 +227,37 @@ function timeAgo(iso: string): string {
     color: var(--pill-c);
 }
 
-/* Like button */
+/* `<Button variant="ghost" size="sm">` ships the focus-ring + hover; the
+   `.like-btn` hook narrows the chassis (h-auto, p-0, gap-1) so the stat
+   counter row reads as a stat counter, not a chunky pill. */
+.like-btn {
+    height: auto;
+    padding: 0;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+}
 .like-btn:hover,
 .like-btn.liked {
     color: var(--like);
+    background: transparent;
 }
 
 .like-btn.liked :deep(svg) {
-    animation: like-bounce 0.3s cubic-bezier(0.22, 1.6, 0.36, 1);
+    /* A.W3.d — bezier→`--ease-apple-spring`. `like-bounce` is a fourier-local
+       keyframe (no glass-ui shadow); CONSTELLATION carry candidate (P-tranche). */
+    animation: like-bounce 0.3s var(--ease-apple-spring);
 }
 
 @keyframes like-bounce {
     0% { transform: scale(1); }
     50% { transform: scale(1.3); }
     100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .like-btn.liked :deep(svg) {
+        animation: none;
+    }
 }
 </style>

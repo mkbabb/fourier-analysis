@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { Minimize2 } from "lucide-vue-next";
 import type { ContourAsset } from "@/lib/types";
 import BasisCanvas from "./BasisCanvas.vue";
@@ -51,9 +52,9 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
             <div v-if="show" class="fs-backdrop" @click.self="emit('close')">
                 <div class="fs-container">
                     <!-- Close button -->
-                    <button class="fs-close glass-subtle" @click="emit('close')">
+                    <Button variant="glass" size="icon" class="fs-close" @click="emit('close')">
                         <Minimize2 class="h-5 w-5" />
-                    </button>
+                    </Button>
 
                     <!-- Canvas fills the viewport -->
                     <ContourEditorCanvas
@@ -130,7 +131,12 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     border-radius: 9999px;
     color: var(--foreground);
     cursor: pointer;
-    transition: all 0.15s ease;
+    /* A.W3.d — named properties + canonical token, no `transition: all`. */
+    transition:
+        color 0.15s var(--ease-standard),
+        background-color 0.15s var(--ease-standard),
+        border-color 0.15s var(--ease-standard),
+        transform 0.15s var(--ease-standard);
 }
 
 .fs-close:hover {
@@ -166,11 +172,12 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
 }
 
 /* ── Fullscreen enter/leave transitions ── */
+/* A.W3.d — bezier→`--ease-out-expo`. */
 .fs-enter-active {
-    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.25s var(--ease-standard), transform 0.3s var(--ease-out-expo);
 }
 .fs-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard);
 }
 .fs-enter-from {
     opacity: 0;

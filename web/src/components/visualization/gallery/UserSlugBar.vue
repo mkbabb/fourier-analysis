@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useClipboard } from "@mkbabb/glass-ui";
+import { Button, useClipboard } from "@mkbabb/glass-ui";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import { User, LogIn, LogOut, Copy, Check, Dices } from "lucide-vue-next";
@@ -87,8 +87,10 @@ function onKeydown(e: KeyboardEvent) {
         >
             <User :size="12" />
             <span class="fira-code hidden sm:inline">{{ abbreviatedSlug }}</span>
-            <button
-                class="flex items-center justify-center size-5 rounded-full p-0 border-none bg-transparent text-muted-foreground cursor-pointer transition-all duration-150 hover:text-foreground hover:bg-foreground/6"
+            <Button
+                variant="ghost"
+                size="icon"
+                class="size-5 rounded-full text-muted-foreground"
                 title="Copy slug"
                 @click="copySlug"
             >
@@ -96,26 +98,30 @@ function onKeydown(e: KeyboardEvent) {
                     <Check v-if="copied" :size="12" class="text-green-500" />
                     <Copy v-else :size="12" />
                 </Transition>
-            </button>
-            <button
-                class="flex items-center justify-center size-5 rounded-full p-0 border-none bg-transparent text-muted-foreground cursor-pointer transition-all duration-150 hover:text-foreground hover:bg-foreground/6"
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon"
+                class="size-5 rounded-full text-muted-foreground"
                 title="Log out"
                 @click="handleLogout"
             >
                 <LogOut :size="12" />
-            </button>
+            </Button>
         </div>
 
         <!-- Login trigger / form -->
         <template v-else>
-            <button
+            <Button
                 v-if="!showLogin"
-                class="inline-flex items-center justify-center size-10 sm:size-auto sm:px-2.5 sm:py-1 gap-1 rounded-full border-none bg-transparent text-sm text-muted-foreground cursor-pointer transition-all duration-150 hover:text-foreground"
+                variant="ghost"
+                size="sm"
+                class="size-10 sm:size-auto sm:px-2.5 sm:py-1 gap-1 rounded-full text-muted-foreground"
                 @click="showLogin = true"
             >
                 <LogIn class="size-5 sm:size-3.5" />
                 <span class="hidden sm:inline">Log in</span>
-            </button>
+            </Button>
 
             <div v-else class="flex items-center gap-1">
                 <input
@@ -125,29 +131,34 @@ function onKeydown(e: KeyboardEvent) {
                     class="w-44 rounded-md border border-foreground/12 bg-card px-2 py-1 text-sm text-foreground outline-none fira-code transition-[border-color] duration-150 focus:border-foreground/30 placeholder:text-muted-foreground/40"
                     @keydown="onKeydown"
                 />
-                <button
-                    class="flex items-center justify-center size-7 rounded-md border border-foreground/12 bg-transparent text-foreground cursor-pointer transition-all duration-150 hover:not-disabled:border-foreground/25 hover:not-disabled:bg-foreground/5 disabled:opacity-30 disabled:cursor-not-allowed"
+                <Button
+                    variant="outline"
+                    size="icon"
+                    class="size-7 text-foreground"
                     :disabled="!canSubmit || loggingIn"
                     @click="handleLogin"
                 >
                     <LogIn :size="14" />
-                </button>
-                <button
-                    class="flex items-center justify-center size-7 rounded-md border border-foreground/12 bg-transparent text-muted-foreground cursor-pointer transition-all duration-150 hover:not-disabled:border-foreground/25 hover:not-disabled:bg-foreground/5 disabled:opacity-30 disabled:cursor-not-allowed"
+                </Button>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    class="size-7 text-muted-foreground"
                     :disabled="loggingIn"
                     title="Generate new slug"
                     @click="handleGenerate"
                 >
                     <Dices :size="14" />
-                </button>
+                </Button>
             </div>
         </template>
     </div>
 </template>
 
 <style scoped>
+/* A.W3.d — named properties + canonical tokens, no `transition: all`. */
 .icon-swap-enter-active,
-.icon-swap-leave-active { transition: all 0.15s ease; }
+.icon-swap-leave-active { transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard); }
 .icon-swap-enter-from,
 .icon-swap-leave-to { opacity: 0; transform: scale(0.7); }
 </style>

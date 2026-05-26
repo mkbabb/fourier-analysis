@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import { Search, X, SlidersHorizontal } from "lucide-vue-next";
 import { basisDisplay } from "../lib/basis-display";
 import {
+    Button,
     Select,
     SelectTrigger,
     SelectContent,
@@ -51,21 +52,26 @@ const hasActiveFilters = computed(() =>
                 class="search-input fira-code flex-1 min-w-0 bg-transparent border-none text-foreground text-sm outline-none placeholder:text-muted-foreground/50"
                 @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
             />
-            <button
+            <Button
                 v-if="searchQuery"
-                class="flex items-center justify-center w-6 h-6 border-none bg-transparent text-muted-foreground cursor-pointer rounded-full transition-all duration-150 hover:text-foreground hover:bg-foreground/6"
+                variant="ghost"
+                size="icon"
+                class="h-6 w-6 rounded-full text-muted-foreground"
                 @click="emit('update:searchQuery', '')"
             >
                 <X :size="14" />
-            </button>
+            </Button>
             <div class="w-px h-5 bg-foreground/10 shrink-0" />
-            <button
-                class="filter-toggle flex items-center justify-center w-7 h-7 rounded-full border-none bg-transparent text-muted-foreground cursor-pointer transition-all duration-150 hover:text-foreground hover:bg-foreground/6 shrink-0"
+            <Button
+                variant="ghost"
+                size="icon"
+                class="filter-toggle h-7 w-7 rounded-full shrink-0 text-muted-foreground"
                 :class="{ 'is-active': showFilters || hasActiveFilters }"
+                :aria-pressed="showFilters || hasActiveFilters"
                 @click.stop="showFilters = !showFilters"
             >
                 <SlidersHorizontal :size="15" />
-            </button>
+            </Button>
         </div>
 
         <!-- Filter drawer (overlaid, does not affect flow) -->
@@ -104,17 +110,20 @@ const hasActiveFilters = computed(() =>
                     </div>
 
                     <div class="flex gap-1 flex-wrap">
-                        <button
+                        <Button
                             v-for="b in basisOptions"
                             :key="b.key"
-                            class="basis-pill-btn inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-sm font-medium bg-transparent border border-foreground/12 text-muted-foreground cursor-pointer transition-all duration-150"
+                            variant="outline"
+                            size="sm"
+                            class="basis-pill-btn rounded-full font-medium"
                             :class="{ active: basisFilter === b.key }"
+                            :aria-pressed="basisFilter === b.key"
                             :style="{ '--pill-c': b.color }"
                             @click="emit('update:basisFilter', basisFilter === b.key ? '' : b.key)"
                         >
                             <span class="cm-serif font-semibold text-[1.1em]">{{ b.icon }}</span>
                             {{ b.label }}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -173,12 +182,16 @@ const hasActiveFilters = computed(() =>
     box-shadow: 0 8px 24px color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
-/* Filter drawer transition */
+/* Filter drawer transition (A.W3.d — named properties + canonical tokens) */
 .filter-drawer-enter-active {
-    transition: all 0.3s cubic-bezier(0.22, 1.6, 0.36, 1);
+    transition:
+        opacity 0.3s var(--ease-apple-spring),
+        transform 0.3s var(--ease-apple-spring);
 }
 .filter-drawer-leave-active {
-    transition: all 0.2s ease;
+    transition:
+        opacity 0.2s var(--ease-standard),
+        transform 0.2s var(--ease-standard);
 }
 .filter-drawer-enter-from {
     opacity: 0;
@@ -189,12 +202,20 @@ const hasActiveFilters = computed(() =>
     transform: translateY(-4px);
 }
 
+/* `<Button variant="outline" size="sm">` ships the focus-ring + press-scale +
+   rounded-pill chassis; the `.basis-pill-btn` hook projects the per-instance
+   `--pill-c` colour onto border + tint + text, matching BasisSelector's
+   `.basis-toggle` recipe. */
+.basis-pill-btn {
+    @apply gap-0.5 px-2;
+    color: var(--muted-foreground);
+}
 .basis-pill-btn:hover {
     border-color: color-mix(in srgb, var(--pill-c) 40%, transparent);
     color: var(--pill-c);
+    background: transparent;
 }
-
-.basis-pill-btn.active {
+.basis-pill-btn[aria-pressed="true"] {
     background: color-mix(in srgb, var(--pill-c) 12%, transparent);
     border-color: color-mix(in srgb, var(--pill-c) 30%, transparent);
     color: var(--pill-c);

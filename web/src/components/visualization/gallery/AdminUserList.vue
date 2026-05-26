@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
@@ -129,13 +130,15 @@ function timeAgo(iso: string): string {
                 <option value="last_seen">Last seen</option>
                 <option value="entries">Most entries</option>
             </select>
-            <button
-                @click="handlePrune"
-                class="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-300 hover:bg-amber-500/20 transition-colors"
+            <Button
+                variant="outline"
+                size="sm"
+                class="border-amber-500/30 bg-amber-500/10 text-xs text-amber-300 hover:bg-amber-500/20"
                 title="Remove users with 0 entries"
+                @click="handlePrune"
             >
                 Prune empty
-            </button>
+            </Button>
         </div>
 
         <!-- Loading overlay -->
@@ -165,29 +168,35 @@ function timeAgo(iso: string): string {
                     </div>
                 </div>
                 <div class="flex items-center gap-1">
-                    <button
+                    <Button
                         v-if="user.status !== 'suspended'"
-                        @click="handleSuspend(user.user_slug)"
-                        class="rounded p-1 text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                        variant="ghost"
+                        size="icon"
+                        class="h-6 w-6 text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10"
                         title="Suspend"
+                        @click="handleSuspend(user.user_slug)"
                     >
                         <Ban class="h-3.5 w-3.5" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         v-else
-                        @click="handleUnsuspend(user.user_slug)"
-                        class="rounded p-1 text-muted-foreground hover:text-green-400 hover:bg-green-500/10 transition-colors"
+                        variant="ghost"
+                        size="icon"
+                        class="h-6 w-6 text-muted-foreground hover:text-green-400 hover:bg-green-500/10"
                         title="Unsuspend"
+                        @click="handleUnsuspend(user.user_slug)"
                     >
                         <UserCheck class="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                        @click="handleDelete(user.user_slug)"
-                        class="rounded p-1 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        class="h-6 w-6 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                         title="Delete"
+                        @click="handleDelete(user.user_slug)"
                     >
                         <Trash2 class="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                 </div>
             </div>
 

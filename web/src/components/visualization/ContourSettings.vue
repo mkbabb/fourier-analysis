@@ -6,6 +6,7 @@ import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import {
+    Button,
     Collapsible,
     CollapsibleTrigger,
     CollapsibleContent,
@@ -187,14 +188,16 @@ watch(
     <div class="cartoon-card px-3 py-2">
         <CollapsibleSection title="Contour" subtitle="edge extraction settings" :default-open="false">
             <template #actions>
-                <button
+                <Button
+                    variant="ghost"
+                    size="icon"
                     class="reset-icon-btn"
                     :class="{ 'is-default': isDefault }"
                     title="Reset to defaults"
                     @click.stop="resetDefaults"
                 >
                     <RotateCcw class="h-3.5 w-3.5" />
-                </button>
+                </Button>
             </template>
             <div class="space-y-3 pt-1">
                 <!-- Strategy -->
@@ -306,10 +309,10 @@ watch(
         <Transition name="slide-down">
             <div v-if="store.error" class="retry-banner">
                 <span class="retry-msg fira-code">{{ shortError }}</span>
-                <button class="retry-btn" @click="runCompute" :disabled="store.computing">
+                <Button variant="destructive" size="sm" class="retry-btn" @click="runCompute" :disabled="store.computing">
                     <RefreshCw class="h-3.5 w-3.5" :class="{ 'animate-spin': store.computing }" />
                     Retry
-                </button>
+                </Button>
             </div>
         </Transition>
     </div>
@@ -443,11 +446,12 @@ watch(
     cursor: not-allowed;
 }
 
+/* A.W3.d — named properties + canonical tokens, no `transition: all`. */
 .slide-down-enter-active {
-    transition: all 0.25s ease-out;
+    transition: opacity 0.25s var(--ease-out), transform 0.25s var(--ease-out);
 }
 .slide-down-leave-active {
-    transition: all 0.15s ease-in;
+    transition: opacity 0.15s var(--ease-in), transform 0.15s var(--ease-in);
 }
 .slide-down-enter-from {
     opacity: 0;

@@ -7,12 +7,13 @@
  * legacy string-key dock injects) to `<Slider variant="glass-scrubber">`
  * with the canonical label + numeric-input chassis preserved as the wrapper.
  *
- * The wrapper's contract (label, subtitle, numeric input, min/max/step,
- * color, formatValue, variant) is unchanged. The variant token (`timeline`
- * vs `default`) is now COSMETIC ONLY — both branches map to the same
- * `glass-scrubber` variant. The legacy `variant="default"` survives only
- * to remain backward-compatible with the 7 SliderControl instantiations
- * across FunctionInput / EquationPanel / ContourSettings.
+ * A.W3.b D5 fold — the legacy `variant?: "timeline" | "default"` prop is
+ * retired here. The two branches were already cosmetically identical (both
+ * mapped to `<Slider variant="glass-scrubber">`) and no consumer in the
+ * tree passes the prop explicitly (verified via `git grep '<SliderControl'
+ * | xargs grep variant`). Retirement disposition (b) per `audit/W3-adoption-
+ * ledger.md`; the wrapper now commits unconditionally to the canonical
+ * glass-scrubber surface, discharging the H1-hardening flag.
  *
  * Dock-keep-open: the v1.8.x `<Slider>` acquires the typed `DockContext`
  * token internally, so we no longer inject `dockKeepOpen`/`dockRelease`
@@ -21,20 +22,16 @@
 import { computed } from "vue";
 import { Slider } from "@mkbabb/glass-ui";
 
-const props = withDefaults(
-    defineProps<{
-        label: string;
-        subtitle?: string;
-        modelValue: number;
-        min: number;
-        max: number;
-        step: number;
-        color: string;
-        formatValue?: (v: number) => string;
-        variant?: "timeline" | "default";
-    }>(),
-    { variant: "timeline" },
-);
+const props = defineProps<{
+    label: string;
+    subtitle?: string;
+    modelValue: number;
+    min: number;
+    max: number;
+    step: number;
+    color: string;
+    formatValue?: (v: number) => string;
+}>();
 
 const emit = defineEmits<{
     (e: "update:modelValue", v: number): void;

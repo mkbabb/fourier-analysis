@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Slider } from "@mkbabb/glass-ui";
+import { Button, Slider } from "@mkbabb/glass-ui";
+import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import { Wand2, Minimize2, Magnet } from "lucide-vue-next";
 import { VIZ_COLORS } from "@/lib/colors";
 import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
@@ -26,22 +27,22 @@ const magnetModel = computed<number[]>({
     <div class="cartoon-card px-3 py-2">
         <CollapsibleSection title="Tools" subtitle="contour refinement" :default-open="true">
             <div class="flex flex-col gap-2 pt-1">
-                <button class="tool-btn" @click="emit('smooth')"
+                <Button variant="outline" class="tool-btn" @click="emit('smooth')"
                     style="--tool-color: var(--viz-chebyshev)">
                     <Wand2 class="w-5 h-5 shrink-0" style="color: var(--viz-chebyshev)" />
                     <div class="flex flex-col gap-0.5 min-w-0">
                         <span class="text-sm font-semibold text-foreground">Smooth</span>
                         <span class="text-micro text-muted-foreground whitespace-normal">Laplacian filter removes noise while preserving shape</span>
                     </div>
-                </button>
-                <button class="tool-btn" @click="emit('simplify')"
+                </Button>
+                <Button variant="outline" class="tool-btn" @click="emit('simplify')"
                     style="--tool-color: var(--viz-legendre)">
                     <Minimize2 class="w-5 h-5 shrink-0" style="color: var(--viz-legendre)" />
                     <div class="flex flex-col gap-0.5 min-w-0">
                         <span class="text-sm font-semibold text-foreground">Simplify</span>
                         <span class="text-micro text-muted-foreground whitespace-normal">Reduce point count while preserving curvature</span>
                     </div>
-                </button>
+                </Button>
                 <!-- Magnet mode -->
                 <div class="tool-btn tool-btn--static"
                     :style="magnetRadius > 0 ? { '--tool-color': 'var(--viz-fourier)' } : {}">
@@ -50,7 +51,7 @@ const magnetModel = computed<number[]>({
                         <div class="flex flex-col gap-0.5 min-w-0 flex-1">
                             <div class="flex items-center justify-between">
                                 <span class="text-sm font-semibold text-foreground">Magnet</span>
-                                <span class="text-xs fira-code text-muted-foreground tabular-nums">{{ magnetRadius }}</span>
+                                <MetricBadge :amount="magnetRadius" size="sm" />
                             </div>
                             <span class="text-micro text-muted-foreground whitespace-normal">Drag adjacent points together with falloff</span>
                             <Slider
@@ -72,7 +73,34 @@ const magnetModel = computed<number[]>({
 </template>
 
 <style scoped>
+/* `<Button variant="outline">` ships the focus-ring, the disabled idiom, and
+   the base outline surface; the `.tool-btn` hook widens to a full-row card
+   chassis (height: auto, justify-start, left-aligned multi-line body) and
+   adds the per-tool lift-on-hover idiom keyed by `--tool-color`. The static
+   variant of this hook (no Button) is preserved for the Magnet row, which
+   is a `<div>` chassis hosting a Slider rather than an interactive control. */
 .tool-btn {
+    width: 100%;
+    height: auto;
+    padding: 0.625rem 0.75rem;
+    gap: 0.75rem;
+    justify-content: flex-start;
+    border-radius: 0.75rem;
+    border-width: 1.5px;
+    text-align: left;
+    /* A.W3.d — named properties + canonical token, no `transition: all`. */
+    transition:
+        border-color 0.2s var(--ease-standard),
+        background-color 0.2s var(--ease-standard),
+        transform 0.2s var(--ease-standard),
+        box-shadow 0.2s var(--ease-standard);
+}
+:where(.tool-btn):hover {
+    border-color: color-mix(in srgb, var(--tool-color, var(--foreground)) 40%, transparent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--tool-color, var(--foreground)) 12%, transparent);
+}
+.tool-btn--static {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -81,24 +109,6 @@ const magnetModel = computed<number[]>({
     border: 1.5px solid var(--border);
     background: var(--card);
     padding: 0.625rem 0.75rem;
-    text-align: left;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.tool-btn:hover {
-    border-color: color-mix(in srgb, var(--tool-color, var(--foreground)) 40%, transparent);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--tool-color, var(--foreground)) 12%, transparent);
-}
-.tool-btn:active {
-    transform: scale(0.98);
-}
-.tool-btn--static {
-    cursor: default;
-}
-.tool-btn--static:hover {
-    transform: none;
-    box-shadow: none;
 }
 
 /* A.W2.c — glass-scrubber per-instance retint hook. */

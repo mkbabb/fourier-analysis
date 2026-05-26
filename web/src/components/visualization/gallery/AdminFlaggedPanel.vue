@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import { useGalleryStore } from "@/stores/gallery";
@@ -115,20 +116,24 @@ function timeAgo(iso: string | null): string {
                         </div>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                        <button
-                            @click="handleDismiss(item.snapshot_hash)"
-                            class="rounded p-1 text-muted-foreground hover:text-green-400 hover:bg-green-500/10 transition-colors"
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="h-7 w-7 text-muted-foreground hover:text-green-400 hover:bg-green-500/10"
                             title="Dismiss flags"
+                            @click="handleDismiss(item.snapshot_hash)"
                         >
                             <XCircle class="h-4 w-4" />
-                        </button>
-                        <button
-                            @click="handleDelete(item.snapshot_hash)"
-                            class="rounded p-1 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                             title="Delete entry"
+                            @click="handleDelete(item.snapshot_hash)"
                         >
                             <Trash2 class="h-4 w-4" />
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>

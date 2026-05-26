@@ -8,6 +8,8 @@ import type { NotationMode } from "@/lib/equation/types";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import NotationPills from "@/components/equation/NotationPills.vue";
 import { X } from "lucide-vue-next";
+import { Button } from "@mkbabb/glass-ui";
+import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import katex from "katex";
 
 const emit = defineEmits<{ close: [] }>();
@@ -68,17 +70,20 @@ watchDebounced(
         <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-medium text-foreground">Equation</span>
             <div class="flex items-center gap-2">
-                <span class="fira-code text-sm" :style="{ color: eColor }">
-                    {{ (energy * 100).toFixed(1) }}%
-                </span>
-                <button
-                    class="flex items-center justify-center w-6 h-6 rounded-full
-                           text-muted-foreground hover:bg-muted hover:text-foreground
-                           transition-all duration-150 cursor-pointer"
+                <MetricBadge
+                    :amount="(energy * 100).toFixed(1)"
+                    unit="%"
+                    size="sm"
+                    :color="eColor"
+                />
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    class="h-6 w-6 rounded-full text-muted-foreground"
                     @click="emit('close')"
                 >
                     <X class="h-3.5 w-3.5" />
-                </button>
+                </Button>
             </div>
         </div>
 

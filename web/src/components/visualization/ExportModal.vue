@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button, Switch } from "@mkbabb/glass-ui";
 import { X, Download } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -34,51 +34,27 @@ function doExport() {
                 <div class="modal-card" @click.stop>
                     <div class="modal-header">
                         <h3 class="cm-serif text-lg font-semibold">Export Frame</h3>
-                        <button class="glass-btn w-8 h-8" @click="emit('close')">
+                        <Button variant="glass" size="icon" class="h-8 w-8" @click="emit('close')">
                             <X class="h-4 w-4" />
-                        </button>
+                        </Button>
                     </div>
 
                     <div class="option-list">
                         <label v-if="hasEpicycles" class="option-row">
                             <span class="option-label">Epicycles</span>
-                            <button
-                                class="toggle"
-                                :class="{ 'is-on': withEpicycles }"
-                                @click="withEpicycles = !withEpicycles"
-                            >
-                                <span class="toggle-thumb" />
-                            </button>
+                            <Switch v-model="withEpicycles" />
                         </label>
                         <label class="option-row">
                             <span class="option-label">Trace path</span>
-                            <button
-                                class="toggle"
-                                :class="{ 'is-on': withTrail }"
-                                @click="withTrail = !withTrail"
-                            >
-                                <span class="toggle-thumb" />
-                            </button>
+                            <Switch v-model="withTrail" />
                         </label>
                         <label class="option-row">
                             <span class="option-label">Grid lines</span>
-                            <button
-                                class="toggle"
-                                :class="{ 'is-on': withGrid }"
-                                @click="withGrid = !withGrid"
-                            >
-                                <span class="toggle-thumb" />
-                            </button>
+                            <Switch v-model="withGrid" />
                         </label>
                         <label class="option-row">
                             <span class="option-label">Labels</span>
-                            <button
-                                class="toggle"
-                                :class="{ 'is-on': withLabels }"
-                                @click="withLabels = !withLabels"
-                            >
-                                <span class="toggle-thumb" />
-                            </button>
+                            <Switch v-model="withLabels" />
                         </label>
                     </div>
 
@@ -126,9 +102,9 @@ function doExport() {
     margin-bottom: 1rem;
 }
 
-/* Transitions — unified with GalleryCardModal */
+/* Transitions — unified with GalleryCardModal (A.W3.d — bezier→`--ease-apple-spring`) */
 .modal-enter-active {
-    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: opacity 0.25s var(--ease-standard), transform 0.3s var(--ease-apple-spring);
 }
 .modal-leave-active {
     transition: opacity 0.2s ease, transform 0.2s ease;
@@ -159,40 +135,6 @@ function doExport() {
 .option-label {
     @apply text-base;
     font-weight: 500;
-}
-
-/* Toggle switch */
-.toggle {
-    position: relative;
-    width: 2.5rem;
-    height: 1.375rem;
-    border-radius: 9999px;
-    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    background: var(--muted);
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
-    flex-shrink: 0;
-}
-
-.toggle.is-on {
-    background: var(--primary);
-    border-color: var(--primary);
-}
-
-.toggle-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 0.875rem;
-    height: 0.875rem;
-    border-radius: 50%;
-    background: var(--background);
-    box-shadow: var(--shadow-soft);
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.toggle.is-on .toggle-thumb {
-    transform: translateX(1.125rem);
 }
 
 .modal-footer {

@@ -4,6 +4,8 @@ import type { WorkspaceDraft } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
 import { ChevronDown, Upload } from "lucide-vue-next";
+import { Button } from "@mkbabb/glass-ui";
+import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 
 const props = defineProps<{
     drafts: WorkspaceDraft[];
@@ -47,18 +49,19 @@ function getBasisLabel(item: WorkspaceDraft): string {
 
 <template>
     <div v-if="sortedDrafts.length > 0" class="mx-4 rounded-lg border-[1.5px] border-foreground/8 overflow-hidden">
-        <button
-            class="drafts-header flex items-center gap-1.5 w-full py-2 px-3 border-none bg-muted/30 text-foreground cursor-pointer transition-colors duration-150 hover:bg-muted/50"
+        <Button
+            variant="ghost"
+            class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground rounded-none"
             @click="collapsed = !collapsed"
         >
             <span class="cm-serif text-sm font-semibold tracking-tight">My Drafts</span>
-            <span class="text-sm text-muted-foreground/60 fira-code">{{ sortedDrafts.length }}</span>
+            <MetricBadge :amount="sortedDrafts.length" size="sm" />
             <ChevronDown
                 :size="16"
                 class="ml-auto text-muted-foreground transition-transform duration-200 ease-in-out"
                 :class="{ '-rotate-90': collapsed }"
             />
-        </button>
+        </Button>
 
         <div v-if="!collapsed" class="flex flex-col">
             <div
@@ -85,14 +88,16 @@ function getBasisLabel(item: WorkspaceDraft): string {
                         {{ timeAgo(draft.lastOpenedAt) }}
                     </span>
                 </div>
-                <button
-                    class="inline-flex items-center gap-1 py-1 px-2.5 rounded-md border-[1.5px] border-foreground/12 bg-transparent text-muted-foreground text-sm font-medium cursor-pointer shrink-0 transition-all duration-150 hover:not-disabled:text-foreground hover:not-disabled:border-foreground/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                <Button
+                    variant="outline"
+                    size="sm"
+                    class="gap-1 text-muted-foreground shrink-0"
                     :disabled="publishing"
                     @click="emit('publish', draft)"
                 >
                     <Upload :size="14" />
                     Publish
-                </button>
+                </Button>
             </div>
         </div>
     </div>

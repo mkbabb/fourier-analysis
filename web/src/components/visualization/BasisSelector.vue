@@ -119,14 +119,16 @@ function toggleBasis(key: string) {
     <div class="cartoon-card px-3 py-2">
         <CollapsibleSection title="Decomposition" subtitle="basis & resolution" :default-open="true">
             <template #actions>
-                <button
+                <Button
+                    variant="ghost"
+                    size="icon"
                     class="reset-icon-btn"
                     :class="{ 'is-default': isDefault }"
                     title="Reset to defaults"
                     @click.stop="resetDefaults"
                 >
                     <RotateCcw class="h-3.5 w-3.5" />
-                </button>
+                </Button>
             </template>
             <div class="flex flex-wrap justify-center gap-1.5 pt-1 pb-1">
                 <Tooltip v-for="(info, key) in basisDisplay" :key="key" :text="getBasisTooltip(key as string)">
