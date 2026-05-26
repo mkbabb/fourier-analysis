@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@mkbabb/glass-ui/styles";
-@import "./styles/buttons.css";
 
 /* A.W2.b — folded from `styles/fourier-overrides.css` (deleted). The brand
    fork remaps the `font-sans` Tailwind utility onto Computer Modern Serif;

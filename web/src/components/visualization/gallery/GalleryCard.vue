@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { Button, Badge } from "@mkbabb/glass-ui";
 import type { GalleryEntry } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
@@ -81,15 +82,17 @@ function timeAgo(iso: string): string {
 
             <!-- Basis pills -->
             <div class="flex flex-wrap gap-1 px-3 py-0.5">
-                <span
+                <Badge
                     v-for="b in basisLabels"
                     :key="b.label"
-                    class="basis-pill inline-flex items-center gap-[0.2rem] px-2 py-0.5 rounded-full text-sm font-medium whitespace-nowrap"
+                    variant="outline"
+                    size="sm"
+                    class="basis-tint inline-flex items-center gap-[0.2rem] rounded-full font-medium whitespace-nowrap"
                     :style="{ '--pill-c': b.color }"
                 >
                     <span class="cm-serif font-semibold text-[1.1em]">{{ b.icon }}</span>
                     {{ b.label }}
-                </span>
+                </Badge>
             </div>
 
             <!-- Footer: stats -->
@@ -118,27 +121,33 @@ function timeAgo(iso: string): string {
 
             <!-- Admin overlay -->
             <div v-if="adminMode" class="absolute top-1.5 right-1.5 flex gap-1 z-5" @click.stop>
-                <button
-                    class="btn-icon-admin text-tier-featured"
+                <Button
+                    variant="glass"
+                    size="icon"
+                    class="admin-overlay-btn text-tier-featured"
                     title="Toggle featured"
                     @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'featured' ? 'normal' : 'featured')"
                 >
                     <Crown :size="14" />
-                </button>
-                <button
-                    class="btn-icon-admin text-tier-saved"
+                </Button>
+                <Button
+                    variant="glass"
+                    size="icon"
+                    class="admin-overlay-btn text-tier-saved"
                     title="Toggle saved"
                     @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'saved' ? 'normal' : 'saved')"
                 >
                     <Bookmark :size="14" />
-                </button>
-                <button
-                    class="btn-icon-admin text-delete"
+                </Button>
+                <Button
+                    variant="glass"
+                    size="icon"
+                    class="admin-overlay-btn text-delete"
                     title="Delete"
                     @click="emit('delete', entry.snapshot_hash)"
                 >
                     <Trash2 :size="14" />
-                </button>
+                </Button>
             </div>
         </div>
     </div>
@@ -189,6 +198,29 @@ function timeAgo(iso: string): string {
         ),
         var(--muted);
     background-size: 16px 16px, 16px 16px, auto;
+}
+
+/* A.W2.e — admin-overlay button geometry. The base `<Button variant="glass"
+   size="icon">` ships an `h-10 w-10` square with the canonical focus-ring /
+   disabled / press-scale contract; the overlay needs a 1.75rem circle with
+   a lift-on-hover idiom, applied as scoped overrides over the variant. */
+.admin-overlay-btn {
+    @apply h-7 w-7 rounded-full transition-transform duration-150;
+}
+.admin-overlay-btn:hover {
+    transform: scale(1.1);
+}
+.admin-overlay-btn:active {
+    transform: scale(0.95);
+}
+
+/* A.W2.e — basis-tint colour projection over `<Badge variant="outline">`.
+   Outline ships transparent-bg + border-input; we re-tint border + text + a
+   12 %-tinted plate from the per-instance `--pill-c`. */
+.basis-tint {
+    background: color-mix(in srgb, var(--pill-c) 12%, transparent);
+    border-color: color-mix(in srgb, var(--pill-c) 30%, transparent);
+    color: var(--pill-c);
 }
 
 /* Like button */

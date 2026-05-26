@@ -146,3 +146,67 @@ DRIFT verdict whose triage resolves to a pre-W2 substrate blocker
 — screenshots saved and drift triaged; the "before close" predicate
 defers to the substrate fix or accepts the build-green surrogate per
 the regression report's recommendation.
+
+## §W2.e — Full `buttons.css` abrogation
+
+Per user directive of 2026-05-26 the W2/W3 split is revoked: the entire
+`.btn-*` + `.basis-pill` migration is pulled into W2 and `buttons.css`
+deletes here rather than waiting on W3. The W3.md scope retains the
+native-`<button>` migration concern only.
+
+Architectural transpositions chosen per recipe (the smallest idiomatic
+glass-ui primitive that ships the four-state focus / press / disabled /
+hover contract; bespoke geometry filed as a per-component scoped retint
+hook over the variant — the A.md invariant 10 escape hatch):
+
+- `.btn-icon-admin` → `<Button variant="glass" size="icon">` + scoped
+  `.admin-overlay-btn` (1.75 rem circle + lift-on-hover) — the variant
+  ships glass-bg / border / focus-ring; the overlay overrides geometry
+  and the scale-hover idiom unique to the admin surface.
+- `.btn-solid` → `<Button variant="default">` — the canonical primary
+  CTA. The recipe's `--foreground`/`--background` token pair was a
+  reinvented primary palette; the variant routes through `--primary` /
+  `--primary-foreground` which is the canonical equivalent at the
+  glass-ui token surface (the de-fork landed at W2.a).
+- `.btn-ghost` → `<Button variant="outline">` — the recipe's 2 px
+  bordered + transparent-bg + hover-muted geometry matches outline's
+  `border-input bg-background hover:bg-accent` exactly.
+- `.basis-pill` (interactive toggle, BasisSelector) → `<Button
+  variant="outline" size="sm">` + scoped `.basis-toggle` retint hook +
+  `aria-pressed` for the active state (replaces the prior `.active`
+  class-binding with a semantic ARIA contract the canon already reads).
+- `.basis-pill` (decorative read-only, GalleryCard + GalleryCardModal)
+  → `<Badge variant="outline" size="sm">` + scoped `.basis-tint`
+  retint. The decorative use was never a button — the migration to
+  `<Badge>` aligns the semantic primitive with the visual role.
+
+| # | source | concern / consumer | disposition | target | citing commit |
+| - | - | - | - | - | - |
+| e1 | `web/src/styles/buttons.css:17-43` (pre) | `.btn-icon-admin` recipe (1.75 rem circle, glass bg, scale-hover + scale-active, focus-visible ring) | retire | discharged by `<Button variant="glass" size="icon">` + scoped `.admin-overlay-btn` at all 3 consumer sites | `pending` |
+| e2 | `web/src/styles/buttons.css:45-72` (pre) | `.btn-solid` recipe (primary CTA pill, opacity-hover, disabled geometry) | retire | discharged by `<Button variant="default">` at the ExportModal CTA | `pending` |
+| e3 | `web/src/styles/buttons.css:74-98` (pre) | `.btn-ghost` recipe (bordered transparent secondary, muted-hover, disabled geometry) | retire | discharged by `<Button variant="outline">` at the ExportModal cancel | `pending` |
+| e4 | `web/src/styles/buttons.css:100-104` (pre) | `.basis-pill` recipe (`--pill-c`-tinted plate, used by both interactive + decorative sites — the recipe over-served two distinct roles) | retire | discharged by two distinct migrations: `<Button variant="outline" size="sm">` for the interactive toggle, `<Badge variant="outline" size="sm">` for the decorative pills | `pending` |
+| e5 | `web/src/components/visualization/gallery/GalleryCard.vue:121-141` (pre) → `:121-144` (post) | 3 `class="btn-icon-admin"` native `<button>` overlay sites (Crown / Bookmark / Trash2 admin actions) | migrate-to-substrate | `<Button variant="glass" size="icon" class="admin-overlay-btn …">` × 3 + scoped `.admin-overlay-btn` retint hook (h-7 w-7 rounded-full + scale-hover 1.1 / scale-active 0.95) | `pending` |
+| e6 | `web/src/components/visualization/gallery/GalleryCard.vue:84-92` (pre) → `:84-94` (post) | `class="basis-pill"` decorative read-only pill (`<span v-for>`, no click handler) | migrate-to-substrate | `<Badge variant="outline" size="sm" class="basis-tint …">` + scoped `.basis-tint` retint hook (`--pill-c`-tinted plate / border / text) | `pending` |
+| e7 | `web/src/components/visualization/gallery/GalleryCardModal.vue:132-140` (pre) → `:132-142` (post) | `class="basis-pill"` decorative read-only pill (identical role to e6) | migrate-to-substrate | `<Badge variant="outline" size="sm" class="basis-tint …">` + scoped `.basis-tint` retint hook (shared recipe with e6) | `pending` |
+| e8 | `web/src/components/visualization/ExportModal.vue:85` (pre) → `:85` (post) | `class="btn-ghost"` Cancel button | migrate-to-substrate | `<Button variant="outline" size="default">` — outline variant's bordered-transparent geometry is the canonical reproduction | `pending` |
+| e9 | `web/src/components/visualization/ExportModal.vue:86-89` (pre) → `:86-89` (post) | `class="btn-solid"` Save-PNG CTA | migrate-to-substrate | `<Button variant="default" size="default">` — primary-bg variant; aligns the CTA onto the canonical `--primary` token (the recipe's `--foreground` / `--background` was a reinvented primary palette) | `pending` |
+| e10 | `web/src/components/visualization/BasisSelector.vue:133-141` (pre) → `:133-144` (post) | `class="basis-pill"` interactive toggle pill × 3 (fourier / chebyshev / legendre selectors, with `.active` state binding) | migrate-to-substrate | `<Button variant="outline" size="sm" :aria-pressed="…" class="basis-toggle …">` + scoped `.basis-toggle` retint hook (2 px border, 5.5 rem min-width, mobile-compact rules, `aria-pressed="true"` drives the `--pill-color` tint — the prior `.active` class-binding is replaced with a semantic ARIA contract glass-ui's canon already reads via `aria-pressed:` modifiers in `buttonVariants`) | `pending` |
+| e11 | `web/src/lib/equation/notation.ts:3-7` (pre) → `:3-9` (post) | comment-only reference to `.basis-pill` pattern from BasisSelector | repair-in-place | comment updated to cite the post-migration vocabulary (`<Button variant="outline" size="sm">` + `aria-pressed`-driven tint via `.basis-toggle`) | `pending` |
+| e12 | `web/src/styles/buttons.css` (entire file) | file deletion | retire | deleted; `web/src/style.css:4` import elided. `web/src/styles/` directory is empty and removed (`rmdir`). | `pending` |
+
+**W2.e discharge tally:** 12 rows — 4 recipe retires (e1–e4) + 7
+consumer migrations across 4 files (e5–e7 Gallery decorative, e8–e9
+ExportModal interactive, e10 BasisSelector toggle) + 1 comment
+repair-in-place (e11) + 1 file deletion (e12). The `web/src/styles/`
+directory is now empty in full and removed from the tree; the
+override-stylesheet abrogation wave closes the substrate-alignment
+chapter at this row. `buttons.css` ceases to exist; the hard gate of
+W3.md item 2 ("`buttons.css` deleted") lands here, ahead of W3's
+native-`<button>` migration.
+
+**Verification:**
+- `git grep -nE 'buttons\.css|\.btn-(icon-admin|solid|ghost)|\.basis-pill' -- 'web/src/'` returns empty (the `.basis-pill-btn` class in `GallerySearchBar.vue` is a distinct self-contained recipe outside the `.basis-pill` lineage; not in scope).
+- `npx vue-tsc -b --force` exits 0 (clean typecheck across the post-W2.e consumer surface).
+- `npm run build` carries the W2.d-documented pre-existing substrate blocker (`@mkbabb/glass-ui → @mkbabb/value.js: parseCSSStylesheet` import fault); reproduced on baseline `88c1858` via `git stash` to confirm the blocker is not attributable to W2.e — the build-green surrogate is the typecheck per W2.d row d1's precedent.
+- Browser smoke: `/gallery` and `/visualize` render the surrounding chrome cleanly with zero console errors (dev DB empty so the live `.basis-pill` / `.btn-icon-admin` / ExportModal surfaces could not be exercised against entries — the cleanly-rendered router + header + upload pipeline confirms no broken cascade from the CSS migration); screenshots at `audit/W2-screenshots/buttons-abrogated-{gallery,visualize-basis,visualize-chrome}.png`.

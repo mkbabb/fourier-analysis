@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from "vue";
+import { Badge } from "@mkbabb/glass-ui";
 import type { GalleryEntry } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
@@ -129,15 +130,17 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                                 <span class="cm-serif text-sm font-semibold tracking-tight">Decomposition</span>
                             </div>
                             <div class="flex flex-wrap gap-1">
-                                <span
+                                <Badge
                                     v-for="b in basisLabels"
                                     :key="b.label"
-                                    class="basis-pill inline-flex items-center gap-[0.2rem] px-2 py-0.5 rounded-full text-sm font-medium whitespace-nowrap"
+                                    variant="outline"
+                                    size="sm"
+                                    class="basis-tint inline-flex items-center gap-[0.2rem] rounded-full font-medium whitespace-nowrap"
                                     :style="{ '--pill-c': b.color }"
                                 >
                                     <span class="cm-serif font-semibold text-[1.1em]">{{ b.icon }}</span>
                                     {{ b.label }}
-                                </span>
+                                </Badge>
                             </div>
                         </div>
 
@@ -194,6 +197,15 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 /* Card shadow */
 .modal-card {
     box-shadow: var(--shadow-modal);
+}
+
+/* A.W2.e — basis-tint colour projection over `<Badge variant="outline">`,
+   identical to the GalleryCard recipe; the badge is decorative read-only
+   here (no click handler), so `<Badge>` is the precise primitive. */
+.basis-tint {
+    background: color-mix(in srgb, var(--pill-c) 12%, transparent);
+    border-color: color-mix(in srgb, var(--pill-c) 30%, transparent);
+    color: var(--pill-c);
 }
 
 /* Tier badge colors */

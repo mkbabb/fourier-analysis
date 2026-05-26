@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { Slider } from "@mkbabb/glass-ui";
+import { Slider, Button } from "@mkbabb/glass-ui";
 import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
@@ -130,15 +130,17 @@ function toggleBasis(key: string) {
             </template>
             <div class="flex flex-wrap justify-center gap-1.5 pt-1 pb-1">
                 <Tooltip v-for="(info, key) in basisDisplay" :key="key" :text="getBasisTooltip(key as string)">
-                    <button
-                        class="basis-pill"
-                        :class="{ active: isBasisActive(key as string) }"
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        class="basis-toggle"
+                        :aria-pressed="isBasisActive(key as string)"
                         :style="isBasisActive(key as string) ? { '--pill-color': info.color } : {}"
                         @click="toggleBasis(key as string)"
                     >
                         <span class="basis-icon cm-serif font-semibold" :class="{ 'basis-icon--fourier': key === 'fourier' }">{{ info.icon }}</span>
                         {{ getBasisLabel(key as string, info) }}
-                    </button>
+                    </Button>
                 </Tooltip>
             </div>
 
@@ -238,32 +240,40 @@ function toggleBasis(key: string) {
     margin: -0.35em -0.1em;
     transform: translateY(0.06em);
 }
-.basis-pill {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.35rem 0.625rem;
-    border-radius: 9999px;
-    @apply text-sm;
-    font-weight: 500;
-    border: 2px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+/* A.W2.e — `.basis-toggle` is the per-instance retint hook over
+   `<Button variant="outline" size="sm">`. The variant already ships the
+   focus-ring, the press-scale, the rounded-pill shape, and the disabled
+   geometry; the toggle layer adds the basis-specific tint (driven by
+   `aria-pressed`), the 5.5 rem min-width that keeps all three pills
+   uniform-width, the 2 px border weight the outline variant ships at 1 px,
+   and the mobile-compact rules. The `:where()` selector ensures these
+   override the variant's `h-9 px-3` defaults without raising specificity
+   beyond a single class. */
+.basis-toggle {
+    @apply gap-1 min-w-[5.5rem] justify-center font-medium;
+    border-width: 2px;
+    border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
+    color: var(--muted-foreground);
+}
+.basis-toggle:hover {
+    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
     background: transparent;
     color: var(--muted-foreground);
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-    flex-shrink: 0;
-    min-width: 5.5rem;
-    text-align: center;
-    justify-content: center;
+}
+.basis-toggle[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--pill-color) 12%, transparent);
+    border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);
+    color: var(--pill-color);
+}
+.basis-toggle[aria-pressed="true"]:hover {
+    background: color-mix(in srgb, var(--pill-color) 16%, transparent);
+    color: var(--pill-color);
 }
 
 /* Compact pills on mobile so all three fit on one line */
 @media (max-width: 639px) {
-    .basis-pill {
-        padding: 0.25rem 0.5rem;
-        @apply text-sm;
-        gap: 0.125rem;
+    .basis-toggle {
+        @apply px-2 gap-0.5;
         border-width: 1.5px;
     }
     .basis-icon {
@@ -274,14 +284,6 @@ function toggleBasis(key: string) {
         font-size: 1.75em;
         margin: -0.3em -0.05em;
     }
-}
-.basis-pill:hover {
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
-}
-.basis-pill.active {
-    background: color-mix(in srgb, var(--pill-color) 12%, transparent);
-    border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);
-    color: var(--pill-color);
 }
 
 .reset-icon-btn {

@@ -165,3 +165,70 @@ The status-board flips W1 from `planned` to **closed** at `83e3a14`. The C1 chro
 The two sequencing observations recorded in the W1.a and W1.b entries above (the sibling-agent file-bounds violation at the original `3926205`, and the W1.a out-of-order landing) are carried forward to the W6 close ceremony's AMEND ledger as authoring-side notes — neither alters substrate state.
 
 **Next action**: dispatch **W2 — Override-stylesheet abrogation**. Four parallel agents (W2.a token de-fork, W2.b fold-to-component, W2.c ios-fixes delete + `buttons.css` post-migration deletion, W2.d visual regression evidence). Critical AMEND #6 from W0-challenge §4: `buttons.css` cannot delete outright — five live `.styled-slider` consumer sites plus `.btn-icon-admin` / `.btn-solid` / `.btn-ghost` / `.basis-pill` consumers exist; the file deletes only after the W2 + W3 *joint* consumer migration completes. W2 performs the non-button-recipe migration; W3 performs the button-recipe migration; the deletion lands at the latter of the two.
+
+### 2026-05-26 — W2.e full `buttons.css` abrogation
+
+Per user directive of 2026-05-26 the W2/W3 split for `buttons.css` is
+revoked: the entire `.btn-*` + `.basis-pill` migration is pulled into
+W2, the file deletes here, and W3 retains the native-`<button>`
+migration scope only. Agent A.W2.e discharged the abrogation at commit
+`<COMMIT_HASH_PENDING>` — `refactor(A.W2.e): fully abrogate buttons.css
+— migrate .btn-* and .basis-pill consumers to <Button>/<Badge>`.
+
+Architectural transposition: each consumer-side recipe migrates to the
+smallest idiomatic glass-ui primitive whose `buttonVariants` /
+`badgeVariants` already ships the four-state contract (focus-visible /
+hover / press / disabled). Bespoke geometry that the variant does not
+ship is filed as a per-component scoped retint hook over the variant
+— the A.md invariant 10 escape hatch. The migrations:
+
+- `.btn-icon-admin` (3 sites, `GalleryCard.vue:121-141` pre →
+  `:121-144` post) → `<Button variant="glass" size="icon">` + scoped
+  `.admin-overlay-btn` (h-7 w-7 rounded-full + scale-hover 1.1 /
+  scale-active 0.95).
+- `.btn-solid` (1 site, `ExportModal.vue:86-89`) → `<Button
+  variant="default">` — the recipe's `--foreground` / `--background`
+  pair was a reinvented primary palette; the canonical `--primary`
+  token routes through the default variant.
+- `.btn-ghost` (1 site, `ExportModal.vue:85`) → `<Button
+  variant="outline">` — the recipe's 2 px bordered + transparent-bg +
+  hover-muted geometry matches outline's `border-input bg-background
+  hover:bg-accent` exactly.
+- `.basis-pill` interactive toggle (3 in-loop sites,
+  `BasisSelector.vue:133-141` pre → `:133-144` post) → `<Button
+  variant="outline" size="sm">` + scoped `.basis-toggle` retint hook
+  + `aria-pressed` for the active state (replaces the prior `.active`
+  class-binding with the semantic ARIA contract `buttonVariants`
+  already reads via `aria-pressed:` modifiers — eliminates the
+  reinvented active-state idiom).
+- `.basis-pill` decorative read-only (2 sites,
+  `GalleryCard.vue:84-92` pre → `:84-94` post; and
+  `GalleryCardModal.vue:132-140` pre → `:132-142` post) → `<Badge
+  variant="outline" size="sm">` + scoped `.basis-tint` retint hook
+  (the decorative use was never a button — `<Badge>` is the precise
+  semantic primitive). The recipe over-served two distinct roles
+  (interactive toggle + decorative label); the migration splits them
+  onto the two correct primitives.
+- `web/src/lib/equation/notation.ts:3-7` (pre) → `:3-9` (post): the
+  comment-only `.basis-pill` reference was updated to cite the
+  post-migration vocabulary (`<Button variant="outline" size="sm">`
+  + `aria-pressed`-driven tint via `.basis-toggle`).
+
+Post-W2.e file inventory: `web/src/styles/` is **empty and removed
+from the tree** (`rmdir` succeeded). The `@import "./styles/buttons.css"`
+line at `web/src/style.css:4` is elided.
+
+Verification:
+- `git grep -nE 'buttons\.css|\.btn-(icon-admin|solid|ghost)|\.basis-pill' -- 'web/src/'` returns empty. The `.basis-pill-btn` class in `GallerySearchBar.vue:110` is a distinct self-contained recipe outside the `.basis-pill` lineage and not in W2.e scope.
+- `npx vue-tsc -b --force` exit 0 (clean typecheck across the post-W2.e consumer surface).
+- `npm run build` carries the W2.d-documented pre-existing substrate blocker (`@mkbabb/glass-ui → @mkbabb/value.js: parseCSSStylesheet` import fault). Reproduced the failure on baseline `88c1858` via `git stash` to confirm the blocker is **not** attributable to W2.e — it predates the wave and is filed as the constellation carry per `audit/W2-disposition-ledger.md` row d1. The build-green surrogate is the typecheck per W2.d's precedent.
+- Browser smoke: `/gallery` and `/visualize` render the surrounding chrome cleanly with zero console errors. The dev MongoDB is empty in this instance so the live `.basis-pill` / `.btn-icon-admin` / ExportModal surfaces could not be exercised against gallery entries — the cleanly-rendered router + header + upload pipeline confirms no broken cascade from the migration. Screenshots at `audit/W2-screenshots/buttons-abrogated-{gallery,visualize-basis,visualize-chrome}.png`.
+
+The W3.md scope item 2 hard gate ("`buttons.css` deleted") **lands
+here**, ahead of W3's native-`<button>` migration. W3 owns the
+native-`<button>` migration concern only going forward; the
+button-recipe sub-gate is satisfied by W2.e. The status-board reflects
+W2 closing the override-stylesheet abrogation chapter in full: every
+override stylesheet authored under the consumer fork
+(`fourier-overrides.css`, `ios-fixes.css`, `buttons.css`) is now
+deleted, and `web/src/styles/` no longer exists.

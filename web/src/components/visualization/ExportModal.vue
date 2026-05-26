@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { X, Download } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -82,11 +83,11 @@ function doExport() {
                     </div>
 
                     <div class="modal-footer">
-                        <button class="btn-ghost" @click="emit('close')">Cancel</button>
-                        <button class="btn-solid" @click="doExport">
+                        <Button variant="outline" size="default" @click="emit('close')">Cancel</Button>
+                        <Button variant="default" size="default" @click="doExport">
                             <Download class="h-3.5 w-3.5" />
                             Save PNG
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>

@@ -2,7 +2,9 @@ import type { NotationMode } from "./types";
 
 /**
  * Notation pill definitions with LaTeX-style icons and colors,
- * matching the basis-pill pattern from BasisSelector.
+ * matching the `.basis-toggle` pattern from BasisSelector (glass-ui
+ * `<Button variant="outline" size="sm">` with `aria-pressed` driving an
+ * instance-scoped tint).
  */
 export const NOTATION_OPTIONS: {
     label: string;
