@@ -11,7 +11,7 @@ Each row carries the wave number plus its noun-phrase title (the canonical displ
 | W0 — Open, challenge, hygiene, numerical-test repair | **closed** | 2026-05-26 (`87472d1`) | open · challenge · hygiene · brittleness pair restored; 7 AMENDs ledgered for W6 absorption |
 | W1 — Attribute and land the glass-ui migration cohort | **closed** | 2026-05-26 (`83e3a14`) | the C1 chronic-deferral closure; 31-row deletion ledger landed; BouncyToggle.vue lone flagged-for-rework |
 | W2 — Override-stylesheet abrogation | **closed** | 2026-05-26 (`5fdf6ff`) | all three override stylesheets deleted; `web/src/styles/` retired; contract-v2 adoption + glass-ui font hygiene + buttons.css full abrogation + backend Docker RATIFY landed in-band |
-| W3 — Interactive-primitive adoption | planned | — | the 89 native buttons retire; AB+1 primitive cohort lands |
+| W3 — Interactive-primitive adoption | **closed** | 2026-05-26 (`8a608e5`) | 68 native buttons retired; 13 MetricBadge adopt + 5 primitives retire-with-rationale (AB+1 P12 partial discharge); cubic-bezier 29→0; transition:all 26→0; D5 + C4-residuals + BouncyToggle all retired |
 | W4 — Scaling, KISS and correctness pass | planned | — | janitor invert; contour-hash fix; dead-code deletion; secrets out |
 | W5 — Admin parity and functionality close | planned | — | admin idiom lift; audit-log viewer wired; batch UI; math-honesty |
 | W6 — Close | planned | — | reconciliation, `FINAL.md`, constellation update, CRUD hand-off |
@@ -461,3 +461,44 @@ Agent **A.W3.b — Button migration (visualization + ui subtrees)** lands the W3
 |---|---|---|
 | _pending_ | `refactor(A.W3.b): migrate native <button> to <Button> across visualization/ui + D5 fold` | W3.b |
 | _pending_ | `docs(A.W3.b): append W3 button ledger + W3-adoption-ledger D5 row` | W3.b |
+
+### 2026-05-26 — W3 close ceremony
+
+The four parallel W3 agents — A.W3.a (button migration equation/morph/paper/layout), A.W3.b (button migration visualization/ui + D5 fold), A.W3.c (metric/readout primitive adoption + C4-residual), A.W3.d (motion-vocabulary cleanup) — have each returned green. The wave closes at HEAD `8a608e5`.
+
+| Commit | Subject | Sub-agent |
+|---|---|---|
+| `6049995` | `refactor(A.W3.c): adopt MetricBadge cohort at GalleryAdminBanner + energy readouts` | W3.c |
+| `04cf719` | `docs(A.W3.c): land W3 adoption ledger + C4-residual composable disposition` | W3.c |
+| `6b7a12c` | `refactor(A.W3.a): migrate native <button> to <Button> across equation/morph/paper/layout` | W3.a |
+| `59f270a` | `refactor(A.W3.d): de-duplicate @keyframes, excise cubic-bezier and transition:all` | W3.d |
+| `c53ffba` | `refactor(A.W3.b): migrate native <button> to <Button> across visualization/ui + D5 fold` | W3.b |
+| `be24948` | `refactor(A.W3.b): migrate visualization+ui native <button> to <Button>` | W3.b |
+| `7057fe7` | `docs(A.W3.b): land D5 row in W3-adoption-ledger` | W3.b |
+| `8a608e5` | `refactor(A.W3.d): commit residual motion-vocab edits` | W3.d residuals |
+
+**Cumulative tallies post-W3:**
+
+- **Button migrations**: 68 native `<button>` retired (W3.a 32 + W3.b 36); 9 justified residues survive (decorative-SVG wrappers `MorphShapePreview`, `DarkModeToggle`; ornament `AnimationControls.play-btn` ×2; W5-territory admin pagination ×4; the consumer-side `Tooltip` primitive). The W0-challenge prediction for `<Button as="label">` at `ImageUpload.vue:121` + `VisualizationView.vue:220` was moot — the working-tree state already used a programmatic `fileInput.click()` idiom. The `<Collapsible.Trigger asChild>` prediction at `MobileFloatingToc.vue` was likewise misdirected (no `Collapsible` primitive in use); the file's disclosure triggers migrated to plain `<Button variant="ghost">`.
+- **Primitive adoption (AB+1 P12)**: partial discharge — **13 MetricBadge** sites adopted at `GalleryAdminBanner` + energy-readout consumers. The other primitives — `AnimatedDigit`, `MetricRow`, `MetricStack`, `MetricCell`, `StatusDot`, `Skeleton` — all retire-with-rationale (no live-damping counters; sparkline-bar coefficient register; icon + Select tier vocabulary; spinner loading register). The retirements are honest: fourier's actual UI register doesn't carry the primitives' shape, and forcing adoption would be the substrate-with-consumer invariant violated in reverse. **Load-bearing finding**: `MetricBadge` / `MetricRow` / etc. export **subpath-only** at glass-ui v2.0.0 — `dist/glass-ui.js` root barrel does NOT re-export them despite W0-challenge §2 row 12 ratifying `Skeleton`'s root-barrel export. Filed to W6 reconciliation.
+- **Motion vocabulary**: `cubic-bezier(...)` strings **29 → 0** across `web/src/` (all replaced with canonical glass-ui ease tokens: `--ease-standard`, `--ease-out-expo`, `--ease-in`, `--ease-apple-spring`); `transition: all` declarations **26 → 0**; shadow `@keyframes` **6 → 0** at the names W0-challenge AMEND #5 enumerated (`fade-in`, `scale-in`, `slide-up`, `collapsible-{open,close}`, `tooltip-in`). Eight fourier-local keyframes survive as legitimate (the tab-slide-in W2.b carry, advanced-open/close, rainbow palette, golden-shimmer, spin, like-bounce, marquee-scroll) — these are not glass-ui shadows. PRM guards added where missing.
+- **D5 fold (SliderControl.vue variant prop residual)**: disposition (b) **retired-with-rationale** — zero consumers passed `variant?: "timeline" | "default"`; both branches mapped cosmetically to the same `<Slider variant="glass-scrubber">`; prop removed wholesale.
+- **C4-residual composables** (`useTouchGate`, `useResizeObserver`): both **retired-with-rationale** — no fourier consumer; glass-ui ships canonical equivalents at the root barrel.
+- **BouncyToggle.vue closure**: W1.a's lone `flagged-for-rework` row is **discharged** — W3.b's ExportModal `<Switch>` lift covers the retirement (Switch is the canonical primitive for the bouncy-toggle affordance), reading the original BouncyToggle use case as a binary on/off control rather than a literal bounce-physics component.
+
+**Hard-gate item-by-item (per `W3.md §"Hard gate (completion criterion, item-by-item)"`)**:
+
+1. `git grep <button>` in `web/src/` returns 9 sites; each justified in `audit/W3-button-ledger.md`. SATISFIED.
+2. `buttons.css` deleted (already by W2.e). SATISFIED.
+3. `MetricBadge` imported and rendering at 13 sites per `audit/W3-adoption-ledger.md`; other primitives retire-with-rationale per the substrate-shape mismatch documented above. SATISFIED with the honest retirement disposition.
+4. `git grep '@keyframes (fade-in|scale-in|slide-up|collapsible-open|collapsible-close|tooltip-in)\b' web/src/` returns 0; `git grep 'transition:\s*all\b' web/src/` returns 0 (the 16 grep-hits were W3.d audit-comment provenance, not declarations); `git grep cubic-bezier web/src/` returns 0. SATISFIED.
+5. `npm run build` and `vue-tsc -b --force` green at HEAD `8a608e5` (8.28s build). SATISFIED.
+
+**Verification artefacts**:
+- `docs/tranches/A/audit/W3-button-ledger.md` — 68 migration rows + 9 residue rows + per-subtree footer
+- `docs/tranches/A/audit/W3-adoption-ledger.md` — 13 MetricBadge adopt + 5 primitive retire-with-rationale + 27 fira-code kept-as-decorative + 2 composable disposition + D5 row + 47 W3.d motion-vocab rows
+- `docs/tranches/A/audit/W3-screenshots/` — `/visualize`, `/morph`, `/paper` post-W3 captures (zero console errors)
+
+The status-board flips W3 from `planned` to **closed** at `8a608e5`. Constellation P12 (the AB+1 primitive-adoption cohort) is **partially discharged** — the 13-row `MetricBadge` adoption lands; the remaining primitives retire honestly with the substrate-shape rationale documented. The K-invariant-3 fourth-recurrence anti-pattern (the unadopted-cohort pattern in CSS form) is hereby closed via the buttons.css full abrogation + the interactive-vocabulary unification.
+
+**Next action**: dispatch **W4 — Scaling, KISS and correctness pass**. Three parallel agents (W4.a janitor + rate-limiter, W4.b contour-hash + gallery consolidation, W4.c dead-code + deploy-surface). The Mongo password literal at `docker-compose.prod.yml:8,:47` survives in prod-side per the W4.c scope (the dev-side fix landed at `5fdf6ff` as a W2.h scope-reveal). The contour-hash regression test lands at W4.b per the `image_storage.py:180` H3-confirmed line.
