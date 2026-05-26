@@ -8,7 +8,7 @@ Each row carries the wave number plus its noun-phrase title (the canonical displ
 
 | Wave | Status | Closed at | Notes |
 |---|---|---|---|
-| W0 — Open, challenge, hygiene, numerical-test repair | planned | — | open · challenge · hygiene · two pre-existing numerical failures restored |
+| W0 — Open, challenge, hygiene, numerical-test repair | **closed** | 2026-05-26 (`87472d1`) | open · challenge · hygiene · brittleness pair restored; 7 AMENDs ledgered for W6 absorption |
 | W1 — Attribute and land the glass-ui migration cohort | planned | — | the C1 chronic-deferral closure |
 | W2 — Override-stylesheet abrogation | planned | — | `fourier-overrides.css` + `ios-fixes.css` + `buttons.css` deleted |
 | W3 — Interactive-primitive adoption | planned | — | the 89 native buttons retire; AB+1 primitive cohort lands |
@@ -62,4 +62,34 @@ The W0 close gate (per A.md §3, W0 row) is **partial**: the submodule wiring is
 
 ### 2026-05-26 — W0.c numerical-test repair landed
 
-Agent A.W0.c discharged the brittleness window declared at A.md §10. Root cause: `evaluate_partial_sum` in `src/fourier_analysis/bases_evaluation.py` evaluated the polynomial bases on a trimmed domain `[-1+ε, 1-ε]` with `ε = 0.03` — a closed-contour Runge-mitigation heuristic that corrupted the function's contract (the evaluator must compute the canonical partial sum at evenly spaced points of the orthogonality interval `[-1, 1]`). The trim shifted every sample point inward, so the returned values did not coincide with the caller's `np.linspace(-1, 1, n_eval)`. Fix path (a): the trim was excised from the evaluator; the heuristic, if needed for visualization, belongs in the calling plotter rather than the synthesis primitive. Whole-suite reports **89 passed, 0 failed** (W0.a had observed 87 + 2). The §10 suspended gates are restored; W0.d may close the wave.
+Agent A.W0.c discharged the brittleness window declared at A.md §10. Root cause: `evaluate_partial_sum` in `src/fourier_analysis/bases_evaluation.py` evaluated the polynomial bases on a trimmed domain `[-1+ε, 1-ε]` with `ε = 0.03` — a closed-contour Runge-mitigation heuristic that corrupted the function's contract (the evaluator must compute the canonical partial sum at evenly spaced points of the orthogonality interval `[-1, 1]`). The trim shifted every sample point inward, so the returned values did not coincide with the caller's `np.linspace(-1, 1, n_eval)`. Fix path (a): the trim was excised from the evaluator; the heuristic, if needed for visualization, belongs in the calling plotter rather than the synthesis primitive. Whole-suite reports **89 passed, 0 failed** (W0.a had observed 87 + 2). The §10 suspended gates are restored; W0.d may close the wave. Commit `7cd5973` `fix(A.W0): repair chebyshev/legendre partial-sum evaluator domain`.
+
+### 2026-05-26 — W0.b challenge ratification landed
+
+Agent A.W0.b discharged the challenge moiety of W0. The document — `docs/tranches/A/audit/W0-challenge.md`, committed at `87472d1` — ratifies twenty-two load-bearing plan claims against the post-W0.a substrate. Fifteen rows RATIFY; seven AMEND; one soft ESCALATE; zero hard escalations. The AMEND ledger constitutes the W6 close-ceremony's plan-doc reconciliation checklist:
+
+1. **Cohort count** — 110 paths under `--untracked-files=all` (102 under default `git status` due to directory collapse); A.md §1 and W1.md narrate to ~110.
+2. **`ios-fixes.css` rules** — 3 selector blocks across 2 conceptual concerns (W2.md §Scope item 2 softens the literal-count language).
+3. **`buttons.css` outright-delete** — five live `.styled-slider` consumer sites plus `.btn-icon-admin` / `.btn-solid` / `.btn-ghost` / `.basis-pill` consumers contradict the H2 "no surviving consumer" reading; the file deletes only after the W2 + W3 *joint* consumer migration completes.
+4. **`fira-code` count** — 82 raw hits across `web/src/**/*.{vue,ts}` (≥69, ≤82); W3.md §Scope item 3a rerunes the canonical count before W3 dispatches.
+5. **`@keyframes` total / shadow count** — 16 total, 6 verified shadows (`fade-in`, `scale-in`, `slide-up`, `collapsible-{open,close}`, `tooltip-in`); `tab-slide-in` is a candidate seventh pending a glass-ui side recheck.
+6. **glass-ui pin** — the consumer compiles against v2.0.0 / `5e79443`, not v1.8.5 / `7e2e385`; W6 reconciles `A.md §1`, `CONSTELLATION.md`, `W1.md` to v2.0.0; the migration targets named in W3 hold under v2.0.0 (Skeleton root-barrel confirmed).
+7. **`ConfiguratorRow.vue` path** — the file lives at `glass-ui/src/components/custom/configurator/ConfiguratorRow.vue:91` (the `custom/configurator/` subpath was missing from the CONSTELLATION emitted-carry citation).
+
+The rate-limiter decision is recorded as **Option A** — single-replica documented honestly via `replicas: 1` pin in `docker-compose.prod.yml` plus a deploy note; the W4-side execution lands the implementation. The single soft escalation (the glass-ui v1.8.5 → v2.0.0 skew) does not block W1 dispatch.
+
+### 2026-05-26 — W0 close ceremony (W0.d)
+
+The three serial agents of W0 — A.W0.a (open + hygiene), A.W0.b (challenge), A.W0.c (numerical-test repair) — have each returned green. Five commits constitute the W0 work:
+
+| Commit | Subject |
+|---|---|
+| `3fc960c` | `chore(A.W0): commit submodule wiring + planning artefacts` |
+| `c69aa33` | `chore(A.W0): untrack tsbuildinfo cache file` |
+| `c2e2054` | `chore(A.W0): log W0.a open + hygiene closure` |
+| `7cd5973` | `fix(A.W0): repair chebyshev/legendre partial-sum evaluator domain` |
+| `87472d1` | `docs(A.W0): land W0 challenge ratification` |
+
+Per `A.md §3` W0 row, every hard-gate item is now SATISFIED: `vue-tsc -b --force` green; `npm run build` green; `uv run pytest` 89 passed / 0 failed (the brittleness window discharged at W0.c); submodule wiring committed; `tsbuildinfo` untracked + gitignored; challenge doc landed at `audit/W0-challenge.md`. The status-board flips W0 from `planned` to **closed** at `87472d1`. The seven AMEND rows ledgered at the challenge doc §4 carry forward to the W6 close ceremony.
+
+**Next action**: dispatch **W1 — Attribute and land the glass-ui migration cohort**. Three parallel agents (W1.a web, W1.b api, W1.c infra) ride against the post-W0 clean baseline. The post-W0.a substrate carries the ~110-file in-flight cohort; W1's deliverable is the attributed commit sequence plus the 11-column deletion ledger at `audit/W1-deletion-ledger.md`. `BouncyToggle.vue` carries the lone `flagged-for-rework` row.
