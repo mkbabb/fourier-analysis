@@ -19,6 +19,7 @@ import GalleryDraftsSection from "./gallery/GalleryDraftsSection.vue";
 
 const AdminUserList = defineAsyncComponent(() => import("./gallery/AdminUserList.vue"));
 const AdminFlaggedPanel = defineAsyncComponent(() => import("./gallery/AdminFlaggedPanel.vue"));
+const AdminAuditLog = defineAsyncComponent(() => import("./gallery/AdminAuditLog.vue"));
 
 const route = useRoute();
 const router = useRouter();
@@ -27,7 +28,7 @@ const gallery = useGalleryStore();
 const { isLoggedIn } = storeToRefs(useAuthStore());
 const { toast } = useToast();
 
-const activeTab = ref<"gallery" | "drafts" | "users" | "flagged">("gallery");
+const activeTab = ref<"gallery" | "drafts" | "users" | "flagged" | "audit">("gallery");
 const selectedEntry = ref<GalleryEntry | null>(null);
 const likedHashes = ref(new Set<string>());
 const viewedHashes = ref(new Set<string>());
@@ -42,6 +43,7 @@ const tabOptions = computed(() => {
         tabs.push(
             { label: "Users", value: "users" },
             { label: "Flagged", value: "flagged" },
+            { label: "Audit Log", value: "audit" },
         );
     }
     return tabs;
@@ -231,6 +233,11 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
         <!-- Flagged tab (admin-only) -->
         <template v-if="activeTab === 'flagged' && gallery.adminMode">
             <AdminFlaggedPanel />
+        </template>
+
+        <!-- Audit Log tab (admin-only) -->
+        <template v-if="activeTab === 'audit' && gallery.adminMode">
+            <AdminAuditLog />
         </template>
 
         <GalleryCardModal
