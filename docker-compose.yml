@@ -11,7 +11,7 @@ services:
       - ./assets:/app/assets
     environment:
       - CORS_ORIGINS=http://localhost:${WEB_PORT:-3000},http://localhost:5173
-      - MONGO_URI=mongodb://mongo:27017/fourier
+      - MONGO_URI=mongodb://fourier-admin:cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb@mongo:27017/fourier?authSource=admin
     depends_on:
       mongo:
         condition: service_healthy
@@ -30,7 +30,7 @@ services:
     networks: [app-network]
 
   mongo:
-    image: mongo:7
+    image: mongo:8.0
     volumes: ["mongo_data:/data/db"]
     networks: [app-network]
     healthcheck:
