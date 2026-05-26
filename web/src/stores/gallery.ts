@@ -10,9 +10,6 @@ export const useGalleryStore = defineStore("gallery", () => {
 
     // State
     const entries = ref<GalleryEntry[]>([]);
-    const total = ref(0);
-    const page = ref(1);
-    const pages = ref(1);
     const loading = ref(false);
     const sort = ref<"newest" | "views" | "likes">("newest");
     const tierFilter = ref<"all" | "featured" | "saved" | "normal">("all");
@@ -22,34 +19,12 @@ export const useGalleryStore = defineStore("gallery", () => {
     const adminStats = ref<AdminStats | null>(null);
     const adminStatsLoading = ref(false);
 
-    // Cursor pagination state
+    // Cursor pagination state — the only paginated path through gallery.
     const nextCursor = ref<string | null>(null);
     const hasMore = ref(true);
     const loadingMore = ref(false);
 
     // Actions
-
-    async function fetchPage(n?: number) {
-        if (n !== undefined) page.value = n;
-        loading.value = true;
-        try {
-            const result = await api.listGallery({
-                page: page.value,
-                sort: sort.value,
-                tier: tierFilter.value === "all" ? undefined : tierFilter.value,
-                q: searchQuery.value || undefined,
-                basis: basisFilter.value || undefined,
-            });
-            entries.value = result.items;
-            total.value = result.total;
-            page.value = result.page;
-            pages.value = result.pages;
-        } catch (e: any) {
-            toast(e.message ?? "Failed to load gallery", "error");
-        } finally {
-            loading.value = false;
-        }
-    }
 
     async function fetchNextPage() {
         if (!hasMore.value || loadingMore.value) return;
@@ -66,7 +41,6 @@ export const useGalleryStore = defineStore("gallery", () => {
             entries.value = [...entries.value, ...result.items];
             nextCursor.value = result.cursor.next_cursor;
             hasMore.value = result.cursor.has_more;
-            total.value = result.total;
         } catch (e: any) {
             if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
         } finally {
@@ -90,7 +64,6 @@ export const useGalleryStore = defineStore("gallery", () => {
             entries.value = result.items;
             nextCursor.value = result.cursor.next_cursor;
             hasMore.value = result.cursor.has_more;
-            total.value = result.total;
         } catch (e: any) {
             if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
         } finally {
@@ -134,7 +107,7 @@ export const useGalleryStore = defineStore("gallery", () => {
         if (!token) return;
         try {
             await api.setGalleryTier(token, hash, tier);
-            await fetchPage();
+            await resetAndFetch();
             toast(`Tier set to ${tier}`, "success");
         } catch (e: any) {
             toast(e.message ?? "Failed to set tier", "error");
@@ -146,7 +119,7 @@ export const useGalleryStore = defineStore("gallery", () => {
         if (!token) return;
         try {
             await api.deleteGalleryEntry(token, hash);
-            await fetchPage();
+            await resetAndFetch();
             toast("Entry deleted", "success");
         } catch (e: any) {
             toast(e.message ?? "Failed to delete entry", "error");
@@ -186,7 +159,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             const slug = await auth.ensureUser();
             await api.publishToGallery(snapshotHash, imageSlug);
             toast("Published!", "success", { slug });
-            await fetchPage();
+            await resetAndFetch();
         } catch (e: any) {
             toast(e.message ?? "Failed to publish", "error");
         }
@@ -204,7 +177,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             });
             await api.publishToGallery(snapshot.snapshot_hash, draft.imageSlug);
             toast("Published!", "success", { slug });
-            await fetchPage();
+            await resetAndFetch();
         } catch (e: any) {
             toast(e.message ?? "Publish failed", "error");
         }
@@ -212,9 +185,6 @@ export const useGalleryStore = defineStore("gallery", () => {
 
     return {
         entries,
-        total,
-        page,
-        pages,
         loading,
         sort,
         tierFilter,
@@ -226,7 +196,6 @@ export const useGalleryStore = defineStore("gallery", () => {
         nextCursor,
         hasMore,
         loadingMore,
-        fetchPage,
         fetchNextPage,
         resetAndFetch,
         activateAdmin,

@@ -3,13 +3,12 @@ import type { GalleryEntry } from "@/lib/types";
 import { InfiniteScroll } from "@mkbabb/glass-ui/infinite-scroll";
 import GalleryCard from "./GalleryCard.vue";
 
-const props = defineProps<{
+defineProps<{
     entries: GalleryEntry[];
     loading: boolean;
     hasMore: boolean;
     adminMode: boolean;
     likedHashes: Set<string>;
-    total: number;
 }>();
 
 const emit = defineEmits<{
@@ -23,7 +22,7 @@ const emit = defineEmits<{
 
 <template>
     <div class="flex flex-col gap-2 px-4">
-        <p class="text-xs text-muted-foreground">{{ total }} total</p>
+        <p class="text-xs text-muted-foreground">{{ entries.length }} loaded</p>
         <InfiniteScroll :has-more="hasMore" :is-loading="loading" @load-more="emit('load-more')">
             <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr))">
                 <GalleryCard

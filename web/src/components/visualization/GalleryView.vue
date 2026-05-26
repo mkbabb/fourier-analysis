@@ -194,7 +194,6 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 :entries="nonFeaturedEntries"
                 :loading="gallery.loading || gallery.loadingMore"
                 :has-more="gallery.hasMore"
-                :total="gallery.total"
                 :admin-mode="gallery.adminMode"
                 :liked-hashes="likedHashes"
                 @load-more="gallery.fetchNextPage()"
