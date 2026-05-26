@@ -16,6 +16,7 @@ import type {
     AdminUserListResponse,
     FlaggedListResponse,
     AuditListResponse,
+    BatchResponse,
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL || "";
@@ -500,12 +501,16 @@ export async function pruneEmptyUsers(
 
 // ── Admin: batch operations ──
 
+// A.W5.c contract-bug fix — the wrappers previously declared a `{processed}`
+// shape that disagreed with the backend's `{ok, affected, errors?}` (see
+// `api/routers/admin.py:362-451`). The CRUD CONTRACT ratifies `BatchResponse`
+// as the canonical batch return type; both wrappers now type against it.
 export async function batchGallery(
     token: string,
     action: "delete" | "feature" | "unfeature",
     hashes: string[],
-): Promise<{ processed: number }> {
-    return adminFetch<{ processed: number }>("/api/admin/gallery/batch", token, {
+): Promise<BatchResponse> {
+    return adminFetch<BatchResponse>("/api/admin/gallery/batch", token, {
         method: "POST",
         body: { action, hashes },
     });
@@ -515,8 +520,8 @@ export async function batchUsers(
     token: string,
     action: "delete" | "suspend" | "unsuspend",
     slugs: string[],
-): Promise<{ processed: number }> {
-    return adminFetch<{ processed: number }>("/api/admin/users/batch", token, {
+): Promise<BatchResponse> {
+    return adminFetch<BatchResponse>("/api/admin/users/batch", token, {
         method: "POST",
         body: { action, slugs },
     });

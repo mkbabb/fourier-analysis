@@ -220,3 +220,13 @@ export interface AuditListResponse {
     page: number;
     pages: number;
 }
+
+// ── Admin batch operations ──
+// The CRUD CONTRACT batch return shape: `{ok, affected, errors?}`. The W5.c
+// contract-bug fix unified the api.ts wrappers around this shape, replacing a
+// stale `{processed: number}` declaration that disagreed with the backend.
+export interface BatchResponse {
+    ok: boolean;
+    affected: number;
+    errors?: string[];
+}
