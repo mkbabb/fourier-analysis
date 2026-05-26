@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -89,16 +90,16 @@ function formatPercent(amplitude: number): string {
                     </TransitionGroup>
 
                     <Tooltip :text="expanded ? 'Collapse to top 12' : `Show top 40 of ${totalComponents}`">
-                        <button
+                        <Button
                             v-if="totalComponents > 12"
-                            class="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1.5
-                                   text-xs font-medium text-muted-foreground transition-all duration-200
-                                   hover:text-foreground hover:bg-muted cursor-pointer"
+                            variant="ghost"
+                            size="sm"
+                            class="mt-2 w-full text-xs"
                             @click="expanded = !expanded"
                         >
                             <component :is="expanded ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
                             {{ expanded ? "Show less" : `Show more (${totalComponents} total)` }}
-                        </button>
+                        </Button>
                     </Tooltip>
                 </div>
 
@@ -112,8 +113,9 @@ function formatPercent(amplitude: number): string {
 
 <style scoped>
 @reference "tailwindcss";
-.coeff-list-enter-active { transition: all 0.3s ease; }
-.coeff-list-leave-active { transition: all 0.2s ease; }
+/* A.W3.d — named properties + canonical tokens, no `transition: all`. */
+.coeff-list-enter-active { transition: opacity 0.3s var(--ease-standard), transform 0.3s var(--ease-standard); }
+.coeff-list-leave-active { transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard); }
 .coeff-list-enter-from { opacity: 0; transform: translateX(-8px); }
 .coeff-list-leave-to { opacity: 0; transform: translateX(8px); }
 .coeff-list-move { transition: transform 0.3s ease; }

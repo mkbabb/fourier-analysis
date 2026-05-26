@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from "@mkbabb/glass-ui";
 import { NOTATION_OPTIONS } from "@/lib/equation/notation";
 import type { NotationMode } from "@/lib/equation/types";
 
@@ -13,15 +14,13 @@ const emit = defineEmits<{
 
 <template>
     <div class="flex flex-wrap justify-center gap-1.5">
-        <button
+        <Button
             v-for="opt in NOTATION_OPTIONS"
             :key="opt.value"
-            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium
-                   border-2 whitespace-nowrap cursor-pointer transition-all duration-200
-                   min-w-[4.5rem] justify-center"
-            :class="modelValue === opt.value
-                ? 'notation-active'
-                : 'border-foreground/12 bg-transparent text-muted-foreground hover:border-foreground/25'"
+            variant="outline"
+            size="sm"
+            class="notation-pill"
+            :class="{ 'notation-active': modelValue === opt.value }"
             :style="modelValue === opt.value ? { '--pill-color': opt.color } : {}"
             @click="emit('update:modelValue', opt.value)"
         >
@@ -30,11 +29,16 @@ const emit = defineEmits<{
                 {{ opt.icon }}
             </span>
             {{ opt.label }}
-        </button>
+        </Button>
     </div>
 </template>
 
 <style scoped>
+.notation-pill {
+    border-radius: 9999px;
+    min-width: 4.5rem;
+    justify-content: center;
+}
 .notation-active {
     background: color-mix(in srgb, var(--pill-color) 12%, transparent);
     border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);

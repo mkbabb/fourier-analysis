@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { PRESETS } from "@/lib/equation/presets";
 import type { NotationMode, PresetFunction } from "@/lib/equation/types";
 import { Wand2, Play } from "lucide-vue-next";
@@ -135,30 +136,30 @@ const activePreset = computed(() =>
                     </div>
 
                     <!-- Compute button -->
-                    <button
+                    <Button
+                        variant="default"
+                        size="sm"
                         class="compute-btn"
                         @click="emit('compute')"
                     >
                         <Play class="h-3.5 w-3.5" />
                         <span>Compute</span>
-                    </button>
+                    </Button>
 
                     <!-- Presets -->
                     <div class="border-t border-border/40 pt-3">
                         <label class="text-sm font-medium text-muted-foreground mb-1.5 block">Presets</label>
                         <div class="flex flex-wrap gap-1.5">
                             <Tooltip v-for="preset in PRESETS" :key="preset.name" :text="preset.description">
-                                <button
-                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full
-                                           text-sm font-medium border-2 whitespace-nowrap cursor-pointer
-                                           transition-all duration-200"
-                                    :class="activePreset?.name === preset.name
-                                        ? 'bg-[color-mix(in_srgb,var(--viz-fourier)_12%,transparent)] border-[color-mix(in_srgb,var(--viz-fourier)_40%,transparent)] text-[var(--viz-fourier)]'
-                                        : 'border-foreground/12 bg-transparent text-muted-foreground hover:border-foreground/25 hover:text-foreground'"
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="preset-pill"
+                                    :class="{ 'is-active': activePreset?.name === preset.name }"
                                     @click="applyPreset(preset)"
                                 >
                                     {{ preset.name }}
-                                </button>
+                                </Button>
                             </Tooltip>
                         </div>
                     </div>
@@ -181,14 +182,15 @@ const activePreset = computed(() =>
                             @update:model-value="(v: number) => { nHarmonics = v; emit('update:autoHarmonics', false); }"
                         />
                         <Tooltip side="bottom">
-                            <button
-                                class="glass-btn"
+                            <Button
+                                variant="glass"
+                                size="icon"
                                 :class="{ 'is-auto-active': autoHarmonics }"
                                 :disabled="!effectiveN"
                                 @click="toggleAuto"
                             >
                                 <Wand2 class="h-4.5 w-4.5" />
-                            </button>
+                            </Button>
                             <template #content>
                                 <div class="auto-calc-tip">
                                     <p class="font-semibold mb-1">Auto (Parseval's theorem)</p>
@@ -224,28 +226,21 @@ const activePreset = computed(() =>
 
 <style scoped>
 .compute-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
     width: 100%;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--foreground);
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 12%, transparent);
-    background: color-mix(in srgb, var(--foreground) 4%, transparent);
-    cursor: pointer;
-    transition: all 0.15s ease;
 }
 .compute-btn:hover {
     border-color: color-mix(in srgb, var(--viz-fourier) 50%, transparent);
     background: color-mix(in srgb, var(--viz-fourier) 8%, transparent);
     color: var(--viz-fourier);
 }
-.compute-btn:active {
-    transform: scale(0.98);
+
+.preset-pill {
+    border-radius: 9999px;
+}
+.preset-pill.is-active {
+    background: color-mix(in srgb, var(--viz-fourier) 12%, transparent);
+    border-color: color-mix(in srgb, var(--viz-fourier) 40%, transparent);
+    color: var(--viz-fourier);
 }
 
 .is-auto-active {

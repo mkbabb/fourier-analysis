@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import type { PaperSearchState } from "./usePaperSearch";
 import { TYPE_LABELS, resultLabel, highlightFuzzy } from "./searchHelpers";
 
@@ -37,9 +38,10 @@ defineExpose({ resultsRef });
             ref="resultsRef"
             class="paper-search-results glass-elevated"
         >
-            <button
+            <Button
                 v-for="(r, i) in search.results.value"
                 :key="`${r.id}-${r.type}-${i}`"
+                variant="ghost"
                 class="paper-search-result"
                 :class="{ 'is-selected': i === search.selectedIndex.value }"
                 @click="search.selectResult(r)"
@@ -55,7 +57,7 @@ defineExpose({ resultsRef });
                     class="paper-search-label"
                     v-html="highlightFuzzy(resultLabel(r), search.query.value)"
                 />
-            </button>
+            </Button>
         </div>
     </Transition>
 

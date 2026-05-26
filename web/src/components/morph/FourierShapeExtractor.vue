@@ -122,9 +122,9 @@
             </div>
         </div>
 
-        <button id="extract-btn" @click="extractAndOutput">
+        <Button id="extract-btn" variant="default" size="default" @click="extractAndOutput">
             Extract Shape Contours
-        </button>
+        </Button>
 
         <pre
             id="output"
@@ -140,6 +140,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { generateSunRays, wobbleDiamond, wobbleStarPolygon } from "@mkbabb/pencil-boil";
 import { extractContours } from "@/lib/svg-contours";
 

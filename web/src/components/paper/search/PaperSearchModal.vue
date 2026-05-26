@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { Search, X, Minimize2 } from "lucide-vue-next";
 import type { PaperSearchState } from "./usePaperSearch";
 import { TYPE_LABELS, resultLabel, highlightFuzzy } from "./searchHelpers";
@@ -57,27 +58,32 @@ watch(
                             @input="search.query.value = ($event.target as HTMLInputElement).value"
                             @keydown="search.onKeydown"
                         />
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="icon"
                             class="paper-search-action-btn"
                             @click="search.toggleExpanded()"
                             title="Collapse"
                         >
                             <Minimize2 class="h-3.5 w-3.5" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
                             class="paper-search-action-btn"
                             @click="search.close()"
                             title="Close"
                         >
                             <X class="h-3.5 w-3.5" />
-                        </button>
+                        </Button>
                     </div>
 
                     <!-- Modal results -->
                     <div class="search-modal-results" v-if="search.results.value.length > 0">
-                        <button
+                        <Button
                             v-for="(r, i) in search.results.value"
                             :key="`modal-${r.id}-${r.type}-${i}`"
+                            variant="ghost"
                             class="paper-search-result search-modal-result"
                             :class="{ 'is-selected': i === search.selectedIndex.value }"
                             @click="search.selectResult(r)"
@@ -93,7 +99,7 @@ watch(
                                 class="paper-search-label"
                                 v-html="highlightFuzzy(resultLabel(r), search.query.value)"
                             />
-                        </button>
+                        </Button>
                     </div>
                     <div v-else class="search-modal-empty">
                         No results

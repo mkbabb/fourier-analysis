@@ -51,9 +51,11 @@
         </div>
 
         <div class="grid">
-            <button
+            <Button
                 v-for="level in levels"
                 :key="level"
+                variant="outline"
+                size="default"
                 class="grid-cell"
                 :class="{
                     active: level === activeLevel,
@@ -77,14 +79,14 @@
                 >
                     n={{ level }}
                 </span>
-            </button>
+            </Button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Slider } from "@mkbabb/glass-ui";
+import { Button, Slider } from "@mkbabb/glass-ui";
 import { VIZ_COLORS } from "@/lib/colors";
 import type { FourierShape } from "@/lib/svg-fourier";
 import { interpolateAtHarmonicLevel, pointsToSvgPath } from "@/lib/svg-fourier";

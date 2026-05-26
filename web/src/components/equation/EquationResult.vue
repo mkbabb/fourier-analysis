@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useClipboard } from "@mkbabb/glass-ui";
+import { Button, useClipboard } from "@mkbabb/glass-ui";
 import { Check, Copy } from "lucide-vue-next";
 import katex from "katex";
 
@@ -34,8 +34,10 @@ function copyLatex() {
 <template>
     <div class="eq-result-root">
         <div class="eq-scroll-region" v-html="renderedHtml" />
-        <button
-            class="glass-btn copy-pos"
+        <Button
+            variant="glass"
+            size="icon"
+            class="copy-pos"
             title="Copy LaTeX"
             @click="copyLatex"
         >
@@ -43,7 +45,7 @@ function copyLatex() {
                 <Check v-if="copied" class="h-4.5 w-4.5 text-green-500" />
                 <Copy v-else class="h-4.5 w-4.5" />
             </Transition>
-        </button>
+        </Button>
     </div>
 </template>
 

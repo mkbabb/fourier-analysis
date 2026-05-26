@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { Search, X, Maximize2, Minimize2 } from "lucide-vue-next";
 import type { PaperSearchState } from "./usePaperSearch";
 
@@ -43,22 +44,26 @@ defineExpose({ focus });
             @keydown="search.onKeydown"
             @focus="search.isOpen.value = true"
         />
-        <button
+        <Button
             v-if="canExpand"
+            variant="ghost"
+            size="icon"
             class="paper-search-action-btn"
             @click="emit('expand')"
             :title="search.isExpanded.value ? 'Collapse' : 'Expand'"
         >
             <Maximize2 v-if="!search.isExpanded.value" class="h-3 w-3" />
             <Minimize2 v-else class="h-3 w-3" />
-        </button>
-        <button
+        </Button>
+        <Button
             v-if="search.query.value"
+            variant="ghost"
+            size="icon"
             class="paper-search-action-btn"
             @click="search.close()"
             title="Clear search"
         >
             <X class="h-3 w-3" />
-        </button>
+        </Button>
     </div>
 </template>
