@@ -7,6 +7,7 @@ import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/visualization/gallery/UserSlugBar.vue";
 import { Shield, ChevronDown, FileText, Eye, LayoutGrid, Sigma, Shuffle } from "lucide-vue-next";
 import {
+    Button,
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
@@ -98,11 +99,11 @@ const galleryStore = useGalleryStore();
 
             <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                    <button class="nav-trigger">
+                    <Button variant="ghost" class="nav-trigger">
                         <component :is="activeTabData.icon" class="nav-trigger-icon" />
                         <span class="nav-trigger-label">{{ activeTabData.label }}</span>
                         <ChevronDown class="nav-trigger-chevron" />
-                    </button>
+                    </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent class="nav-dropdown" :side-offset="6" align="start">
                     <DropdownMenuItem
@@ -260,9 +261,9 @@ const galleryStore = useGalleryStore();
     cursor: pointer;
 }
 
-/* Share button enter/leave */
+/* Share button enter/leave (A.W3.d — bezier→`--ease-apple-spring`) */
 .share-pop-enter-active {
-    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: opacity 0.25s var(--ease-standard), transform 0.3s var(--ease-apple-spring);
 }
 .share-pop-leave-active {
     transition: opacity 0.2s ease, transform 0.2s ease;

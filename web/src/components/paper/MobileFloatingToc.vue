@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, watch, nextTick, onUnmounted } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-vue-next";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
@@ -93,12 +94,12 @@ watch(() => props.search.isOpen.value, (open) => {
             <!-- Search mode: input replaces section title -->
             <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search glass-medium">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" />
-                <button class="floating-toc-search-close" @click="closeMobileSearch" title="Close search">
+                <Button variant="ghost" size="icon" class="floating-toc-search-close" @click="closeMobileSearch" title="Close search">
                     <X class="h-4 w-4" />
-                </button>
+                </Button>
             </div>
             <!-- Normal mode: section title + search icon -->
-            <button v-else class="floating-toc-bar glass-medium" @click="floatingTocOpen = !floatingTocOpen">
+            <Button v-else variant="ghost" class="floating-toc-bar glass-medium" @click="floatingTocOpen = !floatingTocOpen">
                 <span class="floating-toc-section cm-serif">
                     <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
                     {{ currentSection?.title }}
@@ -109,7 +110,7 @@ watch(() => props.search.isOpen.value, (open) => {
                     </span>
                     <ChevronDown class="floating-toc-chevron" :class="{ 'rotate-180': floatingTocOpen }" />
                 </span>
-            </button>
+            </Button>
             <Transition name="toc-expand">
                 <div
                     v-if="floatingTocOpen"
@@ -117,18 +118,20 @@ watch(() => props.search.isOpen.value, (open) => {
                     class="floating-toc-dropdown glass-medium"
                 >
                     <!-- Scroll to top -->
-                    <button
+                    <Button
+                        variant="ghost"
                         class="floating-toc-item floating-toc-top cm-serif"
                         @click="handleScrollToTop"
                     >
                         <ChevronUp class="floating-toc-top-icon" />
                         Scroll to top
-                    </button>
+                    </Button>
 
                     <div class="floating-toc-divider" />
 
                     <template v-for="(section, si) in sections" :key="section.id">
-                        <button
+                        <Button
+                            variant="ghost"
                             class="floating-toc-item floating-toc-root cm-serif"
                             :class="{ 'is-active': activeRootId === section.id }"
                             :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
@@ -141,17 +144,18 @@ watch(() => props.search.isOpen.value, (open) => {
                             />
                             <span class="fira-code text-xs opacity-50">{{ section.number }}.</span>
                             {{ section.title }}
-                        </button>
+                        </Button>
                         <template v-if="isSectionExpanded(section.id)">
-                            <button
+                            <Button
                                 v-for="sub in section.subsections"
                                 :key="sub.id"
+                                variant="ghost"
                                 class="floating-toc-item floating-toc-sub cm-serif"
                                 @click="selectSection(sub.id)"
                             >
                                 <span class="fira-code text-xs opacity-40">{{ sub.number }}.</span>
                                 {{ sub.title }}
-                            </button>
+                            </Button>
                         </template>
                     </template>
                 </div>
@@ -221,7 +225,8 @@ watch(() => props.search.isOpen.value, (open) => {
     padding: 0.25rem;
     border-radius: 0.25rem;
     color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
-    transition: all 0.15s;
+    /* A.W3.d — named properties + canonical token, no `transition: all`. */
+    transition: color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
 }
 
 .floating-toc-search-btn:hover {
@@ -322,7 +327,8 @@ watch(() => props.search.isOpen.value, (open) => {
     text-align: left;
     @apply text-base;
     color: var(--muted-foreground);
-    transition: all 0.15s;
+    /* A.W3.d — named properties + canonical token, no `transition: all`. */
+    transition: color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
 }
 
 .floating-toc-root {
@@ -355,10 +361,11 @@ watch(() => props.search.isOpen.value, (open) => {
 }
 
 /* ── Transition: toc-expand ──────────────────────────────── */
+/* A.W3.d — bezier→`--ease-out-expo`. */
 .toc-expand-enter-active,
 .toc-expand-leave-active {
-    transition: opacity 0.2s ease,
-                transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.2s var(--ease-standard),
+                transform 0.2s var(--ease-out-expo);
 }
 
 .toc-expand-enter-from {

@@ -5,7 +5,8 @@ import { computeEquation, simplifyCoefficients, isAbortError } from "@/lib/equat
 import type { NotationMode, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
 import { TIER_INFO, energyColor } from "@/lib/equation/notation";
-import { HoverCard, HoverCardTrigger, HoverCardContent } from "@mkbabb/glass-ui";
+import { Button, HoverCard, HoverCardTrigger, HoverCardContent } from "@mkbabb/glass-ui";
+import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import { Info } from "lucide-vue-next";
 
 import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
@@ -271,11 +272,11 @@ watchDebounced(
                         <!-- Info hover card -->
                         <HoverCard v-if="tierInfo" :open-delay="200" :close-delay="150">
                             <HoverCardTrigger as-child>
-                                <button class="glass-btn info-anchor">
+                                <Button variant="glass" size="icon" class="info-anchor">
                                     <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
                                     </svg>
-                                </button>
+                                </Button>
                             </HoverCardTrigger>
                             <HoverCardContent class="info-hovercard" side="bottom" :side-offset="6" :collision-padding="12" align="end">
                                 <div class="flex items-center gap-2 flex-wrap">
@@ -287,9 +288,12 @@ watchDebounced(
                                             color: tierInfo.color,
                                         }"
                                     >{{ tierInfo.label }}</span>
-                                    <span class="text-sm font-medium fira-code" :style="{ color: eColor }">
-                                        {{ (displayEnergy * 100).toFixed(1) }}% energy
-                                    </span>
+                                    <MetricBadge
+                                        :amount="(displayEnergy * 100).toFixed(1)"
+                                        unit="% energy"
+                                        size="sm"
+                                        :color="eColor"
+                                    />
                                 </div>
                                 <div class="flex gap-1.5 items-start text-sm text-muted-foreground mt-2">
                                     <Info class="size-3.5 shrink-0 mt-0.5" />
@@ -435,14 +439,14 @@ watchDebounced(
     }
 }
 
-/* ── Transitions ── */
-.pop-enter-active  { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
-.pop-leave-active  { transition: all 0.1s ease; }
+/* ── Transitions (A.W3.d — bezier→token; transition:all→named properties) ── */
+.pop-enter-active  { transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard); }
+.pop-leave-active  { transition: opacity 0.1s var(--ease-in), transform 0.1s var(--ease-in); }
 .pop-enter-from    { opacity: 0; transform: translateY(-4px) scale(0.97); }
 .pop-leave-to      { opacity: 0; transform: translateY(-2px) scale(0.98); }
 
-.slide-down-enter-active { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.slide-down-leave-active { transition: all 0.2s ease; }
+.slide-down-enter-active { transition: opacity 0.3s var(--ease-standard), transform 0.3s var(--ease-standard); }
+.slide-down-leave-active { transition: opacity 0.2s var(--ease-in), transform 0.2s var(--ease-in); }
 .slide-down-enter-from   { opacity: 0; transform: translateY(-8px); }
 .slide-down-leave-to     { opacity: 0; transform: translateY(-4px); }
 </style>
@@ -458,7 +462,7 @@ watchDebounced(
     border: 1.5px solid var(--border);
     border-radius: 0.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    animation: tooltip-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: tooltip-in 0.15s var(--ease-out-expo);
     user-select: none;
 }
 </style>

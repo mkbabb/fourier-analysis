@@ -19,6 +19,7 @@ import { usePaperSearch } from "./search/usePaperSearch";
 import { paperSections, labelMap, totalPages, pageMap, extractedMacros } from "@/lib/paperContent";
 import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { Button } from "@mkbabb/glass-ui";
 import { Undo2 } from "lucide-vue-next";
 
 // ── KaTeX with app-specific macros ─────────────────────────
@@ -305,15 +306,17 @@ onUnmounted(() => {
                         <nav ref="mobileNavRef" class="mb-14 cm-serif text-sm text-muted-foreground lg:hidden">
                             <ol class="list-none space-y-1.5 pl-0">
                                 <li v-for="section in sections" :key="section.id">
-                                    <button
+                                    <Button
+                                        variant="link"
+                                        size="sm"
+                                        class="mobile-toc-link"
                                         @click="navigateTo(section.id)"
-                                        class="text-left hover:text-foreground transition-colors duration-150 cursor-pointer"
                                     >
                                         <template v-if="section.number">
                                             <span>{{ section.number }}. </span>
                                         </template>
                                         <span v-html="renderTitle(section.title)" />
-                                    </button>
+                                    </Button>
                                 </li>
                             </ol>
                         </nav>
@@ -337,15 +340,17 @@ onUnmounted(() => {
             </div>
 
             <Transition name="fade-scale">
-                <button
+                <Button
                     v-if="navStack.length > 0"
+                    variant="glass"
+                    size="icon"
                     class="overlay-btn overlay-back"
                     @click="navigateBack"
                     :title="`Back (${navStack.length} in history)`"
                 >
                     <Undo2 class="h-3.5 w-3.5" />
                     <span v-if="navStack.length > 1" class="overlay-badge">{{ navStack.length }}</span>
-                </button>
+                </Button>
             </Transition>
         </div>
     </div>
@@ -413,7 +418,8 @@ onUnmounted(() => {
         var(--background);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    /* A.W3.d — bezier→`--ease-out-expo`. */
+    transition: opacity 180ms var(--ease-out-expo);
     will-change: opacity;
 }
 
@@ -499,7 +505,13 @@ onUnmounted(() => {
     color: color-mix(in srgb, var(--foreground) 70%, transparent);
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    /* A.W3.d — named properties + canonical token, no `transition: all`. */
+    transition:
+        color 0.2s var(--ease-out-expo),
+        border-color 0.2s var(--ease-out-expo),
+        background-color 0.2s var(--ease-out-expo),
+        box-shadow 0.2s var(--ease-out-expo),
+        transform 0.2s var(--ease-out-expo);
 }
 
 .overlay-btn:hover {
@@ -547,10 +559,11 @@ onUnmounted(() => {
 }
 
 /* ── Transition: slide-down ──────────────────────────────── */
+/* A.W3.d — bezier→`--ease-out-expo`. */
 .slide-down-enter-active,
 .slide-down-leave-active {
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.25s var(--ease-out-expo),
+                opacity 0.25s var(--ease-out-expo);
 }
 
 .slide-down-enter-from {
@@ -564,9 +577,10 @@ onUnmounted(() => {
 }
 
 /* ── Transition: fade-scale (back button) ─────────────────── */
+/* A.W3.d — bezier→`--ease-out-expo`. */
 .fade-scale-enter-active,
 .fade-scale-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-out-expo);
 }
 
 .fade-scale-enter-from {

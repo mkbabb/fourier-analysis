@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Button } from "@mkbabb/glass-ui";
 import type { EquationDisplayMode } from "@/lib/equation/types";
 
 const model = defineModel<EquationDisplayMode>({ required: true });
@@ -6,22 +7,26 @@ const model = defineModel<EquationDisplayMode>({ required: true });
 
 <template>
     <div class="eq-toggle glass-subtle">
-        <button
+        <Button
+            variant="ghost"
+            size="sm"
             class="eq-toggle-btn"
             :class="{ 'is-active': model === 'sigma' }"
             title="Sigma notation (compact)"
             @click="model = 'sigma'"
         >
             <span class="eq-toggle-icon">&Sigma;</span>
-        </button>
-        <button
+        </Button>
+        <Button
+            variant="ghost"
+            size="sm"
             class="eq-toggle-btn"
             :class="{ 'is-active': model === 'expanded' }"
             title="Expanded terms"
             @click="model = 'expanded'"
         >
             <span class="eq-toggle-icon eq-toggle-icon--mono">a + b</span>
-        </button>
+        </Button>
     </div>
 </template>
 
@@ -43,7 +48,8 @@ const model = defineModel<EquationDisplayMode>({ required: true });
     font-weight: 600;
     color: var(--muted-foreground);
     cursor: pointer;
-    transition: all 0.15s ease;
+    /* A.W3.d — named properties + canonical token, no `transition: all`. */
+    transition: color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
     border: none;
     background: transparent;
     position: relative;

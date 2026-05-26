@@ -3,6 +3,7 @@ import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
+import { Button } from "@mkbabb/glass-ui";
 import { ChevronUp } from "lucide-vue-next";
 
 import { ref, reactive } from "vue";
@@ -53,18 +54,21 @@ function handleSectionClick(sectionId: string) {
             <PaperSearch :search="search" variant="sidebar" />
             <div class="sidebar-header">
                 <p class="sidebar-label cm-serif">Contents</p>
-                <button
+                <Button
+                    variant="ghost"
+                    size="icon"
                     class="sidebar-top-btn"
                     @click="scrollToTop"
                     title="Scroll to top"
                 >
                     <ChevronUp class="h-3 w-3" />
-                </button>
+                </Button>
             </div>
             <ol class="sidebar-list">
                 <li v-for="(section, si) in sections" :key="section.id">
                     <Tooltip :text="getPreview(section)" side="right">
-                        <button
+                        <Button
+                            variant="ghost"
                             :data-toc-id="section.id"
                             @click="handleSectionClick(section.id)"
                             class="sidebar-link cm-serif"
@@ -73,7 +77,7 @@ function handleSectionClick(sectionId: string) {
                         >
                             <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
                             <span v-html="renderTitle(section.title)" />
-                        </button>
+                        </Button>
                     </Tooltip>
                     <!-- Subsections (animated expand) -->
                     <div
@@ -84,7 +88,8 @@ function handleSectionClick(sectionId: string) {
                         <ol class="sidebar-sublist">
                             <li v-for="sub in section.subsections" :key="sub.id">
                                 <Tooltip :text="getPreview(sub)" side="right">
-                                    <button
+                                    <Button
+                                        variant="ghost"
                                         :data-toc-id="sub.id"
                                         @click="scrollTo(sub.id)"
                                         class="sidebar-link sidebar-sublink cm-serif"
@@ -95,12 +100,13 @@ function handleSectionClick(sectionId: string) {
                                     >
                                         <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
                                         <span v-html="renderTitle(sub.title)" />
-                                    </button>
+                                    </Button>
                                 </Tooltip>
                                 <!-- Sub-subsections -->
                                 <ol v-if="sub.subsections && isInActiveChain(sub.id, activeId)" class="sidebar-subsublist">
                                     <li v-for="subsub in sub.subsections" :key="subsub.id">
-                                        <button
+                                        <Button
+                                            variant="ghost"
                                             :data-toc-id="subsub.id"
                                             @click="scrollTo(subsub.id)"
                                             class="sidebar-link sidebar-subsublink cm-serif"
@@ -110,7 +116,7 @@ function handleSectionClick(sectionId: string) {
                                         >
                                             <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
                                             <span v-html="renderTitle(subsub.title)" />
-                                        </button>
+                                        </Button>
                                     </li>
                                 </ol>
                             </li>
@@ -189,7 +195,8 @@ function handleSectionClick(sectionId: string) {
     background: none;
     color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
     cursor: pointer;
-    transition: all 0.15s ease;
+    /* A.W3.d — named properties + canonical token, no `transition: all`. */
+    transition: color 0.15s var(--ease-standard), border-color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
 }
 
 .sidebar-top-btn:hover {
@@ -220,9 +227,10 @@ function handleSectionClick(sectionId: string) {
     padding: 0.28rem 0.625rem;
     border-radius: calc(var(--radius) - 2px);
     color: var(--muted-foreground);
-    transition: color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-                background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-                font-weight 0.15s ease;
+    /* A.W3.d — bezier→`--ease-out-expo`. */
+    transition: color 0.25s var(--ease-out-expo),
+                background-color 0.25s var(--ease-out-expo),
+                font-weight 0.15s var(--ease-standard);
 }
 
 .sidebar-link:hover {
@@ -250,8 +258,9 @@ function handleSectionClick(sectionId: string) {
     display: grid;
     grid-template-rows: 0fr;
     opacity: 0;
-    transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    /* A.W3.d — bezier→`--ease-out-expo`. */
+    transition: grid-template-rows 0.4s var(--ease-out-expo),
+                opacity 0.3s var(--ease-out-expo);
 }
 
 .sidebar-sublist-wrapper.is-expanded {
