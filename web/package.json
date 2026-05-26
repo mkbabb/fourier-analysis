@@ -12,10 +12,10 @@
     },
     "dependencies": {
         "@mkbabb/glass-ui": "file:../../glass-ui",
-        "@mkbabb/keyframes.js": "^2.0.0",
+        "@mkbabb/keyframes.js": "file:../../keyframes.js",
         "@mkbabb/latex-paper": "^0.2.1",
         "@mkbabb/pencil-boil": "latest",
-        "@mkbabb/value.js": "^0.4.6",
+        "@mkbabb/value.js": "file:../../value.js",
         "@vueuse/core": "^14.0",
         "katex": "^0.16",
         "pinia": "^2.3",

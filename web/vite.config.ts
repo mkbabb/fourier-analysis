@@ -22,14 +22,10 @@ export default defineConfig({
     ],
     base: process.env.VITE_BASE_URL || "/",
     resolve: {
-        // Cross-repo dev-resolution contract (glass-ui Q invariant 30,
-        // docs/precepts/cross-repo-dev-resolution.md §2.2): declare the
-        // `development` condition explicitly so workspace-linked `@mkbabb/*`
-        // siblings resolve their live `src/` rather than relying on Vite's
-        // serve-mode auto-injection. No `@mkbabb/*` `dist/`-path `resolve.alias`
-        // exists (and none may be added) — bare specifiers resolve through each
-        // sibling's `exports` map via the `file:` symlink in node_modules.
-        conditions: ["development", "module", "browser", "default"],
+        // Cross-repo dev-resolution contract-v2 (docs/precepts/cross-repo-dev-resolution.md §2.2):
+        // the `development` condition is STRUCK; consumers resolve `dist/` via the
+        // bare specifier through each sibling's `exports` map, dev and prod alike.
+        // No `@mkbabb/*` `dist/`-path `resolve.alias` (forbidden by §2.4).
         alias: {
             "@": fileURLToPath(new URL("./src", import.meta.url)),
         },
@@ -42,15 +38,10 @@ export default defineConfig({
     appType: "spa",
     server: {
         port: 3000,
-        // Widen fs.allow to the workspace root so the `development` condition's
-        // sibling `src/`-relative assets (CSS, fonts, WASM) are served over the
-        // `/@fs/` channel — closes the cross-repo 403 class (contract §2.2.3).
-        // The web demo lives at `<workspace>/fourier-analysis/web`; `../../..`
-        // reaches `<workspace>`, where the `@mkbabb/glass-ui` + `keyframes.js`
-        // siblings are symlinked from.
-        fs: {
-            allow: ["../../.."],
-        },
+        // Under contract-v2 the sibling-`src/` `fs.allow` widening is STRUCK
+        // (docs/precepts/cross-repo-dev-resolution.md §2.2). Consumers resolve
+        // sibling `dist/` via the `file:` symlink inside node_modules — already
+        // inside Vite's default allow-list.
         proxy: {
             "/api": {
                 target: process.env.VITE_PROXY_API || "http://localhost:8000",
