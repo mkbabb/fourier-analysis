@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Info } from "lucide-vue-next";
+import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import { TIER_INFO, energyColor } from "@/lib/equation/notation";
 import type { EquationTier } from "@/lib/equation/types";
 
@@ -27,9 +28,12 @@ const eColor = computed(() => energyColor(props.energy));
             >
                 {{ info.label }}
             </span>
-            <span class="text-sm font-medium fira-code" :style="{ color: eColor }">
-                {{ (energy * 100).toFixed(1) }}% energy captured
-            </span>
+            <MetricBadge
+                :amount="(energy * 100).toFixed(1)"
+                unit="% energy captured"
+                size="sm"
+                :color="eColor"
+            />
         </div>
         <div class="flex gap-1.5 items-start text-sm text-muted-foreground">
             <Info class="h-3.5 w-3.5 shrink-0 mt-0.5" />

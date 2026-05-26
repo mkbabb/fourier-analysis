@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Slider } from "@mkbabb/glass-ui";
+import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import { GlassDock, DockIconButton } from "@mkbabb/glass-ui/dock";
 import { HoverPopover } from "@mkbabb/glass-ui/hover-popover";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -109,7 +110,7 @@ const magnetModel = computed<number[]>({
                     <div class="magnet-popover-content">
                         <div class="flex items-center justify-between gap-3 px-1">
                             <span class="text-xs font-medium text-foreground whitespace-nowrap">Magnet</span>
-                            <span class="text-xs fira-code text-muted-foreground tabular-nums">{{ magnetRadius }}</span>
+                            <MetricBadge :amount="magnetRadius" size="sm" />
                         </div>
                         <Slider
                             v-model="magnetModel"
