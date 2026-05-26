@@ -524,3 +524,41 @@ Agent A.W4.c discharges three W0-challenge ratifications: §2 row 14 (Mongo pass
 **Deploy-note.** `docs/tranches/A/audit/W4-deploy-note.md` lands with three sections — (§1) the `replicas: 1` pin rationale + the rate-limiter scaling constraint; (§2) the Mongo password env-reference catalogue with the table of pre/post sites; (§3) the dead-code retirement table. W4.a may append the rate-limiter-specific operator notes (TTL, abuse threshold) to a `§1.1` if its scope produces operator-facing changes.
 
 **Bounds discipline.** W4.c's scope was strictly the three deletions + the prod-side compose hygiene + the `.env.example`/deploy-note documentation. The sibling-agent territory (`api/services/janitor.py`, `rate_limiter.py` per W4.a; `api/services/image_storage.py`, `gallery.py`, `web/src/stores/gallery.ts` per W4.b) was left untouched. The unrelated working-tree edits surfaced by `git status` at the start of the wave belong to W4.a / W4.b and will land in their respective commits.
+
+### 2026-05-26 — W4.a janitor pinned-set inversion + rate-limiter Option A source-side documentation
+
+Agent A.W4.a discharges W4.md scope items 1 (janitor pinned-set inversion) and 7 (rate-limiter Option A decision, source-side half), per the W0-challenge §3 ratification and the H3 hardening recommendation at `docs/audits/runs/2026-05-18-tranche-harden/h3-A-W4-W5-W6.md`.
+
+| Commit | Subject |
+|---|---|
+| _pending_ | `refactor(A.W4.a): invert janitor from unbounded $nin to per-doc pinned flag` |
+| _pending_ | `test(A.W4.a): janitor regression test — no $nin, indexed predicate, idempotent recompute` |
+| _pending_ | `docs(A.W4.a): land rate-limiter Option A source-side note + PROGRESS log entry` |
+
+**Janitor inversion.** `api/services/janitor.py:_cleanup_cycle` formerly built two unbounded id sets (`pinned_contours`, `pinned_images`) in process memory by iterating the entire `snapshots` collection and the gallery's featured/saved rows, then passed the materialised lists as `{"$nin": [list]}` against the `contours` and `images` deletion queries. The list grew with every snapshot and every featured/saved gallery row; under load it would have defeated the `last_accessed_at` index and eventually exceeded the 16 MB BSON document limit. The new shape:
+
+- `contours` and `images` carry a per-document `pinned: bool` field. A compound index `(pinned, last_accessed_at)` lands at `api/services/database.py:46-49,52-56`.
+- The janitor's deletion predicate is now `{"pinned": False, "last_accessed_at": {"$lt": cutoff}}` — an indexed predicate. The budget-eviction cursor uses `{"pinned": False}` for the same reason.
+- A new `_recompute_pin_flags(db)` helper runs at the start of each cycle. It resets every contour and image to `pinned=False`, then runs two server-side `$merge`-terminated aggregation pipelines that union `snapshots.{contour_hash, image_slug}` with `gallery.{contour_hash, image_slug}` (filtered on `tier ∈ {featured, saved}`) via `$unionWith`, then write `pinned=true` onto the matching target documents. No client-side id list materialises.
+- The recompute IS the migration: legacy documents missing the `pinned` field are backfilled by the first cycle. The mechanism is idempotent — invoking the cycle twice yields the same end state. No standalone migration script is required.
+
+**Janitor regression test.** `api/services/__tests__/test_janitor.py` lands with five test cases under three classes:
+
+| Class | Assertion |
+|---|---|
+| `TestJanitorNoUnboundedNin::test_no_nin_operator_anywhere` | No `$nin` operator appears in any query the janitor issues during a full cycle (the hard-gate assertion per W4.md item 1) |
+| `TestJanitorNoUnboundedNin::test_delete_queries_use_pinned_false_predicate` | The contour and image `delete_many` queries each carry `pinned: False` plus a `last_accessed_at` cutoff |
+| `TestJanitorPinPolicyPreserved::test_pinned_assets_survive_unpinned_old_assets_deleted` | A populated fixture confirms pinned-old assets survive, unpinned-old assets are deleted, unpinned-fresh assets survive (the cutoff guard) |
+| `TestJanitorPinPolicyPreserved::test_pinned_flag_persisted_on_survivors` | Every surviving document carries an explicit `pinned` field (the backfill landed) |
+| `TestJanitorRecomputeIdempotent::test_two_cycles_same_state` | Two consecutive cycles yield the same DB state — the recompute is idempotent |
+
+The test runs under a hand-rolled async fake DB (motor surface in the small — `find`, `delete_many`, `update_many`, `distinct`, `aggregate` with `$merge` semantics). No `mongomock` / `mongomock-motor` dependency was added; invariant 12 (scale without contrivance) holds across the test substrate too.
+
+**Rate-limiter Option A source-side documentation.** Per W0-challenge §3, Option A (single-replica documented honestly) is the ratified path. The compose-level enforcement (`deploy.replicas: 1`) landed at W4.c `2eb5a57`. The source-side half — the implementation-contract documentation that operators read when reasoning about the rate-limiter's scaling envelope — lands at `docs/tranches/A/audit/W4-deploy-note.md` §1a as a table of (storage, eviction, window discipline, key, replica safety, limiter inventory) referencing the canonical `api/services/rate_limiter.py` lines. No source-side mutation: the W0-challenge ratification names "documenting the constraint" as the smallest honest mechanism, and Option B (Mongo TTL bucket) is named as fourier tranche C debt. No fallback Redis client, no environment-conditional limiter substrate, no silent multi-replica drift path — invariant 3 (no legacy code paths kept as fallback) holds.
+
+**Verification.**
+- `uv run pytest` reports 97/97 (89 W0 baseline + 3 W4.b contour-hash + 5 W4.a janitor — all green).
+- `uv run ruff check api` reports 23 errors, matching the W0.a baseline — W4.a introduces no ruff debt (touched files `janitor.py`, `database.py`, `test_janitor.py` all pass cleanly).
+- The `_recompute_pin_flags` aggregation requires MongoDB 4.2+ for pipeline-style updates and 4.4+ for `$unionWith`; the prod stack ships `mongo:8.0` per `docker-compose.yml:33`.
+
+**Bounds discipline.** W4.a's scope was strictly `api/services/janitor.py`, `api/services/database.py` (the two pin indexes), `api/services/rate_limiter.py` (read-only — no source mutation under Option A), `api/services/__tests__/test_janitor.py`, `docs/tranches/A/audit/W4-deploy-note.md` (the §1a/§1b additions), and this PROGRESS entry. Sibling territory (W4.b: `image_storage.py`, `gallery.py`, `stores/gallery.ts`; W4.c: compose files, `logo.ts`, `math-worker.ts`, `compute.py`) was left untouched.
