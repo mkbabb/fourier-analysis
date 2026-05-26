@@ -72,8 +72,21 @@ async def connect_db() -> None:
     await _db.gallery.create_index("likes")
     await _db.gallery.create_index("user_slug")
 
+    # Gallery compound indexes for cursor pagination
+    await _db.gallery.create_index([("tier", 1), ("views", -1), ("_id", -1)])
+    await _db.gallery.create_index([("tier", 1), ("likes", -1), ("_id", -1)])
+    await _db.gallery.create_index([("user_slug", 1), ("created_at", -1)])
+
+    # Flags
+    await _db.flags.create_index(
+        [("snapshot_hash", 1), ("reporter_slug", 1)], unique=True
+    )
+    await _db.flags.create_index("snapshot_hash")
+    await _db.flags.create_index("created_at")
+
     # Audit
     await _db.admin_audit.create_index([("timestamp", -1)])
+    await _db.admin_audit.create_index([("action", 1), ("timestamp", -1)])
 
 
 async def close_db() -> None:

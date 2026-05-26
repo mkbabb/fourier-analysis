@@ -2,21 +2,29 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import math
 import logging
+import re
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from bson import ObjectId
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pymongo.errors import DuplicateKeyError
 
 from api.dependencies import (
     get_client_ip,
     hash_ip,
+    require_session,
     resolve_session,
 )
+from api.models.admin import CursorInfo, FlagRequest, GalleryCursorResponse
 from api.models.gallery import (
     GalleryEntryResponse,
     GalleryListResponse,
     PublishRequest,
+    UpdateEntryRequest,
 )
 from api.services.database import get_db
 from api.services.rate_limiter import like_limiter, write_limiter
@@ -46,6 +54,23 @@ def _entry_from_doc(doc: dict) -> GalleryEntryResponse:
     return GalleryEntryResponse(**data)
 
 
+def _encode_cursor(doc: dict, sort_field: str) -> str:
+    val = doc[sort_field]
+    payload = {
+        "s": val.isoformat() if hasattr(val, "isoformat") else val,
+        "id": str(doc["_id"]),
+    }
+    return base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
+
+
+def _decode_cursor(raw: str) -> dict | None:
+    try:
+        data = json.loads(base64.urlsafe_b64decode(raw))
+        return data
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Public gallery endpoints
 # ---------------------------------------------------------------------------
@@ -59,6 +84,7 @@ async def list_gallery(
     tier: str = Query(default="all"),
     q: str = Query(default=""),
     basis: str = Query(default=""),
+    user_slug: str = Query(default=""),
 ):
     """List gallery entries with filtering, sorting, and pagination."""
     db = get_db()
@@ -68,9 +94,11 @@ async def list_gallery(
     if tier != "all":
         query_filter["tier"] = tier
     if q:
-        query_filter["image_slug"] = {"$regex": q, "$options": "i"}
+        query_filter["image_slug"] = {"$regex": re.escape(q), "$options": "i"}
     if basis:
         query_filter["active_bases"] = basis
+    if user_slug:
+        query_filter["user_slug"] = user_slug
 
     # Sort
     sort_field, sort_dir = SORT_KEYS.get(sort, SORT_KEYS["newest"])
@@ -88,6 +116,74 @@ async def list_gallery(
     items = [_entry_from_doc(doc) async for doc in cursor]
 
     return GalleryListResponse(items=items, total=total, page=page, pages=pages)
+
+
+@gallery_router.get("/cursor")
+async def list_gallery_cursor(
+    limit: int = Query(default=20, ge=1, le=100),
+    sort: str = Query(default="newest"),
+    cursor: str = Query(default=""),
+    tier: str = Query(default="all"),
+    q: str = Query(default=""),
+    basis: str = Query(default=""),
+    user_slug: str = Query(default=""),
+):
+    """Cursor-based pagination for gallery entries."""
+    db = get_db()
+
+    # Build base filter (same as offset-based endpoint)
+    base_filter: dict = {}
+    if tier != "all":
+        base_filter["tier"] = tier
+    if q:
+        base_filter["image_slug"] = {"$regex": re.escape(q), "$options": "i"}
+    if basis:
+        base_filter["active_bases"] = basis
+    if user_slug:
+        base_filter["user_slug"] = user_slug
+
+    sort_field, sort_dir = SORT_KEYS.get(sort, SORT_KEYS["newest"])
+
+    # Build cursor filter
+    query_filter = dict(base_filter)
+    if cursor:
+        cursor_data = _decode_cursor(cursor)
+        if cursor_data:
+            # Parse cursor value back to the correct type
+            if sort_field == "created_at":
+                cursor_val = datetime.fromisoformat(cursor_data["s"])
+            else:
+                cursor_val = cursor_data["s"]
+
+            cursor_id = ObjectId(cursor_data["id"])
+            cmp = "$lt" if sort_dir == -1 else "$gt"
+            query_filter["$or"] = [
+                {sort_field: {cmp: cursor_val}},
+                {sort_field: cursor_val, "_id": {cmp: cursor_id}},
+            ]
+
+    docs = (
+        await db.gallery.find(query_filter, {"liked_ips": 0})
+        .sort([(sort_field, sort_dir), ("_id", sort_dir)])
+        .limit(limit + 1)
+        .to_list(limit + 1)
+    )
+
+    has_more = len(docs) > limit
+    if has_more:
+        docs = docs[:limit]
+
+    items = [_entry_from_doc(doc) for doc in docs]
+
+    next_cursor = _encode_cursor(docs[-1], sort_field) if has_more and docs else None
+
+    total = await db.gallery.count_documents(base_filter)
+
+    return GalleryCursorResponse(
+        items=items,
+        cursor=CursorInfo(next_cursor=next_cursor, has_more=has_more),
+        total=total,
+    )
 
 
 @gallery_router.get("/{hash}", response_model=GalleryEntryResponse)
@@ -193,3 +289,80 @@ async def toggle_like(hash: str, request: Request):
 
     updated = await db.gallery.find_one({"snapshot_hash": hash}, {"likes": 1})
     return {"liked": liked, "likes": updated["likes"]}
+
+
+# ---------------------------------------------------------------------------
+# Entry ownership CRUD
+# ---------------------------------------------------------------------------
+
+
+@gallery_router.delete("/{hash}")
+async def delete_own_entry(
+    hash: str, request: Request, user_slug: str = Depends(require_session)
+):
+    """Delete a gallery entry owned by the current user."""
+    db = get_db()
+    doc = await db.gallery.find_one({"snapshot_hash": hash})
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Gallery entry not found")
+    if doc["user_slug"] != user_slug:
+        raise HTTPException(status_code=403, detail="Not your entry")
+
+    await db.gallery.delete_one({"snapshot_hash": hash})
+    await db.flags.delete_many({"snapshot_hash": hash})
+    return {"ok": True}
+
+
+@gallery_router.put("/{hash}", response_model=GalleryEntryResponse)
+async def update_own_entry(
+    hash: str,
+    body: UpdateEntryRequest,
+    request: Request,
+    user_slug: str = Depends(require_session),
+):
+    """Update a gallery entry owned by the current user."""
+    db = get_db()
+    doc = await db.gallery.find_one({"snapshot_hash": hash})
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Gallery entry not found")
+    if doc["user_slug"] != user_slug:
+        raise HTTPException(status_code=403, detail="Not your entry")
+
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    updates["updated_at"] = datetime.now(UTC)
+
+    await db.gallery.update_one({"snapshot_hash": hash}, {"$set": updates})
+    updated_doc = await db.gallery.find_one({"snapshot_hash": hash})
+    return _entry_from_doc(updated_doc)
+
+
+@gallery_router.post("/{hash}/flag")
+async def flag_entry(
+    hash: str,
+    body: FlagRequest,
+    request: Request,
+    user_slug: str = Depends(require_session),
+):
+    """Flag a gallery entry for moderation."""
+    db = get_db()
+    entry = await db.gallery.find_one({"snapshot_hash": hash})
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Gallery entry not found")
+
+    if entry["user_slug"] == user_slug:
+        raise HTTPException(status_code=400, detail="Cannot flag own entry")
+
+    flag_doc = {
+        "snapshot_hash": hash,
+        "reporter_slug": user_slug,
+        "reason": body.reason,
+        "detail": body.detail,
+        "created_at": datetime.now(UTC),
+    }
+
+    try:
+        await db.flags.insert_one(flag_doc)
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="Already flagged")
+
+    return {"flagged": True}

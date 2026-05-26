@@ -61,3 +61,7 @@ class PublishRequest(BaseModel):
 
 class SetTierRequest(BaseModel):
     tier: GalleryTier
+
+
+class UpdateEntryRequest(BaseModel):
+    image_slug: str | None = None

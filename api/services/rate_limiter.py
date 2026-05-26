@@ -129,7 +129,10 @@ def _make_dependency(limiter: SlidingWindowLimiter):
     return _dependency
 
 
+compute_limiter = SlidingWindowLimiter(max_requests=5, window_seconds=60)
+
 require_login_limit = _make_dependency(login_limiter)
 require_like_limit = _make_dependency(like_limiter)
 require_write_limit = _make_dependency(write_limiter)
 require_admin_limit = _make_dependency(admin_limiter)
+require_compute_limit = _make_dependency(compute_limiter)

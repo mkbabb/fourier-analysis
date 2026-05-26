@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import traceback
@@ -55,9 +56,42 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*", "X-Session-Token"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Session-Token"],
 )
+
+def _has_dollar_keys(obj) -> bool:
+    if obj is None or not isinstance(obj, (dict, list)):
+        return False
+    if isinstance(obj, list):
+        return any(_has_dollar_keys(item) for item in obj)
+    for key in obj:
+        if key.startswith("$"):
+            return True
+        if _has_dollar_keys(obj[key]):
+            return True
+    return False
+
+
+@app.middleware("http")
+async def reject_dollar_keys(request: Request, call_next):
+    if request.method in ("POST", "PUT", "PATCH"):
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            body = await request.body()
+            if body:
+                try:
+                    parsed = json.loads(body)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass
+                else:
+                    if _has_dollar_keys(parsed):
+                        return JSONResponse(
+                            status_code=400,
+                            content={"detail": "Invalid input: keys starting with '$' are not allowed"},
+                        )
+    return await call_next(request)
+
 
 app.include_router(images.router)
 app.include_router(contours.router)
@@ -71,7 +105,7 @@ app.include_router(admin_router)
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled exception on %s %s:\n%s", request.method, request.url.path, traceback.format_exc())
-    return JSONResponse(status_code=500, content={"detail": str(exc)})
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 @app.get("/api/health")

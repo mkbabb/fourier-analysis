@@ -21,4 +21,5 @@ COPY . .
 RUN chown -R app:app /app/.venv
 ENV UV_CACHE_DIR=/tmp/uv-cache
 USER app
-CMD ["uv", "run", "--no-sync", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--proxy-headers", "--forwarded-allow-ips", "*"]
+ENV WORKERS=4
+CMD ["sh", "-c", "uv run --no-sync uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers ${WORKERS} --proxy-headers --forwarded-allow-ips '172.16.0.0/12,10.0.0.0/8,192.168.0.0/16'"]

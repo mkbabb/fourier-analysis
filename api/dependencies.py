@@ -7,6 +7,7 @@ import hmac
 import io
 import logging
 import re
+import time
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, Request
@@ -17,6 +18,11 @@ from api.config import settings
 from api.services.database import get_db, touch_document
 
 logger = logging.getLogger(__name__)
+
+# In-memory suspension cache: {user_slug: expires_at_monotonic}
+# 60-second TTL avoids a DB round-trip on every authenticated request.
+_suspended_cache: dict[str, float] = {}
+_SUSPENSION_CACHE_TTL = 60.0
 
 SLUG_PATTERN = re.compile(r"^[a-zA-Z0-9][-a-zA-Z0-9]{2,80}$")
 
@@ -149,12 +155,38 @@ async def resolve_session(request: Request) -> str | None:
     )
     if not session:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
-    # Also touch the user
+
+    user_slug = session["user_slug"]
+
+    # Check suspension status (with 60s cache)
+    now_mono = time.monotonic()
+    cached_expiry = _suspended_cache.get(user_slug)
+    if cached_expiry and cached_expiry > now_mono:
+        raise HTTPException(status_code=403, detail="Account suspended")
+    elif cached_expiry is None or cached_expiry <= now_mono:
+        user = await db.users.find_one({"_id": user_slug}, {"status": 1})
+        if user and user.get("status") == "suspended":
+            _suspended_cache[user_slug] = now_mono + _SUSPENSION_CACHE_TTL
+            raise HTTPException(status_code=403, detail="Account suspended")
+        else:
+            _suspended_cache.pop(user_slug, None)
+
+    # Touch the user
     await db.users.update_one(
-        {"_id": session["user_slug"]},
+        {"_id": user_slug},
         {"$set": {"last_seen_at": datetime.now(UTC)}},
     )
-    return session["user_slug"]
+    return user_slug
+
+
+def invalidate_suspension_cache(user_slug: str) -> None:
+    """Remove a user from the suspension cache (call after status change)."""
+    _suspended_cache.pop(user_slug, None)
+
+
+def mark_suspended_in_cache(user_slug: str) -> None:
+    """Eagerly mark a user as suspended in the cache."""
+    _suspended_cache[user_slug] = time.monotonic() + _SUSPENSION_CACHE_TTL
 
 
 async def require_session(request: Request) -> str:

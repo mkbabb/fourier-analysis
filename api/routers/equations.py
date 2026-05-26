@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from api.services.rate_limiter import require_compute_limit
 
 from api.models.equations import (
     ComputeEquationRequest,
@@ -26,7 +28,7 @@ def _term_to_dto(term) -> FourierTermDTO:
     )
 
 
-@router.post("/compute", response_model=ComputeEquationResponse)
+@router.post("/compute", response_model=ComputeEquationResponse, dependencies=[Depends(require_compute_limit)])
 async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationResponse:
     """Compute closed-form Fourier series for a user-supplied f(x).
 
@@ -131,7 +133,7 @@ async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationRespon
     )
 
 
-@router.post("/simplify", response_model=SimplifyResponse)
+@router.post("/simplify", response_model=SimplifyResponse, dependencies=[Depends(require_compute_limit)])
 async def simplify_coefficients(req: SimplifyRequest) -> SimplifyResponse:
     """Simplify existing DFT coefficients for display overlay."""
 

@@ -129,11 +129,54 @@ async def _cleanup_cycle() -> None:
     if result.deleted_count:
         logger.info("Janitor deleted %d expired sessions", result.deleted_count)
 
-    # Users unseen for user_max_age_days
+    # Users unseen for user_max_age_days — cascade to gallery, flags, sessions
     user_cutoff = now - timedelta(days=settings.user_max_age_days)
-    result = await db.users.delete_many({"last_seen_at": {"$lt": user_cutoff}})
-    if result.deleted_count:
+    stale_slugs: list[str] = []
+    async for user in db.users.find(
+        {"last_seen_at": {"$lt": user_cutoff}}, {"_id": 1}
+    ):
+        stale_slugs.append(user["_id"])
+
+    if stale_slugs:
+        # Cascade: delete gallery entries owned by stale users
+        gallery_result = await db.gallery.delete_many(
+            {"user_slug": {"$in": stale_slugs}}
+        )
+        if gallery_result.deleted_count:
+            logger.info(
+                "Janitor cascade-deleted %d gallery entries for stale users",
+                gallery_result.deleted_count,
+            )
+
+        # Cascade: delete flags from stale users
+        flags_result = await db.flags.delete_many(
+            {"reporter_slug": {"$in": stale_slugs}}
+        )
+        if flags_result.deleted_count:
+            logger.info(
+                "Janitor cascade-deleted %d flags for stale users",
+                flags_result.deleted_count,
+            )
+
+        # Cascade: delete sessions for stale users
+        sessions_result = await db.sessions.delete_many(
+            {"user_slug": {"$in": stale_slugs}}
+        )
+        if sessions_result.deleted_count:
+            logger.info(
+                "Janitor cascade-deleted %d sessions for stale users",
+                sessions_result.deleted_count,
+            )
+
+        # Finally delete the user documents
+        result = await db.users.delete_many({"_id": {"$in": stale_slugs}})
         logger.info("Janitor deleted %d stale users", result.deleted_count)
+
+    # Audit log retention (90 days)
+    audit_cutoff = now - timedelta(days=90)
+    result = await db.admin_audit.delete_many({"timestamp": {"$lt": audit_cutoff}})
+    if result.deleted_count:
+        logger.info("Janitor: deleted %d old audit entries", result.deleted_count)
 
 
 async def _delete_images_and_cascade(db, filter_: dict) -> int:

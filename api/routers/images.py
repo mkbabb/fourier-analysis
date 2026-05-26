@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 from bson import Binary
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ from api.models.assets import (
 from api.responses import contour_response
 from api.services import computation
 from api.services.database import get_db
+from api.services.rate_limiter import require_compute_limit
 from api.services.image_storage import (
     extraction_cache_key,
     image_bytes,
@@ -36,6 +37,26 @@ from fourier_analysis.shortest_tour import build_contour_tour
 import numpy as np
 
 router = APIRouter(prefix="/api/images", tags=["images"])
+
+_IMAGE_MAGIC = [
+    (b"\x89PNG", "png"),
+    (b"\xff\xd8\xff", "jpeg"),
+    (b"BM", "bmp"),
+    (b"GIF8", "gif"),
+    (b"RIFF", "webp"),
+    (b"II\x2a\x00", "tiff"),
+    (b"MM\x00\x2a", "tiff"),
+]
+
+
+def _valid_image_magic(data: bytes) -> bool:
+    for magic, _ in _IMAGE_MAGIC:
+        if data[: len(magic)] == magic:
+            return True
+    # AVIF/HEIF/HEIC: ftyp box at offset 4
+    if len(data) >= 12 and data[4:8] == b"ftyp":
+        return True
+    return False
 
 ALLOWED_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp",
@@ -79,6 +100,8 @@ async def upload_image(file: UploadFile):
         raise HTTPException(status_code=400, detail=f"Unsupported format: {ext}")
 
     content = await file.read()
+    if not _valid_image_magic(content):
+        raise HTTPException(status_code=400, detail="File content does not match a supported image format")
     if len(content) > settings.max_upload_mb * 1024 * 1024:
         raise HTTPException(
             status_code=400, detail=f"File too large (max {settings.max_upload_mb}MB)"
@@ -177,7 +200,7 @@ async def get_image_overlay(imageSlug: str, resize: int = 1024):
     )
 
 
-@router.post("/{imageSlug}/extract-contour")
+@router.post("/{imageSlug}/extract-contour", dependencies=[Depends(require_compute_limit)])
 async def extract_contour(imageSlug: str, req: ExtractContourRequest):
     doc = await get_image_asset(imageSlug)
     cs = req.contour_settings

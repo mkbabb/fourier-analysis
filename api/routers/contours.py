@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from api.dependencies import get_contour
 from api.models.assets import SaveContourRequest
@@ -14,6 +14,7 @@ from api.models.computation import (
 from api.responses import contour_points, contour_response
 from api.services import computation
 from api.services.image_storage import store_contour_asset
+from api.services.rate_limiter import require_compute_limit
 
 router = APIRouter(prefix="/api/contours", tags=["contours"])
 
@@ -32,7 +33,7 @@ async def get_contour_endpoint(contourHash: str):
     return contour_response(doc)
 
 
-@router.post("/{contourHash}/compute/epicycles", response_model=ComputeResult)
+@router.post("/{contourHash}/compute/epicycles", response_model=ComputeResult, dependencies=[Depends(require_compute_limit)])
 async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
     doc = await get_contour(contourHash)
     xs, ys = contour_points(doc)
@@ -44,7 +45,7 @@ async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
     return ComputeResult(data=data)
 
 
-@router.post("/{contourHash}/compute/bases", response_model=ComputeResult)
+@router.post("/{contourHash}/compute/bases", response_model=ComputeResult, dependencies=[Depends(require_compute_limit)])
 async def compute_bases(contourHash: str, req: ComputeBasesRequest):
     doc = await get_contour(contourHash)
     xs, ys = contour_points(doc)
