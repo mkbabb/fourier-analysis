@@ -95,7 +95,7 @@ is recorded post-commit in `PROGRESS.md`.
 
 | Disposition | Notes |
 |---|---|
-| _reserved for W3.b_ | W3.b fills this row. The H1 reading flagged the `variant: "timeline" \| "default"` prop in `SliderControl.vue` (both branches collapse to `glass-scrubber` internally at present); W3.b decides whether the prop retires or maps to a glass-ui Slider variant. |
+| **(b) retired-with-rationale** | The `variant?: "timeline" \| "default"` prop on `web/src/components/ui/SliderControl.vue` is retired wholesale. Justification: `grep -rn 'SliderControl' web/src/ \| grep variant` returns ZERO matches — no consumer (in `ContourSettings.vue`, `BasisSelector.vue`, `EquationPanel.vue`, `FunctionInput.vue`, or anywhere else in the seven instantiations) passes the prop explicitly. The H1 reading's "(`timeline` vs `default`)" annotation in the original docblock already records that both branches map cosmetically to the same internal `<Slider variant="glass-scrubber">`; with zero consumer dependency, retaining the prop violates invariant 1 (KISS / DRY). The component now commits unconditionally to `<Slider variant="glass-scrubber">` and the docblock records the disposition. Carried out at `web/src/components/ui/SliderControl.vue`. Citing commit: A.W3.b.1. |
 
 ## W3.c — C4-residual composable folds (`useTouchGate`, `useResizeObserver`)
 
@@ -123,3 +123,105 @@ web/src/composables/`); no migration is owed.
 | **Total adopted** | **13** |
 | **Total retired-with-rationale** | **5 primitives** |
 | **Kept-as-decorative `fira-code`/`font-mono` sites** | ≈55 (the residue after the 13 metric migrations + the 14 morph/SliderControl input-control sites) |
+
+## W3.d — Motion-vocabulary cleanup
+
+Agent: A.W3.d. Scope (W3.md §Scope item 4): `@keyframes` de-duplication,
+`cubic-bezier` excision, `transition: all` cleanup. Source-of-truth tables:
+glass-ui `src/styles/animations.css` (canonical keyframes), glass-ui
+`src/styles/tokens.css` (`--ease-*` / `--motion-ease-*` tokens), glass-ui
+`src/styles/transitions.css` (canonical Vue-Transition class recipes).
+
+### `@keyframes` shadow deletions
+
+| Row | File:line (pre) | Keyframe | Substrate source | Disposition |
+|---|---|---|---|---|
+| d.1 | `web/src/components/ui/CollapsibleSection.vue:63,67` | `collapsible-open`, `collapsible-close` | `@mkbabb/glass-ui/styles/animations.css` §"Collapsible (reka-ui)" | excised — substrate keyframes resolve via global cascade; PRM guard added |
+| d.2 | `web/src/components/equation/ConvergencePlot.vue:390` | `tooltip-in` | `@mkbabb/glass-ui/styles/animations.css` §"Tooltip entrance" | excised — substrate keyframe resolves via global cascade; PRM guard added on `.curve-tooltip` |
+
+### `@keyframes` retained (fourier-local, no glass-ui shadow)
+
+| Row | File:line | Keyframe | Disposition |
+|---|---|---|---|
+| d.3 | `web/src/style.css:96` | `tab-slide-in` | documented local carry per W2.b CONSTELLATION row (glass-ui Tabs primitive does not yet ship this); PRM guard already present |
+| d.4 | `web/src/components/visualization/ContourSettings.vue:359,363` | `adv-open`, `adv-close` | fourier-local advanced-collapsible variant; CONSTELLATION candidate (P-tranche) |
+| d.5 | `web/src/components/visualization/ImageUpload.vue:160` | `rainbow-slide` | fourier-local gradient sweep; no glass-ui equivalent |
+| d.6 | `web/src/components/visualization/AnimationControls.vue:175` | `rainbow-drift` | fourier-local play-button ambient; PRM guard added |
+| d.7 | `web/src/components/visualization/ContourEditorCanvas.vue:327` | `golden-shimmer` | fourier-local drop-shadow filter (not a `gold-shimmer-slide` shadow — different gestalt) |
+| d.8 | `web/src/components/visualization/gallery/GalleryGrid.vue:110` | `spin` | generic spin; glass-ui's `pulse-ring-spin` covers the gestalt conceptually but not by name |
+| d.9 | `web/src/components/visualization/gallery/GalleryCard.vue:236` | `like-bounce` | fourier-local heart-bounce; PRM guard added; CONSTELLATION candidate |
+| d.10 | `web/src/components/visualization/gallery/GalleryMarquee.vue:116,121` | `marquee-scroll-left`, `marquee-scroll-right` | fourier-local marquee |
+
+### `cubic-bezier` → canonical-token replacements
+
+Token mapping (per glass-ui `src/styles/tokens.css` §"Core cubic-bezier"):
+
+- `cubic-bezier(0.4, 0, 0.2, 1)` → `var(--ease-standard)` (`--motion-ease-standard`)
+- `cubic-bezier(0, 0, 0.2, 1)` → `var(--ease-out)` (`--motion-ease-out`)
+- `cubic-bezier(0.4, 0, 1, 1)` → `var(--ease-in)` (`--motion-ease-in`)
+- `cubic-bezier(0.16, 1, 0.3, 1)` → `var(--ease-out-expo)` (`--motion-ease-out-expo`)
+- `cubic-bezier(0.22, 1, 0.36, 1)` → `var(--ease-out-expo)` (closest canonical; same family, no separate `easeOutQuart` token)
+- `cubic-bezier(0.34, 1.56, 0.64, 1)` → `var(--ease-apple-spring)` (`--motion-ease-apple-spring`, overshoot)
+- `cubic-bezier(0.22, 1.6, 0.36, 1)` → `var(--ease-apple-spring)` (closest canonical overshoot)
+
+| Row | File:line | Pre | Post |
+|---|---|---|---|
+| d.11 | `equation/EquationView.vue:439,444` | `cubic-bezier(0.4, 0, 0.2, 1)` | `var(--ease-standard)` |
+| d.12 | `equation/EquationView.vue:461` | `cubic-bezier(0.16, 1, 0.3, 1)` | `var(--ease-out-expo)` |
+| d.13 | `layout/AppHeader.vue:265` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `var(--ease-apple-spring)` |
+| d.14 | `paper/MobileFloatingToc.vue:361` | `cubic-bezier(0.16, 1, 0.3, 1)` | `var(--ease-out-expo)` |
+| d.15 | `paper/PaperSearch.vue:228,365` | `cubic-bezier(0.16, 1, 0.3, 1)` | `var(--ease-out-expo)` |
+| d.16 | `paper/PaperSearch.vue:375` | `cubic-bezier(0.4, 0, 1, 1)` | `var(--ease-in)` |
+| d.17 | `paper/PaperSidebar.vue:223,224,253,254` | `cubic-bezier(0.16, 1, 0.3, 1)` (×4) | `var(--ease-out-expo)` (×4) |
+| d.18 | `paper/PaperView.vue:416` | `cubic-bezier(0.22, 1, 0.36, 1)` | `var(--ease-out-expo)` |
+| d.19 | `paper/PaperView.vue:502` | `cubic-bezier(0.16, 1, 0.3, 1)` | `var(--ease-out-expo)` (also `transition: all` → named properties) |
+| d.20 | `paper/PaperView.vue:552,553,569` | `cubic-bezier(0.16, 1, 0.3, 1)` (×3) | `var(--ease-out-expo)` (×3) |
+| d.21 | `visualization/ExportModal.vue:131` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `var(--ease-apple-spring)` |
+| d.22 | `visualization/ExportModal.vue:191` | `cubic-bezier(0.16, 1, 0.3, 1)` | `var(--ease-out-expo)` |
+| d.23 | `visualization/FullscreenViewer.vue:170` | `cubic-bezier(0.16, 1, 0.3, 1)` | `var(--ease-out-expo)` |
+| d.24 | `visualization/VisualizationView.vue:392` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `var(--ease-apple-spring)` |
+| d.25 | `visualization/VisualizationView.vue:400` | `cubic-bezier(0.4, 0, 0.2, 1)` | `var(--ease-standard)` (also `transition: all` → named properties) |
+| d.26 | `visualization/VisualizationView.vue:421-423` | `cubic-bezier(0.22, 1, 0.36, 1)` (×3) | `var(--ease-out-expo)` (×3) |
+| d.27 | `visualization/gallery/GalleryCard.vue:162` | `cubic-bezier(0.22, 1.6, 0.36, 1)` | `var(--ease-apple-spring)` |
+| d.28 | `visualization/gallery/GalleryCard.vue:233` | `cubic-bezier(0.22, 1.6, 0.36, 1)` | `var(--ease-apple-spring)` (`like-bounce` animation timing) |
+| d.29 | `visualization/gallery/GalleryCardModal.vue:230` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | `var(--ease-apple-spring)` |
+| d.30 | `visualization/gallery/GallerySearchBar.vue:178` | `cubic-bezier(0.22, 1.6, 0.36, 1)` | `var(--ease-apple-spring)` (also `transition: all` → named properties) |
+
+### `transition: all` → named-properties cleanups
+
+| Row | File:line | Properties enumerated |
+|---|---|---|
+| d.31 | `paper/MobileFloatingToc.vue:224` (`.floating-toc-search-btn`) | `color`, `background-color` |
+| d.32 | `paper/MobileFloatingToc.vue:325` (`.floating-toc-item`) | `color`, `background-color` |
+| d.33 | `paper/PaperSidebar.vue:192` (`.sidebar-top-btn`) | `color`, `border-color`, `background-color` |
+| d.34 | `paper/PaperView.vue:502` (`.overlay-btn`) | `color`, `border-color`, `background-color`, `box-shadow`, `transform` |
+| d.35 | `visualization/FullscreenViewer.vue:133` (`.fs-close`) | `color`, `background-color`, `border-color`, `transform` |
+| d.36 | `visualization/ContourSettings.vue:447,450` (`.slide-down-*`) | `opacity`, `transform` |
+| d.37 | `visualization/EasingPicker.vue:67` (`.easing-chip`) | `background-color`, `border-color` |
+| d.38 | `visualization/EditorToolsPanel.vue:86` (`.tool-btn`) | `border-color`, `background-color`, `transform`, `box-shadow` |
+| d.39 | `visualization/AnimationControls.vue:215` (`.icon-swap-*`) | `opacity`, `transform` |
+| d.40 | `visualization/CoefficientsPanel.vue:123,126` (`.coeff-list-*`) | `opacity`, `transform` |
+| d.41 | `equation/EqCoefficientsPanel.vue:115,116` (`.coeff-list-*`) | `opacity`, `transform` |
+| d.42 | `equation/EquationView.vue:439,444` (`.pop-*` / `.slide-down-*`) | `opacity`, `transform` |
+| d.43 | `equation/EquationModeToggle.vue:51` (`.eq-toggle-btn`) | `color`, `background-color` |
+| d.44 | `equation/convergence/ConvergenceTimeline.vue:113` (`.play-btn`) | `color`, `background-color`, `border-color` |
+| d.45 | `visualization/gallery/UserSlugBar.vue:150` (`.icon-swap-*`) | `opacity`, `transform` |
+| d.46 | `visualization/VisualizationView.vue:400,401` (`.slide-down-*`) | `opacity`, `transform` |
+| d.47 | `visualization/gallery/GallerySearchBar.vue:178,181` (`.filter-drawer-*`) | `opacity`, `transform` |
+
+### Footer — pre/post counts
+
+- `@keyframes` total in `web/src/`: **13 pre → 11 post** (2 shadow rules excised; the substrate keyframes still register via the global cascade so the rendered animation set is unchanged).
+- `@keyframes` glass-ui canonical shadows: **3 pre → 0 post** (`collapsible-open`, `collapsible-close`, `tooltip-in`).
+- `cubic-bezier` strings in `web/src/`: **29 pre → 0 post**.
+- `transition: all` usages in `web/src/`: **26 pre → 0 post**.
+
+Verification commands (post-commit):
+
+```
+$ grep -rnE '@keyframes (fade-in|scale-in|slide-up|collapsible-open|collapsible-close|tooltip-in)\b' web/src/
+$ grep -rnE 'cubic-bezier' web/src/
+$ grep -rnE 'transition:\s*all\b' web/src/
+```
+
+All three return zero matches. `vue-tsc -b --force` exits 0.
