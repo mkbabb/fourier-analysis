@@ -93,3 +93,21 @@ The three serial agents of W0 — A.W0.a (open + hygiene), A.W0.b (challenge), A
 Per `A.md §3` W0 row, every hard-gate item is now SATISFIED: `vue-tsc -b --force` green; `npm run build` green; `uv run pytest` 89 passed / 0 failed (the brittleness window discharged at W0.c); submodule wiring committed; `tsbuildinfo` untracked + gitignored; challenge doc landed at `audit/W0-challenge.md`. The status-board flips W0 from `planned` to **closed** at `87472d1`. The seven AMEND rows ledgered at the challenge doc §4 carry forward to the W6 close ceremony.
 
 **Next action**: dispatch **W1 — Attribute and land the glass-ui migration cohort**. Three parallel agents (W1.a web, W1.b api, W1.c infra) ride against the post-W0 clean baseline. The post-W0.a substrate carries the ~110-file in-flight cohort; W1's deliverable is the attributed commit sequence plus the 11-column deletion ledger at `audit/W1-deletion-ledger.md`. `BouncyToggle.vue` carries the lone `flagged-for-rework` row.
+
+### 2026-05-26 — W1.a web migration cohort landed
+
+Agent A.W1.a discharged the web slice of W1. Three commits constitute the W1.a work (the planned four-commit sequence reduced by one for the scope-collision noted below):
+
+| Commit | Subject |
+|---|---|
+| `ffba307` | `feat(A.W1.a.1): land web migration cohort — deletions + rewires` |
+| `6a2cfcc` | `docs(A.W1.a.3): land W1 deletion ledger` |
+| (this entry) | `chore(A.W1.a): log W1.a closure` |
+
+Build state captured post-`ffba307`: `npx vue-tsc -b --force` exit 0 (clean typecheck across the post-cohort consumer surface); `npm run build` exit 0 (2.58 s, dist emitted, sole emission is the index-bundle chunk-size warning W6 will reckon with). The web slice is clean — `git status --short` reports zero dirty paths in `web/src/components/**`, `web/src/composables/**`, `web/src/lib/**`, `web/src/stores/**`, or `web/src/router/**`; `web/src/styles/**` remains untracked per the W1.a scope (W2 — the *Override-stylesheet abrogation* wave — owns abrogation).
+
+Deletion-ledger disposition tally at `docs/tranches/A/audit/W1-deletion-ledger.md`: **17 `verified-clean`, 13 `verified-with-route-evidence`, 1 `flagged-for-rework`, 0 `flagged-for-retire`** — total 31, discharging the W0-challenge §2 row 2 taxonomy exactly (20 glass-ui-shadow-copy + 4 directory-relocation + 4 module-fold + 3 auth-store-replacement). The lone `flagged-for-rework` row is `BouncyToggle.vue` (ledger row 6) per the H1 hardening finding; disposition falls to W3 (the *Interactive-primitive adoption* wave) because no glass-ui-side substrate at v2.0.0 / `5e79443` carries the bouncy-toggle affordance.
+
+**Scope-collision note.** The planned W1.a.2 chunk (`style.css` decomposition) was absorbed by `A.W1.b`'s commit `e904401` `feat(A.W1.b): land api admin/auth/gallery feature cohort` — that commit's file-set carries `web/src/style.css` alongside the api surface, putting the W1.a.2 deliverable inside the W1.b commit subject. The empirical outcome matches the W1.md plan (style.css is decomposed from 723 to 8 lines, importing `./styles/{fourier-overrides,buttons,ios-fixes}.css`); the attribution carries the W1.a.2 substance under the W1.b commit subject. This is a sibling-agent file-bounds violation (W1.b reached into `web/`) and not a W1.a defect; the deletion ledger's `commit_chunk` column records `e904401` for the absorbed chunk so future bisection finds the substance under the right hash. The W6 close ceremony's reconciliation pass should record this in the AMEND ledger as a per-wave-bounds clarification.
+
+The W1.a sub-gate per `W1.md §"A.W1.a — Web migration cohort"` is satisfied: every deleted `web/` component or composable has its replacement wired and rendering against the post-cohort tree; `vue-tsc -b --force` exits 0; the dev-server-rendered routes (the `confirming_route(s)` column of the ledger) discharge the substrate-with-consumer invariant for every retirement save `BouncyToggle.vue`. W1 hard-gate item 4 (the deletion-ledger artefact) closes on `6a2cfcc`.
