@@ -635,3 +635,99 @@ substrate edit), plus four fourier-side audit-only files:
 `docs/tranches/A/audit/W3.5-screenshots/*.png` (8 new),
 `docs/tranches/A/coordination/CONSTELLATION.md` (one new Emitted row), and
 this PROGRESS entry. No fourier source code was modified.
+
+### 2026-05-26 — W4.b contour-hash + gallery consolidation
+
+W4.b closed. Two correctness items shipped under sub-gate evidence:
+
+**1. Contour-hash collision (`api/services/image_storage.py:180`).** The
+pre-W4 hash independently sorted `xs` and `ys` then serialised as
+`{"x": sorted(xs), "y": sorted(ys)}` — two distinct curves whose coordinate
+multisets agreed collided. The fix carves a small `compute_contour_hash`
+helper that hashes the *ordered* pair list,
+`{"pairs": [[x, y] for x, y in zip(xs, ys)]}`, preserving the vertex order
+that distinguishes the curves. `store_contour_asset` calls the helper;
+nothing else in the file changes (the structural restructure is tranche B's
+work).
+
+**Pre/post evidence — H3-specified pair (`xs=[0,1] ys=[0,1]` vs
+`xs=[0,1] ys=[1,0]`):**
+
+```
+PRE-FIX FAIL: diagonals collide — hash_a='a3f27a9d96022738f169a85f83926736b949f38e96f053e2f79519bb394f4421'
+                              == hash_b='a3f27a9d96022738f169a85f83926736b949f38e96f053e2f79519bb394f4421'
+PRE-FIX FAIL: triangles collide — hash_c='7e388b83745f603e774b0aed91a042947847cd7cf583176d155a5cf87fcfde16'
+                              == hash_d='7e388b83745f603e774b0aed91a042947847cd7cf583176d155a5cf87fcfde16'
+```
+
+POST-fix (test suite):
+```
+api/services/__tests__/test_contour_hash.py::TestContourHashDiagonalPair::test_positive_diagonal_hashes_distinctly_from_negative_diagonal PASSED
+api/services/__tests__/test_contour_hash.py::TestContourHashTrianglePair::test_swapped_vertex_triangles_hash_distinctly PASSED
+api/services/__tests__/test_contour_hash.py::TestContourHashStability::test_identical_curves_hash_identically PASSED
+============================== 3 passed in 1.03s ===============================
+```
+
+Full suite: **97 passed** (89 baseline + 5 from W4.a janitor + 3 W4.b
+regression cases). Old contour rows on disk become orphans on next store
+(janitor will reap under W4.a's `pinned: false` predicate).
+
+**2. Gallery offset → cursor consolidation.** The duplicate
+`GET /api/gallery` offset handler in `api/routers/gallery.py` retires; the
+cursor handler at `/api/gallery/cursor` is now the sole paginated list path.
+`count_documents` drops from the cursor handler — cursor pagination needs
+no total. The response shape becomes `{items, cursor: {next_cursor, has_more}}`
+and the `total` field retires from `GalleryCursorResponse` (Python + TS)
+along with the dead `GalleryListResponse` model.
+
+**Admin-caller migrations** (per W0-challenge §2 row 16):
+
+| Caller | Pre | Post |
+|---|---|---|
+| `gallery.ts:137` (`setTier`) | `await fetchPage()` | `await resetAndFetch()` |
+| `gallery.ts:149` (`deleteEntry`) | `await fetchPage()` | `await resetAndFetch()` |
+| `gallery.ts:189` (`publish`) | `await fetchPage()` | `await resetAndFetch()` |
+| `gallery.ts:207` (`publishDraft`) | `await fetchPage()` | `await resetAndFetch()` |
+
+`fetchPage` itself drops from the store; the `page`/`pages`/`total` refs
+retire; the `listGallery` API-client wrapper retires; the
+"`{{ total }} total`" caption in `GalleryInfiniteGrid.vue` migrates to
+"`{{ entries.length }} loaded`" — the honest cursor-pagination reading.
+
+**Live exercise.** Backend restarted via `docker compose restart backend`:
+
+```
+HTTP 405 (offset endpoint)   — GET /api/gallery?page=1&limit=20 → Method Not Allowed
+HTTP 200 (cursor endpoint)   — GET /api/gallery/cursor?limit=5  → {"items":[],"cursor":{"next_cursor":null,"has_more":false}}
+```
+
+The offset handler is gone; the cursor response carries no `total`.
+
+**Discovered (NOT FIXED) — scope-reveal for tranche B.** Ruff F841 at
+`api/services/image_storage.py:224`: `result = await db.contours.update_one(...)`
+is assigned but never used. Pre-existing; outside W4.b's modify-carve bounds
+(invariant 7 — no silent scope creep).
+
+**Bounds.** Touched: `api/services/image_storage.py` (hash carve),
+`api/routers/gallery.py` (offset drop + count drop), `api/models/admin.py`
+(`GalleryCursorResponse.total` removal), `api/models/gallery.py` (dead
+`GalleryListResponse` removal), `api/services/__tests__/test_contour_hash.py`
+(new), `web/src/stores/gallery.ts` (admin migration + `fetchPage` drop),
+`web/src/lib/api.ts` + `web/src/lib/types.ts` (`listGallery` /
+`GalleryListResponse` retire, `GalleryCursorResponse.total` retire),
+`web/src/components/visualization/GalleryView.vue` +
+`web/src/components/visualization/gallery/GalleryInfiniteGrid.vue` (caption
+migration), `docs/tranches/A/PROGRESS.md` (this entry). Sibling W4.a
+(janitor + rate-limiter) and W4.c (dead-code + deploy-surface) untouched.
+
+**Build state.** `uv run pytest` exit 0 (97 passed). `vue-tsc -b --force`
+green on all W4.b files; the four pre-existing errors in
+`MobileFloatingToc.vue` / `PaperSidebar.vue` (4 type errors) and the
+`useWorkspaceLoader.ts:96` / `@mkbabb/glass-ui/infinite-scroll` resolution
+gap are sibling territory and outside W4.b bounds (the glass-ui resolution
+contract was discharged at `926ca6a` — a separate consumer-side concern).
+
+**Commits.**
+- `7936137` `fix(A.W4.b): contour-hash collision — hash on ordered coordinate pairs at image_storage.py:180`
+- `2d7e24e` `refactor(A.W4.b): consolidate gallery to cursor pagination — drop offset endpoint + count_documents`
+- `0e016aa` `feat(A.W4.b): contour-hash regression test pair + admin-caller cursor migration`
