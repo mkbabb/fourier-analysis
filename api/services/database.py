@@ -42,12 +42,19 @@ async def connect_db() -> None:
     await _db.images.create_index("image_slug", unique=True)
     await _db.images.create_index("sha256", unique=True)
     await _db.images.create_index("last_accessed_at")
+    # Compound index for the janitor's indexed-predicate delete query —
+    # ``{pinned: false, last_accessed_at: {$lt: cutoff}}``. See
+    # ``api/services/janitor.py``; this index replaces the legacy unbounded
+    # ``$nin`` scan flagged by the W4.a (Tranche A) audit.
+    await _db.images.create_index([("pinned", 1), ("last_accessed_at", 1)])
 
     # Contours indexes
     await _db.contours.create_index("contour_hash", unique=True)
     await _db.contours.create_index("extraction_cache_key", sparse=True)
     await _db.contours.create_index("image_slug")
     await _db.contours.create_index("last_accessed_at")
+    # Mirror of images.pinned compound — same rationale (W4.a janitor inversion).
+    await _db.contours.create_index([("pinned", 1), ("last_accessed_at", 1)])
 
     # Snapshots indexes
     await _db.snapshots.create_index("snapshot_hash", unique=True)
