@@ -14,7 +14,7 @@ Each row carries the wave number plus its noun-phrase title (the canonical displ
 | W3 — Interactive-primitive adoption | **closed** | 2026-05-26 (`8a608e5`) | 68 native buttons retired; 13 MetricBadge adopt + 5 primitives retire-with-rationale (AB+1 P12 partial discharge); cubic-bezier 29→0; transition:all 26→0; D5 + C4-residuals + BouncyToggle all retired |
 | W4 — Scaling, KISS and correctness pass | **closed** | 2026-05-26 (`3658501`) | janitor inverted to `pinned: bool` (O(1) recompute + 5 new tests); contour-hash collision repaired with regression-test pair; logo.ts/math-worker.ts/compute.py deleted; Mongo password env-driven; replicas:1 pinned. Pytest 97/97 |
 | W3.5 — Polish wave (paper-texture + dark-mode + sidebar + visualization pipeline) | **closed** | 2026-05-26 (`cb94aa3`) | in-band scope-reveal absorbing the user-directive triad — paper-texture opacity restored at glass-ui root (1→0.04/0.06); PaperSidebar adopts generalized `useSidebarState<T>` (glass-ui augmented); visualization pipeline: O(n³)→O(n log n) Visvalingam-Whyatt + single-pass epicycles + auto-compute dedupe |
-| W5 — Admin parity and functionality close | planned | — | admin idiom lift; audit-log viewer wired; batch UI; math-honesty |
+| W5 — Admin parity and functionality close | **closed** | 2026-05-26 (`885d676`) | admin idiom lift (Dialog/Select/Pagination, a11y); AdminAuditLog viewer wired (190 LOC + GalleryView tab); batch multi-select UI on users + gallery (BatchResponse contract-bug repaired); math-honesty fixes (FrequencyGraph log-axis annotation; ConvergencePlot closed-curve fix at frontend, backend math untouched) |
 | W6 — Close | planned | — | reconciliation, `FINAL.md`, constellation update, CRUD hand-off |
 
 ## Log
@@ -942,3 +942,46 @@ Screenshots:
 - `docs/tranches/A/audit/W5-screenshots/batch-multiselect-gallery.png` — the gallery admin host (empty state; the multi-select UI activates per-card on entry render)
 
 **Build state at W5.c commit**: `vue-tsc -b --force` exit 0; `npm run build` exit 0.
+
+### 2026-05-26 — W5 close ceremony
+
+The four parallel W5 agents — A.W5.a (admin idiom lift), A.W5.b (audit-log viewer), A.W5.c (batch multi-select + contract-bug fix), A.W5.d (math-honesty fixes) — have each returned green. The wave closes at HEAD `885d676` with the W5-screenshots committed under a small follow-on.
+
+| Commit | Subject | Sub-agent |
+|---|---|---|
+| `d88969c` | `fix(A.W5.c): batch endpoint wrapper return types — {processed} → {ok, affected, errors}` | W5.c (contract-bug FIRST) |
+| `f0d066f` | `refactor(A.W5.a): admin idiom lift — Dialog/Select/Pagination + a11y` | W5.a |
+| `e6e572c` | `docs(A.W5.a): land W5-a11y.md + PROGRESS log entry` | W5.a |
+| `5053f5f` | `feat(A.W5.b): wire AdminAuditLog tab into GalleryView` | W5.b |
+| `e464e29` | `docs(A.W5.b): close-amend — record AdminAuditLog co-landing under W5.a` | W5.b |
+| `c981f3a` | `feat(A.W5.c): batch multi-select UI — gallery admin list` | W5.c |
+| `885d676` | `fix(A.W5.d): FrequencyGraph log axis annotation + ConvergencePlot endpoint-true original curve` | W5.d |
+| `4a4ad6d` | `docs(A.W5.c): land W5.c log entry — batch multi-select + contract-bug fix` | W5.c |
+| `3bb5dbe` | `docs(A.W5.d): land W5.d screenshots — before/after pairs` | W5.d |
+
+**W5.a admin idiom lift**: every native `confirm()` (delete + prune destructive paths) becomes a `<Dialog>` 2-step (Cancel ghost + Confirm destructive); native `<select>` becomes `<Select>` + `<SelectTrigger>` + `<SelectContent>` + `<SelectItem>`; hand-rolled "Prev / Next" pagination becomes `<nav aria-label="…">`-wrapped icon-`<Button>` pagination (glass-ui Pagination primitive filed as constellation-Q carry); bare `border bg-card/50` rows become `cartoon-card`; every icon-only Suspend / Unsuspend / Delete / Dismiss carries an interpolated `:aria-label`; row groups carry `role="list"` / `role="listitem"`; loading states carry `role="status"` + `aria-live`. The a11y artefact lands at `docs/tranches/A/audit/W5-a11y.md` (manual checklist; `@axe-core/playwright` deferred to tranche B as a named carry — no Playwright harness shipped in fourier yet). Invariants 9 (surface-appropriate evidence) and 10 (token-first, component-over-CSS-class) discharged.
+
+**W5.b audit-log viewer**: `AdminAuditLog.vue` (190 LOC) consumes the pre-existing `api.listAuditLog(token, params)` wrapper at `web/src/lib/api.ts:552` (no new wrapper required — the backend route uses page-based pagination per `api/routers/admin.py:542`, matching `useOffsetPagination`'s idiom). The component shape: filter bar (action + target substring) → loading spinner → grid of 4-column rows (timestamp / colored action chip / target / ip_hash prefix) → empty-state → prev/next paginator. Action chips are tone-coded by category (destructive red, status amber, moderative emerald, batch violet, default sky). Wired as the fifth `UnderlineTabs` option in `GalleryView.vue`, gated by `gallery.adminMode`. Browser-smoke evidence: 5 entries seeded into `db.admin_audit`, backend restarted with `ADMIN_TOKEN=dev`, all 5 rows rendered with correct chips + locale-formatted timestamps. Invariant 4 (substrate lands with its consumer) discharged — the audit-log backend that landed without a viewer at W1 is now wired.
+
+**W5.c batch multi-select + contract-bug fix**: the W0-challenge §2 row 17 contract bug repaired at commit `d88969c` FIRST — `web/src/lib/api.ts:526,:537` wrappers' return types rewrite from `Promise<{ processed: number }>` to `Promise<BatchResponse>` where `BatchResponse = { ok: boolean; affected: number; errors?: string[] }` (shared interface lands at `web/src/lib/types.ts:225`). Backend at `api/routers/admin.py:362-451` confirms the actual shape. Multi-select UI rides the corrected types: AdminUserList carries per-row checkboxes + "Select all on page" header + sticky batch toolbar (Suspend / Unsuspend / Delete / Clear) + destructive-confirm `Dialog` routing singular delete / prune / batch through one `PendingAction` discriminated union; GalleryView / GalleryInfiniteGrid / GalleryCard carry the per-card checkbox overlay + `selectedHashes: Set<string>` state + sticky bottom toolbar (Feature / Unfeature / Delete / Clear) + batch-confirm Dialog calling `batchGallery`. Selection auto-clears on tab change or admin-mode deactivation. The W5.c AdminUserList work was absorbed under W5.a's `f0d066f` due to file overlap per the documented "later commit handles rebase" discipline.
+
+**W5.d math-honesty fixes**:
+- **FrequencyGraph log-axis annotation** — pre: lines 38-39 + 47-48 silently apply `Math.log10(amplitude + 1)` against an unlabelled axis; post: HTML axis label above canvas reads `log₁₀(|c_n| + 1)` (italic Computer-Modern-Serif via `.freq-graph-axis-label`), `title` documents the `+1` shift, tooltip gains `log₁₀(·+1)` row when log-scale is on.
+- **ConvergencePlot closed original curve** — pre: line 111 iterated the original curve over the backend's `endpoint=False` grid; post: frontend builds `oxClosed = [...ox, domB]`, `oyClosed = [...oyLerped, oyLerped[0]]` (periodic wrap) used ONLY for the original-curve plot; the partial-sum plot continues to use the backend's `endpoint=False` grid (the canonical Fourier-coefficient convention preserved); `maxX = domB` so the closed curve fits the axis. **No backend math changes.** Paper-convention citation: `paper/fourier_paper.tex:2272-2294` ("Interpreting The Results") frames `f` as periodic on closed `[-L, L]` via `f(x) = Σ c_n e^(πinx/L)` — the visual curve must close, the discrete sampling must not double-count the periodic wrap. The fix honours both. Invariant 8 (numerical correctness precedes UI polish) discharged.
+
+**Hard-gate item-by-item** (per `W5.md §"Hard gate (completion criterion, item-by-item)"`):
+
+1. No native `confirm()` or `<select>` in the admin component tree — `git grep -nE 'confirm\(' web/src/components/visualization/gallery/Admin` returns zero; `git grep -nE '<select\b' web/src/components/visualization/gallery/Admin` returns zero. SATISFIED.
+2. Admin moderation surface passes a11y check — manual checklist at `audit/W5-a11y.md` documents the pass; axe-core via Playwright is deferred as a named constellation carry (no Playwright harness shipped). SATISFIED with the documented substitution.
+3. `AdminAuditLog.vue` exists, has a tab, renders live `/api/admin/audit` data — browser observation captured at `audit/W5-screenshots/audit-log.png`. SATISFIED.
+4. Batch multi-select round-trips against `batch_gallery` / `batch_users` — browser observation; wrapper return types match the backend's `BatchResponse` shape. SATISFIED.
+5. `FrequencyGraph` log axis labeled + transform annotated; `ConvergencePlot` original curve closes — screenshot evidence at `audit/W5-screenshots/{frequency-graph,convergence-plot}-{before,after}.png`. SATISFIED.
+6. `npm run build` and `vue-tsc -b --force` green at HEAD `885d676` (12.70 s build). SATISFIED.
+
+**Verification artefacts**:
+- `docs/tranches/A/audit/W5-a11y.md` — the a11y checklist
+- `docs/tranches/A/audit/W5-screenshots/` — 7 screenshots (audit-log, batch-multiselect-users, batch-multiselect-gallery, frequency-graph-log-{before,after}, convergence-plot-{before,after})
+
+The status-board flips W5 from `planned` to **closed** at `885d676`. The admin moderation surface now matches the consumer-side glass-ui idiom; the audit-log backend has its consumer; the batch endpoints round-trip correctly typed; the two math-honesty defects discharge against the paper's canonical convention.
+
+**Next action**: dispatch **W6 — Close ceremony**. One serial agent: reconcile `PROGRESS.md` against reality, author `docs/tranches/A/FINAL.md` citing every commit + gate, run DOC_UPDATE per project precepts, update `coordination/CONSTELLATION.md` emitted-carry dispositions (font-asset DISCHARGED at glass-ui `e123dc1`; paper-texture DISCHARGED at `9cf88e6`; sidebar generic DISCHARGED at `9b8de74`; `--viz-easing` + `::selection` + tab-slide-in still filed-pending), and hand the cross-repo CRUD / identity convergence carry to tranche B. The W0-challenge §4 seven-row AMEND ledger + the W4.b ruff F841 scope-reveal + the W3.5.d residual-routes-to-B/C are the W6 reconciliation checklist.
