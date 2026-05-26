@@ -1,3 +1,2 @@
-# Local override: this directory captures W5 close-ceremony browser smoke
-# screenshots as committed audit artefacts, per W5.md hard gate 5 / verification artefacts.
+# Local override: W5 audit-trail screenshots are committed artefacts.
 !*.png
