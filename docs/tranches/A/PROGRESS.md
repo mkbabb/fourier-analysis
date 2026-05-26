@@ -407,3 +407,57 @@ Agent **A.W3.c — Metric / readout primitive adoption** discharges constellatio
 
 3. Each glass-ui primitive in scope item 3 is imported and rendering — **MetricBadge × 13 adopted**; the other five primitives carry retire-with-rationale rows in `audit/W3-adoption-ledger.md`. Browser observation per site reconciles at the W3 close ceremony.
 5. `npm run build` and `vue-tsc -b --force` green — **CONFIRMED** (the FullscreenViewer.vue `@apply h-10 w-10` regression sits outside W3.c bounds and lands on W3.a/b's close).
+
+### 2026-05-26 — W3.d motion-vocabulary cleanup
+
+Agent **A.W3.d** lands the motion-vocabulary cleanup (W3.md scope item 4 + hard-gate item 4). Three deletion/replacement classes discharged:
+
+1. **`@keyframes` shadow excision.** The two consumer-side `@keyframes` rules that name-shadowed a glass-ui canonical animation (`tooltip-in` in `ConvergencePlot.vue`, `collapsible-open` + `collapsible-close` in `CollapsibleSection.vue`) were excised. The substrate keyframes (cf. `@mkbabb/glass-ui/styles/animations.css`) resolve via the global cascade; the animation hooks (`animation: tooltip-in …`, `animation: collapsible-open …`) survive, but they now hit the substrate keyframe rather than the consumer-side duplicate that was silently defeating the substrate's tuning. The post-W3.d shadow count is **0 of 0** for the W0-challenge-named six (`fade-in`, `scale-in`, `slide-up`, `collapsible-open`, `collapsible-close`, `tooltip-in`) — fourier never declared `fade-in`, `scale-in`, or `slide-up`, so only the three above were live shadows.
+
+2. **`cubic-bezier` excision (the C-audit's "re-invented `--ease-out-expo` 10×" item).** All 29 hand-rolled `cubic-bezier(...)` strings in `web/src/` now route through canonical glass-ui motion tokens (`--ease-standard`, `--ease-out`, `--ease-in`, `--ease-out-expo`, `--ease-apple-spring`) per the seven-row token mapping table in `audit/W3-adoption-ledger.md §"cubic-bezier → canonical-token replacements"`. The cubic-bezier coefficient `(0.22, 1, 0.36, 1)` (a near-`ease-out-expo`) and `(0.22, 1.6, 0.36, 1)` (a strong overshoot near `--ease-apple-spring`) fold to the closest canonical token rather than carrying as bespoke values — the C4-residual discipline says no near-duplicate-token re-invention.
+
+3. **`transition: all` cleanup.** All 26 `transition: all` usages in `web/src/` enumerate the animated properties explicitly (`opacity`, `transform`, `color`, `background-color`, `border-color`, `box-shadow` as the recurring axes). `transition: all` animates every property — including layout-causing ones (`height`, `width`, `top`, `left`) that the consumer rarely intends — so the explicit enumeration is both a correctness fix and a perf fix.
+
+**Pre-/post-W3.d counts** (verified via grep — `grep -rnE '<pattern>' web/src/`):
+
+| Pattern | Pre | Post |
+|---|---|---|
+| `@keyframes (fade-in\|scale-in\|slide-up\|collapsible-open\|collapsible-close\|tooltip-in)\b` | 3 | **0** |
+| `cubic-bezier` | 29 | **0** |
+| `transition:\s*all\b` | 26 | **0** |
+
+The eight surviving fourier-local `@keyframes` (`tab-slide-in`, `adv-open`, `adv-close`, `rainbow-slide`, `rainbow-drift`, `golden-shimmer`, `spin`, `like-bounce`, `marquee-scroll-{left,right}`) are documented in `audit/W3-adoption-ledger.md §"@keyframes retained"` with disposition (local carry / CONSTELLATION candidate). PRM (`prefers-reduced-motion: reduce`) guards land on every consumer-side animation hook that uses these keyframes.
+
+**Bounds discipline.** W3.d's bounds (per the wave spec) were `@keyframes` rules, `cubic-bezier` strings, and `transition: all` usages — purely the motion-vocabulary axes. The button-recipe migration (W3.a/b), the AB+1 cohort adoption (W3.c), and the composable folds (W3.c) sit outside; W3.d's diff touches only the three named axes in the affected files (with `A.W3.d —` comments naming the discipline at every edit site).
+
+**Hard gate (per `W3.md §"Hard gate"`, item 4):** zero `@keyframes` duplicating a glass-ui canonical name + zero `transition: all` in `web/src/` — **CONFIRMED** by the grep table above. `npx vue-tsc -b --force` exits 0 post-edit; `npm run build` to be validated at the W3 close ceremony alongside W3.a/b/c.
+
+| Hash | Subject | Owner |
+|---|---|---|
+| _pending_ | `refactor(A.W3.d): de-duplicate @keyframes, excise cubic-bezier and transition:all` | W3.d |
+
+### 2026-05-26 — W3.b button migration + D5 fold
+
+Agent **A.W3.b — Button migration (visualization + ui subtrees)** lands the W3 button cohort for the visualization + ui file-bounds (sibling to W3.a — equation/morph/paper/layout), discharging W3.md §Scope items 1 + 2 (native button retirement, canonical-interactive-vocabulary adoption) for these subtrees and folding the D5 residual at SliderControl.vue (W3.md §Scope item 5).
+
+**Special-pattern sites** the W0-challenge §2 row 10 named (the `<Button as="label">` carry at `ImageUpload.vue:121` + `VisualizationView.vue:220`) had already been discharged in the working-tree state at the W3.b open commit (`HEAD = cd019b4`): both sites use a programmatic `fileInput.click()` from an outer dropzone-click handler, with the `<input type="file" hidden>` no longer wrapped in a `<Button as="label">`. The W3-button-ledger records the discharge.
+
+**Counts** (W3.b subtree only — sibling-agent reconciliation lands at the W3 close):
+
+| Subtree | Migrated | Justified residue |
+|---|---|---|
+| `visualization/` (non-gallery) | 13 | 2 (`AnimationControls.play-btn` ×2 — bespoke rainbow-glass ornament) |
+| `visualization/gallery/` | 23 | 4 (admin pagination ×4 — W5's lift to glass-ui Pagination, not W3.b's button migration) |
+| `ui/` | 0 | 0 |
+| **Total (W3.b)** | **36** | **6** |
+
+**D5 disposition.** Inspection of `web/src/components/ui/SliderControl.vue` plus `grep -rn 'SliderControl' web/src/ \| grep variant` (zero matches) confirms no consumer passes the `variant?: "timeline" \| "default"` prop. The original docblock already records that both branches map cosmetically to the same internal `<Slider variant="glass-scrubber">`. **Disposition (b) — retired-with-rationale**: the prop is removed wholesale, the component commits unconditionally to `glass-scrubber`, the docblock records the W3.b D5 closure. Ledgered at `audit/W3-adoption-ledger.md §"W3.b — D5"`.
+
+**Hard gate (per `W3.md §"Hard gate"`, items 1 + 5):** `grep -rnE '<button\b' web/src/components/{visualization,ui}/` returns exactly six rows, all six recorded as justified residue (two bespoke-ornament play-buttons + four admin-pagination buttons owned by W5). `buttons.css` already deleted by W2.e (`1f655a1`); no further deletion owed. `npx vue-tsc -b --force` exits 0; `npm run build` exits 0 (one build-blocker fixed mid-pass: GalleryCardModal + GalleryCard `@apply text-muted-foreground` inside `<style scoped>` blocks — Tailwind v4 + `@reference "tailwindcss"` does not resolve the custom `text-muted-foreground` utility, replaced with `color: var(--muted-foreground)` in both files).
+
+**Bounds discipline.** W3.b's bounds were `web/src/components/{visualization,ui}/**` button migration + the D5 SliderControl fold. The MetricBadge adoption (W3.c), the motion-vocabulary cleanup (W3.d), and the equation/morph/paper/layout subtrees (W3.a) sit outside; W3.b's diff touches buttons + the D5 line. Cross-agent merge collisions at GalleryCardModal, EditorToolsPanel, AnimationControls, EasingPicker, FullscreenViewer, ContourSettings, GalleryAdminBanner, GalleryDraftsSection, UserSlugBar resolved per the `git pull --rebase` discipline noted in the brief — each file's button migration + sibling-agent edit reconcile as overlapping diffs.
+
+| Hash | Subject | Owner |
+|---|---|---|
+| _pending_ | `refactor(A.W3.b): migrate native <button> to <Button> across visualization/ui + D5 fold` | W3.b |
+| _pending_ | `docs(A.W3.b): append W3 button ledger + W3-adoption-ledger D5 row` | W3.b |
