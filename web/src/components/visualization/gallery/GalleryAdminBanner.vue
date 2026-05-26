@@ -22,17 +22,21 @@ function formatBytes(bytes: number): string {
 </script>
 
 <template>
-    <div class="mx-4 px-3 py-2.5 rounded-lg border-[1.5px] border-amber-500/30 bg-amber-500/[0.04]">
+    <section
+        class="mx-4 px-3 py-2.5 rounded-lg border-[1.5px] border-amber-500/30 bg-amber-500/[0.04]"
+        aria-label="Admin mode banner"
+    >
         <div class="flex items-center gap-1.5 mb-2">
-            <Shield :size="16" class="text-amber-400" />
+            <Shield :size="16" class="text-amber-400" aria-hidden="true" />
             <span class="cm-serif text-sm font-semibold tracking-tight">Admin Mode</span>
             <Button
                 variant="outline"
                 size="sm"
                 class="ml-auto gap-1 text-muted-foreground"
+                aria-label="Log out of admin mode"
                 @click="emit('logout')"
             >
-                <LogOut :size="14" />
+                <LogOut :size="14" aria-hidden="true" />
                 Logout
             </Button>
         </div>
@@ -83,7 +87,7 @@ function formatBytes(bytes: number): string {
                 class="admin-stat"
             />
         </div>
-    </div>
+    </section>
 </template>
 
 <style scoped>
