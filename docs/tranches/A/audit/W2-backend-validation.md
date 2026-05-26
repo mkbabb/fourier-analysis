@@ -269,3 +269,81 @@ any follow-up that emerges from the validation matrix anyway.
 This agent's discharge artefact is this document and the
 `gallery-no-backend.png` screenshot. The disposition-ledger row and
 the PROGRESS log entry land in the same commit as this report.
+
+---
+
+## §8 — In-band W2.h re-dispatch (2026-05-26, orchestrator-direct)
+
+The W2.g ESCALATE was lifted in the same session: the user manually
+launched Docker Desktop after the AskUserQuestion prompt, and the
+orchestrator re-dispatched the validation matrix directly. Under
+re-exercise a real compose-side defect surfaced; the orchestrator
+landed a small architectural fix as a W4 scope-reveal and the matrix
+runs green.
+
+### Defect surfaced: mongo init env vars missing
+
+The first re-exercise failed under SCRAM authentication —
+`pymongo.errors.OperationFailure: Authentication failed, code 18`.
+Root cause: `docker-compose.yml` declared the backend's `MONGO_URI`
+with the credential pair `fourier-admin / cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb`
+but the `mongo` service definition omitted the
+`MONGO_INITDB_ROOT_USERNAME` / `MONGO_INITDB_ROOT_PASSWORD` env vars,
+so the mongo container started without an admin user. The dev compose
+had never run successfully against a fresh volume — the W1.c-committed
+shape was structurally broken.
+
+### Architectural fix — W4 scope-reveal
+
+Per the user's directive (architectural transpositions for elegance,
+no quick fixes), the orchestrator amended `docker-compose.yml` to:
+
+1. Externalise the credential to env vars: `MONGO_URI` uses
+   `${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:-fourier-dev-only}`.
+2. Add the missing init env vars to the mongo service with the same
+   `${MONGO_USER:-...}` / `${MONGO_PASSWORD:-...}` defaults.
+3. Update the healthcheck `mongosh` invocation to pass `-u / -p /
+   --authenticationDatabase admin` (otherwise the authenticated mongo
+   server rejects the unauthenticated ping).
+4. Use the unsafe `fourier-dev-only` default for local-dev so a fresh
+   `docker compose up` works without a `.env`; prod stays env-driven.
+
+Note: the literal password `cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb` still
+survives in `docker-compose.prod.yml` per the W4 deferral. W4.c
+moves the prod-side reference to env-only and removes the literal.
+This W2-side fix is the dev-compose half of the same architectural
+shape — the W4 scope-reveal lands here because validation cannot
+honestly close without it.
+
+### Re-exercise verdict — RATIFY
+
+After the fix, the full validation matrix runs green:
+
+| Endpoint | HTTP | Response shape | Notes |
+|---|---|---|---|
+| `GET /api/health` | 200 | `{"status":"ok"}` | lifespan complete |
+| `GET /api/gallery?limit=5` | 200 | `{"items":[],"total":0,"page":1,"pages":1}` | offset path |
+| `GET /api/gallery/cursor?limit=5` | 200 | `{"items":[],"cursor":{"next_cursor":null,"has_more":false},"total":0}` | cursor path |
+| `POST /api/admin/gallery/batch` | 503 | `{"detail":"Admin not configured"}` | expected — ADMIN_TOKEN unset; route reachable |
+| `GET /api/admin/audit` | 503 | `{"detail":"Admin not configured"}` | same |
+| `OPTIONS /api/contours` | 405 | — | route exists, OPTIONS not allowed |
+| `POST /api/equations/compute` | 422 | schema validation triggered | route + schema OK |
+| `POST /api/sessions` | 200 | `{"token":"1c1618db-…","user_slug":"beneficial-festive-kingfisher-of-proficiency"}` | the adjective-noun-noun-of-noun slug pattern confirms `api/slugs.py` |
+| 5× rapid `GET /api/gallery` | 200 × 5 | — | rate-limiter not tripping at 5 rps |
+| docker logs janitor / cron | — | `Application startup complete.` | janitor cron registered by lifespan |
+
+Web-frontend integration: navigated to `http://localhost:3000/gallery`
+with the backend live; **zero console errors**, the bottom 401/500
+banner is gone, the gallery view renders its empty state correctly.
+Screenshot at `docs/tranches/A/audit/W2-screenshots/gallery-with-backend.png`.
+
+### Disposition — RE-DISPOSITION
+
+The W2.g ESCALATE is **LIFTED**. The W1.b cohort RATIFIES under the
+docker substrate; the architectural fix to `docker-compose.yml`
+makes the dev-compose actually-runnable from a fresh `volumes:` for
+the first time in the cohort's history. The W4 prod-side completion
+(prod compose env-only + literal removal) remains W4's scope.
+
+W2.h, named at §7 as the successor wave, is **DISCHARGED in-band** —
+no follow-up wave required.

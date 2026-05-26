@@ -11,7 +11,7 @@ services:
       - ./assets:/app/assets
     environment:
       - CORS_ORIGINS=http://localhost:${WEB_PORT:-3000},http://localhost:5173
-      - MONGO_URI=mongodb://fourier-admin:cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb@mongo:27017/fourier?authSource=admin
+      - MONGO_URI=mongodb://${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:-fourier-dev-only}@mongo:27017/fourier?authSource=admin
     depends_on:
       mongo:
         condition: service_healthy
@@ -33,8 +33,11 @@ services:
     image: mongo:8.0
     volumes: ["mongo_data:/data/db"]
     networks: [app-network]
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-fourier-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-fourier-dev-only}
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok", "--quiet"]
+      test: ["CMD", "mongosh", "-u", "${MONGO_USER:-fourier-admin}", "-p", "${MONGO_PASSWORD:-fourier-dev-only}", "--authenticationDatabase", "admin", "--eval", "db.runCommand('ping').ok", "--quiet"]
       interval: 5s
       timeout: 5s
       retries: 5
