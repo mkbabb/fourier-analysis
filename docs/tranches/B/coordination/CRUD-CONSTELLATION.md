@@ -245,3 +245,25 @@ without consuming the joint ratification fourier-B was preparing. The
 value.js half is closed; the fourier half is orphaned. Successor
 disposition (reopen, retire, or unwind) is named for the next
 fourier-side tranche that revisits the cohort.
+
+## Wave-1 audit substrate (2026-05-26)
+
+Authored after the orphan verdict but before any B implementation wave
+dispatches, the six-agent Wave-1 audit corpus at
+`docs/audits/runs/2026-05-26-B-audit-wave-1/{L1..L6,SYNTHESIS}.md` is
+B's substrate-of-record at the B-development boundary. The synthesis
+confirms — empirically, against HEAD `c7cfd82` — that the orphan-verdict
+absorption across B's plan documents has held without drift: B.md §0 /
+§3 / §6 / §7 carry the orphan overlay; the W4 fallback contract is
+preserved verbatim; the value.js-side CONFORMANCE-MATRIX cells held at
+DEFERRED have not silently mutated. The synthesis additionally surfaces
+22 LOAD-BEARING rows that fold into the B amendments applied at this
+revision — three new fourier-specific invariants (18 — UI surface
+conventions; 19 — auto-recompute discipline; 20 — render-path
+performance budget), one new wave (W2 — UX coherence; reactivating the
+W2 slot whilst preserving the orphaned cross-repo tracking row as a
+sub-section), and scope-item augmentations to W1 / W3 / W4. The new
+invariants are **fourier-side coherence rules**, not cross-repo
+contract clauses — they bind fourier's consumer surface; the
+constellation's cross-repo contract surface is unchanged. The orphan
+verdict's authority over the joint-ratification clauses is preserved.

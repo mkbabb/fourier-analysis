@@ -834,6 +834,7 @@ The canonical schema above is language-agnostic. Each repo maps it onto its nati
 | `Cursor`             | `routers/gallery.py:_encode_cursor`          | `routes/palettes.ts:encodeCursor`         |
 | `Problem`            | (new at W3 — replace `HTTPException(detail)`)| (new at value.js-C.W2)                    |
 | `PaginationEnvelope` | `models/gallery.py:GalleryListResponse` (rename) | inline `{ data, nextCursor, hasMore }`|
+| **`AnimationData.partial_sums`** (added 2026-05-26 per Wave-1 audit L3 §3.6 D7) | `models/visualization.py`: `partial_sums: dict[str, dict[Literal["x","y"], float]]` (stringified-int keys — JSON-serialised form) | — (fourier-only; the consumer-side `BasisCanvas.vue:271-274` drops the `(sumsForBasis as any)?.[level]` cast in favour of `Record<string, {x: number; y: number}>`; the W2 — UX coherence wave lands the cast removal) |
 
 A divergence between any row of this table and the canonical schema is a conformance violation, caught by the matrix.
 

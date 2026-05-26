@@ -482,6 +482,27 @@ These rows ratify the per-module **utility surfaces** introduced by U3 (`api/lib
 
 ---
 
+## §F — Fourier-side coherence rows (Invariants 18–20, added 2026-05-26 — Wave-1 audit synthesis)
+
+The rows below bind the fourier-specific invariants codified at B.md §2 invariants 18–20 from the Wave-1 audit synthesis. They are **fourier-only** (no value.js column — the value.js side is governed by value.js's own tranche invariants). The §F rows close at B.W2 (UI surface conventions + auto-recompute test wiring) and B.W3 (the entity-side auto-recompute seam binding) and B.W4.d (the axe-core harness binding).
+
+| Assertion ID | Invariant | Assertion | Test name | Run command | Expected output / fixture |
+|---|---|---|---|---|---|
+| F18.1 | Inv 18 | `ExportModal.vue` and all modal surfaces carry `role="dialog"` + `aria-modal="true"` + Esc handler + focus trap. | `e2e/visualization-ux.spec.ts::export_modal_a11y_contract` | `npx playwright test e2e/visualization-ux.spec.ts -g 'export_modal'` | Dialog opens on trigger; tab cycle stays within Dialog; Esc closes; focus returns to trigger. axe-core reports zero serious / critical violations on the open state. |
+| F18.2 | Inv 18 | No literal `z-[N]` in dock / overlay / modal surfaces — z-index routes through the `--z-*` token ladder. | grep assertion `scripts/conformance/grep-no-zindex-literal.sh` | `bash scripts/conformance/grep-no-zindex-literal.sh` | `git grep -nE 'z-\\[[0-9]+\\]' web/src/components/visualization/` returns zero. |
+| F18.3 | Inv 18 | Dock-shaped surfaces follow the naming convention — `*Dock.vue` for floating; `*Panel.vue` for in-flow; `*Modal.vue` for blocking. | grep assertion `scripts/conformance/grep-dock-naming.sh` | `bash scripts/conformance/grep-dock-naming.sh` | Every `web/src/components/visualization/*Dock.vue` consumes `GlassDock`; every `*Panel.vue` is in-flow; every `*Modal.vue` is `Teleport`-mounted. |
+| F19.1 | Inv 19 | After `workspace.saveContourPoints` mutates `store.contour`, the auto-compute fires within one rAF frame (no perturbation of a control required). | `e2e/visualization-ux.spec.ts::save_contour_then_recompute` | `npx playwright test e2e/visualization-ux.spec.ts -g 'save_contour'` | Edit a contour point → click Save → canvas re-renders within 100 ms (well above one rAF frame); no manual setting touch required. |
+| F19.2 | Inv 19 | The `levels` derivation lives in `ComputeBasesRequest` Pydantic model (single seam); `web/src/stores/workspace.ts:runComputeBases` consumes the model, not the inline `Array.from({length: min(N,50)}, …)` construction. | `api/tests/test_compute_request.py::test_levels_derivation_in_model` + grep | `uv run pytest api/tests/test_compute_request.py -v` + `git grep -E 'Array\\.from.*length.*min.*50' web/src/stores/workspace.ts` | Pydantic test asserts the model's levels derivation matches `min(n_harmonics, 50)`; grep returns zero. |
+| F20.1 | Inv 20 | `useViewTransform` does not call `Math.min(...xs)` or `Math.max(...xs)` per rAF frame; the bbox is memoized on `epicycleData` / `basesData` identity. | grep assertion `scripts/conformance/grep-no-perframe-spread.sh` + benchmark | `bash scripts/conformance/grep-no-perframe-spread.sh` + `npx playwright test e2e/perf.spec.ts -g 'view_transform_budget'` | grep over `useViewTransform.ts` finds the `Math.min/max` call only inside a `computed` block keyed on path identity; benchmark asserts < 0.5 ms per frame at n=10 000. |
+
+**§F subtotal:** 6 fourier-only assertions × 1 column = 6 rows.
+
+## Aggregate (post-§F addition)
+
+- §1–§9 + §11 + §S* + §U — 88 cross-repo assertions × 2 = 176 rows (unchanged).
+- §F — 6 fourier-only assertions × 1 = 6 rows.
+- **Grand total**: 182 rows (176 cross-repo + 6 fourier-side coherence).
+
 ## Status legend
 
 Each row carries a status that is updated at the close of B.W3 (fourier column) and value.js-C.W2 (value.js column):
@@ -491,7 +512,7 @@ Each row carries a status that is updated at the close of B.W3 (fourier column) 
 - `PASS` — test passes in CI; the conformance assertion is binding evidence.
 - `WAIVED` — explicit, justified deviation; references a §12 change-log entry.
 
-fourier-B.W1's gate: every row has a non-empty `Run command` cell. fourier-B.W3 close gate: every fourier row is `PASS`. value.js-C.W2 close gate: every value.js row is `PASS`. The cohort-level CRUD-CONTRACT.md ratifies on the moment all 176 rows are `PASS` (88 fourier + 88 value.js).
+fourier-B.W1's gate: every row has a non-empty `Run command` cell. fourier-B.W3 close gate: every fourier row is `PASS`. value.js-C.W2 close gate: every value.js row is `PASS`. The cohort-level CRUD-CONTRACT.md ratifies on the moment all 176 cross-repo rows are `PASS` (88 fourier + 88 value.js) **and** the 6 §F fourier-side coherence rows are `PASS` (the §F rows added 2026-05-26 per the Wave-1 audit synthesis at `docs/audits/runs/2026-05-26-B-audit-wave-1/SYNTHESIS.md §4`). Under the orphan verdict the 88 value.js cross-repo cells hold at `DEFERRED` (the fifth status alongside `TBD`/`WIP`/`PASS`/`WAIVED` introduced by the R3 refinement assay §9); the §F rows have no value.js column and ratify on the fourier-only path.
 
 ## Source-grep scripts
 

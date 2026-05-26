@@ -108,6 +108,17 @@ Out of scope:
   visualization/palette CRUD).
 - Image blob storage redesign (deferred to fourier tranche C per
   `B.md §7`; orthogonal to identity convergence).
+- **Fourier-specific UI / pipeline coherence rules** (Invariants 18–20
+  added at B.md §2 on 2026-05-26 per the Wave-1 audit synthesis at
+  `docs/audits/runs/2026-05-26-B-audit-wave-1/SYNTHESIS.md`). Those
+  three invariants — Invariant 18 (UI surface conventions: dock-shape
+  naming + a11y modal contract + z-token ladder), Invariant 19
+  (auto-recompute discipline on the visualization pipeline), Invariant 20
+  (Visvalingam-Whyatt + epicycle-render performance budget) — are
+  **fourier-side coherence rules** binding fourier's consumer surface.
+  They are *not* cross-repo contract clauses; value.js's `palette`
+  surface is governed by value.js's own tranche invariants. The
+  contract scope is unchanged.
 
 ### KISS guards (rejected by invariant)
 

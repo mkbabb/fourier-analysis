@@ -10,11 +10,12 @@ A *wave* (per `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Wave"`) is
 |---|---|---|---|---|
 | W0 | open · research dispatch | planned | — | dispatch readiness after fourier-A close |
 | Wα | research wave (six read-only lanes) | planned | — | six parallel lanes scoped in `research/README.md` |
-| Wχ | challenge wave (three adversarial probes) | planned | — | the P1 / P2 / P3 probes adversarially review the Wα findings; the plan hardens at close |
-| W1 | CRUD-contract ratification | provisional | — | shared written contract, fourier-only ratification under the orphan verdict |
-| W2 | value.js palette facility tracking row (cross-repo) | provisional · orphaned | — | latent dependency-legibility row; value.js-C never opened |
-| W3 | fourier `visualization` entity + migration + utility-module landing | provisional | — | converged entity + `api/lib/crud/` helper substrate |
-| W4 | fourier convergence wiring (orphan-verdict fallback primary) | provisional | — | consumer re-pointing; the `colors.ts` gut becomes a named B-residual |
+| Wχ | challenge wave (three+1 adversarial probes) | planned | — | P1 / P2 / P3 / **P4 (Wave-1 binding)** probes adversarially review the Wα findings + the new invariants 18-20; the plan hardens at close |
+| W1 | CRUD-contract ratification | provisional | — | shared written contract, fourier-only ratification under the orphan verdict; **scope item 8 added 2026-05-26 — `AnimationData.partial_sums` type tightening** |
+| **W2 (reactivated)** | **UX coherence (dock idiom + a11y + Configurator adoption)** | **provisional** | — | **authored 2026-05-26 — Wave-1 audit synthesis; 5 parallel agents; reactivates the W2 slot whilst preserving the value.js orphan tracking as a sub-section** |
+| W2-tracking | value.js palette facility (cross-repo, orphaned) | tracking · orphaned | — | latent dependency-legibility sub-section under W2-tracking; value.js-C never opened |
+| W3 | fourier `visualization` entity + migration + utility-module landing | provisional | — | converged entity + `api/lib/crud/` helper substrate; **scope items 14-15 added 2026-05-26 — levels-derivation lift + auto-recompute discipline (Invariant 19)** |
+| W4 | fourier convergence wiring (orphan-verdict fallback primary) | provisional | — | consumer re-pointing; the `colors.ts` gut becomes a named B-residual; **scope item 10 augmented 2026-05-26 — `@axe-core/playwright` integration** |
 | W5 | close | provisional | — | tranche close ceremony |
 
 ## Log
@@ -100,3 +101,33 @@ A read-only refinement-assay round under `docs/audits/runs/2026-05-19-refinement
 - **W4 — fourier convergence wiring** — the named fallback (H4 §4.W4) becomes the primary path: B.W4 lands everything except the `colors.ts` gut; the residual carries the named-successor destination `fourier-tranche-C-or-successor`; the `easings.ts` sampler retirement defers alongside.
 - **CRUD-CONTRACT.md** becomes a fourier-only coherence specification. The fourier-side conformance-matrix rows ratify at W1 close; the value.js-side conformance-matrix rows hold **DEFERRED** (a fifth status alongside TBD / WIP / PASS / WAIVED) pending re-engagement. Stale value.js-side file:line citations re-audit against the post-D / E / F / G / H file layout (per the R3 assay §9) before B.W3 dispatches so the contract's grep-gates do not false-pass on phantom lines.
 - Past gates that passed stay passed: the U1–U6 round's contract authoring, the H4 / H6 hardening, the SOTA-conventions ratification, the conformance-matrix landing — none retract.
+
+### 2026-05-26 — Wave-1 audit synthesis
+
+The B-development round opens. Six concurrent audit lanes (L1 prompt/precept recap, L2 plan-reality reconciliation, L3 visualization-stack, L4 glass-ui-usage, L5 docks, L6 deferred-chronic) landed against HEAD `c7cfd82` (A.W6 close); the synthesis at `docs/audits/runs/2026-05-26-B-audit-wave-1/SYNTHESIS.md` consolidated the six lanes into a single substrate-of-record and applied the surgical amendments to B's plan documents.
+
+**B-plan amendments applied at this revision:**
+
+- **Three new invariants** (`B.md §2` invariants 18–20):
+  - **Invariant 18 — UI surface conventions**: a11y modal contract (`role="dialog"` + `aria-modal` + Esc + focus trap); dock-shape naming convention (Dock / Panel / Modal); z-index routes through `--z-*` token ladder, no literal `z-[N]`. Discharges L5 §5 8 a11y gaps + L5 §4 naming/z-index drifts.
+  - **Invariant 19 — Auto-recompute discipline**: `workspace.saveContourPoints` → `store.contour` identity → auto-compute keyed on contour, not settings. Discharges L3 §3.4 D1 HIGH (load-bearing) + L6 §4 levels-derivation FLAG-GAP.
+  - **Invariant 20 — VW + epicycle-render performance budget**: no per-frame O(n) spread on render path; memoize on identity. Discharges L3 §3.6 D5 HIGH.
+- **One new wave authored**: `docs/tranches/B/waves/W2.md` — **W2 — UX coherence (dock idiom + a11y + Configurator adoption)**. 5 parallel agents (A Configurator adoption sweep; B Dialog substitution + MED a11y discharges; C Coefficients dedup extraction; D EditorTools retire + ContourSettings keyframe retire; E render-path memoize + DC suppression + naming + z-token). Reactivates the W2 slot whilst preserving the value.js-C cross-repo tracking row as a `W2-tracking` sub-section (orphan-verdict-preserved).
+- **Three existing-wave scope augmentations**:
+  - W1.md scope item 8 — tighten `AnimationData.partial_sums` type to `Record<string, {x,y}>` in `SCHEMA.md` (discharges L3 §3.6 D7).
+  - W3.md scope items 14–15 — levels-derivation lift to `ComputeBasesRequest` model (discharges L6 FLAG-GAP); auto-recompute seam (binds Invariant 19).
+  - W4.md scope item 10 augmented — `@axe-core/playwright` wired into `e2e/visualization-crud.spec.ts` (discharges L6 FLAG-GAP + L2 §6.5 routed-not-shaped).
+- **Wχ probe augmentation**: P4 — Wave-1 invariant 18-20 binding-test added to the challenge wave.
+- **Four coordination-doc updates**:
+  - `coordination/CRUD-CONSTELLATION.md` — Wave-1 substrate paragraph appended (records the synthesis as the substrate-of-record; orphan-verdict preserved verbatim).
+  - `coordination/CRUD-CONTRACT.md` — §0 "Out of scope" extended to note Invariants 18–20 are fourier-side coherence rules (not cross-repo contract clauses); cross-repo contract scope unchanged.
+  - `coordination/SCHEMA.md` — §8 native-types table augmented with the `AnimationData.partial_sums` row.
+  - `coordination/CONFORMANCE-MATRIX.md` — new §F section with 6 fourier-only rows binding Invariants 18–20 (F18.1–F18.3, F19.1–F19.2, F20.1); aggregate updated to 182 rows (176 cross-repo + 6 fourier-side coherence).
+
+**Status board updates:** W2 reactivated; W2-tracking sub-section preserved orphan tracking. Wχ row updated to "three+1 probes". W1, W3, W4 notes record their respective scope augmentations.
+
+**Inheritance ledger summary (per SYNTHESIS.md §3):** 48 rows total across six lanes. 22 LOAD-BEARING folded into B amendments at this revision; 6 ALREADY-ABSORBED; 7 CONSTELLATION-CARRY (tracking only — value.js press-scale, three local CSS carries, Pagination primitive, Dialog subpath verification, `--reload`/onnxruntime); 10 OUT-OF-B-SCOPE (5 fourier-C named + 5 KEEP-AS-IS); 3 NEW-RESEARCH-ROW (AB+1 root-barrel re-export policy; DataTable adoption survey; StatusDot parity). **Zero silent deferrals.** The orphan-verdict overlay remains unviolated.
+
+**B-plan coherence verdict at this writing:** every Wave-1 load-bearing item has a named B-destination; no B wave or invariant duplicates another; the orphan-verdict context is preserved verbatim across CRUD-CONSTELLATION.md and CRUD-CONTRACT.md; the new fourier-specific invariants (18–20) are explicitly scoped as fourier-side coherence and do not perturb the cross-repo CRUD-CONTRACT.
+
+**Next action**: dispatch W0 — open · research dispatch (the research wave Wα + challenge wave Wχ then proceed); the new Invariant 18–20 binding-test probe (Wχ.P4) lands alongside P1 / P2 / P3.
