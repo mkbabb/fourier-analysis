@@ -43,3 +43,19 @@ A second six-agent parallel pass was dispatched over disjoint slices (H1–H6); 
 ### 2026-05-19 — tranche-B spec corpus authored (informational; A unchanged)
 
 Tranche B's full spec corpus landed today via a six-agent SOTA round (artefacts at `docs/audits/runs/2026-05-19-crud-deepen/`). This entry is informational for A — A's plan is unchanged. The relevance to A: the contour-hash fix at A.W4 (the *Scaling, KISS and correctness pass* wave) is now an explicit conformance-matrix row in `docs/tranches/B/coordination/CONFORMANCE-MATRIX.md` (the B-side validation that A's correctness fix held); the Option A rate-limiter decision A.W4 selected is inherited by B's auth spec (`research/R-auth-spec.md §6`) with SHA-256-hashed IP keying. The W0 dispatch (the *Open, challenge, hygiene, numerical-test repair* wave) remains the next action for tranche A.
+
+### 2026-05-26 — W0.a open + hygiene landed
+
+Agent A.W0.a — the first of W0's three serial agents — has discharged the open-and-hygiene moiety of the wave. Two commits land on `master`:
+
+- **3fc960c** `chore(A.W0): commit submodule wiring + planning artefacts` — the `.gitmodules` declaration, the `docs/precepts` submodule gitlink pinned at `f27627e` (verified against the propagation done in the prior session), and the `docs/instructions/` + `docs/audits/` + `docs/tranches/` corpora. Fifty paths, fourteen thousand five hundred lines of plan and artefact — the substrate that should have existed when fourier first joined the constellation, hereby installed in-tree.
+- **c69aa33** `chore(A.W0): untrack tsbuildinfo cache file` — `git rm --cached web/tsconfig.tsbuildinfo` plus `.gitignore` rules to bar its return. The pre-existing `ssl/` TLS-cert ignore block (a one-block addition wholly unrelated to the W1 cohort's substantive churn) was folded in under the same hygiene heading; A.md §6 places `web/.gitignore` in W0's ownership, so the bundling is in-charter.
+
+Build state captured at the W0.a close:
+
+- `npx vue-tsc -b --force` — exit 0 (clean typecheck across the consumer surface).
+- `npm run build` — exit 0; built in 2.60s; 2655 modules transformed; the usual chunk-size warning on the index bundle and PaperView, no errors.
+- `uv run pytest` — 87 passed, **2 failed**, exactly the brittleness pair A.md §10 declares: `tests/test_bases.py::TestEvaluatePartialSum::test_chebyshev_partial_sum` and `::test_legendre_partial_sum`. The Legendre case mismatches 196 of 200 sample points with a max absolute difference of 0.072 — a consistent off-by-a-factor as the H1 hardening pass observed. These two failures are the W0.c (numerical-test repair) hand-off; W0.b (challenge) and W0.c remain open.
+- `uv run ruff check api` — 23 pre-existing errors (W4 territory per A.md §6, not W0's scope).
+
+The W0 close gate (per A.md §3, W0 row) is **partial**: the submodule wiring is committed, the tsbuildinfo is untracked-and-gitignored, the build is verified green, and the brittleness window is observed and recorded. The remaining gates — the `audit/W0-challenge.md` artefact and the two `test_bases.py` repairs — fall to W0.b and W0.c respectively. The W0 row in the status board flips only at the W0.d close ceremony, after all three serial agents return.
