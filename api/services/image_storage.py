@@ -162,6 +162,22 @@ def extraction_cache_key(image_sha256: str, settings) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
+def compute_contour_hash(xs: list[float], ys: list[float]) -> str:
+    """Hash ordered coordinate pairs of a contour curve.
+
+    The hash discriminates two curves with identical coordinate multisets but
+    distinct vertex orderings — e.g. the positive diagonal ``(0,0)→(1,1)`` and
+    the negative diagonal ``(0,1)→(1,0)`` share ``sorted(xs)`` and ``sorted(ys)``
+    yet describe different curves. Hashing on the ordered ``(x, y)`` pair list
+    preserves order; hashing on the sorted axes independently does not.
+    """
+    points_payload = json.dumps(
+        {"pairs": [[x, y] for x, y in zip(xs, ys)]},
+        sort_keys=True,
+    )
+    return hashlib.sha256(points_payload.encode()).hexdigest()
+
+
 async def store_contour_asset(
     xs: list[float],
     ys: list[float],
@@ -176,9 +192,9 @@ async def store_contour_asset(
     """
     db = get_db()
 
-    # Compute deterministic hash from sorted points
-    points_payload = json.dumps({"x": sorted(xs), "y": sorted(ys)}, sort_keys=True)
-    contour_hash = hashlib.sha256(points_payload.encode()).hexdigest()
+    # Hash on the ordered coordinate pairs — independently sorting xs and ys
+    # collapses distinct curves with identical multisets onto the same key.
+    contour_hash = compute_contour_hash(xs, ys)
 
     bbox = {
         "minX": min(xs) if xs else 0.0,
