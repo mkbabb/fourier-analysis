@@ -10,7 +10,7 @@ Each row carries the wave number plus its noun-phrase title (the canonical displ
 |---|---|---|---|
 | W0 — Open, challenge, hygiene, numerical-test repair | **closed** | 2026-05-26 (`87472d1`) | open · challenge · hygiene · brittleness pair restored; 7 AMENDs ledgered for W6 absorption |
 | W1 — Attribute and land the glass-ui migration cohort | **closed** | 2026-05-26 (`83e3a14`) | the C1 chronic-deferral closure; 31-row deletion ledger landed; BouncyToggle.vue lone flagged-for-rework |
-| W2 — Override-stylesheet abrogation | planned | — | `fourier-overrides.css` + `ios-fixes.css` + `buttons.css` deleted |
+| W2 — Override-stylesheet abrogation | **closed** | 2026-05-26 (`5fdf6ff`) | all three override stylesheets deleted; `web/src/styles/` retired; contract-v2 adoption + glass-ui font hygiene + buttons.css full abrogation + backend Docker RATIFY landed in-band |
 | W3 — Interactive-primitive adoption | planned | — | the 89 native buttons retire; AB+1 primitive cohort lands |
 | W4 — Scaling, KISS and correctness pass | planned | — | janitor invert; contour-hash fix; dead-code deletion; secrets out |
 | W5 — Admin parity and functionality close | planned | — | admin idiom lift; audit-log viewer wired; batch UI; math-honesty |
@@ -318,3 +318,49 @@ validation matrix as a sub-step (deploy → endpoint sweep →
 preserved-bug rows), W2.h can collapse into the W4 wave rather than
 landing standalone. The W2.g artefact lands as a single commit:
 `docs(A.W2.g): land backend Docker validation report`.
+
+### 2026-05-26 — W2 close ceremony
+
+The four W2 sub-agents (W2.a, W2.b, W2.c, W2.d) closed earlier in the day; three orchestrator-direct directives subsequently absorbed in-band as W2.e (full buttons.css abrogation), W2.f (cross-repo glass-ui font dist hygiene), and W2.g→W2.h (backend Docker validation). The wave's hard gates per `W2.md` all SATISFIED — the closing tally:
+
+| Commit | Subject | Sub-agent |
+|---|---|---|
+| `e4177e9` | `refactor(A.W2.a): excise glass-ui-token re-declarations from fourier-overrides.css` | W2.a |
+| `79a2433` | `docs(A.W2.a): backfill commit hash column in disposition ledger` | W2.a |
+| `ae84509` | `refactor(A.W2.c): migrate styled-slider to GlassScrubber + delete ios-fixes.css` | W2.c |
+| `cb75c02` | `docs(A.W2.c): append W2.c rows to disposition ledger` | W2.c |
+| `f934ff2` | `refactor(A.W2.b): fold-to-component the 7 fourier-overrides rules + delete the file` | W2.b |
+| `85aae0b` | `docs(A.W2.b): append W2.b rows + constellation carries` | W2.b |
+| `32c23fc` | `docs(A.W2.d): land visual regression evidence + W2 close artefacts` | W2.d |
+| `1e2400c` | `docs(A.W2.d): backfill commit hash column in disposition ledger` | W2.d |
+| `a7d1904` | `fix(A.W2): adopt cross-repo dev-resolution contract-v2 — runtime imports of value.js parseCSSStylesheet now resolve` | orchestrator scope-reveal |
+| `88c1858` | `docs(A.W2): update W2-visual-regression with contract-v2 resolution` | orchestrator |
+| `10e616c` | `refactor(A.W2.e): fully abrogate buttons.css — migrate .btn-* and .basis-pill consumers to <Button>/<Badge>` | W2.e |
+| `b28d9b1` | `docs(A.W2.e): backfill commit hash 10e616c into ledger + PROGRESS log` | W2.e |
+| `1f655a1` | `test(A.W2.e): update e2e selectors + DESIGN.md for buttons.css abrogation` | W2.e |
+| `54fe271` | `docs(A.W2.f): discharge glass-ui font-asset URL carry` | W2.f |
+| `574cd71` | `docs(A.W2.g): land backend Docker validation report` | W2.g |
+| `5fdf6ff` | `fix(A.W2.h): mongo init env vars + dev-compose env-driven credentials — backend validation RATIFY` | W2.h (in-band) |
+
+Cross-repo carry: glass-ui commit `e123dc1` (`fix(build): self-contain font assets in dist/ — contract-v2 hygiene`) discharges the font-asset URL carry; the substrate change is invisible to the fourier consumer beyond the cleared 403.
+
+**State of `web/src/styles/`**: empty — the directory itself was removed by W2.e per the `rmdir` succession. The W2 scope's three target files (`fourier-overrides.css`, `ios-fixes.css`, `buttons.css`) all deleted.
+
+**State of `web/src/style.css`**: 8 lines reduced to the three baseline imports (`tailwindcss`, `tw-animate-css`, `@mkbabb/glass-ui/styles`) plus the W2.b folded global rules (`html` shell, `::selection`, KaTeX font-face + sizing, tab-slide-in animation) and the W2.c ios-fixes responsive-root-font fold. Zero consumer-side `@import`s of project-local override files.
+
+**Build state at HEAD `5fdf6ff`**: `vue-tsc -b --force` exit 0; `npm run build` exit 0 in 8.28 s (the larger 8s figure traces to the inline-base64 font payload from W2.f, a one-time PostCSS pass). `uv run pytest` 89 passed (W0.c brittleness window holds restored). Browser smoke verifies `/`, `/paper`, `/visualize`, `/gallery`, `/equations`, `/morph` all render with zero console errors and zero 403s on glass-ui assets.
+
+**Backend Docker substrate**: the docker-compose.yml dev stack now actually-runs from a fresh `volumes:` for the first time in the W1.b cohort's history. The W4 prod-side completion (literal-password removal from `docker-compose.prod.yml:8,:47` + env-only reference) carries forward to W4.c per the original plan.
+
+**Hard-gate item-by-item (per `W2.md §"Hard gate (completion criterion, item-by-item)"`):**
+
+1. `fourier-overrides.css`, `ios-fixes.css`, `buttons.css` do not exist — confirmed (`web/src/styles/` directory is empty, then `rmdir`'d). `git grep "fourier-overrides|ios-fixes|buttons\.css"` returns only provenance comments and ledger references.
+2. Per-rule disposition fully discharged — the W2 disposition ledger at `audit/W2-disposition-ledger.md` carries every rule across §W2.a (35 rows), §W2.b (9 rows), §W2.c (14 rows), §W2.d (1 row), §W2.e (12 rows), §W2.f (4 rows), §W2.g (11 rows).
+3. No consumer CSS re-declares a glass-ui token — confirmed by `git grep` post-W2.a.
+4. Before / after screenshots saved — 10 PNGs under `audit/W2-screenshots/` (5 pre-contract-v2 + 5 post-contract-v2 + buttons-abrogation set + the with-backend gallery shot); visual parity confirmed per W2-visual-regression.md §5.
+5. D4-residual fold — Card migration filed as constellation carry; CVA decision retire-with-rationale (zero in-tree `class-variance-authority` imports).
+6. `npm run build` + `vue-tsc -b --force` green.
+
+The status-board flips W2 from `planned` to **closed** at `5fdf6ff`.
+
+**Next action**: dispatch **W3 — Interactive-primitive adoption**. The wave's scope **is reduced** by W2.e's absorption of the `.btn-*` / `.basis-pill` recipe migration; W3 retains: (a) the 89 native interactive `<button>` migration to `<Button>` + `buttonVariants`, (b) the canonical interactive vocabulary adoption (`.interactive-item` / `.focus-ring` / `.active-scale` / `.disabled-base` + the ~20 hand-rolled `cubic-bezier` strings), (c) the AB+1 primitive cohort (`AnimatedDigit` + `Metric*` + `StatusDot` + `Skeleton`) at the 69-82 fira-code-readout sites, (d) the @keyframes de-duplication (16 total, 6 verified shadows per W0-challenge), (e) the D5 SliderControl variant prop residual, (f) the C4-residual `useTouchGate` + `useResizeObserver` composables. Four parallel agents per `W3.md`.
