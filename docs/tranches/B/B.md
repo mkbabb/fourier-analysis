@@ -1,0 +1,144 @@
+# Tranche B — CRUD convergence: one identity model across fourier-analysis and value.js
+
+**Tranche letter**: B (the fourier-analysis sequence's second tranche; the successor to fourier-A — the tranche-A grounding pass that audited the 109-file working tree and reified the seven-wave structural sweep).
+
+**Predecessor close**: fourier-A — `docs/tranches/A/FINAL.md` (TBD). Tranche B opens only after A closes.
+
+**Cross-repo cohort (as authored)**: fourier-analysis ⇄ `@mkbabb/value.js`. Binding document: `coordination/CRUD-CONSTELLATION.md`. The value.js peer side is **tranche C** of its sequence (`~/Programming/value.js/docs/tranches/C/`) — value.js's own tranche B was already in flight at 2026-05-18 as "Close A, simplify, complete the AND" with a non-CRUD thesis, so the cohort pairs fourier-**B** ⇄ value.js-**C**.
+
+**Cross-repo cohort (orphan-verdict, as of 2026-05-26)**: the assay corpus at `docs/audits/runs/2026-05-19-refinement-assay/` (R1 cross-repo state-of-the-world, R4 value.js-C refinement) records that value.js never opened C — the repo raced through D → E → F → G → H under different theses, incidentally landing 6 of the 13 contract surfaces (the `formatPalette ??` excision at D.W2 Lane D, the `cron.ts` `$nin` retirement at E.W2 Lane A, the `palette-api` god-module split, the service-and-repository layering, `withTransaction` coverage, the `as any` / `@ts-ignore` corpus reduction to zero) but never opening C, never ratifying CRUD-CONTRACT, never building the library `Palette` type, never extracting the slug word-list, never authoring the `api/src/crud/` utility module. value.js-C is therefore **partially-discharged and structurally orphaned**. fourier-B re-scopes: W2 (the cross-repo tracking row for value.js-C.W1) ceases to be load-bearing; B.W4's named fallback becomes the primary path; CRUD-CONTRACT becomes a fourier-only coherence specification whose value.js-side conformance rows are held DEFERRED pending value.js's re-engagement.
+
+**Mode**: **research-first**. This document is the *opening* plan — it schedules a research wave and a mandatory challenge wave, then re-synthesises the implementation plan once the design space is bounded. The implementation wave table in §3 is provisional; it is hardened at the challenge close (`audit/challenge.md`) just as value.js's own tranche A was augmented 6 → 8 waves by its hardening pass.
+
+**Open**: TBD (after fourier-A close).
+
+## §1 — Thesis
+
+fourier-analysis and `@mkbabb/value.js` are structural twins. Each is a Vue demo over a MongoDB-backed API; each has a slug system, sessions, admin moderation, and a cleanup cron; each has its own tranche sequence. And each has, independently and without coordination, built the **same CRUD facility in a different language** — fourier in Python/FastAPI, value.js in Node/Express (`palette-api`, `api/src/routes/{palettes,colors,sessions,admin}.ts`, `slugWords.ts`, `migrate-slugs.ts`, `hash.ts`, `cron.ts`). The two facilities solve one problem twice.
+
+fourier's own side of that problem is, additionally, incoherent. The audit at `docs/audits/runs/2026-05-18-fourier-tranche/e-crud-slug-valuejs.md` found **five divergent identity schemes** — human slugs, content hashes, uuid4 tokens, ObjectIds, `imageSlug`-keyed IndexedDB entries — for what the user experiences as one thing: a saved visualization. That visualization has no stable human-readable handle of its own; the gallery borrows a 64-character content hash for navigation. Snapshots have no Update, Delete, list, or owner, and the cron never prunes them, so they grow without bound. Colour and palette logic is hand-rolled in `web/src/lib/colors.ts` where value.js — the colour library fourier already depends on — ships the model.
+
+The user's brief is precise and load-bearing: converge "upon a shared optimum for CRUD of visualizations herein, and CRUD of palettes/colors thereof — these services should scale with no contrivance, no overengineering, no superfluous-cloud systems. KISS."
+
+That brief contains a trap. The naive reading — "build a shared CRUD framework both apps import" — is overengineering, and it is forbidden by the very sentence that asks for convergence. A Python backend and a Node backend cannot share runtime code without contrivance (a third service, a codegen step, a transpile boundary). **B is research-first because the shape of the right answer is genuinely open**: it may be a shared *contract* (a written spec both backends conform to, plus language-agnostic shared *data* — the slug word-lists) and nothing more. The research wave determines how far convergence is warranted; the challenge wave adversarially tests that the answer is not a framework in disguise.
+
+What B converges, once research bounds it:
+
+1. **fourier's identity model** — five schemes collapse to one `visualization` entity: one human-readable slug, a required `owner`, a `visibility` field (`draft | unlisted | public`), and soft-delete. Snapshots and gallery entries cease to be separate nouns. Content hashes survive only as a deduplication key. This is net *less* code and supplies the missing Update / Delete / List.
+2. **The colour/palette domain model** moves to where it belongs — value.js, the library. fourier's `colors.ts` and value.js's demo both *consume* it; neither re-implements it. A palette in fourier is a serialised value.js domain object stored KISS as a field on the visualization, not a new collection.
+3. **The two CRUD facilities** align to one written contract — slug algorithm, soft-delete semantics, ownership, session model, admin moderation shape, cron/TTL cleanup — so that a future reader of either repo finds the same conventions. Shared *code* is extracted only for the language-agnostic parts (the slug word-lists) and only if research confirms KISS warrants it.
+
+B is the architectural transposition tranche A deliberately declined to attempt. It composes because it has one root: two repos, and one repo internally, grew the same facility without a plan to hold it. B is that plan.
+
+**Orphan-verdict effect on the thesis.** Convergence (3) above was conceived as a *cohort* coherence outcome — the contract holds for both repos when both ratify. With value.js-C orphaned, the contract still holds in fourier (fourier's CRUD facility ratifies internally), the substrate-with-consumer discipline still binds the fourier side (the `api/lib/crud/` utility module lands alongside its router consumers in W3 / W4), and the value.js half becomes a *latent cohort affordance*: a future value.js re-engagement (under a new letter, or under the shelved value.js-C re-opened) has a ratified contract to consume rather than re-research. Outcome (1) is fourier-internal and proceeds unchanged. Outcome (2) — the colour/palette domain lift — is the load-bearing cross-repo dependency: it now defaults to the W4 fallback path (the `colors.ts` gut becomes a named B-residual with destination `fourier-tranche-C-or-successor`, never silent).
+
+## §2 — Invariants
+
+B inherits all 13 of fourier-A's invariants (`docs/tranches/A/A.md §2`) unchanged, and adds four CRUD-specific invariants:
+
+14. **One converged entity per user-named noun, with a typed owner** — the noun a user saves and navigates to (fourier: `visualization`; value.js: `palette`) is one collection, one slug, one lifecycle, with a **required non-null owner** (rejecting the `user_slug: None` orphan path currently produced by `api/routers/gallery.py:206`). Visibility is the **3-state enumeration `draft | unlisted | public`** (ratified — the audit E proposal used a `private | public` two-state form; B normalises to the 3-state form). No parallel noun for the "published" vs "draft" state of the same thing.
+
+15. **Domain model in the library, persistence in the app** — value.js owns the colour and palette *domain type* and its pure operations (construct, validate, interpolate, serialise). Storage, ownership, and slug-addressing stay in the consuming app. No persistence, no database, no HTTP enters value.js the library. **Testable gate**: `grep -rE "mongodb|express|hono|fetch\(" ~/Programming/value.js/src/` returns zero — the close ceremony enforces it. (Orphan-verdict note: with value.js-C orphaned, this invariant binds fourier's *non-consumption* of persistence-in-the-library; the value.js side is governed by value.js's own tranche invariants under D / E / F / G / H, which independently maintain the discipline.)
+
+16. **Shared by contract; per-language utility modules admitted; frameworks rejected** — convergence across a Python and a Node backend is a *written contract* (`coordination/CRUD-CONTRACT.md`), shared *language-agnostic data* (the slug word-list at `docs/precepts/data/slug-words.json`), and *per-language utility modules* (`api/lib/crud/` for fourier, `api/src/crud/` for value.js) that realise the contract's cross-cutting concerns — slug generation, cursor encoding, problem+json error envelope, ETag, Idempotency-Key, soft-delete helpers, the pinned-cron pattern. Utility modules are framework-free (no control inversion, no codegen, no lifecycle ownership), size-capped (≤ 525 LOC for the Python module per the R3 refinement assay §3.1; ≤ 600 LOC for the TypeScript module per §3.2), and in-repo first (standalone-package extraction defers until a third consumer materialises). A shared CRUD *framework* (a `BaseCRUDRouter`, a `CRUDMixin`, lifecycle inversion), a codegen step across languages, or a third coordinating service is overengineering and is rejected by invariant. See `coordination/CRUD-CONTRACT.md §9` for the per-target disposition table; revised per `docs/audits/runs/2026-05-19-utility-extraction/DECISION.md`.
+
+17. **Migration is verified, not hoped** — a data migration ships with a backfill that is verified by count and spot-check, and is either reversible or accompanied by a completeness proof. No lossy cutover; no "the old docs are probably fine".
+
+## §3 — Wave schedule (provisional — hardened at challenge close; orphan-verdict overlay applied 2026-05-26)
+
+A *wave* is a sub-unit of the tranche: a bounded set of independent tasks that close on a shared hard gate (the discipline lives at `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Wave"`). Each wave below carries a number and a noun-phrase title; bare positional references (`W<N>` alone) are not used in the row enumeration.
+
+| Wave | Title | Agents | Closes on | Status |
+|---|---|---|---|---|
+| W0 — open · research dispatch | dispatch readiness | 1 | research lanes dispatched; predecessor fourier-A confirmed closed; value.js tranche-A close state recorded | planned |
+| Wα — research wave (six read-only lanes) | open design-space bounding | 6 parallel | six deliverables landed under `research/`; each lane's headline finding recorded | planned |
+| Wχ — challenge wave (three adversarial probes) | plan-shape adversarial test | 3 parallel | `audit/challenge.md` ships **three probes** (per the H4 hardening pass §6): **P1 framework-in-disguise** — classify every contract section as spec / data / code; reject invariant 16 if more than 20 % need code; **P2 migration-preserves-data** — re-derive counts; spot-check 10 random `snapshot_hash` rows; resolve every `user_slug: None` orphan and every orphan-snapshot case; **P3 cross-repo-timing-and-image-blob-deferral honest** — estimate value.js-B close window; verify the W4 fallback exists; resolve whether deferring the `storage_budget_gb` inline-blob band-aid to fourier-tranche-C leaves invariant 12 in violation. (Orphan-verdict overlay: P3's "cross-repo timing real" sub-probe resolves automatically — the cohort peer is structurally orphaned, the fallback path is now primary.) | planned |
+| W1 — CRUD-contract ratification | shared written contract | 2 | `coordination/CRUD-CONTRACT.md` ratified (fourier-only ratification under the orphan verdict; value.js sign-off held DEFERRED); shared slug word-list extracted if Wχ.P1 warrants; no shared framework introduced | provisional |
+| W2 — value.js palette facility tracking row (cross-repo) | cross-repo dependency legibility | — | tracks `value.js-C.W1 published` (the library `Palette` + `colorScale` + `sampleToSVGPath`) and `value.js-C.W2 complete` (`palette-api` aligned). **Not load-bearing under the orphan verdict** — the row exists only to make the latent cross-repo dependency legible; the row's close-state is "tracked-as-orphaned, awaits future value.js re-engagement". | provisional · orphaned |
+| W3 — fourier `visualization` entity + migration + `api/lib/crud/` utility module landing | converged entity + helper substrate | 3 parallel | one `visualization` collection with one slug; full CRUD + soft-delete; existing snapshot / gallery data backfilled and verified per invariant 17; **the `api/lib/crud/` utility module lands alongside per `coordination/CRUD-LIB-PY.md` (the U3 spec) — the `visualizations` router USES its named helpers (`slug_with_retry`, `cursors.paginate`, `errors.problem`, `etag.require_if_match`, `idempotency.idempotent`, `softdelete.soft_delete` / `restore`, `pinned_cron.cron_prune`); shared slug-words data per `coordination/SLUG-WORDS.md` (the U2 spec)** | provisional |
+| W4 — fourier convergence wiring (orphan-verdict fallback primary) | consumer re-pointing + helper adoption | 4 parallel | gallery / workspace / animation stores + `draftStorage.ts` re-pointed; admin data layer re-pointed onto fourier-A.W5's lifted components; slug-routed URLs landed; **migrated callers (admin, gallery store, draftStorage) consume the `api/lib/crud/` helpers landed in W3**; **the `colors.ts` gut onto value.js is held under the named fallback** (B.md §7 + H4 §4.W4) — value.js's library `Palette` / `colorScale` / `sampleToSVGPath` were never published, so the residual `colors.ts` carve becomes a named B-residual with destination `fourier-tranche-C-or-successor` | provisional |
+| W5 — close | tranche close ceremony | 1 | `PROGRESS.md` reconciled; `FINAL.md` authored; both coordination docs updated; brittleness window restored; orphan-verdict bookkeeping (DEFERRED rows on the value.js half of the conformance matrix; named-successor entries for the W4 residual) discharged | provisional |
+
+The lifecycle is research → challenge → plan → implementation (`docs/precepts/instructions/tranche/README.md`). W0–Wχ are firm; W1–W5 are the *indicative* implementation plan and re-synthesise into hardened wave specs (`waves/W*.md`) at the Wχ close. No implementation wave dispatches before the challenge closes.
+
+## §4 — Phases
+
+**Phase 0 — research and challenge (W0–Wχ).** The design space is open by §1's argument; B cannot honestly write its implementation waves until it knows how far convergence is warranted. Six research lanes (scoped in `research/README.md`) and a mandatory adversarial challenge produce the hardened plan.
+
+**Phase I — the contract (W1).** The shared CRUD contract is ratified before either repo touches code, so both lanes implement against one ratified target rather than negotiating mid-flight. Under the orphan verdict, ratification is fourier-only at W1 close; the value.js-side sign-off row is DEFERRED until value.js re-engages.
+
+**Phase II — substrate (W2–W3).** value.js ships the palette domain facility in its library (cross-repo lane, executed in value.js's own tranche). fourier builds the `visualization` entity and migrates its data. These were independent at file bounds and were to run concurrently subject to constellation timing (§6). Under the orphan verdict, W2 holds its tracking-row shape and W3 proceeds on fourier-internal scope.
+
+**Phase III — convergence (W4).** fourier's consumers — stores, `draftStorage.ts`, `colors.ts`, the admin surface lifted in A.W5 — re-point at the converged entity and the value.js facility. Substrate lands with its consumer (invariant 4): W4 is where the entity and the helper module acquire their fourier-side callers. The `colors.ts` gut becomes the named-successor residual under the orphan verdict.
+
+**Phase IV — close (W5).**
+
+## §5 — Critical files and ownership
+
+The research wave refines this; the known scope at open:
+
+| Surface | Files | Owning wave |
+|---|---|---|
+| Shared contract | `coordination/CRUD-CONTRACT.md`; `coordination/SLUG-WORDS.md` (the U2 spec — shared slug word-list data, consumed by `api/lib/crud/` and `api/src/crud/`) | W1 — CRUD-contract ratification |
+| value.js library (orphaned cross-repo) | `value.js/src/**` colour / palette domain — *value.js-repo lane* | W2 — value.js palette facility tracking row |
+| value.js API (orphaned cross-repo) | `value.js/api/src/routes/{palettes,colors}.ts`; `slugWords.ts`; `api/src/crud/` utility module per `coordination/CRUD-LIB-TS.md` (the U4 spec) — *value.js-repo lane* | W2 — value.js palette facility tracking row |
+| fourier entity | `api/routers/visualizations.py` (create); `snapshots.py` + `gallery.py` (carve-merge); `api/models/{gallery,session,shared}.py`; `api/services/{database,image_storage}.py`; `api/slugs.py`; `api/dependencies.py` | W3 — fourier visualization entity + migration |
+| **fourier utility module (per-language, ≤ 525 LOC per R3 §3.1 refinement)** | **`api/lib/crud/{__init__,slugs,cursors,errors,etag,idempotency,softdelete,pinned_cron}.py` per `coordination/CRUD-LIB-PY.md` (the U3 spec) — substrate consumed by `visualizations.py` and the W4-migrated callers** | **W3 — fourier visualization entity + migration** |
+| fourier migration | migration script under `api/scripts/` (create) | W3 — fourier visualization entity + migration |
+| fourier consumers | `web/src/lib/{colors,api,draftStorage,easings}.ts`; `web/src/stores/{gallery,workspace,animation}.ts`; the fourier-A.W5 admin components | W4 — fourier convergence wiring |
+
+fourier-side and value.js-side bounds are disjoint by repo. Within fourier, W3 owns the model and W4 owns the consumers — no overlap.
+
+## §6 — Hard gates (the tranche-level completion criterion)
+
+The tranche's **goal criterion** is the §1 thesis: a converged identity model lands inside fourier, the colour / palette domain model relocates to value.js, and a written CRUD contract holds for both backends to a degree warranted by KISS (no shared framework, no codegen, no third coordinating service). Under the orphan verdict, the "for both backends" clause downgrades to "for fourier ratified; for value.js latent — held DEFERRED pending re-engagement".
+
+The tranche's **completion criterion** — the evidence each landed gate produces at close:
+
+- `coordination/CRUD-CONTRACT.md` is ratified and the fourier-side citations resolve. (Orphan-verdict overlay: value.js-side citations in the contract are re-audited against the post-D / E / F / G / H file layout before B.W3 dispatches so grep-gates do not false-pass on phantom lines, per the R3 refinement assay §9.)
+- fourier carries one `visualization` collection; `git grep` finds no surviving `snapshot` / `gallery` *identity* scheme; full CRUD + soft-delete is proven by endpoint tests.
+- Migration: a backfill verification artefact — document counts before and after, spot-check diff — proves no loss (invariant 17).
+- `web/src/lib/colors.ts` diff shows the LOC drop under the primary path; **under the orphan-verdict fallback**, `colors.ts` is byte-identical to the W3 close state and `PROGRESS.md` records the named-successor residual.
+- The `colorScale` / `sampleToSVGPath` library additions live in the consumed value.js version under the primary path; **under the orphan-verdict fallback**, the additions are held latent.
+- No shared CRUD framework, no codegen step, no third coordinating service introduced (invariant 16); the challenge close certifies this.
+- `uv run pytest` green; `vue-tsc -b --force` green; the value.js peer-tranche row holds at "orphaned, DEFERRED" under the orphan verdict.
+
+## §7 — Cross-tranche debt and explicit deferrals
+
+**Inherited from fourier-A:**
+
+- The CRUD / identity / value.js convergence carry, handed over at A.W6 close. Tranche B is its destination.
+- The fourier-A.W4 close left `image_storage.py` with a corrected contour hash and a consolidated `gallery.py`; B.W3's restructure builds on that clean base.
+
+**Cross-repo dependency (as authored):**
+
+- value.js was mid value.js-A (the demo un-break tranche; planning-only at 2026-05-18) and value.js-B (the close-A-and-simplify tranche; planning-only at 2026-05-18). B.W2's *tracking row* and B.W4's `colors.ts` gut could not complete until value.js-B closed *and* value.js opened its CRUD peer tranche **C**. The close lineage A → B → C is canonical for value.js. B.W0 records value.js's close state; B.W3 (the fourier entity) and B.W1 (the contract) do not depend on the value.js side and proceed first. See `coordination/CRUD-CONSTELLATION.md §timing`.
+- **W4 fallback contract** (the H4 hardening): if `value.js-C.W1` is not published at B.W4 dispatch, B.W4 lands everything *except* the `colors.ts` gut-onto-value.js. The fallback is named explicitly so that B.W4 cannot block on a sibling tranche; the residual `colors.ts` gut becomes a named B-residual landing in B.W5 or a successor wave with a destination, never silent.
+
+**Cross-repo dependency (orphan-verdict, 2026-05-26):**
+
+- value.js did not open its tranche C. The repo raced through D → E → F → G → H under different theses (the R1 assay records the trail: `formatPalette ??` excision at D.W2 Lane D, `cron.ts` `$nin` retirement at E.W2 Lane A, `palette-api` god-module split, repository layer introduction, `withTransaction` coverage, `as any` corpus driven to zero). The cohort plan's structural deliverables — the CRUD contract ratification, the library `Palette` type, the `colorScale` + `sampleToSVGPath` lifts, the slug word-list extraction, the `api/src/crud/` utility module, the palette-schema migration to required-non-null-owner + 3-state visibility — never landed. value.js-C is **partially-discharged and structurally orphaned**: six of thirteen contract surfaces incidentally arrived under value.js's own theses; seven remain unbuilt. The named-successor mapping on the fourier side accordingly shifts: B.W4's `colors.ts` gut and the `easings.ts` sampler retirement default to the named B-residual with destination `fourier-tranche-C-or-successor`; the value.js-side conformance-matrix rows hold DEFERRED (a status alongside TBD / WIP / PASS / WAIVED) pending re-engagement.
+
+**Deferred to fourier tranche C:**
+
+- Image-blob storage redesign — the Wα research lane R4 decides whether it lands inside B's scope or defers; the default is C (it is storage-architecture, adjacent to but not identical with identity convergence). The `R-lifecycle-spec.md §6` analysis ratifies the default-deferral.
+- The `colors.ts` gut + `easings.ts` sampler retirement under the orphan verdict (renamed from "B.W4 primary path" to "B-residual; destination fourier-tranche-C-or-successor").
+- Infra: webhook CI/CD, MongoDB TLS, port standardisation (`memory/project_infra_plan.md`).
+
+## §8 — Brittleness window (provisional)
+
+A *brittleness window* (per `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Brittleness window"`) is a bounded span — declared in the wave spec before dispatch — inside which the tree is intentionally broken. The close ceremony cannot run while a brittleness window is open; every window restores in the wave that declared it.
+
+The W3 data migration may require a brittleness window — a span during which the old `snapshots` / `gallery` collections and the new `visualizations` collection coexist, or during which reads are briefly dual-pathed. Whether a clean cutover is possible instead is a research question (the Wα lane R5). Declared provisionally:
+
+```yaml
+breaking_changes_during_wave: maybe (W3 — fourier visualization entity + migration)
+suspended_gates:
+  - gallery list/read endpoints during the migration cutover
+restoration_wave: W3 (the same wave — the migration completes within it)
+reason: a converged entity cannot be reached through the old identity scheme;
+        a dual-read compatibility layer would be the very legacy code the
+        invariants forbid.
+```
+
+The challenge wave (Wχ) confirms or removes this window. The close ceremony cannot run while it is open.

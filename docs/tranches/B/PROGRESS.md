@@ -1,0 +1,102 @@
+# Tranche B — progress log
+
+Updated at every wave boundary. Reconciled against reality at the W5 — close ceremony.
+
+A *wave* (per `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Wave"`) is a sub-unit of the tranche bounded by a shared hard gate; each row of the status board below carries a name as well as a position. Bare positional references (`W<N>` alone) are insufficient for any wave that has a name.
+
+## Status board
+
+| Wave | Title | Status | Closed at | Notes |
+|---|---|---|---|---|
+| W0 | open · research dispatch | planned | — | dispatch readiness after fourier-A close |
+| Wα | research wave (six read-only lanes) | planned | — | six parallel lanes scoped in `research/README.md` |
+| Wχ | challenge wave (three adversarial probes) | planned | — | the P1 / P2 / P3 probes adversarially review the Wα findings; the plan hardens at close |
+| W1 | CRUD-contract ratification | provisional | — | shared written contract, fourier-only ratification under the orphan verdict |
+| W2 | value.js palette facility tracking row (cross-repo) | provisional · orphaned | — | latent dependency-legibility row; value.js-C never opened |
+| W3 | fourier `visualization` entity + migration + utility-module landing | provisional | — | converged entity + `api/lib/crud/` helper substrate |
+| W4 | fourier convergence wiring (orphan-verdict fallback primary) | provisional | — | consumer re-pointing; the `colors.ts` gut becomes a named B-residual |
+| W5 | close | provisional | — | tranche close ceremony |
+
+## Log
+
+### 2026-05-18 — tranche authored (opening plan)
+
+- Extracted from fourier tranche A at A's authoring on 2026-05-18, after the six-agent parallel audit (`docs/audits/runs/2026-05-18-fourier-tranche/`) and the user's follow-up directive to plan CRUD for both apps and split it into its own tranche.
+- `B.md`, `research/README.md`, and `coordination/CRUD-CONSTELLATION.md` authored.
+- Tranche B is research-first: the implementation waves W1 — CRUD-contract ratification through W5 — close are *provisional*. They harden into `waves/W*.md` specs at the Wχ — challenge wave's close, exactly as value.js's own tranche A was hardened 6 → 8 waves by its hardening pass.
+- B does not open until fourier-A closes (the A.W6 close-ceremony wave).
+- B's W2 — value.js palette facility tracking row lane (cross-repo substrate) does not unblock until value.js-B closes *and* value.js opens its CRUD peer tranche **C**. B.W1 + B.W3 proceed independently.
+
+### 2026-05-18 — value.js peer corrected to tranche C
+
+- Discovered that value.js already had its own tranche B in flight ("Close A, simplify, complete the AND") with a non-CRUD thesis. The cohort CRUD peer is therefore **value.js-C** (close lineage A → B → C). value.js-C authored same day at `~/Programming/value.js/docs/tranches/C/` (the C.md plan, PROGRESS.md log, the `coordination/CRUD-CONSTELLATION.md` mirror, and the `research/README.md` cross-reference).
+- Corrected the references in `B.md` and `coordination/CRUD-CONSTELLATION.md`.
+- The cross-repo dependency is now: **fourier-B.W4 → value.js-C.W1 published**.
+- Next action: none until the A.W6 close. At that point, dispatch the W0 — open · research dispatch and the Wα — research wave.
+
+### 2026-05-18 — six-agent hardening pass (the H4 / H6 round)
+
+A second six-agent parallel pass refined B. The artefacts live at `docs/audits/runs/2026-05-18-tranche-harden/{h4,h6}.md` — H4 owned the B-specific hardening; H6 owned cross-cutting compliance.
+
+- **Invariant 14 sharpened**: required non-null owner plus the 3-state visibility enumeration `draft | unlisted | public` (rejecting the `gallery.py:206` `user_slug: None` orphan path).
+- **Invariant 15 testable gate added**: `grep -rE "mongodb|express|hono|fetch\(" ~/Programming/value.js/src/` returns zero — the close ceremony enforces.
+- **B.W2 — value.js palette facility row reclassified** as a cross-repo *tracking row*, not an executable wave; the work lands in value.js-C.
+- **W4 fallback contract named**: if `value.js-C.W1` is not published at B.W4 dispatch, B.W4 lands everything *except* the `colors.ts` gut; the residual becomes a named B-residual, never silent.
+- **Wχ probe spec added** — three probes: P1 framework-in-disguise; P2 migration-preserves-data; P3 cross-repo-timing-real and image-blob-deferral honesty.
+- **CRUD-CONTRACT outline added to `coordination/CRUD-CONSTELLATION.md`** — 13 sections; the §10 conformance-test matrix is the load-bearing gate.
+- **R3 deliverable shape mandated**: a 1-row-per-target disposition table with the 3-test "shared data" admit-rule (size ≤ 10 KB, drift-correctness, language-agnostic).
+- Citation fixes: `value.js-B → value.js-C` at the coordination doc; the timing-diagram arrow `C.W3 → C.W1` (now showing the W1-published consumption explicitly).
+
+### 2026-05-19 — six-agent CRUD-deepen round (SOTA spec authoring)
+
+Six parallel agents (A1–A6) authored the cohort's spec corpus directly into the tranche folders. Across CRUD-CONTRACT, schemas, research, and wave specs the round landed 4,200+ lines.
+
+**Authored:**
+
+- `coordination/CRUD-CONTRACT.md` (973L, 13 sections §0–§12, 59 `file:line` citations). The state-of-the-art conventions adopted: problem+json (RFC 9457), cursor pagination (base64url, RFC 4648), ETag + `If-Match` (RFC 9110), `Idempotency-Key`, `Link` header (RFC 8288), `RateLimit-*` headers (RFC 9239 draft). KISS rejected: HATEOAS, the JSON:API envelope, codegen / shared-types package, GraphQL, webhooks, and a third coordinating service.
+- `coordination/SCHEMA.md` (754L). OpenAPI 3.1 + JSON Schema 2020-12 for `Visualization` and `Palette` plus 6 shared types. The slug pattern aligns to the contract: `^[a-z]+(-[a-z]+){3}$`. Added the 428 `precondition-required` error.
+- `coordination/CONFORMANCE-MATRIX.md` (303L; **118 rows / 59 unique assertions × 2 repos** at this round's snapshot — the matrix later grew to 176 / 88 in the U6 utility-extraction round per the R3 refinement assay §2.1). §10 of CRUD-CONTRACT broke out for size; one row per `Assertion | Section | Repo | Test name | Run command | Expected output`. The fourier-B.W1 close-rule: every row must read `PASS` in both columns.
+- `research/R-identity-spec.md` (665L). The five-identity-scheme verdict was re-confirmed. The converged model: slug `^[a-z]+(-[a-z]+){3}$` (server-generated, immutable, public) + Mongo `_id` (never public) + content-hash SHA-256 (dedup-only). The slug word-list was **admitted as shared-data** (`@mkbabb/slug-words` npm + PyPI). BLAKE3 was rejected by KISS. The birthday-safe keyspace runs 2.36 × 10⁸ through 10⁵ entities. ULID / UUIDv7 / snowflake were rejected — ObjectId already suffices.
+- `research/R-auth-spec.md` (473L). Opaque UUIDv4 session tokens (JWT / PASETO rejected). The anonymous-orphan path was **rejected** (the frontend `ensureUser()` pattern mediates; a one-time `anon-migrated-NNN` backfill handles legacy `user_slug: None` rows). An 8-row authorisation policy table with a five-actor model (`public / session / owner / admin`). The batch return shape **converges on `{ok, affected, errors}`** — fourier's verb wins; `errors[]` is always present; partial success returns 207. The rate-limit posture inherits fourier-A.W4 Option A with SHA-256-hashed IP keys.
+- `research/R-lifecycle-spec.md` (544L). The 3-state visibility ratified. Soft-delete uses a **`deleted_at` field** (not a tombstone collection); the grace is 30 days. The cron stays in-process at a 6 h cadence with a **per-document `pinned: bool` flag** that replaces both repos' unbounded `$nin`. Migration: idempotent backfill + verification + (reversible OR completeness-proof). The **image-blob redesign deferred to fourier tranche C** — B's thesis is identity convergence, not storage. The candidate-set ordering: filesystem + nginx > GridFS > MinIO > managed S3.
+- `waves/W1.md` (71L), `waves/W3.md` (94L), `waves/W4.md` (97L) — the fourier-B implementation waves hardened to WAVE_SPEC compliance with concrete hard gates: test names + run commands + `git grep` deletion proofs + `npm` publish/view + a Playwright spec + viewports. The W4 fallback contract was made explicit.
+
+**Bonus findings:**
+
+- A value.js impersonation endpoint missing `expiresAt` — an un-expiring-session correctness bug (filed to value.js; not in B scope).
+- fourier's `SLUG_PATTERN` at `api/dependencies.py:27` is misnamed (it validates only image slugs and uses a lax pattern); CRUD-CONTRACT §2 unifies under the 4-word pattern.
+- value.js's `cron.ts:24` `$nin` retires under the per-document `pinned` invert; this formally entered value.js-C.W2's hard gate.
+
+**Status board updated:** the wave specs B.W1 / W3 / W4 now exist as files (not only inline in B.md). The implementation waves remain *provisional* pending the joint Wχ — challenge wave, per B.md §3.
+
+### 2026-05-19 — U1–U6 utility-extraction refinement round (tranche refinement)
+
+A six-agent parallel round — U1 architectural decision, U2 slug-words spec, U3 `api/lib/crud/` Python utility spec, U4 `api/src/crud/` TypeScript utility spec, U5 tranche-spec refinement (this entry), U6 conformance-matrix extension. Substrate from `docs/audits/runs/2026-05-19-utility-extraction/`.
+
+**U1 revision of invariant 16**: per-language utility modules admitted at ≤ 500 LOC per repo; "shared by contract, per-language utility modules admitted, frameworks rejected". `B.md §2` invariant 16 updated; `coordination/CRUD-CONTRACT.md §9` gained new disposition rows from U6.
+
+**U5 surgical edits (this commit):**
+
+- `B.md §3` wave table: the W3 row absorbs `api/lib/crud/` utility-module landing per the U3 spec (`coordination/CRUD-LIB-PY.md`); the W4 row notes the migrated callers (admin, gallery store, draftStorage) consume the utility helpers landed in W3 alongside the `colors.ts` gut.
+- `B.md §5` critical files: a new "fourier utility module" row owned by W3 (8 files at `api/lib/crud/`); the shared-contract row now cites `coordination/SLUG-WORDS.md` (the U2 spec) explicitly as the shared-data location.
+- `waves/W3.md`: scope items 11–12 added (utility-module landing + 7 named pytest specs); file bounds add 8 utility-module files + 7 test files; agent units A and B re-scoped (A consumes helpers, B lands the module); hard gates 10–12 added (LOC bound, consumption proof, slug-words data resolution).
+- `waves/W4.md`: scope item 12 added (migrated callers consume the W3 helpers — no new helpers authored); hard gate 9 added (helper adoption in admin and the migrated routers).
+
+**No sub-wave split, no new brittleness window**: the utility modules land alongside the entity per U1's bounded invariant 16. The wave shape (W3 — entity + utility; W4 — consumer wiring) is preserved.
+
+**Cross-references**: see `~/Programming/value.js/docs/tranches/C/PROGRESS.md` for the symmetric value.js-C.W2 / value.js-C.W3 refinement.
+
+### 2026-05-19 — refinement-assay round (R1–R4 + R6; orphan verdict recorded 2026-05-26)
+
+A read-only refinement-assay round under `docs/audits/runs/2026-05-19-refinement-assay/`:
+
+- **R1 — cross-repo state-of-the-world assay** (`r1-assay.md`). Reconstructed what actually happened in fourier and value.js since the 2026-05-18 cohort plan was authored. Findings: fourier carries 109 uncommitted paths matching A.md §1 + A.W1 deletion-ledger exactly; zero waves executed on A or B. value.js raced through D → E → F → G → H under different theses; value.js-C **never opened**.
+- **R3 — fourier-B refinement assay** (`r3-fourier-B-refinement.md`). Recorded 20 binding refinements over the post-U6 corpus: the ETag shape collision across four documents (binding strong sha256 full 64-char hex), the value.js utility path inconsistency (`api/src/crud/` canonical), the `slug.py/slug.ts` → `slugs.py/slugs.ts` plural correction, the `hard_delete_past_grace` wave-gate over-citation (drop from gates), the missing §S preamble in CRUD-CONTRACT, the `§U.9 — C9.4 admit-criteria` row group addition, the LOC ceilings (Python 525, TypeScript 600 per per-language overhead rationale), the migration-script `--dry-run` + seed=42 spot-check + rollback-substrate documentation additions, and §17 of the action list — the cohort-orphan contingency.
+- **R4 — value.js-C refinement assay** (`r4-valuejs-C-refinement.md`). Confirmed value.js-C is **partially-discharged and structurally orphaned**: six of thirteen contract surfaces incidentally landed under value.js's D / E / F / G / H theses (the `formatPalette ??` excision at D.W2 Lane D, the `cron.ts` `$nin` retirement at E.W2 Lane A, the `palette-api` god-module split, the service/repository layering, `withTransaction` coverage, the `as any` corpus to zero); seven structural surfaces remain unbuilt (CRUD-CONTRACT ratification, the library `Palette` type at `src/palette/`, the `colorScale` + `sampleToSVGPath` library lifts, the slug word-list extraction, the `api/src/crud/` utility module, the palette-schema migration to required-non-null-owner + 3-state visibility, the `coordination/CRUD-CONSTELLATION.md` mirror).
+
+**Orphan-verdict effect on fourier-B (recorded 2026-05-26):**
+
+- **W2 — value.js palette facility tracking row** ceases to be load-bearing. The row holds at "tracked-as-orphaned, awaits future value.js re-engagement".
+- **W4 — fourier convergence wiring** — the named fallback (H4 §4.W4) becomes the primary path: B.W4 lands everything except the `colors.ts` gut; the residual carries the named-successor destination `fourier-tranche-C-or-successor`; the `easings.ts` sampler retirement defers alongside.
+- **CRUD-CONTRACT.md** becomes a fourier-only coherence specification. The fourier-side conformance-matrix rows ratify at W1 close; the value.js-side conformance-matrix rows hold **DEFERRED** (a fifth status alongside TBD / WIP / PASS / WAIVED) pending re-engagement. Stale value.js-side file:line citations re-audit against the post-D / E / F / G / H file layout (per the R3 assay §9) before B.W3 dispatches so the contract's grep-gates do not false-pass on phantom lines.
+- Past gates that passed stay passed: the U1–U6 round's contract authoring, the H4 / H6 hardening, the SOTA-conventions ratification, the conformance-matrix landing — none retract.

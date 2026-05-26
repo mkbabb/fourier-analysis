@@ -1,0 +1,222 @@
+# CANONICAL-ORDERING — cross-tranche, cross-repo execution order across fourier-analysis and @mkbabb/value.js
+
+**Scope**: every tranche currently legible in `fourier-analysis` (the demo + paper + companion site) and `@mkbabb/value.js` (the colour-authority library + palette-api + demo), their hard/soft dependencies, the critical path through them, and the next action.
+**Authored**: 2026-05-26 by R5 (refinement-assay cohort).
+**Reconciles with**: R1's cohort-orphan assay (the verdict on whether value.js-C — the cohort-peer tranche to fourier-B — is effectively orphaned) and R6's fourier-C scoping (the open-design scoping for fourier-analysis's infra + image-blob-out-of-Mongo tranche); parallel-dispatched. Both R1 and R6 outputs were not yet present at `docs/audits/runs/2026-05-19-refinement-assay/` at this document's authoring. This document is **provisional pending R1's cohort verdict**; both orderings (cohort-live, cohort-orphan) are given in §5.
+**Authority**: this is the only execution-order document spanning both repos. Per-tranche `*.md` and `coordination/CRUD-CONSTELLATION.md` (the cohort coordination doc bound to fourier-B's CRUD-and-identity-convergence question) remain the authority for individual dependency claims.
+
+---
+
+## §0 — Goal criterion and completion criterion (paired) for the ordering document itself
+
+Per the project's tranche-and-wave discipline (→ `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Goal criterion + completion criterion (paired)"`), every unit of decomposition carries both an aim and an evidence-bearing close-condition. CANONICAL-ORDERING is itself such a unit — an execution-order substrate document.
+
+**Goal criterion.** Give a fresh reader the cross-repo execution map: which tranche depends on which, the critical path through them, where parallelism is possible, and the single most-blocking next move. The aim is an unambiguous ordering — every open tranche has a clear "what opens next" answer that resolves to a specific authoritative document.
+
+**Completion criterion.** All four of (a) the §1 inventory cites a status authority per row; (b) the §2 dependency graph is sourced (timing edges to `CRUD-CONSTELLATION.md`; within-repo edges to the per-tranche plan); (c) §3 enumerates the critical path's node count and bottleneck explicitly; (d) §7 names the next action with citation. The document is provisional-but-complete as long as the R1 / R6 assays are noted as pending in §5 with both contingent orderings stated.
+
+---
+
+## §1 — Tranche inventory
+
+The inventory below names each tranche by what it IS (its one-line title / thesis), not just its enumerated letter. A tranche, per `glossary/meta-terms.md §"Tranche"`, is the unit of project decomposition that closes a binding question — each carries an uppercase letter and lives at `docs/tranches/{LETTER}/`.
+
+| Repo | Tranche | Status | Title / thesis (one line) | Authority |
+|---|---|---|---|---|
+| fourier-analysis | **A — Cohort attribution, style abrogation, admin parity** | **planning** (open 2026-05-18; W0 not yet dispatched) | fourier-analysis's first own-letter tranche — absorbs the glass-ui migration cohort, retires the override stylesheets, lifts admin to parity with the user surface | `docs/tranches/A/A.md` |
+| fourier-analysis | **B — CRUD convergence ⇄ value.js (research-first)** | **planning** (provisional; pending Wχ + value.js-C side) | the cross-repo CRUD/identity convergence tranche — pairs with value.js-C, opens after A closes | `docs/tranches/B/B.md` |
+| fourier-analysis | **C — Infra + image-blob-out-of-Mongo** | **not authored** (R6 scoping in flight) | per `A.md §8` deferral and `B.md §7` deferral — absorbs the image-blob storage redesign and the infrastructure residuals A and B park forward | `A.md §8`, `B.md §7` |
+| value.js | **A — Consumer un-break + design-resilience audit** | **closed** 2026-05-19 (closed inside B.W0) | value.js's first own-letter tranche — un-break the consumer, audit the library against the design-resilience criterion | `docs/tranches/A/FINAL.md` |
+| value.js | **B — Close A, simplify, complete the AND** | **closed** 2026-05-19 (`6d1cb40` … merged) | the close-A-and-simplify tranche; not a CRUD tranche — its thesis is orthogonal to the cohort | `docs/tranches/B/FINAL.md` |
+| value.js | **C — Palette CRUD facility (peer to fourier-B)** | **planning, possibly orphan** (R1 verdict pending) | the cohort peer to fourier-B authored 2026-05-18; never opened across the entire D→E→F→G→H execution window | `docs/tranches/C/C.md` |
+| value.js | **D — Contract-v2, backend refactor, library hardening** | **closed** 2026-05-20 — `v0.6.0` | the v0.6.0 release tranche — service+repository pattern, ApiError hierarchy, contract-v2 adoption | `docs/tranches/D/FINAL.md` |
+| value.js | **E — Architectural transpositions, api/ pipeline parity** | **closed** 2026-05-20 — `v0.7.0` | the architectural-transposition tranche; legacy-clean, WhitePointColor lift, DIRECT_PATHS, nameParser, type-tidy | `docs/tranches/E/FINAL.md` |
+| value.js | **F — "No deferrals" + post-W12 substrate hygiene** | **closed** 2026-05-21 — `v0.8.0` | the zero-deferral tranche — clears the carry-forward backlog, hardens substrate hygiene | `docs/tranches/F/FINAL.md` |
+| value.js | **G — Type-system completion + decomposition + invariant codification** | **closed** 2026-05-22 — `v0.9.0` | the type-system-completion tranche — color/utils.ts decomposition into 9 conversion modules, invariant codification | `docs/tranches/G/FINAL.md` |
+| value.js | **H — Cascade-correctness + type-system II + demo decomposition** | **planning, ratified; awaits user "Begin"** | the cascade-correctness tranche; polish-grade, rejects new architectural axes | `docs/tranches/H/H.md`, `H/PROGRESS.md §H.W0 close` |
+
+**Cohort-peer note**: value.js-C (the **Palette CRUD facility** tranche) is the *peer* to fourier-B (the **CRUD convergence** tranche) per the metadata blocks in `B.md §metadata` and `C.md §metadata`. The pairing skipped value.js-B because value.js-B was already in flight with a non-CRUD thesis (the close-A-and-simplify tranche). The pairing therefore is **fourier-B ⇄ value.js-C**, not B⇄B.
+
+**Orphan risk**: value.js subsequently authored, executed, and closed D, E, F, G — all *after* C was authored 2026-05-18 — without C ever opening. By value.js's own close lineage (`C.md §metadata`: "close lineage A → B → C is canonical"), C should have opened before D. R1's assay determines whether C is therefore effectively orphaned. See §5.
+
+---
+
+## §2 — Dependency graph
+
+The graph reads top-to-bottom in time order. Arrows are HARD (downstream cannot open without upstream) unless annotated. The cross-repo edge is the single hard cross-repo dependency named in `CRUD-CONSTELLATION.md §timing`.
+
+```
+                     value.js                                  fourier-analysis
+                     ────────                                  ────────────────
+
+   A (closed)                                                  A (planning)
+     │                                                            │
+     │ (close lands in B.W0)                                      │
+     ▼                                                            ▼
+   B (closed) ─────────────┐                                   A.W0 (challenge + brittleness)
+     │                     │ canonical-lineage gap:               │
+     │                     │ C should have opened here            ▼
+     ▼                     │                                   A.W1 … A.W5
+   D (closed v0.6.0)       │                                      │
+     │                     │                                      ▼
+     ▼                     │                                   A.W6 close ──────────┐
+   E (closed v0.7.0)       │                                                        │
+     │                     │                                                        │
+     ▼                     │                                                        ▼
+   F (closed v0.8.0)       │                                                     fourier-B.W0
+     │                     │                                                        │
+     ▼                     │                                                        ▼
+   G (closed v0.9.0)       │                                                     fourier-B.Wα (research, 6 lanes)
+     │                     │                                                        │
+     ▼                     │                                                        ▼
+   H (planning;            │                                                     fourier-B.Wχ (challenge, 3 probes)
+   "Begin" pending) ──────╮│                                                        │
+                          ││                                                        ▼
+                          ▼▼                                                     fourier-B.W1 (CRUD-CONTRACT.md
+                       value.js-C.W0 ◄──── HARD: requires both ──────────────────  ratified, value.js sign-off)
+                       (open gate)         (a) value.js-B closed ✓                  │
+                          │                (b) fourier-B.W1 ratified                │ parallel:
+                          ▼                                                         ▼
+                       value.js-C.W1 (library Palette) ◄── soft: cite contract ──── fourier-B.W3 (visualization
+                          │                                                          entity + api/lib/crud/)
+                          │ publish npm version bump                                 │
+                          ▼                                                          ▼
+                       value.js-C.W2 (palette-api + ─── parallel ──┐               fourier-B.W4 ◄── HARD: requires
+                       api/src/crud/)                              │                value.js-C.W1 published
+                          ▼                                        ▼                  │ (W4 fallback: defer the
+                       value.js-C.W3 (demo wiring) ─── parallel ──┘                   colors.ts gut if missing —
+                          │                                                           per B.md §7, "W4 fallback")
+                          ▼                                                          ▼
+                       value.js-C.W4 close ◄────── cite cohort discharged ────── fourier-B.W5 close
+                                                                                    │
+                                                                                    ▼
+                                                                                 fourier-C (infra +
+                                                                                 image-blob redesign) —
+                                                                                 R6 scoping in flight
+```
+
+Source: `coordination/CRUD-CONSTELLATION.md §timing` for the cross-repo edges; `fourier-A.md §3 +§8` and `fourier-B.md §3 + §7` for the within-repo edges; `value.js-C.md §metadata + §3` for the C open-gate.
+
+The fourier-A waves named on the critical path read (per `A.md §3` wave table):
+
+- **fourier-A.W0 — Open · challenge · hygiene · numerical-test repair** (3 serial agents);
+- **fourier-A.W1 — Attribute & land the glass-ui migration cohort** (3 parallel);
+- **fourier-A.W2 — Override-stylesheet abrogation** (4 parallel);
+- **fourier-A.W3 — Interactive-primitive adoption** (4 parallel);
+- **fourier-A.W4 — Scaling, KISS & correctness pass** (3 parallel);
+- **fourier-A.W5 — Admin parity & functionality close** (4 parallel);
+- **fourier-A.W6 — Close** (1 serial).
+
+The fourier-B waves named on the critical path read (per `B.md §3`):
+
+- **fourier-B.W0 — Open · research dispatch**;
+- **fourier-B.Wα — Research wave (6 read-only lanes)** — the joint research wave that runs as a six-lane pre-execution audit (→ `glossary/meta-terms.md §"Pre-execution audit"`);
+- **fourier-B.Wχ — Challenge wave (3 probes)** — the adversarial probe wave whose challenge tests the cohort answer for framework-disguise risk, migration data preservation, and cross-repo timing honesty;
+- **fourier-B.W1 — Shared CRUD contract**;
+- **fourier-B.W3 — fourier `visualization` entity + migration + `api/lib/crud/` utility module landing**;
+- **fourier-B.W4 — fourier convergence wiring** (the wave whose `colors.ts` gut hard-depends on value.js-C.W1's published `Palette`);
+- **fourier-B.W5 — Close**.
+
+---
+
+## §3 — Critical path
+
+The longest sequential chain through *open* work, end-to-end:
+
+```
+fourier-A.W0  →  A.W1  →  A.W2  →  A.W3  →  A.W5  →  A.W6 close
+              →  fourier-B.W0  →  Wα  →  Wχ  →  B.W1 (contract ratified)
+              →  value.js-C.W0 (open gate)  →  C.W1 (library Palette published)
+              →  fourier-B.W4 (consumes published Palette)  →  B.W5 close
+              →  (fourier-C open, if scoped by then)
+```
+
+**12 sequential nodes from A.W0 → B.W5 close** (fourier-A: 6 of 7 waves on the critical path; fourier-B: 5 of 7 wave-slots; value.js-C: 2 nodes). value.js-H (the cascade-correctness tranche), value.js-C.W2 (the palette-api alignment wave), value.js-C.W3 (the demo-wiring wave), fourier-A.W4 (the scaling-and-correctness pass), and fourier-B.W3 (the visualization-entity wave) are *not* on the critical path — they are parallel branches.
+
+**The bottleneck node**: `value.js-C.W1 — Library Palette` (library `Palette` published with npm version bump). This is the single hard cross-repo dependency (per `CRUD-CONSTELLATION.md §timing`, last line). `fourier-B.W4 — fourier convergence wiring` cannot complete its `colors.ts` gut without it; a fallback exists (`fourier-B.md §7`: "B.W4 lands everything *except* the `colors.ts` gut-onto-value.js"), but the fallback then defers the gut to a successor wave.
+
+**Why fourier-A blocks everything in fourier-land**: per `fourier-B.md §metadata`: "B opens only after A closes." There is no fast path around it.
+
+---
+
+## §4 — Parallelisable points
+
+### Within fourier-A (per `A.md §3` last paragraph)
+
+- **fourier-A.W4 — Scaling, KISS & correctness pass** is independent of A.W2/A.W3 and may overlap if agent budget allows.
+- **A.W1 (the cohort-attribution wave), A.W2 (the override-stylesheet abrogation), A.W3 (the interactive-primitive adoption)** are sequential — W2 must precede W3 because the button system consolidates first and W5 reuses W3's primitive vocabulary.
+- Peak parallelism within a wave: 4 agents (W2, W3, W5 — per `A.md §3` agents column).
+
+### Within fourier-B (per `B.md §3`)
+
+- **fourier-B.W3 — visualization entity + migration** and **fourier-B.W1 — Shared CRUD contract** do not hard-depend on value.js and proceed concurrently as soon as fourier-B's challenge closes (`CRUD-CONSTELLATION.md §timing`: "fourier-side waves that do *not* hard-block on value.js … proceed as soon as fourier-B's challenge closes").
+- **fourier-B.W3 and value.js-C.W1 — library Palette** are independent at file bounds and run concurrently (per `CRUD-CONSTELLATION.md §timing` diagram, "parallel" annotation).
+
+### Within value.js-C (per `C.md §3` last paragraph)
+
+- **value.js-C.W2 — palette-api + `api/src/crud/`** and **value.js-C.W3 — demo wiring** are independent at file bounds and may run concurrently.
+
+### Cross-repo, simultaneously dispatchable today
+
+- **value.js-H (cascade-correctness)** and **fourier-A (cohort-attribution + style abrogation + admin parity)** are entirely independent. value.js-H awaits user "Begin" authorization (per `value.js/H/PROGRESS.md §91`); fourier-A awaits W0 dispatch. **Both can run in parallel** with no shared write-bounds.
+
+### Agent-budget-wise
+
+Hard ceiling 10 agents/wave per `A.md §3`; fourier-A peaks at 4, fourier-B at 4, value.js-C at 3. Two repos × ~4 agents = ~8 concurrent agents at peak when fourier-A is mid-execution and value.js-H runs in parallel.
+
+---
+
+## §5 — Cohort reconciliation contingency
+
+R1's refinement assay is scheduled to determine whether **value.js-C (the Palette CRUD facility tranche)** is effectively orphaned (authored 2026-05-18, never opened, while value.js shipped D / E / F / G across 4 days). Two orderings follow.
+
+### Ordering α — cohort live (R1 verdict: value.js-C still real)
+
+Critical path is §3 above unchanged. `fourier-B.W4 — fourier convergence wiring` consumes `value.js-C.W1 — library Palette`'s published `Palette`. value.js-C opens after value.js-H closes (or runs parallel; H's `coordination/Q.md` confirms zero cross-repo writes — per `H.md §F3 inheritance`, "H default: ZERO cross-repo writes"). The full lineage A → B → C → D → E → F → G → H is honored *retroactively* by opening C between H close and any future I.
+
+### Ordering β — cohort orphan (R1 verdict: value.js-C dead)
+
+If C is judged orphaned (i.e. the user has implicitly chosen *not* to converge palette CRUD with fourier, and the value.js side has accreted post-D facility shape that contradicts the C plan), then:
+
+1. **`fourier-B` thesis narrows**: the §1 thesis line 2 ("the colour/palette domain model moves to where it belongs — value.js, the library") is **scoped out**. fourier-B (the CRUD convergence tranche) becomes a pure *internal* CRUD convergence — the `visualization` entity, the migration, the admin re-point — without the cross-repo `colors.ts` gut.
+2. **`fourier-B.W2 — value.js palette facility (cross-repo tracking row)`** is deleted; it was already a tracking-row not an executable wave (the work would have landed in value.js-C).
+3. **`fourier-B.W4 — fourier convergence wiring` collapses** to the admin/store re-point only; the `colors.ts` gut is reclassified as `fourier-tranche-C` scope or as carry to a future tranche.
+4. **Critical path shortens by 2 nodes**: value.js-C.W0 + C.W1 drop out. New critical path is 10 sequential nodes (fourier-A 6 + fourier-B 4 [W0, Wα, Wχ, W1+W3+W4 collapsed]).
+5. **The contract** (`CRUD-CONTRACT.md` per `CRUD-CONSTELLATION.md §111`) is still ratified at fourier-B.W1 *as a one-sided design document* — fourier honors it; value.js's sign-off becomes optional; `coordination/CRUD-CONSTELLATION.md` is rewritten to record the orphan disposition.
+6. **fourier-tranche-C** (the infra + image-blob redesign tranche per R6's scoping) absorbs any colour-domain-relocation residual.
+
+R5's recommendation for β: rewrite `fourier-B.md §1 thesis bullets 1-3` to drop bullets 2 and 3 entirely, keeping only bullet 1 (the identity-model collapse). The CRUD contract becomes a fourier-internal coherence document, not a cross-repo treaty.
+
+---
+
+## §6 — Per-tranche dispatch precondition
+
+Each row names the open-gate (the evidence-bearing condition the orchestrator checks before dispatching the tranche's first wave) in one sentence.
+
+| Tranche | One-sentence open-gate |
+|---|---|
+| **fourier-A — Cohort attribution, style abrogation, admin parity** | None blocking — user authorization to begin W0; the brittleness window in `A.md §9` (the bounded span inside which the tree is intentionally broken; → `glossary/meta-terms.md §"Brittleness window"`) is declared at open, not a blocker. |
+| **fourier-B — CRUD convergence ⇄ value.js** | A.W6 close ceremony complete with `FINAL.md` cited (`B.md §metadata`: "B opens only after A closes"). |
+| **fourier-C — Infra + image-blob redesign** (per R6 scoping) | B.W5 close + R6 scoping document landed; absorbs the image-blob deferral (`B.md §7`) and infra residuals (`A.md §8`). |
+| **value.js-A** | (closed) — n/a. |
+| **value.js-B** | (closed) — n/a; closed A inside B.W0. |
+| **value.js-C — Palette CRUD facility** (under ordering α — cohort live) | (a) value.js-B closed ✓ already; AND (b) `fourier-B.W1 — Shared CRUD contract` ratifies `CRUD-CONTRACT.md` with value.js sign-off (per `value.js/C/C.md §metadata`, H5-corrected open-gate). |
+| **value.js-C — Palette CRUD facility** (under ordering β — orphan) | Permanently deferred — close-out PROGRESS entry under "orphan disposition" citing R1. |
+| **value.js-D..G** | (closed) — n/a. |
+| **value.js-H — Cascade-correctness + type-system II + demo decomposition** | User issues "Begin and continue the current tranche…" execution authorization (per `value.js/H/PROGRESS.md §91`, "**H.W1 awaits explicit user execution authorization**"). |
+
+---
+
+## §7 — The next action
+
+**Dispatch `fourier-A.W0 — Open · challenge · hygiene · numerical-test repair`.** Single most-blocking, lowest-cost first move.
+
+Rationale (citing sources):
+
+- value.js side is either closed (A-G) or awaiting user "Begin" (H); not blocking on R5 or anyone else.
+- fourier-A is currently the *root* of every fourier-side critical-path node (`A.md §metadata`: "fourier-analysis's first own-letter tranche"; `B.md §metadata`: "B opens only after A closes").
+- A.W0 — the open-and-hygiene wave — is small (3 serial agents per `A.md §3`), specified, and its gates are ready: `vue-tsc -b --force` green; the 2 pre-existing `test_bases.py` numerical failures fixed or formally re-scoped per `A.md §9`; submodule wiring committed; `tsbuildinfo` untracked.
+- The orphan-cohort verdict (R1's assay on whether value.js-C is effectively orphaned) does **not** affect A.W0 — A's W0…W6 are entirely intra-repo per `A.md §5`. A can dispatch without waiting on R1 or R6.
+- value.js-H (the cascade-correctness tranche) can begin in parallel as a separate user authorization; the two tranches share no write bounds. If user agent-budget supports it, dispatching both at once is the maximum-parallel move (per `feedback_parallelization.md`).
+
+The next-action-after-next: once A.W0 closes green, **dispatch A.W1 — Attribute & land the glass-ui migration cohort in parallel with the R1/R6 assay reconciliation**. The R1 verdict only matters when fourier-B opens (~A.W6 close), giving the assay full A-execution-window to land.
