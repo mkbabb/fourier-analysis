@@ -11,12 +11,12 @@ A *wave* (per `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Wave"`) is
 | W0 | open · research dispatch | planned | — | dispatch readiness after fourier-A close |
 | Wα | research wave (six read-only lanes) | planned | — | six parallel lanes scoped in `research/README.md` |
 | Wχ | challenge wave (three+1 adversarial probes) | planned | — | P1 / P2 / P3 / **P4 (Wave-1 binding)** probes adversarially review the Wα findings + the new invariants 18-20; the plan hardens at close |
-| W1 | CRUD-contract ratification | provisional | — | shared written contract, fourier-only ratification under the orphan verdict; **scope item 8 added 2026-05-26 — `AnimationData.partial_sums` type tightening** |
-| **W2 (reactivated)** | **UX coherence (dock idiom + a11y + Configurator adoption)** | **provisional** | — | **authored 2026-05-26 — Wave-1 audit synthesis; 5 parallel agents; reactivates the W2 slot whilst preserving the value.js orphan tracking as a sub-section** |
+| W1 | CRUD-contract ratification | provisional | — | shared written contract, fourier-only ratification under the orphan verdict; **scope items 8–12 added 2026-05-26 — `partial_sums` typing + 4 SCHEMA addenda + 5 MATRIX reconciliations + test-surface skeleton authoring + §0 binding-force clause** (Wave-1 + Wave-2) |
+| **W2 (reactivated)** | **UX coherence (dock idiom + a11y + Configurator adoption)** | **provisional** | — | **authored 2026-05-26 — Wave-1 audit synthesis; 5 parallel agents; scope items 16–17 added 2026-05-26 — @axe-core/playwright forward + auto-recompute regression-guard** (Wave-2) |
 | W2-tracking | value.js palette facility (cross-repo, orphaned) | tracking · orphaned | — | latent dependency-legibility sub-section under W2-tracking; value.js-C never opened |
-| W3 | fourier `visualization` entity + migration + utility-module landing | provisional | — | converged entity + `api/lib/crud/` helper substrate; **scope items 14-15 added 2026-05-26 — levels-derivation lift + auto-recompute discipline (Invariant 19)** |
-| W4 | fourier convergence wiring (orphan-verdict fallback primary) | provisional | — | consumer re-pointing; the `colors.ts` gut becomes a named B-residual; **scope item 10 augmented 2026-05-26 — `@axe-core/playwright` integration** |
-| W5 | close | provisional | — | tranche close ceremony |
+| W3 | fourier `visualization` entity + migration + utility-module landing | provisional | — | converged entity + `api/lib/crud/` helper substrate; **scope items 14–24 added — levels-derivation lift + auto-recompute seam (Wave-1) + 9 migration-story gaps W3.16–W3.24 + image-blob Option B reaffirmed** (Wave-2) |
+| W4 | fourier convergence wiring (orphan-verdict fallback primary) | provisional | — | consumer re-pointing; the `colors.ts` gut becomes a named B-residual; **scope items 10–15 augmented — axe-core (Wave-1) + session TTL bump + RateLimit middleware + ETag/If-Match consumer adoption** (Wave-2) |
+| W5 | close | provisional | — | tranche close ceremony; **helper-adoption carry-forward assertion bound 2026-05-26 per W4 hard-gate item 11** (Wave-2) |
 
 ## Log
 
@@ -131,3 +131,43 @@ The B-development round opens. Six concurrent audit lanes (L1 prompt/precept rec
 **B-plan coherence verdict at this writing:** every Wave-1 load-bearing item has a named B-destination; no B wave or invariant duplicates another; the orphan-verdict context is preserved verbatim across CRUD-CONSTELLATION.md and CRUD-CONTRACT.md; the new fourier-specific invariants (18–20) are explicitly scoped as fourier-side coherence and do not perturb the cross-repo CRUD-CONTRACT.
 
 **Next action**: dispatch W0 — open · research dispatch (the research wave Wα + challenge wave Wχ then proceed); the new Invariant 18–20 binding-test probe (Wχ.P4) lands alongside P1 / P2 / P3.
+
+### 2026-05-26 — Wave-2 audit synthesis + B-development close
+
+The B-development authoring round closes. Six concurrent Wave-2 audit lanes (C1 fourier CRUD substrate; C2 value.js CRUD substrate; C3 convergence shape; C4 schema + matrix; C5 migration story; C6 risks + SOTA) landed against HEAD `f8db2c6` (post-Wave-1 synthesis); the synthesis at `docs/audits/runs/2026-05-26-B-audit-wave-2/SYNTHESIS.md` consolidated the six C-lanes into the substrate-of-record at the B-development close boundary and applied the final amendments to B's plan documents.
+
+**Audit substrate at this revision (12 audit artefacts total):**
+
+- 6 Wave-1 lane reports + Wave-1 SYNTHESIS — `docs/audits/runs/2026-05-26-B-audit-wave-1/{L1..L6,SYNTHESIS}.md` (substrate of the 2026-05-26 Wave-1 entry above).
+- 6 Wave-2 lane reports + Wave-2 SYNTHESIS — `docs/audits/runs/2026-05-26-B-audit-wave-2/{C1..C6,SYNTHESIS}.md` (substrate of this entry).
+- 2 syntheses (the consolidated artefacts) — Wave-1 SYNTHESIS and Wave-2 SYNTHESIS.
+
+**B-plan amendments applied at this revision (Wave-2):**
+
+- **Four new invariants** (`B.md §2` invariants 21–24):
+  - **Invariant 21 — Slug-mint cryptographic RNG**: `secrets.choice` / `crypto.randomInt`; retires CPython Mersenne via `coolname`. Discharges C1 §6 #4 HIGH.
+  - **Invariant 22 — RFC 9457 problem+json envelope**: `application/problem+json` on every non-2xx; closed-set `urn:contract:<kebab>` namespace. Discharges C6 §4 ADMIT 1 / §7 #1.
+  - **Invariant 23 — RFC 9110 ETag + If-Match optimistic concurrency**: PATCH/DELETE require `If-Match`; 428 / 412 problem+json envelopes. Discharges C6 §4 ADMIT 2 / §7 #2.
+  - **Invariant 24 — RFC 9239 RateLimit header transparency**: every response carries `RateLimit-*`; 429 carries `Retry-After`. Discharges C6 §4 ADMIT 3 / §7 #3.
+- **Five existing-wave amendments**:
+  - W1.md scope items 9–12 — 4 SCHEMA addenda (RFC 4648 citation; `AnimationData` body; `Idempotency-Key` parameter; `slug-exhausted` catalog row); 5 MATRIX reconciliations (CS5.2 → 21 URIs; CS5.3 slug-exhausted assertion; CS5.4 `Problem` realisation; F-partial-sums round-trip; §F-count clarification); test-surface skeleton authoring (14 pytest files + 5 grep scripts); §0 binding-force clause appended to CRUD-CONTRACT.md.
+  - W2.md scope items 16–17 — `@axe-core/playwright` folded forward from W4.d into W2's keystone-state spec (binds Invariant 18 measurement at the same wave it lands); auto-recompute regression-guard assertion (binds Invariant 19 cross-wave).
+  - W3.md scope items 16–24 (the C5 9-gap set W3.16–W3.24) — orphan-snapshot detection (chunked `$lookup`); `mint_anon_migrated_slug` minting function; dangling contour-hash post-condition; `migrated_from` idempotency marker; epicycle-animation denormalisation canonicalisation; image-blob FK survival (**Option B reaffirmed — defer entirely, `image_slug` FK stable**); IndexedDB `WorkspaceDraft` lift deferral (cross-reference to W4); migration test specs (`test_migrate_transform.py` + `test_migrate_integration.py`); `--reload` interference docstring.
+  - W4.md scope items 13–15 + hard-gate items 11–14 — session TTL 7 → 30 d bump + live-session `expires_at` extension; RFC 9239 RateLimit-header middleware emission (Invariant 24 binding); RFC 9110 ETag / If-Match consumer adoption (Invariant 23 consumer half); helper-adoption carry-forward assertion to W5 (preserves the C6 §2 W4-MEDIUM-risk binding across two waves).
+  - W5 close — helper-adoption thresholds (≥ 3 `from api.lib.crud` imports in `admin.py`; ≥ 10 helper sites across migrated routers) re-asserted at the W5 close boundary commit.
+- **Five coordination updates**:
+  - `CRUD-CONTRACT.md §0` — binding-force clause appended (mandatory-fourier-side + advisory-both-sides on cohort-reopen); SOTA-conventions cross-reference for Invariants 22–24.
+  - `SCHEMA.md` — RFC 4648 §5 citation in §1 + §9; `AnimationData` schema body under `components.schemas`; `Idempotency-Key` parameter under `components.parameters`; `urn:contract:slug-exhausted` catalog row (table 20 → 21).
+  - `CONFORMANCE-MATRIX.md` — CS5.2 row reconciled to "21 URIs"; new CS5.3 slug-exhausted assertion (×2); new CS5.4 `Problem` realisation meta-row; new F-partial-sums row in §F (§F subtotal 6 → 7); grand total 182 → 187.
+  - `CRUD-LIB-PY.md §1` — `secrets.choice` citation bound to Invariant 21 (the discipline was already named; the binding makes the invariant authoritative).
+  - `SLUG-WORDS.md §1` — empirical-absence note (`docs/precepts/data/slug-words.json` is absent at HEAD; owed at B.W3 close per W3 scope item 12).
+
+**Cross-lane themes ratified at this revision:** (α) orphan-verdict empirically confirmed (C2 + C3 + C6 converge — 6 / 13 incidental landings on the value.js side; cohort dissolved-not-delayed); (β) contract binding-force is fourier-mandatory + advisory-both-sides on cohort-reopen (C3 §6 recommendation 1; CRUD-CONTRACT §0 carries the clause); (γ) migration story is W3-load-bearing (C1 + C5 + C6 converge — 9 scope-item additions W3.16–W3.24 folded); (δ) empirical-binding is FAIL at HEAD (0 / 182 → 0 / 187 rows PASS); B.W1 ratifies on paper-binding, B.W3 / W4 / W5 empirically bind; (ε) SOTA opportunities are standards-compliant projections of existing substrate, NOT framework-in-disguise (8 ADMIT / 6 REJECT / 2 DEFER; every ADMIT is KISS-compatible).
+
+**Empirical-binding gate verdict at this writing:** **PAPER-BINDING PASS** (every matrix row has a non-empty `Run command` cell at the W1 boundary; the test-surface skeleton authoring at W1 close lifts every named test path to *exists* state). **EMPIRICAL-BINDING FAIL** at HEAD `f8db2c6` — 0 / 187 rows PASS, no test file exists at any named path, no `scripts/conformance/`, no `api/lib/crud/`. The gate **fires** at B.W1 (paper-binding ratification) / W3 (entity + utility-module landing — 94 fourier rows transition to PASS) / W4 (consumer adoption — the W3 landings get their consumer surface) / W5 (carry-forward assertion).
+
+**B-plan-coherence verdict at this writing:** **COHERENT.** Every Wave-2 load-bearing item has a named B-destination (B wave / coordination-doc row / new invariant). No B wave duplicates another. The orphan-verdict context is preserved verbatim across `CRUD-CONSTELLATION.md`, `CRUD-CONTRACT.md`, the wave specs, and PROGRESS. The CRUD-CONTRACT remains coherent under the fourier-mandatory + advisory-both-sides binding force. The SOTA ADMITs are KISS-compatible (no framework-in-disguise resurgence); the 8 admitted candidates are standards-compliant projections of existing substrate; the 6 REJECTs (msgpack; Tanstack Query; MongoDB change streams; WebTransport; HTTP/3; Argon2id for env-var ADMIN_TOKEN) stay rejected. The 9 / 9 KISS rejections re-validate HOLD.
+
+**B-development phase closed at this commit.** B's WAVE EXECUTION remains future work — W0 dispatches when the user authorises. The path forward: W0 — open · research dispatch → Wα — research wave (six lanes) → Wχ — challenge wave (P1 / P2 / P3 + P4) → W1 — CRUD-contract ratification → W2 — UX coherence (parallel with W3) → W3 — fourier visualization entity + migration + `api/lib/crud/` landing → W4 — fourier convergence wiring (orphan-verdict fallback primary) → W5 — close.
+
+**Next action**: await user authorisation for W0 dispatch.

@@ -105,6 +105,13 @@ disposition, R3 outcome).
 
 Cryptographic RNG: `secrets.choice` per CRUD-CONTRACT §2 "Generation"
 (supersedes today's `coolname` → `random.choice` at `api/slugs.py:10`).
+**Wave-2 amendment (2026-05-26 per C1 §6 #4 HIGH and B.md §2 Invariant
+21 — Slug-mint cryptographic RNG)**: the substrate at HEAD `f8db2c6`
+empirically uses Mersenne (CPython `random.choice` via `coolname`); the
+W3 landing of this module discharges Invariant 21 by using
+`secrets.choice` throughout. The U-slugs-1 conformance row at
+`CONFORMANCE-MATRIX.md §U.1` ratifies the pattern-conformance; the
+cryptographic-RNG discipline is bound by the invariant.
 
 ### API signatures
 

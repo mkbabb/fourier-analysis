@@ -303,8 +303,11 @@ value.js-C.W2 (value.js).
 |---|---|---|---|---|---|---|
 | CS5.1 | SCHEMA §1, §5 | Every non-2xx response sets `Content-Type: application/problem+json` and conforms to `Problem` schema. | fourier | `test_problem_json_envelope` | `uv run pytest api/tests/conformance/test_problem.py::test_envelope -v` | Sweep over each catalogued error path; assert `response.headers["content-type"].startswith("application/problem+json")` and `Problem.model_validate(body)` succeeds. |
 | CS5.1 | SCHEMA §1, §5 | Same. | value.js | `test/conformance/problem/envelope.test.ts` | `npx vitest run test/conformance/problem/envelope.test.ts` | Same. |
-| CS5.2 | SCHEMA §5 | Each of the 18 catalogued `type` URIs is emitted by at least one code path (registry-style check). | fourier | `test_problem_catalog_coverage` | `uv run pytest api/tests/conformance/test_problem.py::test_catalog_coverage -v` | For each `type` in catalog: a recorded request produces that `type`. `grep -rE 'urn:contract:<type>' api/` is non-zero for each. |
+| CS5.2 | SCHEMA §5 | Each of the **21** catalogued `type` URIs is emitted by at least one code path (registry-style check). Count reconciled 2026-05-26 per Wave-2 audit C4 §6 #2 — drifted from "18" to the 20-row table at SCHEMA §5; further updated to **21** with the Wave-2 `urn:contract:slug-exhausted` row addition per C4 §6 #1 (d). | fourier | `test_problem_catalog_coverage` | `uv run pytest api/tests/conformance/test_problem.py::test_catalog_coverage -v` | For each `type` in catalog: a recorded request produces that `type`. `grep -rE 'urn:contract:<type>' api/` is non-zero for each. The catalog count assertion: `assert len(PROBLEM_CATALOG) == 21`. |
 | CS5.2 | SCHEMA §5 | Same. | value.js | `test/conformance/problem/catalog-coverage.test.ts` | `npx vitest run test/conformance/problem/catalog-coverage.test.ts` | Same. |
+| CS5.3 | SCHEMA §5 | The `urn:contract:slug-exhausted` 503 is emitted by `api/lib/crud/slugs.py::slug_with_retry` after 10 consecutive collisions (Wave-2 catalog row addition; C4 §6 #1 (d)). | fourier | `test_problem_slug_exhausted_503` | `uv run pytest api/tests/conformance/test_problem.py::test_slug_exhausted_503 -v` | Monkeypatch RNG to always emit a pre-seeded slug; POST `/visualizations` → 503 + `{"type": "urn:contract:slug-exhausted", "status": 503}`. |
+| CS5.3 | SCHEMA §5 | Same. | value.js | `test/conformance/problem/slug-exhausted.test.ts` | `npx vitest run test/conformance/problem/slug-exhausted.test.ts` | Same. |
+| CS5.4 | SCHEMA §3 | The `Problem` Python class realisation lives at `api/lib/crud/errors.py` (per `CRUD-LIB-PY.md §3`); the `Problem.model_validate(body)` assertion at CS5.1 resolves at this import path post-W3. Wave-2 amendment per C4 §4 gap (b) — the matrix references the class but the substrate has no `Problem` extant at HEAD; the realisation note pins the destination. | fourier | (covered by CS5.1; meta-row) | (no separate run) | `from api.lib.crud.errors import Problem; assert Problem.__name__ == "Problem"`. |
 
 ### §S6 — URL shape / `Link` header (2 assertions × 2 repos = 4 rows)
 
@@ -494,14 +497,15 @@ The rows below bind the fourier-specific invariants codified at B.md §2 invaria
 | F19.1 | Inv 19 | After `workspace.saveContourPoints` mutates `store.contour`, the auto-compute fires within one rAF frame (no perturbation of a control required). | `e2e/visualization-ux.spec.ts::save_contour_then_recompute` | `npx playwright test e2e/visualization-ux.spec.ts -g 'save_contour'` | Edit a contour point → click Save → canvas re-renders within 100 ms (well above one rAF frame); no manual setting touch required. |
 | F19.2 | Inv 19 | The `levels` derivation lives in `ComputeBasesRequest` Pydantic model (single seam); `web/src/stores/workspace.ts:runComputeBases` consumes the model, not the inline `Array.from({length: min(N,50)}, …)` construction. | `api/tests/test_compute_request.py::test_levels_derivation_in_model` + grep | `uv run pytest api/tests/test_compute_request.py -v` + `git grep -E 'Array\\.from.*length.*min.*50' web/src/stores/workspace.ts` | Pydantic test asserts the model's levels derivation matches `min(n_harmonics, 50)`; grep returns zero. |
 | F20.1 | Inv 20 | `useViewTransform` does not call `Math.min(...xs)` or `Math.max(...xs)` per rAF frame; the bbox is memoized on `epicycleData` / `basesData` identity. | grep assertion `scripts/conformance/grep-no-perframe-spread.sh` + benchmark | `bash scripts/conformance/grep-no-perframe-spread.sh` + `npx playwright test e2e/perf.spec.ts -g 'view_transform_budget'` | grep over `useViewTransform.ts` finds the `Math.min/max` call only inside a `computed` block keyed on path identity; benchmark asserts < 0.5 ms per frame at n=10 000. |
+| F-partial-sums | Inv 19 / SCHEMA §3 AnimationData | `AnimationData.partial_sums` JSON round-trips through `BasisCanvas.vue`'s consumer as `Record<string, {x,y}>` — backend serialises stringified-int keys; frontend looks them up via typed bracket access (no `as any` cast). Added 2026-05-26 per Wave-2 audit C4 §6 #1 (b) / #3. | `e2e/visualization-ux.spec.ts::partial_sums_roundtrip` + `web/tests/basis-canvas.spec.ts::partial_sums_type_check` | `npx playwright test e2e/visualization-ux.spec.ts -g 'partial_sums'` + `cd web && npx vue-tsc -b --force` (the typed lookup eliminates `as any`; `vue-tsc` fails if the cast remains) | The Playwright spec exercises a multi-basis state, captures `epicycleData.bases[k].partial_sums`, asserts the JSON-emitted form has stringified-int keys and the consumer resolves them; `vue-tsc` confirms zero `as any` over `partial_sums` in `BasisCanvas.vue`. |
 
-**§F subtotal:** 6 fourier-only assertions × 1 column = 6 rows.
+**§F subtotal:** 7 fourier-only assertions × 1 column = 7 rows (added F-partial-sums per Wave-2; aggregate grand total now 183).
 
-## Aggregate (post-§F addition)
+## Aggregate (post-§F addition; Wave-2 amendment 2026-05-26)
 
-- §1–§9 + §11 + §S* + §U — 88 cross-repo assertions × 2 = 176 rows (unchanged).
-- §F — 6 fourier-only assertions × 1 = 6 rows.
-- **Grand total**: 182 rows (176 cross-repo + 6 fourier-side coherence).
+- §1–§9 + §11 + §S* + §U — 88 cross-repo assertions × 2 = 176 rows; with the Wave-2 additions (CS5.3 slug-exhausted × 2 + CS5.4 Problem-class realisation × 1 fourier-only meta-row) the cross-repo subtotal grows to **180 rows** (90 cross-repo assertions × 2, minus 1 fourier-only meta).
+- §F — 7 fourier-only assertions × 1 = **7 rows** (added F-partial-sums per Wave-2 C4 §6 #3).
+- **Grand total**: **187 rows** (180 cross-repo + 7 fourier-side coherence). Wave-2 amendment 2026-05-26 added the +5 rows (CS5.3 × 2 + CS5.4 × 1 + F-partial-sums + RFC-4648 admission note bundled into CS6.1).
 
 ## Status legend
 

@@ -267,3 +267,45 @@ invariants are **fourier-side coherence rules**, not cross-repo
 contract clauses — they bind fourier's consumer surface; the
 constellation's cross-repo contract surface is unchanged. The orphan
 verdict's authority over the joint-ratification clauses is preserved.
+
+## Wave-2 audit substrate (2026-05-26)
+
+The B-development authoring round closes with the six-agent Wave-2
+audit corpus at
+`docs/audits/runs/2026-05-26-B-audit-wave-2/{C1..C6,SYNTHESIS}.md`.
+Authored against HEAD `f8db2c6` (post-Wave-1 synthesis), the Wave-2
+substrate empirically scores fourier's CRUD surface (C1 — 4 HIGH
+defects + 10 non-conforming clauses), value.js's substrate at v0.10.0
+(C2 — 6 of 13 incidental landings), the convergence shape under the
+orphan verdict (C3 — 9 both-bound / 2 fourier-only / 2 advisory; the
+contract's binding force is mandatory-fourier-side + advisory-both-sides
+on cohort-reopening), the schema + conformance-matrix corpus
+(C4 — 0 of 182 rows PASS at HEAD; paper-binding PASS / empirical-binding
+FAIL; 12 gaps), the migration story (C5 — 9 entities × 9
+transformations × 10 risks × 9 W3 scope-item gaps W3.16–W3.24;
+image-blob Option B; defer entirely), and the risks-and-SOTA
+opportunities (C6 — 5 + 4 HIGH/MED risks; 8 SOTA ADMITs; top-3 RFC 9457
+problem+json / RFC 9110 ETag/If-Match / RFC 9239 RateLimit headers; 9 /
+9 KISS rejections HOLD).
+
+Four new fourier-side invariants (21 — slug-mint cryptographic RNG;
+22 — RFC 9457 problem+json envelope; 23 — RFC 9110 ETag/If-Match
+optimistic concurrency; 24 — RFC 9239 RateLimit header transparency)
+fold into B.md §2 at this revision. The contract gains a binding-force
+clause at §0 (mandatory-fourier-side; advisory-both-sides on
+cohort-reopening) per C3 §6 recommendation 1; SCHEMA.md gains four
+addenda (RFC 4648 citation; AnimationData schema body; Idempotency-Key
+parameter; slug-exhausted catalog row); CONFORMANCE-MATRIX.md gains
+five row additions (CS5.2 reconciliation to 21; CS5.3 slug-exhausted
+assertion; CS5.4 Problem-class realisation; F-partial-sums round-trip;
+aggregate grand total 182 → 187). Five existing waves receive scope
+augmentations (W1 / W2 / W3 / W4 / W5).
+
+The cohort-orphan absorption is **empirically confirmed** at the
+Wave-2 boundary (C2 + C3 + C6 converge). The orphan verdict's
+authority over the joint-ratification clauses is preserved verbatim;
+no Wave-2 amendment perturbs the cross-repo contract scope; the
+4 new fourier-side invariants are explicitly scoped as fourier-side
+coherence rules under the CRUD-CONTRACT §0 "Out of scope" clause
+extension (binding-force clause). The B-development phase closes at
+this revision; B's wave execution remains future work.

@@ -120,6 +120,54 @@ Out of scope:
   surface is governed by value.js's own tranche invariants. The
   contract scope is unchanged.
 
+### Binding force (added 2026-05-26 — Wave-2 audit synthesis C3 §6 recommendation 1)
+
+This contract's binding force, under the orphan verdict recorded at
+`coordination/CRUD-CONSTELLATION.md`, is:
+
+- **Mandatory fourier-side**. The §1–§9 + §S* sections bind fourier at
+  B.W1 ratification; the fourier-side conformance-matrix rows close at
+  B.W3 / W4 / W5 execution per `CONFORMANCE-MATRIX.md:515`.
+- **Advisory both-sides on cohort-reopening**. The 88 value.js
+  cross-repo conformance-matrix cells hold at `DEFERRED` (the fifth
+  status alongside `TBD`/`WIP`/`PASS`/`WAIVED` introduced by the R3
+  refinement assay §9). The cohort-level "all 176 cells PASS" gate is
+  structurally unmeetable under the orphan verdict; any successor
+  tranche that reopens the cohort consumes this contract as the latent
+  affordance and ratifies via the original §10 close-rule.
+
+The Wave-2 audit synthesis at
+`docs/audits/runs/2026-05-26-B-audit-wave-2/SYNTHESIS.md §2 theme β`
+empirically verifies that C2 (value.js substrate scoring) + C3
+(convergence shape) + C6 (orphan-resurgence preventer audit) converge
+on this binding force. The four new fourier-side invariants 21–24
+(slug-mint cryptographic RNG; RFC 9457 problem+json envelope;
+RFC 9110 ETag/If-Match; RFC 9239 RateLimit headers) added at B.md §2
+under this revision bind **fourier-side** under the same authority:
+they ratify at B.W1 (contract-text) and bind empirically at
+B.W3 / W4 / W5 execution.
+
+### SOTA conventions cross-reference (Invariants 22–24 binding)
+
+The B.md §2 invariants 22 / 23 / 24 added 2026-05-26 bind to the
+SOTA-conventions-adopted block below by §-reference:
+
+- **Invariant 22 — RFC 9457 problem+json envelope** binds to the
+  §3 ("Problem+json error format") SOTA convention above. Catalog at
+  `SCHEMA.md §5`; helper at `CRUD-LIB-PY.md §3` (`errors.py`).
+- **Invariant 23 — RFC 9110 ETag + If-Match** binds to the §2
+  ("ETag + `If-Match` optimistic concurrency") SOTA convention above.
+  Strong validator at `SCHEMA.md §1`; helper at `CRUD-LIB-PY.md §4`
+  (`etag.py`).
+- **Invariant 24 — RFC 9239 RateLimit headers** binds to the §6
+  ("Standard rate-limit headers") SOTA convention above. No new helper
+  module — the headers ride existing `api/services/rate_limiter.py`
+  middleware.
+
+The three invariants ratify at B.W1 (contract-text) and bind
+empirically at B.W3 (helper landing) / B.W4 (consumer adoption /
+middleware emission).
+
 ### KISS guards (rejected by invariant)
 
 The following SOTA candidates were considered and **rejected** as

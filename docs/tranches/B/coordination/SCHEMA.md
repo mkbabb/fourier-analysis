@@ -67,13 +67,15 @@ ErrorEnvelope:
 
 ### Pagination cursor — base64url-encoded opaque JSON
 
-Cursor format: `base64url(JSON.stringify({ id, sort_key, sort_value }))`. Clients **must not** decode. Servers reject cursors that:
+Cursor format: `base64url(JSON.stringify({ id, sort_key, sort_value }))` per **RFC 4648 §5** (base64url alphabet — `[A-Za-z0-9_-]+`, no padding `=`). Clients **must not** decode. Servers reject cursors that:
 - fail base64url decoding,
 - fail JSON parsing,
 - fail the cursor JSON Schema (`#/components/schemas/CursorPayload`),
 - decode to a stale sort_key (i.e. user mid-paginate switched `sort=newest` to `sort=popular`).
 
 Precedent: `~/Programming/value.js/api/src/routes/palettes.ts:30-42` (`encodeCursor` / `decodeCursor`); `api/routers/gallery.py:57-71` (`_encode_cursor` / `_decode_cursor`). Both forms are aligned by this contract.
+
+The RFC 4648 §5 citation is added 2026-05-26 per the Wave-2 audit synthesis C4 §6 #1 (a) (the citation was implicit at the original authoring; this revision pins it explicitly).
 
 ### ETag — strong validators
 
@@ -82,6 +84,30 @@ Precedent: `~/Programming/value.js/api/src/routes/palettes.ts:30-42` (`encodeCur
 ### Idempotency-Key — RFC draft `httpapi-idempotency-key-header`
 
 Write endpoints accept `Idempotency-Key: <uuid-or-token, max 255 chars>`. Server stores `(key, user_or_session, status, body_hash, response_body)` for 24h; a replay returns the original response verbatim. Mismatched body for same key yields 409 with `urn:contract:idempotency-replay-conflict`.
+
+The OpenAPI parameter definition (added 2026-05-26 per the Wave-2 audit synthesis C4 §6 #1 (c) — the header was cited at §1 and §9 but never defined as an OpenAPI `components.parameters` entry):
+
+```yaml
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        RFC draft `httpapi-idempotency-key-header`. Opaque client-chosen
+        token; server stores `(key, user_or_session, status, body_hash,
+        response_body)` for 24h. Replay returns the stored response
+        verbatim; mismatched body for same key yields 409
+        `urn:contract:idempotency-replay-conflict`.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+        pattern: '^[A-Za-z0-9._~-]+$'
+```
+
+The parameter is consumed by every write endpoint on the `visualization` / `palette` entities; the conformance assertions at `CONFORMANCE-MATRIX.md §S3` ratify the shape.
 
 ### Rate limit headers — IETF httpapi-ratelimit-headers (draft)
 
@@ -699,8 +725,11 @@ Every problem `type` URI defined by this contract, with its bound status, title,
 | `urn:contract:admin-forbidden`            | 403    | Admin token invalid            | Bearer token mismatch (timing-safe).                                      |
 | `urn:contract:flag-self`                  | 400    | Cannot flag own resource       | Owner attempted to flag own document.                                     |
 | `urn:contract:flag-duplicate`             | 409    | Already flagged                | Reporter already has an open flag on this resource.                       |
+| `urn:contract:slug-exhausted`             | 503    | Slug-mint retry exhausted      | 10 consecutive collisions on `generate_unique_slug`; service-side hint. Wave-2 addendum per C4 §6 #1 (d). |
 
 Backends **must** emit problem+json for every row above. The conformance matrix (§10 of CRUD-CONTRACT.md) asserts one row per error.
+
+**Catalog table grows from 20 → 21 rows at the 2026-05-26 Wave-2 amendment** (the `urn:contract:slug-exhausted` row referenced by `CONFORMANCE-MATRIX.md` U-slugs-3 was missing from the catalog per C4 §6 #1 (d)). The `CONFORMANCE-MATRIX.md` CS5.2 row updates from "18 URIs" to **21 URIs** at the same revision.
 
 ---
 
@@ -835,8 +864,54 @@ The canonical schema above is language-agnostic. Each repo maps it onto its nati
 | `Problem`            | (new at W3 — replace `HTTPException(detail)`)| (new at value.js-C.W2)                    |
 | `PaginationEnvelope` | `models/gallery.py:GalleryListResponse` (rename) | inline `{ data, nextCursor, hasMore }`|
 | **`AnimationData.partial_sums`** (added 2026-05-26 per Wave-1 audit L3 §3.6 D7) | `models/visualization.py`: `partial_sums: dict[str, dict[Literal["x","y"], float]]` (stringified-int keys — JSON-serialised form) | — (fourier-only; the consumer-side `BasisCanvas.vue:271-274` drops the `(sumsForBasis as any)?.[level]` cast in favour of `Record<string, {x: number; y: number}>`; the W2 — UX coherence wave lands the cast removal) |
+| **`AnimationData`** (added 2026-05-26 per Wave-2 audit C4 §6 #1 (b)) | see schema body below | — (fourier-only) |
 
 A divergence between any row of this table and the canonical schema is a conformance violation, caught by the matrix.
+
+### `AnimationData` schema body (added 2026-05-26 — Wave-2 audit synthesis C4 §6 #1 (b))
+
+The §8 native-types row above cross-references `AnimationData.partial_sums` but the schema body itself was undefined at HEAD per C4 §4 gap (b). The OpenAPI / JSON-Schema 2020-12 body:
+
+```yaml
+components:
+  schemas:
+    AnimationData:
+      type: object
+      description: |
+        Embedded animation state on a visualization. Carries the
+        precomputed partial-sum trajectories the BasisCanvas renderer
+        consumes per rAF frame. The `partial_sums` keys are
+        stringified ints (the JSON serialisation form — JSON keys are
+        always strings, the underlying domain is the basis level
+        ordinal ∈ ℕ).
+      required: [active_bases, n_harmonics, partial_sums]
+      additionalProperties: false
+      properties:
+        active_bases:
+          type: array
+          items: { type: string }
+          description: Basis-set identifiers; subset of the supported bases.
+        n_harmonics:
+          type: integer
+          minimum: 1
+          maximum: 256
+          description: Harmonic-truncation count; bounded by the contract.
+        partial_sums:
+          type: object
+          description: |
+            Stringified-int keys (the JSON serialisation form); values
+            are `{x, y}` floating-point coordinates of the partial-sum
+            trajectory tail at the named basis level.
+          additionalProperties:
+            type: object
+            required: [x, y]
+            additionalProperties: false
+            properties:
+              x: { type: number }
+              y: { type: number }
+```
+
+The `F.partial-sums-roundtrip` conformance row at `CONFORMANCE-MATRIX.md §F` ratifies the JSON round-trip shape; the fourier-side consumer at `BasisCanvas.vue:271-274` drops the `(sumsForBasis as any)?.[level]` cast in favour of typed bracket access (the W2 — UX coherence wave lands the cast removal per scope item 15).
 
 ---
 
@@ -856,7 +931,8 @@ rationale.
 | JSON Schema 2020-12           | https://json-schema.org/draft/2020-12                                     |
 | Problem Details (envelope)    | RFC 9457 — https://www.rfc-editor.org/rfc/rfc9457                         |
 | Web Linking (`Link` header)   | RFC 8288 — https://www.rfc-editor.org/rfc/rfc8288                         |
-| RateLimit headers             | IETF httpapi-ratelimit-headers (draft)                                    |
+| **base64url alphabet (cursors)** | **RFC 4648 §5 — https://www.rfc-editor.org/rfc/rfc4648#section-5** (added 2026-05-26 per Wave-2 audit C4 §6 #1 (a)) |
+| RateLimit headers             | IETF httpapi-ratelimit-headers (draft); RFC 9239-track                    |
 | Cursor pagination shape       | GitHub REST, Stripe API, Slack API (opaque base64url; never decoded by client) |
 | Idempotency-Key header        | IETF httpapi-idempotency-key-header (draft)                               |
 | ETag / If-Match               | RFC 9110 §8.8 / §13.1.1                                                   |

@@ -45,6 +45,8 @@ docs/precepts/data/slug-words.json
 
 Both repos already pin the `precepts` submodule (`docs/precepts/` per `instructions/CONSUMING.md`). No new pin, no new package, no new publish pipeline. The data file ships as a sibling of `instructions/` and `audits/` under the shared substrate root.
 
+> **Wave-2 audit note (2026-05-26 per C3 §1 + C6 §6).** The data file is **empirically absent** at HEAD `f8db2c6` — `ls docs/precepts/data/` returns ENOENT. The location is the ratified canonical destination per C3 §6 recommendation 2 (no alternative considered); the file itself is **owed at B.W3 close** per `waves/W3.md` scope item 12 ("Slug-words data consumption"; binding the `api/lib/crud/slugs.py` module-init loader against the precepts JSON). The empirical-absence is honest deferral — the loader is named, the location is fixed, the data lands when the precepts submodule receives the curated word-lists (or W3 lands them as part of the utility-module landing, whichever sequences first).
+
 ### Format
 
 JSON. UTF-8. Trailing newline. Two-space indent (matches `prettier --tab-width 2` and `black`-compatible JSON tooling). The top level is an object with **exactly five keys**:
