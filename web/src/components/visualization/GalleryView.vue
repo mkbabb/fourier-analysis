@@ -6,10 +6,20 @@ import { useGalleryStore } from "@/stores/gallery";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
+import * as api from "@/lib/api";
 import type { GalleryEntry, WorkspaceDraft } from "@/lib/types";
-import { Layers } from "lucide-vue-next";
+import { Layers, Trash2, Crown, X } from "lucide-vue-next";
 
 import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
+import {
+    Button,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@mkbabb/glass-ui";
 import GallerySearchBar from "./gallery/GallerySearchBar.vue";
 import GalleryFeaturedCarousel from "./gallery/GalleryFeaturedCarousel.vue";
 import GalleryInfiniteGrid from "./gallery/GalleryInfiniteGrid.vue";
@@ -25,7 +35,8 @@ const route = useRoute();
 const router = useRouter();
 const workspace = useWorkspaceStore();
 const gallery = useGalleryStore();
-const { isLoggedIn } = storeToRefs(useAuthStore());
+const auth = useAuthStore();
+const { isLoggedIn } = storeToRefs(auth);
 const { toast } = useToast();
 
 const activeTab = ref<"gallery" | "drafts" | "users" | "flagged" | "audit">("gallery");
@@ -128,6 +139,70 @@ async function handleDelete(hash: string) {
     if (selectedEntry.value?.snapshot_hash === hash) selectedEntry.value = null;
 }
 
+// ── A.W5.c: gallery multi-select + batch ─────────────────────────────────
+// `selectedHashes` carries the snapshot-hashes currently checked in admin
+// mode. The batch toolbar surfaces when the set is non-empty; the action
+// routes through the destructive-confirm dialog before calling
+// `batchGallery` against the CRUD CONTRACT `BatchResponse` shape.
+type GalleryBatchAction = "delete" | "feature" | "unfeature";
+
+const selectedHashes = ref<Set<string>>(new Set());
+const batchDialogOpen = ref(false);
+const pendingBatch = ref<{ action: GalleryBatchAction; hashes: string[] } | null>(null);
+
+function toggleEntrySelected(hash: string, checked: boolean) {
+    const next = new Set(selectedHashes.value);
+    if (checked) next.add(hash);
+    else next.delete(hash);
+    selectedHashes.value = next;
+}
+
+function clearGallerySelection() {
+    selectedHashes.value = new Set();
+}
+
+function askBatchGallery(action: GalleryBatchAction) {
+    if (!selectedHashes.value.size) return;
+    pendingBatch.value = { action, hashes: Array.from(selectedHashes.value) };
+    batchDialogOpen.value = true;
+}
+
+async function performBatchGallery() {
+    const pending = pendingBatch.value;
+    batchDialogOpen.value = false;
+    if (!pending) return;
+    const token = auth.getAdminToken();
+    if (!token) {
+        toast("Admin token missing", "error");
+        return;
+    }
+    try {
+        const result = await api.batchGallery(token, pending.action, pending.hashes);
+        const verb =
+            pending.action === "delete"
+                ? "Deleted"
+                : pending.action === "feature"
+                  ? "Featured"
+                  : "Unfeatured";
+        toast(`${verb} ${result.affected} entr(ies)`, "success");
+        if (result.errors?.length) {
+            for (const err of result.errors) toast(err, "error");
+        }
+        clearGallerySelection();
+        await gallery.resetAndFetch();
+        if (gallery.adminMode) gallery.refreshAdminStats();
+    } catch (e: any) {
+        toast(e.message ?? "Batch action failed", "error");
+    } finally {
+        pendingBatch.value = null;
+    }
+}
+
+// Clear selection when the user leaves admin mode or switches tabs away
+// from the gallery (selections should not persist into another view).
+watch(() => gallery.adminMode, (on) => { if (!on) clearGallerySelection(); });
+watch(activeTab, (tab) => { if (tab !== "gallery") clearGallerySelection(); });
+
 async function handlePublishDraft(draft: WorkspaceDraft) {
     publishing.value = true;
     try {
@@ -198,12 +273,63 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 :has-more="gallery.hasMore"
                 :admin-mode="gallery.adminMode"
                 :liked-hashes="likedHashes"
+                :selected-hashes="selectedHashes"
                 @load-more="gallery.fetchNextPage()"
                 @card-click="openModal"
                 @like="handleLike"
                 @set-tier="handleSetTier"
                 @delete="handleDelete"
+                @toggle-select="toggleEntrySelected"
             />
+
+            <!-- A.W5.c — gallery batch-action toolbar. Surfaces in admin mode
+                 when one or more cards are selected; routes through the
+                 destructive-confirm dialog before calling `batchGallery`. -->
+            <div
+                v-if="gallery.adminMode && selectedHashes.size > 0"
+                role="toolbar"
+                aria-label="Batch gallery actions"
+                class="cartoon-card sticky bottom-2 z-20 mx-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+            >
+                <span class="flex-1 text-xs text-muted-foreground">
+                    {{ selectedHashes.size }} entr(ies) selected
+                </span>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    class="text-xs"
+                    @click="askBatchGallery('feature')"
+                >
+                    <Crown class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                    Feature
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    class="text-xs"
+                    @click="askBatchGallery('unfeature')"
+                >
+                    Unfeature
+                </Button>
+                <Button
+                    variant="destructive"
+                    size="sm"
+                    class="text-xs"
+                    @click="askBatchGallery('delete')"
+                >
+                    <Trash2 class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                    Delete
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    class="h-7 w-7"
+                    aria-label="Clear selection"
+                    @click="clearGallerySelection"
+                >
+                    <X class="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+            </div>
         </template>
 
         <!-- Drafts tab -->
@@ -250,5 +376,47 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
             @open-visualizer="(slug) => { selectedEntry = null; router.push(`/w/${slug}`); }"
             @set-tier="handleSetTier"
         />
+
+        <!-- A.W5.c — gallery batch-confirm dialog. -->
+        <Dialog v-model:open="batchDialogOpen">
+            <DialogContent variant="opaque" class="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>
+                        <template v-if="pendingBatch?.action === 'delete'">
+                            Delete {{ pendingBatch.hashes.length }} entr(ies)?
+                        </template>
+                        <template v-else-if="pendingBatch?.action === 'feature'">
+                            Feature {{ pendingBatch.hashes.length }} entr(ies)?
+                        </template>
+                        <template v-else-if="pendingBatch?.action === 'unfeature'">
+                            Unfeature {{ pendingBatch.hashes.length }} entr(ies)?
+                        </template>
+                    </DialogTitle>
+                    <DialogDescription>
+                        <template v-if="pendingBatch?.action === 'delete'">
+                            This shall permanently delete the selected gallery entries.
+                            The action is irrevocable.
+                        </template>
+                        <template v-else-if="pendingBatch?.action === 'feature'">
+                            The selected entries shall be promoted to the featured tier.
+                        </template>
+                        <template v-else-if="pendingBatch?.action === 'unfeature'">
+                            The selected entries shall be returned to the normal tier.
+                        </template>
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="ghost" @click="batchDialogOpen = false">Cancel</Button>
+                    <Button
+                        :variant="pendingBatch?.action === 'delete' ? 'destructive' : 'default'"
+                        @click="performBatchGallery"
+                    >
+                        <template v-if="pendingBatch?.action === 'delete'">Delete</template>
+                        <template v-else-if="pendingBatch?.action === 'feature'">Feature</template>
+                        <template v-else-if="pendingBatch?.action === 'unfeature'">Unfeature</template>
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>

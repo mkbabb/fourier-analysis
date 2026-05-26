@@ -9,6 +9,7 @@ defineProps<{
     hasMore: boolean;
     adminMode: boolean;
     likedHashes: Set<string>;
+    selectedHashes?: Set<string>;
 }>();
 
 const emit = defineEmits<{
@@ -17,6 +18,7 @@ const emit = defineEmits<{
     like: [hash: string];
     "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
     delete: [hash: string];
+    "toggle-select": [hash: string, checked: boolean];
 }>();
 </script>
 
@@ -31,10 +33,12 @@ const emit = defineEmits<{
                     :entry="entry"
                     :admin-mode="adminMode"
                     :liked-hashes="likedHashes"
+                    :selected="selectedHashes?.has(entry.snapshot_hash) ?? false"
                     @click="emit('card-click', entry)"
                     @like="emit('like', $event)"
                     @set-tier="(hash, tier) => emit('set-tier', hash, tier)"
                     @delete="emit('delete', $event)"
+                    @toggle-select="(hash, checked) => emit('toggle-select', hash, checked)"
                 />
             </div>
             <template #loading>

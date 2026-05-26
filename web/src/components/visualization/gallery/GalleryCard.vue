@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Button, Badge } from "@mkbabb/glass-ui";
+import { Button, Badge, Checkbox } from "@mkbabb/glass-ui";
 import type { GalleryEntry } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
@@ -18,6 +18,7 @@ const props = defineProps<{
     entry: GalleryEntry;
     adminMode?: boolean;
     likedHashes?: Set<string>;
+    selected?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -25,6 +26,7 @@ const emit = defineEmits<{
     like: [hash: string];
     "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
     delete: [hash: string];
+    "toggle-select": [hash: string, checked: boolean];
 }>();
 
 const isLiked = computed(() => props.likedHashes?.has(props.entry.snapshot_hash) ?? false);
@@ -61,9 +63,25 @@ function timeAgo(iso: string): string {
     <div
         class="gallery-card w-full cursor-pointer overflow-hidden rounded-xl bg-card border-2 border-foreground/15"
         :data-tier="entry.tier"
+        :data-selected="selected || undefined"
         @click="emit('click')"
     >
         <div class="relative flex flex-col">
+            <!-- A.W5.c — admin multi-select checkbox. Surfaced in admin mode,
+                 anchored top-left so it does not collide with the top-right
+                 admin overlay. Click is stopped to prevent card-open. -->
+            <div
+                v-if="adminMode"
+                class="absolute top-1.5 left-1.5 z-5 flex items-center justify-center rounded-md bg-background/70 p-1 backdrop-blur-sm"
+                @click.stop
+            >
+                <Checkbox
+                    :model-value="selected ?? false"
+                    :aria-label="`Select entry ${entry.image_slug}`"
+                    class="h-4 w-4"
+                    @update:model-value="(v) => emit('toggle-select', entry.snapshot_hash, v === true)"
+                />
+            </div>
             <!-- Thumbnail -->
             <div class="card-image-frame relative aspect-[4/3] overflow-hidden flex items-center justify-center border-b border-foreground/8">
                 <img
@@ -176,6 +194,14 @@ function timeAgo(iso: string): string {
 
 .gallery-card:active {
     transform: scale(0.99);
+}
+
+/* A.W5.c — selected-for-batch state. The ring projects the focus token over
+   the card surface so the selection registers without competing with tier. */
+.gallery-card[data-selected] {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 35%, transparent),
+        var(--shadow-cartoon);
 }
 
 /* Tier styling */
