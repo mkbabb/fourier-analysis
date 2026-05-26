@@ -384,11 +384,14 @@ onUnmounted(() => {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     white-space: nowrap;
     z-index: var(--z-controls);
-    animation: tooltip-in 0.1s ease;
+    /* A.W3.d — `tooltip-in` is canonical in glass-ui's animations.css; the
+       consumer-side shadow keyframe has been excised. Resolves via global cascade. */
+    animation: tooltip-in 0.1s var(--ease-standard);
 }
 
-@keyframes tooltip-in {
-    from { opacity: 0; transform: scale(0.96); }
-    to   { opacity: 1; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) {
+    .curve-tooltip {
+        animation: none;
+    }
 }
 </style>

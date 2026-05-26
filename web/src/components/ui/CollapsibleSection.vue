@@ -54,18 +54,19 @@ watch(open, (isOpen) => {
 .collapsible-content {
     overflow: hidden;
 }
+/* A.W3.d — `collapsible-open` / `collapsible-close` are canonical glass-ui
+   animations (see `@mkbabb/glass-ui/styles/animations.css`); the consumer-side
+   shadow rules have been excised. Substrate keyframes resolve via global cascade. */
 .collapsible-content[data-state="open"] {
-    animation: collapsible-open 0.2s ease-out;
+    animation: collapsible-open 0.2s var(--ease-out);
 }
 .collapsible-content[data-state="closed"] {
-    animation: collapsible-close 0.2s ease-out;
+    animation: collapsible-close 0.2s var(--ease-out);
 }
-@keyframes collapsible-open {
-    from { height: 0; opacity: 0; }
-    to { height: var(--reka-collapsible-content-height); opacity: 1; }
-}
-@keyframes collapsible-close {
-    from { height: var(--reka-collapsible-content-height); opacity: 1; }
-    to { height: 0; opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+    .collapsible-content[data-state="open"],
+    .collapsible-content[data-state="closed"] {
+        animation: none;
+    }
 }
 </style>

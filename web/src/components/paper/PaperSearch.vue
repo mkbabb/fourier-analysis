@@ -221,11 +221,12 @@ defineExpose({ focus });
 }
 
 /* ── Inline dropdown transition ──────────────────────────── */
+/* A.W3.d — bezier→`--ease-out-expo`. */
 .search-dropdown-enter-active,
 .search-dropdown-leave-active {
     transition:
-        opacity 0.15s ease,
-        transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        opacity 0.15s var(--ease-standard),
+        transform 0.15s var(--ease-out-expo);
 }
 
 .search-dropdown-enter-from,
@@ -359,20 +360,21 @@ defineExpose({ focus });
     transition: opacity 0.2s ease;
 }
 
+/* A.W3.d — bezier→canonical tokens. */
 .search-modal-enter-active .search-modal {
     transition:
-        opacity 0.2s ease,
-        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        opacity 0.2s var(--ease-standard),
+        transform 0.25s var(--ease-out-expo);
 }
 
 .search-modal-leave-active {
-    transition: opacity 0.15s ease;
+    transition: opacity 0.15s var(--ease-standard);
 }
 
 .search-modal-leave-active .search-modal {
     transition:
-        opacity 0.15s ease,
-        transform 0.15s cubic-bezier(0.4, 0, 1, 1);
+        opacity 0.15s var(--ease-standard),
+        transform 0.15s var(--ease-in);
 }
 
 .search-modal-enter-from {
