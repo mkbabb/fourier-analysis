@@ -138,7 +138,7 @@ evidence"` and hard-gate item 4. Full account at
 
 | # | route(s) captured | screenshots | parity verdict | disposition | destination | citing commit |
 | - | - | - | - | - | - | - |
-| d1 | `/paper`, `/visualize`, `/gallery`, `/morph`, `/equation` (5 routes — every surface touched by W2.a/b/c) | `audit/W2-screenshots/{paper,visualization,gallery,morph,equation}-after.png` + `console-errors.log` | DRIFT (all five routes — single root cause) | drift-observed-substrate-blocker-triumvirate-class | `W2-visual-regression.md §3` — the substrate-side `@mkbabb/glass-ui → @mkbabb/value.js: parseCSSStylesheet` import fault predates W2 (reproduces at `4184d7a` via the same `App.vue:3` glass-ui import); not attributable to W2.a/b/c — filed as constellation carry, with hard-gate item 6 (build green) acting as the surrogate completion check for item 4 | _(this commit)_ |
+| d1 | `/paper`, `/visualize`, `/gallery`, `/morph`, `/equation` (5 routes — every surface touched by W2.a/b/c) | `audit/W2-screenshots/{paper,visualization,gallery,morph,equation}-after.png` + `console-errors.log` | DRIFT (all five routes — single root cause) | drift-observed-substrate-blocker-triumvirate-class | `W2-visual-regression.md §3` — the substrate-side `@mkbabb/glass-ui → @mkbabb/value.js: parseCSSStylesheet` import fault predates W2 (reproduces at `4184d7a` via the same `App.vue:3` glass-ui import); not attributable to W2.a/b/c — filed as constellation carry, with hard-gate item 6 (build green) acting as the surrogate completion check for item 4 | `32c23fc` |
 
 **W2.d discharge tally:** 1 row — 5 routes captured under a single
 DRIFT verdict whose triage resolves to a pre-W2 substrate blocker
