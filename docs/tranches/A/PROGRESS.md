@@ -364,3 +364,46 @@ Cross-repo carry: glass-ui commit `e123dc1` (`fix(build): self-contain font asse
 The status-board flips W2 from `planned` to **closed** at `5fdf6ff`.
 
 **Next action**: dispatch **W3 — Interactive-primitive adoption**. The wave's scope **is reduced** by W2.e's absorption of the `.btn-*` / `.basis-pill` recipe migration; W3 retains: (a) the 89 native interactive `<button>` migration to `<Button>` + `buttonVariants`, (b) the canonical interactive vocabulary adoption (`.interactive-item` / `.focus-ring` / `.active-scale` / `.disabled-base` + the ~20 hand-rolled `cubic-bezier` strings), (c) the AB+1 primitive cohort (`AnimatedDigit` + `Metric*` + `StatusDot` + `Skeleton`) at the 69-82 fira-code-readout sites, (d) the @keyframes de-duplication (16 total, 6 verified shadows per W0-challenge), (e) the D5 SliderControl variant prop residual, (f) the C4-residual `useTouchGate` + `useResizeObserver` composables. Four parallel agents per `W3.md`.
+
+### 2026-05-26 — W3.a button migration (equation/morph/paper/layout)
+
+Agent **A.W3.a — Button migration (equation + morph + paper + layout surfaces)** discharged scope items 1 (native button migration) and 2 (canonical interactive vocabulary, follow-on inside touched `<style>` blocks) within its file bounds. Working from W2 close at `cd019b4`, the agent enumerated the native `<button>` cohort in its four subtrees (34 sites total: equation 10, morph 5, paper 18, layout 1), then migrated 32 to `<Button>` + `buttonVariants` from `@mkbabb/glass-ui`. Two sites retire-with-rationale as justified residue (`morph/MorphShapePreview.vue:4` and `layout/DarkModeToggle.vue:2` — both are bespoke decorative-SVG wrappers where the variant's chrome would compete with the cartoon-card / naked-SVG aesthetic the visual register requires).
+
+Variant choices per surface gestalt: `default` for CTAs (Compute, Export, Extract), `outline` for bordered toggles (notation pills, preset pills, grid-cells, Reset), `ghost` for subtle chrome (sidebar links, ToC entries, search rows, header nav-trigger, mode toggle), `link` for the mobile inline-ToC text-link entries, `glass` for icon-overlay buttons (info-anchor, copy, play, auto-harmonics, paper back-overlay). `size="icon"` carries the icon-button gestalt; `size="sm"` carries the small-pill / disclosure gestalt; `size="default"` (omitted) carries the body-text default. The `<DropdownMenuTrigger as-child>` wrapping of `<Button>` (per W3.md §A.W3.a archaeology) appears once, at `layout/AppHeader.vue:101`, wrapping the nav-trigger pill.
+
+The H2-named `<Collapsible.Trigger asChild>` pattern at `MobileFloatingToc.vue` proved to be a misdirected reference — the file uses no `<Collapsible>` primitive; its disclosure triggers are bespoke list items that the agent migrated to plain `<Button variant="ghost">` instead. The agent did not touch any `cubic-bezier` strings or `@keyframes` (W3.d's lane) or any fira-code readout (W3.c's lane).
+
+Verification: `git grep -nE '<button\b' web/src/components/{equation,morph,paper,layout}/` returns the two residue rows and nothing else. `cd web && npx vue-tsc -b --force` exit 0 modulo five pre-existing `MetricBadge` import errors W3.c introduced (out of scope here). `npm run build` exit 0. Browser smoke verifies `/paper`, `/morph` zero console errors; `/equation` shows only the backend-offline 500 expected per the wave brief. Ledger contribution: `audit/W3-button-ledger.md` created with 32 migration rows + 2 residue rows + reserved W3.b placeholder section.
+
+### 2026-05-26 — W3.c primitive adoption (AB+1 P12 discharge)
+
+Agent **A.W3.c — Metric / readout primitive adoption** discharges constellation P12 — the AB+1 primitive cohort glass-ui shipped across the P and Q tranches and which fourier-analysis had never adopted. The discharge applies invariant 4 (substrate-with-consumer) in reverse: the substrate landed at glass-ui v2.0.0; the consumer-side wiring lands here. Scope: the readout cohort (scope item 3 in `waves/W3.md`) plus the C4-residual composable folds (scope item 6). The button cohort (W3.a / W3.b) and the @keyframes + motion cleanup (W3.d) sit outside.
+
+**Substrate verification.** Read `web/node_modules/@mkbabb/glass-ui/dist/{animated-digit,metric-stack,metric-cell,metric-badge,status-dot}.d.ts` for the prop signatures of each primitive. Confirmed `MetricBadge` ships its own tabular-nums + label-position-stacked + per-instance color register; `AnimatedDigit` carries the damping + tabular-nums register at the root primitive. Confirmed that `MetricBadge` / `MetricRow` / `MetricStack` / `MetricCell` / `AnimatedDigit` / `StatusDot` **export from glass-ui's *subpath* exports** (`@mkbabb/glass-ui/metric-badge`, `/metric-stack`, `/metric-cell`, `/animated-digit`, `/status-dot`) — **not** the root barrel (W0-challenge §2 row 12 had ratified Skeleton's root-barrel position; the rest of the AB+1 cohort is subpath-only at v2.0.0). `Skeleton` exports from the root barrel as the row-12 ratification asserts.
+
+**Adoption count.** **13** `<MetricBadge>` adoptions land across **8 files** (GalleryAdminBanner.vue × 6, EquationPanel.vue × 1, InfoCard.vue × 1, EquationView.vue × 1, AnimationControls.vue × 1, EditorToolsPanel.vue × 1, EditorControlsDock.vue × 1, GalleryDraftsSection.vue × 1). The other primitives (`AnimatedDigit`, `MetricRow`/`MetricStack`, `MetricCell`, `StatusDot`, `Skeleton`) carry **retire-with-rationale** rows in `audit/W3-adoption-ledger.md` — fourier has no live-damping counters (AnimatedDigit's gestalt), no icon-on-label dashboard cards (MetricCell's gestalt), no surface-skeleton loading states (the loading register is spinner-based), and no tier-status-dot vocabulary (the Crown/Bookmark icons + Select dropdowns own that affordance). The coefficient tables (CoefficientsPanel + EqCoefficientsPanel) read as a sparkline-bar list rather than the icon|label|value subgrid `MetricRow` ships, so the metric-row cohort retires too. Each row carries a `file:line`-cited rationale.
+
+**fira-code count.** `grep -rE 'fira-code\b|font-mono\b' web/src --include='*.vue' --include='*.ts' | wc -l` reads **69** after migration (was **82** pre-migration; ∆ = −13, exactly matching the adoption count). The residue is ≈55 sites the ledger classifies as `kept-as-decorative` — code-like identifier glyphs (slugs, hashes, section numbers, @-handles, keyboard hints) + numeric `<input>` controls + text-state labels ("Loading…", "Image unavailable", error strings). Each residue site is cited in the ledger's "Kept-as-decorative sites" table.
+
+**C4-residual composable folds.** `useTouchGate` and `useResizeObserver` were H1-flagged as silent-deferral candidates. Verified `web/src/composables/` contains neither file (`ls` returned 5 composables, none matching); `grep -rln 'useTouchGate|useResizeObserver' web/src` returned no consumer reference. Glass-ui ships both names from the root barrel (`@mkbabb/glass-ui` exports `useTouchGate(deactivateDelayMs?: number)` at `dist/index.d.ts:5850` and `useResizeObserver<T>(target, callback, options?)` at `:5600`). Both composables carry **retire-with-rationale** rows in `audit/W3-adoption-ledger.md` — no fourier consumer ever wired them; glass-ui ships the canonical for any future consumer to import.
+
+**Build state.**
+
+- `npx vue-tsc -b --force` — **exit 0**.
+- `npm run build` — **exit 0** (after holding FullscreenViewer.vue at HEAD to isolate W3.c from the in-flight W3.a/b button migration's `@reference "tailwindcss"` regression at the `.fs-close @apply h-10 w-10` site).
+
+**Browser smoke** — pending W3 close ceremony (the parallel siblings still committing); ledger row count and adoption hit-list will reconcile at the W6 absorption pass.
+
+**Sibling coordination.** W3.a / W3.b own `FullscreenViewer.vue` (which carried an unrelated linter regression on the W3.a button migration's `@apply h-10 w-10` site) and the wider `<button>` → `<Button>` cohort. W3.d owns the `@keyframes` and motion-vocabulary cleanup. W3.c does not touch those bounds; the W3 adoption ledger reserves a separate `### W3.b — D5 SliderControl variant prop` section that W3.b fills.
+
+**Commits.** Two W3.c commits land:
+
+| Hash | Subject | Owner |
+|---|---|---|
+| _pending_ | `refactor(A.W3.c): adopt AB+1 MetricBadge cohort across 8 consumer sites` | W3.c |
+| _pending_ | `docs(A.W3.c): land W3 adoption ledger + C4-residual composable disposition` | W3.c |
+
+**Hard-gate item-by-item (per `W3.md §"Hard gate"`, items in W3.c scope):**
+
+3. Each glass-ui primitive in scope item 3 is imported and rendering — **MetricBadge × 13 adopted**; the other five primitives carry retire-with-rationale rows in `audit/W3-adoption-ledger.md`. Browser observation per site reconciles at the W3 close ceremony.
+5. `npm run build` and `vue-tsc -b --force` green — **CONFIRMED** (the FullscreenViewer.vue `@apply h-10 w-10` regression sits outside W3.c bounds and lands on W3.a/b's close).
