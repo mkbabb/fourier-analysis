@@ -12,7 +12,8 @@ Each row carries the wave number plus its noun-phrase title (the canonical displ
 | W1 — Attribute and land the glass-ui migration cohort | **closed** | 2026-05-26 (`83e3a14`) | the C1 chronic-deferral closure; 31-row deletion ledger landed; BouncyToggle.vue lone flagged-for-rework |
 | W2 — Override-stylesheet abrogation | **closed** | 2026-05-26 (`5fdf6ff`) | all three override stylesheets deleted; `web/src/styles/` retired; contract-v2 adoption + glass-ui font hygiene + buttons.css full abrogation + backend Docker RATIFY landed in-band |
 | W3 — Interactive-primitive adoption | **closed** | 2026-05-26 (`8a608e5`) | 68 native buttons retired; 13 MetricBadge adopt + 5 primitives retire-with-rationale (AB+1 P12 partial discharge); cubic-bezier 29→0; transition:all 26→0; D5 + C4-residuals + BouncyToggle all retired |
-| W4 — Scaling, KISS and correctness pass | planned | — | janitor invert; contour-hash fix; dead-code deletion; secrets out |
+| W4 — Scaling, KISS and correctness pass | **closed** | 2026-05-26 (`3658501`) | janitor inverted to `pinned: bool` (O(1) recompute + 5 new tests); contour-hash collision repaired with regression-test pair; logo.ts/math-worker.ts/compute.py deleted; Mongo password env-driven; replicas:1 pinned. Pytest 97/97 |
+| W3.5 — Polish wave (paper-texture + dark-mode + sidebar + visualization pipeline) | **closed** | 2026-05-26 (`cb94aa3`) | in-band scope-reveal absorbing the user-directive triad — paper-texture opacity restored at glass-ui root (1→0.04/0.06); PaperSidebar adopts generalized `useSidebarState<T>` (glass-ui augmented); visualization pipeline: O(n³)→O(n log n) Visvalingam-Whyatt + single-pass epicycles + auto-compute dedupe |
 | W5 — Admin parity and functionality close | planned | — | admin idiom lift; audit-log viewer wired; batch UI; math-honesty |
 | W6 — Close | planned | — | reconciliation, `FINAL.md`, constellation update, CRUD hand-off |
 
@@ -762,3 +763,81 @@ The visualisation pipeline (upload → contour → coefficient → epicycle rend
 
 **Routed onward.** `latex-paper`'s `vue/index.ts` re-exports its own `useSidebarFollow` and `useTreeIndex` rather than re-exporting glass-ui's — filed for `latex-paper`'s next wave (sibling concern; outside W3.5.c's bounds).
 
+
+### 2026-05-26 — W4 close ceremony
+
+The three parallel W4 agents — A.W4.a (janitor + rate-limiter), A.W4.b (contour-hash + gallery consolidation), A.W4.c (dead-code deletion + deploy-surface) — have each returned green. The wave closes at HEAD `3658501`.
+
+| Commit | Subject | Sub-agent |
+|---|---|---|
+| `3b7706d` | `chore(A.W4.c): delete logo.ts, math-worker.ts, compute.py — unconsumed substrate` | W4.c |
+| `2eb5a57` | `fix(A.W4.c): move Mongo password to env reference + deploy.replicas:1 pin (Option A)` | W4.c |
+| `599c5e6` | `docs(A.W4.c): land deploy-note rate-limiter constraint + .env.example update` | W4.c |
+| `efdb4ff` | `refactor(A.W4.a): invert janitor from unbounded $nin to per-doc pinned flag` | W4.a |
+| `840aacb` | `test(A.W4.a): janitor regression test — no $nin, indexed predicate, idempotent recompute` | W4.a |
+| `b526088` | `docs(A.W4.a): land rate-limiter Option A source-side note + PROGRESS log entry` | W4.a |
+| `7936137` | `fix(A.W4.b): contour-hash collision — hash on ordered coordinate pairs at image_storage.py:180` | W4.b |
+| `2d7e24e` | `refactor(A.W4.b): consolidate gallery to cursor pagination — drop offset endpoint + count_documents` | W4.b |
+| `0e016aa` | `feat(A.W4.b): contour-hash regression test pair + admin-caller cursor migration` | W4.b |
+| `3658501` | `docs(A.W4.b): land W4.b close log entry — hash + gallery consolidation evidence` | W4.b |
+
+**W4.a janitor inversion (substantive shape)**: query rewritten from `{"contour_hash": {"$nin": [unbounded-list]}, "last_accessed_at": {"$lt": cutoff}}` to `{"pinned": False, "last_accessed_at": {"$lt": cutoff}}` — an indexed predicate on a new compound index `(pinned, last_accessed_at)` on both `contours` and `images` collections. Migration is inline at cycle start via `_recompute_pin_flags(db)`: resets all docs to `pinned=False`, then runs server-side `$merge`-terminated aggregation pipelines unioning `snapshots` with `gallery WHERE tier IN {featured, saved}` via `$unionWith`, writing `pinned=True` onto matching contour/image docs. No client-side id list ever materialises (BSON 16MB hazard eliminated). 5 new tests under `api/services/__tests__/test_janitor.py`. Invariant 12 (scale without contrivance) discharged at root.
+
+**W4.a rate-limiter Option A**: per W0-challenge §3 ratification (documenting is the smallest honest mechanism), no source mutation — the documentation is the discharge. Landed at `docs/tranches/A/audit/W4-deploy-note.md` §1 (deploy-surface) + §2 (implementation note); W4.c added §1 `deploy.replicas: 1` + Mongo env-reference catalog.
+
+**W4.b contour-hash correctness**: `api/services/image_storage.py:180` rewritten from `json.dumps({"x": sorted(xs), "y": sorted(ys)}, sort_keys=True)` to `compute_contour_hash(xs, ys)` returning `sha256(json.dumps({"pairs": [[x, y] for x, y in zip(xs, ys)]}, sort_keys=True))`. Regression-test pair `api/services/__tests__/test_contour_hash.py` confirms the pre-fix collision (diagonal A == B, triangle C == D both reproduce the literal hash) and the post-fix discrimination. Invariant 8 (numerical correctness precedes UI polish) discharged.
+
+**W4.b gallery cursor consolidation**: `web/src/stores/gallery.ts` migrates four admin callers (`setTier:137`, `deleteEntry:149`, `publish:189`, `publishDraft:207`) from `fetchPage` (offset) to `resetAndFetch` (cursor); `fetchPage` itself + `page`/`pages`/`total` state + the `listGallery` API client + the offset `GET /api/gallery` route all DELETE outright. UI consumer migrated from "X total" to "X loaded" (the honest cursor-pagination reading). `count_documents` removed from the hot path. Invariant 1 (KISS / DRY) and invariant 12 (scale without contrivance) discharged.
+
+**W4.c dead-code deletion**: three files retired with `git grep` consumer-proof — `web/src/lib/logo.ts` (100 LOC, 0 consumers), `web/src/lib/math-worker.ts` (55 LOC, 0 consumers), `api/routers/compute.py` (tombstone). Stale doc-comment at `web/src/lib/evaluators.ts:3` scrubbed.
+
+**W4.c deploy-surface hygiene**: `docker-compose.prod.yml` rebound `MONGO_URI` from the literal `cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb` to `${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}`; the prod `mongo` service now declares `MONGO_INITDB_ROOT_*` env vars from the same pair; healthcheck `mongosh -p` likewise; `deploy.replicas: 1` pinned. `.env.example` documents both vars. `git grep 'cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb'` returns empty across tracked files.
+
+**Hard-gate item-by-item** (per `W4.md §"Hard gate (completion criterion, item-by-item)"`):
+
+1. Janitor no longer constructs an unbounded id set — test artefact proves it. SATISFIED.
+2. Rate-limiter: W0-challenge Option A documented in deploy surface (`audit/W4-deploy-note.md`). SATISFIED.
+3. `test_contour_hash.py` exists, fails on pre-W4 hash, passes after — pre-fix evidence captured in the W4.b commit body. SATISFIED.
+4. `logo.ts`, `math-worker.ts`, `compute.py` deleted; `git grep` deletion proof. SATISFIED.
+5. Gallery has one paginated list endpoint; no `count_documents` on hot path. SATISFIED.
+6. No literal credential in any tracked file (`git grep` for the password string returns empty). SATISFIED.
+7. `uv run pytest` 97 passed; `vue-tsc -b --force` exit 0; `docker compose config` validates both compose files. SATISFIED.
+
+**Scope-reveal disclosure**: ruff F841 unused `result` at `api/services/image_storage.py:224` discovered, NOT fixed — pre-existing per the W4.b agent's escalation; routed to tranche B (CRUD convergence — the natural home for image_storage.py structural work).
+
+The status-board flips W4 from `planned` to **closed** at `3658501`.
+
+### 2026-05-26 — W3.5 polish wave close ceremony
+
+In-band scope-reveal absorbing three user directives that arrived mid-W4 dispatch: paper-texture restoration, dark-mode paper refinement, sidebar glass-ui leverage, and visualization pipeline inspection. Per the user's "fix at root" directive, every fix lands cross-repo where the substrate carries the wrong default — fourier consumes the corrected substrate via the `file:` symlinks per cross-repo dev-resolution contract-v2.
+
+| Commit | Subject | Repo / Sub-agent |
+|---|---|---|
+| glass-ui `9cf88e6` | `fix(styles): restore canonical subtle paper-texture opacity (0.04 / 0.06)` | glass-ui / W3.5.ab |
+| `2b308f7` | `docs(A.W3.5.ab): discharge paper-texture root fix carry` | fourier / W3.5.ab |
+| `e0e9dda` | `refactor(A.W3.5.d): visualization pipeline refinements — heap-VW, single-pass epicycles, auto-compute dedupe` | fourier / W3.5.d |
+| glass-ui `9b8de74` | `feat(sidebar): generalize useSidebarState over arbitrary tree shape — consumer half` | glass-ui / W3.5.c |
+| `cb94aa3` | `refactor(A.W3.5.c): adopt glass-ui sidebar primitives in PaperSidebar + MobileFloatingToc` | fourier / W3.5.c |
+
+**W3.5.ab paper-texture root fix**: glass-ui's `--paper-clean-texture` and `--paper-aged-texture` shipped at `opacity='1'` (the wrong default) — the fourier consumer rendered an aggressive grain over every surface. The fix rewrites the SVG-URI opacity to the fourier-original canonical values (`0.04` / `0.06`) at the glass-ui token source. SVG `opacity` cannot read CSS vars, so Option A (rewrite inline) is the smallest correct intervention; Option B (CSS-var tunability) was rejected as structurally impossible.
+
+**W3.5.ab dark-mode finding (zero-edit discharge)**: the perceived "salmon/orange section headings" in dark mode were NOT a token-fork — investigation confirmed glass-ui's `.dark` block ships bit-identical `--section-color-0..12` and `--accent-pink` values to fourier-original. The artefact was a downstream consequence of the heavy grain field multiplying against the warm dark cream background. Fixing the texture dissolved the artefact entirely. W2.a's token-de-fork posture preserved with zero amendments.
+
+**W3.5.c sidebar augmentation**: glass-ui's `@mkbabb/glass-ui/sidebar` shipped `useSidebarState` hard-pinned to `sections: SidebarSection[]` (children at `node.children`). fourier's `PaperSectionData` stores children at `subsections` — direct adoption would have required consumer-side coercion. The fix-at-root: generalize `useSidebarState<T extends TreeNode>` with optional `getChildren`, preserve the prior `SidebarSection` overload verbatim, return new `GenericSidebarState<T>` overload. fourier adopts the generic at `cb94aa3`; `PaperSidebar.vue` 296 → 282 (−14); `MobileFloatingToc.vue` 380 → 374 (−6). Hand-rolled `grid-template-rows: 0fr → 1fr` animation shim retired for canonical `<Collapsible>` `data-state` channel.
+
+**W3.5.d visualization pipeline refinements**: 8 defects identified across the upload → contour → compute → render pipeline; 5 fixed at root, 3 routed to successor waves with named destinations:
+
+| # | Stage | Defect | Severity | Disposition |
+|---|---|---|---|---|
+| 1 | Contour edit | `simplifyClosedPoints` O(n³) Visvalingam-Whyatt at n=1024 | High (perf) | Fixed — heap-driven O(n log n) over parallel typed arrays |
+| 2 | Render | `BasisCanvas.drawFrame` traversed N=200 epicycle chain twice per frame | Medium (perf) | Fixed — single-pass `fourierPositionsAt` with `allPositions.slice(0, nVis+1)` prefix |
+| 3 | Compute | Duplicate auto-compute watchers in `useWorkspaceLoader` + `ContourSettings.vue` raced on fresh upload | High (correctness) | Fixed — dedup to single seam in `ContourSettings.vue` |
+| 4 | Compute | `nHarmonics` reset on `imageSlug` watcher clobbered draft-seeded values on initial mount | Medium (correctness) | Fixed — `priorSlug !== null` gate |
+| 5 | Render | Dead `Animation` import from keyframes.js post manual-rAF migration | Low (hygiene) | Fixed — excised |
+| 6 | Bootstrap | `web/src/style.css:3` glass-ui import resolution races on cold Vite boot | High (e2e) | Routed to W3.5.ab (style.css owner) — requires `pnpm vite optimize --force` on cold boot |
+| 7 | Compute | Levels-derivation drift between `web/src/stores/workspace.ts:runComputeBases` and `api/services/computation.py:compute_bases` | Low (DRY) | Routed to tranche B (CRUD convergence) — lift to single seam in `ComputeBasesRequest` model |
+| 8 | Backend | `--reload` aborts in-flight compute on any `api/**` write; onnxruntime CPU-vendor warning flood at startup | Medium (dev ergonomics) | Routed to tranche C (infra + image-blob) — move long jobs to background queue or disable `--reload` in dev container |
+
+The W3.5 polish wave is recorded as an inline scope-reveal in this PROGRESS log; A.md §4's seven-wave schedule remains W0–W6 with the W3.5 work absorbed under W3's broader interactive-primitive-adoption umbrella (the scope expansion authorized by the user directive). The W6 close ceremony AMEND ledger inherits the W3.5 scope-reveal as a context observation.
+
+**Next action**: dispatch **W5 — Admin parity and functionality close**. Four parallel agents per W5.md: W5.a (admin idiom lift — native `confirm()` / `<select>` / pagination → glass-ui primitives), W5.b (audit-log viewer for `/api/admin/audit`), W5.c (batch multi-select + the H3-flagged `api.ts:526,:537` contract-bug fix from `{ processed }` to `{ ok, affected }`), W5.d (math-honesty fixes — FrequencyGraph log axis + ConvergencePlot off-by-one). The cross-repo CRUD/identity carry hands off to tranche B at W6 close.
