@@ -502,3 +502,25 @@ The four parallel W3 agents — A.W3.a (button migration equation/morph/paper/la
 The status-board flips W3 from `planned` to **closed** at `8a608e5`. Constellation P12 (the AB+1 primitive-adoption cohort) is **partially discharged** — the 13-row `MetricBadge` adoption lands; the remaining primitives retire honestly with the substrate-shape rationale documented. The K-invariant-3 fourth-recurrence anti-pattern (the unadopted-cohort pattern in CSS form) is hereby closed via the buttons.css full abrogation + the interactive-vocabulary unification.
 
 **Next action**: dispatch **W4 — Scaling, KISS and correctness pass**. Three parallel agents (W4.a janitor + rate-limiter, W4.b contour-hash + gallery consolidation, W4.c dead-code + deploy-surface). The Mongo password literal at `docker-compose.prod.yml:8,:47` survives in prod-side per the W4.c scope (the dev-side fix landed at `5fdf6ff` as a W2.h scope-reveal). The contour-hash regression test lands at W4.b per the `image_storage.py:180` H3-confirmed line.
+
+### 2026-05-26 — W4.c dead-code + deploy-surface hygiene
+
+Agent A.W4.c discharges three W0-challenge ratifications: §2 row 14 (Mongo password at three sites), §2 row 15 (three unconsumed modules), and §3 Option A (single-replica pin until the rate-limiter substrate migrates off-process).
+
+| Commit | Subject |
+|---|---|
+| `3b7706d` | `chore(A.W4.c): delete logo.ts, math-worker.ts, compute.py — unconsumed substrate` |
+| `2eb5a57` | `fix(A.W4.c): move Mongo password to env reference + deploy.replicas:1 pin (Option A)` |
+| _pending_ | `docs(A.W4.c): land deploy-note rate-limiter constraint + .env.example update` |
+
+**Dead-code retirement.** Three files retired wholesale per the W0-challenge §2 row 15 disposition: `web/src/lib/logo.ts` (100 LOC programmatic SVG harmonic-circle generator, no consumer in `web/src/`), `web/src/lib/math-worker.ts` (55 LOC Web Worker shim, never registered via `new Worker(new URL(...))`), and `api/routers/compute.py` (single-line tombstone reading `# Compute router removed — merged into api/routers/contours.py`, no `include_router` carrier in `api/main.py`). The stale doc-comment at `web/src/lib/evaluators.ts:3` citing the deleted worker was scrubbed in the second commit. Pytest holds at 89/89; `vue-tsc -b --force` and `npm run build` exit 0.
+
+**Mongo password env-reference.** All three sites the W0-challenge enumerated — the prod backend `MONGO_URI` (`docker-compose.prod.yml:8`), the prod mongo healthcheck (`docker-compose.prod.yml:47`), and now also the prod mongo init env pair — replace the literal `cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb` with `${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}`. The `:?` form makes prod fail loud when the var is unset — verified by `docker compose -f docker-compose.yml -f docker-compose.prod.yml config` which errors with `required variable MONGO_PASSWORD is missing a value: MONGO_PASSWORD must be set in production`. The dev side already carried `:-fourier-dev-only` per W2.h `5fdf6ff`. Verification: `git grep cqC1rM9iGWw6xZoU5tFh4MqdQCvfvZBb -- docker-compose.yml docker-compose.prod.yml` returns nothing; the literal survives only in audit-ledger witness files (W0-challenge, W2-backend-validation, the `docs/audits/runs/2026-05-18-*` historical entries), as intended.
+
+**`deploy.replicas: 1` pin per Option A.** The backend `deploy:` block in `docker-compose.prod.yml` now carries `replicas: 1` alongside its memory-limit resource. This is canonical, not provisional — the in-process token-bucket rate-limiter at `api/services/rate_limiter.py` binds the deploy topology to a single process. Operators wishing to scale must first migrate the rate-limiter substrate off-process (Option B, deferred to a later tranche per W0-challenge §3). `docker compose config` confirms `deploy.replicas: 1` resolves at the backend block.
+
+**`.env.example` documentation.** The file gains explicit `MONGO_USER` + `MONGO_PASSWORD` rows with dev-vs-prod posture notes, plus documentation rows for the operator-facing tunables that surfaced through W1.c, W2.h, and W4.c (`CORS_ORIGINS`, `ADMIN_TOKEN`, `API_PORT`, `WEB_PORT`, `HTTP_PORT`, `VITE_API_URL`, `VITE_BASE_URL`).
+
+**Deploy-note.** `docs/tranches/A/audit/W4-deploy-note.md` lands with three sections — (§1) the `replicas: 1` pin rationale + the rate-limiter scaling constraint; (§2) the Mongo password env-reference catalogue with the table of pre/post sites; (§3) the dead-code retirement table. W4.a may append the rate-limiter-specific operator notes (TTL, abuse threshold) to a `§1.1` if its scope produces operator-facing changes.
+
+**Bounds discipline.** W4.c's scope was strictly the three deletions + the prod-side compose hygiene + the `.env.example`/deploy-note documentation. The sibling-agent territory (`api/services/janitor.py`, `rate_limiter.py` per W4.a; `api/services/image_storage.py`, `gallery.py`, `web/src/stores/gallery.ts` per W4.b) was left untouched. The unrelated working-tree edits surfaced by `git status` at the start of the wave belong to W4.a / W4.b and will land in their respective commits.
