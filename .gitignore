@@ -40,6 +40,8 @@ Thumbs.db
 # Node
 node_modules/
 web/dist/
+tsconfig.tsbuildinfo
+web/tsconfig.tsbuildinfo
 
 # Uploads
 uploads/
@@ -71,3 +73,6 @@ web/playwright-report/
 
 .mongo-data/
 .dev.ports
+
+# TLS certificates
+ssl/
