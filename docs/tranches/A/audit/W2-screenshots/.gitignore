@@ -1,0 +1,3 @@
+# Override repo-root `*.png` exclusion — this directory is the W2.d
+# visual-regression artefact deposit; PNG screenshots are the evidence.
+!*.png
