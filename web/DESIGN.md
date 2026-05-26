@@ -14,17 +14,20 @@ Custom z-index layers: `--z-canvas-layer: 1`, `--z-canvas-overlay: 10`, `--z-toa
 
 ## Local Utilities
 
-Defined in `fourier-overrides.css`:
+The override-stylesheet abrogation wave (A.W2) discharged
+`fourier-overrides.css`, `ios-fixes.css`, and `buttons.css` in full;
+`web/src/styles/` no longer exists. The former local utilities have
+been migrated to their idiomatic glass-ui primitives:
 
-- `.btn-icon-admin` — icon-only admin button with hover ring
-- `.btn-solid` — filled primary button (maps to glass-ui `default` variant)
-- `.btn-ghost` — transparent hover-reveal button
-- `.basis-pill` — colored chip indicating Fourier basis type
+- `.btn-icon-admin` → `<Button variant="glass" size="icon">` + scoped `.admin-overlay-btn` retint hook (geometry: 1.75 rem circle, scale-hover idiom).
+- `.btn-solid` → `<Button variant="default">` (canonical primary CTA via `--primary` token).
+- `.btn-ghost` → `<Button variant="outline">` (bordered transparent secondary).
+- `.basis-pill` (interactive toggle) → `<Button variant="outline" size="sm">` + scoped `.basis-toggle` retint hook + `aria-pressed` for the active state.
+- `.basis-pill` (decorative read-only) → `<Badge variant="outline" size="sm">` + scoped `.basis-tint` retint hook.
+- `.styled-slider` (and the `:not(.styled-slider)` defensive native-range recipe) → `<Slider variant="glass-scrubber">` at all 7 consumer sites (A.W2.c).
 
 ## Migration Tasks
 
-- [ ] Replace custom Teleport modals (ExportModal, GalleryCardModal) with glass-ui Dialog/DialogContent
-- [ ] Replace `.btn-solid`/`.btn-ghost`/`.btn-icon-admin` with glass-ui Button variants (`default`/`ghost` + `.btn-interactive`)
-- [ ] Replace `.gallery-card`/`.modal-card` divs with glass-ui Card
-- [ ] Delete duplicate keyframes (`fade-in`, `scale-in`, `slide-up`) already in glass-ui `animations.css`
-- [ ] Remove unused CVA dependency or adopt it for button variants
+- [ ] Replace custom Teleport modals (ExportModal, GalleryCardModal) with glass-ui Dialog/DialogContent (A.W3 territory).
+- [ ] Replace `.gallery-card`/`.modal-card` divs with glass-ui Card (filed as constellation carry — Card tier="cartoon" variant proposal).
+- [ ] Remove unused CVA dependency or adopt it for button variants (filed as W2.a row D4; deferred to W4 or W6 close ceremony).

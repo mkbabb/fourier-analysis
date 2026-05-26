@@ -206,8 +206,9 @@ test.describe.skip("Settings persistence across page reload", () => {
         await page.locator("canvas").first().click({ position: { x: 10, y: 10 } });
         await page.waitForTimeout(300);
 
-        // Toggle Chebyshev basis on
-        const chebyshevPill = page.locator("button.basis-pill").filter({ hasText: "Chebyshev" });
+        // Toggle Chebyshev basis on — A.W2.e migrated `.basis-pill` to
+        // `<Button class="basis-toggle">` with `aria-pressed` for state.
+        const chebyshevPill = page.locator("button.basis-toggle").filter({ hasText: "Chebyshev" });
         await chebyshevPill.click();
         await page.waitForTimeout(500);
 
@@ -231,8 +232,9 @@ test.describe.skip("Settings persistence across page reload", () => {
         await expect(canvas).toBeVisible({ timeout: 30_000 });
         await page.waitForTimeout(3000);
 
-        // Verify Chebyshev pill is active
-        const chebyshevAfter = page.locator("button.basis-pill.active").filter({ hasText: "Chebyshev" });
+        // Verify Chebyshev pill is active — `aria-pressed="true"` is the
+        // semantic active-state contract post-A.W2.e (was `.active` class).
+        const chebyshevAfter = page.locator('button.basis-toggle[aria-pressed="true"]').filter({ hasText: "Chebyshev" });
         await expect(chebyshevAfter).toBeVisible();
 
         // Verify API returns persisted values
