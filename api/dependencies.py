@@ -24,7 +24,11 @@ logger = logging.getLogger(__name__)
 _suspended_cache: dict[str, float] = {}
 _SUSPENSION_CACHE_TTL = 60.0
 
-SLUG_PATTERN = re.compile(r"^[a-zA-Z0-9][-a-zA-Z0-9]{2,80}$")
+# CRUD-CONTRACT §2: the one slug shape across the converged surface — four
+# lowercase hyphenated words, exactly. Tightened from the prior
+# ``^[a-zA-Z0-9][-a-zA-Z0-9]{2,80}$`` at fourier-B.W3 (matches
+# ``api/lib/crud/slugs.SLUG_PATTERN``).
+SLUG_PATTERN = re.compile(r"^[a-z]+(-[a-z]+){3}$")
 
 
 def validate_image_slug(slug: str) -> str:
@@ -112,7 +116,9 @@ async def _backfill_image_bounds(db, contour_doc: dict) -> dict:
         contour_doc["image_bounds"] = image_bounds
         logger.info("Backfilled image_bounds for contour %s", contour_doc["contour_hash"])
     except Exception:
-        logger.warning("Failed to backfill image_bounds for %s", contour_doc.get("contour_hash"), exc_info=True)
+        logger.warning(
+            "Failed to backfill image_bounds for %s", contour_doc.get("contour_hash"), exc_info=True
+        )
 
     return contour_doc
 

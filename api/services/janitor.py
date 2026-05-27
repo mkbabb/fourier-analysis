@@ -6,11 +6,12 @@ as a ``{"$nin": [...]}`` predicate (the prior shape, which scaled with the
 pinned-id cardinality, defeated indexes, and would have eventually exceeded
 the 16 MB BSON document limit — see ``docs/tranches/A/waves/W4.md`` scope
 item 1 and the H3 hardening note ``docs/audits/runs/2026-05-18-tranche-harden/h3-A-W4-W5-W6.md``).
+The ``$nin`` retirement landed in tranche A; B.W3 does NOT re-implement it.
 
-Pin policy (unchanged from the prior implementation):
+Pin policy (re-rooted onto the converged ``visualizations`` collection at
+fourier-B.W3 / H-W3-6):
 
-* Every snapshot pins its referenced ``contour_hash`` and ``image_slug``.
-* Every gallery entry whose tier is ``"featured"`` or ``"saved"`` pins its
+* Every live (``deleted_at == null``) visualization pins its referenced
   ``contour_hash`` and ``image_slug``.
 
 The recompute runs at the start of each cycle via aggregation + ``$merge``;
@@ -20,7 +21,17 @@ out-of-band lifecycle event that may have skipped a per-write hook. Both
 ``contours.pinned`` and ``images.pinned`` are indexed (see
 ``api.services.database.connect_db``), so the deletion query
 ``{"pinned": false, "last_accessed_at": {"$lt": cutoff}}`` runs against an
-indexed predicate.
+indexed predicate via ``api.lib.crud.pinned_cron.cron_prune``.
+
+B.W3 changes (H-W3-4/5/6):
+
+* The inline-blob storage-budget eviction band-aid (the prior config setting)
+  is **retired** — the principled storage bound is the recency prune (above)
+  plus the ``deleted_at``-grace hard-delete pass. The per-doc ``bytes`` field
+  survives for observability only. Image-blob redesign is deferred to
+  tranche C.
+* A **net-new** ``deleted_at``-grace pass hard-deletes ``visualizations``
+  whose soft-delete window has elapsed and frees the blobs they pinned.
 """
 
 from __future__ import annotations
@@ -30,6 +41,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from api.config import get_settings
+from api.lib.crud import pinned_cron
 from api.services.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -51,71 +63,45 @@ async def _cleanup_cycle() -> None:
     cutoff = datetime.now(UTC) - timedelta(days=settings.asset_max_age_days)
 
     # ------------------------------------------------------------------
-    # 1. Recompute the per-doc ``pinned`` flag on contours + images.
-    #    This is an idempotent server-side aggregation: reset to false,
-    #    then $merge-set true from the union of (snapshots) and
-    #    (gallery WHERE tier IN featured|saved).
+    # 1. Soft-deleted visualizations past the grace window — hard-delete.
+    #    Net-new at B.W3 (H-W3-4). Runs BEFORE the pin recompute so the
+    #    freed rows no longer pin their blobs, and BEFORE the recency prune
+    #    so the unreferenced blobs reap in the same cycle.
+    # ------------------------------------------------------------------
+
+    grace_cutoff = datetime.now(UTC) - timedelta(days=settings.soft_delete_grace_days)
+    hard_deleted = await db.visualizations.delete_many({"deleted_at": {"$lt": grace_cutoff}})
+    if hard_deleted.deleted_count:
+        logger.info(
+            "Janitor hard-deleted %d visualizations past the soft-delete grace window",
+            hard_deleted.deleted_count,
+        )
+
+    # ------------------------------------------------------------------
+    # 2. Recompute the per-doc ``pinned`` flag on contours + images.
+    #    Idempotent server-side aggregation: reset to false, then $merge-set
+    #    true from the live (deleted_at == null) ``visualizations`` rows
+    #    (re-rooted off snapshots/gallery at B.W3 / H-W3-6).
     # ------------------------------------------------------------------
 
     await _recompute_pin_flags(db)
 
     # ------------------------------------------------------------------
-    # 2. Time-based cleanup of old unpinned assets — indexed predicate
+    # 3. Time-based recency prune of old unpinned assets — the principled
+    #    storage bound (CRUD-CONTRACT §8). Delegates to the bounded
+    #    ``pinned_cron.cron_prune`` helper (indexed predicate, no $nin).
     # ------------------------------------------------------------------
 
-    result = await db.contours.delete_many(
-        {"pinned": False, "last_accessed_at": {"$lt": cutoff}}
-    )
-    if result.deleted_count:
-        logger.info("Janitor deleted %d old contours", result.deleted_count)
+    deleted_contours = await pinned_cron.cron_prune(db.contours, cutoff=cutoff)
+    if deleted_contours:
+        logger.info("Janitor pruned %d old unpinned contours", deleted_contours)
 
     deleted_images = await _delete_images_and_cascade(
         db,
         {"pinned": False, "last_accessed_at": {"$lt": cutoff}},
     )
     if deleted_images:
-        logger.info("Janitor deleted %d old images", deleted_images)
-
-    # ------------------------------------------------------------------
-    # 3. Storage budget enforcement (evicts oldest unpinned images)
-    # ------------------------------------------------------------------
-
-    budget_bytes = int(settings.storage_budget_gb * 1024 * 1024 * 1024)
-    storage_pipeline = [
-        {"$group": {"_id": None, "total_bytes": {"$sum": "$bytes"}}},
-    ]
-    total_bytes = 0
-    async for row in db.images.aggregate(storage_pipeline):
-        total_bytes = row.get("total_bytes", 0)
-
-    if total_bytes > budget_bytes:
-        overage = total_bytes - budget_bytes
-        logger.warning(
-            "Storage budget exceeded by %d bytes (%d total vs %d budget). "
-            "Evicting oldest unpinned images.",
-            overage,
-            total_bytes,
-            budget_bytes,
-        )
-        freed = 0
-        cursor = db.images.find(
-            {"pinned": False},
-            {"image_slug": 1, "bytes": 1},
-        ).sort("last_accessed_at", 1)
-
-        async for img_doc in cursor:
-            if freed >= overage:
-                break
-            slug = img_doc["image_slug"]
-            img_bytes = img_doc.get("bytes", 0)
-            count = await _delete_images_and_cascade(
-                db, {"image_slug": slug}
-            )
-            if count:
-                freed += img_bytes
-                logger.info(
-                    "Budget eviction: deleted image %s (%d bytes)", slug, img_bytes
-                )
+        logger.info("Janitor pruned %d old unpinned images", deleted_images)
 
     # ------------------------------------------------------------------
     # 4. Session + user cleanup
@@ -131,16 +117,26 @@ async def _cleanup_cycle() -> None:
     # Users unseen for user_max_age_days — cascade to gallery, flags, sessions
     user_cutoff = now - timedelta(days=settings.user_max_age_days)
     stale_slugs: list[str] = []
-    async for user in db.users.find(
-        {"last_seen_at": {"$lt": user_cutoff}}, {"_id": 1}
-    ):
+    async for user in db.users.find({"last_seen_at": {"$lt": user_cutoff}}, {"_id": 1}):
         stale_slugs.append(user["_id"])
 
     if stale_slugs:
-        # Cascade: delete gallery entries owned by stale users
-        gallery_result = await db.gallery.delete_many(
-            {"user_slug": {"$in": stale_slugs}}
+        # Cascade: soft-delete the stale users' visualizations (the converged
+        # collection; CRUD-CONTRACT §8 category 3). The next-cycle grace pass
+        # (category 1) hard-deletes them once their window lapses.
+        viz_cascade = await db.visualizations.update_many(
+            {"owner_slug": {"$in": stale_slugs}, "deleted_at": None},
+            {"$set": {"deleted_at": now}},
         )
+        if viz_cascade.modified_count:
+            logger.info(
+                "Janitor cascade-soft-deleted %d visualizations for stale users",
+                viz_cascade.modified_count,
+            )
+
+        # Cascade: delete gallery entries owned by stale users (legacy
+        # collection, retained until the W5 close ceremony)
+        gallery_result = await db.gallery.delete_many({"user_slug": {"$in": stale_slugs}})
         if gallery_result.deleted_count:
             logger.info(
                 "Janitor cascade-deleted %d gallery entries for stale users",
@@ -148,9 +144,7 @@ async def _cleanup_cycle() -> None:
             )
 
         # Cascade: delete flags from stale users
-        flags_result = await db.flags.delete_many(
-            {"reporter_slug": {"$in": stale_slugs}}
-        )
+        flags_result = await db.flags.delete_many({"reporter_slug": {"$in": stale_slugs}})
         if flags_result.deleted_count:
             logger.info(
                 "Janitor cascade-deleted %d flags for stale users",
@@ -158,9 +152,7 @@ async def _cleanup_cycle() -> None:
             )
 
         # Cascade: delete sessions for stale users
-        sessions_result = await db.sessions.delete_many(
-            {"user_slug": {"$in": stale_slugs}}
-        )
+        sessions_result = await db.sessions.delete_many({"user_slug": {"$in": stale_slugs}})
         if sessions_result.deleted_count:
             logger.info(
                 "Janitor cascade-deleted %d sessions for stale users",
@@ -181,19 +173,22 @@ async def _cleanup_cycle() -> None:
 async def _recompute_pin_flags(db) -> None:
     """Recompute ``contours.pinned`` and ``images.pinned`` from the policy.
 
-    Policy: a contour is pinned iff it is referenced by any snapshot or by any
-    gallery entry with tier ``"featured"`` or ``"saved"``. Same for images
-    (keyed by ``image_slug``).
+    Policy (re-rooted onto the converged collection at B.W3 / H-W3-6): a
+    contour is pinned iff it is referenced by any **live** visualization
+    (``deleted_at == null``). Same for images (keyed by ``image_slug``).
+    A soft-deleted visualization no longer pins its blobs, so the recency
+    prune (and, once the grace window lapses, the hard-delete pass) can reap
+    them.
 
-    The mechanism is two server-side ``$merge`` aggregations per asset
-    collection: the pipelines read the policy sources (snapshots + gallery
-    rows with the right tier) and emit one ``{_pin_key, pinned: true}``
-    document per referenced asset; ``$merge`` then merges those onto the
-    target collection's documents keyed on ``contour_hash`` / ``image_slug``.
-    Before merging, ``update_many({}, {pinned: false})`` resets the slate, so
-    the recompute is fully idempotent — invoking it twice yields the same end
-    state, and it also backfills the ``pinned`` flag on legacy documents that
-    pre-date this field (no separate migration script is required).
+    The mechanism is one server-side ``$merge`` aggregation per asset
+    collection: the pipeline reads the policy source (live ``visualizations``)
+    and emits one ``{_pin_key, pinned: true}`` document per referenced asset;
+    ``$merge`` then merges those onto the target collection's documents keyed
+    on ``contour_hash`` / ``image_slug``. Before merging,
+    ``update_many({}, {pinned: false})`` resets the slate, so the recompute is
+    fully idempotent — invoking it twice yields the same end state, and it
+    also backfills the ``pinned`` flag on legacy documents that pre-date this
+    field (no separate migration script is required).
 
     Because all id-set construction happens server-side inside the aggregation
     pipeline, this implementation never builds an in-memory list bounded by
@@ -209,25 +204,13 @@ async def _recompute_pin_flags(db) -> None:
     await db.images.update_many({}, {"$set": {"pinned": False}})
 
     # ------------------------------------------------------------------
-    # 2. Pin contours: union of snapshots.contour_hash and
-    #    gallery.contour_hash (where tier is featured or saved). The
-    #    $unionWith stage performs the union server-side; $merge writes the
-    #    pinned=true flag onto matching contours documents.
+    # 2. Pin contours referenced by any live visualization. $merge writes
+    #    the pinned=true flag onto matching contours documents.
     # ------------------------------------------------------------------
     contour_pin_pipeline: list[dict] = [
+        {"$match": {"deleted_at": None}},
         {"$group": {"_id": "$contour_hash"}},
         {"$match": {"_id": {"$ne": None}}},
-        {
-            "$unionWith": {
-                "coll": "gallery",
-                "pipeline": [
-                    {"$match": {"tier": {"$in": ["featured", "saved"]}}},
-                    {"$group": {"_id": "$contour_hash"}},
-                    {"$match": {"_id": {"$ne": None}}},
-                ],
-            }
-        },
-        {"$group": {"_id": "$_id"}},
         {"$project": {"_id": 0, "contour_hash": "$_id", "pinned": {"$literal": True}}},
         {
             "$merge": {
@@ -240,28 +223,17 @@ async def _recompute_pin_flags(db) -> None:
     ]
     # Drain the aggregation cursor — $merge is a terminal stage with no
     # client-visible output, but motor still expects iteration.
-    async for _ in db.snapshots.aggregate(contour_pin_pipeline):
+    async for _ in db.visualizations.aggregate(contour_pin_pipeline):
         pass
 
     # ------------------------------------------------------------------
-    # 3. Pin images: union of snapshots.image_slug and gallery.image_slug
-    #    (where tier is featured or saved). Same shape as the contour
-    #    pipeline above, keyed on image_slug.
+    # 3. Pin images referenced by any live visualization. Same shape as the
+    #    contour pipeline above, keyed on image_slug.
     # ------------------------------------------------------------------
     image_pin_pipeline: list[dict] = [
+        {"$match": {"deleted_at": None}},
         {"$group": {"_id": "$image_slug"}},
         {"$match": {"_id": {"$ne": None}}},
-        {
-            "$unionWith": {
-                "coll": "gallery",
-                "pipeline": [
-                    {"$match": {"tier": {"$in": ["featured", "saved"]}}},
-                    {"$group": {"_id": "$image_slug"}},
-                    {"$match": {"_id": {"$ne": None}}},
-                ],
-            }
-        },
-        {"$group": {"_id": "$_id"}},
         {"$project": {"_id": 0, "image_slug": "$_id", "pinned": {"$literal": True}}},
         {
             "$merge": {
@@ -272,7 +244,7 @@ async def _recompute_pin_flags(db) -> None:
             }
         },
     ]
-    async for _ in db.snapshots.aggregate(image_pin_pipeline):
+    async for _ in db.visualizations.aggregate(image_pin_pipeline):
         pass
 
 
@@ -290,9 +262,7 @@ async def _delete_images_and_cascade(db, filter_: dict) -> int:
         return 0
 
     # Cascade: delete gallery entries that reference these images
-    cascade_result = await db.gallery.delete_many(
-        {"image_slug": {"$in": slugs_to_delete}}
-    )
+    cascade_result = await db.gallery.delete_many({"image_slug": {"$in": slugs_to_delete}})
     if cascade_result.deleted_count:
         logger.info(
             "Janitor cascade-deleted %d gallery entries for deleted images",

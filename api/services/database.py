@@ -23,7 +23,10 @@ _CONNECT_BACKOFF = 2  # seconds, doubles each retry
 
 async def connect_db() -> None:
     global _client, _db
-    _client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
+    # tz_aware=True: datetimes round-trip as aware UTC so the janitor's
+    # aware-cutoff comparisons (datetime.now(UTC)) never hit naive/aware TypeError
+    # (the B.W3 / Wχ H-W3-1(a) landmine — naive snapshots.created_at vs aware gallery.*).
+    _client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=5000, tz_aware=True)
     _db = _client.get_default_database()
 
     # Wait for MongoDB to become reachable
@@ -35,7 +38,12 @@ async def connect_db() -> None:
             if attempt == _CONNECT_RETRIES:
                 raise
             delay = _CONNECT_BACKOFF * attempt
-            logger.warning("MongoDB not ready (attempt %d/%d), retrying in %ds...", attempt, _CONNECT_RETRIES, delay)
+            logger.warning(
+                "MongoDB not ready (attempt %d/%d), retrying in %ds...",
+                attempt,
+                _CONNECT_RETRIES,
+                delay,
+            )
             await asyncio.sleep(delay)
 
     # Images indexes
@@ -84,10 +92,37 @@ async def connect_db() -> None:
     await _db.gallery.create_index([("tier", 1), ("likes", -1), ("_id", -1)])
     await _db.gallery.create_index([("user_slug", 1), ("created_at", -1)])
 
+    # Visualizations — the converged identity collection (fourier-B.W3).
+    # The union of the gallery cursor-pagination indexes plus the
+    # contract-mandated owner_slug / visibility / deleted_at / slug-unique /
+    # content_hash indexes (CRUD-CONTRACT §1–§8; W3.5).
+    #
+    # Identity + dedup:
+    await _db.visualizations.create_index("slug", unique=True)
+    await _db.visualizations.create_index("content_hash")
+    await _db.visualizations.create_index("image_slug")
+    await _db.visualizations.create_index("contour_hash")
+    # Ownership + lifecycle (§3 owner, §4 visibility, §5 soft-delete grace):
+    await _db.visualizations.create_index("owner_slug")
+    await _db.visualizations.create_index("visibility")
+    await _db.visualizations.create_index("deleted_at")
+    # Idempotent re-run guard for the migration (W3.19 ``migrated_from``):
+    await _db.visualizations.create_index("migrated_from._id", sparse=True)
+    # Cursor pagination — public gallery view (visibility="public") sorted by
+    # newest / views / likes, with the _id tie-breaker per the cursor contract:
+    await _db.visualizations.create_index([("visibility", 1), ("created_at", -1), ("_id", -1)])
+    await _db.visualizations.create_index([("visibility", 1), ("views", -1), ("_id", -1)])
+    await _db.visualizations.create_index([("visibility", 1), ("likes", -1), ("_id", -1)])
+    # Owner-scoped listing (?owner=me across all three visibility states):
+    await _db.visualizations.create_index([("owner_slug", 1), ("created_at", -1)])
+    # The ``pinned`` retrofit: the bounded janitor prune predicate
+    # ``{pinned: false, last_accessed_at: {$lt: cutoff}}`` runs against this
+    # compound index (mirrors images/contours; no unbounded $nin). The
+    # ``deleted_at``-grace hard-delete pass scans the indexed ``deleted_at``.
+    await _db.visualizations.create_index([("pinned", 1), ("last_accessed_at", 1)])
+
     # Flags
-    await _db.flags.create_index(
-        [("snapshot_hash", 1), ("reporter_slug", 1)], unique=True
-    )
+    await _db.flags.create_index([("snapshot_hash", 1), ("reporter_slug", 1)], unique=True)
     await _db.flags.create_index("snapshot_hash")
     await _db.flags.create_index("created_at")
 
@@ -112,6 +147,4 @@ def get_db() -> AsyncIOMotorDatabase:
 
 async def touch_document(collection_name: str, filter_: dict) -> None:
     db = get_db()
-    await db[collection_name].update_one(
-        filter_, {"$set": {"last_accessed_at": datetime.now(UTC)}}
-    )
+    await db[collection_name].update_one(filter_, {"$set": {"last_accessed_at": datetime.now(UTC)}})

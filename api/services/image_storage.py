@@ -1,4 +1,12 @@
-"""Asset-based image and contour storage (MongoDB documents with Binary blobs)."""
+"""Asset-based image and contour storage (MongoDB documents with Binary blobs).
+
+**Carve note (fourier-B.W3.3).** This module owns *blob storage + content
+hashing* (``sha256`` dedup on images; ``contour_hash`` on contours — both
+*non-identity* dedup keys per CRUD-CONTRACT §1). Slug *issuance* is lifted
+out of the prior check-then-insert TOCTOU loop and through
+``api.lib.crud.slugs.slug_with_retry`` (insert-then-catch ``DuplicateKeyError``
+against the unique ``image_slug`` index per CRUD-CONTRACT §2).
+"""
 
 from __future__ import annotations
 
@@ -13,11 +21,12 @@ from bson import Binary
 from PIL import Image, ImageOps
 from pymongo.errors import DuplicateKeyError
 
+from api.lib.crud.slugs import slug_with_retry
 from api.services.database import get_db
-from api.slugs import generate_slug
 
 try:
     from pillow_heif import register_heif_opener
+
     register_heif_opener()
 except ImportError:
     pass
@@ -58,7 +67,9 @@ async def store_image_asset(
     if existing is not None:
         try:
             thumb_bytes, thumb_ct = _generate_thumbnail(
-                bytes(existing["blob"]) if isinstance(existing["blob"], Binary) else existing["blob"],
+                bytes(existing["blob"])
+                if isinstance(existing["blob"], Binary)
+                else existing["blob"],
                 existing.get("content_type", "image/png"),
             )
             await db.images.update_one(
@@ -68,13 +79,10 @@ async def store_image_asset(
             existing["thumbnail"] = Binary(thumb_bytes)
             existing["thumbnail_content_type"] = thumb_ct
         except Exception:
-            logger.warning("Thumbnail regeneration failed for %s", existing.get("image_slug"), exc_info=True)
+            logger.warning(
+                "Thumbnail regeneration failed for %s", existing.get("image_slug"), exc_info=True
+            )
         return existing
-
-    slug = generate_slug()
-    # Ensure slug uniqueness
-    while await db.images.find_one({"image_slug": slug}):
-        slug = generate_slug()
 
     # Generate thumbnail
     thumbnail_fields: dict = {}
@@ -88,8 +96,7 @@ async def store_image_asset(
         logger.warning("Thumbnail generation failed for %s", original_name, exc_info=True)
 
     now = datetime.now(UTC)
-    doc = {
-        "image_slug": slug,
+    doc: dict = {
         "sha256": sha256,
         "original_name": original_name,
         "content_type": content_type,
@@ -99,15 +106,34 @@ async def store_image_asset(
         "created_at": now,
         "last_accessed_at": now,
     }
-    try:
-        await db.images.insert_one(doc)
-    except DuplicateKeyError:
-        # Race: another request inserted the same sha256 between our check and insert
-        existing = await db.images.find_one({"sha256": sha256})
-        if existing is not None:
-            return existing
-        raise
-    return doc
+
+    # Slug issuance lifted through the utility's insert-then-catch loop
+    # (CRUD-CONTRACT §2) — retires the prior check-then-insert TOCTOU race.
+    # ``slug_with_retry`` catches ``DuplicateKeyError`` and retries with a
+    # fresh slug, so a *slug*-index collision is handled transparently. A
+    # ``sha256``-index collision (another request inserted the byte-identical
+    # blob between our dedup check and this insert) is NOT a slug problem, so
+    # we resolve it inside the closure and surface the winning document
+    # rather than burning retries on it.
+    race_winner: dict | None = None
+
+    async def _insert(candidate: str) -> None:
+        nonlocal race_winner
+        doc["image_slug"] = candidate
+        try:
+            await db.images.insert_one(doc)
+        except DuplicateKeyError as exc:
+            existing = await db.images.find_one({"sha256": sha256})
+            if existing is not None:
+                # sha256 race — terminal; not a slug collision.
+                race_winner = existing
+                return
+            # No sha256 winner ⇒ this was a slug collision; re-raise so
+            # slug_with_retry mints a fresh candidate.
+            raise exc
+
+    await slug_with_retry(_insert)
+    return race_winner if race_winner is not None else doc
 
 
 def image_bytes(asset: dict) -> tuple[bytes, str]:
@@ -221,7 +247,7 @@ async def store_contour_asset(
 
     # Upsert: if the hash already exists, just touch last_accessed_at
     set_on_insert = {k: v for k, v in doc.items() if k != "last_accessed_at"}
-    result = await db.contours.update_one(
+    await db.contours.update_one(
         {"contour_hash": contour_hash},
         {"$setOnInsert": set_on_insert, "$set": {"last_accessed_at": now}},
         upsert=True,

@@ -12,11 +12,21 @@ class Settings(BaseSettings):
     compute_timeout_s: int = 300
     compute_concurrency: int = 4
     asset_max_age_days: int = 30
-    storage_budget_gb: float = 5.0
+    # NOTE: ``storage_budget_gb`` retired at B.W3 (the inline-blob eviction
+    # band-aid — CRUD-CONTRACT §8 / Wχ P3-B). The principled storage bound is
+    # the recency prune ``{pinned: False, last_accessed_at: {$lt: cutoff}}``
+    # plus the ``deleted_at``-grace cascade; image-blob redesign is deferred
+    # to fourier tranche C. The per-doc ``bytes`` field survives for
+    # observability, not eviction.
     admin_token: str = ""
     gallery_page_size: int = 20
-    session_ttl_days: int = 7
+    # 30-day session TTL per CRUD-CONTRACT §6 (was 7). The live-session
+    # backfill is W4's; this is the config default for newly minted sessions.
+    session_ttl_days: int = 30
     user_max_age_days: int = 90
+    # Soft-delete grace window (CRUD-CONTRACT §5). Rows with
+    # ``deleted_at < now() - grace`` are hard-deleted by the janitor.
+    soft_delete_grace_days: int = 30
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

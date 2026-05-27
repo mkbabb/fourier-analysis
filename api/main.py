@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 from api.config import settings
-from api.routers import contours, equations, images, sessions, snapshots
+from api.routers import contours, equations, images, sessions, visualizations
 from api.routers.admin import admin_router
 from api.routers.gallery import gallery_router
 from api.services.database import close_db, connect_db
@@ -60,6 +60,7 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-Session-Token"],
 )
 
+
 def _has_dollar_keys(obj) -> bool:
     if obj is None or not isinstance(obj, (dict, list)):
         return False
@@ -88,23 +89,30 @@ async def reject_dollar_keys(request: Request, call_next):
                     if _has_dollar_keys(parsed):
                         return JSONResponse(
                             status_code=400,
-                            content={"detail": "Invalid input: keys starting with '$' are not allowed"},
+                            content={
+                                "detail": "Invalid input: keys starting with '$' are not allowed"
+                            },
                         )
     return await call_next(request)
 
 
 app.include_router(images.router)
 app.include_router(contours.router)
-app.include_router(snapshots.router)
 app.include_router(equations.router)
 app.include_router(sessions.router)
+app.include_router(visualizations.router)
 app.include_router(gallery_router)
 app.include_router(admin_router)
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.error("Unhandled exception on %s %s:\n%s", request.method, request.url.path, traceback.format_exc())
+    logger.error(
+        "Unhandled exception on %s %s:\n%s",
+        request.method,
+        request.url.path,
+        traceback.format_exc(),
+    )
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
