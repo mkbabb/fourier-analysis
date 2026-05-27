@@ -75,7 +75,7 @@ from this section alone.
 - **Version**: 1.0.0 (semver; see §12 change-log policy).
 - **Ratification status**: *drafted* at authoring; **RATIFIED
   fourier-unilateral at fourier-B.W1 close, 2026-05-26** (commit hash
-  `<W1-close-commit>` — recorded by the orchestrator at the wave-close
+  `4626d4c` — recorded by the orchestrator at the wave-close
   ceremony). **value.js-C sign-off DEFERRED** — value.js-C was RETIRED
   and never opened for execution; per the orphan verdict at
   `coordination/CRUD-CONSTELLATION.md`, the value.js half is held as a
@@ -1269,7 +1269,7 @@ with the authoring wave boundary.
 | Version | Date | Wave | Change |
 |---|---|---|---|
 | 0.1.0-draft | 2026-05-19 | B.W1 (in flight) | initial authoring by A1 (this document); not yet ratified |
-| 1.0.0 | 2026-05-26 | B.W1 close | RATIFIED fourier-unilateral (commit `<W1-close-commit>`); value.js-C sign-off DEFERRED (value.js-C RETIRED, never opened) per the orphan verdict |
+| 1.0.0 | 2026-05-26 | B.W1 close | RATIFIED fourier-unilateral (commit `4626d4c`); value.js-C sign-off DEFERRED (value.js-C RETIRED, never opened) per the orphan verdict |
 
 Subsequent amendments record one row per amendment with the authoring wave
 boundary and a one-line summary.
