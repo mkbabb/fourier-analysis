@@ -153,17 +153,20 @@ Invalid hard gates (rejected at challenge): "deployed" without a recorded chain 
 The W1 prod deploy + migration cutover may open a brief window — the span of the first deploy (build → health-gate → migration → cut). The filesystem cutover is atomic per-document (proven at C.Wχ-P3), so there is **no dual-read**; the window governs only the deploy-chain span, and rollback (the deploy-hook's `reset --hard $PREV` + rebuild + re-gate) restores the prior (pre-A) build if the gate fails.
 
 ```yaml
-breaking_changes_during_wave: maybe (W1)
-suspended_gates:
-  - the live site during the first-deploy build+migration cut
-restoration_wave: W1 (the deploy completes within it; rollback restores prior build)
-reason: the first real A/B/C deploy replaces a pre-A build on a shared host; the
-        window opens for the build+health-gate+migration cut and closes on a green
-        gate. Wα-R2 + Wχ-P1/P2 determine whether the shared-host co-tenants
-        (floridify, palette-api) are touched (they should not be — fourier's
-        containers + volume + CA are isolated) and whether the migration-with-deploy
-        is atomic + rollback-safe on real data. No dual-read (the filesystem cutover
-        is atomic per C.Wχ-P3).
+breaking_changes_during_wave: NO (window STRUCK at Wχ-P2 close)
+suspended_gates: none
+restoration_wave: N/A — the §8 brittleness window was STRUCK at Wχ close (P2.C5)
+reason: the W1 deploy is structurally atomic + rollback-safe. The atomicity proof
+        from C.Wχ-P3 reproduces on prod (replicas:1, no app-side cache, single
+        update_one with $set+$unset per doc); the empty DB at first deploy
+        (mongosh confirmed images.count=0, visualizations.count=0) makes the
+        migration a structural no-op; the deploy-hook's rollback restores code
+        + volume + migration-status at 8818ae5 cleanly on failure; no
+        observable suspended-gate interval. Wχ-P1 confirmed fourier-isolation
+        holds (dispatcher arm-scoped, Apache vhost zero-touch on siblings,
+        Mongo CAs independent fingerprints, volume name no collision). W1 owns
+        the host-ops + the migration invocation + the post-deploy probe; none
+        suspends a live-site gate.
 ```
 
-W2–W12 close green with no window (the α′ DNS/Pages/ingress cutovers are individually reversible — a DNS record flip back, a Pages rollback, a vhost revert — and bounded to one app at a time after the fourier pilot); W1 owns its own restoration; the close ceremony cannot run while the window is open.
+W1–W12 close green with no window. The α′ DNS/Pages/ingress cutovers are individually reversible — a DNS record flip back, a Pages rollback, a vhost revert — and bounded to one app at a time after the fourier pilot. The close ceremony can proceed at any wave.

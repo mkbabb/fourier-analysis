@@ -21,7 +21,7 @@ At W7 close every row reconciles against `FINAL.md`'s gate table.
 |---|---|---|---|
 | W0 — *Open · baseline · research dispatch* | open | — | C confirmed closed; prod-state baseline (the `8818ae5` pre-A gap, dirty tree, empty DB, missing `image_blobs` volume); design-debt + backend-legacy catalogs; δ research dispatched; §8 window ratified; binding baseline at `waves/W0.md`; W0→Wα→Wχ gate opened |
 | Wα — *Research (ratification + narrowed dispatch)* | closed | 2026-05-27 | 2 parallel agents (Wα.a R1+R2, Wα.b R3+R4) ratified the dev-era substrate against the live tree + host. **R1 RATIFIED-AS-IS**: ~11-clause divergence binds verbatim; `palette_slug` FK clause authored; **C4.5/C4.6 → W3 (γ-thread)**. **R2 RATIFIED-AS-IS**: every host fact (HEAD `8818ae5`, dirty tree, missing `image_blobs`, foreign CA, dispatcher weakness, hook perms `0664`, 3 Mongos on `0.0.0.0`, 4 UFW rules) re-confirmed verbatim. **R3 RATIFIED-WITH-DELTA**: palette-api at `/home/mbabb/Programming/palette-api/` has NO `.git/` (sharpens rsync provenance, not load-bearing). **R4 RATIFIED-WITH-DELTA (LOAD-BEARING)**: `certbot-dns-cloudflare` plugin NOT installed on host. **Folded resolution**: HTTP-01 via existing `--apache` plugin (Path B; api hosts grey-cloud → origin Apache serves challenge directly); W2/W10/D.md/CONSTELLATION-DEPLOY §3.2.a/§8.1 reconciled. `research/README.md` authored. |
-| Wχ — *Challenge* | planned | — | **5 probes in 4+1 batches** (4-agent ceiling): P1 co-tenant blast radius (floridify/palette-api untouched); P2 migration-with-deploy atomic + rollback-safe on real data; P3 cohesion KISS (no shared framework, inv-16); P4 β refines / γ deletes only dead code; **P5** α′ pilot-first + DNS-safe (mail/apex preserved) + api-TLS-path-real (grey-cloud + origin LE, not a handshake failure) |
+| Wχ — *Challenge* | closed | 2026-05-27 | **5 probes in 4+1 batches** all landed PASS-WITH-CONDITIONS (P4 ACCEPTED-WITH-STRENGTHENING). **P1** co-tenant blast radius: dispatcher arm-scoped, sibling Mongo/UFW residuals named; HMAC rotation = Shape A (per-rule, hooks.json supports it) **OR** Shape B (lockstep) — W1 binds. **P2** migration atomic + rollback-safe: empty DB at first deploy + atomicity proof reproduces on prod — **§8 brittleness window STRUCK**. **P3** cohesion KISS: inv-16 holds (no shared framework/codegen/coordinator). **P4** β refines + γ deletes only dead: all greps verified zero live consumers; surfaced **W4 enumeration gap** (3 of 9 `#f0b632` + 6 of 12 alpha-modifier sites enumerated — W4 closes the gap at dispatch). **P5** α′ pilot-first + DNS-safe + Path B HTTP-01: live `curl http://34.197.214.67/.well-known/acme-challenge/` returns 404-from-Apache (not refusal) — the `RewriteCond` exemption is **already in babb-dev.conf** with comment "also serves certbot challenges"; MX/SPF/apex/NS/wildcard all preserved. |
 | W1 — *Security hotfix + first prod deploy* | provisional | — | thread α/α′ — **FIRST: bind all 3 Mongos off `0.0.0.0` + withdraw 4 UFW rules** (the live exposure closed across the shared host); THEN dirty-tree reconcile + secret extraction; deploy-hook wired; hook perms 0664→0600; `image_blobs` volume; FIRST real A/B/C→prod deploy + migration-in-cutover; transcripts |
 | W2 — *Verified-TLS cutover + precepts promotion* | provisional | — | thread α — `gen-mongo-certs.sh` host-run; the `infra/tls.md §9` 3-site diff; live verified-cert ping; the staged precepts promoted into the submodule |
 | W3 — *Backend NO-legacy symmetry + transpositions* | provisional | — | thread γ — backend `snapshot_hash` band → slug (flags field+index, 9 admin sites); dead `gallery` stratum deleted; image asset typed (retires the dict shim that caused C9/C10) |
@@ -153,6 +153,79 @@ rsync/standalone provenance).
   the per-app row table, and the pilot-then-rollout ordering.
 - I confirm I SSH'd into the server (read-only) multiple times this session.
 
+### 2026-05-27 — D.Wχ closed (5 probes in 4+1 batches; §8 STRUCK)
+
+**WHAT.** 5 adversarial probes (P1-P5) dispatched in two batches per
+`waves/Wchi.md §4`: Batch 1 = P1+P2+P3+P4 parallel; Batch 2 = P5 alone (cites
+P1 sibling-isolation findings). Each agent authored
+`docs/tranches/D/audit/challenge-P<n>.md`. All 5 probes verdicted; the §7
+conditions-to-waves binding table holds with minor refinements folded.
+
+**Per-probe verdicts:**
+- **P1 — co-tenant blast radius**: PASS-WITH-CONDITIONS. Dispatcher fourier-arm
+  edit byte-scoped; shared `deploy()` body untouched; sibling arms untouched.
+  TLS CA collision is cosmetic (3 distinct fingerprints). Volume name zero
+  collision. **Critical disposition**: `hooks.json` structurally supports
+  per-rule secrets (independent JSON array entries each with own `secret`)
+  but is configured single-secret — **W1 binds Shape A (per-rule rotation,
+  fourier-only) OR Shape B (single-secret lockstep across all 5 GitHub
+  webhook configs)**. Recommendation: Shape A (smaller blast radius).
+- **P2 — migration atomic + rollback-safe**: PASS-WITH-CONDITIONS. Empty DB
+  at first deploy (`images.count=0`, `visualizations.count=0`) → migration is
+  no-op. Volume create is W1 pre-deploy host-ops (not in deploy-hook).
+  `api/main.py` boot path zero `storage_uri` subscripts. C.Wχ-P3 atomicity
+  proof reproduces on prod (`replicas: 1`, no app-side cache, single
+  `update_one` per doc with `$set`+`$unset` in one op). **§8 brittleness
+  window verdict: STRIKE.** No observable suspended-gate interval.
+  Migration shape (C) for first deploy, (B) for subsequent. Rollback target
+  `$PREV = 8818ae5` safe (no inline blobs in DB). Added P2.C4 (volume create
+  prereq) and P2.C5 (§8 STRIKE).
+- **P3 — cohesion KISS, inv-16**: PASS-WITH-CONDITIONS. `git grep` for
+  shared-framework signatures returns zero instrumental matches in both
+  repos. value.js@0.10.0 exports `cubicBezierToSVG` but NOT
+  `sampleToSVGPath` → colour-lift is a **named residual** (expected branch).
+  Per-repo matrix flip discipline; `palette_slug` FK by shape+existence; no
+  cross-repo write-path traffic; value.js-side as separate user-gated tranche.
+- **P4 — β refines + γ deletes dead**: ACCEPTED-WITH-STRENGTHENING. All γ
+  deletion targets verified-dead at HEAD (`_entry_from_doc`/`GalleryEntryResponse`
+  hits all declarations or false docstrings; `gallery.(insert|update|replace)`
+  hits all test fixtures; `db.snapshots.` hits dead boot indexes + one-shot
+  migration; `snapshot_hash` 44 hits = 11 W3 targets + docstrings + dead
+  indexes + 30 explicitly out-of-scope). All β refinements preserve surface
+  treatment / colour-system / IA-paradigm baselines. **Surfaced W4
+  enumeration gap**: W4.md §1.4 enumerates 3 of 9 `#f0b632` sites + 6 of 12
+  alpha-modifier sites — W4 must close at dispatch (P4.C2 strengthening
+  bound).
+- **P5 — α′ pilot-first + DNS-safe + Path B api-TLS-real**: PASS-WITH-CONDITIONS.
+  Live `curl -v http://34.197.214.67/.well-known/acme-challenge/test -H "Host:
+  fourier.babb.dev"` returns HTTP 404-from-Apache (not connection refusal)
+  → Apache `:80` reachability + the `RewriteCond !^/.well-known/acme-challenge/`
+  exemption is **already live in `babb-dev.conf:2`** with header comment
+  "HTTP: redirect to HTTPS — also serves certbot challenges". The Path B
+  HTTP-01 mechanism is infrastructure-ready. DNS: MX (5 Google), SPF, apex
+  (Squarespace), NS (CF), wildcard — all preserved verbatim. (Minor:
+  P5.C2 records MX line-count as 5 not 4.) Fourier pilot ordering
+  W1→W2→W6→W9→W10 binding. CF token NOT rotated.
+
+**Folded reconciliations (team-lead, central):**
+- `D.md §8` brittleness window → **STRUCK** (P2.C5 verdict).
+- `waves/Wchi.md` close-record updated with per-probe verdicts.
+- W1 must bind HMAC rotation shape (P1.C2 — Shape A recommended).
+- W1 must add volume-create-prereq gate (P2.C4).
+- W4 must enumerate all 9 `#f0b632` + all 12 alpha-modifier sites at
+  dispatch (P4.C2 strengthening).
+- W12 must elevate CF-token-not-rotated from checklist to numbered G-gate
+  (P5.C5).
+
+**Wχ-G1 through Wχ-G7 all green.** No source change. No host mutation.
+Phase 0 discipline holds through close.
+
+**Next**: implementation waves open. Per `D.md §3`/§4: W1 (security hotfix +
+first prod deploy) → W2 (verified-TLS + domain split) → W3 ∥ W4 (γ ∥ β) →
+W5 (CRUD v2.0.0) → W6 (test integrity) → W8 (DNS) → W9 (CF Pages, fourier
+pilot first) → W10 (sibling api ingress) → W11 (palette-api → color rename,
+user-gated) → W12 (close).
+
 ### 2026-05-27 — D.Wα closed (ratification + 1 load-bearing delta folded)
 
 **WHAT.** 2 parallel ratification agents (Wα.a R1+R2, Wα.b R3+R4) ratified the
@@ -224,5 +297,6 @@ ratification; Wα.b R3+R4 ratification) producing the binding
 
 ### Next action
 
-D.Wα CLOSED with 1 load-bearing delta folded (Path B HTTP-01 via `--apache`).
-The strict Wα → Wχ gate opens to the 5-probe challenge wave.
+D.Wχ CLOSED — all 5 probes PASS-WITH-CONDITIONS / ACCEPTED-WITH-STRENGTHENING;
+§8 brittleness window STRUCK. The strict Wχ → implementation gate opens.
+Next: W1 (security hotfix + first prod deploy).
