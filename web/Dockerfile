@@ -3,6 +3,10 @@ WORKDIR /app
 
 FROM base AS deps
 COPY web/package.json web/package-lock.json ./
+# Vendored sibling-repo tarballs (referenced as file:./vendor/*.tgz in package.json)
+# must be present before `npm ci` so the tarball deps resolve in the Docker
+# build context. See D.W1 build-fix commit for rationale.
+COPY web/vendor ./vendor
 RUN npm ci
 
 FROM deps AS development
