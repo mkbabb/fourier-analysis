@@ -24,15 +24,22 @@ logger = logging.getLogger(__name__)
 _suspended_cache: dict[str, float] = {}
 _SUSPENSION_CACHE_TTL = 60.0
 
-# CRUD-CONTRACT §2: the one slug shape across the converged surface — four
-# lowercase hyphenated words, exactly. Tightened from the prior
-# ``^[a-zA-Z0-9][-a-zA-Z0-9]{2,80}$`` at fourier-B.W3 (matches
-# ``api/lib/crud/slugs.SLUG_PATTERN``).
+# CRUD-CONTRACT §2: the *visualization* slug shape — the user-named noun is
+# exactly four lowercase hyphenated words (matches ``api/lib/crud/slugs.SLUG_PATTERN``).
 SLUG_PATTERN = re.compile(r"^[a-z]+(-[a-z]+){3}$")
+
+# The *image* slug is an internal content-addressed FK, NOT the user-named noun.
+# New image slugs are 4-word (issued via ``slug_with_retry`` → ``generate_slug``),
+# but legacy slugs were ``coolname``-issued (variable token count, e.g.
+# ``statuesque-meteoric-numbat-of-force``). The W3 migration keeps ``image_slug``
+# as a STABLE FK (image-blob Option B — images are not migrated), so the image
+# validator must accept both forms or legacy images fail to load post-migration.
+# Hence the laxer pre-B shape here, distinct from the strict visualization slug.
+IMAGE_SLUG_PATTERN = re.compile(r"^[a-zA-Z0-9][-a-zA-Z0-9]{2,80}$")
 
 
 def validate_image_slug(slug: str) -> str:
-    if not SLUG_PATTERN.match(slug):
+    if not IMAGE_SLUG_PATTERN.match(slug):
         raise HTTPException(status_code=400, detail="Invalid image slug")
     return slug
 
