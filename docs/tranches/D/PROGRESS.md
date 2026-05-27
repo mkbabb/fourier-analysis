@@ -20,7 +20,7 @@ At W7 close every row reconciles against `FINAL.md`'s gate table.
 | Wave | Status | Closed at | Notes |
 |---|---|---|---|
 | W0 — *Open · baseline · research dispatch* | open | — | C confirmed closed; prod-state baseline (the `8818ae5` pre-A gap, dirty tree, empty DB, missing `image_blobs` volume); design-debt + backend-legacy catalogs; δ research dispatched; §8 window ratified; binding baseline at `waves/W0.md`; W0→Wα→Wχ gate opened |
-| Wα — *Research (ratification + narrowed dispatch)* | planned | — | **dev-era 10+6 lanes did the substantive work**; Wα = ratification. R1 CRUD-cohesion v2.0.0 + `palette_slug` FK + C4.5/C4.6 disposition; R2 prod-deploy-safety re-probe; R3 ingress + palette-api provenance reconcile; R4 constellation matrix + CF-token discipline. Each: RATIFIED-AS-IS or -WITH-DELTA; at-most-one narrowed follow-up |
+| Wα — *Research (ratification + narrowed dispatch)* | closed | 2026-05-27 | 2 parallel agents (Wα.a R1+R2, Wα.b R3+R4) ratified the dev-era substrate against the live tree + host. **R1 RATIFIED-AS-IS**: ~11-clause divergence binds verbatim; `palette_slug` FK clause authored; **C4.5/C4.6 → W3 (γ-thread)**. **R2 RATIFIED-AS-IS**: every host fact (HEAD `8818ae5`, dirty tree, missing `image_blobs`, foreign CA, dispatcher weakness, hook perms `0664`, 3 Mongos on `0.0.0.0`, 4 UFW rules) re-confirmed verbatim. **R3 RATIFIED-WITH-DELTA**: palette-api at `/home/mbabb/Programming/palette-api/` has NO `.git/` (sharpens rsync provenance, not load-bearing). **R4 RATIFIED-WITH-DELTA (LOAD-BEARING)**: `certbot-dns-cloudflare` plugin NOT installed on host. **Folded resolution**: HTTP-01 via existing `--apache` plugin (Path B; api hosts grey-cloud → origin Apache serves challenge directly); W2/W10/D.md/CONSTELLATION-DEPLOY §3.2.a/§8.1 reconciled. `research/README.md` authored. |
 | Wχ — *Challenge* | planned | — | **5 probes in 4+1 batches** (4-agent ceiling): P1 co-tenant blast radius (floridify/palette-api untouched); P2 migration-with-deploy atomic + rollback-safe on real data; P3 cohesion KISS (no shared framework, inv-16); P4 β refines / γ deletes only dead code; **P5** α′ pilot-first + DNS-safe (mail/apex preserved) + api-TLS-path-real (grey-cloud + origin LE, not a handshake failure) |
 | W1 — *Security hotfix + first prod deploy* | provisional | — | thread α/α′ — **FIRST: bind all 3 Mongos off `0.0.0.0` + withdraw 4 UFW rules** (the live exposure closed across the shared host); THEN dirty-tree reconcile + secret extraction; deploy-hook wired; hook perms 0664→0600; `image_blobs` volume; FIRST real A/B/C→prod deploy + migration-in-cutover; transcripts |
 | W2 — *Verified-TLS cutover + precepts promotion* | provisional | — | thread α — `gen-mongo-certs.sh` host-run; the `infra/tls.md §9` 3-site diff; live verified-cert ping; the staged precepts promoted into the submodule |
@@ -153,6 +153,52 @@ rsync/standalone provenance).
   the per-app row table, and the pilot-then-rollout ordering.
 - I confirm I SSH'd into the server (read-only) multiple times this session.
 
+### 2026-05-27 — D.Wα closed (ratification + 1 load-bearing delta folded)
+
+**WHAT.** 2 parallel ratification agents (Wα.a R1+R2, Wα.b R3+R4) ratified the
+dev-era 10+6 lane substrate against the live tree + host (read-only SSH probes).
+Authored `docs/tranches/D/research/README.md` (binding index) assembled by
+team-lead reconcile from `_lane-R{1,2,3,4}.md` + `_R-deltas.md`. Four deltas
+surfaced; one (**Δ-R4.1 — `certbot-dns-cloudflare` plugin not installed**) is
+load-bearing on W2/W10; team-lead resolved with **Path B — HTTP-01 via existing
+`--apache` plugin** (smallest mechanism; api hosts are grey-cloud so the LE
+HTTP-01 challenge resolves through the origin Apache directly, no DNS-01
+round-trip, no new plugin install). The other three deltas are recording-only
+(substrate correct; wave-spec probe-text wording loose).
+
+**Per-lane verdicts:**
+- **R1** (CRUD-CONTRACT v2.0.0 + `palette_slug` FK): RATIFIED-AS-IS. The
+  `palette_slug` FK contract clause authored (resolve-only / read-side-only;
+  fourier-shape constraints + value.js resolution semantics + immutability +
+  no cross-repo write-path traffic). **C4.5/C4.6 verdict: W3 (γ-thread)** —
+  the guard is internal-state-machine wiring, not a contract clause.
+- **R2** (prod-deploy-safety): RATIFIED-AS-IS. Every host fact from `W0.md §1`
+  re-confirms verbatim (HEAD `8818ae5`, dirty tree, missing volume, foreign
+  CA, dispatcher weak, hook perms `0664`, 3 Mongos on `0.0.0.0`, 4 UFW rules).
+- **R3** (ingress + palette-api provenance): RATIFIED-WITH-DELTA. Palette-api
+  host dir has NO `.git/` (sharpens "rsync deploy" without contradicting);
+  `/words` is 301 redirect not path-proxy (probe-text loose). Provenance
+  answer: standalone rsync target on host, NOT `value.js/api/`.
+- **R4** (constellation matrix + CF token): RATIFIED-WITH-DELTA (load-bearing).
+  certbot-dns-cloudflare NOT installed → Path B HTTP-01 via `--apache` folded.
+  Constellation matrix RATIFIED-AS-IS (4 compose projects, LE SAN set
+  `{fourier,sudoku,words}.babb.dev`, keyframes.js not on host, grammar
+  static-not-git). CF token discipline RATIFIED-AS-IS (gitignored, 0600, NOT
+  rotated). Pilot-then-rollout ordering RATIFIED-AS-IS.
+
+**Folded reconciliations (team-lead, central):**
+- `coordination/CONSTELLATION-DEPLOY.md §3.2.a` (NEW) — Path B HTTP-01 binding.
+- `coordination/CONSTELLATION-DEPLOY.md §8.1 step 2` — invocation updated.
+- `D.md §3` W2 + W10 rows — `--dns-cloudflare` → `--apache` HTTP-01.
+- `D.md §7` constellation `api.<app>` TLS path bullet — Path B noted.
+- `waves/W2.md` — top-of-spec AMENDMENT block citing Wα-Δ-R4.1.
+- `waves/W10.md` — top-of-spec AMENDMENT block citing Wα-Δ-R4.1.
+
+**Wα-G1 through Wα-G10 all green.** No source change. Read-only host probes only.
+
+**Next**: Wχ — 5 adversarial probes in 4+1 batches (P1+P2+P3+P4 parallel; P5
+after) per `waves/Wchi.md §4`.
+
 ### 2026-05-27 — D.W0 opened (the baseline + dispatch gate)
 
 **WHAT.** The user authorised execution ("Begin and continue the current tranche.
@@ -178,5 +224,5 @@ ratification; Wα.b R3+R4 ratification) producing the binding
 
 ### Next action
 
-D.W0 OPEN. The strict W0 → Wα → Wχ → implementation gate is active; Wα dispatch
-follows directly.
+D.Wα CLOSED with 1 load-bearing delta folded (Path B HTTP-01 via `--apache`).
+The strict Wα → Wχ gate opens to the 5-probe challenge wave.

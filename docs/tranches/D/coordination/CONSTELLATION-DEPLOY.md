@@ -30,7 +30,26 @@ Support services (not apps): `code-server :8080`, host MySQL `:3306`, the `adnan
 
 ### §3.2 — The `api.<app>` TLS path — RESOLVED (grey-cloud + origin LE, free)
 
-The earlier framing (ACM ~$10/mo vs `<app>-api` rename) is **superseded by the cleanest resolution the user surfaced**: since we control the origin, `api.<app>.babb.dev` records are **DNS-only (grey-cloud) A → `34.197.214.67`** — CF returns the origin IP, the browser connects directly, and the **mbabb Apache serves a Let's Encrypt cert** issued by `certbot --expand` on the already-installed certbot (`/usr/local/bin/certbot`) extending the live `/etc/letsencrypt/live/sudoku.babb.dev/fullchain.pem` cert (which already covers fourier/sudoku/words as SANs) to include `api.fourier.babb.dev`, `api.color.babb.dev`, etc. LE has **no subdomain-depth limit** (the CF Universal SSL single-level constraint applies only to CF-edge TLS, i.e., orange-cloud); LE happily issues for `api.<app>.babb.dev` at any depth. DNS-01 challenge via the CF token's `DNS:Edit` perm; auto-renewal preserved. **Free, exact naming (`api.<app>.babb.dev`), no ACM, no rename.** Frontends stay CF-Pages-proxied (single-level `<app>.babb.dev`, Universal SSL covers). Tradeoff vs orange-cloud-on-api: lose CF CDN/WAF/proxy on the api subdomains — acceptable (APIs don't need a CDN; the origin IP is the host's public IP and is already public — and W1 closes its actual exposure, the Mongos). If at some future point CF proxy on the api is wanted, ACM is the upgrade path; until then, grey-cloud + LE wins.
+The earlier framing (ACM ~$10/mo vs `<app>-api` rename) is **superseded by the cleanest resolution the user surfaced**: since we control the origin, `api.<app>.babb.dev` records are **DNS-only (grey-cloud) A → `34.197.214.67`** — CF returns the origin IP, the browser connects directly, and the **mbabb Apache serves a Let's Encrypt cert** issued by `certbot --expand` on the already-installed certbot (`/usr/local/bin/certbot`) extending the live `/etc/letsencrypt/live/sudoku.babb.dev/fullchain.pem` cert (which already covers fourier/sudoku/words as SANs) to include `api.fourier.babb.dev`, `api.color.babb.dev`, etc. LE has **no subdomain-depth limit** (the CF Universal SSL single-level constraint applies only to CF-edge TLS, i.e., orange-cloud); LE happily issues for `api.<app>.babb.dev` at any depth. Auto-renewal preserved via the existing certbot timer. **Free, exact naming (`api.<app>.babb.dev`), no ACM, no rename.** Frontends stay CF-Pages-proxied (single-level `<app>.babb.dev`, Universal SSL covers). Tradeoff vs orange-cloud-on-api: lose CF CDN/WAF/proxy on the api subdomains — acceptable (APIs don't need a CDN; the origin IP is the host's public IP and is already public — and W1 closes its actual exposure, the Mongos). If at some future point CF proxy on the api is wanted, ACM is the upgrade path; until then, grey-cloud + LE wins.
+
+#### §3.2.a — ACME challenge mechanism: **HTTP-01 via `--apache`/`--webroot`** (the binding implementation; Wα-Δ-R4.1 resolution)
+
+The Wα-R4 ratification surfaced a load-bearing delta (Δ-R4.1, `research/README.md` R4 + `research/_R-deltas.md`): the host's certbot install has plugins `apache`/`dns-route53`/`standalone`/`webroot` — **NO `dns-cloudflare`**. The earlier `--dns-cloudflare` invocation cannot run as written. Two paths considered:
+
+- **Path A — install the plugin** (`pip install certbot-dns-cloudflare` matching the existing certbot at `/usr/local/bin/certbot`). Preserves DNS-01; adds a new host-ops dependency. Useful only if a wildcard cert is ever needed (which forces DNS-01).
+- **Path B — HTTP-01 via existing `--apache`/`--webroot` plugin** (**chosen, the binding implementation**). Smallest mechanism; uses plugins already installed. Since `api.<app>.babb.dev` is grey-cloud (DNS-only A → `34.197.214.67`), the LE HTTP-01 challenge file at `http://api.<app>.babb.dev/.well-known/acme-challenge/<token>` is served by the origin Apache directly — no DNS-01 round-trip, no CF API call for the cert path, no new plugin install. The CF token's `Zone:DNS:Edit` perm remains needed for the W8 DNS-as-code script (writing the grey-cloud A records), but NOT for cert issuance.
+
+**Binding invocation** for all W2 / W10 `certbot --expand` calls:
+
+```bash
+sudo certbot --expand --cert-name sudoku.babb.dev \
+    --apache \
+    -d sudoku.babb.dev,fourier.babb.dev,words.babb.dev,api.fourier.babb.dev[,api.color.babb.dev,api.sudoku.babb.dev]
+```
+
+(`--apache` plugin both serves the challenge AND auto-reloads Apache. Alternatively `--webroot -w /var/www/html` for an Apache-config-untouched variant.) The A records for the api hostnames MUST exist before certbot runs (Apache needs the vhost or default-server to handle the challenge request); W8 lands them first, then W2/W10 issue.
+
+**Prerequisite (W2/W10 binding)**: each `api.<app>.babb.dev` has an HTTP (`:80`) reachable Apache vhost or the default `:80` ServerAlias catches it, serving `/.well-known/acme-challenge/*` files from the certbot-managed challenge dir (`--apache` plugin handles this automatically).
 
 ## §4 — The CF-Pages recipe (NA2 — the speedtest template, generalized)
 
@@ -78,7 +97,7 @@ The pattern is uniform; each app's backend gets the same four moves. The grey-cl
 ### §8.1 — The shape (per `api.<app>.babb.dev` backend)
 
 1. **DNS** (W8): a **grey-cloud (DNS-only) `A` record** `api.<app>.babb.dev` → `34.197.214.67` in the Cloudflare zone (the idempotent CF-API script writes it; the user's `Zone:DNS:Edit` perm covers it).
-2. **TLS at the origin** (W10): `certbot --expand --apache --dns-cloudflare -d api.<app>.babb.dev …` (or extend the existing `sudoku.babb.dev` cert with the api.* SANs); auto-renew via the existing certbot timer. The origin (mbabb Apache) serves the LE cert directly — browsers see a normal trusted chain, no CF edge involvement on the api hostname.
+2. **TLS at the origin** (W2/W10): `sudo certbot --expand --cert-name sudoku.babb.dev --apache -d sudoku.babb.dev,fourier.babb.dev,words.babb.dev,api.<app>.babb.dev` — HTTP-01 challenge via the existing `--apache` plugin (per §3.2.a — the binding implementation; the `dns-cloudflare` plugin is absent, Wα-Δ-R4.1). The api.<app> hostname must have an HTTP-reachable A record (W8 lands it grey-cloud first); the LE challenge resolves through the origin Apache directly. Auto-renew via the existing certbot timer. The origin serves the LE cert — browsers see a normal trusted chain, no CF edge involvement on the api hostname.
 3. **Ingress** (W10): one host-Apache vhost per `api.<app>.babb.dev`, e.g.
    ```apache
    <VirtualHost *:443>
