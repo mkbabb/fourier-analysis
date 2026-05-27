@@ -24,8 +24,8 @@ W5 close, every row reconciles against `FINAL.md`'s gate table.
 | Wχ — *Challenge wave* | **closed** | 2026-05-27 | four adversarial probes, **all PASS-WITH-CONDITIONS** (16 binding conditions). P1: janitor image-delete orphans files post-relocation → inv-18 delete-coupling (C1); P2: a live multi-repo host dispatcher contradicts the greenfield spec → W1 reconciles (C5); P3: atomicity survives (window STRUCK) but the dedup-hit path silently regresses (C9); P4: inv-20's two greps insufficient → strengthened G3-G6+T1, all 14 skeletons fill. `audit/challenge.md` synthesises; `C.md` reconciled (15→14, honest 8091 grep, window struck, W1 scope, inv-18/20 amended) |
 | W1 — *Webhook CI/CD + secret extraction* | provisional | — | thread α — retires `scripts/deploy.sh` (+ its health-check port bug); secrets exit compose files |
 | W2 — *MongoDB TLS + port standardization* | provisional | — | thread α — retires `tlsAllowInvalidCertificates` (3 sites); pins prod port map |
-| W3 — *Janitor audit-log + recovery + `--reload` compute-abort fix* | provisional | — | thread α — audit-row per delete_many; partial-failure recovery; the dev `--reload`-aborts-compute fix |
-| **W4 — *Slug-identity completeness + B-residual discharge*** | **provisional** | — | **NEW 2026-05-27 (thread γ + conditional δ)** — rename the `snapshot_hash` DTO band → slug end-to-end; remove the `as unknown as` cast; reconcile `FlaggedListResponse`; fill-or-retire the 15 conformance skeletons; e2e axe settle; **conditional δ**: consume value.js `sampleToSVGPath` iff published. Discharges the one precept violation (invariant 20). Independent of α/β — parallel-capable |
+| W3 — *Janitor audit-log + recovery + `--reload` compute-abort fix* | **closed** | 2026-05-27 (`e6a6b95`) | thread α — one `_log_janitor_audit` helper on the existing `admin_audit` shape wired to all 11 destructive ops (count≥1-gated, emitted from the orchestrating cycle); `_delete_images_and_cascade` widened to a count-tuple; idempotent live-predicate recovery; `test_janitor_audit.py` 9/9 (transient Mongo), 4+5 (no Mongo). `--reload-dir src` dropped (`dev.sh:76` + `api/Dockerfile:16`); prod byte-identical |
+| **W4 — *Slug-identity completeness + B-residual discharge*** | **closed** | 2026-05-27 (`f91a656`) | thread γ — `snapshot_hash`/`snapshotHash` → `slug`/`owner_slug` end-to-end (44→0); `as unknown as` cast removed; `FlaggedListResponse` reshaped to the cursor envelope + both dead-duplicates (`listFlaggedEntries`, `dismissFlags`) deleted (G5 zero); **T1 keystone** `vue-tsc -b --force` green WITH the cast removed; all **14** conformance skeletons FILLED (49 assertions, 49 passed w/ Mongo); matrix citation lies fixed; e2e settle deterministic. **δ = named residual** (value.js v0.10.0 has no `sampleToSVGPath`; `easings.ts` untouched). Discharges the one precept violation (invariant 20) |
 | W5 — *Image-blob migration* | provisional | — | thread β — relocates primary + **thumbnail** blobs to the Wα-R1 backend (filesystem+nginx default); inline-write deletion proof (`storage_budget_gb` already retired at B.W3 — gate corrected) |
 | W6 — *Close* | provisional | — | reconcile PROGRESS; cite commits in FINAL; restore brittleness window; record the conditional δ disposition + the inverted cross-repo edge |
 
@@ -227,9 +227,26 @@ W1 → W2 (TLS ships through the pipeline); W3 ∥ (independent); **W4 ∥** (di
 files — web+tests); W5 after W1+W2. Per `C.md §3` the threads sequence so infra
 precedes the storage migration that depends on it.
 
+### 2026-05-27 — implementation Batch 1: W3 ∥ W4 closed
+
+**WHAT.** Two disjoint, fully-repo-local waves landed in parallel, team-lead-verified:
+- **W4** (`f91a656`, thread γ) — the one precept violation discharged at the ROOT.
+  All gates green incl. the T1 keystone (`vue-tsc -b --force` green *with the cast
+  removed*). The δ-consume is a verified named residual.
+- **W3** (`e6a6b95`, thread α) — janitor audit-log on the existing shape + the
+  one-token `--reload` fix; tests green.
+
+**Residual surfaced by W4 (recorded, not silent):** `CONFORMANCE-MATRIX.md §U`
+(58 rows) cites a `api/tests/lib/crud/` tree that does not exist — the real proxies
+live at `api/tests/test_crud_lib_*.py`. Out of W4's named bounds (W4 owned the
+*conformance* method-mismatch + 6 phantom conformance files, both fixed). →
+**destination: W6 close reconciliation** (a one-file citation fix).
+
 ### Next action
 
-Begin Phase I — dispatch **W1** (webhook CI/CD, thread α) and **W4** (slug-identity
-discharge, thread γ — independent, parallel-capable) concurrently. W4 is fully
-repo-local and provable here; W1's repo-local stratum lands + the host residual is
-recorded. Then W2 (after W1), W3 (∥), W5 (after W1+W2).
+Implementation Batch 2 — dispatch **W1** (CI/CD repo-local stratum, thread α) ∥
+**W5** (image-blob storage code, thread β) concurrently (disjoint: `scripts/` +
+`coordination/` vs `api/services/image_storage` + routers + `docker-compose*.yml`).
+W5 code + tests land + prove here; the prod migration *run* and W1's host-dispatcher
+wiring are host-ops residuals. Then **W2** (TLS — repo-local artefacts + host-gated
+flag removal, shares compose with W5 so sequenced after it). Then W6 close.
