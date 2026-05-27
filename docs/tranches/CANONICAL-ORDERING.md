@@ -342,3 +342,7 @@ value.js-<I-or-dedicated> (publishes sampleToSVGPath) ──▶ fourier-D.W5-δ 
 - **value.js next action**: await user re-mandate for **value.js-I** as the CRUD-alignment + colour-publish tranche. fourier-D authors the contract v2.0.0 + records the ask (`D/coordination/CRUD-COHESION.md`); it does not author value.js's tranche.
 
 The repos are now **coupled at the CRUD layer** (the live `palette_slug` FK + the cohesion contract), not merely at the latent colour seam — the broadest the cross-repo relationship has been since the B cohort.
+
+### §10.4 — Constellation scope (tranche-D α′, 2026-05-27)
+
+D's α′ thread (`docs/tranches/D/coordination/CONSTELLATION-DEPLOY.md`) broadens the operational picture beyond the fourier↔value.js pair this document orders, to the **whole babb.dev constellation** on the shared AWS host (`34.197.214.67`): fourier, color (palette-api), sudoku (csp-solver), words (floridify), grammar (bbnf-lang), keyframes.js, value.js, speedtest. CANONICAL-ORDERING remains the **tranche-ordering** authority for fourier + value.js; the constellation *deployment* normalization is operational (DNS/CF-Pages/ingress), with fourier as the pilot and the others as bounded rollout — not new tranches (except the user-gated palette-api→color rename, which is a value.js-side concern). Two cross-cutting gates: the **live Mongo exposure** (urgent) and the **`api.<app>` TLS-ceiling** decision.
