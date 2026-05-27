@@ -125,3 +125,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+# D.W1 §3.6 — intentional rollback test (auto-revert next push)
+raise RuntimeError("intentional W1 rollback proof — auto-revert next push")
