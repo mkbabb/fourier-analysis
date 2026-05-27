@@ -1,5 +1,7 @@
 # D — domain / endpoint naming standardization (constellation ingress)
 
+> **⚠ EXTENDED + PARTLY CORRECTED by `CONSTELLATION-DEPLOY.md` (2026-05-27, the 6-lane normalization audit).** That doc is the binding constellation plan; it adds the full app matrix, the CF-Pages recipe, the live Mongo-exposure finding, and two corrections to this note's assumptions: (1) the **`api.<app>` TLS ceiling** — CF free Universal SSL is single-level only, so `api.fourier.babb.dev` needs ACM (~$10/mo) or the free `<app>-api.babb.dev` form (a user decision); (2) palette-api's prod provenance is a **standalone rsync'd repo**, not value.js/api. This note remains valid for the convention + the fourier-specific ingress.
+
 **Status**: planned (folds into D thread α — ingress — + a cross-repo ask for the color/palette side). **Authored**: 2026-05-27 (user directive + read-only prod ingress recon). **Authority**: this doc records the convention + the current reality + the per-app plan; the disposition is `D.md §3 W1/W2` + `§7`.
 
 ## §1 — The directive

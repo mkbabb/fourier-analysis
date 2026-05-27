@@ -28,7 +28,11 @@ At W7 close every row reconciles against `FINAL.md`'s gate table.
 | W4 — *Design refinement* | provisional | — | thread β — `.cartoon-card` resurrected (1 shim → 14 components); upload IA → one dropzone; gallery orphans resolved; light-mode contrast sweep; `:focus-visible` rings; axe light-mode clean. ∥ W3 (web vs api) |
 | W5 — *CRUD-CONTRACT v2.0.0 + cohesion* | provisional | — | thread δ — contract v2.0.0 (2 relaxations); fourier flips DEFERRED cells vs live palette-api; value.js alignment ask recorded; colour-lift consume iff published. value.js-side = a value.js tranche (user-gated) |
 | W6 — *Test integrity* | provisional | — | thread ε — cross-env Playwright matrix (2 apps × local/dev/prod, prod non-mutating); CI Mongo retires `@requires_mongo` skips; `COMPUTE_RATE_LIMIT` harness |
-| W7 — *Close* | provisional | — | reconcile PROGRESS; FINAL cites commits + gates; coordination updated; §8 window restored; CANONICAL-ORDERING → ordering ε |
+| W8 — *DNS-as-code* | provisional | — | thread α′ — idempotent CF-API script lands the `<app>`+`api.<app>` record set; grey/orange discipline; don't-break (MX/SPF/apex/NS/wildcard); the api-TLS-path decision applied (ACM vs `<app>-api`) |
+| W9 — *CF-Pages frontend migration* | provisional | — | thread α′ — speedtest recipe per frontend; **fourier pilot first**; then keyframes.js + value.js/color off GH Pages; bounded-parallel |
+| W10 — *Backend ingress + CORS + Mongo-loopback security* | provisional | — | thread α′ — per-`api.<app>` Apache vhost + origin-cert extend; CORS fixes (palette empty, floridify stale); **the 3 Mongos bound off 0.0.0.0 + UFW rules withdrawn** (live exposure closed) |
+| W11 — *palette-api → color rename* | provisional | — | thread α′/δ — **user-re-mandate-gated**; reconcile the standalone-repo provenance first; rename + `api.color.babb.dev` + palette-Mongo bind (value.js-side; shared vhost the seam) |
+| W12 — *Close* | provisional | — | reconcile PROGRESS; FINAL cites commits + gates; coordination updated; **CF token ROTATED**; dangling-image/dead-vhost cleanup; §8 window restored; CANONICAL-ORDERING → ordering ε |
 
 ## Log
 
@@ -95,9 +99,42 @@ palette-Mongo bind → a cross-repo ask (value.js / the standalone palette-api r
 user-re-mandate-gated; the shared Apache vhost the one fourier-touchable seam). The
 naming convention → a `docs/precepts/infra/` precept (D.W2). Wα gains R3 (ingress).
 
+### 2026-05-27 — constellation deployment normalization folded (new thread α′, 6-lane audit)
+
+**WHAT.** The user expanded D into a constellation-wide deployment normalization
+(every app → `<app>.babb.dev` + `api.<app>.babb.dev`; frontends → CF Pages via the
+speedtest recipe; backends → mbabb docker; programmatic DNS via the CF API; a CF
+token provided) + "what other containers run on the server?". A 6-lane read-only
+audit (`normalization/NA1-6`, 2,047 L) grounded it; `coordination/CONSTELLATION-DEPLOY.md`
+is the binding plan; folded as new thread **α′** (waves W8-W12).
+
+**The app constellation (the answer):** fourier (fourier-analysis), color
+(palette-api), sudoku (csp-solver), words (floridify), grammar (bbnf-lang, static),
++ keyframes.js & value.js/color (GH Pages) + speedtest (already CF Pages). Host =
+AWS EC2 `34.197.214.67`; support: code-server, MySQL, the webhook receiver, Apache.
+
+**Two load-bearing findings:**
+1. **LIVE CRITICAL SECURITY** — three Mongos (fourier:27017, floridify:27018,
+   palette:27020) bind `0.0.0.0` AND are reachable from the public Internet
+   (external TCP connect confirmed; UFW explicitly ALLOWs the ports; creds plaintext
+   in compose). → W10, and flagged to the user as a candidate pre-tranche hotfix.
+2. **The `api.<app>` TLS ceiling** — CF free Universal SSL is single-level `*.babb.dev`
+   only, so `api.fourier.babb.dev` gets no edge cert. ACM (~$10/mo) keeps the pattern;
+   `<app>-api.babb.dev` is free. → a user decision at W8.
+
+**Plan**: fourier is the PILOT (W1/W2/W9 prove the full pattern end-to-end on one
+app on the shared host), then the proven recipe rolls to the co-tenants bounded-
+parallel — never a big-bang. grammar DEFERRED (active dev). The CF token is never
+persisted/committed and is ROTATED at W12 close (it was chat-pasted). NA findings
+also corrected DOMAIN-NAMING's earlier assumptions (the TLS ceiling; palette-api's
+rsync/standalone provenance).
+
 ### Next action
 
-None until the user authorises D.W0. At that point dispatch D.W0 (prod-state
+None until the user authorises D.W0 — except the user may elect the **Mongo-exposure
+security hotfix** ahead of the tranche (a live exposure), and must decide the
+**api-TLS path** (ACM vs `<app>-api`) at Wα. This remains tranche development; the
+6-lane audit was read-only, no CF token used, no host/DNS mutation. At that point dispatch D.W0 (prod-state
 baseline + design/legacy catalogs + δ research dispatch) then Wα (CRUD-contract +
 deploy-safety research) → Wχ (four probes) — the research-first gate governs δ +
 the deploy-safety before any prod change or implementation wave. **This was tranche
