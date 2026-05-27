@@ -8,8 +8,8 @@ A *wave* (per `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Wave"`) is
 
 | Wave | Title | Status | Closed at | Notes |
 |---|---|---|---|---|
-| W0 | open · research dispatch | planned | — | dispatch readiness after fourier-A close |
-| Wα | research wave (six read-only lanes) | planned | — | six parallel lanes scoped in `research/README.md` |
+| W0 | open · research dispatch | **CLOSED** | 2026-05-26 | predecessor fourier-A confirmed closed (`A/FINAL.md`, `c7cfd82`); value.js cohort-peer orphan ground-truthed (C **RETIRED** `2026-05-26`, `C/FINAL.md` present; value.js at H / v0.10.0 `16129e0`; `src/palette/` + `api/src/crud/` confirmed absent); Wα dispatched as ground-truth/crosswalk over the existing R-*-spec + audit corpus |
+| Wα | research wave (six read-only lanes) | **in progress** | — | six parallel lanes scoped in `research/README.md`; re-charter — each lane ground-truths its existing-corpus anchors against live code, records drift, emits `research/R{N}-*.md` as verified synthesis + crosswalk |
 | Wχ | challenge wave (three+1 adversarial probes) | planned | — | P1 / P2 / P3 / **P4 (Wave-1 binding)** probes adversarially review the Wα findings + the new invariants 18-20; the plan hardens at close |
 | W1 | CRUD-contract ratification | provisional | — | shared written contract, fourier-only ratification under the orphan verdict; **scope items 8–12 added 2026-05-26 — `partial_sums` typing + 4 SCHEMA addenda + 5 MATRIX reconciliations + test-surface skeleton authoring + §0 binding-force clause** (Wave-1 + Wave-2) |
 | **W2 (reactivated)** | **UX coherence (dock idiom + a11y + Configurator adoption)** | **provisional** | — | **authored 2026-05-26 — Wave-1 audit synthesis; 5 parallel agents; scope items 16–17 added 2026-05-26 — @axe-core/playwright forward + auto-recompute regression-guard** (Wave-2) |
@@ -171,3 +171,17 @@ The B-development authoring round closes. Six concurrent Wave-2 audit lanes (C1 
 **B-development phase closed at this commit.** B's WAVE EXECUTION remains future work — W0 dispatches when the user authorises. The path forward: W0 — open · research dispatch → Wα — research wave (six lanes) → Wχ — challenge wave (P1 / P2 / P3 + P4) → W1 — CRUD-contract ratification → W2 — UX coherence (parallel with W3) → W3 — fourier visualization entity + migration + `api/lib/crud/` landing → W4 — fourier convergence wiring (orphan-verdict fallback primary) → W5 — close.
 
 **Next action**: await user authorisation for W0 dispatch.
+
+### 2026-05-26 — W0 — open · research dispatch (CLOSED)
+
+The tranche opens for **execution**. The B-development authoring phase (above) produced the full plan corpus; W0 transitions B from *planned* to *executing* and dispatches the research wave.
+
+**W0 close gate satisfied:**
+
+- **Predecessor fourier-A confirmed closed.** `docs/tranches/A/FINAL.md` is present; the A close commit is `c7cfd82` ("close tranche A — FINAL.md + AMEND reconciliation + constellation updates"); the working tree is clean at the B-development close `eea7473`.
+- **value.js cohort-peer state recorded (orphan verdict ground-truthed against live repos).** value.js carries tranches A–H; tranche **C is formally RETIRED** (`~/Programming/value.js/docs/tranches/C/FINAL.md`, "RETIRED via the AB+1 retrospective pattern", dated 2026-05-26); its `PROGRESS.md` status board flips every C wave row to RETIRED / ORPHANED. value.js HEAD is `16129e0` ("Merge tranche-h into master — Tranche H close (v0.10.0)"). The structural-absence proofs hold: `~/Programming/value.js/src/palette/` does not exist and `~/Programming/value.js/api/src/crud/` does not exist. The orphan verdict is therefore **settled fact**, not projection: the W2-tracking row closes as orphaned, and the W4 fallback path is unconditionally primary.
+- **Dispatch readiness.** `docs/tranches/B/audit/` scaffolded (holds `challenge.md` at Wχ close and `migration-counts.md` at W3 close). `docs/tranches/B/research/` already carries the topical spec corpus (`R-identity-spec.md`, `R-auth-spec.md`, `R-lifecycle-spec.md`); the Wα lanes land the six positional deliverables `R1`–`R6` alongside.
+
+**Wα re-charter (recorded at W0 — a faithful reading of the research-first lifecycle, not a skip).** The original `research/README.md` scoped six lanes producing `R1`–`R6`. The substance of those lanes was authored ahead of execution as the topical `R-*-spec` corpus (138 KB across identity / auth / lifecycle) plus the two six-agent audit waves (12 artefacts). But the Wave-2 audit's empirical-binding verdict is decisive: **0 / 187 conformance rows PASS at HEAD** — the specs are *aspirational*, their cited `file:line` anchors un-verified against current code. Re-running the six lanes as redundant fresh research would be make-work; ignoring them would dispatch implementation against un-grounded anchors. The gestalt: each Wα lane (a) reads its existing-corpus slice, (b) **ground-truths every cited `file:line` anchor against the live tree**, (c) records drift in a per-lane ledger, (d) emits the `R{N}` deliverable as a *verified* synthesis + crosswalk to the existing corpus. This honours the plan's letter (R1–R6 land), adds real value (grounds the aspirational corpus before implementation), and hands Wχ verified anchors for adversarial probing. Read-only; no source edits.
+
+**Next action**: dispatch the six Wα lanes in parallel.
