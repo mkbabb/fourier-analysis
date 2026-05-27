@@ -19,7 +19,7 @@ At W7 close every row reconciles against `FINAL.md`'s gate table.
 
 | Wave | Status | Closed at | Notes |
 |---|---|---|---|
-| W0 — *Open · baseline · research dispatch* | planned | — | C confirmed closed; prod-state baseline (the `8818ae5` pre-A gap, dirty tree, empty DB, missing `image_blobs` volume); design-debt + backend-legacy catalogs; δ research dispatched; §8 window ratified |
+| W0 — *Open · baseline · research dispatch* | open | — | C confirmed closed; prod-state baseline (the `8818ae5` pre-A gap, dirty tree, empty DB, missing `image_blobs` volume); design-debt + backend-legacy catalogs; δ research dispatched; §8 window ratified; binding baseline at `waves/W0.md`; W0→Wα→Wχ gate opened |
 | Wα — *Research (ratification + narrowed dispatch)* | planned | — | **dev-era 10+6 lanes did the substantive work**; Wα = ratification. R1 CRUD-cohesion v2.0.0 + `palette_slug` FK + C4.5/C4.6 disposition; R2 prod-deploy-safety re-probe; R3 ingress + palette-api provenance reconcile; R4 constellation matrix + CF-token discipline. Each: RATIFIED-AS-IS or -WITH-DELTA; at-most-one narrowed follow-up |
 | Wχ — *Challenge* | planned | — | **5 probes in 4+1 batches** (4-agent ceiling): P1 co-tenant blast radius (floridify/palette-api untouched); P2 migration-with-deploy atomic + rollback-safe on real data; P3 cohesion KISS (no shared framework, inv-16); P4 β refines / γ deletes only dead code; **P5** α′ pilot-first + DNS-safe (mail/apex preserved) + api-TLS-path-real (grey-cloud + origin LE, not a handshake failure) |
 | W1 — *Security hotfix + first prod deploy* | provisional | — | thread α/α′ — **FIRST: bind all 3 Mongos off `0.0.0.0` + withdraw 4 UFW rules** (the live exposure closed across the shared host); THEN dirty-tree reconcile + secret extraction; deploy-hook wired; hook perms 0664→0600; `image_blobs` volume; FIRST real A/B/C→prod deploy + migration-in-cutover; transcripts |
@@ -153,14 +153,30 @@ rsync/standalone provenance).
   the per-app row table, and the pilot-then-rollout ordering.
 - I confirm I SSH'd into the server (read-only) multiple times this session.
 
+### 2026-05-27 — D.W0 opened (the baseline + dispatch gate)
+
+**WHAT.** The user authorised execution ("Begin and continue the current tranche.
+…Continue through this indefatigably: do not relinquish control back to me until
+you have completed the plan IN TOTALITY. NO quick solutions, NO workarounds:
+idiomatic, gestalt approaches.") W0 opens by binding the existing hardened
+`waves/W0.md` as the baseline. The wave spec exists (5,388 L across W0/Wα/Wχ +
+W1–W12, authored 2026-05-27 at `292897f`); W0's role is to ratify it as the
+binding baseline + open the W0→Wα→Wχ research-first gate per `D.md §3`/§4.
+
+**Gates landed (W0-G1 through W0-G12 per `waves/W0.md §11`):** C confirmed closed
+(`docs/tranches/C/FINAL.md` reachable, `1e47115`); the pre-A prod-state baseline,
+the live Mongo exposure, the design-debt catalog, the backend-legacy catalog, the
+cross-repo CRUD cohesion catalog, the constellation deployment baseline, the three
+new invariants (production parity / code-and-migration-together / token-system-
+single-source), the §8 brittleness window provisional ratification, the C-residual
+inheritance table, the Wα ratification dispatch charter, the Wχ probe set scope —
+all captured in `waves/W0.md`. No source change.
+
+**Next**: dispatch Wα as 2 parallel agents per `waves/Walpha.md §6` (Wα.a R1+R2
+ratification; Wα.b R3+R4 ratification) producing the binding
+`docs/tranches/D/research/README.md` index.
+
 ### Next action
 
-None until the user authorises D.W0. The two open decisions are CLOSED (TLS path +
-Mongo timing). The tranche development is complete; the 6+4+6-lane audit + the
-plan + the credential placement landed; no implementation ran. At that point dispatch D.W0 (prod-state
-baseline + design/legacy catalogs + δ research dispatch) then Wα (CRUD-contract +
-deploy-safety research) → Wχ (four probes) — the research-first gate governs δ +
-the deploy-safety before any prod change or implementation wave. **This was tranche
-development only; no implementation ran** (the design analysis + Playwright pass
-were read-only observation feeding the plan, per the user's "observe now, fold
-findings" direction).
+D.W0 OPEN. The strict W0 → Wα → Wχ → implementation gate is active; Wα dispatch
+follows directly.
