@@ -34,7 +34,7 @@ const emit = defineEmits<{
         <div v-if="entries.length > 0" class="gallery-grid">
             <GalleryCard
                 v-for="entry in entries"
-                :key="entry.snapshot_hash"
+                :key="entry.slug"
                 :entry="entry"
                 :admin-mode="adminMode"
                 :liked-hashes="likedHashes"

@@ -29,7 +29,7 @@ const emit = defineEmits<{
     "toggle-select": [hash: string, checked: boolean];
 }>();
 
-const isLiked = computed(() => props.likedHashes?.has(props.entry.snapshot_hash) ?? false);
+const isLiked = computed(() => props.likedHashes?.has(props.entry.slug) ?? false);
 
 const basisLabels = computed(() =>
     (props.entry.active_bases ?? [])
@@ -79,7 +79,7 @@ function timeAgo(iso: string): string {
                     :model-value="selected ?? false"
                     :aria-label="`Select entry ${entry.image_slug}`"
                     class="h-4 w-4"
-                    @update:model-value="(v) => emit('toggle-select', entry.snapshot_hash, v === true)"
+                    @update:model-value="(v) => emit('toggle-select', entry.slug, v === true)"
                 />
             </div>
             <!-- Thumbnail -->
@@ -126,7 +126,7 @@ function timeAgo(iso: string): string {
                         class="like-btn"
                         :class="{ liked: isLiked }"
                         :aria-pressed="isLiked"
-                        @click.stop="emit('like', entry.snapshot_hash)"
+                        @click.stop="emit('like', entry.slug)"
                     >
                         <Heart :size="14" :fill="isLiked ? 'currentColor' : 'none'" />
                         <span class="font-mono">{{ entry.likes }}</span>
@@ -147,7 +147,7 @@ function timeAgo(iso: string): string {
                     size="icon"
                     class="admin-overlay-btn text-tier-featured"
                     title="Toggle featured"
-                    @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'featured' ? 'normal' : 'featured')"
+                    @click="emit('set-tier', entry.slug, entry.tier === 'featured' ? 'normal' : 'featured')"
                 >
                     <Crown :size="14" />
                 </Button>
@@ -156,7 +156,7 @@ function timeAgo(iso: string): string {
                     size="icon"
                     class="admin-overlay-btn text-tier-saved"
                     title="Toggle saved"
-                    @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'saved' ? 'normal' : 'saved')"
+                    @click="emit('set-tier', entry.slug, entry.tier === 'saved' ? 'normal' : 'saved')"
                 >
                     <Bookmark :size="14" />
                 </Button>
@@ -165,7 +165,7 @@ function timeAgo(iso: string): string {
                     size="icon"
                     class="admin-overlay-btn text-delete"
                     title="Delete"
-                    @click="emit('delete', entry.snapshot_hash)"
+                    @click="emit('delete', entry.slug)"
                 >
                     <Trash2 :size="14" />
                 </Button>

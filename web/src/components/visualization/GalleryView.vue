@@ -70,7 +70,7 @@ const nonFeaturedEntries = computed(() =>
 
 // Filter out drafts whose snapshots are already published
 const publishedHashes = computed(() =>
-    new Set(gallery.entries.map((e) => e.snapshot_hash)),
+    new Set(gallery.entries.map((e) => e.slug)),
 );
 const unpublishedDrafts = computed(() =>
     workspace.drafts.filter((d) =>
@@ -114,9 +114,9 @@ watch(
 
 function openModal(entry: GalleryEntry) {
     selectedEntry.value = entry;
-    if (!viewedHashes.value.has(entry.snapshot_hash)) {
-        viewedHashes.value.add(entry.snapshot_hash);
-        gallery.recordView(entry.snapshot_hash);
+    if (!viewedHashes.value.has(entry.slug)) {
+        viewedHashes.value.add(entry.slug);
+        gallery.recordView(entry.slug);
     }
 }
 
@@ -136,11 +136,11 @@ async function handleSetTier(hash: string, tier: "featured" | "saved" | "normal"
 async function handleDelete(hash: string) {
     if (!confirm("Delete this gallery entry?")) return;
     await gallery.deleteEntry(hash);
-    if (selectedEntry.value?.snapshot_hash === hash) selectedEntry.value = null;
+    if (selectedEntry.value?.slug === hash) selectedEntry.value = null;
 }
 
 // ── A.W5.c: gallery multi-select + batch ─────────────────────────────────
-// `selectedHashes` carries the snapshot-hashes currently checked in admin
+// `selectedHashes` carries the visualization slugs currently checked in admin
 // mode. The batch toolbar surfaces when the set is non-empty; the action
 // routes through the destructive-confirm dialog before calling
 // `batchGallery` against the CRUD CONTRACT `BatchResponse` shape.
@@ -370,7 +370,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
             v-if="selectedEntry"
             :entry="selectedEntry"
             :admin-mode="gallery.adminMode"
-            :is-liked="likedHashes.has(selectedEntry.snapshot_hash)"
+            :is-liked="likedHashes.has(selectedEntry.slug)"
             @close="selectedEntry = null"
             @like="handleLike"
             @open-visualizer="(slug) => { selectedEntry = null; router.push(`/w/${slug}`); }"

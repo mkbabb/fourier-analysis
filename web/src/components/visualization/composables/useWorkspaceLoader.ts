@@ -18,13 +18,12 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
     const nHarmonics = ref(store.contourSettings?.n_harmonics ?? CONTOUR_DEFAULTS.n_harmonics);
     const nPoints = ref(store.contourSettings?.n_points ?? 1024);
 
-    // Route-based loading on mount
+    // Route-based loading on mount. The route is `/w/:imageSlug?` — the
+    // converged entity is slug-addressed, so the workspace loads off the single
+    // image slug.
     onMounted(async () => {
         const imageSlug = route.params.imageSlug as string | undefined;
-        const snapshotHash = route.params.snapshotHash as string | undefined;
-        if (imageSlug && snapshotHash) {
-            await store.loadSnapshot(imageSlug, snapshotHash);
-        } else if (imageSlug) {
+        if (imageSlug) {
             await store.loadWorkspace(imageSlug);
         } else if (store.imageSlug) {
             router.replace(`/w/${store.imageSlug}`);
@@ -34,21 +33,16 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
     // Route param watcher for gallery navigation.
     // Skips if the slug already matches (e.g., after uploadImage pushed the route).
     watch(
-        () => [route.params.imageSlug, route.params.snapshotHash],
-        async ([newSlug, newHash]) => {
+        () => route.params.imageSlug,
+        async (newSlug) => {
             const slug = newSlug as string | undefined;
-            const hash = newHash as string | undefined;
             if (!slug) {
                 if (store.imageSlug) router.replace(`/w/${store.imageSlug}`);
                 return;
             }
             // Skip if we already have this workspace loaded (uploadImage just set it)
-            if (slug === store.imageSlug && !hash) return;
-            if (slug && hash) {
-                await store.loadSnapshot(slug, hash);
-            } else if (slug) {
-                await store.loadWorkspace(slug);
-            }
+            if (slug === store.imageSlug) return;
+            await store.loadWorkspace(slug);
         },
     );
 

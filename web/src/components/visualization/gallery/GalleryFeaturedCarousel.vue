@@ -26,7 +26,7 @@ const emit = defineEmits<{
         <div class="featured-scroll">
             <div
                 v-for="entry in entries"
-                :key="entry.snapshot_hash"
+                :key="entry.slug"
                 class="featured-card-wrapper"
             >
                 <GalleryCard

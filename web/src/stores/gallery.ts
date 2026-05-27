@@ -7,34 +7,25 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 
 // B.W4 — the gallery store re-points onto the converged `visualization`
-// entity (CRUD-CONTRACT §1). The retired `snapshot_hash`-keyed identity
-// collapses onto the 4-word `slug`; the public gallery is `visibility=public`
-// (§4); soft-delete + restore round-trip the §5 lifecycle. The image/contour
-// asset FKs (`image_slug`, `contour_hash`) are KEPT and rendered unchanged.
+// entity (CRUD-CONTRACT §1). Identity is the 4-word `slug`; the public gallery
+// is `visibility=public` (§4); soft-delete + restore round-trip the §5
+// lifecycle. The image/contour asset FKs (`image_slug`, `contour_hash`) are
+// KEPT and rendered unchanged.
 //
-// The gallery presentation components still consume the `GalleryEntry` view
-// shape; the store projects each `Visualization` onto it, putting the
-// visualization `slug` in the `snapshot_hash` slot so the components' card
-// identity (`:key`, like/view/delete handlers) routes through the slug — the
-// single user-facing handle — rather than the retired content hash.
+// The gallery presentation components consume the `GalleryEntry` view shape;
+// the store projects each `Visualization` onto it. Card identity (`:key`,
+// like/view/delete handlers) routes through `slug` — the single user-facing
+// handle (§1).
 
-// The gallery presentation components key cards off the `GalleryEntry`
-// view-model's legacy identity field. Under the converged identity that field
-// carries the visualization `slug` — the single user-facing handle (§1). These
-// two helpers confine the legacy field name to one read site and one write
-// site so the store's own navigation/lookup is expressed purely in `slug`.
-
-/** The view-model's identity slot value (the visualization slug). */
+/** The view-model's identity (the visualization slug). */
 function entrySlug(e: GalleryEntry): string {
-    return e.snapshot_hash;
+    return e.slug;
 }
 
-/** Project a converged `Visualization` onto the legacy gallery view shape. */
+/** Project a converged `Visualization` onto the gallery view shape. */
 function toGalleryEntry(v: Visualization): GalleryEntry {
     return {
-        // Legacy view-slot — carries the visualization slug under §1, NOT a
-        // surviving content-hash identity. The single write of the alias.
-        snapshot_hash: v.slug,
+        slug: v.slug,
         image_slug: v.image_slug,
         contour_hash: v.contour_hash,
         user_slug: v.owner_slug,
@@ -159,7 +150,7 @@ export const useGalleryStore = defineStore("gallery", () => {
     }
 
     // `slug` is the converged visualization identity (the value the gallery
-    // cards emit from their `snapshot_hash`-slot key).
+    // cards emit from their `:key`).
     async function setTier(slug: string, tier: GalleryTier) {
         const token = useAuthStore().getAdminToken();
         if (!token) return;
@@ -236,11 +227,11 @@ export const useGalleryStore = defineStore("gallery", () => {
         }
     }
 
-    // `slug` is the visualization identity (the workspace's `createVisualization`
-    // returns it in the `snapshot_hash` view slot for call-site compatibility).
-    // The optional second arg is the legacy `imageSlug` positional — unused
-    // under the converged identity (the slug alone addresses the entity), kept
-    // so the pre-existing call site need not change.
+    // `slug` is the visualization identity (the workspace's
+    // `createVisualization` returns it). The optional second arg is the legacy
+    // `imageSlug` positional — unused under the converged identity (the slug
+    // alone addresses the entity), kept so the pre-existing call site need not
+    // change.
     async function publish(slug: string, _imageSlug?: string) {
         // A previously-created draft transitions to `public` (the visibility
         // lift, §4). PATCH is ETag-guarded (§0 SOTA-2).

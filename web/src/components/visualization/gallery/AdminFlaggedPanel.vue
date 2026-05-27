@@ -12,30 +12,15 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
-import type { FlagInfo, GalleryTier } from "@/lib/types";
+import type { FlaggedVisualization, GalleryTier } from "@/lib/types";
 import { Flag, Trash2, XCircle, RotateCw, Star } from "lucide-vue-next";
 
 // B.W4.c — the flagged panel re-points onto the converged `visualization`
 // entity (CRUD-CONTRACT §7). The single user-facing identity is the
-// visualization `slug`; the retired content-hash identity is gone. The
-// listing rides the cursor envelope `{items, next_cursor, has_more}` returned
-// by `GET /api/admin/flagged` (`listFlaggedVisualizations`), so the legacy
-// `page`/`total` offset pagination is replaced with cursor "load more".
-//
-// The `api.ts` wrapper is still declared `Promise<FlaggedListResponse>` (the
-// stale `{items,total,page,pages}` alias lives in the shared `types.ts`, which
-// this SFC does not own). The actual runtime payload is the cursor envelope
-// with slug-keyed items; we model that shape locally and adapt at the call
-// boundary.
-interface FlaggedVisualization {
-    slug: string;
-    flag_count: number;
-    flags: FlagInfo[];
-    image_slug: string | null;
-    owner_slug: string | null;
-    tier: string | null;
-    created_at: string | null;
-}
+// visualization `slug`. The listing rides the cursor envelope
+// `{items, next_cursor, has_more}` returned by `GET /api/admin/flagged`
+// (`listFlaggedVisualizations`), so the offset `page`/`total` pagination is
+// replaced with cursor "load more".
 
 const auth = useAuthStore();
 const { toast } = useToast();
@@ -50,15 +35,10 @@ const loadingMore = ref(false);
 
 async function fetchFlagged(cursor: string | null) {
     const token = auth.getAdminToken()!;
-    const result = (await api.listFlaggedVisualizations(token, {
+    return api.listFlaggedVisualizations(token, {
         limit: 20,
         cursor: cursor ?? undefined,
-    })) as unknown as {
-        items: FlaggedVisualization[];
-        next_cursor: string | null;
-        has_more: boolean;
-    };
-    return result;
+    });
 }
 
 async function reload() {

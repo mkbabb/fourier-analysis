@@ -121,7 +121,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                                 class="like-btn"
                                 :class="{ liked: isLiked }"
                                 :aria-pressed="isLiked"
-                                @click="emit('like', entry.snapshot_hash)"
+                                @click="emit('like', entry.slug)"
                             >
                                 <Heart :size="16" :fill="isLiked ? 'currentColor' : 'none'" />
                                 <span class="font-mono">{{ entry.likes }}</span>
@@ -170,7 +170,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                                 class="tier-btn"
                                 :class="{ active: entry.tier === 'featured' }"
                                 :aria-pressed="entry.tier === 'featured'"
-                                @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'featured' ? 'normal' : 'featured')"
+                                @click="emit('set-tier', entry.slug, entry.tier === 'featured' ? 'normal' : 'featured')"
                             >
                                 <Crown :size="14" /> Featured
                             </Button>
@@ -180,7 +180,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                                 class="tier-btn"
                                 :class="{ active: entry.tier === 'saved' }"
                                 :aria-pressed="entry.tier === 'saved'"
-                                @click="emit('set-tier', entry.snapshot_hash, entry.tier === 'saved' ? 'normal' : 'saved')"
+                                @click="emit('set-tier', entry.slug, entry.tier === 'saved' ? 'normal' : 'saved')"
                             >
                                 <Bookmark :size="14" /> Saved
                             </Button>

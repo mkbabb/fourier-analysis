@@ -22,9 +22,8 @@ export const router = createRouter({
         },
         // B.W4 — one slug per noun (CRUD-CONTRACT §1). `/v/:visualizationSlug`
         // addresses a SAVED visualization entity; `/w/:imageSlug` is the
-        // pre-save working session over an image asset (the legacy
-        // `:snapshotHash` URL param is retired — the converged entity is
-        // slug-addressed, so the saved view never needs a second path segment).
+        // pre-save working session over an image asset. The converged entity is
+        // slug-addressed, so the saved view needs only the single path segment.
         {
             path: "/v/:visualizationSlug",
             name: "visualization",

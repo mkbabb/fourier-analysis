@@ -10,7 +10,7 @@ import type {
     UserInfo,
     AdminStats,
     AdminUserListResponse,
-    FlaggedListResponse,
+    FlaggedCursorResponse,
     AuditListResponse,
     BatchResponse,
 } from "./types";
@@ -21,9 +21,8 @@ const BASE = import.meta.env.VITE_API_URL || "";
 //
 // The single user-named noun. `slug` is the one user-facing identity (the URL
 // handle, per §1 single-slug rule); `content_hash` is a non-identity dedup
-// key (the former `snapshot_hash` identity scheme is retired — the migration
-// re-keys gallery navigation onto `slug`). `image_slug` / `contour_hash`
-// remain the IMAGE / CONTOUR asset FKs and are loaded unchanged.
+// key. `image_slug` / `contour_hash` remain the IMAGE / CONTOUR asset FKs and
+// are loaded unchanged.
 
 export type Visibility = "draft" | "unlisted" | "public";
 
@@ -401,8 +400,8 @@ export async function computeBases(
 // ── Visualizations (the converged CRUD entity) ──
 //
 // Six slug-addressed endpoints over `/api/visualizations`, matching
-// `api/routers/visualizations.py`. Identity is the 4-word `slug`; the
-// retired `snapshot_hash`-keyed gallery navigation collapses onto it.
+// `api/routers/visualizations.py`. Identity is the 4-word `slug` — the single
+// user-facing handle that gallery navigation keys off.
 
 /** POST /api/visualizations — create (slug minted server-side if absent). */
 export async function createVisualization(
@@ -574,12 +573,12 @@ export async function adminDeleteVisualization(
 export async function listFlaggedVisualizations(
     token: string,
     params: { limit?: number; cursor?: string },
-): Promise<FlaggedListResponse> {
+): Promise<FlaggedCursorResponse> {
     const qs = new URLSearchParams();
     if (params.limit != null) qs.set("limit", String(params.limit));
     if (params.cursor) qs.set("cursor", params.cursor);
     const query = qs.toString();
-    return adminFetch<FlaggedListResponse>(
+    return adminFetch<FlaggedCursorResponse>(
         `/api/admin/flagged${query ? `?${query}` : ""}`,
         token,
     );
@@ -678,38 +677,6 @@ export async function batchUsers(
         method: "POST",
         body: { action, slugs },
     });
-}
-
-// ── Admin: flagged content ──
-//
-// B.W4 — re-pointed onto the converged entity. The flagged list is the
-// cursor-paginated `/api/admin/flagged` (the `page`/`limit` shape is kept
-// for the legacy admin-SFC caller; the admin-SFC agent migrates the call
-// to the `cursor`-shaped `listFlaggedVisualizations` above). Flag dismissal
-// is slug-addressed at `/api/admin/visualizations/{slug}/flags` (§7).
-
-export async function listFlaggedEntries(
-    token: string,
-    params: { page?: number; limit?: number },
-): Promise<FlaggedListResponse> {
-    const qs = new URLSearchParams();
-    if (params.limit != null) qs.set("limit", String(params.limit));
-    const query = qs.toString();
-    return adminFetch<FlaggedListResponse>(
-        `/api/admin/flagged${query ? `?${query}` : ""}`,
-        token,
-    );
-}
-
-export async function dismissFlags(
-    token: string,
-    slug: string,
-): Promise<{ dismissed: number }> {
-    return adminFetch<{ dismissed: number }>(
-        `/api/admin/visualizations/${slug}/flags`,
-        token,
-        { method: "DELETE" },
-    );
 }
 
 // ── Admin: audit log ──

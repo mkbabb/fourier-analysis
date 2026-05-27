@@ -86,7 +86,7 @@ export interface ContourAsset {
 }
 
 export interface Snapshot {
-    snapshot_hash: string;
+    slug: string;
     image_slug: string;
     contour_hash: string;
     contour_settings: ContourSettings;
@@ -113,7 +113,7 @@ export interface WorkspaceDraft {
 export type GalleryTier = "featured" | "saved" | "normal";
 
 export interface GalleryEntry {
-    snapshot_hash: string;
+    slug: string;
     image_slug: string;
     contour_hash: string;
     user_slug: string | null;
@@ -188,21 +188,27 @@ export interface FlagInfo {
     created_at: string;
 }
 
-export interface FlaggedEntryInfo {
-    snapshot_hash: string;
+// A flagged row as `GET /api/admin/flagged` emits it (admin.py hand-builds the
+// body; no `response_model`). The single user-facing identity is the
+// visualization `slug`; `owner_slug` is the flagged item's owner. The canonical
+// lift of the panel's former local interface.
+export interface FlaggedVisualization {
+    slug: string;
     flag_count: number;
     flags: FlagInfo[];
     image_slug: string | null;
-    user_slug: string | null;
+    owner_slug: string | null;
     tier: string | null;
     created_at: string | null;
 }
 
-export interface FlaggedListResponse {
-    items: FlaggedEntryInfo[];
-    total: number;
-    page: number;
-    pages: number;
+// The flagged stream rides the cursor envelope `{items, next_cursor, has_more}`
+// the backend already emits — not the retired `{total, page, pages}` offset
+// shape. Item identity is `slug` (CRUD-CONTRACT §1).
+export interface FlaggedCursorResponse {
+    items: FlaggedVisualization[];
+    next_cursor: string | null;
+    has_more: boolean;
 }
 
 // ── Audit Log ──

@@ -23,14 +23,11 @@ import { defaultContourSettings, defaultAnimationSettings } from "@/lib/defaults
 
 /**
  * The save result the visualization-view publish path consumes. The `slug` is
- * the converged identity; it is mirrored into `snapshot_hash` so the existing
- * publish call site (which reads `.snapshot_hash`) keeps compiling under the
- * single-slug identity (the legacy field name is a view-slot alias, not a
- * surviving content-hash identity).
+ * the converged single-slug identity (CRUD-CONTRACT §1) — the one handle that
+ * addresses the saved entity.
  */
 export interface SavedVisualizationRef {
     slug: string;
-    snapshot_hash: string;
 }
 
 export const useWorkspaceStore = defineStore("workspace", () => {
@@ -234,9 +231,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         }
     }
 
-    // Compatibility shim for the (unmigrated) workspace-loader composable: the
-    // saved entity is addressed by a single slug under the converged identity,
-    // so the former `(imageSlug, snapshotHash)` pair degenerates to the slug.
+    // Compatibility shim for the workspace-loader composable: the saved entity
+    // is addressed by a single slug under the converged identity, so the former
+    // `(imageSlug, vizSlug)` pair degenerates to the slug.
     async function loadSnapshot(_imageSlug: string, vizSlug: string) {
         return loadVisualization(vizSlug);
     }
@@ -342,8 +339,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     /**
      * Persist the current working session as a `draft` visualization on the
      * converged entity (CRUD-CONTRACT §1, §4) and return its slug. The publish
-     * path then lifts `draft → public` via an ETag-guarded PATCH. The result
-     * mirrors the slug into `snapshot_hash` for the existing call site.
+     * path then lifts `draft → public` via an ETag-guarded PATCH.
      */
     async function saveVisualization(): Promise<SavedVisualizationRef | null> {
         if (!imageSlug.value || !contour.value) return null;
@@ -361,7 +357,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             });
             visualizationSlug.value = data.slug;
             visualizationETag.value = etag;
-            return { slug: data.slug, snapshot_hash: data.slug };
+            return { slug: data.slug };
         } catch (e: any) {
             error.value = e.message ?? "Failed to save visualization";
             return null;
@@ -450,7 +446,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         loadWorkspace,
         loadVisualization,
         // `loadSnapshot` is a compatibility alias over `loadVisualization`
-        // (the converged entity is slug-addressed; the legacy snapshot-hash
+        // (the converged entity is slug-addressed; the former two-key load
         // pair degenerated to the single slug).
         loadSnapshot,
         extractContour,

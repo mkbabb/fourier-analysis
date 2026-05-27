@@ -29,11 +29,11 @@ const emit = defineEmits<{
             <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr))">
                 <GalleryCard
                     v-for="entry in entries"
-                    :key="entry.snapshot_hash"
+                    :key="entry.slug"
                     :entry="entry"
                     :admin-mode="adminMode"
                     :liked-hashes="likedHashes"
-                    :selected="selectedHashes?.has(entry.snapshot_hash) ?? false"
+                    :selected="selectedHashes?.has(entry.slug) ?? false"
                     @click="emit('card-click', entry)"
                     @like="emit('like', $event)"
                     @set-tier="(hash, tier) => emit('set-tier', hash, tier)"

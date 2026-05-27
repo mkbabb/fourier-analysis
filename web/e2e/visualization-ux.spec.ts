@@ -50,8 +50,15 @@ async function openWorkspace(page: Page): Promise<void> {
     await page.waitForURL(/\/w\//, { timeout: 15_000 });
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible({ timeout: 60_000 });
-    // Let the auto-compute settle so the dock + panels are fully mounted.
-    await page.waitForTimeout(2_000);
+    // Settle deterministically on the actual mount condition the keystones
+    // depend on — NOT a blind fixed timeout (flaky: too short on slow CI, so
+    // axe runs against a half-mounted DOM; wasteful on fast). The auto-compute
+    // round-trip resolving (networkidle) plus the dock's "More options" trigger
+    // becoming visible is the precise "dock + panels are fully mounted" signal.
+    await page.waitForLoadState("networkidle", { timeout: 60_000 });
+    await expect(page.locator('[aria-label="More options"]').first()).toBeVisible({
+        timeout: 60_000,
+    });
 }
 
 test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () => {

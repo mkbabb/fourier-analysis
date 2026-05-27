@@ -1,7 +1,9 @@
-"""Conformance test package — fourier-B CRUD-CONTRACT.
+"""Conformance test package — fourier CRUD-CONTRACT.
 
-Skeletons authored at B.W1 (paper-binding: every CONFORMANCE-MATRIX.md test
-PATH exists); implementations land at B.W3 (visualization entity + the
-`api/lib/crud/` utility module). Until W3 lands the entity, every test is
-skipped so `uv run pytest` stays green.
+Each module fills one CONFORMANCE-MATRIX.md row group against the landed
+``api/lib/crud/`` utilities and the ``visualization`` entity. Pure-utility and
+model rows run unconditionally; endpoint rows that need a live collection are
+gated by ``conftest.requires_mongo`` (an honest skip when no Mongo is reachable,
+never a blanket file skip). ``_harness.py`` (leading underscore — not collected)
+holds the shared Starlette-Request + throwaway-Mongo driving harness.
 """

@@ -34,7 +34,7 @@ const tracks = computed(() => {
             <div class="marquee-inner">
                 <div
                     v-for="entry in track"
-                    :key="entry.snapshot_hash"
+                    :key="entry.slug"
                     class="marquee-item"
                 >
                     <GalleryCard
@@ -50,7 +50,7 @@ const tracks = computed(() => {
                 <!-- Duplicate for seamless loop -->
                 <div
                     v-for="entry in track"
-                    :key="'dup-' + entry.snapshot_hash"
+                    :key="'dup-' + entry.slug"
                     class="marquee-item"
                     aria-hidden="true"
                 >

@@ -109,7 +109,7 @@ async function handlePublish() {
     try {
         const snapshot = await store.createSnapshot();
         if (!snapshot) { toast("Could not create snapshot", "error"); return; }
-        await gallery.publish(snapshot.snapshot_hash, store.imageSlug);
+        await gallery.publish(snapshot.slug, store.imageSlug);
     } catch (e: any) {
         toast(e.message ?? "Publish failed", "error");
     } finally {
