@@ -5,7 +5,7 @@
 **Reconciles with**: R1's cohort-orphan assay (the verdict on whether value.js-C — the cohort-peer tranche to fourier-B — is effectively orphaned) and R6's fourier-C scoping (the open-design scoping for fourier-analysis's infra + image-blob-out-of-Mongo tranche); parallel-dispatched. Both R1 and R6 outputs were not yet present at `docs/audits/runs/2026-05-19-refinement-assay/` at this document's authoring. This document is **provisional pending R1's cohort verdict**; both orderings (cohort-live, cohort-orphan) are given in §5.
 **Authority**: this is the only execution-order document spanning both repos. Per-tranche `*.md` and `coordination/CRUD-CONSTELLATION.md` (the cohort coordination doc bound to fourier-B's CRUD-and-identity-convergence question) remain the authority for individual dependency claims.
 
-> **⚠ SUPERSEDED — see §9 (Ordering δ, 2026-05-27, post-C-close).** The body below (§1–§7) was authored 2026-05-26 when fourier-A/B were *planning* and the cohort-orphan verdict was *pending* (contingent orderings α/β in §5); §8 (Ordering γ) reconciled it when fourier-C was authored. Both are now history: **fourier-A/B/C are all CLOSED** (`c7cfd82`, `fc5b3b0`, the C close), value.js-H CLOSED (v0.10.0, `16129e0`), the cohort orphan SETTLED, and the inverted δ edge is the only live cross-repo seam (conditional, both-sides-gated). **§9 is the authoritative current ordering;** §1–§8 are retained as the historical record of how the ordering was reasoned.
+> **⚠ SUPERSEDED — see §10 (Ordering ε, 2026-05-27, post-D-authoring).** §1–§7 were authored 2026-05-26 (contingent orderings α/β); §8 (γ) reconciled at fourier-C authoring; §9 (δ) reconciled at fourier-C close. Now: **fourier-A/B/C CLOSED but NONE deployed to prod** (prod serves pre-A `8818ae5`), **fourier-D AUTHORED** as the production-deployment + design + backend-symmetry + cross-repo-cohesion tranche, and the cross-repo edge has **broadened** from the latent colour seam to the live `palette-api` CRUD cohesion (the `palette_slug` FK + contract v2.0.0). **§10 is the authoritative current ordering;** §1–§9 are retained as the historical record.
 
 ---
 
@@ -308,3 +308,37 @@ Everything repo-landable landed + proven; these outward-facing host acts carry r
 - **value.js next action**: await user mandate for **value.js-I** (thesis open). If the user wants the colour lift, I is forward-themed as the narrow `sampleToSVGPath` publish; otherwise the lift stays the fourier residual.
 
 The two repos remain decoupled; the colour-lift edge is the only seam, conditional on both sides.
+
+---
+
+## §10 — Ordering ε (2026-05-27 post-D-authoring — AUTHORITATIVE)
+
+The 10-lane D-development audit (`docs/audits/runs/2026-05-27-D-audit/SYNTHESIS.md`) supersedes §9 (which assumed A/B/C were *deployed* and the cross-repo edge was the latent colour seam). Two facts overturn that:
+
+1. **None of A/B/C is in production.** Prod fourier serves pre-A `8818ae5` (2026-03-28) — every prior tranche "closed" against a tree the world never saw. fourier-D's spine is the first real deploy (prod SSH now available).
+2. **The cross-repo edge broadened.** It is no longer one latent colour function — value.js ships a live, deployed `palette-api` v2.0.0, and fourier's `visualization.palette_slug` is a live slug-FK into its palette noun. Cohesion is concrete: `CRUD-CONTRACT v2.0.0` + a value.js alignment tranche.
+
+### §10.1 — Reconciled tranche inventory
+
+| Repo | Tranche | Status (2026-05-27) | Note |
+|---|---|---|---|
+| fourier | **A / B / C** | **CLOSED** (`c7cfd82`, `fc5b3b0`, C-close) | but **NOT deployed** — prod runs pre-A `8818ae5` |
+| fourier | **D** — prod-deploy + design + backend-symmetry + CRUD cohesion | **AUTHORED** (this round); awaits user D.W0 authorization | five threads α/β/γ/δ/ε per `docs/tranches/D/D.md` |
+| value.js | **A–H** | **CLOSED** (H = v0.10.0 `16129e0`) | the npm library `@mkbabb/value.js` |
+| value.js | **palette-api** | **LIVE on prod** (v2.0.0, in-repo `value.js/api/`, Hono+Mongo+Zod, healthy) | the CRUD cohesion target; divergent on ~11 contract clauses |
+| value.js | **I** — *seeded, thesis open* | **SEEDED** | candidate host for the value.js-side CRUD alignment + the `sampleToSVGPath` publish |
+
+### §10.2 — The cross-repo edges (now two, both live-grounded)
+
+```
+fourier visualization.palette_slug  ──(slug-FK)──▶  value.js palette-api palette noun   [LIVE today]
+fourier-D.W5 (CRUD-CONTRACT v2.0.0) ◀─(cohesion)─▶  value.js alignment tranche          [authored fourier-side; value.js user-gated]
+value.js-<I-or-dedicated> (publishes sampleToSVGPath) ──▶ fourier-D.W5-δ (consumes)      [conditional; orthogonal sub-item]
+```
+
+### §10.3 — Current critical path + next action
+
+- **fourier next action**: await user authorization for **D.W0**. D's spine is the first prod deploy of A/B/C (W1) — until it lands, the *production-parity* invariant is unmet for the whole lineage. Research-first gate (W0 → Wα → Wχ) governs δ + deploy-safety.
+- **value.js next action**: await user re-mandate for **value.js-I** as the CRUD-alignment + colour-publish tranche. fourier-D authors the contract v2.0.0 + records the ask (`D/coordination/CRUD-COHESION.md`); it does not author value.js's tranche.
+
+The repos are now **coupled at the CRUD layer** (the live `palette_slug` FK + the cohesion contract), not merely at the latent colour seam — the broadest the cross-repo relationship has been since the B cohort.
