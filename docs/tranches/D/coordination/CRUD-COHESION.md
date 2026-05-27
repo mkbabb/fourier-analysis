@@ -31,4 +31,8 @@ The inverted δ edge from C (`coordination/COLOUR-LIFT.md`) — value.js publish
 
 ## §6 — Disposition
 
-D authors the **fourier side** (the contract v2.0.0 + the matrix flip) and **records the value.js ask** here. The value.js-side execution is a **value.js tranche** the user must re-mandate (value.js-I's thesis is open; this is the candidate host). fourier-D does not author value.js's tranche. The `palette_slug` FK contract (what fourier guarantees about the slug it stores, what value.js guarantees about resolving it) is the one binding cross-repo artefact Wα-R1 produces.
+D authors the **fourier side** (the contract v2.0.0 + the matrix disposition) and **records the value.js ask** here. The value.js-side execution is a **value.js tranche** the user must re-mandate (value.js-I's thesis is open; this is the candidate host). fourier-D does not author value.js's tranche. The `palette_slug` FK contract (what fourier guarantees about the slug it stores, what value.js guarantees about resolving it) is the one binding cross-repo artefact Wα-R1 produces.
+
+### §6.1 — The v2.0.0 §10 close-rule reinterpretation (H3 finding)
+
+The v1.0.0 contract's §10 close rule was a literal binary "both columns PASS." v2.0.0 reinterprets it as a **three-way dispositioning**: every DEFERRED cell is named as **ADDRESSED** (value.js already conforms today — flip to PASS), **DEFERRED-TO-VALUE.JS** (the cohort-reopen path; a value.js alignment-tranche resolves it; recorded here as the cross-repo ask), or **RETIRED-AS-OVER-SPEC** (the clause was over-specified to fourier's accident — relaxed per the two KISS relaxations of §3). The close rule becomes "every cell named with one of the three dispositions; DEFERRED-TO-VALUE.JS is the cohort-reopen path, not a fail." This is what makes cohesion KISS-honest without forcing a shared framework (inv-16).
