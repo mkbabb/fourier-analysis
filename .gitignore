@@ -52,7 +52,7 @@ uploads/
 # Scripts (private/local only — tracked scripts use negation)
 scripts/*
 !scripts/dev.sh
-!scripts/deploy.sh
+!scripts/deploy-hook.sh
 !scripts/conformance/
 
 # Docker
