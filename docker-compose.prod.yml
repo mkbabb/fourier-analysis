@@ -42,8 +42,14 @@ services:
         max-file: "3"
 
   mongo:
-    ports:
-      - "27017:27017"
+    # D.W1 Phase 1 security hotfix — Mongo is NOT published to the host.
+    # The backend reaches mongo over the compose-network DNS name `mongo:27017`
+    # (the existing `app-network` bridge — docker-compose.yml). The previous
+    # `0.0.0.0:27017->27017/tcp` publish (NA5 §3.1 — externally TCP-reachable
+    # on 34.197.214.67:27017) is closed. The verified-TLS posture lands at
+    # W2 (the tlsAllowInvalid* flags here STAY until W2; this wave closes
+    # the network half).
+    ports: !reset []
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-fourier-admin}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}
