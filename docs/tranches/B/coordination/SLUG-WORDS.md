@@ -30,8 +30,10 @@ and §9.
 **Goal.** Pin the canonical location (`docs/precepts/data/slug-words.json`),
 the file format (JSON with five top-level keys), the schema invariants
 (non-empty lists; lowercase ASCII; uniqueness within list), the counts
-(120/120/128/128 → 235,929,600 keyspace), the licence (MIT), and the
+(128/128/128/128 → 268,435,456 keyspace), the licence (MIT), and the
 versioning policy (SemVer: MINOR=add, MAJOR=remove).
+
+> **Counts corrected 120→128 at B.W1** per `audit/challenge.md §5` H-W1-1 (Wα R3 ground-truthed the live `slugWords.ts` at 128/128/128/128). The 120-form would *reject the live data*; the keyspace is now `128⁴ = 268,435,456 ≈ 2.68 × 10⁸`. Verdict remains "adopt verbatim, no churn"; the data file `docs/precepts/data/slug-words.json` is empirically absent at HEAD (ENOENT) — extraction owed at W3.
 
 **Completion.** The spec blocks below are the binding ledger; counts
 match the schema; the keyspace satisfies the R-identity-spec §3e
@@ -76,11 +78,11 @@ JSON. UTF-8. Trailing newline. Two-space indent (matches `prettier --tab-width 2
 
 | Key | Count | Keyspace contribution |
 |---|---|---|
-| `adjective` | **120** | factor 1 |
-| `verb`      | **120** | factor 2 |
+| `adjective` | **128** | factor 1 |
+| `verb`      | **128** | factor 2 |
 | `color`     | **128** | factor 3 |
 | `animal`    | **128** | factor 4 |
-| product     | **120 × 120 × 128 × 128 = 235,929,600** | ≈ 2.36 × 10⁸ |
+| product     | **128 × 128 × 128 × 128 = 268,435,456** | ≈ 2.68 × 10⁸ |
 
 Per `R-identity-spec.md §3e` birthday-bound analysis: birthday-safe through ~10⁵ entities (≤ 0.21 % collision over 10⁴; ~19 % over the full population at 10⁵, with per-insert expected-retry on the order of 10⁻⁴). The 10-retry ceiling in `CRUD-CONTRACT §2` is wildly over-provisioned at the cohort's current scale.
 
@@ -183,8 +185,8 @@ The schema lives at `docs/precepts/data/slug-words.schema.json` and is reference
       "type": "string",
       "description": "Optional license attribution; full text in docs/precepts/LICENSE."
     },
-    "adjective": { "$ref": "#/$defs/wordList120" },
-    "verb":      { "$ref": "#/$defs/wordList120" },
+    "adjective": { "$ref": "#/$defs/wordList128" },
+    "verb":      { "$ref": "#/$defs/wordList128" },
     "color":     { "$ref": "#/$defs/wordList128" },
     "animal":    { "$ref": "#/$defs/wordList128" }
   },
@@ -194,13 +196,6 @@ The schema lives at `docs/precepts/data/slug-words.schema.json` and is reference
       "pattern": "^[a-z]+$",
       "minLength": 2,
       "maxLength": 14
-    },
-    "wordList120": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/word" },
-      "minItems": 120,
-      "maxItems": 120,
-      "uniqueItems": true
     },
     "wordList128": {
       "type": "array",
@@ -252,7 +247,7 @@ Both loaders expose the same module-level shape:
 At module import / require, both loaders **read, parse, and validate** the JSON. Validation rules (matching §3):
 
 1. All four required keys present, each an array.
-2. Counts match exactly: `len(adjective) == 120`, `len(verb) == 120`, `len(color) == 128`, `len(animal) == 128`.
+2. Counts match exactly: `len(adjective) == 128`, `len(verb) == 128`, `len(color) == 128`, `len(animal) == 128`.
 3. Every entry matches `^[a-z]+$`.
 4. No duplicates within a list.
 5. `_version` matches `^\d+\.\d+\.\d+$`.
@@ -275,7 +270,7 @@ from typing import Final
 _DATA_FILE: Final = Path(__file__).resolve().parents[3] / "docs" / "precepts" / "data" / "slug-words.json"
 _WORD_RE: Final = re.compile(r"^[a-z]+$")
 _SEMVER_RE: Final = re.compile(r"^\d+\.\d+\.\d+$")
-_EXPECTED_COUNTS: Final = {"adjective": 120, "verb": 120, "color": 128, "animal": 128}
+_EXPECTED_COUNTS: Final = {"adjective": 128, "verb": 128, "color": 128, "animal": 128}
 
 
 def _load_and_validate() -> dict[str, tuple[str, ...]]:
@@ -332,7 +327,7 @@ import { dirname, resolve } from "node:path";
 const DATA_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../../../docs/precepts/data/slug-words.json");
 const WORD_RE = /^[a-z]+$/;
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;
-const EXPECTED_COUNTS = { adjective: 120, verb: 120, color: 128, animal: 128 } as const;
+const EXPECTED_COUNTS = { adjective: 128, verb: 128, color: 128, animal: 128 } as const;
 
 type Key = keyof typeof EXPECTED_COUNTS;
 
@@ -377,7 +372,7 @@ Both loaders raise at import; the process refuses to start with a bad data file.
 
 ## §5 — Migration path
 
-**Goal.** Adopt value.js's existing curated word-lists (120/120/128/128
+**Goal.** Adopt value.js's existing curated word-lists (128/128/128/128
 already field-tested) verbatim as v1.0.0 of `docs/precepts/data/slug-words.json` —
 no merge, no curation churn, no review at v1.0.0.
 
@@ -390,7 +385,7 @@ side of the convergence.
 
 ### Word-list provenance
 
-The seed corpus is value.js's existing `slugWords.ts` (`/Users/mkbabb/Programming/value.js/api/src/slugWords.ts`), which already encodes the exact counts (120/120/128/128) and curation conventions (lowercase, no hyphens, gerund verbs, generic descriptors). Copy this verbatim into `docs/precepts/data/slug-words.json`, wrapped in the JSON shape from §1.2. **No curation churn at migration**; the existing lists are the v1.0.0 contents.
+The seed corpus is value.js's existing `slugWords.ts` (`/Users/mkbabb/Programming/value.js/api/src/slugWords.ts`), which already encodes the exact counts (128/128/128/128, ground-truthed at Wα R3) and curation conventions (lowercase, no hyphens, gerund verbs, generic descriptors). Copy this verbatim into `docs/precepts/data/slug-words.json`, wrapped in the JSON shape from §1.2. **No curation churn at migration**; the existing lists are the v1.0.0 contents.
 
 fourier's existing `coolname` dictionaries are **not merged in.** Three reasons:
 
@@ -484,11 +479,11 @@ These rows drop into `CONFORMANCE-MATRIX.md` under §2 (slug algorithm) and §9 
 |---|---|---|---|---|---|---|
 | C2.4 | §2, §9 | Every emitted slug's words are members of the canonical lists at `docs/precepts/data/slug-words.json`. | fourier | `test_slug_format_words_in_list` | `uv run pytest api/tests/conformance/test_slug_format.py::test_words_in_list -v` | For 1,000 generated slugs, each word ∈ `slug_words()[<position-key>]`. |
 | C2.4 | §2, §9 | Same. | value.js | `test/conformance/slug/words-in-list.test.ts` | `npx vitest run test/conformance/slug/words-in-list.test.ts` | Same shape on the TS loader. |
-| **C-words.1** | §9, this doc §4 | Loader raises at module import if `docs/precepts/data/slug-words.json` count or pattern drifts. | fourier | `test_slug_loader_drift_init_fails` | `uv run pytest api/tests/conformance/test_slug_words.py::test_drift_init_fails -v` | Monkeypatch `_DATA_FILE` to a fixture with `len(adjective) == 119`; re-import; assert `RuntimeError("slug-words: adjective has 119, expected 120")`. |
+| **C-words.1** | §9, this doc §4 | Loader raises at module import if `docs/precepts/data/slug-words.json` count or pattern drifts. | fourier | `test_slug_loader_drift_init_fails` | `uv run pytest api/tests/conformance/test_slug_words.py::test_drift_init_fails -v` | Monkeypatch `_DATA_FILE` to a fixture with `len(adjective) == 127`; re-import; assert `RuntimeError("slug-words: adjective has 127, expected 128")`. |
 | **C-words.1** | §9 | Same. | value.js | `test/conformance/slug/loader-drift-init-fails.test.ts` | `npx vitest run test/conformance/slug/loader-drift-init-fails.test.ts` | Stub `DATA_FILE` to bad fixture; assert thrown `Error` matching the same message. |
 | **C-words.2** | §9, this doc §3 | The data file conforms to `slug-words.schema.json`. | fourier | `test_slug_words_json_schema_validates` | `uv run pytest api/tests/conformance/test_slug_words.py::test_schema_validates -v` | `jsonschema.validate(json.load(DATA_FILE), json.load(SCHEMA_FILE))` raises nothing. |
 | **C-words.2** | §9 | Same. | value.js | `test/conformance/slug/json-schema-validates.test.ts` | `npx vitest run test/conformance/slug/json-schema-validates.test.ts` | `ajv.validate(schema, data) === true`. |
-| **C-words.3** | §9, this doc §1.5 | The counts in the data file match 120/120/128/128 exactly. | fourier | `test_slug_words_counts_pinned` | `uv run pytest api/tests/conformance/test_slug_words.py::test_counts_pinned -v` | `len(ADJECTIVES) == 120 and len(VERBS) == 120 and len(COLORS) == 128 and len(ANIMALS) == 128`. |
+| **C-words.3** | §9, this doc §1.5 | The counts in the data file match 128/128/128/128 exactly. | fourier | `test_slug_words_counts_pinned` | `uv run pytest api/tests/conformance/test_slug_words.py::test_counts_pinned -v` | `len(ADJECTIVES) == 128 and len(VERBS) == 128 and len(COLORS) == 128 and len(ANIMALS) == 128`. |
 | **C-words.3** | §9 | Same. | value.js | `test/conformance/slug/counts-pinned.test.ts` | `npx vitest run test/conformance/slug/counts-pinned.test.ts` | Same. |
 | C9.1 | §9 | Shared data file exists at the contract location; both repos consume it. | fourier | `test_shared_data_consumed` | `uv run pytest api/tests/conformance/test_shared_data.py::test_slug_words_consumed -v` | `Path("docs/precepts/data/slug-words.json").exists()` and `import api.lib.crud.slugs` succeeds. |
 | C9.1 | §9 | Same. | value.js | `test/conformance/shared-data/slug-words-consumed.test.ts` | `npx vitest run test/conformance/shared-data/slug-words-consumed.test.ts` | `existsSync(DATA_FILE) === true` and the loader module imports without throw. |

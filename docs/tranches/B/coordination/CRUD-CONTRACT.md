@@ -73,8 +73,14 @@ from this section alone.
 ### Status
 
 - **Version**: 1.0.0 (semver; see §12 change-log policy).
-- **Ratification status**: *drafted* at authoring; ratified at fourier-B.W1
-  close (commit hash TBD) with value.js-C.W0 sign-off (commit hash TBD).
+- **Ratification status**: *drafted* at authoring; **RATIFIED
+  fourier-unilateral at fourier-B.W1 close, 2026-05-26** (commit hash
+  `<W1-close-commit>` — recorded by the orchestrator at the wave-close
+  ceremony). **value.js-C sign-off DEFERRED** — value.js-C was RETIRED
+  and never opened for execution; per the orphan verdict at
+  `coordination/CRUD-CONSTELLATION.md`, the value.js half is held as a
+  latent affordance and a future value.js re-engagement consumes this
+  contract via the original §10 joint-ratification close-rule.
 - **Cohort**: CRUD facility convergence + identity-model consolidation
   (`coordination/CRUD-CONSTELLATION.md`).
 - **Authoring tranche**: fourier-B (this repo, this tranche).
@@ -130,8 +136,9 @@ This contract's binding force, under the orphan verdict recorded at
   B.W3 / W4 / W5 execution per `CONFORMANCE-MATRIX.md:515`.
 - **Advisory both-sides on cohort-reopening**. The 88 value.js
   cross-repo conformance-matrix cells hold at `DEFERRED` (the fifth
-  status alongside `TBD`/`WIP`/`PASS`/`WAIVED` introduced by the R3
-  refinement assay §9). The cohort-level "all 176 cells PASS" gate is
+  status in the `CONFORMANCE-MATRIX.md` status legend, introduced by
+  the R3 refinement assay §9 alongside the four prior cell statuses).
+  The cohort-level "all 176 cells PASS" gate is
   structurally unmeetable under the orphan verdict; any successor
   tranche that reopens the cohort consumes this contract as the latent
   affordance and ratifies via the original §10 close-rule.
@@ -422,9 +429,9 @@ migration in §11 produces zero null-owner rows.
   today's nullable `user_slug` at `api/routers/gallery.py:232`).
 - value.js: `userSlug` (already required at creation per
   `~/Programming/value.js/api/src/routes/palettes.ts:394,411`; the
-  contract codifies that the `?? null` defaulting at `formatPalette`
-  `:21-26` is a *read-side* migration helper and no new row may be
-  written with a null owner).
+  contract codifies that the nullish-coalescing `null`-defaulting at
+  `formatPalette` `:21-26` is a *read-side* migration helper and no new
+  row may be written with a null owner).
 
 ### Anonymous publish is forbidden
 
@@ -962,6 +969,36 @@ by §10).
 | `colorScale`, `sampleToSVGPath` helpers | **library** | Same. | per value.js-C.W1 |
 | Slug uniqueness retry loop (logic) | **utility** (per 2026-05-19 revision; previously "contract") | The DECISION.md revision re-classifies this as the canonical tier-2 utility-module instance: ~30 LOC/repo of insert-then-catch-`DuplicateKeyError` logic; cross-cutting (both repos); framework-free. Realised in `api/lib/crud/slug.py` and `api/src/crud/slug.ts`. | §2 C2.2-C2.3 + C9.4 |
 
+### Disposition verdict (Wα R3 / Wχ P1 — recorded verbatim, 2026-05-26)
+
+The binding fourier-side disposition count, per the Wα R3 verdict
+reaffirmed at the Wχ challenge-wave close (`audit/challenge.md §1`,
+`§5 H-W1-2`):
+
+> **10 contract / 1 data / 0 library / 0 service.**
+
+- **10 contract** — the pure-rule targets (slug algorithm, identity,
+  ownership, visibility, soft-delete, sessions, admin, cron/TTL, hash
+  policy, migration discipline).
+- **1 data** — the slug word-lists. **Home: `docs/precepts/data/slug-words.json`**
+  (precepts-submodule form, chosen over the `@mkbabb/slug-words`
+  npm+PyPI package on strict-KISS grounds — both repos already pin the
+  precepts submodule, so no new dependency surfaces). The actual
+  extraction is owed at W3 (the file is ENOENT today; W1 fixes the spec
+  only).
+- **0 library** — under the orphan verdict (value.js-C RETIRED) no
+  cross-repo library artefact ratifies in the fourier-mandatory path;
+  the `Palette` / `colorScale` / `sampleToSVGPath` `library` rows above
+  are held as cohort-latent affordances for a future value.js
+  re-engagement, not counted in the fourier-side disposition.
+- **0 service** — no third coordinating runtime; invariant 16 holds.
+
+Invariant 16 was **adversarially certified** at `audit/challenge.md §1`
+(P1 — 0% shared code; the slug word-list is *data*, ≤ 6.8 KB JSON with
+zero runtime dependency, and the `api/lib/crud/` utility is a genuine
+called-from library with no control inversion). This challenge close is
+cited here as the invariant-16 certification of record.
+
 ### Rejected: shared CRUD framework / codegen / coordinating service
 
 The three named anti-patterns of invariant 16 (`B.md:34`) are rejected
@@ -1018,6 +1055,17 @@ the **index** and the **ratification ledger** — when every row's
 fourier-column and value.js-column both check **PASS**, the contract is
 ratified.
 
+**Pointer + close-rule (binding).** The canonical matrix is
+`coordination/CONFORMANCE-MATRIX.md` — **187 rows** (180 cross-repo + 7
+fourier-side §F coherence rows). The W1 ratification gate is that **every
+row carries a non-empty `Run command` cell** (satisfied at W1 close; a row
+with no named test path is not ratifiable and its contract section is
+re-written). The fourier-side cells are **PASS-bound at B.W3** (and at
+B.W4 / B.W5 for the consumer-wired rows); under the orphan verdict the
+value.js cross-repo cells are held **DEFERRED** (the fifth status in the
+`CONFORMANCE-MATRIX.md` status legend, introduced by the R3 refinement
+assay §9), and the §F rows ratify on the fourier-only path.
+
 > The §10 close-rule. fourier-B.W1 cannot close while any row's two
 > columns are not both PASS. If a row cannot be made testable, the
 > contract section it indexes is *too soft* and must be re-written.
@@ -1039,50 +1087,51 @@ ratified.
 
 | Assertion | Section | fourier evidence | fourier status | value.js evidence | value.js status |
 |---|---|---|---|---|---|
-| C1.1 (no hash in URL) | §1 | `pytest api/tests/test_identity::test_no_hash_in_url` | TBD | `vitest test/identity/no-hash-in-url` | TBD |
-| C1.2 (slug shape on read) | §1 | `pytest test_identity::test_slug_read_shape` | TBD | `vitest test/identity/slug-read-shape` | TBD |
-| C1.3 (no `_id` in response) | §1 | `pytest test_identity::test_no_id_field` | TBD | `vitest test/identity/no-id-field` | TBD |
-| C2.1 (slug shape on generate) | §2 | `pytest test_slug_format` | TBD | `vitest test/slug/format` | TBD |
-| C2.2 (collision retry) | §2 | `pytest test_slug_collision::test_dup_key_retry` | TBD | `vitest test/slug/dup-key-retry` | TBD |
-| C2.3 (no check-then-insert) | §2 | `scripts/grep-no-check-then-insert.sh` | TBD | same (per-repo) | TBD |
-| C2.4 (word-list membership) | §2,§9 | `pytest test_slug_format::test_words_in_list` | TBD | `vitest test/slug/words-in-list` | TBD |
-| C3.1 (anonymous 401) | §3 | `pytest test_ownership::test_anonymous_create_401` | TBD | `vitest test/ownership/anonymous-create-401` | TBD |
-| C3.2 (wrong-owner 403) | §3 | `pytest test_ownership::test_wrong_owner_403` | TBD | `vitest test/ownership/wrong-owner-403` | TBD |
-| C3.3 (schema rejects null owner) | §3 | `pytest test_ownership::test_schema_null_owner` | TBD | `vitest test/ownership/schema-null-owner` | TBD |
-| C3.4 (zero null-owner rows post-migration) | §3,§11 | `pytest test_migration::test_no_null_owner` | TBD | `vitest test/migration/no-null-owner` | TBD |
-| C4.1 (visibility enum) | §4 | `pytest test_visibility::test_enum_validation` | TBD | `vitest test/visibility/enum-validation` | TBD |
-| C4.2 (anonymous list only public) | §4 | `pytest test_visibility::test_anonymous_list_public_only` | TBD | `vitest test/visibility/anonymous-list-public-only` | TBD |
-| C4.3 (draft 404 to non-owner) | §4 | `pytest test_visibility::test_draft_404_anonymous` | TBD | `vitest test/visibility/draft-404-anonymous` | TBD |
-| C4.4 (owner sees all three) | §4 | `pytest test_visibility::test_owner_sees_all` | TBD | `vitest test/visibility/owner-sees-all` | TBD |
-| C5.1 (soft-delete hides) | §5 | `pytest test_soft_delete::test_anonymous_404_after_delete` | TBD | `vitest test/soft-delete/anonymous-404` | TBD |
-| C5.2 (restore within grace) | §5 | `pytest test_soft_delete::test_restore_in_grace` | TBD | `vitest test/soft-delete/restore-in-grace` | TBD |
-| C5.3 (hard-delete past grace) | §5 | `pytest test_soft_delete::test_cron_hard_deletes_past_grace` | TBD | `vitest test/soft-delete/cron-hard-deletes` | TBD |
-| C5.4 (no unbounded `$nin`) | §5,§8 | `scripts/grep-no-unbounded-nin.sh` | TBD | same (per-repo) | TBD |
-| C6.1 (session round-trip) | §6 | `pytest test_sessions::test_register_and_me` | TBD | `vitest test/sessions/register-and-me` | TBD |
-| C6.2 (logout invalidates) | §6 | `pytest test_sessions::test_logout` | TBD | `vitest test/sessions/logout` | TBD |
-| C6.3 (login timing-safe) | §6 | `pytest test_sessions::test_login_timing` | TBD | `vitest test/sessions/login-timing` | TBD |
-| C6.4 (suspended 403) | §6 | `pytest test_sessions::test_suspended_403` | TBD | `vitest test/sessions/suspended-403` | TBD |
-| C7.1 (audit row per action) | §7 | `pytest test_admin::test_audit_row_per_action` | TBD | `vitest test/admin/audit-row-per-action` | TBD |
-| C7.2 (idempotent suspend) | §7 | `pytest test_admin::test_idempotent_suspend` | TBD | `vitest test/admin/idempotent-suspend` | TBD |
-| C7.3 (non-admin 401/403) | §7 | `pytest test_admin::test_non_admin_rejected` | TBD | `vitest test/admin/non-admin-rejected` | TBD |
-| C7.4 (flag uniqueness) | §7 | `pytest test_admin::test_flag_uniqueness` | TBD | `vitest test/admin/flag-uniqueness` | TBD |
-| C7.5 (admin hard-delete bypasses grace) | §7 | `pytest test_admin::test_hard_delete_bypasses_grace` | TBD | `vitest test/admin/hard-delete-bypasses-grace` | TBD |
-| C8.1 (no unbounded `$nin`) | §8 | `scripts/grep-no-unbounded-nin.sh` | TBD | same (per-repo) | TBD |
-| C8.2 (cron clears fixture) | §8 | `pytest test_janitor::test_one_tick_clears_fixture` | TBD | `vitest test/cron/one-tick-clears` | TBD |
-| C8.3 (indexes exist) | §8 | `pytest test_database::test_required_indexes` | TBD | `vitest test/db/required-indexes` | TBD |
-| C8.4 (cron idempotent) | §8 | `pytest test_janitor::test_second_tick_noop` | TBD | `vitest test/cron/second-tick-noop` | TBD |
-| C9.1 (shared data exists if `data`) | §9 | conditional on R3 | TBD | conditional on R3 | TBD |
-| C9.2 (rate-limiter process-local) | §9 | `pytest test_rate_limiter::test_cross_process` | TBD | `vitest test/rate-limiter/cross-process` | TBD |
-| C9.3 (no shared CRUD framework) | §9 | `scripts/grep-no-shared-framework.sh` | TBD | same | TBD |
-| C11.1 (migration idempotent) | §11 | `pytest test_migration::test_idempotent` | TBD | `vitest test/migration/idempotent` | TBD |
-| C11.2 (count-verify) | §11 | `api/scripts/migrate_visualization.py --verify` | TBD | `src/migrate-palette-schema.ts --verify` | TBD |
-| C11.3 (spot-check) | §11 | `pytest test_migration::test_spot_check_10_rows` | TBD | `vitest test/migration/spot-check-10-rows` | TBD |
+| C1.1 (no hash in URL) | §1 | `pytest api/tests/test_identity::test_no_hash_in_url` | PASS@W3 | `vitest test/identity/no-hash-in-url` | DEFERRED |
+| C1.2 (slug shape on read) | §1 | `pytest test_identity::test_slug_read_shape` | PASS@W3 | `vitest test/identity/slug-read-shape` | DEFERRED |
+| C1.3 (no `_id` in response) | §1 | `pytest test_identity::test_no_id_field` | PASS@W3 | `vitest test/identity/no-id-field` | DEFERRED |
+| C2.1 (slug shape on generate) | §2 | `pytest test_slug_format` | PASS@W3 | `vitest test/slug/format` | DEFERRED |
+| C2.2 (collision retry) | §2 | `pytest test_slug_collision::test_dup_key_retry` | PASS@W3 | `vitest test/slug/dup-key-retry` | DEFERRED |
+| C2.3 (no check-then-insert) | §2 | `scripts/grep-no-check-then-insert.sh` | PASS@W3 | same (per-repo) | DEFERRED |
+| C2.4 (word-list membership) | §2,§9 | `pytest test_slug_format::test_words_in_list` | PASS@W3 | `vitest test/slug/words-in-list` | DEFERRED |
+| C3.1 (anonymous 401) | §3 | `pytest test_ownership::test_anonymous_create_401` | PASS@W3 | `vitest test/ownership/anonymous-create-401` | DEFERRED |
+| C3.2 (wrong-owner 403) | §3 | `pytest test_ownership::test_wrong_owner_403` | PASS@W3 | `vitest test/ownership/wrong-owner-403` | DEFERRED |
+| C3.3 (schema rejects null owner) | §3 | `pytest test_ownership::test_schema_null_owner` | PASS@W3 | `vitest test/ownership/schema-null-owner` | DEFERRED |
+| C3.4 (zero null-owner rows post-migration) | §3,§11 | `pytest test_migration::test_no_null_owner` | PASS@W3 | `vitest test/migration/no-null-owner` | DEFERRED |
+| C4.1 (visibility enum) | §4 | `pytest test_visibility::test_enum_validation` | PASS@W3 | `vitest test/visibility/enum-validation` | DEFERRED |
+| C4.2 (anonymous list only public) | §4 | `pytest test_visibility::test_anonymous_list_public_only` | PASS@W3 | `vitest test/visibility/anonymous-list-public-only` | DEFERRED |
+| C4.3 (draft 404 to non-owner) | §4 | `pytest test_visibility::test_draft_404_anonymous` | PASS@W3 | `vitest test/visibility/draft-404-anonymous` | DEFERRED |
+| C4.4 (owner sees all three) | §4 | `pytest test_visibility::test_owner_sees_all` | PASS@W3 | `vitest test/visibility/owner-sees-all` | DEFERRED |
+| C5.1 (soft-delete hides) | §5 | `pytest test_soft_delete::test_anonymous_404_after_delete` | PASS@W3 | `vitest test/soft-delete/anonymous-404` | DEFERRED |
+| C5.2 (restore within grace) | §5 | `pytest test_soft_delete::test_restore_in_grace` | PASS@W3 | `vitest test/soft-delete/restore-in-grace` | DEFERRED |
+| C5.3 (hard-delete past grace) | §5 | `pytest test_soft_delete::test_cron_hard_deletes_past_grace` | PASS@W3 | `vitest test/soft-delete/cron-hard-deletes` | DEFERRED |
+| C5.4 (no unbounded `$nin`) | §5,§8 | `scripts/grep-no-unbounded-nin.sh` | PASS@W3 | same (per-repo) | DEFERRED |
+| C6.1 (session round-trip) | §6 | `pytest test_sessions::test_register_and_me` | PASS@W3 | `vitest test/sessions/register-and-me` | DEFERRED |
+| C6.2 (logout invalidates) | §6 | `pytest test_sessions::test_logout` | PASS@W3 | `vitest test/sessions/logout` | DEFERRED |
+| C6.3 (login timing-safe) | §6 | `pytest test_sessions::test_login_timing` | PASS@W3 | `vitest test/sessions/login-timing` | DEFERRED |
+| C6.4 (suspended 403) | §6 | `pytest test_sessions::test_suspended_403` | PASS@W3 | `vitest test/sessions/suspended-403` | DEFERRED |
+| C7.1 (audit row per action) | §7 | `pytest test_admin::test_audit_row_per_action` | PASS@W3 | `vitest test/admin/audit-row-per-action` | DEFERRED |
+| C7.2 (idempotent suspend) | §7 | `pytest test_admin::test_idempotent_suspend` | PASS@W3 | `vitest test/admin/idempotent-suspend` | DEFERRED |
+| C7.3 (non-admin 401/403) | §7 | `pytest test_admin::test_non_admin_rejected` | PASS@W3 | `vitest test/admin/non-admin-rejected` | DEFERRED |
+| C7.4 (flag uniqueness) | §7 | `pytest test_admin::test_flag_uniqueness` | PASS@W3 | `vitest test/admin/flag-uniqueness` | DEFERRED |
+| C7.5 (admin hard-delete bypasses grace) | §7 | `pytest test_admin::test_hard_delete_bypasses_grace` | PASS@W3 | `vitest test/admin/hard-delete-bypasses-grace` | DEFERRED |
+| C8.1 (no unbounded `$nin`) | §8 | `scripts/grep-no-unbounded-nin.sh` | PASS@W3 | same (per-repo) | DEFERRED |
+| C8.2 (cron clears fixture) | §8 | `pytest test_janitor::test_one_tick_clears_fixture` | PASS@W3 | `vitest test/cron/one-tick-clears` | DEFERRED |
+| C8.3 (indexes exist) | §8 | `pytest test_database::test_required_indexes` | PASS@W3 | `vitest test/db/required-indexes` | DEFERRED |
+| C8.4 (cron idempotent) | §8 | `pytest test_janitor::test_second_tick_noop` | PASS@W3 | `vitest test/cron/second-tick-noop` | DEFERRED |
+| C9.1 (shared data exists if `data`) | §9 | conditional on R3 | PASS@W3 | conditional on R3 | DEFERRED |
+| C9.2 (rate-limiter process-local) | §9 | `pytest test_rate_limiter::test_cross_process` | PASS@W3 | `vitest test/rate-limiter/cross-process` | DEFERRED |
+| C9.3 (no shared CRUD framework) | §9 | `scripts/grep-no-shared-framework.sh` | PASS@W3 | same | DEFERRED |
+| C11.1 (migration idempotent) | §11 | `pytest test_migration::test_idempotent` | PASS@W3 | `vitest test/migration/idempotent` | DEFERRED |
+| C11.2 (count-verify) | §11 | `api/scripts/migrate_visualization.py --verify` | PASS@W3 | `src/migrate-palette-schema.ts --verify` | DEFERRED |
+| C11.3 (spot-check) | §11 | `pytest test_migration::test_spot_check_10_rows` | PASS@W3 | `vitest test/migration/spot-check-10-rows` | DEFERRED |
 
-The `TBD` cells become `PASS` at B.W3 close (fourier rows) and at
-value.js-C.W2 close (value.js rows). fourier-B.W1's ratification gate is
-that **every cell has a named test path with a non-empty expected
-output**; the W3 / value.js-C.W2 close gate is that every cell is
-`PASS`.
+The fourier `PASS@W3` cells become `PASS` at B.W3 close; the value.js
+cells are held `DEFERRED` under the orphan verdict (value.js-C RETIRED)
+and would turn `PASS` at value.js-C.W2 on a cohort re-engagement.
+fourier-B.W1's ratification gate is that **every cell has a named test
+path with a non-empty expected output** (satisfied here); the W3 close
+gate is that every fourier cell is `PASS`.
 
 ### Run-command index
 
@@ -1220,7 +1269,7 @@ with the authoring wave boundary.
 | Version | Date | Wave | Change |
 |---|---|---|---|
 | 0.1.0-draft | 2026-05-19 | B.W1 (in flight) | initial authoring by A1 (this document); not yet ratified |
-| 1.0.0 | TBD | B.W1 close | ratified by fourier-B.W1 + value.js-C.W0 sign-off |
+| 1.0.0 | 2026-05-26 | B.W1 close | RATIFIED fourier-unilateral (commit `<W1-close-commit>`); value.js-C sign-off DEFERRED (value.js-C RETIRED, never opened) per the orphan verdict |
 
 Subsequent amendments record one row per amendment with the authoring wave
 boundary and a one-line summary.

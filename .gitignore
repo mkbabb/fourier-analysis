@@ -50,9 +50,10 @@ uploads/
 .env
 
 # Scripts (private/local only — tracked scripts use negation)
-scripts/
+scripts/*
 !scripts/dev.sh
 !scripts/deploy.sh
+!scripts/conformance/
 
 # Docker
 mongo_data/

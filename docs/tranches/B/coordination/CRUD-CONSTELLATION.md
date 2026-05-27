@@ -48,7 +48,7 @@ this document.
 | Cross-repo relationship | **peer** — not substrate/consumer. Each repo authors its own tranche side; both conform to one shared contract. |
 | fourier tranche | **B** — fourier-analysis's identity-and-CRUD convergence tranche; this document set lives at `/Users/mkbabb/Programming/fourier-analysis/docs/tranches/B/` |
 | value.js tranche | **C** of the value.js sequence (`~/Programming/value.js/docs/tranches/C/`) — the value.js-side CRUD convergence tranche. value.js-B was already in flight with a non-CRUD thesis ("Close A, simplify, complete the AND"); the CRUD peer is therefore C. |
-| Shared contract artefact | `coordination/CRUD-CONTRACT.md` — drafted in fourier-B.W1; *not* jointly ratified (see orphan verdict above) |
+| Shared contract artefact | `coordination/CRUD-CONTRACT.md` — drafted in fourier-B.W1; **ratified fourier-unilateral 2026-05-26** at `<W1-close-commit>` (value.js mirror held DEFERRED, value.js-C RETIRED per the orphan verdict above). Per the orphan verdict, joint sign-off was *not* reached; the fourier side ratifies alone. |
 
 ## Structural twins
 

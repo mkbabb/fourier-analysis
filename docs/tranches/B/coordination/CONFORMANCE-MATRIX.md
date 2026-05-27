@@ -16,12 +16,17 @@ should be able to point at one row per rule and one test command per row.
 
 ## Completion criterion (document-level)
 
-The 176 rows below — 88 assertions × 2 repos — are the binding ledger.
-Every row carries a non-empty test name, run command, and expected
-output / fixture. The §U amendment (utility-module rows per the
-2026-05-19 DECISION) is folded into the same close gate. The §U closure
-rule (every row PASS in both columns, including the utility-module
-rows) is reaffirmed here as the binding closure discipline.
+The **187 rows** below — **180 cross-repo** (90 cross-repo assertions × 2,
+minus 1 fourier-only meta-row for CS5.4) + **7 fourier-side §F coherence
+rows** — are the binding ledger. (The pre-Wave-2 base was 176 cross-repo
+rows from 88 assertions × 2; the Wave-2 amendment of 2026-05-26 added
+CS5.3 slug-exhausted × 2 + CS5.4 Problem-class realisation × 1 fourier-only
+meta + F-partial-sums × 1, reconciled below.) Every row carries a
+non-empty test name, run command, and expected output / fixture. The §U
+amendment (utility-module rows per the 2026-05-19 DECISION) is folded into
+the same close gate. The §U closure rule (every row PASS in both columns,
+including the utility-module rows) is reaffirmed here as the binding
+closure discipline.
 
 A row's two repo entries must both pass for the contract section it
 indexes to be considered ratified. The historical close gate was: fourier-B.W1
@@ -445,7 +450,15 @@ These rows ratify the per-module **utility surfaces** introduced by U3 (`api/lib
 
 ---
 
-## Aggregate row count (176 rows)
+## Aggregate row count (180 cross-repo rows)
+
+The table below is the cross-repo ledger. The pre-Wave-2 base was **176
+rows** (88 cross-repo assertions × 2); the 2026-05-26 Wave-2 amendment
+added CS5.3 (slug-exhausted × 2) and CS5.4 (Problem-class realisation × 1
+fourier-only meta-row), bringing the cross-repo subtotal to **180 rows**
+(90 cross-repo assertions × 2, minus the 1 fourier-only meta-row). The 7
+fourier-side §F coherence rows sit outside this table (see §F below); the
+document grand total is **187 rows** (180 cross-repo + 7 §F).
 
 | Section | Assertions | Rows (× 2 repos) |
 |---|---|---|
@@ -468,10 +481,12 @@ These rows ratify the per-module **utility surfaces** introduced by U3 (`api/lib
 | §S2 ETag concurrency | 2 | 4 |
 | §S3 Idempotency-Key | 2 | 4 |
 | §S4 Rate-limit headers | 2 | 4 |
-| §S5 Problem+json envelope | 2 | 4 |
+| §S5 Problem+json envelope (CS5.1–CS5.2 base) | 2 | 4 |
+| §S5 Problem+json envelope (CS5.3 slug-exhausted, Wave-2) | 1 | 2 |
+| §S5 Problem+json envelope (CS5.4 Problem-class meta, Wave-2; fourier-only) | 1 | 1 |
 | §S6 URL shape / Link | 2 | 4 |
 | §S7 CRUD identity-stability | 2 | 4 |
-| **SCHEMA-derived subtotal** | **15 assertions** | **30 rows** |
+| **SCHEMA-derived subtotal** | **17 assertions** | **33 rows** |
 | §U.1 Slug generator + word-list init | 7 | 14 |
 | §U.2 Cursor encode/decode | 4 | 8 |
 | §U.3 Problem+json envelope | 3 | 6 |
@@ -481,7 +496,10 @@ These rows ratify the per-module **utility surfaces** introduced by U3 (`api/lib
 | §U.7 Cron prune bounded query | 3 | 6 |
 | §U.8 Module surface coverage | 1 | 2 |
 | **Utility-module subtotal** | **29 assertions** | **58 rows** |
-| **Grand total** | **88 assertions** | **176 rows** |
+| **Cross-repo grand total** | **90 cross-repo assertions** | **180 rows** (90 × 2, minus 1 fourier-only CS5.4 meta-row) |
+
+Add the **7 fourier-side §F coherence rows** (see §F below) for the
+document grand total of **187 rows** (180 cross-repo + 7 §F).
 
 ---
 
@@ -499,7 +517,7 @@ The rows below bind the fourier-specific invariants codified at B.md §2 invaria
 | F20.1 | Inv 20 | `useViewTransform` does not call `Math.min(...xs)` or `Math.max(...xs)` per rAF frame; the bbox is memoized on `epicycleData` / `basesData` identity. | grep assertion `scripts/conformance/grep-no-perframe-spread.sh` + benchmark | `bash scripts/conformance/grep-no-perframe-spread.sh` + `npx playwright test e2e/perf.spec.ts -g 'view_transform_budget'` | grep over `useViewTransform.ts` finds the `Math.min/max` call only inside a `computed` block keyed on path identity; benchmark asserts < 0.5 ms per frame at n=10 000. |
 | F-partial-sums | Inv 19 / SCHEMA §3 AnimationData | `AnimationData.partial_sums` JSON round-trips through `BasisCanvas.vue`'s consumer as `Record<string, {x,y}>` — backend serialises stringified-int keys; frontend looks them up via typed bracket access (no `as any` cast). Added 2026-05-26 per Wave-2 audit C4 §6 #1 (b) / #3. | `e2e/visualization-ux.spec.ts::partial_sums_roundtrip` + `web/tests/basis-canvas.spec.ts::partial_sums_type_check` | `npx playwright test e2e/visualization-ux.spec.ts -g 'partial_sums'` + `cd web && npx vue-tsc -b --force` (the typed lookup eliminates `as any`; `vue-tsc` fails if the cast remains) | The Playwright spec exercises a multi-basis state, captures `epicycleData.bases[k].partial_sums`, asserts the JSON-emitted form has stringified-int keys and the consumer resolves them; `vue-tsc` confirms zero `as any` over `partial_sums` in `BasisCanvas.vue`. |
 
-**§F subtotal:** 7 fourier-only assertions × 1 column = 7 rows (added F-partial-sums per Wave-2; aggregate grand total now 183).
+**§F subtotal:** 7 fourier-only assertions × 1 column = 7 rows (added F-partial-sums per Wave-2; document grand total now **187 rows** = 180 cross-repo + 7 §F).
 
 ## Aggregate (post-§F addition; Wave-2 amendment 2026-05-26)
 
@@ -516,7 +534,7 @@ Each row carries a status that is updated at the close of B.W3 (fourier column) 
 - `PASS` — test passes in CI; the conformance assertion is binding evidence.
 - `WAIVED` — explicit, justified deviation; references a §12 change-log entry.
 
-fourier-B.W1's gate: every row has a non-empty `Run command` cell. fourier-B.W3 close gate: every fourier row is `PASS`. value.js-C.W2 close gate: every value.js row is `PASS`. The cohort-level CRUD-CONTRACT.md ratifies on the moment all 176 cross-repo rows are `PASS` (88 fourier + 88 value.js) **and** the 6 §F fourier-side coherence rows are `PASS` (the §F rows added 2026-05-26 per the Wave-1 audit synthesis at `docs/audits/runs/2026-05-26-B-audit-wave-1/SYNTHESIS.md §4`). Under the orphan verdict the 88 value.js cross-repo cells hold at `DEFERRED` (the fifth status alongside `TBD`/`WIP`/`PASS`/`WAIVED` introduced by the R3 refinement assay §9); the §F rows have no value.js column and ratify on the fourier-only path.
+fourier-B.W1's gate: every row has a non-empty `Run command` cell. fourier-B.W3 close gate: every fourier row is `PASS`. value.js-C.W2 close gate: every value.js row is `PASS`. The cohort-level CRUD-CONTRACT.md ratifies on the moment all **180 cross-repo rows** are `PASS` **and** the **7 §F fourier-side coherence rows** are `PASS` (grand total 187; the §F rows added 2026-05-26 per the Wave-1 audit synthesis at `docs/audits/runs/2026-05-26-B-audit-wave-1/SYNTHESIS.md §4`, with F-partial-sums added per the Wave-2 synthesis). Under the orphan verdict the value.js cross-repo cells hold at `DEFERRED` (the fifth status alongside `TBD`/`WIP`/`PASS`/`WAIVED` introduced by the R3 refinement assay §9); the §F rows have no value.js column and ratify on the fourier-only path.
 
 ## Source-grep scripts
 
