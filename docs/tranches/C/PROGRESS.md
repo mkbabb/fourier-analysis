@@ -27,7 +27,7 @@ W5 close, every row reconciles against `FINAL.md`'s gate table.
 | W3 — *Janitor audit-log + recovery + `--reload` compute-abort fix* | **closed** | 2026-05-27 (`e6a6b95`) | thread α — one `_log_janitor_audit` helper on the existing `admin_audit` shape wired to all 11 destructive ops (count≥1-gated, emitted from the orchestrating cycle); `_delete_images_and_cascade` widened to a count-tuple; idempotent live-predicate recovery; `test_janitor_audit.py` 9/9 (transient Mongo), 4+5 (no Mongo). `--reload-dir src` dropped (`dev.sh:76` + `api/Dockerfile:16`); prod byte-identical |
 | **W4 — *Slug-identity completeness + B-residual discharge*** | **closed** | 2026-05-27 (`f91a656`) | thread γ — `snapshot_hash`/`snapshotHash` → `slug`/`owner_slug` end-to-end (44→0); `as unknown as` cast removed; `FlaggedListResponse` reshaped to the cursor envelope + both dead-duplicates (`listFlaggedEntries`, `dismissFlags`) deleted (G5 zero); **T1 keystone** `vue-tsc -b --force` green WITH the cast removed; all **14** conformance skeletons FILLED (49 assertions, 49 passed w/ Mongo); matrix citation lies fixed; e2e settle deterministic. **δ = named residual** (value.js v0.10.0 has no `sampleToSVGPath`; `easings.ts` untouched). Discharges the one precept violation (invariant 20) |
 | W5 — *Image-blob migration* | **closed (code); prod-run host residual** | 2026-05-27 (`817cfcc`) | thread β — filesystem app-served. Deletion proof (`Binary(content)`→0, `Binary(`→0); the `image_bytes` shim (blob-read branch deleted, no dual-read); **C9** dedup-bug fixed + `test_dedup_hit_on_migrated_doc`; **C1** janitor unlink (inv-18 delete-coupling); **C10** projection; **C3** path guard; `migrate_image_blobs.py` (count-parity 7==reloc+skip, idempotent, byte-identity spot-check); `FileResponse`; **C2** Dockerfile mkdir+chown; **C4** `external:true` + DR note (in-tree → precepts at W6). 212 tests pass; §8 window struck. The prod migration *run* is a host residual |
-| W6 — *Close* | provisional | — | reconcile PROGRESS; cite commits in FINAL; restore brittleness window; record the conditional δ disposition + the inverted cross-repo edge |
+| W6 — *Close* | **closed** | 2026-05-27 (`27c883b` + close commit) | `FINAL.md` authored (§0→§9, cites every commit + gate); §U matrix citation residual discharged (23 re-pointed, 6 struck honestly); `CANONICAL-ORDERING.md` reconciled to ordering δ (A/B/C closed); brittleness window confirmed STRUCK; close gates green (pytest 129/83/0, vue-tsc 0, build 0); host-coupled residuals + δ disposition named (`FINAL.md §6`) |
 
 ## Log
 
@@ -254,14 +254,30 @@ live at `api/tests/test_crud_lib_*.py`. Out of W4's named bounds (W4 owned the
   with count-parity; 212 tests pass; §8 window struck. The prod migration *run* is a
   host residual (code + dry-run + harness proven here).
 
+### 2026-05-27 — tranche C CLOSED
+
+**WHAT.** All implementation waves landed; W6 close ceremony complete.
+- **W2** (`4905682`, thread α) — verified-TLS Stratum A (the `gen-mongo-certs.sh`
+  provisioning tool, the `.env.example` 4th-site fix, the `infra/tls.md` precept +
+  the host-gated Stratum B diff); `prod.yml` deliberately untouched (inversion
+  forbidden). The invariant-19 gate is met only after the coordinated host cutover.
+- **W6** — `FINAL.md` authored (§0→§9); the §U matrix citation residual discharged
+  (`27c883b`); `CANONICAL-ORDERING.md` reconciled to ordering δ; the brittleness
+  window confirmed STRUCK; close gates green.
+
+**Close gates**: `uv run pytest api/tests/` → 129 passed, 83 honest `@requires_mongo`
+skips, 0 failed; `vue-tsc -b --force` → exit 0 (the T1 keystone, green WITH the cast
+removed); `npm run build` → exit 0. The deletion-proof + invariant-20 + scoped-8091
+greps all zero.
+
+**Disposition**: `complete_with_host_residuals`. The repo-landable aim is clean;
+every host-coupled act (the shared-dispatcher wiring, the prod TLS cutover, the prod
+migration run, the precepts-submodule promotion) and the latent δ-consume carry
+named, runnable successors (`FINAL.md §6`). Nothing closed silent.
+
 ### Next action
 
-**W2** (TLS + ports, thread α) — the genuinely host-coupled wave. Per the
-"provisioning-then-flags spine (inversion forbidden)", removing the
-`tlsAllowInvalidCertificates` flags WITHOUT the host's re-provisioned SAN-correct
-cert would break the next prod deploy. Two strata (mirrors W1): **Stratum A** lands
-repo-local + safe — `scripts/gen-mongo-certs.sh`, the `.env.example:21` fix (4th
-site + host spelling), the `docs/precepts/infra/tls.md` content staged in-tree;
-**Stratum B** — the `prod.yml` 3-site flag removal is coupled to host cert
-provisioning (one coordinated host-ops act), the exact diff specified + recorded,
-NOT applied to compose here (landing it alone breaks prod). Then W6 close.
+None — tranche C is closed. A fourier-D opens only if a named residual is promoted
+to a tranche (multi-replica; the `--reload` background queue; a colour-scale consumer)
+or new work is mandated. The host-ops residuals are operational steps; value.js-I
+awaits a separate user mandate.

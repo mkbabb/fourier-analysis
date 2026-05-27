@@ -5,7 +5,7 @@
 **Reconciles with**: R1's cohort-orphan assay (the verdict on whether value.js-C — the cohort-peer tranche to fourier-B — is effectively orphaned) and R6's fourier-C scoping (the open-design scoping for fourier-analysis's infra + image-blob-out-of-Mongo tranche); parallel-dispatched. Both R1 and R6 outputs were not yet present at `docs/audits/runs/2026-05-19-refinement-assay/` at this document's authoring. This document is **provisional pending R1's cohort verdict**; both orderings (cohort-live, cohort-orphan) are given in §5.
 **Authority**: this is the only execution-order document spanning both repos. Per-tranche `*.md` and `coordination/CRUD-CONSTELLATION.md` (the cohort coordination doc bound to fourier-B's CRUD-and-identity-convergence question) remain the authority for individual dependency claims.
 
-> **⚠ SUPERSEDED IN PART — see §8 (Ordering γ, 2026-05-27).** The body below (§1–§7) was authored 2026-05-26 when fourier-A and fourier-B were *planning* and the cohort-orphan verdict (R1) was *pending*; it gives the contingent orderings α (cohort-live) and β (cohort-orphan) in §5. Those events have since RESOLVED: fourier-A CLOSED (`c7cfd82`), fourier-B CLOSED (`fc5b3b0`), value.js-H CLOSED (v0.10.0, `16129e0`), the cohort-orphan verdict SETTLED (ordering β fired — value.js-C RETIRED), and fourier-C AUTHORED + expanded. **§8 is the authoritative current ordering;** §1–§7 are retained as the historical record of how the ordering was reasoned.
+> **⚠ SUPERSEDED — see §9 (Ordering δ, 2026-05-27, post-C-close).** The body below (§1–§7) was authored 2026-05-26 when fourier-A/B were *planning* and the cohort-orphan verdict was *pending* (contingent orderings α/β in §5); §8 (Ordering γ) reconciled it when fourier-C was authored. Both are now history: **fourier-A/B/C are all CLOSED** (`c7cfd82`, `fc5b3b0`, the C close), value.js-H CLOSED (v0.10.0, `16129e0`), the cohort orphan SETTLED, and the inverted δ edge is the only live cross-repo seam (conditional, both-sides-gated). **§9 is the authoritative current ordering;** §1–§8 are retained as the historical record of how the ordering was reasoned.
 
 ---
 
@@ -264,3 +264,47 @@ fourier-C is the sole open fourier tranche; its threads are fourier-internal exc
 - **value.js next action**: await user mandate for **value.js-I** (thesis open). If the user wants the colour lift, I is forward-themed as the narrow `sampleToSVGPath` publish; otherwise the lift stays the fourier-C residual.
 
 No fast path couples them; the colour-lift edge is the only seam, and it is conditional on both sides.
+
+---
+
+## §9 — Ordering δ (2026-05-27 post-C-close — AUTHORITATIVE)
+
+fourier-C has CLOSED (`docs/tranches/C/FINAL.md`). This supersedes §8 (ordering γ, which treated fourier-C as authored-awaiting-authorization).
+
+### §9.1 — Reconciled tranche inventory
+
+| Repo | Tranche | Status (2026-05-27) | Note |
+|---|---|---|---|
+| fourier | **A** — cohort attribution, style abrogation, admin parity | **CLOSED** `c7cfd82` | executed W0–W6 |
+| fourier | **B** — CRUD/identity convergence | **CLOSED** `fc5b3b0` | `complete_with_misses` (cohort half orphaned), clean against the fourier aim |
+| fourier | **C** — infra + storage + B-residual discharge | **CLOSED** (this round) | executed W0 → Wα → Wχ(+harden) → W3∥W4 → W1∥W5 → W2 → W6; `complete_with_host_residuals` — repo-landable aim clean; host-coupled acts named (§9.3) |
+| value.js | **A–G** | **CLOSED** | — |
+| value.js | **C** — palette CRUD (cohort peer to fourier-B) | **RETIRED** 2026-05-26 | ordering β fired |
+| value.js | **H** — cascade-correctness | **CLOSED** v0.10.0 `16129e0` | zero palette-domain work |
+| value.js | **I** — *seeded, thesis open* | **SEEDED**; thesis undeclared | candidate host for the narrow `sampleToSVGPath` lift iff forward-themed + user-mandated |
+
+### §9.2 — The inverted edge (unchanged — still the only live cross-repo dependency)
+
+```
+value.js-<I-or-dedicated>.W_x  ──(publishes sampleToSVGPath in src/math.ts)──▶  fourier-C-successor (consumes)
+        [open thesis; user-re-mandate-gated]                         [latent; held as a named residual at C close]
+```
+
+fourier-C closed with the δ-consume as a **named residual** — value.js v0.10.0 does not export `sampleToSVGPath`, so `easings.ts` was left byte-identical to HEAD. The edge persists into a fourier successor, fired iff value.js publishes. `docs/tranches/C/coordination/COLOUR-LIFT.md` records the ask.
+
+### §9.3 — fourier-C's host-coupled residuals (the close was `complete_with_host_residuals`)
+
+Everything repo-landable landed + proven; these outward-facing host acts carry runnable successors (`C/FINAL.md §6`):
+- the shared `/opt/deploy/dispatch.sh` rewrite + fourier-hook registration (touches 4 sibling repos) — `coordination/DEPLOY-RECONCILE.md`;
+- the prod MongoDB TLS cutover (run `gen-mongo-certs.sh` → apply the `infra/tls.md §9` diff → deploy → ping);
+- the prod image-blob migration run (`python -m api.scripts.migrate_image_blobs`);
+- the precepts-submodule promotion of the staged `infra/{tls.md, blob-backend-dr.md}` + the deploy precept.
+
+### §9.4 — Current critical path + next action
+
+**No fourier tranche is open.** A/B/C are closed; the repo carries the host-coupled residuals (§9.3) as named successors and the latent δ edge.
+
+- **fourier next action**: none required to close C. A fourier-D opens only if/when a named residual is promoted to a tranche (multi-replica; the `--reload` background queue; a colour-scale consumer) or new work is mandated. The host-ops residuals are operational steps, not tranche work.
+- **value.js next action**: await user mandate for **value.js-I** (thesis open). If the user wants the colour lift, I is forward-themed as the narrow `sampleToSVGPath` publish; otherwise the lift stays the fourier residual.
+
+The two repos remain decoupled; the colour-lift edge is the only seam, conditional on both sides.
