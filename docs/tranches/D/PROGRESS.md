@@ -22,17 +22,17 @@ At W7 close every row reconciles against `FINAL.md`'s gate table.
 | W0 — *Open · baseline · research dispatch* | planned | — | C confirmed closed; prod-state baseline (the `8818ae5` pre-A gap, dirty tree, empty DB, missing `image_blobs` volume); design-debt + backend-legacy catalogs; δ research dispatched; §8 window ratified |
 | Wα — *Research (CRUD cohesion + deploy-safety)* | planned | — | R1 CRUD-CONTRACT v2.0.0 design + fourier↔value.js clause map; R2 prod-deploy-safety on the shared host (dirty-tree reconcile, secret extraction, migration-with-deploy ordering, rollback); optional R3 value.js alignment-tranche shape |
 | Wχ — *Challenge* | planned | — | P1 co-tenant blast radius (floridify/palette-api untouched); P2 migration-with-deploy atomic + rollback-safe on real data; P3 cohesion is KISS (no shared framework, inv-16); P4 β stays refinement / γ deletes only dead code |
-| W1 — *Prod deploy: A/B/C to production* | provisional | — | thread α — dirty-tree reconcile + secret extraction; deploy-hook wired; hook perms 0664→0600; `image_blobs` volume; the FIRST real A/B/C→prod deploy + migration-in-cutover; recorded commit-to-deploy + rollback transcripts |
+| W1 — *Security hotfix + first prod deploy* | provisional | — | thread α/α′ — **FIRST: bind all 3 Mongos off `0.0.0.0` + withdraw 4 UFW rules** (the live exposure closed across the shared host); THEN dirty-tree reconcile + secret extraction; deploy-hook wired; hook perms 0664→0600; `image_blobs` volume; FIRST real A/B/C→prod deploy + migration-in-cutover; transcripts |
 | W2 — *Verified-TLS cutover + precepts promotion* | provisional | — | thread α — `gen-mongo-certs.sh` host-run; the `infra/tls.md §9` 3-site diff; live verified-cert ping; the staged precepts promoted into the submodule |
 | W3 — *Backend NO-legacy symmetry + transpositions* | provisional | — | thread γ — backend `snapshot_hash` band → slug (flags field+index, 9 admin sites); dead `gallery` stratum deleted; image asset typed (retires the dict shim that caused C9/C10) |
 | W4 — *Design refinement* | provisional | — | thread β — `.cartoon-card` resurrected (1 shim → 14 components); upload IA → one dropzone; gallery orphans resolved; light-mode contrast sweep; `:focus-visible` rings; axe light-mode clean. ∥ W3 (web vs api) |
 | W5 — *CRUD-CONTRACT v2.0.0 + cohesion* | provisional | — | thread δ — contract v2.0.0 (2 relaxations); fourier flips DEFERRED cells vs live palette-api; value.js alignment ask recorded; colour-lift consume iff published. value.js-side = a value.js tranche (user-gated) |
 | W6 — *Test integrity* | provisional | — | thread ε — cross-env Playwright matrix (2 apps × local/dev/prod, prod non-mutating); CI Mongo retires `@requires_mongo` skips; `COMPUTE_RATE_LIMIT` harness |
-| W8 — *DNS-as-code* | provisional | — | thread α′ — idempotent CF-API script lands the `<app>`+`api.<app>` record set; grey/orange discipline; don't-break (MX/SPF/apex/NS/wildcard); the api-TLS-path decision applied (ACM vs `<app>-api`) |
+| W8 — *DNS-as-code* | provisional | — | thread α′ — idempotent CF-API script: `<app>.babb.dev`=proxied CNAME→`<app>.pages.dev`; **`api.<app>.babb.dev`=grey-cloud A→`34.197.214.67`** (TLS path RESOLVED — certbot LE on the origin, no ACM); don't-break (MX/SPF/apex/NS/wildcard) |
 | W9 — *CF-Pages frontend migration* | provisional | — | thread α′ — speedtest recipe per frontend; **fourier pilot first**; then keyframes.js + value.js/color off GH Pages; bounded-parallel |
-| W10 — *Backend ingress + CORS + Mongo-loopback security* | provisional | — | thread α′ — per-`api.<app>` Apache vhost + origin-cert extend; CORS fixes (palette empty, floridify stale); **the 3 Mongos bound off 0.0.0.0 + UFW rules withdrawn** (live exposure closed) |
+| W10 — *Backend ingress + origin LE for api.<app> + CORS* | provisional | — | thread α′ — per-`api.<app>` Apache vhost → app nginx gateway; **`certbot --expand` adds `api.<app>` SANs** to the live LE cert via DNS-01 (CF token's DNS:Edit); auto-renew preserved; CORS fixes (palette empty, floridify stale → `https://<app>.babb.dev`). Mongo-bind moved to W1 |
 | W11 — *palette-api → color rename* | provisional | — | thread α′/δ — **user-re-mandate-gated**; reconcile the standalone-repo provenance first; rename + `api.color.babb.dev` + palette-Mongo bind (value.js-side; shared vhost the seam) |
-| W12 — *Close* | provisional | — | reconcile PROGRESS; FINAL cites commits + gates; coordination updated; **CF token ROTATED**; dangling-image/dead-vhost cleanup; §8 window restored; CANONICAL-ORDERING → ordering ε |
+| W12 — *Close* | provisional | — | reconcile PROGRESS; FINAL cites commits + gates; coordination updated; dangling-image (`gaggle`/`server-api`) + dead `:8140` speedtest vhost cleanup; §8 window restored; CANONICAL-ORDERING → ordering ε. **CF token NOT rotated** (per user) — saved in gitignored `.env`s + CI secrets |
 
 ## Log
 
@@ -129,12 +129,35 @@ persisted/committed and is ROTATED at W12 close (it was chat-pasted). NA finding
 also corrected DOMAIN-NAMING's earlier assumptions (the TLS ceiling; palette-api's
 rsync/standalone provenance).
 
+### 2026-05-27 — resolutions folded (TLS path + Mongo + credential placement)
+
+**WHAT.** The user's follow-up resolved the open decisions and added items:
+- **TLS path RESOLVED to grey-cloud + origin LE** (the user's "re-add direct DNS
+  records?" intuition is exactly right): `api.<app>.babb.dev` becomes a DNS-only A
+  → origin `34.197.214.67`; the mbabb Apache serves a Let's Encrypt cert (certbot
+  is already on prod with a live `/etc/letsencrypt/live/sudoku.babb.dev/` cert;
+  `certbot --expand` with DNS-01 via the CF token adds the api SANs); LE has no
+  subdomain-depth limit. **Free, exact naming, no ACM.** Frontends remain CF-Pages
+  proxied (single-level, free Universal SSL OK). → W8/W10 updated.
+- **Mongo fix in-tranche, front-loaded** as the FIRST act of W1 (the live exposure
+  closed across fourier + floridify + palette before any deploy). W10 drops the
+  Mongo-bind.
+- **CF token NOT rotated** (per user); saved in gitignored `.env`s at
+  `fourier-analysis/.env` + `value.js/.env` (`0600`, `git check-ignore` verified,
+  `git status` clean), referenced by name. The user's supplied perm set is
+  sufficient (and broader than the minimal {DNS:Edit, DNS:View, Pages:Edit,
+  Zone:Read} — SSL/certs perms aren't even needed under the grey-cloud+LE plan
+  because certbot uses DNS-01, not the CF SSL API).
+- **Full API plan** authored at `coordination/CONSTELLATION-DEPLOY.md §8` — the
+  uniform four-move recipe per backend (DNS / origin LE / Apache vhost / CORS),
+  the per-app row table, and the pilot-then-rollout ordering.
+- I confirm I SSH'd into the server (read-only) multiple times this session.
+
 ### Next action
 
-None until the user authorises D.W0 — except the user may elect the **Mongo-exposure
-security hotfix** ahead of the tranche (a live exposure), and must decide the
-**api-TLS path** (ACM vs `<app>-api`) at Wα. This remains tranche development; the
-6-lane audit was read-only, no CF token used, no host/DNS mutation. At that point dispatch D.W0 (prod-state
+None until the user authorises D.W0. The two open decisions are CLOSED (TLS path +
+Mongo timing). The tranche development is complete; the 6+4+6-lane audit + the
+plan + the credential placement landed; no implementation ran. At that point dispatch D.W0 (prod-state
 baseline + design/legacy catalogs + δ research dispatch) then Wα (CRUD-contract +
 deploy-safety research) → Wχ (four probes) — the research-first gate governs δ +
 the deploy-safety before any prod change or implementation wave. **This was tranche

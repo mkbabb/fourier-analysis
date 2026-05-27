@@ -28,13 +28,9 @@ Support services (not apps): `code-server :8080`, host MySQL `:3306`, the `adnan
 
 `fourier-analysis-mongo :27017`, `floridify-mongo :27018`, `palette-api-mongo :27020` all bind `0.0.0.0` **and** are reachable from `34.197.214.67` (external TCP connect confirmed, NA1/NA5) — triple-allowed by the `0.0.0.0` docker publish, **explicit UFW `ALLOW IN Anywhere` rules per port**, and a permissive AWS SG. Only SCRAM `--auth` + `requireTLS` (with `tlsAllowInvalidCertificates=true` — unverified) stands between the Internet and each DB, and the Mongo credentials are **committed plaintext** in the compose files. **This is a live exposure that arguably warrants a hotfix ahead of the full tranche.** The fix (α′.W3, or sooner): compose `ports:` `0.0.0.0`→`127.0.0.1`/no-publish (the backend reaches `mongo:27017` over the compose network), withdraw the four UFW rules, pair with the C.W2 TLS-laxity cutover. fourier's Mongo bind is fourier-owned; the palette + floridify binds are cross-app (coordinated).
 
-### §3.2 — The `api.<app>` TLS ceiling (a cost/naming decision)
+### §3.2 — The `api.<app>` TLS path — RESOLVED (grey-cloud + origin LE, free)
 
-Cloudflare **free-tier Universal SSL covers only single-level `*.babb.dev`** — so `api.fourier.babb.dev` (two-level) gets **no edge certificate** → TLS handshake failure (NA3). Two honest paths:
-- **(a) Advanced Certificate Manager** (~$10/mo) — a two-level/`*.fourier.babb.dev`-style cert; keeps the user's exact `api.<app>.babb.dev` pattern.
-- **(b) `<app>-api.babb.dev`** (single-level, e.g. `fourier-api.babb.dev`) — free under the existing `*.babb.dev` cert; a small naming deviation from the stated pattern.
-
-**Recommendation: confirm with the user** — (a) honours the pattern at ~$10/mo; (b) is free with a minor rename. Separately, the CF→origin leg needs the origin's LE cert (`CN=sudoku.babb.dev`, SAN fourier/sudoku/words) extended to cover the api hostnames (`certbot --expand`) or a CF `*.babb.dev` Origin Cert, with CF SSL mode **Full (strict)** (NA5). Also: the proxied-A backends need a public origin — the host's public IP `34.197.214.67`, or a **CF Tunnel** (`cloudflared`) since `mbabb.fridayinstitute.net` is RFC1918.
+The earlier framing (ACM ~$10/mo vs `<app>-api` rename) is **superseded by the cleanest resolution the user surfaced**: since we control the origin, `api.<app>.babb.dev` records are **DNS-only (grey-cloud) A → `34.197.214.67`** — CF returns the origin IP, the browser connects directly, and the **mbabb Apache serves a Let's Encrypt cert** issued by `certbot --expand` on the already-installed certbot (`/usr/local/bin/certbot`) extending the live `/etc/letsencrypt/live/sudoku.babb.dev/fullchain.pem` cert (which already covers fourier/sudoku/words as SANs) to include `api.fourier.babb.dev`, `api.color.babb.dev`, etc. LE has **no subdomain-depth limit** (the CF Universal SSL single-level constraint applies only to CF-edge TLS, i.e., orange-cloud); LE happily issues for `api.<app>.babb.dev` at any depth. DNS-01 challenge via the CF token's `DNS:Edit` perm; auto-renewal preserved. **Free, exact naming (`api.<app>.babb.dev`), no ACM, no rename.** Frontends stay CF-Pages-proxied (single-level `<app>.babb.dev`, Universal SSL covers). Tradeoff vs orange-cloud-on-api: lose CF CDN/WAF/proxy on the api subdomains — acceptable (APIs don't need a CDN; the origin IP is the host's public IP and is already public — and W1 closes its actual exposure, the Mongos). If at some future point CF proxy on the api is wanted, ACM is the upgrade path; until then, grey-cloud + LE wins.
 
 ## §4 — The CF-Pages recipe (NA2 — the speedtest template, generalized)
 
@@ -46,7 +42,19 @@ Yes — programmatic. KISS-ranked: **(1) a thin idempotent CF-REST-API script** 
 
 ## §6 — Credential discipline (NA6) — binding on every α′ wave
 
-The CF token is **NEVER** committed, written to a tracked file, or placed in compose / in-repo CI config. It lives in the GitHub Actions secret store + the operator's out-of-band store, referenced by name only (mirroring `deploy-hook.sh`'s no-secret discipline). **Perms needed (confirm/adjust):** `Zone:DNS:Edit` + `Zone:Zone:Read` (scoped to the babb.dev zone) for DNS; `Account:Cloudflare Pages:Edit` for Pages; `Zone:SSL and Certificates:Edit` only if ACM (§3.2a). Use a scoped token, not the Global API Key. **Because the token was pasted in chat, ROTATE it after the migration** — a named close-item of the final α′ wave.
+The CF token is **NEVER committed or written to any tracked file**. It IS saved (per user direction, 2026-05-27) in **gitignored `.env`s** at `fourier-analysis/.env` and `value.js/.env` (`0600`, verified gitignored via `git check-ignore`), plus the CI provider's secret store (GitHub Actions) when CI publishes Pages. Referenced by name (`CLOUDFLARE_API_TOKEN`) — never echoed in shell history, logs, commits, or chat. **The user's provided perm-set is sufficient** (see §6.1); the minimal-honest subset is also documented for an operator wanting a tighter token. **Do NOT rotate** (per user direction); rotate only on suspicion.
+
+### §6.1 — Perms sufficiency (the user-provided list)
+
+The user supplied a generous token-perm list. The minimal-honest subset this plan needs:
+
+| Action | Minimal perm |
+|---|---|
+| Edit DNS records in the babb.dev zone (the W8 CF-API script + certbot DNS-01) | **Zone:DNS:Edit** (`Zone DNS Settings Write` + `DNS Write` + `DNS View` all cover it) |
+| Deploy CF Pages (W9 `wrangler pages deploy`) | **Account:Cloudflare Pages:Edit** (`Pages Write`) |
+| Read zone metadata | **Zone:Zone:Read** (`Zone Write` implies read) |
+
+That's it for the grey-cloud + LE plan. **SSL/Certificates perms are NOT needed** (grey-cloud means LE on the origin handles certs; certbot uses DNS:Edit for DNS-01, not CF SSL APIs). The user-supplied list includes those + many extras (`Registrar Domains Admin`, `Workers CI/Containers`, `Intel`, `Radar`, `Logs`, `Analytics`, `API Tokens Read`, `API Gateway`, `CF Agents`) — **harmless to have, broader than needed**; over-permissioned = larger blast radius on leak, but the token lives only in gitignored `.env`s + the CI store, so the bound is small. **Verdict: sufficient and intentional; no perm changes required.** If you ever want to trim, the four-perm minimum above is the floor.
 
 ## §7 — Pilot-then-rollout (NA6) + the α′ wave set
 
@@ -57,8 +65,51 @@ The new **thread α′ (constellation deployment normalization)**, folded into `
 - **Wχ-P5** (extends Wχ): does the rollout avoid breaking the co-tenants + the mail/apex DNS; is the pilot a true end-to-end proof.
 - **α′.W8 — DNS-as-code** (the CF-API script; the target record set; grey/orange discipline; the don't-break list).
 - **α′.W9 — CF-Pages frontend migration** (fourier pilot first; then keyframes.js + value.js/color off GH Pages; per-app, bounded-parallel).
-- **α′.W10 — backend ingress + CORS + Mongo-loopback security** (the per-`api.<app>` Apache vhost + the origin cert extension; the CORS allow-lists — fix palette's empty + floridify's stale; the Mongo-bind across fourier/palette/floridify + the UFW withdrawal).
+- **α′.W10 — backend ingress + origin LE for `api.<app>` + CORS** (the per-`api.<app>` Apache vhost; `certbot --expand` on the origin to add the api SANs via DNS-01 using the CF token; the CORS allow-lists — fix palette's empty + floridify's stale). The Mongo-bind moved to W1 (front-loaded security).
 - **α′.W11 — palette-api → color rename** (user-re-mandate-gated; reconcile the standalone-repo provenance vs value.js/api first).
-- **α′.W12 — close**: precept promotion (the convention + the CF recipe into `docs/precepts/infra/`), the token ROTATE, the dangling-image/dead-vhost cleanup.
+- **α′.W12 — close**: precept promotion (the convention + the CF recipe + the API plan into `docs/precepts/infra/`), the dangling-image/dead-vhost cleanup. **Token is NOT rotated** (per user direction).
 
 grammar is **explicitly deferred** from the rollout (author-coordinated). words/floridify stays all-mbabb (no split). The agent ceiling holds at 4/wave (reject one-agent-per-app fan-out).
+
+## §8 — The full API plan (per backend)
+
+The pattern is uniform; each app's backend gets the same four moves. The grey-cloud + origin-LE TLS path (§3.2) underlies the whole set.
+
+### §8.1 — The shape (per `api.<app>.babb.dev` backend)
+
+1. **DNS** (W8): a **grey-cloud (DNS-only) `A` record** `api.<app>.babb.dev` → `34.197.214.67` in the Cloudflare zone (the idempotent CF-API script writes it; the user's `Zone:DNS:Edit` perm covers it).
+2. **TLS at the origin** (W10): `certbot --expand --apache --dns-cloudflare -d api.<app>.babb.dev …` (or extend the existing `sudoku.babb.dev` cert with the api.* SANs); auto-renew via the existing certbot timer. The origin (mbabb Apache) serves the LE cert directly — browsers see a normal trusted chain, no CF edge involvement on the api hostname.
+3. **Ingress** (W10): one host-Apache vhost per `api.<app>.babb.dev`, e.g.
+   ```apache
+   <VirtualHost *:443>
+       ServerName api.<app>.babb.dev
+       SSLEngine on
+       SSLCertificateFile /etc/letsencrypt/live/<cert>/fullchain.pem
+       SSLCertificateKeyFile /etc/letsencrypt/live/<cert>/privkey.pem
+       ProxyPreserveHost on
+       ProxyPass / http://localhost:<gateway-port>/
+       ProxyPassReverse / http://localhost:<gateway-port>/
+       RequestHeader set X-Forwarded-Proto https
+   </VirtualHost>
+   ```
+   Proxying to the per-app **nginx gateway** (not directly to the backend container) — preserves rate-limits/headers/timeouts (NA5 verdict). HTTP→HTTPS redirect on `*:80` as needed.
+4. **CORS** (W10): the backend allows the split frontend's origin — `CORS_ORIGINS=https://<app>.babb.dev` (+ `https://localhost:<dev-port>` for dev). Set per app: fourier `api/config.py` already reads `CORS_ORIGINS` correctly; palette-api `ALLOWED_ORIGINS` is currently EMPTY (gap to fix); floridify `BACKEND_CORS_ORIGINS` is currently stale (`mbabb.friday.institute`, not `*.babb.dev`).
+
+### §8.2 — Per app (the binding rows)
+
+| api hostname | Frontend it serves | Backend gateway port (origin) | App container | Repo |
+|---|---|---|---|---|
+| `api.fourier.babb.dev` | `fourier.babb.dev` (CF Pages, fourier `web/`) | `127.0.0.1:8100` (fourier-analysis-nginx) | fourier-analysis-backend (FastAPI+Mongo) | `/var/www/fourier-analysis` |
+| `api.color.babb.dev` | `color.babb.dev` (CF Pages, value.js demo) | `127.0.0.1:8130` (palette-api Hono) | palette-api-api-1 | `/home/mbabb/Programming/palette-api` (standalone repo) — **rename to `color` at W11, user-gated** |
+| `api.sudoku.babb.dev` | `sudoku.babb.dev` (CF Pages, csp-solver frontend) | `127.0.0.1:8120` (csp-solver-nginx) | csp-solver-backend | `/var/www/csp-solver` |
+| *(no api)* | `keyframes.babb.dev` (CF Pages, static) | — | none | keyframes.js |
+| *(no api)* | `grammar.babb.dev` (CF Pages, static — DEFERRED per active dev) | — | none (bbnf-lsp is an editor LSP, not a web API) | `/var/www/grammar` (bbnf-lang) |
+| *(no split)* | `words.babb.dev` (mbabb nginx — all-mbabb, SSE + custom proxy) | same-origin `/api` | floridify-backend | `/home/mbabb/floridify` |
+
+### §8.3 — Pilot then rollout (binding ordering)
+
+fourier is the pilot — when `api.fourier.babb.dev` works end-to-end (DNS grey-cloud, certbot cert, Apache vhost, CORS, `fourier.babb.dev` on CF Pages calling it), the recipe is proven and the other apps' rows follow exactly the same four moves, bounded-parallel. Never a big-bang. The Mongo bind (W1, front-loaded security) covers all three apps' Mongos in one operational session before any deploy lands.
+
+### §8.4 — `mbabb.fridayinstitute.net` (the RFC1918 wrinkle)
+
+The host's hostname `mbabb.fridayinstitute.net` resolves to `10.0.2.253` (split-horizon, private). The public API target is the public IP `34.197.214.67` (used in the grey-cloud A records). Internal scripts/health-probes can use the private name; external (browsers, the CF Pages frontend) uses `api.<app>.babb.dev`→`34.197.214.67`.
