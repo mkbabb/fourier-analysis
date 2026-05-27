@@ -10,7 +10,7 @@ A *wave* (per `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Wave"`) is
 |---|---|---|---|---|
 | W0 | open · research dispatch | **CLOSED** | 2026-05-26 | predecessor fourier-A confirmed closed (`A/FINAL.md`, `c7cfd82`); value.js cohort-peer orphan ground-truthed (C **RETIRED** `2026-05-26`, `C/FINAL.md` present; value.js at H / v0.10.0 `16129e0`; `src/palette/` + `api/src/crud/` confirmed absent); Wα dispatched as ground-truth/crosswalk over the existing R-*-spec + audit corpus |
 | Wα | research wave (six read-only lanes) | **CLOSED** | 2026-05-26 | six lanes landed `research/R1`–`R6` (1,289 L) as verified syntheses; consolidated drift ledger recorded below — 17 ground-truth corrections feed Wχ + implementation |
-| Wχ | challenge wave (three+1 adversarial probes) | planned | — | P1 / P2 / P3 / **P4 (Wave-1 binding)** probes adversarially review the Wα findings + the new invariants 18-20; the plan hardens at close |
+| Wχ | challenge wave (three+1 adversarial probes) | **CLOSED** | 2026-05-26 | `audit/challenge.md` — P1 ACCEPTED (inv16 holds, 0% shared code) · P2 NARROWED · P3-A ACCEPTED / P3-B NARROWED · P4 ACCEPTED (all 3 invariants falsifiable); plan-shape COHERENT + dispatchable; hardening directives folded into W1/W2/W3/W4 + B.md §8; W5.md authored |
 | W1 | CRUD-contract ratification | provisional | — | shared written contract, fourier-only ratification under the orphan verdict; **scope items 8–12 added 2026-05-26 — `partial_sums` typing + 4 SCHEMA addenda + 5 MATRIX reconciliations + test-surface skeleton authoring + §0 binding-force clause** (Wave-1 + Wave-2) |
 | **W2 (reactivated)** | **UX coherence (dock idiom + a11y + Configurator adoption)** | **provisional** | — | **authored 2026-05-26 — Wave-1 audit synthesis; 5 parallel agents; scope items 16–17 added 2026-05-26 — @axe-core/playwright forward + auto-recompute regression-guard** (Wave-2) |
 | W2-tracking | value.js palette facility (cross-repo, orphaned) | tracking · orphaned | — | latent dependency-legibility sub-section under W2-tracking; value.js-C never opened |
@@ -213,3 +213,28 @@ Six parallel read-only lanes landed the positional deliverables `research/R1`–
 **Wα → Wχ hand-off**: the six deliverables + this drift ledger are the substrate the challenge wave adversarially probes. The aspirational specs are now *grounded*; Wχ tests the plan SHAPE (P1 framework-in-disguise; P2 migration-preserves-data; P3 timing + image-blob; P4 invariant 18–20 binding).
 
 **Next action**: dispatch the four Wχ adversarial probes in parallel.
+
+### 2026-05-26 — Wχ — challenge wave (CLOSED)
+
+Four adversarial probes ran read-only against the live tree, each charged to BREAK the plan. Per-probe artefacts at `audit/challenge-P{1..4}.md`; the consolidated close at `audit/challenge.md`. **No probe rejected the plan shape.** Verdict:
+
+| Probe | Disposition | Headline |
+|---|---|---|
+| **P1** framework-in-disguise | **ACCEPTED** | invariant 16 HOLDS — 0% of contract sections need shared code (12 spec / 1 data / 0 code); the `api/lib/crud/` utility is a genuine called-from library, no control inversion (`idempotency.replay_or_record` is explicit, `etag.require_if_match` is a consumer `Depends`) |
+| **P2** migration-preserves-data | **NARROWED** | 4 required W3 transform additions; a THIRD owner-less path found (the "zombie orphan"); the dev DB source collections are EMPTY → the seeded integration test is the load-bearing proof |
+| **P3** timing + image-blob | **A ACCEPTED / B NARROWED** | W4 fallback honest, no hidden cross-repo dep; band-aid retire admitted under 3 conditions; **`deleted_at` soft-delete is NET-NEW W3 work** (did NOT land in A) |
+| **P4** invariant 18–20 binding | **ACCEPTED** (all 3) | each invariant binds to a named falsifiable test with a red baseline; one devDep gap — `@axe-core/playwright` is NOT installed |
+
+**Binding hardening directives** (folded into the wave specs as "Wχ hardening (2026-05-26)" addenda, all citing `audit/challenge.md §5`):
+
+- **W1** — H-W1-1 slug word-list count 120/120 → **128/128** (the 120-form would reject live data); H-W1-2 §9 disposition recorded verbatim (10 contract / 1 data / 0 lib / 0 svc; slug-words home `docs/precepts/data/slug-words.json`).
+- **W2** — H-W2-1 add `@axe-core/playwright` devDep (absent today); H-W2-2 confirmed targets (`z-[15]` at `EquationPanel.vue:114`; `ExportModal` hand-rolled); H-W2-3 the Inv19 red baseline informs the regression-guard. The e2e specs live under `web/`.
+- **W3** (most-narrowed) — H-W3-1 tz-coerce + gallery-side owner + atomic marker; H-W3-2 zombie-orphan honesty; H-W3-3 seeded integration test is load-bearing (source collections empty); H-W3-4 `deleted_at` is net-new; H-W3-5 band-aid retire conditions; H-W3-6 janitor scope shrinks ($nin already retired in A); H-W3-7 stale citations (`compute.py` absent; orphan-publish at `gallery.py:188`); H-W3-8 Invariant 21 real (`coolname` → `secrets`).
+- **W4** — H-W4-1 axe-core shared with W2; H-W4-2 orphan verdict settled (Agent B is PROGRESS-residual only).
+- **B.md §8** — H-BW-1 brittleness window NARROWED to a clean one-way cutover (suspended_gates emptied; dual-read clause removed; legacy survival kept).
+
+**W5.md authored** at this close — the wave-spec set is now complete (W1–W5).
+
+**Empirical-binding state unchanged at this boundary** (still 0/187 PASS at HEAD — the implementation waves transition the rows). **Plan-shape verdict: COHERENT and DISPATCHABLE.** The research-first gate is closed; implementation is authorised.
+
+**Next action**: dispatch W1 — CRUD-contract ratification (docs-only, 2 agents), then W2 ∥ W3, then W4, then W5.

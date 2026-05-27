@@ -162,12 +162,12 @@ The W3 data migration may require a brittleness window — a span during which t
 
 ```yaml
 breaking_changes_during_wave: maybe (W3 — fourier visualization entity + migration)
-suspended_gates:
-  - gallery list/read endpoints during the migration cutover
+suspended_gates: []   # narrowed at Wχ — the backend-stopped backfill is atomic at the
+                      # deploy boundary; there are no live gates to suspend during cutover
 restoration_wave: W3 (the same wave — the migration completes within it)
 reason: a converged entity cannot be reached through the old identity scheme;
         a dual-read compatibility layer would be the very legacy code the
-        invariants forbid.
+        invariants forbid. The cutover is one-way and clean (no dual-read).
 ```
 
-The challenge wave (Wχ) confirms or removes this window. The close ceremony cannot run while it is open.
+**Wχ narrowing (2026-05-26, H-BW-1).** The challenge wave (`audit/challenge.md §5`) confirmed — via Wα R5's proof — a **clean one-way cutover**: the transform is total and offline-computable from existing `(snapshot, gallery?)` rows, and the backfill runs **backend-stopped** (W3.24), so there is no half-migrated read window and no live gate to suspend. The window NARROWS: the prior `suspended_gates: [gallery list/read]` entry and the "dual-pathed reads" clause are REMOVED; the window's *existence* + `restoration_wave: W3` + the legacy-collection survival (rollback substrate until W5) are KEPT. The close ceremony cannot run while it is open.
