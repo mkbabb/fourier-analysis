@@ -196,8 +196,40 @@ no lane.
 truly replaces deploy.sh) · P3 (cutover atomic / window honest) · P4 (γ removes
 legacy name at ROOT). No source touched.
 
+### 2026-05-27 — Wχ harden: wave specs authored, implementation phase opens
+
+**WHAT.** The 5 implementation waves hardened into `waves/W1-W5.md` (+ a `W6.md`
+close scaffold), each folding its research contract + the binding Wχ conditions.
+The harden surfaced still more precision, all folded:
+
+- **W1** (178 L): two strata — repo-local deliverables (tracked `deploy-hook.sh`
+  with flock + real `:8100` gate + rebuild-on-rollback + dirty-tree-fail-loud,
+  the `deploy.sh` deletion, the honest scoped 8091 grep verified to isolate
+  exactly `deploy.sh:38,39`→zero) vs the host-ops residual (the shared
+  `/opt/deploy/` dispatcher, 4 sibling repos, proposed not imposed).
+- **W2** (169 L): the provisioning-then-flags spine with an "inversion forbidden"
+  clause; `.env.example:21` confirmed carrying BOTH drifts (host spelling + the
+  insecure flag); precepts-submodule pointer-commit note.
+- **W3** (259 L): the 11-row audit-table mapping; **cross-wave finding — the dev
+  Dockerfile is `api/Dockerfile:16`, the `app` user is UID 1000 created only in
+  the production stage (dev runs as root)** — the binding input to W5's C2.
+- **W4** (304 L): the root-first rename spine (44 hits / 14 files); **two findings
+  beyond P4 — `dismissFlags` (`api.ts:704`) is a SECOND dead duplicate, and
+  `CONFORMANCE-MATRIX.md` cites 6 PHANTOM files that don't exist**; δ verified as
+  named-residual (value.js v0.10.0 has no `sampleToSVGPath`); 9 of 14 skeletons
+  already green (94 passed / 33 honest skips), 5 need implementation.
+- **W5** (159 L): the deletion-proof commit's 6 edits enumerated; the sole
+  image-delete site confirmed `janitor.py:251-274`; the §8 window struck with the
+  C9-C11 conditions bound.
+
+**Gate.** Wχ harden complete → the implementation phase opens. Dependency order:
+W1 → W2 (TLS ships through the pipeline); W3 ∥ (independent); **W4 ∥** (disjoint
+files — web+tests); W5 after W1+W2. Per `C.md §3` the threads sequence so infra
+precedes the storage migration that depends on it.
+
 ### Next action
 
-Wχ adversarial probes in flight (P1-P4). On their close, harden W1-W6 into
-`waves/W*.md` and reconcile any probe-surfaced corrections into `C.md`, then begin
-the implementation phase (W1 → W2, W3∥, W4∥, W5).
+Begin Phase I — dispatch **W1** (webhook CI/CD, thread α) and **W4** (slug-identity
+discharge, thread γ — independent, parallel-capable) concurrently. W4 is fully
+repo-local and provable here; W1's repo-local stratum lands + the host residual is
+recorded. Then W2 (after W1), W3 (∥), W5 (after W1+W2).
