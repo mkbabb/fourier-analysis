@@ -8,9 +8,8 @@ import logging
 import os
 from pathlib import Path
 
-from bson import Binary
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +24,7 @@ from api.services import computation
 from api.services.database import get_db
 from api.services.rate_limiter import require_compute_limit
 from api.services.image_storage import (
+    _resolve,
     extraction_cache_key,
     image_bytes,
     image_tempfile,
@@ -131,11 +131,16 @@ async def get_image_metadata(imageSlug: str):
 
 @router.get("/{imageSlug}/blob")
 async def get_image_blob(imageSlug: str):
+    # C.W5: serve the relocated file via ``FileResponse`` — streams from disk
+    # with ``Content-Length`` + conditional-request support, strictly better
+    # than the in-memory ``BytesIO`` for large blobs. Route, auth (the
+    # ``get_image_asset`` 404 + ``last_accessed_at`` touch), and ``Cache-Control``
+    # are unchanged.
     doc = await get_image_asset(imageSlug)
-    data, content_type = image_bytes(doc)
-    return StreamingResponse(
-        io.BytesIO(data),
-        media_type=content_type,
+    path = _resolve(doc["storage_uri"])
+    return FileResponse(
+        path,
+        media_type=doc.get("content_type", "image/png"),
         headers={"Cache-Control": "public, max-age=86400"},
     )
 
@@ -143,14 +148,18 @@ async def get_image_blob(imageSlug: str):
 @router.get("/{imageSlug}/thumbnail")
 async def get_image_thumbnail(imageSlug: str):
     doc = await get_image_asset(imageSlug)
-    # Serve thumbnail if available, otherwise fall back to original blob
-    if doc.get("thumbnail"):
-        data = bytes(doc["thumbnail"]) if isinstance(doc["thumbnail"], Binary) else doc["thumbnail"]
+    # Serve the thumbnail file if one exists, otherwise fall back to the primary
+    # ``storage_uri`` (the ``thumbnail_uri is None`` no-thumbnail case — invariant
+    # 18; preserves the prior fallback).
+    thumbnail_uri = doc.get("thumbnail_uri")
+    if thumbnail_uri:
+        path = _resolve(thumbnail_uri)
         content_type = doc.get("thumbnail_content_type", "image/avif")
     else:
-        data, content_type = image_bytes(doc)
-    return StreamingResponse(
-        io.BytesIO(data),
+        path = _resolve(doc["storage_uri"])
+        content_type = doc.get("content_type", "image/png")
+    return FileResponse(
+        path,
         media_type=content_type,
         headers={"Cache-Control": "public, max-age=86400"},
     )

@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     mongo_uri: str = "mongodb://localhost:27017/fourier"
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
     max_upload_mb: int = 10
+    # Filesystem backend root for relocated image + thumbnail blobs (C.W5,
+    # invariant 18). The volume mount point in prod (``image_blobs``); the
+    # ``storage_uri``/``thumbnail_uri`` fields on each ``images`` document are
+    # backend-relative (``fs:<image_slug>``) so a remount never invalidates a
+    # stored URI. See ``api/services/image_storage.py`` (_resolve / image_bytes).
+    blob_dir: str = "/data/blobs"
     compute_timeout_s: int = 300
     compute_concurrency: int = 4
     # Compute (extract-contour / epicycles / bases) requests per minute per IP.

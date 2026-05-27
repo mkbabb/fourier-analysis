@@ -16,11 +16,12 @@ import json
 import logging
 import tempfile
 from datetime import UTC, datetime
+from pathlib import Path
 
-from bson import Binary
 from PIL import Image, ImageOps
 from pymongo.errors import DuplicateKeyError
 
+from api.config import settings
 from api.lib.crud.slugs import slug_with_retry
 from api.services.database import get_db
 
@@ -35,6 +36,35 @@ logger = logging.getLogger(__name__)
 
 _THUMBNAIL_MAX_DIM = 1024
 _THUMBNAIL_QUALITY = 60
+
+
+def _blob_dir() -> Path:
+    """The filesystem backend root, created on demand (C.W5, invariant 18).
+
+    Mirrors the migration script's ``_blob_dir`` — a single source for the
+    mount-point path so a remount only changes ``settings.blob_dir``.
+    """
+    p = Path(settings.blob_dir)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _resolve(uri: str) -> Path:
+    """Resolve a backend-relative ``storage_uri`` to an absolute, confined path.
+
+    ``uri`` is ``"fs:<key>"`` (e.g. ``fs:<image_slug>`` or
+    ``fs:<image_slug>.thumb``); the key resolves under ``blob_dir``. The
+    confinement assert is the C3 defence-in-depth layer (`challenge-P1.md §5.1`):
+    the ``IMAGE_SLUG_PATTERN`` edge regex already blocks ``..``/``/``, so this is
+    NOT a live hole — it is the second guard that keeps a future less-validated
+    ``storage_uri`` writer from becoming an arbitrary-read.
+    """
+    key = uri[3:] if uri.startswith("fs:") else uri
+    root = _blob_dir().resolve()
+    path = (root / key).resolve()
+    if not path.is_relative_to(root):
+        raise ValueError(f"storage_uri escapes blob_dir: {uri!r}")
+    return path
 
 
 def _generate_thumbnail(content: bytes, content_type: str) -> tuple[bytes, str]:
@@ -65,18 +95,24 @@ async def store_image_asset(
 
     existing = await db.images.find_one({"sha256": sha256})
     if existing is not None:
+        # C9 (the real dedup-hit bug): the prior code read ``existing["blob"]``
+        # as a subscript, which KeyErrors on a migrated (``blob``-less) doc and
+        # was swallowed by this broad ``except`` — a silent missing-thumbnail
+        # regression on every dedup upload post-migration. Read the primary bytes
+        # through the shim (the relocated file) and write the regenerated
+        # thumbnail back as a FILE + ``thumbnail_uri`` — NEVER an inline
+        # ``Binary`` (that re-violated invariant 18 on the converged collection).
         try:
-            thumb_bytes, thumb_ct = _generate_thumbnail(
-                bytes(existing["blob"])
-                if isinstance(existing["blob"], Binary)
-                else existing["blob"],
-                existing.get("content_type", "image/png"),
-            )
+            primary_bytes, primary_ct = image_bytes(existing)
+            thumb_bytes, thumb_ct = _generate_thumbnail(primary_bytes, primary_ct)
+            slug = existing["image_slug"]
+            (_blob_dir() / f"{slug}.thumb").write_bytes(thumb_bytes)
+            thumbnail_uri = f"fs:{slug}.thumb"
             await db.images.update_one(
                 {"_id": existing["_id"]},
-                {"$set": {"thumbnail": Binary(thumb_bytes), "thumbnail_content_type": thumb_ct}},
+                {"$set": {"thumbnail_uri": thumbnail_uri, "thumbnail_content_type": thumb_ct}},
             )
-            existing["thumbnail"] = Binary(thumb_bytes)
+            existing["thumbnail_uri"] = thumbnail_uri
             existing["thumbnail_content_type"] = thumb_ct
         except Exception:
             logger.warning(
@@ -84,14 +120,16 @@ async def store_image_asset(
             )
         return existing
 
-    # Generate thumbnail
-    thumbnail_fields: dict = {}
+    # Generate the thumbnail bytes (the second blob — invariant 18). Both the
+    # primary and the thumbnail are relocated onto the filesystem backend; the
+    # document carries only the ``storage_uri``/``thumbnail_uri`` keys, never an
+    # inline ``Binary`` (the C.W5 deletion proof — the prior ``blob``/
+    # ``thumbnail`` Binary writes are gone).
+    thumb_bytes: bytes | None = None
+    thumbnail_fields: dict = {"thumbnail_uri": None}
     try:
         thumb_bytes, thumb_ct = _generate_thumbnail(content, content_type)
-        thumbnail_fields = {
-            "thumbnail": Binary(thumb_bytes),
-            "thumbnail_content_type": thumb_ct,
-        }
+        thumbnail_fields = {"thumbnail_content_type": thumb_ct}
     except Exception:
         logger.warning("Thumbnail generation failed for %s", original_name, exc_info=True)
 
@@ -101,7 +139,6 @@ async def store_image_asset(
         "original_name": original_name,
         "content_type": content_type,
         "bytes": len(content),
-        "blob": Binary(content),
         **thumbnail_fields,
         "created_at": now,
         "last_accessed_at": now,
@@ -116,10 +153,19 @@ async def store_image_asset(
     # we resolve it inside the closure and surface the winning document
     # rather than burning retries on it.
     race_winner: dict | None = None
+    blob_dir = _blob_dir()
 
     async def _insert(candidate: str) -> None:
         nonlocal race_winner
+        # The ``storage_uri`` / ``thumbnail_uri`` are slug-keyed, so they are
+        # finalised once the candidate slug is known. The files are written
+        # AFTER a successful insert so a slug-collision retry never leaves a
+        # file under an abandoned slug; the insert owning the unique
+        # ``image_slug`` index is what makes the slug ours to write under.
         doc["image_slug"] = candidate
+        doc["storage_uri"] = f"fs:{candidate}"
+        if thumb_bytes is not None:
+            doc["thumbnail_uri"] = f"fs:{candidate}.thumb"
         try:
             await db.images.insert_one(doc)
         except DuplicateKeyError as exc:
@@ -131,16 +177,26 @@ async def store_image_asset(
             # No sha256 winner ⇒ this was a slug collision; re-raise so
             # slug_with_retry mints a fresh candidate.
             raise exc
+        # Insert won the unique index — relocate the bytes onto the backend.
+        (blob_dir / candidate).write_bytes(content)
+        if thumb_bytes is not None:
+            (blob_dir / f"{candidate}.thumb").write_bytes(thumb_bytes)
 
     await slug_with_retry(_insert)
     return race_winner if race_winner is not None else doc
 
 
 def image_bytes(asset: dict) -> tuple[bytes, str]:
-    """Extract raw bytes and content_type from an image document."""
-    blob = asset["blob"]
-    data = bytes(blob) if isinstance(blob, Binary) else blob
-    return data, asset.get("content_type", "image/png")
+    """Extract raw bytes and content_type from an image document.
+
+    Resolves by ``storage_uri``-presence (C.W5, `R-storage-spec §2.1`): the
+    relocated blob lives on the filesystem backend. The pre-cutover
+    ``blob``-reading branch is DELETED — the atomic per-doc flip (`§4`) means no
+    document carries an inline ``blob`` post-migration, so a surviving ``blob``
+    read would be the dual-read legacy layer invariant 3 forbids.
+    """
+    uri = asset.get("storage_uri")
+    return _resolve(uri).read_bytes(), asset.get("content_type", "image/png")
 
 
 def image_tempfile(asset: dict) -> tempfile.NamedTemporaryFile:

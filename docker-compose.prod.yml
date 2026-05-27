@@ -7,6 +7,11 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-https://fourier.babb.dev}
       - MONGO_URI=mongodb://${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}@mongo:27017/fourier?authSource=admin&tls=true&tlsAllowInvalidCertificates=true
     restart: unless-stopped
+    volumes:
+      # C.W5: the blob backend, read-write. The base compose declares the named
+      # volume; the prod overlay re-pins it ``external: true`` (below) so the
+      # sole copy of user uploads survives a ``down -v``.
+      - image_blobs:/data/blobs
     deploy:
       replicas: 1
       resources:
@@ -84,3 +89,15 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+# C4 (C.W5): post-cutover ``image_blobs`` holds the SOLE copy of user uploads
+# (the inline ``blob`` is ``$unset`` by the migration — the files are the new
+# source of truth). Declaring it ``external: true`` means ``docker compose
+# down -v`` does NOT wipe it — the cheap mechanical guard against an accidental
+# total upload loss. An ``external`` volume is referenced by its literal name
+# (NOT project-prefixed), so it must be created out-of-band once before the
+# first prod bring-up: ``docker volume create image_blobs``. See the
+# DR/consistency note for the second-durable-surface backup requirement.
+volumes:
+  image_blobs:
+    external: true

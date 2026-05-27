@@ -39,6 +39,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from api.config import get_settings
 from api.lib.crud import pinned_cron
@@ -409,6 +410,22 @@ async def _delete_images_and_cascade(db, filter_: dict) -> tuple[int, int]:
             "Janitor cascade-deleted %d gallery entries for deleted images",
             cascade_result.deleted_count,
         )
+
+    # C1 (C.W5, invariant-18 delete-coupling): post-relocation the bytes are no
+    # longer the document, so deleting only the Mongo doc orphans the relocated
+    # files on the volume forever — the recency prune would bound the Mongo side
+    # while the filesystem side grew monotonically, and the single bounded
+    # enumeration query would stop describing the real footprint. Unlink each
+    # pruned slug's primary + thumbnail file in the same cascade. Best-effort: a
+    # missing file is not an error — a crash-orphan re-run may have left none,
+    # and a doc may never have had a thumbnail.
+    blob_dir = Path(get_settings().blob_dir)
+    for slug in slugs_to_delete:
+        for name in (slug, f"{slug}.thumb"):
+            try:
+                (blob_dir / name).unlink(missing_ok=True)
+            except OSError:
+                logger.warning("Janitor failed to unlink blob file %s", name, exc_info=True)
 
     # Delete the images themselves
     result = await db.images.delete_many(filter_)

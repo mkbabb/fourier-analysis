@@ -86,18 +86,22 @@ async def get_contour(contour_hash: str) -> dict:
 
 async def _backfill_image_bounds(db, contour_doc: dict) -> dict:
     """Compute and persist image_bounds for a contour that lacks it."""
-    from bson import Binary
+    from api.services.image_storage import image_bytes
 
+    # C10 (C.W5): project the shim's fields, NOT the retired inline ``blob``.
+    # The prior ``{"blob": 1, "content_type": 1}`` inclusion-mode projection
+    # starved the shim of ``storage_uri`` on a migrated doc — even the shim could
+    # not rescue it — so the read silently degraded overlay alignment. Include
+    # ``storage_uri`` so ``image_bytes`` resolves the relocated file.
     image_doc = await db.images.find_one(
         {"image_slug": contour_doc["image_slug"]},
-        {"blob": 1, "content_type": 1},
+        {"storage_uri": 1, "content_type": 1},
     )
     if image_doc is None:
         return contour_doc
 
     try:
-        blob = image_doc["blob"]
-        data = bytes(blob) if isinstance(blob, Binary) else blob
+        data, _ = image_bytes(image_doc)
         img = Image.open(io.BytesIO(data))
         img = ImageOps.exif_transpose(img)
         orig_w, orig_h = img.size
