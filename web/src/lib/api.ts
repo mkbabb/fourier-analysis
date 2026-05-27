@@ -5,11 +5,7 @@ import type {
     AnimationSettings,
     EpicycleData,
     ImageMeta,
-    Snapshot,
-    GalleryEntry,
-    GalleryCursorResponse,
     GalleryTier,
-    FlagReason,
     SessionResponse,
     UserInfo,
     AdminStats,
@@ -20,6 +16,80 @@ import type {
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL || "";
+
+// ── Converged `visualization` entity (CRUD-CONTRACT §1–§5; SCHEMA.md §3) ──
+//
+// The single user-named noun. `slug` is the one user-facing identity (the URL
+// handle, per §1 single-slug rule); `content_hash` is a non-identity dedup
+// key (the former `snapshot_hash` identity scheme is retired — the migration
+// re-keys gallery navigation onto `slug`). `image_slug` / `contour_hash`
+// remain the IMAGE / CONTOUR asset FKs and are loaded unchanged.
+
+export type Visibility = "draft" | "unlisted" | "public";
+
+export interface Visualization {
+    slug: string;
+    owner_slug: string;
+    visibility: Visibility;
+    content_hash: string; // dedup key, never identity (§1)
+    image_slug: string; // image asset FK — kept
+    contour_hash: string; // contour asset FK — kept
+    active_bases: string[];
+    n_harmonics: number;
+    title?: string | null;
+    description?: string | null;
+    tags?: string[];
+    palette_slug?: string | null;
+    views: number;
+    likes: number;
+    tier?: GalleryTier;
+    pinned?: boolean;
+    created_at: string;
+    updated_at: string;
+    deleted_at?: string | null;
+    contour_settings?: ContourSettings;
+    animation_settings?: AnimationSettings;
+}
+
+export interface VisualizationCreate {
+    slug?: string;
+    visibility?: Visibility;
+    image_slug: string;
+    contour_hash: string;
+    active_bases: string[];
+    n_harmonics: number;
+    contour_settings?: ContourSettings;
+    animation_settings?: AnimationSettings;
+    title?: string | null;
+    description?: string | null;
+    tags?: string[];
+    palette_slug?: string | null;
+}
+
+export interface VisualizationPatch {
+    visibility?: Visibility;
+    title?: string | null;
+    description?: string | null;
+    tags?: string[];
+    palette_slug?: string | null;
+}
+
+/** The cursor envelope returned by every list endpoint (CRUD-CONTRACT §6). */
+export interface VisualizationListResponse {
+    items: Visualization[];
+    next_cursor: string | null;
+    has_more: boolean;
+}
+
+/**
+ * A read result paired with its strong-validator `ETag` (RFC 9110 §8.8). The
+ * caller stashes `etag` and replays it as `If-Match` on the next PATCH/DELETE
+ * (CRUD-CONTRACT §0 SOTA-2). `null` when the server omitted the header.
+ */
+export interface WithETag<T> {
+    data: T;
+    etag: string | null;
+}
 
 // ── Session token management ──
 
@@ -106,6 +176,66 @@ async function apiFetch<T>(
 
     try {
         return await res.json();
+    } catch {
+        throw new Error(`API ${res.status}: invalid JSON response`);
+    }
+}
+
+/**
+ * Like `apiFetch`, but returns the parsed body alongside the response's
+ * `ETag` header so the caller can replay it as `If-Match` on a later
+ * conditional mutation (CRUD-CONTRACT §0 SOTA-2 / RFC 9110).
+ */
+async function apiFetchWithETag<T>(
+    path: string,
+    abortKey: string,
+    options?: ApiFetchOptions,
+): Promise<WithETag<T>> {
+    const headers: Record<string, string> = {
+        ...((options?.headers as Record<string, string>) ?? {}),
+    };
+    if (sessionToken) {
+        headers["X-Session-Token"] = sessionToken;
+    }
+
+    const rawBody = options?.body;
+    const isFormData = rawBody instanceof FormData;
+    let body: BodyInit | undefined;
+    if (isFormData) {
+        body = rawBody;
+    } else if (rawBody != null && typeof rawBody === "object" && !(rawBody instanceof Blob) && !(rawBody instanceof ArrayBuffer) && !(rawBody instanceof ReadableStream)) {
+        headers["Content-Type"] ??= "application/json";
+        body = JSON.stringify(rawBody);
+    } else {
+        body = rawBody as BodyInit | undefined;
+    }
+
+    const res = await fetch(`${BASE}${path}`, {
+        method: options?.method,
+        headers,
+        body,
+        signal: options?.signal ?? abortable(abortKey),
+    });
+
+    if (!res.ok) {
+        let text: string;
+        try {
+            text = await res.text();
+        } catch {
+            text = "(could not read response body)";
+        }
+        throw new Error(`API ${res.status}: ${text}`);
+    }
+
+    const etag = res.headers.get("ETag");
+
+    // 204 No Content (soft-delete) carries no JSON body.
+    if (res.status === 204) {
+        return { data: undefined as T, etag };
+    }
+
+    try {
+        return { data: (await res.json()) as T, etag };
     } catch {
         throw new Error(`API ${res.status}: invalid JSON response`);
     }
@@ -268,33 +398,100 @@ export async function computeBases(
     return res.data;
 }
 
-// ── Snapshots ──
+// ── Visualizations (the converged CRUD entity) ──
+//
+// Six slug-addressed endpoints over `/api/visualizations`, matching
+// `api/routers/visualizations.py`. Identity is the 4-word `slug`; the
+// retired `snapshot_hash`-keyed gallery navigation collapses onto it.
 
-export async function saveSnapshot(
-    imageSlug: string,
-    req: {
-        contour_hash: string;
-        contour_settings: ContourSettings;
-        animation_settings: AnimationSettings;
-    },
-): Promise<Snapshot> {
-    return apiFetch<Snapshot>(
-        `/api/images/${imageSlug}/snapshots`,
-        "saveSnapshot",
-        {
-            method: "POST",
-            body: { ...req },
-        },
+/** POST /api/visualizations — create (slug minted server-side if absent). */
+export async function createVisualization(
+    body: VisualizationCreate,
+): Promise<WithETag<Visualization>> {
+    return apiFetchWithETag<Visualization>(
+        "/api/visualizations",
+        "createVisualization",
+        { method: "POST", body: { ...body } },
     );
 }
 
-export async function getSnapshot(
-    imageSlug: string,
-    snapshotHash: string,
-): Promise<Snapshot> {
-    return apiFetch<Snapshot>(
-        `/api/images/${imageSlug}/snapshots/${snapshotHash}`,
-        "getSnapshot",
+/** GET /api/visualizations/{slug} — read by slug; captures the ETag. */
+export async function getVisualization(
+    slug: string,
+): Promise<WithETag<Visualization>> {
+    return apiFetchWithETag<Visualization>(
+        `/api/visualizations/${slug}`,
+        "getVisualization",
+    );
+}
+
+/**
+ * GET /api/visualizations — cursor-paginated list (CRUD-CONTRACT §6). The
+ * anonymous/default view is `visibility=public`; `owner: "me"` (with a
+ * session) returns the caller's rows in all three visibility states.
+ */
+export async function listVisualizations(params: {
+    limit?: number;
+    sort?: string;
+    cursor?: string;
+    owner?: string;
+}): Promise<VisualizationListResponse> {
+    const qs = new URLSearchParams();
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.sort) qs.set("sort", params.sort);
+    if (params.cursor) qs.set("cursor", params.cursor);
+    if (params.owner) qs.set("owner", params.owner);
+    const query = qs.toString();
+    return apiFetch<VisualizationListResponse>(
+        `/api/visualizations${query ? `?${query}` : ""}`,
+        "listVisualizations",
+    );
+}
+
+/**
+ * PATCH /api/visualizations/{slug} — partial update. Sends `If-Match: <etag>`
+ * (the validator captured from the prior GET) for optimistic concurrency
+ * (CRUD-CONTRACT §0 SOTA-2). A stale ETag yields 412 `urn:contract:etag-mismatch`.
+ */
+export async function updateVisualization(
+    slug: string,
+    patch: VisualizationPatch,
+    etag: string | null,
+): Promise<WithETag<Visualization>> {
+    const headers: Record<string, string> = {};
+    if (etag) headers["If-Match"] = etag;
+    return apiFetchWithETag<Visualization>(
+        `/api/visualizations/${slug}`,
+        "updateVisualization",
+        { method: "PATCH", body: { ...patch }, headers },
+    );
+}
+
+/**
+ * DELETE /api/visualizations/{slug} — soft-delete (restorable within grace,
+ * §5). Sends `If-Match: <etag>`; returns 204 No Content.
+ */
+export async function deleteVisualization(
+    slug: string,
+    etag: string | null,
+): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (etag) headers["If-Match"] = etag;
+    await apiFetchWithETag<void>(
+        `/api/visualizations/${slug}`,
+        "deleteVisualization",
+        { method: "DELETE", headers },
+    );
+}
+
+/** POST /api/visualizations/{slug}/restore — restore from soft-delete (§5). */
+export async function restoreVisualization(
+    slug: string,
+): Promise<WithETag<Visualization>> {
+    return apiFetchWithETag<Visualization>(
+        `/api/visualizations/${slug}/restore`,
+        "restoreVisualization",
+        { method: "POST" },
     );
 }
 
@@ -323,40 +520,6 @@ export async function deleteSession(): Promise<{ ok: boolean }> {
     });
 }
 
-// ── Gallery ──
-
-export async function getGalleryEntry(hash: string): Promise<GalleryEntry> {
-    return apiFetch<GalleryEntry>(`/api/gallery/${hash}`, "getGalleryEntry");
-}
-
-export async function publishToGallery(
-    snapshotHash: string,
-    imageSlug: string,
-): Promise<GalleryEntry> {
-    return apiFetch<GalleryEntry>("/api/gallery", "publishToGallery", {
-        method: "POST",
-        body: { snapshot_hash: snapshotHash, image_slug: imageSlug },
-    });
-}
-
-export async function recordView(hash: string): Promise<{ views: number }> {
-    return apiFetch<{ views: number }>(
-        `/api/gallery/${hash}/view`,
-        "recordView",
-        { method: "POST" },
-    );
-}
-
-export async function toggleLike(
-    hash: string,
-): Promise<{ liked: boolean; likes: number }> {
-    return apiFetch<{ liked: boolean; likes: number }>(
-        `/api/gallery/${hash}/like`,
-        "toggleLike",
-        { method: "POST" },
-    );
-}
-
 // ── Admin ──
 
 export async function verifyAdmin(
@@ -369,83 +532,69 @@ export async function getAdminStats(token: string): Promise<AdminStats> {
     return adminFetch<AdminStats>("/api/admin/stats", token);
 }
 
-export async function setGalleryTier(
+// ── Admin: visualization moderation (CRUD-CONTRACT §7) ──
+//
+// Slug-addressed against the converged entity. `set_tier` and the
+// soft/hard-delete are ETag-guarded server-side; the admin client passes
+// `If-Match: *` (admins may override any owner's row per §3 admin-override).
+
+/** PUT /api/admin/visualizations/{slug}/tier — admin curation tier (§7 feature). */
+export async function setVisualizationTier(
     token: string,
-    hash: string,
+    slug: string,
     tier: GalleryTier,
-): Promise<GalleryEntry> {
-    return adminFetch<GalleryEntry>(`/api/admin/gallery/${hash}/tier`, token, {
-        method: "PUT",
-        body: { tier },
-    });
-}
-
-export async function deleteGalleryEntry(
-    token: string,
-    hash: string,
-): Promise<{ ok: boolean }> {
-    return adminFetch<{ ok: boolean }>(`/api/admin/gallery/${hash}`, token, {
-        method: "DELETE",
-    });
-}
-
-// ── Cursor pagination ──
-
-export async function listGalleryCursor(params: {
-    limit?: number;
-    sort?: string;
-    cursor?: string;
-    tier?: GalleryTier;
-    q?: string;
-    basis?: string;
-    user_slug?: string;
-}): Promise<GalleryCursorResponse> {
-    const qs = new URLSearchParams();
-    if (params.limit != null) qs.set("limit", String(params.limit));
-    if (params.sort) qs.set("sort", params.sort);
-    if (params.cursor) qs.set("cursor", params.cursor);
-    if (params.tier) qs.set("tier", params.tier);
-    if (params.q) qs.set("q", params.q);
-    if (params.basis) qs.set("basis", params.basis);
-    if (params.user_slug) qs.set("user_slug", params.user_slug);
-    const query = qs.toString();
-    return apiFetch<GalleryCursorResponse>(
-        `/api/gallery/cursor${query ? `?${query}` : ""}`,
-        "listGalleryCursor",
+): Promise<Visualization> {
+    return adminFetch<Visualization>(
+        `/api/admin/visualizations/${slug}/tier`,
+        token,
+        { method: "PUT", body: { tier }, headers: { "If-Match": "*" } },
     );
 }
 
-// ── User entry ownership ──
-
-export async function deleteOwnGalleryEntry(
-    hash: string,
+/**
+ * DELETE /api/admin/visualizations/{slug} — moderate-delete (§5 soft by
+ * default; `hard=true` is the §7 grace-bypass for illegal content).
+ */
+export async function adminDeleteVisualization(
+    token: string,
+    slug: string,
+    hard = false,
 ): Promise<{ ok: boolean }> {
-    return apiFetch<{ ok: boolean }>(`/api/gallery/${hash}`, "deleteOwnEntry", {
-        method: "DELETE",
-    });
+    return adminFetch<{ ok: boolean }>(
+        `/api/admin/visualizations/${slug}${hard ? "?hard=true" : ""}`,
+        token,
+        { method: "DELETE", headers: { "If-Match": "*" } },
+    );
 }
 
-export async function updateGalleryEntry(
-    hash: string,
-    data: { image_slug?: string },
-): Promise<GalleryEntry> {
-    return apiFetch<GalleryEntry>(`/api/gallery/${hash}`, "updateEntry", {
-        method: "PUT",
-        body: data,
-    });
+/**
+ * GET /api/admin/flagged — flagged visualizations, cursor-paginated. Returns
+ * the cursor envelope `{items, next_cursor, has_more}` from `admin.py`.
+ */
+export async function listFlaggedVisualizations(
+    token: string,
+    params: { limit?: number; cursor?: string },
+): Promise<FlaggedListResponse> {
+    const qs = new URLSearchParams();
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.cursor) qs.set("cursor", params.cursor);
+    const query = qs.toString();
+    return adminFetch<FlaggedListResponse>(
+        `/api/admin/flagged${query ? `?${query}` : ""}`,
+        token,
+    );
 }
 
-// ── Content flagging ──
-
-export async function flagGalleryEntry(
-    hash: string,
-    reason: FlagReason,
-    detail?: string,
-): Promise<{ flagged: boolean }> {
-    return apiFetch<{ flagged: boolean }>(`/api/gallery/${hash}/flag`, "flagEntry", {
-        method: "POST",
-        body: { reason, detail: detail || null },
-    });
+/** DELETE /api/admin/visualizations/{slug}/flags — dismiss flags (§7). */
+export async function dismissVisualizationFlags(
+    token: string,
+    slug: string,
+): Promise<{ dismissed: number }> {
+    return adminFetch<{ dismissed: number }>(
+        `/api/admin/visualizations/${slug}/flags`,
+        token,
+        { method: "DELETE" },
+    );
 }
 
 // ── Admin: user management ──
@@ -505,12 +654,16 @@ export async function pruneEmptyUsers(
 // shape that disagreed with the backend's `{ok, affected, errors?}` (see
 // `api/routers/admin.py:362-451`). The CRUD CONTRACT ratifies `BatchResponse`
 // as the canonical batch return type; both wrappers now type against it.
+//
+// B.W4 — the batch endpoint moved onto the converged entity
+// (`/api/admin/visualizations/batch`); the request's `hashes` field now
+// carries visualization **slugs** under the single-slug identity (§7 batch_*).
 export async function batchGallery(
     token: string,
     action: "delete" | "feature" | "unfeature",
     hashes: string[],
 ): Promise<BatchResponse> {
-    return adminFetch<BatchResponse>("/api/admin/gallery/batch", token, {
+    return adminFetch<BatchResponse>("/api/admin/visualizations/batch", token, {
         method: "POST",
         body: { action, hashes },
     });
@@ -528,13 +681,18 @@ export async function batchUsers(
 }
 
 // ── Admin: flagged content ──
+//
+// B.W4 — re-pointed onto the converged entity. The flagged list is the
+// cursor-paginated `/api/admin/flagged` (the `page`/`limit` shape is kept
+// for the legacy admin-SFC caller; the admin-SFC agent migrates the call
+// to the `cursor`-shaped `listFlaggedVisualizations` above). Flag dismissal
+// is slug-addressed at `/api/admin/visualizations/{slug}/flags` (§7).
 
 export async function listFlaggedEntries(
     token: string,
     params: { page?: number; limit?: number },
 ): Promise<FlaggedListResponse> {
     const qs = new URLSearchParams();
-    if (params.page != null) qs.set("page", String(params.page));
     if (params.limit != null) qs.set("limit", String(params.limit));
     const query = qs.toString();
     return adminFetch<FlaggedListResponse>(
@@ -545,11 +703,13 @@ export async function listFlaggedEntries(
 
 export async function dismissFlags(
     token: string,
-    hash: string,
+    slug: string,
 ): Promise<{ dismissed: number }> {
-    return adminFetch<{ dismissed: number }>(`/api/admin/flags/${hash}`, token, {
-        method: "DELETE",
-    });
+    return adminFetch<{ dismissed: number }>(
+        `/api/admin/visualizations/${slug}/flags`,
+        token,
+        { method: "DELETE" },
+    );
 }
 
 // ── Admin: audit log ──

@@ -21,6 +21,7 @@ from api.routers.admin import admin_router
 from api.routers.gallery import gallery_router
 from api.services.database import close_db, connect_db
 from api.services.janitor import run_janitor
+from api.services.rate_limiter import RateLimitHeaderMiddleware
 
 
 @asynccontextmanager
@@ -59,6 +60,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Session-Token"],
 )
+
+# RFC 9239 RateLimit-* headers on every response (Invariant 24 / CRUD-CONTRACT
+# §0 SOTA-6). Registered after CORS so its ``RateLimit-*`` fields ride out
+# through the CORS-wrapped response unmodified.
+app.add_middleware(RateLimitHeaderMiddleware)
 
 
 def _has_dollar_keys(obj) -> bool:

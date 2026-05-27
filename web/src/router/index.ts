@@ -20,8 +20,19 @@ export const router = createRouter({
             name: "paper",
             component: () => import("@/components/paper/PaperView.vue"),
         },
+        // B.W4 — one slug per noun (CRUD-CONTRACT §1). `/v/:visualizationSlug`
+        // addresses a SAVED visualization entity; `/w/:imageSlug` is the
+        // pre-save working session over an image asset (the legacy
+        // `:snapshotHash` URL param is retired — the converged entity is
+        // slug-addressed, so the saved view never needs a second path segment).
         {
-            path: "/w/:imageSlug?/:snapshotHash?",
+            path: "/v/:visualizationSlug",
+            name: "visualization",
+            component: () =>
+                import("@/components/visualization/VisualizationView.vue"),
+        },
+        {
+            path: "/w/:imageSlug?",
             name: "workspace",
             alias: ["/visualize"],
             component: () =>

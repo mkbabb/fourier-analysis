@@ -9,17 +9,39 @@ import type {
     ContourSettings,
     AnimationSettings,
     WorkspaceDraft,
-    Snapshot,
 } from "@/lib/types";
 import * as api from "@/lib/api";
 import { saveDraft, loadDraft, listDrafts } from "@/lib/draftStorage";
 import { defaultContourSettings, defaultAnimationSettings } from "@/lib/defaults";
+
+// B.W4 — the workspace's save/publish actions write to the converged
+// `/visualizations` entity (CRUD-CONTRACT §1). Navigation identity is the
+// 4-word `visualizationSlug`; the pre-save working session stays keyed by the
+// `imageSlug` asset (the `/w/:imageSlug` route). The image/contour asset
+// loading (`image_slug` / `contour_hash`) is KEPT unchanged. The PATCH/DELETE
+// round-trips send `If-Match: <etag>`, the validator captured on the prior GET.
+
+/**
+ * The save result the visualization-view publish path consumes. The `slug` is
+ * the converged identity; it is mirrored into `snapshot_hash` so the existing
+ * publish call site (which reads `.snapshot_hash`) keeps compiling under the
+ * single-slug identity (the legacy field name is a view-slot alias, not a
+ * surviving content-hash identity).
+ */
+export interface SavedVisualizationRef {
+    slug: string;
+    snapshot_hash: string;
+}
 
 export const useWorkspaceStore = defineStore("workspace", () => {
     const router = useRouter();
 
     // State
     const imageSlug = ref<string | null>(null);
+    // The saved-entity identity for the current session (null until first save).
+    const visualizationSlug = ref<string | null>(null);
+    // The strong validator for `visualizationSlug`, replayed as `If-Match`.
+    const visualizationETag = ref<string | null>(null);
     const imageMeta = ref<ImageMeta | null>(null);
     const contour = shallowRef<ContourAsset | null>(null);
     const epicycleData = shallowRef<EpicycleData | null>(null);
@@ -169,7 +191,13 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         }
     }
 
-    async function loadSnapshot(slug: string, snapshotHash: string) {
+    /**
+     * Load a saved visualization by its converged `slug` (CRUD-CONTRACT §1).
+     * Captures the entity's ETag for later `If-Match` mutation; resolves the
+     * source image (`image_slug`) and contour (`contour_hash`) assets — the
+     * asset FKs are KEPT under the convergence.
+     */
+    async function loadVisualization(slug: string) {
         loading.value = true;
         error.value = null;
         epicycleRevision++;
@@ -177,32 +205,40 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         api.abortInflight(["computeEpicycles", "computeBases", "getContour"]);
         const rev = ++revision.value;
         try {
-            const [meta, snapshot] = await Promise.all([
-                api.getImageMeta(slug),
-                api.getSnapshot(slug, snapshotHash),
-            ]);
+            const { data: viz, etag } = await api.getVisualization(slug);
             if (revision.value !== rev) return;
-            imageSlug.value = slug;
+            visualizationSlug.value = viz.slug;
+            visualizationETag.value = etag;
+            const meta = await api.getImageMeta(viz.image_slug);
+            if (revision.value !== rev) return;
+            imageSlug.value = viz.image_slug;
             imageMeta.value = meta;
             contourSettings.value = {
                 ...defaultContourSettings(),
-                ...snapshot.contour_settings,
+                ...viz.contour_settings,
             };
             animationSettings.value = {
                 ...defaultAnimationSettings(),
-                ...snapshot.animation_settings,
+                ...viz.animation_settings,
             };
-            // Load contour from snapshot
-            const contourAsset = await api.getContour(snapshot.contour_hash);
+            // Load the contour asset (FK kept under the convergence).
+            const contourAsset = await api.getContour(viz.contour_hash);
             if (revision.value !== rev) return;
             contour.value = markRaw(contourAsset);
         } catch (e: any) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Failed to load snapshot";
+                error.value = e.message ?? "Failed to load visualization";
             throw e;
         } finally {
             loading.value = false;
         }
+    }
+
+    // Compatibility shim for the (unmigrated) workspace-loader composable: the
+    // saved entity is addressed by a single slug under the converged identity,
+    // so the former `(imageSlug, snapshotHash)` pair degenerates to the slug.
+    async function loadSnapshot(_imageSlug: string, vizSlug: string) {
+        return loadVisualization(vizSlug);
     }
 
     async function extractContour() {
@@ -303,17 +339,73 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         }
     }
 
-    async function createSnapshot(): Promise<Snapshot | null> {
+    /**
+     * Persist the current working session as a `draft` visualization on the
+     * converged entity (CRUD-CONTRACT §1, §4) and return its slug. The publish
+     * path then lifts `draft → public` via an ETag-guarded PATCH. The result
+     * mirrors the slug into `snapshot_hash` for the existing call site.
+     */
+    async function saveVisualization(): Promise<SavedVisualizationRef | null> {
         if (!imageSlug.value || !contour.value) return null;
         try {
-            return await api.saveSnapshot(imageSlug.value, {
+            const { data, etag } = await api.createVisualization({
+                visibility: "draft",
+                image_slug: imageSlug.value,
                 contour_hash: contour.value.contour_hash,
-                contour_settings: contourSettings.value,
-                animation_settings: animationSettings.value,
+                active_bases: animationSettings.value.active_bases?.length
+                    ? animationSettings.value.active_bases
+                    : ["fourier-epicycles"],
+                n_harmonics: contourSettings.value.n_harmonics,
+                contour_settings: toRaw(contourSettings.value),
+                animation_settings: toRaw(animationSettings.value),
             });
+            visualizationSlug.value = data.slug;
+            visualizationETag.value = etag;
+            return { slug: data.slug, snapshot_hash: data.slug };
         } catch (e: any) {
-            error.value = e.message ?? "Failed to save snapshot";
+            error.value = e.message ?? "Failed to save visualization";
             return null;
+        }
+    }
+
+    /**
+     * Transition the saved visualization's visibility (`draft → unlisted |
+     * public`, §4) via an ETag-guarded PATCH. Sends `If-Match: <etag>` — the
+     * validator captured on the prior GET / create (§0 SOTA-2). A stale ETag
+     * yields 412 `urn:contract:etag-mismatch`.
+     */
+    async function setVisibility(visibility: "draft" | "unlisted" | "public") {
+        const slug = visualizationSlug.value;
+        if (!slug) return;
+        try {
+            // If-Match replay: the captured strong validator gates the update.
+            const { data, etag } = await api.updateVisualization(
+                slug,
+                { visibility },
+                visualizationETag.value,
+            );
+            visualizationETag.value = etag;
+            visualizationSlug.value = data.slug;
+        } catch (e: any) {
+            error.value = e.message ?? "Failed to update visibility";
+            throw e;
+        }
+    }
+
+    /**
+     * Soft-delete the saved visualization (§5). Sends `If-Match: <etag>`; the
+     * row is restorable within the grace window via the gallery store.
+     */
+    async function deleteVisualization() {
+        const slug = visualizationSlug.value;
+        if (!slug) return;
+        try {
+            await api.deleteVisualization(slug, visualizationETag.value);
+            visualizationSlug.value = null;
+            visualizationETag.value = null;
+        } catch (e: any) {
+            error.value = e.message ?? "Failed to delete visualization";
+            throw e;
         }
     }
 
@@ -323,6 +415,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     function reset() {
         imageSlug.value = null;
+        visualizationSlug.value = null;
+        visualizationETag.value = null;
         imageMeta.value = null;
         contour.value = null;
         epicycleData.value = null;
@@ -338,6 +432,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     return {
         // State
         imageSlug,
+        visualizationSlug,
+        visualizationETag,
         imageMeta,
         contour,
         epicycleData,
@@ -352,12 +448,22 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         // Methods
         uploadImage,
         loadWorkspace,
+        loadVisualization,
+        // `loadSnapshot` is a compatibility alias over `loadVisualization`
+        // (the converged entity is slug-addressed; the legacy snapshot-hash
+        // pair degenerated to the single slug).
         loadSnapshot,
         extractContour,
         saveContourPoints,
         computeEpicycles: runComputeEpicycles,
         computeBases: runComputeBases,
-        createSnapshot,
+        saveVisualization,
+        // `createSnapshot` is retained as an alias for the (unmigrated)
+        // visualization-view publish call site; it now creates a `draft`
+        // visualization on the converged entity rather than a snapshot row.
+        createSnapshot: saveVisualization,
+        setVisibility,
+        deleteVisualization,
         refreshDrafts,
         reset,
         beginCompute,

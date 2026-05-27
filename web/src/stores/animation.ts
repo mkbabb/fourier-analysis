@@ -10,6 +10,12 @@ import {
 export { ANIMATION_EASINGS as EASING_OPTIONS, getEasingSVGPath };
 export type { AnimationEasingName as EasingName };
 
+// B.W4 — re-point disposition. The animation store holds only ephemeral
+// playback state (rAF clock, easing, scrub, ping-pong cycle); it never read or
+// wrote a snapshot identity. The precomputed partial-sum trajectories the
+// renderer consumes ride the `Visualization.animation_data` on the converged
+// entity (SCHEMA.md §8) and reach the canvas through the workspace store keyed
+// by `visualizationSlug` — there is no snapshot-keyed lookup here to migrate.
 export const useAnimationStore = defineStore("animation", () => {
     const t = ref(0);
     const playing = ref(false);

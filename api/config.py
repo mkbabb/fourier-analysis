@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     max_upload_mb: int = 10
     compute_timeout_s: int = 300
     compute_concurrency: int = 4
+    # Compute (extract-contour / epicycles / bases) requests per minute per IP.
+    # Production default is conservative; dev/e2e raise it via COMPUTE_RATE_LIMIT
+    # since a full lifecycle run issues several compute calls in quick succession.
+    compute_rate_limit: int = 5
     asset_max_age_days: int = 30
     # NOTE: ``storage_budget_gb`` retired at B.W3 (the inline-blob eviction
     # band-aid — CRUD-CONTRACT §8 / Wχ P3-B). The principled storage bound is
