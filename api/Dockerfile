@@ -13,7 +13,7 @@ RUN uv sync --frozen --no-dev --extra web
 FROM deps AS development
 RUN uv sync --frozen --extra web --extra dev
 COPY . .
-CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "api"]
 
 FROM deps AS production
 RUN adduser --disabled-password app

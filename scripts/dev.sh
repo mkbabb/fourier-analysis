@@ -73,7 +73,7 @@ trap cleanup EXIT INT TERM
 CORS_ORIGINS="http://localhost:$WEB_PORT" \
     uv run uvicorn api.main:app \
     --host 0.0.0.0 --port "$API_PORT" \
-    --reload --reload-dir api --reload-dir src &
+    --reload --reload-dir api &
 PIDS+=($!)
 
 sleep 1
