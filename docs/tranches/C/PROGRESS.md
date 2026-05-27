@@ -19,7 +19,7 @@ W5 close, every row reconciles against `FINAL.md`'s gate table.
 
 | Wave | Status | Closed at | Notes |
 |---|---|---|---|
-| W0 — *Open · research dispatch · baseline audit* | planned | — | tranche open after B close (`fc5b3b0`); research lanes dispatched; infra-baseline snapshot + **B-residual catalog** (the `snapshot_hash` band + conformance skeletons) + **`--reload` baseline finding** committed |
+| W0 — *Open · research dispatch · baseline audit* | **closed** | 2026-05-27 | tranche opened after B close (`fc5b3b0`); `W0-baseline.md` lands the infra-baseline snapshot (deploy.sh + `:8091` port bug, 3 TLS sites, port map=8100, 2 inline blobs), the **B-residual catalog** (~30 `snapshot_hash` sites + 1 `as unknown as` cast + 14 conformance skip-stubs), the **`--reload` baseline finding** (dev-only), brittleness window §8 ratified-provisional; Wα 4-lane research dispatched |
 | Wα — *Research wave (storage, CI/CD, TLS)* | planned | — | 3-4 parallel lanes — R1 storage-backend survey, R2 webhook CI/CD, R3 MongoDB TLS posture, optional R4 janitor-audit-log + `--reload` fix |
 | Wχ — *Challenge wave* | planned | — | adversarial review; **four probes** P1 (storage smallest-mechanism) / P2 (CI/CD truly replaces deploy.sh) / P3 (brittleness window honest) / **P4 (thread γ removes the legacy name at the ROOT, not behind a new cast)** |
 | W1 — *Webhook CI/CD + secret extraction* | provisional | — | thread α — retires `scripts/deploy.sh` (+ its health-check port bug); secrets exit compose files |
@@ -141,10 +141,29 @@ ordering γ (A/B/value.js-H closed; orphan settled; the inverted edge).
 **Prompt disposition** (`CA6`): 27 directives — 23 ADDRESSED, 3 PARTIAL,
 1 ROUTED-TO-C (the `snapshot_hash` discharge), 0 OUTSTANDING.
 
+### 2026-05-27 — C.W0 opened + baseline landed
+
+**WHAT.** The user authorised tranche-C execution ("Begin and continue the
+current tranche"). C.W0 ran as the team-lead open/baseline/dispatch wave:
+`W0-baseline.md` authored, grounding every Wα/Wχ measure in `file:line`
+against the live tree (not the audit's drifted anchors). The baseline
+confirmed all B-residual claims (the `snapshot_hash` band is ~30 sites,
+broader than `CA1` sampled; the `as unknown as` cast is exactly one at
+`AdminFlaggedPanel.vue:56`; 14 conformance files are skip-stubs whose skip
+reason *falsely* reads "implemented at B.W3"), and corrected three facts:
+(a) prod compose already uses `${MONGO_PASSWORD:?}` interpolation — no
+committed plaintext, so W1's secret work is a refinement not a crisis;
+(b) prod is already on port 8100 — W2's port work is ratification + the
+deploy.sh `:8091` bug, not a renumber; (c) the conformance count is 14,
+not 15. The mongod server is already `requireTLS` with cert/CA files — the
+TLS gap is the *client trust* posture (3 sites: `prod.yml:8,48,53`).
+
+**Gate.** W0 → Wα opened: 4 parallel research lanes dispatched (R1 storage,
+R2 webhook CI/CD, R3 MongoDB TLS, R4 janitor-audit-log + `--reload` fix),
+each measuring against `W0-baseline.md §1-§3`. No source files touched.
+
 ### Next action
 
-None until the user authorises C.W0. At that point dispatch C.W0 (research
-dispatch + infra-baseline snapshot + B-residual catalog) then Wα (research
-lanes) → Wχ (four probes) — the research-first gate governs before any
-implementation wave. **This was tranche development only; no implementation
-ran.**
+Wα research lanes in flight (R1-R4). On their close + `research/README.md`
+reconcile, dispatch Wχ (P1-P4 adversarial probes); the research-first gate
+governs before any implementation wave (W1-W6).
