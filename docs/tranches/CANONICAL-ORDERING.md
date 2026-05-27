@@ -5,6 +5,8 @@
 **Reconciles with**: R1's cohort-orphan assay (the verdict on whether value.js-C — the cohort-peer tranche to fourier-B — is effectively orphaned) and R6's fourier-C scoping (the open-design scoping for fourier-analysis's infra + image-blob-out-of-Mongo tranche); parallel-dispatched. Both R1 and R6 outputs were not yet present at `docs/audits/runs/2026-05-19-refinement-assay/` at this document's authoring. This document is **provisional pending R1's cohort verdict**; both orderings (cohort-live, cohort-orphan) are given in §5.
 **Authority**: this is the only execution-order document spanning both repos. Per-tranche `*.md` and `coordination/CRUD-CONSTELLATION.md` (the cohort coordination doc bound to fourier-B's CRUD-and-identity-convergence question) remain the authority for individual dependency claims.
 
+> **⚠ SUPERSEDED IN PART — see §8 (Ordering γ, 2026-05-27).** The body below (§1–§7) was authored 2026-05-26 when fourier-A and fourier-B were *planning* and the cohort-orphan verdict (R1) was *pending*; it gives the contingent orderings α (cohort-live) and β (cohort-orphan) in §5. Those events have since RESOLVED: fourier-A CLOSED (`c7cfd82`), fourier-B CLOSED (`fc5b3b0`), value.js-H CLOSED (v0.10.0, `16129e0`), the cohort-orphan verdict SETTLED (ordering β fired — value.js-C RETIRED), and fourier-C AUTHORED + expanded. **§8 is the authoritative current ordering;** §1–§7 are retained as the historical record of how the ordering was reasoned.
+
 ---
 
 ## §0 — Goal criterion and completion criterion (paired) for the ordering document itself
@@ -220,3 +222,45 @@ Rationale (citing sources):
 - value.js-H (the cascade-correctness tranche) can begin in parallel as a separate user authorization; the two tranches share no write bounds. If user agent-budget supports it, dispatching both at once is the maximum-parallel move (per `feedback_parallelization.md`).
 
 The next-action-after-next: once A.W0 closes green, **dispatch A.W1 — Attribute & land the glass-ui migration cohort in parallel with the R1/R6 assay reconciliation**. The R1 verdict only matters when fourier-B opens (~A.W6 close), giving the assay full A-execution-window to land.
+
+---
+
+## §8 — Ordering γ (2026-05-27 reconciliation — AUTHORITATIVE)
+
+The events §1–§7 treated as pending have RESOLVED. This section is the current cross-repo ordering, reconciled by the C-development audit (`docs/audits/runs/2026-05-27-C-audit/{SYNTHESIS,CA3,CA6}.md`). It supersedes the contingent §5 orderings α/β.
+
+### §8.1 — Reconciled tranche inventory
+
+| Repo | Tranche | Status (2026-05-27) | Note |
+|---|---|---|---|
+| fourier | **A** — cohort attribution, style abrogation, admin parity | **CLOSED** `c7cfd82` | executed W0–W6 |
+| fourier | **B** — CRUD/identity convergence | **CLOSED** `fc5b3b0` | executed W0 → Wα → Wχ → W1 → W2∥W3 → W4 → W5; `complete_with_misses` (cohort half orphaned), clean against the fourier aim |
+| fourier | **C** — infra + storage + B-residual discharge | **AUTHORED + EXPANDED** (this round); awaits user C.W0 authorization | four threads α/β/γ/δ per `C.md` |
+| value.js | **A–G** | **CLOSED** (A,B inside B.W0; D v0.6, E v0.7, F v0.8, G v0.9) | — |
+| value.js | **C** — palette CRUD facility (cohort peer to fourier-B) | **RETIRED** 2026-05-26 | ordering β fired; `value.js/docs/tranches/C/FINAL.md` |
+| value.js | **H** — cascade-correctness | **CLOSED** v0.10.0 `16129e0` | polish-grade; zero palette-domain work |
+| value.js | **I** — *seeded, thesis open* | **SEEDED** (`value.js/docs/tranches/H/I-SEED.md`); thesis undeclared | candidate host for the narrow `sampleToSVGPath` lift iff forward-themed + user-mandated |
+
+### §8.2 — The cohort verdict (β fired)
+
+Ordering β (cohort-orphan) is the realized history: value.js-C never opened; the repo raced D→E→F→G→H; value.js-C is formally RETIRED. fourier-B accordingly closed with its identity-convergence thesis landed fourier-internally and the colour-domain bullet held as a residual. The `CRUD-CONTRACT.md` ratified fourier-unilaterally at B.W1 (`4626d4c`) stands as a **latent affordance** a future value.js re-engagement consumes.
+
+### §8.3 — The inverted edge (the only live cross-repo dependency)
+
+The original hard edge `fourier-B.W4 → value.js-C.W1` is **severed**. The sole remaining cross-repo edge **inverts** and is latent + conditional:
+
+```
+value.js-<I-or-dedicated>.W_x  ──(publishes sampleToSVGPath in src/math.ts)──▶  fourier-C.W4-δ (consumes)
+        [open thesis; user-re-mandate-gated]                         [conditional; holds as residual if absent]
+```
+
+Per `CA4`, this is the *only* genuine colour-lift deliverable (the `Palette`/`colorScale` domain model is held latent — premature, no consumer). `coordination/` on the fourier side: `docs/tranches/C/coordination/COLOUR-LIFT.md`.
+
+### §8.4 — Current critical path + next action
+
+fourier-C is the sole open fourier tranche; its threads are fourier-internal except the conditional δ. value.js has no open executing tranche (H closed; I seeded but thesis-undeclared, awaiting user mandate). **The two repos are now decoupled** — neither blocks the other.
+
+- **fourier next action**: await user authorization for **C.W0** (open · research dispatch · baseline audit). C's research-first gate (W0 → Wα → Wχ) governs before any implementation wave; thread γ (W4, the slug-identity discharge) is independent and parallel-capable.
+- **value.js next action**: await user mandate for **value.js-I** (thesis open). If the user wants the colour lift, I is forward-themed as the narrow `sampleToSVGPath` publish; otherwise the lift stays the fourier-C residual.
+
+No fast path couples them; the colour-lift edge is the only seam, and it is conditional on both sides.
