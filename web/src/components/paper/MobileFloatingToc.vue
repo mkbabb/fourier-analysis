@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onUnmounted } from "vue";
+import { ref, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
 import { Button } from "@mkbabb/glass-ui";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-vue-next";
@@ -22,11 +22,32 @@ const floatingTocOpen = ref(false);
 const searchActive = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
 const mobileSearchRef = ref<InstanceType<typeof PaperSearch> | null>(null);
+// Trigger element — focus returns here after the dropdown is dismissed
+// (A4 MED a11y discharge). glass-ui `Button` forwards its root element ref;
+// fall back to querying the focusable child if the instance exposes `$el`.
+const tocTriggerRef = useTemplateRef<HTMLElement | { $el?: HTMLElement }>("tocTrigger");
 
-// Lock scroll container when dropdown is open (critical for iOS WebKit)
+function triggerEl(): HTMLElement | null {
+    const r = tocTriggerRef.value as HTMLElement | { $el?: HTMLElement } | null;
+    if (!r) return null;
+    return r instanceof HTMLElement ? r : (r.$el ?? null);
+}
+
+// Dismiss the dropdown and return focus to the trigger button (A4 MED).
+function dismissDropdown() {
+    floatingTocOpen.value = false;
+    nextTick(() => triggerEl()?.focus());
+}
+
+// Lock scroll container when dropdown is open (critical for iOS WebKit).
+// Also move focus into the dropdown on open so the `@keydown.esc` handler
+// receives the key event (A4 MED a11y discharge).
 watch(floatingTocOpen, (open) => {
     if (props.scrollContainer) {
         props.scrollContainer.style.overflow = open ? 'hidden' : '';
+    }
+    if (open) {
+        nextTick(() => dropdownRef.value?.focus());
     }
 });
 
@@ -93,7 +114,7 @@ watch(() => props.search.isOpen.value, (open) => {
                 </Button>
             </div>
             <!-- Normal mode: section title + search icon -->
-            <Button v-else variant="ghost" class="floating-toc-bar glass-medium" @click="floatingTocOpen = !floatingTocOpen">
+            <Button v-else ref="tocTrigger" variant="ghost" class="floating-toc-bar glass-medium" @click="floatingTocOpen = !floatingTocOpen">
                 <span class="floating-toc-section cm-serif">
                     <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
                     {{ currentSection?.title }}
@@ -110,6 +131,8 @@ watch(() => props.search.isOpen.value, (open) => {
                     v-if="floatingTocOpen"
                     ref="dropdownRef"
                     class="floating-toc-dropdown glass-medium"
+                    tabindex="-1"
+                    @keydown.esc="dismissDropdown"
                 >
                     <!-- Scroll to top -->
                     <Button
@@ -159,7 +182,7 @@ watch(() => props.search.isOpen.value, (open) => {
             <div
                 v-if="floatingTocOpen"
                 class="floating-toc-backdrop"
-                @click="floatingTocOpen = false"
+                @click="dismissDropdown"
             />
         </div>
     </div>

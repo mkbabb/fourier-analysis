@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
 import { Slider, Button } from "@mkbabb/glass-ui";
-import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
+import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
@@ -60,7 +60,7 @@ function getBasisLabel(key: string, info: { label: string }): string {
 }
 
 const basisTooltips: Record<string, string> = {
-    fourier: "Fourier series — click to cycle: epicycles \u2192 series \u2192 off",
+    fourier: "Fourier series — click to cycle: epicycles → series → off",
     chebyshev: "Chebyshev polynomial approximation",
     legendre: "Legendre polynomial approximation",
 };
@@ -116,91 +116,94 @@ function toggleBasis(key: string) {
 </script>
 
 <template>
-    <div class="cartoon-card px-3 py-2">
-        <CollapsibleSection title="Decomposition" subtitle="basis & resolution" :default-open="true">
-            <template #actions>
+    <ConfiguratorLayer label="Decomposition" sub="basis &amp; resolution" :default-open="true">
+        <!-- Panel-wide reset: ConfiguratorLayer has no header-actions slot, so
+             the affordance lives at the top of the layer body. -->
+        <div class="flex items-center justify-end -mt-1 -mb-1">
+            <Tooltip text="Reset to defaults">
                 <Button
                     variant="ghost"
                     size="icon"
                     class="reset-icon-btn"
                     :class="{ 'is-default': isDefault }"
-                    title="Reset to defaults"
+                    aria-label="Reset to defaults"
                     @click.stop="resetDefaults"
                 >
                     <RotateCcw class="h-3.5 w-3.5" />
                 </Button>
-            </template>
-            <div class="flex flex-wrap justify-center gap-1.5 pt-1 pb-1">
-                <Tooltip v-for="(info, key) in basisDisplay" :key="key" :text="getBasisTooltip(key as string)">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        class="basis-toggle"
-                        :aria-pressed="isBasisActive(key as string)"
-                        :style="isBasisActive(key as string) ? { '--pill-color': info.color } : {}"
-                        @click="toggleBasis(key as string)"
-                    >
-                        <span class="basis-icon cm-serif font-semibold" :class="{ 'basis-icon--fourier': key === 'fourier' }">{{ info.icon }}</span>
-                        {{ getBasisLabel(key as string, info) }}
-                    </Button>
-                </Tooltip>
-            </div>
+            </Tooltip>
+        </div>
 
-            <div class="space-y-3 pt-2">
-                <!-- Harmonics -->
-                <div>
-                    <label class="mb-1.5 flex items-center justify-between text-sm font-medium text-muted-foreground">
-                        <span>Harmonics (N)</span>
-                        <input
-                            type="number"
-                            class="inline-number fira-code"
-                            :value="nHarmonics"
-                            min="1"
-                            max="500"
-                            step="1"
-                            @input="emit('update:nHarmonics', Math.max(1, Math.min(500, parseInt(($event.target as HTMLInputElement).value) || 1)))"
-                        />
-                    </label>
-                    <Slider
-                        v-model="harmonicsModel"
-                        variant="glass-scrubber"
-                        :min="1"
-                        :max="500"
-                        :step="1"
+        <div class="flex flex-wrap justify-center gap-1.5 pb-1">
+            <Tooltip v-for="(info, key) in basisDisplay" :key="key" :text="getBasisTooltip(key as string)">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    class="basis-toggle"
+                    :aria-pressed="isBasisActive(key as string)"
+                    :style="isBasisActive(key as string) ? { '--pill-color': info.color } : {}"
+                    @click="toggleBasis(key as string)"
+                >
+                    <span class="basis-icon cm-serif font-semibold" :class="{ 'basis-icon--fourier': key === 'fourier' }">{{ info.icon }}</span>
+                    {{ getBasisLabel(key as string, info) }}
+                </Button>
+            </Tooltip>
+        </div>
+
+        <ConfiguratorRow label="Harmonics" name="N">
+            <div class="w-full">
+                <div class="mb-1.5 flex items-center justify-end">
+                    <input
+                        type="number"
+                        class="inline-number fira-code"
+                        :value="nHarmonics"
+                        min="1"
+                        max="500"
+                        step="1"
                         aria-label="Harmonics"
-                        class="basis-slider-track"
-                        :style="{ '--track-color': VIZ_COLORS.fourier }"
+                        @input="emit('update:nHarmonics', Math.max(1, Math.min(500, parseInt(($event.target as HTMLInputElement).value) || 1)))"
                     />
                 </div>
-
-                <!-- Sample Points -->
-                <div>
-                    <label class="mb-1.5 flex items-center justify-between text-sm font-medium text-muted-foreground">
-                        <span>Sample Points</span>
-                        <input
-                            type="number"
-                            class="inline-number fira-code"
-                            :value="nPoints"
-                            min="128"
-                            max="4096"
-                            step="128"
-                            @input="emit('update:nPoints', Math.max(128, Math.min(4096, parseInt(($event.target as HTMLInputElement).value) || 128)))"
-                        />
-                    </label>
-                    <Slider
-                        v-model="pointsModel"
-                        variant="glass-scrubber"
-                        :min="128"
-                        :max="4096"
-                        :step="128"
-                        aria-label="Sample Points"
-                        class="basis-slider-track"
-                        :style="{ '--track-color': VIZ_COLORS.chebyshev }"
-                    />
-                </div>
+                <Slider
+                    v-model="harmonicsModel"
+                    variant="glass-scrubber"
+                    :min="1"
+                    :max="500"
+                    :step="1"
+                    aria-label="Harmonics"
+                    class="basis-slider-track"
+                    :style="{ '--track-color': VIZ_COLORS.fourier }"
+                />
             </div>
-        </CollapsibleSection>
-    </div>
+        </ConfiguratorRow>
+
+        <ConfiguratorRow label="Sample Points">
+            <div class="w-full">
+                <div class="mb-1.5 flex items-center justify-end">
+                    <input
+                        type="number"
+                        class="inline-number fira-code"
+                        :value="nPoints"
+                        min="128"
+                        max="4096"
+                        step="128"
+                        aria-label="Sample Points"
+                        @input="emit('update:nPoints', Math.max(128, Math.min(4096, parseInt(($event.target as HTMLInputElement).value) || 128)))"
+                    />
+                </div>
+                <Slider
+                    v-model="pointsModel"
+                    variant="glass-scrubber"
+                    :min="128"
+                    :max="4096"
+                    :step="128"
+                    aria-label="Sample Points"
+                    class="basis-slider-track"
+                    :style="{ '--track-color': VIZ_COLORS.chebyshev }"
+                />
+            </div>
+        </ConfiguratorRow>
+    </ConfiguratorLayer>
 </template>
 
 <style scoped>

@@ -46,7 +46,7 @@ const sidebarState = useSidebarState<PaperSectionData>({
 
 <template>
     <aside class="paper-sidebar">
-        <nav ref="sidebarNav" class="sidebar-nav scrollbar-thin">
+        <nav ref="sidebarNav" class="sidebar-nav scrollbar-thin" aria-label="Table of contents">
             <PaperSearch :search="search" variant="sidebar" />
             <div class="sidebar-header">
                 <p class="sidebar-label cm-serif">Contents</p>

@@ -143,6 +143,11 @@ export function drawEpicycleCircles(
     const { ctx } = surface;
     const { toScreen, scale } = view;
 
+    // Guard: an empty visible-circle count has nothing to draw.
+    if (nVis <= 0) {
+        return;
+    }
+
     ctx.save();
     if (fit) {
         ctx.translate(fit.targetCX, fit.targetCY);
@@ -155,6 +160,34 @@ export function drawEpicycleCircles(
         const [tx, ty] = toScreen(visPositions[i + 1][0], visPositions[i + 1][1]);
         const r = components[i].amplitude * scale;
         const color = colorOverride ?? spectrumColor(i, nVis);
+
+        // DC-term suppression (W2.8): the chain is amplitude-sorted, so the
+        // `index === 0` (frequency 0) component lands first and would render as
+        // a stationary disc of radius |c_0| — potentially the size of the whole
+        // figure, visually dominating the animation.  Instead of the full
+        // circle + arm we drop a small centre-marker at the offset; the arm
+        // (which links to the next epicycle) still renders below.
+        if (components[i].index === 0) {
+            ctx.beginPath();
+            ctx.arc(ccx, ccy, Math.max(5.5, lineWidths.circle * 1.5), 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.75 * epicycleAlpha;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Arm to the next epicycle (the DC offset is a fixed translation).
+            ctx.beginPath();
+            ctx.moveTo(ccx, ccy);
+            ctx.lineTo(tx, ty);
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = 0.75 * epicycleAlpha;
+            ctx.lineWidth = lineWidths.arm;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            continue;
+        }
 
         // Circle
         ctx.beginPath();

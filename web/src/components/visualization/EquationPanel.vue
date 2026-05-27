@@ -66,7 +66,11 @@ watchDebounced(
 </script>
 
 <template>
-    <div class="eq-panel glass-subtle">
+    <div
+        class="eq-panel glass-subtle"
+        tabindex="-1"
+        @keydown.esc="emit('close')"
+    >
         <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-medium text-foreground">Equation</span>
             <div class="flex items-center gap-2">
@@ -80,6 +84,7 @@ watchDebounced(
                     variant="ghost"
                     size="icon"
                     class="h-6 w-6 rounded-full text-muted-foreground"
+                    aria-label="Close equation panel"
                     @click="emit('close')"
                 >
                     <X class="h-3.5 w-3.5" />
@@ -111,7 +116,8 @@ watchDebounced(
 <style scoped>
 @reference "tailwindcss";
 .eq-panel {
-    @apply absolute z-[15] flex flex-col gap-2 p-2.5 rounded-xl;
+    @apply absolute flex flex-col gap-2 p-2.5 rounded-xl;
+    z-index: var(--z-controls);
     top: 3.5rem;
     left: 0.5rem;
     max-width: min(28rem, calc(100% - 1rem));

@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { Button, Switch } from "@mkbabb/glass-ui";
-import { X, Download } from "lucide-vue-next";
+import {
+    Button,
+    Switch,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@mkbabb/glass-ui";
+import { Download } from "lucide-vue-next";
 
 const props = defineProps<{
     hasEpicycles: boolean;
@@ -17,6 +25,13 @@ const withTrail = ref(true);
 const withGrid = ref(true);
 const withLabels = ref(true);
 
+// The Dialog is rendered open; reka-ui's DialogRoot drives the focus-trap,
+// Esc-to-close, and `aria-modal`. `@update:open` fires `false` on Esc /
+// backdrop / close-button — bridge it to the consumer's `close` event.
+function onOpenChange(open: boolean) {
+    if (!open) emit("close");
+}
+
 function doExport() {
     emit("export", {
         withEpicycles: props.hasEpicycles && withEpicycles.value,
@@ -28,89 +43,49 @@ function doExport() {
 </script>
 
 <template>
-    <Teleport to="body">
-        <Transition name="modal">
-            <div class="modal-backdrop" @click.self="emit('close')">
-                <div class="modal-card" @click.stop>
-                    <div class="modal-header">
-                        <h3 class="cm-serif text-lg font-semibold">Export Frame</h3>
-                        <Button variant="glass" size="icon" class="h-8 w-8" @click="emit('close')">
-                            <X class="h-4 w-4" />
-                        </Button>
-                    </div>
+    <Dialog :open="true" @update:open="onOpenChange">
+        <!-- DialogContent supplies role="dialog" + aria-modal="true" + focus-trap
+             + Esc + autofocus via reka-ui's DialogPortal/DialogContent. -->
+        <DialogContent class="export-dialog">
+            <DialogHeader>
+                <DialogTitle class="cm-serif text-lg font-semibold">Export Frame</DialogTitle>
+            </DialogHeader>
 
-                    <div class="option-list">
-                        <label v-if="hasEpicycles" class="option-row">
-                            <span class="option-label">Epicycles</span>
-                            <Switch v-model="withEpicycles" />
-                        </label>
-                        <label class="option-row">
-                            <span class="option-label">Trace path</span>
-                            <Switch v-model="withTrail" />
-                        </label>
-                        <label class="option-row">
-                            <span class="option-label">Grid lines</span>
-                            <Switch v-model="withGrid" />
-                        </label>
-                        <label class="option-row">
-                            <span class="option-label">Labels</span>
-                            <Switch v-model="withLabels" />
-                        </label>
-                    </div>
-
-                    <div class="modal-footer">
-                        <Button variant="outline" size="default" @click="emit('close')">Cancel</Button>
-                        <Button variant="default" size="default" @click="doExport">
-                            <Download class="h-3.5 w-3.5" />
-                            Save PNG
-                        </Button>
-                    </div>
-                </div>
+            <div class="option-list">
+                <label v-if="hasEpicycles" class="option-row">
+                    <span class="option-label">Epicycles</span>
+                    <Switch v-model="withEpicycles" />
+                </label>
+                <label class="option-row">
+                    <span class="option-label">Trace path</span>
+                    <Switch v-model="withTrail" />
+                </label>
+                <label class="option-row">
+                    <span class="option-label">Grid lines</span>
+                    <Switch v-model="withGrid" />
+                </label>
+                <label class="option-row">
+                    <span class="option-label">Labels</span>
+                    <Switch v-model="withLabels" />
+                </label>
             </div>
-        </Transition>
-    </Teleport>
+
+            <DialogFooter>
+                <Button variant="outline" size="default" @click="emit('close')">Cancel</Button>
+                <Button variant="default" size="default" @click="doExport">
+                    <Download class="h-3.5 w-3.5" />
+                    Save PNG
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
-.modal-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-modal);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: color-mix(in srgb, var(--background) 70%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-}
-
-.modal-card {
-    background: var(--card);
-    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-modal);
-    padding: 1.25rem;
+.export-dialog {
     min-width: 300px;
-    max-width: 90vw;
 }
-
-.modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-}
-
-/* Transitions — unified with GalleryCardModal (A.W3.d — bezier→`--ease-apple-spring`) */
-.modal-enter-active {
-    transition: opacity 0.25s var(--ease-standard), transform 0.3s var(--ease-apple-spring);
-}
-.modal-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.modal-enter-from { opacity: 0; transform: scale(0.92); }
-.modal-leave-to { opacity: 0; transform: scale(0.95); }
 
 .option-list {
     display: flex;
@@ -136,12 +111,4 @@ function doExport() {
     @apply text-base;
     font-weight: 500;
 }
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1.25rem;
-}
-
 </style>

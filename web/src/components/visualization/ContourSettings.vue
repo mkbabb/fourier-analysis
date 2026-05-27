@@ -4,7 +4,6 @@ import { watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
-import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import {
     Button,
     Collapsible,
@@ -15,6 +14,7 @@ import {
     SelectItem,
     SelectTrigger,
 } from "@mkbabb/glass-ui";
+import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
 import { Wand2, ChevronRight, RotateCcw, RefreshCw } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
 import SliderControl from "@/components/ui/SliderControl.vue";
@@ -185,125 +185,124 @@ watch(
 </script>
 
 <template>
-    <div class="cartoon-card px-3 py-2">
-        <CollapsibleSection title="Contour" subtitle="edge extraction settings" :default-open="false">
-            <template #actions>
+    <ConfiguratorLayer label="Contour" sub="edge extraction settings" :default-open="false">
+        <!-- Panel-wide reset: ConfiguratorLayer has no header-actions slot, so
+             the affordance lives at the top of the layer body. -->
+        <div class="flex items-center justify-end -mt-1 -mb-1">
+            <Tooltip text="Reset to defaults">
                 <Button
                     variant="ghost"
                     size="icon"
                     class="reset-icon-btn"
                     :class="{ 'is-default': isDefault }"
-                    title="Reset to defaults"
+                    aria-label="Reset to defaults"
                     @click.stop="resetDefaults"
                 >
                     <RotateCcw class="h-3.5 w-3.5" />
                 </Button>
-            </template>
-            <div class="space-y-3 pt-1">
-                <!-- Strategy -->
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-muted-foreground">Strategy</label>
-                    <Select v-model="strategy">
-                        <SelectTrigger class="w-full h-10 text-sm border-2 border-foreground/15 rounded-lg">
-                            <div class="inline-flex items-center gap-1.5">
-                                <Wand2 v-if="strategy === 'auto'" class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                {{ strategyLabel }}
-                            </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem v-for="(desc, key) in strategyDescriptions" :key="key" :value="key">
-                                <div>
-                                    <div class="font-medium">{{ strategyLabels[key] }}</div>
-                                    <div class="text-xs text-muted-foreground max-w-[280px]">{{ desc }}</div>
-                                </div>
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+            </Tooltip>
+        </div>
 
-                <!-- ML Threshold (visible for ml or auto) -->
-                <Tooltip v-if="strategy === 'ml' || strategy === 'auto'" text="Saliency cutoff — lower values capture more background detail">
-                    <SliderControl
-                        v-model="mlThreshold"
-                        label="ML Threshold"
-                        :min="0.1"
-                        :max="0.9"
-                        :step="0.05"
-                        :color="VIZ_COLORS.amber"
-                        :format-value="(v: number) => v.toFixed(2)"
-                    />
-                </Tooltip>
-
-                <!-- Blur Sigma -->
-                <Tooltip text="Soften before tracing — crank it up for furry subjects or noisy backgrounds">
-                    <SliderControl
-                        v-model="blurSigma"
-                        label="Blur Sigma"
-                        :min="0"
-                        :max="5"
-                        :step="0.1"
-                        :color="VIZ_COLORS.amber"
-                        :format-value="(v: number) => v.toFixed(1)"
-                    />
-                </Tooltip>
-
-                <!-- Advanced divider + collapsible -->
-                <Collapsible v-model:open="advancedOpen">
-                    <div class="advanced-divider">
-                        <div class="divider-line" />
-                        <CollapsibleTrigger class="advanced-trigger">
-                            <span>Advanced</span>
-                            <ChevronRight class="h-3 w-3 text-muted-foreground/60 transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
-                        </CollapsibleTrigger>
-                        <div class="divider-line" />
+        <!-- Strategy -->
+        <ConfiguratorRow label="Strategy">
+            <Select v-model="strategy" class="w-full">
+                <SelectTrigger class="w-full h-10 text-sm border-2 border-foreground/15 rounded-lg">
+                    <div class="inline-flex items-center gap-1.5">
+                        <Wand2 v-if="strategy === 'auto'" class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        {{ strategyLabel }}
                     </div>
-
-                    <CollapsibleContent class="advanced-content">
-                        <div class="advanced-grid">
-                            <!-- Min Area % -->
-                            <Tooltip text="Ignore tiny contours — raise to drop grass, fences, and stray edges">
-                                <SliderControl
-                                    v-model="minContourArea"
-                                    label="Min Area %"
-                                    :min="0"
-                                    :max="20"
-                                    :step="0.5"
-                                    :color="VIZ_COLORS.amber"
-                                    :format-value="(v: number) => v.toFixed(1)"
-                                />
-                            </Tooltip>
-
-                            <!-- Max Contours -->
-                            <Tooltip text="How many outlines to keep — 1 for a clean silhouette, more for interior detail">
-                                <SliderControl
-                                    v-model="maxContours"
-                                    label="Max Contours"
-                                    :min="0"
-                                    :max="50"
-                                    :step="1"
-                                    :color="VIZ_COLORS.amber"
-                                    :format-value="(v: number) => v === 0 ? 'All' : String(v)"
-                                />
-                            </Tooltip>
-
-                            <!-- Smoothing -->
-                            <Tooltip text="Iron out jagged edges — tame fur, leaves, and pixelated boundaries">
-                                <SliderControl
-                                    v-model="smoothContours"
-                                    label="Smoothing"
-                                    :min="0"
-                                    :max="1"
-                                    :step="0.05"
-                                    :color="VIZ_COLORS.amber"
-                                    :format-value="(v: number) => v.toFixed(2)"
-                                />
-                            </Tooltip>
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem v-for="(desc, key) in strategyDescriptions" :key="key" :value="key">
+                        <div>
+                            <div class="font-medium">{{ strategyLabels[key] }}</div>
+                            <div class="text-xs text-muted-foreground max-w-[280px]">{{ desc }}</div>
                         </div>
-                    </CollapsibleContent>
-                </Collapsible>
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+        </ConfiguratorRow>
 
+        <!-- ML Threshold (visible for ml or auto) -->
+        <Tooltip v-if="strategy === 'ml' || strategy === 'auto'" text="Saliency cutoff — lower values capture more background detail">
+            <SliderControl
+                v-model="mlThreshold"
+                label="ML Threshold"
+                :min="0.1"
+                :max="0.9"
+                :step="0.05"
+                :color="VIZ_COLORS.amber"
+                :format-value="(v: number) => v.toFixed(2)"
+            />
+        </Tooltip>
+
+        <!-- Blur Sigma -->
+        <Tooltip text="Soften before tracing — crank it up for furry subjects or noisy backgrounds">
+            <SliderControl
+                v-model="blurSigma"
+                label="Blur Sigma"
+                :min="0"
+                :max="5"
+                :step="0.1"
+                :color="VIZ_COLORS.amber"
+                :format-value="(v: number) => v.toFixed(1)"
+            />
+        </Tooltip>
+
+        <!-- Advanced divider + collapsible -->
+        <Collapsible v-model:open="advancedOpen">
+            <div class="advanced-divider">
+                <div class="divider-line" />
+                <CollapsibleTrigger class="advanced-trigger">
+                    <span>Advanced</span>
+                    <ChevronRight class="h-3 w-3 text-muted-foreground/60 transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
+                </CollapsibleTrigger>
+                <div class="divider-line" />
             </div>
-        </CollapsibleSection>
+
+            <CollapsibleContent class="advanced-content">
+                <div class="advanced-grid">
+                    <!-- Min Area % -->
+                    <Tooltip text="Ignore tiny contours — raise to drop grass, fences, and stray edges">
+                        <SliderControl
+                            v-model="minContourArea"
+                            label="Min Area %"
+                            :min="0"
+                            :max="20"
+                            :step="0.5"
+                            :color="VIZ_COLORS.amber"
+                            :format-value="(v: number) => v.toFixed(1)"
+                        />
+                    </Tooltip>
+
+                    <!-- Max Contours -->
+                    <Tooltip text="How many outlines to keep — 1 for a clean silhouette, more for interior detail">
+                        <SliderControl
+                            v-model="maxContours"
+                            label="Max Contours"
+                            :min="0"
+                            :max="50"
+                            :step="1"
+                            :color="VIZ_COLORS.amber"
+                            :format-value="(v: number) => v === 0 ? 'All' : String(v)"
+                        />
+                    </Tooltip>
+
+                    <!-- Smoothing -->
+                    <Tooltip text="Iron out jagged edges — tame fur, leaves, and pixelated boundaries">
+                        <SliderControl
+                            v-model="smoothContours"
+                            label="Smoothing"
+                            :min="0"
+                            :max="1"
+                            :step="0.05"
+                            :color="VIZ_COLORS.amber"
+                            :format-value="(v: number) => v.toFixed(2)"
+                        />
+                    </Tooltip>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
 
         <!-- Retry banner for transient errors -->
         <Transition name="slide-down">
@@ -315,7 +314,7 @@ watch(
                 </Button>
             </div>
         </Transition>
-    </div>
+    </ConfiguratorLayer>
 </template>
 
 <style scoped>
@@ -350,22 +349,27 @@ watch(
     color: color-mix(in srgb, var(--foreground) 60%, transparent);
 }
 
+/* B.W2.d — the hand-rolled `adv-open` / `adv-close` keyframes retire in
+   favour of `CollapsibleContent`'s `data-state` channel driving the
+   canonical glass-ui `collapsible-open` / `collapsible-close` keyframes
+   (shipped at `@mkbabb/glass-ui/styles/animations.css`, resolved via global
+   cascade — the same substrate animation `CollapsibleSection` adopted at
+   A.W3.d). The `--reka-collapsible-content-height` channel the substrate
+   keyframes read is supplied by the primitive. */
 .advanced-content {
     overflow: hidden;
 }
 .advanced-content[data-state="open"] {
-    animation: adv-open 0.2s ease-out;
+    animation: collapsible-open 0.2s var(--ease-out);
 }
 .advanced-content[data-state="closed"] {
-    animation: adv-close 0.2s ease-out;
+    animation: collapsible-close 0.2s var(--ease-out);
 }
-@keyframes adv-open {
-    from { height: 0; opacity: 0; }
-    to { height: var(--reka-collapsible-content-height); opacity: 1; }
-}
-@keyframes adv-close {
-    from { height: var(--reka-collapsible-content-height); opacity: 1; }
-    to { height: 0; opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+    .advanced-content[data-state="open"],
+    .advanced-content[data-state="closed"] {
+        animation: none;
+    }
 }
 
 .advanced-grid {

@@ -268,10 +268,11 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
         const sumsForBasis = basisName === "fourier"
             ? basesData?.partial_sums?.fourier
             : basesData?.partial_sums[basisName];
-        const sumLo = (sumsForBasis as any)?.[level] ?? (sumsForBasis as any)?.[String(level)];
-        const sumHi = levelFrac > 0.001
-            ? ((sumsForBasis as any)?.[levelNext] ?? (sumsForBasis as any)?.[String(levelNext)])
-            : null;
+        // partial_sums is typed `Record<number, {x,y}>` per the W1-ratified
+        // SCHEMA.md row; the JSON keys are stringified ints, so a numeric
+        // bracket access is type-safe and coerces correctly at runtime.
+        const sumLo = sumsForBasis?.[level];
+        const sumHi = levelFrac > 0.001 ? sumsForBasis?.[levelNext] : null;
 
         if (sumLo) {
             const doInterp = sumHi && sumHi.x.length === sumLo.x.length && levelFrac > 0.001;
@@ -440,7 +441,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
 
     // Swap surface ctx temporarily
     const origCtx = s.ctx;
-    (s as any).ctx = offCtx;
+    s.ctx = offCtx;
 
     const data = store.epicycleData;
     const basesData = store.basesData;
@@ -464,7 +465,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
     }
 
     // Restore
-    (s as any).ctx = origCtx;
+    s.ctx = origCtx;
 
     const dataUrl = offCanvas.toDataURL("image/png");
     const a = document.createElement("a");

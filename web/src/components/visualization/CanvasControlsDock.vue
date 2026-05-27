@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, watch } from "vue";
 import {
     Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
+import { HoverPopover } from "@mkbabb/glass-ui";
 import { GlassDock, DockIconButton } from "@mkbabb/glass-ui/dock";
-import { HoverPopover } from "@mkbabb/glass-ui/hover-popover";
 
-const props = defineProps<{
+defineProps<{
     isEditing: boolean;
     showImageOverlay: boolean;
     showGhost: boolean;
@@ -16,19 +16,25 @@ const props = defineProps<{
     publishing: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
     toggleEdit: [];
     toggleFullscreen: [];
     toggleEquation: [];
     toggleImageOverlay: [];
     toggleGhost: [];
     publish: [];
+    "update:expanded": [value: boolean];
 }>();
 
 const dockRef = ref<InstanceType<typeof GlassDock>>();
 
-const dockExpanded = computed(() => dockRef.value?.expanded ?? false);
-defineExpose({ dockExpanded });
+// In-band coupling (W2.E): surface the dock's expanded state to the parent
+// (VisualizationView, which centres the anchor on expand) via a typed event
+// rather than an out-of-band `defineExpose` the parent reaches into.
+watch(
+    () => dockRef.value?.expanded,
+    (value) => emit("update:expanded", value ?? false),
+);
 </script>
 
 <template>

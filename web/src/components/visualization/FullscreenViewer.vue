@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { Button } from "@mkbabb/glass-ui";
 import { Minimize2 } from "lucide-vue-next";
 import type { ContourAsset } from "@/lib/types";
@@ -24,13 +24,63 @@ const emit = defineEmits<{
 }>();
 
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
+const containerRef = ref<HTMLElement>();
 const show = ref(false);
+
+// ── Focus trap (A2 MED) ──
+// The teleported fullscreen layer must contain Tab focus; without this, Tab
+// leaks to the background document behind the overlay.  A tiny inline trap
+// (no new dep): wrap Tab from last→first and Shift+Tab from first→last across
+// the container's focusable descendants, scoped to the Teleport target.
+let lastFocused: HTMLElement | null = null;
+
+const FOCUSABLE =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function focusableEls(): HTMLElement[] {
+    const root = containerRef.value;
+    if (!root) return [];
+    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement,
+    );
+}
+
+function onTrapKeydown(e: KeyboardEvent) {
+    if (e.key !== "Tab") return;
+    const els = focusableEls();
+    if (els.length === 0) {
+        e.preventDefault();
+        containerRef.value?.focus();
+        return;
+    }
+    const first = els[0];
+    const last = els[els.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey) {
+        if (active === first || !containerRef.value?.contains(active)) {
+            e.preventDefault();
+            last.focus();
+        }
+    } else if (active === last || !containerRef.value?.contains(active)) {
+        e.preventDefault();
+        first.focus();
+    }
+}
 
 watch(() => props.visible, (v) => {
     if (v) {
+        lastFocused = document.activeElement as HTMLElement | null;
         show.value = true;
+        // Autofocus the first focusable inside the layer once it mounts.
+        nextTick(() => {
+            const els = focusableEls();
+            (els[0] ?? containerRef.value)?.focus();
+        });
     } else {
         show.value = false;
+        // Return focus to the trigger that opened the viewer.
+        lastFocused?.focus?.();
+        lastFocused = null;
     }
 }, { immediate: true });
 
@@ -39,7 +89,12 @@ function onAfterLeave() {
 }
 
 function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape" && props.visible) emit("close");
+    if (!props.visible) return;
+    if (e.key === "Escape") {
+        emit("close");
+        return;
+    }
+    onTrapKeydown(e);
 }
 
 onMounted(() => document.addEventListener("keydown", onKeydown));
@@ -50,7 +105,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     <Teleport to="body">
         <Transition name="fs" @after-leave="onAfterLeave">
             <div v-if="show" class="fs-backdrop" @click.self="emit('close')">
-                <div class="fs-container">
+                <div ref="containerRef" class="fs-container" tabindex="-1">
                     <!-- Close button -->
                     <Button variant="glass" size="icon" class="fs-close" @click="emit('close')">
                         <Minimize2 class="h-5 w-5" />
@@ -77,6 +132,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
                             :active-bases="activeBases"
                             :show-ghost="showGhost"
                             :show-image-overlay="showImageOverlay"
+                            max-width="60rem"
                             @toggle-ghost="emit('toggleGhost')"
                             @toggle-image-overlay="emit('toggleImageOverlay')"
                             @export-frame="canvasComponent?.exportFrame()"
@@ -166,10 +222,9 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
     }
 }
 
-/* Make controls a bit wider in fullscreen — consumed by AnimationControls scoped styles */
-.fs-controls {
-    --animation-dock-max-width: 60rem;
-}
+/* Wider controls in fullscreen are now driven by the AnimationControls
+   `max-width` prop (see template), replacing the former
+   `--animation-dock-max-width` CSS-var contract. */
 
 /* ── Fullscreen enter/leave transitions ── */
 /* A.W3.d — bezier→`--ease-out-expo`. */

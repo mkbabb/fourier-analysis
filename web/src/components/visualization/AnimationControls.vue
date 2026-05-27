@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { onClickOutside } from "@vueuse/core";
+import { computed } from "vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
 import {
     Download, EllipsisVertical, } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
-import { GlassDock } from "@mkbabb/glass-ui/dock";
-import { DockIconButton } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockDropdownTrigger } from "@mkbabb/glass-ui/dock";
+import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/dropdown-menu";
 import { Button } from "@mkbabb/glass-ui";
 import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import GlassTimeline from "./GlassTimeline.vue";
@@ -17,8 +16,14 @@ import SpeedSelect from "./SpeedSelect.vue";
 const props = withDefaults(
     defineProps<{
         activeBases?: string[];
+        /**
+         * Max expanded dock width.  Replaces the cross-component
+         * `--animation-dock-max-width` CSS-var contract (formerly fed by
+         * FullscreenViewer's scoped `.fs-controls`) with a typed prop.
+         */
+        maxWidth?: string;
     }>(),
-    { activeBases: () => ["fourier-epicycles"] },
+    { activeBases: () => ["fourier-epicycles"], maxWidth: "960px" },
 );
 
 const emit = defineEmits<{
@@ -48,15 +53,15 @@ const currentLevel = computed(() => {
 const caretLabel = computed(() =>
     isEpicycleOnly.value ? `t = ${anim.t.toFixed(2)}` : `N = ${currentLevel.value}`,
 );
-
-/* Three-dot menu */
-const menuOpen = ref(false);
-const menuAnchor = ref<HTMLElement>();
-onClickOutside(menuAnchor, () => { menuOpen.value = false; });
 </script>
 
 <template>
-    <GlassDock class="animation-dock" :collapse-delay="2000" :start-collapsed="true">
+    <GlassDock
+        class="animation-dock"
+        :collapse-delay="2000"
+        :start-collapsed="true"
+        :style="{ '--animation-dock-max-width': maxWidth }"
+    >
         <!-- ═══ COLLAPSED SUMMARY ═══ -->
         <template #collapsed>
             <Tooltip :text="anim.playing ? 'Pause' : 'Play'">
@@ -93,29 +98,29 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
                 </div>
             </Tooltip>
 
-            <!-- Three-dot menu -->
-            <div ref="menuAnchor" class="relative">
+            <!-- Three-dot menu — glass-ui DropdownMenu (role="menu", focus
+                 management, Esc + click-outside dismissal all from the
+                 primitive; replaces the hand-rolled popup + onClickOutside). -->
+            <DropdownMenu>
                 <Tooltip text="More options">
-                    <DockIconButton :aria-expanded="menuOpen" @click.stop="menuOpen = !menuOpen">
+                    <DockDropdownTrigger aria-label="More options">
                         <EllipsisVertical class="h-4 w-4" />
-                    </DockIconButton>
+                    </DockDropdownTrigger>
                 </Tooltip>
-                <Transition name="popup">
-                    <div v-if="menuOpen" class="menu-popup">
-                        <div class="flex sm:hidden items-center gap-2 px-3 py-1.5 border-b border-border/50 mb-0.5 pb-2">
-                            <span class="text-muted-foreground text-xs">Speed</span>
-                            <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" compact />
-                        </div>
-                        <EasingPicker />
-                        <Tooltip text="Export frame as PNG">
-                            <Button variant="ghost" size="sm" class="menu-item" @click="emit('exportFrame')">
-                                <Download class="h-4 w-4" />
-                                <span class="text-sm font-medium">Export</span>
-                            </Button>
-                        </Tooltip>
+                <DropdownMenuContent class="menu-popup" :side-offset="8" align="end">
+                    <div class="flex sm:hidden items-center gap-2 px-3 py-1.5 border-b border-border/50 mb-0.5 pb-2">
+                        <span class="text-muted-foreground text-xs">Speed</span>
+                        <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" compact />
                     </div>
-                </Transition>
-            </div>
+                    <EasingPicker />
+                    <Tooltip text="Export frame as PNG">
+                        <Button variant="ghost" size="sm" class="menu-item" @click="emit('exportFrame')">
+                            <Download class="h-4 w-4" />
+                            <span class="text-sm font-medium">Export</span>
+                        </Button>
+                    </Tooltip>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     </GlassDock>
 </template>
@@ -184,26 +189,29 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
 .mini-fill { height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 25%, transparent); transition: width 0.1s linear; }
 .summary-speed { @apply text-base; color: color-mix(in srgb, var(--foreground) 35%, transparent); }
 
-/* ── Menu popup ── */
+/* ── Transitions ── */
+/* A.W3.d — named properties + canonical token, no `transition: all`. */
+.icon-swap-enter-active, .icon-swap-leave-active { transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard); }
+.icon-swap-enter-from, .icon-swap-leave-to { opacity: 0; transform: scale(0.7); }
+</style>
+
+<!-- Global style for the portaled glass-ui DropdownMenuContent.  The primitive
+     ships its own chrome (background, border, radius, shadow, animations); we
+     only override the column layout + the menu-item chassis. -->
+<style>
+@reference "tailwindcss";
+
 .menu-popup {
-    position: absolute;
-    bottom: calc(100% + 0.5rem);
-    right: 0;
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
-    padding: 0.375rem;
-    background: var(--card);
-    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-elevated);
-    z-index: var(--z-popover);
-    pointer-events: auto;
+    min-width: 9rem;
 }
+
 /* `<Button variant="ghost" size="sm">` ships the focus-ring + hover + press;
    the `.menu-item` hook widens the chassis to the full menu width and pins
    the gap + left-aligned text + nowrap layout the menu pattern requires. */
-.menu-item {
+.menu-popup .menu-item {
     width: 100%;
     justify-content: flex-start;
     gap: 0.375rem;
@@ -211,11 +219,4 @@ onClickOutside(menuAnchor, () => { menuOpen.value = false; });
     border-radius: 0.5rem;
     white-space: nowrap;
 }
-
-/* ── Transitions ── */
-.popup-enter-active, .popup-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.popup-enter-from, .popup-leave-to { opacity: 0; transform: translateY(4px) scale(0.95); }
-/* A.W3.d — named properties + canonical token, no `transition: all`. */
-.icon-swap-enter-active, .icon-swap-leave-active { transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard); }
-.icon-swap-enter-from, .icon-swap-leave-to { opacity: 0; transform: scale(0.7); }
 </style>
