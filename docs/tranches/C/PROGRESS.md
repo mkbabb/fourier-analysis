@@ -22,11 +22,11 @@ W5 close, every row reconciles against `FINAL.md`'s gate table.
 | W0 — *Open · research dispatch · baseline audit* | **closed** | 2026-05-27 | tranche opened after B close (`fc5b3b0`); `W0-baseline.md` lands the infra-baseline snapshot (deploy.sh + `:8091` port bug, 3 TLS sites, port map=8100, 2 inline blobs), the **B-residual catalog** (~30 `snapshot_hash` sites + 1 `as unknown as` cast + 14 conformance skip-stubs), the **`--reload` baseline finding** (dev-only), brittleness window §8 ratified-provisional; Wα 4-lane research dispatched |
 | Wα — *Research wave (storage, CI/CD, TLS)* | **closed** | 2026-05-27 | 4 parallel lanes landed (7 artefacts, 1,487 L) — **R1** filesystem+nginx app-served, atomic cutover YES → window REMOVED; **R2** `adnanh/webhook` host-binary, HMAC-SHA256, self-reverting rollback, deploy.sh deleted; **R3** server-only TLS+SCRAM, re-provision under recorded self-signed internal CA, 3+1 sites; **R4** 11 audit rows on existing `admin_audit` shape, `--reload` fix = drop `--reload-dir src`. `research/README.md` reconciles; no source touched |
 | Wχ — *Challenge wave* | **closed** | 2026-05-27 | four adversarial probes, **all PASS-WITH-CONDITIONS** (16 binding conditions). P1: janitor image-delete orphans files post-relocation → inv-18 delete-coupling (C1); P2: a live multi-repo host dispatcher contradicts the greenfield spec → W1 reconciles (C5); P3: atomicity survives (window STRUCK) but the dedup-hit path silently regresses (C9); P4: inv-20's two greps insufficient → strengthened G3-G6+T1, all 14 skeletons fill. `audit/challenge.md` synthesises; `C.md` reconciled (15→14, honest 8091 grep, window struck, W1 scope, inv-18/20 amended) |
-| W1 — *Webhook CI/CD + secret extraction* | provisional | — | thread α — retires `scripts/deploy.sh` (+ its health-check port bug); secrets exit compose files |
+| W1 — *Webhook CI/CD + secret extraction* | **closed (repo-local); host residual** | 2026-05-27 (`49cb714`) | thread α — `scripts/deploy.sh` DELETED (deletion proof); tracked `scripts/deploy-hook.sh` (flock + real `${HTTP_PORT:-8100}` gate + rebuild-on-rollback + dirty-tree-fail-loud); scoped `[:/]8091` grep → zero; `.gitignore` negation re-pointed. **Stratum B host residual** (shared `/opt/deploy/` dispatcher rewrite, 4 sibling repos; precepts-submodule deploy note) recorded in `coordination/DEPLOY-RECONCILE.md` — proposed, not imposed; deploy-chain transcript pending host wiring (never claimed proven) |
 | W2 — *MongoDB TLS + port standardization* | provisional | — | thread α — retires `tlsAllowInvalidCertificates` (3 sites); pins prod port map |
 | W3 — *Janitor audit-log + recovery + `--reload` compute-abort fix* | **closed** | 2026-05-27 (`e6a6b95`) | thread α — one `_log_janitor_audit` helper on the existing `admin_audit` shape wired to all 11 destructive ops (count≥1-gated, emitted from the orchestrating cycle); `_delete_images_and_cascade` widened to a count-tuple; idempotent live-predicate recovery; `test_janitor_audit.py` 9/9 (transient Mongo), 4+5 (no Mongo). `--reload-dir src` dropped (`dev.sh:76` + `api/Dockerfile:16`); prod byte-identical |
 | **W4 — *Slug-identity completeness + B-residual discharge*** | **closed** | 2026-05-27 (`f91a656`) | thread γ — `snapshot_hash`/`snapshotHash` → `slug`/`owner_slug` end-to-end (44→0); `as unknown as` cast removed; `FlaggedListResponse` reshaped to the cursor envelope + both dead-duplicates (`listFlaggedEntries`, `dismissFlags`) deleted (G5 zero); **T1 keystone** `vue-tsc -b --force` green WITH the cast removed; all **14** conformance skeletons FILLED (49 assertions, 49 passed w/ Mongo); matrix citation lies fixed; e2e settle deterministic. **δ = named residual** (value.js v0.10.0 has no `sampleToSVGPath`; `easings.ts` untouched). Discharges the one precept violation (invariant 20) |
-| W5 — *Image-blob migration* | provisional | — | thread β — relocates primary + **thumbnail** blobs to the Wα-R1 backend (filesystem+nginx default); inline-write deletion proof (`storage_budget_gb` already retired at B.W3 — gate corrected) |
+| W5 — *Image-blob migration* | **closed (code); prod-run host residual** | 2026-05-27 (`817cfcc`) | thread β — filesystem app-served. Deletion proof (`Binary(content)`→0, `Binary(`→0); the `image_bytes` shim (blob-read branch deleted, no dual-read); **C9** dedup-bug fixed + `test_dedup_hit_on_migrated_doc`; **C1** janitor unlink (inv-18 delete-coupling); **C10** projection; **C3** path guard; `migrate_image_blobs.py` (count-parity 7==reloc+skip, idempotent, byte-identity spot-check); `FileResponse`; **C2** Dockerfile mkdir+chown; **C4** `external:true` + DR note (in-tree → precepts at W6). 212 tests pass; §8 window struck. The prod migration *run* is a host residual |
 | W6 — *Close* | provisional | — | reconcile PROGRESS; cite commits in FINAL; restore brittleness window; record the conditional δ disposition + the inverted cross-repo edge |
 
 ## Log
@@ -242,11 +242,26 @@ live at `api/tests/test_crud_lib_*.py`. Out of W4's named bounds (W4 owned the
 *conformance* method-mismatch + 6 phantom conformance files, both fixed). →
 **destination: W6 close reconciliation** (a one-file citation fix).
 
+### 2026-05-27 — implementation Batch 2: W1 ∥ W5 closed
+
+**WHAT.** Two disjoint waves landed in parallel, team-lead-verified:
+- **W1** (`49cb714`, thread α) — `deploy.sh` retired + the tracked deploy-hook with
+  all four improvements; repo-local stratum proven; the shared-dispatcher rewrite
+  + precepts-submodule note recorded as the Stratum-B host residual (honest "pending
+  host wiring").
+- **W5** (`817cfcc`, thread β) — the deletion-proof cutover (the C9 dedup runtime bug
+  fixed + tested, the C1 janitor unlink, C3 guard, C10 projection); migration script
+  with count-parity; 212 tests pass; §8 window struck. The prod migration *run* is a
+  host residual (code + dry-run + harness proven here).
+
 ### Next action
 
-Implementation Batch 2 — dispatch **W1** (CI/CD repo-local stratum, thread α) ∥
-**W5** (image-blob storage code, thread β) concurrently (disjoint: `scripts/` +
-`coordination/` vs `api/services/image_storage` + routers + `docker-compose*.yml`).
-W5 code + tests land + prove here; the prod migration *run* and W1's host-dispatcher
-wiring are host-ops residuals. Then **W2** (TLS — repo-local artefacts + host-gated
-flag removal, shares compose with W5 so sequenced after it). Then W6 close.
+**W2** (TLS + ports, thread α) — the genuinely host-coupled wave. Per the
+"provisioning-then-flags spine (inversion forbidden)", removing the
+`tlsAllowInvalidCertificates` flags WITHOUT the host's re-provisioned SAN-correct
+cert would break the next prod deploy. Two strata (mirrors W1): **Stratum A** lands
+repo-local + safe — `scripts/gen-mongo-certs.sh`, the `.env.example:21` fix (4th
+site + host spelling), the `docs/precepts/infra/tls.md` content staged in-tree;
+**Stratum B** — the `prod.yml` 3-site flag removal is coupled to host cert
+provisioning (one coordinated host-ops act), the exact diff specified + recorded,
+NOT applied to compose here (landing it alone breaks prod). Then W6 close.
