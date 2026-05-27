@@ -20,7 +20,7 @@ W5 close, every row reconciles against `FINAL.md`'s gate table.
 | Wave | Status | Closed at | Notes |
 |---|---|---|---|
 | W0 — *Open · research dispatch · baseline audit* | **closed** | 2026-05-27 | tranche opened after B close (`fc5b3b0`); `W0-baseline.md` lands the infra-baseline snapshot (deploy.sh + `:8091` port bug, 3 TLS sites, port map=8100, 2 inline blobs), the **B-residual catalog** (~30 `snapshot_hash` sites + 1 `as unknown as` cast + 14 conformance skip-stubs), the **`--reload` baseline finding** (dev-only), brittleness window §8 ratified-provisional; Wα 4-lane research dispatched |
-| Wα — *Research wave (storage, CI/CD, TLS)* | planned | — | 3-4 parallel lanes — R1 storage-backend survey, R2 webhook CI/CD, R3 MongoDB TLS posture, optional R4 janitor-audit-log + `--reload` fix |
+| Wα — *Research wave (storage, CI/CD, TLS)* | **closed** | 2026-05-27 | 4 parallel lanes landed (7 artefacts, 1,487 L) — **R1** filesystem+nginx app-served, atomic cutover YES → window REMOVED; **R2** `adnanh/webhook` host-binary, HMAC-SHA256, self-reverting rollback, deploy.sh deleted; **R3** server-only TLS+SCRAM, re-provision under recorded self-signed internal CA, 3+1 sites; **R4** 11 audit rows on existing `admin_audit` shape, `--reload` fix = drop `--reload-dir src`. `research/README.md` reconciles; no source touched |
 | Wχ — *Challenge wave* | planned | — | adversarial review; **four probes** P1 (storage smallest-mechanism) / P2 (CI/CD truly replaces deploy.sh) / P3 (brittleness window honest) / **P4 (thread γ removes the legacy name at the ROOT, not behind a new cast)** |
 | W1 — *Webhook CI/CD + secret extraction* | provisional | — | thread α — retires `scripts/deploy.sh` (+ its health-check port bug); secrets exit compose files |
 | W2 — *MongoDB TLS + port standardization* | provisional | — | thread α — retires `tlsAllowInvalidCertificates` (3 sites); pins prod port map |
@@ -162,8 +162,42 @@ TLS gap is the *client trust* posture (3 sites: `prod.yml:8,48,53`).
 R2 webhook CI/CD, R3 MongoDB TLS, R4 janitor-audit-log + `--reload` fix),
 each measuring against `W0-baseline.md §1-§3`. No source files touched.
 
+### 2026-05-27 — Wα research wave closed
+
+**WHAT.** Four parallel lanes (R1-R4) produced 7 artefacts (1,487 L), each
+grounded `file:line` against `W0-baseline.md` and each *refining* rather than
+rubber-stamping the C-development audit:
+
+- **R1 (storage)**: filesystem+nginx **app-served** (not direct-nginx — the prod
+  nginx container shares no volume with backend, and direct-serve would forfeit
+  the `last_accessed_at` retention touch). Atomic per-doc cutover **confirmed** →
+  the §8 brittleness window is **removed**. Binding contract in `R-storage-spec.md`
+  (migration script + count-parity/spot-check harness + the deletion-proof clause
+  that drops the inline write AND the `blob`-read branch in one commit).
+- **R2 (CI/CD)**: `adnanh/webhook` host binary (no container), HMAC-SHA256 auth,
+  health-gated self-reverting rollback at `:8100`, tracked `scripts/deploy-hook.sh`.
+  `deploy.sh` deleted; only `git push` survives (the intended trigger). Risk: the
+  receiver lives outside the repo — W1 must capture a real deploy-chain transcript.
+- **R3 (TLS)**: server-only TLS+SCRAM (the certless-allow flag is inert under
+  SCRAM-only auth). Cert provenance **unknowable** → re-provision under a recorded
+  self-signed internal CA (`CN=fourier-internal-ca`) with the SAN footgun handled.
+  3 sites + 1 latent (`.env.example:21`); `database.py` untouched (URI-only). Dev
+  plaintext-on-bridge is a named justified residual.
+- **R4 (janitor/reload)**: 11 audit rows on the **existing** `admin_audit` 4-field
+  shape (no bloat); idempotent fail-safe recovery; `--reload` fix = drop
+  `--reload-dir src` (one-token root fix); background queue deferred to fourier-D.
+
+**Cross-lane reconcile** (`research/README.md`): no conflicts. Three shared
+touch-points resolved — `docs/precepts/infra/` created by W1 (lands first), W2
+adds `tls.md`; port 8100 is the single source of truth; `database.py` touched by
+no lane.
+
+**Gate.** Wα → Wχ opened: dispatch P1 (storage smallest-mechanism) · P2 (CI/CD
+truly replaces deploy.sh) · P3 (cutover atomic / window honest) · P4 (γ removes
+legacy name at ROOT). No source touched.
+
 ### Next action
 
-Wα research lanes in flight (R1-R4). On their close + `research/README.md`
-reconcile, dispatch Wχ (P1-P4 adversarial probes); the research-first gate
-governs before any implementation wave (W1-W6).
+Wχ adversarial probes in flight (P1-P4). On their close, harden W1-W6 into
+`waves/W*.md` and reconcile any probe-surfaced corrections into `C.md`, then begin
+the implementation phase (W1 → W2, W3∥, W4∥, W5).
