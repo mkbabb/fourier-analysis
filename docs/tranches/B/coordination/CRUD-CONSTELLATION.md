@@ -194,6 +194,29 @@ authoritative current state. The 13-section CRUD-CONTRACT outline below
 remains the substrate for any future binding (whether reopened jointly
 or unwound to one-sided consumption).
 
+### fourier-B close disposition (W5, 2026-05-27)
+
+fourier-B closed at `docs/tranches/B/FINAL.md`. Final cross-repo state:
+
+- **fourier side — LANDED.** The converged `visualization` entity, the
+  `api/lib/crud/` per-language utility module (525 LOC), and the
+  fourier-unilaterally-ratified `CRUD-CONTRACT.md` (`4626d4c`) are live.
+  The contract is the **latent affordance** a future value.js re-engagement
+  consumes — it need not re-research, only adopt.
+- **value.js side — terminal orphan.** value.js is at tranche **H close
+  (v0.10.0, `16129e0`)** — reconciling the `research/R6-timing.md` /
+  prior-section note that cited v0.9.0 (G-close); the executed lineage is
+  A → B → C[RETIRED] → D → E → F → G → H. `~/Programming/value.js/docs/tranches/C/FINAL.md`
+  is the value.js-side retirement ceremony; `src/palette/` and `api/src/crud/`
+  are confirmed absent. The **W2-tracking** row (value.js palette facility)
+  closes **orphaned — terminal**.
+- **Named successors** (per `FINAL.md §6`): the `colors.ts` gut + `easings.ts`
+  sampler retirement + value.js dep bump → `fourier-tranche-C-or-successor`;
+  the slug-words precepts-submodule relocation → when a second consumer
+  materialises; the value.js-side conformance rows → DEFERRED.
+- **No fourier-side fork of value.js was introduced.** The cross-repo edge
+  was severed, not forked; the W4 fallback was the unconditional primary path.
+
 ## CRUD-CONTRACT.md outline (drafted at fourier-B.W1; section substance preserved verbatim)
 
 The shared contract document was drafted at fourier-B.W1 with the

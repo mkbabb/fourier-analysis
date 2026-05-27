@@ -16,7 +16,7 @@ A *wave* (per `docs/precepts/instructions/TRANCHE-AND-WAVE-SPEC.md §"Wave"`) is
 | W2-tracking | value.js palette facility (cross-repo, orphaned) | tracking · orphaned | — | latent dependency-legibility sub-section under W2-tracking; value.js-C never opened |
 | W3 | fourier `visualization` entity + migration + utility-module landing | **CLOSED** | 2026-05-26 | `52bdcf5` — one `visualizations` collection; `api/lib/crud/` = 525 LOC (8 modules, all 6 consumed by the router); migration with the 6 P2 narrowings; **233 passed / 14 skipped** vs test Mongo incl. the load-bearing migration integration test; tz_aware root-fix for the naive/aware landmine; snapshots.py deleted; SLUG_PATTERN tightened; `coolname`→`secrets` |
 | W4 | fourier convergence wiring (orphan-verdict fallback primary) | **CLOSED** | 2026-05-27 | `7315ba6` (+ fixes `93a566b`/`71b2bd2`) — stores/api/router/draftStorage re-pointed to slug-routed `/visualizations` + If-Match (8 sites); admin re-pointed onto the entity (4 helper imports / 57 sites); RateLimit middleware (Inv 24); session TTL→30. **Full CRUD lifecycle e2e PASSES end-to-end** (upload→draft→publish→unlisted→delete→restore + 412); settled UI axe-clean. `colors.ts`/`easings.ts` HELD byte-identical (orphan residual). Live validation caught + fixed a canvas-render regression + an image-slug-FK hazard |
-| W5 | close | provisional | — | tranche close ceremony; **helper-adoption carry-forward assertion bound 2026-05-26 per W4 hard-gate item 11** (Wave-2) |
+| W5 | close | **CLOSED** | 2026-05-27 | `FINAL.md` authored; coordination docs reconciled to the terminal orphan state; W4 helper-adoption carry-forward re-asserted (4 imports / 57 sites); **final sweep GREEN — 233 passed / 14 skipped, `vue-tsc` + `npm build` exit 0**; orphan-verdict bookkeeping discharged; named successors recorded |
 
 ## Log
 
@@ -296,3 +296,19 @@ Four agents in two batches (Batch 1: W4-backend `api/` ∥ W4-frontend-A `web/` 
 - **Minor carries**: the `FlaggedListResponse` type in `web/src/lib/types.ts` still carries the legacy page-based shape (W4-C worked around it with a local type + cast; vue-tsc green) — reconcile to the cursor envelope at W5; the RateLimit header path→limiter mapping shows the write-limiter bound (10) on compute paths for the header display while the compute_limiter enforces (cosmetic header nuance).
 
 **Next action**: dispatch W5 — close ceremony (reconcile PROGRESS; author FINAL.md; restore the brittleness window — rename legacy `snapshots`/`gallery` → `_legacy`; discharge orphan-verdict bookkeeping; re-run the W4 helper-adoption greps; final green sweep).
+
+### 2026-05-27 — W5 — close (CLOSED) — TRANCHE B COMPLETE
+
+The close ceremony. `docs/tranches/B/FINAL.md` authored (§0 paired criteria → §9 reflection; the full wave-by-wave commit ledger). Coordination docs reconciled: `CRUD-CONSTELLATION.md` carries the **fourier-B close disposition** (fourier side LANDED; value.js side terminal-orphan at H/v0.10.0 — reconciling the R6 v0.9.0 staleness; W2-tracking row orphaned-terminal; named successors recorded); the latent-affordance hand-off is explicit. `CONFORMANCE-MATRIX.md` close-state: fourier rows empirically bound at W3/W4, value.js rows DEFERRED.
+
+**Close gates:**
+
+- **Final sweep GREEN**: `uv run pytest tests/ api/tests/` → **233 passed, 14 skipped** (the 14 are the W1 conformance skeletons); `cd web && npx vue-tsc -b --force` → exit 0; `cd web && npm run build` → exit 0 (built in ~2.9 s).
+- **W4 helper-adoption carry-forward re-asserted** at the W5 boundary: `from api.lib.crud` in `admin.py` = 4 (≥ 3); helper sites across migrated routers = 57 (≥ 10) — no framework-in-disguise resurgence at the adoption boundary.
+- **Lifecycle e2e**: `e2e/visualization-crud.spec.ts` full CRUD lifecycle passes end-to-end (upload → draft → publish → unlisted → delete → restore + 412 etag-mismatch) at 3 viewports.
+- **Brittleness window**: narrowed to a clean one-way cutover (H-BW-1); the migration retains `snapshots`/`gallery` as rollback substrate; the rename → `_legacy` is the deploy-time final step (documented in the migration-script docstring; the dev DB carries no legacy data, so the rename is moot in dev — not a tranche-execution step).
+- **Orphan-verdict bookkeeping discharged**: every value.js-dependent outcome carries a named successor (`FINAL.md §6`); `colors.ts`/`easings.ts` byte-identical to the W3 close; the contract is the latent affordance.
+
+**Tranche B is CLOSED.** 13 execution commits (W0 `b0a85d8` → W5 this); `complete_with_misses` against the original cohort aim (the value.js half never landed), clean against the fourier aim. Every miss has a named successor; nothing closed silent.
+
+**Carries to fourier-tranche-C-or-successor**: the `colors.ts`/`easings.ts` value.js lift; the slug-words precepts-submodule relocation; the image-blob storage redesign (Option B held); the `FlaggedListResponse` cursor-envelope type reconciliation; the e2e axe-keystone settle-wait. **glass-ui substrate carries** (filed): `ConfiguratorLayer` header-actions slot; dock collapsed-slot `aria-hidden-focus`; `--scale-press*` unification.
