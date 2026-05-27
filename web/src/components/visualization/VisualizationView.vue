@@ -341,7 +341,7 @@ async function onCanvasFileSelect(e: Event) {
     flex: 1;
 }
 
-/* ── Right panel ── */
+/* ── Right panel (the Configurator #stage cell body) ── */
 .viz-panel-right {
     display: flex;
     flex-direction: column;
@@ -349,6 +349,11 @@ async function onCanvasFileSelect(e: Event) {
     min-width: 0;
     overflow: hidden;
     flex: 1;
+    /* glass-ui's `.configurator-stage` grid cell is `position: relative` (not a
+       flex container), so `flex: 1` here is inert — the stage would collapse to
+       zero height and the absolutely-positioned `.canvas-container` (inset: 0)
+       would render a 0px canvas. Fill the stage cell explicitly. (B.W4 fix.) */
+    height: 100%;
     position: relative;
 }
 
