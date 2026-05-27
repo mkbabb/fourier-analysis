@@ -70,6 +70,31 @@ cohesion, ε test integrity) across W0→Wα→Wχ→W1-W7. Three new invariants
 **Prompt disposition (DA5):** 39 directives — 34 addressed/held, 0 partial, 5
 routed-to-D, 0 OUTSTANDING.
 
+### 2026-05-27 — domain/endpoint naming standardization folded (thread α)
+
+**WHAT.** The user directed a constellation domain-naming standardization: rename
+the `palette-api` endpoint to `color` (`api.color.babb.dev`, matching the live
+GitHub-Pages `color.babb.dev` frontend), and split fourier into `fourier.babb.dev`
+(frontend) + `api.fourier.babb.dev` (backend). Read-only prod ingress recon
+grounded it and surfaced findings folded into `coordination/DOMAIN-NAMING.md`:
+
+- **Convention**: `<app>.babb.dev` (frontend) + `api.<app>.babb.dev` (backend),
+  uniform; `api.color.babb.dev` is the recommended resolution of the user's
+  "either/or" (consistency with the explicit `api.fourier.babb.dev`).
+- **Current reality**: `fourier.babb.dev` is a shared host-Apache vhost →
+  `:8100` (frontend + `/api`→backend behind one domain); `color.babb.dev` is
+  GitHub Pages (`mkbabb.github.io`, off-host); `palette-api` is loopback `:8130`
+  from a **standalone repo `/home/mbabb/Programming/palette-api`** (NOT
+  `value.js/api/` — a provenance discrepancy to reconcile at Wα).
+- **SECURITY**: both Mongos publish on `0.0.0.0` (`fourier:27017`, `palette:27020`)
+  — publicly reachable; D.α binds them to loopback.
+
+**Disposition**: the fourier domain split + the fourier-Mongo bind → D.W1/W2
+(thread α, fourier-owned); the color/palette rename + `api.color.babb.dev` + the
+palette-Mongo bind → a cross-repo ask (value.js / the standalone palette-api repo,
+user-re-mandate-gated; the shared Apache vhost the one fourier-touchable seam). The
+naming convention → a `docs/precepts/infra/` precept (D.W2). Wα gains R3 (ingress).
+
 ### Next action
 
 None until the user authorises D.W0. At that point dispatch D.W0 (prod-state
