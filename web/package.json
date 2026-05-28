@@ -11,11 +11,11 @@
         "test:e2e:ui": "playwright test --ui"
     },
     "dependencies": {
-        "@mkbabb/glass-ui": "file:./vendor/mkbabb-glass-ui-2.0.0.tgz",
-        "@mkbabb/keyframes.js": "file:./vendor/mkbabb-keyframes.js-2.1.1.tgz",
+        "@mkbabb/glass-ui": "^2.0.0",
+        "@mkbabb/keyframes.js": "^2.1.1",
         "@mkbabb/latex-paper": "^0.2.1",
         "@mkbabb/pencil-boil": "latest",
-        "@mkbabb/value.js": "file:./vendor/mkbabb-value.js-0.10.0.tgz",
+        "@mkbabb/value.js": "^0.10.0",
         "@vueuse/core": "^14.0",
         "katex": "^0.16",
         "pinia": "^2.3",
