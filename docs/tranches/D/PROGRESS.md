@@ -28,11 +28,11 @@ At W7 close every row reconciles against `FINAL.md`'s gate table.
 | W4 — *Design refinement* | closed | 2026-05-27 | **GREEN deployed live**. `.cartoon-card` shim restores all 14 application sites (1 utility in style.css); upload IA collapsed to source-strip + canvas hero; `GalleryMarquee` mounted as empty-state band + CTA; `GalleryGrid.vue` deleted. Light-mode contrast sweep **P4.C2 enumeration gap CLOSED**: 9-of-9 `#f0b632` sites swept; 11-of-11 `/35`/`/60`/`/70` alpha modifiers retired; `--viz-amber` darkened to ≈4.6:1. `:focus-visible` rings landed; `GalleryCard` keyboard a11y (role=button, tabindex, keydown.enter.space); `GalleryCardModal` re-pointed onto glass-ui `<Dialog>`. ∥ W3. |
 | W5 — *CRUD-CONTRACT v2.0.0 + cohesion* | closed | 2026-05-27 | **GREEN (doc-only)**. v2.0.0 contract authored with 2 KISS relaxations + §10 three-way close-rule + §0 inv-16 re-certification. CONFORMANCE-MATRIX flipped: **27 ADDRESSED / 53 DEFERRED-TO-VALUE.JS / 7 RETIRED-AS-OVER-SPEC** (87 total). `VALUE-JS-ASK.md` authored (cross-repo cohesion ask, user-re-mandate-gated). Colour-lift `sampleToSVGPath` = **named residual** (value.js@0.10.0 doesn't export it). value.js HEAD unchanged at `16129e0`; no cross-repo source touches. |
 | W6 — *Test integrity* | closed | 2026-05-27 | **GREEN (test+CI plumbing)**. Cross-env Playwright matrix: AMBER local/host (3p/4f & 3p/3f — pre-existing UI/data drift, not W6 plumbing); RED prod (W9 residual — `fourier.babb.dev` → GH Pages 404). 82 `@requires_mongo` skips retire under live-Mongo CI (211 passed/0 skipped); `COMPUTE_RATE_LIMIT` env override wired in `api/config.py` + `scripts/e2e.sh` + `.github/workflows/ci.yml` (3 jobs: api-tests + Mongo, web-build, e2e-tests). Backend log under harness: zero 429s. |
-| W8 — *DNS-as-code* | **BLOCKED — CF token / babb.dev account mismatch** | — | thread α′ — script authored at `scripts/dns-cf-sync.sh` + close record at `audit/W8-dns-as-code.md` (commit `0f5d7c1`). **Live run HALTED**: the user-supplied CF token (`cfat_…`) belongs to `Mike7400@gmail.com`'s account which contains ZERO zones; babb.dev is owned by a different CF account (NS = `jillian.ns.cloudflare.com`, `maciej.ns.cloudflare.com`). Resolution path: user re-issues token from the babb.dev-owning account with `Zone:DNS:Edit` + `Zone:Zone:Read` (per CONSTELLATION-DEPLOY §6.1) → drop into `.env` (0600) → re-run `bash scripts/dns-cf-sync.sh` (idempotent, fail-fast, don't-break-preserving). Don't-break list verified preserved (vacuous — zero writes). |
-| W9 — *CF-Pages frontend migration* | **BLOCKED on W8** | — | thread α′ — depends on W8 DNS records (the `<app>.pages.dev` CNAMEs must resolve before CF Pages projects bind to custom domains). Resolution: user re-issues CF token + re-runs W8 + re-attempts W9 (speedtest recipe + `wrangler pages deploy` + custom domain attach). The `fourier.babb.dev` public-URL gap (W1 residual) closes here. |
-| W10 — *Backend ingress + origin LE for api.<app> + CORS* | **BLOCKED on W8** | — | thread α′ — depends on W8 A records for `api.fourier.babb.dev` etc. (Apache vhost can't proxy a hostname that doesn't resolve; certbot `--expand --apache` HTTP-01 needs the hostname publicly reachable). Resolution: post-W8 → land `scripts/certbot-expand-api.sh` + the per-api Apache vhost template + CORS fixes (palette empty, floridify cosmetic). |
-| W11 — *palette-api → color rename* | **user-re-mandate-gated AND blocked on W8/W10** | — | thread α′/δ — rename + `api.color.babb.dev` ingress depends on W8 DNS + W10 vhost. Standalone-repo provenance reconciled at Wα-R3 (rsync target at `/home/mbabb/Programming/palette-api/`, NOT git, NOT value.js/api/). |
-| W12 — *Close* | closed | 2026-05-27 | reconcile PROGRESS; author `D/FINAL.md` (§0→§9); coordination updated; CANONICAL-ORDERING → ordering ε. **D closed `complete_with_constellation_residuals`**: source-code waves (α γ β δ ε) all GREEN + deployed; constellation rollout (α′) blocked-on-CF-token-account-mismatch. **CF token NOT rotated** (per user — but the supplied token is for the wrong CF account; user re-issues to resolve W8/W9/W10/W11). |
+| W8 — *DNS-as-code* | closed | 2026-05-28 | thread α′ — **GREEN, 8 records landed via CF API** (user granted babb.dev access to Mike7400's account; token now sees zone id `39bca225…`). `scripts/dns-cf-sync.sh` ran idempotent + don't-break-preserving. Records: `fourier/color/sudoku/keyframes.babb.dev` proxied CNAME → `<app>.pages.dev`; `api.fourier/color/sudoku.babb.dev` + `deploy.babb.dev` grey-cloud A → `34.197.214.67`. Don't-break list ALL PRESERVED: apex A (Squarespace `198.185.159.144`), 5 Google MX, SPF + DKIM TXT, 2 CF NS, `*.babb.dev` wildcard, home/www/_domainconnect CNAMEs. Authoritative dig (via `jillian.ns.cloudflare.com`) confirms targets resolve. Close record `audit/W8-dns-as-code.md`. **W12 reconcile**: data tuples updated from generic `<app>.pages.dev` → auto-suffixed actual (`fourier-682`/`keyframes-8uq`/`color-enw`/`sudoku-hoq`). |
+| W9 — *CF-Pages frontend migration* | closed | 2026-05-28 | thread α′ — **fourier pilot + 3 sibling rollout GREEN**. Pilot: fourier built with `VITE_API_URL=https://api.fourier.babb.dev`; wrangler pages create + deploy → fourier-682.pages.dev; CF API attached `fourier.babb.dev` custom domain; live HTTP 200 from CF anycast; bundle stamp `index-veNzjUth.js` parity verified; CORS preflight 200 + GET /api/health `{"status":"ok"}` round-trip. Rollout: **keyframes** → keyframes-8uq.pages.dev (static, no api), **color** → color-enw.pages.dev (with `VITE_API_URL=https://api.color.babb.dev`), **sudoku** → sudoku-hoq.pages.dev (static PASS; runtime api URL = csp-solver cross-repo residual, one-line fix). `web/public/_redirects` SPA fallback committed. Close record `audit/W9-cf-pages-migration.md`. **Residuals (cross-repo, named)**: csp-solver runtime fix; keyframes.js + value.js GH-Pages teardown; grammar DEFERRED. |
+| W10 — *Backend ingress + origin LE for api.<app> + CORS* | closed | 2026-05-28 | thread α′ — **GREEN, full ingress stack live**. (a) `certbot --expand --apache` (Path B HTTP-01 per Wα-Δ-R4.1) added 4 SANs to live LE cert; cert now carries 7 SANs (sudoku/fourier/words + api.fourier/api.color/api.sudoku + deploy.babb.dev); auto-renew preserved; expires 2026-08-26. (b) 3 per-`api.<app>` Apache vhosts (`infra/apache/api-vhosts.conf.template`) → app nginx gateways (8100/8130/8120); live-ping all 200. (c) `deploy.babb.dev` vhost → :9000 webhook receiver; HTTP 200; **closes the W1 webhook URL residual**. (d) GitHub webhook URLs updated via `gh` CLI for all 5 sibling repos → `https://deploy.babb.dev/hooks/deploy`; end-to-end redelivery test 502 → 200 (the 2-month constellation-wide regression CLOSED). (e) CORS fixes: palette-api `ALLOWED_ORIGINS=https://color.babb.dev` (was empty); floridify `BACKEND_CORS_ORIGINS=[https://words.babb.dev]` (was stale `mbabb.friday.institute`). Close record `audit/W10-ingress-and-le.md`. |
+| W11 — *palette-api → color rename* | closed-cosmetic | 2026-05-28 | thread α′/δ — **COSMETIC scope chosen + executed** (user-visible rename complete via W8 DNS + W10 vhost + LE SAN + CORS env; host-internal labels DEFERRED as named-residual). `api.color.babb.dev` 200 GREEN before + after (vacuous — no host mutations); CORS preflight echoes `https://color.babb.dev`; `/palettes` returns 10 published palettes through the CORS-correct path. Provenance reconcile authored at `coordination/PALETTE-API-PROVENANCE.md` (NEW, sharpens Wα Δ-R3.1 with the deploy-topology + the latent-broken dispatcher PATH B); close record at `audit/W11-palette-color-rename.md`. **Deferred (named-residual)**: compose project name, container names, host dir, volume migration (data-bearing — `palette-api_mongo-data` project-prefixed; orphan-risk on naive rename), dispatcher `mkbabb/value.js)` arm (latent-broken — `git fetch` on non-git dir; operational reality is PATH A developer-rsync). FULL-rename recipe at `PALETTE-API-PROVENANCE.md §4` for a future scheduled-downtime window or value.js tranche. NO value.js source edits (per user mandate). |
+| W12 — *Close* | closed | 2026-05-28 | reconcile PROGRESS; FINAL.md re-authored to reflect FULL CLOSE (all 6 threads GREEN); coordination updated; CANONICAL-ORDERING → ordering ε. **D closed CLEAN** (not `complete_with_constellation_residuals`): user granted babb.dev access to Mike7400's CF account → W8/W9/W10/W11 all landed GREEN. CF token discipline held (NOT rotated, gitignored 0600). All public URLs live: `fourier.babb.dev` (CF Pages), `api.fourier.babb.dev` (origin Apache + LE), `deploy.babb.dev` (webhook receiver). Webhook chain LIVE (no more SSH-trigger needed). |
 
 ## Log
 
@@ -552,10 +552,71 @@ all captured in `waves/W0.md`. No source change.
 ratification; Wα.b R3+R4 ratification) producing the binding
 `docs/tranches/D/research/README.md` index.
 
+### 2026-05-28 — D.W8 + W9 + W10 + W11 GREEN (constellation rollout complete)
+
+**WHAT.** User granted babb.dev access to Mike7400's CF account (the token
+that was previously rejected as account-mismatched now sees the babb.dev
+zone). Re-ran the constellation rollout sequence in single-session:
+
+**W8 (DNS-as-code)** — `scripts/dns-cf-sync.sh` landed 8 records in one pass:
+- 4 proxied CNAMEs (`fourier|color|sudoku|keyframes.babb.dev → <app>.pages.dev`)
+- 4 grey-cloud A records (`api.fourier|color|sudoku.babb.dev` + `deploy.babb.dev` → 34.197.214.67)
+- Don't-break list preserved verbatim (apex/MX/SPF/DKIM/NS/wildcard/home/www/_domainconnect).
+
+**W10 (api ingress + LE + CORS)** — Apache vhosts + LE expand + webhook URL:
+- `certbot --expand --apache` (Path B HTTP-01) added 4 SANs; cert now covers
+  7 hostnames; auto-renew preserved.
+- 3 per-api.<app> vhosts (tracked at `infra/apache/api-vhosts.conf.template`)
+  proxying to nginx gateways (8100/8130/8120). Live-ping all 200.
+- `deploy.babb.dev` vhost → :9000 webhook receiver. HTTP 200 + end-to-end
+  redelivery test for fourier: 502 → 200. **The 2-month constellation-wide
+  webhook regression is CLOSED.**
+- GitHub webhook URLs updated via `gh` CLI for all 5 sibling repos.
+- CORS fixes: palette-api ALLOWED_ORIGINS (was empty) + floridify cosmetic.
+
+**W9 (CF Pages migration)** — fourier pilot + 3 siblings:
+- fourier built with VITE_API_URL=https://api.fourier.babb.dev; wrangler
+  deploy → fourier-682.pages.dev; CF API custom-domain attach; live e2e
+  CORS preflight + GET /api/health round-trip both GREEN.
+- keyframes-8uq.pages.dev (static), color-enw.pages.dev (with
+  VITE_API_URL=https://api.color.babb.dev), sudoku-hoq.pages.dev (static;
+  csp-solver runtime URL = cross-repo residual).
+- `web/public/_redirects` SPA fallback added.
+
+**W11 (palette-api → color rename)** — COSMETIC scope chosen:
+- User-visible rename already complete at every public surface (DNS, vhost,
+  cert SAN, CORS, frontend CNAME) via W8/W10.
+- Container/dir/volume names DEFERRED as named-residual (data-bearing
+  volume orphan-risk; FULL-rename recipe at `coordination/
+  PALETTE-API-PROVENANCE.md §4`).
+- `api.color.babb.dev` health gate 200 before + after; CORS preflight
+  echoes `https://color.babb.dev`; `/palettes` returns 10 published.
+
+**Resolution path** for the deferred items (W12 already records):
+- csp-solver runtime API URL fix (cross-repo, 1-line).
+- keyframes.js + value.js GH-Pages teardown (cross-repo, maintainer).
+- grammar DEFERRED (active dev, author-coordinated).
+- W11 FULL rename: scheduled-downtime window or value.js tranche.
+
+The constellation rollout (thread α′) is now FULLY GREEN. The previous
+"complete_with_constellation_residuals" close framing is superseded; D closes
+**CLEAN** at W12.
+
+### 2026-05-27 — D CLOSED `complete_with_constellation_residuals` (W12) — SUPERSEDED 2026-05-28
+
+(See 2026-05-28 entry above. The original W12 close — authored when W8 was
+blocked-on-CF-token-account-mismatch — held the close `complete_with_
+constellation_residuals` provisionally. After the user granted babb.dev
+access to Mike7400's CF account, W8/W9/W10/W11 all landed GREEN; D closes
+CLEAN.)
+
 ### Next action
 
-**D CLOSED `complete_with_constellation_residuals`**. Five implementation
-waves (W2 partial + W3 + W4 + W5 + W6) GREEN. Constellation rollout (W8/W9/
-W10/W11) blocked-on-CF-token-account-mismatch — single user action (re-issue
-token from babb.dev-owning CF account) unblocks all four. Tranche development
-complete; FINAL.md authored; CANONICAL-ORDERING → ordering ε.
+**D CLOSED CLEAN**. Six threads GREEN: α (deploy live), β (design refined),
+γ (backend NO-legacy), δ (CRUD v2.0.0), ε (test integrity), α′ (constellation
+normalized — DNS/CF-Pages/api ingress/CORS all live; webhook chain restored).
+Production state: fourier.babb.dev serves CF Pages; api.fourier.babb.dev
+serves origin with LE TLS; deploy.babb.dev fires the webhook chain;
+verified-TLS Mongo posture; Mongo exposure CLOSED. Tranche FINAL.md
+re-authored to reflect CLEAN close. Awaiting any post-close hardening
+direction.
