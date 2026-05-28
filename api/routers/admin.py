@@ -1,11 +1,13 @@
 """Admin moderation endpoints, re-pointed onto the converged ``visualization`` entity.
 
-fourier-B.W4.c. The moderation surface (feature / delete / flag-dismissal, the
-flagged-panel listing, the user list, the audit-log viewer) resolves against the
-single ``visualizations`` collection by **slug** (CRUD-CONTRACT §7) rather than the
-retired ``gallery`` / ``snapshot_hash`` identity. The legacy ``gallery`` collection
-survives as rollback substrate until the B.W5 close ceremony; ``/stats`` still reads
-it for legacy aggregate parity, but every NEW moderation op targets ``visualizations``.
+fourier-B.W4.c (+ fourier-D.W3 γ rename). The moderation surface (feature /
+delete / flag-dismissal, the flagged-panel listing, the user list, the
+audit-log viewer) resolves against the single ``visualizations`` collection by
+**slug** (CRUD-CONTRACT §7). The ``flags`` band's moderation-FK field was
+renamed to ``content_hash`` at D.W3 (γ) — the truthful name for the value the
+slot always held (the visualization's content hash). The legacy ``gallery``
+stratum is deleted at D.W3; ``/stats`` reads ``visualizations`` (not
+``gallery``).
 
 The router *composes* the W3-landed ``api.lib.crud`` helpers explicitly (no lifecycle
 inversion — the Wχ.P1 framework-in-disguise certification):
@@ -215,7 +217,7 @@ async def delete_visualization(
         full = await db.visualizations.find_one({"slug": slug}, {"content_hash": 1})
         content_hash = (full or {}).get("content_hash")
         if content_hash:
-            await db.flags.delete_many({"snapshot_hash": content_hash})
+            await db.flags.delete_many({"content_hash": content_hash})
         await db.visualizations.delete_one({"slug": slug})
         await log_audit(ip_hashed, "delete:hard", slug)
         return _json({"ok": True, "hard": True})
@@ -344,8 +346,8 @@ async def delete_user(slug: str, request: Request) -> Response:
     if not user:
         return errors.not_found(detail=f"no user {slug!r}")
 
-    # Collect the content hashes of this owner's visualizations so flags
-    # (still ``snapshot_hash``-keyed → the row's ``content_hash``) cascade.
+    # Collect the content hashes of this owner's visualizations so the
+    # ``flags`` (keyed by ``content_hash``) cascade.
     content_hashes = [
         doc["content_hash"]
         async for doc in db.visualizations.find(
@@ -354,7 +356,7 @@ async def delete_user(slug: str, request: Request) -> Response:
     ]
 
     if content_hashes:
-        await db.flags.delete_many({"snapshot_hash": {"$in": content_hashes}})
+        await db.flags.delete_many({"content_hash": {"$in": content_hashes}})
     viz_result = await db.visualizations.delete_many({"owner_slug": slug})
     await db.sessions.delete_many({"user_slug": slug})
     await db.users.delete_one({"_id": slug})
@@ -465,7 +467,7 @@ async def batch_users(body: BatchUsersRequest, request: Request) -> Response:
                 )
             ]
             if content_hashes:
-                await db.flags.delete_many({"snapshot_hash": {"$in": content_hashes}})
+                await db.flags.delete_many({"content_hash": {"$in": content_hashes}})
             await db.visualizations.delete_many({"owner_slug": slug})
             await db.sessions.delete_many({"user_slug": slug})
             result = await db.users.delete_one({"_id": slug})
@@ -512,10 +514,9 @@ async def list_flagged(
 ) -> Response:
     """List flagged visualizations, cursor-paginated over the converged entity.
 
-    The flag stream (``flags``, still ``snapshot_hash``-keyed → the row's
-    ``content_hash``) is grouped per entity and joined to live ``visualizations``;
-    pagination rides ``cursors.paginate`` newest-first (§0 SOTA-1). Soft-deleted
-    rows are excluded.
+    The flag stream (``flags``, keyed by ``content_hash``) is grouped per entity
+    and joined to live ``visualizations``; pagination rides ``cursors.paginate``
+    newest-first (§0 SOTA-1). Soft-deleted rows are excluded.
     """
     db = get_db()
 
@@ -531,7 +532,7 @@ async def list_flagged(
         [
             {
                 "$group": {
-                    "_id": "$snapshot_hash",
+                    "_id": "$content_hash",
                     "flag_count": {"$sum": 1},
                     "flags": {
                         "$push": {
@@ -592,8 +593,9 @@ async def dismiss_flags(slug: str, request: Request) -> Response:
     """Dismiss all flags for a visualization (CRUD-CONTRACT §7 ``dismiss_flags``).
 
     Resolves the entity by slug, then clears the flag stream keyed by its
-    ``content_hash`` (the ``flags`` collection's surviving ``snapshot_hash`` key).
-    Idempotent — dismissing already-clear flags is a 200 with ``dismissed: 0``.
+    ``content_hash`` (the ``flags`` collection's FK to the visualization's
+    content hash). Idempotent — dismissing already-clear flags is a 200 with
+    ``dismissed: 0``.
     """
     client_ip = get_client_ip(request)
     ip_hashed = hash_ip(client_ip)
@@ -603,7 +605,7 @@ async def dismiss_flags(slug: str, request: Request) -> Response:
     if doc is None:
         return errors.not_found(detail=f"no visualization {slug!r}")
 
-    result = await db.flags.delete_many({"snapshot_hash": doc["content_hash"]})
+    result = await db.flags.delete_many({"content_hash": doc["content_hash"]})
     await log_audit(ip_hashed, "dismiss_flags", slug)
 
     return _json({"dismissed": result.deleted_count})

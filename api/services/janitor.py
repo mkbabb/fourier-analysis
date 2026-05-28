@@ -163,23 +163,15 @@ async def _cleanup_cycle() -> None:
         cutoff=cutoff,
     )
 
-    deleted_images, cascaded_gallery_for_images = await _delete_images_and_cascade(
+    deleted_images = await _delete_images(
         db,
         {"pinned": False, "last_accessed_at": {"$lt": cutoff}},
     )
     if deleted_images:
         logger.info("Janitor pruned %d old unpinned images", deleted_images)
-    # Rows 3 + 4: the image cascade's gallery delete and image delete both live
-    # inside the side-effect-free ``_delete_images_and_cascade`` helper, which
-    # carries both counts back so the orchestrator emits both rows. The number
-    # of images deleted equals the number of slugs the cascade collected, so it
-    # doubles as the ``images=`` facet on the gallery-cascade row.
-    await _log_janitor_audit(
-        db,
-        "janitor:cascade_delete_gallery_for_images",
-        count=cascaded_gallery_for_images,
-        images=deleted_images,
-    )
+    # Row 3: image prune. The legacy gallery-cascade row (row 4 in C.W3's
+    # eleven-row ledger) was deleted at fourier-D.W3 γ along with the dead
+    # ``gallery`` collection — the cascade had nothing to cascade against.
     await _log_janitor_audit(
         db,
         "janitor:prune_images",
@@ -205,7 +197,8 @@ async def _cleanup_cycle() -> None:
         cutoff=now,
     )
 
-    # Users unseen for user_max_age_days — cascade to gallery, flags, sessions
+    # Users unseen for user_max_age_days — cascade to flags, sessions, and
+    # soft-delete their visualizations
     user_cutoff = now - timedelta(days=settings.user_max_age_days)
     stale_slugs: list[str] = []
     async for user in db.users.find({"last_seen_at": {"$lt": user_cutoff}}, {"_id": 1}):
@@ -234,22 +227,8 @@ async def _cleanup_cycle() -> None:
             users=len(stale_slugs),
         )
 
-        # Cascade: delete gallery entries owned by stale users (legacy
-        # collection, retained until the W5 close ceremony)
-        gallery_result = await db.gallery.delete_many({"user_slug": {"$in": stale_slugs}})
-        if gallery_result.deleted_count:
-            logger.info(
-                "Janitor cascade-deleted %d gallery entries for stale users",
-                gallery_result.deleted_count,
-            )
-        # Row 7: stale-user gallery cascade — bounded by the re-derived
-        # ``stale_slugs`` set, not a cutoff; record the cohort size.
-        await _log_janitor_audit(
-            db,
-            "janitor:cascade_delete_gallery",
-            count=gallery_result.deleted_count,
-            users=len(stale_slugs),
-        )
+        # The stale-user gallery cascade was deleted at fourier-D.W3 γ along
+        # with the dead ``gallery`` collection (the cascade had no target).
 
         # Cascade: delete flags from stale users
         flags_result = await db.flags.delete_many({"reporter_slug": {"$in": stale_slugs}})
@@ -387,13 +366,13 @@ async def _recompute_pin_flags(db) -> None:
         pass
 
 
-async def _delete_images_and_cascade(db, filter_: dict) -> tuple[int, int]:
-    """Delete images matching *filter_* and cascade-delete referencing gallery entries.
+async def _delete_images(db, filter_: dict) -> int:
+    """Delete images matching *filter_* and unlink their relocated blob files.
 
-    Returns ``(deleted_images, cascaded_gallery)``. The helper stays
-    side-effect-free with respect to the audit trail — it carries both counts
-    back so ``_cleanup_cycle`` (the orchestrator) emits the two audit rows
-    (W3 §A.2 rows 3 + 4); the audit policy is not smeared across helpers.
+    Returns ``deleted_images``. The legacy gallery-cascade arm (paired with the
+    dead ``gallery`` collection) was removed at fourier-D.W3 γ. The helper
+    stays side-effect-free with respect to the audit trail — it carries the
+    count back so ``_cleanup_cycle`` (the orchestrator) emits the audit row.
     """
     # Collect slugs of images about to be deleted
     slugs_to_delete: list[str] = []
@@ -401,15 +380,7 @@ async def _delete_images_and_cascade(db, filter_: dict) -> tuple[int, int]:
         slugs_to_delete.append(img["image_slug"])
 
     if not slugs_to_delete:
-        return 0, 0
-
-    # Cascade: delete gallery entries that reference these images
-    cascade_result = await db.gallery.delete_many({"image_slug": {"$in": slugs_to_delete}})
-    if cascade_result.deleted_count:
-        logger.info(
-            "Janitor cascade-deleted %d gallery entries for deleted images",
-            cascade_result.deleted_count,
-        )
+        return 0
 
     # C1 (C.W5, invariant-18 delete-coupling): post-relocation the bytes are no
     # longer the document, so deleting only the Mongo doc orphans the relocated
@@ -429,4 +400,4 @@ async def _delete_images_and_cascade(db, filter_: dict) -> tuple[int, int]:
 
     # Delete the images themselves
     result = await db.images.delete_many(filter_)
-    return result.deleted_count, cascade_result.deleted_count
+    return result.deleted_count

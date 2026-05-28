@@ -24,8 +24,7 @@ _CONNECT_BACKOFF = 2  # seconds, doubles each retry
 async def connect_db() -> None:
     global _client, _db
     # tz_aware=True: datetimes round-trip as aware UTC so the janitor's
-    # aware-cutoff comparisons (datetime.now(UTC)) never hit naive/aware TypeError
-    # (the B.W3 / Wχ H-W3-1(a) landmine — naive snapshots.created_at vs aware gallery.*).
+    # aware-cutoff comparisons (datetime.now(UTC)) never hit naive/aware TypeError.
     _client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=5000, tz_aware=True)
     _db = _client.get_default_database()
 
@@ -64,10 +63,6 @@ async def connect_db() -> None:
     # Mirror of images.pinned compound — same rationale (W4.a janitor inversion).
     await _db.contours.create_index([("pinned", 1), ("last_accessed_at", 1)])
 
-    # Snapshots indexes
-    await _db.snapshots.create_index("snapshot_hash", unique=True)
-    await _db.snapshots.create_index([("image_slug", 1), ("snapshot_hash", 1)], unique=True)
-
     # Users + Sessions
     await _db.users.create_index("last_seen_at")
     await _db.sessions.create_index("user_slug")
@@ -78,19 +73,6 @@ async def connect_db() -> None:
         await _db.sessions.drop_index("expires_at_1")
         await _db.sessions.create_index("expires_at")
         logger.info("Recreated sessions.expires_at index (dropped conflicting TTL index)")
-
-    # Gallery
-    await _db.gallery.create_index("snapshot_hash", unique=True)
-    await _db.gallery.create_index([("tier", 1), ("created_at", -1)])
-    await _db.gallery.create_index("image_slug")
-    await _db.gallery.create_index("views")
-    await _db.gallery.create_index("likes")
-    await _db.gallery.create_index("user_slug")
-
-    # Gallery compound indexes for cursor pagination
-    await _db.gallery.create_index([("tier", 1), ("views", -1), ("_id", -1)])
-    await _db.gallery.create_index([("tier", 1), ("likes", -1), ("_id", -1)])
-    await _db.gallery.create_index([("user_slug", 1), ("created_at", -1)])
 
     # Visualizations — the converged identity collection (fourier-B.W3).
     # The union of the gallery cursor-pagination indexes plus the
@@ -121,9 +103,13 @@ async def connect_db() -> None:
     # ``deleted_at``-grace hard-delete pass scans the indexed ``deleted_at``.
     await _db.visualizations.create_index([("pinned", 1), ("last_accessed_at", 1)])
 
-    # Flags
-    await _db.flags.create_index([("snapshot_hash", 1), ("reporter_slug", 1)], unique=True)
-    await _db.flags.create_index("snapshot_hash")
+    # Flags — the moderation-FK band keyed on the visualization's
+    # ``content_hash`` (the renamed identity slot, fourier-D.W3 / γ; the
+    # rename target is the truthful value the field always held). The
+    # cutover migration ``api/scripts/migrate_flags_field.py`` runs in the
+    # W3 deploy.
+    await _db.flags.create_index([("content_hash", 1), ("reporter_slug", 1)], unique=True)
+    await _db.flags.create_index("content_hash")
     await _db.flags.create_index("created_at")
 
     # Audit

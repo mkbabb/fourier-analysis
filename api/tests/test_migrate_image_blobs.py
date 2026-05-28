@@ -322,7 +322,10 @@ def test_janitor_unlinks_blob_on_prune(blob_dir):
     from datetime import UTC, datetime, timedelta
 
     from api.services import database
-    from api.services.janitor import _delete_images_and_cascade
+    # fourier-D.W3 γ: ``_delete_images_and_cascade`` was renamed to
+    # ``_delete_images`` and its return shape simplified to ``int`` (the
+    # gallery-cascade arm was retired with the dead ``gallery`` collection).
+    from api.services.janitor import _delete_images
 
     async def body(db):
         database._db = db
@@ -344,7 +347,7 @@ def test_janitor_unlinks_blob_on_prune(blob_dir):
         before_blob = (blob_dir / "prune-me-000").exists()
         before_thumb = (blob_dir / "prune-me-000.thumb").exists()
 
-        deleted, _cascaded = await _delete_images_and_cascade(
+        deleted = await _delete_images(
             db, {"pinned": False, "last_accessed_at": {"$lt": datetime.now(UTC)}}
         )
         after_blob = (blob_dir / "prune-me-000").exists()

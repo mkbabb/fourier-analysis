@@ -7,6 +7,7 @@ import io
 import logging
 import os
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
@@ -78,7 +79,7 @@ CONTENT_TYPE_MAP = {
 }
 
 
-def _image_response(doc: dict) -> ImageAssetResponse:
+def _image_response(doc: dict[str, Any]) -> ImageAssetResponse:
     return ImageAssetResponse(
         image_slug=doc["image_slug"],
         sha256=doc["sha256"],
@@ -91,7 +92,7 @@ def _image_response(doc: dict) -> ImageAssetResponse:
 
 
 @router.post("", response_model=ImageAssetResponse)
-async def upload_image(file: UploadFile):
+async def upload_image(file: UploadFile) -> ImageAssetResponse:
     if file.content_type and not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
@@ -115,7 +116,7 @@ async def upload_image(file: UploadFile):
 
 
 @router.get("/by-hash/{sha256}", response_model=ImageAssetResponse)
-async def get_image_by_hash(sha256: str):
+async def get_image_by_hash(sha256: str) -> ImageAssetResponse:
     db = get_db()
     doc = await db.images.find_one({"sha256": sha256}, {"blob": 0})
     if doc is None:
@@ -124,40 +125,40 @@ async def get_image_by_hash(sha256: str):
 
 
 @router.get("/{imageSlug}", response_model=ImageAssetResponse)
-async def get_image_metadata(imageSlug: str):
+async def get_image_metadata(imageSlug: str) -> ImageAssetResponse:
     doc = await get_image_meta(imageSlug)
     return _image_response(doc)
 
 
 @router.get("/{imageSlug}/blob")
-async def get_image_blob(imageSlug: str):
+async def get_image_blob(imageSlug: str) -> FileResponse:
     # C.W5: serve the relocated file via ``FileResponse`` — streams from disk
     # with ``Content-Length`` + conditional-request support, strictly better
     # than the in-memory ``BytesIO`` for large blobs. Route, auth (the
-    # ``get_image_asset`` 404 + ``last_accessed_at`` touch), and ``Cache-Control``
-    # are unchanged.
-    doc = await get_image_asset(imageSlug)
-    path = _resolve(doc["storage_uri"])
+    # ``get_image_asset`` 404 / 410 + ``last_accessed_at`` touch), and
+    # ``Cache-Control`` are unchanged. D.W3 γ: the asset is the typed
+    # ``ImageAsset`` model — field access is type-checked, not raw subscript.
+    asset = await get_image_asset(imageSlug)
+    path = _resolve(asset.storage_uri)
     return FileResponse(
         path,
-        media_type=doc.get("content_type", "image/png"),
+        media_type=asset.content_type,
         headers={"Cache-Control": "public, max-age=86400"},
     )
 
 
 @router.get("/{imageSlug}/thumbnail")
-async def get_image_thumbnail(imageSlug: str):
-    doc = await get_image_asset(imageSlug)
+async def get_image_thumbnail(imageSlug: str) -> FileResponse:
+    asset = await get_image_asset(imageSlug)
     # Serve the thumbnail file if one exists, otherwise fall back to the primary
-    # ``storage_uri`` (the ``thumbnail_uri is None`` no-thumbnail case — invariant
-    # 18; preserves the prior fallback).
-    thumbnail_uri = doc.get("thumbnail_uri")
-    if thumbnail_uri:
-        path = _resolve(thumbnail_uri)
-        content_type = doc.get("thumbnail_content_type", "image/avif")
+    # storage uri (the ``thumbnail_uri is None`` no-thumbnail case — invariant
+    # 18; preserves the prior fallback). D.W3 γ: typed field access.
+    if asset.thumbnail_uri is not None:
+        path = _resolve(asset.thumbnail_uri)
+        content_type = asset.thumbnail_content_type or "image/avif"
     else:
-        path = _resolve(doc["storage_uri"])
-        content_type = doc.get("content_type", "image/png")
+        path = _resolve(asset.storage_uri)
+        content_type = asset.content_type
     return FileResponse(
         path,
         media_type=content_type,
@@ -166,7 +167,7 @@ async def get_image_thumbnail(imageSlug: str):
 
 
 @router.get("/{imageSlug}/overlay")
-async def get_image_overlay(imageSlug: str, resize: int = 1024):
+async def get_image_overlay(imageSlug: str, resize: int = 1024) -> StreamingResponse:
     """Serve the image resized to match contour extraction dimensions.
 
     The returned image is in the same pixel space that contour coordinates
@@ -174,14 +175,14 @@ async def get_image_overlay(imageSlug: str, resize: int = 1024):
     """
     from PIL import Image as PILImage
 
-    doc = await get_image_asset(imageSlug)
-    data, _ = image_bytes(doc)
+    asset = await get_image_asset(imageSlug)
+    data, _ = image_bytes(asset)
 
-    def _resize():
+    def _resize() -> tuple[bytes, str, tuple[int, int]]:
         from PIL import ImageOps
-        img = PILImage.open(io.BytesIO(data))
-        img = ImageOps.exif_transpose(img)
-        img = img.convert("RGB")
+        opened = PILImage.open(io.BytesIO(data))
+        transposed = ImageOps.exif_transpose(opened)
+        img: PILImage.Image = (transposed or opened).convert("RGB")
         if resize:
             ratio = resize / max(img.size)
             new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
@@ -210,13 +211,13 @@ async def get_image_overlay(imageSlug: str, resize: int = 1024):
 
 
 @router.post("/{imageSlug}/extract-contour", dependencies=[Depends(require_compute_limit)])
-async def extract_contour(imageSlug: str, req: ExtractContourRequest):
-    doc = await get_image_asset(imageSlug)
+async def extract_contour(imageSlug: str, req: ExtractContourRequest) -> Any:
+    asset = await get_image_asset(imageSlug)
     cs = req.contour_settings
     db = get_db()
 
     # Check extraction cache before running the expensive pipeline
-    cache_key = extraction_cache_key(doc["sha256"], cs)
+    cache_key = extraction_cache_key(asset.sha256, cs)
     existing = await db.contours.find_one({"extraction_cache_key": cache_key})
     if existing:
         from api.services.database import touch_document
@@ -225,11 +226,11 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest):
         logger.info("extraction cache hit for %s (key=%s…)", imageSlug, cache_key[:12])
         return contour_response(existing)
 
-    tmp = image_tempfile(doc)
+    tmp = image_tempfile(asset)
     try:
         result = await computation.compute_contours(
             Path(tmp.name),
-            cs.to_contour_config(),
+            cs.to_contour_config(),  # type: ignore[no-untyped-call]
         )
     except HTTPException:
         raise

@@ -8,9 +8,10 @@ view* — a read-only list of ``visibility="public"`` live rows — kept as the
 stable frontend-facing path while the consumer migration (B.W4) re-points the
 web client onto ``/api/visualizations``.
 
-``_entry_from_doc`` is retained because ``api/routers/admin.py`` consumes it for
-moderation over the legacy ``gallery`` collection, which survives as rollback
-substrate until the B.W5 close ceremony (hard-gate item 9).
+The legacy ``gallery`` collection (and its helper, response model, and boot
+indexes) was deleted at fourier-D.W3 γ once a live-tree grep confirmed zero
+writers and zero readers outside the out-of-scope migration + legacy-fixture
+tests.
 """
 
 from __future__ import annotations
@@ -21,18 +22,11 @@ import logging
 from fastapi import APIRouter, Query, Response
 
 from api.lib.crud import cursors, errors, softdelete
-from api.models.gallery import GalleryEntryResponse
 from api.services.database import get_db
 
 logger = logging.getLogger(__name__)
 
 gallery_router = APIRouter(prefix="/api/gallery", tags=["gallery"])
-
-
-def _entry_from_doc(doc: dict) -> GalleryEntryResponse:
-    """Build a response model from a legacy gallery document (admin.py consumer)."""
-    data = {k: v for k, v in doc.items() if k not in ("_id", "liked_ips")}
-    return GalleryEntryResponse(**data)
 
 
 def _public_doc(doc: dict) -> dict:

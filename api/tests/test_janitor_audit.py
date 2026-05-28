@@ -1,13 +1,18 @@
 """C.W3 §A.4 spec — the janitor is a peer writer into ``admin_audit``.
 
+Reconciled at fourier-D.W3 γ: the two gallery-cascade audit rows
+(``janitor:cascade_delete_gallery_for_images`` and
+``janitor:cascade_delete_gallery``) were retired along with the dead
+``gallery`` collection — the eleven-row ledger is now a nine-row ledger.
+
 Two layers of proof, mirroring ``test_janitor_bounded_query.py``:
 
 1. **Source grep (runs without Mongo)** — ``api/services/janitor.py`` factors a
-   single ``_log_janitor_audit`` helper and wires it to all eleven destructive
-   sweeps of §A.2; the helper carries the ``"system:janitor"`` sentinel and the
-   ``count >= 1`` gate; the model is not loosened. This arm gates even in a
-   Mongo-less CI, so a new destructive op added without an audit emission fails
-   the suite loudly.
+   single ``_log_janitor_audit`` helper and wires it to all nine destructive
+   sweeps of §A.2 (post-D.W3); the helper carries the ``"system:janitor"``
+   sentinel and the ``count >= 1`` gate; the model is not loosened. This arm
+   gates even in a Mongo-less CI, so a new destructive op added without an
+   audit emission fails the suite loudly.
 2. **Behaviour (``@requires_mongo``)** — against a throwaway Mongo, the five
    integration tests R4 binds: each sweep writes its row; a zero-effect sweep
    writes none; a re-run is idempotent and does not double-count; the
@@ -32,17 +37,16 @@ from conftest import requires_mongo, run_db
 
 _JANITOR_SRC = Path(__file__).resolve().parents[1] / "services" / "janitor.py"
 
-# The eleven destructive sweeps of §A.2, by their ``janitor:<sweep>`` action.
+# The nine destructive sweeps of §A.2 (reconciled at fourier-D.W3 γ; the two
+# gallery-cascade rows were retired with the dead ``gallery`` collection).
 # This list is the contract: every destructive op MUST appear here and be wired
 # to ``_log_janitor_audit`` — the source-grep arm fails loudly otherwise.
 _EXPECTED_ACTIONS = [
     "janitor:hard_delete_visualizations",
     "janitor:prune_contours",
-    "janitor:cascade_delete_gallery_for_images",
     "janitor:prune_images",
     "janitor:delete_expired_sessions",
     "janitor:cascade_soft_delete_visualizations",
-    "janitor:cascade_delete_gallery",
     "janitor:cascade_delete_flags",
     "janitor:cascade_delete_sessions",
     "janitor:delete_stale_users",
@@ -56,19 +60,19 @@ _EXPECTED_ACTIONS = [
 
 
 def test_single_helper_wired_to_every_destructive_sweep():
-    """One ``_log_janitor_audit`` helper, eleven call-sites (§A.2 / hard-gate 1)."""
+    """One ``_log_janitor_audit`` helper, nine call-sites (§A.2 post-D.W3 γ)."""
     src = _JANITOR_SRC.read_text()
-    # One definition + eleven invocations == twelve mentions of the token.
-    assert src.count("_log_janitor_audit") >= 12, (
-        "expected one _log_janitor_audit definition plus eleven call-sites"
+    # One definition + nine invocations == ten mentions of the token.
+    assert src.count("_log_janitor_audit") >= 10, (
+        "expected one _log_janitor_audit definition plus nine call-sites"
     )
     # Count the invocations specifically (the ``await _log_janitor_audit(`` form).
     invocations = len(re.findall(r"await\s+_log_janitor_audit\(", src))
-    assert invocations == 11, f"expected 11 audit emissions, found {invocations}"
+    assert invocations == 9, f"expected 9 audit emissions, found {invocations}"
 
 
 def test_every_expected_action_string_is_emitted():
-    """Each of the eleven §A.2 ``janitor:<sweep>`` action strings appears in source."""
+    """Each of the nine §A.2 ``janitor:<sweep>`` action strings appears in source."""
     src = _JANITOR_SRC.read_text()
     for action in _EXPECTED_ACTIONS:
         assert f'"{action}"' in src, f"missing audit emission for {action}"
@@ -117,12 +121,17 @@ async def _janitor_rows(db) -> list[dict]:
 
 
 async def _seed_full_deletable_set(db, now: datetime) -> None:
-    """Seed one deletable document per sweep so a single cycle exercises all eleven rows.
+    """Seed one deletable document per sweep so a single cycle exercises all nine rows.
 
     Caveat (§A.4 Test 1): the pin recompute runs first and re-pins any contour /
     image referenced by a LIVE visualization. The seeded contour / image are NOT
     referenced by any live viz, so the recompute leaves them ``pinned=False`` and
     the recency prune reaps them.
+
+    Reconciled at fourier-D.W3 γ: the two gallery-cascade seed rows
+    (``gallery.insert_one`` for the image cascade and the stale-user cascade)
+    were removed along with the dead ``gallery`` collection. The remaining
+    seed exercises the nine surviving destructive sweeps.
     """
     await _ensure_merge_indexes(db)
     grace_old = now - _ANCIENT
@@ -137,24 +146,24 @@ async def _seed_full_deletable_set(db, now: datetime) -> None:
         {"contour_hash": "old-contour", "pinned": False, "last_accessed_at": grace_old}
     )
 
-    # Rows 3 + 4: an old, unpinned image + a gallery entry referencing it.
+    # Row 3: an old, unpinned image (the legacy gallery-cascade row 4 retired).
     await db.images.insert_one(
         {"image_slug": "old-image", "pinned": False, "last_accessed_at": grace_old}
     )
-    await db.gallery.insert_one({"slug": "gal-for-image", "image_slug": "old-image"})
 
-    # Row 5: an expired session (not owned by the stale user, so it is reaped by
-    # the expired-sessions sweep specifically).
+    # Row 4 (was 5): an expired session (not owned by the stale user, so it is
+    # reaped by the expired-sessions sweep specifically).
     await db.sessions.insert_one(
         {"slug": "expired-sess", "user_slug": "fresh-owner", "expires_at": now - timedelta(days=1)}
     )
 
-    # Rows 6–10: a stale user with referencing live viz / gallery / flags / sessions.
+    # Rows 5–8 (was 6–10): a stale user with referencing live viz / flags /
+    # sessions. The legacy ``gallery`` cascade row was retired with the
+    # collection.
     await db.users.insert_one({"_id": "stale-user", "last_seen_at": grace_old})
     await db.visualizations.insert_one(
         {"slug": "stale-user-viz", "owner_slug": "stale-user", "deleted_at": None}
     )
-    await db.gallery.insert_one({"slug": "stale-user-gal", "user_slug": "stale-user"})
     await db.flags.insert_one({"slug": "stale-user-flag", "reporter_slug": "stale-user"})
     await db.sessions.insert_one(
         {
@@ -164,7 +173,7 @@ async def _seed_full_deletable_set(db, now: datetime) -> None:
         }
     )
 
-    # Row 11: an old admin_audit row past the 90-day retention window.
+    # Row 9 (was 11): an old admin_audit row past the 90-day retention window.
     await db.admin_audit.insert_one(
         {
             "timestamp": now - _ANCIENT,
@@ -217,16 +226,16 @@ def test_each_sweep_writes_its_audit_row():
     for action in cutoff_bearing:
         assert "cutoff=" in by_action[action]["target"], f"{action}: missing cutoff= clause"
 
-    # The cohort-bounded cascades carry the ``users=`` facet; the image cascade
-    # carries the ``images=`` facet.
+    # The cohort-bounded cascades carry the ``users=`` facet. The legacy
+    # ``janitor:cascade_delete_gallery_for_images`` row (with its ``images=``
+    # facet) and the ``janitor:cascade_delete_gallery`` row were retired at
+    # fourier-D.W3 γ along with the dead ``gallery`` collection.
     for action in (
         "janitor:cascade_soft_delete_visualizations",
-        "janitor:cascade_delete_gallery",
         "janitor:cascade_delete_flags",
         "janitor:cascade_delete_sessions",
     ):
         assert "users=1" in by_action[action]["target"], f"{action}: missing users= facet"
-    assert "images=1" in by_action["janitor:cascade_delete_gallery_for_images"]["target"]
 
 
 @requires_mongo
@@ -289,9 +298,10 @@ def test_partial_cascade_self_heals():
         now = datetime.now(UTC)
         grace_old = now - _ANCIENT
 
-        # A stale user whose gallery cascade was already applied out-of-band
-        # (simulating a crash AFTER the gallery delete but BEFORE the user
-        # delete): the user is still alive, the flags/sessions still reference it.
+        # A stale user whose cascade was already partially applied out-of-band
+        # (simulating a crash BEFORE the user delete): the user is still alive,
+        # the flags/sessions still reference it; re-derivation must finish the
+        # cascade and finally delete the user.
         await db.users.insert_one({"_id": "half-reaped", "last_seen_at": grace_old})
         await db.flags.insert_one({"slug": "orphan-flag", "reporter_slug": "half-reaped"})
         await db.sessions.insert_one(
@@ -301,7 +311,6 @@ def test_partial_cascade_self_heals():
                 "expires_at": now + timedelta(days=7),
             }
         )
-        # NB: no gallery row — that cascade already ran before the simulated crash.
 
         await janitor._cleanup_cycle()
 

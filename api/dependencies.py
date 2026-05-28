@@ -9,12 +9,15 @@ import logging
 import re
 import time
 from datetime import UTC, datetime
+from typing import Any, cast
 
 from fastapi import HTTPException, Request
 from PIL import Image, ImageOps
+from pydantic import ValidationError
 from pymongo import ReturnDocument
 
 from api.config import settings
+from api.models.assets import ImageAsset
 from api.services.database import get_db, touch_document
 
 logger = logging.getLogger(__name__)
@@ -44,28 +47,46 @@ def validate_image_slug(slug: str) -> str:
     return slug
 
 
-async def get_image_asset(image_slug: str) -> dict:
-    """Fetch full image document (including blob). 404 if not found."""
+async def get_image_asset(image_slug: str) -> ImageAsset:
+    """Fetch full image document and return the typed asset.
+
+    404 if the image is absent. 410 if the document is pre-migration (lacks
+    the ``storage_uri`` field that the typed ``ImageAsset`` model requires) —
+    a Pydantic ``ValidationError`` at the model boundary is surfaced as a
+    clean 410 ``Gone`` rather than swallowed as a 500 ``KeyError`` deeper in
+    the call chain (D.W3 γ ``W3.G_typed-shim-hardening``).
+    """
     image_slug = validate_image_slug(image_slug)
     db = get_db()
     doc = await db.images.find_one({"image_slug": image_slug})
     if doc is None:
         raise HTTPException(status_code=404, detail="Image not found")
+    try:
+        asset = ImageAsset.model_validate(doc)
+    except ValidationError as exc:
+        logger.warning(
+            "Pre-migration image asset rejected by typed shim: %s (%s)",
+            image_slug,
+            exc.errors(include_url=False),
+        )
+        raise HTTPException(
+            status_code=410, detail="Image asset is pre-migration and unavailable"
+        )
     await touch_document("images", {"image_slug": image_slug})
-    return doc
+    return asset
 
 
-async def get_image_meta(image_slug: str) -> dict:
+async def get_image_meta(image_slug: str) -> dict[str, Any]:
     """Fetch image metadata (excluding blob). 404 if not found."""
     image_slug = validate_image_slug(image_slug)
     db = get_db()
     doc = await db.images.find_one({"image_slug": image_slug}, {"blob": 0})
     if doc is None:
         raise HTTPException(status_code=404, detail="Image not found")
-    return doc
+    return cast("dict[str, Any]", doc)
 
 
-async def get_contour(contour_hash: str) -> dict:
+async def get_contour(contour_hash: str) -> dict[str, Any]:
     """Fetch contour document. 404 if not found.
 
     Lazily backfills ``image_bounds`` for pre-migration contours by loading
@@ -81,29 +102,44 @@ async def get_contour(contour_hash: str) -> dict:
     if doc.get("image_bounds") is None and doc.get("image_slug"):
         doc = await _backfill_image_bounds(db, doc)
 
-    return doc
+    return cast("dict[str, Any]", doc)
 
 
-async def _backfill_image_bounds(db, contour_doc: dict) -> dict:
-    """Compute and persist image_bounds for a contour that lacks it."""
+async def _backfill_image_bounds(db: Any, contour_doc: dict[str, Any]) -> dict[str, Any]:
+    """Compute and persist image_bounds for a contour that lacks it.
+
+    The fetched image document is validated through ``ImageAsset`` — a
+    pre-migration shape (missing ``storage_uri``) becomes a typed
+    ``ValidationError`` here rather than a ``KeyError`` swallowed by the
+    broad ``except`` below; the bounds backfill silently skips that
+    contour (the prior C10 silent-degradation mode is foreclosed at the
+    typed shim, not at the projection).
+    """
     from api.services.image_storage import image_bytes
 
-    # C10 (C.W5): project the shim's fields, NOT the retired inline ``blob``.
-    # The prior ``{"blob": 1, "content_type": 1}`` inclusion-mode projection
-    # starved the shim of ``storage_uri`` on a migrated doc — even the shim could
-    # not rescue it — so the read silently degraded overlay alignment. Include
-    # ``storage_uri`` so ``image_bytes`` resolves the relocated file.
+    # C10 (C.W5): project the shim's required fields. The required
+    # ``image_slug`` is the projection key (Pydantic needs it on construct);
+    # ``storage_uri`` + ``content_type`` are the bytes-resolution inputs.
     image_doc = await db.images.find_one(
         {"image_slug": contour_doc["image_slug"]},
-        {"storage_uri": 1, "content_type": 1},
+        {"image_slug": 1, "storage_uri": 1, "content_type": 1},
     )
     if image_doc is None:
         return contour_doc
 
     try:
-        data, _ = image_bytes(image_doc)
-        img = Image.open(io.BytesIO(data))
-        img = ImageOps.exif_transpose(img)
+        asset = ImageAsset.model_validate(image_doc)
+    except ValidationError:
+        logger.warning(
+            "Pre-migration image rejected by typed shim during bounds backfill: %s",
+            contour_doc.get("image_slug"),
+        )
+        return contour_doc
+
+    try:
+        data, _ = image_bytes(asset)
+        opened = Image.open(io.BytesIO(data))
+        img: Image.Image = ImageOps.exif_transpose(opened) or opened
         orig_w, orig_h = img.size
         img.close()
 
@@ -193,7 +229,7 @@ async def resolve_session(request: Request) -> str | None:
         {"_id": user_slug},
         {"$set": {"last_seen_at": datetime.now(UTC)}},
     )
-    return user_slug
+    return cast("str", user_slug)
 
 
 def invalidate_suspension_cache(user_slug: str) -> None:

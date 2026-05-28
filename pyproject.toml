@@ -46,3 +46,21 @@ line-length = 100
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+# fourier-D.W3 γ — the four asset-resolution-path modules are mypy --strict
+# clean once the external Motor/PIL/pillow_heif boundaries are silenced. The
+# typed ``ImageAsset`` shim is the load-bearing artefact; the external
+# boundaries (PIL ``Image``, Motor cursors, fourier_analysis stubs) are out
+# of scope per W3 §4 T4 (PIL + Motor are not project surface).
+
+[[tool.mypy.overrides]]
+module = [
+    "pillow_heif",
+    "fourier_analysis.*",
+    "PIL.*",
+    "motor.*",
+    "bson.*",
+    "pymongo.*",
+    "coolname.*",
+]
+ignore_missing_imports = true

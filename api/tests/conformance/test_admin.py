@@ -4,7 +4,7 @@
 (no token → 503 admin-not-configured; wrong token → 403). The moderation rows
 drive the admin router coroutines against a throwaway Mongo: every mutation
 writes one ``admin_audit`` row (C7.1); suspend is idempotent and audited twice
-(C7.2); the ``(snapshot_hash, reporter_slug)`` unique index forecloses a
+(C7.2); the ``(content_hash, reporter_slug)`` unique index forecloses a
 double-flag (C7.4); ``?hard=true`` bypasses the §5 grace window in one op
 (C7.5); the batch return carries the unified ``{ok, affected}`` shape (C7.6 —
 the W5.c contract-bug fix; not the retired ``{processed, errors}``).
@@ -116,13 +116,13 @@ def test_idempotent_suspend():
 
 @requires_mongo
 def test_flag_uniqueness():
-    """C7.4 — ``(snapshot_hash, reporter_slug)`` is unique; a double-flag raises DuplicateKeyError."""
+    """C7.4 — ``(content_hash, reporter_slug)`` is unique; a double-flag raises DuplicateKeyError."""
     async def body(db):
-        await db.flags.create_index([("snapshot_hash", 1), ("reporter_slug", 1)], unique=True)
-        await db.flags.insert_one({"snapshot_hash": "h", "reporter_slug": "r", "reason": "spam"})
+        await db.flags.create_index([("content_hash", 1), ("reporter_slug", 1)], unique=True)
+        await db.flags.insert_one({"content_hash": "h", "reporter_slug": "r", "reason": "spam"})
         try:
             await db.flags.insert_one(
-                {"snapshot_hash": "h", "reporter_slug": "r", "reason": "other"}
+                {"content_hash": "h", "reporter_slug": "r", "reason": "other"}
             )
             return "no-error"
         except DuplicateKeyError:

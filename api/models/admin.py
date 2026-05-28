@@ -67,7 +67,9 @@ class FlagInfo(BaseModel):
 
 
 class FlaggedEntryInfo(BaseModel):
-    snapshot_hash: str
+    # The visualization's content_hash — the ``flags`` collection's FK key
+    # (the renamed identity slot, fourier-D.W3 γ).
+    content_hash: str
     flag_count: int
     flags: list[FlagInfo]
     # Palette metadata (joined)
@@ -114,5 +116,5 @@ class CursorInfo(BaseModel):
 
 
 class GalleryCursorResponse(BaseModel):
-    items: list  # GalleryEntryResponse list, imported at usage site
+    items: list  # built ad-hoc in the router (public_doc projection)
     cursor: CursorInfo
