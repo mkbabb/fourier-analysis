@@ -193,12 +193,14 @@ done
 # ------------------------------------------------------------------------------
 echo
 echo "=== SUMMARY ==="
+# set -u guard: ${ARR[@]+"${ARR[@]}"} expands to nothing when the array is empty,
+# avoiding "unbound variable" under `set -u`.
 echo "CREATE: ${#SUMMARY_CREATE[@]}"
-for s in "${SUMMARY_CREATE[@]}"; do echo "  + $s"; done
+for s in ${SUMMARY_CREATE[@]+"${SUMMARY_CREATE[@]}"}; do echo "  + $s"; done
 echo "UPDATE: ${#SUMMARY_UPDATE[@]}"
-for s in "${SUMMARY_UPDATE[@]}"; do echo "  ~ $s"; done
+for s in ${SUMMARY_UPDATE[@]+"${SUMMARY_UPDATE[@]}"}; do echo "  ~ $s"; done
 echo "SKIP:   ${#SUMMARY_SKIP[@]}"
-for s in "${SUMMARY_SKIP[@]}"; do echo "  = $s"; done
+for s in ${SUMMARY_SKIP[@]+"${SUMMARY_SKIP[@]}"}; do echo "  = $s"; done
 echo
 echo "Don't-break list preserved by construction (loop iterates targets, not zone)."
 echo "Run 'dig +short <name>' to verify resolution after CF propagation (~10-60s)."
