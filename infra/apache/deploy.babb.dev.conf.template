@@ -1,0 +1,44 @@
+# D.W10 — `deploy.babb.dev` Apache vhost — tracked manual template
+#
+# Closes the GitHub webhook URL residual (per
+# coordination/CONSTELLATION-DEPLOY.md §3.2.a's deploy.babb.dev path
+# + the webhook-URL residual recorded by W8). The five sibling repos
+# (mkbabb/fourier-analysis, mkbabb/words/floridify, mkbabb/speedtest,
+# mkbabb/value.js, mkbabb/csp-solver) move their GitHub webhook target
+# from `https://mbabb.friday.institute/deploy/hooks/deploy` to
+# `https://deploy.babb.dev/hooks/deploy` — the deploy receiver is the
+# host's `adnanh/webhook` daemon bound to `:9000` (W8 + Wχ inventory).
+#
+# Per W10.md §2.1 sibling-isolation discipline: ONE concrete vhost file
+# at /etc/apache2/sites-available/deploy.babb.dev.conf. The HTTP→HTTPS
+# redirect on *:80 is served by the existing babb-dev.conf *:80 block
+# (which already aliases the babb.dev names + carries the
+# /.well-known/acme-challenge/ exemption). NO new *:80 block here.
+#
+# Instantiation:
+#   sudo cp infra/apache/deploy.babb.dev.conf.template \
+#           /etc/apache2/sites-available/deploy.babb.dev.conf
+#   sudo a2ensite deploy.babb.dev
+#   sudo apache2ctl configtest          # MUST exit 0 before reload
+#   sudo systemctl reload apache2
+
+<VirtualHost *:443>
+    ServerName deploy.babb.dev
+
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/sudoku.babb.dev/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/sudoku.babb.dev/privkey.pem
+
+    ProxyPreserveHost On
+    ProxyRequests Off
+    ProxyTimeout 120
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Port "443"
+
+    ProxyPass        / http://localhost:9000/
+    ProxyPassReverse / http://localhost:9000/
+</VirtualHost>

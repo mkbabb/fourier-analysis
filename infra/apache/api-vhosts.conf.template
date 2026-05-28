@@ -1,0 +1,51 @@
+# D.W10 — per-`api.<app>.babb.dev` Apache vhost — tracked manual template
+#
+# Per W10.md §2.1 (the NA5 §1.3 canonical form). Per W10.md H4 (the manual-
+# template path — NOT certbot-generated). Per CONSTELLATION-DEPLOY.md §3.2.a
+# (the grey-cloud + origin-LE TLS plane; the cert at
+# /etc/letsencrypt/live/sudoku.babb.dev/fullchain.pem is shared across all
+# constellation vhosts and was expanded by W10 to include the api.<app> SANs).
+#
+# Sibling-isolation discipline (Wχ-P1.C1): this template lands ONE concrete
+# vhost file per `api.<app>` hostname (no `<VirtualHost>` block edits to the
+# existing babb-dev.conf). Per-app files keep each origin's failure domain
+# disjoint and a2dissite/a2ensite atomic.
+#
+# Gateway port table (W10.md §2.1 + CONSTELLATION-DEPLOY.md §8.2):
+#   api.fourier.babb.dev → localhost:8100  (fourier-analysis-nginx-1)
+#   api.color.babb.dev   → localhost:8130  (palette-api-api-1, Hono)
+#   api.sudoku.babb.dev  → localhost:8120  (csp-solver-nginx-1)
+#
+# Instantiation:
+#   sed -e 's/<APP>/fourier/g' -e 's/<GATEWAY_PORT>/8100/g' \
+#       infra/apache/api-vhosts.conf.template \
+#       > /etc/apache2/sites-available/api-fourier.babb.dev.conf
+#   sudo a2ensite api-fourier.babb.dev
+#   sudo apache2ctl configtest          # MUST exit 0 before reload
+#   sudo systemctl reload apache2
+#
+# The HTTP→HTTPS redirect on *:80 is served by the existing
+# /etc/apache2/sites-enabled/babb-dev.conf's `<VirtualHost *:80>` block
+# (which already carries the /.well-known/acme-challenge/ exemption per
+# Wχ-P5). NO new *:80 block lands here — sibling-isolation.
+
+<VirtualHost *:443>
+    ServerName api.<APP>.babb.dev
+
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/sudoku.babb.dev/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/sudoku.babb.dev/privkey.pem
+
+    ProxyPreserveHost On
+    ProxyRequests Off
+    ProxyTimeout 120
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Port "443"
+
+    ProxyPass        / http://localhost:<GATEWAY_PORT>/
+    ProxyPassReverse / http://localhost:<GATEWAY_PORT>/
+</VirtualHost>
