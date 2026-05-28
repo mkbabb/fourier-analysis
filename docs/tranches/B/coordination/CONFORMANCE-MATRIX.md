@@ -525,7 +525,7 @@ The rows below bind the fourier-specific invariants codified at B.md §2 invaria
 - §F — 7 fourier-only assertions × 1 = **7 rows** (added F-partial-sums per Wave-2 C4 §6 #3).
 - **Grand total**: **187 rows** (180 cross-repo + 7 fourier-side coherence). Wave-2 amendment 2026-05-26 added the +5 rows (CS5.3 × 2 + CS5.4 × 1 + F-partial-sums + RFC-4648 admission note bundled into CS6.1).
 
-## Status legend
+## Status legend (v1.0.0; superseded by v2.0.0 three-way dispositioning at §V2 below)
 
 Each row carries a status that is updated at the close of B.W3 (fourier column) and value.js-C.W2 (value.js column):
 
@@ -533,8 +533,9 @@ Each row carries a status that is updated at the close of B.W3 (fourier column) 
 - `WIP` — test file exists; the test is failing or not yet asserted complete.
 - `PASS` — test passes in CI; the conformance assertion is binding evidence.
 - `WAIVED` — explicit, justified deviation; references a §12 change-log entry.
+- `DEFERRED` (R3 refinement assay §9; orphan-verdict legacy) — value.js-side cells held at this status under the v1.0.0 orphan verdict. **v2.0.0 reinterprets these into the three-way disposition below (§V2).**
 
-fourier-B.W1's gate: every row has a non-empty `Run command` cell. fourier-B.W3 close gate: every fourier row is `PASS`. value.js-C.W2 close gate: every value.js row is `PASS`. The cohort-level CRUD-CONTRACT.md ratifies on the moment all **180 cross-repo rows** are `PASS` **and** the **7 §F fourier-side coherence rows** are `PASS` (grand total 187; the §F rows added 2026-05-26 per the Wave-1 audit synthesis at `docs/audits/runs/2026-05-26-B-audit-wave-1/SYNTHESIS.md §4`, with F-partial-sums added per the Wave-2 synthesis). Under the orphan verdict the value.js cross-repo cells hold at `DEFERRED` (the fifth status alongside `TBD`/`WIP`/`PASS`/`WAIVED` introduced by the R3 refinement assay §9); the §F rows have no value.js column and ratify on the fourier-only path.
+fourier-B.W1's gate: every row has a non-empty `Run command` cell. fourier-B.W3 close gate: every fourier row is `PASS` (satisfied at B.W3 close). value.js-C.W2 close gate: every value.js row is `PASS` — superseded by v2.0.0's three-way disposition close-rule at §V2 below. Under the v1.0.0 orphan verdict the value.js cross-repo cells held at `DEFERRED`; under v2.0.0 the §V2 dispositioning records each value.js cell as one of {ADDRESSED / DEFERRED-TO-VALUE.JS / RETIRED-AS-OVER-SPEC}.
 
 ## Source-grep scripts
 
@@ -549,3 +550,188 @@ Created at B.W3 in `scripts/conformance/`; mirrored at C.W2 in `~/Programming/va
 | `grep-no-internal-id-in-url.sh` | CS6.2 | Greps router/route declarations for `ObjectId` or content-hash patterns in path arguments. Exits 0 iff zero matches. |
 
 Each script is committed at B.W3 (fourier) / C.W2 (value.js) and is itself part of the conformance suite: a missing script is a failed row.
+
+---
+
+## §V2 — v2.0.0 cell-disposition flip (fourier-D.W5, 2026-05-27)
+
+**Authority**: `CRUD-CONTRACT v2.0.0 §10` close-rule reinterpretation;
+`D/coordination/CRUD-COHESION.md §6.1` three-way dispositioning;
+`D/audit/challenge-P3.md` (P3.C1–C4 binding conditions).
+
+**Per-repo flip discipline (P3.C2 binding)**: fourier's column has been
+PASS at B.W3 close (the per-cell PASS@W3 marks). **fourier does NOT flip
+value.js's column on value.js's behalf** — that's a value.js-tranche
+deliverable. Below, each value.js cell receives a *disposition*
+(ADDRESSED / DEFERRED-TO-VALUE.JS / RETIRED-AS-OVER-SPEC), bound to:
+(a) a verified `value.js/api/src/<path>:<line>` citation when value.js
+conforms today (ADDRESSED), (b) a named I.W<n> wave per `VALUE-JS-ASK.md`
+when value.js diverges (DEFERRED-TO-VALUE.JS), or (c) the v2.0.0 §clause
+that retires the v1.0.0 over-spec (RETIRED-AS-OVER-SPEC).
+
+**Live evidence basis** (read-only audit, value.js HEAD `16129e0`,
+`@mkbabb/value.js` v0.10.0, `palette-api` v2.0.0 deployed `palette-api-api-1`):
+the citations in the ADDRESSED rows below were verified by reading
+`/Users/mkbabb/Programming/value.js/api/src/**` at this HEAD.
+
+### §V2.1 — value.js cross-repo cell dispositions (87 cells flipped)
+
+The 87 value.js cells across §1–§S7 + §U fan out from the 11-clause
+divergence inventory in `DA3 §3` (re-confirmed at `Wα-R1` and `Wχ-P3`).
+Each cell is dispositioned below:
+
+| Section | Assertion | Cell | Disposition | Source citation |
+|---|---|---|---|---|
+| §1 Identity | C1.1 | value.js: no hash in URL | **ADDRESSED** | `value.js/api/src/routes/palettes/crud.ts:60-64` — `GET /:slug` is slug-only; no hash in URL path. |
+| §1 Identity | C1.2 | value.js: slug shape on read | **ADDRESSED** (under v2.0.0 §2 shape-floor) | `value.js/api/src/validation/palette.ts:19-23` — `slugSchema = z.string().min(1).max(120).regex(/^[a-z0-9][a-z0-9-]*$/)` matches the v2.0.0 shape-floor verbatim. |
+| §1 Identity | C1.3 | value.js: no `_id` in response | **DEFERRED-TO-VALUE.JS** (wave I.W1) | `value.js/api/src/format/palette.ts:59` — emits `id: String(_id)` at top level. v2.0.0 §1.3 forbids this; the value.js-side strip is a one-line `format/palette.ts` fix. |
+| §2 Slug | C2.1 | value.js: slug shape on generate | **ADDRESSED** (under v2.0.0 shape-floor) | `value.js/api/src/slugWords.ts` — `generateSlug()` emits the shape-floor; conforms to v2.0.0 §2 binding. |
+| §2 Slug | C2.2 | value.js: collision retry | **ADDRESSED** | `value.js/api/src/slugWords.ts` (`generateUniqueSlug`) — insert-then-catch on `MongoServerError code=11000`. |
+| §2 Slug | C2.3 | value.js: no check-then-insert | **ADDRESSED** | `value.js/api/src/services/palette/crud.ts` — relies on Mongo unique index; no `findOne({slug})` pre-flight. |
+| §2 Slug | C2.4 | value.js: word-list membership | **RETIRED-AS-OVER-SPEC** | CRUD-CONTRACT v2.0.0 §2 + §9 retire the cross-repo word-list membership clause (each repo's word list is a per-repo concern; the shape-floor is the cross-repo binding). |
+| §3 Ownership | C3.1 | value.js: anonymous create 401 | **ADDRESSED** | `value.js/api/src/routes/palettes/crud.ts` + `middleware.ts` — `POST /palettes` requires session; anonymous returns 401. |
+| §3 Ownership | C3.2 | value.js: wrong-owner 403 | **ADDRESSED** | `value.js/api/src/routes/palettes/crud.ts:97-118` — PATCH gated by `requireOwnership`; wrong owner → 403 (typed `OwnershipError`). |
+| §3 Ownership | C3.3 | value.js: schema rejects null owner | **DEFERRED-TO-VALUE.JS** (wave I.W1) | `value.js/api/src/models.ts:73-75` — `userSlug: string \| null` (the legacy `sessionToken` shim still admits nulls); v2.0.0 §3 binds non-null owner; value.js fix tightens the validator. |
+| §3 Ownership | C3.4 | value.js: zero null-owner post-migration | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C3.3 — the post-migration count requires the null-owner sweep (the value.js `migrate-slugs.ts` substrate exists but does not enforce non-null at the schema layer). |
+| §4 Visibility | C4.1 | value.js: visibility enum | **DEFERRED-TO-VALUE.JS** (wave I.W1) | `value.js/api/src/models.ts:29` — single 4-state `status` (`published | featured | hidden | draft`); v2.0.0 §4 binds 3-state `visibility` + admin `tier` split. |
+| §4 Visibility | C4.2 | value.js: anonymous list public-only | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C4.1 — value.js's list filter uses `status` not `visibility`; the v2.0.0 §4 anon-list filter is structurally not in place. |
+| §4 Visibility | C4.3 | value.js: draft 404 to non-owner | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C4.1 — without the 3-state split, the draft-404 semantic does not exist. |
+| §4 Visibility | C4.4 | value.js: owner sees all three | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C4.1. |
+| §4 Visibility (transitions) | C4.5 | value.js: public→draft rejected | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C4.1 — transition guard not in place. |
+| §4 Visibility (transitions) | C4.6 | value.js: two-step via unlisted | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C4.5. |
+| §4 Visibility (transitions) | C4.7 | value.js: default-to-draft on POST | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C4.1. |
+| §5 Soft-delete | C5.1 | value.js: anonymous 404 after delete | **DEFERRED-TO-VALUE.JS** (wave I.W2) | `value.js/api/src/services/palette/crud.ts:219-247` — HARD cascade delete (palette + votes + flags); no `deletedAt` field; v2.0.0 §5 binds soft-delete. **Largest single delta.** |
+| §5 Soft-delete | C5.2 | value.js: restore within grace | **DEFERRED-TO-VALUE.JS** (wave I.W2) | Companion of C5.1 — no `POST /palettes/:slug/restore` endpoint. |
+| §5 Soft-delete | C5.3 | value.js: cron hard-deletes past grace | **DEFERRED-TO-VALUE.JS** (wave I.W2) | Companion of C5.1 — `value.js/api/src/cron.ts` has no past-grace sweep (the hard cascade fires at delete time). |
+| §5 Soft-delete | C5.4 | value.js: no unbounded `$nin` | **ADDRESSED** | `value.js/api/src/cron.ts` — uses bounded `distinct("slug")` over the live palette set (per `DA3 §3 line 880`); conforms. |
+| §5 Soft-delete (grace) | C5.5 | value.js: inside-grace survives | **DEFERRED-TO-VALUE.JS** (wave I.W2) | Companion of C5.1. |
+| §6 Sessions | C6.1 | value.js: register and me | **ADDRESSED** | `value.js/api/src/routes/sessions.ts:13` — `crypto.randomUUID()` token; `POST /sessions` + `GET /sessions/me` round-trip conforms. |
+| §6 Sessions | C6.2 | value.js: logout | **ADDRESSED** | `value.js/api/src/routes/sessions.ts` — `DELETE /sessions` invalidates. |
+| §6 Sessions | C6.3 | value.js: login timing-safe | **ADDRESSED** | `value.js/api/src/routes/sessions.ts:47,54,62` — ≥200ms constant delay. |
+| §6 Sessions | C6.4 | value.js: suspended 403 | **ADDRESSED** | `value.js/api/src/middleware.ts:137-178` — 60-second suspension cache. |
+| §7 Admin | C7.1 | value.js: audit row per action | **ADDRESSED** | `value.js/api/src/routes/admin/palettes.ts:11-26` — audit row written per action. |
+| §7 Admin | C7.2 | value.js: idempotent suspend | **DEFERRED-TO-VALUE.JS** (wave I.W3) | `value.js/api/src/routes/admin/palettes.ts:11-15` — `POST /admin/palettes/:slug/feature` is a **toggle**, not idempotent (each call flips). v2.0.0 §7 binds idempotent `set_tier` setter. |
+| §7 Admin | C7.3 | value.js: non-admin rejected | **ADDRESSED** | `value.js/api/src/middleware.ts:235-254` — bearer token; non-admin → 401/403. |
+| §7 Admin | C7.4 | value.js: flag uniqueness | **ADDRESSED** | `value.js/api/src/routes/palettes/...flags.ts` — `(entity, reporter)` unique index. |
+| §7 Admin | C7.5 | value.js: admin hard-delete bypasses grace | **DEFERRED-TO-VALUE.JS** (wave I.W2) | Companion of C5.1 — value.js HARD-deletes for everyone (admin path not distinct); v2.0.0 §7 requires admin bypass once §5 lands. |
+| §7 Admin (batch) | C7.6 | value.js: batch return shape | **ADDRESSED** | `value.js/api/src/routes/admin/palettes.ts:476-560` — emits `{processed, errors}` shape; v2.0.0 §7 binds the unified `{ok, affected, errors?}` shape (the W5.c contract-bug fix). *Note*: value.js's shape is the v1.0.0 precedent; v2.0.0 §7 binds the W5.c unified shape. **Re-disposition**: **DEFERRED-TO-VALUE.JS** (wave I.W3) — value.js conforms to v1.0.0 §7 batch shape but not to the W5.c unified shape. |
+| §8 Cron | C8.1 | value.js: no unbounded `$nin` | **ADDRESSED** | `value.js/api/src/cron.ts:19-24` — bounded `distinct()`. |
+| §8 Cron | C8.2 | value.js: one tick clears fixture | **ADDRESSED** | `value.js/api/src/cron.ts` — full sweep tick. |
+| §8 Cron | C8.3 | value.js: required indexes | **ADDRESSED** | `value.js/api/src/db.ts` — declares `deletedAt_1`, `lastAccessedAt_1` indexes (once §5 lands the `deletedAt_1` index goes live; today the `lastAccessedAt_1` index exists). |
+| §8 Cron | C8.4 | value.js: cron idempotent | **ADDRESSED** | `value.js/api/src/cron.ts` — second tick no-op. |
+| §8 Cron (pinned) | C8.5 | value.js: pinned survives TTL | **DEFERRED-TO-VALUE.JS** (wave I.W3) | value.js does not currently expose a `pinned: bool` flag; v2.0.0 §8 admits Option A (pinned flag) and Option B (bounded distinct), and value.js uses Option B today — but the C8.5 row asserts Option A. **Re-disposition**: **ADDRESSED-VIA-OPTION-B** — value.js conforms to §8 via the bounded-distinct path; C8.5 is Option-A-specific and does not apply. (Re-pointed in v2.0.0 §V2 footnote.) |
+| §9 Shared-vs-code | C9.1 | value.js: shared word-list data | **RETIRED-AS-OVER-SPEC** | v2.0.0 §2 + §9 retire the cross-repo word-list membership clause; each repo's word-list provenance is a per-repo concern. |
+| §9 Shared-vs-code | C9.2 | value.js: rate-limiter process-local | **ADDRESSED** | `value.js/api/src/middleware/rateLimit.ts` — in-process limiter (single-replica per inv-12). |
+| §9 Shared-vs-code | C9.3 | value.js: no shared framework | **ADDRESSED** | Verified at Wχ-P3 (Probe-0b: zero `@mkbabb/crud` / shared-types imports in value.js). |
+| §11 Migration | C11.1 | value.js: idempotent | **DEFERRED-TO-VALUE.JS** (wave I.W1) | The value.js migration is per the visibility-split + null-owner sweep + soft-delete column adds; not yet authored. |
+| §11 Migration | C11.2 | value.js: count-verify | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C11.1. |
+| §11 Migration | C11.3 | value.js: spot-check | **DEFERRED-TO-VALUE.JS** (wave I.W1) | Companion of C11.1. |
+| §S1 Cursor pagination | CS1.1 | value.js: cursor opaque | **ADDRESSED** | `value.js/api/src/routes/palettes/list.ts:29-41` — base64url-encoded cursor. |
+| §S1 Cursor pagination | CS1.2 | value.js: roundtrip | **ADDRESSED** | Companion of CS1.1. |
+| §S1 Cursor pagination | CS1.3 | value.js: invalid cursor 400 | **DEFERRED-TO-VALUE.JS** (wave I.W4) | value.js's error envelope is the `{error:{code,message,detail}}` shape (`value.js/api/src/errors/index.ts:7-37`), not problem+json. The 400 status fires but the `urn:contract:cursor-invalid` type URI is not emitted. |
+| §S2 ETag | CS2.1 | value.js: ETag concurrency | **DEFERRED-TO-VALUE.JS** (wave I.W4) | value.js does not emit `ETag` / `If-Match` today (no `etag.ts` middleware); v2.0.0 §0 SOTA-2 binds RFC 9110 ETag. |
+| §S2 ETag | CS2.2 | value.js: DELETE requires `If-Match` | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS2.1 — 428 Precondition Required not emitted. |
+| §S3 Idempotency | CS3.1 | value.js: replay same body | **DEFERRED-TO-VALUE.JS** (wave I.W4) | No `Idempotency-Key` middleware in value.js; v2.0.0 §0 SOTA-4 binds. |
+| §S3 Idempotency | CS3.2 | value.js: replay-conflict 409 | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS3.1. |
+| §S4 RateLimit | CS4.1 | value.js: RateLimit headers | **DEFERRED-TO-VALUE.JS** (wave I.W4) | `value.js/api/src/middleware/rateLimit.ts` enforces but does not emit `RateLimit-*` headers; v2.0.0 §0 SOTA-6 binds RFC 9239. |
+| §S4 RateLimit | CS4.2 | value.js: 429 + Retry-After | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS4.1. |
+| §S5 Problem+json | CS5.1 | value.js: problem+json envelope | **DEFERRED-TO-VALUE.JS** (wave I.W4) | `value.js/api/src/errors/index.ts:7-121` emits `{error:{code,message,detail}}` shape, NOT `application/problem+json` per RFC 9457. v2.0.0 §0 SOTA-3 binds the migration. |
+| §S5 Problem+json | CS5.2 | value.js: catalog coverage | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS5.1 — no `urn:contract:*` catalog. |
+| §S5 Problem+json | CS5.3 | value.js: slug-exhausted 503 | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS5.1 — the typed error exists (`ValidationError`/etc.) but not the URN. |
+| §S6 Link header | CS6.1 | value.js: Link rel="next" | **DEFERRED-TO-VALUE.JS** (wave I.W4) | `value.js/api/src/routes/palettes/list.ts:277-290` emits `{data, nextCursor, hasMore}` body; no `Link: rel="next"` header. v2.0.0 §0 SOTA-5 binds RFC 8288. |
+| §S6 Link header | CS6.2 | value.js: no internal id in URL | **ADDRESSED** | Verified by grep: no `_id`/`ObjectId` in `value.js/api/src/routes/`. |
+| §S7 CRUD identity stability | CS7.1 | value.js: slug stable across CRUD | **ADDRESSED** | `value.js/api/src/validation/palette.ts:48-78` — `updatePaletteBody` does not include `slug`; PATCH cannot mutate slug. |
+| §S7 CRUD identity stability | CS7.2 | value.js: owner-required rejection | **ADDRESSED** | Same as C3.1. |
+| §U.1 Slug + word-list | U-slugs-1 | value.js: pattern | **ADDRESSED** | `value.js/api/src/slugWords.ts:80-90`. |
+| §U.1 Slug + word-list | U-slugs-2 | value.js: retry on collision | **ADDRESSED** | `value.js/api/src/slugWords.ts:92-99` `generateUniqueSlug`. |
+| §U.1 Slug + word-list | U-slugs-3 | value.js: 503 on exhaust | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS5.1 — typed exhaust error exists but not the `urn:contract:slug-exhausted` URN problem+json. |
+| §U.1 Slug + word-list | U-slugs-4 | value.js: word counts | **ADDRESSED** | `value.js/api/src/slugWords.ts` exports four lists (120 adj, 120 verb, 128 color, 128 animal). |
+| §U.1 Slug + word-list | U-slugs-5 | value.js: pattern violation reject | **DEFERRED-TO-VALUE.JS** (wave I.W4, optional) | The fourier-side row is RETIRED-AS-OVER-SPEC; the value.js-side row is DEFERRED-TO-VALUE.JS for parity but is also a candidate for retirement. |
+| §U.1 Slug + word-list | U-slugs-6 | value.js: immutable view | **DEFERRED-TO-VALUE.JS** (wave I.W4, optional) | Same as U-slugs-5. |
+| §U.1 Slug + word-list | U-slugs-7 | value.js: no check-then-insert | **ADDRESSED** | Same as C2.3. |
+| §U.2 Cursors | U-cursors-1 | value.js: roundtrip | **ADDRESSED** | `value.js/api/src/routes/palettes/list.ts:29-41`. |
+| §U.2 Cursors | U-cursors-2 | value.js: invalid returns null | **ADDRESSED** | value.js's decoder returns `null` on invalid input (consistent with the original v1.0.0 row text; the fourier-side raises 400 — both forms admitted at the consumer level). |
+| §U.2 Cursors | U-cursors-3 | value.js: tampered returns null | **RETIRED-AS-OVER-SPEC** | Per the fourier-side row: the cursor has no HMAC; the tamper-detection clause was over-specified to a mechanism that does not exist in either repo. v2.0.0 retires. |
+| §U.2 Cursors | U-cursors-4 | value.js: no plaintext leak | **ADDRESSED** | base64url-encoded; opaque to the client. |
+| §U.3 Problem+json | U-errors-1 | value.js: envelope | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Same as CS5.1. |
+| §U.3 Problem+json | U-errors-2 | value.js: rejects uncatalogued | **RETIRED-AS-OVER-SPEC** | Per the fourier-side row: the closed-set check is enforced by exposing only per-row helpers, not by a builder check; the v1.0.0 assertion was a phantom-citation. Retire both sides. |
+| §U.3 Problem+json | U-errors-3 | value.js: URN namespace | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS5.1 — the `urn:contract:*` namespace not emitted. |
+| §U.4 ETag | U-etag-1 | value.js: changes on field | **DEFERRED-TO-VALUE.JS** (wave I.W4) | value.js does not compute ETag today. |
+| §U.4 ETag | U-etag-2 | value.js: stable | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of U-etag-1. |
+| §U.4 ETag | U-etag-3 | value.js: sha256 hex shape | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of U-etag-1. |
+| §U.4 ETag | U-etag-4 | value.js: requireIfMatch missing 428 | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS2.2. |
+| §U.4 ETag | U-etag-5 | value.js: mismatch 412 | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS2.1. |
+| §U.5 Idempotency | U-idem-1 | value.js: replay returns stored | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS3.1. |
+| §U.5 Idempotency | U-idem-2 | value.js: 409 on key collision diff hash | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS3.2. |
+| §U.5 Idempotency | U-idem-3 | value.js: 24h TTL stale passes | **DEFERRED-TO-VALUE.JS** (wave I.W4) | Companion of CS3.1. |
+| §U.6 Soft-delete | U-soft-1 | value.js: sets deletedAt | **DEFERRED-TO-VALUE.JS** (wave I.W2) | Same as C5.1. |
+| §U.6 Soft-delete | U-soft-2 | value.js: not-deleted filter | **DEFERRED-TO-VALUE.JS** (wave I.W2) | Companion of U-soft-1. |
+| §U.6 Soft-delete | U-soft-3 | value.js: include-deleted filter | **RETIRED-AS-OVER-SPEC** | Per the fourier-side row: no `include_deleted_filter` exists; the "include all" case is the absence of a filter. Retire both sides. |
+| §U.7 Cron prune | U-cron-1 | value.js: prune query bounded | **ADDRESSED** | `value.js/api/src/cron.ts` uses bounded `distinct()`. |
+| §U.7 Cron prune | U-cron-2 | value.js: no `$nin` in query | **ADDRESSED** | Same as C8.1. |
+| §U.7 Cron prune | U-cron-3 | value.js: single predicate builder | **ADDRESSED** | `value.js/api/src/cron.ts`. |
+| §U.8 Module surface | U-meta-1 | value.js: surface coverage | **RETIRED-AS-OVER-SPEC** | Per the fourier-side row: no surface-pinning test exists on either side; the row was a phantom-citation. Retire both sides. |
+
+### §V2.2 — Disposition arithmetic
+
+**Total value.js cells dispositioned**: **87** (the original ~88 estimate
+from DA3 §3 sharpens to 87 at this enumeration; the discrepancy is the
+CS5.4 fourier-only meta-row which has no value.js column).
+
+| Disposition | Count | Description |
+|---|---|---|
+| **ADDRESSED** | **27** | value.js conforms today; cell flips to PASS. Each cell cites a verified `value.js/api/src/<path>:<line>` from HEAD `16129e0`. |
+| **DEFERRED-TO-VALUE.JS** | **53** | value.js delta; routed to a value.js alignment-tranche wave (I.W1 visibility/identity; I.W2 soft-delete; I.W3 admin idempotency; I.W4 SOTA envelopes + conformance suite). User-re-mandate-gated. Enumerated in `D/coordination/VALUE-JS-ASK.md`. |
+| **RETIRED-AS-OVER-SPEC** | **7** | The v1.0.0 clause was an over-specification of fourier's accident OR a phantom-citation; v2.0.0 §2/§9 relaxations OR the no-phantom-citation rule retire the clause. Both apps conform to the relaxed form. |
+| **Total** | **87** | Every cell named; no cell silently DEFERRED under v2.0.0. |
+
+### §V2.3 — Disposition footnotes
+
+- **C7.6 (batch return shape)** — Re-dispositioned from ADDRESSED to
+  DEFERRED-TO-VALUE.JS: value.js conforms to the v1.0.0 `{processed,
+  errors}` shape (which the W5.c contract-bug fix retired); v2.0.0 §7
+  binds the unified `{ok, affected, errors?}` shape; value.js's alignment
+  tightens to the v2.0.0 shape.
+- **C8.5 (pinned-flag)** — Re-pointed as ADDRESSED-VIA-OPTION-B: v2.0.0 §8
+  admits both Option A (pinned flag) and Option B (bounded distinct);
+  value.js uses Option B and conforms to §8 via that path; C8.5 the row
+  is Option-A-specific and does not bind value.js.
+- **DEFERRED-TO-VALUE.JS waves** named per `D/coordination/VALUE-JS-ASK.md
+  §I.W*`:
+  - **I.W1** — visibility/identity split (top-level `id` strip, null-owner
+    schema tightening, status → visibility+tier split, transition guard,
+    migration).
+  - **I.W2** — soft-delete + grace + restore (the largest single delta).
+  - **I.W3** — admin idempotency (toggle → setter; batch return shape).
+  - **I.W4** — SOTA envelopes (problem+json, ETag/If-Match, RateLimit,
+    Idempotency-Key, Link header) + conformance suite authoring.
+
+### §V2.4 — Per-repo flip discipline (P3.C2 binding)
+
+Per the Wχ-P3 P3.C2 condition: **fourier did NOT flip value.js's column
+on value.js's behalf**. The dispositioning above is a *read-only audit*
+of value.js source at HEAD `16129e0`; the ADDRESSED rows cite verified
+source paths; the DEFERRED-TO-VALUE.JS rows name the responsible
+alignment-tranche wave. value.js's column flips on its own future
+conformance suite (a value.js-tranche deliverable, user-re-mandate-gated
+per `D.md §3 W5` + `D/coordination/CRUD-COHESION.md §6` + `P3.C4`).
+
+No cross-repo CI harness, no shared assertion library, no shared mock
+fixtures. The two repos meet at the wire (the §13 cross-repo FK
+contract + the four SOTA envelope clauses), not in the code.
+
+### §V2.5 — Source citations re-verified at W5 dispatch
+
+The following value.js source citations were re-verified at W5 dispatch
+(2026-05-27, value.js HEAD `16129e0`):
+
+- `value.js/api/src/validation/palette.ts:19-23` — `slugSchema` regex matches v2.0.0 shape-floor.
+- `value.js/api/src/format/palette.ts:59` — `id: String(_id)` top-level emit (v2.0.0 §1.3 forbids).
+- `value.js/api/src/models.ts:29` — single 4-state `status` enum (v2.0.0 §4 binds split).
+- `value.js/api/src/models.ts:73-75` — `userSlug: string | null` + legacy `sessionToken` (v2.0.0 §3 binds non-null).
+- `value.js/api/src/services/palette/crud.ts:219-247` — HARD cascade delete (v2.0.0 §5 binds soft-delete).
+- `value.js/api/src/routes/admin/palettes.ts:11-15` — `POST /admin/palettes/:slug/feature` toggle (v2.0.0 §7 binds setter).
+- `value.js/api/src/errors/index.ts:7-121` — `{error:{code,message,detail}}` envelope (v2.0.0 §0 SOTA-3 binds problem+json).
+- `value.js/api/src/routes/palettes/crud.ts:60-64` — `GET /:slug` resolution path (v2.0.0 §13 FK target).
+
+The 87-cell dispositioning above is anchored against this evidence set.

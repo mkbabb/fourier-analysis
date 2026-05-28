@@ -1,46 +1,42 @@
 # CRUD-CONTRACT — fourier-analysis ⇄ value.js
 
+**Version: 2.0.0** (fourier-D.W5, 2026-05-27 — supersedes v1.0.0 by
+re-authoring per §12 changelog).
+
 The canonical specification both backends conform to for their slug-addressed
 CRUD entities. fourier owns the `visualization` noun; value.js owns the
-`palette` noun. This document binds *behaviour*, not implementation. Where
-the two diverge in language-specific shape (FastAPI vs Hono, Motor query
-syntax vs node-mongodb), the contract names the behaviour and the wave
-spec in each repo carries the literal code.
+`palette` noun. This document binds *observable CRUD behaviour at the HTTP
+boundary*, **not module layout**. Where the two diverge in language-specific
+shape (FastAPI vs Hono, Motor query syntax vs node-mongodb), the contract
+names the behaviour and each repo's wave specs carry the literal code.
 
-> **Cohort-status note (2026-05-26).** Per the orphan-verdict recorded at
-> `coordination/CRUD-CONSTELLATION.md`, this contract reached *drafted*
-> state at fourier-B.W1 but did not reach joint ratification with
-> value.js-C in the shape originally intended. The spec text below is
-> the substrate of record; the joint-ratification close-rule remains
-> the binding closure path for any successor tranche that reopens the
-> cohort.
+> **Version succession (2026-05-27).** This document is **v2.0.0**, authored
+> at fourier-D.W5. v2.0.0 supersedes v1.0.0 (`4626d4c`, fourier-B.W1 close,
+> 2026-05-26) by **re-authoring binding clauses**, not by amendment. The
+> v1.0.0 substrate is preserved in git history; v2.0.0 differs in §0, §2,
+> §10, and adds §13 (cross-repo `palette_slug` FK). The KISS-reject list,
+> SOTA-convention table, identity/ownership/visibility/soft-delete/sessions/
+> admin/cron clauses (§1, §3–§9), and migration discipline (§11) all
+> survive verbatim from v1.0.0 modulo wave-citation updates.
 
 ## Goal criterion (document-level)
 
 The aim: a single text both repos can point at as the binding behavioural
 spec for their shared slug-addressed CRUD surface. Read after the cohort
 authoring, a fresh engineer should be able to answer "what does both
-backends agree to do?" from this document alone, without reading either
-repo's source.
+backends agree to do at the wire?" from this document alone, without
+reading either repo's source.
 
 ## Completion criterion (document-level)
 
-The evidence: every numbered section §1–§12 carries (a) a goal+completion
+The evidence: every numbered section §1–§13 carries (a) a goal+completion
 block at its head, (b) the technical prose verbatim, and (c) a
 conformance-assertion block whose rows index into `CONFORMANCE-MATRIX.md`.
-The load-bearing close gate is §10's matrix-closure rule — historically
-binding at fourier-B.W1 ratification; per the orphan verdict above, the
-gate is preserved here as the substrate for a successor close.
+The load-bearing close gate is §10's **three-way disposition close-rule**
+(re-interpreted in v2.0.0 from v1.0.0's binary "both columns PASS").
 
-> **Hard rule (historical close-rule).** A section of this contract was
-> to be *ratified* only when its conformance assertions appeared as
-> passing rows in §10 for **both** repos. A section without a passing
-> §10 row was *drafted*, not ratified. fourier-B.W1 was not to close
-> while any §1–§9 section lacked a §10 row. The rule remains the
-> binding-discipline template for any successor tranche.
-
-Sibling artefacts (authored by A2–A6 in parallel; this document references
-them by path):
+Sibling artefacts (authored by A2–A6 at B.W1, hardened at D.W5; referenced
+by path):
 
 - `coordination/R-identity-spec.md` — identity/slug/hash separation (long
   form). §1 of this contract is the binding summary.
@@ -53,45 +49,60 @@ them by path):
 - `coordination/CONFORMANCE-MATRIX.md` — the fleshed-out §10 matrix with
   one row per assertion × repo × test name × run command × expected output.
   §10 of this contract is the index; CONFORMANCE-MATRIX.md is the table.
+- `../../D/coordination/CRUD-COHESION.md` — the cross-repo ask doc;
+  records the two KISS relaxations and the §10 three-way close-rule
+  reinterpretation that motivate v2.0.0.
+- `../../D/coordination/VALUE-JS-ASK.md` — the candidate hand-off brief
+  for the value.js-side execution (user-re-mandate-gated).
 
 ---
 
-## §0 — Status, authority, scope
+## §0 — Status, authority, scope (v2.0.0)
 
-**Goal.** Fix the contract's metadata — version, authority lineage, in-scope
-boundary, the KISS-rejection list — before any behavioural rule appears, so
-later sections do not re-litigate the framework-vs-utility decision or the
-SOTA citations.
+**Goal.** Fix the contract's metadata — version, authority lineage,
+in-scope boundary, the KISS-rejection list, the **module-layout neutrality**
+preamble — before any behavioural rule appears, so later sections do not
+re-litigate the framework-vs-utility decision or the SOTA citations.
 
-**Completion.** The §0 block names (a) the ratification version + commit
+**Completion.** The §0 block names (a) the v2.0.0 version + supersession
 lineage, (b) the binding/consuming tranches, (c) the in-scope and
-out-of-scope itemisation, (d) the rejected SOTA candidates with rationale,
-and (e) the adopted SOTA conventions with their citations. A reader who
-wants to know "what frame does this contract sit inside?" gets the answer
-from this section alone.
+out-of-scope itemisation, (d) the **§0.4 module-layout neutrality clause
+re-certifying invariant 16**, (e) the rejected SOTA candidates with
+rationale, and (f) the adopted SOTA conventions with their citations. A
+reader who wants to know "what frame does this contract sit inside?" gets
+the answer from this section alone.
 
 ### Status
 
-- **Version**: 1.0.0 (semver; see §12 change-log policy).
-- **Ratification status**: *drafted* at authoring; **RATIFIED
-  fourier-unilateral at fourier-B.W1 close, 2026-05-26** (commit hash
-  `4626d4c` — recorded by the orchestrator at the wave-close
-  ceremony). **value.js-C sign-off DEFERRED** — value.js-C was RETIRED
-  and never opened for execution; per the orphan verdict at
-  `coordination/CRUD-CONSTELLATION.md`, the value.js half is held as a
-  latent affordance and a future value.js re-engagement consumes this
-  contract via the original §10 joint-ratification close-rule.
+- **Version**: 2.0.0 (semver major — the two relaxations of §2 and §0.4 are
+  *contract-shape* changes, not patches; see §12 changelog).
+- **Ratification status**: **DRAFTED v2.0.0 at fourier-D.W5 dispatch;
+  RATIFIED jointly at fourier-D.W5 close** (the matrix-flip evidence in
+  `CONFORMANCE-MATRIX.md` records value.js's deployed conformance against
+  v2.0.0 today); **the value.js side remains user-re-mandate-gated for the
+  DEFERRED-TO-VALUE.JS cells** per `D/coordination/CRUD-COHESION.md §6`.
+  Joint ratification under v2.0.0 is *evidence-based* (matrix citation),
+  not *signature-based*.
+- **Supersedes**: v1.0.0 (`4626d4c`, fourier-B.W1 close, 2026-05-26 —
+  RATIFIED fourier-unilateral under the orphan verdict, value.js-C
+  RETIRED). v2.0.0 re-authors §0, §2, §10, and adds §13; §1, §3–§9, §11,
+  §12 carry over verbatim with citation updates only.
 - **Cohort**: CRUD facility convergence + identity-model consolidation
   (`coordination/CRUD-CONSTELLATION.md`).
-- **Authoring tranche**: fourier-B (this repo, this tranche).
-- **Consuming tranche**: value.js-C (`~/Programming/value.js/docs/tranches/C/`).
+- **Authoring tranches**: fourier-B (v1.0.0 substrate); fourier-D.W5
+  (v2.0.0 re-authoring).
+- **Consuming tranches**: fourier (`api/lib/crud/` lands at B.W3, conforms
+  today); value.js's `palette-api` v2.0.0 (deployed `palette-api-api-1`,
+  HTTP 200, 2 months live — conforms partially today, the residual cohort
+  is recorded as `DEFERRED-TO-VALUE.JS` cells routed to a value.js
+  alignment-tranche per `D/coordination/VALUE-JS-ASK.md`).
 
 ### Authority
 
-This document is binding on both repos. Edits propagate via both repos'
-`PROGRESS.md` at the same wave boundary
-(`coordination/CRUD-CONSTELLATION.md:108-109`). The change log (§12) records
-every amendment with the wave boundary that authored it.
+This document is binding on both repos at the **observable HTTP boundary**.
+Edits propagate via both repos' `PROGRESS.md` at the same wave boundary
+(`coordination/CRUD-CONSTELLATION.md:108-109`). The change log (§12)
+records every amendment with the wave boundary that authored it.
 
 ### Scope
 
@@ -100,13 +111,19 @@ In scope:
 - The two slug-addressed user-named nouns — fourier's `visualization` and
   value.js's `palette` — and their CRUD contract.
 - The shared user/session/admin substrate both nouns sit on.
-- The slug algorithm, ownership contract, visibility lifecycle, soft-delete
-  semantics, admin moderation shape, and cron/TTL policy.
+- The slug *identity* (uniqueness + shape-floor + insert-then-catch), the
+  ownership contract, visibility lifecycle, soft-delete semantics, admin
+  moderation shape, cron/TTL policy, and the cross-repo `palette_slug` FK
+  shape (new in §13).
 
 Out of scope:
 
 - The storage layer (each repo owns its MongoDB schema; see SCHEMA.md).
 - The language/framework (Python/FastAPI vs Node/Hono; per-repo wave specs).
+- **The per-language module layout that produces the wire behaviour** —
+  see §0.4 binding clause below. fourier's `api/lib/crud/` and value.js's
+  `api/src/{services, repositories, errors, events, middleware}` are
+  **both valid implementations**; neither is normative.
 - The UI (each repo owns its consumer surface).
 - Entities that are not user-named slug-addressed nouns (fourier's `image`,
   `contour`, `session`, `flag` are shaped by this contract but are
@@ -126,64 +143,57 @@ Out of scope:
   surface is governed by value.js's own tranche invariants. The
   contract scope is unchanged.
 
-### Binding force (added 2026-05-26 — Wave-2 audit synthesis C3 §6 recommendation 1)
+### Binding force (v2.0.0)
 
-This contract's binding force, under the orphan verdict recorded at
-`coordination/CRUD-CONSTELLATION.md`, is:
+Under the v2.0.0 §10 three-way disposition close-rule (see §10 below
+and `D/coordination/CRUD-COHESION.md §6.1`), the contract's binding force
+is:
 
-- **Mandatory fourier-side**. The §1–§9 + §S* sections bind fourier at
-  B.W1 ratification; the fourier-side conformance-matrix rows close at
-  B.W3 / W4 / W5 execution per `CONFORMANCE-MATRIX.md:515`.
-- **Advisory both-sides on cohort-reopening**. The 88 value.js
-  cross-repo conformance-matrix cells hold at `DEFERRED` (the fifth
-  status in the `CONFORMANCE-MATRIX.md` status legend, introduced by
-  the R3 refinement assay §9 alongside the four prior cell statuses).
-  The cohort-level "all 176 cells PASS" gate is
-  structurally unmeetable under the orphan verdict; any successor
-  tranche that reopens the cohort consumes this contract as the latent
-  affordance and ratifies via the original §10 close-rule.
+- **Mandatory fourier-side**. The §1–§9 + §13 + §S* sections bind fourier
+  at v2.0.0 ratification; fourier's `api/lib/crud/` already conforms today
+  (W3 landed the helpers; `api/tests/conformance/` carries the runners).
+- **Mandatory value.js-side at the observable HTTP boundary**. The same
+  sections bind value.js's `palette-api` v2.0.0 — but the per-cell
+  conformance is **three-way dispositioned** at §10: cells where value.js
+  conforms today are ADDRESSED (PASS); cells where value.js diverges are
+  DEFERRED-TO-VALUE.JS (the cohort-reopen path, routed to a value.js
+  alignment-tranche per `D/coordination/VALUE-JS-ASK.md`); cells whose
+  v1.0.0 clause was over-specified to fourier's accident are
+  RETIRED-AS-OVER-SPEC (the v2.0.0 relaxations make them obsolete).
+- **No shared framework / codegen / coordinator** (§0.4 below; invariant
+  16; Wχ-P3 binding). The two repos meet *at the wire*, not *in the code*.
 
-The Wave-2 audit synthesis at
-`docs/audits/runs/2026-05-26-B-audit-wave-2/SYNTHESIS.md §2 theme β`
-empirically verifies that C2 (value.js substrate scoring) + C3
-(convergence shape) + C6 (orphan-resurgence preventer audit) converge
-on this binding force. The four new fourier-side invariants 21–24
-(slug-mint cryptographic RNG; RFC 9457 problem+json envelope;
-RFC 9110 ETag/If-Match; RFC 9239 RateLimit headers) added at B.md §2
-under this revision bind **fourier-side** under the same authority:
-they ratify at B.W1 (contract-text) and bind empirically at
-B.W3 / W4 / W5 execution.
+### §0.4 — Module-layout neutrality (v2.0.0 — invariant 16 re-certification)
 
-### SOTA conventions cross-reference (Invariants 22–24 binding)
+> **Binding clause (v2.0.0).** This contract binds the observable CRUD
+> behaviour **at the HTTP boundary** — wire shapes, header semantics, error
+> envelopes, idempotency semantics, status codes, URL shapes. It does
+> **NOT** bind the per-language module layout that produces them.
+> fourier's `api/lib/crud/` utility-module layout is one valid
+> implementation; value.js's `api/src/{services, repositories, errors,
+> events, middleware}` is another. Both conform when their wire-level
+> behaviour matches §1–§8 + §13.
+>
+> **Invariant 16 (no shared framework, no codegen, no coordinator) holds.**
+> No `@mkbabb/crud-types` npm or PyPI package emerges from this contract;
+> no shared OpenAPI codegen step; no third coordinating service (Redis for
+> rate-limit state, NATS for cron fanout, etc.). Conformance is per-repo:
+> fourier flips its column on its own conformance suite
+> (`api/tests/conformance/`); value.js flips its column on its own future
+> conformance suite (a value.js-tranche deliverable, user-re-mandate-gated).
+> Cohesion-as-contract, not cohesion-as-shared-code.
 
-The B.md §2 invariants 22 / 23 / 24 added 2026-05-26 bind to the
-SOTA-conventions-adopted block below by §-reference:
+The §0.4 clause discharges P3.C1 of Wχ-P3 (the KISS-cohesion adversarial
+certification). It is **load-bearing** in v2.0.0: any subsequent amendment
+that prescribes a shared module / shared library / cross-repo type import
+is a re-litigation of invariant 16 and requires re-opening the tranche
+that ratifies the amendment.
 
-- **Invariant 22 — RFC 9457 problem+json envelope** binds to the
-  §3 ("Problem+json error format") SOTA convention above. Catalog at
-  `SCHEMA.md §5`; helper at `CRUD-LIB-PY.md §3` (`errors.py`).
-- **Invariant 23 — RFC 9110 ETag + If-Match** binds to the §2
-  ("ETag + `If-Match` optimistic concurrency") SOTA convention above.
-  Strong validator at `SCHEMA.md §1`; helper at `CRUD-LIB-PY.md §4`
-  (`etag.py`).
-- **Invariant 24 — RFC 9239 RateLimit headers** binds to the §6
-  ("Standard rate-limit headers") SOTA convention above. No new helper
-  module — the headers ride existing `api/services/rate_limiter.py`
-  middleware.
-
-The three invariants ratify at B.W1 (contract-text) and bind
-empirically at B.W3 (helper landing) / B.W4 (consumer adoption /
-middleware emission).
-
-### KISS guards (rejected by invariant)
+### KISS guards (rejected by invariant 16)
 
 The following SOTA candidates were considered and **rejected** as
 overengineering under invariant 16 (`B.md:34`); see §9 for the disposition
-rationale. The revised invariant 16 (per
-`docs/audits/runs/2026-05-19-utility-extraction/DECISION.md`) rejects
-**shared *frameworks*** while admitting **per-language utility modules**
-under §9; the rejections below name the framework-class anti-patterns
-specifically, not the utility-module form:
+rationale.
 
 - HATEOAS / hypermedia controls. Reject: KISS, single-purpose JSON.
 - JSON:API envelope. Reject: the bare `data + nextCursor + hasMore` shape
@@ -203,7 +213,7 @@ specifically, not the utility-module form:
   *called by* the application rather than inverting control.
 - Codegen (OpenAPI → client SDK; a `crud-types` shared package compiled
   to both Python and TS). Reject: invariant 16 explicit prohibition; the
-  contract is text.
+  contract is text. **v2.0.0 §0.4 makes this rejection load-bearing.**
 - A third coordinating service (Redis for rate-limit state, NATS for cron
   fanout, etc.). Reject: invariant 16, "no superfluous-cloud systems".
 
@@ -217,11 +227,14 @@ Where SOTA pays for itself without conjuring complexity:
    and `api/routers/gallery.py:57-71`.
 2. **ETag + `If-Match` optimistic concurrency** on UPDATE/DELETE of the
    visualization/palette entity. The ETag is the strong validator
-   `W/"<content_hash>-<version_count>"`; mutations require a matching
-   `If-Match`. (RFC 9110 §8.8, §13.1.1.)
+   `"<sha256-hex>"`; mutations require a matching `If-Match`. (RFC 9110
+   §8.8, §13.1.1.)
 3. **Problem+json error format** (RFC 9457): error responses are
    `application/problem+json` with `{type, title, status, detail, instance}`.
-   The existing per-repo `{error: "..."}` shape is migrated under §11.
+   The existing per-repo `{error: "..."}` shape is migrated under §11
+   (fourier already conforms; value.js's `{error:{code,message,detail}}`
+   shape at `value.js/api/src/errors/index.ts:7` is a DEFERRED-TO-VALUE.JS
+   cell per §10).
 4. **`Idempotency-Key` header on POST** (Stripe / IETF
    draft-ietf-httpapi-idempotency-key-header) for visualization/palette
    creation and votes/likes. Server keeps a 24-hour replay map of
@@ -233,8 +246,8 @@ Where SOTA pays for itself without conjuring complexity:
    HTTP"): `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`
    on every response; `Retry-After` on 429.
 7. **URL shape `/{entity}/{slug}`**, where `entity` is the noun and `slug`
-   is a human-readable adjective-noun-noun (-noun) phrase. Mongo `_id` is
-   never exposed in URLs.
+   is a human-readable phrase conforming to the §2 shape-floor. Mongo `_id`
+   is never exposed in URLs.
 
 ---
 
@@ -256,21 +269,22 @@ exactly one role:
 
 | Identifier | Role | Shape | User-facing? |
 |---|---|---|---|
-| **Slug** | The one human-readable handle. URL, share link, copy-target. | `^[a-z]+(-[a-z]+){3}$` per §2 | **Yes** — the only user-facing identifier |
+| **Slug** | The one human-readable handle. URL, share link, copy-target. | `^[a-z0-9][a-z0-9-]*$ ≤ 120 chars` per §2 (v2.0.0 shape-floor) | **Yes** — the only user-facing identifier |
 | **Content hash** | Deduplication / cache key / ETag substrate. | sha256 hex (64 chars) | **No** — never appears in a URL or share link |
 | **Mongo `_id`** | Internal pointer; cursor substrate. | ObjectId or slug-string | **No** — never exposed in API or URL |
 
 ### The single-slug rule
 
 - Every user-named persisted noun (fourier: `visualization`; value.js:
-  `palette`) has **exactly one** slug, generated at creation per §2,
-  unique within its collection, immutable for the lifetime of the doc.
+  `palette`) has **exactly one** slug, generated or validated server-side
+  per §2, unique within its collection, immutable for the lifetime of the
+  doc.
 - The slug is the canonical addressing handle.
   `GET /visualizations/{slug}`, `GET /palettes/{slug}`.
 - Today's incoherence (`docs/audits/runs/2026-05-18-fourier-tranche/e-crud-slug-valuejs.md:24`):
   fourier's gallery URL is the 64-character `snapshot_hash` rather than a
   slug; this is the *exact* incoherence the contract retires. The migration
-  in §11 generates a slug for every surviving gallery row.
+  in §11 generated a slug for every surviving gallery row at B.W3.
 
 ### Hash policy
 
@@ -278,13 +292,9 @@ Content hashes that *survive* the convergence (with their role):
 
 - **fourier**: `sha256` on `images` (dedup; one image per byte-identical
   upload) — survives; `contour_hash` on `contours` (dedup; computed from
-  the sorted point set per `api/services/image_storage.py:159` — bug
-  retired in A.W4, hash now over the as-ordered path) — survives;
-  `snapshot_hash` on `snapshots` (today user-facing via the gallery URL)
-  — **retired** as user-facing identity; if the converged `visualization`
-  collection keeps a content hash at all (for ETag and for the
-  `Idempotency-Key` replay map), it is named `content_hash` and is
-  documented as never user-facing.
+  the as-ordered path post-A.W4) — survives; `content_hash` on
+  `visualizations` (ETag substrate + `Idempotency-Key` replay map) —
+  survives, documented as never user-facing.
 - **value.js**: `currentHash` on `palettes` (content-addresses the head
   version; substrate for the `palette_versions` history table at
   `~/Programming/value.js/api/src/routes/palettes.ts:108-149`) — survives.
@@ -295,7 +305,7 @@ Content hashes that *survive* the convergence (with their role):
 |---|---|
 | `GET /{entity}/{slug}` | Read by slug |
 | `GET /{entity}?cursor=...` | List (cursor pagination per §0) |
-| `POST /{entity}` | Create (slug generated server-side per §2) |
+| `POST /{entity}` | Create (slug generated server-side OR validated server-side per §2) |
 | `PATCH /{entity}/{slug}` | Update (requires `If-Match` ETag per §0) |
 | `DELETE /{entity}/{slug}` | Soft-delete (requires `If-Match` ETag) |
 | `POST /{entity}/{slug}/restore` | Restore from soft-delete (within grace) |
@@ -308,102 +318,117 @@ path or query string.
 - **C1.1** — `grep -rE '/(visualizations|palettes|gallery|snapshots)/[0-9a-f]{32,}'`
   over `web/src/`, `~/Programming/value.js/api/src/`, and value.js web
   sources returns zero. No content hash in any client-side URL pattern.
-- **C1.2** — every `GET /{entity}/{slug}` for a slug matching `^[a-z]+(-[a-z]+){3}$`
-  returns 200; every request matching `^[0-9a-f]{40,}$` returns 400 with
-  problem+json `type=invalid-slug`.
+- **C1.2** — every `GET /{entity}/{slug}` for a slug matching the §2
+  shape-floor returns 200; every request matching `^[0-9a-f]{40,}$`
+  returns 400 with problem+json `type=urn:contract:slug-invalid`.
 - **C1.3** — the response body of `GET /{entity}/{slug}` does **not**
-  contain a `_id` field at the top level.
+  contain a `_id` field at the top level. (value.js's
+  `format/palette.ts:59` emits `id: String(_id)` today — a
+  DEFERRED-TO-VALUE.JS cell per §10.)
 
 ---
 
-## §2 — Slug algorithm
+## §2 — Slug identity (v2.0.0 — relaxed)
 
-**Goal.** One slug shape across both repos — four lowercase hyphenated
-words, cryptographic-RNG selection, insert-then-catch collision handling
-(no check-then-insert TOCTOU race) — with the word-list disposition
-deferred to R3 (`research/R3-shared-optimum.md`).
+**Goal.** One slug *identity* across both repos — uniqueness within the
+entity's collection, a permissive shape-floor accepting both
+server-generated and server-validated-user-supplied modes, and
+insert-then-catch collision handling (no check-then-insert TOCTOU race).
+v2.0.0 **relaxes** v1.0.0's `^[a-z]+(-[a-z]+){3}$` 4-word constraint —
+that shape was a fourier-specific accident (the `coolname` library's
+default); the binding identity is *uniqueness*, *shape-floor*, and
+*insert-then-catch*, **not word-count**.
 
-**Completion.** The shape rule (`^[a-z]+(-[a-z]+){3}$`, length 7–60),
-the generation rule (server-side, cryptographic RNG), the collision
-rule (`DuplicateKeyError`-catch retry up to 10 times → 503), and the
-word-list-membership rule (per the R3 disposition recorded in §9) are
-each pinned by a C2.1–C2.4 row in §10.
+**Completion.** The shape-floor rule (`^[a-z0-9][a-z0-9-]*$ ≤ 120 chars`,
+the v2.0.0 permissive form; either repo MAY enforce a tighter local
+shape), the **dual-mode generation rule** (server-generated OR
+server-validated-user-supplied), the collision rule (`DuplicateKeyError`
+catch retry up to 10 times for server-generated, single-attempt with
+`409 Conflict` for user-supplied), and the per-repo word-list dispositions
+are each pinned by a C2.1–C2.4 row in §10.
 
-### Shape
+### Slug identity binding (v2.0.0)
 
-- **Word count**: 4 words for users; 4 words for entities. (fourier
-  today uses 4 via `coolname.generate_slug(4)` at `api/slugs.py:10`;
-  value.js uses 4 via `generateSlug()` at
-  `~/Programming/value.js/api/src/slugWords.ts:84-90`. Both agree on 4.)
-- **Pattern**: `^[a-z]+(-[a-z]+){3}$` — lowercase, hyphen-separated,
-  exactly 4 words. The contract *tightens* fourier's
-  `^[a-zA-Z0-9][-a-zA-Z0-9]{2,80}$` (`api/dependencies.py:27`) and
-  value.js's `^[a-z0-9][a-z0-9-]*$` (≤120 chars,
-  `~/Programming/value.js/api/src/routes/palettes.ts:362,424,697`).
-- **Length**: minimum 7 (4 one-letter words plus 3 hyphens); maximum 60
-  (sufficient for the longest known coolname/value.js word combinations).
-- **Lowercase normalisation**: incoming slug query params are lowercased
-  before comparison; case-mismatched URLs 301 to canonical lowercase.
+> **§2 — Slug identity (v2.0.0).** Each entity is identified by exactly
+> one user-facing handle, the *slug*. The slug satisfies the **shape-floor**
+> `^[a-z0-9][a-z0-9-]*$`, length ≤ 120 chars; both repos MAY enforce a
+> tighter local shape (fourier's `^[a-z]+(-[a-z]+){3}$` 4-word form is one
+> valid tightening — the contract permits it but does not require it; the
+> shape-floor is the cross-repo binding). The slug is generated by ONE of
+> two modes:
+>
+> **(a) Server-generated** — cryptographic-RNG. e.g. fourier's `coolname`
+> 4-word form (the anonymous/auto-creation paths: visualization
+> create-from-extracted-contour flow — no human is naming it); value.js's
+> `generateSlug` adjective-verb-color-animal form for unnamed user
+> creations.
+>
+> **(b) Server-validated-user-supplied** — explicit-naming flows. e.g.
+> value.js's "name your palette" UX where the create body carries the user's
+> chosen slug (`value.js/api/src/validation/palette.ts:43` — `slug:
+> slugSchema` in `createPaletteBody`). The slug passes the shape-floor
+> check before write.
+>
+> Both modes MUST handle collision via **insert-then-catch**:
+> - Mode (a): `DuplicateKeyError`/`MongoServerError code=11000` retry ≤ 10
+>   attempts with fresh slugs; after 10 failures, return 503 with
+>   problem+json `urn:contract:slug-exhausted`.
+> - Mode (b): single-attempt insert; on collision return `409 Conflict`
+>   with problem+json `urn:contract:slug-conflict`.
+>
+> No check-then-insert TOCTOU pattern. The content-hash and Mongo `_id`
+> are NEVER user-facing identity (§1.3).
 
-### Word list disposition (per R3)
+### Per-repo realisations (informative, not binding)
 
-R3's disposition is binding here. The contract records the chosen
-disposition in §9 as one of:
+- **fourier**: server-generated only (the visualization noun is created
+  from an extracted contour; no naming UX). `api/lib/crud/slugs.py`
+  `slug_with_retry`. The shape happens to be `^[a-z]+(-[a-z]+){3}$` (a
+  tightening of the v2.0.0 shape-floor) — the contract permits this
+  tightening.
+- **value.js**: server-generated for the unnamed creation path; user-supplied
+  for the explicit-naming path (`palette-api` admits both). The shape is the
+  v2.0.0 shape-floor verbatim (`value.js/api/src/validation/palette.ts:19-23`
+  `slugSchema = z.string().min(1).max(120).regex(/^[a-z0-9][a-z0-9-]*$/)`).
+  Insert-then-catch via `MongoServerError code=11000`.
 
-- **(a) Shared data package** `@mkbabb/slug-words` (npm + PyPI mirror via
-  JSON). Both repos load the same word lists; drift is impossible.
-- **(b) Two copies kept in sync by this contract** (this document is the
-  source of truth; the lists are reproduced verbatim in §2 appendix; each
-  repo's tests assert their local list matches the contract list by hash).
-- **(c) One source of truth in one repo** (e.g. value.js's `slugWords.ts`);
-  the other repo consumes it via a code-import or generated data file.
+Both modes are first-class. v2.0.0 is **not** prescriptive about which mode
+a given entity uses — that is a per-app product decision; the contract
+binds only the wire-level identity properties (uniqueness, shape-floor,
+collision handling).
 
-The fourier side today delegates to `coolname` (a third-party package);
-value.js maintains its own lists at `~/Programming/value.js/api/src/slugWords.ts`
-(120 adjectives, 120 verbs, 128 color terms, 128 animals). Drift is not
-zero: a slug generated on one side may not validate as "in the dictionary"
-on the other. R3 decides; §9 records the binding outcome.
+### Word-list dispositions (informative)
 
-### Generation
-
-- Server-side only. The slug is generated by the backend, not supplied by
-  the client.
-- 4 words chosen with a cryptographic RNG
-  (`crypto.randomInt` / `secrets.choice`). Today value.js uses
-  `crypto.randomInt` (`slugWords.ts:80-82`); fourier delegates to
-  `coolname` which uses `random.choice` (CPython default Mersenne).
-  The contract requires **cryptographic** generation; fourier swaps in
-  `secrets.choice` at W3.
-
-### Collision handling
-
-- **Rely on the unique index + `DuplicateKeyError` catch.** No
-  check-then-insert pre-flight. This retires the TOCTOU race at
-  `api/services/image_storage.py:71-77` and the inconsistent handling at
-  `api/routers/sessions.py:47-49` (today: no retry, would 500 on
-  collision).
-- On `DuplicateKeyError`, retry up to **10** times with fresh slugs;
-  after 10 failures, return 503 with problem+json
-  `type=slug-pool-exhausted` (an exceptional path; the
-  ~10^10 keyspace of 4-word slugs makes this effectively impossible in
-  practice — the matrix asserts it).
-- value.js's `generateUniqueSlug` (`slugWords.ts:92-99`) already follows
-  this pattern; fourier adopts it at W3.
+- **fourier**: uses the `coolname` library (third-party, MIT) plus the
+  `docs/precepts/data/slug-words.json` precepts-submodule entries (R3
+  disposition, B.W3 landed) for the visualization slug pool.
+- **value.js**: uses its own `slugWords.ts` (in-repo, 4 lists of 120–128
+  words each: adjectives, verbs, colors, animals;
+  `value.js/api/src/slugWords.ts`).
+- The two lists are **NOT** required to coincide. v1.0.0's "word-list
+  membership" assertion (C2.4) is RETIRED-AS-OVER-SPEC under v2.0.0 §2 —
+  the slug identity binding does not require a shared word list. Each
+  repo's emitted slugs are valid by virtue of conforming to the shape-floor
+  and being unique within their collection; their word-list provenance is
+  a per-repo concern.
 
 ### Conformance assertions
 
-- **C2.1** — `pytest api/tests/test_slug_format.py::test_slug_shape` and
-  `npx vitest run test/slug-format.test.ts` both validate
-  `^[a-z]+(-[a-z]+){3}$` against 1,000 generated slugs.
-- **C2.2** — `pytest .../test_slug_collision.py::test_duplicate_key_retry`
-  and `vitest .../slug-collision.test.ts` simulate a forced collision
-  (pre-insert a known slug, mock the RNG once) and assert the retry path
-  succeeds.
-- **C2.3** — `grep -E 'find_one.*slug.*:.*generate_slug|findOne.*slug.*generateSlug'`
-  in each repo's router code returns zero (no check-then-insert).
-- **C2.4** — every slug emitted by `generate_slug()` / `generateSlug()`
-  belongs to the contract-binding word lists; this is the R3-disposition
-  assertion (per §9).
+- **C2.1** — every server-generated slug matches the v2.0.0 shape-floor
+  `^[a-z0-9][a-z0-9-]*$` (length ≤ 120). Each repo's tighter local shape
+  (e.g. fourier's 4-word form) is a valid subset.
+- **C2.2** — forced slug collision triggers retry path (server-generated
+  mode): `DuplicateKeyError`/`MongoServerError code=11000` raised twice,
+  succeeds on third attempt within `max_attempts = 10`.
+- **C2.3** — no `find_one(...slug...) && generate_slug` check-then-insert
+  pattern in either repo (`scripts/conformance/grep-no-check-then-insert.sh`).
+- **C2.4** — *(retired in v2.0.0 — was "word-list membership"; the §2
+  relaxation makes this clause obsolete; the matrix row is dispositioned
+  RETIRED-AS-OVER-SPEC)*.
+- **C2.5** — *(new in v2.0.0)* user-supplied mode: `POST` with a body slug
+  that collides returns `409 Conflict` + problem+json
+  `urn:contract:slug-conflict`. fourier MAY skip this row (no naming UX);
+  value.js binds it.
 
 ---
 
@@ -422,27 +447,22 @@ migration in §11 produces zero null-owner rows.
 ### Required owner
 
 - Every persisted user-named entity has a **required, non-null** owner
-  field. The field is non-null at creation; the database has a `NOT NULL`
-  (i.e. a `partialFilterExpression: {owner_slug: {$exists: true}}` plus
-  schema validation) constraint.
-- fourier: `owner_slug` (the converged `visualization` field; replaces
-  today's nullable `user_slug` at `api/routers/gallery.py:232`).
-- value.js: `userSlug` (already required at creation per
-  `~/Programming/value.js/api/src/routes/palettes.ts:394,411`; the
-  contract codifies that the nullish-coalescing `null`-defaulting at
-  `formatPalette` `:21-26` is a *read-side* migration helper and no new
-  row may be written with a null owner).
+  field.
+- fourier: `owner_slug` (`api/models/visualization.py:103`).
+- value.js: `userSlug` (the value.js `Palette` model carries
+  `userSlug: string | null` + legacy `sessionToken` shim at
+  `value.js/api/src/models.ts:73-74` — a DEFERRED-TO-VALUE.JS cell per
+  §10, awaiting the value.js-side alignment-tranche).
 
 ### Anonymous publish is forbidden
 
 - `resolve_session()` returning `None` on a `POST` / `PATCH` / `DELETE` to
   the entity collection raises **401**, not produce a `user_slug: None`
-  row. This retires the orphan path at
-  `api/routers/gallery.py:206` (`user_slug = await resolve_session(request)`
-  without a `require_session`).
+  row.
 - The frontend obtains a session before the first save (the existing
   `ensureUser()` substrate); the backend never auto-registers on save.
-- Read endpoints (`GET`) remain anonymous-permissible.
+- Read endpoints (`GET`) remain anonymous-permissible (visibility-aware
+  per §4).
 
 ### Ownership-bound endpoints
 
@@ -450,21 +470,11 @@ Every mutation on an existing entity requires both:
 
 1. `require_session` (a valid `X-Session-Token` per §6).
 2. `doc.owner_slug == user_slug` — otherwise **403** with problem+json
-   `type=not-owner`.
+   `type=urn:contract:not-owner`.
 
-This is today's `api/routers/gallery.py:308-309` and value.js's
+This is today's fourier `api/routers/visualizations.py` and value.js's
 `~/Programming/value.js/api/src/routes/palettes.ts:485-489`. The contract
 makes it universal across the converged entity.
-
-### Session-to-owner mapping
-
-- One user → many sessions (each device gets its own session token; user
-  slug is the stable handle).
-- A session always carries a `user_slug` (this is invariant 14's "required
-  non-null owner" projected onto sessions). value.js's pre-migration
-  sessions had `userSlug: null`; the migration at `migrate-slugs.ts`
-  fixed this. fourier creates sessions with `user_slug` from the
-  outset (`api/routers/sessions.py:47-54`).
 
 ### Admin override
 
@@ -474,14 +484,14 @@ is recorded in `admin_audit` (§7).
 ### Conformance assertions
 
 - **C3.1** — `POST /visualizations` without `X-Session-Token` returns 401
-  with problem+json `type=session-required`; `POST /palettes` likewise.
+  with problem+json `urn:contract:owner-required`; `POST /palettes`
+  likewise.
 - **C3.2** — `PATCH /visualizations/{slug}` with a session for a
-  *different* user returns 403 with problem+json `type=not-owner`.
-- **C3.3** — schema validation: insert of a `visualization` doc with
-  `owner_slug: null` rejected by MongoDB (`failCommandWithError` test on
-  the validator).
-- **C3.4** — `db.visualizations.countDocuments({owner_slug: null})` is
-  **0** after migration (per §11); same for `db.palettes.countDocuments({userSlug: null})`.
+  *different* user returns 403 with problem+json `urn:contract:not-owner`.
+- **C3.3** — schema validation: insert of an entity doc with
+  `owner_slug: null` rejected by MongoDB validator.
+- **C3.4** — `db.visualizations.countDocuments({owner_slug: null}) == 0`
+  after migration (per §11); same for `db.palettes.countDocuments({userSlug: null})`.
 
 ---
 
@@ -496,14 +506,11 @@ non-owners return 404 (not 403).
 **Completion.** The 3-state schema enum, the anonymous-list filter
 (`visibility == "public" AND deleted_at == null`), the
 draft-404-to-non-owner rule, and the owner-can-see-all rule are pinned
-by C4.1–C4.4 in §10. The migration in §11 splits value.js's `status`
-field into `visibility + tier`.
+by C4.1–C4.4 in §10.
 
 ### Three states
 
-`visibility ∈ {"draft", "unlisted", "public"}`. The 3-state enumeration
-ratifies `B.md:31`'s normalisation (which supersedes audit E's two-state
-`private/public` proposal at `e-crud-slug-valuejs.md:94`).
+`visibility ∈ {"draft", "unlisted", "public"}`.
 
 | State | Meaning |
 |---|---|
@@ -513,27 +520,13 @@ ratifies `B.md:31`'s normalisation (which supersedes audit E's two-state
 
 ### State transitions
 
-```
-                  publish
-                ┌─────────────►
-   draft        │   unlist        public
-   │  ┌─────────┴─►  unlisted  ◄──────┐
-   │  │             ▲  │              │
-   │  │             │  │ publish      │ unlist
-   │  │  publish    │  ▼              │
-   └──┴──────────── │── (transition allowed any → any)
-                    │
-   any state ──── soft-delete ──► soft-deleted (§5)
-                    │
-                  restore
-                    ▼
-                  previous state
-```
-
-All three forward transitions and all three reverse transitions are
-permitted to the owner. A soft-delete (§5) is reversible to the
-*previous* visibility within the grace window; a hard-delete is
-irreversible.
+All forward and reverse transitions among the three states are permitted
+to the owner. A soft-delete (§5) is reversible to the *previous* visibility
+within the grace window; a hard-delete is irreversible. v2.0.0 admits an
+optional transition guard (`public → draft` rejected per the
+`visibility_illegal_transition` catalog helper; the visibility transition
+is two-step via `unlisted`) — fourier landed this at W3 per D.R1's
+C4.5/C4.6 disposition; value.js's side is the value.js-tranche's call.
 
 ### List filter semantics (binding)
 
@@ -541,8 +534,7 @@ irreversible.
   `visibility == "public" AND deleted_at == null`. Drafts and unlisted
   rows are never enumerated.
 - `GET /{entity}?owner=me` (requires session): returns the caller's
-  own rows in **all** three visibility states (drafts + unlisted +
-  public) where `deleted_at == null`.
+  own rows in **all** three visibility states.
 - `GET /{entity}/{slug}`:
   - `visibility == "public"`: returns to anyone.
   - `visibility == "unlisted"`: returns to anyone with the slug; the
@@ -553,15 +545,13 @@ irreversible.
 ### Field name binding
 
 - The contract field is `visibility`.
-- fourier's existing `tier` field (`featured | saved | normal` —
-  `api/routers/gallery.py:233`) is an **admin-only** concern (§7), not
-  user-controlled visibility. The migration in §11 retires `tier` as a
-  visibility synonym and reserves it for admin curation.
-- value.js's existing `status` field (`published | featured` —
-  `~/Programming/value.js/api/src/routes/palettes.ts:412,498-505`) is a
-  conflation: `published` is "user visibility public" and `featured` is
-  "admin tier". The migration in §11 splits this into `visibility +
-  tier`.
+- fourier's existing `tier` field is an **admin-only** concern (§7), not
+  user-controlled visibility.
+- value.js's existing single 4-state `status` field
+  (`published | featured | hidden | draft` at
+  `value.js/api/src/models.ts:29`) is a conflation: the value.js-side
+  alignment-tranche splits this into `visibility + tier` per §11. A
+  DEFERRED-TO-VALUE.JS cell per §10.
 
 ### Conformance assertions
 
@@ -570,10 +560,9 @@ irreversible.
 - **C4.2** — anonymous `GET /visualizations` over a fixture seeded with
   one of each state returns only the `public` row.
 - **C4.3** — anonymous `GET /visualizations/{slug}` for a `draft` row
-  returns 404; for an `unlisted` row returns 200; for a `public` row
-  returns 200.
+  returns 404.
 - **C4.4** — `GET /visualizations?owner=me` with the owner's session
-  returns all three.
+  returns all three states.
 
 ---
 
@@ -599,8 +588,7 @@ slug-non-release rule are pinned by C5.1–C5.4 in §10.
 
 ### Grace window
 
-- Default **30 days**. Configurable per repo via env var
-  (`SOFT_DELETE_GRACE_DAYS` in fourier; `SOFT_DELETE_GRACE_DAYS` in value.js).
+- Default **30 days**. Configurable per repo via env var.
 - Within the grace window the owner may restore via
   `POST /{entity}/{slug}/restore`. Restoration sets
   `deleted_at = null` and `restored_at = now()` (audit field).
@@ -615,21 +603,30 @@ slug-non-release rule are pinned by C5.1–C5.4 in §10.
 - A soft-deleted row's slug is **not** released to the pool. A re-create
   with the same slug returns 409 until hard-delete passes the grace
   window.
+- For the cross-repo `palette_slug` FK (§13): a soft-deleted palette
+  returns `410 Gone` (distinguishable from 404 never-existed) so fourier
+  can distinguish FK-dangling-by-deletion from FK-dangling-by-typo.
 
 ### Hard-delete prohibition
 
 - Outside admin (§7) and the cron (§8), **no endpoint hard-deletes**.
-  `DELETE /{entity}/{slug}` is a soft-delete.
-- Admin's hard-delete bypasses the grace window for moderation
-  (e.g. illegal content). It is logged in `admin_audit`.
+- Admin's hard-delete bypasses the grace window for moderation. Logged in
+  `admin_audit`.
 
 ### Cron interaction (cross-ref §8)
 
-- The cron query is bounded:
-  `db.collection.deleteMany({deleted_at: {$lt: grace_cutoff}})`. This is
-  an indexed range scan over a bounded set; it retires the unbounded
-  `$nin` pattern at `api/services/janitor.py:60-65`.
-- A B-tree index on `deleted_at` is required.
+- Bounded query: `db.collection.deleteMany({deleted_at: {$lt: grace_cutoff}})`.
+- B-tree index on `deleted_at` required.
+
+### Per-repo status
+
+- **fourier**: conforms today (`api/lib/crud/softdelete.py`,
+  `POST /{slug}/restore` endpoint live).
+- **value.js**: HARD cascade delete today
+  (`value.js/api/src/services/palette/crud.ts:219-247` deletes palette +
+  votes + flags in one operation). The largest single delta; a
+  DEFERRED-TO-VALUE.JS cell cluster per §10, routed to the value.js
+  alignment-tranche's I.W2 wave per `D/coordination/VALUE-JS-ASK.md`.
 
 ### Conformance assertions
 
@@ -637,14 +634,10 @@ slug-non-release rule are pinned by C5.1–C5.4 in §10.
   `GET /visualizations/{slug}` returns 404 (anonymous) and 200 to the
   owner with `include_deleted=true`.
 - **C5.2** — `POST /visualizations/{slug}/restore` within the grace
-  window returns 200; the row appears in lists again.
+  window returns 200.
 - **C5.3** — a fixture row with
-  `deleted_at = now() - (grace_days + 1)` is removed by one cron tick;
-  the next `GET` returns 404 even with `include_deleted=true`.
-- **C5.4** — every `delete_many` / `deleteMany` call in
-  `api/services/janitor.py` and `~/Programming/value.js/api/src/cron.ts`
-  uses a bounded query (no `$nin` over a `distinct()` result greater than
-  10,000 rows). Source-grep assertion.
+  `deleted_at = now() - (grace_days + 1)` is removed by one cron tick.
+- **C5.4** — every `delete_many` / `deleteMany` call uses a bounded query.
 
 ---
 
@@ -657,52 +650,33 @@ enumeration by a ≥200 ms constant delay.
 
 **Completion.** The token-shape rule, the header-not-cookie rule, the
 30-day TTL, the suspension-cache 60-second-TTL pattern, and the
-timing-safe login are pinned by C6.1–C6.4 in §10. value.js's TTL
-migrates from 7 to 30 days at the C.W2 migration row.
+timing-safe login are pinned by C6.1–C6.4 in §10.
 
 ### Token shape
 
 - Opaque UUIDv4 (RFC 4122). Not a slug, not derivable from the user_slug.
-- Today: fourier `api/routers/sessions.py:27` (`str(uuid.uuid4())`);
-  value.js `~/Programming/value.js/api/src/routes/sessions.ts:13`
-  (`crypto.randomUUID()`). Both agree.
-- Length: 36 chars (8-4-4-4-12 hex with dashes).
+- Length: 36 chars.
 
 ### Header
 
 - **`X-Session-Token: <uuid>`** on every authenticated request.
-- Both repos already use this exact header
-  (`api/dependencies.py:147`, `~/Programming/value.js/api/src/middleware.ts:141`).
-- The contract forbids cookies for session transport (no `Set-Cookie`
-  on `POST /sessions`); the token is returned in the response body and
-  the client stores it.
+- The contract forbids cookies for session transport.
 
 ### TTL
 
-- **`session_ttl_days = 30`** at registration (fourier
-  `api/routers/sessions.py:32` matches; value.js currently 7 at
-  `~/Programming/value.js/api/src/routes/sessions.ts:35` — the contract
-  binds 30 and the migration in §11 updates value.js).
-- Every authenticated request touches `last_seen_at` (both repos).
+- **`session_ttl_days = 30`** at registration.
+- Every authenticated request touches `last_seen_at`.
 - The cron (§8) hard-deletes sessions where `expires_at < now()`.
 
 ### User document
 
-- Keyed by `_id = user_slug` (both repos:
-  `api/routers/sessions.py:47-49`,
-  `~/Programming/value.js/api/src/routes/sessions.ts:22-26`).
+- Keyed by `_id = user_slug`.
 - Fields: `created_at`, `last_seen_at`, optional `status: "suspended"`.
-- Admin suspension sets `status = "suspended"` and invalidates the
-  user's sessions (§7).
 
 ### Suspension cache
 
-- 60-second TTL in-memory cache of suspended `user_slug`s; the contract
-  documents this as a **single-replica constraint** per invariant 12
-  (`A.md:44`). With >1 replica, suspension enforcement is racy for up to
-  60 s per replica.
-- fourier: `api/dependencies.py:23-25, 161-173`.
-- value.js: `~/Programming/value.js/api/src/middleware.ts:137-178`.
+- 60-second TTL in-memory cache of suspended `user_slug`s; single-replica
+  constraint per invariant 12.
 
 ### Endpoints (binding shape)
 
@@ -713,29 +687,17 @@ migrates from 7 to 30 days at the C.W2 migration row.
 | `GET` | `/sessions/me` | — | `{user_slug, created_at}` (requires session) |
 | `DELETE` | `/sessions` | — | `{ok: true}` (revokes current) |
 
-`POST /sessions` and `POST /sessions/login` are subject to the
-registration / login rate-limit (§8).
-
 ### Login timing-safety
 
 `POST /sessions/login` returns after a constant ≥200 ms delay regardless
-of whether the slug exists, to prevent user-enumeration timing attacks.
-Both repos already do this
-(`api/routers/sessions.py:68,75`,
-`~/Programming/value.js/api/src/routes/sessions.ts:47,54,62`).
+of whether the slug exists.
 
 ### Conformance assertions
 
-- **C6.1** — `POST /sessions` returns 201 with `{token, user_slug}`;
-  `GET /sessions/me` with the returned token returns the same user_slug.
-- **C6.2** — `DELETE /sessions` followed by `GET /sessions/me` with the
-  revoked token returns 401.
-- **C6.3** — `POST /sessions/login` with a non-existent slug returns 404
-  after ≥200 ms; with an existing slug returns 200 after ≥200 ms; the
-  difference is < 50 ms over 100 trials (timing-safe).
-- **C6.4** — a request with `X-Session-Token: <suspended-user-token>`
-  returns 403 with problem+json `type=account-suspended` after the
-  60-second cache TTL elapses or on first access from a fresh process.
+- **C6.1** — `POST /sessions` round-trip.
+- **C6.2** — `DELETE /sessions` invalidates the token.
+- **C6.3** — login timing-safe (< 50 ms difference over 100 trials).
+- **C6.4** — suspended-user 403 with `urn:contract:account-suspended`.
 
 ---
 
@@ -743,7 +705,7 @@ Both repos already do this
 
 **Goal.** Bearer-token admin auth with timing-safe comparison; eight
 named actions (flag / dismiss / feature / delete / suspend / unsuspend /
-delete-user / batch-*); every action is idempotent and writes an
+delete-user / batch-*); every action is **idempotent** and writes an
 `admin_audit` row; toggle endpoints are renamed to explicit setters to
 preserve idempotency.
 
@@ -754,25 +716,18 @@ admin-hard-delete-bypasses-grace rule are pinned by C7.1–C7.5 in §10.
 
 ### Auth
 
-- Bearer-token admin auth: `Authorization: Bearer <ADMIN_TOKEN>` where
-  `ADMIN_TOKEN` is a static env var.
-- Timing-safe comparison (`hmac.compare_digest` /
-  `crypto.timingSafeEqual`).
-- fourier: `api/dependencies.py:200-208`; value.js:
-  `~/Programming/value.js/api/src/middleware.ts:235-254`.
-- If `ADMIN_TOKEN` is unset, all admin endpoints return **503** with
-  problem+json `type=admin-not-configured`.
+- Bearer-token admin auth: `Authorization: Bearer <ADMIN_TOKEN>`.
+- Timing-safe comparison.
 
 ### Actions
 
-The contract binds the **action shape**, not the exact endpoint paths
-(each repo's wave spec carries the paths). Every admin action is one of:
+The contract binds the **action shape**, not the exact endpoint paths.
 
 | Action | Target | Semantics | Idempotent? |
 |---|---|---|---|
 | `flag` | entity slug | non-admin: register a complaint | yes (per `(target, reporter)` unique) |
 | `dismiss_flags` | entity slug | clear all flags on the entity | yes |
-| `feature` | entity slug | set `tier = featured` | yes (toggle is **not** — see below) |
+| `set_tier` (idempotent setter) | entity slug | set `tier = <value>` | yes (replaces toggle-style `feature` toggles) |
 | `delete` | entity slug | hard-delete (bypasses grace) | yes (post-state) |
 | `suspend_user` | user slug | set `users.status = suspended` | yes |
 | `unsuspend_user` | user slug | clear `users.status` | yes |
@@ -783,62 +738,32 @@ The contract binds the **action shape**, not the exact endpoint paths
 
 Re-applying an action that has already happened is a **no-op with 200**,
 not a 409. Toggle-style endpoints (today value.js's "feature" toggles at
-`~/Programming/value.js/api/src/routes/admin.ts:166-181`) are renamed to
-explicit `set_tier` actions to preserve idempotency.
+`value.js/api/src/routes/admin/palettes.ts:11-15`) are renamed to
+explicit `set_tier` actions to preserve idempotency. A DEFERRED-TO-VALUE.JS
+cell per §10 — value.js's toggle is currently non-idempotent.
 
 ### Audit log
 
-- Every admin mutation writes one row to `admin_audit`:
-  `{timestamp, ip_hash, action, target}` (both repos already do this:
-  fourier `api/services/database.py:88-89`,
-  value.js `~/Programming/value.js/api/src/routes/admin.ts:11-26`).
-- Audit row writes that themselves fail must not leak error detail
-  (value.js precedent at `admin.ts:23-25`: silently swallow).
-- Audit retention: **90 days** (fourier `api/services/janitor.py:176-179`).
+- Every admin mutation writes one row to `admin_audit`.
+- Audit retention: 90 days.
 
 ### Batch return shape
 
-A batch action returns:
-
-```json
-{
-  "processed": <int>,
-  "errors": [{"slug": "...", "code": "...", "detail": "..."}]
-}
-```
-
-Partial success returns 207 with this body; full success 200; full failure
-400. value.js's `processed` shape at
-`~/Programming/value.js/api/src/routes/admin.ts:476-560` is the precedent.
+A batch action returns `{ok, affected, errors?}` (the W5.c contract-bug
+fix; the retired `{processed, errors}` offset shape is gone).
 
 ### Flag uniqueness
 
 - `(entity_slug, reporter_slug)` is unique. Double-flagging by the same
-  reporter returns 409 (today's `api/routers/gallery.py:363-366`).
-- Self-flagging is rejected with 400 (today's `gallery.py:352-353`,
-  `palettes.ts:826-828`).
-
-### Tier (per-repo extension)
-
-- fourier: `tier ∈ {featured, saved, normal}` (existing).
-- value.js: `tier ∈ {featured, normal}` (renamed from `status` per §4).
-- The tier vocabulary is per-repo; the contract binds only that tier is
-  admin-controlled and orthogonal to user-controlled `visibility`.
+  reporter returns 409.
 
 ### Conformance assertions
 
-- **C7.1** — every admin mutation produces one new row in `admin_audit`
-  with matching `action` and `target`.
-- **C7.2** — applying `suspend_user` twice yields 200 + 200 (idempotent);
-  the audit log has two rows, the second annotated `noop: true` or
-  similar.
-- **C7.3** — a non-admin request to any admin endpoint returns 401
-  (no `Authorization`) or 403 (wrong token); never 200.
-- **C7.4** — `(entity_slug, reporter_slug)` is a unique index;
-  double-insert by the same reporter raises `DuplicateKeyError`
-  (source-grep + insert assertion).
-- **C7.5** — admin `delete` on an entity bypasses the §5 grace window;
-  the row is hard-deleted in one operation, audit row written.
+- **C7.1** — audit row per action.
+- **C7.2** — idempotent suspend.
+- **C7.3** — non-admin 401/403.
+- **C7.4** — flag uniqueness.
+- **C7.5** — admin hard-delete bypasses grace.
 
 ---
 
@@ -846,114 +771,65 @@ Partial success returns 207 with this body; full success 200; full failure
 
 **Goal.** A 6-hour cron tick that makes only bounded queries — every
 `$nin` is over a known-small `distinct()` set, or replaced by the
-indexed `pinned: bool` flag. The unbounded `$nin` over a
-`pinned_contours` set built from a full collection scan (the prior
-janitor pattern) retires.
+indexed `pinned: bool` flag.
 
 **Completion.** The bounded-query rule, the cleanup-category ordering
 (expired sessions → soft-deleted-past-grace → stale users → orphan
-children → audit retention), the storage-budget-eviction retirement
-(the band-aid pre-condition discharged by B; the eviction *pass* itself
-retires at fourier-tranche-C), and the cron idempotency are pinned by
+children → audit retention), and the cron idempotency are pinned by
 C8.1–C8.4 in §10.
 
 ### Tick
 
-- Cron tick interval: **6 hours** (fourier
-  `api/services/janitor.py:22`; value.js scheduled out-of-band but
-  matches behaviourally).
-- Idempotent: a missed tick (process restart) is recovered on the next
-  scheduled tick; no work is lost.
+- Cron tick interval: **6 hours**.
+- Idempotent.
 
 ### Bounded queries only
 
-The cron makes **no unbounded `$nin`** query. The pattern at
-`api/services/janitor.py:60-65` —
-`{"contour_hash": {"$nin": list(pinned_contours)}}` where
-`pinned_contours` is built from a full collection scan — is **retired**.
-Replacement:
-
-- **Option A (binding default): `pinned: bool` flag on the child doc.**
-  Updated on publish/unpublish. Cron query is then
-  `{pinned: false, last_accessed_at: {$lt: cutoff}}` — indexed,
-  bounded.
-- **Option B (per-repo, where bounded sets exist): `distinct()` + `$nin`
-  over a known-small bounded set.** Precedent: value.js's cleanup uses
-  `db.collection("palettes").distinct("slug")` over the live palette
-  set (`~/Programming/value.js/api/src/cron.ts:19-24`); this is bounded
-  by the palette count and is acceptable.
+The cron makes **no unbounded `$nin`** query.
 
 ### Cleanup categories (binding order)
 
-The cron passes traverse, in this order (parents after children):
-
-1. **Expired sessions**: `{expires_at: {$lt: now}}` — both repos already.
-2. **Soft-deleted entities past grace** (§5):
-   `{deleted_at: {$lt: now - grace}}`.
-3. **Stale users**: `{last_seen_at: {$lt: now - user_ttl_days}}` →
-   cascade-delete the user's sessions, flags, and entities (the entities
-   are themselves cascade-soft-deleted; the next cron pass hard-deletes
-   them via category 2).
-4. **Orphan children** (sessions for deleted users; flags for deleted
-   entities; votes for deleted palettes): `$nin` over a *bounded*
-   `distinct()` of live parent slugs.
+1. **Expired sessions**: `{expires_at: {$lt: now}}`.
+2. **Soft-deleted entities past grace** (§5).
+3. **Stale users**: `{last_seen_at: {$lt: now - user_ttl_days}}` → cascade.
+4. **Orphan children**: `$nin` over a *bounded* `distinct()` of live parents.
 5. **Audit retention**: `admin_audit` rows older than 90 days.
-
-### No storage-budget eviction
-
-The contract **retires** fourier's storage-budget eviction at
-`api/services/janitor.py:84-119`. It is a band-aid for the inline-blob
-problem and violates invariant 12 ("scale without contrivance"). The
-deferred destination is fourier tranche C (image-blob redesign;
-`B.md §7`); until then, the storage-budget eviction may remain
-operationally but is documented as a known violation in §12, not as
-contract-binding behaviour.
 
 ### Conformance assertions
 
-- **C8.1** — `grep -E '\$nin' api/services/janitor.py ~/Programming/value.js/api/src/cron.ts`
-  shows zero unbounded `$nin` (every occurrence is over a bounded
-  `distinct()` of ≤10,000 rows, or over an indexed `pinned: false`
-  predicate).
-- **C8.2** — a fixture with one each of (expired session, soft-deleted
-  entity past grace, stale user with 3 entities + 2 sessions, orphan
-  flag) is reduced to zero rows in one cron tick.
-- **C8.3** — `last_accessed_at` and `deleted_at` indexes exist on the
-  visualization / palette collection (source-grep
-  `database.py` / `db.ts` index declarations).
-- **C8.4** — the cron is idempotent: a second tick immediately after the
-  first is a no-op (`deleted_count == 0` on every category).
+- **C8.1** — no unbounded `$nin`.
+- **C8.2** — one tick clears fixture.
+- **C8.3** — required indexes exist (compound `(pinned, last_accessed_at)`).
+- **C8.4** — cron idempotent.
 
 ---
 
-## §9 — Shared data vs shared code (R3 disposition)
+## §9 — Shared data vs shared code (R3 disposition; v2.0.0 inv-16 binding)
 
 **Goal.** Sort every cross-cutting concern into exactly one of five
 dispositions — `contract` (text-only), `data` (a shared JSON file),
 `library` (a published code package), `service` (a coordinating
-runtime), or `per-repo` (intentional duplication) — and reject the
-shared-CRUD-framework anti-pattern (the rot pattern invariant 16 was
-always aimed at).
+runtime), or `per-repo` (intentional duplication), with the sixth
+disposition `utility` (per-language in-repo utility modules) admitted
+per the 2026-05-19 DECISION.md — and reject the shared-CRUD-framework
+anti-pattern (the rot pattern invariant 16 was always aimed at).
 
-**Completion.** The 1-row-per-target table is binding; the 2026-05-19
-DECISION.md amendment admits a sixth disposition `utility` (per-language
-in-repo utility modules); the §0 KISS-reject list and the Wχ-P1
-"framework-in-disguise" probe enforce the no-shared-framework rule; and
-the C9.1–C9.4 rows pin (a) the shared word-list-data file, (b) the
-process-local rate-limiter, (c) the absence of a shared framework, and
-(d) the utility-module admit-criteria conformance.
+**Completion.** The 1-row-per-target table is binding; the §0.4
+module-layout-neutrality clause is the v2.0.0 binding restatement; the
+§0 KISS-reject list and the Wχ-P3 KISS adversarial certification enforce
+the no-shared-framework rule; and the C9.1–C9.4 rows pin (a) the shared
+word-list-data file (per-repo today; the cross-repo membership clause
+RETIRED per §2 relaxation), (b) the process-local rate-limiter, (c) the
+absence of a shared framework, and (d) the utility-module admit-criteria
+conformance.
 
-R3's 1-row-per-target disposition table (`research/R3-shared-optimum.md`)
-is the substrate; this section binds the dispositions for B.W1 and
-B.W3/B.W4. Every row has a disposition ∈ {`contract`, `data`, `library`,
-`service`, `per-repo`}, a rationale, and a conformance assertion (indexed
-by §10).
+### Disposition table (R3 + 2026-05-19 DECISION.md + v2.0.0)
 
 | Target | Disposition | Rationale | Conformance |
 |---|---|---|---|
-| Slug algorithm (shape, length, collision policy) | **contract** | Logic, not data; cheaper to specify in text than ship a code package. | §2 C2.1-C2.4 |
-| Slug word lists | **data** (R3 disposed; precepts submodule) | Drift between fourier and value.js word lists changes which slugs are generated. R3 admit-rule: size ≤10 KB, drift-is-correctness, language-agnostic JSON. Lives at `docs/precepts/data/slug-words.json`; U2 authors. | C9.1 below |
-| **Per-language utility module** (new disposition, per 2026-05-19 DECISION.md) | **utility** (in-repo; `api/lib/crud/` for fourier, `api/src/crud/` for value.js) | Cross-cutting concerns that duplicate *and drift* (H3 batch-shape; R-identity TOCTOU; janitor `$nin`). Admit criteria: size ≤ 500 LOC/repo; cross-cutting concern (≥2 in-repo or both repos); framework-free (no control inversion, no codegen, no lifecycle ownership); in-repo first (standalone-package extraction deferred until a *third* consumer materialises). Named utilities: slug generator, cursor encode/decode, problem+json envelope, ETag middleware, Idempotency-Key middleware, soft-delete helpers, pinned-cron pattern. **U2** authors the slug-words data file; **U3** authors `api/lib/crud/` (fourier); **U4** authors `api/src/crud/` (value.js). | C9.4 below |
+| Slug algorithm (shape, length, collision policy) | **contract** | Logic, not data; cheaper to specify in text than ship a code package. v2.0.0 §2 relaxed. | §2 C2.1-C2.3, C2.5 |
+| Slug word lists | **per-repo** (v2.0.0; v1.0.0's "shared data" RETIRED) | The v2.0.0 §2 relaxation does not require a shared word list; each repo's word list is a local-data concern. fourier uses `coolname` + precepts entries; value.js uses `slugWords.ts`. | C2.4 RETIRED |
+| **Per-language utility module** | **utility** (in-repo; `api/lib/crud/` for fourier, `api/src/lib/crud/` for value.js — or value.js's `services+repositories+errors+events` idiom, which is functionally equivalent at the wire) | Per the v2.0.0 §0.4 module-layout-neutrality clause: the contract does not bind which file holds which utility, only that the wire behaviour matches. | C9.4 |
 | Identity model (slug ↔ id ↔ hash separation) | **contract** | Pure rule. | §1 C1.1-C1.3 |
 | Ownership rules (required owner, 401-on-anonymous) | **contract** | Pure rule. | §3 C3.1-C3.4 |
 | Visibility states + transitions | **contract** | Pure rule. | §4 C4.1-C4.4 |
@@ -962,193 +838,94 @@ by §10).
 | Admin actions + audit shape | **contract** | Pure rule. | §7 C7.1-C7.5 |
 | Cron/TTL policy + bounded-query rule | **contract** | Pure rule. | §8 C8.1-C8.4 |
 | Hash policy (which hashes survive, role) | **contract** | Pure rule. | §1 hash policy block |
-| Migration discipline (idempotent, dry-run, count-verify) | **contract** | Pure rule + precedent (value.js `migrate-slugs.ts`). | §11 C11.1-C11.3 |
-| Rate-limiter (in-memory, per-process) | **per-repo** | Process-local state; single-replica constraint per invariant 12. | C9.2 below |
+| Migration discipline | **contract** | Pure rule + precedent. | §11 C11.1-C11.3 |
+| Rate-limiter (in-memory, per-process) | **per-repo** | Process-local state; single-replica constraint per invariant 12. | C9.2 |
 | MongoDB driver / framework | **per-repo** | Out of scope by invariant 16. | — |
-| `Palette` domain type | **library** | value.js the library; consumed by both demos. Lands in value.js-C.W1. | per value.js-C.W1 conformance |
-| `colorScale`, `sampleToSVGPath` helpers | **library** | Same. | per value.js-C.W1 |
-| Slug uniqueness retry loop (logic) | **utility** (per 2026-05-19 revision; previously "contract") | The DECISION.md revision re-classifies this as the canonical tier-2 utility-module instance: ~30 LOC/repo of insert-then-catch-`DuplicateKeyError` logic; cross-cutting (both repos); framework-free. Realised in `api/lib/crud/slug.py` and `api/src/crud/slug.ts`. | §2 C2.2-C2.3 + C9.4 |
-
-### Disposition verdict (Wα R3 / Wχ P1 — recorded verbatim, 2026-05-26)
-
-The binding fourier-side disposition count, per the Wα R3 verdict
-reaffirmed at the Wχ challenge-wave close (`audit/challenge.md §1`,
-`§5 H-W1-2`):
-
-> **10 contract / 1 data / 0 library / 0 service.**
-
-- **10 contract** — the pure-rule targets (slug algorithm, identity,
-  ownership, visibility, soft-delete, sessions, admin, cron/TTL, hash
-  policy, migration discipline).
-- **1 data** — the slug word-lists. **Home: `docs/precepts/data/slug-words.json`**
-  (precepts-submodule form, chosen over the `@mkbabb/slug-words`
-  npm+PyPI package on strict-KISS grounds — both repos already pin the
-  precepts submodule, so no new dependency surfaces). The actual
-  extraction is owed at W3 (the file is ENOENT today; W1 fixes the spec
-  only).
-- **0 library** — under the orphan verdict (value.js-C RETIRED) no
-  cross-repo library artefact ratifies in the fourier-mandatory path;
-  the `Palette` / `colorScale` / `sampleToSVGPath` `library` rows above
-  are held as cohort-latent affordances for a future value.js
-  re-engagement, not counted in the fourier-side disposition.
-- **0 service** — no third coordinating runtime; invariant 16 holds.
-
-Invariant 16 was **adversarially certified** at `audit/challenge.md §1`
-(P1 — 0% shared code; the slug word-list is *data*, ≤ 6.8 KB JSON with
-zero runtime dependency, and the `api/lib/crud/` utility is a genuine
-called-from library with no control inversion). This challenge close is
-cited here as the invariant-16 certification of record.
+| **Cross-repo FK shape (`visualization.palette_slug` ⇄ `palette.slug`)** | **contract** (new in v2.0.0 §13) | The one binding cross-repo artefact: shape + existence binding, not code-shared. | §13 (new) |
+| `Palette` domain type | **per-repo** (was "library" in v1.0.0; held latent for a value.js re-engagement) | Under the orphan verdict, no cross-repo library artefact ratifies; value.js's npm `@mkbabb/value.js` library is one consumer surface, fourier's pydantic is another. | — |
+| `colorScale`, `sampleToSVGPath` helpers | **per-repo or value.js-library iff published** | Colour-lift sub-item from C.coordination/COLOUR-LIFT.md; iff value.js publishes `sampleToSVGPath`, fourier consumes via npm import. v0.10.0 does NOT export it (verified at W5 dispatch); held as named residual. | per `D/coordination/VALUE-JS-ASK.md §colour-lift` |
 
 ### Rejected: shared CRUD framework / codegen / coordinating service
 
-The three named anti-patterns of invariant 16 (`B.md:34`) are rejected
-by §0 KISS guards and Wχ probe P1's "framework-in-disguise" classification.
-No section above is disposed as `service`. The conformance assertion C9.3
-below tests this structurally. Per the 2026-05-19 DECISION.md, the
-rejection is scoped to **frameworks** (control inversion, codegen,
-third coordinating service) — *not* to the tier-2 utility-module form,
-which is admitted in the new `utility` disposition row above.
+Per §0.4 (v2.0.0 binding clause) — **invariant 16 holds**. No shared
+package, no codegen, no third coordinating service.
 
 ### Conformance assertions
 
-- **C9.1** — the word-list data file at `docs/precepts/data/slug-words.json`
-  (R3-disposed; U2 authors) exists and is consumed by both repos
-  (grep/`require`/import assertion).
-- **C9.2** — rate-limiter state is process-local in both repos; a
-  fixture proves cross-process budget non-sharing (start two processes,
-  observe each gets full budget).
-- **C9.3** — `grep -rE "from .* import shared_crud|require\(.*shared-crud" {fourier,value.js}`
-  returns zero. `docker-compose.{yml,prod.yml}` and value.js's `Caddyfile`
-  contain no third coordinating service (Redis, NATS, Kafka, etc.).
-  *Amended per DECISION.md*: the grep explicitly permits `api/lib/crud/`
-  (fourier) and `api/src/crud/` (value.js) — these are tier-2 in-repo
-  utility modules, not a shared framework.
-- **C9.4** (per 2026-05-19 DECISION.md) — the per-language utility
-  modules at `api/lib/crud/` (fourier) and `api/src/crud/` (value.js)
-  conform to the admit criteria: (a) total LOC ≤ 500 per repo
-  (`wc -l api/lib/crud/*.py` and `wc -l api/src/crud/*.ts` both
-  ≤ 500); (b) no control inversion — `grep -rE 'class .*Router|class .*Mixin|register_entity|@register' api/lib/crud/ api/src/crud/`
-  returns zero; (c) each utility is `called by` router code, never the
-  inverse — source-grep assertion that `api/lib/crud/*` is imported
-  *by* `api/routers/*`, never the other direction; same for value.js.
+- **C9.1** — *(retired in v2.0.0 — was "shared word-list data file"; the §2
+  relaxation makes a cross-repo membership clause obsolete; per-repo
+  word-list provenance is the binding form)*. fourier's local conformance:
+  every generated slug's words belong to the loaded local list.
+- **C9.2** — rate-limiter state process-local in both repos.
+- **C9.3** — `grep -rE "from .* import shared_crud|require\(.*shared-crud"`
+  returns zero in both repos. No third coordinating service in
+  `docker-compose*.yml`.
+- **C9.4** — the per-language utility surface admits to the §0.4 binding:
+  no `class .*Router|class .*Mixin|register_entity|@register` pattern;
+  each utility is *called by* router code, never the inverse.
 
 ---
 
-## §10 — Conformance test matrix (LOAD-BEARING)
+## §10 — Conformance test matrix (LOAD-BEARING — v2.0.0 three-way close-rule)
 
-**Goal.** Index every conformance assertion C\*.\* named in §1–§9 into a
-testable artefact at a named path in each repo; the matrix is the
+**Goal.** Index every conformance assertion C\*.\* named in §1–§9 + §13
+into a testable artefact at a named path in each repo; the matrix is the
 literal close-on substrate that converts "the contract says X" into "a
 test run in CI fails if X regresses".
 
 **Completion.** Every row carries a non-empty test name + run command +
-expected output in both repos; the §U amendment (per the 2026-05-19
-DECISION) extends the matrix with utility-module rows (`U-slugs-*` etc.);
-the close-rule (every row PASS in both columns) is binding at fourier-B.W3
-and value.js-C.W2.
+expected output in each repo. The §U amendment extends the matrix with
+utility-module rows. The v2.0.0 three-way close-rule (below) is binding.
 
-This section is the gate. A row appears here for every conformance
-assertion C\*.\* named in §1–§9. The full fleshed-out table (with test
-file paths, run commands, expected outputs) lives in
-`coordination/CONFORMANCE-MATRIX.md` (authored by A5); this section is
-the **index** and the **ratification ledger** — when every row's
-fourier-column and value.js-column both check **PASS**, the contract is
-ratified.
+The canonical matrix is `coordination/CONFORMANCE-MATRIX.md`.
 
-**Pointer + close-rule (binding).** The canonical matrix is
-`coordination/CONFORMANCE-MATRIX.md` — **187 rows** (180 cross-repo + 7
-fourier-side §F coherence rows). The W1 ratification gate is that **every
-row carries a non-empty `Run command` cell** (satisfied at W1 close; a row
-with no named test path is not ratifiable and its contract section is
-re-written). The fourier-side cells are **PASS-bound at B.W3** (and at
-B.W4 / B.W5 for the consumer-wired rows); under the orphan verdict the
-value.js cross-repo cells are held **DEFERRED** (the fifth status in the
-`CONFORMANCE-MATRIX.md` status legend, introduced by the R3 refinement
-assay §9), and the §F rows ratify on the fourier-only path.
+### v2.0.0 three-way close-rule (REINTERPRETS v1.0.0's binary close-rule)
 
-> The §10 close-rule. fourier-B.W1 cannot close while any row's two
-> columns are not both PASS. If a row cannot be made testable, the
-> contract section it indexes is *too soft* and must be re-written.
+> **§10 close-rule (v2.0.0).** Every row of `CONFORMANCE-MATRIX.md` carries
+> per-repo cells. v1.0.0's literal "both columns PASS" gate becomes
+> v2.0.0's **three-way dispositioning**: every cell is named as one of:
 >
-> **§U inclusion (per 2026-05-19 amendment)**. The close-rule extends
-> to the utility-module conformance rows in `CONFORMANCE-MATRIX.md` §U
-> (`U-slugs-*`, `U-cursors-*`, `U-errors-*`, `U-etag-*`, `U-idem-*`,
-> `U-soft-*`, `U-cron-*`, `U-meta-*`). Every §U row must also read
-> PASS in both columns. The §U section ratifies the tier-2 in-repo
-> utility modules (`api/lib/crud/` in fourier; `api/src/lib/crud/` in
-> value.js) admitted by C9.4 — it is the testable bridge between the
-> §9 admit criteria and the unit-level surface enumerated in U3/U4.
-> §U is **not** a separate gate: it is folded into the same B.W3 /
-> value.js-C.W2 close gate as §1–§9 and §S\*. A §U row reaching
-> `WAIVED` requires the same §12 change-log discipline as a §1–§11
-> row.
+> - **ADDRESSED** — the repo conforms to the row's clause today; the cell
+>   reads PASS. Citation: a `value.js/api/src/<path>:<line>` (for value.js)
+>   or `api/<path>:<line>` (for fourier) verified at the disposition time.
+>
+> - **DEFERRED-TO-VALUE.JS** — the row's clause is a value.js-side delta;
+>   the responsible value.js alignment-tranche wave is named (per the
+>   I.W1-W4 sketch in `D/coordination/VALUE-JS-ASK.md`); the cell stays
+>   cited but the next responsible actor is recorded.
+>   **DEFERRED-TO-VALUE.JS is the cohort-reopen path, not a fail.**
+>
+> - **RETIRED-AS-OVER-SPEC** — the v1.0.0 clause was an over-specification
+>   of fourier's accidents (e.g. the 4-word slug shape; the shared
+>   word-list membership). v2.0.0 relaxes; both apps conform to the relaxed
+>   form; no value.js delta is needed.
+>
+> §10 closure under v2.0.0 = "every cell is named with one of the three
+> dispositions; no cell is unaddressed/silent". DEFERRED-TO-VALUE.JS cells
+> are tagged in `D/coordination/VALUE-JS-ASK.md` as the cohort hand-off
+> brief.
 
-### Matrix shape (one row per assertion × two columns)
-
-| Assertion | Section | fourier evidence | fourier status | value.js evidence | value.js status |
-|---|---|---|---|---|---|
-| C1.1 (no hash in URL) | §1 | `pytest api/tests/test_identity::test_no_hash_in_url` | PASS@W3 | `vitest test/identity/no-hash-in-url` | DEFERRED |
-| C1.2 (slug shape on read) | §1 | `pytest test_identity::test_slug_read_shape` | PASS@W3 | `vitest test/identity/slug-read-shape` | DEFERRED |
-| C1.3 (no `_id` in response) | §1 | `pytest test_identity::test_no_id_field` | PASS@W3 | `vitest test/identity/no-id-field` | DEFERRED |
-| C2.1 (slug shape on generate) | §2 | `pytest test_slug_format` | PASS@W3 | `vitest test/slug/format` | DEFERRED |
-| C2.2 (collision retry) | §2 | `pytest test_slug_collision::test_dup_key_retry` | PASS@W3 | `vitest test/slug/dup-key-retry` | DEFERRED |
-| C2.3 (no check-then-insert) | §2 | `scripts/grep-no-check-then-insert.sh` | PASS@W3 | same (per-repo) | DEFERRED |
-| C2.4 (word-list membership) | §2,§9 | `pytest test_slug_format::test_words_in_list` | PASS@W3 | `vitest test/slug/words-in-list` | DEFERRED |
-| C3.1 (anonymous 401) | §3 | `pytest test_ownership::test_anonymous_create_401` | PASS@W3 | `vitest test/ownership/anonymous-create-401` | DEFERRED |
-| C3.2 (wrong-owner 403) | §3 | `pytest test_ownership::test_wrong_owner_403` | PASS@W3 | `vitest test/ownership/wrong-owner-403` | DEFERRED |
-| C3.3 (schema rejects null owner) | §3 | `pytest test_ownership::test_schema_null_owner` | PASS@W3 | `vitest test/ownership/schema-null-owner` | DEFERRED |
-| C3.4 (zero null-owner rows post-migration) | §3,§11 | `pytest test_migration::test_no_null_owner` | PASS@W3 | `vitest test/migration/no-null-owner` | DEFERRED |
-| C4.1 (visibility enum) | §4 | `pytest test_visibility::test_enum_validation` | PASS@W3 | `vitest test/visibility/enum-validation` | DEFERRED |
-| C4.2 (anonymous list only public) | §4 | `pytest test_visibility::test_anonymous_list_public_only` | PASS@W3 | `vitest test/visibility/anonymous-list-public-only` | DEFERRED |
-| C4.3 (draft 404 to non-owner) | §4 | `pytest test_visibility::test_draft_404_anonymous` | PASS@W3 | `vitest test/visibility/draft-404-anonymous` | DEFERRED |
-| C4.4 (owner sees all three) | §4 | `pytest test_visibility::test_owner_sees_all` | PASS@W3 | `vitest test/visibility/owner-sees-all` | DEFERRED |
-| C5.1 (soft-delete hides) | §5 | `pytest test_soft_delete::test_anonymous_404_after_delete` | PASS@W3 | `vitest test/soft-delete/anonymous-404` | DEFERRED |
-| C5.2 (restore within grace) | §5 | `pytest test_soft_delete::test_restore_in_grace` | PASS@W3 | `vitest test/soft-delete/restore-in-grace` | DEFERRED |
-| C5.3 (hard-delete past grace) | §5 | `pytest test_soft_delete::test_cron_hard_deletes_past_grace` | PASS@W3 | `vitest test/soft-delete/cron-hard-deletes` | DEFERRED |
-| C5.4 (no unbounded `$nin`) | §5,§8 | `scripts/grep-no-unbounded-nin.sh` | PASS@W3 | same (per-repo) | DEFERRED |
-| C6.1 (session round-trip) | §6 | `pytest test_sessions::test_register_and_me` | PASS@W3 | `vitest test/sessions/register-and-me` | DEFERRED |
-| C6.2 (logout invalidates) | §6 | `pytest test_sessions::test_logout` | PASS@W3 | `vitest test/sessions/logout` | DEFERRED |
-| C6.3 (login timing-safe) | §6 | `pytest test_sessions::test_login_timing` | PASS@W3 | `vitest test/sessions/login-timing` | DEFERRED |
-| C6.4 (suspended 403) | §6 | `pytest test_sessions::test_suspended_403` | PASS@W3 | `vitest test/sessions/suspended-403` | DEFERRED |
-| C7.1 (audit row per action) | §7 | `pytest test_admin::test_audit_row_per_action` | PASS@W3 | `vitest test/admin/audit-row-per-action` | DEFERRED |
-| C7.2 (idempotent suspend) | §7 | `pytest test_admin::test_idempotent_suspend` | PASS@W3 | `vitest test/admin/idempotent-suspend` | DEFERRED |
-| C7.3 (non-admin 401/403) | §7 | `pytest test_admin::test_non_admin_rejected` | PASS@W3 | `vitest test/admin/non-admin-rejected` | DEFERRED |
-| C7.4 (flag uniqueness) | §7 | `pytest test_admin::test_flag_uniqueness` | PASS@W3 | `vitest test/admin/flag-uniqueness` | DEFERRED |
-| C7.5 (admin hard-delete bypasses grace) | §7 | `pytest test_admin::test_hard_delete_bypasses_grace` | PASS@W3 | `vitest test/admin/hard-delete-bypasses-grace` | DEFERRED |
-| C8.1 (no unbounded `$nin`) | §8 | `scripts/grep-no-unbounded-nin.sh` | PASS@W3 | same (per-repo) | DEFERRED |
-| C8.2 (cron clears fixture) | §8 | `pytest test_janitor::test_one_tick_clears_fixture` | PASS@W3 | `vitest test/cron/one-tick-clears` | DEFERRED |
-| C8.3 (indexes exist) | §8 | `pytest test_database::test_required_indexes` | PASS@W3 | `vitest test/db/required-indexes` | DEFERRED |
-| C8.4 (cron idempotent) | §8 | `pytest test_janitor::test_second_tick_noop` | PASS@W3 | `vitest test/cron/second-tick-noop` | DEFERRED |
-| C9.1 (shared data exists if `data`) | §9 | conditional on R3 | PASS@W3 | conditional on R3 | DEFERRED |
-| C9.2 (rate-limiter process-local) | §9 | `pytest test_rate_limiter::test_cross_process` | PASS@W3 | `vitest test/rate-limiter/cross-process` | DEFERRED |
-| C9.3 (no shared CRUD framework) | §9 | `scripts/grep-no-shared-framework.sh` | PASS@W3 | same | DEFERRED |
-| C11.1 (migration idempotent) | §11 | `pytest test_migration::test_idempotent` | PASS@W3 | `vitest test/migration/idempotent` | DEFERRED |
-| C11.2 (count-verify) | §11 | `api/scripts/migrate_visualization.py --verify` | PASS@W3 | `src/migrate-palette-schema.ts --verify` | DEFERRED |
-| C11.3 (spot-check) | §11 | `pytest test_migration::test_spot_check_10_rows` | PASS@W3 | `vitest test/migration/spot-check-10-rows` | DEFERRED |
-
-The fourier `PASS@W3` cells become `PASS` at B.W3 close; the value.js
-cells are held `DEFERRED` under the orphan verdict (value.js-C RETIRED)
-and would turn `PASS` at value.js-C.W2 on a cohort re-engagement.
-fourier-B.W1's ratification gate is that **every cell has a named test
-path with a non-empty expected output** (satisfied here); the W3 close
-gate is that every fourier cell is `PASS`.
+**Per-repo matrix flip discipline (P3.C2 binding).** fourier flips its
+column on its own conformance suite (`api/tests/conformance/`); value.js's
+column is **dispositioned** by fourier reading value.js source as a
+read-only audit, NOT flipped on fourier's behalf. value.js's column flips
+on its own future conformance suite (a value.js-tranche deliverable). No
+shared CI harness, no shared assertion library, no shared mock fixtures.
 
 ### Run-command index
 
-Aggregate run commands per repo (the matrix entries name individual
-tests; these run the entire conformance suite):
+Aggregate run commands per repo:
 
 - fourier: `uv run pytest -k 'conformance'` from the repo root.
-- value.js: `npm run test:conformance` from `~/Programming/value.js/api/`.
+- value.js: `npm run test:conformance` from `~/Programming/value.js/api/`
+  (to be authored by the value.js alignment-tranche per
+  `D/coordination/VALUE-JS-ASK.md`).
 
 ### Out-of-tree assertions (source-grep)
 
-Three assertions are source-grep, not runtime tests; they are scripted in
-`scripts/conformance/` (created at B.W3) and invoked by the suite:
-
-- `scripts/grep-no-check-then-insert.sh` (C2.3)
-- `scripts/grep-no-unbounded-nin.sh` (C5.4, C8.1)
-- `scripts/grep-no-shared-framework.sh` (C9.3)
+- `scripts/conformance/grep-no-check-then-insert.sh` (C2.3)
+- `scripts/conformance/grep-no-unbounded-nin.sh` (C5.4, C8.1)
+- `scripts/conformance/grep-no-shared-framework.sh` (C9.3)
 
 ---
 
@@ -1167,127 +944,168 @@ pin idempotency, count-verify artefacts, and 10-row spot-check.
 
 Every migration script in either repo conforms to:
 
-1. **Idempotent.** Re-running yields zero additional writes. Precedent:
-   `~/Programming/value.js/api/src/migrate-slugs.ts:31-36` (skip-if-set).
-2. **Dry-run flag** (`--dry-run` / `DRY_RUN=1`). Prints the plan and
-   counts without writing.
-3. **Count-verify**. Pre-flight count, post-flight count, and a spot-check
-   of N random rows (default 10). Output as a markdown artefact in
-   `docs/tranches/B/audit/migration-counts.md` (fourier) / equivalent
-   (value.js).
-4. **Failure recovery**. A crash at 50% leaves the database in a
-   consistent state (idempotent re-run completes). No half-written
-   intermediate states (use `find_one_and_update` or transactions where
-   strictly necessary).
-5. **Reversible OR completeness-proven.** Either a rollback script
-   exists, or the count-verify artefact proves completeness (the
-   irreversible path is admitted only when the rollback is itself a
-   contrivance worse than the forward migration).
+1. **Idempotent.** Re-running yields zero additional writes.
+2. **Dry-run flag** (`--dry-run` / `DRY_RUN=1`).
+3. **Count-verify**. Pre-flight count, post-flight count, spot-check.
+4. **Failure recovery**. A crash at 50% leaves the database consistent.
+5. **Reversible OR completeness-proven.**
 
 ### Per-collection migration plan
 
-#### fourier (W3)
+#### fourier (B.W3, landed)
 
 | Source collection | Source field | Destination | Action |
 |---|---|---|---|
 | `snapshots` | `snapshot_hash` | `visualization.content_hash` | move; **not user-facing** |
-| `snapshots` | (all snapshot rows) | `visualization` (new) | each snapshot becomes a `visualization` row |
-| `gallery` | `snapshot_hash` | `visualization._id` is the join key; `visualization.slug` is **generated** | for each gallery row, locate the snapshot via `snapshot_hash`, generate a fresh slug, set `visibility = "public"`, copy `user_slug → owner_slug`, `views`, `likes`, `liked_ips`, `tier` |
-| `snapshots` (no gallery row) | — | `visualization` with `visibility = "draft"`, `owner_slug = ?` | orphan-snapshot resolution: assign to a single synthetic "legacy" owner OR drop (per Wχ P2 disposition; default: drop, since no user navigated to them) |
-| `gallery` | `user_slug == null` | reject | every such row produced by `api/routers/gallery.py:206` is either reassigned (if a matching `liked_ips` hash maps to a known user — unlikely) or dropped. Wχ P2 disposes. |
-| `gallery` | (rest of fields) | `visualization` | direct copy |
+| `gallery` | (rest) | `visualization` (new) | direct copy + slug-generation |
 
-After migration:
-
-- `db.visualizations.countDocuments({}) == ` union of
-  (gallery rows with `user_slug != null`) +
-  (snapshot rows resolved per orphan rule).
-- `db.visualizations.countDocuments({owner_slug: null}) == 0`.
-- `db.visualizations.countDocuments({slug: null}) == 0`.
-- The old `snapshots` and `gallery` collections are renamed to
-  `_snapshots_legacy` and `_gallery_legacy` (not dropped) until B.W5
-  close; B.W5 drops them.
-
-#### value.js (value.js-C.W2)
+#### value.js (value.js-I.W2, user-re-mandate-gated)
 
 | Source field | Destination | Action |
 |---|---|---|
-| `palettes.status: "published" | "featured"` | `palettes.visibility, palettes.tier` | split: `published → visibility=public, tier=normal`; `featured → visibility=public, tier=featured` |
-| `palettes.userSlug` | unchanged (already required) | confirm post-`migrate-slugs.ts` state has zero nulls |
-| (none) | `palettes.deleted_at` | add column (null for all existing) |
-| (none) | `palettes.unlisted` semantics | new state; no rows migrated into it (existing rows default to `public`) |
-| sessions.expires_at — none | sessions with `lastSeenAt < now - 7d` keep their TTL; new sessions get 30d | not a data migration; cutover at code deploy |
-
-### Brittleness window (per `B.md §8`)
-
-W3 may need a brittleness window — a span where the old `snapshots` /
-`gallery` collections and the new `visualization` collection coexist, or
-where reads are briefly dual-pathed. The default disposition is **clean
-cutover** (the dual-read path is the legacy code the invariants forbid).
-Wχ P2 confirms.
+| `palettes.status: "published" | "featured" | "hidden" | "draft"` | `palettes.visibility, palettes.tier` | split per §4 |
+| `palettes.sessionToken` (legacy shim) | strip | confirm all rows carry non-null `userSlug` |
+| (none) | `palettes.deletedAt` | add column (null for all existing) per §5 |
 
 ### Conformance assertions
 
-- **C11.1** — second run of the migration produces zero writes
-  (`updateMany.modifiedCount == 0`, `insertMany.insertedCount == 0`).
-- **C11.2** — `api/scripts/migrate_visualization.py --verify` produces
-  `docs/tranches/B/audit/migration-counts.md` with pre/post counts that
-  match the expected derivation; equivalent for value.js.
-- **C11.3** — 10 random `snapshot_hash` values (sampled with seed=42
-  pre-migration) appear post-migration as `visualization` rows with the
-  expected `(slug, owner_slug, visibility, content_hash, contour_settings,
-  animation_settings)`.
+- **C11.1** — second run of the migration produces zero writes.
+- **C11.2** — `--verify` produces count artefact.
+- **C11.3** — 10-row spot-check.
 
 ---
 
 ## §12 — Open items & change log
 
-**Goal.** No silent deferral — every open question at ratification
-carries a named destination; every amendment carries a wave-boundary
-attribution and a one-line summary.
-
-**Completion.** The open-items table names a destination per row; the
-change-log table records the version, date, wave, and change for every
-contract revision; subsequent amendments record one row per amendment
-with the authoring wave boundary.
-
 ### Open items (each with a destination)
 
 | Item | Discussion | Destination |
 |---|---|---|
-| Word-list disposition (data vs contract) | R3's admit-rule outcome | §9 row + §2 word-list block, finalised at Wχ close |
-| Orphan-snapshot resolution (drop vs synthetic owner) | Wχ P2 | §11 fourier table, finalised at Wχ close |
-| value.js session TTL (7d → 30d) | this contract binds 30d; value.js-C.W2 lands | value.js-C.W2 |
-| `colorScale`, `sampleToSVGPath`, `Palette` library shape | value.js-C.W1 | value.js-C.W1 |
-| Image-blob inline storage (band-aid `storage_budget_gb`) | invariant 12 honesty | fourier tranche C (named) |
-| Rate-limiter single-replica documentation | invariant 12 | per-repo `README` or `ARCHITECTURE.md`; named here, landed at W3 |
-| `Idempotency-Key` server replay storage | §0 SOTA convention adopted | per-repo decision: in-memory 24h vs Mongo TTL collection. Decide at W3. |
-| problem+json migration of existing error shapes | §0 SOTA convention adopted | W3/W4 in fourier; value.js-C.W2 |
+| value.js-side alignment (visibility split, soft-delete, SOTA envelopes, top-level `id` strip) | DEFERRED-TO-VALUE.JS per §10 | value.js alignment-tranche (user-re-mandate-gated) per `D/coordination/VALUE-JS-ASK.md` |
+| Image-blob inline storage (band-aid `storage_budget_gb`) | invariant 12 honesty | fourier tranche C (closed) |
+| Colour-lift consume (`sampleToSVGPath`) | C.W4 inverted δ edge | named residual at W5 (value.js v0.10.0 does NOT export); fires iff value.js publishes |
+| Conformance suite for value.js | a value.js-tranche deliverable | named in `VALUE-JS-ASK.md §conformance-suite` |
 
 ### Change log
 
 | Version | Date | Wave | Change |
 |---|---|---|---|
-| 0.1.0-draft | 2026-05-19 | B.W1 (in flight) | initial authoring by A1 (this document); not yet ratified |
-| 1.0.0 | 2026-05-26 | B.W1 close | RATIFIED fourier-unilateral (commit `4626d4c`); value.js-C sign-off DEFERRED (value.js-C RETIRED, never opened) per the orphan verdict |
+| 0.1.0-draft | 2026-05-19 | B.W1 (in flight) | initial authoring by A1 |
+| 1.0.0 | 2026-05-26 | B.W1 close | RATIFIED fourier-unilateral (commit `4626d4c`); value.js-C sign-off DEFERRED per orphan verdict |
+| **2.0.0** | **2026-05-27** | **D.W5** | **RE-AUTHORED (not amended): §0 supersession + §0.4 module-layout neutrality (inv-16 re-cert per P3.C1); §2 relaxed (admits user-supplied slugs; binds slug-identity not word-count); §10 three-way close-rule (ADDRESSED / DEFERRED-TO-VALUE.JS / RETIRED-AS-OVER-SPEC per P3.C2 + CRUD-COHESION §6.1); §13 new (cross-repo `palette_slug` FK contract — opaque-by-slug, shape + existence, no shared HTTP client). v1.0.0's word-list membership clause (C2.4) RETIRED-AS-OVER-SPEC; v1.0.0's slug shape `^[a-z]+(-[a-z]+){3}$` retained as a valid local tightening but not the cross-repo binding.** |
 
-Subsequent amendments record one row per amendment with the authoring wave
-boundary and a one-line summary.
+---
+
+## §13 — Cross-repo FK contract: `visualization.palette_slug` ⇄ `palette.slug` (NEW in v2.0.0)
+
+**Goal.** Bind the one concrete cross-repo coupling — fourier's
+`visualization.palette_slug` field at `api/models/visualization.py:119`
+that references a value.js palette by slug — as a **shape + existence**
+contract, NOT a code-shared coupling. The contract binds the wire-level
+shape of the slug fourier stores and the wire-level shape of value.js's
+resolution endpoint; it does NOT bind any shared HTTP client, shared
+validation library, or shared TypeScript type.
+
+**Completion.** The `palette_slug` field semantics, the resolution
+endpoint shape, the opaque-by-slug write-time discipline, and the
+soft-delete-distinguishability rule are pinned by C13.1–C13.3 in §10.
+
+### Binding clause (v2.0.0)
+
+> **§13 — Cross-repo FK contract.** fourier's `visualization` entity
+> carries an optional `palette_slug: str | None` field
+> (`api/models/visualization.py:119`) that references a value.js palette.
+> The FK is **opaque-by-slug**: fourier stores a validated slug, never a
+> hash, never a URL substring, never the `palette.id` top-level field
+> value.js currently emits (which the v2.0.0 §1.3 binding forbids; a
+> DEFERRED-TO-VALUE.JS cell). value.js's `GET /palettes/:slug`
+> (`value.js/api/src/routes/palettes/crud.ts:60-64`) is the resolution
+> path; the slug is the lookup key. fourier does NOT cross-service-validate
+> at write-time (no synchronous resolve call) — KISS, invariant 12.
+> value.js's soft-delete (when §5 lands on value.js's side per the I.W2
+> wave) returns 410 Gone for soft-deleted palettes (distinguishable from
+> 404 never-existed); fourier's product surface chooses the
+> unresolvable-FK rendering. The contract binds the *shape*; the
+> *resolution* policy is per-app.
+
+### Fourier guarantees (the FK holder)
+
+- `Visualization.palette_slug: str | None` — nullable; the visualization
+  may carry no palette association (None is the legitimate empty state).
+- When non-`None`, the slug conforms to the §2 shape-floor
+  (`^[a-z0-9][a-z0-9-]*$`, length ≤ 120).
+- Uniqueness is **within the `visualization` document scope only** —
+  fourier stores the slug as an *opaque foreign key*; uniqueness within
+  the *palette space* is value.js's invariant.
+- Fourier does **not** validate that the slug resolves at write time (no
+  cross-repo round-trip on `POST /visualizations` or
+  `PATCH /visualizations/{slug}`). The slug may become stale if the
+  upstream palette is deleted; fourier carries this as
+  graceful-degradation.
+- The slug is **ETag-participating** (`etag.py:14` `_DEFAULT_FIELDS`
+  includes `palette_slug`; a slug change rotates the visualization's
+  ETag).
+- The slug is **exposed verbatim** on `GET /visualizations/{slug}` (no
+  enrichment, no resolve-and-inline of the palette payload) — the client
+  fetches the palette separately.
+
+### Value.js guarantees (the palette source-of-truth)
+
+- `GET /palettes/{slug}` returns HTTP 200 with the palette envelope iff
+  (a) the palette exists and (b) it is visible to the caller.
+- Returns HTTP 404 in all other cases (or 410 for soft-deleted, once §5
+  lands on value.js's side — DEFERRED-TO-VALUE.JS).
+- The slug in the URL is the **stable identity** — no hash, no version
+  suffix, no DB `_id` in the path.
+- Slug uniqueness within the palette space is enforced via a Mongo unique
+  index on the value.js side.
+- Slug **immutability**: once created, the slug does not change for that
+  palette's lifetime.
+
+### Cross-repo invariant
+
+The FK is *resolve-only*, not *enforce-at-write*. Fourier never reaches
+across to value.js on the write path; value.js never reaches across to
+fourier. Only cross-repo traffic is the read-side (fourier's frontend
+fetches `GET /palettes/{slug}`). This orthogonality is the load-bearing
+KISS property — meet-at-the-wire, not meet-in-the-code (P3.C3 binding).
+
+**No shared HTTP client, no shared validation library, no cross-repo
+TypeScript type import.** Fourier validates with its own pydantic regex;
+value.js validates with its own zod regex
+(`value.js/api/src/validation/palette.ts:19-23`). The two regex strings
+coincide by *text* (the v2.0.0 relaxation chose value.js's shape as the
+shared shape-floor), not by *code*.
+
+### Conformance assertions
+
+- **C13.1** — `Visualization.palette_slug` field accepts only values
+  conforming to the §2 shape-floor; non-conforming values rejected at
+  schema validation. Source: `api/models/visualization.py:119` + pydantic
+  validator.
+- **C13.2** — no cross-repo HTTP call from fourier's write path. Source:
+  `grep -rE 'requests\.|httpx\.|aiohttp\.' api/routers/visualizations.py`
+  returns zero matches against the value.js palette-api hostname.
+- **C13.3** — `GET /palettes/{slug}` (value.js side) returns 404 for
+  missing, 410 for soft-deleted (post-§5-landing), 200 for live. value.js
+  binds this; fourier consumes via the frontend's `web/src/lib/api.ts`.
 
 ---
 
 ## Appendix — Cross-reference table
 
-| Contract section | fourier code touched (W3/W4) | value.js code touched (C.W2) |
+| Contract section | fourier code touched | value.js code touched (when alignment-tranche fires) |
 |---|---|---|
-| §1 Identity | `api/routers/visualizations.py` (new), `api/models/visualization.py` (new) | `api/src/routes/palettes.ts` |
-| §2 Slug algorithm | `api/slugs.py`, `api/services/image_storage.py:71-77` (retire pre-flight) | `api/src/slugWords.ts`, `routes/palettes.ts:362,424,697` |
-| §3 Ownership | `api/dependencies.py` (`require_session`), `api/routers/visualizations.py` | `api/src/routes/palettes.ts:343-435`, `middleware.ts` |
-| §4 Visibility | `api/models/visualization.py`, `api/routers/visualizations.py` (list filter) | `api/src/routes/palettes.ts:158-291` (list filter), schema validator |
-| §5 Soft-delete | `api/routers/visualizations.py` (DELETE), `api/services/janitor.py:25-67` | `api/src/routes/palettes.ts:473-504`, `cron.ts` |
-| §6 Sessions | `api/routers/sessions.py`, `api/dependencies.py:144-179` | `api/src/routes/sessions.ts`, `middleware.ts:140-181` |
-| §7 Admin moderation | `api/routers/admin.py`, `api/services/database.py:88-89` | `api/src/routes/admin.ts`, `middleware.ts:235-254` |
-| §8 Cron/TTL | `api/services/janitor.py:25-208` | `api/src/cron.ts` |
-| §9 Shared-data-vs-code | (R3 decides location) | (R3 decides location) |
-| §10 Conformance | `api/tests/conformance/**`, `scripts/conformance/**` | `api/test/conformance/**`, `scripts/conformance/**` |
-| §11 Migration | `api/scripts/migrate_visualization.py` (new) | `api/src/migrate-palette-schema.ts` (new) |
+| §0.4 Module-layout neutrality | `api/lib/crud/` (one valid implementation) | `api/src/{services, repositories, errors, events, middleware}/` (another valid implementation) |
+| §1 Identity | `api/routers/visualizations.py`, `api/models/visualization.py` | `api/src/routes/palettes/crud.ts`, `api/src/format/palette.ts` |
+| §2 Slug identity | `api/lib/crud/slugs.py`, `api/slugs.py` | `api/src/slugWords.ts`, `api/src/validation/palette.ts:19-23` |
+| §3 Ownership | `api/dependencies.py`, `api/routers/visualizations.py` | `api/src/routes/palettes/crud.ts`, `api/src/middleware/` |
+| §4 Visibility | `api/models/visualization.py`, `api/routers/visualizations.py` | `api/src/models.ts:29` (status → visibility+tier split, DEFERRED) |
+| §5 Soft-delete | `api/lib/crud/softdelete.py`, `api/routers/visualizations.py` | `api/src/services/palette/crud.ts:219-247` (HARD cascade today; DEFERRED) |
+| §6 Sessions | `api/routers/sessions.py`, `api/dependencies.py` | `api/src/routes/sessions.ts`, `api/src/middleware.ts` |
+| §7 Admin moderation | `api/routers/admin.py` | `api/src/routes/admin/palettes.ts:11-15` (toggle → setter, DEFERRED) |
+| §8 Cron/TTL | `api/services/janitor.py`, `api/lib/crud/pinned_cron.py` | `api/src/cron.ts` |
+| §9 Shared-data-vs-code | (per-repo) | (per-repo) |
+| §10 Conformance | `api/tests/conformance/**`, `scripts/conformance/**` | `api/test/conformance/**` (alignment-tranche I.W4) |
+| §11 Migration | `api/scripts/migrate_visualization.py` (landed) | `api/src/migrate-palette-schema.ts` (DEFERRED) |
+| §13 Cross-repo FK | `api/models/visualization.py:119`, `api/lib/crud/etag.py:14` | `api/src/routes/palettes/crud.ts:60-64` (`GET /palettes/:slug`) |
