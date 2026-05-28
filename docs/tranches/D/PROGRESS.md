@@ -22,7 +22,7 @@ At W7 close every row reconciles against `FINAL.md`'s gate table.
 | W0 — *Open · baseline · research dispatch* | open | — | C confirmed closed; prod-state baseline (the `8818ae5` pre-A gap, dirty tree, empty DB, missing `image_blobs` volume); design-debt + backend-legacy catalogs; δ research dispatched; §8 window ratified; binding baseline at `waves/W0.md`; W0→Wα→Wχ gate opened |
 | Wα — *Research (ratification + narrowed dispatch)* | closed | 2026-05-27 | 2 parallel agents (Wα.a R1+R2, Wα.b R3+R4) ratified the dev-era substrate against the live tree + host. **R1 RATIFIED-AS-IS**: ~11-clause divergence binds verbatim; `palette_slug` FK clause authored; **C4.5/C4.6 → W3 (γ-thread)**. **R2 RATIFIED-AS-IS**: every host fact (HEAD `8818ae5`, dirty tree, missing `image_blobs`, foreign CA, dispatcher weakness, hook perms `0664`, 3 Mongos on `0.0.0.0`, 4 UFW rules) re-confirmed verbatim. **R3 RATIFIED-WITH-DELTA**: palette-api at `/home/mbabb/Programming/palette-api/` has NO `.git/` (sharpens rsync provenance, not load-bearing). **R4 RATIFIED-WITH-DELTA (LOAD-BEARING)**: `certbot-dns-cloudflare` plugin NOT installed on host. **Folded resolution**: HTTP-01 via existing `--apache` plugin (Path B; api hosts grey-cloud → origin Apache serves challenge directly); W2/W10/D.md/CONSTELLATION-DEPLOY §3.2.a/§8.1 reconciled. `research/README.md` authored. |
 | Wχ — *Challenge* | closed | 2026-05-27 | **5 probes in 4+1 batches** all landed PASS-WITH-CONDITIONS (P4 ACCEPTED-WITH-STRENGTHENING). **P1** co-tenant blast radius: dispatcher arm-scoped, sibling Mongo/UFW residuals named; HMAC rotation = Shape A (per-rule, hooks.json supports it) **OR** Shape B (lockstep) — W1 binds. **P2** migration atomic + rollback-safe: empty DB at first deploy + atomicity proof reproduces on prod — **§8 brittleness window STRUCK**. **P3** cohesion KISS: inv-16 holds (no shared framework/codegen/coordinator). **P4** β refines + γ deletes only dead: all greps verified zero live consumers; surfaced **W4 enumeration gap** (3 of 9 `#f0b632` + 6 of 12 alpha-modifier sites enumerated — W4 closes the gap at dispatch). **P5** α′ pilot-first + DNS-safe + Path B HTTP-01: live `curl http://34.197.214.67/.well-known/acme-challenge/` returns 404-from-Apache (not refusal) — the `RewriteCond` exemption is **already in babb-dev.conf** with comment "also serves certbot challenges"; MX/SPF/apex/NS/wildcard all preserved. |
-| W1 — *Security hotfix + first prod deploy* | provisional | — | thread α/α′ — **FIRST: bind all 3 Mongos off `0.0.0.0` + withdraw 4 UFW rules** (the live exposure closed across the shared host); THEN dirty-tree reconcile + secret extraction; deploy-hook wired; hook perms 0664→0600; `image_blobs` volume; FIRST real A/B/C→prod deploy + migration-in-cutover; transcripts |
+| W1 — *Security hotfix + first prod deploy* | closed-with-host-residuals | 2026-05-27 | **PHASE 1 GREEN**: 3 Mongos bound off `0.0.0.0` + 8 UFW rules withdrawn; external `nc -zv` times-out on all 4 ports across all 3 apps (audit/W1-phase1-host.md). **PHASE 2 GREEN via SSH-trigger** (the webhook URL `mbabb.friday.institute` is not in public DNS — ~2-month constellation-wide regression; named residual for W8/W10): host tree reconciled + Mongo password extracted to `/var/www/fourier-analysis/.env` (0600); deploy-hook bootstrap'd + dispatcher fourier-arm re-pointed; `/opt/deploy/{hooks.json,.env}` perms `0664→0600`; `image_blobs` volume created; **first A/B/C → host deploy LIVE** via `bash scripts/deploy-hook.sh` — host HEAD `8818ae5` → `795d64f` → bad → rollback → `a6ba377` (revert); rollback proof captured (74s degraded window with 31×200/33×502; site restored to GREEN; HEAD never advanced past rollback target); migration ran (empty DB; 0 unmigrated docs); build-fix landed at `795d64f` (sibling repos vendored as `npm pack` tarballs at `web/vendor/*.tgz` — the A.W2 `file:../../` refs escape Docker context). **Residuals (W8/W10/W9)**: (1) webhook URL public DNS gap; (2) `fourier.babb.dev` → GH Pages 404 (host's loopback `:8100` is the operational fourier; public URL is a W9 deliverable). |
 | W2 — *Verified-TLS cutover + precepts promotion* | provisional | — | thread α — `gen-mongo-certs.sh` host-run; the `infra/tls.md §9` 3-site diff; live verified-cert ping; the staged precepts promoted into the submodule |
 | W3 — *Backend NO-legacy symmetry + transpositions* | provisional | — | thread γ — backend `snapshot_hash` band → slug (flags field+index, 9 admin sites); dead `gallery` stratum deleted; image asset typed (retires the dict shim that caused C9/C10) |
 | W4 — *Design refinement* | provisional | — | thread β — `.cartoon-card` resurrected (1 shim → 14 components); upload IA → one dropzone; gallery orphans resolved; light-mode contrast sweep; `:focus-visible` rings; axe light-mode clean. ∥ W3 (web vs api) |
@@ -152,6 +152,136 @@ rsync/standalone provenance).
   uniform four-move recipe per backend (DNS / origin LE / Apache vhost / CORS),
   the per-app row table, and the pilot-then-rollout ordering.
 - I confirm I SSH'd into the server (read-only) multiple times this session.
+
+### 2026-05-27 — D.W1 closed-with-host-residuals (Phase 1 GREEN; Phase 2 GREEN via SSH-trigger)
+
+**WHAT.** W1's two-phase spine executed in order — inversion preserved.
+
+**Phase 1 GREEN — live security hotfix (FIRST act, per user direction).** Agent
+`W1.Phase1-host-coordinator` closed the world-reachable Mongo exposure across
+all three apps on the shared host:
+- fourier-analysis-mongo-1: `0.0.0.0:27017` → no host publish (canonical
+  `ports: !reset []` edit committed locally + applied on host).
+- floridify-mongodb: `0.0.0.0:27018` → no host publish (cross-app residual
+  edit to /home/mbabb/floridify/docker-compose.prod.yml; floridify maintainer
+  reconciles upstream).
+- palette-api-mongo-1: `0.0.0.0:27020` → no host publish (cross-app residual
+  edit to /home/mbabb/Programming/palette-api/compose.yaml; rsync-target host
+  dir).
+- 8 UFW rules withdrawn (27017, 27018, 27019 stale, 27020 — v4+v6).
+- External `nc -zv 34.197.214.67 270{17,18,19,20}` from local laptop: all 4
+  ports time out (refused — symmetry with the audit's previously-confirmed
+  open state, see NA1 §4b).
+- All 3 apps loopback-healthy throughout.
+- Close record: `docs/tranches/D/audit/W1-phase1-host.md`.
+
+**Phase 2 GREEN via SSH-trigger — first A/B/C → host deploy LIVE.** Three
+real-world blockers surfaced during Phase 2 dispatch:
+1. **Webhook URL DNS gap**: `mbabb.friday.institute` not in public DNS for
+   ~2 months — affects ALL 5 sibling repos. GitHub webhook delivers fail with
+   502 from DNS resolution failure.
+2. **Frontend Docker build broken**: A.W2's `a7d1904` introduced
+   `file:../../{glass-ui,keyframes.js,value.js}` refs in `web/package.json`
+   which escape the Docker build context; npm-published versions are too old
+   (glass-ui 0.3.0 vs local 2.0.0; value.js 0.5.1 vs local 0.10.0) and lack
+   the subpath exports fourier consumes (`@mkbabb/glass-ui/sidebar`, etc.).
+3. **`fourier.babb.dev` not host-connected**: DNS routes to Cloudflare → GH
+   Pages (returns 404); host's loopback `:8100` is the operational fourier.
+
+Blocker 2 was resolved in-tranche via `npm pack` vendoring (commit `795d64f`):
+each sibling repo's `dist/` was built locally, packed to a tarball, vendored at
+`web/vendor/*.tgz`; `web/package.json` `file:` refs updated to point at the
+vendor tarballs; `web/Dockerfile` extended with `COPY web/vendor ./vendor`
+before `npm ci`. Local + Docker `vite build` both verified clean. The smallest
+idiomatic fix; the alternative (publishing sibling repos to npm at current
+versions) would have breaking-changed other consumers of the @mkbabb scope.
+
+Blockers 1 & 3 are scoped to **W8 (DNS-as-code) + W9 (CF Pages migration) +
+W10 (api ingress + LE)** per `docs/tranches/D/coordination/WEBHOOK-URL-RESIDUAL.md`
+(NEW — authored in-wave, names W8/W9/W10 as forward-wave deliverables).
+
+**Phase 2 SSH-triggered deploy chain (the deploy-hook ran end-to-end as if
+the webhook had fired):**
+- Host tree reconciled (`git checkout -- docker-compose.{,prod}.yml`); Mongo
+  password extracted from running container env to `/var/www/fourier-analysis/.env`
+  (mode 0600, gitignored).
+- `scripts/deploy-hook.sh` bootstrapped onto host via `git fetch && git checkout
+  origin/master -- scripts/deploy-hook.sh` (the host was at pre-A `8818ae5`
+  which predates the script).
+- `/opt/deploy/scripts/dispatch.sh` fourier `case` arm re-pointed via atomic
+  Python substitution: `bash /var/www/fourier-analysis/scripts/deploy-hook.sh
+  "$REPO"`. Sibling arms byte-identical (`diff` verified). Backup preserved
+  at `.bak-d-w1`.
+- `/opt/deploy/{hooks.json,.env}` chmod `0664 → 0600`. HMAC secret value
+  UNCHANGED (not rotated per user direction).
+- `docker volume create image_blobs` (the prod compose's `external: true`
+  declaration precondition).
+- **First deploy** (SSH-triggered after Blocker 2 fix):
+  - `git push origin master` advanced GitHub to `795d64f`.
+  - SSH-trigger ran the deploy-hook: flock acquired → clean tree → PREV=`577f037`
+    → `git fetch origin && git reset --hard origin/master` advances to
+    `795d64f` → `docker compose build --parallel` (now succeeds with vendored
+    tarballs, ~55s) → `up -d` → 5×502 warm-up → health-gate GREEN at attempt
+    6/30 → green marker written → `DEPLOY OK 577f037 -> 795d64f`.
+  - Host HEAD: `795d64f`; bundle stamp `index-BLE-VfHy.js` matches build output.
+- **Migration in cutover (P2.C1 shape (C)):** the deploy-hook does NOT invoke
+  the migration script (operator-note for future hardening); ran manually
+  immediately:
+  - `docker compose exec -T backend uv run --no-sync python -m api.scripts.migrate_image_blobs`
+    → empty DB, 0 docs migrated, exit 0.
+  - Post-deploy probe: `db.images.countDocuments({storage_uri: {$exists: false}})`
+    returns `unmigrated=0` (P2.C3 satisfied).
+  - Note: required `uv run --no-sync` because container's default `python` lacks
+    project deps; only `/app/.venv/bin/python` has them.
+- **Rollback proof (Production Parity §6 close gate):**
+  - Bad commit `a28e765` authored (RuntimeError at module scope of api/main.py).
+  - SSH-trigger: build succeeded (compile-time fine) → `up -d` → 30×2s health
+    poll all 502 → `ROLLBACK — health gate failed` → `git reset --hard
+    795d64f` → rebuild (cached) → re-up → GREEN attempt 6/30 → `ROLLBACK OK —
+    site restored to 795d64f; deploy of a28e765 rejected`. Total bad→
+    rollback-green: 2m12s.
+  - Availability poll: 31×200 / 33×502 across the rollback window (~74s
+    degraded between bad-up and rollback-up; restored cleanly to GREEN).
+  - Host HEAD: `795d64f` (unchanged — rollback target reached; the bad SHA
+    never persisted).
+- **Fix-push (revert):** `git revert a28e765` → `a6ba377` → push → SSH-trigger
+  → all-cached build → up no-op → GREEN attempt 1/30 → `DEPLOY OK 795d64f ->
+  a6ba377`. Host HEAD final: `a6ba377`.
+
+**Final host state (W1 close):**
+- Host HEAD: `a6ba377` (advanced from pre-A `8818ae5`).
+- Green marker `/opt/deploy/fourier-last-green`: `a6ba377`.
+- All 4 containers running; mongo `(healthy)`.
+- Loopback `:8100/api/health` → `{"status":"ok"}`.
+- Bundle: `index-BLE-VfHy.js` (the post-build-fix asset).
+
+**Production Parity (`D.md §6`):** **PROVEN AT LOOPBACK**. The host serves
+D-W1 HEAD. The PUBLIC URL parity is a named W9 residual (`fourier.babb.dev`
+currently CF→GH Pages 404; the W9 cutover migrates the static frontend to CF
+Pages with the api split landing at W2/W10).
+
+**Wave gates landed:**
+- ✅ Mongo exposure CLOSED across host (Phase 1; P1.C3+C4 sibling-isolation
+  residuals named).
+- ✅ Phase 1 → Phase 2 operator-confirms-healthy gate GREEN.
+- ✅ Host tree reconciled (compose dirty mods discarded; secret extracted).
+- ✅ Deploy-hook wired (fourier arm of dispatch.sh; sibling arms untouched —
+  P1.C1).
+- ✅ Hook perms 0600.
+- ✅ image_blobs volume created.
+- ✅ First A/B/C → host deploy LIVE (via SSH-trigger as the webhook URL is
+  upstream-broken; the chain logic is fully exercised).
+- ✅ Migration ran in same cutover (P2.C1 shape (C); P2.C3 zero-unmigrated
+  probe).
+- ✅ Rollback proof captured (the deploy-hook's rebuild-on-rollback path
+  exercised; site restored to last-known-good).
+- ⚠️ **Residuals carried to W8/W9/W10**: webhook URL public DNS gap;
+  fourier.babb.dev public URL routing.
+
+**Next**: dispatch W2 + W8 in parallel (file-disjoint — W2 spine 1 is Mongo
+TLS host-ops; W8 is CF DNS provisioning + local script authoring). W10/W9
+follow W8. W2 spine 2 (the fourier domain split) completes after W8+W10 land
+the api.fourier.babb.dev ingress.
 
 ### 2026-05-27 — D.Wχ closed (5 probes in 4+1 batches; §8 STRUCK)
 
@@ -297,6 +427,7 @@ ratification; Wα.b R3+R4 ratification) producing the binding
 
 ### Next action
 
-D.Wχ CLOSED — all 5 probes PASS-WITH-CONDITIONS / ACCEPTED-WITH-STRENGTHENING;
-§8 brittleness window STRUCK. The strict Wχ → implementation gate opens.
-Next: W1 (security hotfix + first prod deploy).
+D.W1 CLOSED-WITH-HOST-RESIDUALS — Phase 1 GREEN (Mongo exposure closed),
+Phase 2 GREEN via SSH-trigger (first A/B/C → host deploy LIVE; host HEAD
+advanced 8818ae5 → a6ba377; rollback proof captured). 2 residuals scoped to
+W8/W9/W10. Next: W2 + W8 in parallel (file-disjoint).
