@@ -58,9 +58,20 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-fourier-admin}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}
+    # D.W2 honesty pivot: --tlsAllowConnectionsWithoutCertificates is NOT inert
+    # under SCRAM-only auth in mongod 8.0. It is required because the client
+    # (backend pymongo + the healthcheck mongosh) connects under server-only TLS
+    # without presenting a client cert — without this flag, mongod rejects the
+    # connection at the TLS handshake layer before SCRAM auth runs ("No SSL
+    # certificate provided by peer; connection rejected"). The C/infra/tls.md §1
+    # KISS-honesty note ("inert under SCRAM-only auth") was wrong on the live
+    # mongod; this comment supersedes it for the promoted tls.md. The flag does
+    # NOT make the trust posture weaker on the client side: pymongo still does
+    # full chain + SAN verification via tlsCAFile.
     command: ["mongod", "--tlsMode", "requireTLS",
               "--tlsCertificateKeyFile", "/etc/ssl/mongo.pem",
               "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
+              "--tlsAllowConnectionsWithoutCertificates",
               "--auth"]
     healthcheck:
       test: ["CMD", "mongosh", "-u", "${MONGO_USER:-fourier-admin}", "-p", "${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}",
