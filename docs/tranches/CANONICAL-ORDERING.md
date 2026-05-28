@@ -5,7 +5,7 @@
 **Reconciles with**: R1's cohort-orphan assay (the verdict on whether value.js-C — the cohort-peer tranche to fourier-B — is effectively orphaned) and R6's fourier-C scoping (the open-design scoping for fourier-analysis's infra + image-blob-out-of-Mongo tranche); parallel-dispatched. Both R1 and R6 outputs were not yet present at `docs/audits/runs/2026-05-19-refinement-assay/` at this document's authoring. This document is **provisional pending R1's cohort verdict**; both orderings (cohort-live, cohort-orphan) are given in §5.
 **Authority**: this is the only execution-order document spanning both repos. Per-tranche `*.md` and `coordination/CRUD-CONSTELLATION.md` (the cohort coordination doc bound to fourier-B's CRUD-and-identity-convergence question) remain the authority for individual dependency claims.
 
-> **⚠ SUPERSEDED — see §10 (Ordering ε, 2026-05-27, post-D-authoring).** §1–§7 were authored 2026-05-26 (contingent orderings α/β); §8 (γ) reconciled at fourier-C authoring; §9 (δ) reconciled at fourier-C close. Now: **fourier-A/B/C CLOSED but NONE deployed to prod** (prod serves pre-A `8818ae5`), **fourier-D AUTHORED** as the production-deployment + design + backend-symmetry + cross-repo-cohesion tranche, and the cross-repo edge has **broadened** from the latent colour seam to the live `palette-api` CRUD cohesion (the `palette_slug` FK + contract v2.0.0). **§10 is the authoritative current ordering;** §1–§9 are retained as the historical record.
+> **⚠ SUPERSEDED — see §11 (Ordering ζ, 2026-05-28, post-D-close + E-authoring).** §1–§7 were authored 2026-05-26 (contingent orderings α/β); §8 (γ) reconciled at fourier-C authoring; §9 (δ) reconciled at fourier-C close; §10 (ε) reconciled at fourier-D authoring 2026-05-27. Now: **fourier-D CLOSED CLEAN 2026-05-28** (all six threads GREEN; prod LIVE on `fourier.babb.dev` + `api.fourier.babb.dev`; constellation rolled out); **fourier-E AUTHORED** as the cross-repo-cohesion-completion + consumer-hardening + architectural-transpositions + test-integrity + operational-hygiene tranche; **value.js-I OPENED** at fourier-E.W2 as the cohort peer (the user's 2026-05-28 "fix our cross repos" IS the I re-mandate). **§11 is the authoritative current ordering;** §1–§10 are retained as the historical record.
 
 ---
 
@@ -346,3 +346,47 @@ The repos are now **coupled at the CRUD layer** (the live `palette_slug` FK + th
 ### §10.4 — Constellation scope (tranche-D α′, 2026-05-27)
 
 D's α′ thread (`docs/tranches/D/coordination/CONSTELLATION-DEPLOY.md`) broadens the operational picture beyond the fourier↔value.js pair this document orders, to the **whole babb.dev constellation** on the shared AWS host (`34.197.214.67`): fourier, color (palette-api), sudoku (csp-solver), words (floridify), grammar (bbnf-lang), keyframes.js, value.js, speedtest. CANONICAL-ORDERING remains the **tranche-ordering** authority for fourier + value.js; the constellation *deployment* normalization is operational (DNS/CF-Pages/ingress), with fourier as the pilot and the others as bounded rollout — not new tranches (except the user-gated palette-api→color rename, which is a value.js-side concern). Two cross-cutting gates: the **live Mongo exposure** (urgent) and the **`api.<app>` TLS-ceiling** decision.
+
+---
+
+## §11 — Ordering ζ (2026-05-28 post-D-close + E-authoring — AUTHORITATIVE)
+
+The 6-lane E-development audit (`docs/audits/runs/2026-05-28-E-audit/SYNTHESIS.md`) supersedes §10 (which was the post-D-authoring ε, when D was still planned and not yet executed). Two facts overturn the prior framing:
+
+1. **fourier-D CLOSED CLEAN 2026-05-28** — all six threads GREEN; production is LIVE on `fourier.babb.dev` (CF Pages) + `api.fourier.babb.dev` (origin Apache + LE); the constellation is normalized (8 CF DNS records + 4 Pages projects + 7 SANs); the webhook chain is restored (`deploy.babb.dev → :9000` LIVE; the 2-month constellation regression CLOSED).
+2. **The cross-repo cohesion is opening as a cohort** — fourier-E + value.js-I run together; the user's "fix our cross repos" IS the I re-mandate D held conditional. The 53 DEFERRED-TO-VALUE.JS conformance cells land in I.W1-W4; the `palette_slug` FK cross-repo CORS fix lands at E.W1; the cross-repo source boundary preserved (inv-16 + Wχ-P3.C4 inherited).
+
+### §11.1 — Reconciled tranche inventory
+
+| Repo | Tranche | Status (2026-05-28) | Note |
+|---|---|---|---|
+| fourier | **A / B / C** | **CLOSED** (`c7cfd82`, `fc5b3b0`, C-close `1e47115`) | not deployed at the time of their closes; D closed the production gap |
+| fourier | **D** | **CLOSED CLEAN 2026-05-28** (`342a078` + post-close `6039e95`) | all six threads GREEN; production LIVE |
+| fourier | **E** — cross-repo cohesion completion + consumer hardening + architectural transpositions + test integrity + operational hygiene | **AUTHORED 2026-05-28** (this commit); awaits user E.W0 authorization | five threads α/β/γ/δ/ε + conditional ζ per `docs/tranches/E/E.md` |
+| value.js | **A–H** | **CLOSED** (H = v0.10.0 `16129e0`) | the npm library `@mkbabb/value.js` |
+| value.js | **palette-api** | **LIVE on prod** (v2.0.0; api.color.babb.dev) | the CRUD cohesion target; partial-conform (17%) — I.W1-W4 closes the gap |
+| value.js | **I** — *cohort peer for fourier-E* | **CONDITIONAL-OPEN** at fourier-E.W2 | user re-mandated 2026-05-28; opens as cohort; the 53 DEFERRED-TO-VALUE.JS cells |
+
+### §11.2 — The cross-repo edges (now three, all live-grounded)
+
+```
+fourier visualization.palette_slug ──(slug-FK)──▶  value.js palette-api palette noun   [LIVE today]
+fourier-E β consumer hardening (ApiProblem class) ←──(inv-16 independent)──▶ value.js-I.W4 (same shape)
+fourier-E.W1 CORS fix             ──(cross-app coord)──▶ palette-api ALLOWED_ORIGINS adds fourier.babb.dev
+fourier-E δ conformance probe T7  ──(probes both APIs)──▶ value.js-I conformance suite
+```
+
+### §11.3 — Current critical path + next action
+
+- **fourier next action**: await user authorization for **E.W0**. E's spine is the cross-repo cohesion completion (the value.js-I re-mandate D recorded) + consumer hardening (all 6 consumer surfaces) + 5 architectural transpositions. Research-first gate (W0 → Wα → Wχ) governs α + γ.
+- **value.js next action**: open **value.js-I** as cohort peer at fourier-E.W2. The 53 cells + the I.W1-W4 sketch are authored in `docs/tranches/E/coordination/{CRUD-COHESION-E.md, COHORT-VALUE-JS-I.md}`. The value.js maintainer authors `value.js/docs/tranches/I/I.md` per the cohort coordination.
+
+The repos remain **independent at the source-boundary level** (inv-16) while **coupled at the contract layer** (CRUD-CONTRACT v2.0.0 documentation seam) and at the **live CORS + FK seam** (E.W1 closes the browser-layer gap).
+
+### §11.4 — Cohort closure shape (binding)
+
+The cohort closes via one of two paths:
+- **Paired close**: fourier-E.FINAL.md AND value.js-I.FINAL.md both land; conformance probe T7 green; CANONICAL-ORDERING → ordering η.
+- **Named successor**: fourier-E closes; one or more I waves remain; E.FINAL records the residual + the named successor (e.g. value.js-I.W4 → value.js-J).
+
+Half-state at the FK seam is rejected.
