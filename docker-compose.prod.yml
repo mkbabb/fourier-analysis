@@ -5,13 +5,17 @@ services:
     ports: !reset []
     environment:
       - CORS_ORIGINS=${CORS_ORIGINS:-https://fourier.babb.dev}
-      - MONGO_URI=mongodb://${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}@mongo:27017/fourier?authSource=admin&tls=true&tlsAllowInvalidCertificates=true
+      - MONGO_URI=mongodb://${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}@mongo:27017/fourier?authSource=admin&tls=true&tlsCAFile=/etc/ssl/mongo-ca.pem
     restart: unless-stopped
     volumes:
       # C.W5: the blob backend, read-write. The base compose declares the named
       # volume; the prod overlay re-pins it ``external: true`` (below) so the
       # sole copy of user uploads survives a ``down -v``.
       - image_blobs:/data/blobs
+      # D.W2 (promoted from C/infra/tls.md §9 Edit 1): the CA cert, read-only —
+      # the client validates the mongod server cert against this. Server-only
+      # TLS: NO leaf cert is mounted here.
+      - ./ssl/mongo-ca.pem:/etc/ssl/mongo-ca.pem:ro
     deploy:
       replicas: 1
       resources:
@@ -46,9 +50,10 @@ services:
     # The backend reaches mongo over the compose-network DNS name `mongo:27017`
     # (the existing `app-network` bridge — docker-compose.yml). The previous
     # `0.0.0.0:27017->27017/tcp` publish (NA5 §3.1 — externally TCP-reachable
-    # on 34.197.214.67:27017) is closed. The verified-TLS posture lands at
-    # W2 (the tlsAllowInvalid* flags here STAY until W2; this wave closes
-    # the network half).
+    # on 34.197.214.67:27017) is closed. D.W2 closed the trust half: the three
+    # permissive tls flags (the URI, the mongod cmd, the healthcheck) are gone,
+    # the backend mounts the CA read-only, and the live connection performs
+    # full chain + SAN verification against the fourier-internal-ca leaf.
     ports: !reset []
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-fourier-admin}
@@ -56,12 +61,11 @@ services:
     command: ["mongod", "--tlsMode", "requireTLS",
               "--tlsCertificateKeyFile", "/etc/ssl/mongo.pem",
               "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
-              "--tlsAllowConnectionsWithoutCertificates",
               "--auth"]
     healthcheck:
       test: ["CMD", "mongosh", "-u", "${MONGO_USER:-fourier-admin}", "-p", "${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}",
              "--authenticationDatabase", "admin",
-             "--tls", "--tlsAllowInvalidCertificates",
+             "--tls", "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
              "--eval", "db.runCommand('ping').ok", "--quiet"]
     volumes:
       - mongo_data:/data/db
