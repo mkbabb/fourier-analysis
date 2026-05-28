@@ -52,6 +52,7 @@ uploads/
 # Scripts (private/local only — tracked scripts use negation)
 scripts/*
 !scripts/dev.sh
+!scripts/e2e.sh
 !scripts/deploy-hook.sh
 !scripts/dns-cf-sync.sh
 !scripts/gen-mongo-certs.sh

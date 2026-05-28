@@ -448,10 +448,15 @@ function instrument(page: Page): {
 // ── the lifecycle, swept at 3 viewports ──────────────────────────────────────
 
 for (const vp of VIEWPORTS) {
-    test.describe(`visualization CRUD lifecycle @ ${vp.name} (${vp.width}×${vp.height})`, () => {
+    // D.W6 — the CRUD lifecycle is destructive (POST/PATCH/DELETE on the live DB).
+    // Tagging `@mutating` lets the prod cell of the cross-env matrix skip it via
+    // `grepInvert: /@mutating/` in playwright.config.ts (set when PLAYWRIGHT_PROD=1).
+    // The host cell (SSH tunnel to prod's loopback :8100) is read-only by the
+    // same mechanism — host probes set PLAYWRIGHT_PROD=1 to honor the guard.
+    test.describe(`visualization CRUD lifecycle @ ${vp.name} (${vp.width}×${vp.height}) @mutating`, () => {
         test.describe.configure({ mode: "serial" });
 
-        test(`full lifecycle: upload → draft → publish → unlisted → delete → restore`, async ({
+        test(`full lifecycle: upload → draft → publish → unlisted → delete → restore @mutating`, async ({
             page,
         }) => {
             await page.setViewportSize({ width: vp.width, height: vp.height });
@@ -570,7 +575,8 @@ for (const vp of VIEWPORTS) {
         });
 
         // ── axe keystone: workspace default state ──
-        test(`a11y keystone: workspace default is clean @ ${vp.name}`, async ({
+        // (also @mutating because it POSTs /api/sessions to bootstrap auth)
+        test(`a11y keystone: workspace default is clean @ ${vp.name} @mutating`, async ({
             page,
         }) => {
             await page.setViewportSize({ width: vp.width, height: vp.height });
@@ -580,7 +586,7 @@ for (const vp of VIEWPORTS) {
         });
 
         // ── axe keystone: ExportModal Dialog-open (W2 keystone, consolidated) ──
-        test(`a11y keystone: ExportModal Dialog-open is clean @ ${vp.name}`, async ({
+        test(`a11y keystone: ExportModal Dialog-open is clean @ ${vp.name} @mutating`, async ({
             page,
         }) => {
             await page.setViewportSize({ width: vp.width, height: vp.height });
