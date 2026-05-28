@@ -44,7 +44,7 @@ function onImgError() {
         <h3 class="cm-serif mb-3 text-sm font-semibold tracking-tight flex items-center gap-2">
             <ImagePlus class="h-4 w-4 text-muted-foreground" />
             Image
-            <span class="ml-0.5 text-xs font-normal text-muted-foreground/70">&mdash; source input</span>
+            <span class="ml-0.5 text-xs font-normal text-muted-foreground">— source input</span>
         </h3>
 
         <!-- Preview with overlay replace button + drag-over dashed outline -->
@@ -84,30 +84,32 @@ function onImgError() {
             </div>
         </div>
 
-        <!-- Drop zone: only shown when no image is loaded -->
-        <div
+        <!-- D.W4.b — Slim source-strip (replaces the redundant full-card
+             empty-state dropzone). The canvas-center placeholder is the
+             hero affordance; this strip is a secondary cue + click target.
+             Once an image lands, the thumbnail/replace card above (with
+             `hasPreview()` true) becomes the only "full" panel form. -->
+        <button
             v-else
-            class="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 min-h-[200px] transition-all duration-200"
+            type="button"
+            class="source-strip group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150"
             :class="{
-                'border-primary bg-primary/5 scale-[1.01]': isDragging,
-                'border-border hover:border-muted-foreground hover:bg-muted/30': !isDragging,
+                'is-dragging': isDragging,
             }"
+            :aria-label="'Choose an image — drop a file or click to browse'"
             @click="openFilePicker"
         >
             <Upload
-                class="mb-2.5 h-8 w-8 transition-all duration-200"
+                class="h-4 w-4 shrink-0 transition-colors duration-150"
                 :class="{
                     'text-primary': isDragging,
                     'text-muted-foreground': !isDragging,
                 }"
             />
-            <p class="text-sm font-medium text-muted-foreground">
-                Drop an image or click to upload
-            </p>
-            <p class="mt-1 text-xs text-muted-foreground/60">
-                PNG, JPG, SVG up to 10MB
-            </p>
-        </div>
+            <span class="flex-1 text-sm font-medium text-muted-foreground">
+                Drop or click to upload — PNG/JPG/SVG ≤ 10 MB
+            </span>
+        </button>
 
         <!-- Rainbow computing bar — below the card content -->
         <Transition name="rainbow-fade">
@@ -179,5 +181,27 @@ function onImgError() {
     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
     outline: 2px dashed var(--primary);
     outline-offset: 3px;
+}
+
+/* D.W4.b — slim source-strip. Replaces the redundant full dashed-border
+   empty-state dropzone with a one-line click target that yields hero
+   primacy to the canvas placeholder. The dashed-border affordance is
+   reserved for the canvas hero; the panel's secondary cue is flat. */
+.source-strip {
+    background: color-mix(in srgb, var(--muted) 40%, transparent);
+    border: 1px solid var(--border);
+    cursor: pointer;
+}
+.source-strip:hover {
+    background: color-mix(in srgb, var(--muted) 60%, transparent);
+    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
+}
+.source-strip:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}
+.source-strip.is-dragging {
+    background: color-mix(in srgb, var(--primary) 6%, transparent);
+    border-color: var(--primary);
 }
 </style>

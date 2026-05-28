@@ -103,3 +103,50 @@ html {
         animation: none;
     }
 }
+
+/* D.W4.a — `.cartoon-card` shim (the dead-class resurrection).
+   glass-ui removed the `.cartoon-card` recipe at C.W5 (cards.css:2);
+   `cartoon-surface` survives as a decoration-only utility (cards.css:33).
+   Fourier consumes `.cartoon-card` at 14 application sites (13 files; one
+   uses it 5 times). The shim re-binds the class against `cartoon-surface`
+   (the 2px border + offset-stamp shadow + hover-lift) and the existing
+   `--border`/`--card` tokens, restoring parity with the pre-C.W5 visual
+   without touching glass-ui. Cross-repo re-publish recorded as a
+   coordination ask; this shim is the fourier-local KISS stop-gap. */
+@utility cartoon-card {
+    @apply cartoon-surface;
+    border-color: var(--border);
+    background: var(--card);
+}
+
+/* D.W4.d — light-mode `--viz-amber` darken (axe contrast carry).
+   glass-ui ships light `--viz-amber` at `hsl(35 70% 42%)` ≈ 3.54:1 against
+   `--background` — fails WCAG AA for normal text. The override darkens to
+   `hsl(35 76% 35%)` ≈ 4.6:1 (clears AA). Dark-mode value stays put. The
+   companion glass-ui carry (rebaseline the upstream light token) is held
+   as a coordination ask. */
+:root {
+    --viz-amber: hsl(35 76% 35%);
+    --section-color-5: hsl(35 76% 35%);
+}
+.dark {
+    /* Dark-mode value stays as glass-ui ships (hsl(37 73% 67%)). */
+    --viz-amber: hsl(37 73% 67%);
+    --section-color-5: hsl(37 73% 67%);
+}
+
+/* D.W4.d — `:focus-visible` rings on the TOC link classes + the gallery
+   card. Mirrors the canonical pattern at AppHeader.vue:174-177 (the only
+   pre-W4 conformant site). The classes are declared in scoped styles in
+   PaperSidebar.vue, MobileFloatingToc.vue, PaperArticleWindow.vue,
+   GalleryCard.vue — all four scoped-styled. Because Vue's scoped styles
+   add a data-attribute selector, the ring lives at the global layer so it
+   applies regardless of the component scope hash. */
+.sidebar-link:focus-visible,
+.floating-toc-item:focus-visible,
+.callout-btn:focus-visible,
+.gallery-card:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: inherit;
+}

@@ -140,7 +140,7 @@ function actionTone(action: string): string {
                     {{ entry.target || "—" }}
                 </span>
                 <span
-                    class="font-mono text-[0.65rem] text-muted-foreground/70"
+                    class="font-mono text-[0.65rem] text-muted-foreground"
                     :title="entry.ip_hash"
                 >
                     {{ entry.ip_hash.slice(0, 10) }}

@@ -37,7 +37,7 @@ watch(open, (isOpen) => {
         <ChevronRight class="h-4 w-4 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-90': open }" />
         <span>
           <span class="cm-serif text-sm font-semibold tracking-tight">{{ title }}</span>
-          <span v-if="subtitle" class="ml-1.5 text-xs font-normal text-muted-foreground/70">&mdash; {{ subtitle }}</span>
+          <span v-if="subtitle" class="ml-1.5 text-xs font-normal text-muted-foreground">— {{ subtitle }}</span>
         </span>
       </CollapsibleTrigger>
       <slot name="actions" />

@@ -244,9 +244,9 @@ const activePreset = computed(() =>
 }
 
 .is-auto-active {
-    color: #f0b632 !important;
-    border-color: rgba(240, 182, 50, 0.4) !important;
-    background: rgba(240, 182, 50, 0.08) !important;
+    color: var(--viz-amber) !important;
+    border-color: color-mix(in srgb, var(--viz-amber) 40%, transparent) !important;
+    background: color-mix(in srgb, var(--viz-amber) 8%, transparent) !important;
 }
 
 .auto-calc-tip {

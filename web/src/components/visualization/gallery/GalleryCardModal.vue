@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
-import { Badge, Button } from "@mkbabb/glass-ui";
+import { computed } from "vue";
+import {
+    Badge,
+    Button,
+    Dialog,
+    DialogContent,
+} from "@mkbabb/glass-ui";
 import type { GalleryEntry } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
 import { VIZ_COLORS } from "@/lib/colors";
 import {
-    X,
     ArrowRight,
     Eye,
     Heart,
@@ -26,6 +30,16 @@ const emit = defineEmits<{
     "open-visualizer": [imageSlug: string];
     "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
 }>();
+
+// D.W4.c — re-pointed onto the glass-ui `<Dialog>` primitive (already in
+// use at GalleryView.vue:381 for batch + AdminFlaggedPanel.vue:264 for
+// flagged confirms). `<Dialog>` brings role="dialog" + focus-trap +
+// Escape-close + return-focus for free — the previous hand-rolled Teleport
+// + Transition + Escape listener retires.
+const open = computed({
+    get: () => true,
+    set: (v: boolean) => { if (!v) emit("close"); },
+});
 
 const basisLabels = computed(() =>
     (props.entry.active_bases ?? [])
@@ -53,35 +67,15 @@ function timeAgo(iso: string): string {
     if (h < 24) return `${h}h ago`;
     return `${Math.floor(h / 24)}d ago`;
 }
-
-function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-        e.preventDefault();
-        emit("close");
-    }
-}
-
-onMounted(() => window.addEventListener("keydown", onKeydown));
-onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 </script>
 
 <template>
-    <Teleport to="body">
-        <Transition name="modal">
-            <div
-                class="fixed inset-0 z-[var(--z-modal)] p-4 bg-background/70 backdrop-blur-sm flex items-center justify-center"
-                @click="emit('close')"
-            >
-                <div class="modal-card relative bg-card rounded-xl border-2 border-foreground/15 overflow-hidden max-w-[28rem] w-full max-h-[90vh] overflow-y-auto" @click.stop>
-                    <Button
-                        variant="glass"
-                        size="icon"
-                        class="absolute top-2.5 right-2.5 z-[var(--z-content)] h-8 w-8"
-                        @click="emit('close')"
-                    >
-                        <X :size="18" />
-                    </Button>
-
+    <Dialog v-model:open="open">
+        <DialogContent
+            variant="opaque"
+            class="modal-card max-w-[28rem] w-full max-h-[90vh] overflow-y-auto p-0 border-2 border-foreground/15 rounded-xl"
+        >
+            <div class="relative overflow-hidden rounded-xl">
                     <!-- Image frame -->
                     <div class="relative aspect-[16/10] border-b border-foreground/8 bg-muted overflow-hidden">
                         <img
@@ -105,7 +99,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                         <!-- Slug + stats row -->
                         <div class="flex items-center gap-1.5">
                             <span class="text-sm text-muted-foreground font-mono flex-1 min-w-0 truncate">{{ entry.image_slug }}</span>
-                            <span class="text-sm text-foreground/35 shrink-0">{{ timeAgo(entry.created_at) }}</span>
+                            <span class="text-sm text-muted-foreground shrink-0">{{ timeAgo(entry.created_at) }}</span>
                         </div>
 
                         <!-- Stats row -->
@@ -113,7 +107,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                             <span class="inline-flex items-center gap-[0.3rem] text-sm text-muted-foreground">
                                 <Eye :size="16" />
                                 <span class="font-mono">{{ entry.views }}</span>
-                                <span class="text-muted-foreground/60">views</span>
+                                <span class="text-muted-foreground">views</span>
                             </span>
                             <Button
                                 variant="ghost"
@@ -125,7 +119,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                             >
                                 <Heart :size="16" :fill="isLiked ? 'currentColor' : 'none'" />
                                 <span class="font-mono">{{ entry.likes }}</span>
-                                <span class="text-muted-foreground/60">likes</span>
+                                <span class="text-muted-foreground">likes</span>
                             </Button>
                         </div>
 
@@ -199,9 +193,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                         </Button>
                     </div>
                 </div>
-            </div>
-        </Transition>
-    </Teleport>
+        </DialogContent>
+    </Dialog>
 </template>
 
 <style scoped>
@@ -265,13 +258,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
     border-color: color-mix(in srgb, var(--foreground) 20%, transparent);
 }
 
-/* Transitions (A.W3.d — bezier→`--ease-apple-spring`) */
-.modal-enter-active {
-    transition: opacity 0.25s var(--ease-standard), transform 0.3s var(--ease-apple-spring);
-}
-.modal-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.modal-enter-from { opacity: 0; transform: scale(0.92); }
-.modal-leave-to { opacity: 0; transform: scale(0.95); }
+/* D.W4.c — modal transitions ride on the glass-ui `<Dialog>` primitive
+   (CONSTELLATION recipe — DialogContent ships its own data-state animation).
+   The bespoke .modal-enter/leave classes retired with the Teleport+Transition. */
 </style>

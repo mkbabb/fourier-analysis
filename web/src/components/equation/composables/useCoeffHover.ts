@@ -6,6 +6,7 @@
 import { ref, computed, type Ref } from "vue";
 import katex from "katex";
 import type { FourierTermDTO, NotationMode } from "@/lib/equation/types";
+import { VIZ_COLORS } from "@/lib/colors";
 
 export type CoeffKind = "an" | "bn" | "cn" | "An";
 
@@ -56,6 +57,13 @@ export function useCoeffHover(
         const lines: string[] = [];
         const seen = new Set<number>();
 
+        // D.W4.d — KaTeX cannot resolve CSS vars; read the resolved
+        // `--viz-amber` hex via VIZ_COLORS at render time (the runtime
+        // token-shadow pattern documented at lib/colors.ts:11). The
+        // STATIC.golden constant is the canonical fallback used when
+        // `resolveVizColors` has not yet run (mounted before paint).
+        const amber = VIZ_COLORS.amber || VIZ_COLORS.golden;
+
         if (kind === "an" || kind === "bn") {
             for (const t of harmonics) {
                 const k = Math.abs(t.n);
@@ -68,7 +76,7 @@ export function useCoeffHover(
                 const val = kind === "an" ? cP[0] + cN[0] : -(cP[1] - cN[1]);
                 if (Math.abs(val) > 1e-10) {
                     const label = kind === "an" ? "a" : "b";
-                    lines.push(`{\\color{#f0b632}${label}_{${k}}} = ${val.toFixed(4)}`);
+                    lines.push(`{\\color{${amber}}${label}_{${k}}} = ${val.toFixed(4)}`);
                 }
                 if (lines.length >= 6) { lines.push("\\vdots"); break; }
             }
@@ -76,12 +84,12 @@ export function useCoeffHover(
             for (const t of coeffs.slice(0, 6)) {
                 const im = t.coefficient_im;
                 const val = `${t.coefficient_re.toFixed(3)}${im >= 0 ? "+" : ""}${im.toFixed(3)}i`;
-                lines.push(`{\\color{#f0b632}c_{${t.n}}} = ${val}`);
+                lines.push(`{\\color{${amber}}c_{${t.n}}} = ${val}`);
             }
             if (coeffs.length > 6) lines.push("\\vdots");
         } else if (kind === "An") {
             for (const t of coeffs.slice(0, 6)) {
-                lines.push(`{\\color{#f0b632}A_{${t.n}}} = ${t.amplitude.toFixed(4)}`);
+                lines.push(`{\\color{${amber}}A_{${t.n}}} = ${t.amplitude.toFixed(4)}`);
             }
             if (coeffs.length > 6) lines.push("\\vdots");
         }

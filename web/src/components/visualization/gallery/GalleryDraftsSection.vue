@@ -82,7 +82,7 @@ function getBasisLabel(item: WorkspaceDraft): string {
                 </div>
                 <div class="flex-1 min-w-0 cursor-pointer flex flex-col gap-0.5" @click="emit('open', draft.imageSlug)">
                     <span class="text-sm text-foreground truncate fira-code">{{ draft.imageSlug }}</span>
-                    <span class="text-sm text-muted-foreground/60">
+                    <span class="text-sm text-muted-foreground">
                         {{ getBasisLabel(draft) }}
                         <span v-if="getBasisLabel(draft)"> &middot; </span>
                         {{ timeAgo(draft.lastOpenedAt) }}

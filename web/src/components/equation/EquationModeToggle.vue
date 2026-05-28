@@ -61,7 +61,7 @@ const model = defineModel<EquationDisplayMode>({ required: true });
 
 /* Active: golden accent */
 .eq-toggle-btn.is-active {
-    color: #f0b632;
+    color: var(--viz-amber);
     background: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 

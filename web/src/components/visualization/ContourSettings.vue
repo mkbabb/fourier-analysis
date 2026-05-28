@@ -255,7 +255,7 @@ watch(
                 <div class="divider-line" />
                 <CollapsibleTrigger class="advanced-trigger">
                     <span>Advanced</span>
-                    <ChevronRight class="h-3 w-3 text-muted-foreground/60 transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
+                    <ChevronRight class="h-3 w-3 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
                 </CollapsibleTrigger>
                 <div class="divider-line" />
             </div>

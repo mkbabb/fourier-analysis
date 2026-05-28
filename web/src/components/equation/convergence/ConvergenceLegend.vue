@@ -75,8 +75,8 @@ const emit = defineEmits<{
     height: 10px;
 }
 .legend-dot--golden {
-    background: #f0b632;
-    box-shadow: 0 0 4px rgba(240, 182, 50, 0.4);
+    background: var(--viz-amber);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--viz-amber) 40%, transparent);
 }
 .legend-dot--dashed {
     background: transparent;
@@ -91,7 +91,7 @@ const emit = defineEmits<{
     line-height: 1.3;
 }
 .legend-label--golden {
-    color: #f0b632;
+    color: var(--viz-amber);
     font-weight: 600;
 }
 </style>

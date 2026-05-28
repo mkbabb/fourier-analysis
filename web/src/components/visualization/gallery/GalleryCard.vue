@@ -60,11 +60,21 @@ function timeAgo(iso: string): string {
 </script>
 
 <template>
+    <!-- D.W4.c — keyboard-accessible card. Was a bare `<div @click>` (per
+         A3 #4 finding — unreachable by keyboard, no Enter/Space activation,
+         no focus ring). Lifted to the canonical ARIA button-on-non-button
+         pattern: role + tabindex + keydown + aria-label. Focus ring lands
+         globally via .gallery-card:focus-visible in style.css. -->
     <div
         class="gallery-card w-full cursor-pointer overflow-hidden rounded-xl bg-card border-2 border-foreground/15"
+        role="button"
+        tabindex="0"
+        :aria-label="`Open ${entry.image_slug}`"
         :data-tier="entry.tier"
         :data-selected="selected || undefined"
         @click="emit('click')"
+        @keydown.enter.prevent="emit('click')"
+        @keydown.space.prevent="emit('click')"
     >
         <div class="relative flex flex-col">
             <!-- A.W5.c — admin multi-select checkbox. Surfaced in admin mode,
@@ -95,7 +105,7 @@ function timeAgo(iso: string): string {
             <!-- Header -->
             <div class="flex items-center gap-1.5 px-3 pt-2 pb-1">
                 <span class="text-sm text-muted-foreground truncate flex-1 min-w-0 font-mono">{{ entry.image_slug }}</span>
-                <span class="text-sm text-foreground/35 whitespace-nowrap shrink-0">{{ timeAgo(entry.created_at) }}</span>
+                <span class="text-sm text-muted-foreground whitespace-nowrap shrink-0">{{ timeAgo(entry.created_at) }}</span>
             </div>
 
             <!-- Basis pills -->

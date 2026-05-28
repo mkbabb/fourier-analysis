@@ -417,8 +417,8 @@ watchDebounced(
     transition: color 0.12s ease, background 0.12s ease;
 }
 .eq-card :deep(.eq-coeff:hover) {
-    color: #f0b632 !important;
-    background: rgba(240, 182, 50, 0.1);
+    color: var(--viz-amber) !important;
+    background: color-mix(in srgb, var(--viz-amber) 10%, transparent);
 }
 
 /* ── Anchors ── */

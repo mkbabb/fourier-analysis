@@ -122,4 +122,13 @@ const tracks = computed(() => {
     from { transform: translateX(-50%); }
     to { transform: translateX(0); }
 }
+
+/* D.W4.c — prefers-reduced-motion guard. WCAG 2.3.3 / A3 #9 finding —
+   the auto-scrolling marquee is non-essential motion and must respect
+   the user's reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+    .marquee-inner {
+        animation: none;
+    }
+}
 </style>
