@@ -20,7 +20,7 @@ peer value.js-I closes together or names a successor.
 
 | Wave | Status | Closed at | Notes |
 |---|---|---|---|
-| W0 — *Open · baseline · research dispatch* | planned | — | D confirmed closed CLEAN (host HEAD `6039e95`); E-development audit binding baseline (6 lanes + SYNTHESIS at `docs/audits/runs/2026-05-28-E-audit/`); cohort coordination opened with value.js-I authorial seed; α + γ research dispatched |
+| W0 — *Open · baseline · research dispatch* | **GREEN** | 2026-05-28 | D confirmed closed CLEAN (host HEAD `6039e95`); E-development audit binding baseline (6 lanes + SYNTHESIS at `docs/audits/runs/2026-05-28-E-audit/`); cohort coordination opened with value.js-I authorial seed; α + γ research dispatched; live cross-repo CORS FAIL reproduced (preflight returns `acao: color.babb.dev` only — T4 binding); close record at `audit/W0-open.md` |
 | Wα — *Research wave (ratification + narrowed dispatch)* | planned | — | **dev-era 6 lanes did the substantive work**; Wα = ratification. R1 cross-repo cohesion contract + cohort closure discipline; R2 consumer brittleness map + T8 ApiProblem design + openapi-codegen flow; R3 transposition risk-assessment (T-P1/T-E1+T-S5/T-E2/T-S3/T-P3 KISS-score each). Each: RATIFIED-AS-IS or -WITH-DELTA; at-most-one narrowed follow-up |
 | Wχ — *Challenge* | planned | — | **5 probes in 4+1 batches** (4-agent ceiling): P1 cross-repo source boundary holds (no value.js source touches; per-repo conformance flip discipline); P2 transpositions are *transpositions* not additions (each reduces moving parts); P3 consumer hardening real-bug + contract-proof not hygiene; P4 deploy-hook auto-migration idempotent + safe; P5 cohort closure discipline (fourier-E + value.js-I close together OR named successor) |
 | W1 — *α.1 — Cross-repo CORS fix + FK live + dispatcher arm* | provisional | — | thread α — palette-api `ALLOWED_ORIGINS` adds `https://fourier.babb.dev` (T4, one-line cross-app); live cross-repo CORS preflight 200 + ACAO echo; `palette_slug` FK live-resolution probe; dispatcher arm fixed OR T-S3 retire begins |
@@ -97,11 +97,25 @@ value.js source mods from fourier commits (#9); no manufactured transpositions
 **Cohort framing:** fourier-E + value.js-I run together. Cohort closes via
 paired FINAL.md or named successor. Cross-repo source boundary preserved.
 
-### Next action
+### 2026-05-28 — E.W0 GREEN
 
-None until the user authorises **E.W0**. The 6-lane audit + SYNTHESIS + the
-charter + this PROGRESS seed are complete. At that point dispatch E.W0
-(baseline + cohort coordination opening + α/γ research dispatch) then Wα (3
-ratification lanes) → Wχ (5 probes) — the research-first gate governs α + γ
-before any source change. **This was tranche development only; no implementation
-ran**.
+**WHAT.** User authorised "Begin and continue the current tranche... deep
+parallelization... no quick solutions, no workarounds, idiomatic gestalt
+approaches." Team-lead dispatch opens.
+
+Confirmed:
+- D closed CLEAN at `342a078` (post-D HEAD `6039e95`); production live across all
+  5 hostnames; the 6-lane audit + SYNTHESIS + the E charter are at `56082c2`
+  pushed to origin/master.
+- The cross-repo CORS FAIL (EA3 §3 finding) is REPRODUCIBLE at audit-time —
+  `OPTIONS /palettes/<slug>` with `Origin: https://fourier.babb.dev` returns
+  `access-control-allow-origin: https://color.babb.dev` (NOT echoing fourier).
+  The W1 T4 fix is a single host-side env-var edit.
+- Sibling state mapped: value.js HEAD `f895048` (post-H release-readiness);
+  csp-solver no local clone — W6 cross-repo coord ASK only; floridify dirty
+  Mongo bind edit owed upstream at E.W11.
+
+W0 close record: `audit/W0-open.md`.
+
+**Next**: dispatch Wα (3 ratification lanes, parallel agents) → Wχ (5 probes in
+4+1 batches) → W1 (α.1 CORS + FK + dispatcher arm).
