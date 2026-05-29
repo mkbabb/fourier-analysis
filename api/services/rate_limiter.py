@@ -12,6 +12,7 @@ from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.config import settings
+from api.lib.crud.errors import rate_limited
 
 # ---------------------------------------------------------------------------
 # IP hashing helper
@@ -135,37 +136,21 @@ class SlidingWindowLimiter:
 # Pre-configured limiter instances
 # ---------------------------------------------------------------------------
 
+# Read budget for GET/HEAD: high-volume browsing must not be throttled at the
+# tight write budget (10/min). 240/min ≈ 4 r/s sustained per IP — generous for a
+# user clicking through the gallery, yet far below the nginx ``api_general`` edge
+# cap (30 r/s) so this layer governs the honest RFC 9239 RateLimit-* headers
+# rather than ever denying normal traffic. (value.js parity: readLimiter ≫ writeLimiter.)
+read_limiter = SlidingWindowLimiter(max_requests=240, window_seconds=60)
 login_limiter = SlidingWindowLimiter(max_requests=5, window_seconds=60)
 like_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
 write_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
 admin_limiter = SlidingWindowLimiter(max_requests=30, window_seconds=60)
 
 
-# ---------------------------------------------------------------------------
-# FastAPI dependency factories
-# ---------------------------------------------------------------------------
-
-
-def _make_dependency(limiter: SlidingWindowLimiter):
-    """Return an async FastAPI dependency that enforces *limiter*."""
-
-    async def _dependency(request: Request) -> None:
-        client_ip = request.client.host if request.client else "unknown"
-        hashed = hash_ip(client_ip)
-        limiter.check(hashed)
-
-    return _dependency
-
-
 compute_limiter = SlidingWindowLimiter(
     max_requests=settings.compute_rate_limit, window_seconds=60
 )
-
-require_login_limit = _make_dependency(login_limiter)
-require_like_limit = _make_dependency(like_limiter)
-require_write_limit = _make_dependency(write_limiter)
-require_admin_limit = _make_dependency(admin_limiter)
-require_compute_limit = _make_dependency(compute_limiter)
 
 
 # ---------------------------------------------------------------------------
@@ -173,12 +158,15 @@ require_compute_limit = _make_dependency(compute_limiter)
 # ---------------------------------------------------------------------------
 
 
-def _limiter_for_path(path: str) -> SlidingWindowLimiter:
-    """Pick the limiter whose budget governs *path* so the headers are honest.
+def _limiter_for_path(path: str, method: str) -> SlidingWindowLimiter:
+    """Pick the limiter whose budget governs *path*/*method* so enforcement and
+    the emitted headers are one honest thing.
 
-    Falls back to the write limiter (the broadest mutation budget) for paths
-    that no per-surface limiter guards, so every response still carries a
-    truthful default budget rather than omitting the headers.
+    Path-specific budgets win for the surfaces they guard (admin/login/like/
+    compute). Otherwise the method decides: GET/HEAD reads ride the generous
+    ``read_limiter`` (high-volume browsing must not hit the tight write budget),
+    every other method (POST/PUT/PATCH/DELETE) rides ``write_limiter`` — the
+    broadest mutation budget. This is the value.js single-pick gestalt.
     """
     if path.startswith("/api/admin"):
         return admin_limiter
@@ -186,29 +174,60 @@ def _limiter_for_path(path: str) -> SlidingWindowLimiter:
         return login_limiter
     if "/like" in path:
         return like_limiter
-    if path.startswith(("/api/contours", "/api/equations")):
+    # The expensive compute surfaces — exactly the nginx ``api_compute`` zone:
+    # /api/equations/{compute,simplify}, /api/contours/.../compute/..., and the
+    # image extract-contour pipeline. (Bare GET reads on these prefixes are NOT
+    # compute — they fall through to the read budget below.)
+    if (
+        path.startswith(("/api/equations/compute", "/api/equations/simplify"))
+        or "/compute/" in path
+        or path.endswith("/extract-contour")
+    ):
         return compute_limiter
+    if method in ("GET", "HEAD"):
+        return read_limiter
     return write_limiter
 
 
-class RateLimitHeaderMiddleware(BaseHTTPMiddleware):
-    """Emit RFC 9239 ``RateLimit-*`` fields on every response (~15 LOC of logic).
+def _stamp(response, limit: int, remaining: int, reset: int) -> None:
+    response.headers["RateLimit-Limit"] = str(limit)
+    response.headers["RateLimit-Remaining"] = str(remaining)
+    response.headers["RateLimit-Reset"] = str(reset)
 
-    Reads (does not record) the per-key budget from the surface's limiter and
-    stamps ``RateLimit-Limit`` / ``RateLimit-Remaining`` / ``RateLimit-Reset``
-    on the outgoing response. A 429 additionally carries ``Retry-After`` (the
-    reset window). Single-replica posture (Invariant 12) is unchanged — the
-    middleware only surfaces the budget the existing limiter already tracks.
+
+class RateLimitHeaderMiddleware(BaseHTTPMiddleware):
+    """The single enforce+report path (RFC 9239 / Invariant 24).
+
+    Calls ``limiter.check()`` — the one place that both records the hit and
+    enforces the budget — then stamps ``RateLimit-Limit`` / ``-Remaining`` /
+    ``-Reset`` from the post-check snapshot. A breach surfaces as the catalog's
+    ``application/problem+json`` 429 envelope (``errors.rate_limited``) carrying
+    ``Retry-After`` plus the same RateLimit-* fields. This is the transposition
+    of the value.js I.W4 unified middleware: no GET route is left uncounted, no
+    bucket reports a stale fallback budget. Single-replica posture (Invariant 12)
+    is unchanged — one in-memory limiter, one count per request.
     """
 
     async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        limiter = _limiter_for_path(request.url.path)
+        # CORS preflights are not real requests — never let one consume budget
+        # (a preflight + its POST would otherwise double-count the write limiter).
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        limiter = _limiter_for_path(request.url.path, request.method)
         client_ip = request.client.host if request.client else "unknown"
-        limit, remaining, reset = limiter.snapshot(hash_ip(client_ip))
-        response.headers["RateLimit-Limit"] = str(limit)
-        response.headers["RateLimit-Remaining"] = str(remaining)
-        response.headers["RateLimit-Reset"] = str(reset)
-        if response.status_code == 429 and "Retry-After" not in response.headers:
-            response.headers["Retry-After"] = str(reset or int(limiter.window_seconds))
+        hashed = hash_ip(client_ip)
+
+        try:
+            limiter.check(hashed)
+        except HTTPException:
+            _limit, _remaining, reset = limiter.snapshot(hashed)
+            retry_after = reset or int(limiter.window_seconds)
+            response = rate_limited(retry_after)
+            _stamp(response, limiter.max_requests, 0, reset)
+            return response
+
+        response = await call_next(request)
+        limit, remaining, reset = limiter.snapshot(hashed)
+        _stamp(response, limit, remaining, reset)
         return response

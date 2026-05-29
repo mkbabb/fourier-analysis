@@ -56,7 +56,6 @@ from api.models.admin import (
 )
 from api.models.gallery import AdminStatsResponse, SetTierRequest
 from api.services.database import get_db
-from api.services.rate_limiter import admin_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -168,9 +167,9 @@ async def set_tier(slug: str, body: SetTierRequest, request: Request) -> Respons
     Guarded by an ``If-Match`` ETag (§0 SOTA-2): a stale precondition is a 412
     ``urn:contract:etag-mismatch``. Idempotent — re-setting the same tier is a 200.
     """
+    # Rate limiting (admin budget) is enforced once, in RateLimitHeaderMiddleware.
     client_ip = get_client_ip(request)
     ip_hashed = hash_ip(client_ip)
-    admin_limiter.check(ip_hashed)
 
     db = get_db()
     doc = await db.visualizations.find_one({"slug": slug})
@@ -203,9 +202,9 @@ async def delete_visualization(
     ``?hard=true`` is the admin grace-bypass for illegal content (§7) — a true
     hard-delete in one operation. Both write an ``admin_audit`` row.
     """
+    # Rate limiting (admin budget) is enforced once, in RateLimitHeaderMiddleware.
     client_ip = get_client_ip(request)
     ip_hashed = hash_ip(client_ip)
-    admin_limiter.check(ip_hashed)
 
     db = get_db()
     doc = await db.visualizations.find_one({"slug": slug}, {"deleted_at": 1})

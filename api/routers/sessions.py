@@ -12,7 +12,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from api.config import settings
 from api.dependencies import get_client_ip, hash_ip, require_session, resolve_session
 from api.services.database import get_db
-from api.services.rate_limiter import login_limiter, write_limiter
 from api.slugs import generate_slug
 
 logger = logging.getLogger(__name__)
@@ -36,9 +35,9 @@ def _make_session_doc(user_slug: str, ip_hash: str) -> dict:
 @router.post("")
 async def register(request: Request):
     """Create a new anonymous user and session."""
+    # Rate limiting (write budget) is enforced once, in RateLimitHeaderMiddleware.
     client_ip = get_client_ip(request)
     ip_hashed = hash_ip(client_ip)
-    write_limiter.check(ip_hashed)
 
     db = get_db()
     slug = generate_slug()
@@ -57,9 +56,9 @@ async def register(request: Request):
 @router.post("/login")
 async def login(request: Request):
     """Login by slug — creates a new session for an existing user."""
+    # Rate limiting (login budget) is enforced once, in RateLimitHeaderMiddleware.
     client_ip = get_client_ip(request)
     ip_hashed = hash_ip(client_ip)
-    login_limiter.check(ip_hashed)
 
     body = await request.json()
     slug = (body.get("slug") or "").strip().lower()

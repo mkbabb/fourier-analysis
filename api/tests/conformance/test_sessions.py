@@ -84,9 +84,11 @@ def test_login_timing():
         async def _time_login(slug: str) -> float:
             import json as _json
 
-            # Clear the per-key login budget before each timed call so the
-            # constant-delay path is measured, not a short-circuit 429 (the
-            # login limiter is 5/60s; timing many calls would trip it).
+            # F.W1: login rate limiting now lives solely in
+            # RateLimitHeaderMiddleware (the single enforce+report path), which
+            # this direct-coroutine call bypasses — so the login coroutine no
+            # longer touches the budget. The clear stays as a defensive reset of
+            # shared module state across timed trials.
             rl.login_limiter._buckets.clear()
             req = make_request(
                 "POST", path="/api/sessions/login",

@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,6 @@ from api.models.assets import (
 from api.responses import contour_response
 from api.services import computation
 from api.services.database import get_db
-from api.services.rate_limiter import require_compute_limit
 from api.services.image_storage import (
     _resolve,
     extraction_cache_key,
@@ -210,7 +209,7 @@ async def get_image_overlay(imageSlug: str, resize: int = 1024) -> StreamingResp
     )
 
 
-@router.post("/{imageSlug}/extract-contour", dependencies=[Depends(require_compute_limit)])
+@router.post("/{imageSlug}/extract-contour")
 async def extract_contour(imageSlug: str, req: ExtractContourRequest) -> Any:
     asset = await get_image_asset(imageSlug)
     cs = req.contour_settings

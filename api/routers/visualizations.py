@@ -39,7 +39,7 @@ from api.models.visualization import (
     VisualizationUpdate,
 )
 from api.services.database import get_db
-from api.services.rate_limiter import hash_ip, write_limiter
+from api.services.rate_limiter import hash_ip
 
 logger = logging.getLogger(__name__)
 
@@ -100,8 +100,7 @@ async def _scope_for(request: Request) -> str:
 @router.post("")
 async def create_visualization(body: VisualizationCreate, request: Request) -> Response:
     """Publish a new visualization. Anonymous publish is forbidden (§3 → 401)."""
-    write_limiter.check(hash_ip(get_client_ip(request)))
-
+    # Rate limiting (write budget) is enforced once, in RateLimitHeaderMiddleware.
     # Ownership: a publish without a resolvable session is a 401, never a
     # ``owner_slug: None`` orphan row (CRUD-CONTRACT §3; retires gallery.py:188).
     owner_slug = await resolve_session(request)
