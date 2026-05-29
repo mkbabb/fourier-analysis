@@ -604,3 +604,19 @@ The deploy-process normalization is now version-controlled (`mkbabb/deploy`) and
 The constellation auto-deploy is RESTORED + hardened; fourier sits CLEANLY post-F with all residuals owned and watched.
 
 End of CANONICAL-ORDERING §15 — ordering θ′.
+
+## §16 — Ordering ι′ (2026-05-29 post-F-re-audit, G AUTHORED — provisional)
+
+**fourier-G AUTHORED 2026-05-29** (development only; not executed) — `docs/tranches/G/G.md`, substrate `docs/audits/runs/2026-05-29-G-audit/` (GA1-GA6 + SYNTHESIS). G is the **elegance/simplicity/performance transposition tranche** + the correction of three honest overstatements the G-audit caught in F's close (which itself SURVIVES gate-falsification per GA3).
+
+**Why G supersedes the §15.4 "no fourier tranche open" posture**: the re-audit found F's δ frontend **never reached prod** (the restored auto-deploy covers only the API; the CF Pages SPA is an un-automated step) — so prod is NOT serving F's a11y/SEO/font fixes. That is a live correctness gap, not a residual, and it is G.α (top priority). G also folds the real-client-IP convergence (the under-scoped F residual), the api↔web single-contract-source transposition, the legacy excision, the self-host-fonts perf win, and the deploy-spine completion.
+
+**Two new invariants**: inv-25 (deploy-of-record-automated — a "LIVE" close cites an automated `deploy_run_id`, never a manual SSH one-off); inv-26 (single-contract-source at the api↔web type boundary).
+
+**Critical path at ι′**:
+- **fourier**: G.W1 (δ ships for real + inv-25) is the single most-blocking correctness move — until it lands, prod does not reflect F's δ. Then β convergence (W2/W3), γ/δ (W4/W5), ε deploy-spine (W6/W7), ζ (W8).
+- **value.js / constellation**: unchanged from §15.4 — value.js-J (E5/E6/E7) on its own driver; the `ADOPTION-ASKS.md` ledger remains maintainer-owned (re-stale-watched at G.ζ); speedtest-AQ still awaits glass-ui `g.w5`.
+
+G is single-repo, inv-21-bounded; awaits user authorization for G.W0.
+
+End of CANONICAL-ORDERING §16 — ordering ι′.
