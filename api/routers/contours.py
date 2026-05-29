@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from api.dependencies import get_contour
 from api.models.assets import SaveContourRequest
@@ -14,7 +14,6 @@ from api.models.computation import (
 from api.responses import contour_points, contour_response
 from api.services import computation, compute_cache
 from api.services.image_storage import store_contour_asset
-from api.services.rate_limiter import require_compute_limit
 
 router = APIRouter(prefix="/api/contours", tags=["contours"])
 
@@ -33,12 +32,13 @@ async def get_contour_endpoint(contourHash: str):
     return contour_response(doc)
 
 
-@router.post("/{contourHash}/compute/epicycles", response_model=ComputeResult, dependencies=[Depends(require_compute_limit)])
+@router.post("/{contourHash}/compute/epicycles", response_model=ComputeResult)
 async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
-    # E.W7 T-P3 — content-addressable compute cache. Hit returns immediately
+    # F.W2 T-β — content-addressable compute cache. Hit returns immediately
     # without the FFT chain. Fail-open: cache errors fall through to compute.
+    params = {"n_harmonics": req.n_harmonics, "n_points": req.n_points}
     cached = await compute_cache.lookup(
-        contourHash, req.n_harmonics, req.n_points
+        contourHash, params, label="compute_epicycles"
     )
     if cached is not None:
         return ComputeResult(data=cached)
@@ -49,12 +49,22 @@ async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
         n_harmonics=req.n_harmonics,
         n_points=req.n_points,
     )
-    await compute_cache.store(contourHash, req.n_harmonics, req.n_points, data)
+    await compute_cache.store(contourHash, params, data, label="compute_epicycles")
     return ComputeResult(data=data)
 
 
-@router.post("/{contourHash}/compute/bases", response_model=ComputeResult, dependencies=[Depends(require_compute_limit)])
+@router.post("/{contourHash}/compute/bases", response_model=ComputeResult)
 async def compute_bases(contourHash: str, req: ComputeBasesRequest):
+    # F.W2 T-β — same content-addressable cache as epicycles (was unwired).
+    params = {
+        "max_degree": req.max_degree,
+        "n_points": req.n_points,
+        "levels": req.levels,
+        "n_eval": req.n_eval,
+    }
+    cached = await compute_cache.lookup(contourHash, params, label="compute_bases")
+    if cached is not None:
+        return ComputeResult(data=cached)
     doc = await get_contour(contourHash)
     xs, ys = contour_points(doc)
     data = await computation.compute_bases(
@@ -64,4 +74,5 @@ async def compute_bases(contourHash: str, req: ComputeBasesRequest):
         levels=req.levels,
         n_eval=req.n_eval,
     )
+    await compute_cache.store(contourHash, params, data, label="compute_bases")
     return ComputeResult(data=data)
