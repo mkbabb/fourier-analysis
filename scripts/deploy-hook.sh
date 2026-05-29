@@ -139,6 +139,22 @@ deploy() {
 
     # 5. The REAL health gate. Its failure is the rollback trigger.
     if health_gate; then
+        # 5a. E.W9 ε.1 — auto-migration (Variant C: post-up post-health-gate).
+        # Per Wχ-P4 §8 design substrate: the new container is up and serving;
+        # the health gate just proved it can boot on the at-rest schema.
+        # NOW invoke the idempotent runner. The migrations themselves are
+        # field-selector idempotent (document-level safety); the runner adds
+        # run-level tracking via the `migrations` collection (unique on
+        # `(name, version)`). Fail-non-zero leaves the live deploy intact;
+        # the next deploy attempt re-runs (idempotent).
+        log "running pending migrations (post-up post-gate)…"
+        if "${COMPOSE[@]}" exec -T -e DEPLOY_COMMIT_SHA="${new}" api \
+                python -m api.scripts.run_pending_migrations; then
+            log "migrations OK"
+        else
+            log "WARNING — pending migrations returned non-zero; deploy STAYS GREEN (live container ran the at-rest schema); next deploy will retry"
+        fi
+
         printf '%s\n' "${new}" >"${GREEN_MARKER}"
         log "DEPLOY OK ${prev} -> ${new} (recorded green)"
         return 0
