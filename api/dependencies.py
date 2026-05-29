@@ -117,12 +117,16 @@ async def _backfill_image_bounds(db: Any, contour_doc: dict[str, Any]) -> dict[s
     """
     from api.services.image_storage import image_bytes
 
-    # C10 (C.W5): project the shim's required fields. The required
-    # ``image_slug`` is the projection key (Pydantic needs it on construct);
-    # ``storage_uri`` + ``content_type`` are the bytes-resolution inputs.
+    # E.W10 δ — C10 (C.W5) projection completed: the typed `ImageAsset`
+    # shim requires `sha256` at construct time (per `models/assets.py:61`).
+    # Pre-W10 the projection omitted it, so every backfill_image_bounds
+    # call on a migrated doc hit a silent ValidationError + degraded
+    # bounds. Adding `sha256: 1` restores the shim's promise: missing
+    # storage_uri now becomes the explicit "pre-migration" path, not a
+    # silent reject for ALL migrated docs.
     image_doc = await db.images.find_one(
         {"image_slug": contour_doc["image_slug"]},
-        {"image_slug": 1, "storage_uri": 1, "content_type": 1},
+        {"image_slug": 1, "sha256": 1, "storage_uri": 1, "content_type": 1},
     )
     if image_doc is None:
         return contour_doc
