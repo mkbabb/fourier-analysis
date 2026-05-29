@@ -3,10 +3,11 @@ WORKDIR /app
 
 FROM base AS deps
 COPY web/package.json web/package-lock.json ./
-# Vendored sibling-repo tarballs (referenced as file:./vendor/*.tgz in package.json)
-# must be present before `npm ci` so the tarball deps resolve in the Docker
-# build context. See D.W1 build-fix commit for rationale.
-COPY web/vendor ./vendor
+# The @mkbabb/* deps resolve from the npm registry (^semver pins). The former
+# file:./vendor/*.tgz seams (the D.W1 Docker-build unblock) were retired by the
+# 163ca47 deps migration once glass-ui/value.js/keyframes.js published to npm.
+# That migration left a stale `COPY web/vendor ./vendor` here which broke every
+# Docker build (web/vendor no longer exists) — removing it is the deploy unblock.
 RUN npm ci
 
 FROM deps AS development
