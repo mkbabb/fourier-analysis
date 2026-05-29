@@ -4,12 +4,14 @@
 
 ## §0 — Wα-R2 + Wχ-P1 resolution: F.γ SPLITS into W3a + W3b
 
-**The gh token is INVALID** (Wα-R2 §3: `The token in default is invalid` for `mkbabb`). The 5 GitHub webhook URLs CANNOT be flipped this session. Per Wχ-P1, this BUSTS inv-21's single-SSH-session bound — γ splits at the operator-credential boundary:
+**[UPDATE 2026-05-28: gh auth NOW VALID — W3b UNBLOCKED.]** The Wα-R2 capture found the gh token INVALID, which forced the W3 split (Wχ-P1). The operator has since run `gh auth login`; **gh auth is now VALID** (account `mkbabb`, `repo` scope) and the `update-webhook-urls.sh` dry-run passes cleanly (pre-flight receipt at `receipts/F-W3-preflight.json`; 5 webhooks identified, IDs 603157401-405, all currently → the single multiplex `deploy.babb.dev/hooks/deploy`). The out-of-band operator block is RESOLVED.
 
-- **W3a (executable NOW, no operator)**: backup + author 5 per-repo `hooks.json` entries + reload receiver (STAGED, NOT activated — dispatcher NOT deleted) + `:8140` speedtest teardown + cron/dangling evidence capture. Single-SSH receipt → inv-21 PASS.
-- **W3b (GATED on operator `gh auth login -h github.com`)**: gh re-auth → `update-webhook-urls.sh` dry-run → `--apply` URL flip → per-repo hook tests → THEN `rm /opt/deploy/scripts/dispatch.sh` (+ value.js arm dies with it). Own single-window receipt → inv-21 PASS.
+The W3a/W3b split STILL holds — but now for the **hard-ordering** reason alone, not an operator-credential block:
 
-**HARD ordering**: the dispatcher MUST NOT be deleted until the 5 URLs flip (else webhooks 404). W3a stages; W3b activates.
+- **W3a (host-ops, no GitHub API)**: backup + author 5 per-repo `hooks.json` entries + reload receiver (STAGED, NOT activated — dispatcher NOT deleted) + `:8140` speedtest teardown + cron/dangling evidence capture. Single-SSH receipt → inv-21 PASS.
+- **W3b (GitHub API flip — now GREEN-pending-W3a)**: `update-webhook-urls.sh --apply` (5 URLs → per-repo) → per-repo hook tests → THEN `rm /opt/deploy/scripts/dispatch.sh` (+ value.js arm dies with it). Own single-window receipt → inv-21 PASS. **No longer operator-gated** — executable on F authorization once W3a stages the host-side per-repo entries.
+
+**HARD ordering**: the dispatcher MUST NOT be deleted until the 5 URLs flip (else webhooks 404). W3a stages the host receiver entries (the `value.js` entry must match the `.js` slug — the script derives `repo_name="${repo##*/}"` → `value.js`); W3b flips the GitHub URLs + activates. Pre-flight rollback anchor: `receipts/F-W3-preflight.json` (current URLs + hook IDs + per-URL revert command).
 
 **Confirmed host state (Wα-R2; the binding rollback anchor)**:
 - Dispatcher `/opt/deploy/scripts/dispatch.sh` — single-arg `case "$REPO"` with 5 arms; the **latent-broken value.js arm** confirmed (`deploy "$HOME/Programming/palette-api" 8130 /` runs `git fetch` on a non-git rsync dir → fails).

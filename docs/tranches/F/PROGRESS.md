@@ -20,7 +20,7 @@ Every wave's row carries (a) a status word from the canonical set, (b) a close t
 | W1 — *F-α API-vhost-correctness* | provisional (hardened) | — | thread α — tracked `nginx/fourier.conf` surgical `location =` blocks (`/openapi.json`,`/docs`,`/redoc`,`/health` → backend; `location = /` → 404 problem+json) BEFORE SPA catch-all + container recreate; rate-limit FUSE `check()` into `RateLimitHeaderMiddleware` à la value.js `rate-limit.ts:91-116`; inv-22 5-check gate |
 | W2 — *F-β compute-cache-symmetry* | provisional (hardened; mechanical) | — | thread β — `cache_key(contour_hash, params: dict)` canonical-JSON + `COMPUTE_VERSION`; wire `compute_bases`; `epicycle_cache` → `compute_cache` (bare rename intentionally abandons old docs — TTL≤7d + fail-open); HIT/MISS logging |
 | W3a — *F-γ host-ops single-window* | provisional | — | thread γ (no operator) — backup + author 5 per-repo hooks.json entries + reload (STAGED not activated); `a2dissite speedtest.conf`; cron + dangling capture; `receipts/F-W3a.json`. inv-21 PASS |
-| W3b — *F-γ operator-gated cutover* | **GATED** | — | thread γ (gated on `gh auth login -h github.com`) — re-auth → `update-webhook-urls.sh --apply` (5 URLs) → hook tests → `rm dispatch.sh` (value.js arm dies with it); `receipts/F-W3b.json`. HARD ordering: no dispatcher delete pre-URL-flip |
+| W3b — *F-γ GitHub-API cutover* | **GREEN-pending-W3a** | — | thread γ — **gh auth NOW VALID** (operator logged in 2026-05-28; dry-run passes; pre-flight receipt `receipts/F-W3-preflight.json`; 5 hooks IDs 603157401-405 → `/hooks/deploy`). `update-webhook-urls.sh --apply` (5 URLs → per-repo) → hook tests → `rm dispatch.sh` (value.js arm dies with it); `receipts/F-W3b.json`. HARD ordering: no dispatcher delete pre-URL-flip; W3a stages host entries first |
 | W4 — *F-δ.a a11y + SEO + bf-cache* | provisional | — | thread δ — `button-name` aria-labels on AppHeader Reka dropdown + `.btn-pill`; `meta-description` + `robots.txt`; `label-content-name-mismatch` on `/visualize`; bf-cache audit |
 | W5 — *F-δ.b perf (NARROWED — font-pin only)* | provisional (narrowed) | — | thread δ — pin `cm-web-fonts@latest` → `@<immutable-sha>` in `web/index.html`; keep preconnect; NO new files. Route-lazy + self-host DEFERRED-as-manufactured (Wχ-P3 KISS-gate withheld sign-off) |
 | W6 — *F-ε.a chronic discharge (C9 + N2)* | provisional | — | thread ε — C9 invariant numbering reconciliation across A.md/B.md/C.md/D.md/E.md + precepts; N2 CF wildcard narrow |
@@ -77,6 +77,18 @@ The audit ran as 6 lanes `FA1–FA6` + a SYNTHESIS at `docs/audits/runs/2026-05-
 Research substrate persisted at `docs/audits/runs/2026-05-28-F-research/` (8 lane docs). Charter (F.md), PROGRESS (this), §6 gates all hardened.
 
 **Execution-readiness**: W1 / W2 / W3a / W4 / W5(narrowed) / W6 / W7(F-T-N1-only) / W8 are GREEN-to-execute on authorization. **W3b alone is operator-gated** (out-of-band `gh auth login`).
+
+### 2026-05-28 — gh auth VALIDATED; W3b UNBLOCKED
+
+User: "gh has been logged in — validate." Confirmed:
+- `gh auth status` → logged in, account `mkbabb`, `repo` scope, ssh protocol.
+- Live webhook read across all 5 constellation repos succeeds (read capability proven).
+- All 5 repos carry exactly one webhook → the single multiplex `https://deploy.babb.dev/hooks/deploy` (hook IDs 603157401-405).
+- `update-webhook-urls.sh` dry-run PASSES (pre-flight gh-auth gate that hard-failed at Wα-R2 now succeeds); correctly identifies all 5 PATCH ops to per-repo URLs.
+
+**Effect**: the out-of-band operator block that forced W3b's GATED status is RESOLVED. W3b is now **GREEN-pending-W3a** (the W3a/W3b split holds only for the hard-ordering reason — host receiver entries must be staged before the GitHub URLs flip; the dispatcher must not delete until all 5 flip). Pre-flight rollback anchor captured at `receipts/F-W3-preflight.json`.
+
+Full execution-readiness now: **W1 / W2 / W3a → W3b / W4 / W5(narrowed) / W6 / W7(F-T-N1) / W8 all GREEN-to-execute on authorization.** No remaining operator-gated waves.
 
 ### Next action
 

@@ -1,0 +1,21 @@
+{
+  "captured": "2026-05-28",
+  "context": "F.W3 pre-flight snapshot — gh auth validated post-operator-login; update-webhook-urls.sh dry-run captured as the binding rollback anchor for the eventual --apply (W3b)",
+  "gh_auth": {
+    "status": "VALID",
+    "account": "mkbabb",
+    "protocol": "ssh",
+    "scopes": ["admin:public_key", "gist", "read:org", "repo"],
+    "note": "repo scope grants repo-hook PATCH capability; validated by live read across all 5 repos"
+  },
+  "current_webhooks": [
+    { "repo": "mkbabb/fourier-analysis", "hook_id": 603157401, "current_url": "https://deploy.babb.dev/hooks/deploy", "target_url": "https://deploy.babb.dev/hooks/fourier-analysis", "active": true },
+    { "repo": "mkbabb/words", "hook_id": 603157402, "current_url": "https://deploy.babb.dev/hooks/deploy", "target_url": "https://deploy.babb.dev/hooks/words", "active": true },
+    { "repo": "mkbabb/speedtest", "hook_id": 603157403, "current_url": "https://deploy.babb.dev/hooks/deploy", "target_url": "https://deploy.babb.dev/hooks/speedtest", "active": true },
+    { "repo": "mkbabb/value.js", "hook_id": 603157404, "current_url": "https://deploy.babb.dev/hooks/deploy", "target_url": "https://deploy.babb.dev/hooks/value.js", "active": true },
+    { "repo": "mkbabb/csp-solver", "hook_id": 603157405, "current_url": "https://deploy.babb.dev/hooks/deploy", "target_url": "https://deploy.babb.dev/hooks/csp-solver", "active": true }
+  ],
+  "rollback": "to revert any flipped URL: gh api -X PATCH repos/mkbabb/<repo>/hooks/<hook_id> -f 'config[url]=https://deploy.babb.dev/hooks/deploy'",
+  "hard_ordering": "W3a authors 5 per-repo hooks.json entries on host (value.js entry must match the .js slug) + reloads receiver BEFORE W3b --apply flips these 5 URLs; dispatcher rm only AFTER all 5 flip (else webhooks 404)",
+  "w3b_gate_status": "UNBLOCKED — gh auth valid; dry-run passes; W3b now GREEN-pending-W3a (no out-of-band operator block remains)"
+}
