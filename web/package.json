@@ -8,7 +8,8 @@
         "build": "vue-tsc -b && vite build",
         "preview": "vite preview",
         "test:e2e": "playwright test",
-        "test:e2e:ui": "playwright test --ui"
+        "test:e2e:ui": "playwright test --ui",
+        "gen-types": "bash scripts/gen-types.sh"
     },
     "dependencies": {
         "@mkbabb/glass-ui": "^2.0.0",
@@ -33,6 +34,7 @@
         "class-variance-authority": "^0.7",
         "clsx": "^2.1",
         "lucide-vue-next": "latest",
+        "openapi-typescript": "^7.13.0",
         "reka-ui": "^2.0",
         "tailwind-merge": "^3.0",
         "tailwindcss": "^4.1",

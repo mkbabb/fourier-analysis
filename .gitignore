@@ -57,6 +57,7 @@ scripts/*
 !scripts/dns-cf-sync.sh
 !scripts/gen-mongo-certs.sh
 !scripts/conformance/
+!scripts/update-webhook-urls.sh
 
 # Docker
 mongo_data/

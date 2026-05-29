@@ -1,0 +1,2485 @@
+{
+  "components": {
+    "schemas": {
+      "AdminStatsResponse": {
+        "properties": {
+          "featured": {
+            "title": "Featured",
+            "type": "integer"
+          },
+          "normal": {
+            "title": "Normal",
+            "type": "integer"
+          },
+          "saved": {
+            "title": "Saved",
+            "type": "integer"
+          },
+          "storage_bytes": {
+            "title": "Storage Bytes",
+            "type": "integer"
+          },
+          "total_entries": {
+            "title": "Total Entries",
+            "type": "integer"
+          },
+          "total_likes": {
+            "title": "Total Likes",
+            "type": "integer"
+          },
+          "total_views": {
+            "title": "Total Views",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_entries",
+          "featured",
+          "saved",
+          "normal",
+          "total_views",
+          "total_likes",
+          "storage_bytes"
+        ],
+        "title": "AdminStatsResponse",
+        "type": "object"
+      },
+      "AnimationSettings": {
+        "properties": {
+          "active_bases": {
+            "default": [
+              "fourier-epicycles"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Active Bases",
+            "type": "array"
+          },
+          "duration": {
+            "default": 30.0,
+            "title": "Duration",
+            "type": "number"
+          },
+          "easing": {
+            "default": "sine",
+            "title": "Easing",
+            "type": "string"
+          },
+          "fps": {
+            "default": 30,
+            "title": "Fps",
+            "type": "integer"
+          },
+          "max_circles": {
+            "default": 80,
+            "title": "Max Circles",
+            "type": "integer"
+          },
+          "speed": {
+            "default": 1.0,
+            "title": "Speed",
+            "type": "number"
+          }
+        },
+        "title": "AnimationSettings",
+        "type": "object"
+      },
+      "BatchGalleryRequest": {
+        "properties": {
+          "action": {
+            "enum": [
+              "delete",
+              "feature",
+              "unfeature"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "hashes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Hashes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "action",
+          "hashes"
+        ],
+        "title": "BatchGalleryRequest",
+        "type": "object"
+      },
+      "BatchUsersRequest": {
+        "properties": {
+          "action": {
+            "enum": [
+              "delete",
+              "suspend",
+              "unsuspend"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "slugs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Slugs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "action",
+          "slugs"
+        ],
+        "title": "BatchUsersRequest",
+        "type": "object"
+      },
+      "Body_upload_image_api_images_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_image_api_images_post",
+        "type": "object"
+      },
+      "ComputeBasesRequest": {
+        "properties": {
+          "levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Levels"
+          },
+          "max_degree": {
+            "default": 200,
+            "title": "Max Degree",
+            "type": "integer"
+          },
+          "n_eval": {
+            "default": 1000,
+            "title": "N Eval",
+            "type": "integer"
+          },
+          "n_points": {
+            "default": 1024,
+            "title": "N Points",
+            "type": "integer"
+          }
+        },
+        "title": "ComputeBasesRequest",
+        "type": "object"
+      },
+      "ComputeEpicyclesRequest": {
+        "properties": {
+          "n_harmonics": {
+            "default": 200,
+            "title": "N Harmonics",
+            "type": "integer"
+          },
+          "n_points": {
+            "default": 1024,
+            "title": "N Points",
+            "type": "integer"
+          }
+        },
+        "title": "ComputeEpicyclesRequest",
+        "type": "object"
+      },
+      "ComputeEquationRequest": {
+        "properties": {
+          "budget": {
+            "default": 10,
+            "maximum": 50.0,
+            "minimum": 2.0,
+            "title": "Budget",
+            "type": "integer"
+          },
+          "domain_end": {
+            "default": 6.283185307179586,
+            "title": "Domain End",
+            "type": "number"
+          },
+          "domain_start": {
+            "default": 0.0,
+            "title": "Domain Start",
+            "type": "number"
+          },
+          "expression": {
+            "title": "Expression",
+            "type": "string"
+          },
+          "n_eval_points": {
+            "default": 500,
+            "maximum": 5000.0,
+            "minimum": 50.0,
+            "title": "N Eval Points",
+            "type": "integer"
+          },
+          "n_harmonics": {
+            "default": 20,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "N Harmonics",
+            "type": "integer"
+          },
+          "notation": {
+            "default": "trig",
+            "pattern": "^(trig|exponential|polar)$",
+            "title": "Notation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expression"
+        ],
+        "title": "ComputeEquationRequest",
+        "type": "object"
+      },
+      "ComputeEquationResponse": {
+        "properties": {
+          "coefficients": {
+            "items": {
+              "$ref": "#/components/schemas/FourierTermDTO"
+            },
+            "title": "Coefficients",
+            "type": "array"
+          },
+          "effective_n": {
+            "title": "Effective N",
+            "type": "integer"
+          },
+          "energy_captured": {
+            "title": "Energy Captured",
+            "type": "number"
+          },
+          "latex": {
+            "title": "Latex",
+            "type": "string"
+          },
+          "latex_sigma": {
+            "title": "Latex Sigma",
+            "type": "string"
+          },
+          "original_points": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Original Points",
+            "type": "object"
+          },
+          "reconstructed_points": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Reconstructed Points",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "tier",
+          "latex",
+          "latex_sigma",
+          "coefficients",
+          "original_points",
+          "reconstructed_points",
+          "energy_captured",
+          "effective_n"
+        ],
+        "title": "ComputeEquationResponse",
+        "type": "object"
+      },
+      "ComputeResult": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "status": {
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ComputeResult",
+        "type": "object"
+      },
+      "ContourSettings": {
+        "properties": {
+          "blur_sigma": {
+            "default": 0.5,
+            "title": "Blur Sigma",
+            "type": "number"
+          },
+          "max_contours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 24,
+            "title": "Max Contours"
+          },
+          "min_contour_area": {
+            "default": 0.001,
+            "title": "Min Contour Area",
+            "type": "number"
+          },
+          "min_contour_length": {
+            "default": 40,
+            "title": "Min Contour Length",
+            "type": "integer"
+          },
+          "ml_detail_threshold": {
+            "default": 0.3,
+            "title": "Ml Detail Threshold",
+            "type": "number"
+          },
+          "ml_threshold": {
+            "default": 0.5,
+            "title": "Ml Threshold",
+            "type": "number"
+          },
+          "n_classes": {
+            "default": 3,
+            "title": "N Classes",
+            "type": "integer"
+          },
+          "n_harmonics": {
+            "default": 200,
+            "title": "N Harmonics",
+            "type": "integer"
+          },
+          "n_points": {
+            "default": 1024,
+            "title": "N Points",
+            "type": "integer"
+          },
+          "resize": {
+            "default": 1024,
+            "title": "Resize",
+            "type": "integer"
+          },
+          "smooth_contours": {
+            "default": 0.03,
+            "title": "Smooth Contours",
+            "type": "number"
+          },
+          "strategy": {
+            "default": "auto",
+            "title": "Strategy",
+            "type": "string"
+          }
+        },
+        "title": "ContourSettings",
+        "type": "object"
+      },
+      "ExtractContourRequest": {
+        "properties": {
+          "contour_settings": {
+            "$ref": "#/components/schemas/ContourSettings"
+          }
+        },
+        "title": "ExtractContourRequest",
+        "type": "object"
+      },
+      "FourierTermDTO": {
+        "properties": {
+          "amplitude": {
+            "title": "Amplitude",
+            "type": "number"
+          },
+          "coefficient_im": {
+            "title": "Coefficient Im",
+            "type": "number"
+          },
+          "coefficient_re": {
+            "title": "Coefficient Re",
+            "type": "number"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "number"
+          }
+        },
+        "required": [
+          "n",
+          "coefficient_re",
+          "coefficient_im",
+          "amplitude",
+          "phase"
+        ],
+        "title": "FourierTermDTO",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImageAssetResponse": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "image_slug": {
+            "title": "Image Slug",
+            "type": "string"
+          },
+          "last_accessed_at": {
+            "format": "date-time",
+            "title": "Last Accessed At",
+            "type": "string"
+          },
+          "original_name": {
+            "title": "Original Name",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_slug",
+          "sha256",
+          "original_name",
+          "content_type",
+          "bytes",
+          "created_at",
+          "last_accessed_at"
+        ],
+        "title": "ImageAssetResponse",
+        "type": "object"
+      },
+      "SaveContourRequest": {
+        "properties": {
+          "image_slug": {
+            "title": "Image Slug",
+            "type": "string"
+          },
+          "points": {
+            "additionalProperties": true,
+            "title": "Points",
+            "type": "object"
+          }
+        },
+        "required": [
+          "image_slug",
+          "points"
+        ],
+        "title": "SaveContourRequest",
+        "type": "object"
+      },
+      "SetTierRequest": {
+        "properties": {
+          "tier": {
+            "enum": [
+              "featured",
+              "saved",
+              "normal"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier"
+        ],
+        "title": "SetTierRequest",
+        "type": "object"
+      },
+      "SetUserStatusRequest": {
+        "properties": {
+          "status": {
+            "enum": [
+              "active",
+              "suspended"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SetUserStatusRequest",
+        "type": "object"
+      },
+      "SimplifyRequest": {
+        "properties": {
+          "budget": {
+            "default": 6,
+            "maximum": 50.0,
+            "minimum": 2.0,
+            "title": "Budget",
+            "type": "integer"
+          },
+          "coefficients": {
+            "items": {
+              "$ref": "#/components/schemas/FourierTermDTO"
+            },
+            "title": "Coefficients",
+            "type": "array"
+          },
+          "notation": {
+            "default": "trig",
+            "pattern": "^(trig|exponential|polar)$",
+            "title": "Notation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "coefficients"
+        ],
+        "title": "SimplifyRequest",
+        "type": "object"
+      },
+      "SimplifyResponse": {
+        "properties": {
+          "energy_captured": {
+            "title": "Energy Captured",
+            "type": "number"
+          },
+          "latex": {
+            "title": "Latex",
+            "type": "string"
+          },
+          "term_count": {
+            "title": "Term Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "latex",
+          "energy_captured",
+          "term_count"
+        ],
+        "title": "SimplifyResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VisualizationCreate": {
+        "additionalProperties": false,
+        "description": "POST body. Server generates the slug if absent and recomputes the\ncontent hash; ``owner_slug`` is sourced from the session, never the body.",
+        "properties": {
+          "active_bases": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Active Bases",
+            "type": "array"
+          },
+          "animation_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnimationSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contour_hash": {
+            "title": "Contour Hash",
+            "type": "string"
+          },
+          "contour_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContourSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "image_slug": {
+            "title": "Image Slug",
+            "type": "string"
+          },
+          "n_harmonics": {
+            "maximum": 4096.0,
+            "minimum": 1.0,
+            "title": "N Harmonics",
+            "type": "integer"
+          },
+          "palette_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Palette Slug"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "visibility": {
+            "default": "draft",
+            "enum": [
+              "draft",
+              "unlisted",
+              "public"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_slug",
+          "contour_hash",
+          "active_bases",
+          "n_harmonics"
+        ],
+        "title": "VisualizationCreate",
+        "type": "object"
+      },
+      "VisualizationUpdate": {
+        "additionalProperties": false,
+        "description": "PATCH body. Partial; ``slug`` is immutable and ``content_hash`` is\nrecomputed server-side (so neither appears here).",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "palette_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Palette Slug"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "unlisted",
+                  "public"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
+          }
+        },
+        "title": "VisualizationUpdate",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Fourier Analysis API",
+    "version": "0.2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/admin/audit": {
+      "get": {
+        "description": "Paginated, filterable audit log.",
+        "operationId": "list_audit_api_admin_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "After",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Before",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Target",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Audit",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/flagged": {
+      "get": {
+        "description": "List flagged visualizations, cursor-paginated over the converged entity.\n\nThe flag stream (``flags``, keyed by ``content_hash``) is grouped per entity\nand joined to live ``visualizations``; pagination rides ``cursors.paginate``\nnewest-first (\u00a70 SOTA-1). Soft-deleted rows are excluded.",
+        "operationId": "list_flagged_api_admin_flagged_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Cursor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Flagged",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats": {
+      "get": {
+        "description": "Aggregate visualization and storage statistics (over the converged entity).",
+        "operationId": "admin_stats_api_admin_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStatsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Stats",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "description": "Paginated user list with search and entry counts (over ``visualizations``).",
+        "operationId": "list_users_api_admin_users_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/users/batch": {
+      "post": {
+        "description": "Batch delete/suspend/unsuspend users (CRUD-CONTRACT \u00a77 ``batch_*``).",
+        "operationId": "batch_users_api_admin_users_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchUsersRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/users/prune-empty": {
+      "post": {
+        "description": "Delete users that own zero visualizations.",
+        "operationId": "prune_empty_users_api_admin_users_prune_empty_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Prune Empty Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/users/{slug}": {
+      "delete": {
+        "description": "Cascade-delete a user and all their data (CRUD-CONTRACT \u00a77 ``delete_user``).",
+        "operationId": "delete_user_api_admin_users__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete User",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/users/{slug}/status": {
+      "post": {
+        "description": "Set user status to active or suspended (CRUD-CONTRACT \u00a77 suspend/unsuspend).",
+        "operationId": "set_user_status_api_admin_users__slug__status_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set User Status",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/verify": {
+      "get": {
+        "description": "Verify admin token is valid.",
+        "operationId": "admin_verify_api_admin_verify_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Verify",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/visualizations/batch": {
+      "post": {
+        "description": "Batch delete/feature/unfeature visualizations by slug (CRUD-CONTRACT \u00a77 ``batch_*``).\n\nThe request shape's ``hashes`` field carries visualization **slugs** under\nthe converged identity. ``delete`` is a soft-delete (\u00a75).",
+        "operationId": "batch_visualizations_api_admin_visualizations_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchGalleryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Visualizations",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/visualizations/{slug}": {
+      "delete": {
+        "description": "Moderate-delete a visualization (CRUD-CONTRACT \u00a75 / \u00a77).\n\nDefault is a soft-delete (``deleted_at`` write, restorable within grace).\n``?hard=true`` is the admin grace-bypass for illegal content (\u00a77) \u2014 a true\nhard-delete in one operation. Both write an ``admin_audit`` row.",
+        "operationId": "delete_visualization_api_admin_visualizations__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hard",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Hard",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Visualization",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/visualizations/{slug}/flags": {
+      "delete": {
+        "description": "Dismiss all flags for a visualization (CRUD-CONTRACT \u00a77 ``dismiss_flags``).\n\nResolves the entity by slug, then clears the flag stream keyed by its\n``content_hash`` (the ``flags`` collection's FK to the visualization's\ncontent hash). Idempotent \u2014 dismissing already-clear flags is a 200 with\n``dismissed: 0``.",
+        "operationId": "dismiss_flags_api_admin_visualizations__slug__flags_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss Flags",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/visualizations/{slug}/tier": {
+      "put": {
+        "description": "Set the admin-curation tier for a visualization (CRUD-CONTRACT \u00a77 ``feature``).\n\nGuarded by an ``If-Match`` ETag (\u00a70 SOTA-2): a stale precondition is a 412\n``urn:contract:etag-mismatch``. Idempotent \u2014 re-setting the same tier is a 200.",
+        "operationId": "set_tier_api_admin_visualizations__slug__tier_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTierRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Tier",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/contours": {
+      "post": {
+        "operationId": "save_contour_api_contours_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveContourRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Contour",
+        "tags": [
+          "contours"
+        ]
+      }
+    },
+    "/api/contours/{contourHash}": {
+      "get": {
+        "operationId": "get_contour_endpoint_api_contours__contourHash__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contourHash",
+            "required": true,
+            "schema": {
+              "title": "Contourhash",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Contour Endpoint",
+        "tags": [
+          "contours"
+        ]
+      }
+    },
+    "/api/contours/{contourHash}/compute/bases": {
+      "post": {
+        "operationId": "compute_bases_api_contours__contourHash__compute_bases_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contourHash",
+            "required": true,
+            "schema": {
+              "title": "Contourhash",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputeBasesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputeResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compute Bases",
+        "tags": [
+          "contours"
+        ]
+      }
+    },
+    "/api/contours/{contourHash}/compute/epicycles": {
+      "post": {
+        "operationId": "compute_epicycles_api_contours__contourHash__compute_epicycles_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contourHash",
+            "required": true,
+            "schema": {
+              "title": "Contourhash",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputeEpicyclesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputeResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compute Epicycles",
+        "tags": [
+          "contours"
+        ]
+      }
+    },
+    "/api/equations/compute": {
+      "post": {
+        "description": "Compute closed-form Fourier series for a user-supplied f(x).\n\nTries three tiers:\n  1. Symbolic integration (exact)\n  2. Sequence identification (conjectured)\n  3. Spline approximation (approximate)",
+        "operationId": "compute_equation_api_equations_compute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputeEquationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComputeEquationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compute Equation",
+        "tags": [
+          "equations"
+        ]
+      }
+    },
+    "/api/equations/simplify": {
+      "post": {
+        "description": "Simplify existing DFT coefficients for display overlay.",
+        "operationId": "simplify_coefficients_api_equations_simplify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimplifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimplifyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Simplify Coefficients",
+        "tags": [
+          "equations"
+        ]
+      }
+    },
+    "/api/gallery/cursor": {
+      "get": {
+        "description": "Public gallery list \u2014 a ``visibility=\"public\"`` alias over ``visualizations``.\n\nRead-only, anonymous-permissible, cursor-paginated (CRUD-CONTRACT \u00a70 SOTA-1,\n\u00a74). The canonical path is ``GET /api/visualizations``; this alias is kept so\nthe pre-migration frontend keeps loading until B.W4 re-points it.",
+        "operationId": "list_public_gallery_api_gallery_cursor_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Cursor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Public Gallery",
+        "tags": [
+          "gallery"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/api/images": {
+      "post": {
+        "operationId": "upload_image_api_images_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_image_api_images_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageAssetResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Image",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/images/by-hash/{sha256}": {
+      "get": {
+        "operationId": "get_image_by_hash_api_images_by_hash__sha256__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sha256",
+            "required": true,
+            "schema": {
+              "title": "Sha256",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageAssetResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Image By Hash",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/images/{imageSlug}": {
+      "get": {
+        "operationId": "get_image_metadata_api_images__imageSlug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "imageSlug",
+            "required": true,
+            "schema": {
+              "title": "Imageslug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageAssetResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Image Metadata",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/images/{imageSlug}/blob": {
+      "get": {
+        "operationId": "get_image_blob_api_images__imageSlug__blob_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "imageSlug",
+            "required": true,
+            "schema": {
+              "title": "Imageslug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Image Blob",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/images/{imageSlug}/extract-contour": {
+      "post": {
+        "operationId": "extract_contour_api_images__imageSlug__extract_contour_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "imageSlug",
+            "required": true,
+            "schema": {
+              "title": "Imageslug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractContourRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Extract Contour Api Images  Imageslug  Extract Contour Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Extract Contour",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/images/{imageSlug}/overlay": {
+      "get": {
+        "description": "Serve the image resized to match contour extraction dimensions.\n\nThe returned image is in the same pixel space that contour coordinates\nwere extracted from, enabling pixel-perfect overlay alignment.",
+        "operationId": "get_image_overlay_api_images__imageSlug__overlay_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "imageSlug",
+            "required": true,
+            "schema": {
+              "title": "Imageslug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resize",
+            "required": false,
+            "schema": {
+              "default": 1024,
+              "title": "Resize",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Image Overlay",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/images/{imageSlug}/thumbnail": {
+      "get": {
+        "operationId": "get_image_thumbnail_api_images__imageSlug__thumbnail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "imageSlug",
+            "required": true,
+            "schema": {
+              "title": "Imageslug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Image Thumbnail",
+        "tags": [
+          "images"
+        ]
+      }
+    },
+    "/api/sessions": {
+      "delete": {
+        "description": "Delete the current session.",
+        "operationId": "logout_api_sessions_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "sessions"
+        ]
+      },
+      "post": {
+        "description": "Create a new anonymous user and session.",
+        "operationId": "register_api_sessions_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Register",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/sessions/login": {
+      "post": {
+        "description": "Login by slug \u2014 creates a new session for an existing user.",
+        "operationId": "login_api_sessions_login_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/sessions/me": {
+      "get": {
+        "description": "Return current user info.",
+        "operationId": "me_api_sessions_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Me",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/visualizations": {
+      "get": {
+        "description": "List visualizations with cursor pagination (CRUD-CONTRACT \u00a70 SOTA-1, \u00a74).\n\nAnonymous / default: only ``visibility=public`` live rows. ``?owner=me``\n(with a session) returns the caller's rows in all three visibility states.",
+        "operationId": "list_visualizations_api_visualizations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Cursor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "owner",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Owner",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Visualizations",
+        "tags": [
+          "visualizations"
+        ]
+      },
+      "post": {
+        "description": "Publish a new visualization. Anonymous publish is forbidden (\u00a73 \u2192 401).",
+        "operationId": "create_visualization_api_visualizations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VisualizationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Visualization",
+        "tags": [
+          "visualizations"
+        ]
+      }
+    },
+    "/api/visualizations/{slug}": {
+      "delete": {
+        "description": "Owner-bound soft-delete guarded by an ``If-Match`` ETag (\u00a75).",
+        "operationId": "delete_visualization_api_visualizations__slug__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Visualization",
+        "tags": [
+          "visualizations"
+        ]
+      },
+      "get": {
+        "description": "Read a single visualization by slug.\n\n``draft`` rows are visible to the owner only (non-owners get 404, not 403 \u2014\nrefuses to confirm existence, \u00a74). Soft-deleted rows read 404 to anonymous\ncallers and to non-owners.",
+        "operationId": "get_visualization_api_visualizations__slug__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Visualization",
+        "tags": [
+          "visualizations"
+        ]
+      },
+      "patch": {
+        "description": "Owner-bound partial update guarded by an ``If-Match`` ETag (\u00a73, \u00a70 SOTA-2).",
+        "operationId": "update_visualization_api_visualizations__slug__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VisualizationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Visualization",
+        "tags": [
+          "visualizations"
+        ]
+      }
+    },
+    "/api/visualizations/{slug}/restore": {
+      "post": {
+        "description": "Restore a soft-deleted visualization within the grace window (\u00a75).",
+        "operationId": "restore_visualization_api_visualizations__slug__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Visualization",
+        "tags": [
+          "visualizations"
+        ]
+      }
+    }
+  }
+}
