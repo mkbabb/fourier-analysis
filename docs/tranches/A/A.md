@@ -31,7 +31,7 @@ A succeeds when fourier-analysis is a *plannable* repo: a clean working tree car
 
 ## §3 — Invariants
 
-Tranche A codifies fourier-analysis's baseline invariant set (numbered binding rules scoped to a tranche — see `glossary/meta-terms.md §"Tranche-local invariants"`). All inherit from `docs/precepts/` and `docs/instructions/README.md`; A makes them binding and numbered for this repo. They bind tranche B unchanged.
+Tranche A codifies fourier-analysis's baseline invariant set (numbered binding rules scoped to a tranche — see `glossary/meta-terms.md §"Tranche-local invariants"`; the canonical cross-tranche index is `docs/tranches/INVARIANTS.md`, which lists these as `A-Inv 1…13`). All inherit from `docs/precepts/` and `docs/instructions/README.md`; A makes them binding and numbered for this repo. They bind tranche B unchanged.
 
 1. **KISS / DRY** — the smallest complete mechanism that prevents the real failure. Kill duplication before adding policy.
 2. **No quick fixes, no workarounds** — no stubs, no shadow APIs, no `*_v2` siblings, no "temporary" compatibility layers. Execute the plan; do not route around it.

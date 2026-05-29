@@ -34,7 +34,7 @@ B is the architectural transposition tranche A deliberately declined to attempt.
 
 ## §2 — Invariants
 
-B inherits all 13 of fourier-A's invariants (`docs/tranches/A/A.md §2`) unchanged, and adds four CRUD-specific invariants:
+B inherits all 13 of fourier-A's invariants (`docs/tranches/A/A.md §3`) unchanged, and adds four CRUD-specific invariants (14–17; a later Wave-2 audit synthesis extends the set to 18–24 below). The canonical cross-tranche index is `docs/tranches/INVARIANTS.md`, which lists these as `B-Inv 14…24`:
 
 14. **One converged entity per user-named noun, with a typed owner** — the noun a user saves and navigates to (fourier: `visualization`; value.js: `palette`) is one collection, one slug, one lifecycle, with a **required non-null owner** (rejecting the `user_slug: None` orphan path currently produced by `api/routers/gallery.py:206`). Visibility is the **3-state enumeration `draft | unlisted | public`** (ratified — the audit E proposal used a `private | public` two-state form; B normalises to the 3-state form). No parallel noun for the "published" vs "draft" state of the same thing.
 
