@@ -23,7 +23,17 @@ EA3 enumerated 6 consumer surfaces; 4 are real consumers; 2 are confirmed non-co
 6. **Value.js `src/`** (the npm library `@mkbabb/value.js`) — confirmed colour-math only; no palette-api HTTP calls.
 7. **Fourier `web/vendor/*.tgz`** — confirmed the sibling-repo vendor pattern; tarballs are build-time, not runtime.
 
-## §3 — The 10 brittlenesses (per EA3 §3)
+## §3 — The 11 brittlenesses (per EA3 §3 + Wχ-P5)
+
+### B0 — palette-envelope field stability (added at Wχ close 2026-05-28)
+
+Per Wχ-P5: each value.js-I wave that mutates the palette response (I.W1 visibility split, I.W2 soft-delete `deletedAt` add, I.W4 SOTA envelopes) audits whether any known consumer reads a deprecated field. The audit set is:
+- **Fourier SPA** — `web/src/lib/api.ts` (the `palette_slug` round-trip; currently reads only `palette.slug` per EA3 §5)
+- **Value.js demo** — `demo/@/lib/palette/api/*` (10 files; the BX brittlenesses below)
+- **csp-solver** — the cross-repo coord at §6 (no palette consumption today)
+- **Third-party** — any documented consumer in CRUD-CONTRACT.md should be enumerated
+
+The cross-repo conformance probe T7 at E.W10 carries a **field-presence assertion** (§7 below) so field deletions surface at probe-time, not at consumer-breakage-time. If a wave drops a field, the consumer audit must coordinate the removal BEFORE the wave ships.
 
 ### Fourier SPA (B1–B5)
 
@@ -147,6 +157,7 @@ const baseUrl = new URL(import.meta.env.VITE_API_URL ?? 'api/v1', document.baseU
 | Fourier SPA | `as unknown as` count zero; `ApiProblem` class lands; `apiFetch` is the sole fetch core; retry-on-429 wired |
 | Value.js demo | `ApiProblem` class lands (per-repo independent); If-Match on palette updates; Idempotency-Key on votes/forks |
 | csp-solver | `useApi.ts` reads `VITE_API_URL`; the `https://api.sudoku.babb.dev/api/v1/` round-trip works from `https://sudoku.babb.dev` (live CORS preflight + GET) |
+| Cross-repo T7 (E.W10) | `scripts/conformance-probe.sh` asserts: `GET /palettes/{slug}` → 200 + envelope carries `{slug, name, colors, currentHash, ...}` per CRUD-CONTRACT §1.3 (NOT `id`); ETag header present (per §5); error responses are `application/problem+json` (per §5); `GET /palettes/{slug}` of soft-deleted palette returns 410 Gone if I.W2 has landed (per §4); CORS preflight from `Origin: https://fourier.babb.dev` returns `acao: https://fourier.babb.dev` |
 
 ## §8 — What this doc IS and IS NOT
 

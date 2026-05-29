@@ -125,6 +125,7 @@ Per-wave gates set in the hardened `waves/W*.md` after Wχ. Tranche-level close 
 - **Operational hygiene**: cross-repo upstream commits committed by their maintainers (with SHAs recorded in PROGRESS); dangling images gone; W11 FULL rename done; C9 invariant numbering reconciled.
 - `uv run pytest` green; `vue-tsc -b --force` green; `npm run build` succeeds.
 - `PROGRESS.md` matches reality; `FINAL.md` cites commits + artefacts; cohort closure recorded.
+- **Named-successor stale-watch** (added at Wχ close 2026-05-28 per P5 refinement): named-successor residuals (e.g., `I.W1 → value.js-J`) carry a target-open date in PROGRESS.md; the E.W12 close ceremony alerts if a residual's successor has not opened within **30 calendar days** of the E close. Honest named-residual + stale-watch; not indefinite half-state.
 
 **Invalid hard gates** (rejected): a shared TypeScript types package (inv-16); per-app Mongo consolidation (T-S2 rejected); npm publish without authorization; cosmetic mass-rename; transpositions that ADD complexity instead of replacing it.
 
