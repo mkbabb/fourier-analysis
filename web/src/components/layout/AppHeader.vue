@@ -99,7 +99,11 @@ const galleryStore = useGalleryStore();
 
             <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" class="nav-trigger">
+                    <Button
+                        variant="ghost"
+                        class="nav-trigger"
+                        :aria-label="`Navigate — current section ${activeTabData.label}`"
+                    >
                         <component :is="activeTabData.icon" class="nav-trigger-icon" />
                         <span class="nav-trigger-label">{{ activeTabData.label }}</span>
                         <ChevronDown class="nav-trigger-chevron" />

@@ -117,6 +117,7 @@ function onKeydown(e: KeyboardEvent) {
                 variant="ghost"
                 size="sm"
                 class="size-10 sm:size-auto sm:px-2.5 sm:py-1 gap-1 rounded-full text-muted-foreground"
+                aria-label="Log in"
                 @click="showLogin = true"
             >
                 <LogIn class="size-5 sm:size-3.5" />
@@ -128,6 +129,7 @@ function onKeydown(e: KeyboardEvent) {
                     v-model="slugInput"
                     type="text"
                     placeholder="your-slug-here 🐌"
+                    aria-label="User slug"
                     class="w-44 rounded-md border border-foreground/12 bg-card px-2 py-1 text-sm text-foreground outline-none fira-code transition-[border-color] duration-150 focus:border-foreground/30 placeholder:text-muted-foreground/40"
                     @keydown="onKeydown"
                 />
@@ -135,6 +137,7 @@ function onKeydown(e: KeyboardEvent) {
                     variant="outline"
                     size="icon"
                     class="size-7 text-foreground"
+                    aria-label="Submit slug and log in"
                     :disabled="!canSubmit || loggingIn"
                     @click="handleLogin"
                 >

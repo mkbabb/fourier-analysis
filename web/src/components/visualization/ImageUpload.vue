@@ -96,7 +96,6 @@ function onImgError() {
             :class="{
                 'is-dragging': isDragging,
             }"
-            :aria-label="'Choose an image — drop a file or click to browse'"
             @click="openFilePicker"
         >
             <Upload
