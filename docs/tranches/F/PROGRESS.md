@@ -26,9 +26,28 @@ Every wave's row carries (a) a status word from the canonical set, (b) a close t
 | W6 — *F-ε.a chronic discharge (C9 + N2)* | provisional | — | thread ε — C9 invariant numbering reconciliation across A.md/B.md/C.md/D.md/E.md + precepts; N2 CF wildcard narrow |
 | W7 — *F-ε.b transposition (F-T-N1 ONLY)* | provisional (revised) | — | thread ε — F-T-N1 doc-only ASK (value.js maintainer commits `status` drop; inv-16). **F-T-E1 REJECTED** (keep static MIGRATIONS list); **F-T-S2 REJECTED** (E.W5 coreFetch collapse retained) |
 | W8 — *F-ε.c auto-migration GREEN-verified* | provisional | — | thread ε — trigger one real (or no-op) migration deploy; capture `migrations` collection write; upgrade W9-from-E to GREEN-verified |
-| W12 — *Close + stale-watch re-trigger* | provisional | — | reconcile PROGRESS; `F/FINAL.md` (§0→§9); re-trigger E's 30-day named-residual review; CANONICAL-ORDERING → ordering θ′ |
+| W9 — *F-ζ.1 deploy-repo spine-capture* | provisional | — | thread ζ (NEW) — version host spine into `mkbabb/deploy`: webhook.service + hooks.json.template + deploy-dir-layout; multiplex dispatch.sh retired (completes γ T-S3) |
+| W10 — *F-ζ.2 per-repo HMAC secret split* | provisional (host-coordinated) | — | thread ζ — each `/hooks/<repo>` gets its own HMAC (closes survey S4); rotation runbook; rides γ/W3b per-repo-URL flip |
+| W11 — *F-ζ.3 standard templates* | provisional | — | thread ζ — `deploy/templates/{deploy-hook.sh, docker-compose.hardening.yml, ci.yml, env.example}` + `deploy/cf/{dns-cf-sync.sh, pages-deploy.sh}` from fourier+value.js+speedtest reference shapes |
+| W12 — *F-ζ.4 cross-repo adoption asks* | provisional | — | thread ζ — author the per-repo-maintainer adoption-ask ledger (CI template → words/speedtest/csp; docker-hardening level-up; frontend CF-Pages convergence; palette-api rsync→git; csp-solver route-reg N4; floridify N7). Coordination only — NOT fourier-F commits (inv-16) |
+| W13 — *Close + stale-watch re-trigger* | provisional | — | reconcile PROGRESS; `F/FINAL.md` (§0→§9); re-trigger E's 30-day named-residual review; record ζ cross-repo asks as named-residuals; CANONICAL-ORDERING → ordering θ′ |
 
 ## Log
+
+### 2026-05-28 — thread ζ added (constellation deploy standardization folded into F)
+
+**WHAT.** User directive: "normalize the CI and webhook process, ensure security thereof; create a repo for these deploy processes if need be, or at the very least standardize them — docker, CF Pages, mbabb hosting, across the constellation (value.js, words, fourier, sudoku)."
+
+A READ-ONLY 4-lane parallel survey (`docs/audits/runs/2026-05-28-constellation-survey/SURVEY-FINDINGS.md`) grounded the design. Findings: the constellation TOPOLOGY is normalized (D-era) but the PROCESS is not — 3 frontend-hosting patterns, 3 deploy-trigger patterns, 3 CI maturity levels, a docker-hardening gradient, divergent secrets; **root cause: the deploy spine is version-controlled in NO repo** (only host state). Plus 2 HIGH committed-secret exposures (S1 floridify `pk_live_*`; S2 speedtest `cfat_*`).
+
+**User decisions** (via AskUserQuestion):
+1. Deploy home → **dedicated PRIVATE repo `mkbabb/deploy`** (created `e3b16d8`; charter seeded).
+2. S1/S2 → **operator handles out-of-band** (recorded; not F scope; inv-16).
+3. Tranche → **fold into fourier-F as thread ζ**, granular waves as needed.
+
+**Folded:** F grows from 5 → 6 threads; W-schedule 13 → 17 slots (ζ.1 spine-capture W9, ζ.2 per-repo-HMAC W10, ζ.3 templates W11, ζ.4 adoption-asks W12, close → W13). The **C8 5-gate chronic NOW DISCHARGES via ζ** (the user's "normalize across the constellation" IS the C8 re-mandate). N4 (csp-solver) + N7 (floridify) reclassify from STAYS-OUT to the F-ζ.4 maintainer-owned adoption-ask ledger. inv-16 preserved: fourier-F commits touch only `fourier-analysis/**` + `deploy/**`.
+
+Design substrate: `docs/constellation/DEPLOY-STANDARDIZATION-DESIGN.md`. The `mkbabb/deploy` README is the contract; spine-capture + template authoring is F-ζ EXECUTION (gated on F authorization — not run here).
 
 ### 2026-05-28 — tranche authored (6-lane F-development audit + SYNTHESIS)
 

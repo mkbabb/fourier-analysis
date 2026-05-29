@@ -83,9 +83,11 @@ Canonicalize to `/srv/constellation/<app>/` (or keep `/var/www/<app>` — pick o
 
 ## §3 — Security hardening (front-loaded)
 
-**Immediate (operator + per-repo-maintainer; do NOT wait for the tranche):**
+**Immediate — OPERATOR-OWNED OUT-OF-BAND (user decision 2026-05-28; not in F scope):**
 - **S1** — rotate the floridify Clerk `pk_live_*` keys; purge `.env.production` from the words repo + history; move to GH secrets.
 - **S2** — rotate the speedtest `cfat_*` CF token; purge `.env` from the speedtest repo + history; move to GH secrets / host-only.
+
+The user handles S1 + S2 directly (fourier does not edit those repos — inv-16). Recorded here as findings; no runbook authored. These are live-credential exposures; rotate ahead of anything else.
 
 **Tranche W-early:**
 - **S4 + S5** — replace the shared HMAC webhook secret with **per-repo secrets** (the F.γ T-S3 per-repo-URL retire is the natural carrier: each `deploy.babb.dev/hooks/<repo>` URL gets its own HMAC); add a rotation runbook (dual-key blue-green swap).
@@ -93,23 +95,29 @@ Canonicalize to `/srv/constellation/<app>/` (or keep `/var/www/<app>` — pick o
 
 The F.γ host-flip (per-repo webhook URLs, retiring the multiplex dispatcher) is the FIRST concrete step of this standardization — it is already scoped + gh-validated in fourier-F. The per-repo-secret split rides it.
 
-## §4 — Tranche scoping
+## §4 — Tranche scoping — RESOLVED: fold into fourier-F as thread ζ
 
-This is **constellation-scope** — larger than fourier-F (single-repo). Two honest framings:
+Per the user decision (2026-05-28): **fold into fourier-F**, with granular waves added as needed. F adds a sixth thread:
 
-1. **A new constellation-level tranche** (e.g. `babb-deploy` tranche-A, or a cross-repo "G-constellation" effort) — research-first (this design is its W0 substrate), with waves: W1 create repo + capture spine as code; W2 per-repo-secret + HMAC rotation (rides F.γ); W3 CI template adoption (words + speedtest + csp-solver); W4 docker-hardening level-up; W5 frontend-hosting drift resolution (CF Pages convergence); W6 deploy-dir + rsync→git normalization; Wclose.
-2. **Fold into fourier-F + named cross-repo asks** — F.γ already does the webhook per-repo retire; the rest become per-repo-maintainer asks coordinated from this design doc. Weaker (leaves the spine un-versioned) but no new tranche.
+**F-ζ — constellation deploy standardization.** It authors `mkbabb/deploy` (the spine + templates) and coordinates maintainer-owned adoption for the other app repos. inv-16 preserved: fourier-F commits touch only `fourier-analysis/**` + `deploy/**` (the new repo fourier-F owns) — never `value.js/**`, `words/**`, `speedtest/**`, `csp-solver/**`, `keyframes.js/**` (those adopt the templates via maintainer-owned PRs, coordinated from this doc as cross-repo asks).
 
-**Recommendation**: framing 1 (new tranche + dedicated repo) — it is the only path that versions the spine and gives the standardization a close-gate. The F.γ work is its first wave (already in flight).
+ζ's granular waves (folded into F's schedule after γ — which carries the per-repo-webhook retire that ζ.2 builds on):
+- **ζ.1 — `deploy` repo spine-capture**: version the host `/opt/deploy/{dispatch.sh→retired, hooks.json.template, webhook.service}` + the deploy-dir-layout map into `mkbabb/deploy`.
+- **ζ.2 — per-repo HMAC secret split** (rides F.γ's per-repo-URL retire): each `deploy.babb.dev/hooks/<repo>` gets its own HMAC; closes S4; adds the rotation runbook.
+- **ζ.3 — standard templates**: author `deploy/templates/{deploy-hook.sh, docker-compose.hardening.yml, ci.yml, env.example}` from the fourier + value.js + speedtest reference shapes.
+- **ζ.4 — CF DNS-as-code promotion**: `dns-cf-sync.sh` (fourier-only) → `deploy/cf/` (constellation-wide); + the standard CF Pages wrangler recipe.
+- **ζ.5 — cross-repo adoption asks**: the per-repo-maintainer asks (CI template for words + speedtest + csp-solver; docker-hardening level-up; frontend-hosting drift resolution; palette-api rsync→git). Coordinated from this doc; NOT fourier-F commits.
+
+Granularity expands as needed (the user's "more waves with better granularity"). The F.γ work (per-repo-webhook retire) is ζ's prerequisite, already scoped + gh-validated.
 
 ## §5 — What this design is NOT
 
-- NOT an implementation (no host mutation, no repo creation, no secret rotation executed here — all require sign-off).
-- NOT a violation of inv-16: the `babb-deploy` repo holds templates + the host spine, not edits to app repos; each app's adoption is maintainer-owned.
+- NOT a host mutation / secret rotation (S1/S2 are operator-out-of-band; the host spine-capture is F-ζ execution, gated on F authorization).
+- NOT a violation of inv-16: `mkbabb/deploy` holds templates + the host spine (fourier-F owns it); each *app* repo's adoption is maintainer-owned.
 - NOT a re-litigation of the D-era topology (naming, TLS, Mongo-exposure) — that holds; this is the *process* layer above it.
 
-## §6 — The decisions the user must weigh (→ AskUserQuestion)
+## §6 — Decisions (RESOLVED 2026-05-28)
 
-1. **Deploy-process home**: dedicated `babb-deploy` repo [recommended] vs standardize-in-place under fourier-docs vs fold-into-CONSTELLATION-DEPLOY-precept.
-2. **The 2 HIGH committed-secret exposures (S1, S2)**: rotate-now (I draft the remediation runbook; operator + maintainers execute) vs fold-into-tranche-W0.
-3. **Tranche identity** (implied): new constellation-level tranche vs fold-into-fourier-F + cross-repo asks.
+1. **Deploy-process home** → **dedicated PRIVATE repo `mkbabb/deploy`** (created 2026-05-28, charter seeded at `e3b16d8`; the §1 target structure is its README contract). Spine-capture + template authoring at F-ζ execution.
+2. **S1 + S2 committed-secret exposures** → **operator handles out-of-band.** Recorded in `SURVEY-FINDINGS.md §3` + §3 here; fourier does NOT edit those repos (inv-16); no runbook authored.
+3. **Tranche identity** → **folded into fourier-F as thread ζ** with granular waves (§4).

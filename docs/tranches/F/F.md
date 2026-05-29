@@ -9,13 +9,14 @@
 
 ## §0 — Goal criterion and completion criterion (paired)
 
-**Goal criterion (the aim).** Land five threads honestly to discharge the post-cohort hygiene surface E left + the load-bearing prod regression FA1 surfaced:
+**Goal criterion (the aim).** Land **six threads** honestly to discharge the post-cohort hygiene surface E left + the load-bearing prod regression FA1 surfaced + the constellation deploy-process normalization (the 2026-05-28 directive). *(α–ε were the original five; ζ added 2026-05-28.)*
 
 - **α — API-vhost-correctness**: `api.fourier.babb.dev/{/, /health, /docs, /openapi.json}` returns JSON (problem+json on error) — never an SPA index.html; rate-limit middleware emits dynamic `RateLimit-*` headers. **[Wα-DELTA per Wα-R1+R3]** the regression is ORIGIN-served (host Apache → Docker `nginx:alpine` gateway → SPA catch-all; `Server: nginx/1.29.5`, no `cf-ray`), NOT CF Pages — the fix is a surgical `location =` exact-match set in the tracked `nginx/fourier.conf` + container recreate. The rate-limit defect is NOT "static constants" but an **enforce/report split** (read routes carry no limiter dependency → bucket uncounted → `snapshot()` honestly reports the empty bucket); the fix fuses `check()` into the header middleware à la value.js `rate-limit.ts:91-116`.
 - **β — compute-cache-symmetry**: `compute_cache.py` keys on `params: dict` (canonical-JSON sorted) instead of the 3-field positional contract; `compute_bases` wires through the same cache; `db.epicycle_cache` renames to `db.compute_cache`; hit-rate logging emits on cache-hit (closes E3 instrumentation residual).
 - **γ — operator-window-consolidation**: single SSH session discharges N1 (value.js dispatcher arm DELETE) + E1 (T-S3 host-flip via `scripts/update-webhook-urls.sh --apply`) + dead `:8140` speedtest vhost teardown + host-cron evidence capture (FA3 F-FA3-1 / F-FA3-3) — receipt JSON persisted under `docs/tranches/F/receipts/`.
 - **δ — UX + a11y + perf polish**: `button-name` failures on AppHeader Reka dropdown + `.btn-pill` (FA1 F-A11Y-1); `label-content-name-mismatch` on `/visualize`; missing `meta-description` + `robots.txt` (F-SEO-1); per-route lazy-load deeper than W7 reached (F-PERF-1); self-host CM fonts under `/assets/fonts/` with `Cache-Control: immutable` (F-PERF-2).
-- **ε — chronic discharge + auto-migration GREEN-verified + transpositions**: C4 `ORT_LOGGING_LEVEL=3` 1-liner (kills a 4-gate chronic); C9 invariant numbering reconciliation across A-E + precepts; N2 CF wildcard narrow; FA5 F-T-N1 (drop legacy `status` from `FormattedPalette` — paired demo PR); FA5 F-T-E1 (auto-discover `migrate_*.py`); FA5 F-T-S2 (inline `apiFetchWithETag` / `adminFetch`); trigger one real migration to upgrade W9 from GREEN-pending-real-test to GREEN-verified.
+- **ε — chronic discharge + auto-migration GREEN-verified + transpositions**: C4 `ORT_LOGGING_LEVEL=3` 1-liner (kills a 4-gate chronic); C9 invariant numbering reconciliation across A-E + precepts; N2 CF wildcard narrow; FA5 F-T-N1 (drop legacy `status` from `FormattedPalette` — paired demo PR); ~~FA5 F-T-E1~~ (REJECTED per Wχ-P4); ~~FA5 F-T-S2~~ (REJECTED per Wχ-P4); trigger one real migration to upgrade W9 from GREEN-pending-real-test to GREEN-verified.
+- **ζ — constellation deploy standardization** *(ADDED 2026-05-28 per "normalize CI + webhook + ensure security; create a repo; standardize across the constellation")*: author `mkbabb/deploy` (PRIVATE, created `e3b16d8`) as the versioned home of the deploy spine + standard templates (deploy-hook / docker-hardening / CI / .env); split the shared webhook HMAC into per-repo secrets (rides γ's per-repo-URL retire; closes survey S4); promote `dns-cf-sync.sh` to constellation-wide; coordinate maintainer-owned adoption asks for the other 5 app repos. Substrate: `docs/constellation/DEPLOY-STANDARDIZATION-DESIGN.md` + `docs/audits/runs/2026-05-28-constellation-survey/`. **inv-16 preserved**: fourier-F commits touch only `fourier-analysis/**` + `deploy/**` — never the other app repos (they adopt via maintainer-owned PRs). The 2 HIGH committed-secret exposures (S1 floridify `pk_live_*`; S2 speedtest `cfat_*`) are **operator-out-of-band**, NOT F scope.
 
 **Completion criterion (the evidence).** The close holds when:
 
@@ -39,7 +40,7 @@ FA1 ALSO surfaced one HIGH-severity regression that is NOT hygiene: `api.fourier
 
 F exists to close all five threads — bounded, KISS-honest, single-repo, no cohort partner. The user's 2026-05-28 directive ("Deploy 6 agents in parallel to lighthouse test each page… DEEPLY audit… NO legacy code… fold into a new tranche… NOT an implementation phase. Tranche development only.") IS the F authoring substrate.
 
-F is composed of **5 intentionally separable threads** sequenced so the load-bearing prod regression (α) and the architectural transposition (β) land before the operator window (γ), the polish surfaces (δ), and the chronic-sweep (ε):
+F is composed of **6 intentionally separable threads** sequenced so the load-bearing prod regression (α) and the architectural transposition (β) land before the operator window (γ), the polish surfaces (δ), the chronic-sweep (ε), and the constellation deploy standardization (ζ — which builds on γ's per-repo-webhook retire):
 
 - **α API-vhost-correctness** — research-first (nginx archaeology); direct execution.
 - **β compute-cache-symmetry** — direct; mechanical refactor with strong gates.
@@ -72,9 +73,13 @@ F inherits all prior invariants (`A.md §2` through `E.md §2`) unchanged. F add
 | W6 — *F-ε.a chronic discharge (C9 + N2)* | ε | 1 | C9 invariant numbering reconciliation across A.md/B.md/C.md/D.md/E.md + precepts (single doc-PR); N2 CF wildcard narrow (`dns-cf-sync.sh` re-run) | provisional |
 | W7 — *F-ε.b transpositions (F-T-N1 ONLY)* | ε | 1 | **[REVISED per Wχ-P4]** F-T-N1 doc-only ASK: fourier-F authors the coordination note; value.js maintainer commits the `status`-field drop in value.js (inv-16: no fourier-F commit touches `value.js/**`). **F-T-E1 REJECTED** (keep static `MIGRATIONS` (name,version) list); **F-T-S2 REJECTED** (E.W5 already collapsed to `coreFetch`; retain pass-throughs) | provisional |
 | W8 — *F-ε.c auto-migration GREEN-verified* | ε | 1 | trigger one real (or no-op) migration deploy; capture `migrations` collection write; W9-from-E upgrades to GREEN-verified | provisional |
-| W12 — *Close + stale-watch re-trigger* | — | 1 | reconcile PROGRESS; author `F/FINAL.md`; re-trigger E's 30-day named-residual review; CANONICAL-ORDERING → ordering θ′ (or fold into θ) | provisional |
+| W9 — *F-ζ.1 deploy-repo spine-capture* | ζ | 1-2 | version the host spine into `mkbabb/deploy`: `webhook.service` (systemd unit) + `hooks.json.template` (per-repo entries, `${HMAC_<REPO>}` interpolation) + `deploy-dir-layout.md`; the multiplex `dispatch.sh` is retired (its function moves to per-repo `hooks.json` entries, completing γ's T-S3) | provisional |
+| W10 — *F-ζ.2 per-repo HMAC secret split* | ζ | 1 | each `deploy.babb.dev/hooks/<repo>` gets its OWN HMAC secret (closes survey S4 — one repo's compromise no longer re-signs all 5); rotation runbook (`deploy/security/hmac-rotation.md`, dual-key blue-green); rides γ/W3b's per-repo-URL flip | provisional (host-coordinated) |
+| W11 — *F-ζ.3 standard templates* | ζ | 2-3 parallel | author `deploy/templates/{deploy-hook.sh, docker-compose.hardening.yml, ci.yml, env.example}` from the fourier (hardened hook) + value.js/api (docker-hardening floor) + speedtest (CF Pages recipe) reference shapes; `deploy/cf/{dns-cf-sync.sh (promoted), pages-deploy.sh}` | provisional |
+| W12 — *F-ζ.4 cross-repo adoption asks (coordination)* | ζ | 1 | author the per-repo-maintainer adoption asks (CI template → words + speedtest + csp-solver; docker-hardening level-up; frontend-hosting drift resolution — CF Pages convergence for value.js + keyframes; palette-api rsync→git). Coordinated from the design doc as cross-repo asks; NOT fourier-F commits (inv-16) | provisional |
+| W13 — *Close + stale-watch re-trigger* | — | 1 | reconcile PROGRESS; author `F/FINAL.md`; re-trigger E's 30-day named-residual review; record the ζ cross-repo asks as named-residuals (maintainer-owned); CANONICAL-ORDERING → ordering θ′ | provisional |
 
-Hard ceiling 4 agents/wave (DA6/NA6/EA6 inherited). Research-first gate (W0 → Wα → Wχ) GREEN as of 2026-05-28 (substrate hardened the specs above). W1 (α) precedes W2 (β); both must close before W3a (γ host-ops). **W3b is operator-gated** (INVALID gh token; out-of-band `gh auth login` required — cannot be scripted away). δ (W4/W5) and ε (W6/W7/W8) follow with relaxed ordering. W12 closes. **13 wave slots** (W3 split into W3a + W3b).
+Hard ceiling 4 agents/wave (DA6/NA6/EA6 inherited). Research-first gate (W0 → Wα → Wχ) GREEN as of 2026-05-28 (substrate hardened the specs above). W1 (α) precedes W2 (β); both must close before W3a (γ host-ops). **W3b is GREEN-pending-W3a** (gh auth now valid; W3a stages host entries first). δ (W4/W5) and ε (W6/W7/W8) follow with relaxed ordering. **ζ (W9-W12) follows γ** — ζ.1 spine-capture + ζ.2 per-repo-HMAC complete the per-repo-webhook retire γ/T-S3 began; ζ.3 templates + ζ.4 asks are coordination. W13 closes. **17 wave slots** (W3 split W3a/W3b; ζ added W9-W12; old W12 close → W13). Granularity expands as needed per the user's "more waves with better granularity."
 
 ## §4 — Phases
 
@@ -101,11 +106,15 @@ Hard ceiling 4 agents/wave (DA6/NA6/EA6 inherited). Research-first gate (W0 → 
 | F-δ.a a11y + SEO | `web/src/components/AppHeader.vue` (aria-labels); `web/index.html` (meta-description); `web/public/robots.txt` (NEW); per-route meta via Vue Router | W4 |
 | F-δ.b perf | `web/vite.config.ts` (deeper chunk split); `web/public/assets/fonts/` (NEW — CM woffs); HTTP cache headers | W5 |
 | F-ε.a doc reconcile | `docs/tranches/{A,B,C,D,E}/*.md` (C9 numbering); `scripts/dns-cf-sync.sh` (N2 wildcard narrow) | W6 |
-| F-ε.b transpositions | `value.js/api/src/format/palette.ts` (cross-repo coord; F-T-N1); `api/scripts/run_pending_migrations.py` (F-T-E1); `web/src/lib/api.ts` (F-T-S2) | W7 |
+| F-ε.b transposition | `value.js/api/src/format/palette.ts` (cross-repo coord; F-T-N1 doc-ASK only — value.js maintainer commits); F-T-E1 + F-T-S2 REJECTED (no fourier edits) | W7 |
 | F-ε.c auto-migration | introduce a no-op migration; deploy; capture `migrations` collection write | W8 |
+| F-ζ.1 deploy-repo spine | `deploy/host/{webhook.service, hooks.json.template, deploy-dir-layout.md}` (the NEW `mkbabb/deploy` repo; fourier-F owns it) | W9 |
+| F-ζ.2 per-repo HMAC | `deploy/host/hooks.json.template` (per-repo `${HMAC_<REPO>}`); host `/opt/deploy/hooks.json` (5 per-repo secrets); `deploy/security/hmac-rotation.md` (NEW) | W10 |
+| F-ζ.3 templates | `deploy/templates/{deploy-hook.sh, docker-compose.hardening.yml, ci.yml, env.example}`; `deploy/cf/{dns-cf-sync.sh, pages-deploy.sh}` (all NEW in the deploy repo) | W11 |
+| F-ζ.4 adoption asks | `docs/constellation/DEPLOY-STANDARDIZATION-DESIGN.md §4` adoption-ask ledger (coordination doc; the per-repo PRs are maintainer-owned, NOT fourier-F commits) | W12 |
 | C4 onnxruntime | `api/__init__.py` (1-line env var) | W0 |
 
-No two waves hold overlapping write bounds. α (host nginx + api middleware) ∥ β (api services + routers) ∥ δ (web components + assets). γ is host-only. ε is doc + cross-repo + web/api.
+No two waves hold overlapping write bounds. α (host nginx + api middleware) ∥ β (api services + routers) ∥ δ (web components + assets). γ is host-only. ε is doc + cross-repo-ASK + web/api. **ζ writes only `deploy/**` (the new fourier-F-owned repo) + host `/opt/deploy/` + the fourier-side coordination doc — never the other app repos (inv-16; they adopt via maintainer-owned PRs).**
 
 ## §6 — Hard gates (completion criterion)
 
@@ -149,10 +158,11 @@ Per-wave gates set in the hardened `waves/W*.md` after Wχ. Tranche-level close 
 - **C5** glass-ui substrate carries — inv-16 cross-repo; STAYS-OUT.
 - **C6** glass-ui cold-boot race — same; STAYS-OUT.
 - **C7** §U conformance strikes — never-built-by-design; STAYS-OUT.
-- **C8** cross-cohort infra plan (constellation-wide) — fourier-relevant subset folds into F-γ; rest STAYS-OUT.
-- **N3** W11 FULL palette-api → color rename — cosmetic; URL-layer GREEN; STAYS-OUT.
-- **N4** csp-solver runtime URL — external repo (per FA2 §3 reframe: route-registration regression at sudoku-repo; ASK only); STAYS-OUT.
-- **N7** floridify Mongo-bind upstream — external repo; STAYS-OUT.
+- **C8** cross-cohort infra plan (constellation-wide) — **RECLASSIFIED 2026-05-28: the 5-gate chronic NOW DISCHARGES via thread ζ** (the `mkbabb/deploy` repo + standard templates + the constellation survey). The user's "normalize across the constellation" directive is the C8 re-mandate. fourier-relevant subset → F-γ + F-ζ.1/ζ.2; constellation-wide → F-ζ.3/ζ.4 (templates + maintainer-owned adoption asks).
+- **N3** W11 FULL palette-api → color rename — cosmetic; URL-layer GREEN; STAYS-OUT (not a deploy-process item; orthogonal to ζ).
+- **N4** csp-solver runtime URL — external repo (per FA2 §3 reframe: route-registration regression at sudoku-repo; ASK only) → folds into the **F-ζ.4 cross-repo adoption-ask ledger** (coordinated, maintainer-owned).
+- **N7** floridify Mongo-bind upstream — external repo → **F-ζ.4 adoption-ask ledger** (maintainer-owned).
+- **S1/S2** committed-secret exposures (floridify `pk_live_*`; speedtest `cfat_*`) — **operator-out-of-band** (user decision); recorded in `SURVEY-FINDINGS.md §3`; NOT F scope.
 
 **Deferred out of F (potential successors):**
 - **E5** Idempotency-Key API-side replay store — value.js-J or I-tail.
