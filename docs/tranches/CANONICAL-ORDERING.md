@@ -5,7 +5,7 @@
 **Reconciles with**: R1's cohort-orphan assay (the verdict on whether value.js-C — the cohort-peer tranche to fourier-B — is effectively orphaned) and R6's fourier-C scoping (the open-design scoping for fourier-analysis's infra + image-blob-out-of-Mongo tranche); parallel-dispatched. Both R1 and R6 outputs were not yet present at `docs/audits/runs/2026-05-19-refinement-assay/` at this document's authoring. This document is **provisional pending R1's cohort verdict**; both orderings (cohort-live, cohort-orphan) are given in §5.
 **Authority**: this is the only execution-order document spanning both repos. Per-tranche `*.md` and `coordination/CRUD-CONSTELLATION.md` (the cohort coordination doc bound to fourier-B's CRUD-and-identity-convergence question) remain the authority for individual dependency claims.
 
-> **⚠ SUPERSEDED — see §11 (Ordering ζ, 2026-05-28, post-D-close + E-authoring).** §1–§7 were authored 2026-05-26 (contingent orderings α/β); §8 (γ) reconciled at fourier-C authoring; §9 (δ) reconciled at fourier-C close; §10 (ε) reconciled at fourier-D authoring 2026-05-27. Now: **fourier-D CLOSED CLEAN 2026-05-28** (all six threads GREEN; prod LIVE on `fourier.babb.dev` + `api.fourier.babb.dev`; constellation rolled out); **fourier-E AUTHORED** as the cross-repo-cohesion-completion + consumer-hardening + architectural-transpositions + test-integrity + operational-hygiene tranche; **value.js-I OPENED** at fourier-E.W2 as the cohort peer (the user's 2026-05-28 "fix our cross repos" IS the I re-mandate). **§11 is the authoritative current ordering;** §1–§10 are retained as the historical record.
+> **⚠ SUPERSEDED — see §12 (Ordering η, 2026-05-28, post-E-close + post-I-close).** §1–§7 were authored 2026-05-26 (contingent orderings α/β); §8 (γ) reconciled at fourier-C authoring; §9 (δ) reconciled at fourier-C close; §10 (ε) reconciled at fourier-D authoring 2026-05-27; §11 (ζ) reconciled at fourier-D close + fourier-E authoring 2026-05-28. Now: **fourier-E CLOSED 2026-05-28** (15 commits W0→W11; Scenario A paired close with value.js-I; T7 12/12 PASS verifies cross-repo conformance); **value.js-I CLOSED 2026-05-28** (cohort peer; 53 DEFERRED-TO-VALUE.JS cells → ADDRESSED); CANONICAL-ORDERING → ordering η. **§12 is the authoritative current ordering;** §1–§11 are retained as the historical record.
 
 ---
 
@@ -390,3 +390,53 @@ The cohort closes via one of two paths:
 - **Named successor**: fourier-E closes; one or more I waves remain; E.FINAL records the residual + the named successor (e.g. value.js-I.W4 → value.js-J).
 
 Half-state at the FK seam is rejected.
+
+---
+
+## §12 — Ordering η (2026-05-28 post-E-close + post-I-close — AUTHORITATIVE)
+
+**fourier-E CLOSED 2026-05-28** (`docs/tranches/E/FINAL.md`; 15 fourier commits W0→W11; T7 12/12 PASS verifies cross-repo conformance at protocol layer).
+
+**value.js-I CLOSED 2026-05-28** (`value.js/docs/tranches/I/FINAL.md`; 4 value.js commits + the β.2 demo hardening commit; Scenario A paired close).
+
+### §12.1 — The cohort closes — Scenario A
+
+Per `coordination/CRUD-COHESION-E.md §5`:
+1. ✅ `fourier/docs/tranches/E/FINAL.md` — landed at fourier HEAD.
+2. ✅ `value.js/docs/tranches/I/FINAL.md` — landed at value.js HEAD.
+3. ✅ T7 conformance probe 12/12 PASS (live at W10 close 2026-05-28T05:55Z; cron-installed on host every 6h).
+
+Zero half-state. Zero new chronic items. All named-residuals carry explicit owners (operator coord / fourier-F / value.js-J / external repo asks).
+
+### §12.2 — Updated inventory at ordering η
+
+| Repo | Tranche | Status | Authority |
+|---|---|---|---|
+| fourier-analysis | **A-D** | CLOSED | per-tranche FINAL.md |
+| fourier-analysis | **E** — *cross-repo cohesion completion + consumer hardening + arch transpositions + test integrity + ops hygiene* | **CLOSED 2026-05-28** | `docs/tranches/E/FINAL.md` |
+| value.js | **A-H** | CLOSED | per-tranche FINAL.md |
+| value.js | **I** — *CRUD-CONTRACT v2.0.0 conformance (cohort peer to fourier-E)* | **CLOSED 2026-05-28** | `value.js/docs/tranches/I/FINAL.md` |
+
+### §12.3 — Critical path post-η
+
+The post-cohort hygiene + the named-residuals review is the next concern. Suggested:
+- **fourier-F** (or J/K): polish + named-residuals review (T-S3 host-flip execution; W11 FULL rename; floridify upstream; :8140 vhost; C9 numbering; per-call-site adoption of plumbed I.W4 envelopes; D.W6 AMBER → GREEN Playwright matrix).
+- **value.js-J** (or later): hard-removal of `palette.status` legacy field (post-consumer-audit); Idempotency-Key API-side replay store; per-repo conformance suite.
+
+### §12.4 — Cross-repo edges at ordering η (all live-grounded + verified by T7)
+
+```
+fourier visualization.palette_slug  ──(slug-FK)──▶  value.js palette-api palette noun   [LIVE; T7-verified]
+fourier ApiProblem (web/src/lib)    ←──(inv-16)──▶  value.js demo ApiProblem (per-repo) [LIVE; per-repo independent]
+fourier CORS (Origin: fourier...)   ──(ACAO echo)─▶ palette-api CORS                    [LIVE since E.W1; T7-verified]
+fourier T7 conformance probe        ──(probes both APIs)──▶ both APIs + envelope shape  [LIVE; cron every 6h]
+```
+
+### §12.5 — The current critical path + next action
+
+- **fourier next action**: deferred-with-owner items review (T-S3 host-flip; FULL rename; etc.) at a fourier-F open OR at the next operational deploy window. None are blocking.
+- **value.js next action**: deferred-with-owner items review (per-call-site adoption; status drop after consumer audit) at a value.js-J open.
+
+Both repos enter the **post-cohort hygiene window**. The constellation is FULLY GREEN at the URL + envelope + cross-repo CORS + browser-layer FK seam.
+
+End of CANONICAL-ORDERING §12 — ordering η.
