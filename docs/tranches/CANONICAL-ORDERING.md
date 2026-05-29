@@ -562,3 +562,45 @@ fourier-F                        ──⊥────── glass-ui  (INDEPEND
 **Parallelism note**: fourier-F and glass-ui g.w5 are genuinely independent (F touches no glass-ui surface; glass-ui is build-time-vendored in fourier today). Do NOT serialize them. The only serialization is: (a) γ before ζ within F; (b) ζ.3 templates + g.w5 before the cross-repo adoption rendezvous. (There is no longer a security-first Tier 0 — the S1/S2 findings are WITHDRAWN.)
 
 End of CANONICAL-ORDERING §14 — ordering ι.
+
+---
+
+## §15 — Ordering θ′ (2026-05-29 post-F-close — AUTHORITATIVE for fourier)
+
+**fourier-F CLOSED 2026-05-29** (`docs/tranches/F/FINAL.md`; fourier HEAD `d98da91`; deploy-repo `mkbabb/deploy` HEAD `7c4e96b`). This records the close of the post-cohort hygiene tranche that ordering θ (§13) authored and ordering ι (§14) sequenced as Track B. §14's tier framing is unchanged for the constellation; §15 records what fourier-F actually delivered and the forward residuals.
+
+### §15.1 — F closed GREEN-with-named-residuals
+
+All six threads (α API-vhost-correctness, β compute-cache-symmetry, γ operator-window, δ UX+a11y+perf, ε chronic+transpositions+migration-GREEN, ζ constellation deploy standardization) landed. 14 wave rows (W0, W1, W2, W3a, W3b, W4–W13) CLOSED; 12 fourier commits + 1 deploy-repo commit (`7c4e96b`) + 2 host-ops receipt sets. T7 12/12 PASS; pytest 214/214; vue-tsc + build green. inv-12/16/20/21/22 honored + the new `docs/tranches/INVARIANTS.md` canonical ledger (C9 name-resolved).
+
+**The headline:** F not only landed its planned hygiene + UX surface — it discovered that the constellation auto-deploy chain had been silently BROKEN for ~2 months (host pinned at `6039e95`) and restored it. Three masked deploy-blockers fixed (stale `web/vendor` Dockerfile COPY `60f1f89`; drifted `web/package-lock.json` `37da6f0`; the 3-layer W8 auto-migration defect `a04f636`+`4007ec5`) + the chronic webhook-secret regression (secret MISSING on all 5 repos — root-caused + closed + hardened to per-repo HMAC). inv-22 is now co-enforced on every deploy by the inv-22-aware health gate (`0a7a743`).
+
+### §15.2 — Updated inventory at ordering θ′
+
+| Repo | Tranche | Status | Authority |
+|---|---|---|---|
+| fourier-analysis | **A-E** | CLOSED | per-tranche FINAL.md |
+| fourier-analysis | **F** — *post-cohort hygiene + constellation deploy standardization* | **CLOSED 2026-05-29** (GREEN-with-named-residuals) | `docs/tranches/F/FINAL.md` |
+| value.js | **A-I** | CLOSED | per-tranche FINAL.md |
+| value.js | **J** — *latent (E5/E6/E7; per-call-site ifMatch)* | not opened | named-successor; opens on a real driver |
+| deploy (`mkbabb/deploy`, private) | spine + templates | **AUTHORED** `7c4e96b` (ζ.1–ζ.3) | the versioned home of the deploy spine |
+
+### §15.3 — The forward residuals (maintainer- + operator-owned; none gating fourier)
+
+The deploy-process normalization is now version-controlled (`mkbabb/deploy`) and the per-repo HMAC split is live on host. What remains is cross-repo adoption + one infra wave — none under fourier's unilateral control:
+
+- **The 7 cross-repo adoption asks** (`docs/constellation/ADOPTION-ASKS.md`, inv-16 maintainer-owned): CI template (words/speedtest/csp-solver); docker-hardening level-up; frontend CF-Pages convergence (value.js/keyframes); palette-api `rsync`→`git`; csp-solver route-registration (N4); floridify Mongo-bind (N7). These are §14 Tier-2 rendezvous items — now gated on adoption, not on the templates (which exist).
+- **`dispatch.sh` full retirement** — gated on the 4 non-fourier repos adopting `deploy-hook.sh`; per-repo isolation already achieved at W3b.
+- **Real-client-IP resolution** behind the 2-hop Apache→nginx chain (rate limiter keys on proxy IP → shared global bucket; per-client correctness needs nginx `real_ip` + XFF-hop resolver + Apache XFF verification) — a successor infra wave.
+
+### §15.4 — Current critical path + next action
+
+**No fourier tranche is open.** A–F closed. The §14 critical path (`γ host-flip → ζ.2 HMAC → ζ.3 templates → cross-repo adoption`) has advanced through ζ.3 — the templates exist; the constellation deploy-adoption rendezvous (§14 Tier 2) is now the forward concern, maintainer-owned and per-repo parallel.
+
+- **fourier next action**: none required. A fourier-G opens only if a named residual is promoted (the real-client-IP infra wave) or new work is mandated. The 30-day stale-watch (F/FINAL §5) tracks E's + F's residuals with owners.
+- **value.js next action**: value.js-J on its own driver (E5/E6/E7).
+- **constellation next action**: the per-repo maintainers action the `ADOPTION-ASKS.md` ledger; speedtest-AQ additionally awaits glass-ui `g.w5` (§14 Track A) for its R0-glass handoff.
+
+The constellation auto-deploy is RESTORED + hardened; fourier sits CLEANLY post-F with all residuals owned and watched.
+
+End of CANONICAL-ORDERING §15 — ordering θ′.
