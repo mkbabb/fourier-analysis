@@ -40,15 +40,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import importlib
 import os
 import socket
+import subprocess
 import sys
+import textwrap
 import traceback
 from datetime import datetime
-from pathlib import Path
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+
+from api.config import settings
 
 # Inventory of one-off migrations + their explicit version. Bump version
 # when re-running an already-applied migration is intended (e.g. schema
@@ -122,25 +124,19 @@ async def _record_failed(
     )
 
 
-def _import_module(module_path: str):
-    """Robust import that ensures the repo root is on sys.path."""
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    return importlib.import_module(module_path)
-
-
 async def run_pending_migrations(dry_run: bool = False) -> int:
     """Returns the number of failed migrations (zero on full success)."""
-    mongo_uri = os.environ.get("MONGODB_URI") or os.environ.get("MONGODB_URL")
-    if not mongo_uri:
-        print("[run-pending-migrations] ERROR: MONGODB_URI not set; aborting.", file=sys.stderr)
-        return 1
-
-    client = AsyncIOMotorClient(mongo_uri)
+    # One-identity (inv-11): use the app's canonical Mongo config, NOT a parallel
+    # env-var guess. The runner executes inside the backend container as
+    # `python -m api.scripts.run_pending_migrations`, so the `api` package is
+    # importable; `settings.mongo_uri` carries the exact URI (auth + TLS params +
+    # default database) the live app connects with. The prior MONGODB_URI/
+    # MONGODB_DB reads matched NO deployed env var (the compose sets MONGO_URI),
+    # so the runner aborted before doing anything — masked until F.W8 because the
+    # `api` service-name + base-interpreter errors short-circuited it first.
+    client = AsyncIOMotorClient(settings.mongo_uri, tz_aware=True)
     try:
-        db_name = os.environ.get("MONGODB_DB", "fourier")
-        db = client[db_name]
+        db = client.get_default_database()  # db name is the URI path (…/fourier)
         await _ensure_indexes(db)
         run_id = _deploy_run_id()
 
@@ -157,23 +153,31 @@ async def run_pending_migrations(dry_run: bool = False) -> int:
                 continue
 
             print(f"  [APPLY] {name}@v{version}", flush=True)
-            try:
-                module = _import_module(module_path)
-            except Exception:
-                tb = traceback.format_exc()
-                print(f"    IMPORT FAILED: {tb}", file=sys.stderr)
-                await _record_failed(db, name, version, tb)
-                failed += 1
-                continue
-
             await _record_start(db, name, version, run_id)
             try:
-                # Each existing migrate_*.py module has a sync `main() -> int`
-                # entry point. We invoke it in-process; the migration handles
-                # its own Mongo client (per its docstring). Exit code 0 = OK.
-                rc = module.main()
-                if rc != 0:
-                    raise RuntimeError(f"migration returned non-zero exit code: {rc}")
+                # Run each migration as its OWN process via its public `main()`
+                # entry point (`python -m <module>`) — NOT in-process. Every
+                # migrate_*.py main() calls asyncio.run(_amain(...)); invoking
+                # that in-process would nest asyncio.run() inside THIS runner's
+                # already-running event loop and raise "asyncio.run() cannot be
+                # called from a running event loop" (the latent defect that kept
+                # E.W9 at GREEN-pending-real-test — it never actually ran). A
+                # subprocess gives each migration its own loop + Mongo client
+                # (the module contract); an import error surfaces as a non-zero
+                # exit captured below. sys.executable is the venv interpreter
+                # (the runner itself launches under `uv run`), so deps resolve.
+                proc = subprocess.run(
+                    [sys.executable, "-m", module_path],
+                    capture_output=True,
+                    text=True,
+                )
+                if proc.stdout.strip():
+                    print(textwrap.indent(proc.stdout.rstrip(), "    "))
+                if proc.returncode != 0:
+                    raise RuntimeError(
+                        f"migration exited {proc.returncode}: "
+                        f"{proc.stderr.strip()[-800:]}"
+                    )
                 await _record_success(db, name, version)
                 print(f"    SUCCESS {name}@v{version}")
             except Exception:

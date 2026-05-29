@@ -160,7 +160,7 @@ deploy() {
         # one-token fix that upgrades W9-from-E (GREEN-pending-real-test) to
         # GREEN-verified: the runner now runs in the live backend container.
         if "${COMPOSE[@]}" exec -T -e DEPLOY_COMMIT_SHA="${new}" backend \
-                python -m api.scripts.run_pending_migrations; then
+                uv run --no-sync python -m api.scripts.run_pending_migrations; then
             log "migrations OK"
         else
             log "WARNING — pending migrations returned non-zero; deploy STAYS GREEN (live container ran the at-rest schema); next deploy will retry"
