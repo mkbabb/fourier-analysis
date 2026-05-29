@@ -137,11 +137,20 @@ class SlidingWindowLimiter:
 # ---------------------------------------------------------------------------
 
 # Read budget for GET/HEAD: high-volume browsing must not be throttled at the
-# tight write budget (10/min). 240/min ≈ 4 r/s sustained per IP — generous for a
-# user clicking through the gallery, yet far below the nginx ``api_general`` edge
-# cap (30 r/s) so this layer governs the honest RFC 9239 RateLimit-* headers
-# rather than ever denying normal traffic. (value.js parity: readLimiter ≫ writeLimiter.)
-read_limiter = SlidingWindowLimiter(max_requests=240, window_seconds=60)
+# tight write budget (10/min). value.js parity: readLimiter ≫ writeLimiter.
+#
+# DEPLOYMENT NOTE (F.W1): behind the live 2-hop proxy chain (host Apache →
+# docker ``nginx`` → backend), ``get_client_ip`` currently resolves to the
+# nginx-seen proxy address, so every client shares ONE read bucket — the budget
+# behaves as a GLOBAL aggregate cap, not per-real-client. 1200/min ≈ 20 r/s
+# aggregate keeps the bucket comfortably below the nginx ``api_general`` edge
+# guard (30 r/s) so this layer governs the honest RFC 9239 RateLimit-* headers
+# without ever denying legitimate aggregate traffic. Resolving the REAL client
+# IP through the chain (nginx ``real_ip`` + an XFF-hop-aware resolver, verified
+# against the host Apache XFF behaviour) is a named residual — it makes this a
+# true per-client budget; until then the generous global headroom is the safe,
+# honest posture.
+read_limiter = SlidingWindowLimiter(max_requests=1200, window_seconds=60)
 login_limiter = SlidingWindowLimiter(max_requests=5, window_seconds=60)
 like_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
 write_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
