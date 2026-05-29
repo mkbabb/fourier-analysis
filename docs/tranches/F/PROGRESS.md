@@ -15,17 +15,18 @@ Every wave's row carries (a) a status word from the canonical set, (b) a close t
 | Wave | Status | Closed at | Notes |
 |---|---|---|---|
 | W0 — *Open + audit recap intake + named-carries restatement* | planned | — | E closed CLEAN-Scenario-A re-confirmed (T7 12/12 PASS reproducible); 6-lane F-development audit (FA1-FA6 + SYNTHESIS at `docs/audits/runs/2026-05-28-F-audit/`) committed as binding baseline; C4 `ORT_LOGGING_LEVEL=3` 1-liner LANDS as cheapest chronic-discharge |
-| Wα — *Research wave (3 lanes)* | planned | — | **R1** nginx vhost archaeology on `api.fourier.babb.dev` (what is the try_files fallback; what is the desired post-state per inv-22); **R2** host-state capture (current `/opt/deploy/scripts/dispatch.sh` + `hooks.json` + 5 GitHub webhook URLs + `:8140` speedtest vhost) BEFORE mutation; **R3** rate-limit-middleware diagnosis (FA1 F-API-2) |
-| Wχ — *Challenge* | planned | — | **4 probes** (4-agent ceiling): P1 inv-21 holds per-thread; P2 inv-22 is cross-constellation pattern; P3 F-δ.b perf observational not manufactured; P4 F-T-N1+F-T-E1+F-T-S2 KISS-honest REDUCE |
-| W1 — *F-α API-vhost-correctness* | provisional | — | thread α — nginx vhost fix (non-`/api/*` returns 404 JSON or proxies `/docs` honestly); rate-limit middleware emits dynamic `RateLimit-*`; inv-22 gate first lands |
-| W2 — *F-β compute-cache-symmetry* | provisional | — | thread β — `compute_cache.py` params-dict refactor; `compute_bases` wired through cache; `db.epicycle_cache` → `db.compute_cache` rename; hit-rate logging emits on cache-hit |
-| W3 — *F-γ operator-window* | provisional | — | thread γ — single SSH session: T-S3 host-flip (5 webhook URLs + dispatcher delete) + `:8140` vhost teardown + cron evidence + dangling-image discipline; receipts at `receipts/F-W3.json` |
-| W4 — *F-δ.a a11y + SEO + bf-cache* | provisional | — | thread δ — `button-name` aria-labels on AppHeader; `meta-description` + `robots.txt`; bf-cache audit |
-| W5 — *F-δ.b perf* | provisional | — | thread δ — self-host CM fonts under `/assets/fonts/` with `Cache-Control: immutable`; deeper route-level lazy-load; Lighthouse `unused-javascript` < 50 kB on `index-*.js` |
+| Wα — *Research wave (3 lanes)* | **GREEN** | 2026-05-28 | workflow `w0ma5070c`; substrate at `docs/audits/runs/2026-05-28-F-research/`. R1 vhost archaeology → **origin-served** (host Apache → Docker nginx:alpine:8100 → SPA catch-all; `Server: nginx/1.29.5`, NO `cf-ray`); fix = surgical `location =` in tracked `nginx/fourier.conf`. R2 host-state captured (dispatcher 5-arm w/ latent-broken value.js arm; hooks.json single multiplex HMAC `89eadc1d…`; **gh token INVALID** → W3 split; speedtest :8140 enabled+404; cron running+fired 12:00:01 UTC; dangling=0). R3 → rate-limit is **enforce/report split** (read routes uncounted) not static-constant; cache refactor mechanical. All 3 RATIFIED-WITH-DELTA |
+| Wχ — *Challenge* | **GREEN** | 2026-05-28 | **4 probes**: P1 inv-21 → **SPLIT W3** (INVALID gh token forces 2nd operator-gated window); P2 inv-22 → **REVISE** (/docs Swagger-HTML-OK; scope {fourier,color}; **NO F.W1 CF-pivot** — origin-served confirmed); P3 perf → **NARROW to font-pin-only** (route-lazy + self-host manufactured); P4 → F-T-N1 RATIFIED (doc-ASK), **F-T-E1 + F-T-S2 REJECTED** |
+| W1 — *F-α API-vhost-correctness* | provisional (hardened) | — | thread α — tracked `nginx/fourier.conf` surgical `location =` blocks (`/openapi.json`,`/docs`,`/redoc`,`/health` → backend; `location = /` → 404 problem+json) BEFORE SPA catch-all + container recreate; rate-limit FUSE `check()` into `RateLimitHeaderMiddleware` à la value.js `rate-limit.ts:91-116`; inv-22 5-check gate |
+| W2 — *F-β compute-cache-symmetry* | provisional (hardened; mechanical) | — | thread β — `cache_key(contour_hash, params: dict)` canonical-JSON + `COMPUTE_VERSION`; wire `compute_bases`; `epicycle_cache` → `compute_cache` (bare rename intentionally abandons old docs — TTL≤7d + fail-open); HIT/MISS logging |
+| W3a — *F-γ host-ops single-window* | provisional | — | thread γ (no operator) — backup + author 5 per-repo hooks.json entries + reload (STAGED not activated); `a2dissite speedtest.conf`; cron + dangling capture; `receipts/F-W3a.json`. inv-21 PASS |
+| W3b — *F-γ operator-gated cutover* | **GATED** | — | thread γ (gated on `gh auth login -h github.com`) — re-auth → `update-webhook-urls.sh --apply` (5 URLs) → hook tests → `rm dispatch.sh` (value.js arm dies with it); `receipts/F-W3b.json`. HARD ordering: no dispatcher delete pre-URL-flip |
+| W4 — *F-δ.a a11y + SEO + bf-cache* | provisional | — | thread δ — `button-name` aria-labels on AppHeader Reka dropdown + `.btn-pill`; `meta-description` + `robots.txt`; `label-content-name-mismatch` on `/visualize`; bf-cache audit |
+| W5 — *F-δ.b perf (NARROWED — font-pin only)* | provisional (narrowed) | — | thread δ — pin `cm-web-fonts@latest` → `@<immutable-sha>` in `web/index.html`; keep preconnect; NO new files. Route-lazy + self-host DEFERRED-as-manufactured (Wχ-P3 KISS-gate withheld sign-off) |
 | W6 — *F-ε.a chronic discharge (C9 + N2)* | provisional | — | thread ε — C9 invariant numbering reconciliation across A.md/B.md/C.md/D.md/E.md + precepts; N2 CF wildcard narrow |
-| W7 — *F-ε.b transpositions* | provisional | — | thread ε — FA5 F-T-N1 (drop legacy `status` from `FormattedPalette`; paired demo PR); F-T-E1 (auto-discover `migrate_*.py`); F-T-S2 (inline `apiFetchWithETag` / `adminFetch`) |
+| W7 — *F-ε.b transposition (F-T-N1 ONLY)* | provisional (revised) | — | thread ε — F-T-N1 doc-only ASK (value.js maintainer commits `status` drop; inv-16). **F-T-E1 REJECTED** (keep static MIGRATIONS list); **F-T-S2 REJECTED** (E.W5 coreFetch collapse retained) |
 | W8 — *F-ε.c auto-migration GREEN-verified* | provisional | — | thread ε — trigger one real (or no-op) migration deploy; capture `migrations` collection write; upgrade W9-from-E to GREEN-verified |
-| W12 — *Close + stale-watch re-trigger* | provisional | — | reconcile PROGRESS; `F/FINAL.md` (§0→§9); re-trigger E's 30-day named-residual review; CANONICAL-ORDERING → ordering θ |
+| W12 — *Close + stale-watch re-trigger* | provisional | — | reconcile PROGRESS; `F/FINAL.md` (§0→§9); re-trigger E's 30-day named-residual review; CANONICAL-ORDERING → ordering θ′ |
 
 ## Log
 
@@ -59,6 +60,24 @@ The audit ran as 6 lanes `FA1–FA6` + a SYNTHESIS at `docs/audits/runs/2026-05-
 
 **Cohort framing:** F is single-repo. value.js-I closed Scenario A; no peer required. Cross-repo touchpoints are ASK-only (csp-solver route-registration regression; F-T-N1 paired demo PR).
 
+### 2026-05-28 — F research-first audit GREEN (Wα + Wχ DONE; charter hardened)
+
+**WHAT.** User directed: "workflow to perform the audit to INFORM F now." Dispatched workflow `w0ma5070c` (8 agents, 54 tool uses, 3.8 min, 211k tokens): Wα 3 research lanes (R1 vhost archaeology + R2 host-state capture + R3 rate-limit/cache diagnosis) → Wχ 4 challenge probes (P1 inv-21 + P2 inv-22 + P3 perf + P4 transpositions) → SYNTHESIS hardening the wave specs. All READ-ONLY (live probes + host SSH capture + source reads; no mutation).
+
+**Verdict: F charter SURVIVES as RATIFIED-WITH-DELTA.** No thread killed; **F.W1 does NOT pivot** (stale SPA is origin-served, not CF Pages). Five binding deltas folded:
+
+1. **F.W1 thread-shape HOLDS** (P2 §4): `api.fourier.babb.dev/` returns `Server: nginx/1.29.5`, NO `cf-ray` → origin-served (host Apache → Docker nginx:alpine:8100 → SPA catch-all). Fix = surgical `location =` blocks in the TRACKED `nginx/fourier.conf` (live container config is drifted/stripped — predates it) + `location = /` → 404 problem+json + container recreate. NOT a CF config change.
+2. **inv-21 → W3 SPLIT** (P1): gh token INVALID → 5 webhook URLs can't flip this session. W3 → **W3a** (host-ops single-window, executable now) + **W3b** (operator-gated on `gh auth login`; dispatcher MUST NOT delete until URLs flip).
+3. **inv-22 → REVISED** (P2): `/docs` Swagger-HTML-OR-404-JSON is conformant (real UI route); the real invariant is "no SPA-index at API paths" (byte-identical-HTML-across-paths is the tell); scope enforced surface to {fourier, color} — sudoku is documentary-only (external repo).
+4. **F-δ.b → NARROWED to font-pin** (P3): app is already fully `() => import()` lazy; the 85 kB is irreducible shell; LCP 7-8s is a CF-cold-edge/font-fetch artifact, NOT bundle. Self-host is net ADD (3 git binaries + no FOUT win). Only defensible action: pin `cm-web-fonts@latest` → immutable SHA. Route-lazy + self-host DEFERRED-as-manufactured.
+5. **ε transpositions → 2 of 3 REJECTED** (P4): F-T-N1 RATIFIED (doc-only ASK; inv-16 holds). **F-T-E1 REJECTED** — auto-discover destroys load-bearing `(name, version)` version-bump idempotency (`MIGRATION_VERSION` exists in zero modules). **F-T-S2 REJECTED** — E.W5 already collapsed 4 helpers into `coreFetch`; inlining would fan 2 helpers into 20 sites (net +LOC, reverses a shipped REDUCE).
+
+**Also confirmed**: the rate-limit defect is finer than FA1's "static constant" framing — it's an enforce/report SPLIT (read routes carry no limiter dependency → bucket uncounted → `snapshot()` honestly reports empty). Fix = fuse `check()` into the header middleware à la value.js `rate-limit.ts:91-116` (strengthens the cross-repo-cohesion thesis: F.W1 IS a transposition of the shipped palette-api pattern).
+
+Research substrate persisted at `docs/audits/runs/2026-05-28-F-research/` (8 lane docs). Charter (F.md), PROGRESS (this), §6 gates all hardened.
+
+**Execution-readiness**: W1 / W2 / W3a / W4 / W5(narrowed) / W6 / W7(F-T-N1-only) / W8 are GREEN-to-execute on authorization. **W3b alone is operator-gated** (out-of-band `gh auth login`).
+
 ### Next action
 
-None until the user authorises **F.W0**. The 6-lane audit + SYNTHESIS + charter + this PROGRESS seed are complete. At that point dispatch F.W0 (baseline + audit intake + C4 1-liner) → Wα (3 research lanes) → Wχ (4 probes) — the research-first gate governs α + γ before any source change. **This was tranche development only; no implementation ran**.
+None until the user authorises **F.W0** (or W1 directly — the research-first gate is GREEN). **This was tranche development only; no implementation ran** — the research lanes were READ-ONLY (probes + captures, no mutation). At authorization, dispatch W1 (α origin-nginx + rate-limit fuse) first.

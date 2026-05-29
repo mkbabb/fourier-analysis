@@ -1,6 +1,22 @@
 # F — operator-window runbook (F.W3 binding)
 
-**Status**: authored 2026-05-28. **Source**: FA4 §5 #2-#3 + FA3 §6 F-FA3-1/F-FA3-3 + FA5 F-T-S3 + E.W11 §2 named-residuals. **Authority**: this doc binds F.γ scope; γ executes in a single SSH session under inv-21.
+**Status**: authored 2026-05-28; **HARDENED + SPLIT 2026-05-28 per F research workflow `w0ma5070c`** (Wα-R2 + Wχ-P1). **Source**: FA4 §5 #2-#3 + FA3 §6 + Wα-R2 host-state capture (`docs/audits/runs/2026-05-28-F-research/Walpha-R2-host-state-capture.md`). **Authority**: this doc binds F.γ scope.
+
+## §0 — Wα-R2 + Wχ-P1 resolution: F.γ SPLITS into W3a + W3b
+
+**The gh token is INVALID** (Wα-R2 §3: `The token in default is invalid` for `mkbabb`). The 5 GitHub webhook URLs CANNOT be flipped this session. Per Wχ-P1, this BUSTS inv-21's single-SSH-session bound — γ splits at the operator-credential boundary:
+
+- **W3a (executable NOW, no operator)**: backup + author 5 per-repo `hooks.json` entries + reload receiver (STAGED, NOT activated — dispatcher NOT deleted) + `:8140` speedtest teardown + cron/dangling evidence capture. Single-SSH receipt → inv-21 PASS.
+- **W3b (GATED on operator `gh auth login -h github.com`)**: gh re-auth → `update-webhook-urls.sh` dry-run → `--apply` URL flip → per-repo hook tests → THEN `rm /opt/deploy/scripts/dispatch.sh` (+ value.js arm dies with it). Own single-window receipt → inv-21 PASS.
+
+**HARD ordering**: the dispatcher MUST NOT be deleted until the 5 URLs flip (else webhooks 404). W3a stages; W3b activates.
+
+**Confirmed host state (Wα-R2; the binding rollback anchor)**:
+- Dispatcher `/opt/deploy/scripts/dispatch.sh` — single-arg `case "$REPO"` with 5 arms; the **latent-broken value.js arm** confirmed (`deploy "$HOME/Programming/palette-api" 8130 /` runs `git fetch` on a non-git rsync dir → fails).
+- Webhook receiver `/opt/deploy/hooks.json` — **single multiplex `deploy` entry** (HMAC `89eadc1d…a5c070`, `ref==refs/heads/master`); the 5 per-repo entries do NOT exist yet (W3a authors them).
+- `:8140` speedtest vhost — ENABLED in `sites-enabled/`; `ProxyPass / http://127.0.0.1:8140/` at lines 20-21; live `speedtest.babb.dev` already 404.
+- T7 cron — RUNNING; `0 */6 * * * bash /home/mbabb/conformance-probe.sh`; fired 12:00:01 UTC, log shows 12/12 PASS. **γ.4 acceptance gate (≥1 fire) MET** — the FA3 trust-delta is CLOSED by this capture.
+- Dangling images — **0** (W11 prune held; γ.5 is capture-only, no prune needed).
 
 ## §1 — The binding directive
 

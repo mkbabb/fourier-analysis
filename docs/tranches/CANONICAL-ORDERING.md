@@ -485,4 +485,8 @@ The user's 2026-05-28 EE3 directive ("Deploy 6 agents in parallel to lighthouse 
 
 The constellation remains FULLY GREEN at the URL + envelope + cross-repo CORS + browser-layer FK seam; F is the bounded hygiene + UX-polish lift that EE3 mandated.
 
+### §13.5 — F research-first audit complete (2026-05-28; workflow `w0ma5070c`)
+
+The F Wα (3 research lanes) + Wχ (4 challenge probes) ran READ-ONLY; substrate at `docs/audits/runs/2026-05-28-F-research/`. **F charter RATIFIED-WITH-DELTA** — no thread killed; **F.W1 does NOT pivot** (the `api.fourier.babb.dev` stale-SPA regression is ORIGIN-served — host Apache → Docker `nginx:alpine`:8100 → SPA catch-all; `Server: nginx/1.29.5`, no `cf-ray` — not CF Pages). Five binding deltas folded into the charter: (1) F.W1 origin-nginx surgical `location =` fix; (2) W3 SPLITS into W3a (now) + W3b (operator-gated on INVALID gh token); (3) inv-22 revised (`/docs` Swagger-OK; scope {fourier, color}); (4) F-δ.b NARROWED to a single font-pin (route-lazy + self-host manufactured); (5) F-T-E1 + F-T-S2 REJECTED (only F-T-N1 doc-ASK survives). W1/W2/W3a/W4/W5(narrowed)/W6/W7(F-T-N1)/W8 are GREEN-to-execute on authorization; **W3b alone is operator-gated**.
+
 End of CANONICAL-ORDERING §13 — ordering θ.
