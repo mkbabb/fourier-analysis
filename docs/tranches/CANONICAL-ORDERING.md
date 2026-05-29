@@ -487,7 +487,7 @@ The constellation remains FULLY GREEN at the URL + envelope + cross-repo CORS + 
 
 ### §13.5 — F research-first audit complete (2026-05-28; workflow `w0ma5070c`)
 
-**§13.6 — F widens to constellation scope (2026-05-28; thread ζ added).** The user directed CI/webhook/deploy standardization + security across the constellation + a dedicated deploy repo. A READ-ONLY 4-lane survey grounded it (`docs/audits/runs/2026-05-28-constellation-survey/`); the design substrate is `docs/constellation/DEPLOY-STANDARDIZATION-DESIGN.md`. Decisions: (1) created PRIVATE repo **`mkbabb/deploy`** (charter `e3b16d8`) as the versioned home of the deploy spine; (2) the 2 HIGH committed-secret exposures are operator-out-of-band; (3) **folded into fourier-F as thread ζ** (6 threads now; 17 wave slots). The **C8 5-gate constellation-infra chronic DISCHARGES via ζ**. fourier-F now spans `fourier-analysis/**` + the new `deploy/**` repo (inv-16 preserved — the other 5 app repos adopt via maintainer-owned PRs, coordinated as F-ζ.4 asks). The deploy repo is a new constellation node alongside fourier + value.js.
+**§13.6 — F widens to constellation scope (2026-05-28; thread ζ added).** The user directed CI/webhook/deploy standardization + security across the constellation + a dedicated deploy repo. A READ-ONLY 4-lane survey grounded it (`docs/audits/runs/2026-05-28-constellation-survey/`); the design substrate is `docs/constellation/DEPLOY-STANDARDIZATION-DESIGN.md`. Decisions: (1) created PRIVATE repo **`mkbabb/deploy`** (charter `e3b16d8`) as the versioned home of the deploy spine; (2) the survey's S1/S2 committed-credential flags are **WITHDRAWN** (maintainer 2026-05-28: nothing needs rotating — Clerk `pk_*` publishable by design, speedtest `cfat_*` non-sensitive); (3) **folded into fourier-F as thread ζ** (6 threads now; 17 wave slots). The **C8 5-gate constellation-infra chronic DISCHARGES via ζ**. fourier-F now spans `fourier-analysis/**` + the new `deploy/**` repo (inv-16 preserved — the other 5 app repos adopt via maintainer-owned PRs, coordinated as F-ζ.4 asks). The deploy repo is a new constellation node alongside fourier + value.js.
 
 ---
 
@@ -508,10 +508,10 @@ The user asks: given the several developed tranches (fourier-F, value.js, glass-
 | **fourier-analysis** | E (Scenario A) | **F AUTHORED** (6 threads α-ζ; 17 waves; research gate GREEN; W3b unblocked) | the live-bug + deploy-spine critical path; **glass-ui-independent** |
 | **value.js** | I (Scenario A w/ fourier-E) | value.js-J latent (E5/E6/E7; per-call-site ifMatch) | named-successor; opens on a real driver; NOT gating |
 | **glass-ui** | V (+ uppercase lineage to V) | **`g.w5` release-engineering wave ACTIVE** (changesets + release workflow + npm-registry consumption migration + muster) | **the upstream publisher chokepoint** — everything consumes glass-ui; standing mandate: do NOT inject competing publisher commits into the active changeset flow |
-| **speedtest** | AP (2026-05-28) | **AQ SEEDED** — headline carry `R0-glass` **BLOCKED on glass-ui g.w5** | the CF-Pages deploy REFERENCE; an F-ζ deploy-adoption target (needs CI + S2 secret remediation); AQ opens after g.w5 settles |
+| **speedtest** | AP (2026-05-28) | **AQ SEEDED** — headline carry `R0-glass` **BLOCKED on glass-ui g.w5** | the CF-Pages deploy REFERENCE; an F-ζ deploy-adoption target (needs CI); AQ opens after g.w5 settles |
 | **deploy** (NEW, private) | — | charter seeded (`e3b16d8`); spine-capture is F-ζ | versioned home of the deploy spine; authored by fourier-F |
 | **csp-solver** (sudoku) | — | route-registration regression (N4) | F-ζ.4 adoption ask + N4 route-fix (maintainer-owned) |
-| **words** (floridify) | (no tranche system) | S1 committed-secret (operator) | F-ζ.4 adoption ask + S1 remediation (operator) |
+| **words** (floridify) | (no tranche system) | — (S1 flag WITHDRAWN — `pk_*` publishable) | F-ζ.4 adoption ask (CI + deploy-hook) |
 | **keyframes.js** | (no tranche system) | — | F-ζ.4 CF-Pages-convergence adoption ask |
 
 ### §14.2 — The dependency edges (what gates what)
@@ -523,13 +523,12 @@ glass-ui g.w5                    ──soft──▶ any fourier/value.js demo p
 fourier-F.γ (W3a→W3b host-flip)  ──hard──▶ F-ζ.2 (per-repo HMAC split)
 F-ζ.3 (deploy templates)         ──hard──▶ cross-repo deploy adoption (speedtest/words/csp/value.js/keyframes)
 fourier-F                        ──⊥────── glass-ui  (INDEPENDENT — F touches no glass-ui surface; runs in parallel)
-S1/S2 secret rotation            ──⊥────── everything (operator; immediate; security-first)
+(S1/S2 secret findings WITHDRAWN — nothing needs rotating; no longer an edge)
 ```
 
 ### §14.3 — The proper execution order (tiered; parallel where independent)
 
-**Tier 0 — NOW, security, operator-owned, blocks nothing:**
-- Rotate **S1** (floridify `pk_live_*`) + **S2** (speedtest `cfat_*`); purge from history; move to GH secrets. Live credential exposure — do first, out-of-band.
+**Tier 0 — (REMOVED).** The survey's S1/S2 committed-credential flags are WITHDRAWN (maintainer 2026-05-28: nothing needs rotating — Clerk `pk_*` is publishable by design; the speedtest `cfat_*` is non-sensitive). No security-first rotation step. The real webhook-secret hardening (shared HMAC → per-repo, survey S4/S5) is NOT an exposure-remediation; it rides F-ζ.2.
 
 **Tier 1 — two independent tracks run IN PARALLEL:**
 
@@ -544,8 +543,8 @@ S1/S2 secret rotation            ──⊥────── everything (operato
   6. **F.W12 (ζ.4)** — author the cross-repo adoption-ask ledger.
 
 **Tier 2 — rendezvous: cross-repo deploy adoption** (gated on F-ζ.3 templates; speedtest additionally gated on glass-ui g.w5; maintainer-owned; per-repo PARALLEL):
-- **speedtest** — adopt CI template (has none) + S2 already remediated; opens its AQ tranche once g.w5 settles (R0-glass) AND ζ.3 templates exist. (speedtest is the CF-Pages reference, so it mostly already conforms.)
-- **words/floridify** — adopt CI + deploy-hook; S1 already remediated.
+- **speedtest** — adopt CI template (has none); opens its AQ tranche once g.w5 settles (R0-glass) AND ζ.3 templates exist. (speedtest is the CF-Pages reference, so it mostly already conforms.)
+- **words/floridify** — adopt CI + deploy-hook.
 - **csp-solver** — N4 route-registration fix + adopt CI + deploy-hook.
 - **value.js** — frontend CF-Pages convergence (drift from GH-Pages) + palette-api rsync→git.
 - **keyframes.js** — CF-Pages convergence.
@@ -560,6 +559,6 @@ S1/S2 secret rotation            ──⊥────── everything (operato
 
 **Single most-blocking move**: **authorize fourier-F** (it is the only critical-path track under this repo's control; research gate is GREEN; W1 is a live bug). glass-ui g.w5 proceeds in parallel under its own owner; the two rendezvous at Tier 2.
 
-**Parallelism note**: fourier-F and glass-ui g.w5 are genuinely independent (F touches no glass-ui surface; glass-ui is build-time-vendored in fourier today). Do NOT serialize them. The only serialization is: (a) S1/S2 first (cheap, security); (b) γ before ζ within F; (c) ζ.3 templates + g.w5 before the cross-repo adoption rendezvous.
+**Parallelism note**: fourier-F and glass-ui g.w5 are genuinely independent (F touches no glass-ui surface; glass-ui is build-time-vendored in fourier today). Do NOT serialize them. The only serialization is: (a) γ before ζ within F; (b) ζ.3 templates + g.w5 before the cross-repo adoption rendezvous. (There is no longer a security-first Tier 0 — the S1/S2 findings are WITHDRAWN.)
 
 End of CANONICAL-ORDERING §14 — ordering ι.

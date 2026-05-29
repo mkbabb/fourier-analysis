@@ -37,15 +37,15 @@
 
 | # | Severity | Finding | Evidence |
 |---|---|---|---|
-| **S1** | **HIGH** | **floridify (`words`) `.env.production` with `pk_live_*` Clerk keys COMMITTED to the repo + present in git history** | Survey-2; `deploy.sh:19-29` scp's it to host; live publishable+secret keys exposed |
-| **S2** | **HIGH** | **speedtest `.env` with a live `cfat_*` Cloudflare API token COMMITTED to the repo** | Survey-2; the same token-class the prior session was careful never to commit in fourier |
+| ~~**S1**~~ | **WITHDRAWN** | floridify (`words`) `.env.production` with `pk_*` Clerk keys committed — **NOT an exposure**: Clerk `pk_*` is a **publishable key** (designed to ship in the frontend bundle; public is its intended state). Per the maintainer (2026-05-28): **nothing needs rotating**. RESOLVED — no action. | Survey-2 |
+| ~~**S2**~~ | **WITHDRAWN** | speedtest `.env` with a `cfat_*` Cloudflare token committed — per the maintainer (2026-05-28) this is **not a live exposure** (not a sensitive/active credential). **Nothing needs rotating.** RESOLVED — no action. | Survey-2 |
 | **S3** | MEDIUM | value.js local `.env` holds `CLOUDFLARE_API_TOKEN` (gitignored; at-risk if `.gitignore` lapses) | Survey-1 |
 | **S4** | MEDIUM-HIGH | **Single shared HMAC webhook secret across all 5 repos** (`89eadc1d…a5c070`); one repo's compromise lets an attacker re-sign payloads for ALL five | Survey-4 §2 |
 | **S5** | MEDIUM | No webhook-secret rotation (unchanged since 2026-03-28, ~2 months); no rotation policy | Survey-4 §2 |
 | **S6** | LOW | No supply-chain scanning (dependabot absent); no signed tags; no SBOM | Survey-3 |
 | — | (acceptable) | No IP-allowlist on `deploy.babb.dev` webhook receiver — acceptable because HMAC is enforced + `ref==refs/heads/master` AND-gated; receiver runs unprivileged `mbabb:mbabb`, not root | Survey-4 §1 |
 
-**S1 + S2 are live-credential exposures in tracked source.** They are in repos OTHER than fourier (inv-16 cross-repo boundary → fourier does NOT edit them); remediation is per-repo-maintainer + operator: rotate the exposed credentials immediately, purge from history (BFG/`git filter-repo`), move to GitHub Actions secrets / host-only `.env`. This is the highest-priority item regardless of the standardization tranche.
+**S1 + S2 WITHDRAWN (maintainer determination, 2026-05-28): nothing needs rotating.** The initial survey flagged them as committed-credential exposures; the maintainer confirms neither is a live secret — Clerk `pk_*` is a publishable key (public by design), and the speedtest `cfat_*` token is not a sensitive/active credential. No rotation, no history-purge, no action. (The webhook HMAC posture — S4/S5 — remains a real normalization target, addressed by F-ζ.2 per-repo-secret split, but that is hardening the *shared* secret, not remediating an exposure.)
 
 ## §4 — What's already RIGHT (the de-facto standards to codify)
 

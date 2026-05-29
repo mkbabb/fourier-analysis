@@ -38,11 +38,11 @@ Every wave's row carries (a) a status word from the canonical set, (b) a close t
 
 **WHAT.** User directive: "normalize the CI and webhook process, ensure security thereof; create a repo for these deploy processes if need be, or at the very least standardize them — docker, CF Pages, mbabb hosting, across the constellation (value.js, words, fourier, sudoku)."
 
-A READ-ONLY 4-lane parallel survey (`docs/audits/runs/2026-05-28-constellation-survey/SURVEY-FINDINGS.md`) grounded the design. Findings: the constellation TOPOLOGY is normalized (D-era) but the PROCESS is not — 3 frontend-hosting patterns, 3 deploy-trigger patterns, 3 CI maturity levels, a docker-hardening gradient, divergent secrets; **root cause: the deploy spine is version-controlled in NO repo** (only host state). Plus 2 HIGH committed-secret exposures (S1 floridify `pk_live_*`; S2 speedtest `cfat_*`).
+A READ-ONLY 4-lane parallel survey (`docs/audits/runs/2026-05-28-constellation-survey/SURVEY-FINDINGS.md`) grounded the design. Findings: the constellation TOPOLOGY is normalized (D-era) but the PROCESS is not — 3 frontend-hosting patterns, 3 deploy-trigger patterns, 3 CI maturity levels, a docker-hardening gradient, divergent secrets; **root cause: the deploy spine is version-controlled in NO repo** (only host state). (The survey initially flagged S1 floridify `pk_*` + S2 speedtest `cfat_*` as committed-credential exposures — both WITHDRAWN 2026-05-28: nothing needs rotating; `pk_*` is publishable by design, the `cfat_*` is non-sensitive.)
 
 **User decisions** (via AskUserQuestion):
 1. Deploy home → **dedicated PRIVATE repo `mkbabb/deploy`** (created `e3b16d8`; charter seeded).
-2. S1/S2 → **operator handles out-of-band** (recorded; not F scope; inv-16).
+2. S1/S2 → **WITHDRAWN** (maintainer: nothing needs rotating — `pk_*` publishable, `cfat_*` non-sensitive); recorded resolved, no action.
 3. Tranche → **fold into fourier-F as thread ζ**, granular waves as needed.
 
 **Folded:** F grows from 5 → 6 threads; W-schedule 13 → 17 slots (ζ.1 spine-capture W9, ζ.2 per-repo-HMAC W10, ζ.3 templates W11, ζ.4 adoption-asks W12, close → W13). The **C8 5-gate chronic NOW DISCHARGES via ζ** (the user's "normalize across the constellation" IS the C8 re-mandate). N4 (csp-solver) + N7 (floridify) reclassify from STAYS-OUT to the F-ζ.4 maintainer-owned adoption-ask ledger. inv-16 preserved: fourier-F commits touch only `fourier-analysis/**` + `deploy/**`.

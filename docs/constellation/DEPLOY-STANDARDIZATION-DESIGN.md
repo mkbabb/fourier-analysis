@@ -35,8 +35,7 @@ babb-deploy/
 │   ├── dns-cf-sync.sh                   # promoted from fourier; constellation-wide DNS-as-code
 │   └── pages-deploy.sh                  # the standard CF Pages wrangler recipe (from speedtest)
 ├── security/
-│   ├── hmac-rotation.md                 # the per-repo-secret + rotation runbook
-│   └── secret-remediation.md            # the S1/S2 committed-secret purge runbook
+│   └── hmac-rotation.md                 # the per-repo webhook-secret split + rotation runbook (S4/S5)
 └── README.md                            # the constellation deploy contract
 ```
 
@@ -83,11 +82,7 @@ Canonicalize to `/srv/constellation/<app>/` (or keep `/var/www/<app>` — pick o
 
 ## §3 — Security hardening (front-loaded)
 
-**Immediate — OPERATOR-OWNED OUT-OF-BAND (user decision 2026-05-28; not in F scope):**
-- **S1** — rotate the floridify Clerk `pk_live_*` keys; purge `.env.production` from the words repo + history; move to GH secrets.
-- **S2** — rotate the speedtest `cfat_*` CF token; purge `.env` from the speedtest repo + history; move to GH secrets / host-only.
-
-The user handles S1 + S2 directly (fourier does not edit those repos — inv-16). Recorded here as findings; no runbook authored. These are live-credential exposures; rotate ahead of anything else.
+**S1 + S2 — WITHDRAWN (maintainer determination 2026-05-28): nothing needs rotating.** The survey flagged committed `pk_*` (floridify) + `cfat_*` (speedtest); the maintainer confirms neither is a live exposure — Clerk `pk_*` is a publishable key (public by design); the speedtest `cfat_*` is not a sensitive/active credential. No rotation, no history-purge, no F scope. Recorded as resolved.
 
 **Tranche W-early:**
 - **S4 + S5** — replace the shared HMAC webhook secret with **per-repo secrets** (the F.γ T-S3 per-repo-URL retire is the natural carrier: each `deploy.babb.dev/hooks/<repo>` URL gets its own HMAC); add a rotation runbook (dual-key blue-green swap).
@@ -112,12 +107,12 @@ Granularity expands as needed (the user's "more waves with better granularity").
 
 ## §5 — What this design is NOT
 
-- NOT a host mutation / secret rotation (S1/S2 are operator-out-of-band; the host spine-capture is F-ζ execution, gated on F authorization).
+- NOT a host mutation / secret rotation (S1/S2 are WITHDRAWN — nothing needs rotating; the host spine-capture is F-ζ execution, gated on F authorization).
 - NOT a violation of inv-16: `mkbabb/deploy` holds templates + the host spine (fourier-F owns it); each *app* repo's adoption is maintainer-owned.
 - NOT a re-litigation of the D-era topology (naming, TLS, Mongo-exposure) — that holds; this is the *process* layer above it.
 
 ## §6 — Decisions (RESOLVED 2026-05-28)
 
 1. **Deploy-process home** → **dedicated PRIVATE repo `mkbabb/deploy`** (created 2026-05-28, charter seeded at `e3b16d8`; the §1 target structure is its README contract). Spine-capture + template authoring at F-ζ execution.
-2. **S1 + S2 committed-secret exposures** → **operator handles out-of-band.** Recorded in `SURVEY-FINDINGS.md §3` + §3 here; fourier does NOT edit those repos (inv-16); no runbook authored.
+2. **S1 + S2** → **WITHDRAWN; nothing needs rotating** (maintainer determination 2026-05-28). Not live exposures (Clerk `pk_*` publishable by design; speedtest `cfat_*` non-sensitive). Recorded resolved in `SURVEY-FINDINGS.md §3` + §3 here; no action.
 3. **Tranche identity** → **folded into fourier-F as thread ζ** with granular waves (§4).
