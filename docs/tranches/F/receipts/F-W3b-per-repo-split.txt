@@ -1,0 +1,24 @@
+# F.W3b + ζ.2 per-repo webhook split — 2026-05-29T19:25:20Z
+# T-S3 (per-repo URLs) + S4 (per-repo HMAC secrets) — shared secret RETIRED.
+# Secret VALUES intentionally omitted (host-only: /opt/deploy/hooks.json mode 0600 + GitHub webhook config).
+
+=== GitHub webhooks (per-repo URL + secret SET) ===
+fourier-analysis   url=https://deploy.babb.dev/hooks/fourier-analysis secret=SET
+words              url=https://deploy.babb.dev/hooks/words secret=SET
+speedtest          url=https://deploy.babb.dev/hooks/speedtest secret=SET
+value.js           url=https://deploy.babb.dev/hooks/value.js secret=SET
+csp-solver         url=https://deploy.babb.dev/hooks/csp-solver secret=SET
+
+=== Receiver: 5 per-repo entries (fourier→deploy-hook.sh; others→dispatch.sh) ===
+   fourier-analysis → /var/www/fourier-analysis/scripts/deploy-hook.sh (secret: per-repo)
+   words → /opt/deploy/scripts/dispatch.sh (secret: per-repo)
+   speedtest → /opt/deploy/scripts/dispatch.sh (secret: per-repo)
+   value.js → /opt/deploy/scripts/dispatch.sh (secret: per-repo)
+   csp-solver → /opt/deploy/scripts/dispatch.sh (secret: per-repo)
+backup: /opt/deploy/hooks.json.f-w3b.bak.20260529-192303
+
+=== Verification ===
+fourier-analysis: push redelivered → HMAC OK → TRIGGERED → DEPLOY OK (full chain)
+words/speedtest/value.js/csp-solver: ping → 'got matched' (HMAC OK), ref-rule gates ping (no master ref) — per-repo secret validated; next master push deploys
+ROLLBACK ANCHOR: restore /opt/deploy/hooks.json.f-w3b.bak.* + revert GitHub url/secret via gh api PATCH
+DEVIATION (documented): dispatch.sh RETAINED — the 4 non-fourier repos route through it (they have not adopted scripts/deploy-hook.sh; that adoption is ζ.4 maintainer-owned, inv-16). value.js arm latent-broken (rsync→git is a value.js-maintainer fix).

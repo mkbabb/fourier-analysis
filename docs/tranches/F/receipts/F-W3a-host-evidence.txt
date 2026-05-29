@@ -1,0 +1,31 @@
+# F.W3a host-ops evidence — 2026-05-29T19:21:36Z
+# WEBHOOK REGRESSION CLOSED: shared HMAC secret restored on all 5 GitHub webhooks (was MISSING — the ~2-month chronic). Redelivered push TRIGGERED the chain end-to-end (DEPLOY OK).
+
+=== γ.4 cron (T7 conformance probe) ===
+0 */6 * * * bash /home/mbabb/conformance-probe.sh >> /home/mbabb/conformance-probe.log 2>&1
+--- conformance log tail ---
+T7 conformance probe: 12/12 PASS
+T7 conformance probe: 12/12 PASS
+T7 conformance probe: 12/12 PASS
+=== γ.5 dangling images ===
+count: 5
+=== γ.3 speedtest :8140 vhost ===
+speedtest.conf
+--- live speedtest probe ---
+speedtest.babb.dev → HTTP 404
+=== sudo availability (for a2dissite) ===
+passwordless sudo: YES
+
+=== γ.3 APPLY: teardown dead speedtest :8140 vhost ===
+backed up speedtest.conf
+To activate the new configuration, you need to run:
+  systemctl reload apache2
+apache reloaded
+post-teardown sites-enabled speedtest: NONE
+speedtest.babb.dev → HTTP 404 (still 404 — dead route removed)
+=== γ.5 APPLY: prune dangling images ===
+
+Total reclaimed space: 0B
+dangling after: 0
+=== T7 close-gate re-verify (post-F deploy) ===
+T7 conformance probe: 12/12 PASS

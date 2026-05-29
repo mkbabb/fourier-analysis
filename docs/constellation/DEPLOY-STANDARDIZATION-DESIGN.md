@@ -101,7 +101,7 @@ Per the user decision (2026-05-28): **fold into fourier-F**, with granular waves
 - **ζ.2 — per-repo HMAC secret split** (rides F.γ's per-repo-URL retire): each `deploy.babb.dev/hooks/<repo>` gets its own HMAC; closes S4; adds the rotation runbook.
 - **ζ.3 — standard templates**: author `deploy/templates/{deploy-hook.sh, docker-compose.hardening.yml, ci.yml, env.example}` from the fourier + value.js + speedtest reference shapes.
 - **ζ.4 — CF DNS-as-code promotion**: `dns-cf-sync.sh` (fourier-only) → `deploy/cf/` (constellation-wide); + the standard CF Pages wrangler recipe.
-- **ζ.5 — cross-repo adoption asks**: the per-repo-maintainer asks (CI template for words + speedtest + csp-solver; docker-hardening level-up; frontend-hosting drift resolution; palette-api rsync→git). Coordinated from this doc; NOT fourier-F commits.
+- **ζ.5 — cross-repo adoption asks**: the per-repo-maintainer asks (CI template for words + speedtest + csp-solver; docker-hardening level-up; frontend-hosting drift resolution; palette-api rsync→git). Coordinated from this doc; NOT fourier-F commits. **The ask ledger itself is authored at `ADOPTION-ASKS.md`** (the per-repo asks, reference templates, acceptance shapes, priorities, and the F-close 30-day named-residual stale-watch table) — this §4 records the tranche fold; that file is the binding register.
 
 Granularity expands as needed (the user's "more waves with better granularity"). The F.γ work (per-repo-webhook retire) is ζ's prerequisite, already scoped + gh-validated.
 

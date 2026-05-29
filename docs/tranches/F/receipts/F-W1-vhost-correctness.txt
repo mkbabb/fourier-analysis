@@ -1,0 +1,27 @@
+# F.W1 inv-22 vhost-correctness gate — live capture 2026-05-29T18:56:49Z
+# HEAD deployed: 37da6f0 (nginx force-recreated with location= blocks)
+
+=== api.fourier.babb.dev (the regression target) ===
+--- check 1: / → JSON or 404 (NOT SPA index) ---
+GET /        → HTTP 404 | Content-Type: application/problem+json
+--- check 2: /health → {"status":"ok"} ---
+GET /health  → {"status":"ok"} [HTTP 200 | application/json]
+--- check 3: /docs → Swagger HTML or 404 JSON (NOT 2759B SPA) ---
+GET /docs    → HTTP 200 | Content-Type: text/html; charset=utf-8 | Length: 1019
+--- check 4: /openapi.json → API title ---
+GET /openapi.json → .info.title = Fourier Analysis API
+--- /api/health (the functional FastAPI route, unchanged) ---
+GET /api/health → {"status":"ok"} [HTTP 200]
+
+=== check 5: api.color.babb.dev symmetry (value.js palette-api) ===
+GET /        → HTTP 200 | Content-Type: application/json
+GET /health  → {"type":"urn:palette-api:problem:not_found","title":"Not Found","status":404,"instance":"/health"} [HTTP 404 | application/problem+json]
+
+
+=== rate-limit dynamic headers (F-API-2) — 6-burst on a GET read route ===
+  req 1: HTTP 200 | RateLimit-Limit=240 Remaining=238 Reset=60
+  req 2: HTTP 200 | RateLimit-Limit=240 Remaining=239 Reset=60
+  req 3: HTTP 200 | RateLimit-Limit=240 Remaining=238 Reset=60
+  req 4: HTTP 200 | RateLimit-Limit=240 Remaining=237 Reset=60
+  req 5: HTTP 200 | RateLimit-Limit=240 Remaining=236 Reset=60
+  req 6: HTTP 200 | RateLimit-Limit=240 Remaining=237 Reset=60

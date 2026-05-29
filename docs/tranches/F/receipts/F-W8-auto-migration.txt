@@ -1,0 +1,9 @@
+# F.W8 auto-migration GREEN-verified — live capture 2026-05-29T19:14:53Z
+# deployed HEAD: 4007ec5; deploy_run_id=6fb88af5fc02@4007ec5d38f3@2026-05-29T19:14:26
+
+=== migrations collection (via backend container, app's settings.mongo_uri) ===
+count: 3
+  {'name': 'migrate_image_blobs', 'version': 1, 'deploy_run_id': '6fb88af5fc02@4007ec5d38f3@2026-05-29T19:14:26.296505', 'result': 'SUCCESS'}
+  {'name': 'migrate_flags_field', 'version': 1, 'deploy_run_id': '6fb88af5fc02@4007ec5d38f3@2026-05-29T19:14:26.296505', 'result': 'SUCCESS'}
+  {'name': 'migrate_visualization', 'version': 1, 'deploy_run_id': '6fb88af5fc02@4007ec5d38f3@2026-05-29T19:14:26.296505', 'result': 'SUCCESS'}
+SUCCESS count: 3
