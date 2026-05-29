@@ -123,61 +123,158 @@ export function isAbortError(e: unknown): boolean {
     return e instanceof DOMException && e.name === "AbortError";
 }
 
-interface ApiFetchOptions extends Omit<RequestInit, "body"> {
-    body?: FormData | Record<string, unknown> | BodyInit;
+// ── E.W5 — Parametric fetch core (T-E1 + T-S5 collapse) ──
+//
+// One core replaces the 4 pre-W5 helpers (apiFetch / apiFetchWithETag /
+// adminFetch / eqFetch). The named wrappers below are thin pass-throughs
+// preserving the per-call-site signatures; the duplicated header assembly,
+// body branching, error parsing, and JSON parse all consolidate here.
+//
+// Per CONSUMER-HARDENING.md §5: this collapse retires the 2 `as unknown
+// as` survivors at equation/api.ts:36+53 structurally — the `body` axis
+// is typed as `FormData | Record<string, unknown> | BodyInit | undefined`,
+// a structural union that accepts any serialisable object without a cast.
+
+import { ApiProblem, readRateLimitResetSeconds } from "./api-problem";
+
+export type CoreAuth = "session" | "admin" | "none";
+
+export interface CoreFetchOptions extends Omit<RequestInit, "body" | "signal"> {
+    /** Body branches: FormData (multipart); any object (JSON-serialised); or raw BodyInit. */
+    body?: FormData | BodyInit | object;
+    /** Auth mode. `session` adds X-Session-Token. `admin` adds Bearer + session-token. */
+    auth?: CoreAuth;
+    /** Bearer token for `auth: "admin"`. Required when auth is "admin". */
+    adminToken?: string;
+    /** If-Match header value (typically an ETag captured by a prior read). */
+    ifMatch?: string | null;
+    /** Idempotency-Key header value (UUID); honoured by the API for POST + PUT. */
+    idempotencyKey?: string | null;
+    /** Retry-on-429 strategy: read `RateLimit-Reset` and wait that many seconds; up to 2 retries. */
+    retryOn429?: boolean;
+    /** Custom abort signal; defaults to `abortable(abortKey)` per-key registry. */
+    signal?: AbortSignal | null;
 }
 
-async function apiFetch<T>(
+interface CoreFetchResult<T> {
+    data: T;
+    etag: string | null;
+    response: Response;
+}
+
+const MAX_RATE_LIMIT_RETRIES = 2;
+const MAX_RATE_LIMIT_RESET_SECONDS = 30; // cap server-provided wait at 30s
+
+async function coreFetch<T>(
     path: string,
     abortKey: string,
-    options?: ApiFetchOptions,
-): Promise<T> {
+    options?: CoreFetchOptions,
+): Promise<CoreFetchResult<T>> {
+    const auth: CoreAuth = options?.auth ?? "session";
+
+    // Auth headers (session + optional admin Bearer).
     const headers: Record<string, string> = {
         ...((options?.headers as Record<string, string>) ?? {}),
     };
-
-    if (sessionToken) {
+    if (auth === "admin") {
+        if (!options?.adminToken) {
+            throw new Error("coreFetch: auth='admin' requires adminToken");
+        }
+        headers["Authorization"] = `Bearer ${options.adminToken}`;
+    }
+    if (auth !== "none" && sessionToken) {
         headers["X-Session-Token"] = sessionToken;
     }
+    if (options?.ifMatch) {
+        headers["If-Match"] = options.ifMatch;
+    }
+    if (options?.idempotencyKey) {
+        headers["Idempotency-Key"] = options.idempotencyKey;
+    }
 
+    // Body branching: FormData (multipart), plain object (JSON), or raw BodyInit.
     const rawBody = options?.body;
     const isFormData = rawBody instanceof FormData;
-
-    // FormData: let browser set Content-Type with boundary
-    // Plain object: set JSON content type and stringify
-    // No body: no content type
     let body: BodyInit | undefined;
     if (isFormData) {
         body = rawBody;
-    } else if (rawBody != null && typeof rawBody === "object" && !(rawBody instanceof Blob) && !(rawBody instanceof ArrayBuffer) && !(rawBody instanceof ReadableStream)) {
+    } else if (
+        rawBody != null &&
+        typeof rawBody === "object" &&
+        !(rawBody instanceof Blob) &&
+        !(rawBody instanceof ArrayBuffer) &&
+        !(rawBody instanceof ReadableStream)
+    ) {
         headers["Content-Type"] ??= "application/json";
         body = JSON.stringify(rawBody);
     } else {
         body = rawBody as BodyInit | undefined;
     }
 
-    const res = await fetch(`${BASE}${path}`, {
-        method: options?.method,
-        headers,
-        body,
-        signal: options?.signal ?? abortable(abortKey),
-    });
+    const signal = options?.signal ?? abortable(abortKey);
+    const retryOn429 = options?.retryOn429 ?? true;
+    let attempt = 0;
+    while (true) {
+        const res = await fetch(`${BASE}${path}`, {
+            method: options?.method,
+            headers,
+            body,
+            signal,
+        });
 
-    if (!res.ok) {
-        let text: string;
-        try {
-            text = await res.text();
-        } catch {
-            text = "(could not read response body)";
+        if (res.status === 429 && retryOn429 && attempt < MAX_RATE_LIMIT_RETRIES) {
+            const reset = readRateLimitResetSeconds(res);
+            const waitSec = Math.min(reset ?? 2 ** attempt, MAX_RATE_LIMIT_RESET_SECONDS);
+            await new Promise((r) => setTimeout(r, waitSec * 1000));
+            attempt++;
+            continue;
         }
-        throw new Error(`API ${res.status}: ${text}`);
-    }
 
-    try {
-        return await res.json();
-    } catch {
-        throw new Error(`API ${res.status}: invalid JSON response`);
+        if (!res.ok) {
+            // RFC 7807 problem+json: typed ApiProblem; otherwise statusText fallback.
+            throw await ApiProblem.from(res);
+        }
+
+        const etag = res.headers.get("ETag");
+
+        // 204 No Content (soft-delete) carries no JSON body.
+        if (res.status === 204) {
+            return { data: undefined as T, etag, response: res };
+        }
+        try {
+            return { data: (await res.json()) as T, etag, response: res };
+        } catch {
+            throw new ApiProblem(
+                "about:blank",
+                `Invalid JSON response`,
+                res.status,
+                undefined,
+                path,
+            );
+        }
     }
+}
+
+interface ApiFetchOptions extends Omit<RequestInit, "body" | "signal"> {
+    body?: FormData | BodyInit | object;
+    signal?: AbortSignal | null;
+    /** Optional If-Match header (typically a captured ETag for concurrent-edit safety). */
+    ifMatch?: string | null;
+    /** Optional Idempotency-Key header (UUID; honoured by API for POST + PUT). */
+    idempotencyKey?: string | null;
+}
+
+/** Default body-bearing fetch with session auth + retry-on-429 + typed ApiProblem errors. */
+export async function apiFetch<T>(
+    path: string,
+    abortKey: string,
+    options?: ApiFetchOptions,
+): Promise<T> {
+    const { data } = await coreFetch<T>(path, abortKey, {
+        ...options,
+        auth: "session",
+    });
+    return data;
 }
 
 /**
@@ -190,104 +287,25 @@ async function apiFetchWithETag<T>(
     abortKey: string,
     options?: ApiFetchOptions,
 ): Promise<WithETag<T>> {
-    const headers: Record<string, string> = {
-        ...((options?.headers as Record<string, string>) ?? {}),
-    };
-    if (sessionToken) {
-        headers["X-Session-Token"] = sessionToken;
-    }
-
-    const rawBody = options?.body;
-    const isFormData = rawBody instanceof FormData;
-    let body: BodyInit | undefined;
-    if (isFormData) {
-        body = rawBody;
-    } else if (rawBody != null && typeof rawBody === "object" && !(rawBody instanceof Blob) && !(rawBody instanceof ArrayBuffer) && !(rawBody instanceof ReadableStream)) {
-        headers["Content-Type"] ??= "application/json";
-        body = JSON.stringify(rawBody);
-    } else {
-        body = rawBody as BodyInit | undefined;
-    }
-
-    const res = await fetch(`${BASE}${path}`, {
-        method: options?.method,
-        headers,
-        body,
-        signal: options?.signal ?? abortable(abortKey),
+    const { data, etag } = await coreFetch<T>(path, abortKey, {
+        ...options,
+        auth: "session",
     });
-
-    if (!res.ok) {
-        let text: string;
-        try {
-            text = await res.text();
-        } catch {
-            text = "(could not read response body)";
-        }
-        throw new Error(`API ${res.status}: ${text}`);
-    }
-
-    const etag = res.headers.get("ETag");
-
-    // 204 No Content (soft-delete) carries no JSON body.
-    if (res.status === 204) {
-        return { data: undefined as T, etag };
-    }
-
-    try {
-        return { data: (await res.json()) as T, etag };
-    } catch {
-        throw new Error(`API ${res.status}: invalid JSON response`);
-    }
+    return { data, etag };
 }
 
+/** Admin-authenticated fetch (Bearer + session token). */
 async function adminFetch<T>(
     path: string,
     adminToken: string,
     options?: ApiFetchOptions,
 ): Promise<T> {
-    const headers: Record<string, string> = {
-        Authorization: `Bearer ${adminToken}`,
-        ...((options?.headers as Record<string, string>) ?? {}),
-    };
-
-    if (sessionToken) {
-        headers["X-Session-Token"] = sessionToken;
-    }
-
-    const rawBody = options?.body;
-    const isFormData = rawBody instanceof FormData;
-
-    let body: BodyInit | undefined;
-    if (isFormData) {
-        body = rawBody;
-    } else if (rawBody != null && typeof rawBody === "object" && !(rawBody instanceof Blob) && !(rawBody instanceof ArrayBuffer) && !(rawBody instanceof ReadableStream)) {
-        headers["Content-Type"] ??= "application/json";
-        body = JSON.stringify(rawBody);
-    } else {
-        body = rawBody as BodyInit | undefined;
-    }
-
-    const res = await fetch(`${BASE}${path}`, {
-        method: options?.method,
-        headers,
-        body,
+    const { data } = await coreFetch<T>(path, /* abortKey */ path, {
+        ...options,
+        auth: "admin",
+        adminToken,
     });
-
-    if (!res.ok) {
-        let text: string;
-        try {
-            text = await res.text();
-        } catch {
-            text = "(could not read response body)";
-        }
-        throw new Error(`API ${res.status}: ${text}`);
-    }
-
-    try {
-        return await res.json();
-    } catch {
-        throw new Error(`API ${res.status}: invalid JSON response`);
-    }
+    return data;
 }
 
 // ── Images ──

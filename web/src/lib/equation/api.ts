@@ -1,3 +1,16 @@
+/**
+ * Equation API surface.
+ *
+ * E.W5: the local `eqFetch` + the 2 `as unknown as` casts retire. Equation
+ * routes now share the canonical fetch core (`apiFetch` in `web/src/lib/api.ts`)
+ * — one inflight registry, one error-handling path, one place to wire
+ * ApiProblem + RateLimit retry. The pre-W5 `eqFetch` was a 4th fetch helper
+ * with its own AbortController registry that duplicated `apiFetch`'s body
+ * branching while forcing object→Record<string, unknown> casts to satisfy
+ * its tighter parameter type. The cast retires structurally because the new
+ * core types `body` as `FormData | Record<string, unknown> | BodyInit | undefined`.
+ */
+
 import type {
     ComputeEquationRequest,
     ComputeEquationResponse,
@@ -6,34 +19,15 @@ import type {
     FourierTermDTO,
 } from "./types";
 import type { BasisComponent } from "@/lib/types";
+import { apiFetch } from "../api";
 
-const BASE = import.meta.env.VITE_API_URL || "";
-
-const inflight = new Map<string, AbortController>();
-
-function abortable(key: string): AbortSignal {
-    inflight.get(key)?.abort();
-    const ac = new AbortController();
-    inflight.set(key, ac);
-    return ac.signal;
-}
-
-async function eqFetch<T>(path: string, key: string, body: Record<string, unknown>): Promise<T> {
-    const res = await fetch(`${BASE}${path}`, {
+export async function computeEquation(
+    req: ComputeEquationRequest,
+): Promise<ComputeEquationResponse> {
+    return apiFetch<ComputeEquationResponse>("/api/equations/compute", "eq-compute", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: abortable(key),
+        body: req,
     });
-    if (!res.ok) {
-        const text = await res.text().catch(() => "(no body)");
-        throw new Error(`API ${res.status}: ${text}`);
-    }
-    return res.json();
-}
-
-export async function computeEquation(req: ComputeEquationRequest): Promise<ComputeEquationResponse> {
-    return eqFetch<ComputeEquationResponse>("/api/equations/compute", "eq-compute", req as unknown as Record<string, unknown>);
 }
 
 export async function simplifyCoefficients(
@@ -49,10 +43,15 @@ export async function simplifyCoefficients(
         phase: c.phase,
     }));
 
-    const req: SimplifyRequest = { coefficients, budget, notation: notation as SimplifyRequest["notation"] };
-    return eqFetch<SimplifyResponse>("/api/equations/simplify", "eq-simplify", req as unknown as Record<string, unknown>);
+    const req: SimplifyRequest = {
+        coefficients,
+        budget,
+        notation: notation as SimplifyRequest["notation"],
+    };
+    return apiFetch<SimplifyResponse>("/api/equations/simplify", "eq-simplify", {
+        method: "POST",
+        body: req,
+    });
 }
 
-export function isAbortError(e: unknown): boolean {
-    return e instanceof DOMException && e.name === "AbortError";
-}
+export { isAbortError } from "../api";
