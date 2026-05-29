@@ -148,7 +148,12 @@ deploy() {
         # `(name, version)`). Fail-non-zero leaves the live deploy intact;
         # the next deploy attempt re-runs (idempotent).
         log "running pending migrations (post-up post-gate)…"
-        if "${COMPOSE[@]}" exec -T -e DEPLOY_COMMIT_SHA="${new}" api \
+        # F.W8: the compose service is `backend` (not `api`) — the prior `api`
+        # target silently no-op'd every deploy ("service api is not running"),
+        # so the auto-migration runner never actually executed. This is the
+        # one-token fix that upgrades W9-from-E (GREEN-pending-real-test) to
+        # GREEN-verified: the runner now runs in the live backend container.
+        if "${COMPOSE[@]}" exec -T -e DEPLOY_COMMIT_SHA="${new}" backend \
                 python -m api.scripts.run_pending_migrations; then
             log "migrations OK"
         else
