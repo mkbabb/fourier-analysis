@@ -5,7 +5,7 @@
 **Reconciles with**: R1's cohort-orphan assay (the verdict on whether value.js-C — the cohort-peer tranche to fourier-B — is effectively orphaned) and R6's fourier-C scoping (the open-design scoping for fourier-analysis's infra + image-blob-out-of-Mongo tranche); parallel-dispatched. Both R1 and R6 outputs were not yet present at `docs/audits/runs/2026-05-19-refinement-assay/` at this document's authoring. This document is **provisional pending R1's cohort verdict**; both orderings (cohort-live, cohort-orphan) are given in §5.
 **Authority**: this is the only execution-order document spanning both repos. Per-tranche `*.md` and `coordination/CRUD-CONSTELLATION.md` (the cohort coordination doc bound to fourier-B's CRUD-and-identity-convergence question) remain the authority for individual dependency claims.
 
-> **⚠ SUPERSEDED — see §13 (Ordering θ, 2026-05-28, post-E-close + post-I-close + F-authoring).** §1–§7 were authored 2026-05-26; §8–§12 reconciled across fourier-C/D/E + value.js-I. Now: **fourier-F AUTHORED 2026-05-28** (5 threads + 2 new invariants — inv-21 post-cohort-hygiene-bounded + inv-22 vhost-correctness-symmetric; 12-wave shape; 6-lane FA1-FA6 audit substrate; the F mandate is EE3 "Deploy 6 agents in parallel… DEEPLY audit… fold into a new tranche"). value.js-I.W5 stays closed at Scenario A; F is **single-repo** (no cohort peer). **§13 is the authoritative current ordering;** §1–§12 are retained as the historical record.
+> **⚠ SUPERSEDED — see §14 (Ordering ι, 2026-05-28, constellation-wide execution order).** §1–§13 reconciled fourier-A→F + value.js-A→I. Now the user asks the cross-repo execution order across ALL developed tranches (fourier-F + value.js + glass-ui + speedtest + the deploy repo). **§14 is the authoritative current ordering;** §1–§13 are the historical record. Headline: glass-ui's active `g.w5` release wave is the upstream publisher chokepoint (blocks speedtest-AQ); fourier-F is glass-ui-INDEPENDENT and runs in parallel as the live-bug + deploy-spine critical path.
 
 ---
 
@@ -494,3 +494,72 @@ The constellation remains FULLY GREEN at the URL + envelope + cross-repo CORS + 
 The F Wα (3 research lanes) + Wχ (4 challenge probes) ran READ-ONLY; substrate at `docs/audits/runs/2026-05-28-F-research/`. **F charter RATIFIED-WITH-DELTA** — no thread killed; **F.W1 does NOT pivot** (the `api.fourier.babb.dev` stale-SPA regression is ORIGIN-served — host Apache → Docker `nginx:alpine`:8100 → SPA catch-all; `Server: nginx/1.29.5`, no `cf-ray` — not CF Pages). Five binding deltas folded into the charter: (1) F.W1 origin-nginx surgical `location =` fix; (2) W3 SPLITS into W3a (now) + W3b (operator-gated on INVALID gh token); (3) inv-22 revised (`/docs` Swagger-OK; scope {fourier, color}); (4) F-δ.b NARROWED to a single font-pin (route-lazy + self-host manufactured); (5) F-T-E1 + F-T-S2 REJECTED (only F-T-N1 doc-ASK survives). W1/W2/W3a/W4/W5(narrowed)/W6/W7(F-T-N1)/W8 are GREEN-to-execute on authorization; **W3b alone is operator-gated**.
 
 End of CANONICAL-ORDERING §13 — ordering θ.
+
+---
+
+## §14 — Ordering ι (2026-05-28 constellation-wide execution order — AUTHORITATIVE)
+
+The user asks: given the several developed tranches (fourier-F, value.js, glass-ui, speedtest, the new `deploy` repo, &c.), what is the proper execution order? Grounded in a live survey of every sibling's tranche board (2026-05-28).
+
+### §14.1 — Open-state inventory at ordering ι
+
+| Repo | Latest closed | Open / in-flight | Disposition |
+|---|---|---|---|
+| **fourier-analysis** | E (Scenario A) | **F AUTHORED** (6 threads α-ζ; 17 waves; research gate GREEN; W3b unblocked) | the live-bug + deploy-spine critical path; **glass-ui-independent** |
+| **value.js** | I (Scenario A w/ fourier-E) | value.js-J latent (E5/E6/E7; per-call-site ifMatch) | named-successor; opens on a real driver; NOT gating |
+| **glass-ui** | V (+ uppercase lineage to V) | **`g.w5` release-engineering wave ACTIVE** (changesets + release workflow + npm-registry consumption migration + muster) | **the upstream publisher chokepoint** — everything consumes glass-ui; standing mandate: do NOT inject competing publisher commits into the active changeset flow |
+| **speedtest** | AP (2026-05-28) | **AQ SEEDED** — headline carry `R0-glass` **BLOCKED on glass-ui g.w5** | the CF-Pages deploy REFERENCE; an F-ζ deploy-adoption target (needs CI + S2 secret remediation); AQ opens after g.w5 settles |
+| **deploy** (NEW, private) | — | charter seeded (`e3b16d8`); spine-capture is F-ζ | versioned home of the deploy spine; authored by fourier-F |
+| **csp-solver** (sudoku) | — | route-registration regression (N4) | F-ζ.4 adoption ask + N4 route-fix (maintainer-owned) |
+| **words** (floridify) | (no tranche system) | S1 committed-secret (operator) | F-ζ.4 adoption ask + S1 remediation (operator) |
+| **keyframes.js** | (no tranche system) | — | F-ζ.4 CF-Pages-convergence adoption ask |
+
+### §14.2 — The dependency edges (what gates what)
+
+```
+glass-ui g.w5 (ACTIVE publisher) ──hard──▶ speedtest-AQ (R0-glass handoff; standing no-compete mandate)
+glass-ui g.w5                    ──soft──▶ any fourier/value.js demo polish wanting the NEW glass-ui surface
+                                            (build-time VENDORED today → not a hard gate for fourier-F)
+fourier-F.γ (W3a→W3b host-flip)  ──hard──▶ F-ζ.2 (per-repo HMAC split)
+F-ζ.3 (deploy templates)         ──hard──▶ cross-repo deploy adoption (speedtest/words/csp/value.js/keyframes)
+fourier-F                        ──⊥────── glass-ui  (INDEPENDENT — F touches no glass-ui surface; runs in parallel)
+S1/S2 secret rotation            ──⊥────── everything (operator; immediate; security-first)
+```
+
+### §14.3 — The proper execution order (tiered; parallel where independent)
+
+**Tier 0 — NOW, security, operator-owned, blocks nothing:**
+- Rotate **S1** (floridify `pk_live_*`) + **S2** (speedtest `cfat_*`); purge from history; move to GH secrets. Live credential exposure — do first, out-of-band.
+
+**Tier 1 — two independent tracks run IN PARALLEL:**
+
+- **Track A — glass-ui `g.w5`** (the upstream publisher): let it settle. It is the changeset/release-engineering wave every consumer depends on; the standing mandate forbids competing publisher commits. Its completion unblocks speedtest-AQ + any surface-consuming polish. *Owner: glass-ui maintainer + muster agent.*
+
+- **Track B — fourier-F** (glass-ui-independent; the live-bug + deploy-spine critical path; awaits user authorization, research gate already GREEN). Internal order:
+  1. **F.W1 (α)** — the live prod regression (api.fourier vhost SPA-bleed + rate-limit). HIGHEST urgency (live bug).
+  2. **F.W2 (β)** — compute-cache-symmetry (mechanical; parallel-safe).
+  3. **F.W3a → W3b (γ)** — the operator host-flip (per-repo webhooks; gh now valid; W3a stages, W3b flips). **Prerequisite for ζ.**
+  4. **F.W4-W8 (δ + ε)** — UX/a11y/perf polish + chronic discharge + transpositions + migration-GREEN-verified (parallelizable; lower urgency; glass-ui-independent).
+  5. **F.W9-W11 (ζ.1-ζ.3)** — deploy-spine capture into `mkbabb/deploy` + per-repo HMAC + the standard templates. **ζ.3 templates are the constellation enabler.**
+  6. **F.W12 (ζ.4)** — author the cross-repo adoption-ask ledger.
+
+**Tier 2 — rendezvous: cross-repo deploy adoption** (gated on F-ζ.3 templates; speedtest additionally gated on glass-ui g.w5; maintainer-owned; per-repo PARALLEL):
+- **speedtest** — adopt CI template (has none) + S2 already remediated; opens its AQ tranche once g.w5 settles (R0-glass) AND ζ.3 templates exist. (speedtest is the CF-Pages reference, so it mostly already conforms.)
+- **words/floridify** — adopt CI + deploy-hook; S1 already remediated.
+- **csp-solver** — N4 route-registration fix + adopt CI + deploy-hook.
+- **value.js** — frontend CF-Pages convergence (drift from GH-Pages) + palette-api rsync→git.
+- **keyframes.js** — CF-Pages convergence.
+
+**Tier 3 — closes:**
+- **F.W13** — fourier-F close (after α-ζ); CANONICAL-ORDERING → ordering κ.
+- value.js-J / speedtest-AQ-beyond / glass-ui-next — open on their own drivers.
+
+### §14.4 — The critical path + the single most-blocking move
+
+**Critical path** (longest hard-edge chain): `fourier-F.γ (host-flip) → F-ζ.2 (per-repo HMAC) → F-ζ.3 (templates) → cross-repo deploy adoption`. Everything downstream of the deploy normalization waits on ζ.3 templates, which waits on γ.
+
+**Single most-blocking move**: **authorize fourier-F** (it is the only critical-path track under this repo's control; research gate is GREEN; W1 is a live bug). glass-ui g.w5 proceeds in parallel under its own owner; the two rendezvous at Tier 2.
+
+**Parallelism note**: fourier-F and glass-ui g.w5 are genuinely independent (F touches no glass-ui surface; glass-ui is build-time-vendored in fourier today). Do NOT serialize them. The only serialization is: (a) S1/S2 first (cheap, security); (b) γ before ζ within F; (c) ζ.3 templates + g.w5 before the cross-repo adoption rendezvous.
+
+End of CANONICAL-ORDERING §14 — ordering ι.
