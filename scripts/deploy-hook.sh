@@ -38,7 +38,12 @@ readonly COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.prod.ym
 # `|| echo`, so a dead service "passed").
 readonly HEALTH_PORT="${HTTP_PORT:-8100}"
 readonly HEALTH_URL="http://127.0.0.1:${HEALTH_PORT}/api/health"
-readonly SPA_URL="http://127.0.0.1:${HEALTH_PORT}/"
+# F.W1 (inv-22): the API host root is intentionally a 404 problem+json — NOT an
+# SPA index. The gate probes it for exactly that, so the gate now also
+# co-enforces inv-22 on every deploy (a stale SPA-fallback regression fails the
+# gate and rolls back). The real frontend is CF-Pages-served; the origin nginx
+# serves the API surface.
+readonly ROOT_URL="http://127.0.0.1:${HEALTH_PORT}/"
 
 # Bounded poll — ~60 s total at ~2 s intervals (replaces deploy.sh's blind
 # `sleep 5`). The gate's non-zero exit is load-bearing: it IS the rollback
@@ -62,17 +67,18 @@ log() {
 }
 
 # ── Health gate ──────────────────────────────────────────────────────────────
-# Polls both /api/health (expecting {"status":"ok"}) and / (the SPA). Returns 0
-# only when BOTH are green; non-zero on timeout. NO swallow — the caller relies
-# on the exit status as the rollback trigger.
+# Polls /api/health (expecting {"status":"ok"} — backend liveness) AND the API
+# root (expecting HTTP 404 — the inv-22 contract: the API host root is NOT an
+# SPA index). Returns 0 only when BOTH are green; non-zero on timeout. NO
+# swallow — the caller relies on the exit status as the rollback trigger.
 health_gate() {
     local attempt
     for ((attempt = 1; attempt <= GATE_RETRIES; attempt++)); do
-        local body
-        if body="$(curl -fsS --max-time 5 "${HEALTH_URL}")" \
-            && [[ "${body}" == *'"status"'*'"ok"'* ]] \
-            && curl -fsS --max-time 5 -o /dev/null "${SPA_URL}"; then
-            log "health gate GREEN on :${HEALTH_PORT} (attempt ${attempt}/${GATE_RETRIES})"
+        local body root_code
+        body="$(curl -fsS --max-time 5 "${HEALTH_URL}" 2>/dev/null || true)"
+        root_code="$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' "${ROOT_URL}" 2>/dev/null || true)"
+        if [[ "${body}" == *'"status"'*'"ok"'* ]] && [[ "${root_code}" == "404" ]]; then
+            log "health gate GREEN on :${HEALTH_PORT} (attempt ${attempt}/${GATE_RETRIES}; /api/health ok, / → 404 inv-22)"
             return 0
         fi
         sleep "${GATE_INTERVAL}"
