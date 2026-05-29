@@ -5,7 +5,7 @@
 **Reconciles with**: R1's cohort-orphan assay (the verdict on whether value.js-C — the cohort-peer tranche to fourier-B — is effectively orphaned) and R6's fourier-C scoping (the open-design scoping for fourier-analysis's infra + image-blob-out-of-Mongo tranche); parallel-dispatched. Both R1 and R6 outputs were not yet present at `docs/audits/runs/2026-05-19-refinement-assay/` at this document's authoring. This document is **provisional pending R1's cohort verdict**; both orderings (cohort-live, cohort-orphan) are given in §5.
 **Authority**: this is the only execution-order document spanning both repos. Per-tranche `*.md` and `coordination/CRUD-CONSTELLATION.md` (the cohort coordination doc bound to fourier-B's CRUD-and-identity-convergence question) remain the authority for individual dependency claims.
 
-> **⚠ SUPERSEDED — see §12 (Ordering η, 2026-05-28, post-E-close + post-I-close).** §1–§7 were authored 2026-05-26 (contingent orderings α/β); §8 (γ) reconciled at fourier-C authoring; §9 (δ) reconciled at fourier-C close; §10 (ε) reconciled at fourier-D authoring 2026-05-27; §11 (ζ) reconciled at fourier-D close + fourier-E authoring 2026-05-28. Now: **fourier-E CLOSED 2026-05-28** (15 commits W0→W11; Scenario A paired close with value.js-I; T7 12/12 PASS verifies cross-repo conformance); **value.js-I CLOSED 2026-05-28** (cohort peer; 53 DEFERRED-TO-VALUE.JS cells → ADDRESSED); CANONICAL-ORDERING → ordering η. **§12 is the authoritative current ordering;** §1–§11 are retained as the historical record.
+> **⚠ SUPERSEDED — see §13 (Ordering θ, 2026-05-28, post-E-close + post-I-close + F-authoring).** §1–§7 were authored 2026-05-26; §8–§12 reconciled across fourier-C/D/E + value.js-I. Now: **fourier-F AUTHORED 2026-05-28** (5 threads + 2 new invariants — inv-21 post-cohort-hygiene-bounded + inv-22 vhost-correctness-symmetric; 12-wave shape; 6-lane FA1-FA6 audit substrate; the F mandate is EE3 "Deploy 6 agents in parallel… DEEPLY audit… fold into a new tranche"). value.js-I.W5 stays closed at Scenario A; F is **single-repo** (no cohort peer). **§13 is the authoritative current ordering;** §1–§12 are retained as the historical record.
 
 ---
 
@@ -440,3 +440,49 @@ fourier T7 conformance probe        ──(probes both APIs)──▶ both APIs 
 Both repos enter the **post-cohort hygiene window**. The constellation is FULLY GREEN at the URL + envelope + cross-repo CORS + browser-layer FK seam.
 
 End of CANONICAL-ORDERING §12 — ordering η.
+
+---
+
+## §13 — Ordering θ (2026-05-28 post-E-close + post-I-close + F-authoring — AUTHORITATIVE)
+
+**fourier-F AUTHORED 2026-05-28** (`docs/tranches/F/F.md`; 6-lane FA1-FA6 audit + SYNTHESIS at `docs/audits/runs/2026-05-28-F-audit/`; 5 threads; 2 new invariants; 12-wave shape; dev-only — no implementation ran).
+
+### §13.1 — F is single-repo post-cohort hygiene
+
+E + I closed Scenario A at ordering η. The cohort handshake discharged. F is single-repo with ASK-only cross-repo touchpoints (csp-solver route-registration regression; F-T-N1 paired demo PR for the legacy `status` field drop).
+
+The user's 2026-05-28 EE3 directive ("Deploy 6 agents in parallel to lighthouse test each page… DEEPLY audit… NO legacy code… fold into a new tranche… NOT an implementation phase. Tranche development only. Workflow.") IS the F authoring substrate.
+
+### §13.2 — Updated inventory at ordering θ
+
+| Repo | Tranche | Status | Authority |
+|---|---|---|---|
+| fourier-analysis | **A-D** | CLOSED | per-tranche FINAL.md |
+| fourier-analysis | **E** | CLOSED 2026-05-28 (Scenario A) | `docs/tranches/E/FINAL.md` |
+| fourier-analysis | **F** — *post-cohort hygiene (API-vhost-correctness + compute-cache-symmetry + operator-window + UX-polish + chronic discharge)* | **AUTHORED 2026-05-28** (dev only — no implementation) | `docs/tranches/F/F.md` + `docs/audits/runs/2026-05-28-F-audit/SYNTHESIS.md` |
+| value.js | **A-H** | CLOSED | per-tranche FINAL.md |
+| value.js | **I** | CLOSED 2026-05-28 (Scenario A peer to fourier-E) | `value.js/docs/tranches/I/FINAL.md` |
+
+### §13.3 — The F payload
+
+**5 threads** (KISS-honest; no manufactured scope):
+- **α API-vhost-correctness** — load-bearing prod regression on `api.fourier.babb.dev` (FA1 §5 F-API-1); rate-limit middleware wiring (F-API-2); inv-22 first lands.
+- **β compute-cache-symmetry** — FA5 F-T-S1 parametric collapse + `compute_bases` wiring + collection rename; closes E3 hit-rate residual.
+- **γ operator-window-consolidation** — single SSH session: T-S3 host-flip + value.js dispatcher arm delete + `:8140` vhost + cron evidence (closes FA3 trust-delta).
+- **δ UX + a11y + perf polish** — Lighthouse-surfaced floor: `button-name` failures + missing `meta-description`/`robots.txt` + CM fonts on jsdelivr + LCP 7–8 s.
+- **ε chronic + transpositions + auto-migration GREEN-verified** — C4 onnxruntime + C9 numbering + N2 CF wildcard + FA5 F-T-N1/E1/S2 + W8 migration trigger.
+
+**2 new invariants** (by name):
+- **inv-21** post-cohort-hygiene-bounded — each F thread single-PR or single-SSH-session.
+- **inv-22** vhost-correctness-symmetric — both API vhosts return JSON on `/`, `/health`, `/docs`, `/openapi.json`.
+
+**15-item must-NOT list** at SYNTHESIS §4. **12 items REJECTED-from-F** with explicit rationale (FA4 §4 + SYNTHESIS §6).
+
+### §13.4 — Critical path post-θ + next action
+
+- **fourier next action**: await user authorisation for **F.W0**. F's spine is the 5-thread shape with research-first gating for α + γ (Wα 3 lanes; Wχ 4 probes).
+- **value.js next action**: STAYS-OUT-of-cohort-coord for F; the F-T-N1 paired demo PR at F.W7 is the only fourier-side touch the value.js maintainer needs to action.
+
+The constellation remains FULLY GREEN at the URL + envelope + cross-repo CORS + browser-layer FK seam; F is the bounded hygiene + UX-polish lift that EE3 mandated.
+
+End of CANONICAL-ORDERING §13 — ordering θ.
