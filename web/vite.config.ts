@@ -36,6 +36,31 @@ export default defineConfig({
         },
     },
     appType: "spa",
+    build: {
+        // E.W7 T-P1 — manualChunks bundle split. Pre-W7 the index chunk was
+        // 854 kB (warned by Vite). Splitting by load-cadence:
+        //   - vendor-vue:    Vue/Pinia/vue-router/vueuse — long-lived; cache-friendly.
+        //   - vendor-ui:     glass-ui + reka-ui + lucide — frequent visual deps.
+        //   - vendor-math:   value.js + katex (the colour-math + LaTeX cluster).
+        //   - vendor-paper:  paper compile/render path; only loaded on /paper routes.
+        //   - vendor-keyframes: animation runtime.
+        //   - <route>:       Vite's built-in route-level chunking handles the rest.
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    "vendor-vue": ["vue", "vue-router", "pinia", "@vueuse/core"],
+                    "vendor-ui": [
+                        "@mkbabb/glass-ui",
+                        "reka-ui",
+                        "lucide-vue-next",
+                    ],
+                    "vendor-math": ["@mkbabb/value.js", "katex"],
+                    "vendor-paper": ["@mkbabb/latex-paper", "@mkbabb/pencil-boil"],
+                    "vendor-keyframes": ["@mkbabb/keyframes.js"],
+                },
+            },
+        },
+    },
     server: {
         port: 3000,
         // Under contract-v2 the sibling-`src/` `fs.allow` widening is STRUCK

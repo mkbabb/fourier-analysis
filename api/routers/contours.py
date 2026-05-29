@@ -12,7 +12,7 @@ from api.models.computation import (
     ComputeResult,
 )
 from api.responses import contour_points, contour_response
-from api.services import computation
+from api.services import computation, compute_cache
 from api.services.image_storage import store_contour_asset
 from api.services.rate_limiter import require_compute_limit
 
@@ -35,6 +35,13 @@ async def get_contour_endpoint(contourHash: str):
 
 @router.post("/{contourHash}/compute/epicycles", response_model=ComputeResult, dependencies=[Depends(require_compute_limit)])
 async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
+    # E.W7 T-P3 — content-addressable compute cache. Hit returns immediately
+    # without the FFT chain. Fail-open: cache errors fall through to compute.
+    cached = await compute_cache.lookup(
+        contourHash, req.n_harmonics, req.n_points
+    )
+    if cached is not None:
+        return ComputeResult(data=cached)
     doc = await get_contour(contourHash)
     xs, ys = contour_points(doc)
     data = await computation.compute_epicycles(
@@ -42,6 +49,7 @@ async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
         n_harmonics=req.n_harmonics,
         n_points=req.n_points,
     )
+    await compute_cache.store(contourHash, req.n_harmonics, req.n_points, data)
     return ComputeResult(data=data)
 
 

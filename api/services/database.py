@@ -63,6 +63,19 @@ async def connect_db() -> None:
     # Mirror of images.pinned compound — same rationale (W4.a janitor inversion).
     await _db.contours.create_index([("pinned", 1), ("last_accessed_at", 1)])
 
+    # E.W7 T-P3 — compute_epicycles content-addressable cache. Unique on `_id`
+    # (the SHA256 of contour_hash + n_harmonics + n_points + COMPUTE_VERSION);
+    # auto-evict via TTL index on `created_at` after 7 days.
+    try:
+        await _db.epicycle_cache.create_index(
+            "created_at", expireAfterSeconds=7 * 24 * 60 * 60
+        )
+    except OperationFailure:
+        await _db.epicycle_cache.drop_index("created_at_1")
+        await _db.epicycle_cache.create_index(
+            "created_at", expireAfterSeconds=7 * 24 * 60 * 60
+        )
+
     # Users + Sessions
     await _db.users.create_index("last_seen_at")
     await _db.sessions.create_index("user_slug")
