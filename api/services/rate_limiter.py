@@ -151,7 +151,6 @@ class SlidingWindowLimiter:
 # honest. The nginx ``api_general`` edge (30 r/s) is the real hard backstop.
 read_limiter = SlidingWindowLimiter(max_requests=180, window_seconds=60)
 login_limiter = SlidingWindowLimiter(max_requests=5, window_seconds=60)
-like_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
 write_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
 admin_limiter = SlidingWindowLimiter(max_requests=30, window_seconds=60)
 
@@ -170,7 +169,7 @@ def _limiter_for_path(path: str, method: str) -> SlidingWindowLimiter:
     """Pick the limiter whose budget governs *path*/*method* so enforcement and
     the emitted headers are one honest thing.
 
-    Path-specific budgets win for the surfaces they guard (admin/login/like/
+    Path-specific budgets win for the surfaces they guard (admin/login/
     compute). Otherwise the method decides: GET/HEAD reads ride the generous
     ``read_limiter`` (high-volume browsing must not hit the tight write budget),
     every other method (POST/PUT/PATCH/DELETE) rides ``write_limiter`` — the
@@ -180,8 +179,6 @@ def _limiter_for_path(path: str, method: str) -> SlidingWindowLimiter:
         return admin_limiter
     if path.startswith("/api/sessions/login"):
         return login_limiter
-    if "/like" in path:
-        return like_limiter
     # The expensive compute surfaces — exactly the nginx ``api_compute`` zone:
     # /api/equations/{compute,simplify}, /api/contours/.../compute/..., and the
     # image extract-contour pipeline. (Bare GET reads on these prefixes are NOT

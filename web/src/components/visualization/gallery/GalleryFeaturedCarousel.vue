@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { GalleryEntry } from "@/lib/types";
+import type { Visualization } from "@/lib/types";
 import GalleryCard from "./GalleryCard.vue";
 import { Crown } from "lucide-vue-next";
 
 defineProps<{
-    entries: GalleryEntry[];
+    entries: Visualization[];
     adminMode?: boolean;
     likedHashes?: Set<string>;
 }>();
 
 const emit = defineEmits<{
-    "card-click": [entry: GalleryEntry];
+    "card-click": [entry: Visualization];
     like: [hash: string];
     "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
     delete: [hash: string];

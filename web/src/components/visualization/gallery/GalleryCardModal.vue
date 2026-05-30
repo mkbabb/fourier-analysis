@@ -6,7 +6,7 @@ import {
     Dialog,
     DialogContent,
 } from "@mkbabb/glass-ui";
-import type { GalleryEntry } from "@/lib/types";
+import type { Visualization } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
 import { VIZ_COLORS } from "@/lib/colors";
@@ -19,7 +19,7 @@ import {
 } from "lucide-vue-next";
 
 const props = defineProps<{
-    entry: GalleryEntry;
+    entry: Visualization;
     adminMode?: boolean;
     isLiked?: boolean;
 }>();

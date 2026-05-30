@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { GalleryEntry } from "@/lib/types";
+import type { Visualization } from "@/lib/types";
 import { InfiniteScroll } from "@mkbabb/glass-ui/infinite-scroll";
 import GalleryCard from "./GalleryCard.vue";
 
 defineProps<{
-    entries: GalleryEntry[];
+    entries: Visualization[];
     loading: boolean;
     hasMore: boolean;
     adminMode: boolean;
@@ -14,7 +14,7 @@ defineProps<{
 
 const emit = defineEmits<{
     "load-more": [];
-    "card-click": [entry: GalleryEntry];
+    "card-click": [entry: Visualization];
     like: [hash: string];
     "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
     delete: [hash: string];

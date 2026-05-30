@@ -7,7 +7,7 @@ import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
-import type { GalleryEntry, WorkspaceDraft } from "@/lib/types";
+import type { Visualization, WorkspaceDraft } from "@/lib/types";
 import { Layers, Trash2, Crown, X } from "lucide-vue-next";
 
 import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
@@ -41,7 +41,7 @@ const { isLoggedIn } = storeToRefs(auth);
 const { toast } = useToast();
 
 const activeTab = ref<"gallery" | "drafts" | "users" | "flagged" | "audit">("gallery");
-const selectedEntry = ref<GalleryEntry | null>(null);
+const selectedEntry = ref<Visualization | null>(null);
 const likedHashes = ref(new Set<string>());
 const viewedHashes = ref(new Set<string>());
 const publishing = ref(false);
@@ -113,7 +113,7 @@ watch(
     () => gallery.resetAndFetch(),
 );
 
-function openModal(entry: GalleryEntry) {
+function openModal(entry: Visualization) {
     selectedEntry.value = entry;
     if (!viewedHashes.value.has(entry.slug)) {
         viewedHashes.value.add(entry.slug);

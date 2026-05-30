@@ -60,7 +60,7 @@ def _reset_rate_limiters():
 
     The limiters in ``api.services.rate_limiter`` are module-level singletons
     (the production single-replica posture, invariant 12). Direct-call endpoint
-    tests share that process state, so without a reset the write/like/admin
+    tests share that process state, so without a reset the write/admin
     budgets accumulate across tests and spuriously 429. Resetting per-test
     isolates them without weakening the production limits.
     """
@@ -68,7 +68,6 @@ def _reset_rate_limiters():
 
     for _name in (
         "login_limiter",
-        "like_limiter",
         "write_limiter",
         "admin_limiter",
         "compute_limiter",

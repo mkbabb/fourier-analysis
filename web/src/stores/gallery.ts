@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { GalleryEntry, GalleryTier, AdminStats, WorkspaceDraft } from "@/lib/types";
+import type { GalleryTier, AdminStats, WorkspaceDraft } from "@/lib/types";
 import type { Visibility, Visualization } from "@/lib/api";
 import * as api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
@@ -12,38 +12,21 @@ import { useToast } from "@/composables/useToast";
 // lifecycle. The image/contour asset FKs (`image_slug`, `contour_hash`) are
 // KEPT and rendered unchanged.
 //
-// The gallery presentation components consume the `GalleryEntry` view shape;
-// the store projects each `Visualization` onto it. Card identity (`:key`,
-// like/view/delete handlers) routes through `slug` — the single user-facing
-// handle (§1).
+// The gallery presentation components consume the converged `Visualization`
+// entity directly — no projection. Card identity (`:key`, like/view/delete
+// handlers) routes through `slug` — the single user-facing handle (§1); the
+// owner is `owner_slug`.
 
 /** The view-model's identity (the visualization slug). */
-function entrySlug(e: GalleryEntry): string {
+function entrySlug(e: Visualization): string {
     return e.slug;
-}
-
-/** Project a converged `Visualization` onto the gallery view shape. */
-function toGalleryEntry(v: Visualization): GalleryEntry {
-    return {
-        slug: v.slug,
-        image_slug: v.image_slug,
-        contour_hash: v.contour_hash,
-        user_slug: v.owner_slug,
-        tier: v.tier ?? "normal",
-        views: v.views ?? 0,
-        likes: v.likes ?? 0,
-        active_bases: v.active_bases ?? [],
-        n_harmonics: v.n_harmonics ?? 1,
-        created_at: v.created_at,
-        updated_at: v.updated_at,
-    };
 }
 
 export const useGalleryStore = defineStore("gallery", () => {
     const { toast } = useToast();
 
     // State
-    const entries = ref<GalleryEntry[]>([]);
+    const entries = ref<Visualization[]>([]);
     const loading = ref(false);
     const sort = ref<"newest" | "views" | "likes">("newest");
     const tierFilter = ref<"all" | "featured" | "saved" | "normal">("all");
@@ -84,7 +67,7 @@ export const useGalleryStore = defineStore("gallery", () => {
                 owner: ownerParam(),
             });
             for (const v of result.items) if (v.deleted_at == null) {
-                entries.value.push(toGalleryEntry(v));
+                entries.value.push(v);
             }
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
@@ -106,9 +89,7 @@ export const useGalleryStore = defineStore("gallery", () => {
                 sort: sort.value,
                 owner: ownerParam(),
             });
-            entries.value = result.items
-                .filter((v) => v.deleted_at == null)
-                .map(toGalleryEntry);
+            entries.value = result.items.filter((v) => v.deleted_at == null);
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
@@ -195,7 +176,7 @@ export const useGalleryStore = defineStore("gallery", () => {
         try {
             const { data, etag } = await api.restoreVisualization(slug);
             if (etag) etags.set(slug, etag);
-            if (data.visibility === "public") entries.value.unshift(toGalleryEntry(data));
+            if (data.visibility === "public") entries.value.unshift(data);
             toast("Restored", "success");
         } catch (e: any) {
             if (!api.isAbortError(e)) toast(e.message ?? "Failed to restore", "error");

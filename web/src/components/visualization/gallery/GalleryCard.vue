@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Button, Badge, Checkbox } from "@mkbabb/glass-ui";
-import type { GalleryEntry } from "@/lib/types";
+import type { Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
 import { VIZ_COLORS } from "@/lib/colors";
@@ -15,7 +15,7 @@ import {
 } from "lucide-vue-next";
 
 const props = defineProps<{
-    entry: GalleryEntry;
+    entry: Visualization;
     adminMode?: boolean;
     likedHashes?: Set<string>;
     selected?: boolean;

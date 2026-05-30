@@ -26,11 +26,6 @@ export interface EpicycleData {
     path: { x: number[]; y: number[] };
 }
 
-export interface ContourData {
-    n_contours: number;
-    contours: { x: number[]; y: number[]; n_points: number }[];
-}
-
 export interface ContourSettings {
     strategy: string;
     resize: number;
@@ -85,18 +80,6 @@ export interface ContourAsset {
     points: { x: number[]; y: number[] };
 }
 
-export interface Snapshot {
-    slug: string;
-    image_slug: string;
-    contour_hash: string;
-    contour_settings: ContourSettings;
-    animation_settings: AnimationSettings;
-    created_at: string;
-}
-
-export type NotationMode = "trig" | "exponential" | "polar";
-export type EquationTier = "symbolic" | "identified" | "spline";
-
 export interface WorkspaceDraft {
     imageSlug: string;
     contour: ContourAsset | null;
@@ -111,20 +94,6 @@ export interface WorkspaceDraft {
 // ── Gallery ──
 
 export type GalleryTier = "featured" | "saved" | "normal";
-
-export interface GalleryEntry {
-    slug: string;
-    image_slug: string;
-    contour_hash: string;
-    user_slug: string | null;
-    tier: GalleryTier;
-    views: number;
-    likes: number;
-    active_bases: string[];
-    n_harmonics: number;
-    created_at: string;
-    updated_at: string;
-}
 
 // ── Session/Auth ──
 
@@ -146,18 +115,6 @@ export interface AdminStats {
     total_views: number;
     total_likes: number;
     storage_bytes: number;
-}
-
-// ── Cursor Pagination ──
-
-export interface CursorInfo {
-    next_cursor: string | null;
-    has_more: boolean;
-}
-
-export interface GalleryCursorResponse {
-    items: GalleryEntry[];
-    cursor: CursorInfo;
 }
 
 // ── Admin User Management ──

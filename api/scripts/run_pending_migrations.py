@@ -46,7 +46,7 @@ import subprocess
 import sys
 import textwrap
 import traceback
-from datetime import datetime
+from datetime import UTC, datetime
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
@@ -66,7 +66,7 @@ def _deploy_run_id() -> str:
     """Best-effort identifier tying this run to a deploy + host."""
     sha = os.environ.get("DEPLOY_COMMIT_SHA", "unknown")
     host = socket.gethostname()
-    return f"{host}@{sha[:12]}@{datetime.utcnow().isoformat()}"
+    return f"{host}@{sha[:12]}@{datetime.now(tz=UTC).isoformat()}"
 
 
 async def _ensure_indexes(db: AsyncIOMotorDatabase) -> None:
@@ -89,7 +89,7 @@ async def _record_start(
         {"name": name, "version": version},
         {
             "$set": {
-                "started_at": datetime.utcnow(),
+                "started_at": datetime.now(tz=UTC),
                 "completed_at": None,
                 "deploy_run_id": run_id,
                 "result": "IN_PROGRESS",
@@ -105,7 +105,7 @@ async def _record_success(
 ) -> None:
     await db.migrations.update_one(
         {"name": name, "version": version},
-        {"$set": {"completed_at": datetime.utcnow(), "result": "SUCCESS"}},
+        {"$set": {"completed_at": datetime.now(tz=UTC), "result": "SUCCESS"}},
     )
 
 
@@ -116,7 +116,7 @@ async def _record_failed(
         {"name": name, "version": version},
         {
             "$set": {
-                "completed_at": datetime.utcnow(),
+                "completed_at": datetime.now(tz=UTC),
                 "result": "FAILED",
                 "error": error[:4096],  # truncate to keep the doc bounded
             }
