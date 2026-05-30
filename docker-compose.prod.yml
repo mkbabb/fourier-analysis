@@ -16,6 +16,19 @@ services:
       # the client validates the mongod server cert against this. Server-only
       # TLS: NO leaf cert is mounted here.
       - ./ssl/mongo-ca.pem:/etc/ssl/mongo-ca.pem:ro
+    # G.W7 (ε.2) — hardening floor. The backend is health-gated (deploy-hook
+    # auto-rolls-back a broken bring-up), so it carries the FULL floor: a
+    # read-only root FS with tmpfs for the only writable runtime path (/tmp,
+    # where UV_CACHE_DIR lives; /data/blobs is a rw volume, .venv is read-only),
+    # all Linux caps dropped (a Python/uvicorn app on :8000 needs none), and
+    # no-new-privileges to block setuid escalation.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     deploy:
       replicas: 1
       resources:
@@ -35,6 +48,12 @@ services:
         VITE_BASE_URL: ${VITE_BASE_URL:-/}
     ports: !reset []
     restart: unless-stopped
+    # G.W7 (ε.2) — no-new-privileges is universally safe. read_only + cap_drop
+    # are BOOKED (residual): this is an nginx-alpine SPA server that writes
+    # /var/cache/nginx + /var/run and binds :80 (needs NET_BIND_SERVICE) — the
+    # per-image tmpfs/cap tuning needs a staging test, not a blind prod gamble.
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -73,6 +92,11 @@ services:
               "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
               "--tlsAllowConnectionsWithoutCertificates",
               "--auth"]
+    # G.W7 (ε.2) — no-new-privileges is safe for the stateful DB. read_only is
+    # impossible (mongod writes /data/db) and cap_drop needs verification against
+    # mongod 8.0's runtime caps — BOOKED as a residual (staging test).
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD", "mongosh", "-u", "${MONGO_USER:-fourier-admin}", "-p", "${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}",
              "--authenticationDatabase", "admin",
@@ -101,6 +125,11 @@ services:
     depends_on: [backend, frontend]
     networks: [app-network]
     restart: unless-stopped
+    # G.W7 (ε.2) — no-new-privileges is safe. read_only + cap_drop are BOOKED:
+    # nginx writes /var/cache/nginx + /var/run and the master binds :80
+    # (NET_BIND_SERVICE); the per-image tmpfs/cap set needs a staging test.
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:

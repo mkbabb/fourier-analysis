@@ -1,0 +1,17 @@
+=== RECEIPT: stale host backups pruned at W7 (metadata only — hooks backup content NOT shown, it carries secrets) ===
+--- targets (name, size, sha256, mtime) ---
+/opt/deploy/hooks.json.f-w3b.bak.20260529-192303  849 bytes  2026-05-29 19:23:03.883482994 +0000
+/var/www/fourier-analysis/docker-compose.prod.yml.W1-pre  2184 bytes  2026-05-27 23:20:28.076231248 +0000
+b9fd9f4000cf37fd50a8cdc1d79c311b78a2eb21166075872f70ca6aa4484422  /opt/deploy/hooks.json.f-w3b.bak.20260529-192303
+67a3fa757d536bf9646e0145746fab4a20781cffdea1ac675bf3b45eeb26ea4c  /var/www/fourier-analysis/docker-compose.prod.yml.W1-pre
+--- confirm the .W1-pre is a stale compose backup (diff vs current, summary only) ---
+differs from current (stale pre-W1 copy)
+--- the live hooks.json is the source of truth (NOT the .bak); confirm it exists + is newer ---
+live hooks.json: 4259 bytes  2026-05-29 19:23:18.429269998 +0000
+--- confirm removed ---
+ls: cannot access '/opt/deploy/hooks.json.f-w3b.bak.20260529-192303': No such file or directory
+ls: cannot access '/var/www/fourier-analysis/docker-compose.prod.yml.W1-pre': No such file or directory
+--- host tree clean now? ---
+(empty above = clean)
+--- live hooks.json intact (source of truth, untouched) ---
+4259 bytes 2026-05-29 19:23:18.429269998 +0000

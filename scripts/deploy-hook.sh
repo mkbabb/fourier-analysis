@@ -30,6 +30,14 @@ set -euo pipefail
 readonly REPO_DIR="/var/www/fourier-analysis"
 readonly COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.prod.yml)
 
+# G.W7 (T3) — set when the pulled diff touched nginx/, so the bring-up
+# force-recreates nginx (see build_and_up). The nginx config is a single-file
+# bind-mount (:ro); `git reset` replaces it via atomic rename (new inode) but
+# the running container keeps the old inode, and `up -d` won't recreate a service
+# whose compose def is unchanged — so a config-only change is silently NOT
+# applied (found live at G.W3). force-recreate re-binds it.
+NGINX_CFG_CHANGED=0
+
 # The health-gate port is sourced from ${HTTP_PORT:-8100} — the SAME default the
 # compose nginx bind uses (docker-compose.prod.yml:72,
 # "127.0.0.1:${HTTP_PORT:-8100}:80") — so the gate and the bind cannot drift.
@@ -114,6 +122,17 @@ build_and_up() {
     "${COMPOSE[@]}" build --parallel
     log "bringing up (up -d)…"
     "${COMPOSE[@]}" up -d
+    # G.W7 (T3): a config-only nginx change is invisible to `up -d` (unchanged
+    # service def + stale single-file bind-mount inode). When the pulled diff
+    # touched nginx/, force-recreate nginx so it re-binds to the current config.
+    # Runs on BOTH the forward bring-up and the rollback bring-up (NGINX_CFG_CHANGED
+    # is true for either direction across the same nginx/ delta). The subsequent
+    # health gate then validates the new nginx config (inv-22 probe goes through
+    # nginx), so a broken config trips the rollback like any other bad bring-up.
+    if [[ "${NGINX_CFG_CHANGED}" == "1" ]]; then
+        log "nginx/ changed in this deploy — force-recreating nginx to re-bind the bind-mounted config"
+        "${COMPOSE[@]}" up -d --force-recreate nginx
+    fi
 }
 
 # ── The deploy body (runs under the flock) ───────────────────────────────────
@@ -139,6 +158,15 @@ deploy() {
     local new
     new="$(git rev-parse HEAD)"
     log "advancing ${prev} -> ${new}"
+
+    # 3b. G.W7 (T3) — did this delta touch the bind-mounted nginx config? If so
+    # the bring-up must force-recreate nginx (a plain `up -d` would leave the
+    # running container on the stale config inode). Computed BEFORE build so it
+    # governs both the forward and any rollback bring-up.
+    if git diff --name-only "${prev}" "${new}" | grep -q '^nginx/'; then
+        NGINX_CFG_CHANGED=1
+        log "nginx/ changed in ${prev}..${new} — nginx will be force-recreated on bring-up"
+    fi
 
     # 4. Build + up.
     build_and_up
