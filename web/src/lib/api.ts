@@ -13,82 +13,29 @@ import type {
     FlaggedCursorResponse,
     AuditListResponse,
     BatchResponse,
+    Visibility,
+    Visualization,
+    VisualizationCreate,
+    VisualizationPatch,
+    VisualizationListResponse,
+    WithETag,
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
 // ── Converged `visualization` entity (CRUD-CONTRACT §1–§5; SCHEMA.md §3) ──
 //
-// The single user-named noun. `slug` is the one user-facing identity (the URL
-// handle, per §1 single-slug rule); `content_hash` is a non-identity dedup
-// key. `image_slug` / `contour_hash` remain the IMAGE / CONTOUR asset FKs and
-// are loaded unchanged.
-
-export type Visibility = "draft" | "unlisted" | "public";
-
-export interface Visualization {
-    slug: string;
-    owner_slug: string;
-    visibility: Visibility;
-    content_hash: string; // dedup key, never identity (§1)
-    image_slug: string; // image asset FK — kept
-    contour_hash: string; // contour asset FK — kept
-    active_bases: string[];
-    n_harmonics: number;
-    title?: string | null;
-    description?: string | null;
-    tags?: string[];
-    palette_slug?: string | null;
-    views: number;
-    likes: number;
-    tier?: GalleryTier;
-    pinned?: boolean;
-    created_at: string;
-    updated_at: string;
-    deleted_at?: string | null;
-    contour_settings?: ContourSettings;
-    animation_settings?: AnimationSettings;
-}
-
-export interface VisualizationCreate {
-    slug?: string;
-    visibility?: Visibility;
-    image_slug: string;
-    contour_hash: string;
-    active_bases: string[];
-    n_harmonics: number;
-    contour_settings?: ContourSettings;
-    animation_settings?: AnimationSettings;
-    title?: string | null;
-    description?: string | null;
-    tags?: string[];
-    palette_slug?: string | null;
-}
-
-export interface VisualizationPatch {
-    visibility?: Visibility;
-    title?: string | null;
-    description?: string | null;
-    tags?: string[];
-    palette_slug?: string | null;
-}
-
-/** The cursor envelope returned by every list endpoint (CRUD-CONTRACT §6). */
-export interface VisualizationListResponse {
-    items: Visualization[];
-    next_cursor: string | null;
-    has_more: boolean;
-}
-
-/**
- * A read result paired with its strong-validator `ETag` (RFC 9110 §8.8). The
- * caller stashes `etag` and replays it as `If-Match` on the next PATCH/DELETE
- * (CRUD-CONTRACT §0 SOTA-2). `null` when the server omitted the header.
- */
-export interface WithETag<T> {
-    data: T;
-    etag: string | null;
-}
+// The contract types now live canonically in `./types` (inv-26: one source of
+// truth). They are re-exported here so the ~14 call sites importing them from
+// `@/lib/api` resolve unchanged.
+export type {
+    Visibility,
+    Visualization,
+    VisualizationCreate,
+    VisualizationPatch,
+    VisualizationListResponse,
+    WithETag,
+};
 
 // ── Session token management ──
 
