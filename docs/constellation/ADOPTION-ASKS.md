@@ -102,15 +102,18 @@ Acceptance shape = the observable evidence the maintainer's PR is complete. Prio
 
 **The named-residual stale-watch.** Each ask above is a **maintainer-owned named residual** entered into the F-close 30-day stale-watch (inherited from `E/FINAL.md §5`, re-triggered at F.W13). The watch's purpose is not to force execution — these are the maintainer's to schedule — but to keep them from silently rotting unbooked. At each 30-day review, an ask is either (a) closed (the maintainer's PR landed; acceptance green), (b) re-affirmed as open with an unchanged owner, or (c) reclassified (e.g. a priority change, or folded into a successor tranche).
 
+**Re-triggered at fourier-G thread ζ (G.W8, 2026-05-30).** The 30-day watch is re-stamped. One material change: **Ask 4's fourier portion is now LANDED** — G.W7 leveled fourier's `docker-compose.prod.yml` to the hardening floor (backend FULL: `read_only`+`tmpfs`+`cap_drop: ALL`+`no-new-privileges`, verified live via `docker inspect` + functional smoke; frontend/mongo/nginx `no-new-privileges` with `read_only`/`cap_drop` booked as per-image staging-test residuals). The other six asks remain maintainer-owned and OPEN. **New coordination note (G.ζ): the `api.color.babb.dev` inv-22 partial conformance** (serves only `/`→200; `/health`/`/docs`/`/openapi.json`→404) is a value.js-owned vhost item — see `INVARIANTS.md §2.7` for the honest `F-Inv 22*` scoping. It rides alongside Ask 5 (value.js deploy convergence) as a value.js maintainer concern; fourier holds no lever (inv-16).
+
 | Ask | Target repo(s) | Change (one line) | Priority | Owner | Stale-watch status |
 |---|---|---|---|---|---|
-| 1 | words, speedtest, csp-solver | adopt `deploy/templates/ci.yml` (no CI today) | P2 | each repo's maintainer | OPEN — booked F-close |
-| 2 | words, speedtest, csp-solver | adopt hardened `deploy-hook.sh` + per-repo direct `hooks.json` arm (retire dispatcher route; deletion gated on all four) | P1/P2 | each repo's maintainer | OPEN — booked F-close |
-| 3 | value.js (palette-api) | rsync deploy-dir → git checkout under canonical root, then adopt `deploy-hook.sh` (the N1 real fix; gating 4th migration) | P1 | value.js maintainer | OPEN — booked F-close |
-| 4 | words, speedtest, csp-solver, fourier | level up to `deploy/templates/docker-compose.hardening.yml` floor | P3 | each repo's maintainer | OPEN — booked F-close |
-| 5 | value.js, keyframes.js | converge GH-Pages→CF-CNAME to CF Pages per `deploy/cf/pages-deploy.sh` | P3 | each repo's maintainer | OPEN — booked F-close |
-| 6 | csp-solver | 1-line `app.include_router` — register missing solve/openapi/docs routes (N4) | P2 | csp-solver maintainer | OPEN — booked F-close |
-| 7 | words/floridify | Mongo-bind upstream hardening to internal-only (N7) | P2 | floridify maintainer | OPEN — booked F-close |
+| 1 | words, speedtest, csp-solver | adopt `deploy/templates/ci.yml` (no CI today) | P2 | each repo's maintainer | OPEN — re-affirmed G.W8 |
+| 2 | words, speedtest, csp-solver | adopt hardened `deploy-hook.sh` + per-repo direct `hooks.json` arm (retire dispatcher route; deletion gated on all four) | P1/P2 | each repo's maintainer | OPEN — re-affirmed G.W8 |
+| 3 | value.js (palette-api) | rsync deploy-dir → git checkout under canonical root, then adopt `deploy-hook.sh` (the N1 real fix; gating 4th migration) | P1 | value.js maintainer | OPEN — re-affirmed G.W8 |
+| 4 | words, speedtest, csp-solver, ~~fourier~~ | level up to `deploy/templates/docker-compose.hardening.yml` floor | P3 | each repo's maintainer | **fourier portion LANDED G.W7** (backend full floor live; others no-new-priv + booked); 3 external repos OPEN — re-affirmed G.W8 |
+| 5 | value.js, keyframes.js | converge GH-Pages→CF-CNAME to CF Pages per `deploy/cf/pages-deploy.sh` | P3 | each repo's maintainer | OPEN — re-affirmed G.W8 |
+| 6 | csp-solver | 1-line `app.include_router` — register missing solve/openapi/docs routes (N4) | P2 | csp-solver maintainer | OPEN — re-affirmed G.W8 |
+| 7 | words/floridify | Mongo-bind upstream hardening to internal-only (N7) | P2 | floridify maintainer | OPEN — re-affirmed G.W8 |
+| inv-22-color | value.js (palette-api vhost) | bring `api.color` to the 4-endpoint vhost contract (`/health`/`/docs`/`/openapi.json` currently 404) — honest `F-Inv 22*` scope | P3 | value.js maintainer | OPEN — booked G.W8 (new) |
 
 ## §5 — Provenance + boundary attestation
 
