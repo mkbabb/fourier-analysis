@@ -36,7 +36,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from api.services.database import get_db
@@ -102,7 +102,7 @@ async def store(
                     "label": label,
                     "contour_hash": contour_hash,
                     "params": params,
-                    "created_at": datetime.utcnow(),
+                    "created_at": datetime.now(tz=UTC),
                 }
             },
             upsert=True,
