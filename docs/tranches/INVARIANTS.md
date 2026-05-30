@@ -58,6 +58,8 @@ Per `docs/precepts/glossary/meta-terms.md §"Tranche-local invariants"`, the can
 | E-Inv (by name) | — | `E.md §2` | Auto-migration discipline · Cross-repo source boundary (E bound *by name*; "Cross-repo source boundary" is the load-bearing `inv-16`-adjacent boundary often cited as `inv-16` in E/F) |
 | F-Inv 21* | inv-21 *(F-scope)* | `F.md §2` | post-cohort-hygiene-bounded *(F's own additive; see §2 note on the F-local re-use of the integer 21)* |
 | F-Inv 22* | inv-22 *(F-scope)* | `F.md §2` | vhost-correctness-symmetric *(F's own additive; see §2)* |
+| G-Inv 25 | inv-25 | `G.md §2` | deploy-of-record-automated — a "LIVE in prod" claim cites a `deploy_run_id` from the standing AUTOMATED path (webhook→deploy-hook for the API; the `deploy-pages` GH Actions run + CF deployment ID for the SPA), never a manual SSH/`wrangler` one-off |
+| G-Inv 26 | inv-26 | `G.md §2` | single-contract-source — the api↔web type boundary has exactly ONE source of truth (strengthens inv-11 at the codegen seam); no orphaned generated schema, no shadow inline decls |
 
 ## §2 — The canonical resolution rule
 
@@ -70,6 +72,8 @@ Per `docs/precepts/glossary/meta-terms.md §"Tranche-local invariants"`, the can
 4. **F's `inv-21` / `inv-22` are F-local additives** (`F-Inv 21*` post-cohort-hygiene-bounded; `F-Inv 22*` vhost-correctness-symmetric). The asterisk marks that F re-used the integers 21/22, which B already spent on B-Inv 21 (slug-RNG) / B-Inv 22 (error contract). As with the C collision, F binds these *by name* in all running prose, and `F.md §2` is their authoritative definition. No renumbering: F's invariants are unambiguous in context (post-cohort-hygiene vs slug-RNG share no surface), and renumbering F to 25/26 would orphan the many `inv-21`/`inv-22` cross-references already in `F.md` and `F/PROGRESS.md`.
 
 5. **D and E added invariants by name only** (no integer), precisely to side-step the collision while it stood open. Those bindings remain by-name; this ledger records them in §1 for completeness and does not retro-assign integers (doing so would invent numbers that no charter ever declared).
+
+6. **G's `inv-25` / `inv-26` are clean fresh integers** — no prime, no asterisk. Authored after this ledger discharged C9, G deliberately continued the flat sequence at the next-free integers (B spent 1–24; C's primes and F's asterisks re-used 18–22 but invented no new integer beyond 24), so 25/26 collide with nothing. `inv-25` (deploy-of-record-automated) and `inv-26` (single-contract-source) bind by integer AND name with no ambiguity; `G.md §2` is their authoritative definition. This is the numbering hygiene the ledger prescribes — G is the first post-C9 tranche and models it.
 
 **Net rule for a reader encountering a bare `inv-N`:** read N against the A→B flat sequence (§1) unless the surrounding prose appends a C-era descriptive phrase (delete-coupling / TLS / slug-convergence → C-Inv ′ band) or sits inside an F charter discussing hygiene/vhost scope (→ F-Inv * band). The descriptive phrase is always load-bearing for any N in the 18–22 contested band.
 

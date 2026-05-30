@@ -1,0 +1,78 @@
+# deploy-pages.yml — G.α — the SPA's deploy-of-record (inv-25).
+#
+# The constellation auto-deploy (push → deploy.babb.dev/hooks/fourier-analysis →
+# host scripts/deploy-hook.sh) ships ONLY the API. The Cloudflare-Pages SPA at
+# fourier.babb.dev has its OWN standing automated path: THIS workflow. It runs on
+# every push to master that touches `web/**`, type-checks + builds, then ships via
+# `scripts/pages-deploy.sh` (the spine recipe, fourier-tuned). The job surfaces the
+# Cloudflare deployment ID as the inv-25 deploy_run_id — a "LIVE in prod" claim
+# cites THIS automated id, never a manual `wrangler` one-off.
+#
+# WHY a path filter: backend-only waves (β.2 nginx/api, ε deploy) must NOT trigger
+# a pointless SPA redeploy. A change under web/** (or to this workflow / the deploy
+# script) is the only thing that re-ships the SPA.
+#
+# SECRET DISCIPLINE: CLOUDFLARE_API_TOKEN (Pages:Edit + Read) + CLOUDFLARE_ACCOUNT_ID
+# are GH Actions repo secrets, consumed via ${{ secrets.* }}, never inlined/echoed.
+# The repo is public, so the deploy job is gated to push-to-master events only
+# (fork PRs never receive secrets, and never run this job).
+
+name: deploy-pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "web/**"
+      - "scripts/pages-deploy.sh"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch: # manual re-ship (e.g. to re-verify δ) from the Actions tab
+
+concurrency:
+  group: deploy-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: build + ship SPA → Cloudflare Pages
+    runs-on: ubuntu-latest
+    # Belt-and-braces: only the maintainer's master pushes (and manual dispatch)
+    # ever reach the deploy; a public-repo fork PR cannot.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/master')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web deps
+        working-directory: web
+        run: npm ci
+
+      # Type-check gate: a broken frontend must NOT reach prod. (The full pytest /
+      # e2e suites run in ci.yml; this workflow gates the SPA on its own build.)
+      - name: Type-check
+        working-directory: web
+        run: npx vue-tsc -b --force
+
+      - name: Deploy to Cloudflare Pages (build + wrangler)
+        id: pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bash scripts/pages-deploy.sh
+
+      - name: Echo deploy-of-record id (inv-25)
+        if: steps.pages.outputs.cf_deployment_id != ''
+        run: |
+          echo "SPA deploy-of-record (inv-25 deploy_run_id):"
+          echo "  GH Actions run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "  CF deployment id: ${{ steps.pages.outputs.cf_deployment_id }}"
