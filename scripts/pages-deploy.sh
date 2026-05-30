@@ -65,15 +65,21 @@ if ! "${WRANGLER[@]}" pages project list 2>/dev/null \
 fi
 
 # ── 2. Capture the current live deployment as the rollback target ──────────────
+# Best-effort: needs `jq`. CI runners often lack it (the deploy host does too), so
+# this degrades to "see the CF dashboard" rather than failing — the rollback path
+# is always available from the dashboard / `wrangler pages deployment list`.
 log "Recording current live deployment as rollback target..."
-ROLLBACK_ID="$("${WRANGLER[@]}" pages deployment list \
-    --project-name "$PAGES_PROJECT" --json 2>/dev/null \
-    | jq -r '.[0].id // empty' 2>/dev/null || true)"
+ROLLBACK_ID=""
+if command -v jq >/dev/null 2>&1; then
+    ROLLBACK_ID="$("${WRANGLER[@]}" pages deployment list \
+        --project-name "$PAGES_PROJECT" --json 2>/dev/null \
+        | jq -r '.[0].id // empty' 2>/dev/null || true)"
+fi
 if [ -n "$ROLLBACK_ID" ]; then
     log "Rollback target: $ROLLBACK_ID"
     log "  recover with: npx wrangler pages deployment rollback $ROLLBACK_ID --project-name $PAGES_PROJECT"
 else
-    err "Could not capture rollback target (first deploy, or list failed) — read it from the CF dashboard if needed."
+    log "Rollback target not captured (no jq on runner) — prior live deployment is in the CF dashboard / \`wrangler pages deployment list\`."
 fi
 
 # ── 3. Build the SPA (in web/) ────────────────────────────────────────────────
@@ -92,19 +98,21 @@ if [ -z "${sanitized_msg:-}" ]; then
 fi
 [ -z "$sanitized_msg" ] && sanitized_msg="$raw_msg"
 
-# ── 5. Deploy ─────────────────────────────────────────────────────────────────
+# ── 5. Deploy (capture stdout so the deployment URL is parseable, jq-free) ─────
+# wrangler prints "Deployment complete! Take a peek over at https://<id>.<proj>.pages.dev".
+# We tee to the live log AND capture, then parse the id from that URL — the host
+# runner has no `jq`, so a `pages deployment list --json | jq` capture fails.
 log "Deploying $BUILD_DIR → Cloudflare Pages project '$PAGES_PROJECT'..."
-"${WRANGLER[@]}" pages deploy "$BUILD_DIR" \
+deploy_out="$("${WRANGLER[@]}" pages deploy "$BUILD_DIR" \
     --project-name "$PAGES_PROJECT" \
     --branch "$PAGES_BRANCH" \
     --commit-dirty=true \
-    --commit-message "$sanitized_msg"
+    --commit-message "$sanitized_msg" 2>&1 | tee /dev/stderr)"
 
-# ── 6. Capture the NEW live deployment ID — the inv-25 deploy_run_id ───────────
-DEPLOY_ID="$("${WRANGLER[@]}" pages deployment list \
-    --project-name "$PAGES_PROJECT" --json 2>/dev/null \
-    | jq -r '.[0].id // empty' 2>/dev/null || true)"
-log "Deployed: https://${PAGES_PROJECT}.pages.dev/ (custom domain fourier.babb.dev)"
+# ── 6. Capture the NEW deployment ID — the inv-25 deploy_run_id ────────────────
+DEPLOY_URL="$(printf '%s\n' "$deploy_out" | grep -oE 'https://[a-z0-9]+\.[a-z0-9-]+\.pages\.dev' | head -1 || true)"
+DEPLOY_ID="$(printf '%s' "$DEPLOY_URL" | sed -E 's#https://([a-z0-9]+)\..*#\1#' || true)"
+log "Deployed: ${DEPLOY_URL:-https://${PAGES_PROJECT}.pages.dev/} (custom domain fourier.babb.dev)"
 if [ -n "$DEPLOY_ID" ]; then
     log "CF deployment ID (inv-25 deploy_run_id): $DEPLOY_ID"
     # Surface to GH Actions: job output + step summary (never the token, only the id).
