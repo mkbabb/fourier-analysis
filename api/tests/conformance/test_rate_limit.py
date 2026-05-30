@@ -27,10 +27,19 @@ class _StubClient:
 
 
 class _StubRequest:
-    def __init__(self, path: str = "/api/visualizations", method: str = "POST"):
+    def __init__(
+        self,
+        path: str = "/api/visualizations",
+        method: str = "POST",
+        x_real_ip: str | None = None,
+    ):
         self.url = _StubURL(path)
         self.client = _StubClient()
         self.method = method
+        # G.β.2 — the middleware now keys identity via get_client_ip, which reads
+        # X-Real-IP (set by nginx real_ip), falling back to request.client.host.
+        # No X-Real-IP → all stubs share the 127.0.0.1 fallback (single client).
+        self.headers = {"X-Real-IP": x_real_ip} if x_real_ip else {}
 
 
 def _dispatch(request: _StubRequest, response: Response) -> Response:
@@ -90,3 +99,22 @@ def test_reads_ride_generous_budget():
     rl.read_limiter._buckets.clear()
     out = _dispatch(_StubRequest("/api/visualizations", "GET"), Response(status_code=200))
     assert int(out.headers["RateLimit-Limit"]) == rl.read_limiter.max_requests
+
+
+def test_per_client_budget_independent():
+    """G.β.2 — distinct real clients (X-Real-IP) get INDEPENDENT budgets.
+
+    This is the convergence's binding property: pre-β.2 every client keyed on the
+    shared proxy gateway (one global bucket); now each real client (resolved by
+    nginx real_ip → X-Real-IP → get_client_ip) has its own bucket.
+    """
+    rl.read_limiter._buckets.clear()
+    a = _dispatch(_StubRequest("/api/visualizations", "GET", x_real_ip="1.1.1.1"), Response(status_code=200))
+    b = _dispatch(_StubRequest("/api/visualizations", "GET", x_real_ip="2.2.2.2"), Response(status_code=200))
+    # Two distinct clients each spend exactly one hit → identical remaining, and
+    # they are tracked under different hashed keys (independent buckets).
+    assert int(a.headers["RateLimit-Remaining"]) == int(b.headers["RateLimit-Remaining"])
+    assert int(a.headers["RateLimit-Remaining"]) == rl.read_limiter.max_requests - 1
+    assert hash_ip("1.1.1.1") in rl.read_limiter._buckets
+    assert hash_ip("2.2.2.2") in rl.read_limiter._buckets
+    assert hash_ip("1.1.1.1") != hash_ip("2.2.2.2")

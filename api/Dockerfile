@@ -30,4 +30,8 @@ RUN mkdir -p /data/blobs && chown -R app:app /data
 ENV UV_CACHE_DIR=/tmp/uv-cache
 USER app
 ENV WORKERS=4
-CMD ["sh", "-c", "uv run --no-sync uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers ${WORKERS} --proxy-headers --forwarded-allow-ips '172.16.0.0/12,10.0.0.0/8,192.168.0.0/16'"]
+# G.β.2: NO uvicorn --proxy-headers. nginx `real_ip` is the SOLE client-IP
+# rewriter (one trust boundary, not two): it resolves the real client through the
+# Apache→nginx XFF chain and stamps X-Real-IP, which get_client_ip reads. A second
+# uvicorn-side XFF rewriter would re-introduce the two-identity ambiguity β.2 removes.
+CMD ["sh", "-c", "uv run --no-sync uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers ${WORKERS}"]

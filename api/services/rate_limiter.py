@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import math
 import time
 from collections import OrderedDict
@@ -12,18 +11,15 @@ from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.config import settings
+from api.dependencies import get_client_ip, hash_ip
 from api.lib.crud.errors import rate_limited
 
-# ---------------------------------------------------------------------------
-# IP hashing helper
-# ---------------------------------------------------------------------------
+# G.β.2 — one client identity. ``get_client_ip`` + ``hash_ip`` are the canonical
+# resolver/hasher (``api.dependencies``); imported (and re-exported for the
+# existing ``from api.services.rate_limiter import hash_ip`` call sites) so the
+# limiter keys on the SAME real client every other forensic surface does.
 
 MAX_ENTRIES = 50_000
-
-
-def hash_ip(ip: str) -> str:
-    """Return the SHA-256 hex digest of a raw IP string."""
-    return hashlib.sha256(ip.encode()).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -139,18 +135,21 @@ class SlidingWindowLimiter:
 # Read budget for GET/HEAD: high-volume browsing must not be throttled at the
 # tight write budget (10/min). value.js parity: readLimiter ≫ writeLimiter.
 #
-# DEPLOYMENT NOTE (F.W1): behind the live 2-hop proxy chain (host Apache →
-# docker ``nginx`` → backend), ``get_client_ip`` currently resolves to the
-# nginx-seen proxy address, so every client shares ONE read bucket — the budget
-# behaves as a GLOBAL aggregate cap, not per-real-client. 1200/min ≈ 20 r/s
-# aggregate keeps the bucket comfortably below the nginx ``api_general`` edge
-# guard (30 r/s) so this layer governs the honest RFC 9239 RateLimit-* headers
-# without ever denying legitimate aggregate traffic. Resolving the REAL client
-# IP through the chain (nginx ``real_ip`` + an XFF-hop-aware resolver, verified
-# against the host Apache XFF behaviour) is a named residual — it makes this a
-# true per-client budget; until then the generous global headroom is the safe,
-# honest posture.
-read_limiter = SlidingWindowLimiter(max_requests=1200, window_seconds=60)
+# G.β.2 — this is now a TRUE PER-CLIENT budget. nginx ``real_ip`` resolves the
+# real client through the host-Apache→nginx chain and stamps ``X-Real-IP``, which
+# ``get_client_ip`` reads; the limiter keys on that, not the shared proxy address.
+# 180/min sizes the worst-case legitimate session: the gallery render fans out to
+# ~21 GETs (1 list + ≤20 thumbnails) and a two-page scroll + a couple of card
+# modals reaches ~60–80 GET/min — 180 clears that with >2× headroom while still
+# being a real cap a scraping bot cannot dodge (it retires the old 1200/min
+# global-headroom workaround that masked the shared-bucket defect).
+#
+# HONEST CAVEAT (booked, not a blocker): the limiter is per-PROCESS in-memory and
+# uvicorn runs ``WORKERS=4``, so the effective ceiling is up to ~4× this number
+# across workers. True single-bucket enforcement needs a shared store (Redis) or
+# ``WORKERS=1``; named as the remaining one-identity residual so "per-client" stays
+# honest. The nginx ``api_general`` edge (30 r/s) is the real hard backstop.
+read_limiter = SlidingWindowLimiter(max_requests=180, window_seconds=60)
 login_limiter = SlidingWindowLimiter(max_requests=5, window_seconds=60)
 like_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
 write_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
@@ -224,7 +223,10 @@ class RateLimitHeaderMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         limiter = _limiter_for_path(request.url.path, request.method)
-        client_ip = request.client.host if request.client else "unknown"
+        # G.β.2 — the ONE client identity (nginx real_ip → X-Real-IP → get_client_ip),
+        # the same real client every forensic/audit surface keys on. Was raw
+        # request.client.host (the proxy gateway → one shared global bucket).
+        client_ip = get_client_ip(request)
         hashed = hash_ip(client_ip)
 
         try:

@@ -180,10 +180,15 @@ async def _backfill_image_bounds(db: Any, contour_doc: dict[str, Any]) -> dict[s
 
 
 def get_client_ip(request: Request) -> str:
-    """Extract client IP from X-Forwarded-For or request.client."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[-1].strip()
+    """The real client IP behind the host-Apache → docker-nginx chain.
+
+    nginx ``real_ip`` resolves the true client (recursive XFF, trusting only the
+    docker bridge gateway) and stamps it as ``X-Real-IP`` — the single trusted
+    source of client identity (G.β.2 / inv-11). The raw ``X-Forwarded-For`` is
+    deliberately NOT consulted: its rightmost hop is the nginx gateway (not the
+    client) and its leftmost hops are client-spoofable, so reading it gave every
+    caller the gateway address (one shared bucket). Falls back to the connection
+    peer for direct/in-cluster calls with no proxy in front."""
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip.strip()
