@@ -43,9 +43,10 @@ jobs:
     # ever reach the deploy; a public-repo fork PR cannot.
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/master')
     steps:
+      # NO submodules: the `docs/precepts` submodule (private mkbabb/precepts) is
+      # docs-only and inaccessible to the Actions token; the SPA build never reads
+      # it. Fetching it was the chronic that kept every CI/deploy run red.
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: actions/setup-node@v4
         with:

@@ -48,9 +48,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
+      # NO submodules: `docs/precepts` (private mkbabb/precepts) is docs-only,
+      # inaccessible to the Actions token, and read by no test/build — fetching it
+      # was the chronic that kept every CI run red.
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up uv
         uses: astral-sh/setup-uv@v3
         with:
@@ -70,9 +71,10 @@ jobs:
     name: web (vue-tsc + vite build)
     runs-on: ubuntu-latest
     steps:
+      # NO submodules: `docs/precepts` (private mkbabb/precepts) is docs-only,
+      # inaccessible to the Actions token, and read by no test/build — fetching it
+      # was the chronic that kept every CI run red.
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -102,9 +104,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
+      # NO submodules: `docs/precepts` (private mkbabb/precepts) is docs-only,
+      # inaccessible to the Actions token, and read by no test/build — fetching it
+      # was the chronic that kept every CI run red.
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up uv
         uses: astral-sh/setup-uv@v3
         with:
