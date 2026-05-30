@@ -54,6 +54,7 @@ scripts/*
 !scripts/dev.sh
 !scripts/e2e.sh
 !scripts/deploy-hook.sh
+!scripts/pages-deploy.sh
 !scripts/dns-cf-sync.sh
 !scripts/gen-mongo-certs.sh
 !scripts/conformance/
