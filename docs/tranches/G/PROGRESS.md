@@ -25,7 +25,7 @@ Every wave's row carries (a) a status word, (b) a close timestamp, (c) a notes c
 | W6 — G.ε.1 secret-model + deploy CI | **CLOSED** | 2026-05-30 | `waves/W6.md` (deploy-repo `26e9160`). Secret-model lie reconciled: `host/render-hooks.sh` (envsubst, fail-loud, atomic 0600) + `secrets.env.example` + gitignore; corrected the false `${HMAC}`-interp docs; rewrote hmac-rotation.md executable. Deploy self-CI (shellcheck+bash -n+yamllint); fixed SC2034 in dispatch.sh. No committed secret |
 | W7 — G.ε.2 hook convergence + hardening + hygiene | **CLOSED** | 2026-05-30 | `waves/W7.md`. T3: deploy-hook force-recreates nginx on an nginx/ delta (W3 gap) + backported parameterized to the template (deploy `a7b58ab`). Compose: backend FULL floor (read_only+cap_drop ALL+no-new-priv+tmpfs, verified live + functional), others no-new-priv (read_only/cap_drop booked). Host hygiene: 2 stale backups pruned (receipt). Hardened backend deployed GREEN (host `e9faab6`) |
 | W8 — G.ζ honesty + chronic + coordination | **CLOSED** | 2026-05-30 | `waves/W8.md`. inv-22 reconciled honestly (INVARIANTS §2.7: fourier-enforced + gate-co-enforced; color partial /→200 only, value.js-owned, booked); C1/C5/C6 STAYS-OUT re-affirmed with gating predicates (not a 7th silent defer); E2 stays out (chromium suffices; matrix triples CI) w/ rationale; ADOPTION-ASKS re-stamped — Ask 4 fourier portion LANDED, new inv-22-color row. inv-16 held |
-| W9 — Close | provisional | — | reconcile PROGRESS; `FINAL.md` (automated `deploy_run_id`); CANONICAL-ORDERING → ordering ι′ |
+| W9 — Close | **CLOSED** | 2026-05-30 | `FINAL.md` written (cites automated deploy_run_id for BOTH API + SPA); PROGRESS reconciled; CANONICAL-ORDERING §16.1 → G CLOSED. Gates: pytest 132/83, vue-tsc+build green, T7 12/12, δ prod Lighthouse 95/100/100, β.2 per-client live, backend hardening live |
 
 ## Log
 
@@ -53,3 +53,17 @@ Six parallel READ-ONLY Agent lanes ran (GA1-GA6 + SYNTHESIS at `docs/audits/runs
 ### Next action
 
 Await user authorization for **G.W0** (or W1 directly). This was tranche development only — no implementation ran; the 6 lanes were READ-ONLY. At authorization, W1 (α — ship δ to prod for real + inv-25) is the top-priority correctness fix.
+
+### 2026-05-30 — tranche EXECUTED + CLOSED GREEN
+
+Authorized by the user ("Begin and continue the current tranche… orchestration and deep parallelization… NO quick solutions… idiomatic, gestalt"). Executed W0→W9 in one session, research-first (W0→Wα→Wχ→implementation). 8 implementation waves closed; **all three F overstatements corrected at root**:
+
+1. **δ LIVE** — wired the SPA's standing automated path (`deploy-pages.yml` + `scripts/pages-deploy.sh`); inv-25; prod Lighthouse 95/100/100, 0 third-party origins.
+2. **β.2 one-IP-identity** — nginx `real_ip` + `get_client_ip` convergence; budget 1200→180 per-client; spoof-proven LIVE.
+3. **inv-22 honestly scoped** (INVARIANTS §2.7).
+
+Plus: inv-26 one contract source (deleted the unused 65 KB codegen); 3→0 LCP third-party origins; legacy excised; deploy spine completed (secret-model reconciled, self-CI, deploy-hook nginx-recreate + template backport, backend hardening floor live, host hygiene).
+
+**Chronic discharged in-flight**: every CI run had been RED for ~months (`submodules: recursive` couldn't clone the private docs-only `docs/precepts`) — removed from CI + deploy workflows. **Operational lesson captured**: a single-file nginx bind-mount keeps a stale inode after git's atomic-rename, so `up -d` never applies config changes — the deploy-hook now force-recreates nginx on an `nginx/` delta.
+
+fourier HEAD `de9a078` (+ this close); deploy-repo `a7b58ab`. A–G all closed. No fourier tranche open.

@@ -619,4 +619,15 @@ End of CANONICAL-ORDERING §15 — ordering θ′.
 
 G is single-repo, inv-21-bounded; awaits user authorization for G.W0.
 
-End of CANONICAL-ORDERING §16 — ordering ι′.
+### §16.1 — G CLOSED GREEN 2026-05-30 (executed)
+
+**fourier-G executed + CLOSED GREEN 2026-05-30** — fourier HEAD `de9a078` (+ W9 close); deploy-repo HEAD `a7b58ab`. `docs/tranches/G/FINAL.md` is the close ledger. All 8 implementation waves (W0–W8) closed; research-first discipline held (W0→Wα→Wχ before implementation).
+
+- **The three overstatements corrected at root**: (1) **δ now LIVE in prod** via a standing AUTOMATED path — `deploy-pages.yml` + `scripts/pages-deploy.sh`; inv-25 authored, SPA `deploy_run_id` = GH run `26695021489` → CF deploy `135ab532`. Prod Lighthouse **95/100/100**, 0 third-party origins. (2) **β.2 one-IP-identity** — nginx `real_ip` + `get_client_ip` convergence, dropped uvicorn `--proxy-headers`, budget 1200→180 per-client, spoof-proven LIVE (the residual was a convergence, not a future wave). (3) **inv-22 honestly scoped** (`INVARIANTS §2.7`).
+- **Transpositions**: one api↔web contract source (inv-26; deleted the unused 65 KB codegen); 3→0 LCP third-party origins (self-host fonts + KaTeX); legacy excised.
+- **Deploy spine completed**: secret-model lie reconciled (executable `render-hooks.sh`); deploy-repo self-CI; deploy-hook nginx-recreate (+ parameterized template backport); backend hardening floor LIVE; host backups pruned.
+- **Two new invariants live**: inv-25 (deploy-of-record-automated) + inv-26 (single-contract-source). Gates: pytest 132/83; vue-tsc+build green; T7 12/12; inv-25 cited for BOTH surfaces.
+
+**Critical path after ι′**: **No fourier tranche open** — A–G all closed. Forward work is maintainer-owned coordination (the 6 remaining adoption asks + dispatcher-retirement gate + api.color inv-22, re-stale-watched at G.W8) and named residuals (WORKERS=4 shared-bucket; frontend/mongo/nginx read_only floor; CSP bonus; equation-domain 4th hand-type island) — none under fourier's unilateral control or gating. value.js-J on its own driver.
+
+End of CANONICAL-ORDERING §16 — ordering ι′ (G CLOSED).
