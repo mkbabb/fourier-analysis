@@ -1,0 +1,77 @@
+/* G.δ.W5 — self-hosted webfonts (same-origin, kills the three render-blocking
+   third-party origins that previously served the CM Serif, Fraunces, and Fira
+   Code faces). Faces are vendored under /public/fonts/** and copied verbatim
+   into the build.
+
+   - Computer Modern Serif (the `--font-sans` body face) — transcribed from
+     aaaakshat/cm-web-fonts @333f55e font/Serif/cmun-serif.css. Upstream ships
+     only `woff` for these faces (no woff2), so we vendor `woff`.
+   - Fraunces (display) + Fira Code (mono) — transcribed from the Google Fonts
+     css2 responses (latin subset, woff2). `unicode-range` preserved so the
+     browser only fetches a face when latin glyphs are actually drawn. */
+
+/* ── Computer Modern Serif ───────────────────────────────────────────── */
+@font-face {
+    font-family: "Computer Modern Serif";
+    src: url("/fonts/Serif/cmunrm.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Computer Modern Serif";
+    src: url("/fonts/Serif/cmunbx.woff") format("woff");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Computer Modern Serif";
+    src: url("/fonts/Serif/cmunti.woff") format("woff");
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Computer Modern Serif";
+    src: url("/fonts/Serif/cmunbi.woff") format("woff");
+    font-weight: bold;
+    font-style: italic;
+    font-display: swap;
+}
+
+/* ── Fraunces (variable, latin) ──────────────────────────────────────── */
+@font-face {
+    font-family: "Fraunces";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/fonts/fraunces/fraunces-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+        U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+        U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Fraunces";
+    font-style: italic;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/fonts/fraunces/fraunces-italic-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+        U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+        U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── Fira Code (mono, latin) ─────────────────────────────────────────── */
+/* Google serves an identical latin subset file across weights 300–700, so a
+   single face declared over the weight range covers every used weight. */
+@font-face {
+    font-family: "Fira Code";
+    font-style: normal;
+    font-weight: 300 700;
+    font-display: swap;
+    src: url("/fonts/fira-code/fira-code-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+        U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+        U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
