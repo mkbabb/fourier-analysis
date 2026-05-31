@@ -631,3 +631,22 @@ G is single-repo, inv-21-bounded; awaits user authorization for G.W0.
 **Critical path after ι′**: **No fourier tranche open** — A–G all closed. Forward work is maintainer-owned coordination (the 6 remaining adoption asks + dispatcher-retirement gate + api.color inv-22, re-stale-watched at G.W8) and named residuals (WORKERS=4 shared-bucket; frontend/mongo/nginx read_only floor; CSP bonus; equation-domain 4th hand-type island) — none under fourier's unilateral control or gating. value.js-J on its own driver.
 
 End of CANONICAL-ORDERING §16 — ordering ι′ (G CLOSED).
+
+## §17 — Ordering κ′ (2026-05-31 post-G-re-audit, H AUTHORED — provisional)
+
+**fourier-H AUTHORED 2026-05-31** (development only; not executed) — `docs/tranches/H/H.md`, substrate `docs/audits/runs/2026-05-31-H-audit/` (HA1-HA6 + SYNTHESIS). H is the **green-means-green + single-replica-elegance + constellation-perfection tranche** + the correction of the one overstatement + one structural defect the 6-lane H-audit caught in G's close (which itself SURVIVES gate-falsification on its load-bearing claims per HA1/HA3).
+
+**Why H supersedes the §16.1 "no fourier tranche open" posture**: the re-audit found G closed **labeled GREEN while its CI was RED on every commit** (the `e2e` Playwright gate has been broken since before F — a dual `input[type=file]` strict-mode locator violation — and G's own W1 submodule-checkout fix merely *unmasked* it; G did not cause it). Worse, the **deploy-of-record is decoupled from CI**: deploy-pages/webhook shipped G to prod while the same-SHA CI failed. That is the inv-25 honesty shape (claim "verified" against a red surface; ship un-verified) applied to test + deploy-gate signal — a live honesty gap, not a residual, and it is H.α (top priority). The user additionally directed: **"perfect the above"** — the constellation's CI is broadly red from one un-propagated dependency migration (`163ca47` vendor-seam→`^published`: value.js→keyframes→glass-ui), with three repos having no CI at all.
+
+**Three new invariants**: inv-27 (green-means-green — a "tests/CI pass" claim cites a green run id covering EVERY job); inv-28 (verified-deploy-of-record — the deploy path ships only green-CI SHAs; composes with inv-25); inv-16′ (authorized-cross-repo-sweep — cross-repo writes only under an explicit, named, ledgered, per-repo-green-CI-gated sweep).
+
+**Scope correction (HA2/HA6)**: **speedtest = `speedtest.friday.institute`**, a SEPARATE suite — NOT a babb.dev app. `speedtest.babb.dev`→404 is EXPECTED; all prior "speedtest.babb.dev down / :8140 vhost" framing is a category error to retire. speedtest retains a babb.dev *deploy webhook arm* only.
+
+**Critical path at κ′**:
+- **fourier**: H.W1 (e2e repair → fourier CI actually green + inv-27) is the single most-blocking honesty move — until it lands, "green" is a claim not a fact. Then inv-28 (W2), WORKERS=1 (W3), hardening+CSP (W4), contract honesty (W5), the inv-16′ constellation sweep (W6/W7), spine application (W8).
+- **constellation**: the CI cascade (value.js→keyframes→glass-ui) + the no-CI repos + the api.color/sudoku route gaps + words are an **authorized cross-repo sweep under inv-16′** (the user owns all `mkbabb/*` and directed "perfect the above") — each its own commit, booked to an ask, per-repo green-CI-gated.
+- **value.js / glass-ui carries**: C1/C5/C6 STAY OUT (owning-repo-tranche-gated, not CI-swept); value.js-J (E4–E7) on its own driver.
+
+H is single-repo-rooted with an authorized cross-repo sweep, inv-21-bounded; awaits user authorization for H.W0.
+
+End of CANONICAL-ORDERING §17 — ordering κ′.
