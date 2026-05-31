@@ -57,7 +57,10 @@ jobs:
         with:
           version: "latest"
       - name: Install Python deps
-        run: uv sync --extra web
+        # pytest/ruff/mypy live in the `dev` extra (pyproject `[project.optional-dependencies]`),
+        # NOT `web` — without `--extra dev` `uv run pytest` fails "Failed to spawn: pytest".
+        # Mirror the Dockerfile dev stage (`uv sync --frozen --extra web --extra dev`).
+        run: uv sync --extra web --extra dev
       - name: Run api tests
         env:
           MONGO_TEST_URI: mongodb://localhost:27017
