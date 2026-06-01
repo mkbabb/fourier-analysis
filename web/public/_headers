@@ -1,0 +1,67 @@
+# _headers — Cloudflare Pages response headers for fourier.babb.dev (the SPA).
+#
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ H.γ (tranche H) — Content-Security-Policy for the CF-Pages SPA.           ║
+# ║ This file is served by Cloudflare Pages (the SPA's deploy-of-record —     ║
+# ║ scripts/pages-deploy.sh / .github/workflows/deploy-pages.yml). Files in   ║
+# ║ web/public/ are copied verbatim into web/dist/ by vite; CF Pages reads    ║
+# ║ a top-level `_headers` and applies it to every matched route. The docker  ║
+# ║ nginx in front of the API (api.fourier.babb.dev) is a SEPARATE origin and ║
+# ║ sets its own headers — this file governs ONLY the Pages-served SPA.       ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# WHY A TIGHT POLICY IS NOW FEASIBLE
+# ----------------------------------
+# G.W5 self-hosted every webfont (Computer Modern Serif + Fraunces + Fira Code,
+# under /fonts) and bundler-imported KaTeX's CSS (fingerprinted, same-origin) —
+# so the app pulls ZERO third-party font/style origins. The API is same-site at
+# api.fourier.babb.dev. The only cross-origin pulls left are the one GitHub
+# avatar in the header HoverCard and the API's own image blobs/thumbnails. Every
+# `src`/`connect` the built app actually uses was enumerated (H.γ verification:
+# read index.html + grep web/src) and each directive below is the tightest value
+# that does NOT block a real resource.
+#
+# DIRECTIVE RATIONALE (each maps to a verified app resource)
+#   default-src 'self'
+#       Backstop: anything not named below is same-origin only.
+#   script-src 'self' 'unsafe-inline'
+#       'self' covers the fingerprinted vite bundle (/assets/*.js). 'unsafe-inline'
+#       is required by the ONE inline <script> in index.html — the pre-paint
+#       dark-mode init IIFE (reads localStorage before first paint to avoid a
+#       flash). That script is hand-maintained in index.html (not emitted by the
+#       bundler), so a per-build hash would drift; 'unsafe-inline' is the stable,
+#       non-breaking choice here. There is no eval / new Function / wasm in the
+#       app, so we deliberately do NOT add 'unsafe-eval' or 'wasm-unsafe-eval'.
+#   style-src 'self' 'unsafe-inline'
+#       'self' covers the bundled CSS (app + KaTeX). 'unsafe-inline' is required
+#       by Vue scoped-style injection, Tailwind's runtime inline styles, and
+#       KaTeX's inline `style=""` on rendered spans (EquationPanel/EquationResult
+#       render KaTeX to HTML with inline styles). No external stylesheet origins.
+#   img-src 'self' data: blob: https://avatars.githubusercontent.com https://api.fourier.babb.dev
+#       'self'  — /favicon.svg, /assets/* paper figure PNGs.
+#       data:   — FileReader.readAsDataURL upload previews (useImageUpload.ts).
+#       blob:   — canvas exports (BasisCanvas.vue offCanvas.toDataURL / blobs).
+#       avatars.githubusercontent.com — the maintainer avatar in AppHeader.vue.
+#       api.fourier.babb.dev — <img :src> thumbnail/overlay/blob URLs the API
+#                              serves (api.ts thumbnailUrl/overlayUrl/imageUrl).
+#   font-src 'self'
+#       Every face is self-hosted (/fonts) or bundled (KaTeX). No third-party.
+#   connect-src 'self' https://api.fourier.babb.dev
+#       fetch() goes to the API origin (api.ts BASE = https://api.fourier.babb.dev
+#       in the prod build). 'self' covers any same-origin asset fetch. No
+#       WebSocket / EventSource / third-party telemetry exists in the app.
+#   object-src 'none'
+#       No <object>/<embed>/<applet>; closes a legacy plugin-injection vector.
+#   base-uri 'self'
+#       Prevents a <base> tag from re-pointing relative URLs off-origin.
+#   frame-ancestors 'none'
+#       The SPA is never framed — defeats clickjacking (modern X-Frame-Options).
+#
+# If a future resource needs a new origin, ADD it here with a one-line note —
+# do NOT loosen an existing directive to a wildcard.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://avatars.githubusercontent.com https://api.fourier.babb.dev; font-src 'self'; connect-src 'self' https://api.fourier.babb.dev; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY

@@ -48,10 +48,26 @@ services:
         VITE_BASE_URL: ${VITE_BASE_URL:-/}
     ports: !reset []
     restart: unless-stopped
-    # G.W7 (ε.2) — no-new-privileges is universally safe. read_only + cap_drop
-    # are BOOKED (residual): this is an nginx-alpine SPA server that writes
-    # /var/cache/nginx + /var/run and binds :80 (needs NET_BIND_SERVICE) — the
-    # per-image tmpfs/cap tuning needs a staging test, not a blind prod gamble.
+    # H.W4 (γ) — levelled UP to the constellation hardening FLOOR (was
+    # no-new-privileges only; read_only + cap_drop were G.W7 BOOKED residuals).
+    # This production stage is nginx:alpine serving the built SPA (web/Dockerfile
+    # `FROM nginx:alpine AS production`, `listen 80`). An immutable root FS needs
+    # the three writable paths a stock nginx-alpine touches mounted as tmpfs:
+    #   /var/cache/nginx — proxy/fastcgi/client_body/scgi/uwsgi temp dirs.
+    #   /var/run         — the master writes /var/run/nginx.pid here.
+    #   /tmp             — scratch.
+    # All Linux caps are dropped, then NET_BIND_SERVICE is added back (the master
+    # binds the privileged :80). tmpfs is noexec,nosuid,size-capped per the
+    # mkbabb/deploy docker-compose.hardening.yml canonical recipe.
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:noexec,nosuid,size=16m
+      - /var/run:noexec,nosuid,size=1m
+      - /tmp:noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -125,9 +141,23 @@ services:
     depends_on: [backend, frontend]
     networks: [app-network]
     restart: unless-stopped
-    # G.W7 (ε.2) — no-new-privileges is safe. read_only + cap_drop are BOOKED:
-    # nginx writes /var/cache/nginx + /var/run and the master binds :80
-    # (NET_BIND_SERVICE); the per-image tmpfs/cap set needs a staging test.
+    # H.W4 (γ) — levelled UP to the constellation hardening FLOOR (was
+    # no-new-privileges only; read_only + cap_drop were G.W7 BOOKED residuals).
+    # Same nginx:alpine writable-path recipe as the frontend above: an immutable
+    # root FS with tmpfs for the three paths a stock nginx-alpine writes
+    # (/var/cache/nginx temp dirs, /var/run/nginx.pid, /tmp scratch). The mounted
+    # fourier.conf is :ro and the master binds/proxies :80 — drop ALL caps, add
+    # back only NET_BIND_SERVICE. tmpfs noexec,nosuid,size-capped per the
+    # mkbabb/deploy docker-compose.hardening.yml canonical recipe.
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:noexec,nosuid,size=16m
+      - /var/run:noexec,nosuid,size=1m
+      - /tmp:noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     security_opt:
       - no-new-privileges:true
     deploy:
