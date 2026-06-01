@@ -1,52 +1,101 @@
-# deploy-pages.yml — G.α — the SPA's deploy-of-record (inv-25).
+# deploy-pages.yml — G.α + H.W2 — the SPA's deploy-of-record (inv-25), now
+# GREEN-CI-GATED (inv-28: verified-deploy-of-record).
 #
 # The constellation auto-deploy (push → deploy.babb.dev/hooks/fourier-analysis →
 # host scripts/deploy-hook.sh) ships ONLY the API. The Cloudflare-Pages SPA at
-# fourier.babb.dev has its OWN standing automated path: THIS workflow. It runs on
-# every push to master that touches `web/**`, type-checks + builds, then ships via
-# `scripts/pages-deploy.sh` (the spine recipe, fourier-tuned). The job surfaces the
-# Cloudflare deployment ID as the inv-25 deploy_run_id — a "LIVE in prod" claim
-# cites THIS automated id, never a manual `wrangler` one-off.
+# fourier.babb.dev has its OWN standing automated path: THIS workflow. It builds
+# + ships via `scripts/pages-deploy.sh` (the spine recipe, fourier-tuned) and
+# surfaces the Cloudflare deployment ID as the inv-25 deploy_run_id.
 #
-# WHY a path filter: backend-only waves (β.2 nginx/api, ε deploy) must NOT trigger
-# a pointless SPA redeploy. A change under web/** (or to this workflow / the deploy
-# script) is the only thing that re-ships the SPA.
+# H.W2 — inv-28 (verified-deploy-of-record). G shipped the SPA on a push trigger
+# that ran ZERO tests; the H-audit found a SPA deploy that went out while the
+# SAME-SHA CI run was RED. This workflow now triggers on the CI workflow
+# *completing* and deploys ONLY when that same-SHA CI run is GREEN (composes with
+# inv-25: automated AND verified). A red CI → `workflow_run.conclusion != 'success'`
+# → the deploy job's `if` is false → the SPA does NOT ship. Demonstrable refusal.
+#
+# Two correctness details `workflow_run` forces (Wα.2 research):
+#   1. PATH FILTER LOSS — `workflow_run` does not accept `paths:`. The old
+#      `web/**` filter is re-imposed by the `changes` job below (a same-SHA diff
+#      of the triggering commit), which the `deploy` job `needs:`. A backend-only
+#      wave (β nginx/api, ε deploy) therefore still does NOT re-ship the SPA.
+#   2. HEAD-SHA MAPPING — under `workflow_run`, the default checkout is the branch
+#      tip, NOT the built commit, and `github.sha` is the workflow-file ref. EVERY
+#      checkout pins `ref: github.event.workflow_run.head_sha` so the build + the
+#      pages-deploy commit-message capture reflect the exact CI-verified SHA.
 #
 # SECRET DISCIPLINE: CLOUDFLARE_API_TOKEN (Pages:Edit + Read) + CLOUDFLARE_ACCOUNT_ID
 # are GH Actions repo secrets, consumed via ${{ secrets.* }}, never inlined/echoed.
-# The repo is public, so the deploy job is gated to push-to-master events only
-# (fork PRs never receive secrets, and never run this job).
+# `workflow_run` runs in the BASE-repo context; the `head_branch == 'master'` +
+# `event == 'push'` guard keeps the token off fork-PR-triggered CI runs.
 
 name: deploy-pages
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - "web/**"
-      - "scripts/pages-deploy.sh"
-      - ".github/workflows/deploy-pages.yml"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
   workflow_dispatch: # manual re-ship (e.g. to re-verify δ) from the Actions tab
 
 concurrency:
-  group: deploy-pages-${{ github.ref }}
+  group: deploy-pages-${{ github.event.workflow_run.head_sha || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  # inv-28 gate + the re-imposed web/** path filter. Runs ONLY for a green,
+  # master, push-triggered CI run (or a manual dispatch). A red/non-master/
+  # non-push CI run never reaches here → the SPA is not shipped.
+  changes:
+    name: gate (green CI + web/** changed)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.filter.outputs.should_deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Pin to the CI-verified commit, not the branch tip. fetch-depth 2 so
+          # the parent is present for the same-SHA path diff below.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
+      - id: filter
+        name: re-impose the web/** path filter (workflow_run drops paths:)
+        run: |
+          # A manual dispatch always re-ships (no diff intent).
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          base="$(git rev-parse HEAD^ 2>/dev/null || true)"
+          # No parent (root/shallow) → fail-open to a deploy rather than miss one.
+          if [[ -z "$base" ]]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$base" HEAD \
+               | grep -qE '^(web/|scripts/pages-deploy\.sh$|\.github/workflows/deploy-pages\.yml$)'; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
     name: build + ship SPA → Cloudflare Pages
+    needs: changes
+    if: needs.changes.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
-    # Belt-and-braces: only the maintainer's master pushes (and manual dispatch)
-    # ever reach the deploy; a public-repo fork PR cannot.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/master')
     steps:
       # NO submodules: the `docs/precepts` submodule (private mkbabb/precepts) is
       # docs-only and inaccessible to the Actions token; the SPA build never reads
-      # it. Fetching it was the chronic that kept every CI/deploy run red.
+      # it. Pin to the CI-verified SHA (see header note 2).
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -58,8 +107,8 @@ jobs:
         working-directory: web
         run: npm ci
 
-      # Type-check gate: a broken frontend must NOT reach prod. (The full pytest /
-      # e2e suites run in ci.yml; this workflow gates the SPA on its own build.)
+      # Belt-and-braces type-check (the full pytest / e2e suites already ran +
+      # passed in the CI run that GATES this deploy — inv-28).
       - name: Type-check
         working-directory: web
         run: npx vue-tsc -b --force
@@ -71,9 +120,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: bash scripts/pages-deploy.sh
 
-      - name: Echo deploy-of-record id (inv-25)
+      - name: Echo deploy-of-record id (inv-25 + inv-28)
         if: steps.pages.outputs.cf_deployment_id != ''
         run: |
-          echo "SPA deploy-of-record (inv-25 deploy_run_id):"
-          echo "  GH Actions run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo "  CF deployment id: ${{ steps.pages.outputs.cf_deployment_id }}"
+          echo "SPA deploy-of-record (inv-25 deploy_run_id; inv-28 green-CI-gated):"
+          echo "  gated on CI run: ${{ github.event.workflow_run.id }} (conclusion: ${{ github.event.workflow_run.conclusion }})"
+          echo "  built SHA:       ${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "  GH Actions run:  ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "  CF deployment:   ${{ steps.pages.outputs.cf_deployment_id }}"
