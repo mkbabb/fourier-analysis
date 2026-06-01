@@ -28,7 +28,10 @@ const speedStr = computed({
 
 <template>
     <Select v-model="speedStr">
-        <SelectTrigger :class="compact ? 'speed-trigger-compact' : 'speed-trigger'">
+        <SelectTrigger
+            aria-label="Playback speed"
+            :class="compact ? 'speed-trigger-compact' : 'speed-trigger'"
+        >
             <SelectValue />
         </SelectTrigger>
         <SelectContent>

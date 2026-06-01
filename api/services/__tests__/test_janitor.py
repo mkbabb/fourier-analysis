@@ -1,4 +1,5 @@
-"""Regression test for the janitor's pinned-set inversion (Tranche A.W4.a).
+"""Regression test for the janitor's pinned-set inversion (Tranche A.W4.a),
+driven end-to-end against a real ephemeral Mongo (migrated at H.W1 / inv-27).
 
 The prior janitor at ``api/services/janitor.py`` constructed an unbounded
 ``pinned_contours: set[str]`` / ``pinned_images: set[str]`` in memory, then
@@ -12,437 +13,299 @@ the 16 MB BSON document limit — see ``docs/tranches/A/waves/W4.md`` scope item
 The fix inverts to a per-document ``pinned: bool`` flag on the ``contours``
 and ``images`` collections. The janitor's deletion query is
 ``{"pinned": False, "last_accessed_at": {"$lt": cutoff}}`` — an indexed
-predicate. This test asserts:
+predicate. This module asserts:
 
-  1. No ``$nin`` operator appears in any janitor query (the BSON-limit hazard
-     is gone outright — invariant 3, no legacy code paths kept as fallback).
-  2. Each delete query references the ``pinned: False`` predicate.
-  3. Under a populated fake DB, the janitor selects unpinned-old documents
-     and skips pinned ones — the policy is preserved end-to-end.
-  4. The pin-flag recompute is idempotent: invoking it twice yields the same
-     state (this doubles as the migration-backfill check — running the
+  1. No ``$nin`` operator appears anywhere in the janitor source (the
+     BSON-limit hazard is gone outright — invariant 3, no legacy fallback).
+  2. Under a populated real DB, the janitor selects unpinned-old documents
+     and skips pinned ones — the pin policy is preserved end-to-end.
+  3. The pin-flag recompute is idempotent: running the cycle twice yields the
+     same state (this doubles as the migration-backfill check — running the
      janitor against documents missing the ``pinned`` field is safe).
+  4. The grace hard-delete reaps soft-deleted visualizations past their
+     window, and the recency prune reaps old unpinned blobs.
+
+Why a real DB and not the old hand-rolled ``FakeCollection`` (B.W3+ evolution
+note): the original mock was a partial re-implementation of motor's collection
+surface, and it drifted out from under ``_cleanup_cycle`` as that routine
+evolved through B.W3 (net-new ``deleted_at``-grace pass), the re-rooting of the
+pin source from ``snapshots``/``gallery`` onto the converged ``visualizations``
+collection, and the move to the batched ``pinned_cron.cron_prune`` helper
+(``find(...).limit(...).to_list(...)`` + ``_id``-chunked ``delete_many``). The
+mock lacked ``cursor.limit``/``.to_list`` and a faithful ``$merge`` semantics,
+so the suite silently failed off the collected path. A real ephemeral Mongo
+cannot drift from the janitor's query evolution — it executes the actual
+pipeline — so we drive ``_cleanup_cycle`` against a throwaway database using
+the shared ``requires_mongo`` / ``run_db`` fixtures (``api/tests/conftest.py``),
+the same pattern the ``api/lib/crud`` DB-backed specs use. The no-``$nin``
+guard is now a pure AST source-grep (no DB needed), matching the conformance
+suite's ``test_no_unbounded_nin``.
 """
 
 from __future__ import annotations
 
-import asyncio
-import copy
+import ast
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from pathlib import Path
 
 import pytest
 
 from api.services import janitor
 
+# Reuse the suite's shared Mongo fixtures. ``api/tests`` is not a package
+# (no ``__init__``), so the bare ``from conftest import ...`` the sibling specs
+# use is not importable from this package dir; the fixtures live in the
+# importable module ``api.tests.conftest`` either way.
+from api.tests.conftest import requires_mongo, run_db
 
-# ---------------------------------------------------------------------------
-# Minimal async fake of motor's collection / database interface
-# ---------------------------------------------------------------------------
-
-
-class _AsyncCursor:
-    """Async iterator over a pre-materialised list of documents.
-
-    Supports the subset motor's cursor exposes that the janitor consumes —
-    ``async for``, ``.sort(field, direction)``.
-    """
-
-    def __init__(self, docs: list[dict]) -> None:
-        self._docs = list(docs)
-
-    def sort(self, field: str, direction: int = 1) -> "_AsyncCursor":
-        self._docs.sort(key=lambda d: d.get(field), reverse=(direction == -1))
-        return self
-
-    def __aiter__(self) -> "_AsyncCursor":
-        return self
-
-    async def __anext__(self) -> dict:
-        if not self._docs:
-            raise StopAsyncIteration
-        return self._docs.pop(0)
-
-
-class _DeleteResult:
-    def __init__(self, deleted_count: int) -> None:
-        self.deleted_count = deleted_count
-
-
-class _UpdateResult:
-    def __init__(self, matched_count: int, modified_count: int) -> None:
-        self.matched_count = matched_count
-        self.modified_count = modified_count
-
-
-class FakeCollection:
-    """In-memory async collection covering the janitor's call surface."""
-
-    def __init__(self, name: str, docs: list[dict], spy: "QuerySpy") -> None:
-        self.name = name
-        self.docs: list[dict] = [copy.deepcopy(d) for d in docs]
-        self._spy = spy
-
-    # --- predicate evaluation -------------------------------------------------
-
-    def _matches(self, doc: dict, filt: dict) -> bool:
-        for k, v in filt.items():
-            if isinstance(v, dict):
-                for op, arg in v.items():
-                    if op == "$lt":
-                        if not (doc.get(k) is not None and doc[k] < arg):
-                            return False
-                    elif op == "$in":
-                        if doc.get(k) not in arg:
-                            return False
-                    elif op == "$nin":
-                        if doc.get(k) in arg:
-                            return False
-                    elif op == "$ne":
-                        if doc.get(k) == arg:
-                            return False
-                    elif op == "$exists":
-                        present = k in doc
-                        if bool(arg) != present:
-                            return False
-                    else:
-                        raise NotImplementedError(f"FakeCollection op: {op}")
-            else:
-                if doc.get(k) != v:
-                    return False
-        return True
-
-    # --- public motor surface -------------------------------------------------
-
-    def find(self, filt: dict, projection: dict | None = None) -> _AsyncCursor:
-        self._spy.record(self.name, "find", filt)
-        matches = [copy.deepcopy(d) for d in self.docs if self._matches(d, filt)]
-        return _AsyncCursor(matches)
-
-    async def delete_many(self, filt: dict) -> _DeleteResult:
-        self._spy.record(self.name, "delete_many", filt)
-        kept: list[dict] = []
-        removed = 0
-        for d in self.docs:
-            if self._matches(d, filt):
-                removed += 1
-            else:
-                kept.append(d)
-        self.docs = kept
-        return _DeleteResult(deleted_count=removed)
-
-    async def update_many(self, filt: dict, update: dict) -> _UpdateResult:
-        self._spy.record(self.name, "update_many", filt)
-        matched = 0
-        for d in self.docs:
-            if self._matches(d, filt):
-                matched += 1
-                if "$set" in update:
-                    d.update(update["$set"])
-        return _UpdateResult(matched_count=matched, modified_count=matched)
-
-    async def distinct(self, field: str, filt: dict | None = None) -> list[Any]:
-        f = filt or {}
-        self._spy.record(self.name, "distinct", f)
-        out: list[Any] = []
-        seen: set[Any] = set()
-        for d in self.docs:
-            if self._matches(d, f):
-                v = d.get(field)
-                if v is not None and v not in seen:
-                    seen.add(v)
-                    out.append(v)
-        return out
-
-    def aggregate(self, pipeline: list[dict]) -> _AsyncCursor:
-        self._spy.record(self.name, "aggregate", pipeline)
-        # Drive the pin-recompute pipeline shape (the only aggregation the
-        # janitor uses today). Detect the $merge sink and apply pinned=true
-        # to the target collection.
-        merge_stage = next(
-            (st for st in pipeline if "$merge" in st), None
-        )
-        if merge_stage is None:
-            # Storage-budget aggregation: $group sum of bytes
-            total = sum(d.get("bytes", 0) for d in self.docs)
-            return _AsyncCursor([{"_id": None, "total_bytes": total}])
-
-        # Recompute pipeline: gather $group key and any $unionWith source.
-        target_name = merge_stage["$merge"]["into"]
-        merge_key = merge_stage["$merge"]["on"]
-
-        key_field_for_source = self._infer_pin_key(pipeline)
-
-        # Collect ids from the leading source (self.docs) under the pipeline's
-        # match predicates, plus the $unionWith side if present.
-        ids: set = set()
-        for d in self.docs:
-            if self._pipeline_matches_source(d, pipeline):
-                v = d.get(key_field_for_source)
-                if v is not None:
-                    ids.add(v)
-        union = next((st["$unionWith"] for st in pipeline if "$unionWith" in st), None)
-        if union is not None:
-            union_coll = self._spy.db[union["coll"]]
-            union_match = next(
-                (
-                    st["$match"]
-                    for st in union["pipeline"]
-                    if "$match" in st and "tier" in st["$match"]
-                ),
-                {},
-            )
-            for d in union_coll.docs:
-                if union_coll._matches(d, union_match):
-                    v = d.get(key_field_for_source)
-                    if v is not None:
-                        ids.add(v)
-
-        target = self._spy.db[target_name]
-        for d in target.docs:
-            if d.get(merge_key) in ids:
-                d["pinned"] = True
-        return _AsyncCursor([])
-
-    @staticmethod
-    def _infer_pin_key(pipeline: list[dict]) -> str:
-        # The leading $group's _id expression is "$<field>"
-        first_group = next(st["$group"] for st in pipeline if "$group" in st)
-        expr = first_group["_id"]
-        if isinstance(expr, str) and expr.startswith("$"):
-            return expr[1:]
-        raise ValueError(f"Unexpected $group _id: {expr!r}")
-
-    def _pipeline_matches_source(self, doc: dict, pipeline: list[dict]) -> bool:
-        # Apply any $match stages that precede a $group/$unionWith on the
-        # source side. For our pipelines there are no leading $match stages
-        # on the snapshots source (it's the gallery side that filters by tier).
-        for st in pipeline:
-            if "$group" in st or "$unionWith" in st:
-                break
-            if "$match" in st:
-                if not self._matches(doc, st["$match"]):
-                    return False
-        return True
-
-
-class QuerySpy:
-    """Records every query made by the janitor for assertion."""
-
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, str, Any]] = []
-        self.db: dict[str, FakeCollection] = {}
-
-    def record(self, coll: str, op: str, filt: Any) -> None:
-        self.calls.append((coll, op, copy.deepcopy(filt)))
-
-    def queries_against(self, coll: str, op: str) -> list[Any]:
-        return [f for (c, o, f) in self.calls if c == coll and o == op]
-
-
-class FakeDB:
-    """Maps ``db.<collection>`` attribute access to FakeCollection."""
-
-    def __init__(self, collections: dict[str, list[dict]]) -> None:
-        self._spy = QuerySpy()
-        for name, docs in collections.items():
-            self._spy.db[name] = FakeCollection(name, docs, self._spy)
-
-    def __getattr__(self, name: str) -> FakeCollection:
-        if name in {"_spy"}:
-            raise AttributeError(name)
-        return self._spy.db.setdefault(
-            name, FakeCollection(name, [], self._spy)
-        )
-
-    @property
-    def spy(self) -> QuerySpy:
-        return self._spy
+_JANITOR_SRC = Path(janitor.__file__).read_text()
 
 
 # ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-def _fresh_db() -> FakeDB:
-    old = datetime.now(UTC) - timedelta(days=400)  # well past the 90d cutoff
-    fresh = datetime.now(UTC)
-
-    return FakeDB(
-        {
-            "contours": [
-                # An old contour pinned by a snapshot — must survive.
-                {"contour_hash": "C_PINNED_BY_SNAP", "last_accessed_at": old},
-                # An old contour pinned by a featured gallery row — must survive.
-                {"contour_hash": "C_PINNED_BY_GALLERY", "last_accessed_at": old},
-                # An old unpinned contour — must be deleted.
-                {"contour_hash": "C_UNPINNED_OLD", "last_accessed_at": old},
-                # A fresh unpinned contour — must survive (cutoff guard).
-                {"contour_hash": "C_UNPINNED_FRESH", "last_accessed_at": fresh},
-            ],
-            "images": [
-                {"image_slug": "I_PINNED_BY_SNAP", "last_accessed_at": old, "bytes": 100},
-                {"image_slug": "I_PINNED_BY_GALLERY", "last_accessed_at": old, "bytes": 100},
-                {"image_slug": "I_UNPINNED_OLD", "last_accessed_at": old, "bytes": 100},
-                {"image_slug": "I_UNPINNED_FRESH", "last_accessed_at": fresh, "bytes": 100},
-            ],
-            "snapshots": [
-                {
-                    "snapshot_hash": "S1",
-                    "contour_hash": "C_PINNED_BY_SNAP",
-                    "image_slug": "I_PINNED_BY_SNAP",
-                },
-            ],
-            "gallery": [
-                {
-                    "snapshot_hash": "S_GAL",
-                    "contour_hash": "C_PINNED_BY_GALLERY",
-                    "image_slug": "I_PINNED_BY_GALLERY",
-                    "tier": "featured",
-                },
-                # A "normal" tier gallery entry must NOT pin (policy preserved).
-                {
-                    "snapshot_hash": "S_NORMAL",
-                    "contour_hash": "C_UNPINNED_OLD",
-                    "image_slug": "I_UNPINNED_OLD",
-                    "tier": "normal",
-                },
-            ],
-            "sessions": [],
-            "users": [],
-            "flags": [],
-            "admin_audit": [],
-        }
-    )
-
-
-# ---------------------------------------------------------------------------
-# Tests
+# Settings + DB injection
 # ---------------------------------------------------------------------------
 
 
 class _FakeSettings:
+    """The settings surface ``_cleanup_cycle`` and ``_delete_images`` read.
+
+    ``asset_max_age_days`` drives the recency cutoff (a 400d-old fixture is
+    well past it); ``soft_delete_grace_days`` drives the net-new B.W3 grace
+    hard-delete; ``user_max_age_days`` is set huge so the fixtures' user/session
+    cascade arms stay quiescent (they are exercised by the dedicated
+    ``api/tests`` user-cascade specs). ``blob_dir`` points at a throwaway dir so
+    the image-prune blob unlink is a harmless no-op.
+    """
+
     asset_max_age_days = 90
-    user_max_age_days = 365
-    storage_budget_gb = 1000  # high — no budget eviction in these fixtures
+    user_max_age_days = 100_000  # quiescent: no stale users in these fixtures
+    soft_delete_grace_days = 30
+
+    def __init__(self, blob_dir: str) -> None:
+        self.blob_dir = blob_dir
 
 
-@pytest.fixture(autouse=True)
-def _patch_settings_and_db(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Patch ``get_settings`` and ``get_db`` so the janitor sees the fake DB."""
-    db = _fresh_db()
-    monkeypatch.setattr(janitor, "get_settings", lambda: _FakeSettings())
+def _run_cycle_against(db, settings, monkeypatch) -> None:
+    """Point the janitor's ``get_db`` / ``get_settings`` at the test db, run."""
     monkeypatch.setattr(janitor, "get_db", lambda: db)
-    # Stash the fake on the module so individual tests can grab it.
-    monkeypatch.setattr(janitor, "_test_db", db, raising=False)
+    monkeypatch.setattr(janitor, "get_settings", lambda: settings)
 
 
-def _run_cycle() -> FakeDB:
-    asyncio.run(janitor._cleanup_cycle())
-    return janitor._test_db  # type: ignore[attr-defined]
+async def _seed(db) -> None:
+    """Populate the throwaway DB with the pin-policy fixture.
+
+    Pin source is the converged ``visualizations`` collection (re-rooted at
+    B.W3 / H-W3-6): a contour/image is pinned iff a *live* (``deleted_at ==
+    None``) visualization references it. A *soft-deleted* visualization no
+    longer pins its blobs.
+    """
+    # The pin recompute is a ``$merge`` joined on ``contour_hash`` /
+    # ``image_slug``; Mongo requires a *unique* index on the join field of the
+    # target collection (error 51183 otherwise). Production creates exactly
+    # these in ``api.services.database.connect_db`` — mirror them here so the
+    # test exercises the real server-side pipeline rather than a stand-in.
+    await db.contours.create_index("contour_hash", unique=True)
+    await db.images.create_index("image_slug", unique=True)
+
+    old = datetime.now(UTC) - timedelta(days=400)  # well past the 90d cutoff
+    fresh = datetime.now(UTC)
+
+    await db.contours.insert_many(
+        [
+            # Old contour pinned by a live visualization — must survive.
+            {"contour_hash": "C_PINNED", "last_accessed_at": old},
+            # Old unpinned contour — must be reaped by the recency prune.
+            {"contour_hash": "C_UNPINNED_OLD", "last_accessed_at": old},
+            # Fresh unpinned contour — must survive (cutoff guard).
+            {"contour_hash": "C_UNPINNED_FRESH", "last_accessed_at": fresh},
+        ]
+    )
+    await db.images.insert_many(
+        [
+            {"image_slug": "I_PINNED", "last_accessed_at": old},
+            {"image_slug": "I_UNPINNED_OLD", "last_accessed_at": old},
+            {"image_slug": "I_UNPINNED_FRESH", "last_accessed_at": fresh},
+        ]
+    )
+    await db.visualizations.insert_many(
+        [
+            # Live visualization → pins C_PINNED / I_PINNED.
+            {
+                "contour_hash": "C_PINNED",
+                "image_slug": "I_PINNED",
+                "deleted_at": None,
+            },
+            # A soft-deleted visualization whose window has NOT lapsed: it does
+            # not pin (deleted_at != null) but also is not yet hard-deleted.
+            {
+                "contour_hash": "C_UNPINNED_OLD",
+                "image_slug": "I_UNPINNED_OLD",
+                "deleted_at": fresh,
+            },
+            # A soft-deleted visualization past the grace window → hard-deleted.
+            {
+                "contour_hash": "C_GRACE",
+                "image_slug": "I_GRACE",
+                "deleted_at": datetime.now(UTC) - timedelta(days=60),
+            },
+        ]
+    )
+
+
+# ---------------------------------------------------------------------------
+# 1. Source-grep gate — no DB required.
+# ---------------------------------------------------------------------------
+
+
+def _mongo_operator_keys(source: str) -> set[str]:
+    """Every ``$``-prefixed Mongo operator used as a *dict key* in the source.
+
+    Walks the AST so docstring / comment prose mentioning ``$nin`` (the
+    retirement narration) is never counted — only an actual query predicate
+    ``{"$nin": ...}`` would surface here.
+    """
+    keys: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Dict):
+            for k in node.keys:
+                if (
+                    isinstance(k, ast.Constant)
+                    and isinstance(k.value, str)
+                    and k.value.startswith("$")
+                ):
+                    keys.add(k.value)
+    return keys
 
 
 class TestJanitorNoUnboundedNin:
-    """The hard-gate assertion: the janitor's queries contain no ``$nin``."""
+    """The hard-gate assertion: the janitor source contains no ``$nin``."""
 
     def test_no_nin_operator_anywhere(self) -> None:
-        db = _run_cycle()
-        for _coll, _op, filt in db.spy.calls:
-            assert "$nin" not in _stringify(filt), (
-                f"Janitor query unexpectedly used $nin (the W4.a inversion "
-                f"forbids it — see api/services/janitor.py). Offending call: "
-                f"{_coll}.{_op}({filt!r})."
-            )
-
-    def test_delete_queries_use_pinned_false_predicate(self) -> None:
-        db = _run_cycle()
-        contour_deletes = db.spy.queries_against("contours", "delete_many")
-        image_deletes = db.spy.queries_against("images", "delete_many")
-
-        assert contour_deletes, "Janitor must issue a delete_many on contours."
-        assert image_deletes, "Janitor must issue a delete_many on images."
-
-        for filt in contour_deletes + image_deletes:
-            assert filt.get("pinned") is False, (
-                "Janitor delete must filter on the indexed pinned=False "
-                f"predicate; got {filt!r}."
-            )
-            assert "last_accessed_at" in filt, (
-                f"Janitor delete must retain the age cutoff; got {filt!r}."
-            )
+        ops = _mongo_operator_keys(_JANITOR_SRC)
+        assert "$nin" not in ops, (
+            "Janitor uses a $nin query predicate (the W4.a inversion forbids "
+            f"it — see api/services/janitor.py). Operators seen: {sorted(ops)}."
+        )
 
 
+# ---------------------------------------------------------------------------
+# 2-4. End-to-end pin policy + grace + idempotency against a real Mongo.
+# ---------------------------------------------------------------------------
+
+
+@requires_mongo
 class TestJanitorPinPolicyPreserved:
     """End-to-end: pinned old assets survive; unpinned old assets are deleted."""
 
-    def test_pinned_assets_survive_unpinned_old_assets_deleted(self) -> None:
-        db = _run_cycle()
-        contour_hashes = {d["contour_hash"] for d in db.contours.docs}
-        image_slugs = {d["image_slug"] for d in db.images.docs}
+    def test_pinned_assets_survive_unpinned_old_assets_deleted(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path
+    ) -> None:
+        settings = _FakeSettings(blob_dir=str(tmp_path))
 
-        # Pinned by snapshot → survives.
-        assert "C_PINNED_BY_SNAP" in contour_hashes
-        assert "I_PINNED_BY_SNAP" in image_slugs
-        # Pinned by featured gallery row → survives.
-        assert "C_PINNED_BY_GALLERY" in contour_hashes
-        assert "I_PINNED_BY_GALLERY" in image_slugs
-        # Unpinned + old → deleted.
+        async def body(db):
+            await _seed(db)
+            _run_cycle_against(db, settings, monkeypatch)
+            await janitor._cleanup_cycle()
+            return (
+                [d["contour_hash"] async for d in db.contours.find({})],
+                [d["image_slug"] async for d in db.images.find({})],
+            )
+
+        contour_hashes, image_slugs = run_db(body)
+        contour_hashes = set(contour_hashes)
+        image_slugs = set(image_slugs)
+
+        # Pinned by a live visualization → survives.
+        assert "C_PINNED" in contour_hashes
+        assert "I_PINNED" in image_slugs
+        # Unpinned + old → reaped by the recency prune.
         assert "C_UNPINNED_OLD" not in contour_hashes
         assert "I_UNPINNED_OLD" not in image_slugs
         # Unpinned + fresh → survives (cutoff guard).
         assert "C_UNPINNED_FRESH" in contour_hashes
         assert "I_UNPINNED_FRESH" in image_slugs
 
-    def test_pinned_flag_persisted_on_survivors(self) -> None:
-        db = _run_cycle()
+    def test_pinned_flag_persisted_on_survivors(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path
+    ) -> None:
+        settings = _FakeSettings(blob_dir=str(tmp_path))
+
+        async def body(db):
+            await _seed(db)
+            _run_cycle_against(db, settings, monkeypatch)
+            await janitor._cleanup_cycle()
+            contours = [d async for d in db.contours.find({})]
+            images = [d async for d in db.images.find({})]
+            return contours, images
+
+        contours, images = run_db(body)
         # The recompute IS the migration: every surviving doc now carries an
         # explicit ``pinned`` field (no legacy ``$exists: false`` documents).
-        for d in db.contours.docs:
+        for d in contours:
             assert "pinned" in d, f"Contour missing pinned field: {d!r}"
-        for d in db.images.docs:
+        for d in images:
             assert "pinned" in d, f"Image missing pinned field: {d!r}"
+        # And the policy holds: the live-referenced blobs are flagged pinned,
+        # the fresh-but-unreferenced one is not.
+        by_hash = {d["contour_hash"]: d for d in contours}
+        assert by_hash["C_PINNED"]["pinned"] is True
+        assert by_hash["C_UNPINNED_FRESH"]["pinned"] is False
+
+    def test_grace_window_hard_deletes_lapsed_visualizations(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path
+    ) -> None:
+        """B.W3 net-new grace pass: soft-deleted viz past the window are reaped.
+
+        The not-yet-lapsed soft-deleted viz (``deleted_at`` = now) survives the
+        grace pass; the 60-day-old one (window = 30d) is hard-deleted.
+        """
+        settings = _FakeSettings(blob_dir=str(tmp_path))
+
+        async def body(db):
+            await _seed(db)
+            _run_cycle_against(db, settings, monkeypatch)
+            await janitor._cleanup_cycle()
+            return [d["contour_hash"] async for d in db.visualizations.find({})]
+
+        remaining = set(run_db(body))
+        # Live viz survives; recently soft-deleted viz survives (within grace);
+        # the 60-day-old soft-deleted viz is hard-deleted.
+        assert "C_PINNED" in remaining
+        assert "C_UNPINNED_OLD" in remaining
+        assert "C_GRACE" not in remaining
 
 
+@requires_mongo
 class TestJanitorRecomputeIdempotent:
     """Running the cycle twice yields the same state — backfill is idempotent."""
 
-    def test_two_cycles_same_state(self) -> None:
-        db = _run_cycle()
-        state_after_first = {
-            "contours": sorted(d["contour_hash"] for d in db.contours.docs),
-            "images": sorted(d["image_slug"] for d in db.images.docs),
-            "contour_pins": sorted(
-                d["contour_hash"] for d in db.contours.docs if d.get("pinned")
-            ),
-            "image_pins": sorted(
-                d["image_slug"] for d in db.images.docs if d.get("pinned")
-            ),
-        }
+    def test_two_cycles_same_state(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path
+    ) -> None:
+        settings = _FakeSettings(blob_dir=str(tmp_path))
 
-        asyncio.run(janitor._cleanup_cycle())
-        state_after_second = {
-            "contours": sorted(d["contour_hash"] for d in db.contours.docs),
-            "images": sorted(d["image_slug"] for d in db.images.docs),
-            "contour_pins": sorted(
-                d["contour_hash"] for d in db.contours.docs if d.get("pinned")
-            ),
-            "image_pins": sorted(
-                d["image_slug"] for d in db.images.docs if d.get("pinned")
-            ),
-        }
-        assert state_after_first == state_after_second
+        async def _snapshot(db):
+            contours = [d async for d in db.contours.find({})]
+            images = [d async for d in db.images.find({})]
+            return {
+                "contours": sorted(d["contour_hash"] for d in contours),
+                "images": sorted(d["image_slug"] for d in images),
+                "contour_pins": sorted(
+                    d["contour_hash"] for d in contours if d.get("pinned")
+                ),
+                "image_pins": sorted(
+                    d["image_slug"] for d in images if d.get("pinned")
+                ),
+            }
 
+        async def body(db):
+            await _seed(db)
+            _run_cycle_against(db, settings, monkeypatch)
+            await janitor._cleanup_cycle()
+            first = await _snapshot(db)
+            await janitor._cleanup_cycle()
+            second = await _snapshot(db)
+            return first, second
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _stringify(obj: Any) -> str:
-    """Recursive repr that exposes any nested ``$nin`` keys to substring search."""
-    if isinstance(obj, dict):
-        return "{" + ",".join(f"{k!r}:{_stringify(v)}" for k, v in obj.items()) + "}"
-    if isinstance(obj, list):
-        return "[" + ",".join(_stringify(v) for v in obj) + "]"
-    return repr(obj)
+        first, second = run_db(body)
+        assert first == second

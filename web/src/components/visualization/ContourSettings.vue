@@ -206,7 +206,7 @@ watch(
         <!-- Strategy -->
         <ConfiguratorRow label="Strategy">
             <Select v-model="strategy" class="w-full">
-                <SelectTrigger class="w-full h-10 text-sm border-2 border-foreground/15 rounded-lg">
+                <SelectTrigger aria-label="Contour extraction strategy" class="w-full h-10 text-sm border-2 border-foreground/15 rounded-lg">
                     <div class="inline-flex items-center gap-1.5">
                         <Wand2 v-if="strategy === 'auto'" class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         {{ strategyLabel }}

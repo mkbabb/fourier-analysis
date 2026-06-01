@@ -6,8 +6,7 @@ import {
     Download, EllipsisVertical, } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockDropdownTrigger } from "@mkbabb/glass-ui/dock";
-import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/dropdown-menu";
-import { Button } from "@mkbabb/glass-ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/dropdown-menu";
 import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import GlassTimeline from "./GlassTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
@@ -101,24 +100,27 @@ const caretLabel = computed(() =>
             <!-- Three-dot menu — glass-ui DropdownMenu (role="menu", focus
                  management, Esc + click-outside dismissal all from the
                  primitive; replaces the hand-rolled popup + onClickOutside). -->
-            <DropdownMenu>
-                <Tooltip text="More options">
-                    <DockDropdownTrigger aria-label="More options">
+            <DropdownMenu :modal="false">
+                <DockDropdownTrigger aria-label="More options">
+                    <Tooltip text="More options">
                         <EllipsisVertical class="h-4 w-4" />
-                    </DockDropdownTrigger>
-                </Tooltip>
+                    </Tooltip>
+                </DockDropdownTrigger>
                 <DropdownMenuContent class="menu-popup" :side-offset="8" align="end">
-                    <div class="flex sm:hidden items-center gap-2 px-3 py-1.5 border-b border-border/50 mb-0.5 pb-2">
+                    <!-- The Speed + Easing controls are rich grouped settings,
+                         not command items; `role="group"` makes them allowed
+                         children of the `role="menu"` content (satisfies the
+                         ARIA `aria-required-children` contract) without
+                         mislabelling a combobox/toggle-grid as `menuitem`. -->
+                    <div role="group" aria-label="Speed" class="flex sm:hidden items-center gap-2 px-3 py-1.5 border-b border-border/50 mb-0.5 pb-2">
                         <span class="text-muted-foreground text-xs">Speed</span>
                         <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" compact />
                     </div>
                     <EasingPicker />
-                    <Tooltip text="Export frame as PNG">
-                        <Button variant="ghost" size="sm" class="menu-item" @click="emit('exportFrame')">
-                            <Download class="h-4 w-4" />
-                            <span class="text-sm font-medium">Export</span>
-                        </Button>
-                    </Tooltip>
+                    <DropdownMenuItem class="menu-item" @select="emit('exportFrame')">
+                        <Download class="h-4 w-4" />
+                        <span class="text-sm font-medium">Export</span>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

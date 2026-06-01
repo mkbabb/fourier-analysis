@@ -70,7 +70,7 @@ const sidebarState = useSidebarState<PaperSectionData>({
                             <Button
                                 variant="ghost"
                                 :data-toc-id="section.id"
-                                @click="sidebarState.toggleSection(section.id)"
+                                @click="scrollTo(section.id); sidebarState.toggleSection(section.id)"
                                 class="sidebar-link cm-serif"
                                 :class="{ 'is-active': activeRootId === section.id }"
                                 :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"

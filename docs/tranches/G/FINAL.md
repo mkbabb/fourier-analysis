@@ -18,7 +18,9 @@
 | **ε** deploy-spine completion | secret-model doc↔host lie; no self-CI; deploy-hook gaps; fourier hardening; host cruft | secret-model reconciled (executable render wrapper); deploy self-CI (shellcheck); deploy-hook nginx-recreate (+ template backport); backend hardening floor live; host backups pruned. |
 | **ζ** honesty + coordination | inv-22 overstated; chronics; asks | inv-22 honestly scoped (`INVARIANTS §2.7`); C1/C5/C6 re-affirmed with predicates; E2 out w/ rationale; 7-ask stale-watch re-triggered (Ask 4 fourier portion LANDED). |
 
-## §2 — Hard-gate table (all verified)
+## §2 — Hard-gate table (verified — local + live; CI-signal corrected in §6)
+
+> **inv-27 correction (added H.W1, 2026-05-31).** The `pytest`, `vue-tsc + build`, and `T7 conformance` rows below were verified **LOCALLY** at close — each true as a local result — but the table as a whole read as "CI green," which was **FALSE**: the `CI` workflow's `e2e (Playwright)` job was red on every G commit (a chronic broken gate G did not cause). See **§6** for the honest scope and the H.W1 green run that discharges it. The live/deploy rows (inv-25, δ, β.2, ε, ζ) are unaffected — they were verified against prod, not CI.
 
 | Gate | Result | Evidence |
 |---|---|---|
@@ -51,5 +53,11 @@
 
 ## §5 — Disposition
 A–G closed. G discharged the three overstatements at root, landed the convergence/legacy/perf transpositions, completed the deploy spine, and — load-bearing — **refused the anti-pattern it was born correcting**: no residual widened to mask a defect; no "LIVE" claimed without an automated `deploy_run_id`. Ordering ι′ (CANONICAL-ORDERING §16) marks G CLOSED.
+
+## §6 — inv-27 correction (added by H.W1, 2026-05-31, non-destructive)
+
+G's §2 marked `pytest` (132/83), `vue-tsc + build`, and `T7` ✅ — all **verified locally at close**, and all genuinely passing locally. But the table collectively implied "CI green," and that was **not** true: the GitHub `CI` workflow was `failure` on every G commit, including the W9 close `5e29ed0` (run `26695317377`) and the post-close fix `b28c3fa` (`26719598467`). The single red job was **`e2e (Playwright)`** — a deterministic strict-mode locator violation (`input[type="file"]` resolves to two elements: `ImageUpload.vue` + `VisualizationView.vue`'s `canvasFileInput`). **G did NOT cause it**: both inputs pre-date G; the suite was broken since before F (where it failed at the submodule checkout step and never ran), and G's W1 checkout fix merely *unmasked* it. The cheap CI jobs (`web`, and `api-tests` after `b28c3fa`) were green; the close cited those and the local gates, not the full CI run.
+
+This is the same honesty class that birthed inv-25 (deploy-of-record-automated), now in the **test signal** — which is exactly why **H exists** and authors **inv-27 (green-means-green)**: a "CI green" claim must cite a run id whose *every* job is green. **H.W1 repaired the `e2e` suite** (four breakage classes: the dual-file-input locator + three stale-selector/assertion drifts) so fourier CI is now actually green on all three jobs — the discharging green run id is cited in `H/FINAL.md`. **None of G's landed work is reopened or altered** by this correction: δ-live, β.2-per-client, inv-26, and the hardening floor were verified against prod/grep and stand. Only the CI-green *implication* of §2 is corrected here.
 
 End of G/FINAL.md.

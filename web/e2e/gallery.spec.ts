@@ -4,14 +4,16 @@ test.describe("Gallery UX", () => {
     test("gallery page renders with tabs and search bar", async ({ page }) => {
         await page.goto("/gallery");
 
-        // BouncyToggle tabs should be visible
-        const galleryTab = page.locator("button.bouncy-btn", { hasText: "Gallery" });
-        const draftsTab = page.locator("button.bouncy-btn", { hasText: "Drafts" });
+        // GalleryView migrated BouncyToggle → glass-ui UnderlineTabs, which
+        // renders `<button role="tab">` inside `role="tablist"` with the tab
+        // label as the accessible name and `aria-selected` for active state.
+        const galleryTab = page.getByRole("tab", { name: "Gallery" });
+        const draftsTab = page.getByRole("tab", { name: "Drafts" });
         await expect(galleryTab).toBeVisible({ timeout: 10_000 });
         await expect(draftsTab).toBeVisible();
 
-        // Gallery tab is active by default
-        await expect(galleryTab).toHaveClass(/is-active/);
+        // Gallery tab is active by default.
+        await expect(galleryTab).toHaveAttribute("aria-selected", "true");
 
         // Search bar (GlassDock) should be visible
         const searchInput = page.locator('input[placeholder="Search by slug..."]');
@@ -23,18 +25,19 @@ test.describe("Gallery UX", () => {
     test("switching to drafts tab shows drafts section", async ({ page }) => {
         await page.goto("/gallery");
 
-        const draftsTab = page.locator("button.bouncy-btn", { hasText: "Drafts" });
+        const draftsTab = page.getByRole("tab", { name: "Drafts" });
         await expect(draftsTab).toBeVisible({ timeout: 10_000 });
         await draftsTab.click();
 
-        // Drafts tab becomes active
-        await expect(draftsTab).toHaveClass(/is-active/);
+        // Drafts tab becomes active (aria-selected is the UnderlineTabs contract).
+        await expect(draftsTab).toHaveAttribute("aria-selected", "true");
 
-        // Should show either drafts or the empty state
-        const draftsContent = page.locator("text=No drafts yet").or(
+        // Should show either drafts or the empty state ("No drafts yet." copy
+        // from GalleryView's drafts-tab empty state).
+        const draftsContent = page.getByText("No drafts yet").or(
             page.locator(".draft-item"),
         );
-        await expect(draftsContent).toBeVisible({ timeout: 5_000 });
+        await expect(draftsContent.first()).toBeVisible({ timeout: 5_000 });
     });
 
     test("search bar filter drawer toggles", async ({ page }) => {
@@ -79,11 +82,11 @@ test.describe("Gallery UX", () => {
         }
     });
 
-    test("visualizer has overlay buttons in flex layout", async ({ page }) => {
+    test("visualizer surfaces its overlay control dock", async ({ page }) => {
         await page.goto("/visualize");
 
-        // Upload an image to get overlay buttons
-        const fileInput = page.locator('input[type="file"]');
+        // Upload an image so the canvas + overlaid CanvasControlsDock mount.
+        const fileInput = page.getByTestId("image-file-input");
         const testImage = new URL(
             "../../assets/animals/golden-retriever.webp",
             import.meta.url,
@@ -92,18 +95,24 @@ test.describe("Gallery UX", () => {
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
 
-        // Wait for canvas
+        // Wait for canvas (auto-compute populates `hasData`, which mounts the
+        // top controls dock in `.controls-dock-anchor`).
         const canvas = page.locator("canvas").first();
         await expect(canvas).toBeVisible({ timeout: 60_000 });
 
-        // Overlay buttons should be in a flex container
-        const overlayContainer = page.locator(".absolute.top-2.right-2.z-20.flex");
-        await expect(overlayContainer).toBeVisible({ timeout: 5_000 });
+        // The overlay actions migrated from the removed `.absolute.top-2.right-2`
+        // flex container into the glass-ui CanvasControlsDock (GlassDock). It
+        // starts collapsed; hovering the dock expands it so the action buttons
+        // surface. Intent preserved: the visualizer exposes its overlay actions.
+        const dock = page.locator(".controls-dock-anchor .glass-dock");
+        await expect(dock).toBeVisible({ timeout: 10_000 });
+        await dock.hover();
 
-        // Should contain glass-btn elements
-        const buttons = overlayContainer.locator(".glass-btn");
-        const count = await buttons.count();
-        expect(count).toBeGreaterThanOrEqual(2); // at least expand + edit
+        // The dock's actions are keyed by aria-label (the dock idiom). "View
+        // options" (image-overlay / contour-trace toggles) is the canonical
+        // overlay affordance; "Fullscreen" is always present.
+        const viewOptions = dock.locator('[aria-label="View options"]');
+        await expect(viewOptions).toBeVisible({ timeout: 5_000 });
     });
 
     test("no console errors on gallery page", async ({ page }) => {

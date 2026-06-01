@@ -7,7 +7,13 @@ const anim = useAnimationStore();
 </script>
 
 <template>
-    <div class="easing-section">
+    <!-- `role="group"` makes this an allowed child of the parent
+         `role="menu"`; each easing chip is a mutually-exclusive option, so it
+         carries `role="menuitemradio"` + `aria-checked` — the ARIA-correct
+         child role for a radio set inside a menu (satisfies
+         `aria-required-children`; `aria-pressed` would mislabel a radio as a
+         toggle). -->
+    <div role="group" aria-label="Easing" class="easing-section">
         <span class="easing-heading">Easing</span>
         <div class="easing-grid">
             <Button
@@ -15,9 +21,10 @@ const anim = useAnimationStore();
                 :key="key"
                 variant="ghost"
                 size="sm"
+                role="menuitemradio"
                 class="easing-chip"
                 :class="{ 'is-active': anim.easing === key }"
-                :aria-pressed="anim.easing === key"
+                :aria-checked="anim.easing === key"
                 @click="anim.easing = key as EasingName"
             >
                 <EasingCurvePreview

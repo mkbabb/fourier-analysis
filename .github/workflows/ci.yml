@@ -65,10 +65,14 @@ jobs:
         env:
           MONGO_TEST_URI: mongodb://localhost:27017
           MONGO_URI: mongodb://localhost:27017/fourier
-        # Floor: 211 passed (129 always-on + 82 formerly-skipped).
-        # A small skip residual is OK for replica-set-only tests, but the
-        # @requires_mongo skips MUST drop substantially from the no-Mongo baseline.
-        run: uv run pytest api/tests/ -v --tb=short
+        # H.W1 (inv-27 — green-means-green): collect the FULL api/ test tree, NOT
+        # just api/tests/. The previous `pytest api/tests/` silently skipped
+        # `api/services/__tests__/` (test_janitor.py, test_contour_hash.py) — so
+        # CI was green while 5 janitor tests had been broken since B.W3 (a stub
+        # drift CI never ran). `pytest api/` gates EVERY api test; no test lives
+        # outside the collected path. A small @requires_mongo replica-set-only
+        # skip residual is acceptable, but breakage can no longer hide off-path.
+        run: uv run pytest api/ -v --tb=short
 
   web-build:
     name: web (vue-tsc + vite build)
@@ -135,6 +139,11 @@ jobs:
           # 49-spec contour-extraction suite doesn't 429-cascade. The prod
           # api/config.py:23 default stays at 5; the override is env-only.
           COMPUTE_RATE_LIMIT: "1000"
+          # H.W1 — the mutating e2e specs issue dozens of writes; raise the write
+          # budget for the e2e arm (sibling of COMPUTE_RATE_LIMIT) so the suite
+          # doesn't 429-cascade. Prod default (api/config.py write_rate_limit=10)
+          # is byte-identical; the override is env-only.
+          WRITE_RATE_LIMIT: "1000"
           CORS_ORIGINS: "http://localhost:3000"
         run: |
           nohup uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &

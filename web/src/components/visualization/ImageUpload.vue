@@ -119,6 +119,7 @@ function onImgError() {
 
         <input
             ref="fileInput"
+            data-testid="image-file-input"
             type="file"
             accept="image/*"
             class="hidden"

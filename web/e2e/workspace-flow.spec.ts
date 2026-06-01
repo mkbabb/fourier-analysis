@@ -12,7 +12,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await page.goto("/visualize");
 
         // 2. Upload image
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(TEST_IMAGE);
 
         // 3. Should redirect to /w/{imageSlug}
@@ -35,7 +35,7 @@ test.describe.serial("Asset-based workspace flow", () => {
     test("image metadata is accessible via API", async ({ page }) => {
         await page.goto("/visualize");
 
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(TEST_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
@@ -56,7 +56,7 @@ test.describe.serial("Asset-based workspace flow", () => {
     test("extract-contour returns contour asset", async ({ page }) => {
         await page.goto("/visualize");
 
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(TEST_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
@@ -100,7 +100,7 @@ test.describe.serial("Asset-based workspace flow", () => {
     test("compute epicycles from contour", async ({ page }) => {
         await page.goto("/visualize");
 
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(TEST_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
@@ -151,7 +151,7 @@ test.describe.serial("Asset-based workspace flow", () => {
     }) => {
         await page.goto("/visualize");
 
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(TEST_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
@@ -182,7 +182,7 @@ test.describe.serial("Asset-based workspace flow", () => {
 
         await page.goto("/visualize");
 
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(TEST_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });

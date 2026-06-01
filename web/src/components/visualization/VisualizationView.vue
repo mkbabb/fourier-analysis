@@ -316,6 +316,19 @@ async function onCanvasFileSelect(e: Event) {
    toggle inside each slot drives the tab switch. */
 @media (max-width: 1023px) {
     .viz-configurator { display: flex; flex-direction: column; }
+
+    /* When the Configurator drops its desktop grid for the mobile flex column,
+       glass-ui's `.configurator-stage` cell becomes a `flex: 0 1 auto` item
+       and — since the canvas-container inside is `position: absolute` — it has
+       no intrinsic height, collapsing the stage to 0px (the `<canvas>` renders
+       at ~4px and the bottom AnimationControls dock floats up under the sticky
+       header). On the desktop grid the cell drew its height from the grid
+       track; in the flex column it must grow explicitly. Make the active stage
+       cell flex-fill the column so the canvas + bottom dock lay out correctly. */
+    .viz-configurator :deep(.configurator-stage) {
+        flex: 1 1 0%;
+        min-height: 0;
+    }
 }
 
 /* ── Left panel (controls aside body) ── */

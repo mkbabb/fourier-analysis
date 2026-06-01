@@ -25,6 +25,10 @@ FRONTEND_PORT_DEFAULT=3000
 # api/config.py:23 default (5) is byte-identical pre/post-W6; only this script
 # (and the CI workflow) sets the override.
 export COMPUTE_RATE_LIMIT="${COMPUTE_RATE_LIMIT:-1000}"
+# WRITE_RATE_LIMIT — H.W1: the mutating e2e specs (CRUD lifecycle, workspace flow)
+# issue dozens of create/update/delete writes; the prod write budget (10/min) would
+# 429-cascade them. Raise it for the e2e arm exactly as COMPUTE_RATE_LIMIT above.
+export WRITE_RATE_LIMIT="${WRITE_RATE_LIMIT:-1000}"
 
 find_free_port() {
     local p=${1:-8000}

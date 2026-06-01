@@ -1,249 +1,132 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import * as path from "node:path";
+
+/**
+ * Settings persistence across reload — asset architecture.
+ *
+ * The legacy session-API persistence (`/api/sessions/{slug}` + `/s/` routes) was
+ * removed. The asset architecture persists the working session as an IndexedDB
+ * `WorkspaceDraft` (db `fourier-drafts`, store `drafts`, keyPath `imageSlug`),
+ * auto-saved (debounced ~1s) by the workspace store whenever `contourSettings` /
+ * `animationSettings` change (stores/workspace.ts `scheduleDraftSave`). On reload
+ * of `/w/{imageSlug}`, `loadWorkspace` → `loadDraft` restores those settings,
+ * which `useWorkspaceLoader` seeds back into the `nHarmonics` / `nPoints` inputs.
+ *
+ * This spec exercises that real client-side persistence path end-to-end:
+ *   upload → change Harmonics → (draft auto-saves to IndexedDB) → reload →
+ *   assert the input restored the value + the IndexedDB draft holds it.
+ * No `/api/sessions`, no `/s/` routes, no shared-URL multi-visitor flow (that
+ * was a session-API affordance with no asset-arch analogue — drafts are
+ * device-local IndexedDB, the cross-visitor share path is the published
+ * `/v/{slug}` visualization, covered by visualization-crud.spec.ts).
+ */
 
 const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 
-// These tests rely on the old session-based API (/api/sessions/{slug}).
-// The new asset-based architecture uses workspace drafts (IndexedDB) + snapshots.
-// TODO: Rewrite for asset-based persistence (workspace store + snapshot API).
-test.describe.skip("Settings persistence across page reload", () => {
-    test("contour settings and harmonics persist via session slug", async ({ page }) => {
-        // 1. Navigate and create session
-        await page.goto("/visualize");
-        await page.waitForURL(/\/s\//);
+/** The IndexedDB draft layer the asset arch persists settings into. */
+const DRAFT_DB = "fourier-drafts";
+const DRAFT_STORE = "drafts";
 
-        // 2. Upload image
-        const fileInput = page.locator('input[type="file"]');
-        await fileInput.setInputFiles(TEST_IMAGE);
+/** Read the persisted `WorkspaceDraft` for `imageSlug` straight from IndexedDB. */
+async function readDraft(page: Page, imageSlug: string): Promise<any> {
+    return page.evaluate(
+        ({ dbName, storeName, key }) =>
+            new Promise((resolve, reject) => {
+                const req = indexedDB.open(dbName);
+                req.onsuccess = () => {
+                    const db = req.result;
+                    const tx = db.transaction(storeName, "readonly");
+                    const get = tx.objectStore(storeName).get(key);
+                    get.onsuccess = () => resolve(get.result ?? null);
+                    get.onerror = () => reject(get.error);
+                };
+                req.onerror = () => reject(req.error);
+            }),
+        { dbName: DRAFT_DB, storeName: DRAFT_STORE, key: imageSlug },
+    );
+}
 
-        // Wait for canvas to appear (computation done)
-        const canvas = page.locator("canvas").first();
-        await expect(canvas).toBeVisible({ timeout: 30_000 });
-        await page.waitForTimeout(2000);
+/** Upload the fixture, returning the `/w/{imageSlug}` slug once the canvas renders. */
+async function uploadAndOpen(page: Page): Promise<string> {
+    await page.goto("/visualize");
+    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.waitForURL(/\/w\//, { timeout: 15_000 });
+    const imageSlug = page.url().match(/\/w\/([^/?#]+)/)?.[1];
+    expect(imageSlug, "imageSlug parsed from /w/ URL").toBeTruthy();
 
-        // 3. Record the slug URL
-        const url = page.url();
-        const slug = url.match(/\/s\/(.+)/)?.[1];
-        expect(slug).toBeTruthy();
+    // Canvas appears once auto-compute lands — the BasisSelector (which holds the
+    // Harmonics / Sample-Points inputs) only mounts once `hasData` is true.
+    const canvas = page.locator("canvas").first();
+    await expect(canvas).toBeVisible({ timeout: 60_000 });
+    return imageSlug as string;
+}
 
-        // 4. Open the Contour settings collapsible
-        const contourHeader = page.locator("text=Contour").first();
-        await contourHeader.click();
-        await page.waitForTimeout(300);
+test.describe.serial("Settings persistence across reload (asset arch)", () => {
+    test("harmonics setting persists to the IndexedDB draft and restores on reload", async ({ page }) => {
+        const imageSlug = await uploadAndOpen(page);
 
-        // 5. Change harmonics to 150 via the number input
-        const harmonicsInput = page.locator('input[type="number"]').filter({ hasText: "" }).first();
-        // Find the harmonics number input by its label context
-        const harmonicsSection = page.locator("text=Harmonics (N)").locator("..");
-        const harmonicsNumberInput = harmonicsSection.locator('input[type="number"]');
-        await harmonicsNumberInput.fill("150");
-        await harmonicsNumberInput.press("Enter");
+        // The Harmonics input lives in BasisSelector (aria-label="Harmonics"),
+        // visible once data has computed.
+        const harmonicsInput = page.getByRole("spinbutton", { name: "Harmonics" });
+        await expect(harmonicsInput).toBeVisible({ timeout: 30_000 });
 
-        // 6. Change blur sigma via slider
-        // The first slider in Contour section is blur sigma
-        // Find the Contour card's blur slider
-        const blurSection = page.locator("text=Blur Sigma").locator("..");
-        const blurNumberInput = blurSection.locator('input[type="number"]');
-        await blurNumberInput.fill("3.5");
-        await blurNumberInput.press("Enter");
+        // Change harmonics to a non-default value (default is 50).
+        await harmonicsInput.fill("120");
+        await harmonicsInput.press("Enter");
 
-        // 7. Wait for debounced compute + settings save (1s debounce + network)
-        await page.waitForTimeout(4000);
+        // The store debounces the draft save (~1s) after `contourSettings`
+        // changes; poll IndexedDB until the draft reflects the new value. This is
+        // deterministic — the assertion targets the persisted state, not a timer.
+        await expect
+            .poll(async () => (await readDraft(page, imageSlug))?.contourSettings?.n_harmonics, {
+                timeout: 15_000,
+            })
+            .toBe(120);
 
-        // 8. Verify settings were saved by checking the API directly
-        const apiResponse = await page.evaluate(async (s) => {
-            const res = await fetch(`/api/sessions/${s}`);
-            return res.json();
-        }, slug);
-
-        expect(apiResponse.parameters.n_harmonics).toBe(150);
-        expect(apiResponse.parameters.blur_sigma).toBeCloseTo(3.5, 1);
-
-        // 9. Reload the page
+        // Reload `/w/{imageSlug}` — `loadWorkspace` rehydrates from the draft.
         await page.reload();
-        await page.waitForURL(/\/s\//);
+        await page.waitForURL(/\/w\//, { timeout: 15_000 });
 
-        // Wait for session to load and canvas to appear
-        await expect(canvas).toBeVisible({ timeout: 30_000 });
-        await page.waitForTimeout(3000);
+        const canvas = page.locator("canvas").first();
+        await expect(canvas).toBeVisible({ timeout: 60_000 });
 
-        // 10. Verify harmonics input shows saved value (150, not default 50)
-        const harmonicsSectionAfter = page.locator("text=Harmonics (N)").locator("..");
-        const harmonicsInputAfter = harmonicsSectionAfter.locator('input[type="number"]');
-        await expect(harmonicsInputAfter).toHaveValue("150");
+        // The restored draft seeds the Harmonics input back to 120 (not default 50).
+        const harmonicsAfter = page.getByRole("spinbutton", { name: "Harmonics" });
+        await expect(harmonicsAfter).toBeVisible({ timeout: 30_000 });
+        await expect(harmonicsAfter).toHaveValue("120");
 
-        // 11. Open Contour section and verify blur sigma
-        const contourHeaderAfter = page.locator("text=Contour").first();
-        await contourHeaderAfter.click();
-        await page.waitForTimeout(300);
-
-        const blurSectionAfter = page.locator("text=Blur Sigma").locator("..");
-        const blurInputAfter = blurSectionAfter.locator('input[type="number"]');
-        await expect(blurInputAfter).toHaveValue("3.5");
-
-        // 12. Verify the API still returns correct values
-        const apiAfterReload = await page.evaluate(async (s) => {
-            const res = await fetch(`/api/sessions/${s}`);
-            return res.json();
-        }, slug);
-
-        expect(apiAfterReload.parameters.n_harmonics).toBe(150);
-        expect(apiAfterReload.parameters.blur_sigma).toBeCloseTo(3.5, 1);
+        // And the persisted draft still carries it.
+        const draftAfter = await readDraft(page, imageSlug);
+        expect(draftAfter?.contourSettings?.n_harmonics).toBe(120);
     });
 
-    test("sample points persist across reload", async ({ page }) => {
-        await page.goto("/visualize");
-        await page.waitForURL(/\/s\//);
+    test("sample points setting persists to the IndexedDB draft and restores on reload", async ({ page }) => {
+        const imageSlug = await uploadAndOpen(page);
 
-        const fileInput = page.locator('input[type="file"]');
-        await fileInput.setInputFiles(TEST_IMAGE);
+        const pointsInput = page.getByRole("spinbutton", { name: "Sample Points" });
+        await expect(pointsInput).toBeVisible({ timeout: 30_000 });
 
-        const canvas = page.locator("canvas").first();
-        await expect(canvas).toBeVisible({ timeout: 30_000 });
-        await page.waitForTimeout(2000);
-
-        const url = page.url();
-        const slug = url.match(/\/s\/(.+)/)?.[1];
-
-        // Change sample points to 2048
-        const pointsSection = page.locator("text=Sample Points").locator("..");
-        const pointsInput = pointsSection.locator('input[type="number"]');
+        // Change sample points to 2048 (default 1024; step 128).
         await pointsInput.fill("2048");
         await pointsInput.press("Enter");
 
-        // Wait for save
-        await page.waitForTimeout(4000);
+        await expect
+            .poll(async () => (await readDraft(page, imageSlug))?.contourSettings?.n_points, {
+                timeout: 15_000,
+            })
+            .toBe(2048);
 
-        // Verify in API
-        const apiResponse = await page.evaluate(async (s) => {
-            const res = await fetch(`/api/sessions/${s}`);
-            return res.json();
-        }, slug);
-        expect(apiResponse.parameters.n_points).toBe(2048);
-
-        // Reload
         await page.reload();
-        await page.waitForURL(/\/s\//);
-        await expect(canvas).toBeVisible({ timeout: 30_000 });
-        await page.waitForTimeout(3000);
-
-        // Verify persisted
-        const pointsSectionAfter = page.locator("text=Sample Points").locator("..");
-        const pointsInputAfter = pointsSectionAfter.locator('input[type="number"]');
-        await expect(pointsInputAfter).toHaveValue("2048");
-    });
-
-    test("shared URL loads saved settings for new visitor", async ({ page, context }) => {
-        // Create session with custom settings
-        await page.goto("/visualize");
-        await page.waitForURL(/\/s\//);
-
-        const fileInput = page.locator('input[type="file"]');
-        await fileInput.setInputFiles(TEST_IMAGE);
+        await page.waitForURL(/\/w\//, { timeout: 15_000 });
 
         const canvas = page.locator("canvas").first();
-        await expect(canvas).toBeVisible({ timeout: 30_000 });
-        await page.waitForTimeout(2000);
+        await expect(canvas).toBeVisible({ timeout: 60_000 });
 
-        const url = page.url();
+        const pointsAfter = page.getByRole("spinbutton", { name: "Sample Points" });
+        await expect(pointsAfter).toBeVisible({ timeout: 30_000 });
+        await expect(pointsAfter).toHaveValue("2048");
 
-        // Change harmonics to 200
-        const harmonicsSection = page.locator("text=Harmonics (N)").locator("..");
-        const harmonicsInput = harmonicsSection.locator('input[type="number"]');
-        await harmonicsInput.fill("200");
-        await harmonicsInput.press("Enter");
-        await page.waitForTimeout(4000);
-
-        // Open a NEW tab (simulates a different user visiting the shared URL)
-        const newPage = await context.newPage();
-        await newPage.goto(url);
-        await newPage.waitForURL(/\/s\//);
-
-        const newCanvas = newPage.locator("canvas").first();
-        await expect(newCanvas).toBeVisible({ timeout: 30_000 });
-        await newPage.waitForTimeout(3000);
-
-        // Verify harmonics loaded from session
-        const newHarmonicsSection = newPage.locator("text=Harmonics (N)").locator("..");
-        const newHarmonicsInput = newHarmonicsSection.locator('input[type="number"]');
-        await expect(newHarmonicsInput).toHaveValue("200");
-
-        await newPage.close();
-    });
-
-    test("easing, speed, and active bases persist across reload", async ({ page }) => {
-        await page.goto("/visualize");
-        await page.waitForURL(/\/s\//);
-
-        const fileInput = page.locator('input[type="file"]');
-        await fileInput.setInputFiles(TEST_IMAGE);
-
-        const canvas = page.locator("canvas").first();
-        await expect(canvas).toBeVisible({ timeout: 30_000 });
-        await page.waitForTimeout(2000);
-
-        const url = page.url();
-        const slug = url.match(/\/s\/(.+)/)?.[1];
-        expect(slug).toBeTruthy();
-
-        // Open the three-dot menu (contains easing + speed on mobile, easing on desktop)
-        const menuBtn = page.locator("button.menu-btn").first();
-        await menuBtn.click();
-        await page.waitForTimeout(300);
-
-        // Change easing by clicking the "Linear" chip inside the menu
-        const linearChip = page.locator(".easing-chip-label").filter({ hasText: "Linear" }).first();
-        await linearChip.click();
-        await page.waitForTimeout(300);
-
-        // Change speed to 2x via the speed select (desktop: inline, may also be in menu)
-        const speedTrigger = page.locator('[role="combobox"]').filter({ hasText: /×/ }).first();
-        await speedTrigger.click();
-        await page.locator('[role="option"]').filter({ hasText: "2×" }).click();
-        await page.waitForTimeout(500);
-
-        // Close menu by clicking outside
-        await page.locator("canvas").first().click({ position: { x: 10, y: 10 } });
-        await page.waitForTimeout(300);
-
-        // Toggle Chebyshev basis on — A.W2.e migrated `.basis-pill` to
-        // `<Button class="basis-toggle">` with `aria-pressed` for state.
-        const chebyshevPill = page.locator("button.basis-toggle").filter({ hasText: "Chebyshev" });
-        await chebyshevPill.click();
-        await page.waitForTimeout(500);
-
-        // Wait for debounced save (500ms debounce + network)
-        await page.waitForTimeout(2000);
-
-        // Verify in API
-        const apiResponse = await page.evaluate(async (s) => {
-            const res = await fetch(`/api/sessions/${s}`);
-            return res.json();
-        }, slug);
-
-        expect(apiResponse.animation_settings.speed).toBe(2);
-        expect(apiResponse.animation_settings.easing).toBe("linear");
-        expect(apiResponse.animation_settings.active_bases).toContain("chebyshev");
-        expect(apiResponse.animation_settings.active_bases).toContain("fourier-epicycles");
-
-        // Reload the page
-        await page.reload();
-        await page.waitForURL(/\/s\//);
-        await expect(canvas).toBeVisible({ timeout: 30_000 });
-        await page.waitForTimeout(3000);
-
-        // Verify Chebyshev pill is active — `aria-pressed="true"` is the
-        // semantic active-state contract post-A.W2.e (was `.active` class).
-        const chebyshevAfter = page.locator('button.basis-toggle[aria-pressed="true"]').filter({ hasText: "Chebyshev" });
-        await expect(chebyshevAfter).toBeVisible();
-
-        // Verify API returns persisted values
-        const apiAfter = await page.evaluate(async (s) => {
-            const res = await fetch(`/api/sessions/${s}`);
-            return res.json();
-        }, slug);
-        expect(apiAfter.animation_settings.speed).toBe(2);
-        expect(apiAfter.animation_settings.easing).toBe("linear");
-        expect(apiAfter.animation_settings.active_bases).toContain("chebyshev");
+        const draftAfter = await readDraft(page, imageSlug);
+        expect(draftAfter?.contourSettings?.n_points).toBe(2048);
     });
 });

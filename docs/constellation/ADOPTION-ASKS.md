@@ -114,6 +114,7 @@ Acceptance shape = the observable evidence the maintainer's PR is complete. Prio
 | 6 | csp-solver | 1-line `app.include_router` — register missing solve/openapi/docs routes (N4) | P2 | csp-solver maintainer | OPEN — re-affirmed G.W8 |
 | 7 | words/floridify | Mongo-bind upstream hardening to internal-only (N7) | P2 | floridify maintainer | OPEN — re-affirmed G.W8 |
 | inv-22-color | value.js (palette-api vhost) | bring `api.color` to the 4-endpoint vhost contract (`/health`/`/docs`/`/openapi.json` currently 404) — honest `F-Inv 22*` scope | P3 | value.js maintainer | OPEN — booked G.W8 (new) |
+| glass-ui-a11y | glass-ui (`ConfiguratorLayer`) | apply `inert` to the collapsed `ConfiguratorLayer` body — it sets `aria-hidden="true"` but keeps focusable children, an axe `aria-hidden-focus` **serious** violation. Surfaced by fourier **H.W1**'s e2e a11y keystones (workspace-default AND Configurator-open: any closed sibling layer carries the defect); both app `test.fixme`'d pending a glass-ui release + the guarded `^2→^3` bump | P2 | glass-ui maintainer | OPEN — booked H.W1 (new) |
 
 ## §5 — Provenance + boundary attestation
 
@@ -121,6 +122,7 @@ Acceptance shape = the observable evidence the maintainer's PR is complete. Prio
 - **Ask 3** is the N1 "value.js dispatcher arm" real fix (the latent-broken non-git deploy dir).
 - **Ask 6** is N4 (csp-solver route-registration regression; FA2 §3).
 - **Ask 7** is N7 (floridify Mongo-bind upstream; F.md §9).
+- **glass-ui-a11y** is surfaced by fourier H.W1 (the e2e a11y keystones in `visualization-ux.spec.ts`: "workspace default" AND "ContourSettings Configurator-open"): a real `aria-hidden-focus` **serious** violation in glass-ui's `ConfiguratorLayer` collapsed body (it sets `aria-hidden="true"` but keeps focusable children, omitting `inert`). Because the workspace stacks several independent `ConfiguratorLayer`s, ANY closed sibling carries the defect — so opening one layer cannot clear it; both keystones hit it. fourier holds no lever (the app consumes the published `@mkbabb/glass-ui@^2.0.0`); both keystones are `test.fixme`'d as honest, booked baselines pending the glass-ui `inert` fix + the guarded `^2→^3` bump (an inv-16′ sweep candidate). The app's own co-located defect — a `button-name` **critical** on the ContourSettings Strategy `SelectTrigger` — was fixed in-tree (added `aria-label`), so the residual is purely vendored.
 - **inv-16 attestation**: this ledger is a coordination doc under `fourier-analysis/docs/`. Authoring it edited NO other repo's source and mutated NO host state. Every ask is a request the named maintainer executes in their own tree. fourier-F's tranche write surface remained `fourier-analysis/**` + `deploy/**` only.
 
 End of ADOPTION-ASKS.md.

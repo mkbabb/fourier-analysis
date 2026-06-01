@@ -15,7 +15,7 @@ test.describe("Contour extraction with animal images", () => {
     for (const imageName of animalImages) {
         test(`upload and extract contours — ${imageName}`, async ({ page }) => {
             // Upload image via file input
-            const fileInput = page.locator('input[type="file"]');
+            const fileInput = page.getByTestId("image-file-input");
             await fileInput.setInputFiles(path.join(ANIMALS_DIR, imageName));
 
             // Should redirect to /w/{imageSlug}
@@ -47,7 +47,7 @@ test.describe("Contour extraction with animal images", () => {
         }
 
         // Upload first animal image
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(path.join(ANIMALS_DIR, animalImages[0]));
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
@@ -96,7 +96,7 @@ test.describe("Contour extraction with animal images", () => {
         }
 
         // Upload first animal image
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(path.join(ANIMALS_DIR, animalImages[0]));
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
@@ -111,8 +111,16 @@ test.describe("Contour extraction with animal images", () => {
         await contourHeader.click();
         await page.waitForTimeout(300);
 
-        // Change strategy to "threshold"
-        const strategyTrigger = page.locator('[role="combobox"]').first();
+        // Change strategy to "threshold". Scope the combobox to the Strategy
+        // ConfiguratorRow — a bare `[role="combobox"]` also matches the
+        // AnimationControls dock's SpeedSelect (which lives in the dock's
+        // collapsed/hidden expanded layer, so `.first()` resolves to a
+        // never-visible element and the click times out). The strategy Select is
+        // the combobox inside the `.configurator-row` whose label is "Strategy".
+        const strategyTrigger = page
+            .locator(".configurator-row")
+            .filter({ hasText: "Strategy" })
+            .getByRole("combobox");
         await strategyTrigger.click();
         await page.locator('[role="option"]').filter({ hasText: "Otsu Threshold" }).click();
 
@@ -141,7 +149,7 @@ test.describe("Contour extraction with animal images", () => {
             return;
         }
 
-        const fileInput = page.locator('input[type="file"]');
+        const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(path.join(ANIMALS_DIR, animalImages[0]));
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });

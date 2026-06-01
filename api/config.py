@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     # Production default is conservative; dev/e2e raise it via COMPUTE_RATE_LIMIT
     # since a full lifecycle run issues several compute calls in quick succession.
     compute_rate_limit: int = 5
+    # Write (create/update/delete) requests per minute per IP. Production default
+    # is conservative; dev/e2e raise it via WRITE_RATE_LIMIT — the sibling of
+    # COMPUTE_RATE_LIMIT (D.W6) — since a full CRUD-lifecycle run issues many
+    # writes in quick succession and would otherwise 429-cascade the e2e suite.
+    write_rate_limit: int = 10
     asset_max_age_days: int = 30
     # NOTE: ``storage_budget_gb`` retired at B.W3 (the inline-blob eviction
     # band-aid — CRUD-CONTRACT §8 / Wχ P3-B). The principled storage bound is

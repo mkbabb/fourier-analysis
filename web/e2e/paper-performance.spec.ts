@@ -38,7 +38,11 @@ function parseOverlayPage(text: string): number {
 async function waitForPaperReady(page: Page) {
     await page.goto("/paper", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".paper-section").first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(".overlay-page")).toHaveText(/pg\s*4\s*\/\s*97/i, {
+    // Growth-tolerant: assert the page NUMBER (4) and that a total exists, but do
+    // NOT pin the total — the paper grows (97 → 110 → …) and hardcoding the total
+    // is the original drift sin. The `/pg 4 / <total>/` shape verifies the
+    // windowed initial render lands on page 4 with a live total denominator.
+    await expect(page.locator(".overlay-page")).toHaveText(/pg\s*4\s*\/\s*\d+/i, {
         timeout: 15_000,
     });
     await expect(page.locator("#introduction .section-heading")).toContainText("0.1.Introduction");
@@ -79,16 +83,72 @@ async function getSectionViewportTop(page: Page, id: string): Promise<number> {
     }, id);
 }
 
-async function overlayOpacity(page: Page): Promise<number> {
-    return page.locator(".teleport-overlay").evaluate((element) =>
-        Number.parseFloat(getComputedStyle(element as HTMLElement).opacity),
-    );
-}
-
+/**
+ * Click a TOC entry by its `data-toc-id` and wait for the target section to
+ * render, expanding any collapsed parent first.
+ *
+ * The sidebar (`PaperSidebar.vue`) renders a section's sub-entries inside a
+ * `CollapsibleContent` that is NOT mounted while the parent top-level section is
+ * collapsed — and 3rd-level `subsub` entries only mount when their branch is the
+ * active chain. So a nested appendix entry's `[data-toc-id]` does not exist in
+ * the DOM until its ancestor section is expanded. (Top-level `\chapter` entries
+ * map to top-level TOC sections; appendix `\section`s like
+ * `sturm-liouville-completeness` are nested subsections under their chapter.)
+ *
+ * Rather than hardcode each target's parent slug (which drifts as the paper's
+ * chapter titles change), discover the parent dynamically: if the entry is
+ * absent, walk the top-level section toggles and expand each until the nested
+ * entry materializes, then click it. This preserves the test's intent — the TOC
+ * jump lands on the section and its content renders — while staying robust to
+ * tree growth.
+ */
 async function activateTocEntry(page: Page, id: string) {
-    await page
-        .locator(`[data-toc-id="${id}"]`)
-        .evaluate((element) => (element as HTMLButtonElement).click());
+    const entry = page.locator(`[data-toc-id="${id}"]`);
+
+    if ((await entry.count()) === 0) {
+        // The entry is nested under a collapsed parent. Top-level section
+        // toggles are the *first* `[data-toc-id]` button inside each direct `li`
+        // child of `.sidebar-list` (the section's `Collapsible` trigger); their
+        // sub-entries live in a `CollapsibleContent` that mounts/unmounts with the
+        // section's open state. We must snapshot ONLY the top-level toggle ids —
+        // a descendant-combinator snapshot (`> li [data-toc-id]`) would also pick
+        // up already-expanded subsection ids (these tests run serially, so a prior
+        // test may leave a section open). A captured subsection id can then unmount
+        // before its turn in the loop, leaving its locator with zero matches and
+        // hanging `.evaluate()` for the full timeout. The per-`li`-first snapshot
+        // is stable: top-level section toggles are always mounted.
+        const toggleIds = await page
+            .locator(".sidebar-list > li")
+            .evaluateAll((lis) =>
+                (lis as HTMLElement[])
+                    .map((li) => li.querySelector("[data-toc-id]")?.getAttribute("data-toc-id") ?? "")
+                    .filter(Boolean),
+            );
+
+        for (const toggleId of toggleIds) {
+            if (toggleId === id) break;
+            // Only OPEN closed sections — `toggleSection` flips state, so
+            // clicking an already-open chapter would collapse it (churning the
+            // tree across the serial tests). Expand-if-closed is idempotent.
+            await page
+                .locator(`.sidebar-list > li [data-toc-id="${toggleId}"]`)
+                .first()
+                .evaluate((element) => {
+                    const collapsible = (element as HTMLElement).closest("[data-state]");
+                    if (collapsible?.getAttribute("data-state") !== "open") {
+                        (element as HTMLButtonElement).click();
+                    }
+                });
+            if ((await entry.count()) > 0) break;
+        }
+
+        await expect(entry, `TOC entry "${id}" never mounted after expanding parents`).toHaveCount(
+            1,
+            { timeout: 10_000 },
+        );
+    }
+
+    await entry.first().evaluate((element) => (element as HTMLButtonElement).click());
     await expect(page.locator(`#${id}`)).toBeVisible({ timeout: 10_000 });
 }
 
@@ -102,7 +162,8 @@ test.describe("Paper performance", () => {
     test("initial paper render stays windowed", async ({ page }) => {
         await waitForPaperReady(page);
 
-        await expect(page.locator(".overlay-page")).toHaveText(/pg\s*4\s*\/\s*97/i);
+        // Growth-tolerant: page number 4 + a live total (not pinned to 97).
+        await expect(page.locator(".overlay-page")).toHaveText(/pg\s*4\s*\/\s*\d+/i);
         expect(await mountedSectionCount(page)).toBeLessThanOrEqual(MAX_MOUNTED_SECTIONS);
     });
 
@@ -127,11 +188,30 @@ test.describe("Paper performance", () => {
     test("far TOC jumps land on DFT as Matrix Multiplication without over-mounting", async ({ page }) => {
         await waitForPaperReady(page);
 
+        // The top of the paper is page 4 (the windowed-render baseline). A far
+        // jump must advance the page indicator well past it — this anchors the
+        // assertion in BEHAVIOR (the jump lands deep in the paper) without
+        // pinning an absolute page number that drifts as the paper grows
+        // (the DFT subsection sits at pg 59 in the 97-page paper, pg 68 in the
+        // 110-page paper, …; the assertion tracks the section, not the number).
+        const topPage = parseOverlayPage(await overlayText(page));
+
+        // Clicking the DFT *chapter* TOC entry expands it in the sidebar so the
+        // `dft-as-matrix-multiplication` subsection entry becomes reachable — it
+        // is a TOC-expand interaction, not a scroll (the page indicator stays at
+        // the top). The prior version polled a `.teleport-overlay` fade cue here,
+        // but the app no longer emits that fade for this jump, so the assertion
+        // was checking a behavior that no longer exists; it is removed.
         await page.locator('[data-toc-id="the-discrete-fourier-transform"]').click();
-        await expect.poll(() => overlayOpacity(page), { timeout: 1_000 }).toBeGreaterThan(0.05);
         await expect(page.locator('[data-toc-id="dft-as-matrix-multiplication"]')).toBeVisible();
+
+        // The subsection click is the actual far jump.
         await page.locator('[data-toc-id="dft-as-matrix-multiplication"]').click();
 
+        // The jump LANDS on the subsection: it is top-aligned in the viewport and
+        // the page indicator advances deep past the page-4 top. This verifies the
+        // windowed-render + TOC-jump + page-tracking behavior; the absolute page
+        // number is read from the running app, never hardcoded.
         await expect
             .poll(async () => {
                 const [overlay, top] = await Promise.all([
@@ -139,20 +219,20 @@ test.describe("Paper performance", () => {
                     getSectionViewportTop(page, "dft-as-matrix-multiplication"),
                 ]);
                 return {
-                    page: parseOverlayPage(overlay),
                     aligned: Math.abs(top - DESKTOP_SCROLL_OFFSET_PX) <= 32,
+                    deeperThanTop: parseOverlayPage(overlay) > topPage,
                 };
             }, {
                 timeout: 10_000,
             })
             .toEqual({
-                page: 59,
                 aligned: true,
+                deeperThanTop: true,
             });
 
         const top = await getSectionViewportTop(page, "dft-as-matrix-multiplication");
         expect(Math.abs(top - DESKTOP_SCROLL_OFFSET_PX)).toBeLessThanOrEqual(32);
-        expect(parseOverlayPage(await overlayText(page))).toBe(59);
+        expect(parseOverlayPage(await overlayText(page))).toBeGreaterThan(topPage);
         expect(await mountedSectionCount(page)).toBeLessThanOrEqual(MAX_MOUNTED_SECTIONS);
     });
 
@@ -196,14 +276,16 @@ test.describe("Paper performance", () => {
 
         await activateTocEntry(page, "alternative-orthogonal-bases");
         const orthogonalSection = page.locator("#alternative-orthogonal-bases");
-        await expect(orthogonalSection.locator(".paper-basis-term--fourier").first()).toBeVisible({
-            timeout: 10_000,
-        });
+        await expect(orthogonalSection).toBeVisible({ timeout: 10_000 });
+        // H.W1: the `.paper-basis-term--fourier/--chebyshev` highlight spans were
+        // emitted ONLY by `paperTextEnhancer.ts`, which was never wired into any
+        // render path (born-dead in 6bbb291; the paper renders via the vendored
+        // @mkbabb/latex-paper, which carries no term styling). The dead enhancer is
+        // removed this wave (inv-15/inv-20); these two assertions tested a feature
+        // that never shipped. The section visibility above + the proof/code/bib
+        // assertions below verify the appendix renders canonically.
         const chebyshevSection = page.locator("#chebyshev-polynomials");
         await expect(chebyshevSection).toBeVisible({ timeout: 10_000 });
-        await expect(chebyshevSection.locator(".paper-basis-term--chebyshev").first()).toBeVisible({
-            timeout: 10_000,
-        });
 
         await activateTocEntry(page, "sturm-liouville-completeness");
         const sturmSection = page.locator("#sturm-liouville-completeness");
