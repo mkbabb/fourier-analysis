@@ -6,7 +6,7 @@
 
 ## §0 — The headline
 
-**fourier CI is actually green for the first time.** CI run **`26773946417`** (HEAD `8058c44`) is **GREEN on all three jobs** — `web (vue-tsc + vite build)` + `api/tests (with live Mongo)` + `e2e (Playwright)`. The `e2e` gate had been red since before F (broken, then masked across D→E→F→G); G closed labeled GREEN while it was RED on every commit. H repaired it for real and installed the invariants that forbid the overstatement (inv-27) and the red-SHA ship (inv-28). This run id is the binding inv-27 evidence; every gate below was verified as part of it (or against prod), not local-only.
+**fourier CI is actually green for the first time — and RELIABLY so.** The `e2e` gate had been red since before F (broken, then masked across D→E→F→G); G closed labeled GREEN while it was RED on every commit. H repaired it for real and installed the invariants that forbid the overstatement (inv-27) and the red-SHA ship (inv-28). The first all-green run was `26773946417` (HEAD `8058c44`) — but the e2e suite still carried one flaky test (`paper-performance:188`, a single-shot re-measure racing the settling windowed render), so that green was partly luck (it failed all retries on the next run, `26774741992`). H de-flaked it (fold every assertion into one settle-poll) and proved RELIABILITY: **two consecutive all-green runs (`26775278907` push + `26775302080` dispatch) on HEAD `1fd67c8`**, each GREEN on `web` + `api/tests` + `e2e`. Those two runs are the binding inv-27 evidence — green is now a fact at the level of reliability, not a single sampling; every gate below was verified within them (or against prod), not local-only.
 
 ## §1 — Threads (six)
 
@@ -24,7 +24,7 @@
 
 | Gate | Result | Evidence |
 |---|---|---|
-| **inv-27 green-means-green** | ✅ | CI `26773946417` (HEAD `8058c44`) GREEN on web + api-tests + e2e. Every "green" in this ledger cites it. |
+| **inv-27 green-means-green** | ✅ | **two consecutive all-green runs `26775278907` + `26775302080`** (HEAD `1fd67c8`) on web + api-tests + e2e — RELIABLE green after de-flaking `paper-performance:188` (the first green was `26773946417`). Every "green" here cites a covering run. |
 | **inv-28 verified-deploy-of-record (SPA)** | ✅ | `deploy-pages.yml` `workflow_run`-gated on `conclusion=='success' && head_branch=='master' && event=='push'`; red CI ⇒ deploy `if` false ⇒ no ship (mechanical refusal). API arm booked to ζ. |
 | **H.α e2e suite** | ✅ | 40 passed / 0 failed / 7 booked fixmes (run `26773946417` e2e job); no strict-mode locator; stale specs refreshed; `G/FINAL` rows corrected. |
 | **H.α full-api CI** | ✅ | `pytest api/` (widened from `api/tests/`) = **225 passed / 0 failed**; janitor migrated to real Mongo; no test off-path. |
@@ -37,7 +37,7 @@
 
 ## §3 — Commits
 
-**fourier-analysis** (W0→close): `62cafc3` (W0 open + KaTeX) · `504844a` (W1 α green-means-green) · `a05384c` (W3 β WORKERS=1) · `fd213d0` (W4 γ hardening+CSP) · `3431f5d` (W5 δ contract) · `8058c44` (W1 BLOB_DIR fix — the e2e green-CI completion) · `fc980ee` (W2 inv-28 SPA gate) · `013a466` (ε book-all) · + this W9 close.
+**fourier-analysis** (W0→close): `62cafc3` (W0 open + KaTeX) · `504844a` (W1 α green-means-green) · `a05384c` (W3 β WORKERS=1) · `fd213d0` (W4 γ hardening+CSP) · `3431f5d` (W5 δ contract) · `8058c44` (W1 BLOB_DIR fix — first all-green CI) · `fc980ee` (W2 inv-28 SPA gate) · `013a466` (ε book-all) · `5774da0` (W9 close) · `1fd67c8` (e2e de-flake → reliably green, this amendment).
 **mkbabb/deploy**: `3c3fbd2` (ζ DNS-tuple reconcile).
 
 ## §4 — Residuals (owned, booked, none gating fourier; all honest)
@@ -49,6 +49,6 @@
 
 ## §5 — Disposition
 
-A–H closed. H made "green" mean green (CI actually green, run `26773946417`), installed **inv-27** (green-means-green), **inv-28** (verified-deploy-of-record), and **inv-16′** (authorized-cross-repo-sweep); landed the **WORKERS=1** single-replica transposition (closing two per-process divergences + a janitor-dup), the hardening floor + CSP, and the contract-honesty reconciliation; and — under inv-16′ — **booked** the constellation perfection precisely rather than clobber five mid-flight repos. It **refused the anti-patterns it was born correcting**: no "green" claimed without a covering green run id; no deploy of a red-CI SHA; no silent cross-repo mutation; no Redis; no schema that lies (response_model declined). The green-means-green loop bit twice in execution (the off-path janitor breakage; the BLOB_DIR upload-500) — each a real local↔CI gap the dead gate had buried, each genuinely fixed. Ordering κ′ (CANONICAL-ORDERING §17) marks H CLOSED.
+A–H closed. H made "green" mean green (CI actually green, run `26773946417`), installed **inv-27** (green-means-green), **inv-28** (verified-deploy-of-record), and **inv-16′** (authorized-cross-repo-sweep); landed the **WORKERS=1** single-replica transposition (closing two per-process divergences + a janitor-dup), the hardening floor + CSP, and the contract-honesty reconciliation; and — under inv-16′ — **booked** the constellation perfection precisely rather than clobber five mid-flight repos. It **refused the anti-patterns it was born correcting**: no "green" claimed without a covering green run id; no deploy of a red-CI SHA; no silent cross-repo mutation; no Redis; no schema that lies (response_model declined). The green-means-green loop bit three times in execution (the off-path janitor breakage; the BLOB_DIR upload-500; the lone flaky `paper:188`) — each a real CI-signal gap the dead gate had buried, each genuinely fixed — and reliability was *proven* across two consecutive green runs, not asserted from one. Ordering κ′ (CANONICAL-ORDERING §17) marks H CLOSED.
 
 End of H/FINAL.md.
