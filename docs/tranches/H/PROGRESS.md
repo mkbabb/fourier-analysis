@@ -24,8 +24,8 @@ Every wave's row carries (a) a status word, (b) a close timestamp, (c) a notes c
 | W5 — H.δ contract honesty | landed | 2026-06-01 | 4th-island (`web/src/lib/equation/types.ts`) = **KEEP-AS-IS** — assessed vs `api/models/equations.py` (no drift; a distinct equation-compute domain, not a duplicate of G's collapsed boundary); inv-26 reconciled (INVARIANTS §2.9 — hand-typed-canonical per-domain + the NO-`response_model`-codegen decision recorded DECLINED-with-rationale); `F-Inv 22*` "symmetric" name RETIRED (§1 row + §2.4 → fourier-vhost-correctness) |
 | W6 — H.ε constellation CI cascade | **closed — BOOKED** | 2026-06-01 | inv-16′ recon: all 5 siblings MID-FLIGHT (value.js in-sync; keyframes +19, glass-ui +111, words +11, speedtest +563 unpushed — a fix-push would publish the backlog). **User chose "book all" (2026-06-01)** → touched NO sibling repo. The exact file-verified cascade fixes (`cascade-vjs` unplugin^32+seams; `cascade-kf` seam→^3+lockfile; `cascade-gui` lockfile-only) booked to ADOPTION-ASKS §4 + `waves/W6-W7-epsilon-booking.md`. inv-16′ enabled, named, ledgered — not compelled |
 | W7 — H.ε no-CI repos + API gaps + words SPA | **closed — BOOKED** | 2026-06-01 | Same book-all: `words-spa` (deploy-pages δ-model, the 404 outage), speedtest CI (Ask 1; **friday.institute** not babb.dev), api.color (inv-22-color) + api.sudoku `/api/v1/solve` (Ask 6 — both repos ABSENT locally → verify-then-fix), glass-ui-a11y (H.W1) — all precise fixes booked with owners. fourier write surface = `fourier-analysis/docs/**` only (inv-16 held) |
-| W8 — H.ζ spine application + DNS + coordination | provisional | — | apply `render-hooks.sh` on host (receipt, no inline literal); reconcile DNS tuple (`fourier.pages.dev`→`fourier-682`); record friday.institute correction; dispatcher retirement; stale-watch |
-| W9 — Close | provisional | — | reconcile PROGRESS; `FINAL.md` (GREEN CI run ids + inv-28-gated deploy citations); CANONICAL-ORDERING → ordering κ′ |
+| W8 — H.ζ spine application + DNS + coordination | **closed** | 2026-06-01 | **LANDED**: DNS-tuple reconcile — `dns-cf-sync.sh` fourier CNAME `fourier.pages.dev`→`fourier-682.pages.dev` (deploy `3c3fbd2`; a blind re-run would have regressed the live CNAME; color/sudoku/keyframes flagged UNVERIFIED for owners). friday.institute correction recorded (ε booking §4 + this close). **BOOKED (operator/credential-gated, audit-established state)**: `render-hooks.sh` host application (the inline-HMAC→rendered hygiene; host SSH + inv-21 receipt — not mutated this session on the working prod chain) + the inv-28 **API-arm** gate-A block + host read-only PAT (host-coupled; SPA arm already LANDED+demonstrable). dispatcher retirement re-affirmed GATED (all 4 non-fourier repos booked at ε, none migrated). 30-day stale-watch re-triggered |
+| W9 — Close | **closed GREEN** | 2026-06-01 | `FINAL.md` cites CI run `26773946417` GREEN on all 3 jobs (inv-27) + the inv-28 SPA gate; PROGRESS reconciled; CANONICAL-ORDERING → ordering κ′; memory → H CLOSED |
 
 ## Log
 
@@ -63,4 +63,14 @@ Six parallel READ-ONLY Agent lanes ran (HA1–HA6 + SYNTHESIS at `docs/audits/ru
 
 ### Next action
 
-**W1 (H.α, TOP)**: add `data-testid="image-file-input"` to `ImageUpload.vue`; repair all 4 e2e breakage classes (locator retarget + stale-selector refresh + growth-tolerant paper assertion + settings-persistence rewrite-or-delete); make `e2e` actually green locally (`scripts/e2e.sh`) then via CI; author **inv-27**; correct `G/FINAL` CI rows. Then W2 (inv-28).
+### 2026-06-01 — H CLOSED GREEN
+
+**fourier CI is actually green for the first time** — CI run **`26773946417`** (HEAD `8058c44`) GREEN on all 3 jobs (web + api-tests + e2e). `FINAL.md` is the close ledger; CANONICAL-ORDERING §17 (ordering κ′) marks H CLOSED.
+
+Executed in one session W0→W9. α: e2e repaired to green (4 breakage classes + 3 buried app bugs — dropdown-never-positioned, mobile stage-0px, TOC no-scroll) + dead `paperTextEnhancer.ts` removed; CI widened `pytest api/tests/`→`pytest api/` (exposed+fixed 5 off-path janitor tests via real-Mongo migration; 225/0); inv-27 authored; G/FINAL corrected; inv-28 SPA `workflow_run` gate (API arm booked to ζ). β: WORKERS=1 + dead-zone + T2-decline. γ: frontend/nginx floor + CSP `_headers` + softdelete negative-control test. δ: 4th-island keep-as-is + inv-26 reconciled + "symmetric" retired. ε: **BOOKED-ALL** (user 2026-06-01 — all 5 siblings mid-flight; precise inv-16′ fixes authored, not executed). ζ: DNS-tuple reconciled (deploy `3c3fbd2`); render-hooks + API-arm PAT booked (operator/credential-gated).
+
+**The green-means-green loop bit twice in execution** (the discipline working, not thrashing): the first green-CI attempt (`3431f5d`, run `26772569595`) was RED on e2e only — CI caught two local↔CI gaps the dead gate had buried: the off-path janitor breakage and a BLOB_DIR upload-500 (`_blob_dir()` mkdir of `/data/blobs`, not writable on the runner; the harness never defaulted BLOB_DIR). Both genuinely fixed (`8058c44`).
+
+### Next action
+
+**None — H is CLOSED.** Forward work is all owner/operator-booked (zero fourier tranche open): the ε constellation inv-16′ asks (`waves/W6-W7-epsilon-booking.md` + ADOPTION-ASKS), the ζ host ops (render-hooks application + the inv-28 API-arm host PAT), and glass-ui-a11y — each precise and owner-applied, on the 30-day stale-watch.

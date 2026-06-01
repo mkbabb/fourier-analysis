@@ -632,7 +632,7 @@ G is single-repo, inv-21-bounded; awaits user authorization for G.W0.
 
 End of CANONICAL-ORDERING §16 — ordering ι′ (G CLOSED).
 
-## §17 — Ordering κ′ (2026-05-31 post-G-re-audit, H AUTHORED — provisional)
+## §17 — Ordering κ′ (H — AUTHORED 2026-05-31, **CLOSED GREEN 2026-06-01**)
 
 **fourier-H AUTHORED 2026-05-31** (development only; not executed) — `docs/tranches/H/H.md`, substrate `docs/audits/runs/2026-05-31-H-audit/` (HA1-HA6 + SYNTHESIS). H is the **green-means-green + single-replica-elegance + constellation-perfection tranche** + the correction of the one overstatement + one structural defect the 6-lane H-audit caught in G's close (which itself SURVIVES gate-falsification on its load-bearing claims per HA1/HA3).
 
@@ -647,6 +647,8 @@ End of CANONICAL-ORDERING §16 — ordering ι′ (G CLOSED).
 - **constellation**: the CI cascade (value.js→keyframes→glass-ui) + the no-CI repos + the api.color/sudoku route gaps + words are an **authorized cross-repo sweep under inv-16′** (the user owns all `mkbabb/*` and directed "perfect the above") — each its own commit, booked to an ask, per-repo green-CI-gated.
 - **value.js / glass-ui carries**: C1/C5/C6 STAY OUT (owning-repo-tranche-gated, not CI-swept); value.js-J (E4–E7) on its own driver.
 
-H is single-repo-rooted with an authorized cross-repo sweep, inv-21-bounded; awaits user authorization for H.W0.
+H is single-repo-rooted with an authorized cross-repo sweep, inv-21-bounded.
+
+**H CLOSED GREEN 2026-06-01** (`docs/tranches/H/FINAL.md`). The headline: **fourier CI is actually green for the first time** — CI run **`26773946417`** (HEAD `8058c44`) GREEN on all 3 jobs (web + api-tests + e2e); the e2e gate broken since before F is repaired (4 breakage classes + 3 buried app bugs), and the api CI path was widened `pytest api/tests/`→`pytest api/` (exposing + fixing 5 off-path janitor tests via a real-Mongo migration; 225/0). inv-27 + inv-28 + inv-16′ landed. WORKERS=1 (β), hardening floor + CSP (γ), contract honesty (δ) landed. **ε BOOKED-ALL** (user decision 2026-06-01: all 5 siblings mid-flight → the precise inv-16′ fixes authored, not executed). ζ: DNS-tuple reconciled (deploy `3c3fbd2`); render-hooks application + the inv-28 API-arm host PAT booked (operator/credential-gated, working-chain-safe). The green-means-green loop bit twice in execution (off-path janitor breakage; the BLOB_DIR upload-500) — each a real local↔CI gap, each genuinely fixed. Commits: fourier `62cafc3`→close (`504844a`/`a05384c`/`fd213d0`/`3431f5d`/`8058c44`/`fc980ee`/`013a466`); deploy `3c3fbd2`. A–H all closed; no fourier tranche open.
 
 End of CANONICAL-ORDERING §17 — ordering κ′.
