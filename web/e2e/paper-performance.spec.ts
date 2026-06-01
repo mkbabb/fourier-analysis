@@ -212,28 +212,35 @@ test.describe("Paper performance", () => {
         // the page indicator advances deep past the page-4 top. This verifies the
         // windowed-render + TOC-jump + page-tracking behavior; the absolute page
         // number is read from the running app, never hardcoded.
+        // Poll until the jump has SETTLED, asserting the WHOLE settled state in ONE
+        // poll so every condition holds at the SAME sampled instant. Windowed render
+        // mounts/unmounts sections as the scroll settles, shifting layout; the prior
+        // version re-measured in single-shot asserts AFTER the poll, which raced that
+        // settling — a CI flake (the poll passed, then the immediate re-measure caught
+        // a mid-settle frame: paper-performance:188 failed all retries on run
+        // 26774741992 yet passed on 26773946417). Folding alignment + page-advance +
+        // the mounted-section bound into one poll removes the cross-measurement race;
+        // 15s gives a cold CI runner headroom for the windowed mount.
         await expect
             .poll(async () => {
-                const [overlay, top] = await Promise.all([
+                const [overlay, top, mounted] = await Promise.all([
                     overlayText(page),
                     getSectionViewportTop(page, "dft-as-matrix-multiplication"),
+                    mountedSectionCount(page),
                 ]);
                 return {
                     aligned: Math.abs(top - DESKTOP_SCROLL_OFFSET_PX) <= 32,
                     deeperThanTop: parseOverlayPage(overlay) > topPage,
+                    mountedBounded: mounted <= MAX_MOUNTED_SECTIONS,
                 };
             }, {
-                timeout: 10_000,
+                timeout: 15_000,
             })
             .toEqual({
                 aligned: true,
                 deeperThanTop: true,
+                mountedBounded: true,
             });
-
-        const top = await getSectionViewportTop(page, "dft-as-matrix-multiplication");
-        expect(Math.abs(top - DESKTOP_SCROLL_OFFSET_PX)).toBeLessThanOrEqual(32);
-        expect(parseOverlayPage(await overlayText(page))).toBeGreaterThan(topPage);
-        expect(await mountedSectionCount(page)).toBeLessThanOrEqual(MAX_MOUNTED_SECTIONS);
     });
 
     test("long scroll keeps mounted sections bounded and logs no browser errors", async ({ page }) => {
