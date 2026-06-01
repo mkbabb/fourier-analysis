@@ -144,6 +144,13 @@ jobs:
           # doesn't 429-cascade. Prod default (api/config.py write_rate_limit=10)
           # is byte-identical; the override is env-only.
           WRITE_RATE_LIMIT: "1000"
+          # H.W1 — the upload handler's _blob_dir() mkdir's settings.blob_dir; the
+          # prod default (/data/blobs) is NOT writable on the CI runner (creating
+          # /data needs root), so every POST /api/images 500'd and the SPA never
+          # navigated to /w/ — failing every upload-dependent spec. (The dead e2e
+          # gate masked this under the older locator failure.) Point blobs at a
+          # writable runner tmp dir for the e2e arm.
+          BLOB_DIR: /tmp/fourier-e2e-blobs
           CORS_ORIGINS: "http://localhost:3000"
         run: |
           nohup uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &

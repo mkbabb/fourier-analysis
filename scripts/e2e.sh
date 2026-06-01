@@ -29,6 +29,12 @@ export COMPUTE_RATE_LIMIT="${COMPUTE_RATE_LIMIT:-1000}"
 # issue dozens of create/update/delete writes; the prod write budget (10/min) would
 # 429-cascade them. Raise it for the e2e arm exactly as COMPUTE_RATE_LIMIT above.
 export WRITE_RATE_LIMIT="${WRITE_RATE_LIMIT:-1000}"
+# BLOB_DIR — H.W1: the upload handler's _blob_dir() mkdir's settings.blob_dir; the
+# prod default (/data/blobs) is not writable in a dev/CI sandbox, so POST
+# /api/images 500s and the upload->/w/ flow stalls (every upload-dependent e2e
+# spec then times out on waitForURL). Default the e2e arm to a writable tmp dir
+# so the harness is self-contained (no manual BLOB_DIR export needed); overridable.
+export BLOB_DIR="${BLOB_DIR:-/tmp/fourier-e2e-blobs}"
 
 find_free_port() {
     local p=${1:-8000}
