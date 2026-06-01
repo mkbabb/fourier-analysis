@@ -1,0 +1,46 @@
+# I — progress log
+
+Updated at every wave boundary. Reconciled against reality at W9 close.
+
+## Goal of this log
+
+Record what *actually happened* at each wave of fourier-tranche-I — the constellation-modernization tranche (Chrome modern-web-guidance adoption, glass-ui-rooted) — so the close can reconcile claim against artefact without archaeology. I is the modernization successor to H's hygiene + green-means-green sweep: H made "green" true (fourier CI actually green for the first time, inv-27/inv-28/inv-16′); I makes the platform *modern* — adopting the recently-native CSS/HTML/JS capabilities the six audited surfaces have not yet taken up, rooted in glass-ui so a single adoption propagates to every consumer. Its own close is bound by inv-27 (every "green" cites a green run id covering every job), inv-28 (deploy-of-record green-CI-gated), inv-29 (every modern-platform adoption ships behind a feature gate with the prior path as the floor — Safari/Firefox parity), and inv-30 (a library reimplementation the platform now subsumes demotes to that floor or retires only when the platform is universally sufficient).
+
+## Completion criterion
+
+Every wave's row carries (a) a status word, (b) a close timestamp, (c) a notes cell naming the binding deliverable. At W9 close every row reconciles against `FINAL.md`'s gate table; `FINAL.md` cites a GREEN fourier CI run id (all jobs) on HEAD, a green-CI-gated deploy-of-record (inv-27 + inv-28), and — for every inv-16′ cross-repo arm — either a per-repo green-CI run id (executed) or an exact file-verified `ADOPTION-ASKS` entry with its owner (booked, since the siblings are mid-flight). The 30-day stale-watch re-triggers at W9.
+
+## Status board
+
+| Wave | Status | Closed at | Notes |
+|---|---|---|---|
+| W0 — Open + audit intake + charter/ordering λ′/inv authoring + ADOPTION-ASKS seed | **planned** | — | H close re-confirmed (A–H GREEN, ordering κ′; fourier first all-green CI `26773946417`); the 6 modern-web reports + style-audit committed as substrate; CANONICAL-ORDERING → ordering λ′ (§18); inv-29 (progressive-enhancement-floor) + inv-30 (platform-over-library) authored; the glass-ui-rooted inv-16′ asks seeded into ADOPTION-ASKS |
+| Wα — Research-light (2 lanes) | **planned** | — | the exact `@supports` gate conditions (`anchor-name` / `appearance: base-select` / VT / Vue-Router `viewTransition`) + their reka/`@floating-ui`/JS floors; the per-consumer overlay-deletion list β enables (value.js `useHoverPopover`/`useDialogOverlayGuards`, words `useInlineWordLookup`, speedtest `MapTooltip`) |
+| Wχ — Challenge (3 probes) | **planned** | — | ratify no hover-only combined-`transform` survives at a would-be anchor site (α completeness); ratify the Safari/Firefox PE floor is intact (inv-29 parity); the bounded book-vs-execute cross-repo list against the mid-flight recon (keyframes +19, glass-ui +112 incl. `b6d6cf4`, words +11, speedtest +563) |
+| W1 — I.γ content-visibility (fourier-local) | **planned** | — | `content-visibility: auto` + `contain-intrinsic-size` on paper window sections + the off-screen epicycle canvas (paused on `contentvisibilityautostatechange`) + inactive views (`content-visibility: hidden`); fourier CI green (run id); a MEASURED LCP/INP delta cited — fourier's #1 finding, S-effort, executes now |
+| W2 — I.α glass-ui transform-identity + scale utility (FOUNDATION) | **planned** | — | base `scale:1`/`translate:0` identity + `.hover-scale`/`.active-scale`/`.hover-cartoon` (individual `scale:`/`translate:` props, `--scale-*` token-bridged); closes style-audit gap-#3 (~69 sites)+gap-#8; unblocks β; glass-ui green CI; inv-16′ ask authored (executed-on-clean-checkout) |
+| W3 — I.β glass-ui native overlay substrate (KEYSTONE; PE) | **planned** | — | popover API + anchor positioning + top layer behind `@supports (anchor-name)`, reka/`@floating-ui` floor (inv-29); the `useDialogOverlayGuards` bug-class dissolved; glass-ui green CI; inv-16′ ask authored |
+| W4 — I.δ scroll-driven CSS | **planned** | — | glass-ui `view()`/`scroll()` recipe (mirror `CardHeader`) + fourier floating-TOC + the `setTimeout(250)` nudge migrated; compositor-verified; JS floor retained (inv-29); PRM-bracketed; CI green |
+| W5 — I.ε View Transitions | **planned** | — | glass-ui `view-transition-name` tokens + helper; fourier `/w/`↔`/v/` through `startViewTransition` (remount-flash gone); three FLIP engines retired (inv-30); `@supports`-gated; PRM-bracketed; CI green |
+| W6 — I.ζ `@starting-style` top-layer + I.η forms/native-select | **planned** | — | glass-ui `transitions.css` enter/exit from `--spring-*` (zero Vue `<Transition>` toggling); glass-ui `<Select>` (PE `base-select`, reka floor) + `:user-valid`/`field-sizing`; value.js/words asks booked; glass-ui green CI |
+| W7 — I.θ image/asset/privacy | **planned** | — | fourier figures `<picture>`+intrinsic dims+native lazy (CLS closed) + GitHub avatar self-host (0 third-party origins re-verified — G posture restored); sibling leaf asks booked (value.js fonts, words `CarouselSlide`, speedtest LCP `<img>`, keyframes previews); fourier CI green |
+| W8 — I.ι CSP/analytics/INP tail + passkeys-booked | **planned** | — | per-consumer CSP `_headers` (H.γ recipe) + speedtest `fetchLater()` + glass-ui `scheduler.yield()` in `useRAFLoop` — asks booked; passkeys booked as a named residual (no credential surface); CI green |
+| W9 — Close | **planned** | — | reconcile PROGRESS; `FINAL.md` (green run ids, inv-28 citations, inv-16′ ledger); CANONICAL-ORDERING → ordering λ′; 30-day stale-watch re-triggered |
+
+## Log
+
+### 2026-06-01 — tranche authored (from the modern-web analysis)
+
+**WHAT.** After H CLOSED GREEN (`docs/tranches/H/FINAL.md`; fourier CI actually green for the first time — run `26773946417`, HEAD `8058c44`, reliable across 4 consecutive runs; A–H all closed, ordering κ′), the modern-web modernization plan was authored from a 6-agent constellation audit read through the Chrome `modern-web-guidance` v0.0.170 lens (12 categories). The approved plan is `docs/audits/runs/2026-06-01-modern-web/modern-web-tranche-plan.md`; the substrate is the 6 per-repo reports (`{fourier,value.js-color,glass-ui,keyframes,words,speedtest}.md`) + the constellation style-audit (`docs/audits/runs/2026-06-01-constellation-ui/style-audit.md`) + the drafted `glass-ui-root-rounding.patch`.
+
+**Verdict.** All six frontends are already-strong / heavily-audited; the modern-web drift is **concentrated, repeated, and high-value** — it clusters into ~9 cross-repo themes the platform only recently made native (overlay positioning still 100% JS; no `content-visibility`; JS scroll-listeners; no View Transitions; combined-`transform` hover; image hygiene; untouched forms/native-select; a thin CSP tail).
+
+**The leverage principle (the spine).** glass-ui is the shared design system — an adoption in `glass-ui/src` propagates to every consumer at once. So glass-ui-rooted waves rank highest, and within them the substrate fixes (overlay positioning, transform discipline) rank above leaf fixes. The two audits converge at one seam: the style-audit's gap-#3 hover/press-scale (~69 sites) and the modern-web glass-ui-D3 individual-transform-properties are the **same motion-layer rewrite** — α (the highest-ROI first move) closes the largest style-audit demand, satisfies the modern-web guide, AND unblocks the β anchor-positioning keystone.
+
+**Shape.** ONE constellation-modernization tranche — fourier-I, 9 waves (W0–W9), fourier-rooted with an **inv-16′ authorized cross-repo sweep**. The glass-ui-rooted foundations (α/β/ζ/η) are **authored-now / executed-on-clean-checkout** (the H.ε BOOK-ALL posture — all 5 siblings carry unpushed backlogs: keyframes +19, glass-ui +112 incl. the just-committed root-rounding `b6d6cf4`, words +11, speedtest +563); only the fourier-local waves (γ-on-paper, δ-floating-TOC, ε `/w/`↔`/v/`, θ avatar+figures) execute immediately against fourier's clean tree.
+
+**9 waves** (α–ι, by leverage × dependency): α glass-ui transform-identity+scale (FOUNDATION) · β native overlay substrate (KEYSTONE) · γ content-visibility (HIGHEST-ROI PERF, fourier #1) · δ scroll-driven CSS · ε View Transitions · ζ `@starting-style` top-layer · η forms/native-select · θ image/asset/privacy · ι CSP/analytics/INP-tail + passkeys-booked. **2 new invariants** (by name, clean fresh integers — G 25/26, H 27/28, I 29/30): inv-29 (progressive-enhancement-floor) + inv-30 (platform-over-library) — namespace-partitioned from the glass-ui precepts' `invariant 29`/`30` exactly as `H-Inv 28` is partitioned from the precepts' `invariant 28`.
+
+### Next action
+
+**None executed — I is AUTHORED only and awaits the user's "Begin."** Authored from the modern-web analysis; awaits user authorization for I.W0 (Open + audit intake + ordering λ′ + inv-29/inv-30 authoring + the ADOPTION-ASKS seed). On authorization, Phase 0 (W0 → Wα research-light → Wχ challenge) governs α/β/ε before any implementation wave; the executable spine this session is fourier-local (γ on the paper + canvas is fourier's first move), with every glass-ui-rooted + sibling-leaf arm authored-now / executed-on-clean-checkout under inv-16′.
