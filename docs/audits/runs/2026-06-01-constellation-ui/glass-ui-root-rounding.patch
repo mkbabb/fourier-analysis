@@ -1,0 +1,48 @@
+diff --git a/src/components/custom/configurator/Configurator.vue b/src/components/custom/configurator/Configurator.vue
+index a12a96f..04211e3 100644
+--- a/src/components/custom/configurator/Configurator.vue
++++ b/src/components/custom/configurator/Configurator.vue
+@@ -91,7 +91,15 @@ const containerClass = computed(() =>
+     cn(
+         // glass-floating is the canonical "studio panel" tier; honors
+         // prefers-reduced-transparency via the @media block in glass.css.
+-        "configurator glass-floating rounded-card border border-border/60 overflow-hidden",
++        // Shape geometry is `rounded-panel` (--radius-panel = --radius-xl):
++        // a floating *panel* carries panel radius, matching every other
++        // glass-floating surface in the library (HoverCardContent,
++        // DropdownMenuContent, ComboboxList, ContextMenuContent, …). Surface
++        // tier × shape geometry stay orthogonal (DESIGN.md §Orthogonal
++        // variants); the radius is owned here at the container root so the
++        // rounding does not stop one level too high (the stacked
++        // ConfiguratorLayer sections inherit a rounded outer clip).
++        "configurator glass-floating rounded-panel border border-border/60 overflow-hidden",
+         "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]",
+         "min-h-0",
+         props.class,
+diff --git a/src/components/custom/configurator/ConfiguratorLayer.vue b/src/components/custom/configurator/ConfiguratorLayer.vue
+index 02effa7..505a8c7 100644
+--- a/src/components/custom/configurator/ConfiguratorLayer.vue
++++ b/src/components/custom/configurator/ConfiguratorLayer.vue
+@@ -96,7 +96,7 @@ const stateAttr = computed(() => (internalOpen.value ? "open" : "closed"));
+ 
+ <template>
+     <div
+-        :class="cn('configurator-layer border-b border-border/40 last:border-b-0', props.class)"
++        :class="cn('configurator-layer rounded-panel border-b border-border/40 last:border-b-0', props.class)"
+         :data-state="stateAttr"
+     >
+         <button
+@@ -104,6 +104,13 @@ const stateAttr = computed(() => (internalOpen.value ? "open" : "closed"));
+             :class="
+                 cn(
+                     'configurator-layer-trigger',
++                    // rounded-panel: the trigger's hover/focus fill follows the
++                    // section's panel geometry rather than reading as a squared
++                    // bar — the rounding is owned at the section root by default
++                    // (see Configurator.vue: the outer clip is rounded-panel too,
++                    // so stacked sections are rounded top-to-bottom, not just at
++                    // the outer container).
++                    'rounded-panel',
+                     'group flex w-full items-center justify-between gap-2 px-3 py-2',
+                     'text-left transition-colors hover:bg-foreground/5 focus-ring',
+                 )
