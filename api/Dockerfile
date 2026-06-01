@@ -29,7 +29,16 @@ RUN chown -R app:app /app/.venv
 RUN mkdir -p /data/blobs && chown -R app:app /data
 ENV UV_CACHE_DIR=/tmp/uv-cache
 USER app
-ENV WORKERS=4
+# H.β (inv-12): WORKERS=1 — single authoritative replica. WORKERS>1 forks N
+# independent processes, each with its OWN in-memory state, which silently
+# breaks three per-process subsystems: (1) the rate_limiter singletons (each
+# worker keeps a separate per-client bucket → up to Nx the honest ceiling),
+# (2) the _suspended_cache (dependencies.py — a suspend toggled on one worker
+# stays stale on the other N-1 for <=60s), and (3) the janitor loop (runs once
+# per worker → duplicate audit rows). One process collapses all three to a
+# single source of truth. No Redis / no shared store needed: compute_cache and
+# idempotency are Mongo-backed; nginx is the per-client edge governor.
+ENV WORKERS=1
 # G.β.2: NO uvicorn --proxy-headers. nginx `real_ip` is the SOLE client-IP
 # rewriter (one trust boundary, not two): it resolves the real client through the
 # Apache→nginx XFF chain and stamps X-Real-IP, which get_client_ip reads. A second

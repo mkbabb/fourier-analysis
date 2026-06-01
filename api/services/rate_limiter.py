@@ -144,14 +144,24 @@ class SlidingWindowLimiter:
 # being a real cap a scraping bot cannot dodge (it retires the old 1200/min
 # global-headroom workaround that masked the shared-bucket defect).
 #
-# HONEST CAVEAT (booked, not a blocker): the limiter is per-PROCESS in-memory and
-# uvicorn runs ``WORKERS=4``, so the effective ceiling is up to ~4× this number
-# across workers. True single-bucket enforcement needs a shared store (Redis) or
-# ``WORKERS=1``; named as the remaining one-identity residual so "per-client" stays
-# honest. The nginx ``api_general`` edge (30 r/s) is the real hard backstop.
+# H.β (inv-12): the limiter is per-PROCESS in-memory, and uvicorn now runs
+# ``WORKERS=1`` (api/Dockerfile), so this single process holds the ONE
+# authoritative per-client bucket. The budgets below are therefore honest HARD
+# caps, not "up to ~Nx" approximations: read 180 / write 10 (env-driven, see
+# ``settings.write_rate_limit``) / compute 5 (env) / login 5 / admin 30 per
+# minute per real client. The nginx ``api_general`` zone (30 r/s) is the coarse
+# edge backstop in front of all of them.
+#
+# T2 (rate-limiter → nginx convergence) — CONSIDERED AND DECLINED on elegance
+# grounds. Letting nginx speak the 429 on breach would (1) duplicate the
+# ``api/lib/crud/errors.py`` ``rate_limited`` problem+json envelope and drift it
+# from the single contract source (inv-26), and (2) be unable to emit the honest
+# RFC-9239 ``RateLimit-Limit/-Remaining/-Reset`` trio from the real per-client
+# window. The app stays the SOLE inv-24 emitter and enforcer; nginx remains only
+# the coarse edge governor.
 read_limiter = SlidingWindowLimiter(max_requests=180, window_seconds=60)
 login_limiter = SlidingWindowLimiter(max_requests=5, window_seconds=60)
-write_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
+write_limiter = SlidingWindowLimiter(max_requests=settings.write_rate_limit, window_seconds=60)
 admin_limiter = SlidingWindowLimiter(max_requests=30, window_seconds=60)
 
 
