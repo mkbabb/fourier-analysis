@@ -14,9 +14,9 @@ Every wave's row carries (a) a status word, (b) a close timestamp, (c) a notes c
 
 | Wave | Status | Closed at | Notes |
 |---|---|---|---|
-| W0 — Open + audit intake + cheapest γ | planned | — | G close re-confirmed (survives §0 falsification per HA1/HA3); 6-lane H-audit (HA1–HA6 + SYNTHESIS at `docs/audits/runs/2026-05-31-H-audit/`) committed as binding baseline; the 2 one-line items (phantom KaTeX `local()` face `style.css:56-67` + the aware/naive datetime guard `softdelete.py:66`) land as cheapest |
-| Wα — Research-light (2 lanes) | planned | — | α-e2e: enumerate the `contour-extraction.spec.ts` (+ sibling) stale-vs-real specs + the file-input locator scope. inv-28: confirm the deploy-gate mechanism (a `workflow_run`-gated deploy-pages vs a deploy-hook `gh`/CI-status precondition) |
-| Wχ — Challenge (3 probes) | planned | — | P1 WORKERS=1 blast radius (any module-level mutable state beyond rate_limiter + `_suspended_cache`?). P2 rate-limiter→nginx convergence (keep app as the RFC-9239 reporter vs converge). P3 the inv-16′ cross-repo sweep scope (exact repos/commits) |
+| W0 — Open + audit intake + cheapest γ | **closed** | 2026-05-31 | Open; live baseline reconciled (CI `26720618455`: web✅ api-tests✅ **e2e❌** — single red job after `b28c3fa`). **KaTeX phantom-face fix LANDED** (`style.css:56–67` removed — a real cascade-shadow bug, not dead code: `local()`-only faces declared after katex.min.css degraded regular glyphs to serif; vue-tsc+build green). **Datetime edge = already-guarded, honest no-op** (`tz_aware=True` client @ `database.py:28` + explicit guard @ `softdelete.py:64–65` since B.W3; zero unguarded compares in `api/`); the regression-test-that-proves-it folds to W4/γ per inv-27. Findings → `waves/W0-Wchi-findings.md` |
+| Wα — Research-light (2 lanes) | **closed** | 2026-05-31 | **α-e2e**: the single red `e2e` job has **4 independent breakage classes**, not just the locator (audit undercounted: 16 bare file-inputs, not ~51) — (A) dual-file-input strict-mode → `data-testid` + `getByTestId` (NOT `.first()`, which targets the wrong input); (B) stale 'Drop an image' text [crud]; (C) stale gallery selectors (.bouncy-btn→UnderlineTabs, overlay→CanvasControlsDock); (D) stale paper pg 97→110 (+ DFT page drift). settings-persistence wholly `.skip()`'d. **inv-28**: SPA→`workflow_run` gate (re-add web/** filter, pin head_sha); API→fail-closed gh-status no-op block in deploy-hook.sh + host PAT booked to ζ; W1 must green CI first |
+| Wχ — Challenge (3 probes) | **closed** | 2026-05-31 | **P1 RATIFIED**: WORKERS=1 complete + regression-free (4 module sites + 1 bg subsystem; only rate_limiter + `_suspended_cache` diverge; **bonus**: janitor loop ×4 → 4× audit rows; all else Mongo-backed/correctly-per-process). **P2 KEEP-APP-ENFORCER**: converge DECLINED (nginx problem+json would duplicate the errors.py envelope → drift vs inv-26); W3 lands only the dead-`api_upload`-zone delete + caveat refresh. **P3**: cascade confirmed (value.js unplugin^32+seams→keyframes seam→glass-ui lockfile); **`colors`≠api.color** (api.color/sudoku/csp-solver absent locally → deferred-booked); speedtest=friday.institute. Findings → `waves/W0-Wchi-findings.md` |
 | W1 — H.α e2e repair → CI green + inv-27 | provisional | — | **TOP — CI has been RED on every G commit.** Fix the dual-file-input locator + refresh stale specs; fourier CI fully GREEN (all 3 jobs, run id); author inv-27; correct `G/FINAL` CI rows |
 | W2 — H.α inv-28 verified-deploy-of-record | provisional | — | wire the deploy path (deploy-pages + webhook) to ship only a green-same-SHA-CI build; demonstrate it refuses a red SHA |
 | W3 — H.β WORKERS=1 | provisional | — | `--workers 4→1`; fix the `_suspended_cache` per-worker bug; dissolve/converge the rate-limit residual; inv-12 claim==reality |
@@ -49,6 +49,18 @@ Six parallel READ-ONLY Agent lanes ran (HA1–HA6 + SYNTHESIS at `docs/audits/ru
 
 **Shape:** 6 threads (α green-means-green, β WORKERS=1, γ hardening+CSP, δ contract honesty, ε constellation perfection, ζ spine+coordination); 12 wave slots; 3 new invariants (inv-27 green-means-green, inv-28 verified-deploy-of-record, inv-16′ authorized-cross-repo-sweep).
 
+### 2026-05-31 — Phase 0 closed (W0 open + Wα research-light + Wχ challenge)
+
+**WHAT.** User authorised execution ("Begin and continue the current tranche … in totality … idiomatic, gestalt"). Opened H; ran a 5-lane READ-ONLY research workflow (`wf_0f450d3c-a24`) — 2 Wα lanes + 3 Wχ probes. Binding record at `waves/W0-Wchi-findings.md`.
+
+**Live baseline.** CI `26720618455` (HEAD `f2fe447`): `web`✅ `api-tests`✅ `e2e`❌ — the post-`b28c3fa` state has a *single* red job (e2e). Confirms the audit's headline; sharpens H.α.
+
+**W0 γ items, honest.** (1) KaTeX phantom-face removal LANDED — a *real* cascade-shadow bug (the `local()`-only faces, declared after `katex.min.css`, won the regular-weight cascade and degraded glyphs to serif on ~all visitors), vue-tsc+build green. (2) Datetime edge **already guarded** (tz_aware client + B.W3 explicit guard; zero unguarded compares) — inv-27 forbids manufacturing an already-present fix; the proving regression-test folds to W4.
+
+**Wχ ratifications.** WORKERS=1 = complete+regression-free (P1, + the bonus janitor-×4 find). Rate-limiter convergence DECLINED, keep-app-enforcer (P2) — W3 lands only the dead-zone delete + caveat refresh. Cascade scope confirmed with corrections (P3): `colors`≠api.color (absent locally → deferred); speedtest=friday.institute.
+
+**Schedule hardened** (post-Wχ): W1 e2e (4 classes) → W2 inv-28 (SPA workflow_run + API gate-A no-op + host PAT→ζ) → W3∥W4∥W5 source-disjoint → W6 ε cascade (guarded) → W7 ε no-CI+words (api.color/sudoku deferred) → W8 ζ → W9 close.
+
 ### Next action
 
-Await user authorization for **H.W0** (or W1 directly). This was tranche development only — no implementation ran; the 6 lanes were READ-ONLY. At authorization, W1 (α — repair the e2e gate so fourier CI is actually green + inv-27) is the top-priority honesty fix.
+**W1 (H.α, TOP)**: add `data-testid="image-file-input"` to `ImageUpload.vue`; repair all 4 e2e breakage classes (locator retarget + stale-selector refresh + growth-tolerant paper assertion + settings-persistence rewrite-or-delete); make `e2e` actually green locally (`scripts/e2e.sh`) then via CI; author **inv-27**; correct `G/FINAL` CI rows. Then W2 (inv-28).

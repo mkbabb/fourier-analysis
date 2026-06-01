@@ -49,22 +49,13 @@ html {
     }
 }
 
-/* KaTeX font-face swap — load local copies of the KaTeX font families so
-   formula glyphs do not block on network. KaTeX is third-party; its
-   surface is app-wide via `<EquationResult>`, `<EquationPanel>`,
-   `<ConvergencePlot>`, `<PaperView>` etc. */
-@font-face { font-family: KaTeX_Main; font-display: swap; src: local("KaTeX_Main"); }
-@font-face { font-family: KaTeX_Math; font-display: swap; src: local("KaTeX_Math"); }
-@font-face { font-family: KaTeX_AMS; font-display: swap; src: local("KaTeX_AMS"); }
-@font-face { font-family: KaTeX_Size1; font-display: swap; src: local("KaTeX_Size1"); }
-@font-face { font-family: KaTeX_Size2; font-display: swap; src: local("KaTeX_Size2"); }
-@font-face { font-family: KaTeX_Size3; font-display: swap; src: local("KaTeX_Size3"); }
-@font-face { font-family: KaTeX_Size4; font-display: swap; src: local("KaTeX_Size4"); }
-@font-face { font-family: KaTeX_Caligraphic; font-display: swap; src: local("KaTeX_Caligraphic"); }
-@font-face { font-family: KaTeX_Fraktur; font-display: swap; src: local("KaTeX_Fraktur"); }
-@font-face { font-family: KaTeX_SansSerif; font-display: swap; src: local("KaTeX_SansSerif"); }
-@font-face { font-family: KaTeX_Script; font-display: swap; src: local("KaTeX_Script"); }
-@font-face { font-family: KaTeX_Typewriter; font-display: swap; src: local("KaTeX_Typewriter"); }
+/* KaTeX faces are self-hosted, same-origin, via the `katex/dist/katex.min.css`
+   import in `main.ts` (G.W5) — it declares the real url()-backed @font-face rules
+   over the bundled woff2/woff. The former `src: local(...)`-only overrides that
+   lived here were phantom: no url() fallback, default normal/400 descriptors, and
+   — declared AFTER katex.min.css (main.ts imports it first) — they WON the cascade
+   for the regular weight and, since `local("KaTeX_*")` resolves on ~no visitor's
+   OS, degraded those glyphs to the serif fallback. Removed (H.W0 / γ). */
 
 .katex {
     font-size: 1.02em;

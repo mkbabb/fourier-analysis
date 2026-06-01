@@ -4,7 +4,7 @@
 **Predecessor close**: G — `docs/tranches/G/FINAL.md` at fourier `5e29ed0` (+ `b28c3fa`); deploy-repo (`mkbabb/deploy`) `a7b58ab`.
 **Mode**: **direct** for the fourier-source threads (α/β/γ/δ — source-bounded, strongly-gated); **research-light** for α's e2e scope + inv-28 mechanism and **inv-16′-authorized + per-repo-green-CI-gated** for ε (cross-repo); ζ is host/operator-coordinated (inv-21 capture-before-mutate + receipts).
 **Authored**: 2026-05-31 — from the user's directive "DEEPLY audit with 6 agents in parallel… devise a path forward… architectural transpositions for elegance, simplicity, and performance above all… NO legacy code… delineate chronic + deferred and fold them… recap ALL prompts… we should plan to perfect the above… NOT an implementation phase. Tranche development only." Substrate: the 6-lane H-audit `docs/audits/runs/2026-05-31-H-audit/` (HA1–HA6 + SYNTHESIS).
-**Open**: TBD (after user authorises H.W0).
+**Open**: 2026-05-31 (user authorised execution: "Begin and continue the current tranche … in totality … idiomatic, gestalt"). Phase 0 (W0 open + Wα research-light + Wχ challenge) closed same day — findings at `waves/W0-Wchi-findings.md`.
 
 ## §0 — Goal criterion and completion criterion (paired)
 
