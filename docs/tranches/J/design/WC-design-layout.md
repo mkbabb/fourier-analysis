@@ -93,4 +93,14 @@ Every lever is a primitive glass-ui **already ships and the app already depends 
 - No new fonts (CM-Serif + fira-code is already the distinctive pairing; the fix is *more* of it, not different).
 - No palette overhaul (amber + neutrals already present; the fix is *discipline*, not new hues).
 - No canvas/render-pipeline changes (this lens is layout/composition only).
-- The CRUD/remix backend (J.W1) is orthogonal; this spec touches only `web/src/` chrome.
+- No backend/data-model change — this spec is `web/src/` chrome only.
+
+## §5 — How WC threads the CORE (the promoted-wave wiring)
+
+WC is the **promoted J design-refinement wave (W5)**, NOT an orthogonal essay — it dresses the very surfaces the CORE (J.W1 remix + J.W1c publish) renders on, the same way value.js-J's WC threads its `J.W1-palette-remix` (A6-5 symmetry). The spatial spec lands ON the CORE's three new UI surfaces:
+
+- **the gallery grid** — the `most-forked` sort (now write-backed by remix, J.W1 §5 consumer-1) renders here; this lens's grid/altitude discipline + the `content-visibility` CWV wave (W4) share it as a surface.
+- **the diff-viewer** — `GET /diff` (J.W1 §4.4) renders via the CSS Custom Highlight API (G6); this lens governs its spatial home (the config-panel altitude, the changed/added/removed range layout).
+- **the publish/visibility UI** — the `POST /:slug/{publish,unpublish}` verbs (`J.W1c`) surface as an owner-facing control; this lens governs its placement in the viz header (beside the provenance breadcrumb, J.W1 §5 consumer-3).
+
+So the `cartoon-card` → glass-ladder migration (§3) is not cosmetic-only: the 21 sites it retires include `GalleryView.vue:312` and `GalleryCardModal.vue` — the gallery + modal that the remix/publish CORE writes to. WC and the CORE land together; the design ships *with* the features it dresses.
