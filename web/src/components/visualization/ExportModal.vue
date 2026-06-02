@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { Button } from "@mkbabb/glass-ui/button";
+import { Switch } from "@mkbabb/glass-ui/switch";
 import {
-    Button,
-    Switch,
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogFooter,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/dialog";
 import { Download } from "lucide-vue-next";
 
 const props = defineProps<{

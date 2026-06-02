@@ -26,7 +26,7 @@ import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
 import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 
 const router = useRouter();
 const store = useWorkspaceStore();
@@ -297,6 +297,22 @@ async function onCanvasFileSelect(e: Event) {
     flex: 1;
     min-height: 0;
     margin: 0.25rem;
+}
+
+/* I.ε — the View-Transitions morph anchor. The canvas stage is the persistent
+   visual element across the `/w/`↔`/v/` route swap (both routes render this
+   same component); naming it lets the browser geometry-morph it as a tracked
+   group instead of the default whole-root cross-fade. Gated to a View-
+   Transitions engine and bracketed by `prefers-reduced-motion` — the glass-ui
+   `view-transition.css` cascade additionally zeroes `::view-transition-*`
+   animation under PRM, so an unsupporting/PRM engine renders the unchanged
+   remount (the inv-29 floor). The name is page-unique (one stage per route). */
+@media (prefers-reduced-motion: no-preference) {
+    @supports (view-transition-name: --x) {
+        .canvas-stage {
+            view-transition-name: viz-canvas-stage;
+        }
+    }
 }
 @media (min-width: 1024px) {
     .viz-configurator {

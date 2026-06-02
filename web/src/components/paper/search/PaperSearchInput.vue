@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { Search, X, Maximize2, Minimize2 } from "lucide-vue-next";
 import type { PaperSearchState } from "./usePaperSearch";
 

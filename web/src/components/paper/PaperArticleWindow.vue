@@ -71,7 +71,7 @@ function resolveFigure(filename: string) {
             v-for="item in visibleItems"
             :key="item.id"
             :ref="(el) => bindSection(item.id, el)"
-            class="paper-window-section"
+            class="paper-window-section deferred-section"
         >
             <PaperSection
                 :id="item.id"
@@ -143,21 +143,28 @@ function resolveFigure(filename: string) {
 
     /* I.γ — defer layout/paint (incl. KaTeX typesetting + figure decode) for the
        warm-but-off-screen sections the JS window keeps mounted (overscanAfterPx
-       720, warm-ahead 3). The CRITICAL piece is `contain-intrinsic-size: auto …`:
-       the `auto` keyword makes the browser REMEMBER each section's real rendered
-       size after its first paint and report THAT (not the fallback) for
-       `offsetHeight` when the section is later skipped. That neutralises the one
-       hazard here — `useVirtualSectionWindow` measures every section via
-       `offsetHeight` to build its spacer math + scroll-offset corrections, and a
-       plain (non-`auto`) `contain-intrinsic-size` would feed it the fallback and
-       corrupt scroll positioning. Sections are measured on a post-mount rAF
-       (latex-paper `measureSection`), i.e. AFTER first paint, so the remembered
-       size is always the real one. The `1200px` fallback only applies to a section
-       that has never painted (never the measured case). `content-visibility` is
-       Baseline Newly Available; where it is absent the section simply renders as
-       before (the floor) and the JS window is unchanged. */
-    content-visibility: auto;
-    contain-intrinsic-size: auto 1200px;
+       720, warm-ahead 3). The `content-visibility: auto` + measurement-safe
+       `contain-intrinsic-size: auto …` come from glass-ui's canonical
+       `.deferred-section` utility (styles/utilities.css; the glass-ui rule even
+       names fourier γ as a consumer) — applied as a class on each section above,
+       so the substrate owns the recipe and this host only RETUNES it.
+
+       The CRITICAL piece is the `auto` prefix on `contain-intrinsic-size`: it
+       makes the browser REMEMBER each section's real rendered size after first
+       paint and report THAT (not the estimate) for `offsetHeight` when the
+       section is later skipped. That neutralises the one hazard here —
+       `useVirtualSectionWindow` measures every section via `offsetHeight` to
+       build its spacer math + scroll-offset corrections, and a plain (non-`auto`)
+       estimate would feed it the wrong number and corrupt scroll positioning.
+       Sections are measured on a post-mount rAF (latex-paper `measureSection`),
+       i.e. AFTER first paint, so the remembered size is always the real one.
+
+       `--deferred-section-size` retunes the never-painted estimate from the
+       utility's 30rem default to this paper's 1200px (a long typeset section);
+       the estimate only applies to a section that has never painted (never the
+       measured case). Where `content-visibility` is absent the section renders
+       as before (the floor) and the JS window is unchanged. */
+    --deferred-section-size: 1200px;
 }
 
 .paper-window-spacer {

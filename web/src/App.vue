@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { RouterView } from "vue-router";
-import { TooltipProvider, Toaster } from "@mkbabb/glass-ui";
+import { TooltipProvider } from "@mkbabb/glass-ui/tooltip";
+import { Toaster } from "@mkbabb/glass-ui/toast";
 import AppHeader from "@/components/layout/AppHeader.vue";
 import SvgFilters from "@/components/decorative/SvgFilters.vue";
 import { resolveVizColors } from "@/lib/colors";

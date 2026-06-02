@@ -6,16 +6,18 @@ import { useGalleryStore } from "@/stores/gallery";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/visualization/gallery/UserSlugBar.vue";
 import { Shield, ChevronDown, FileText, Eye, LayoutGrid, Sigma, Shuffle } from "lucide-vue-next";
+import { Button } from "@mkbabb/glass-ui/button";
 import {
-    Button,
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
+} from "@mkbabb/glass-ui/dropdown-menu";
+import {
     HoverCard,
     HoverCardTrigger,
     HoverCardContent,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/hover-card";
 
 const route = useRoute();
 const router = useRouter();

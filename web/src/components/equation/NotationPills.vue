@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { NOTATION_OPTIONS } from "@/lib/equation/notation";
 import type { NotationMode } from "@/lib/equation/types";
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import * as api from "@/lib/api";

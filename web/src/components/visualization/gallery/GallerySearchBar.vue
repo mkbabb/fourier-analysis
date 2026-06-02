@@ -2,14 +2,14 @@
 import { ref, computed } from "vue";
 import { Search, X, SlidersHorizontal } from "lucide-vue-next";
 import { basisDisplay } from "../lib/basis-display";
+import { Button } from "@mkbabb/glass-ui/button";
 import {
-    Button,
     Select,
     SelectTrigger,
     SelectContent,
     SelectItem,
     SelectValue,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/select";
 
 const props = defineProps<{
     searchQuery: string;

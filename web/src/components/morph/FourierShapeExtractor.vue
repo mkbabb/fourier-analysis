@@ -140,7 +140,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { generateSunRays, wobbleDiamond, wobbleStarPolygon } from "@mkbabb/pencil-boil";
 import { extractContours } from "@/lib/svg-contours";
 

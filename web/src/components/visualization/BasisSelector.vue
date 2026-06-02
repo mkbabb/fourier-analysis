@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { Slider, Button } from "@mkbabb/glass-ui";
+import { Slider } from "@mkbabb/glass-ui/slider";
+import { Button } from "@mkbabb/glass-ui/button";
 import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";

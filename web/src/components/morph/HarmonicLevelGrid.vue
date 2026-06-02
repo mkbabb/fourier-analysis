@@ -86,7 +86,8 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Button, Slider } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
+import { Slider } from "@mkbabb/glass-ui/slider";
 import { VIZ_COLORS } from "@/lib/colors";
 import type { FourierShape } from "@/lib/svg-fourier";
 import { interpolateAtHarmonicLevel, pointsToSvgPath } from "@/lib/svg-fourier";

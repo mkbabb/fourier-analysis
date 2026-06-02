@@ -19,7 +19,7 @@ import { usePaperSearch } from "./search/usePaperSearch";
 import { paperSections, labelMap, totalPages, pageMap, extractedMacros } from "@/lib/paperContent";
 import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { Undo2 } from "lucide-vue-next";
 
 // ── KaTeX with app-specific macros ─────────────────────────
@@ -146,6 +146,46 @@ const mobileNavRef = ref<HTMLElement | null>(null);
 const mobileTocVisible = ref(true);
 let mobileTocObserver: IntersectionObserver | null = null;
 
+// ── I.δ — reading-progress bar (native-first, JS floor) ──────
+// The native `.scroll-progress` recipe owns the bar on a `scroll()`-timeline
+// engine (compositor). This listener is the SOLE writer ONLY when that recipe
+// is absent — the dual-path-single-writer discipline (no double-run): if the
+// engine supports `scroll()` timelines (or the user requests reduced motion,
+// where the native recipe is inert and a JS bar would defeat PRM), it never
+// attaches.
+const progressBar = ref<HTMLElement | null>(null);
+const NATIVE_SCROLL_TIMELINE =
+    typeof CSS !== "undefined" && CSS.supports("animation-timeline", "scroll()");
+let progressRaf = 0;
+function writeProgress() {
+    progressRaf = 0;
+    const s = scrollContainer.value;
+    const bar = progressBar.value;
+    if (!s || !bar) return;
+    const max = s.scrollHeight - s.clientHeight;
+    const p = max > 0 ? Math.min(1, Math.max(0, s.scrollTop / max)) : 0;
+    bar.style.transform = `scaleX(${p})`;
+}
+function onProgressScroll() {
+    if (progressRaf) return;
+    progressRaf = requestAnimationFrame(writeProgress);
+}
+function armProgressFallback() {
+    const prm =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (NATIVE_SCROLL_TIMELINE || prm) return;
+    const s = scrollContainer.value;
+    if (!s) return;
+    s.addEventListener("scroll", onProgressScroll, { passive: true });
+    writeProgress();
+}
+function disarmProgressFallback() {
+    scrollContainer.value?.removeEventListener("scroll", onProgressScroll);
+    if (progressRaf) cancelAnimationFrame(progressRaf);
+    progressRaf = 0;
+}
+
 function updateSectionStartOffset() {
     const root = sectionWindowRoot.value;
     const scroller = scrollContainer.value;
@@ -219,6 +259,7 @@ onMounted(() => {
         updateSectionStartOffset();
         recalculate();
         queueSidebarFollow(true);
+        armProgressFallback();
 
         // Restore scroll position from session (skip first section — that's the top)
         try {
@@ -250,6 +291,7 @@ watch([scrollContainer, sectionWindowRoot], ([scroller, root]) => {
 onUnmounted(() => {
     mobileTocObserver?.disconnect();
     scrollContainerResizeObserver?.disconnect();
+    disarmProgressFallback();
     window.removeEventListener("resize", handleWindowResize);
     window.removeEventListener("keydown", handleGlobalKeydown);
 });
@@ -258,6 +300,19 @@ onUnmounted(() => {
 <template>
     <div class="paper-root" :style="paperRootStyle">
         <div ref="scrollContainer" class="paper-scroll">
+            <!-- I.δ — reading-progress bar. Native path: glass-ui's
+                 `.scroll-progress` recipe (scroll-driven.css) drives the 0..1
+                 `scaleX` on the COMPOSITOR off a `scroll()` timeline
+                 (`--scroll-progress-scroller: nearest` → the enclosing
+                 `.paper-scroll`, so the bar lives INSIDE the scroller it tracks).
+                 Fallback path: when the engine lacks `scroll()` timelines, a tiny
+                 feature-detected listener is the SOLE writer of the bar's
+                 `scaleX` (inv-29 floor). PRM zeroes the native animation (its
+                 `@supports` block sits under `prefers-reduced-motion`); the
+                 fallback listener is not armed under PRM either. -->
+            <div class="paper-progress-track">
+                <div ref="progressBar" class="paper-progress-bar scroll-progress" />
+            </div>
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
             <Transition name="slide-down">
@@ -407,6 +462,41 @@ onUnmounted(() => {
     overflow-x: hidden;
     overscroll-behavior-y: contain;
     max-width: 100dvw;
+}
+
+/* ── I.δ — reading-progress bar ───────────────────────────────
+   The track is sticky at the top of the `.paper-scroll` viewport; the bar
+   inside it scales 0→1 across the full read. The native path is glass-ui's
+   `.scroll-progress` (composited `scroll()` timeline); `--scroll-progress-
+   scroller: nearest` binds it to the enclosing `.paper-scroll` rather than the
+   document root. The JS floor writes the same `scaleX` only when `scroll()`
+   timelines are absent (and not under PRM). */
+.paper-progress-track {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-overlay);
+    height: 2px;
+    width: 100%;
+    pointer-events: none;
+    /* Pull the 2px track out of the flow so it does not nudge content down. */
+    margin-bottom: -2px;
+}
+
+.paper-progress-bar {
+    height: 100%;
+    width: 100%;
+    transform-origin: 0 50%;
+    /* Initial/fallback resting state — overwritten by the native recipe's
+       `scaleX` keyframe or the JS floor's inline `transform`. */
+    transform: scaleX(0);
+    background: linear-gradient(
+        to right,
+        color-mix(in srgb, var(--primary) 70%, transparent),
+        var(--primary)
+    );
+    border-radius: 0 1px 1px 0;
+    /* Bind the native `scroll()` timeline to the paper scroller (not root). */
+    --scroll-progress-scroller: nearest;
 }
 
 .teleport-overlay {

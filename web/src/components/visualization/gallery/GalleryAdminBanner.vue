@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdminStats } from "@/lib/types";
 import { Shield, LogOut } from "lucide-vue-next";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 
 defineProps<{

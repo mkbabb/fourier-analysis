@@ -6,7 +6,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/select";
 
 const props = withDefaults(
     defineProps<{

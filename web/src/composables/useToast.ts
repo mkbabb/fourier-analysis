@@ -2,7 +2,7 @@ import {
     toast as glassToast,
     useToast as glassUseToast,
     type ToastVariant,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/toast";
 
 export type ToastType = "error" | "info" | "success";
 

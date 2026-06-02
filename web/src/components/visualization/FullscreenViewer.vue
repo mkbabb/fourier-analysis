@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { Minimize2 } from "lucide-vue-next";
 import type { ContourAsset } from "@/lib/types";
 import BasisCanvas from "./BasisCanvas.vue";

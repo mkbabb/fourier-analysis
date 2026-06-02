@@ -5,7 +5,8 @@ import { computeEquation, simplifyCoefficients, isAbortError } from "@/lib/equat
 import type { NotationMode, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
 import { TIER_INFO, energyColor } from "@/lib/equation/notation";
-import { Button, HoverCard, HoverCardTrigger, HoverCardContent } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@mkbabb/glass-ui/hover-card";
 import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import { Info } from "lucide-vue-next";
 

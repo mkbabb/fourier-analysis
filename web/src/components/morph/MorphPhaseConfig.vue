@@ -69,8 +69,8 @@ import {
     SelectContent,
     SelectItem,
     SelectValue,
-    Slider,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/select";
+import { Slider } from "@mkbabb/glass-ui/slider";
 import {
     EASING_PRESETS,
     EASING_PRESET_NAMES,

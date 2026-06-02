@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { Button } from "@mkbabb/glass-ui/button";
 import {
-    Button,
     Dialog,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/dialog";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";

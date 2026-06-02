@@ -3,7 +3,8 @@ import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
-import { Button, Collapsible, CollapsibleContent } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
+import { Collapsible, CollapsibleContent } from "@mkbabb/glass-ui/collapsible";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import { ChevronUp } from "lucide-vue-next";
 

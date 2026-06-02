@@ -15,7 +15,7 @@
  * discharging the L5 §5 A8 LOW a11y gap.
  */
 import { computed, ref } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { AnimatedDigit } from "@mkbabb/glass-ui/animated-digit";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";

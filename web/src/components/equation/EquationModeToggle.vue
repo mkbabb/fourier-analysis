@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import type { EquationDisplayMode } from "@/lib/equation/types";
 
 const model = defineModel<EquationDisplayMode>({ required: true });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { PRESETS } from "@/lib/equation/presets";
 import type { NotationMode, PresetFunction } from "@/lib/equation/types";
 import { Wand2, Play } from "lucide-vue-next";

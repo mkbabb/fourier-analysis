@@ -4,7 +4,7 @@ import type { WorkspaceDraft } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
 import { ChevronDown, Upload } from "lucide-vue-next";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 
 const props = defineProps<{

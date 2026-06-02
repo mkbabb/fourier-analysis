@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { useAnimationStore, EASING_OPTIONS, type EasingName } from "@/stores/animation";
 import EasingCurvePreview from "./EasingCurvePreview.vue";
 

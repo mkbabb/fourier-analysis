@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Slider, HoverPopover } from "@mkbabb/glass-ui";
+import { Slider } from "@mkbabb/glass-ui/slider";
+import { HoverPopover } from "@mkbabb/glass-ui/hover-popover";
 import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import { GlassDock, DockIconButton } from "@mkbabb/glass-ui/dock";
 import { Tooltip } from "@/components/ui/tooltip";

@@ -4,16 +4,18 @@ import { watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
+import { Button } from "@mkbabb/glass-ui/button";
 import {
-    Button,
     Collapsible,
     CollapsibleTrigger,
     CollapsibleContent,
+} from "@mkbabb/glass-ui/collapsible";
+import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/select";
 import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
 import { Wand2, ChevronRight, RotateCcw, RefreshCw } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";

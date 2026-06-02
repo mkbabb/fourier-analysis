@@ -11,15 +11,15 @@ import type { Visualization, WorkspaceDraft } from "@/lib/types";
 import { Layers, Trash2, Crown, X } from "lucide-vue-next";
 
 import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
+import { Button } from "@mkbabb/glass-ui/button";
 import {
-    Button,
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogDescription,
     DialogFooter,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/dialog";
 import GallerySearchBar from "./gallery/GallerySearchBar.vue";
 import GalleryFeaturedCarousel from "./gallery/GalleryFeaturedCarousel.vue";
 import GalleryInfiniteGrid from "./gallery/GalleryInfiniteGrid.vue";

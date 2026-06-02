@@ -20,7 +20,7 @@
  * by string-key (CR-2 silent regression at v1.7.0 — keys retired at O.W2).
  */
 import { computed } from "vue";
-import { Slider } from "@mkbabb/glass-ui";
+import { Slider } from "@mkbabb/glass-ui/slider";
 
 const props = defineProps<{
     label: string;

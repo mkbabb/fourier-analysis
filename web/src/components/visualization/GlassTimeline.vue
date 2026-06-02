@@ -18,7 +18,7 @@
  * closes scrub.
  */
 import { computed, ref } from "vue";
-import { Slider } from "@mkbabb/glass-ui";
+import { Slider } from "@mkbabb/glass-ui/slider";
 import { useAnimationStore } from "@/stores/animation";
 
 defineProps<{

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Button, useClipboard } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
+import { useClipboard } from "@mkbabb/glass-ui";
 import { Check, Copy } from "lucide-vue-next";
 import katex from "katex";
 

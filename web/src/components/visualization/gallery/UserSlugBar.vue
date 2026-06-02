@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { Button, useClipboard } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
+import { useClipboard } from "@mkbabb/glass-ui";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import { User, LogIn, LogOut, Copy, Check, Dices } from "lucide-vue-next";

@@ -11,7 +11,7 @@
  */
 
 import { ref, computed, onUnmounted, type Ref } from "vue";
-import { Animation } from "@mkbabb/keyframes.js";
+import { loadAnimationEngine, type Animation } from "@mkbabb/keyframes.js";
 import type { FourierShape } from "@/lib/svg-fourier";
 import {
     interpolateAtHarmonicLevel,
@@ -29,6 +29,19 @@ import {
 export { EASING_PRESETS, EASING_PRESET_NAMES, type EasingFn, type EasingPreset };
 
 export type MorphPhase = "idle" | "settle-out" | "morph" | "settle-in";
+
+// keyframes 2.2.0 moves the value.js-bearing `Animation` engine behind the
+// `loadAnimationEngine()` dynamic boundary, so value.js no longer rides the
+// eager bundle — it loads on first morph. The browser caches the engine module
+// after the first resolve, so this promise is constructed at most once.
+type AnimationCtor = typeof Animation;
+let enginePromise: Promise<AnimationCtor> | null = null;
+function getAnimationCtor(): Promise<AnimationCtor> {
+    if (!enginePromise) {
+        enginePromise = loadAnimationEngine().then((engine) => engine.Animation);
+    }
+    return enginePromise;
+}
 
 // ── Config type ─────────────────────────────────────────────────────
 
@@ -107,10 +120,11 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
     }
 
     function createTweenAnimation(
+        AnimationCtor: AnimationCtor,
         durationMs: number,
         onTick: (t: number) => void,
     ): Animation {
-        const a = new Animation({
+        const a = new AnimationCtor({
             duration: durationMs,
             iterationCount: 1,
             timingFunction: "linear",
@@ -130,6 +144,9 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
 
     async function morphTo(from: FourierShape, to: FourierShape): Promise<void> {
         stopAnim();
+
+        // Resolve the value.js-bearing engine lazily (cached after first morph).
+        const Animation = await getAnimationCtor();
 
         const {
             settleOutMs,
@@ -151,7 +168,7 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
         // Phase 1: Settle out
         phase.value = "settle-out";
         await new Promise<void>((resolve) => {
-            currentAnim = createTweenAnimation(settleOutMs, (tRaw: number) => {
+            currentAnim = createTweenAnimation(Animation, settleOutMs, (tRaw: number) => {
                 const t = easeOut(tRaw);
                 const level = highLevel + (lowLevel - highLevel) * t;
                 harmonicLevel.value = level;
@@ -167,7 +184,7 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
         const toLowPoints = interpolateAtHarmonicLevel(to, lowLevel);
 
         await new Promise<void>((resolve) => {
-            currentAnim = createTweenAnimation(morphMs, (tRaw: number) => {
+            currentAnim = createTweenAnimation(Animation, morphMs, (tRaw: number) => {
                 const t = easeMorph(tRaw);
                 currentPoints.value = lerpPoints(fromLowPoints, toLowPoints, t);
                 morphProgress.value = (settleOutMs + tRaw * morphMs) / totalMs;
@@ -180,7 +197,7 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
         activeShape = to;
 
         await new Promise<void>((resolve) => {
-            currentAnim = createTweenAnimation(settleInMs, (tRaw: number) => {
+            currentAnim = createTweenAnimation(Animation, settleInMs, (tRaw: number) => {
                 const t = easeIn(tRaw);
                 const level = lowLevel + (highLevel - lowLevel) * t;
                 harmonicLevel.value = level;

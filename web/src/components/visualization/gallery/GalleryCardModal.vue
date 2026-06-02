@@ -1,11 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import {
-    Badge,
-    Button,
-    Dialog,
-    DialogContent,
-} from "@mkbabb/glass-ui";
+import { Badge } from "@mkbabb/glass-ui/badge";
+import { Button } from "@mkbabb/glass-ui/button";
+import { Dialog, DialogContent } from "@mkbabb/glass-ui/dialog";
 import type { Visualization } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";

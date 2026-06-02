@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-vue-next";
 import PaperSearch from "./PaperSearch.vue";

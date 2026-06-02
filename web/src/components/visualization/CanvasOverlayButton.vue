@@ -6,7 +6,7 @@
  * surfaces the `active` flag as both `aria-pressed` and the legacy
  * `.is-active` class, matching the glass-ui canon for toggle buttons.
  */
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 
 defineProps<{
     active?: boolean;

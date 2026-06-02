@@ -14,7 +14,7 @@ import {
     Tooltip as GlassTooltip,
     TooltipTrigger,
     TooltipContent,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/tooltip";
 
 defineProps<{
     text?: string;

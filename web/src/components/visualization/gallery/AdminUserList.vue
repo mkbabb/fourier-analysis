@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
+import { Button } from "@mkbabb/glass-ui/button";
+import { Checkbox } from "@mkbabb/glass-ui";
 import {
-    Button,
-    Checkbox,
     Dialog,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
+} from "@mkbabb/glass-ui/dialog";
+import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@mkbabb/glass-ui";
+} from "@mkbabb/glass-ui/select";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";

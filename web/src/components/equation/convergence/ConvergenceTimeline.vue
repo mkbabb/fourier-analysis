@@ -16,7 +16,8 @@
  * to reka-ui's integer slider model by scaling by 100.
  */
 import { computed, ref } from "vue";
-import { Button, Slider } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
+import { Slider } from "@mkbabb/glass-ui/slider";
 
 const props = defineProps<{
     t: number;

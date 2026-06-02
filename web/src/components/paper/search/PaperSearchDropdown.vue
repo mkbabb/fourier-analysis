@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import type { PaperSearchState } from "./usePaperSearch";
 import { TYPE_LABELS, resultLabel, highlightFuzzy } from "./searchHelpers";
 

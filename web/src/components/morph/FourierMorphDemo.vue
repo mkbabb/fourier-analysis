@@ -83,7 +83,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { ClipboardCopy, Check, RotateCcw } from "lucide-vue-next";
 import MorphShapePreview from "@/components/morph/MorphShapePreview.vue";
 import MorphPhaseConfig from "@/components/morph/MorphPhaseConfig.vue";

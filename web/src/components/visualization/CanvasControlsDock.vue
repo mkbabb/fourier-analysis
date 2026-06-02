@@ -3,7 +3,7 @@ import { ref, watch } from "vue";
 import {
     Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "lucide-vue-next";
 import { Tooltip } from "@/components/ui/tooltip";
-import { HoverPopover } from "@mkbabb/glass-ui";
+import { HoverPopover } from "@mkbabb/glass-ui/hover-popover";
 import { GlassDock, DockIconButton } from "@mkbabb/glass-ui/dock";
 
 defineProps<{

@@ -1,4 +1,29 @@
 import { createRouter, createWebHistory, type RouteLocationNormalized } from "vue-router";
+import { supportsViewTransitions } from "@mkbabb/glass-ui";
+
+// I.ε — the `/w/`↔`/v/` route-morph. The worked-example (`/w/:imageSlug`) and
+// the saved visualization (`/v/:visualizationSlug`) both render
+// `VisualizationView`; a plain route swap remounts it, flashing the canvas. The
+// View Transitions API morphs the old/new frames on the compositor instead.
+//
+// Gate (inv-29): only when `document.startViewTransition` exists AND the user
+// has not requested reduced motion. The named pairs that morph are the
+// worked-example ↔ saved-visualization views (same component, param change) and
+// the back-and-forth with the gallery. Every other navigation falls straight
+// through to the unchanged remount path (the floor). glass-ui's
+// `view-transition.css` owns the `::view-transition-*` LOOK + the PRM carve.
+const prefersReducedMotion = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/** True when the from→to pair is a visualization-surface morph worth animating. */
+function isVizMorph(
+    to: RouteLocationNormalized,
+    from: RouteLocationNormalized,
+): boolean {
+    const vizNames = new Set(["visualization", "workspace"]);
+    return vizNames.has(to.name as string) && vizNames.has(from.name as string);
+}
 
 const SAVED_TAB_KEY = "fourier_active_tab";
 const VALID_TABS = new Set(["/paper", "/visualize", "/morph", "/gallery", "/equation"]);
@@ -95,6 +120,32 @@ export const router = createRouter({
     ],
 });
 
+// ── I.ε — View-Transitions route-morph bracket ──────────────────────────────
+// The navigation guard brackets an eligible swap in `document.startViewTransition`:
+// `beforeResolve` opens the transition and parks the route commit on a promise
+// the `updateCallback` awaits; `afterEach` (after `nextTick`) resolves it so the
+// browser snapshots the post-swap frame. Non-morph or unsupported navigations
+// resolve the parked promise immediately and never open a transition (the floor).
+let resolveViewSwap: (() => void) | null = null;
+
+router.beforeResolve((to, from) => {
+    // Flush any resolver left parked by a prior aborted navigation so the
+    // browser's view-transition queue can never deadlock.
+    resolveViewSwap?.();
+    resolveViewSwap = null;
+    if (
+        !supportsViewTransitions() ||
+        prefersReducedMotion() ||
+        !isVizMorph(to, from)
+    ) {
+        return;
+    }
+    const swapped = new Promise<void>((resolve) => {
+        resolveViewSwap = resolve;
+    });
+    document.startViewTransition(() => swapped);
+});
+
 const DEFAULT_TITLE = "Fourier Analysis";
 const DEFAULT_DESCRIPTION =
     "An interactive treatise on Fourier analysis and orthogonal decomposition — epicycle visualizations, an equation explorer, and a full typeset paper deriving the transform through the dual lenses of linear algebra and complex analysis.";
@@ -114,6 +165,14 @@ function applyRouteMeta(to: RouteLocationNormalized) {
 
 router.afterEach((to: RouteLocationNormalized) => {
     applyRouteMeta(to);
+
+    // I.ε — release the View-Transition update callback once the DOM has
+    // committed the new route component (next microtask + a frame).
+    if (resolveViewSwap) {
+        const release = resolveViewSwap;
+        resolveViewSwap = null;
+        requestAnimationFrame(() => requestAnimationFrame(release));
+    }
 
     const tab = to.path;
     if (

@@ -8,7 +8,7 @@ import type { NotationMode } from "@/lib/equation/types";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import NotationPills from "@/components/equation/NotationPills.vue";
 import { X } from "lucide-vue-next";
-import { Button } from "@mkbabb/glass-ui";
+import { Button } from "@mkbabb/glass-ui/button";
 import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import katex from "katex";
 
