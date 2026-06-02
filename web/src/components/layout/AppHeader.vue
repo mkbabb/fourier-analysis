@@ -19,6 +19,7 @@ import {
 
 const route = useRoute();
 const router = useRouter();
+const baseUrl = import.meta.env.BASE_URL;
 
 const tabs = [
     { label: "Paper", value: "/paper", icon: FileText },
@@ -68,9 +69,16 @@ const galleryStore = useGalleryStore();
                 </HoverCardTrigger>
                 <HoverCardContent class="hover-card-content" align="start" :side-offset="6">
                     <div class="flex items-center gap-3">
+                        <!-- Self-hosted maintainer avatar (θ): restores the zero-third-party-origins
+                             posture — no avatars.githubusercontent.com handshake/beacon. Served from
+                             /assets (the repo's committed-raster convention; 80px source for 2×
+                             density in the 40px h-10 box). -->
                         <img
-                            src="https://avatars.githubusercontent.com/u/2848617?v=4"
+                            :src="`${baseUrl}assets/maintainer-avatar.png`"
                             alt="mkbabb"
+                            width="80"
+                            height="80"
+                            decoding="async"
                             class="h-10 w-10 rounded-full shrink-0"
                         />
                         <div class="flex-1 min-w-0">

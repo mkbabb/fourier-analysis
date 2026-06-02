@@ -31,17 +31,35 @@ export const useAnimationStore = defineStore("animation", () => {
 
     let rafId: number | null = null;
 
+    // I.γ — off-screen rAF gating. The epicycle canvas is a 60fps loop that
+    // burns CPU/GPU/battery while scrolled off-screen or hidden behind the
+    // fullscreen layer. Each mounted `BasisCanvas` registers its on-screen
+    // status (via IntersectionObserver) through `setCanvasVisible`; the rAF
+    // clock advances only while at least one canvas is visible AND `playing`
+    // is set. `playing` stays the user-intent flag — visibility gating parks
+    // the *clock*, not the intent, so the loop resumes seamlessly on return.
+    // Reference-counted because two canvases (inline + fullscreen) can mount
+    // at once: the loop runs while ANY of them is on-screen.
+    const visibleCanvases = ref(0);
+    const anyCanvasVisible = computed(() => visibleCanvases.value > 0);
+
     // Manual rAF loop with alternate (ping-pong).
     // The previous incarnation imported `Animation` from `@mkbabb/keyframes.js`
     // and constructed a parallel `createAnim()` graph that was never invoked
     // — the rAF loop below has been the sole driver since the auto-play
     // migration. Dead substrate excised.
     function startLoop() {
+        // Gate: only drive the clock when a canvas is actually on-screen.
+        if (!playing.value || !anyCanvasVisible.value || rafId !== null) return;
+
         let startTime: number | null = null;
         const dur = duration.value / speed.value;
 
         function tick(now: number) {
-            if (!playing.value) return;
+            if (!playing.value || !anyCanvasVisible.value) {
+                rafId = null;
+                return;
+            }
             if (startTime === null) startTime = now - t.value * dur;
 
             const elapsed = now - startTime;
@@ -73,6 +91,18 @@ export const useAnimationStore = defineStore("animation", () => {
         if (!playing.value) return;
         playing.value = false;
         stopRAF();
+    }
+
+    // Register/deregister a canvas's on-screen status. When the last visible
+    // canvas leaves the viewport the clock parks; when one returns the loop
+    // resumes if the user still intends playback.
+    function setCanvasVisible(visible: boolean) {
+        const next = visible
+            ? visibleCanvases.value + 1
+            : Math.max(0, visibleCanvases.value - 1);
+        visibleCanvases.value = next;
+        if (next === 0) stopRAF();
+        else if (playing.value) startLoop();
     }
 
     function toggle() {
@@ -112,5 +142,5 @@ export const useAnimationStore = defineStore("animation", () => {
         }
     });
 
-    return { t, easedT, playing, speed, duration, easing, scrubbing, play, pause, toggle, seek, startScrub, endScrub, reset };
+    return { t, easedT, playing, speed, duration, easing, scrubbing, anyCanvasVisible, play, pause, toggle, seek, startScrub, endScrub, reset, setCanvasVisible };
 });

@@ -6,6 +6,7 @@ import {
 } from "@mkbabb/latex-paper/vue";
 import type { ComponentPublicInstance } from "vue";
 import { ArrowRight } from "lucide-vue-next";
+import { FIGURE_DIMENSIONS, hasModernVariants } from "@/lib/figureDimensions";
 
 const props = defineProps<{
     visibleItems: FlatPaperSection[];
@@ -33,6 +34,29 @@ function bindSection(
 ) {
     props.measureSection(id, toHTMLElement(value));
 }
+
+// I.θ — resolve a figure's served URLs, intrinsic dimensions, and modern-format
+// availability. The figure source is a `.pdf` name; figures are rasterized to
+// `.png` and transcoded 1:1 to `.avif`/`.webp` siblings (see figureDimensions).
+// `<picture>` does NOT fall back on a 404 — only on an unsupported format — so
+// the AVIF/WebP `<source>`s are emitted ONLY for figures we know carry variants
+// (`hasModernVariants`); every other figure renders as a bare `<img>` PNG.
+function resolveFigure(filename: string) {
+    const pngName = filename.replace(/\.pdf$/, ".png");
+    const png = `${baseUrl}assets/${pngName}`;
+    const dims = FIGURE_DIMENSIONS[pngName];
+    if (hasModernVariants(pngName)) {
+        const stem = pngName.replace(/\.png$/, "");
+        return {
+            png,
+            avif: `${baseUrl}assets/${stem}.avif`,
+            webp: `${baseUrl}assets/${stem}.webp`,
+            width: dims?.[0],
+            height: dims?.[1],
+        };
+    }
+    return { png, avif: null, webp: null, width: dims?.[0], height: dims?.[1] };
+}
 </script>
 
 <template>
@@ -58,14 +82,29 @@ function bindSection(
             >
                 <PaperSectionBlocks :section="item.section">
                     <template #figure="{ figure }">
-                        <img
-                            :src="`${baseUrl}assets/${figure.filename.replace(/\.pdf$/, '.png')}`"
-                            :alt="figure.caption"
-                            class="max-w-full rounded-lg shadow-sm"
-                            :class="figure.filename.includes('portrait') ? 'paper-portrait' : 'paper-figure'"
-                            style="max-height: 400px"
-                            loading="lazy"
-                        />
+                        <picture>
+                            <source
+                                v-if="resolveFigure(figure.filename).avif"
+                                :srcset="resolveFigure(figure.filename).avif!"
+                                type="image/avif"
+                            />
+                            <source
+                                v-if="resolveFigure(figure.filename).webp"
+                                :srcset="resolveFigure(figure.filename).webp!"
+                                type="image/webp"
+                            />
+                            <img
+                                :src="resolveFigure(figure.filename).png"
+                                :alt="figure.caption"
+                                :width="resolveFigure(figure.filename).width"
+                                :height="resolveFigure(figure.filename).height"
+                                class="max-w-full rounded-lg shadow-sm"
+                                :class="figure.filename.includes('portrait') ? 'paper-portrait' : 'paper-figure'"
+                                style="max-height: 400px"
+                                loading="lazy"
+                                decoding="async"
+                            />
+                        </picture>
                     </template>
                     <template #callout="{ callout }">
                         <div class="interactive-callout">
@@ -101,6 +140,24 @@ function bindSection(
 
 .paper-window-section {
     min-width: 0;
+
+    /* I.γ — defer layout/paint (incl. KaTeX typesetting + figure decode) for the
+       warm-but-off-screen sections the JS window keeps mounted (overscanAfterPx
+       720, warm-ahead 3). The CRITICAL piece is `contain-intrinsic-size: auto …`:
+       the `auto` keyword makes the browser REMEMBER each section's real rendered
+       size after its first paint and report THAT (not the fallback) for
+       `offsetHeight` when the section is later skipped. That neutralises the one
+       hazard here — `useVirtualSectionWindow` measures every section via
+       `offsetHeight` to build its spacer math + scroll-offset corrections, and a
+       plain (non-`auto`) `contain-intrinsic-size` would feed it the fallback and
+       corrupt scroll positioning. Sections are measured on a post-mount rAF
+       (latex-paper `measureSection`), i.e. AFTER first paint, so the remembered
+       size is always the real one. The `1200px` fallback only applies to a section
+       that has never painted (never the measured case). `content-visibility` is
+       Baseline Newly Available; where it is absent the section simply renders as
+       before (the floor) and the JS window is unchanged. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 1200px;
 }
 
 .paper-window-spacer {

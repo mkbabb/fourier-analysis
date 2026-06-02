@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { fourierPositionsAt, evaluateFourier } from "@/lib/bases";
@@ -421,6 +421,42 @@ watch(
         if (surface.value) drawFrame();
     },
 );
+
+// ── Off-screen rAF gating (I.γ) ──
+// Park the shared animation clock when this canvas is scrolled out of the
+// viewport or hidden behind the fullscreen layer — a 60fps loop drawing to a
+// surface nobody can see is pure waste. The store reference-counts visibility
+// across all mounted canvases, so the loop keeps running as long as ANY canvas
+// (inline or fullscreen) is on-screen. IntersectionObserver is Baseline Widely
+// Available; the prior always-on loop is the implicit floor where it is absent.
+let visibilityObserver: IntersectionObserver | null = null;
+let lastVisible = false;
+
+onMounted(() => {
+    if (typeof IntersectionObserver === "undefined" || !containerRef.value) {
+        // No IO support → register as permanently visible (floor: always-on loop).
+        anim.setCanvasVisible(true);
+        lastVisible = true;
+        return;
+    }
+    visibilityObserver = new IntersectionObserver(
+        (entries) => {
+            const visible = entries.some((e) => e.isIntersecting);
+            if (visible === lastVisible) return;
+            lastVisible = visible;
+            anim.setCanvasVisible(visible);
+        },
+        { threshold: 0 },
+    );
+    visibilityObserver.observe(containerRef.value);
+});
+
+onUnmounted(() => {
+    visibilityObserver?.disconnect();
+    visibilityObserver = null;
+    // Release this canvas's visibility credit so the count never leaks.
+    if (lastVisible) anim.setCanvasVisible(false);
+});
 
 // ── Export ──
 function exportFrame(options: Record<string, boolean> = {}) {

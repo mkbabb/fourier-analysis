@@ -94,8 +94,9 @@ const activePreset = computed(() =>
             <CollapsibleSection title="Function" subtitle="f(x)" :default-open="true">
                 <div class="space-y-3 pt-1">
                     <div>
-                        <label class="text-sm font-medium text-muted-foreground mb-1 block">Expression</label>
+                        <label for="fn-expression" class="text-sm font-medium text-muted-foreground mb-1 block">Expression</label>
                         <input
+                            id="fn-expression"
                             type="text"
                             v-model="expression"
                             @keydown.enter="emit('compute')"
@@ -111,9 +112,11 @@ const activePreset = computed(() =>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <label class="text-sm font-medium text-muted-foreground shrink-0">Domain</label>
+                        <label for="fn-domain-start" class="text-sm font-medium text-muted-foreground shrink-0">Domain</label>
                         <input
+                            id="fn-domain-start"
                             type="text"
+                            aria-label="Domain start"
                             :value="formatDomain(domainStart)"
                             @change="onDomainInput($event, (v) => domainStart = v)"
                             class="w-20 px-1.5 py-1 rounded-md text-sm text-center
@@ -125,6 +128,7 @@ const activePreset = computed(() =>
                         <span class="text-sm text-muted-foreground">to</span>
                         <input
                             type="text"
+                            aria-label="Domain end"
                             :value="formatDomain(domainEnd)"
                             @change="onDomainInput($event, (v) => domainEnd = v)"
                             class="w-20 px-1.5 py-1 rounded-md text-sm text-center
