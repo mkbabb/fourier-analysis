@@ -52,6 +52,7 @@ uploads/
 # Scripts (private/local only — tracked scripts use negation)
 scripts/*
 !scripts/dev.sh
+!scripts/deploy.sh
 !scripts/e2e.sh
 !scripts/deploy-hook.sh
 !scripts/pages-deploy.sh

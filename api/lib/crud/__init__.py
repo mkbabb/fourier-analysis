@@ -13,7 +13,10 @@ owns the request lifecycle. Each router composes the helpers explicitly.
 
 from __future__ import annotations
 
-from . import cursors, errors, etag, idempotency, pinned_cron, slugs, softdelete
+from . import atomdiff, canonical_digest, cursors, errors, etag, idempotency, pinned_cron, slugs, softdelete
+from .atomdiff import ATOM_KEY_ORDER, AtomOp, atom_hash, diff_atoms, enumerate_atoms, set_hash
+from .canonical_digest import canonical_json
+from .canonical_digest import canonical_digest as canonical_digest_of
 from .cursors import CursorPayload, decode_cursor, encode_cursor, next_cursor_from_last, paginate
 from .errors import ProblemDetails, problem
 from .etag import compute_etag, require_if_match, set_etag_header
@@ -25,6 +28,7 @@ from .softdelete import SoftDeleteMixin, not_deleted_filter, restore, soft_delet
 # fmt: off
 __all__ = [
     "slugs", "cursors", "errors", "etag", "idempotency", "softdelete", "pinned_cron",
+    "atomdiff", "canonical_digest",
     "generate_slug", "validate_slug", "slug_with_retry", "SLUG_PATTERN",
     "encode_cursor", "decode_cursor", "paginate", "next_cursor_from_last", "CursorPayload",
     "ProblemDetails", "problem",
@@ -32,5 +36,7 @@ __all__ = [
     "IdempotencyStore", "replay_or_record",
     "SoftDeleteMixin", "not_deleted_filter", "with_not_deleted", "soft_delete", "restore",
     "mark_pinned", "cron_prune",
+    "canonical_json", "canonical_digest_of",
+    "ATOM_KEY_ORDER", "AtomOp", "atom_hash", "set_hash", "enumerate_atoms", "diff_atoms",
 ]
 # fmt: on

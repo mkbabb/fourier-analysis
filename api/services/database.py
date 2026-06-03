@@ -117,6 +117,21 @@ async def connect_db() -> None:
     # ``deleted_at``-grace hard-delete pass scans the indexed ``deleted_at``.
     await _db.visualizations.create_index([("pinned", 1), ("last_accessed_at", 1)])
 
+    # WAVE D (J.W2 / J.W1-crud-remix §2.3) — fork / version / provenance.
+    # ``fork_of`` → the ``/forks`` children list (value.js findForksOf); the
+    # ``{fork_count:-1, _id:-1}`` compound makes the already-wired ``most-forked``
+    # cursor sort real + stable (the _id tiebreak matches the cursor contract).
+    await _db.visualizations.create_index("fork_of", sparse=True)
+    await _db.visualizations.create_index([("visibility", 1), ("fork_count", -1), ("_id", -1)])
+    await _db.visualizations.create_index([("fork_of", 1), ("visibility", 1), ("created_at", -1), ("_id", -1)])
+
+    # The version collection — the one genuinely-new persisted shape. ``_id`` is
+    # the content-addressed compound ``f"{viz_slug}:{set_hash}"`` (default unique);
+    # the ``{viz_slug, depth}`` index serves the provenance walk + the bounded
+    # ``/versions`` list (≤50, no cursor).
+    await _db.visualization_versions.create_index([("viz_slug", 1), ("depth", 1)])
+    await _db.visualization_versions.create_index("root_hash")
+
     # Flags — the moderation-FK band keyed on the visualization's
     # ``content_hash`` (the renamed identity slot, fourier-D.W3 / γ; the
     # rename target is the truthful value the field always held). The

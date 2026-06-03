@@ -213,6 +213,16 @@ export interface Visualization {
     contour_hash: string; // contour asset FK — kept
     active_bases: string[];
     n_harmonics: number;
+    // ── WAVE D: fork / version / provenance (J.W1-crud-remix §2.1) ──
+    // The fork substrate fourier inherits from value.js's `Palette` shape.
+    // `set_hash` is the atom-set identity (the version key at HEAD); `fork_of`
+    // is the single-parent provenance pointer (null = original, not a fork);
+    // `fork_count` / `version_count` are denormalized read counters.
+    set_hash: string;
+    fork_of?: string | null;
+    fork_of_hash?: string | null;
+    fork_count: number;
+    version_count: number;
     title?: string | null;
     description?: string | null;
     tags?: string[];
@@ -249,6 +259,118 @@ export interface VisualizationPatch {
     description?: string | null;
     tags?: string[];
     palette_slug?: string | null;
+}
+
+// ── WAVE D — fork / version / provenance / diff twins (inv-26; no codegen) ──
+//
+// CASING NOTE: these twins use snake_case to match fourier's OWN Python wire
+// (FastAPI/Pydantic `model_dump()` emits snake_case — `set_hash`, `atom_key`,
+// `from_hash`, `atom_diff`), consistent with every other fourier twin above.
+// The camelCase column in `docs/tranches/J/design/J-diff-shape.md` §4
+// (`atomKey`, `fromHash`, `toHash`, `atomDiff`) is value.js's TS twin, NOT
+// fourier's — fourier consumes its own snake_case Python backend.
+
+/**
+ * One atom-level change on a provenance edge (J-diff-shape §3.1). `atom_key` is
+ * one of the five closed config atoms; `before`/`after` are opaque atom values
+ * (presence rule: `added` has only `after`, `removed` only `before`, `changed`
+ * both). Mirrors the Python `AtomOp` (snake `atom_key` over the wire).
+ */
+export interface AtomOp {
+    op: "added" | "removed" | "changed";
+    atom_key:
+        | "active_bases"
+        | "n_harmonics"
+        | "contour_settings"
+        | "animation_settings"
+        | "palette_slug";
+    before?: unknown;
+    after?: unknown;
+}
+
+/**
+ * The canonical `/diff` response envelope (J-diff-shape §3.2). `ops` is always
+ * present (the empty array ⟺ `identical`). Snake_case to match fourier's wire;
+ * the §4 camelCase (`fromHash`/`toHash`) is value.js's column.
+ */
+export interface DiffResponse {
+    from_hash: string;
+    to_hash: string;
+    ops: AtomOp[];
+    identical: boolean;
+}
+
+/** One node on the within-viz version chain (J.W1-crud-remix §4.3). */
+export interface ProvenanceNode {
+    slug: string;
+    set_hash: string;
+    author_slug: string;
+    depth: number;
+    is_fork: boolean;
+    created_at: string;
+}
+
+/** One step on the cross-viz `fork_of` ancestry breadcrumb (F-03). */
+export interface ForkCrumb {
+    slug: string;
+    set_hash: string;
+    author_slug: string;
+    fork_of?: string | null;
+    created_at: string;
+}
+
+/**
+ * `GET /{slug}/provenance` — the within-viz version `chain` plus the cross-viz
+ * `fork_breadcrumb` (the two distinct walks named in F-03).
+ */
+export interface ProvenanceResponse {
+    chain: ProvenanceNode[];
+    fork_breadcrumb: ForkCrumb[];
+}
+
+/** One entry in the bounded `/versions` list (J.W1-crud-remix §4.5). */
+export interface VersionEntry {
+    set_hash: string;
+    depth: number;
+    author_slug: string;
+    atom_diff: AtomOp[];
+    created_at: string;
+}
+
+/**
+ * `GET /{slug}/versions` — the viz's own `depth`-ordered version chain, bounded
+ * ≤50, no cursor (F-11).
+ */
+export interface VersionsResponse {
+    viz_slug: string;
+    versions: VersionEntry[];
+}
+
+/**
+ * `POST /{slug}/remix` body — the changed atoms; any absent atom inherits the
+ * source HEAD. Mirrors the Python `VisualizationRemix`. `palette_slug` is
+ * tri-state on the backend (omit = inherit, `null` = clear, slug = rebind).
+ */
+export interface VisualizationRemix {
+    slug?: string;
+    visibility?: Visibility;
+    active_bases?: string[];
+    n_harmonics?: number;
+    contour_settings?: ContourSettings;
+    animation_settings?: AnimationSettings;
+    palette_slug?: string | null;
+    title?: string | null;
+    description?: string | null;
+    tags?: string[];
+}
+
+/**
+ * The `POST /{slug}/{publish,unpublish}` response: a `Visualization` with a
+ * derived convenience flag (`published === (visibility === "public")`). The
+ * endpoints flip `visibility` in place (idempotent), never duplicating the row.
+ */
+export interface PublishResponse extends Visualization {
+    published: boolean;
 }
 
 /** The cursor envelope returned by every list endpoint (CRUD-CONTRACT §6). */

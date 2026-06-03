@@ -59,6 +59,8 @@ MIGRATIONS: list[tuple[str, int]] = [
     ("api.scripts.migrate_image_blobs", 1),
     ("api.scripts.migrate_flags_field", 1),
     ("api.scripts.migrate_visualization", 1),
+    # J.W2 — additive set_hash + fork-fields + root-version backfill (F-16).
+    ("api.scripts.migrate_visualization_forks", 1),
 ]
 
 
