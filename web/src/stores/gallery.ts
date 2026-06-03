@@ -3,6 +3,7 @@ import { ref } from "vue";
 import type { GalleryTier, AdminStats, WorkspaceDraft } from "@/lib/types";
 import type { Visibility, Visualization } from "@/lib/api";
 import * as api from "@/lib/api";
+import { processInChunks } from "@/lib/scheduler";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 
@@ -66,9 +67,11 @@ export const useGalleryStore = defineStore("gallery", () => {
                 cursor: nextCursor.value || undefined,
                 owner: ownerParam(),
             });
-            for (const v of result.items) if (v.deleted_at == null) {
-                entries.value.push(v);
-            }
+            // J.W3 — accumulate the page in main-thread-yielding chunks so a
+            // long infinite-scroll never monopolises the thread (the gallery is
+            // the named consumer of the scheduler.yield floor; inv-15/inv-29).
+            const fresh = result.items.filter((v) => v.deleted_at == null);
+            await processInChunks(fresh, (v) => entries.value.push(v), { chunkSize: 24 });
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {

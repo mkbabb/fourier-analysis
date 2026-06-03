@@ -68,7 +68,7 @@ function timeAgo(iso: string): string {
          pattern: role + tabindex + keydown + aria-label. Focus ring lands
          globally via .gallery-card:focus-visible in style.css. -->
     <div
-        class="gallery-card w-full cursor-pointer overflow-hidden rounded-xl bg-card border-2 border-foreground/15"
+        class="gallery-card deferred-section w-full cursor-pointer overflow-hidden rounded-xl bg-card border-2 border-foreground/15"
         role="button"
         tabindex="0"
         :aria-label="`Open ${entry.image_slug}`"
@@ -196,6 +196,14 @@ function timeAgo(iso: string): string {
         transform 0.25s var(--ease-apple-spring),
         box-shadow 0.2s var(--ease-standard),
         border-color 0.2s var(--ease-standard);
+    /* J.W4 — content-visibility on the gallery grid item via glass-ui's
+       `.deferred-section` utility (the audit's unapplied consumer). The card is
+       an aspect-[4/3] thumbnail (~11rem at a ~15rem cell) + a meta footer, so the
+       never-painted estimate is ~17rem; `contain-intrinsic-size: auto …` caches
+       the real size after first paint (no scroll-jump). Off-screen cards skip
+       render — the CWV/scroll win. Floor: where content-visibility is absent the
+       card renders as before (inv-29). Measured delta is W6. */
+    --deferred-section-size: 17rem;
 }
 
 .gallery-card:hover {
