@@ -240,7 +240,7 @@ user-domain; inv-16′ held (only clean, non-double-driven siblings written).
     scroll without swallowing the tap; preserves the live single-tap-play
     contract shape A would have deleted).
   - **overflow enum + token refinements + doc-rot** (AT.W7-dock-a/b/c) — driven
-    on PR #1 (in-flight at this writing).
+    on PR #1 — DONE, CI-green (8e4cb9f; the overflow clean break, the press/glass-hover/spring refinements, the proof:doc-consistency gate).
 
 - **glass-ui foundational continuation (glass-ui-AT's OWN arm, not this
   campaign):** W6-dock-a `proof:strict-templates` (library-wide — surfaces the
