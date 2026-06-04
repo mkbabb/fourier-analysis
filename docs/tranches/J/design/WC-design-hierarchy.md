@@ -112,17 +112,17 @@ Because the ratio is structural (one token is 2× the other), it cannot invert o
 - **PRIMARY group** = the authoring input + the one primary action. `:default-open`, the highest glass rung (`.glass-resting`/`.glass-card`, WC-layout R1), and **the ONLY amber-filled control on the pane** (equation → Compute; morph → Export; workspace → Image/Decomposition). Exactly one primary per pane.
 - **SECONDARY group** = tuning + read-only inspectors. `:default-open=false` where non-essential, a lower rung (`.glass-quiet`), **never amber**.
 
-This rule is what makes the empty-state void (the §A keystone, `workspace-1440x900.png` ~75% dead stage) resolvable: when the controls move LEFT (DEC-2, gated on glass-ui `asideSide`, K.W4), the empty-state Image/Decomposition layer becomes the PRIMARY rung (amber, open) and the stage hosts one generous dropzone — empty-state reads *left-rail-primary → stage-secondary*, matching the populated state. D4 supplies the primary/secondary rule; §A's void-fix supplies the placement; they compose.
+This rule is what makes the empty-state void (the §A keystone, `workspace-1440x900.png` ~75% dead stage) resolvable: when the controls move LEFT (DEC-2, via glass-ui `asideSide` — **SHIPPED 3.2.0, ADOPT-NOW** at the bump, §3), the empty-state Image/Decomposition layer becomes the PRIMARY rung (amber, open) and the stage hosts one generous dropzone — empty-state reads *left-rail-primary → stage-secondary*, matching the populated state. D4 supplies the primary/secondary rule; §A's void-fix supplies the placement; they compose.
 
-**Owner**: the chassis propagation + the two-tier rule are **fourier-local** (fourier wires its own `:default-open`, rung classes, and the single amber control). The LEFT-aside move depends on glass-ui's `asideSide` prop, which **does not exist at 3.1.0** (confirmed) — that is **glass-ui-ASK A-3** (DEC-2 / K.W4). So R4 is **mixed**: the hierarchy rule lands J.W5 fourier-local; the LEFT placement gates on A-3.
+**Owner**: the chassis propagation + the two-tier rule are **fourier-local** (fourier wires its own `:default-open`, rung classes, and the single amber control). The LEFT-aside move depends on glass-ui's `asideSide` prop — **A-3, SHIPPED glass-ui 3.2.0 / ADOPT-NOW** (the "does not exist at 3.1.0" gate is DISSOLVED; re-ground 2026-06-04, §3). So R4 is **mixed**: the hierarchy rule lands J.W5 fourier-local; the LEFT placement consumes A-3 at the `^3.2.0` bump (no wait).
 
 > **Resolution of D4-2/D4-5 overlap**: one rule, two manifestations (populated panes + empty state). Stated once here.
 
 ---
 
-## §3 — The owner ledger (fourier-local J.W5 vs glass-ui-ASK K.W4)
+## §3 — The owner ledger (fourier-local J.W5 vs glass-ui-ASK — RE-GROUND 2026-06-04)
 
-**fourier consumes; it does not hand-roll or `!important`-override.** Every row below is partitioned so the J.W5 work touches only fourier surfaces and the K.W4 work is a clean glass-ui ADOPTION-ASK.
+**fourier consumes; it does not hand-roll or `!important`-override.** Every row below is partitioned so the J.W5 work touches only fourier surfaces and the glass-ui ASKs are clean ADOPTION-ASKs. **Re-ground 2026-06-04: the "K.W4 gated-on-3.2.0" framing collapses — glass-ui SHIPPED 3.2.0, so A-3 is ADOPT-NOW at the `^3.2.0` bump, A-1/A-2 are BOOK-to-AT/3.3.0 (glass-ui-self-booked), and the former P5 row is STRUCK (KILLED-AS-PHANTOM).**
 
 ### Lands J.W5 — fourier-local (consumes 3.1.0 primitives that already ship)
 
@@ -141,16 +141,17 @@ This rule is what makes the empty-state void (the §A keystone, `workspace-1440x
 
 > H1, H3, the morph/equation title re-casts, and the chassis propagation that carries them are *gated on WC-layout R3* (Configurator on equation + morph) — they land together as one J.W5 chassis pass, not piecemeal. The bind-title-to-the-ladder rung (H1's "one rung") is fourier-local where fourier sets the utility on its own headers; the component-internal token hook is A-2 below.
 
-### Lands K.W4 — glass-ui-ASK (gated on glass-ui 3.2.0; fourier ADOPTS + re-captures)
+### The glass-ui-ASK partition — RE-GROUND 2026-06-04 (A-3 ADOPT-NOW; A-1/A-2 BOOK-to-AT; P5 KILLED)
 
-| ID | Ask | Why it cannot be fourier-local | Satisfaction test |
+> **⚠ Re-ground 2026-06-04** (the glass-ui-reground deep audit, `docs/audits/runs/2026-06-04-glassui-reground-deep-audit/`): glass-ui SHIPPED 3.2.0, so the "gated on glass-ui 3.2.0 / K.W4 adoption wait" frame collapses to a one-line `^3.1.0`→`^3.2.0` ADOPT-NOW bump. **A-3 `asideSide` SHIPPED 3.2.0** (consume it now). **A-1 + A-2 are genuinely ABSENT at 3.2.0 and glass-ui SELF-BOOKED both to its AT successor** — they become BOOK-with-kill-date = glass-ui AT/3.3.0. **The P5 row is STRUCK (KILLED-AS-PHANTOM)** — the inner sections are correctly square; the radius is the container's.
+
+| ID | Ask | Disposition (2026-06-04) | Satisfaction test |
 |---|---|---|---|
-| **A-1** | `ConfiguratorLayer`/`ConfiguratorRow` exposes an inter-row **divider-rule** opt-in (the `data-divider-rule` twin-line groove, today on `.instrument-rail` only) | `.configurator-layer` emits no divider and `.configurator-row` emits only gap/padding (confirmed by grep); fourier cannot retrofit `.instrument-rail`'s sibling-rule onto the Configurator chassis, and hand-rolling a hairline between rows is the forbidden NO-LEGACY workaround | adjacent `ConfiguratorRow`s render the machined groove (not flush, not a flat line) at every breakpoint — before/after capture at W5 |
-| **A-2** | `ConfiguratorLayer` `label`/`sub` typography is bound to the glass-ui `text-title`/`text-heading` ladder at the component root (a token hook), so one rung change restyles every section title | fourier reaching inside `ConfiguratorLayer` to restyle its label is an internal override (inv-16); the rung must live at the component root | one ladder-token change visibly restyles every pane title across all three routes |
-| **A-3** | `Configurator` ships an `asideSide` prop (controls to the LEFT — the authoring rail) | the prop does not exist at 3.1.0 (confirmed); DEC-2's LEFT move has no lever without it | the configurator aside renders LEFT, gating the §A void-fix |
-| **P5** | `ConfiguratorLayer` **inner sections round** at the component root (the literal user defect: squared inner sections, `_seed-workspace-configurator.png`) | no `.configurator-layer` rule exists in glass-ui.css; inner sections inherit no inner-radius; fourier holds no lever (inv-16); **NO `!important` workaround** | the "Image — source input" inner panel + the Decomposition body render rounded inner corners against the rounded outer card — before/after at W5 |
+| **A-3** | `Configurator` ships an `asideSide` prop (controls to the LEFT — the authoring rail) | **SHIPPED 3.2.0 / ADOPT-NOW** (`Configurator.vue:85/101/162`, default `right`; "left" flips via grid-column placement + border-side swap, NO DOM reorder; `asideWidth` token band also shipped). fourier consumes `aside-side="left"` at J.W5 + DELETES the 3 grid overrides | the configurator aside renders LEFT, gating the §A void-fix |
+| **A-1** | `ConfiguratorLayer`/`ConfiguratorRow` exposes an inter-row **divider-rule** opt-in (the `data-divider-rule` twin-line groove, today on `.instrument-rail` only) | **BOOK-with-kill-date = glass-ui AT/3.3.0.** ABSENT at 3.2.0 (`.configurator-layer` emits only a flat `border-b`; `.configurator-row` emits only gap/padding — re-verified); glass-ui SELF-BOOKED it (`AS/FINAL.md:146-152`). Non-blocking; fourier rides rhythm + explicit `.chassis-divider` meanwhile (NO hand-rolled hairline) | adjacent `ConfiguratorRow`s render the machined groove (not flush, not a flat line) at every breakpoint — before/after at the AT-adopt |
+| **A-2** | `ConfiguratorLayer` `label`/`sub` typography is bound to the glass-ui `text-title`/`text-heading` ladder at the component root (a token hook), so one rung change restyles every section title | **BOOK-with-kill-date = glass-ui AT/3.3.0.** ABSENT at 3.2.0 (still a literal `text-sm font-semibold` at `ConfiguratorLayer.vue:118` — re-verified); glass-ui SELF-BOOKED it (`AS/FINAL.md:153-155`). Non-blocking; fourier sets the ladder utility on its OWN headers meanwhile | one ladder-token change visibly restyles every pane title across all three routes |
 
-> P5 is carried forward from the grand-audit (`J.WC-frontend-grand-audit.md:265`) with its existing terminal disposition (BOOK → glass-ui, SHIP-on-adopt at W5). This lens does not re-book it; it confirms the owner partition and adds A-1/A-2/A-3 as the net-new asks this control-pane audit raises.
+> **STRUCK 2026-06-04 — the P5 inner-rounding row (KILLED-AS-PHANTOM).** The former "round the inner sections at the component root" ask is removed, not carried. It is a phantom twice over: user-REJECTED AND container-owned BY DESIGN. glass-ui owns the radius at the container-root clip (`Configurator.vue:130` `rounded-panel … overflow-hidden`); per-section radius was deliberately REVERTED upstream (`779fed7`) as geometrically inert + divider-deforming; glass-ui's `AS/FINAL.md:113-118` calls fourier's ledger a "misdiagnosis." The inner sections are CORRECTLY square. This lens does NOT carry it; A-3 is ADOPT-NOW and A-1/A-2 are the only net-new glass-ui asks this control-pane audit raises (both BOOK-to-AT). NEVER re-book.
 
 ---
 
@@ -160,9 +161,9 @@ This rule is what makes the empty-state void (the §A keystone, `workspace-1440x
 2. **R2 rhythm** (H4, H5, H6, H7) — the 2× scale + density axis; "proper spacing" discharged. H4 (the value-row void) is the most visible single fix.
 3. **R3 dividers** (H8) — the explicit-slot groove swaps; "horizontal lines" discharged for the explicit sites. The inter-row auto-groove waits on A-1.
 4. **R4 hierarchy** (H9, H10) — the one-amber-per-pane primary/secondary rule; "proper hierarchy" discharged. The LEFT-aside void-fix waits on A-3.
-5. **Adopt 3.2.0** (A-1, A-2, A-3, P5) at the W5 adoption point; re-capture before/after per the π-lane.
+5. **Adopt glass-ui 3.2.0** (the `^3.1.0`→`^3.2.0` bump; consumes **A-3 `asideSide`** + `useTextHighlight` from `/dom` + the useId dock fix + `inert`) at the W5 adoption point; re-capture before/after per the π-lane. A-1/A-2 are not in the bump (BOOK-to-AT/3.3.0); P5 is STRUCK (KILLED-AS-PHANTOM, §3).
 
-Net code is expected to **decrease** — the five title idioms collapse to one primitive, three spacing systems to one scale, four divider treatments to one groove, and the per-route grid CSS retires with the chassis propagation (WC-layout R3). Every lever is a glass-ui primitive the app already ships-as-dependency; the K.W4 asks add three opt-ins to the Configurator chassis plus the P5 inner-rounding fix.
+Net code is expected to **decrease** — the five title idioms collapse to one primitive, three spacing systems to one scale, four divider treatments to one groove, and the per-route grid CSS retires with the chassis propagation (WC-layout R3). Every lever is a glass-ui primitive the app already ships-as-dependency; the 3.2.0 bump lands A-3 (`asideSide`) ADOPT-NOW, A-1/A-2 ride to glass-ui AT/3.3.0, and the former P5 "inner-rounding fix" is struck (the inner sections are correctly square by design).
 
 ---
 

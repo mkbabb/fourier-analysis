@@ -27,7 +27,11 @@ CSS-Custom-Highlight consumer) and the **publish/visibility UI** (the `POST
 inv-15 consumer gap is wired (the CORE's 7 endpoints currently have zero frontend
 caller — see the 2026-06-04 post-impl audit).
 
-**Seed:** `before/_seed-workspace-configurator.png` — the pre-existing P5-defect
-capture (squared `ConfiguratorLayer` inner-section rounding), archived not deleted.
-P5 is glass-ui-owned (`glass-ui-P5-inner-rounding`, K.W4); not satisfied until the
-inner sections round.
+**Seed:** `before/_seed-workspace-configurator.png` — a baseline of the CORRECT
+container-owned rounding (P5 KILLED-AS-PHANTOM, re-ground 2026-06-04 — the inner
+sections are correctly square by design; the radius is the container's, glass-ui
+`Configurator.vue:130` `rounded-panel … overflow-hidden`, with per-section radius
+deliberately reverted upstream `779fed7` as geometrically inert + divider-deforming).
+Archived not deleted. The former `glass-ui-P5-inner-rounding` ask is struck from
+`docs/constellation/ADOPTION-ASKS.md §7/§10`; this capture is no longer a "defect"
+baseline — it documents the correct as-designed geometry.

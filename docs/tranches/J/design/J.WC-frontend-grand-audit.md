@@ -32,11 +32,12 @@ sharpens the two waves J already has, plus folds three forward-carried items
 > below) STILL ships and is STILL independent — but it now composes WITH the controls
 > on the LEFT: the generous `glass-resting` dropzone claims the stage to the RIGHT of
 > the authoring rail, not beside a right-pinned inspector. The glass-ui `asideSide`
-> ASK is unchanged in mechanism (a visual grid-column flip, NOT a DOM reorder —
-> zero a11y/tab-order regression); only fourier's CONSUMED value flips to `'left'`
-> and it is binding, not optional. **Disposition: void-fix = SHIP (W5); fourier sets
-> `aside-side="left"` (MANDATE, W5, gated on the glass-ui asideSide prop = K.W4);
-> the 3 breakpoint `grid-template-columns` overrides DELETED.** (The glass-ui prop
+> prop **SHIPPED glass-ui 3.2.0** (`Configurator.vue:85/101/162`) — a visual grid-column
+> flip + border-side swap, NOT a DOM reorder (zero a11y/tab-order regression), exactly
+> as the ASK specified; only fourier's CONSUMED value flips to `'left'`
+> and it is binding, not optional. **Disposition (re-ground 2026-06-04): void-fix = SHIP (W5); fourier sets
+> `aside-side="left"` (MANDATE, W5) by ADOPTING glass-ui 3.2.0 (the `^3.1.0`→`^3.2.0` bump — the gate is DISSOLVED, no longer "K.W4-gated on a future release");
+> the 3 breakpoint `grid-template-columns` overrides DELETED** (the shipped `asideWidth` token band replaces them). (The glass-ui prop
 > DEFAULT stays `'right'` for the other inspector-idiom consumers — muster · value.js
 > · sudoku · speedtest; whether the user's "left is more idiomatic" view ripples to a
 > constellation-wide default flip is a separate §B-owner question, NOT decided here.)
@@ -59,11 +60,11 @@ stands is abrogated.
 
 The host already overrides `grid-template-columns` at 3 breakpoints (1024/1280/1536px) — a band-aid that proves the seam is wrong: the side is owned by the **primitive's** stage-before-aside source order + its grid-column placement (`glass-ui Configurator.vue:103,130-131`, per §A). A host `:deep` cannot flip the side without a DOM reorder, and a DOM reorder regresses tab order (a11y). So the fix MUST be in the primitive.
 
-**Disposition — `J.WC-A` · SHIP (W5), gated on the glass-ui ADOPTION ASK.**
+**Disposition — `J.WC-A` · SHIP (W5) — ADOPT-NOW (asideSide SHIPPED glass-ui 3.2.0; the gate is dissolved to a `^3.2.0` bump).**
 
 | Step | Owner | Action |
 |---|---|---|
-| **ASK-AS-asideSide** | **glass-ui** (§B owner matrix, the KEYSTONE P0) | Add `Configurator` prop `asideSide: 'left' \| 'right'` (default `'right'`), flipping via **grid-column placement + the seam-border side**, NOT DOM reorder (preserve tab order — visual flip, zero a11y regression). Add an `asideWidth` / `--configurator-aside-min` token band so consumers stop overriding tracks. **Must-land-before** this fourier flip. |
+| **ASK-AS-asideSide** | **glass-ui** — **SHIPPED 3.2.0 / ADOPT-NOW** (re-ground 2026-06-04) | `Configurator` prop `asideSide: 'left' \| 'right'` (default `'right'`) shipped in glass-ui 3.2.0 (`Configurator.vue:85/101/162`), flipping via **grid-column placement + the seam-border side**, NOT DOM reorder (tab order preserved — visual flip, zero a11y regression). The `asideWidth` / `--configurator-aside-min/max` token band ALSO shipped (`:85-94,146-153`). The "must-land-before" gate is SATISFIED; the fourier flip is now a one-line `^3.2.0` bump + `aside-side="left"`, not a wait. |
 | fourier consume | fourier-J (W5) | After glass-ui ships it: set `<Configurator aside-side="left">` (`VisualizationView.vue:194`) and **DELETE** the 3 breakpoint `grid-template-columns` overrides (`:322,:326,:329`) + replace with the `asideWidth` token. NO local `:deep` grid hack survives. |
 | morph the swap | fourier-J (W5) | Wrap the side-set in the already-shipped glass-ui `startViewTransition` so the column **morphs**, not cuts (the canvas already carries `view-transition-name: viz-canvas-stage`, `:313` — the stage geometry-morphs as the aside crosses). Gated on the existing `supportsViewTransitions()` + PRM carve (`router/index.ts:14-17`). |
 | **compose the void (PRIMARY ship)** | fourier-J (W5) | The empty stage becomes intentional protagonist space: a generous bounded `glass-resting` dropzone claiming a real share of the stage (replacing the tiny dashed box, `VisualizationView.vue:196-278`) — now **to the RIGHT of the LEFT authoring rail** (DEC-2). This is §A's "empty stage = unbalanced void" row, the PRIMARY fix, **independent of the side flip** (it ships regardless); the `aside-side="left"` flip is now a binding MANDATE (DEC-2), no longer optional. The two compose: controls LEFT (authoring rail) + a generous composed dropzone claiming the stage. |
@@ -71,8 +72,9 @@ The host already overrides `grid-template-columns` at 3 breakpoints (1024/1280/1
 > This is constellation theme §E-1: the configurator-side pattern is contested in
 > 3-4 repos (fourier RIGHT→LEFT, muster, speedtest, value.js) and resolves to
 > ONE glass-ui prop. fourier is the **mandate-bearing consumer**; it does not
-> hand-roll the flip. **OPEN QUESTION**: the asideSide prop is glass-ui-owned and
-> must-land-before W5 — fourier's W5 is gated on glass-ui's AS wave.
+> hand-roll the flip. **RESOLVED (re-ground 2026-06-04)**: the asideSide prop SHIPPED
+> glass-ui 3.2.0 (its AS wave) — the "must-land-before / gated on glass-ui's AS wave"
+> open question is CLOSED. fourier's W5 consumes it via the `^3.1.0`→`^3.2.0` bump.
 
 ---
 
@@ -190,18 +192,19 @@ is a per-mousemove JS machine: `closest('.eq-coeff')` (`:29`) + `getBoundingClie
 cursor is over. Geometry math on every mousemove. (Distinct surface from J.W1's
 diff-viewer Custom Highlight — this is the EquationView hover.)
 
-**Disposition — `J.WC-E2` · SHIP (W5), gated on the glass-ui ADOPTION ASK.**
+**Disposition — `J.WC-E2` · SHIP (W5) — ADOPT-NOW (useTextHighlight SHIPPED glass-ui 3.2.0 on `/dom`; the gate is dissolved to a `^3.2.0` bump).**
 
 | Step | Owner | Action |
 |---|---|---|
-| **ASK-AS-useTextHighlight** | **glass-ui** (§B owner matrix) | Author `useTextHighlight` on `/motion-core` — `CSS.highlights` + `Highlight` ranges, styled via `::highlight()`. Net-new; glass-ui authors FIRST. ≥2 real consumers + glass-ui's own = 3 sites (fourier equation vars, words search marks, glass-ui's own `FuzzySearch` `<mark>` splitter retired). |
-| fourier consume | fourier-J (W5) | Replace `useCoeffHover`'s mousemove machine with `CSS.highlights` over the `.eq-an`/`.eq-bn`/`.eq-cn`/`.eq-An` spans: hovering one `a_n` lights the **whole family declaratively** via `::highlight(eq-an)`, no `getBoundingClientRect`, no CLASS_MAP scan, no manually-positioned popover. The numeric readout (`popoverHtml`, `useCoeffHover.ts:52+`) stays as a separate concern. Feature-detect `CSS.highlights` with the existing hover as the floor (inv-29). |
+| **ASK-AS-useTextHighlight** | **glass-ui** — **SHIPPED 3.2.0 / ADOPT-NOW** (re-ground 2026-06-04) | `useTextHighlight` SHIPPED glass-ui 3.2.0 on **`/dom`** (NOT `/motion-core` — the doc drift is corrected; `composables/dom/useTextHighlight.ts:129`) — `CSS.highlights` + `Highlight` ranges, styled via `::highlight()`, **multi-instance-safe** (a per-name `Contributor` registry; last tear-down deletes the entry) + a `readonly supported` flag (the inv-29 progressive-enhancement floor for free). The "must-land-before / net-new authoring" gate is SATISFIED. |
+| fourier consume | fourier-J (W5) | Import from `@mkbabb/glass-ui/dom` (NOT `/motion-core`) and replace `useCoeffHover`'s mousemove machine with `CSS.highlights` over the `.eq-an`/`.eq-bn`/`.eq-cn`/`.eq-An` spans: hovering one `a_n` lights the **whole family declaratively** via `::highlight(eq-an)`, no `getBoundingClientRect`, no CLASS_MAP scan, no manually-positioned popover. The numeric readout (`popoverHtml`, `useCoeffHover.ts:52+`) stays as a separate concern. Gate on the shipped `supported` flag with the existing hover as the floor (inv-29). |
 
-> §B owner matrix: glass-ui authors `useTextHighlight`; fourier is consumer-1.
-> **OPEN QUESTION**: net-new glass-ui primitive, must-land-before this W5 leaf.
-> This is also the natural lever for the **diff-viewer** (the G6 CSS-Custom-
-> Highlight diff render, `J.md §8 named-forward`) — ONE primitive serves both
-> the equation hover AND the diff ranges.
+> §B owner matrix: glass-ui authored `useTextHighlight`; fourier is consumer-1.
+> **RESOLVED (re-ground 2026-06-04)**: the primitive SHIPPED glass-ui 3.2.0 (on `/dom`)
+> — the "net-new, must-land-before this W5 leaf" open question is CLOSED; fourier
+> consumes it at the `^3.2.0` bump. This is also the natural lever for the
+> **diff-viewer** (the G6 CSS-Custom-Highlight diff render, `J.md §8 named-forward`)
+> — ONE primitive serves both the equation hover AND the diff ranges.
 
 ### E3 — View Transitions /paper↔/visualize + content-visibility on paper (P2)
 
@@ -262,12 +265,13 @@ terminal dispositions here.
 
 | Chronic | Age / source | Terminal disposition |
 |---|---|---|
-| **P5 — `ConfiguratorLayer` INNER-section rounding** (the literal user defect: squared inner sections) | I→J chronic (`MASTER-FINDINGS §A` "P5"; `glass-ui-P5-inner-rounding` ADOPTION-ASK, `J.md §8`, `ADOPTION-ASKS §7`) | **BOOK → glass-ui (owner), SHIP-on-adopt at W5.** This is glass-ui-owned (`ConfiguratorLayer` inner-rounding is a primitive token/recipe, §B owner matrix). glass-ui ships the inner-rounding fix; fourier ADOPTS it (consumes `^3.1.x`+ with the fix). NOT marked satisfied until fourier's `ConfiguratorLayer` inner sections actually round (visual-evidence before/after at W5, per the constellation π-lane). **Trigger**: glass-ui's rounding fix lands. **Owner**: glass-ui. NOT a 3rd book — it is BOOKED with a named external gate, which the chronic-resolution gate permits. |
-| **e2e/axe CI evidence** (inv-27 proof — the I-deferred green-run claim) | I→J chronic (`MASTER-FINDINGS §A`; `J.md §4` W6) | **SHIP → W6 (already declared, terminal).** The remix/publish e2e (§D) + axe on the gallery/diff-viewer/WC-refined UI, all as ONE GREEN fourier CI run (inv-27 — the green claim I could not make in-session). This is the wave W6 EXISTS to discharge; the disposition is SHIP-at-W6, no further deferral permitted (J's close gate `J.md §7` blocks on it). |
+| **P5 — `ConfiguratorLayer` INNER-section rounding** (the alleged "squared inner sections" defect) | I→J chronic (`MASTER-FINDINGS §A` "P5"; the former `glass-ui-P5-inner-rounding` ADOPTION-ASK, `J.md §8`, `ADOPTION-ASKS §7`) | **KILLED-AS-PHANTOM (re-ground 2026-06-04 — supersedes the prior BOOK→glass-ui).** Container-owned BY DESIGN: glass-ui owns the radius at the container-root clip (`Configurator.vue:130` `rounded-panel … overflow-hidden`); per-section radius was deliberately REVERTED upstream (`779fed7`) as geometrically inert + divider-deforming; glass-ui's own `AS/FINAL.md:113-118` calls fourier's ledger a "misdiagnosis." The inner sections are CORRECTLY square — there is nothing for glass-ui to add, and the user REJECTED the ask ("the rounding is controlled by the container"). The "NOT satisfied until the inner sections round" acceptance was itself the phantom. **Struck from `ADOPTION-ASKS.md §7/§10`; NEVER re-book** (the 3-tranche I→J→K inertia is the lesson). Provenance: the 2026-06-04 glass-ui-reground deep-audit run. |
+| **e2e/axe CI evidence** (inv-27 proof — the I-deferred green-run claim) | I→J chronic (`MASTER-FINDINGS §A`; `J.md §4` W6) | **SHIP → W6 (already declared, terminal).** The remix/publish e2e (§D) + axe on the gallery/diff-viewer/WC-refined UI, all as ONE GREEN fourier CI run (inv-27 — the green claim I could not make in-session). This is the wave W6 EXISTS to discharge; the disposition is SHIP-at-W6, no further deferral permitted (J's close gate `J.md §7` blocks on it). The `^3.1.0`→`^3.2.0` bump greens the e2e at the source (the useId dock fix shipped glass-ui 3.1.1) — it is the predecessor of this green run. |
 
-> Both forward-carried chronics now have terminal verdicts: P5 BOOKED with a
-> named glass-ui gate + a visual-evidence satisfaction test; e2e/axe SHIP at W6.
-> Zero perpetual punts (the `J.md §7` chronic-resolution gate).
+> Both forward-carried chronics now have terminal verdicts: **P5 KILLED-AS-PHANTOM**
+> (container-owned by design — struck, not carried); e2e/axe SHIP at W6 (the
+> `^3.2.0` bump is its predecessor). Zero perpetual punts (the `J.md §7`
+> chronic-resolution gate).
 
 ---
 
@@ -278,11 +282,11 @@ primitives. The asks this fold raises (or confirms):
 
 | Ask | Owner | fourier role | Serial constraint | net-new vs adoption |
 |---|---|---|---|---|
-| **Configurator `asideSide:'left'\|'right'` + `asideWidth` token** | glass-ui | mandate-bearing consumer (§A) | **must-land-before** fourier's W5 flip; flip via grid-column + border-side, NOT DOM reorder (a11y) | net-new prop (story exists) |
-| **`useTextHighlight`** (CSS Custom Highlight composable, /motion-core) | glass-ui | consumer-1 (equation vars §E2; + the diff-viewer G6) | glass-ui authors FIRST; ≥2 consumers + glass-ui's own | net-new |
+| **Configurator `asideSide:'left'\|'right'` + `asideWidth` token** | glass-ui — **SHIPPED 3.2.0** | consume `aside-side="left"` (§A) at the `^3.2.0` bump | gate SATISFIED (no longer must-land-before); flip via grid-column + border-side, NOT DOM reorder (a11y) | **ADOPT-NOW** (shipped 3.2.0) |
+| **`useTextHighlight`** (CSS Custom Highlight composable, **`/dom`** — NOT `/motion-core`) | glass-ui — **SHIPPED 3.2.0** | consumer-1 (equation vars §E2; + the diff-viewer G6); import from `@mkbabb/glass-ui/dom` | gate SATISFIED; multi-instance-safe + `supported` flag shipped | **ADOPT-NOW** (shipped 3.2.0) |
 | **`useRAFLoop` + `useIntersectionPause`** (PRM+off-screen-aware RAF) | glass-ui /motion (shipped) | adopt for the epicycle loop (§C) — folds I.γ visibility + the missing PRM gate | shipped; pure adoption (inline PRM gate ships regardless) | adoption |
 | **`startViewTransition`** (never-rejects `.finished`) | glass-ui (shipped) | widen the cross-page bracket (§E1); morph the aside flip (§A) | shipped | adoption |
-| **`ConfiguratorLayer` inner-rounding fix** (P5) | glass-ui | adopt + visual-evidence satisfaction (§F) | glass-ui ships the rounding fix first | glass-ui token/recipe |
+| ~~**`ConfiguratorLayer` inner-rounding fix** (P5)~~ | ~~glass-ui~~ | **KILLED-AS-PHANTOM** (§F) — container-owned by design (`Configurator.vue:130`); user-rejected; glass-ui calls it a "misdiagnosis" (`AS/FINAL.md:113-118`) | STRUCK — nothing for glass-ui to add; the inner sections are correctly square | **KILLED** (re-ground 2026-06-04) |
 | **CSP/security-header standard** (KaTeX same-origin, beacon decision) | deploy | derive fourier's `_headers` (§B) | deploy owns the canonical standard | standard-defines, app-derives |
 
 ---
@@ -291,7 +295,7 @@ primitives. The asks this fold raises (or confirms):
 
 | Item | Disposition | Wave |
 |---|---|---|
-| §A controls aside RIGHT→LEFT (`J.WC-A`) | SHIP, gated on glass-ui asideSide | W5 |
+| §A controls aside RIGHT→LEFT (`J.WC-A`) | SHIP — ADOPT-NOW (asideSide SHIPPED 3.2.0) | W5 |
 | §A empty-stage void → first-class composition | SHIP | W5 |
 | §B1 KaTeX `data:`font → `assetsInlineLimit:0` | SHIP | W7 |
 | §B2 CF Insights beacon | KILL-as-moot (no beacon in tree) | recorded |
@@ -300,18 +304,21 @@ primitives. The asks this fold raises (or confirms):
 | §C epicycle loop PRM gate (`J.WC-C`) | SHIP (P1) | W5 (motion) |
 | §D remix/publish WRITE-side e2e | SHIP (CORE evidence) | W6 |
 | §E1 cross-page VT widen | SHIP (P1) | W5 (motion) |
-| §E2 equation hover → Custom Highlight | SHIP, gated on glass-ui useTextHighlight | W5 |
+| §E2 equation hover → Custom Highlight | SHIP — ADOPT-NOW (useTextHighlight SHIPPED 3.2.0 on `/dom`) | W5 |
 | §E3 content-visibility on paper | KILL-as-already-shipped (`PaperArticleWindow.vue:146`) | recorded |
 | §E4 `transition:all` residuals | SHIP-or-KILL-if-clean | W5 (motion) |
 | §E5 trail flat-alpha wake taper | SHIP | W5 (motion) |
 | §E6 direction-blind tab-slide | SHIP (free on E1) | W5 (motion) |
-| §F P5 inner-rounding | BOOK → glass-ui, SHIP-on-adopt | W5 |
+| §F P5 inner-rounding | KILLED-AS-PHANTOM (container-owned by design) | struck (re-ground 2026-06-04) |
 | §F e2e/axe inv-27 proof | SHIP (terminal) | W6 |
 
 **Net.** This fold adds NO wave. It sharpens **W5** (the WC design wave — §A
-aside-flip + §C/§E motion lens + §E2 highlight + §F P5), **W6** (the evidence
+aside-flip + §C/§E motion lens + §E2 highlight), **W6** (the evidence
 wave — §D remix/publish WRITE-side e2e + axe), and **W7** (the CSP/tail wave —
-§B1/B3). Two glass-ui ADOPTION ASKS gate W5 (asideSide, useTextHighlight); both
-are §B-owner-matrix net-new primitives that must-land-before fourier consumes.
-Every fourier-local item is grounded at a HEAD file:line and discharges a named
-mandate; nothing is hand-rolled that belongs in glass-ui.
+§B1/B3). **Re-ground 2026-06-04: the two glass-ui ASKs that "gated" W5 — `asideSide`
++ `useTextHighlight` — both SHIPPED glass-ui 3.2.0; the gate is DISSOLVED to a
+one-line `^3.1.0`→`^3.2.0` ADOPT-NOW bump, which also greens the e2e at the source
+(the useId dock fix) and un-`fixme`s the a11y keystones (`inert`). The former §F P5
+ask is STRUCK (KILLED-AS-PHANTOM — container-owned by design).** Every fourier-local
+item is grounded at a HEAD file:line and discharges a named mandate; nothing is
+hand-rolled that belongs in glass-ui.
