@@ -210,4 +210,47 @@ publish runs only on explicit user authorization.
 - the cross-repo ledger this binds to:
   `HUB/docs/constellation/ADOPTION-ASKS.md`
 
+---
+
+## §9 — Delivery (2026-06-04, the lead-orchestrated run)
+
+The campaign executed. Each arm gated on its OWN green CI; the publish legs stay
+user-domain; inv-16′ held (only clean, non-double-driven siblings written).
+
+- **keyframes C — CLOSED, CI-green** (PR #3, branch `tranche-c-impl`, HEAD
+  `d51d03a`; library + demo gates both PASS). All 5 waves + the a11y close:
+  W1 the close made honest (B's 7 overclaims corrected + verified — inv ε's first
+  application), W2 the φ-ladder design-system unfork + the a11y close (spring
+  a11y=100), W3 the engine dogfood (inv ζ; π bound at FULL), W4 the engine
+  residuals (one loop core, one `tickDt`, fail-explicit total, the css-twin
+  proven-withheld), W5 the close (`FINAL.md`/`pi.md`/`DELTA.md` + the major
+  changeset folding B 3.1.0). `FINAL.md` is the close record.
+
+- **glass-ui dock convergence — DONE, CI-green** (PR #1, branch
+  `at-dock-convergence`):
+  - **VT-parity spring** (`e906448`, AT.W6-dock-c) — `--dock-resize-spring:
+    var(--spring-snappy)`, both VT + FLIP paths; `--vt-ease` retired on the dock
+    group; `morphGeneration` concurrency fix; `proof:dock-motion-parity` gate.
+    The convergent headline both repos independently prescribed.
+  - **touch-gate B′** (`f0b0ffb`, AT.W6-dock-b behavioural) — the reconciliation
+    RESOLVED BY INSTRUMENT: a mounted-dock behavioural test REPRODUCED the
+    double-tap (keyframes' field report was RIGHT; glass-ui's "no shipped bug"
+    audit verdict was WRONG). Root cause: `preventDefault` on the activating tap
+    swallowed the native tap→click. Fixed with shape B′ (distinguish tap-from-
+    scroll without swallowing the tap; preserves the live single-tap-play
+    contract shape A would have deleted).
+  - **overflow enum + token refinements + doc-rot** (AT.W7-dock-a/b/c) — driven
+    on PR #1 (in-flight at this writing).
+
+- **glass-ui foundational continuation (glass-ui-AT's OWN arm, not this
+  campaign):** W6-dock-a `proof:strict-templates` (library-wide — surfaces the
+  whole component surface, entangles with AT's blob/aurora waves) + W6-dock-b's
+  reka-ui Tabs RAIL adoption + the travelling rail-indicator (a structural rail
+  refactor, an atomic GlassDock/DockLayerGroup edit per AT.W1b-dock §3). These
+  are glass-ui's own tranche-AT dock-perfection; the behavioural a11y contract
+  (the touch test) landed here, the structural rail refactor lands in AT's run.
+
+- **slides — BOOKED** (double-driven by its own tranche-E; the spring-dogfood
+  `29a781a` contributed for the owner). **value.js — BOOKED** (dirty tree).
+
 End of DOCK-ANIMATION-CONVERGENCE.md.
