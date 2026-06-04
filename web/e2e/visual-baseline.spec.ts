@@ -16,10 +16,12 @@
  */
 import { test, expect } from "@playwright/test";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const HERE = path.dirname(fileURLToPath(import.meta.url)); // web/e2e (ESM-safe; web is type:module)
 const MODE = (process.env.VISUAL_MODE ?? "before").toLowerCase();
 const OUT = path.resolve(
-    __dirname,
+    HERE,
     `../../docs/tranches/J/audit/screenshots/${MODE === "after" ? "after" : "before"}`,
 );
 
