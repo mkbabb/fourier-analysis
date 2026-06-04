@@ -70,9 +70,15 @@ mongo_data/
 # Dev
 .dev.pids
 
-# Debug/screenshot artifacts
+# Debug/screenshot artifacts — root/scratch PNGs are ignored, but the π
+# visual-runtime lane's evidence (precept `tranche/SPEC.md §The π visual-runtime
+# lane`, edict `8ccf9f4`) MUST be committable: every-page paired before/after
+# captures live under `docs/tranches/<L>/audit/screenshots/{before,after}/`, and
+# app figures under `assets/`. The blanket `*.png` ignore otherwise made the
+# lane's archive-not-delete evidence un-committable (gap1, 2026-06-04).
 *.png
 !assets/**/*.png
+!docs/**/*.png
 
 # Playwright
 web/test-results/

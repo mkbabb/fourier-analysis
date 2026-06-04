@@ -19,22 +19,27 @@ sharpens the two waves J already has, plus folds three forward-carried items
 
 ---
 
-## §A — The keystone: the empty-state void (configurator side stays RIGHT, reversibly)
+## §A — The keystone: the empty-state void + controls → LEFT (the authoring-rail mandate)
 
-> **⚠ SUPERSEDED BY CONSTELLATION DEC-1 (2026-06-03, user-ratified).** The original
-> "controls → LEFT" mandate was reconsidered. **Resolution: keep the configurator
-> aside on the RIGHT** (the inspector / result-as-protagonist idiom, consistent with
-> value.js · muster · sudoku · speedtest). The user's instinct was reacting to the
-> **empty-state void**, not the side: ~75% dead dot-grid stage + the upload card
-> marooned top-right reads as "wrong" — but flipping the side just maroons the same
-> card top-*left* over the same void. **fourier's PRIMARY ship is the void-fix**
-> (the "compose the void" row below): a generous centered `glass-resting` dropzone
-> that claims the stage, controls staying RIGHT as the inspector. The glass-ui
-> `asideSide` variant is still built — as a **reversible capability defaulted to
-> `'right'`** — so a LEFT flip is a **one-prop, user-taste option** (not a mandate),
-> available anytime if the authoring-rail reading is later preferred. The grounded
-> analysis below stands; only its disposition changes: **void-fix = SHIP (W5);
-> asideSide = capability (default RIGHT); LEFT-flip = OPTIONAL/user-taste.**
+> **⚠ DEC-1 (2026-06-03, "keep RIGHT") is ITSELF SUPERSEDED BY DEC-2 (2026-06-04, user-ratified).**
+> The configurator aside goes **LEFT** in fourier-J — re-instating the original
+> mandate. The user's ruling, verbatim: *"in this tranche the controls should be on
+> the LEFT. This is changed from the glass-ui configurator right. Left is better and
+> more idiomatic."* So the controls aside (currently DOM-last → renders RIGHT) moves
+> to the LEFT as the **authoring rail** — the reading-order-natural "tools first, the
+> work they produce second" idiom. This is now a **MANDATE, not the optional
+> user-taste flip DEC-1 demoted it to.** The void-fix (the "compose the void" row
+> below) STILL ships and is STILL independent — but it now composes WITH the controls
+> on the LEFT: the generous `glass-resting` dropzone claims the stage to the RIGHT of
+> the authoring rail, not beside a right-pinned inspector. The glass-ui `asideSide`
+> ASK is unchanged in mechanism (a visual grid-column flip, NOT a DOM reorder —
+> zero a11y/tab-order regression); only fourier's CONSUMED value flips to `'left'`
+> and it is binding, not optional. **Disposition: void-fix = SHIP (W5); fourier sets
+> `aside-side="left"` (MANDATE, W5, gated on the glass-ui asideSide prop = K.W4);
+> the 3 breakpoint `grid-template-columns` overrides DELETED.** (The glass-ui prop
+> DEFAULT stays `'right'` for the other inspector-idiom consumers — muster · value.js
+> · sudoku · speedtest; whether the user's "left is more idiomatic" view ripples to a
+> constellation-wide default flip is a separate §B-owner question, NOT decided here.)
 
 **The defect (capture-confirmed).** `grand-audit/fourier-visualize-prod.png`:
 the controls aside is pinned **RIGHT** (the `Image — source input` panel at
@@ -61,7 +66,7 @@ The host already overrides `grid-template-columns` at 3 breakpoints (1024/1280/1
 | **ASK-AS-asideSide** | **glass-ui** (§B owner matrix, the KEYSTONE P0) | Add `Configurator` prop `asideSide: 'left' \| 'right'` (default `'right'`), flipping via **grid-column placement + the seam-border side**, NOT DOM reorder (preserve tab order — visual flip, zero a11y regression). Add an `asideWidth` / `--configurator-aside-min` token band so consumers stop overriding tracks. **Must-land-before** this fourier flip. |
 | fourier consume | fourier-J (W5) | After glass-ui ships it: set `<Configurator aside-side="left">` (`VisualizationView.vue:194`) and **DELETE** the 3 breakpoint `grid-template-columns` overrides (`:322,:326,:329`) + replace with the `asideWidth` token. NO local `:deep` grid hack survives. |
 | morph the swap | fourier-J (W5) | Wrap the side-set in the already-shipped glass-ui `startViewTransition` so the column **morphs**, not cuts (the canvas already carries `view-transition-name: viz-canvas-stage`, `:313` — the stage geometry-morphs as the aside crosses). Gated on the existing `supportsViewTransitions()` + PRM carve (`router/index.ts:14-17`). |
-| **compose the void (PRIMARY ship, DEC-1)** | fourier-J (W5) | The empty stage becomes intentional protagonist space: a generous bounded `glass-resting` dropzone claiming a real share of the stage (replacing the tiny dashed box, `VisualizationView.vue:196-278`) — **controls stay RIGHT as the inspector**. This is §A's "empty stage = unbalanced void" row, the PRIMARY fix, **independent of any side flip** (per DEC-1 this ships regardless; the asideSide flip is the optional user-taste add-on). |
+| **compose the void (PRIMARY ship)** | fourier-J (W5) | The empty stage becomes intentional protagonist space: a generous bounded `glass-resting` dropzone claiming a real share of the stage (replacing the tiny dashed box, `VisualizationView.vue:196-278`) — now **to the RIGHT of the LEFT authoring rail** (DEC-2). This is §A's "empty stage = unbalanced void" row, the PRIMARY fix, **independent of the side flip** (it ships regardless); the `aside-side="left"` flip is now a binding MANDATE (DEC-2), no longer optional. The two compose: controls LEFT (authoring rail) + a generous composed dropzone claiming the stage. |
 
 > This is constellation theme §E-1: the configurator-side pattern is contested in
 > 3-4 repos (fourier RIGHT→LEFT, muster, speedtest, value.js) and resolves to
