@@ -19,8 +19,8 @@ feedback-coder branch `tranche-l`.
 
 | # | Session | Tranche(s) | Current wave | Status | Last-updated |
 |---|---|---|---|---|---|
-| **S1** | keyframes-D | keyframes D | D.W0 done · D.W1–W6 authored | **DEV-AUTHORED** — D authored + hardened; awaits IMPL auth | 2026-06-05 |
-| **S2** | glass-ui + slides | glass-ui AU · slides F | AU not-yet-formalized (W0 = formalize CHARTER→`tranches/AU/`) · F developed | **DEV-AUTHORED** — AU begotten (awaits formalize+execute); slides-F developed | 2026-06-05 |
+| **S1** | keyframes-D | keyframes D | D.W4 GREEN (engine transposed) · D.W1–W3 in-flight · W5 gated on E1 | **IMPL** — W4 done+committed (335 tests/28 files green, proof:engine/zero-alloc/boundary/dogfood PASS, byte-stable barrel); W1–W3 (demo decompose·styling·brittleness) executing in a parallel workflow; W5 (dock+occlusion) waits on glass-ui 3.3.0 (E1); W6 closes | 2026-06-05 |
+| **S2** | glass-ui + slides | glass-ui AU · slides F | AU.W0 formalize (IMPL greenlit) · F execute | **IN-PROGRESS** — S2 LIVE; executing AU.W0→W10 + slides-F to READY-TO-PUBLISH (full push+publish goal; publish leg confirm-first) | 2026-06-05 |
 | **S3** | feedback-coder | feedback-coder L | L.W0 done · L.W1–W5 pending | **LIVE** — on `tranche-l`; ML boundary-tagger (NOT a UI tranche — gate-free; inbox hand-off only) | 2026-06-05 |
 
 Status vocabulary: `DEV-AUTHORED` → `IMPL-Wn` → `GREEN-CI` → `READY-TO-PUBLISH`
