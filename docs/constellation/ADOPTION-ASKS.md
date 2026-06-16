@@ -198,4 +198,39 @@ The glass-ui-reground deep audit (`../audits/runs/2026-06-04-glassui-reground-de
 
 **inv-16 attestation (§10 re-ground)**: this note authored `fourier-analysis/docs/**` only; edited NO sibling repo's source, NO glass-ui/value.js/keyframes tree, NO host state, NO code. Every cross-repo claim cites the sibling's own committed artifact (file:line / commit / FINAL.md / CHANGELOG), read-only. fourier's only forward act is the fourier-local `^3.2.0` bump + consume. Provenance: the 2026-06-04 glass-ui-reground deep-audit run dir.
 
+## §11 — M-era re-ground (2026-06-16; supersedes §10's 3.2.0-world claims)
+
+§10 assumed a glass-ui **3.2.0** world. The M deep audit re-verified live: glass-ui is **4.0.0** (`npm view`), keyframes **4.2.0**, value.js **0.12.0** — fourier still pins `^3.1.0`/`^2.2.0`/`^0.10.0`. §10's "DONE-in-3.2.0" verdicts remain valid (4.0 ≥ 3.2), but two path/booking claims were stale and are corrected here, source-verified against the glass-ui 4.0 tree (the exact inv-32 book-rot the M tranche authors against). This note supersedes §10 where it conflicts; the dated records stand, not falsified.
+
+**Corrections (source-verified at glass-ui 4.0):**
+- **`useTextHighlight` lives on `@mkbabb/glass-ui/motion-core`** — NOT `/dom` (§10's claim) and NOT `/motion` (the M plan-synth's claim). Both were doc-drift. fourier's M.W10 diff-viewer + equation-hover import from `/motion-core`. (Three path-values for one symbol across three re-grounds is itself the inv-32 motive.)
+- **`useSpecularTracking` SHIPS at 4.0** — the M `useSpecular` ask is RE-VERIFY→likely-STRIKE; confirm it covers the BAND-1-over-canvas catch-light at M.W0.
+
+**STRIKE (SHIPPED at glass-ui 4.0 — source-confirmed by the M design-language authoring; do NOT re-book):**
+- **A-1** inter-row divider-rule — SHIPPED as the `dividers` prop on `ConfiguratorLayer` (`--configurator-divider`/`--configurator-divider-section`, `configurator.css:61-65`). §10 booked it to AT/3.3.0; it is present at 4.0 → STRUCK; fourier consumes `:dividers` at M.W8.
+- **A-2** label/sub→ladder hook — SHIPPED as `.configurator-section-label` (`--configurator-section-{size,weight}`, `configurator.css:21-25`). §10 booked it to AT/3.3.0; present at 4.0 → STRUCK; fourier binds the pane-title ladder at M.W8.
+- **A-3** `asideSide` — already DONE-in-3.2.0 per §10; reconfirmed at 4.0 → fourier consumes `aside-side="left"` for DEC-2 at M.W8.
+
+**LEDGER-THE-KILL (struck, never re-book — was killed in J.W0 prose only, now locatable here):**
+- **`fourier-C1-colour-lift`** (`sampleToSVGPath`) — KILLED at J.W0 (the silently-dropped 3-tranche colour-lift consume-ask; the two-repo deadlock dissolved, nothing owed). Recorded struck so the kill is findable without J.md archaeology.
+
+**DONE-in-value.js-L (unchanged from §10; confirmed):** `valuejs-J-atomdiff` + `valuejs-J-publish` shipped through value.js L (`66dcd68`); the public-view filter shipped (`crud-list.ts:114`). fourier owes only its OWN `/diff` + publish envelope parity probe (M.W12).
+
+**NEW M asks (inv-16′; booked-not-written — fourier consumes glass-ui, never writes it; each generalizes beyond fourier; `M.md §10`):**
+
+| Ask | Kind | What | Why it generalizes |
+|---|---|---|---|
+| `glass-ui-accent-tone` | net-new | a contrast-floored 3-channel tonal accent (`--accent-fill`/`-edge`/`-ink`) from ONE `--tone`, reusing value.js mixing + flooring | fourier re-derives this `color-mix` recipe ~57×; it IS the colour-pop system; value.js palette chips + speedtest tone badges want it |
+| `glass-ui-atomdiff-viewer` | net-new | a 3-tone (added/removed/changed) keyed-row renderer over the canonical J `atomdiff` shape, reusing accent-tone + VT row enter/leave | J `/diff` has zero consumer; value.js palette diffs + speedtest run-compares want the same grammar |
+| `glass-ui-configuratorlayer-actions-slot` | net-new | a right-aligned trailing/actions slot on the `ConfiguratorLayer` trigger header inside a `@click.stop` boundary | lets fourier align a panel-wide reset to the title AND retire `CollapsibleSection.vue` (inv-30) |
+| `glass-ui-dockiconbutton-active` | net-new | an `active?: boolean` prop on `DockIconButton` stamping `aria-pressed`/`data-active` + a selected register | fourier hand-rolls `:class="{is-active}"` at 7 dock sites where the class has NO backing paint |
+| `glass-ui-splitchars` | net-new | a per-glyph split with `--char-index` + accessible full-text label — the JS partner to the shipped `.char-stagger` CSS | every hero (paper, landing, speedtest) hand-rolls glyph-splitting + a11y labelling |
+| `glass-ui-canvas-anchored-overlay` | net-new | anchor the 4.0 top-layer popover to a canvas-relative point via a synthetic `getBoundingClientRect` | the coefficient + convergence-curve hovers live over `<canvas>` — no DOM-element anchor exists |
+| `glass-ui-scroll-reveal-once` | net-new | an opt-in `once` mode on the `[data-scroll-reveal]` `view()` CSS recipe (a `[data-scroll-reveal=once]`/`data-revealed` latch) | the recipe re-fires every re-entry — wrong for fourier's virtual section window (unmount/remount) + the teleport loop. (`useStaggerReveal` already honors `once`; the gap is the CSS recipe.) |
+| `glass-ui-convergence-reveal-preset` | net-new | a "partial-sum settle" motion preset (spring + orchestration, PRM-collapse-to-terminal) | THE signature; fourier viz + equation want the identical accumulation curve |
+| `glass-ui-tier-staleness-gate` | process | a `proof:consumer-staleness`/PostCSS lint warning on retired tier class names after a major bump | the v0.8.0 ladder rename was a SILENT visual regression (fourier ran 4 elements with zero glass for the 3.1.0 era, no diagnostic) — `glass-subtle` is the live example |
+| `glass-ui-viz-amber-rebaseline` | book-w/-kill-date | fold the `--viz-amber` contrast rebaseline (3.54:1→4.6:1) upstream so all consumers inherit; `safeAccentColor` makes it systematic | the local `:root` override is a D.W4 axe-fail patch carried D→I |
+
+**inv-16 attestation (§11 re-ground)**: this note authored `fourier-analysis/docs/**` only; edited NO sibling tree, NO host state, NO code. Every cross-repo claim cites the sibling's own committed artifact (file:line at glass-ui 4.0 / value.js L `66dcd68`), read-only. fourier's only forward acts are the fourier-local `^4.0.0` bump + consume + the booked asks above. Provenance: the 2026-06-16 M deep-audit run dir (`docs/audits/runs/2026-06-16-M-deep-audit/`).
+
 End of ADOPTION-ASKS.md.
