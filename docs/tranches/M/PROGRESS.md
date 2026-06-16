@@ -13,7 +13,7 @@
 | Wave | Arm | Title | Status | Evidence owed |
 |---|---|---|---|---|
 | **M.W0** | — | Charter + re-ground sweep + ledger/numbering hygiene | `planned` | `npm view` re-verify (4.0.0/4.2.0/0.12.0); host backlog=44; `glass-wash` vs `glass-quiet` confirmed at `ladder.css`; A-1/A-2/A-3 re-verified at 4.0 source; inv-31/32/33/34 + inv-29-amend in `INVARIANTS.md §1`; `ADOPTION-ASKS` reconciled (C1 struck, value.js peers DONE-in-L flipped); RUN-BOARD 3.2.0/3.3.0 edges re-grounded |
-| **M.W1** | B | The multi-major bump (KEYSTONE) | `planned` | 3 pins at `^4.0.0`/`^4.2.0`/`^0.12.0`; lock single-copy; the ~25-site breaking surface discharged; `glass-subtle→glass-wash` committed + 4 no-op sites fixed; Node-20 Actions v5; cited green CI run (inv-27) |
+| **M.W1** | B | The all-packages-latest bump (KEYSTONE) | `planned` | **W1a (ungated, all published):** keyframes `^4.3.0` · value.js `^0.13.0` · vite `^8` · vue-tsc `^3` · vue-router `^5` · pinia `^3` · lucide `^1` · katex `^0.17`. **W1b (BB-gated):** glass-ui `^4.1.0` (glass-ui BB's fold-all close cut). Lock single-copy; the breaking surface discharged (glass-ui ~43 edits + the framework majors); `glass-subtle→glass-wash` committed + 4 no-op sites fixed; Node-20 Actions v5; cited green `vue-tsc 3` + `vite 8 build` + e2e CI run (inv-27). See `M-AMENDMENT-latest-and-BB.md`. |
 | **M.W2** | A | Deploy spine I — readiness ≠ liveness | `planned` | container HEALTHCHECK + `depends_on: service_healthy`; `create_index` off the lifespan serving path; `/api/health` answers immediately; migrations resume on healthy gate |
 | **M.W3** | A | Deploy spine II — fail-closed inv-28 API-arm gate | `planned` | `green_ci_gate()` querying `commits/<sha>/status` before reset; fails-closed without PAT (a red SHA demonstrably blocked); backported to `deploy/templates`; `deploy.sh` advisory gate reconciled |
 | **M.W4** | A | Deploy spine III — kill silent-rollback + inv-31 | `planned` | `page()` on all 3 terminal states; verified delivery; backported; inv-31 authored; a known-green SHA flows → **host catches up to HEAD** |
@@ -35,9 +35,14 @@
 - `design/M-motion-architecture.md` — the three-layer architecture + `useFourierPlayhead` + convergence-reveal signature + scroll-driven/View-Transition adoption (the §9 motion CORE).
 - `design/M-bump-migration.md` — the multi-major breaking-change migration map (the §4 W1 keystone; the 11 used glass-ui subpaths, the ~25-site surface, the `glass-wash` correction).
 
+## Amendment (2026-06-16) — `M-AMENDMENT-latest-and-BB.md`
+
+Three user directives folded post-authoring: (1) **the landing IS the paper** (§4.1 RESOLVED — the hero grafts onto PaperView in place, no `/` route); (2) **all packages to latest** (M.W1 widened — keyframes 4.3.0, value.js 0.13.0 [`sampleColorRamp` shipped], + framework majors vite 8 / vue-tsc 3 / vue-router 5 / pinia 3 / lucide 1.0, katex 0.17); (3) **glass-ui tranche BB is the active upstream** (M's glass-ui target is `^4.1.0`, GATED on glass-ui BB's fold-all close+publish — the first hard upstream edge; M's asks route to BB's `W-CROSSREPO-ASKS`; M consumes BB primitives `W-LIQUIDHOVER`/`W-PAPER-GRID-TEXTURE`/`W-BORDER-PROGRESS`/`W-ON-GLASS-FG`; glass-ui BB executes under the glass-ui arm, inv-16).
+
 ## Open decisions (surfaced for the user)
 
-- **§4.1 — the home/landing host**: (a) graft a hero band onto the PaperView header [default] vs (b) a dedicated `/` landing route. M authors (a); (b) is the user's call.
+- **§4.1 — the home/landing host**: RESOLVED 2026-06-16 — the landing IS the paper; the hero grafts onto PaperView in place (no `/` route).
+- **glass-ui BB execution arm**: glass-ui BB (64 waves → 4.1.0) is the glass-ui arm's domain; M consumes its output. Confirm whether BB has a live execution session or the user wants it driven — M.W1b's glass-ui leg + the e2e-green close-gate wait on BB's publish.
 - **The inv-28 PAT** (`§11.3`): operator-owned, unprovisioned; the gate fails-closed without it.
 - **The inv-31 sink** (`§11.4`): which watched sink (ntfy/Discord/Slack) — operator decision before `page()`.
 

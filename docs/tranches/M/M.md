@@ -10,6 +10,8 @@
 
 **Open**: NOT YET — M is AUTHORED only and awaits the user's "Begin," exactly as H, I, J, and K-deploy did. Phase 0 (M.W0 — charter, the re-ground sweep, the ledger/numbering hygiene) opens on authorization. This authoring is **tranche development only** — no implementation ran; the working tree's in-flight `glass-subtle→glass-quiet` rename is left untouched (M.W1 corrects and commits it; see §4 and the §7 NO-LEGACY fold).
 
+> **⚠ AMENDMENT 2026-06-16 — `M-AMENDMENT-latest-and-BB.md` (3 user directives, folded post-authoring; supersedes the version prose in §0/§4/§5 below).** (1) **The landing IS the paper** — §4.1 resolved to the in-place PaperView hero (no `/` route). (2) **All packages to latest** — M.W1 widens from the 3 siblings to the WHOLE tree: keyframes **4.3.0** (not 4.2.0), value.js **0.13.0** (not 0.12.0; `sampleColorRamp` SHIPPED), + five framework majors (**vite 8, vue-tsc 3, vue-router 5, pinia 3, lucide 1.0**), katex 0.17. (3) **glass-ui's tranche BB is the active upstream** — fourier's glass-ui target is **`^4.1.0` (BB's fold-all close cut), GATED on glass-ui BB publishing** (the first hard upstream edge M carries); M's asks route to BB's `W-CROSSREPO-ASKS`; M CONSUMES BB primitives (`W-LIQUIDHOVER` specular auto-arm → STRIKES the `useSpecular` ask; `W-PAPER-GRID-TEXTURE`, `W-BORDER-PROGRESS`, `W-ON-GLASS-FG`); glass-ui BB executes under the glass-ui arm (inv-16 — fourier consumes, never writes it).
+
 ---
 
 ## §0 — The shape verdict (the deepest chronic, named once)
@@ -86,14 +88,9 @@ M is a **convergence-and-suffusion tranche** — so it is honestly presented as 
 | **M.W12** | A+B | Tail hygiene + cohort parity + book-with-kill-dates | CSP recipe intact post-J-endpoints + `fetchLater` behind the `sendBeacon` floor; the fourier-local Python `/diff` + publish envelope parity probe against `J-diff-shape.md`; ship `deploy.sh`/`dev.sh` as the canonical operator entrypoint; re-verify each constellation adoption ask (1–7) against the actual sibling repos at HEAD (no evidence-free re-affirmation) with a terminal disposition (ESCALATE/KILL/ACCEPT-chronic; words-spa 404 → P0); `dispatch.sh` retirement BOOKED with a hard kill-date = value.js `rsync→git` green-CI (escalate to the user, no 7th silent roll); re-affirm L-webmcp's external Chromium-146 gate. Consumer: the operator + the constellation. | W11 |
 | **M.W13** | — | Close | `FINAL.md` cites observed-green prod at HEAD + the green inv-27 run id + a live consumer per endpoint + the design language shipped + the J and K-deploy close ledgers (M discharges both); `CANONICAL-ORDERING → ordering ξ′` (§21). | W12 |
 
-### §4.1 — The one user decision M surfaces (the home/landing)
+### §4.1 — The home/landing (RESOLVED 2026-06-16: the landing IS the paper)
 
-The `/` route **has no landing view** — `web/src/router/index.ts` redirects to the saved tab (default `/paper`), so the "home" the screenshots capture IS the PaperView title page: a greyscale typeset-document front door for a product whose brand is epicycles (B1-01, load-bearing). M.W10 carries the mathematical hero either way; the decision is its host:
-
-- **(a) Graft a contained epicycle/convergence hero band onto the PaperView header** (lower risk, no new route; the hero shows on the de-facto landing).
-- **(b) Add a dedicated `/` landing route** (a true mathematical hero front door; more surface, and the redirect-to-saved-tab logic must be reconciled so the hero wins on a `/` visit).
-
-M authors (a) as the default (the lower-risk increment that still discharges B1's "front door is a document, not a hero") and surfaces (b) as the user's call at M.W0/W10. Either way the hero is PRM/INP-gated and wired to Fraunces + the OKLCH section palette + the keyframes 4.2 spring tier.
+The `/` route's redirect to `/paper` is **intentional — the PaperView title page IS the product's front door** (user-directed 2026-06-16; `M-AMENDMENT-latest-and-BB.md §1`). M does NOT add a dedicated `/` route; it grafts the contained epicycle/convergence mathematical hero (Fraunces display title, the OKLCH section palette, the keyframes-spring entrance) onto the **PaperView header in place** — discharging B1-01's "front door is a greyscale document, not a hero" by enriching the paper title page itself. The redirect logic is untouched. The M.W10 "home/landing hero" merges with the M.W6 paper-hero typography + the M.W9 hero entrance — one surface, dressed once, PRM/INP-gated.
 
 ## §5 — The re-grounding (the live facts M is built on)
 
