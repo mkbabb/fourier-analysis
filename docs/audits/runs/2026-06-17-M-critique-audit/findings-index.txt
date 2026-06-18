@@ -1,0 +1,478 @@
+
+### A1 — A1 — Recap & Coverage (every user request across the engagement + the 8 live critiques) mapped against the Tranche M plan, with the M.W1 bump+migration execution verified live
+V: COVERAGE SUMMARY. The M plan (M.md + design/M-*.md, ordering ξ′) is an exhaustive recap-and-fold of the whole fourier engagement: it honours the recurring meta-directive (deeply-audit / idiomatic-gestalt / fold-ALL-chronics / recap-ALL-prompts / NOT-implementation) at the planning layer and — newly this run — RESOLVES-BY-CONSTRUCTION the §0 deepest chronic (planned-6×-shipped-0×) by declaring M the EXECUTION tranche with a PHYSICAL close-gate. The two twice-planned physical chronics (deploy-of-record 44 behind; inv-15 consumer gap, 7 endpoints/0 callers) are correctly absorbed (W2-W4, W10), J 
+  [high    |gamma] A1-01 Tab-variant migration choice is BACKWARDS: M.W1 preserved underline; user wants glass (critiques 7+10) (→M.W8 (re-decided), corrects the M.W1 constant)
+  [high    |alpha] A1-02 Darkened/opaque nav dropdown is uncovered: glass-ui 4.0 alpha-monotonic ladder composites flat-grey (critique 5) (→M.W5 (rung map) + book glass-ui ask; surfaces on M.W8 menus)
+  [high    |alpha] A1-03 Search focus ring is square + offset: raw native outline on a rounded glass field (critique 8) — uncovered (→M.W5 (adopt field + ring) + book glass-ui input-focus-ring ask)
+  [medium  |gamma] A1-04 Desktop-vs-mobile tab gating regression not asserted: lg:hidden tabs appear @1440 (critique 3) (→M.W8 (+ W11 evidence assertion))
+  [medium  |beta ] A1-05 Idle-button-paint critique mis-diagnosed by the plan: defect is WASHED contrast, not absent paint (critique 6) (→M.W7 (accent-tone idle-fill contrast floor))
+  [medium  |beta ] A1-06 No single rounding SOURCE named; squircle.css ships in glass-ui 4.0 unadopted (critique 2) (→M.W5 (rounding-source + squircle adoption))
+  [medium  |plan ] A1-07 M.W1 executed on a pre-suffusion tree: the live critique is of an intermediate half-migrated state the close-gate must not freeze (→M.W11 (evidence — critique-regression checklist) CHRON)
+  [medium  |beta ] A1-09 The cartoon-stamp error/empty cards (the most visible 'not glassy' surface) span error+empty states the W5 plan counts but the critique elevates (→M.W5 (include error/empty/loading cards in the band map))
+  [low     |gamma] A1-08 vue-tsc 3 typecheck not confirmed-run in the live evidence; backend-down hides runtime breakage (→M.W1 (cite vue-tsc) + M.W11 (backend-up capture))
+  [low     |plan ] A1-10 Recap completeness: the meta-directive is honoured and the M.W1-executed wrinkle is reflected — but the design-axis close-gate stays prose where deploy/consumer are physical (→M.W13 close-gate (§3/§12 — bind design to the 8 captures) CHRON)
+    ASK glass-ui-menu-translucency-floor: A menu/overlay translucency-floor recipe: a high-α overlay/floating rung rendered over a L
+    ASK glass-ui-input-focus-ring: A rounded, inset, accent-tinted focus-ring primitive for glass-ui input/search/textarea co
+    ASK glass-ui-dockiconbutton-active: (RE-AFFIRM, already booked §10) an active?:boolean prop on DockIconButton stamping aria-pr
+    ASK glass-ui-accent-tone: (RE-AFFIRM, already booked §10) the contrast-floored 3-channel tonal accent (--accent-fill
+
+### A2 — A2 — root-cause of the 8 live critiques (alpha/beta/gamma classification + idiomatic no-legacy owner+fix)
+V: All 8 critiques root-cause cleanly to file:line, and the split is 1 alpha (glass-ui 4.0 overlay default over-darkens) + 1 mixed-alpha (input focus ring), 5 beta (fourier adoption gaps), 2 gamma (M.W1 bump residue) — the existing M plan ANTICIPATES 6 of the 8 in W5/W7/W8 but UNDER-SPECIFIES four root mechanisms the live state now exposes: (a) critique-08's darkened dropdown is NOT a fourier surface choice but the glass-ui 4.0 `:where(.glass-floating,.glass-overlay)` UNCONDITIONAL AA warm-ink darken (ladder.css ~L196-205) firing over fourier's KNOWN-light cream backdrop — a glass-ui default that
+  [critical|beta ] A2-01 Not-glassy cartoon-stamp cards: the .cartoon-card @utility shim (25 sites) is the offset-shadow opaque-fill surface the user sees, not the glass ladder (→M.W5 (glass depth hierarchy + .cartoon-card DELETE) CHRON)
+  [critical|beta ] A2-04 Controls on the RIGHT (DEC-2): the Configurator default asideSide='right' was adopted without the left-rail flip (→M.W8 (asideSide='left' + the grid-override deletions))
+  [critical|alpha] A2-05 Darkened dropdown: glass-ui 4.0's UNCONDITIONAL overlay-band AA warm-ink darken fires over fourier's known-light backdrop — a glass-ui SOURCE default, not a fourier surface choice (→M.W5 (consume the corrected overlay band) + book the source fix to BB)
+  [high    |beta ] A2-02 Borders not rounded: cartoon-surface near-square radius + raw outlines bypass the --radius-* token system (→M.W5 (rounding swept with the ladder; C2 incongruence sweep))
+  [high    |gamma] A2-03 Desktop tabs leak: the lg:hidden Controls|Canvas SegmentedTabs renders at 1440px — a bump-era breakpoint-utility regression, not just layout (→M.W8 (control-pane layout) gated on M.W1 vue-tsc-3 verification)
+  [high    |beta ] A2-06 Idle-invisible preset pills: glass-ui 4.0 'outline' variant paints bg-background which COLLIDES with the surrounding cartoon-card --card fill (→M.W7 (OKLCH idle tonal pops) + M.W8 (per-pane composition))
+  [high    |beta ] A2-08 Search offset+square focus ring: PaperSearchInput is a raw <input> with no rounded glass focus-within ring — the glass-ui search/Input primitive is unadopted (→M.W8 (adopt glass-ui search/Input primitive) + M.W5 (rounding) — book any residual focus-ring-on-glass to BB)
+  [medium  |gamma] A2-07 Tabs are underline, user wants GLASS: the M.W1 migration chose SegmentedTabs variant='underline' to mirror the retired UnderlineTabs (→M.W8 (SegmentedTabs variant='pill') — folds the M.W1 underline choice)
+    ASK W-ON-GLASS-FG — overlay-band darken opt-out for a KNOWN-light substrate: The glass-ui 4.0 :where(.glass-floating,.glass-overlay) rule (ladder.css ~L196-205) applie
+    ASK W-ON-GLASS-FG — --input-on-glass focus-ring rung for inputs composed over translucent glass: Provide the sibling `--input-on-glass` focus-ring rung named in BB W-ON-GLASS-FG so a sear
+
+### A3 — M.W1 bump+migration audit (correctness vs glass-ui 4.0 API + residue ledger)
+V: M.W1 is PARTIALLY EXECUTED and NOT GATED — the mechanical renames landed (UnderlineTabs→SegmentedTabs variant="underline", MetricBadge :amount→:value across 12 sites, DialogContent variant→surface ×4, glass-subtle→glass-wash ×4, glass-elevated→glass-floating ×2, glass-scrubber→standard template ×14), but STEP 2h (the slider retint-hook remap) was NOT done, STEP 4/5 (vue-tsc gate + green-CI cite) was NOT done, and the bump introduced THREE unmet peers that leave the tree in a literal npm-ELSPROBLEMS invalid state. Highest-severity facts: (1) value.js 0.13.0 violates glass-ui 4.0's peer `^0.10.0
+  [critical|plan ] A3-01 value.js 0.13.0 violates glass-ui 4.0 peer (^0.10||^0.11) — tree is npm-invalid (ELSPROBLEMS); the BB peer-gate is live (→M.W1 (re-sequence: gate on glass-ui 4.1.0; book to BB W-PEER-SPINE))
+  [critical|gamma] A3-02 glass-scrubber→standard migration left ALL 22 `--slider-scrub-*` retint hooks dead — every slider lost its accent ink (STEP 2h not executed) (→M.W1 (STEP 2h — the unfinished slider retint remap))
+  [high    |gamma] A3-03 vue-tsc-3 gate (STEP 4) never run — a latent TS2882 error is present and the build script swallows it (exit 0) (→M.W1 (STEP 4/5 — the unrun type-floor + CI gate) CHRON)
+  [high    |gamma] A3-04 vue-router 5.1.0 and TypeScript 6.0.3 are unenumerated MAJORS — glass-ui peers vue-router ^4.6.4; the plan only mapped glass-ui/keyframes/value.js (→M.W1 (extend the migration map; book router peer to BB))
+  [high    |gamma] A3-05 The four glass-ui peers were installed `--no-save` — vaul-vue / embla-carousel* / perfect-freehand are absent from package.json; a clean `npm ci` drops them (→M.W1 (peer persistence — resolve the --no-save set per glass-ui peerMeta))
+  [high    |gamma] A3-06 `variant="underline"` is API-correct but is the choice the user reverses (critique #7: tabs should be GLASS) — the migration pinned the wrong variant (→M.W8 (tabs-as-glass — flip variant to pill/segmented))
+  [high    |gamma] A3-07 The migrated SegmentedTabs (Controls|Canvas) leaks onto DESKTOP at 1440px despite `lg:hidden` — a mobile affordance rendering on the desktop two-pane (critique #3) (→M.W8/W10 (desktop layout — kill the desktop tab leak; tabs are mobile-only))
+  [high    |gamma] A3-08 The `.cartoon-card` shim survives across 25 sites — the bump did not retire it; it is the not-glassy/not-rounded root (critique #1, #2) (→M.W5 (glass-depth adoption — DELETE .cartoon-card, assign ladder rungs at 25 sites) CHRON)
+  [medium  |gamma] A3-09 glass-scrubber inert comments + retint-block residue remain in 6 files after the variant rename — dead-vocabulary the no-legacy directive forbids (→M.W1 (fold into the A3-02 slider-retint sweep))
+  [low     |gamma] A3-10 SegmentedTabs attribute placed on the opening-tag line (`<SegmentedTabs variant="underline"`) breaks the multi-attr formatting convention — a mechanical-edit hygiene slip (→M.W1 (lint pass — part of STEP 5 gate))
+  [low     |plan ] A3-11 keyframes.js declared `^4.3.0` (installed 4.3.0) vs plan's `^4.2.0` — minor drift, but the direct-dependency promotion is correct and unverified at the type level (→M.W1 (doc pin + ride the vue-tsc gate))
+    ASK W-PEER-SPINE (value.js admission): glass-ui 4.0 peers `@mkbabb/value.js: ^0.10.0 || ^0.11.0`, which makes fourier's required 
+    ASK W-PEER-SPINE (vue-router admission): glass-ui 4.0 peers `vue-router: ^4.6.4`; fourier (and the wider constellation) is on vue-r
+    ASK Slider standard-variant `-hover` retint knob: 4.0's standard Slider exposes `--slider-range-bg`/`--slider-track-bg`/`--slider-thumb-bg` 
+
+### A4 — A4 — glass-ui 4.0 rendering regressions (alpha class): critique #5 dropdown darkened + critique #8 search focus-ring square/offset + glass-not-translucent on dark page
+V: Three distinct alpha-class mechanisms explain critiques #5 and #8. None is a glass-ui regression in the defect sense; two are fourier adoption gaps that interact with glass-ui 4.0's NEW self-engage tint system; one is a genuine fourier-owned bespoke surface that never wired the glass-ui Input/focus-ring primitives. The "darkened dropdown" (critique #5) is glass-ui 4.0's UNCONDITIONAL overlay-band tint self-engage (`.glass-floating { --glass-tint-strength: var(--glass-tint-strength-aa) }`) operating CORRECTLY over fourier's dark-page substrate — the plate darkens toward the warm-ink tint at 12%
+  [critical|beta ] A4-03 Paper sidebar search: bespoke .paper-search-input-wrap bypasses glass-ui Input/.input-pill entirely — raw browser :focus outline leaks as offset square ring (critique #8) (→M.W5 (glass depth ladder + input adoption) CHRON)
+  [high    |beta ] A4-01 Nav dropdown: hand-rolled opaque surface bypasses glass-floating self-engage tint — reads as flat grey in dark mode (critique #5) (→M.W5 (glass depth ladder adoption) CHRON)
+  [high    |beta ] A4-05 Nav dropdown item rows: hand-rolled hover CSS bypasses .glass-menu-row — no glass hover-lift register, no tonal-accent idle paint (critique #5 + #6 overlap) (→M.W5 (glass depth ladder adoption))
+  [medium  |alpha] A4-02 Dark-mode dropdown: glass-floating 88% opacity + 12% warm-ink self-engage tint is architecturally correct but reads as 'darkened/wrong' because fourier's dark page offers no light backdrop for contrast — W-ON-GLASS-FG gap (critique #5 co-cause) (→M.W5 (glass depth ladder) — consume BB W-ON-GLASS-FG when it ships at 4.1.0)
+  [medium  |beta ] A4-04 Gallery search pill: hand-rolled muted-bg surface bypasses .input-pill and .control-surface — does not participate in glass ladder (critique #8 cousin) (→M.W5 (glass depth ladder + input adoption))
+  [medium  |beta ] A4-07 AppHeader surface: Tailwind utility stack (bg-background/90 + backdrop-blur-md) is a hand-rolled header glass surface bypassing the glass ladder — blocks dropdown backdrop sample (→M.W5 (glass depth ladder) CHRON)
+  [medium  |beta ] A4-08 PaperSearch modal: hand-rolled opaque .search-modal surface bypasses glass ladder — near-opaque slab with literal rgba shadows (→M.W5 (glass depth ladder))
+  [low     |alpha] A4-06 glass-floating unconditional self-engage tint (overlay band) — glass-ui 4.0 design intent is correct but the calibration over fourier's dark page is imperceptible; the --glass-tint-strength-aa dark value (12%) is a glass-ui knob, not a fourier override target (→M.W5 (glass depth ladder) — book to BB W-CROSSREPO-ASKS for the knob documentation)
+    ASK W-ON-GLASS-FG (already in BB W-CROSSREPO-ASKS §A1 P0): Ship a `--muted-foreground-on-glass` token (and a `--foreground-on-glass` sibling) whose c
+    ASK W-CROSSREPO-ASKS: document `--glass-tint-strength: 0%` ancestor opt-out for dark-substrate consumers: Add an explicit documentation note + example in the glass-ui BB release notes and the `doc
+
+### A5 — A5 — DEPLOY + BB-GATE + VERSION-CURRENCY
+V: The M.W1a bump (all non-glass-ui packages) is LIVE on branch `m/w1-bump-migration` with `web/package.json` showing glass-ui `^4.0.0`, keyframes `^4.3.0`, value.js `^0.13.0`, vite `^8.0.16`, vue-tsc `^3.3.5`, vue-router `^5.1.0`, pinia `^3.0.4`, lucide `^1.0.0`, katex `^0.17.0`. The BB-gate is REAL and current: `npm view @mkbabb/glass-ui version` = 4.0.0; glass-ui BB's W-REFLECT3 + W-CLOSE + W-ADOPT-RECONCILE + W-DECK + the full Batch-5 DRIVEN arm (W-SLIDES-DRIVE, W-LEAF-MODERNIZE, W-CONSUMER-MODERNIZE) remain SPEC/WIP — 4.1.0 is NOT published. M.W1b (glass-ui `^4.1.0`) is validly gated. The e2
+  [high    |plan ] A5-01 M.W1b (glass-ui ^4.1.0) is validly BB-gated — published version is 4.0.0, not 4.1.0 (→M.W1b CHRON)
+  [high    |plan ] A5-02 M.W1a is live but vue-tsc 3 build-gate (`vue-tsc -b`) not yet cited as a green run — inv-27 open (→M.W1a)
+  [high    |gamma] A5-03 glass-ui ^4.0.0 peer admits value.js ^0.10.0||^0.11.0 only — the ERESOLVE at W1a install was real (→M.W1a)
+  [high    |plan ] A5-05 BB Batch-7 close (W-REFLECT3 + W-CLOSE) and several Batch-5 DRIVEN waves (W-DECK, W-ADOPT-RECONCILE, W-SLIDES-DRIVE, W-LEAF-MODERNIZE, W-CONSUMER-MODERNIZE) are all SPEC — the 4.1.0 publish timeline is indeterminate (→M.W1b CHRON)
+  [high    |plan ] A5-10 The e2e-green close-gate (dock-VT `useId` fix) waits on BB 4.1.0 — M cannot green the e2e gate before W1b (→M.W11 / M.W1b CHRON)
+  [medium  |plan ] A5-04 BB primitives consumed by M.W5 (W-ON-GLASS-FG, W-LIQUIDHOVER auto-arm, W-PAPER-GRID-TEXTURE, W-BORDER-PROGRESS, W-SCROLL-CARD) are ALL complete — M.W5/W6/W7/W8 can consume them at W1b (→M.W5 / M.W6 / M.W7 / M.W8)
+  [medium  |plan ] A5-06 Deploy spine (M.W2–W4) is bump-independent and can stage NOW — nothing in the BB gate touches the deploy path (→M.W2 / M.W3 / M.W4)
+  [medium  |plan ] A5-07 inv-32 version-currency: M.W0 re-verify scope must include the new BB-completed primitives API surface, not just the published npm version (→M.W0)
+  [medium  |plan ] A5-08 W-CONSUMER-MODERNIZE (BB Batch-5, SPEC) targets fourier directly — it overlaps M.W1a's migration scope (→M.W1a / M.W12)
+  [low     |plan ] A5-09 `@mkbabb/pencil-boil ^0.4.1` pinned correctly — the masked-build-blocker class is pre-empted (→M.W1a)
+
+### A6 — A6 — Chronic/Deferred Inventory (re-verify vs live critique state + M plan)
+V: 32 findings across 4 root classes. The critique re-opens 6 items the M plan treats as "covered" or "authored": (1) the cartoon-card shim is confirmed live at 25 sites including the error card in crop 01 — M.W5 plans to DELETE it but has NOT run; (2) the glass story is not merely "half-built" as the prior M-deep-audit called it — the user's live critique pronounces it NOT GLASSY AT ALL on the primary surfaces, hardening the M.W5 scope; (3) the tabs-as-underline was a GAMMA decision made at M.W1 execution, and the user immediately reverses it — the migration assumption is factually contradicted;
+  [critical|plan ] CHR-01 Deploy-of-record NEVER landed — host 44+ commits behind since G-close, silent rollback for months (→M.W2–W4 CHRON)
+  [critical|gamma] CHR-03 The `.cartoon-card` dead-class shim CONFIRMED live at 25 sites — the live critique (crop 01) shows it as an opaque paper sticker, confirming NOT-GLASSY (→M.W5 CHRON)
+  [critical|beta ] CHR-04 Controls-RIGHT on desktop — asideSide='left' (DEC-2) not adopted; the Configurator has the prop at glass-ui 4.0 but fourier passes none (→M.W8 CHRON)
+  [critical|plan ] CHR-11 Inv-15 consumer gap binary breach — 7 J endpoints have ZERO api.ts callers; gallery.publish still PATCHes (→M.W10 CHRON)
+  [critical|beta ] CHR-13 The glass story is NOT GLASSY on primary content surfaces — the prior audit's 'half-built' verdict is hardened by the live critique to 'NOT glassy at all' (→M.W5 CHRON)
+  [critical|gamma] CHR-24 value.js 0.13.0 INVALID against glass-ui 4.0.0 peer range — BB peer-gate breach in the current working-tree (→M.W1)
+  [high    |gamma] CHR-02 PROGRESS.md ledger stale — M.W1 was partially executed on m/w1-bump-migration but every wave still reads `planned` (→M.W0 CHRON)
+  [high    |gamma] CHR-05 Tabs render as variant='underline' — M.W1 migration choice contradicted by the live critique; user explicitly reverses to GLASS (→M.W8)
+  [high    |beta ] CHR-06 Nav dropdown DARKENED-opaque appearance is a fourier adoption gap, not a glass-ui 4.0 bug — dark theme backdrop context missing (→M.W5 / M.W8)
+  [high    |beta ] CHR-07 Search input focus ring SQUARE and OFFSET — raw :focus-visible browser outline on a rounded container, no glass-ui Input primitive consumed (→M.W5)
+  [high    |gamma] CHR-12 E2e / CI gate red on glass-dock-1 duplicate VT-name pre-existing since before J — NOT resolved by 4.0.0 bump, only by 4.1.0 BB-gated bump (→M.W1 CHRON)
+  [high    |gamma] CHR-14 glass-elevated dead class used at 2 sites — coeff popover and EquationView rendering with NO glass material (→M.W5)
+  [high    |beta ] CHR-15 Equation and Morph panes never consume the Configurator chassis — still hand-rolled .eq-grid / .config-grid on cartoon-card walls (→M.W8 CHRON)
+  [high    |plan ] CHR-16 Fraunces vendored + fetched but ZERO web/src consumers — the display voice is dead for the Nth tranche (→M.W6 CHRON)
+  [high    |plan ] CHR-17 Four spectrumColor copies + 118-line bespoke colour parser + STATIC.rainbow twin — inv-33 colour-axis violated (→M.W7 CHRON)
+  [high    |plan ] CHR-18 8 hand-rolled rAF animation loops + 2 duplicated ping-pong clocks — inv-34 motion-proportion floor violated at origin (→M.W9 CHRON)
+  [high    |plan ] CHR-32 The 'recap/fold meta-directive satisfied at planning, deferred at execution' deep chronic — M is the EXECUTION tranche and the close-gate is PHYSICAL (→M.W0 (stated) → M.W13 (proven) CHRON)
+  [medium  |beta ] CHR-08 Ghost/outline buttons have no idle paint — preset pills invisible until hover, 'Open the Visualizer' reads as bare text (→M.W8)
+  [medium  |beta ] CHR-09 No frozen radius system — rounding swept ad hoc, borders not properly rounded per critique (critique finding 2) (→M.W5)
+  [medium  |beta ] CHR-10 Mobile tab bar (Controls | Canvas) renders at desktop breakpoints — the critique misread as 'no desktop tabs' is actually controls-RIGHT masking as missing layout (→M.W8)
+  [medium  |plan ] CHR-19 Phantom within-viz version chain (depth always 0, parent_hash always null) — W2-transpose still unexecuted (→M.W10 CHRON)
+  [medium  |gamma] CHR-20 Node-20 Actions v5 cutover NOT done — ci.yml + deploy-pages.yml still pin checkout@v3/setup-node@v3 past the deprecation deadline (→M.W1)
+  [medium  |gamma] CHR-21 4 glass-ui peers installed --no-save (non-reproducible) — vaul-vue, embla-carousel-vue, lucide-vue, perfect-freehand not in package.json (→M.W1)
+  [medium  |gamma] CHR-22 useClipboard (3 sites) NOT moved to /dom and Collapsible NOT moved to /collapsible — import-path drift from M.W1 migration (→M.W1)
+  [medium  |gamma] CHR-23 vue-tsc 3 typecheck gate not yet run against the migrated tree — the green-CI close-gate is unverifiable (→M.W1)
+  [medium  |plan ] CHR-25 Constellation dispatch.sh retirement STILL pending — 7th tranche carrying it with no hard kill-date enforcement (→M.W12 CHRON)
+  [medium  |alpha] CHR-27 The glass-ui-accent-tone ask generalizes the 57-site color-mix derivation — confirmed not in BB scope, still a fourier→BB ask (→M.W7 / M.W12 (glass-ui ask routing))
+  [medium  |plan ] CHR-28 --viz-amber contrast override (3.54:1, axe AA fail) — D.W4 patch carried across 9 tranches to present (→M.W7 CHRON)
+  [low     |gamma] CHR-26 CanvasOverlayButton.vue dead component (0 consumers) — planned DELETE not yet executed (→M.W5)
+  [low     |plan ] CHR-29 Constellation adoption asks 1–7 OPEN for 20+ days with no re-verification against actual sibling HEAD state (→M.W12 CHRON)
+  [low     |plan ] CHR-30 C1 colour-lift (sampleToSVGPath) ledger kill — KILLED at J.W0 in prose only, not struck in ADOPTION-ASKS.md (→M.W0)
+  [low     |gamma] CHR-31 glass-scrubber --slider-scrub-* retint hooks wired but not deleted — orphaned CSS variables post-migration (→M.W5)
+    ASK glass-ui-accent-tone: A contrast-floored 3-channel tonal accent recipe (--accent-fill / --accent-edge / --accent
+    ASK glass-ui-input-focus-ring: A rounded glass focus-ring on the glass-ui Input / SearchInput primitive: a box-shadow rin
+    ASK glass-ui-dockiconbutton-active: An active?: boolean prop on DockIconButton that stamps aria-pressed + data-active and appl
+
+### A7 — invariants-audit (A7) — invariant adds/edits + recent-deferred fold, grounded in the live M.W1-migrated critique
+V: The 8 live critiques expose a structural GAP in the invariant ledger: inv-33 (design-system-single-source) and inv-34 (motion-proportion floor) govern SOURCE-of-truth and proportion, but NOTHING in inv-1..34 binds a RENDERED-FIDELITY floor. Every M design invariant is asserted (one source, one rung, proportion) but none is VERIFIED-IN-A-RENDER — which is precisely how a tree can pass inv-33 (a surface "declares glass" by class) while compositing as opaque grey (critique 01/05/08), pass "rounding tokens applied" while painting a square focus ring offset past the field (critique 02/11), and choo
+  [critical|alpha] A7-01 inv-35 (glass-fidelity-floor) — NEW: a surface declared glass MUST composite as translucent glass in a captured render, not assert it by class (→M.W0 (author the invariant) → M.W5 (glass depth ladder adoption is where it's first enforced; the .cartoon-card DELETE + specular wiring); glass-ui BB W-CROSSREPO-ASKS for the dark-arm token root-cause CHRON)
+  [critical|alpha] A7-03 inv-36 (geometry-continuity-floor) — NEW: rounding flows from container/tokens, and a focus ring is a rounded glass ring concentric with its field — NO raw square outline-offset outline (→M.W0 (author) → M.W5 (the C2 incongruence sweep: raw radii→--radius-*, the focus-ring recipe); glass-ui BB W-CROSSREPO-ASKS if the input focus-ring is a 4.0 source gap CHRON)
+  [critical|beta ] A7-04 inv-37 (control-affordance-floor) — NEW: a control paints an idle (un-hovered) affordance; option-controls live LEFT (DEC-2); tabbed instruments default to GLASS, not underline (→M.W7 (tonal-accent idle fill, value.js source) + M.W8 (asideSide=left DEC-2, tabs-as-glass); M.W0 authors; the glass-ui dockiconbutton-active + accent-tone asks (§10) back the idle register)
+  [high    |plan ] A7-02 inv-33 EDIT — clarify that 'picks its rung by depth BAND' is necessary but NOT sufficient: the rung must COMPOSITE as glass against the live background (the dark-darkening conformance hole) (→M.W0 (ledger hygiene, alongside authoring inv-35))
+  [high    |plan ] A7-05 inv-38 (render-verified-design-gate) — NEW meta-floor: every design invariant (33-37) is satisfiable ONLY against a captured render at the close, never a class/prop grep (→M.W0 (author) → M.W11 (the EVIDENCE wave gains a render-capture pass alongside the green CI run; the 8-critique regression set becomes a checklist) CHRON)
+  [high    |gamma] A7-06 inv-3 / inv-29 EDIT — record the M.W1 underline-tab choice + the surviving 25-site .cartoon-card shim as RETIRED-class residue (gamma), explicitly NOT a progressive-enhancement floor (→M.W0 (ledger edit) → M.W1/W5 (the underline→glass reversal rides W8 tabs-as-glass; the .cartoon-card DELETE is W5) CHRON)
+  [medium  |gamma] A7-08 Recent-deferred fold — the inv-29 scope amendment (§2.13) anticipated the bump-residue class but the critique proves it must be PAIRED with a render-verified floor or residue survives migration silently (→M.W0 (cross-reference in the ledger) → M.W11 (the render-capture pass exercises it) CHRON)
+  [low     |plan ] A7-07 §2 namespace note for inv-35..38 — clean fresh integers, NO precept collision (the precept band stops at 33) (→M.W0 (ledger hygiene, in the same pass as authoring 35-38))
+    ASK glass-ui-dark-arm-glass-fidelity (root-cause the darkened menu/overlay surface): In the .dark cohort, root-cause why a glass rung (the dropdown/menu/overlay surface in use
+    ASK glass-ui-input-focus-ring (rounded glass focus ring concentric with the field): Ship/confirm a glass-ui input + control focus-ring recipe that paints a ROUNDED ring conce
+
+### A8 — A8 — No-Legacy Sweep (post-bump M.W1 migration)
+V: 22 legacy items confirmed across 5 categories. The `.cartoon-card` @utility shim (17 call-sites across 13 files + the definition in style.css) is the single largest item and the root of critique #1 (not-glassy surfaces). Three `SegmentedTabs variant="underline"` residues directly violate the user's critique #7 (glass tabs reversed). Seven `!important` declarations span four files. Five separate `spectrumColor` implementations duplicate what value.js 0.13.0 `sampleColorRamp` should own. Six rAF animation loops (excluding the animation-store playhead and layout-sync exemptions) are M.W9's excise
+  [critical|gamma] A8-01 `.cartoon-card` @utility shim — 17 call-sites across 13 files (→M.W5 CHRON)
+  [critical|gamma] A8-02 `SegmentedTabs variant="underline"` — 3 residue call-sites from M.W1 migration (→M.W8)
+  [high    |beta ] A8-03 `!important` on `.is-auto-active` tonal state — FunctionInput.vue (→M.W7)
+  [high    |beta ] A8-04 `!important` on `.eq-coeff:hover` — EquationView.vue (→M.W5)
+  [high    |beta ] A8-07 Five duplicated `spectrumColor` implementations (→M.W7 CHRON)
+  [high    |beta ] A8-08 118-line bespoke CSS-var-to-hex colour parser — colors.ts (→M.W7 CHRON)
+  [high    |beta ] A8-09 Duplicate ping-pong rAF clock in ConvergencePlot.vue — verbatim copy of animation.ts (→M.W9 CHRON)
+  [high    |beta ] A8-10 Manual rAF shimmer + hover-scale loops — useCanvasHover.ts (→M.W9)
+  [high    |beta ] A8-17 Hand-rolled two-column grid layout in EquationView.vue bypassing Configurator chassis (→M.W8 CHRON)
+  [high    |beta ] A8-18 Hand-rolled two-column grid layout in FourierMorphDemo.vue bypassing Configurator (→M.W8)
+  [medium  |beta ] A8-05 `!important` on `overflow: visible` — EquationResult.vue + EquationView.vue (→M.W5)
+  [medium  |beta ] A8-11 Manual rAF lerp in useCurveTransition.ts — hand-rolls what keyframes SmoothProgress provides (→M.W9)
+  [medium  |gamma] A8-14 `tab-slide-in` global keyframe keyed on retired UnderlineTabs data-attribute (→M.W9)
+  [medium  |beta ] A8-16 Hand-rolled `rgba()` box-shadow recipes bypassing `--shadow-*` token ladder (→M.W5)
+  [medium  |beta ] A8-19 Three-column `VisualizationView` `grid-template-columns` overrides fighting the Configurator (→M.W8)
+  [medium  |beta ] A8-20 GallerySearchBar `search-pill` hand-rolled surface — should adopt glass-ui Input/Search component (→M.W5)
+  [medium  |gamma] A8-21 CanvasOverlayButton — zero consumers, dead component file (→M.W1)
+  [medium  |beta ] A8-22 `CollapsibleSection` local component — should retire to `ConfiguratorLayer` collapse affordance (→M.W8)
+  [low     |beta ] A8-06 `!important` on `animation-play-state: paused` — GalleryMarquee.vue (→M.W9)
+  [low     |beta ] A8-12 scroll-progress rAF fallback in PaperView.vue — layout-sync exempt but untagged (→M.W9)
+  [low     |beta ] A8-13 Navigation correction rAF loops in useScrollNavigation.ts — layout-sync exempt but untagged (→M.W9)
+  [low     |gamma] A8-15 `glass-scrubber` identifier in 8 comment blocks — maintenance landmine (→M.W1)
+    ASK BB-TONAL-BUTTON-ACCENT: Expose a per-instance tonal accent on `Button` — a CSS custom property `--button-accent` (
+    ASK BB-INPUT-PILL-VARIANT: Add a `variant="pill"` (or `shape="pill"`) to the `Input` component that applies `border-r
+    ASK BB-TAB-PANEL-ENTRY-ANIMATION: The SegmentedTabs/TabsContent primitive should fire a tab-panel entry animation (`opacity 
+    ASK BB-CONFIGURATOR-STAGE-MOBILE-HEIGHT: The Configurator's `.configurator-stage` cell should resolve to a nonzero flex height in t
+    ASK BB-CONFIGURATOR-ASIDE-WIDTH-PROP: Expose `:aside-min-width` / `:aside-max-width` props (or a CSS custom property `--configur
+
+### B1 — B1 — Paper pane (the landing "/"→/paper; PaperView + sidebar + search + article hero)
+V: The paper IS the front door (§4.1 resolved) and it fails the user's two foundational critiques at its two largest surfaces. The article sheet (PaperView.vue:516-529) and the sidebar nav (PaperSidebar.vue:151-166) are byte-identical hand-rolled "cartoon stamps" — `border:2px solid …15%` + `box-shadow:3px 3px 0px` + opaque `background:var(--card)` + raw `border-radius:0.75rem` — exactly the offset-shadow opaque card the user flags in crop 01 (#1 not-glassy, #2 not-rounded). The search input shows a square, blue, OFFSET native focus ring beyond the rounded field (crop 11, #8): the wrap carries `:
+  [high    |gamma] B1-PAPER-01 The article sheet + sidebar nav are hand-rolled cartoon stamps, not tokenised surfaces (critique #1/#2 at the front door) (→M.W5 CHRON)
+  [high    |alpha] B1-PAPER-03 Paper search shows a square, offset, blue native focus ring — no managed glass focus ring (critique #8) (→M.W5)
+  [high    |alpha] B1-PAPER-04 The paper search results dropdown (glass-floating) renders darkened/flat over the near-white sidebar (critique #5) (→M.W5 CHRON)
+  [high    |beta ] B1-PAPER-05 The hero H1 is raw Tailwind magic sizes — the φ-display ladder + Fraunces display voice are unused at the front door (→M.W6 CHRON)
+  [medium  |gamma] B1-PAPER-02 Raw literal radii on the paper surfaces — not the --radius-* scale (critique #2) (→M.W5)
+  [medium  |beta ] B1-PAPER-06 The ℱ ornament renders in Plus-Jakarta SANS inside the Computer-Modern SERIF headline — a glyph clash (→M.W6)
+  [medium  |beta ] B1-PAPER-07 No scroll-reveal on the paper body — the brand's signature 'scrolling animation' is absent on its front-door surface (→M.W9)
+  [low     |gamma] B1-PAPER-08 The dead glass-elevated reference at the search dropdown was migrated to glass-floating — confirm no residual dead-class on the paper pane (→M.W5)
+  [low     |gamma] B1-PAPER-09 The interactive callout card hand-rolls a glass-like surface + the figure rounding is a raw Tailwind class (→M.W5)
+    ASK glass-input-focus-ring: A radius-following glass focus ring on the library's Input/field primitives: a `:focus-vis
+    ASK glass-floating-band-calm-light-opt: A consumer-declarable opt for the overlay band (`:where(.glass-floating,.glass-overlay)` i
+
+### B2 — B2 — Workspace pane ("/w"): VisualizationView + Configurator + dock/controls composition, grounded in the live critique of the bumped+migrated m/w1 instance.
+V: The workspace pane is the critique epicentre and every one of the user's eight findings lands here in concentrated form. The diagnosis is decisive and largely VINDICATES the existing M plan rather than overturning it: the inverted controls-RIGHT layout (#4), the not-glassy opaque cards (#1/#2), the underline tabs (#7), the idle-invisible dock (#6), and the desktop tab-bar leak (#3) all trace to fourier ADOPTION GAPS and M.W1 BUMP RESIDUE, NOT to glass-ui-4.0 regressions — glass-ui 4.0 already ships every primitive needed (asideSide="left", asideWidth, the 5-tier glass ladder, squircle.css, Seg
+  [critical|beta ] B2-01-aside-side-left Configurator consumed against its grain: controls pinned RIGHT (DEC-2 inversion) via four hand-rolled grid overrides that fight the shipped asideSide="left" (→M.W8 (asideSide=left + delete the 3-4 grid-template-columns overrides + the mobile :deep stage patch — already named in §4 W8))
+  [critical|gamma] B2-02-cartoon-card-shim-delete The `.cartoon-card` dead-class SHIM is the literal cartoon-stamp the user circled — a resurrected glass-ui-removed recipe, a standing no-legacy violation (→M.W5 (glass depth ladder adoption + the `.cartoon-card` shim DELETED — explicitly the §3 design-language criterion) CHRON)
+  [high    |gamma] B2-03-tabs-underline-to-pill The mobile SegmentedTabs was migrated to `variant="underline"` — the M.W1 choice the user explicitly reverses; the shipped DEFAULT is the glass pill (→M.W8 (tabs-as-glass: SegmentedTabs default pill — the migration-choice reversal))
+  [high    |gamma] B2-04-desktop-tab-leak The mobile-only `Controls | Canvas` tab bar is LEAKING onto desktop @1440 despite `lg:hidden` — a post-bump Tailwind-v4 breakpoint regression (→M.W1 (bump verification — Tailwind v4 / vite 8 utility emission; run vue-tsc 3 + a built-CSS smoke before W8 layout work))
+  [high    |alpha] B2-05-dock-idle-paint Workspace dock icon-buttons render no idle paint and the hand-rolled `is-active` toggle has NO backing paint (toggled-on reads as idle) (→M.W7 (tonal-accent idle fill) + M.W10 (book DockIconButton active register → BB); fourier consumer stays thin CHRON)
+  [medium  |beta ] B2-06-compose-the-void-stage The empty canvas stage is a vast dead dot-grid with a tiny centred dashed dropzone — the 'compose-the-void' hero is unbuilt (→M.W8 (per-pane composition: workspace compose-the-void dropzone hero))
+  [medium  |alpha] B2-07-on-glass-muted-fg Aside card secondary text ('— source input', the upload hint) will whisper-collapse once the opaque card becomes translucent glass — the muted-foreground targets --background, not the composited glass fill (→M.W5 (glass ladder) — gated on / consuming BB W-ON-GLASS-FG)
+  [medium  |beta ] B2-08-rounding-squircle Workspace surfaces use near-square corners; the shipped squircle/radius system is unadopted (→M.W5 (rounding system as part of the glass-ladder adoption))
+  [low     |beta ] B2-09-aside-width-tokens The aside width is hand-rolled across three breakpoints instead of the shipped asideWidth band — redundant with the chassis (→M.W8 (unify panes on one Configurator; asideWidth band replaces the per-pane grid overrides))
+  [low     |beta ] B2-10-basis-selector-value-void BasisSelector value-row void / inconsistent panel composition in the controls aside (→M.W8 (ConfiguratorLayer migration + :dividers + BasisSelector value-row fix) + M.W7 (tonal-accent for --pill-color))
+    ASK DockIconButton active register (active?: boolean → aria-pressed + data-active + selected paint): An `active?: boolean` prop on DockIconButton that stamps `aria-pressed` + `data-active` an
+    ASK W-ON-GLASS-FG consume contract (on-glass muted-foreground + --input-on-glass rungs): Confirm/expose the BB W-ON-GLASS-FG register (a muted-foreground whose contrast TARGET is 
+
+### B3 — B3 — Gallery pane (/gallery)
+V: The Gallery pane is the clearest in-the-wild demonstration of the user's 8 critiques: the Gallery|Drafts tabs render as an ink-hairline UNDERLINE (critiques #7/#10) because the M.W1 migration pinned `variant="underline"` on a SegmentedTabs whose 4.0 DEFAULT is already `pill` (the glass-track slider the user wants) — a pure gamma residue that reverses with a one-token edit, no new code. The cards are paper "cartoon stamps" (`--shadow-cartoon` + opaque `bg-card` + `border-2`, critiques #1/#2), not the glass ladder; the batch toolbar still consumes the resurrected `.cartoon-card` shim (gamma, 1 o
+  [high    |gamma] B3-01 Gallery|Drafts tabs render as UNDERLINE; user wants GLASS (SegmentedTabs default is already pill) (→M.W8)
+  [high    |beta ] B3-02 Gallery cards are paper cartoon-stamps, not the glass depth ladder (#1) with near-square corners (#2) (→M.W5 CHRON)
+  [high    |beta ] B3-04 Gallery search pill is a hand-rolled opaque input with no glass rung and a raw focus model (→M.W5)
+  [high    |plan ] B3-08 J inv-15 publish/provenance affordances unsurfaced in the Gallery pane (publish still PATCHes; no provenance on cards) (→M.W10 CHRON)
+  [medium  |gamma] B3-03 Batch-action toolbar still consumes the .cartoon-card dead-class shim (→M.W5 CHRON)
+  [medium  |beta ] B3-05 Confirm + card-detail dialogs ride surface="opaque" instead of the glass-overlay rung (→M.W5)
+  [medium  |beta ] B3-06 Empty-state CTA + Drafts publish use weak idle-paint outline buttons (#6 family) (→M.W7)
+  [medium  |beta ] B3-07 Gallery cards have no 3-tier depth hierarchy; featured vs normal differ only by a glow box-shadow (→M.W8)
+  [medium  |beta ] B3-09 Card/badge/pill/CTA colour pops re-derive the same color-mix recipe per-site (no tonal-accent system) (→M.W7 CHRON)
+  [low     |beta ] B3-10 Tab strip + search are NOT a Configurator-rail composition; the gallery header is hand-laid (→M.W5)
+    ASK glass-overlay/floating dark-substrate default (the darkened dropdown root-cause, critique #5): glass-ui 4.0's `.glass-floating` and `.glass-overlay` rungs (and the menu rows that compos
+    ASK Input/search focus ring: rounded glass ring matching --radius-input (critiques #8/#11): The paper/gallery search focus ring renders as a SQUARE, OFFSET outline beyond the rounded
+    ASK AtomDiff / diff-highlight viewer primitive (J /diff consumer): A three-tone (added/removed/changed) keyed-row renderer over the canonical J `atomdiff` sh
+    ASK tonal-accent recipe (accent-tone) — the colour-pop primitive: A contrast-floored 3-channel tonal accent (`--accent-fill`/`--accent-edge`/`--accent-ink`)
+
+### B4 — B4 — per-pane EQUATION (/equation): FunctionInput preset pills, the Compute/error cards, MetricBadge, the mobile tabs, .eq-grid→Configurator, convergence/legend, audacious math typography
+V: The Equation pane is the epicentre of critique #6 (idle-invisible controls) and a clean specimen of #1/#2 (cartoon-stamp cards, near-square corners). Root-causing live source confirms the M plan's diagnoses and lets me HARDEN three waves rather than re-derive them. The "buttons invisible unhovered" finding (crop 09) traces precisely to FunctionInput's preset pills using glass-ui 4.0's `outline` variant (`border-input bg-background` = matches the cream page, faint border → reads as bare text), while `is-active`/`x(π−x)` pills DO paint — proving the contrast is the defect, not the markup. The id
+  [high    |alpha] B4-01 Preset pills render idle-invisible — `outline` variant's `bg-background` matches the cream panel (critique #6 epicentre) (→M.W7 (accent-tone recipe + route-accent) feeding M.W8 (per-pane composition: the f(x) coherence + Compute/preset reskin))
+  [high    |beta ] B4-02 `.is-auto-active` uses THREE `!important`s to override the glass button — a forbidden no-legacy workaround (→M.W8 (one-amber-per-pane altitude rule) on the M.W7 accent-tone recipe CHRON)
+  [high    |gamma] B4-03 Compute/error/equation/convergence cards wear the `.cartoon-card` shim — the cartoon-stamp look (critiques #1, #2) (→M.W5 (glass depth ladder + cartoon-card delete + rounding system) CHRON)
+  [high    |beta ] B4-05 `.eq-grid` is a hand-rolled CSS grid, never on Configurator/ConfiguratorLayer — controls not on the canonical left authoring rail (critique #4 / DEC-2) (→M.W8 (control-pane hierarchy + asideSide=left))
+  [medium  |gamma] B4-04 Mobile Controls|Canvas SegmentedTabs still on `variant="underline"` — should flip to the glass `pill` (critique #7) (→M.W8 (tabs-as-glass; per-pane composition))
+  [medium  |beta ] B4-06 Equation pane has no display-typography hero — math, the subject, is rendered in muted body text (→M.W6 (audacious typography — φ-ladder + Fraunces + KaTeX hero))
+  [medium  |beta ] B4-07 Convergence legend is corner-pinned and occludes the curve; no convergence-reveal motion at first paint (→M.W8 (legend de-occlusion) + M.W9 (convergence-reveal motion CORE))
+  [medium  |alpha] B4-09 Domain inputs use a square focus treatment (`focus:border-primary`), not a rounded glass focus ring (critique #8 sibling) (→M.W5 (rounding + input focus-ring adoption) on the glass-ui focus-ring ask)
+  [low     |beta ] B4-08 CollapsibleSection mimic in FunctionInput should retire to the canonical Configurator section-label (→M.W8 (retire CollapsibleSection → section-label))
+  [low     |gamma] B4-10 `overflow: visible !important` + `:hover ... !important` survive in equation source — no-legacy excision (→M.W5 (incongruence sweep — !important excision) + M.W7 (accent-tone for the hover) CHRON)
+    ASK accent-tone (contrast-floored tonal idle fill): A reusable contrast-floored 3-channel tonal-accent recipe — `--accent-fill`/`--accent-edge
+    ASK Input focus-ring (rounded, on-radius, not offset/square): A glass input primitive whose focus ring is rounded, inset/on-radius, and tracks the field
+    ASK Menu/overlay surface darkening (dropdown reads opaque-grey, not translucent glass): Re-verify the glass-ui 4.0 menu/overlay surface composite (menu.css) so a popover/dropdown
+
+### B5 — per-pane-morph
+V: Morph pane shows critiques 1 2 4 5 deepest unconsumed configurator case critical dead slider scrub retint hooks after standard migration fix one configurator asideSide left band 1 glass cartoon card deleted one sequence clock
+  [high    |gamma] B5-M-01 Morph slider phase color tint dead after standard migration (→M.W1)
+  [high    |beta ] B5-M-02 Morph hand rolls config grid and cartoon cards not configurator chassis (→M.W8)
+  [high    |beta ] B5-M-03 Morph surfaces are flat cartoon stamp cards not glass (→M.W5 CHRON)
+  [high    |beta ] B5-M-08 Morph motion is three serial heavy engine await tweens not one sequence (→M.W9 CHRON)
+    ASK on glass menu over darkens on bright app: glass ui 4.0 menu glass quiet tint darkens selectcontent opaquely on a bright app critique
+    ASK standard slider per instance accent seam: slider css has no per instance range or thumb seam after standard migration add a public s
+
+### B6 — B6 — Per-Pane Paper (reading + chrome + motion), hardened against the live M.W1-bump critique
+V: The paper reader is structurally exemplary (virtual section window, content-visibility deferral, composited scroll-progress with a JS floor, 13-hue section palette, self-hosted KaTeX) and the prior B6 audit already booked the right adoption work (display-tier hero, char-stagger entrance, scroll reveals, math chrome). The LIVE bumped+migrated instance now surfaces THREE things that audit (run pre-bump) could not see, and they must HARDEN the M plan: (1) the search focus ring renders SQUARE and OFFSET (critique #8) — a real glass-ui-4.0-vs-fourier seam: fourier rolls a bespoke raw <input> + `.pa
+  [high    |beta ] B6H-01 Paper search focus ring is SQUARE + OFFSET — the raw <input>+wrap opts out of glass-ui's shipped .focus-ring recipe and the Input primitive (→M.W5 (glass-depth + focus-ring adoption; the search field is paper chrome))
+  [high    |alpha] B6H-02 glass-ui 4.0 overlay-band UNCONDITIONAL darken reaches the paper search dropdown (glass-floating) — the critique-#5 darkened-glass mechanism, an upstream ask (→M.W5 (consume the resolved overlay surface; book the ask at M.W0))
+  [high    |plan ] B6H-05 Hero title is a raw text-4xl, not the φ-display/Fraunces tier — re-affirm B6-01 with the bump-landed reality (→M.W6 (typography ladder))
+  [medium  |gamma] B6H-03 Paper rounding is a hand-rolled scatter (0.75rem / 0.375rem / 0.25rem / 3px / 1px / calc(--radius-2px) / calc(--radius-4px)), not a system — critique #2 (→M.W5 (the rounding system rides the glass-depth adoption wave) CHRON)
+  [medium  |gamma] B6H-04 The .cartoon-card register on the paper article + sidebar is now an EXPLICIT user critique (#1 not-glassy) — resolve B6-08's open question toward the depth ladder for the SIDEBAR (article-sheet may stay) (→M.W5)
+  [medium  |plan ] B6H-06 No hero entrance + no scroll-driven section reveal — re-affirm B6-02/B6-03 with the once-discipline + reading-primacy guardrails the live virtual window demands (→M.W10 (scroll heroes); the SplitChars + once-discipline asks book at M.W0)
+  [medium  |plan ] B6H-07 The 13-hue section palette + ℱ signature reach the hero/dividers/refs as zero pops — re-affirm B6-05/B6-06/B6-07/B6-09 against the colourful-pops directive (→M.W7 (colour + math/grid chrome); the section-marker glyph consumes the 5 dead per-page Fourier-path assets)
+  [low     |plan ] B6H-08 Three divergent TOC renderings (desktop sidebar / mobile inline / mobile floating) with different type primitives + sizes — consolidate onto shared TOC tokens (→M.W5/M.W8 (consistency))
+  [low     |plan ] B6H-09 Paper vertical rhythm is hand-tuned magic numbers (mb-10/lg:mb-20, mb-14, 1.25rem 1rem, 0.28rem 0.625rem) not on the φ ladder — hero/section spacing only (→M.W6 (typography/rhythm))
+  [low     |plan ] B6H-10 PaperView reading-progress hand-rolls the @supports gate + manual rAF — adopt useScrollProgress as the sole feature-detected fallback (→M.W9 (motion CORE))
+    ASK overlay-band dark-substrate opt-out (--glass-backdrop:dark honoured by the overlay self-darken): glass-ui 4.0 ladder.css:200-204 darkens the floating/overlay band UNCONDITIONALLY (it cann
+    ASK rounded .focus-ring as the default field-focus affordance + Input docs: Confirm the shipped .focus-ring recipe (the --focus-ring-shadow/--focus-ring-width radius-
+
+### B7 — B7 — PER-PANE: /demo/shape-extractor + /morph (FourierShapeExtractor.vue, FourierMorphDemo.vue, MorphPhaseConfig.vue, HarmonicLevelGrid.vue, MorphShapePreview.vue)
+V: The /demo/shape-extractor pane is a Playwright-harvesting internal tool with zero design application — it carries raw inline styles (padding: 2rem, border: 1px solid #ccc), no glass surfaces, no rounding tokens, and no hierarchy. The /morph pane (FourierMorphDemo + sub-components) carries three .cartoon-card shim instances, zero Configurator chassis, hardcoded #60a5fa blue tokens, variant="outline" preset buttons with no idle fill, and a hand-rolled rAF animation engine that M.W9 is already planned to retire. The user's 8 live critiques map directly onto this pane: surfaces not glassy (cartoon
+  [critical|gamma] B7-01 cartoon-card shim × 3 on morph pane — zero glass depth (critique 1) (→M.W5 CHRON)
+  [critical|beta ] B7-03 Morph pane: no Configurator chassis — hand-rolled .config-grid + .config-card-title hierarchy (critique 4) (→M.W8)
+  [critical|gamma] B7-05 M.W1 migration chose variant='underline' for SegmentedTabs — user reversal: tabs must be pill/glass (critique 7) (→M.W8)
+  [high    |beta ] B7-02 Morph phase cards: hand-rolled rounding literals, no --radius-* tokens (critique 2) (→M.W5)
+  [high    |beta ] B7-04 variant='outline' grid-cell buttons: no idle fill — invisible at rest (critique 6) (→M.W8)
+  [high    |beta ] B7-06 FourierMorphDemo export/reset buttons: hand-rolled bespoke button styles duplicate glass-ui Button (critique 6) (→M.W8)
+  [high    |beta ] B7-07 Morph phase pipeline has no visual step-sequence framing — three equal cards with no pipeline motion (→M.W9)
+  [high    |alpha] B7-08 MorphPhaseConfig easing select: SelectContent dropdown inherits darkened glass (critique 5) (→M.W8)
+  [high    |beta ] B7-11 useFourierMorph: hand-rolled rAF-based animation (keyframes.js Animation used but not the M.W9 unified architecture) (→M.W9)
+  [medium  |beta ] B7-09 HarmonicLevelGrid: hardcoded #60a5fa blue (not a token) for .is-bound and .level-input:focus (→M.W5)
+  [medium  |beta ] B7-10 FourierMorphDemo info-chips: hand-rolled surface, no glass-ui primitive (idle state invisible at low contrast) (→M.W7)
+  [medium  |beta ] B7-13 MorphShapePreview morph-button: hover border-color + box-shadow hand-rolled outside glass ladder (→M.W5)
+  [low     |plan ] B7-12 FourierShapeExtractor: raw inline styles — no design application, no glass surface, no hierarchy (internal tool hygiene) (→M.W5)
+    ASK SelectContent / menu overlay surface darkening at glass-ui 4.0: The SelectContent popover (and nav dropdown — critique 08) renders as flat opaque grey ove
+
+### C1 — C1
+V: test
+  [critical|alpha] C1-03 Darkened dropdown root-caused: overlay-band dark-arm self-darken composes a flat grey slab over a near-black substrate (→M.W5 CHRON)
+  [high    |gamma] C1-01 cartoon-card utility shim survives at 25 sites across 13 files; DELETE to glass-ui 4.0 cartoon-surface (→M.W5 CHRON)
+  [high    |beta ] C1-02 Re-arbitrate the ladder: plan keeps cartoon on surfaces the user flags (→M.W5)
+  [high    |beta ] C1-04 Promote glass-backdrop to a per-region substrate-luminance contract (→M.W5)
+  [medium  |beta ] C1-05 Hand-rolled glass recipes bypass the ladder; strip, the rung owns the material (→M.W5)
+  [medium  |beta ] C1-06 Text-plate overlays use a bordered/rimmed rung over text instead of veil-surface (→M.W5)
+  [medium  |beta ] C1-07 Wire the specular catch-light on BAND-1-over-canvas via the shipped useSpecularTracking (→M.W5)
+  [medium  |alpha] C1-08 Not-rounded reads: raw outlines plus un-tokenised radii; bind radii and inherit the shipped squircle coupling (→M.W5)
+  [low     |gamma] C1-09 Dead glass-elevated/glass-scrubber strings plus a glass-tier staleness gate (→M.W5 CHRON)
+
+### C2 — C2 — Rounding system (unified --radius-* adoption + the rounded glass focus ring; critiques #2 not-rounded + #8 square/offset search focus)
+V: The rounding defect is TWO separable root classes, and the live #8 search ring is misdiagnosed if read as one thing. (1) ALPHA — glass-ui 4.0 ships NO `Input`/field primitive and NO rounded glass focus-ring recipe: it ships only the Tailwind `focus-visible:outline-2 / outline-offset-2 / outline-ring` utilities, which paint a SQUARE, OFFSET rectangular outline by construction (outline does not follow border-radius without an explicit `border-radius: inherit`, and `outline-offset:2px` pushes it OUTSIDE the field). That square offset ring IS critique #8 — it is the UA/utility outline, not a glass
+  [high    |alpha] C2-R1-search-focus-square-offset The search field's focus ring is a SQUARE, OFFSET UA/utility outline — there is no rounded glass focus ring (critique #8) (→M.W5 (fourier focus-ring adoption in the incongruence sweep) + glass-ui ASK booked at W0/W5)
+  [high    |gamma] C2-R2-radius-token-fragmentation Fourier authors radii as raw literals + calc() arithmetic, never the shipped --radius-* semantic aliases — corners read near-square (critique #2) (→M.W5 (the C2 incongruence sweep already books "raw radii→--radius-*" — this hardens it with the per-surface alias mapping) CHRON)
+  [medium  |gamma] C2-R3-floating-search-zero-radius The floating search variant hard-zeros border-radius — a square field by literal, not by container clip (→M.W5)
+  [low     |plan ] C2-R4-affirm-container-owns-rounding Affirm container-owns-rounding as the fourier radius DOCTRINE (P5 is correctly KILLED-AS-PHANTOM — do not re-book inner-section rounding) (→M.W5 (doctrine) — referenced by M.W8 (panes) for the container shells)
+  [low     |beta ] C2-R5-squircle-large-radius-opt-in Large-radius glass containers can opt into the shipped @supports squircle — a progressive enhancement, never the contract (→M.W8 (the pane container shells, once they read --radius-panel))
+    ASK glass-ui-rounded-glass-focus-ring + Input/SearchField primitive: glass-ui 4.0 ships NO Input/field/search component (confirmed absent in dist/components an
+
+### C3 — C3 — Controls-LEFT authoring rail + DELETE desktop tabs (critique #3 + #4, DEC-2 emphatic): VisualizationView / EquationView / MorphView layout + the Configurator asideSide API + the mobile-tab affordance
+V: The controls-RIGHT regression (critique #4) and the leaking desktop tab affordance (critique #3) are BOTH live-confirmed and BOTH fourier-owned adoption/residue — zero glass-ui asks fall out of this charge. glass-ui 4.0's Configurator already ships `asideSide="left"` as a first-class, a11y-safe prop (grid col-start placement + border-side swap; DOM/tab order stays stage→aside — verified in useConfiguratorState-kiIlun8I.js and Configurator.vue.d.ts:25,70). The live failure has a precise mechanism: VisualizationView.vue:194 passes the chassis NO `aside-side` prop (defaults to `right` → controls 
+  [high    |beta ] C3-01 Workspace controls pin RIGHT — Configurator gets no aside-side prop (DEC-2 violated at the call site) (→M.W8)
+  [high    |beta ] C3-02 Hand-rolled grid-template-columns override DEFEATS the asideSide machinery at the root (→M.W8)
+  [high    |gamma] C3-03 Desktop tabs leak — the mobile-only Controls|Canvas SegmentedTabs renders on desktop (critique #3) (→M.W8)
+  [medium  |beta ] C3-04 The mobile `:deep(.configurator-stage)` flex patch is a symptom of fighting the chassis — retire it with the tab machine (→M.W8)
+  [medium  |beta ] C3-05 EquationView already orders controls-LEFT but never consumes the chassis — migrate preserving the rail (→M.W8)
+  [low     |plan ] C3-06 MorphView is single-column (no aside, no tabs) — confirm it does NOT grow a spurious left rail in the chassis migration (→M.W8)
+  [low     |gamma] C3-07 `isDesktop` useMediaQuery + the mobileView ref are dead weight once the tab machine is deleted — sweep the script (→M.W8)
+
+### C4 — C4 — Tabs-as-glass (critique #7): the SegmentedTabs material across every fourier tab usage
+V: The M.W1 migration mechanically preserved the OLD look by choosing `variant="underline"` at all three SegmentedTabs sites (`VisualizationView.vue:182`, `GalleryView.vue:223`, `EquationView.vue:188`) — a verbatim port of the retired UnderlineTabs ink-rule. The user's critique #7 REVERSES that choice: tabs are to be GLASS. This is correct by the design language — `pill` is the glass-ui 4.0 DEFAULT and IS the glass material (the `--glass-bg-quiet` track + `--glass-bg-floating` indicator that glides+squishes on the calibrated snappy spring; `segmented-tabs.css:5-9,36-101`), whereas `underline` is 
+  [high    |gamma] C4-01 All 3 SegmentedTabs sites pinned to variant="underline" — reverse to the glass pill (the DEFAULT, the glass material) (→M.W8)
+  [high    |gamma] C4-02 Gallery|Drafts tabs render underline on DESKTOP — the exact critique #7 surface (not a mobile affordance) (→M.W8)
+  [high    |beta ] C4-04 NotationPills + EquationModeToggle hand-roll the glass pill (bare buttons + color-mix) — fold onto the SAME SegmentedTabs pill engine (→M.W8 CHRON)
+  [medium  |gamma] C4-03 Mobile Controls|Canvas glass-pill reskin must stay mobile-scoped — do not leak the strip to desktop (intersects C3) (→M.W8)
+  [medium  |plan ] C4-05 M plan has no wave owning the underline→glass reversal — the migration table records the verbatim port as final (→M.W8)
+    ASK SegmentedTabs responsive desktopOptions cap for the non-collapsing strip (LOW — optional): The `SegmentedTabsResponsive.desktopOptions` subset (SegmentedTabs.vue.d.ts:26-28) only ap
+
+### C5 — C5 — Button idle-paint + tonal-accent (critique #6): the preset pills, notation pills, mode toggle, basis-selector buttons, and dock toggle-buttons read as bare text with no idle affordance; the colour-pop accent system is hand-mixed ~57x with no single source.
+V: Critique #6 ("button options not visible when not hovered") is REAL and root-causes to TWO compounding gaps, neither a glass-ui-4.0 rendering bug. (gamma) The M.W1 migration left the preset/notation/basis pills on `variant="outline"` (glass-ui 4.0 resolves this to `bg-background border-input` — neutral-0 fill + neutral-4 border) painted ON a `.cartoon-card` whose `--card` is itself near-white: white-chip-on-white-panel with a faint grey hairline reads as no-paint at rest (screenshot 09 — every pill but the one active `x(π−x)` is bare text). The mode-toggle + basis-selector use `variant="ghost"
+  [high    |gamma] C5-01 Preset pills read as invisible at rest — `variant="outline"` paints bg-background on a near-white card (critique #6) (→M.W7 (accent-tone adopt) + M.W8 (per-pane: equation f(x) coherence — the preset chip group))
+  [high    |beta ] C5-02 NotationPills + BasisSelector + EquationModeToggle repeat the same no-idle-paint pattern (critique #6 generalised) (→M.W8 (control-pane composition — segmented selectors) feeding on M.W7 accent-tone CHRON)
+  [high    |beta ] C5-03 Dock `is-active` toggles a class with NO backing paint — toggled-on dock buttons render identical to idle (critique #6 in the dock) (→M.W8 (dock active register adoption) + book the prop sugar to BB)
+  [high    |beta ] C5-04 The tonal-accent colour-pop recipe is hand-mixed ~57× with no single source — the system behind critique #6's idle/active paint (→M.W7 (colour pops from ONE source — accent-tone adopt) — book ask + adopt on ship CHRON)
+  [medium  |beta ] C5-05 The Compute button + `.is-auto-active` wand hand-mix a per-instance hover/active tint that the accent-tone recipe subsumes (→M.W7 (accent-tone) + M.W8 (equation pane — Compute + wand register))
+    ASK accent-tone — contrast-floored 3-channel tonal accent recipe: A library recipe (a `.accent-tone` utility and/or a `tone` arm on the pill/badge/chip fami
+    ASK DockIconButton active-register prop (scoped-down): An `active?: boolean` prop on DockIconButton that stamps `aria-pressed` + `data-active` AN
+
+### C6 — C6 — Typography Audacity (Fraunces display voice, the φ-display ladder, KaTeX as a hero ladder member, the ℱ sans-clash fix)
+V: The single most under-realized axis against the user's "large & audacious" mandate, and it is the one charge with NO direct critique crop yet a damning live screenshot: the app has exactly ONE typographic moment of any scale (the paper hero "An Introduction to ℱourier Analysis"), and even that is broken — the ℱ ornament renders in Plus Jakarta SANS inside a Computer-Modern SERIF headline, a visible glitch in live-paper.jpeg and live-equation.jpeg. The φ-display ladder glass-ui 4.0 ships (text-hero, text-display-audacious through text-display, text-title, .text-pane-title) has ZERO consumers in
+  [high    |alpha] C6-T1 The ℱ ornament renders in Plus Jakarta SANS inside the Computer-Modern SERIF hero — a visible glitch at 4 app-wide sites (→M.W6 CHRON)
+  [high    |beta ] C6-T2 The φ-display ladder has ZERO consumers — every heading is a raw ad-hoc Tailwind rung; the paper hero is the only scaled type in the app (→M.W6)
+  [high    |beta ] C6-T3 Gallery, equation, and visualize pages carry NO h1 — the page heads are absent, leaving the routes voiceless (→M.W6)
+  [medium  |beta ] C6-T4 Fraunces is vendored, fetched, and DEAD — the display voice exists in the build but reaches no glyph (→M.W6)
+  [medium  |beta ] C6-T5 KaTeX is a hand-tuned 1.1em multiplier divorced from the ladder — display math, the one place a math journal should shout, reads at body scale (→M.W6)
+  [medium  |beta ] C6-T6 Canvas-drawn font literals are a parallel hardcoded type system that won't follow the Fraunces/φ rebrand (→M.W6)
+  [low     |beta ] C6-T7 Mono micro-labels are hand-rolled magic sizes instead of the shipped text-admin-label / text-mono-caption rungs (→M.W6)
+  [low     |gamma] C6-T8 vue-tsc 3 has not been run against the φ-ladder/Fraunces adoption — the bump's type/token chain is unverified (→M.W6)
+    ASK --font-display-serif intent (serif display slot vs consumer override): Confirm whether glass-ui 4.0 intends --font-display to be consumer-overridable for a SERIF
+    ASK useCharStagger / SplitChars: The JS partner to the already-shipped .char-stagger CSS: a per-glyph split of a heading in
+
+### C7 — C7 — colourful pops from icons (within proportion): one OKLCH icon-ramp via value.js 0.13 sampleColorRamp, per-route accents, contrast-floored, more-but-proportioned pops
+V: The M.W7 icon-rainbow colour system (M-design-language.md §3) is correctly conceived and survives the critique intact — but the live bump has DISSOLVED its central risk and the user critique ADDS a load-bearing new vector. (1) HARDENING: value.js 0.13.0 is now INSTALLED (node_modules @0.13.0) and ships sampleColorRamp/safeAccentColor/mixColorsN — the plan's `mixColorsN`-equal-weight interim + kill-date booking (§6.3) is STRUCK; M.W7 must author against sampleColorRamp({space:'oklch', hueMethod:'longer'}) from the start. Fourier today imports ONLY easings from value.js (easeInOutSine/timingFunc
+  [high    |beta ] C7-R1 value.js 0.13 sampleColorRamp is SHIPPED+INSTALLED — author M.W7 against it; STRIKE the mixColorsN interim and its kill-date (→M.W7)
+  [high    |beta ] C7-R2 Four duplicate sRGB-HSL spectrumColor copies → ONE harmonicColor sampling the OKLCH icon ramp (→M.W7 CHRON)
+  [high    |beta ] C7-R5 Per-route --route-accent is entirely UNWIRED — nav flattens five iconed routes onto one --viz-amber (the under-pop root) (→M.W7)
+  [high    |gamma] C7-R6 amber forced via an !important triple (FunctionInput) → the contrast-floored tonal-accent recipe (no-legacy) (→M.W7)
+  [high    |beta ] C7-R7 Accents are NOT contrast-floored — wire value.js safeAccentColor/needsContrastAdjustment so the --viz-amber axe-patch becomes systematic (→M.W7 CHRON)
+  [medium  |beta ] C7-R3 117-line bespoke colour parser (cssVarToHex/hslToHex/rgbToHex) → value.js colour authority (→M.W7 CHRON)
+  [medium  |beta ] C7-R4 STATIC.rainbow Tailwind-400 twin → derive the soft rendition from the favicon ramp (delete the second hand-maintained palette) (→M.W7)
+  [medium  |beta ] C7-R8 MORE pops within proportion — the UI is demonstrably under-popped; add bounded ramp-keyed accents to the calm chrome (→M.W7)
+  [low     |beta ] C7-R9 energyColor + gallery tier colours are hardcoded literals — source from value.js triads/the ramp (→M.W7)
+    ASK W-ON-GLASS-FG (already booked — confirm it covers accent-over-glass contrast target): The muted-foreground / accent register whose contrast TARGET is the composited GLASS FILL,
+    ASK OKLCH/shorter-hue spectrum helper landing in value.js (confirm, not glass-ui-local): Confirm the OKLCH/shorter-hue spectrum helper (the perceptual ramp primitive glass-ui's W-
+
+### D1 — D1 — glass-ui 4.0 idioms to adopt (critique grounding + concrete adoption sites)
+V: The eight user critiques resolve into three clean root classes. The most critical systemic gap is the unadopted glass depth ladder — fourier's 22-site `.cartoon-card` shim is a fourier-authored @utility (style.css:107) that recreates a paper-stamp surface glass-ui retired at C.W5; every content card reads as a sticker, not glass. The `Configurator asideSide="left"` prop is SHIPPED in glass-ui 4.0 (Configurator.vue.d.ts:70) but NOT passed in VisualizationView.vue (the grid-template-columns overrides in scoped CSS reorder columns manually while leaving the DOM in right-aside order — a layout shi
+  [critical|beta ] D1-01 cartoon-card shim unadopted: 22 sites remain opaque paper-stamp instead of glass (→M.W5 CHRON)
+  [critical|beta ] D1-02 Configurator asideSide prop absent: controls render RIGHT, user demands LEFT (DEC-2) (→M.W8)
+  [high    |gamma] D1-03 SegmentedTabs variant='underline' on 3 sites: user explicitly reverses to glass pill (→M.W8)
+  [high    |beta ] D1-04 Mobile tab bar visible on desktop: SegmentedTabs Controls|Canvas strip leaks beyond lg:hidden (→M.W8)
+  [high    |beta ] D1-05 Preset pills have no idle tonal fill: ghost/outline buttons are invisible at rest (critique 6) (→M.W8)
+  [high    |beta ] D1-06 Search input uses raw :focus-within border shift instead of .input-pill focus-visible ring: square + offset focus ring (critique 8) (→M.W5)
+  [medium  |alpha] D1-07 Dropdown/overlay darkening is the correct glass-ui 4.0 default, not a regression — BOOK as glass-ui ask only if over-darkened on dark substrate (→M.W5)
+  [medium  |beta ] D1-08 Borders not rounded: raw radii and missing --radius-* token adoption on content cards (→M.W5)
+  [medium  |beta ] D1-09 useSpecularTracking unadopted: no catch-light on BAND 1 glass over the bright math canvas (→M.W5)
+  [medium  |beta ] D1-10 useTextHighlight unadopted: paper search and diff-viewer do not use the CSS Custom Highlight seam (→M.W8)
+  [medium  |beta ] D1-11 Scroll-driven CSS recipe (.scroll-progress + [data-scroll-reveal]) unadopted: paper scroller uses no compositor-safe scroll animation (→M.W9)
+  [medium  |beta ] D1-12 View-Transition recipe (view-transition.css + gl-list-item) unadopted on gallery cards (→M.W9)
+  [medium  |beta ] D1-13 inert a11y attribute unadopted: background panels remain keyboard-reachable when visually inactive (mobile tab switch) (→M.W8)
+  [medium  |beta ] D1-14 ConfiguratorLayer hierarchy unadopted: eq-grid and config-grid are bespoke layout grids bypassing the Configurator chassis (→M.W8)
+  [low     |beta ] D1-15 glass-menu-row / glass-menu-section unadopted: nav dropdown uses flat accent hover, not the glass-quiet hover-lift row (→M.W5)
+  [low     |plan ] D1-16 glass-ui BB W-LIQUIDHOVER specular auto-arm: book to ADOPTION-ASKS §11, consume at M.W1b (→M.W1)
+  [low     |plan ] D1-17 glass-ui BB W-ON-GLASS-FG contrast register: book to ADOPTION-ASKS §11 for BAND 1 over bright canvas (→M.W5)
+    ASK glass-ui-dockiconbutton-active: A tonal-accent idle fill for the active/selected state of pill buttons and dock icon butto
+    ASK glass-ui-overlay-tint-dark-arm: A --glass-tint-strength-dark token arm (or a --glass-backdrop: dark context escape) that a
+    ASK glass-ui-splitchars: A <SplitChars> or useSplitChars composable that splits a string into per-character spans w
+    ASK glass-ui-scroll-reveal-once: A once-discipline flag or data attribute on [data-scroll-reveal] so the entry animation fi
+    ASK glass-ui-canvas-anchored-overlay: A CSS/composable recipe for a glass panel anchored to a canvas element's bounding box via 
+
+### D2 — D2 — glass-ui gaps abstracted into glass-ui (the alpha-class cross-repo asks)
+V: Three of the eight live critiques root-cause to glass-ui 4.0 (alpha-class) and must be booked as glass-ui:BB W-CROSSREPO-ASKS — NEVER a fourier `!important` mask (inv-16). The cardinal one is REAL and confirmed in source: the overlay band (`.glass-floating`/`.glass-overlay`, i.e. DropdownMenu + Select content) in `glass/ladder.css:200-204` UNCONDITIONALLY darkens toward warm-ink (`--glass-tint-strength-aa`) on the assumption it floats over an UNKNOWN surface — over fourier's near-white paper page this composites as the flat opaque-grey menu the user circled (critique #5, image 08). That self-e
+  [high    |alpha] D2-A1 Overlay band (DropdownMenu/Select) unconditionally darkens toward ink over fourier's near-white page → flat opaque-grey menu (critique #5) (→M.W4 (glass-ui 4.1.0 bump + adoption) consumes the BB fix; book NOW to glass-ui:BB W-CROSSREPO-ASKS)
+  [high    |alpha] D2-A2 No canonical glass focus-ring primitive — consumers hand-roll inputs and leak the browser's square/offset default ring (critique #8) (→glass-ui:BB W-CROSSREPO-ASKS for the primitive; fourier adoption in M.W5 (the rounding/glass-field pass) consumes it)
+  [medium  |alpha] D2-A3 No selectable-chip / toggle-pill tonal register — a preset picker must mis-pick the idle-less `outline` button variant → bare-text idle (critique #6) (→glass-ui:BB W-CROSSREPO-ASKS for the chip register; fourier adoption (+ `.is-auto-active` !important removal) in M.W7 (tonal-accent / idle-affordance))
+  [low     |beta ] D2-N1 Not-glassy cards (critique #1) are NOT a glass-ui ask — the glass ladder + feedback-tone/Alert are already shipped (→M.W5 — beta agent's charge, NOT a glass-ui ask CHRON)
+  [low     |gamma] D2-N2 Controls-left (critique #4) and tabs-glass (critique #7) are NOT glass-ui asks — asideSide="left" and the SegmentedTabs glass PILL default already ship (→M.W8 — beta/gamma agents, NOT a glass-ui ask)
+    ASK W-CROSSREPO-ASKS: overlay-band darken must detect the backdrop, not assume unknown-dark: In glass/ladder.css the `:where(.glass-floating, .glass-overlay)` block (lines 200-204) re
+    ASK W-CROSSREPO-ASKS: a canonical glass focus-ring primitive (rounded, radius-following): glass-ui 4.0 ships focus only as the utility triplet `focus-visible:outline-2 outline-offs
+    ASK W-CROSSREPO-ASKS: a SelectableChip / toggle-pill tonal register (idle + selected + accent-source): There is no glass-ui primitive for a selectable text chip (a preset/curve/filter picker). 
+
+### D3 — D3 — glass-ui component-internal refinements (refine existing components, each a glassui_ask; P5 inner-rounding stays KILLED)
+V: The single highest-leverage finding of this charge is a genuine glass-ui-4.0 ALPHA regression that explains the user's critique #5 (darkened dropdown, image 08): the glass overlay band (.glass-floating/.glass-overlay — which DropdownMenuContent/SelectContent/PopoverContent/HoverCardContent all compose) self-engages the FULL unconditional 20% warm-ink AA darken (ladder.css:200-204; --glass-tint-strength-aa:20% at tokens/glass.css:304), on the documented rationale that it "floats over an UNKNOWN consumer surface." But fourier's surface is a KNOWN light cream --card, and 20% warm-ink over it comp
+  [critical|alpha] D3-01 Glass overlay band self-darkens to a flat grey slab over a light page (the darkened dropdown) (→M.W5 (glass-depth adoption) consumes; the FIX books to glass-ui:docs/tranches/BB W-CROSSREPO-ASKS)
+  [high    |alpha] D3-02 SegmentedTabs pill track + indicator read the RAW glass-bg tokens, not the oklab-tinted ladder composite (→M.W8 (tabs-as-glass adoption) consumes variant=pill; the tint-composite refinement books to glass-ui:BB W-CROSSREPO-ASKS)
+  [high    |alpha] D3-03 No input-shaped composable focus-ring — raw consumer inputs fall to the browser's square/offset default (→M.W5 (rounding/focus adoption) consumes; the composable .focus-ring export books to glass-ui:BB W-CROSSREPO-ASKS)
+  [medium  |beta ] D3-04 Dock icon-button rest state paints fully transparent — no idle silhouette for repeated controls (→M.W7 (tonal-accent idle fill); the idle-rung token books to glass-ui:BB W-CROSSREPO-ASKS, fourier's preset-group adoption is fourier-local)
+  [medium  |alpha] D3-05 Menu-row glass plate keys to --glass-tint-strength which the overlay band over-darkens — the row tint compounds the slab (→M.W5 (validates D3-01); no separate ask — fold into the D3-01 BB ask's acceptance evidence)
+    ASK BB:overlay-band-bright-signal-gating (ladder.css): Refine glass/ladder.css so the overlay band (.glass-floating/.glass-overlay) inherits the 
+    ASK BB:segmented-tabs-tint-composite (segmented-tabs.css): Refine segmented-tabs.css so the pill track (line 53) and the active indicator (line 85) c
+    ASK BB:composable-focus-ring (surfaces.css / scale-paper.css): Promote a narrow, geometry-agnostic .focus-ring utility: on :focus-visible set outline:non
+    ASK BB:dock-control-idle-rung (dock-controls/icon-button.css): Refine the dock-controls active-paint cohort to expose a symmetric IDLE rung — a --dock-co
+
+### D4 — D4 — PLATFORM-OVER-LIBRARY (inv-30): hand-rolled vs. glass-ui/platform/keyframes owned
+V: Seven concrete platform-over-library violations span the whole codebase. The most urgent are: (1) the `.cartoon-card` shim — a style.css `@utility` resurrecting a class glass-ui intentionally deleted at C.W5, squatting at 21 call-sites and responsible for the "not glassy / cartoon-stamp" live critique; (2) the `.eq-grid` / `.config-grid` hand-rolled control layouts replacing the shipped `Configurator asideSide="left"` prop (DEC-2, emphatic); (3) the hand-rolled glass CSS cluster (`AnimationControls.vue` `.play-btn`, `PaperSearch.vue` `.search-modal-overlay`, `PaperView.vue` `.overlay-btn`) tha
+  [critical|gamma] D4-01 .cartoon-card shim — style.css @utility resurrecting a deleted class at 21 sites (→M.W5 CHRON)
+  [critical|beta ] D4-02 .eq-grid hand-rolled 3-breakpoint control layout — Configurator asideSide adoption gap (DEC-2) (→M.W8 CHRON)
+  [high    |beta ] D4-03 .config-grid hand-rolled 3-col morph layout — Configurator chassis not used (→M.W8)
+  [high    |beta ] D4-04 Hand-rolled glass CSS in AnimationControls .play-btn — backdrop-filter/rgba/linear-gradient not from ladder tokens (→M.W5)
+  [high    |beta ] D4-05 PaperSearch hand-rolled modal overlay + search input — glass-ui SearchBar / FuzzySearch unadopted (→M.W5)
+  [high    |beta ] D4-06 Dual rAF animation clock — stores/animation.ts + ConvergencePlot.vue verbatim duplicate; useCanvasHover + useCurveTransition additional rAF loops (→M.W9 CHRON)
+  [medium  |beta ] D4-07 Dual spectrumColor HSL hand-roll — two independent HSL implementations against value.js sampleColorRamp (→M.W7)
+  [medium  |beta ] D4-09 PaperView / PaperSearch hand-rolled backdrop-filter overlay buttons — glass-btn / glass-wash unadopted (→M.W5)
+  [low     |beta ] D4-08 tab-slide-in global keyframe in style.css — pending glass-ui tabs primitives shipping it (→M.W5)
+    ASK tabs-panel-entry-animation: glass-ui's `SegmentedTabs` / `Tabs` primitive should emit a `tab-slide-in` keyframe on `[r
+    ASK searchbar-input-bar-focus-ring: glass-ui's `SearchBar` / `.input-bar` primitive's `focus-within` ring should be verified t
+
+### E1 — E1 — Mathematical-animation opportunities (the signature motion as brand: epicycle traces, convergence sweeps, harmonic reveals, spectral build-up), grounded in the live M.W1 critique state.
+V: The M.W9 motion-architecture doc is strong and largely correct: the three-layer rule, the `useFourierPlayhead` collapse, the convergence-reveal signature (§4), and the PRM/INP/proportion floor (§6) are idiomatic and no-legacy. It needs HARDENING, not re-derivation, on ONE axis the live evidence exposes loudly: in every captured pane the signal surface is EMPTY/IDLE/ERROR (dead dot-grid in workspace, "No visualizations yet" in gallery, Bad Gateway in equation/morph) — so fourier's entire mathematical motion is bound to DATA-PRESENT states, and the brand signature is INVISIBLE at the exact momen
+  [high    |beta ] E1-H1 The brand signature is invisible in the empty/idle/error states the live capture actually shows — ambient math motion is bound only to data-present surfaces (→M.W9 (ambient-trace primitive over useFourierPlayhead) + M.W8 (the per-pane empty/idle states: workspace dropzone, gallery empty, equation/morph error))
+  [medium  |plan ] E1-H2 The convergence-reveal (§4) has no anti-replay latch keyed to the virtual-window remount — the same flicker hazard §5.2 names for scroll reveals applies to the canvas first-paint trigger (→M.W9 (fold into the convergence-reveal primitive alongside the §5.2 scroll-reveal latch — ONE keyed-Set discipline))
+  [medium  |beta ] E1-H3 The morph degradation filmstrip is a static thumbnail row where it should BE the harmonic build-up reveal — the project's most literal 'spectral build-up' surface is inert (→M.W8 (morph per-pane composition) consuming the M.W9 reveal primitive)
+  [medium  |beta ] E1-H4 Spectral build-up (amplitude-rank bar rise) is named in §4.1 gesture 2 but no consumer wiring exists — FrequencyGraph and CoefficientsSpectrum paint bars at full height instantly (→M.W9 (spectral build-up gesture wired into FrequencyGraph + CoefficientsSpectrum))
+  [medium  |beta ] E1-H6 The two wall-clock shimmer oscillators have no PRM guard and re-sample on paused redraws — §6.1 names them but the fix should also become the shared-playhead phase the convergence-reveal already owns (→M.W9 (§6.1 PRM close + shimmer-as-shared-phase) with the preset booked to glass-ui (see asks) CHRON)
+  [low     |beta ] E1-H5 The trail draw-on (§4 gesture 3) is free — TrailManager already precomputes the exact 1200-point arc-length array it needs — but is currently a snap (→M.W9 (draw-on gesture, reusing TrailManager's precompute prefix-slice))
+  [low     |beta ] E1-H7 A converging-curve loading skeleton is the idiomatic loader for THIS product, replacing the 8 generic spinners — the loading state is the natural home of the convergence reveal (→M.W7 (EpicycleSpinner) co-designed with M.W9 (reveal) — share the ambient-trace primitive)
+  [low     |beta ] E1-H8 The epicycle live circles already encode 'N = level' but the harmonic-reveal does not narrate the N-buildup — the count-up of active terms is a free, on-brand metric-motion (→M.W9 (convergence-as-counter via AnimatedDigit) + M.W7 (the focal numeral typography))
+    ASK convergence-reveal motion preset: A canonical 'partial-sum settle' preset: a spring (response≈0.45, dampingFraction≈0.85, li
+    ASK data-scroll-reveal / reveal once-discipline keyed latch (shared by §4 canvas first-paint AND §5.2 scroll reveals): A reveal latch that keys completion-state by a stable id in an external Set (or `[data-scr
+
+### E2 — (NULL)
+
+### E3 — keyframes.js 4.3 LEVERAGE — fourier E3 audit
+V: keyframes.js 4.3 is pinned and installed (web/package.json `^4.3.0`) but fourier uses ZERO of its light-tier primitives for animation. Every animation loop — the ping-pong epicycle clock (animation.ts), the convergence-plot ping-pong (ConvergencePlot.vue), the curve-transition lerp (useCurveTransition.ts), the hover-scale spring (useCanvasHover.ts), and the shimmer loop (useCanvasHover.ts) — is a hand-rolled rAF pattern that pre-dates keyframes 2.x. The one genuine keyframes usage (useFourierMorph.ts) reaches behind the `loadAnimationEngine()` HEAVY boundary to construct a CSS-keyframes `Anima
+  [critical|beta ] E3-01 animation.ts: manual ping-pong rAF clock must become RAFPlayback.loop + SmoothProgress or Oscillator (→M.W9 CHRON)
+  [critical|beta ] E3-02 ConvergencePlot.vue: duplicate ping-pong rAF clock is a verbatim copy of animation.ts — collapse to useFourierPlayhead (→M.W9 CHRON)
+  [high    |beta ] E3-03 useCurveTransition.ts: hand-rolled lerp rAF tween must retire to NumericAnimation (LIGHT) (→M.W9)
+  [high    |beta ] E3-04 useCanvasHover.ts: hand-rolled lerp scale animation must become SpringProgress.drive (→M.W9)
+  [high    |beta ] E3-06 useFourierMorph.ts: HEAVY Animation as a tween driver must transpose to NumericAnimation + Sequence (LIGHT) (→M.W9)
+  [medium  |beta ] E3-05 useCanvasHover.ts: shimmer rAF loop is a second independent rAF chain — retire to RAFPlayback.loop (→M.W9)
+  [medium  |beta ] E3-07 easings.ts: manual value.js `timingFunctions` aliasing duplicates what resolveEasing provides — retire the registry copy (→M.W9)
+  [medium  |beta ] E3-08 No warmEngine() call at app boot — morph HEAVY engine cold-loads on first user gesture (→M.W9)
+  [medium  |beta ] E3-10 ConvergencePlot per-frame resize (canvas width/height reassigned every draw tick) is a chronic not yet addressed in M.W9 plan (→M.W9 CHRON)
+  [medium  |beta ] E3-13 Oscillator primitive unadopted: the convergence-plot animation is a natural Oscillator consumer for its phase clock (→M.W9)
+  [medium  |beta ] E3-14 reducedMotionScale / ReducedMotionPolicy unadopted: fourier's three PRM checks are three separate matchMedia reads (→M.W9)
+  [low     |gamma] E3-09 loadAnimationEngine boundary: useFourierMorph comment cites 'keyframes 2.2.0' — stale doc-drift post 4.3 bump (→M.W9)
+  [low     |plan ] E3-11 PaperView.vue: scroll progress rAF is a layout-sync measure loop — exempt from retirement per M.W9, but needs doc-mark (→M.W9)
+  [low     |plan ] E3-12 useScrollNavigation.ts: multiple raw rAF calls for layout-correction are measure loops — need doc-marks, not retirement (→M.W9)
+  [low     |plan ] E3-15 useKfAnimation (keyframes-vue) unadopted: ConvergencePlot and BasisCanvas bridge animation state to Vue reactivity by hand (→M.W9)
+
+### E4 — E4 — value.js 0.13 leverage: colour + motion (sampleColorRamp, safeAccentColor, mixColorsN, OKLCH ramp, harmonic colour sweeps, palette transitions)
+V: value.js 0.13.0 ships `sampleColorRamp` (`mix.ts:83`, exported `index.ts:158`), dissolving the M.md §11 risk-6 interim. The M.W7 plan is now fully unblocked — it may adopt `sampleColorRamp` directly, retiring the `mixColorsN`-equal-weight interim and its kill-date. Five concrete colour + motion leverage opportunities harden the plan: (C7) the four `spectrumColor` HSL copies collapse to one `sampleColorRamp`-backed `harmonicColor`; the `STATIC.rainbow` twin and the 118-line bespoke parser are deleted; per-route `--route-accent` is contrast-floored by `safeAccentColor` systematically rather than
+  [high    |gamma] E4-01 sampleColorRamp ships at 0.13 — retire the mixColorsN interim and its kill-date (→M.W7)
+  [high    |gamma] E4-02 Four spectrumColor HSL copies → one harmonicColor backed by sampleColorRamp OKLCH ramp (→M.W7 CHRON)
+  [high    |beta ] E4-03 safeAccentColor not used — per-route accent contrast is ad-hoc D.W4 amber override, not systematic (→M.W7 CHRON)
+  [medium  |beta ] E4-04 Harmonic colour sweeps on the canvas are sRGB drift — should be OKLCH-animated with sampleColorRamp (→M.W7 / M.W9)
+  [medium  |beta ] E4-05 Morph-stroke and palette-transition colour paths are sRGB — should be OKLCH perceptual arcs (→M.W7)
+    ASK glass-ui-accent-tone: A contrast-floored 3-channel tonal accent composable (`--accent-fill` / `--accent-edge` / 
+
+### E5 — E5 — Animation Inventory + Proportion/PRM/INP Gate
+V: Eight hand-rolled rAF loops remain across the codebase (animation.ts, ConvergencePlot, useCanvasHover ×2, PaperView progress, useScrollNavigation ×4+ measure loops). Two are verbatim ping-pong duplicates. The keyframes.js 4.3.0 light tier — the canonical replacement — is installed but consumed only in useFourierMorph, which itself uses the `Animation` engine path rather than the lighter `SmoothProgress`/`NumericAnimation` composables. Three CSS infinite-loop animations lack PRM guards (rainbow-slide, golden-shimmer-css, rainbow-drift is guarded). The `--ease-apple-spring` token used at six fou
+  [high    |plan ] E5-01 Duplicate ping-pong rAF clock in ConvergencePlot (verbatim copy of animation.ts) (→M.W9 CHRON)
+  [high    |plan ] E5-02 ConvergencePlot rAF loop: no PRM gate on auto-play at mount (→M.W9)
+  [high    |gamma] E5-08 `--ease-apple-spring` token absent from glass-ui 4.0 — six fourier sites resolve to unset/initial (→M.W1 migration sweep (or M.W9 easing unification))
+  [medium  |plan ] E5-03 ConvergencePlot rAF loop: no IntersectionObserver off-screen parking (→M.W9)
+  [medium  |plan ] E5-04 useCanvasHover: two additional rAF loops (scale lerp + shimmer) outside the shared clock (→M.W9)
+  [medium  |plan ] E5-07 useFourierMorph: keyframes.js Animation engine used; should be NumericAnimation/Sequence light tier (→M.W9)
+  [medium  |plan ] E5-10 rainbow-slide (ImageUpload) and golden-shimmer CSS (ContourEditorCanvas) have no PRM guard (→M.W9)
+  [medium  |plan ] E5-13 ConvergencePlot per-frame resize: canvas dimensions set inside the draw call every rAF tick (→M.W9 CHRON)
+  [medium  |plan ] E5-15 play-btn rainbow-drift: background-position animation on a multi-stop gradient — compositor-unsafe (→M.W9)
+  [low     |plan ] E5-05 PaperView scroll-progress: rAF loop fallback never disabled on Page Visibility change (→M.W9)
+  [low     |plan ] E5-06 useScrollNavigation: multiple layout-sync rAF calls outside the unified clock (→M.W9)
+  [low     |beta ] E5-09 Tab-panel slide-in uses bare `ease-out` keyword, not a design token (→M.W9)
+  [low     |beta ] E5-11 GlassTimeline caret uses bare `ease` keyword and raw box-shadow tokens (→M.W9)
+  [low     |plan ] E5-12 GalleryMarquee will-change: transform without containment — compositor layer leak (→M.W9)
+  [low     |plan ] E5-14 View-Transitions router guard: double rAF release in afterEach is INP-unsafe on slow navigations (→M.W9)
+  [low     |beta ] E5-16 Multiple bare `ease`/`ease-in`/`ease-out` keyword usages not using design tokens (A.W3.d residue) (→M.W9)
+    ASK tab-panel-entry-animation: SegmentedTabs (and UnderlineTabs variant) should ship its own `[data-state=active][role=ta
+
+### E6 — Motion-architecture transposition (E6) — the unified M motion CORE: CSS-first → glass-ui motion composables → keyframes 4.3 light primitives + value.js 0.13 colour motion; retire the manual rAF loop; the convergence-reveal signature.
+V: M-motion-architecture.md is the strongest of the M design docs — its three-layer rule, its rAF inventory, its `useFourierPlayhead` contract, and its convergence-reveal signature are architecturally sound and survive my source re-verification at HEAD. It needs HARDENING, not re-derivation, on six load-bearing points the bump moved underneath it: (1) keyframes is now 4.3.0 (the doc/charter say 4.2) and ships a NEW `ScrollScene`/`createScrollScene` "Scroll-as-CSS" primitive that supersedes part of §5; (2) keyframes 4.3 ships ONE flat barrel — the doc's central "light static-barrel vs heavy `loadA
+  [high    |gamma] E6-01 keyframes pinned/cited as 4.2 across the motion plan; HEAD is 4.3.0 — re-pin and re-verify the light surface (→M.W0 (re-verify) → carried by M.W9)
+  [high    |gamma] E6-02 The 'light static-barrel vs heavy loadAnimationEngine() import path' premise is FALSE at 4.3 — one flat barrel; the distinction is now tree-shaking, not import path (→M.W0 (correct §0) → M.W9 authors against it; M.W11 proves the tree-shake)
+  [high    |beta ] E6-07 value.js 0.13 ships PathGeometry/getPointAtLength + sampleColorRamp — the convergence-reveal draw-on AND its colour-motion now run at LIGHT tier, killing the doc's open 'draw-on forces heavy DrawSVG' worry (→M.W9 (§4 signature) — colour-motion + draw-on)
+  [high    |beta ] E6-08 useCanvasHover's TWO rAF loops (#5 scale-smoother + #6 shimmer) must collapse to ZERO private loops, not two replacements — the shimmer is a phase read off the scene clock (→M.W9 (#5 + #6, jointly))
+  [medium  |plan ] E6-03 keyframes 4.3 ships a NEW ScrollScene / createScrollScene ('Scroll-as-CSS') primitive the §5 scroll-hero plan predates — adopt it or explicitly decline (→M.W0 verdict → M.W10 (scroll heroes) consumes or declines)
+  [medium  |plan ] E6-04 Inventory item #10 (router View-Transitions) is mischaracterized — HEAD is already a clean promise-bracket over glass-ui predicates, not a hand-rolled wrap; the transposition shrinks to deleting the double-rAF release (→M.W9 (#10) — re-scoped smaller)
+  [medium  |plan ] E6-05 SvgFilters.vue:51 is an rAF call-site the §2 inventory omits — name it EXEMPT or the 'zero rAF' close-gate sweep will trip (→M.W9 (inventory) → M.W11 (close-gate sweep))
+  [medium  |plan ] E6-06 ConvergencePlot already DECLARES a ResizeObserver it never uses — the per-frame-resize fix (#3) is wiring dead substrate, not adding new code (→M.W9 (#3 + §3 playhead, same component))
+  [medium  |beta ] E6-09 useFourierPlayhead must expose a clock-phase accessor for the wall-clock oscillators (golden-shimmer + epicycles) — §6.1's 'drive now from the shared playhead' has no surface in the §3 contract (→M.W9 (§3 interface + #8))
+  [medium  |beta ] E6-10 The idle-button-paint (critique #6) and tabs-as-glass (critique #7) carry a STATE-TRANSITION motion facet the motion CORE must claim under Layer 1 — not leave to ad-hoc per-component CSS (→M.W7/M.W8 (design adoption) under M.W9's motion contract)
+  [medium  |beta ] E6-11 The convergence-reveal once-latch and the §3 playhead share a remount hazard with the paper virtual-window — the signature must key first-paint by a STABLE viz id, not a mount event (→M.W9 (§4 signature once-latch))
+  [medium  |plan ] E6-12 Easing-unification is named but the catalog is not inventoried — `lib/easings.ts` (the store's ANIMATION_EASINGS) vs value.js easeInOut* vs keyframes resolveEasing must be reconciled to one source (→M.W9 (easing unification))
+  [medium  |alpha] E6-13 The convergence-reveal preset ask must be booked to the correct BB band (W-CROSSREPO-ASKS) with the verified-shipped primitives factored out — three of the five §10 asks are now consume-not-ask (→M.W0 (book) → glass-ui BB 4.1.0 cut → consume-and-delete)
+    ASK convergence-reveal motion preset: A canonical 'partial-sum settle' motion preset: a spring + orchestration descriptor (serie
+    ASK useCharStagger / SplitChars (a11y-name-preserving glyph splitter): A composable/utility that splits a heading's text into per-glyph spans, sets `--char-index
+    ASK [data-scroll-reveal="once"] cross-remount latch (or useStaggerReveal({once,key})): A variant of the shipped `[data-scroll-reveal]` (scroll-driven.css) `view()` recipe that k
+    ASK canvas-anchored specular overlay (synthetic-rect variant of useSpecularTracking): A variant of the shipped `useSpecularTracking` that accepts a SYNTHETIC bounding rect (a s

@@ -1,0 +1,445 @@
+{
+ "headline": "M is the EXECUTION tranche: the 8 live critiques root-cause to 2 glass-ui-4.0 source gaps (over-darken overlay tint + raw input focus-ring \u2192 BB W-CROSSREPO-ASKS), 5 fourier adoption gaps (glass ladder, asideSide=left, glass-tabs, idle-fill contrast, input primitive), and 1 M.W1 residue class (underline-tab reversal + .cartoon-card shim + dead slider-scrub) \u2014 all fixed no-legacy across W5/W7/W8, and M closes ONLY against a render-verified design gate (inv-38) that binds the 8 critiques to captured greens, never a class-grep.",
+ "critique_resolution": [
+  {
+   "critique": "(1) Surfaces NOT GLASSY \u2014 cartoon-stamp opaque cards, not the glass ladder (live 01/workspace/morph; the error/empty/Bad-Gateway card is the first thing seen backend-down)",
+   "root_class": "gamma (the .cartoon-card shim residue) + beta (ladder unadopted)",
+   "owner": "fourier",
+   "fix": "M.W5: DELETE the @utility .cartoon-card shim (style.css) + its 15 live call-sites (verified, not 25); map each to the frozen 3-band glass ladder \u2014 BAND-1 in-flow panels \u2192 glass-wash/glass-resting; BAND-2 lifted chrome \u2192 glass-floating; error/empty/loading state cards EXPLICITLY in the band map (glass-resting plate, not paper sticker). Replace hand-rolled --shadow-cartoon offset shadows with the band's --shadow-* token. Net code DECREASE, inv-3 honoured.",
+   "wave": "M.W5"
+  },
+  {
+   "critique": "(2) Borders NOT properly ROUNDED \u2014 near-square corners",
+   "root_class": "beta (no single rounding source named; squircle.css ships unadopted)",
+   "owner": "fourier",
+   "fix": "M.W5: declare ONE rounding axis under inv-36 \u2014 the --radius-* token ladder + ADOPT glass-ui 4.0 squircle.css (continuous-curvature corners, confirmed present at dist/styles/glass/squircle.css) on glass surfaces. Author the frozen BAND\u2192radius-rung table (panel\u2192--radius-lg squircle; pills\u2192--radius-full) BEFORE the W5 sweep so it consumes a table not local taste. DELETE every literal rounded-*/calc(var(--radius)-Npx) hand-roll.",
+   "wave": "M.W5"
+  },
+  {
+   "critique": "(3) NO tabs view on DESKTOP for the visualizer \u2014 mobile-only affordance leaking @1440",
+   "root_class": "gamma (bump-era lg:hidden cascade regression) co-rooted with (4) controls-RIGHT",
+   "owner": "fourier",
+   "fix": "M.W8: make the desktop/mobile split a single isDesktop/@container-driven structural decision owned by the Configurator chassis (the breakpoint it already owns at VisualizationView.vue:317/467), NOT a fragile Tailwind lg:hidden that vite-8/Tailwind-v4 layer-precedence can shadow. On desktop the asideSide=left rail + stage render together with NO tab affordance; SegmentedTabs exist ONLY below the container breakpoint. W11 asserts: @1440 backend-up shows no Controls|Canvas tabs.",
+   "wave": "M.W8 (+ W11 evidence)"
+  },
+  {
+   "critique": "(4) ALL controls on the LEFT (DEC-2, emphatic) \u2014 controls pinned RIGHT over dead dot-grid",
+   "root_class": "beta (asideSide default not flipped)",
+   "owner": "fourier",
+   "fix": "M.W8: pass aside-side=\"left\" to <Configurator> (a single prop; glass-ui type doc certifies grid-placement-only, zero DOM/tab-order/a11y cost). DELETE the 3 hand-rolled grid-template-columns breakpoint overrides + the mobile :deep stage patch. Equation (.eq-grid) + morph (.config-grid) MIGRATE onto Configurator+ConfiguratorLayer in the same wave (inv-33 \u2014 one chassis, not two layout sources).",
+   "wave": "M.W8"
+  },
+  {
+   "critique": "(5) Dropdown/glass elements oddly DARKENED/wrong \u2014 flat opaque grey menu",
+   "root_class": "alpha (glass-ui 4.0 unconditional overlay-band AA over-darken) + beta (rung choice + header backdrop)",
+   "owner": "glass-ui (BB W-ON-GLASS-FG / known-light opt-out) + fourier (consume)",
+   "fix": "ROOT confirmed at ladder.css:200-202 \u2014 :where(.glass-floating,.glass-overlay){--glass-tint-strength: var(--glass-tint-strength-aa)} fires UNCONDITIONALLY (\u226424% light / 12% dark) with no bright/translucent backdrop to refract. BOOK to BB: a known-light/known-dark opt-out so a consumer whose backdrop luminance is known dials the overlay tint to the floor without losing legibility. fourier consume: (a) migrate AppHeader off the opaque bg-background/90 utility stack to glass-wash so the dropdown samples the page not an opaque header plate; (b) drop the hand-rolled .nav-dropdown-item CSS for the shipped .glass-menu-row CVA arm; (c) ship glass-ui's OWN sanctioned token escape (--glass-tint-strength to the floor on the known shell) \u2014 NOT an !important, NOT a per-component fill.",
+   "wave": "M.W5 (consume + book BB) \u2192 surfaces on M.W8 menus"
+  },
+  {
+   "critique": "(6) Button options NOT VISIBLE when not hovered \u2014 washed idle contrast",
+   "root_class": "beta (the defect is WASHED contrast on light substrate, NOT absent paint \u2014 re-diagnosed: 09 shows the pills DO have an idle fill, light-on-light)",
+   "owner": "fourier (+ glass-ui accent-tone/dockiconbutton-active asks re-scoped)",
+   "fix": "M.W7: sharpen the tonal-accent recipe (--accent-fill/--accent-edge/--accent-ink from ONE --tone via value.js safeAccentColor) to a CONTRAST-FLOORED idle fill \u2014 the RESTING state must clear \u22653:1 against the cream substrate BEFORE hover lifts it (re-scope the existing accent-tone + dockiconbutton-active asks from 'add idle paint' to 'floor idle-fill contrast'). DELETES the FunctionInput.vue:251 !important block by routing through the token.",
+   "wave": "M.W7"
+  },
+  {
+   "critique": "(7)+(10) Tabs should be GLASS, not underline \u2014 the M.W1 underline migration choice is REVERSED",
+   "root_class": "gamma (M.W1 chose variant=\"underline\" as a faithful 1:1 migration of the retired UnderlineTabs; the user reverses it \u2014 migration-faithful \u2260 design-correct)",
+   "owner": "fourier",
+   "fix": "M.W8: re-open the variant as a DESIGN decision (not an M.W1 migration constant). Flip variant=\"underline\"\u2192 the glass/pill variant (glass-track slider backed by glass-ui specular-track) at all 3 SegmentedTabs sites (VisualizationView:182, GalleryView:223, EquationView:188). One prop per site, no CSS, no !important. Key the active-pill fill off the per-route --route-accent (M.W7 ramp). Amend M-bump-migration.md to record the reversal. Underline kept ONLY where an in-charter document-register affordance is argued (none on the critiqued surfaces).",
+   "wave": "M.W8"
+  },
+  {
+   "critique": "(8) Search screen OFFSET + SQUARE \u2014 raw native blue focus ring outside the rounded field",
+   "root_class": "alpha (glass-ui 4.0 input has no radius-matched glass focus-ring primitive) + beta (fourier hand-rolls a raw <input>, suppresses its own outline, provides no replacement \u2014 the UA square ring leaks; the ring sits on the <input> child while the border is on the wrapper \u2192 structural offset by construction)",
+   "owner": "glass-ui (BB W-ON-GLASS-FG focus-ring rung) + fourier (adopt the Input/search primitive)",
+   "fix": "fourier ADOPT the glass-ui search/Input primitive (PaperSearchInput.vue + GallerySearchBar.vue both hand-rolled) \u2014 it ships the rounded, radius-following (.input-pill border-radius:var(--radius-pill)), inset, accent-tinted focus ring at zero offset. DELETE the bespoke .paper-search-input-wrap / .search-pill focus CSS (net DECREASE). BOOK to BB the focus-ring-on-glass rung (the ring's contrast target = the composited glass fill, not --background). a11y floor: the ring stays visible \u2014 never outline:none with no replacement.",
+   "wave": "M.W5 (adopt + book BB)"
+  }
+ ],
+ "coverage_matrix": [
+  {
+   "request": "Surfaces not glassy / glass ladder adoption",
+   "addressed": "yes",
+   "where": "M.W5 \u2014 .cartoon-card DELETE (15 sites verified) + 3-band ladder map incl error/empty/loading cards"
+  },
+  {
+   "request": "Borders properly rounded",
+   "addressed": "partial",
+   "where": "M.W5 \u2014 needs the frozen BAND\u2192radius table authored + squircle.css adoption (inv-36); plan named the sweep but not a single source until this audit"
+  },
+  {
+   "request": "No desktop tabs (mobile affordance leaking)",
+   "addressed": "yes",
+   "where": "M.W8 chassis-owned isDesktop/@container split + W11 backend-up @1440 assertion (NET-NEW vs prior plan)"
+  },
+  {
+   "request": "All controls on the LEFT (DEC-2)",
+   "addressed": "yes",
+   "where": "M.W8 \u2014 asideSide=\"left\" single prop + grid-override deletions + equation/morph onto Configurator"
+  },
+  {
+   "request": "Dropdown/glass darkened",
+   "addressed": "yes",
+   "where": "alpha root at ladder.css:200-202 \u2192 BB W-ON-GLASS-FG known-light opt-out; fourier M.W5 header glass-wash + glass-menu-row + sanctioned token escape (NET-NEW)"
+  },
+  {
+   "request": "Buttons invisible unhovered",
+   "addressed": "yes",
+   "where": "M.W7 \u2014 re-diagnosed to contrast-floored idle fill (\u22653:1) via value.js safeAccentColor; deletes FunctionInput !important"
+  },
+  {
+   "request": "Tabs should be glass (reverse underline)",
+   "addressed": "yes",
+   "where": "M.W8 \u2014 variant flip at 3 sites; the headline gap: M.W1's underline was BACKWARDS as a design call"
+  },
+  {
+   "request": "Search offset + square",
+   "addressed": "yes",
+   "where": "M.W5 \u2014 adopt glass-ui search/Input primitive (deletes bespoke focus CSS) + BB focus-ring-on-glass rung"
+  },
+  {
+   "request": "Deploy-of-record landed (host 44 behind, silent rollback)",
+   "addressed": "yes",
+   "where": "M.W2-W4 \u2014 HEALTHCHECK + service_healthy + async create_index + fail-closed green_ci_gate + page() on terminal states; bump-independent, stageable NOW"
+  },
+  {
+   "request": "inv-15 consumer gap (7 J endpoints, 0 callers)",
+   "addressed": "yes",
+   "where": "M.W10 \u2014 7 api.ts methods + /v/:slug detail host + gallery.publish off PATCH; W2-transpose deletes the phantom within-viz version chain"
+  },
+  {
+   "request": "Bump migration faithful + type-safe (vue-tsc 3, peers)",
+   "addressed": "partial",
+   "where": "M.W1 \u2014 mechanical renames landed but STEP 2h (slider retint), vue-tsc gate, peer persistence, Node-20 Actions, import-path moves UNFINISHED; TS2882 confirmed masked by -b exit 0"
+  },
+  {
+   "request": "No-legacy (no !important / shims / dead classes)",
+   "addressed": "yes",
+   "where": "7 !important + 15 cartoon-card + dead --slider-scrub-* + glass-scrubber comments + CanvasOverlayButton + CollapsibleSection all carry terminal DELETE/REPLACE verdicts across W1/W5/W7/W8"
+  },
+  {
+   "request": "Design language = glass+grid+math+audacious typography+colour pops+animation",
+   "addressed": "yes",
+   "where": "W5 glass+rounding, W6 Fraunces \u03c6-ladder + first h1s, W7 ONE OKLCH ramp (value.js sampleColorRamp shipped), W9 motion collapse (8 rAF\u21923-layer + convergence-reveal signature)"
+  },
+  {
+   "request": "Render-verified close (design shipped, not prose)",
+   "addressed": "yes",
+   "where": "inv-38 + M.W11/W13 \u2014 the 8 critiques become observed-green captures, the same physical-gate discipline as deploy/consumer"
+  }
+ ],
+ "proposed_waves": [
+  {
+   "id": "M.W0",
+   "title": "Charter / re-ground + invariant authoring + ledger reconcile",
+   "goal": "Flip PROGRESS.md M.W1 to executed-partial with the real branch/commit; record live runs glass-ui 4.0.0 (NOT the 4.1.0 BB target). Author inv-35..38 (clean fresh integers, \u00a72 namespace note \u2014 precept band stops at 33). Edit inv-33 (rung-by-BAND necessary-not-sufficient), inv-3/29 (underline + cartoon-card = gamma residue not a floor). Re-verify sibling API names against BB HEAD + npm view. Confirm the C1 colour-lift struck row.",
+   "depends_on": "none",
+   "rolls_up": [
+    "A1-07",
+    "A1-10",
+    "A7-01",
+    "A7-02",
+    "A7-03",
+    "A7-04",
+    "A7-05",
+    "A7-06",
+    "A7-07",
+    "A7-08",
+    "CHR-02",
+    "CHR-30",
+    "A5-07"
+   ]
+  },
+  {
+   "id": "M.W1",
+   "title": "Bump + migration FINISH (W1a now / W1b BB-gated)",
+   "goal": "Discharge the unfinished migration: STEP 2h slider --slider-scrub-*\u2192--slider-range-bg/-thumb-* remap (7 files; the sliders silently lost accent ink); run vue-tsc --noEmit (not -b, which masks exit) + resolve the TS2882 latex-paper/theme via fourier-owned env.d.ts ambient declare; persist or uninstall the 4 --no-save peers per glass-ui peerDependenciesMeta; move useClipboard\u2192/dom, Collapsible\u2192/collapsible, useTextHighlight\u2192/motion-core; Node-20 Actions checkout/setup-node\u2192v5; lint pass; DELETE CanvasOverlayButton.vue; update glass-scrubber comments. W1a pins value.js ^0.12 to avoid the 4.0 peer breach; W1b lifts to ^0.13 + glass-ui ^4.1.0 ONLY when BB publishes (inv-32 npm-view gate). Cite a green CI run id.",
+   "depends_on": "M.W0",
+   "rolls_up": [
+    "A3-01",
+    "A3-02",
+    "A3-03",
+    "A3-04",
+    "A3-05",
+    "A3-09",
+    "A3-10",
+    "A3-11",
+    "A5-02",
+    "A5-03",
+    "CHR-12",
+    "CHR-20",
+    "CHR-21",
+    "CHR-22",
+    "CHR-23",
+    "CHR-24",
+    "CHR-31",
+    "A8-21",
+    "A8-15"
+   ]
+  },
+  {
+   "id": "M.W2-W4",
+   "title": "Deploy spine (bump-independent \u2014 stage NOW)",
+   "goal": "W2: real container HEALTHCHECK + nginx depends_on:service_healthy + asyncio.create_task the 35 create_index calls off the lifespan so /api/health answers <5s. W3: fail-closed green_ci_gate() in deploy-hook.sh (warn-only first deploy if the host-only read-only PAT is unprovisioned). W4: page() on all 3 terminal states + inv-31 sink + a known-green SHA flows through the fixed chain. Close-gate: observed-green prod at HEAD, /api/health\u2192ok, /\u2192404 (inv-22).",
+   "depends_on": "M.W0 (parallel with W1a)",
+   "rolls_up": [
+    "CHR-01",
+    "A5-06"
+   ]
+  },
+  {
+   "id": "M.W5",
+   "title": "Glass depth ladder + rounding + input/search + menu fidelity",
+   "goal": "DELETE the .cartoon-card @utility + 15 sites \u2192 3-band ladder (incl error/empty/loading cards). Author + apply the frozen BAND\u2192radius table + ADOPT squircle.css. Replace glass-elevated (dead, 2 sites) \u2192 glass-floating. AppHeader \u2192 glass-wash; drop hand-rolled .nav-dropdown-item for .glass-menu-row; ship the sanctioned --glass-tint-strength floor escape on the known-light shell. ADOPT glass-ui search/Input primitive at PaperSearchInput + GallerySearchBar (deletes the bespoke offset/square focus CSS). Sweep raw rgba() shadows \u2192 --shadow-* tokens. Resolves critiques 1,2,5,8 (fourier half).",
+   "depends_on": "M.W1b (consumes the 4.1.0 corrected overlay band) \u2014 author against BB HEAD now",
+   "rolls_up": [
+    "A2-01",
+    "A2-02",
+    "A2-08",
+    "A4-01",
+    "A4-03",
+    "A4-04",
+    "A4-05",
+    "A4-07",
+    "A4-08",
+    "CHR-03",
+    "CHR-06",
+    "CHR-07",
+    "CHR-09",
+    "CHR-13",
+    "CHR-14",
+    "CHR-26",
+    "A8-01",
+    "A8-04",
+    "A8-05",
+    "A8-16",
+    "A8-20"
+   ]
+  },
+  {
+   "id": "M.W6",
+   "title": "Typography \u2014 Fraunces \u03c6-ladder + first h1s",
+   "goal": "Activate the vendored Fraunces AS --font-display (override glass-ui's Plus-Jakarta default at the consumer boundary). Adopt the \u03c6-display ladder on the paper hero + 7 page heads; give gallery + equation their first h1. Fix the \u2131 sans-clash.",
+   "depends_on": "M.W1b",
+   "rolls_up": [
+    "CHR-16"
+   ]
+  },
+  {
+   "id": "M.W7",
+   "title": "Colour pops \u2014 ONE OKLCH ramp + contrast-floored idle fill",
+   "goal": "DELETE the 4 spectrumColor copies + 118-line parser + STATIC.rainbow twin \u2192 ONE value.js 0.13.0 sampleColorRamp ramp (shipped; risk dissolved). Key per-route --route-accent off it. Build the contrast-floored tonal-accent idle fill (\u22653:1 resting via safeAccentColor) for preset pills/toggles \u2014 deletes the FunctionInput !important. Replace the .dark --viz-amber axe-patch with safeAccentColor. Resolves critique 6.",
+   "depends_on": "M.W1b",
+   "rolls_up": [
+    "A1-05",
+    "A2-06",
+    "CHR-08",
+    "CHR-17",
+    "CHR-27",
+    "CHR-28",
+    "A8-03",
+    "A8-07",
+    "A8-08"
+   ]
+  },
+  {
+   "id": "M.W8",
+   "title": "Controls-LEFT (DEC-2) + glass tabs + desktop/mobile gating + Configurator propagation",
+   "goal": "asideSide=\"left\" on Configurator + DELETE the 3 grid-template-columns overrides + mobile :deep stage patch. Migrate .eq-grid + .config-grid onto Configurator+ConfiguratorLayer (retire CollapsibleSection). Flip SegmentedTabs variant=\"underline\"\u2192glass/pill at 3 sites. Make the desktop/mobile tab split a chassis-owned isDesktop/@container decision (no leak @1440). Resolves critiques 3,4,7.",
+   "depends_on": "M.W1b, M.W5 (ladder), M.W7 (route-accent for active pill)",
+   "rolls_up": [
+    "A1-01",
+    "A1-04",
+    "A2-03",
+    "A2-04",
+    "A2-07",
+    "A3-06",
+    "A3-07",
+    "CHR-04",
+    "CHR-05",
+    "CHR-10",
+    "CHR-15",
+    "A8-02",
+    "A8-17",
+    "A8-18",
+    "A8-19",
+    "A8-22"
+   ]
+  },
+  {
+   "id": "M.W9",
+   "title": "Motion \u2014 collapse 8 rAF loops \u2192 3-layer + convergence-reveal signature",
+   "goal": "Collapse the 8 hand-rolled rAF loops + 2 duplicated ping-pong clocks into CSS-first \u2192 glass-ui composables \u2192 keyframes.js 4.3.0 light primitives. animation.ts becomes a pure STATE atom; extract ONE useFourierPlayhead for epicycle canvas + ConvergencePlot. Build the convergence-reveal signature at first-paint. Adopt useScrollProgress + view-transitions. Doc-mark the layout-sync-exempt rAF sites (inv-34). Retire the tab-slide-in global keyframe.",
+   "depends_on": "M.W1b",
+   "rolls_up": [
+    "CHR-18",
+    "A8-06",
+    "A8-09",
+    "A8-10",
+    "A8-11",
+    "A8-12",
+    "A8-13",
+    "A8-14"
+   ]
+  },
+  {
+   "id": "M.W10",
+   "title": "inv-15 consumer wire-up + W2-transpose",
+   "goal": "Add 7 api.ts methods (remix, /forks, /provenance, /diff, /versions\u2192retire, publish, unpublish); build the /v/:slug detail host (diff-viewer via useTextHighlight, provenance breadcrumb, forks drill-down, remix action); re-point gallery.publish off PATCH{visibility} onto POST /:slug/{publish,unpublish}. W2-transpose: DELETE the phantom within-viz version chain (parent_hash/depth/root_hash/version_count, GET /versions); keep cross-viz fork_of + atom /diff; force palette_slug remix-only. Close-gate: no endpoint without a caller.",
+   "depends_on": "M.W2-W4 (deploy spine live)",
+   "rolls_up": [
+    "CHR-11",
+    "CHR-19"
+   ]
+  },
+  {
+   "id": "M.W11-W13",
+   "title": "Render-verified evidence + adoption-ask re-verify + close",
+   "goal": "W11: cite green vue-tsc 3 + vite 8 + e2e CI; capture the 8-critique regression checklist as observed-green renders (backend-up data view) \u2014 inv-38 binds design-shipped to artefacts not prose. W12: re-verify-live adoption asks 1-7 + dispatch.sh with terminal binary (escalate, no 8th silent book); route accent-tone/focus-ring/dark-arm asks to BB W-CROSSREPO-ASKS. W13: close-gate = observed-green prod at HEAD + live consumer per endpoint + green CI + the 8 captures.",
+   "depends_on": "M.W5-W10, M.W1b",
+   "rolls_up": [
+    "A1-07",
+    "A1-10",
+    "A5-10",
+    "CHR-25",
+    "CHR-29",
+    "CHR-32",
+    "A7-05"
+   ]
+  }
+ ],
+ "new_invariants": [
+  {
+   "id": "inv-35",
+   "statement": "glass-fidelity-floor \u2014 every surface that DECLARES a glass rung (glass-wash/-quiet/-resting/-floating/-overlay or Card surface=...) MUST, in a captured render against the live page background, composite as translucent glass: a measurable backdrop-filter blur AND a fill alpha < 1 with backdrop content discernibly bleeding through. Satisfaction is a render capture (inv-38), never a class-grep. A rung that paints opaque-grey is a defect \u2014 root-caused to (alpha) a glass-ui dark-arm/overlay token regression \u2192 booked to glass-ui BB, or (beta/gamma) a fourier opaque overlay/shim \u2192 DELETED; NEVER a fourier !important fill override (inv-3)."
+  },
+  {
+   "id": "inv-36",
+   "statement": "geometry-continuity-floor \u2014 corner radius derives from the container or a --radius-* token (no raw per-site magic radii; squircle.css adopted on glass surfaces wanting continuous curvature); a focus indicator is a ROUNDED ring concentric with its field's radius (a glass focus-ring recipe / box-shadow ring honoring border-radius, or the glass-ui input focus primitive), NEVER a raw `outline: \u2026; outline-offset` square. A render must show the focus ring tracking the field corners. A square/offset ring root-caused to glass-ui 4.0 input focus \u2192 booked to glass-ui BB; otherwise the raw outline is DELETED for the rounded recipe (inv-3, no !important, a11y ring stays visible)."
+  },
+  {
+   "id": "inv-37",
+   "statement": "control-affordance-floor \u2014 (a) every interactive control paints a discernible IDLE affordance contrast-floored \u22653:1 against its substrate (a tonal-accent fill/edge from the value.js OKLCH source, NEVER hover-only paint \u2014 a control invisible/washed until hover fails); (b) option/configuration controls occupy the LEFT authoring rail (asideSide=left, DEC-2) \u2014 a Configurator with controls on the right is a defect; (c) a tabbed instrument defaults to the GLASS variant (glass-track/pill), with underline admitted ONLY where a document-register affordance is argued in-charter. Satisfaction is a captured render of the idle state + an asideSide assertion."
+  },
+  {
+   "id": "inv-38",
+   "statement": "render-verified-design-gate \u2014 the design invariants (33 design-source, 34 motion-proportion, 35 glass-fidelity, 36 geometry-continuity, 37 control-affordance) are gated on a CAPTURED RENDER at the M close (band-mapping + idle-state + focus-state + controls-left + no-desktop-tabs screenshots, backend-up), not a class/prop grep; a code-state assertion is necessary but the render is the binding evidence (composes with inv-6 gates-close-on-evidence + inv-9 surface-appropriate-evidence \u2014 the surface-appropriate evidence for a VISUAL claim is a pixel capture). The 8-critique class (opaque-glass, square-ring, underline-tab, washed-button, right-controls, square-corners, darkened-menu, desktop-tab-leak) is the canonical regression set the capture must clear. This is the consistent application of the \u00a70 anti-chronic (planned-but-never-physically-verified) to the design axis."
+  }
+ ],
+ "chronic_fold": [
+  {
+   "item": "Deploy-of-record never landed \u2014 host 44+ behind, silent rollback since H-era",
+   "verdict": "DISCHARGE at M.W2-W4 (HEALTHCHECK + service_healthy + async create_index + fail-closed gate + page); bump-independent, stageable NOW. Close-gate = observed-green prod at HEAD.",
+   "wave": "M.W2-W4"
+  },
+  {
+   "item": "inv-15 consumer gap \u2014 7 J endpoints, 0 api.ts callers; gallery.publish still PATCHes",
+   "verdict": "DISCHARGE at M.W10 (7 client methods + /v/:slug host + publish re-point). No endpoint without a caller is the close-gate.",
+   "wave": "M.W10"
+  },
+  {
+   "item": ".cartoon-card dead-class shim \u2014 confirmed LIVE at 15 sites (not 25) + the @utility definition",
+   "verdict": "DELETE at M.W5 (the dead class glass-ui removed at C.W5; carried since D.W4 across 7 tranches) \u2192 3-band ladder; inv-3 finally honoured.",
+   "wave": "M.W5"
+  },
+  {
+   "item": "The recap/fold meta-directive satisfied-at-planning / deferred-at-execution (~6\u00d7) \u2014 the deepest chronic",
+   "verdict": "RESOLVE-BY-CONSTRUCTION \u2014 M is the EXECUTION tranche with a PHYSICAL close-gate; inv-38 now extends that discipline to the design axis (the seam the live critique exposed). Evidence of resolution = FINAL.md citing observed-green prod + live consumer per endpoint + green CI + the 8 captures.",
+   "wave": "M.W0 stated \u2192 M.W13 proven"
+  },
+  {
+   "item": "PROGRESS.md ledger stale \u2014 M.W1 partially executed/uncommitted but every wave reads `planned`",
+   "verdict": "LEDGER-RECONCILE at M.W0; flip M.W1\u2192executed-partial, record live=4.0.0 not the 4.1.0 BB target, split the W1 evidence row into the framework/sibling leg vs the BB-gated glass-ui leg.",
+   "wave": "M.W0"
+  },
+  {
+   "item": "4 spectrumColor copies + 118-line parser + STATIC.rainbow twin (inv-33 colour-axis breach)",
+   "verdict": "DELETE at M.W7 \u2192 ONE value.js 0.13.0 sampleColorRamp ramp (shipped; the M.md risk-6 is DISSOLVED).",
+   "wave": "M.W7"
+  },
+  {
+   "item": "8 hand-rolled rAF loops + 2 duplicated ping-pong clocks (inv-34 motion-proportion breach)",
+   "verdict": "COLLAPSE at M.W9 \u2192 3-layer architecture + ONE useFourierPlayhead; build the convergence-reveal signature at every first-paint.",
+   "wave": "M.W9"
+  },
+  {
+   "item": "Fraunces vendored+fetched, ZERO web/src consumers (Nth tranche)",
+   "verdict": "ACTIVATE at M.W6 as --font-display + the \u03c6-ladder + first h1s on gallery/equation.",
+   "wave": "M.W6"
+  },
+  {
+   "item": "value.js 0.13.0 INVALID against glass-ui 4.0 peer ^0.10||^0.11 (confirmed at source) + vue-router 5 vs ^4.6.4",
+   "verdict": "RESOLVE-BY-SEQUENCING at M.W1: W1a pins value.js ^0.12 to avoid the breach; W1b lifts to ^0.13 + glass-ui ^4.1.0 when BB W-PEER-SPINE publishes (admits ^0.12||^0.13 + vue-router ^4||^5). NO npm-override workaround (inv-16).",
+   "wave": "M.W1"
+  },
+  {
+   "item": "vue-tsc 3 gate never run \u2014 TS2882 (latex-paper/theme) confirmed present, `-b` masks it (exit 0)",
+   "verdict": "GATE at M.W1: run vue-tsc --noEmit; resolve via a fourier-owned env.d.ts ambient declare module; cite a green CI run (inv-27). Do NOT close M.W1 without it.",
+   "wave": "M.W1"
+  },
+  {
+   "item": "dispatch.sh retirement \u2014 7th tranche carrying it with no hard kill-date enforcement",
+   "verdict": "ESCALATE at M.W12 with a binary (DONE\u2192delete / NOT\u2192hard 30-day expiry + explicit user accept). No 8th silent book.",
+   "wave": "M.W12"
+  },
+  {
+   "item": "--viz-amber 3.54:1 axe-fail override \u2014 D.W4 patch carried D\u2192present",
+   "verdict": "REPLACE at M.W7 with value.js safeAccentColor (floors contrast regardless of mode); DELETE the bespoke style.css patch; book glass-ui-viz-amber-rebaseline upstream with kill-date.",
+   "wave": "M.W7"
+  },
+  {
+   "item": "Node-20 Actions v5 cutover not done; 4 --no-save peers non-reproducible; import-path moves incomplete; dead --slider-scrub-* + glass-scrubber comments",
+   "verdict": "FIX at M.W1 (the bump commit's finish pass) \u2014 all mechanical, all named.",
+   "wave": "M.W1"
+  },
+  {
+   "item": "e2e/CI dock-VT blocker \u2014 resolved at source (useId, shipped 3.1.1+, present in 4.0) but CI status against the bumped tree unknown",
+   "verdict": "DISCHARGE at M.W1 commit (run the suite against the committed tree, cite the green run); the e2e-green-at-source unblock rides W1b's 4.1.0 pin. NO test.fixme/console-filter bridge (inv-27).",
+   "wave": "M.W1/W11"
+  },
+  {
+   "item": "Adoption asks 1-7 + words-spa (P1 404) \u2014 20+ days no live re-verify",
+   "verdict": "RE-VERIFY-LIVE at M.W12 (run the actual acceptance check per ask, not memory re-affirmation); escalate words-spa directly to the user.",
+   "wave": "M.W12"
+  }
+ ],
+ "glassui_asks": [
+  {
+   "name": "W-ON-GLASS-FG \u2014 overlay-band over-darken opt-out for a KNOWN substrate",
+   "what": "The glass-ui 4.0 rule :where(.glass-floating,.glass-overlay){--glass-tint-source: var(--glass-tint-ink); --glass-tint-strength: var(--glass-tint-strength-aa); --muted-foreground: var(--foreground)} (CONFIRMED at dist/styles/glass/ladder.css:200-202) applies the FULL unconditional AA warm-ink darken (\u226424% light / 12% dark per the dark-arm) on the entire overlay band because it 'floats over an unknown surface'. Expose a per-app signal \u2014 honoring an ancestor --glass-backdrop-known: light|dark (or an app-root --glass-tint-strength the band reads) \u2014 so a consumer whose backdrop luminance is KNOWN can dial the overlay tint to the sub-perceptual floor (--glass-tint-strength-floor: 4% already exists at ladder.css:218) instead of the full AA darken, WITHOUT losing legibility. The token escape exists but is undiscoverable; co-locate a clean known-substrate declaration with the legibility logic.",
+   "why": "fourier's nav dropdown renders flat opaque grey over its known cream/dark shell (critique 08). fourier consumes glass-floating CORRECTLY \u2014 the over-darken is a glass-ui SOURCE default for the unknown-substrate case. inv-16 forbids fourier writing glass-ui; the no-!important directive forbids a local workaround. Every light/dark-substrate consumer (value.js palette menus, speedtest, words/Floridify, slides) hits the same flat-grey-over-known regression. Belongs in the ladder."
+  },
+  {
+   "name": "W-ON-GLASS-FG \u2014 radius-matched glass input focus-ring rung",
+   "what": "Provide a rounded, inset, accent-tinted focus-ring primitive for glass-ui input/search/textarea: a box-shadow ring honoring the field's own --radius (squircle-aware), whose contrast target is the COMPOSITED glass fill (the --input-on-glass rung) \u2014 replacing the browser-default square outline:auto that sits offset beyond a rounded field, AND keeping the ring legible over a translucent glass surface.",
+   "why": "fourier's paper + gallery search show a square native blue outline proud of the rounded field (critique 11); the ring is on the <input> child while the border is on the wrapper \u2192 structural offset by construction. fourier's fix is pure adoption of the glass Input/search primitive once it ships the rounded on-glass ring \u2014 no fourier-local outline hack (forbidden), a11y ring stays visible. Every glass form field across the constellation wants this."
+  },
+  {
+   "name": "glass-ui-accent-tone (RE-SCOPE of the booked ask)",
+   "what": "The contrast-floored 3-channel tonal accent (--accent-fill/--accent-edge/--accent-ink from one --tone, reusing value.js mixing+flooring) \u2014 re-scoped so the IDLE/RESTING fill (not just hover/active) is floored \u22653:1 against the page substrate. Ships as a CSS @layer utility + a useAccentTone composable.",
+   "why": "the colour-pop idle register is washed-out light-on-light on cream (critique 09 \u2014 re-diagnosed: the pills DO paint, the contrast is the defect); fourier re-derives this color-mix recipe ~57\u00d7. The floor must apply to the resting state, which the current booking implies for active/hover only. NOT in BB named scope \u2192 stays a fourier\u2192BB ask via W-CROSSREPO-ASKS with kill-date = 4.1.0 publish."
+  },
+  {
+   "name": "glass-ui-dockiconbutton-active (RE-AFFIRM + RE-SCOPE)",
+   "what": "An active?:boolean prop on DockIconButton stamping aria-pressed + data-active + a CONTRAST-FLOORED selected/idle visual register (both states clear the floor against light/dark substrates), backed by the accent-tone --accent-fill.",
+   "why": "fourier hand-rolls :class={is-active} at 7 dock sites where the class has NO backing paint, and the preset-pill idle reads as washed text (critique 09). The toggle's selected AND idle states must both clear a contrast floor \u2014 same gap as the preset pills."
+  },
+  {
+   "name": "BB-CONFIGURATOR-STAGE-MOBILE-HEIGHT + ASIDE-WIDTH-PROP",
+   "what": "(1) The Configurator's .configurator-stage cell should resolve to a nonzero flex height in the mobile flex-column layout (fourier patches via :deep(.configurator-stage){flex:1 1 0%} \u2014 an inv-30 violation). (2) Expose :aside-min-width/:aside-max-width (or --configurator-aside-width) so consumers set the aside band without overriding grid-template-columns from outside.",
+   "why": "VisualizationView overrides the Configurator's internal grid at three breakpoints and reaches inside with a :deep stage patch (the only inv-30 violations in the layout). Both fixes let fourier DELETE the overrides and make the layout fully declarative \u2014 removing the last platform-over-library breaches at M.W8."
+  }
+ ],
+ "risks": [
+  "BB timeline is INDETERMINATE: glass-ui is published at 4.0.0 (confirmed via npm view); BB's W-CLOSE/W-DECK/Batch-5-DRIVEN/Batch-7 are all SPEC. M.W1b + M.W5/W6/W7/W8/W9 (the entire design surface) + the e2e-green close-gate all hang on the 4.1.0 publish. M can advance W0/W1a/W2-W4 (deploy) + AUTHOR the design waves against BB HEAD now, but cannot CLOSE until BB publishes. Surface as the binding open decision to the user.",
+  "The value.js peer breach is REAL at source (glass-ui 4.0 peers ^0.10||^0.11, fourier pins ^0.13; npm ls shows empty/anomalous from the --no-save install). If W1a does not pin value.js down to ^0.12 the tree is npm-invalid (ELSPROBLEMS); committing the --no-save lock anomaly to package-lock.json would poison a clean npm ci in CI \u2192 false-local-green.",
+  "vue-tsc -b masks the TS2882 (latex-paper/theme) with exit 0 \u2014 a naive 'tsc passed' check is false-green. The whole bump's type-safety (vue-router 5, pinia 3, TS 6 churn) is UNVERIFIED until vue-tsc --noEmit runs. Closing M.W1 on the -b exit code would re-commit the \u00a70 anti-chronic at the type axis.",
+  "Critique 3 (desktop tabs @1440) is unconfirmed root-cause: the live capture may be a sub-lg viewport artifact OR a genuine Tailwind-v4/vite-8 lg:hidden cascade-layer regression. Needs a backend-up @1440 capture + the generated-CSS layer-order check to disambiguate before M.W8 commits the chassis-owned fix.",
+  "Critique 5 (darkened menu) alpha-vs-beta split needs a discriminating capture: if glass-ui's OWN 4.0 demo renders the dark menu as proper glass, the defect is fourier-side (the opaque AppHeader backdrop, beta) not the ladder over-darken (alpha) \u2014 book the BB ask only after the W0 both-schemes capture against the glass-ui demo confirms the source is implicated.",
+  "The 8-critique render-regression checklist (inv-38) must be a backend-UP capture \u2014 the live evidence was frontend-only (Bad-Gateway), so the migrated data views (SegmentedTabs/MetricBadge runtime, gallery populated) were never runtime-verified, only visually inspected on empty panes.",
+  "Deploy spine inv-31 sink (ntfy/Discord/Slack) + inv-28 host-only read-only PAT are operator-provisioned and currently undesignated \u2014 M.W3 lands warn-only and M.W4 cannot build page() until the operator decides. Surface both as blocking open decisions BEFORE W3/W4 execute."
+ ],
+ "prose": "M is the EXECUTION tranche; this audit hardens it against the live critique without re-planning it. The 8 user critiques root-cause cleanly and confirmed at source: TWO are glass-ui-4.0-owned (alpha \u2192 BB W-CROSSREPO-ASKS, never a fourier !important): the darkened menu is the unconditional overlay-band AA over-darken at ladder.css:200-202 firing with no translucent backdrop to refract, and the square/offset search ring is glass-ui having no radius-matched on-glass input focus-ring (fourier hand-rolls a raw <input> with the UA outline leaking). FIVE are fourier adoption gaps (beta): the glass ladder unadopted, asideSide=left not passed, the glass tab variant not chosen, the idle-fill contrast not floored, the Input/search primitive not adopted. THREE are M.W1 bump residue (gamma): the underline-tab choice (faithful-to-migration but BACKWARDS as a design call \u2014 the headline correction), the .cartoon-card shim (15 live sites verified, not 25; the dead class glass-ui removed at C.W5), and the unfinished migration (STEP-2h slider retint left the sliders silently inkless; vue-tsc never gated \u2014 the TS2882 is masked by `-b` exit 0; peers --no-save; import-paths/Actions/lint pending).\n\nThe most load-bearing correction: M.W1's `variant=\"underline\"` must be re-opened as a M.W8 DESIGN decision, not preserved as a migration constant \u2014 migration-faithful is not design-correct. The second: critique 6 is re-diagnosed from 'no idle paint' to 'washed idle CONTRAST' (the pills DO paint, light-on-light) \u2014 so the fix is the contrast-floored tonal-accent idle fill, not a missing fill.\n\nThe structural lesson the critique teaches is the FOUR new invariants. inv-33 (one source) and inv-34 (proportion) govern SOURCE and proportion but nothing bound RENDERED fidelity \u2014 which is exactly how the tree passed every migration gate while compositing opaque, square, underline, washed, and right-pinned. inv-35 (glass-fidelity), inv-36 (geometry-continuity), inv-37 (control-affordance), and inv-38 (render-verified-design-gate) close that seam: the design axis now closes on the SAME physical-gate discipline as deploy/consumer \u2014 the 8 critiques become observed-green captures, not the prose 'demonstrably shipped.' That is the \u00a70 anti-chronic (planned-but-never-physically-verified) applied to design.\n\nSequencing: W0 (charter + invariants + ledger reconcile) and W1a (framework/sibling bump finish) + W2-W4 (deploy spine, bump-INDEPENDENT) stage NOW. The design waves W5-W9 author against BB HEAD now but execute on W1b, which is validly BB-gated \u2014 glass-ui is published at 4.0.0 and the 4.1.0 cut (BB W-CLOSE) is SPEC, so the value.js ^0.13/vue-router-5 peer breaches, the corrected overlay band, and the e2e-green dock-VT unblock all wait on that one publish. M closes only at W13 against observed-green prod at HEAD, a live consumer per J endpoint, a green CI run, and the 8-critique render-regression checklist \u2014 the physical resolution of the deepest chronic."
+}
