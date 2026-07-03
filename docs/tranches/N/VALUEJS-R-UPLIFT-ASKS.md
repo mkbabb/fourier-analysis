@@ -109,6 +109,26 @@ re-derives any missing root version from the live `visualization` doc closes the
 replica-set dependency** (honoring divergence #2). If fourier judges the window acceptable
 instead, **record it as an invariant** — either disposition satisfies FN-1.
 
+### FN-5 — sequencing rider: author FN-5 BEFORE fourier M.W10 closes
+
+**FN-5 should be authored before or with fourier M.W10** (the version-shape
+transpose). M.W10 (`M.md:88`) is exactly the change FN-5 guards: it DELETEs the
+phantom within-viz version chain, makes the `/diff` `to`-param real, and
+recomputes `atom_diff` on migration — a direct touch of the version shape + the
+`atomdiff` surface the twin-currency invariant re-verifies. If M.W10 lands
+before FN-5 exists, the version-shape change ships with no guard demanding the
+value.js twin + CONFORMANCE-MATRIX be re-verified. **Until FN-5 lands, value.js's
+in-tree contract-of-record note + the shape-only fixture rows (R.W6) are the
+interim protection**: a resulting envelope mismatch would be *caught* by
+value.js's `diff.test.ts` shape rows (a loud conformance failure), not silently
+merged — but that is a backstop, not the guard. Author FN-5 as the matched pair
+of value.js's R.W6 invariant (§2 above) at or before M.W10 so the seam is
+protected at the moment the shape moves, not after.
+
+*(Anchor: fourier `M.md:88` M.W10 version-shape transpose · value.js
+`docs/tranches/R/audit/coordination/COORDINATION-ANALYSIS.md §3.2` E12/G3 —
+the FN-5-before-M.W10 ordering, said out loud.)*
+
 ### Named carry riding this charter (fourier-owned, NOT an FN item)
 
 **R8-18** — the CONFORMANCE-MATRIX corrections + the fourier-web pin bump (the fourier-owned row
