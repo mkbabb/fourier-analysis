@@ -1599,3 +1599,335 @@ not be quoted downstream as the lint floor's file count at this tree. **The figu
 `142 files`**, under the committed command, at `b3b736c`. No other §3 figure is disturbed.
 
 ---
+
+## §4 — F.W0.d: THE MANIFEST GATE, AUTHORED — and its born-RED facts, measured, dated and branch-stamped
+
+**Unit F.W0.d · 2026-09-17 · seat model `claude-opus-5[1m]`.**
+
+**Authority**: F-W0 §4 **G-6** whole, including the **R-4a** re-cut and **both** GREEN halves · **§6a
+lock 5** (*"G-6 is a PRECONDITION-CHECK, not a landing"*, conditioned on G-1's ruled branch) · §3 rows
+**8** (`fr-PaperSearchInput MISS-LC2`) · **9** (`fr-EqCoefficientsPanel FR-EQC-7`) · **10**
+(`fr-AppHeader FR-AH-33`) · **11** (`fr-GalleryFeaturedCarousel FR-GFC-7`) · **12**
+(`fr-AdminFlaggedPanel FR-AFP-55`) · **14** (`fr-EquationResult FR-EQR-30`) · **34**
+(`fr-GalleryView FR-GV-28`) · **35** (`fr-EquationResult FR-EQR-24` ≡ `fr-UserSlugBar FR-USB-22`) ·
+**§7**'s unit row · **§7b** verification artefacts · **§8**'s two excluded lines (the DECLARE+LOCK
+landing; the `cva`/`clsx`/`reka-ui` deletion). Wave record:
+`value.js/docs/tranches/X/execution/C/F-W0.md`.
+
+### 4.0 The substrate, the branch stamp, and the bound this unit does not cross
+
+Every figure below is read from the tree at ⟨cmd⟩ `git rev-parse --short HEAD` → **`edee6bf`**, branch
+`m/w1-bump-migration`, with ⟨cmd⟩ `git status --porcelain | wc -l` → **0**. Every published figure is
+**double-run** and both passes returned byte-identical output.
+
+**BRANCH STAMP — `BRANCH = LAND`.** §6a lock 5 conditions this entire gate on G-1's ruled branch, and
+G-1 ruled **LAND** under §0j.D's `OG-F1` (FREEZE-WITH-ADOPTION **and** WORKTREE-AS-BASELINE), landing
+the 27 ` M` paths at **`1193003`** (§1). **The measurements below therefore stand against the LANDED
+4.0.0 manifest**, and the ABANDON arm did not fire. The counterfactual is recorded once so no later
+seat re-derives it: had the branch been ABANDON, the operand would have been the committed **3.1.0**
+manifest at `cd26c65` — ⟨cmd⟩ `git show cd26c65:web/package.json | /usr/bin/grep -E
+'glass-ui|keyframes\.js|value\.js'` → `"@mkbabb/glass-ui": "^3.1.0"` · `"@mkbabb/keyframes.js":
+"^2.2.0"` · `"@mkbabb/value.js": "^0.10.0"` — **and the gate would have transferred to F.W1
+unchanged. No F.W0 exit criterion moves either way.**
+
+**The manifest has not moved since the LAND set.** ⟨cmd⟩ `git diff --stat 1193003 HEAD --
+web/package.json web/package-lock.json` → **empty** (0 lines). Units *b*, *e* and *c* wrote no
+manifest byte, as each of their sections records, so the bytes measured here are the bytes G-1 landed.
+
+**Writable set, hard**: this ledger (append) ·
+`value.js/docs/tranches/V/megatranche/formation/fourier/lane-frontend.md` **DATED ERRATA ADDENDUM
+ONLY**. **NOT writable, and the bound is the gate's whole shape rather than an incidental fence**:
+`web/package.json` · `web/package-lock.json` — F-W0 §2b is categorical (*"unit **d** writes no
+manifest byte and is now doc-only"*). **Zero manifest bytes were written by this seat.**
+`fourier/web/DESIGN.md` is **not a §2a row**: its contradiction is recorded here and in the
+`lane-frontend` addendum, and **no `DESIGN.md` byte was written** (§8's bounds note — ESCALATE rather
+than write outside §2a; the escalation branch did not open, because no `DESIGN.md` byte is owed for
+the correction to be complete).
+
+---
+
+### 4.1 THE MANIFEST GATE — the text, as F.W1 receives it
+
+> **THE MANIFEST GATE (G-6), AUTHORED AT X.F.W0 BY UNIT *d*, 2026-09-17, `BRANCH = LAND`.**
+>
+> **`web/package.json` and `web/package-lock.json` must describe the graph the app actually
+> evaluates.** The gate is satisfied when, and only when, **one atomic transaction** moves every
+> runtime-reached package into `dependencies`, declares and locks every REQUIRED producer peer the
+> app's import graph reaches, and removes the two rows measured dead — after which
+> **`npm ci --omit=dev` exits 0 and the entry graph evaluates without a module-eval throw.**
+>
+> **The transaction is F.W1's, not F.W0's** (R-4a). It lands as limbs of **F-W1 §4 Sequencing,
+> intra-wave step 4** — the **TWELVE-limb** roster, *cited whole and never restated here* — with
+> **FR-EQC-7's `vaul-vue` gate INSIDE it** per **F-W1 §4's cross-edge 1**. **F.W0 authors this gate
+> and measures its born-RED facts; it writes no manifest byte, and it claims no credit for the
+> landing** (the FR-GIG-5 bar). **The `npm ci --omit=dev` run is F.W1's and cannot halt this wave**
+> (§7a).
+
+#### 4.1.1 (i) THE FOUR BORN-RED FACTS — measured at the landed 4.0.0 manifest, dated, branch-stamped
+
+**FACT 1 — the two dependency blocks, as landed.** ⟨cmd⟩ `node -p` over `web/package.json`, double-run:
+**`dependencies` = 11 · `devDependencies` = 15.**
+
+| block | members, at the landed manifest (`edee6bf` ≡ `1193003`) |
+|---|---|
+| **`dependencies` (11)** | `@mkbabb/glass-ui@^4.0.0` · `@mkbabb/keyframes.js@^4.3.0` · `@mkbabb/latex-paper@^0.2.1` · `@mkbabb/pencil-boil@^0.4.1` · `@mkbabb/value.js@^0.13.0` · `@vueuse/core@^14.3.0` · `katex@^0.17.0` · `pinia@^3.0.4` · `tw-animate-css@^1.4.0` · `vue@^3.5.38` · `vue-router@^5.1.0` |
+| **`devDependencies` (15)** | `@axe-core/playwright@^4.11.3` · `@playwright/test@^1.61.0` · `@tailwindcss/postcss@^4.3.1` · **`@types/katex@^0.16.8`** · `@types/node@^25.9.3` · `@vitejs/plugin-vue@^6.0.7` · **`class-variance-authority@^0.7.1`** · **`clsx@^2.1.1`** · **`lucide-vue-next@^1.0.0`** · **`reka-ui@^2.9.10`** · **`tailwind-merge@^3.6.0`** · `tailwindcss@^4.3.1` · `typescript@^6.0.3` · `vite@^8.0.16` · `vue-tsc@^3.3.5` |
+
+**The fold witness's NAME SETS reproduce EXACT** — all 11 dependency names and all 15 devDependency
+names are the ones F-W0 §4 G-6 enumerates, in the same membership, with no addition and no omission.
+**Only the VERSIONS moved, and that is the LAND branch's content**, not a divergence: the M.W1a bump
+G-1 landed is what carries `glass-ui ^3.1.0 → ^4.0.0`, `keyframes.js ^2.2.0 → ^4.3.0`,
+`value.js ^0.10.0 → ^0.13.0` and the toolchain rows. **The five bolded runtime devDeps are FACT 3's
+subject; `@types/katex` is row 14's.**
+
+**FACT 2 — `vaul-vue`, `@lucide/vue` and `embla-carousel-vue` are in NEITHER block.** Three separate
+membership probes over the landed manifest, each returning `false` for both blocks, double-run:
+
+| package | in `dependencies`? | in `devDependencies`? | on disk in `web/node_modules`? | glass-ui 4.0.0 peer class |
+|---|---|---|---|---|
+| `vaul-vue` | **false** | **false** | **present, 0.4.1** | **REQUIRED** |
+| `@lucide/vue` | **false** | **false** | **present, 1.20.0** | **REQUIRED** (`^1.16.0`) |
+| `embla-carousel-vue` | **false** | **false** | **present, 8.6.0** | **OPTIONAL** (`peerDependenciesMeta`) |
+
+The peer classes are **cited, not re-derived**: §2.3.3 publishes the 14-peer / 7-optional / 7-required
+start state, and this gate consumes it.
+
+**FACT 3 — the lock holds ZERO entries for the two required peers, and marks all five runtime
+packages `"dev": true`.** ⟨cmd⟩ over `web/package-lock.json` (`lockfileVersion` 3, **195** package
+entries), double-run:
+
+| probe | reading |
+|---|---|
+| `node_modules/vaul-vue` entries | **0** |
+| `node_modules/@lucide/vue` entries | **0** |
+| `node_modules/embla-carousel-vue` entries | **0** |
+| `class-variance-authority` | present, `0.7.1`, **`"dev": true`** |
+| `clsx` | present, `2.1.1`, **`"dev": true`** |
+| `lucide-vue-next` | present, `1.0.0`, **`"dev": true`** |
+| `reka-ui` | present, `2.9.10`, **`"dev": true`** |
+| `tailwind-merge` | present, `3.6.0`, **`"dev": true`** |
+
+The zero-entry probes are stated in the spec's own grep idiom as well, and agree:
+⟨cmd⟩ `/usr/bin/grep -c '"node_modules/vaul-vue"' package-lock.json` → **0**;
+⟨cmd⟩ `/usr/bin/grep -c '"node_modules/@lucide/vue"' package-lock.json` → **0**.
+
+**FACT 4 — therefore `npm ci --omit=dev` FAILS TODAY.** All five packages the shipped source and the
+installed producer actually evaluate are `"dev": true` in the lock, so an `--omit=dev` install does
+not write them; three of the five are **REQUIRED glass-ui peers** (§2.2.3: `reka-ui` **40**
+dist-importers, `class-variance-authority` **11**, `clsx` **2** via `dist/cn-DJXf4yaB.js`), and
+`lucide-vue-next` is named by vite's production `vendor-ui` chunk at `vite.config.ts:52`. **This
+sentence is a derivation from FACT 3, not a transcript**: the `npm ci --omit=dev` RUN is F.W1's
+(R-4a), and **no such transcript is F.W0's** (§7b, verbatim). The proof obligation F.W0 carries is the
+measurement; the proof obligation F.W1 carries is the exit code.
+
+**The chain that makes FACT 4 a failure rather than a warning, measured at this seat, double-run** —
+the `button` chunk is the app's most-used surface (**35** of its `@mkbabb/glass-ui/button` subpath
+imports) and it reaches all three required peers in two hops:
+
+- `dist/button-BNDWhAZb.js:1` → `import { t as e } from "./cn-DJXf4yaB.js";`, then `:3` →
+  `import { Primitive as l } from "reka-ui";` and `:4` → `import { cva as u } from
+  "class-variance-authority";`
+- `dist/cn-DJXf4yaB.js:1` → `import { clsx as e } from "clsx";`
+
+**That is the button-chunk → `cn` → clsx chain, read at the bytes rather than asserted** — and it is
+the reason §4.1.4's correction is a gate clause and not a tidy-up.
+
+#### 4.1.2 (ii) THE PRESCRIBED TRANSACTION — named here in full, landed by F.W1
+
+**Six limbs. They land together, inside F-W1 §4 Sequencing intra-wave step 4's TWELVE-limb roster, or
+not at all** — an `--omit=dev` install that acquires four of the five runtime packages still throws.
+
+| # | limb | warrant (measured) | owner |
+|---|---|---|---|
+| **T-1** | **Move the five runtime packages from `devDependencies` to `dependencies`**: `class-variance-authority` · `clsx` · `lucide-vue-next` · `reka-ui` · `tailwind-merge` **minus T-2's deletion** ⇒ the four that move are `cva` · `clsx` · `lucide-vue-next` · `reka-ui` | FACT 3 + FACT 4; §2.2.3's dist-importer denominators | **F.W1** |
+| **T-2** | **Delete `tailwind-merge` — ALONE.** | **0** `src/` sites **and 0** glass-ui 4.0.0 `dist/` importers; its only surviving mentions are doc comments — `dist/utils/cn.d.ts`'s rationale prose (*"We replace twMerge with a hand-rolled deduplicator…"*), `README.md`, and two CSS comment sites. Doc-comment-only, exactly C-5's narrowing | **F.W1** |
+| **T-3** | **`vaul-vue` declared + locked** — **OR** the barrel→subpath retirement landed (rows 34/35) so **no edge needs it**. §4.1.3 measures which arm is available today. | FACT 2 + FACT 3; `dist/glass-ui.js:60` is a **static** `vaul-vue` import (⟨cmd⟩ `/usr/bin/grep -n 'vaul-vue' dist/glass-ui.js` → `60:`) reached through **7** root-barrel edges | **F.W1** (`FR-EQC-7` fires INSIDE the transaction, per F-W1 §4 cross-edge 1) |
+| **T-4** | **`@lucide/vue` declared AND present in the lock** | FACT 2 + FACT 3: a **REQUIRED** peer (`^1.16.0`) filed nowhere, on disk at 1.20.0, with **0** lock entries — *"a required peer filed NOWHERE"* (row 8). Reached through `dist/createLucideIcon-DydS2qgk.js` from **7** of the app's 20 live subpaths (§4.2) | **F.W1** |
+| **T-5** | **Remove the dead `@types/katex` row** | `@types/katex@^0.16.8` is inert against `katex@0.17.0`, which **self-declares** `types/katex.d.ts`, under `tsconfig.json`'s `moduleResolution: "bundler"` — all three re-measured at the settled tree (row 14, `FR-EQR-30`) | **F.W1** |
+| **T-6** | **Nothing else.** The transaction is closed at five packages plus the `@types/katex` row. | §4.1.5 | — |
+
+**`@lucide/vue` and `lucide-vue-next` are two packages, not one spelling of one**, and T-1 and T-4
+are therefore not redundant: `lucide-vue-next@^1.0.0` is the app's **own** direct import (**35** `src/`
+files) and moves under T-1; `@lucide/vue@^1.16.0` is **glass-ui's required peer**, reached only
+through the producer's chunk, and is declared under T-4. **The `@lucide/vue` RENAME of the app's 35
+sites is NOT in this transaction** — §8 excludes it to F.W1 as a current debt riding the uplift
+(row 10), and this gate neither pulls it forward nor blocks on it.
+
+#### 4.1.3 T-3's OR-arm, MEASURED — the retirement is INCOMPLETE at glass-ui 4.0.0
+
+Row 9 offers two cures and F.W1 elects between them. **This seat elects nothing; it measures which
+arm is available**, because an alternative that does not resolve is not an alternative.
+
+**The 7 root-barrel edges, enumerated quote-agnostically** — ⟨cmd⟩ `/usr/bin/grep -rnE "from
+['\"]@mkbabb/glass-ui['\"]" src` → **7 occurrences over 7 distinct files** (double-run; the
+quote-agnostic form is load-bearing — a double-quote-only probe returns **6** and drops
+`CollapsibleSection.vue`, which uses single quotes, and that file is one of the two row 9 names):
+
+| # | edge | symbol imported | subpath that provides it | pulls `vaul-vue`? |
+|---|---|---|---|---|
+| 1 | `src/composables/useMorphConfig.ts:9` | `useClipboard` | **`./dom`** (live in the 80-key map) | **0** |
+| 2 | `src/components/visualization/gallery/UserSlugBar.vue:5` | `useClipboard` | **`./dom`** | **0** |
+| 3 | `src/components/equation/EquationResult.vue:4` | `useClipboard` | **`./dom`** | **0** |
+| 4 | `src/components/ui/CollapsibleSection.vue:2` | `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` | **`./collapsible`** | **0** |
+| 5 | `src/router/index.ts:2` | `supportsViewTransitions` | **`./motion-core`** | **0** |
+| 6 | `src/components/visualization/gallery/AdminUserList.vue:4` | `Checkbox` | **NONE** | — |
+| 7 | `src/components/visualization/gallery/GalleryCard.vue:5` | `Checkbox` | **NONE** | — |
+
+**The finding: five of the seven edges retire cleanly; two cannot.** `Checkbox` is exported from the
+root barrel in both runtime and types (`dist/glass-ui.js`; `dist/index.d.ts:7` =
+`export * from "./components/ui/checkbox";`) **but from no subpath**: a scan of **all 75 `.js` targets
+among the 80 export keys** finds `Checkbox` in **none** of them, and **`./checkbox` is not an export
+key.** ⟨An earlier reading of this seat's own probe said `Checkbox` was absent from the root types
+too; that was a literal-grep artefact against a star re-export, **caught and corrected before
+publication**, and it is recorded rather than smoothed — the star re-export is why it resolves.⟩
+
+**Consequence, stated as a sizing input and not as an election**: the barrel→subpath retirement, at
+**glass-ui 4.0.0 as installed**, **cannot retire all seven edges**, and **any** surviving root-barrel
+edge keeps `dist/glass-ui.js:60`'s static `vaul-vue` import in the graph. **So T-3's OR-arm is
+incomplete today, and the declare+lock arm is the only arm that closes on the consumer side alone.**
+The arm becomes complete the day the producer publishes a `./checkbox` (or equivalent) subpath — a
+**producer-side ask**, which rides the glass-ui BH relay (§6b) and is **not** a frontend hack (FR-COB-8
+S-4). **This seat SENDS nothing**: G-3 gates the sends and unit *b* holds that seat; this row is a
+record for F.W1 and for whoever next writes the relay.
+
+**Corroborating measurement, double-run**: of the app's **20** live subpath keys, **none** reaches
+`vaul-vue`; a transitive closure over every export target finds `vaul-vue` in exactly **one** entry —
+the root barrel `.`. **That is the whole of row 9's mechanism, re-proved at the adopted pin.**
+
+#### 4.1.4 (iii) THE DEAD-DEVDEPS ERRATA ADDENDUM — landed in this wave's act, and where
+
+**`cva` / `clsx` / `reka-ui` DELETION IS FORBIDDEN** (F-W0 §8, verbatim: *"**FORBIDDEN** — live
+glass-ui runtime peers on the button-chunk→`cn`→clsx chain. Only `tailwind-merge` is genuinely
+dead"*). The contradiction it corrects is `lane-frontend.md:70` / `web/DESIGN.md:33`, both of which
+book the three for deletion as "dead devDeps".
+
+**The correction is DISCHARGED, and it is cited at its home rather than re-booked** — the dedupe law
+binds this seat as it binds every other. The addendum is **`lane-frontend.md` §LF9-1/LF9-2/LF9-3**,
+dated **2026-09-17**, landed by unit *e* in this same wave and this same act-family under §6a lock 5,
+carrying the four-row liveness table (`reka-ui` 40 / `cva` 11 / `clsx` 2 / `tailwind-merge` 0
+dist-importers), the **MOVE-not-DELETE** verdict for the three, the sustained deletion of
+`tailwind-merge` alone, and the `DESIGN.md:32 → :33` coordinate correction at all three inheriting
+sites. **A second copy of that table would be a second operand, which is the defect class this
+programme exists to kill.**
+
+**What this unit adds beside it, because it is G-6's and not G-12's**, is a dated addendum-beside at
+the same file: the **prescribed transaction whole** (T-1…T-6), the **three-package NEITHER-BLOCK fact
+and the lock zeros**, and the **measured incompleteness of T-3's OR-arm** (§4.1.3) — none of which
+LF9-1 carries, and all of which F.W1 needs to size the transaction rather than merely to avoid
+deleting a live peer. **No byte of `lane-frontend.md` above the addendum line is edited; no
+`web/DESIGN.md` byte is written by this wave at all**, and that bound is stated in both places so a
+later seat does not read the silence as an omission.
+
+**The standing rule this gate binds, in one line**: *a peer's liveness is a property of the INSTALLED
+PRODUCER's import graph, never of the consumer's `src/`* — the denominator, not the integer (§2.2.3,
+LF9-10).
+
+#### 4.1.5 What is NOT in the transaction, and why — `embla-carousel-vue`
+
+**`embla-carousel-vue` is NOT in G-6's set, and its absence is a ruling rather than an oversight.**
+At glass-ui 4.0.0 it is an **OPTIONAL** peer (`peerDependenciesMeta`; §2.3.3's 7-optional list), so
+**it cannot fail `npm ci --omit=dev`** — the exact condition the transaction is all-or-nothing about.
+Folding an optional peer into an all-or-nothing transaction with two required peers **over-binds** it,
+and declaring it here would declare a dependency with **zero importers** (row 11's own *"do NOT pull
+the adoption forward"* forbids the importer). Its declaration is a **one-line convenience limb riding
+the F.W3 `.d` carousel adoption**, per `F-W3.md` §X.1-v4 — **cited, not re-derived**. It remains a
+**G-6 MEASURED FACT** (FACT 2's third row) and is **not a G-6 OPERAND**.
+
+**Two further exclusions, named so the roster is closed**: the **`@lucide/vue` rename** of the app's
+35 `lucide-vue-next` sites (§8 → F.W1, current debt) and **rows 34/35's import-hygiene arms** as
+*cleanups* — row 34's two-path `Visualization` import (`GalleryView.vue:10` via `@/lib/types` vs
+`gallery.ts:4` via the `@/lib/api` passthrough, the passthrough being the removable side) and row
+35's root-barrel `useClipboard` sites. **They enter G-6 only as T-3's OR-arm**, which is what
+§4.1.3 measures; as hygiene they are F.W1's, and row 35's **bundle-weight arm is killed in the
+registry's own record and must not be re-argued** (`vendor-ui` is keyed on the package ROOT at
+`vite.config.ts:52`, so the manualChunks split is indifferent to leaf-vs-barrel discipline).
+
+---
+
+### 4.2 Addendum-beside — the one inherited enumeration that does not reproduce at 4.0.0 (dated 2026-09-17)
+
+**E-3: §2.3.3 is NOT patched, and neither is F-W0 §3 row 8.** Both stand exactly as written. This is
+the correction of record for one clause inside them.
+
+**The clause**: row 8, repeated at §2.3.3's `@lucide/vue` row — *"`createLucideIcon` is reached from
+dock/select/configurator/dropdown-menu/collapsible/tabs"*.
+
+**Re-measured at the adopted pin**, by transitive closure over the installed
+`@mkbabb/glass-ui@4.0.0` export map (every `from "./…"` edge followed to fixpoint), double-run,
+byte-identical:
+
+| claim | re-measured | verdict |
+|---|---|---|
+| `dock` reaches `createLucideIcon` | yes | **EXACT** |
+| `select` | yes | **EXACT** |
+| `configurator` | yes | **EXACT** |
+| `dropdown-menu` | yes | **EXACT** |
+| `tabs` | yes | **EXACT** |
+| **`collapsible`** | **NO** | **DIVERGENT — `./collapsible`'s closure does not contain `createLucideIcon-DydS2qgk.js` at 4.0.0** |
+| *(unnamed in the clause)* `dialog`, `toast` | **yes, both** | **two reaching subpaths the enumeration omits** |
+
+**The app's live reaching set is therefore SEVEN, not six, and its membership differs at two
+names**: `configurator` · `dialog` · `dock` · `dropdown-menu` · `select` · `tabs` · `toast` — the
+intersection of the **19** export keys whose closure reaches the chunk with the **20** subpath keys
+the app imports live.
+
+**Gate impact: NONE, and that is a measurement rather than a reassurance.** Row 8's conclusion is that
+**a faithful `npm ci` yields module-eval throws**, and it needs only that *some* app-imported subpath
+reaches the chunk while the lock carries **0** `@lucide/vue` entries. Seven do. The finding is
+strictly stronger than the clause it corrects, so **T-4 is unmoved**. What is corrected is an
+**enumeration**, and an enumeration that names a member it does not have is a defect at whatever
+altitude it sits — particularly one later waves will grep for. **`collapsible` joins the
+forbidden-figure register for this clause**: it may not be quoted downstream as a `@lucide/vue`
+reach-site at glass-ui 4.0.0.
+
+⟨Why this is an addendum and not a patch: `fr-PaperSearchInput.md` is E-1 immutable, F-W0 is a dated
+spec under E-3, and §2.3.3 is another unit's banked writing in this same ledger. **The correction
+lands beside all three and rewrites none of them.**⟩
+
+---
+
+### 4.3 This unit's gate reading, and what it routes
+
+| gate | BEFORE (wave open) | AFTER (this unit's close) |
+|---|---|---|
+| **G-6** | **RED** — *"No gate text exists (`SUBSTRATE-LEDGER.md` absent)"*; the four born-RED facts unmeasured at this wave and unstamped by any branch | **GREEN (F.W0's half).** The gate exists as written text (§4.1); the four born-RED facts are measured, dated 2026-09-17, double-run, and **stamped `BRANCH = LAND`** (§4.1.1); the prescribed transaction is named in full for F.W1 (§4.1.2, T-1…T-6); the dead-devDeps errata addendum is discharged in this wave's act and cited at its home, with G-6's own half added beside (§4.1.4); `embla` is excluded with its reason (§4.1.5). **Zero manifest bytes written.** |
+
+**The split is stated so no reader mistakes it** — F-W0 §4 G-6 publishes **two** GREEN halves and this
+seat turns **one**. **F.W1's half** — the transaction landed, `npm ci --omit=dev` exiting 0, the entry
+graph evaluating without a module-eval throw — **is neither green nor red at F.W0, and this unit
+claims no credit for it** (FR-GIG-5). **The `npm ci --omit=dev` run is F.W1's and could not have
+halted this wave** (§7a); none of the three §7a diagnostic-loop triggers fired, and the
+branch-conditioned measurement set was produced on its **first** pass.
+
+**Verification artefact (§7b)**: *"the G-6 gate text + its branch-conditioned measurements (no
+`npm ci --omit=dev` transcript is F.W0's)"* — that artefact **is §4.1 of this ledger**, stored beside
+the wave's other artefacts in the wave's single durable document, as §2a prescribes.
+
+**Routing — nothing dropped:**
+
+| item | routed to |
+|---|---|
+| The DECLARE+LOCK landing (T-1…T-5) | **F.W1** — limbs of F-W1 §4 Sequencing intra-wave step 4, with `FR-EQC-7`'s `vaul-vue` gate INSIDE it (cross-edge 1) |
+| T-3's election (declare+lock **vs** barrel→subpath retirement) | **F.W1** — §4.1.3 measures the arms; F.W0 elects neither |
+| The missing `./checkbox` subpath (what would complete the OR-arm) | **the glass-ui BH relay**, producer-side; recorded here, **not sent by this seat** (G-3 gates the sends; unit *b* holds the seat) |
+| The `@lucide/vue` rename, 35 sites | **F.W1** (§8, current debt riding the uplift) |
+| `embla-carousel-vue`'s declaration | **F.W3 `.d`**, riding the carousel adoption (`F-W3.md` §X.1-v4, cited) |
+| Rows 34/35 as import hygiene | **F.W1**; row 35's bundle-weight arm is **dead in the registry's own record** and must not be re-argued |
+| `web/DESIGN.md:33`'s own byte | **not this wave's** — `DESIGN.md` is not a §2a row; the correction lives in the ledger and the `lane-frontend` addendum |
+
+**Escalations: none.** No §7a trigger fired. The one bounds question this unit carried — *"if a
+`DESIGN.md` byte is genuinely owed, ESCALATE rather than write outside §2a"* — **was answered by
+measurement rather than by judgement**: the contradiction is fully corrected by the two documents this
+unit and unit *e* may lawfully write, so no `DESIGN.md` byte is owed and the escalation branch never
+opened.
+
+**Law compliance**: **no `package.json` / `package-lock.json` byte written** (§2b, categorical) · **no
+byte under `web/src/`** · **no byte under `registry/adjudicated/`** (E-1) · **no in-place patch of
+`lane-frontend.md`, `CENSUS-2026-08-03.md`, §2.3.3 or F-W0** (E-3 — every correction is a dated
+addendum-beside) · **no `git stash`, no `reset --hard`, no `git add -A`, no force-push** · **pathspec
+commits only**; `value.js/scripts/dev/dev.sh` **never touched and never staged** (§6a lock 9) ·
+`../glass-ui` **READ-ONLY** — read for peer classes and import graphs, written never · **every
+published figure double-run at the settled bytes**, and the one figure this seat got wrong on a first
+reading is disclosed at §4.1.3 rather than silently corrected.
+
+---
