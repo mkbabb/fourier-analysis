@@ -1534,3 +1534,68 @@ double-run at the settled bytes**, and the one figure this seat could not make a
 (16/12) is **published as a divergence rather than conformed to**.
 
 ---
+
+### 3.6 Addendum-beside — the one published §3 figure that does not reproduce (dated 2026-09-17)
+
+**SERVED MODEL: claude-opus-5[1m]** · second F.W0.c seat · re-verification pass over §3's own bytes,
+run at `b3b736c` with ⟨cmd⟩ `git status --porcelain | wc -l` → **0**.
+
+**E-3: §3.1.4 and §3.5 are NOT patched.** They stand exactly as the first seat wrote them. This
+section is beside them, and it is the correction of record for the one figure below.
+
+#### What was re-measured, and what held
+
+Every load-bearing §3 figure was re-run at the settled bytes, on the pinned toolchain, double-run:
+
+| §3 claim | published | re-measured 2026-09-17 | verdict |
+|---|---|---|---|
+| `compilerOptions` / `include` entries | 16 / 7 | 16 / 7 | **EXACT** |
+| `noUnusedLocals` · `noUnusedParameters` | set | `true` · `true` | **EXACT** |
+| `noUncheckedIndexedAccess` | DEFERRED (absent) | absent from the 16 | **EXACT** |
+| lint floor result | `18 warnings, 0 errors`, exit 0 | `Found 18 warnings and 0 errors.`, exit **0** | **EXACT** |
+| lint floor **file count** | **`141 files`** | **`142 files`** | **DIVERGENT — corrected below** |
+| widened `vue-tsc -b --force` | 20 diagnostics | **20** | **EXACT** |
+| unused-code first-run yield | 18 findings / 14 files | **18 / 14** (18 `TS6133`/`TS6196` lines over 14 distinct column-1 paths) | **EXACT** |
+| the seat | `pass 1 · fail 0`, exit 0 | `pass 1 · fail 0`, exit **0** | **EXACT** |
+| seat not collected by Playwright | 69 tests / 8 files, 0 hits | **`Total: 69 tests in 8 files`**, `grep -c figure-dimensions` → **0** | **EXACT** |
+| Keystone 5 armed, `/equation` | `test(...)`, not `fixme` | `visualization-ux.spec.ts:247` = `test("keystone: /equation is a11y-clean", …)` | **EXACT** |
+| `inert` at the adopted dist | 0 | **0**; installed `4.0.0`, declared `^4.0.0` | **EXACT** |
+| manifest bytes in the commit | none | ⟨cmd⟩ `git show b3b736c --name-only --format= \| /usr/bin/grep -c 'package.json\|package-lock.json'` → **0** | **EXACT** |
+
+#### The divergence, and its cause PROVED rather than guessed
+
+⟨cmd⟩ `npx --yes oxlint@1.42.0 src e2e vite.config.ts playwright.config.ts` — the exact command §3.1.4
+publishes — returns, double-run byte-identical at the settled bytes:
+**`Finished in 25ms on 142 files with 90 rules`**. §3.1.4 and §3.5 both print **`141 files`**.
+
+The cause is not inferred. It is isolated by a controlled falsifier, one variable moved:
+
+⟨cmd⟩ `npx --yes oxlint@1.42.0 --ignore-pattern 'e2e/unit/**' src e2e vite.config.ts playwright.config.ts`
+→ **`Found 18 warnings and 0 errors.` … `on 141 files`**.
+
+**`141` is the linted set WITHOUT the seat file.** Corroborated by census: ⟨cmd⟩
+`find src e2e -type f \( -name '*.ts' -o -name '*.vue' -o -name '*.js' -o -name '*.tsx' -o -name '*.mjs' -o -name '*.cjs' \) | wc -l`
+→ **140**, plus the two named configs = **142**; less `e2e/unit/figure-dimensions.unit.ts` = **141**.
+
+So the floor's first run was taken **before the seat file landed**, and the post-commit re-run
+(§3's act 12) re-stated only `0 errors / 18 warnings` — never the file count. A figure measured at one
+tree was published against another. **This is the WRITE-THEN-MEASURE failure mode, on this seat's own
+bytes**, and §3's closing sentence — *"every published figure double-run at the settled bytes"* — is
+false for exactly one figure, which is the sentence's own counter-example. Recorded, not smoothed.
+
+#### Gate impact: NONE, and why that is a measurement rather than a reassurance
+
+G-7's GREEN criterion is a floor that is **runnable, wired, and exits 0** — `exit 0` and `0 errors`
+both reproduce exactly. The file count is context, not criterion. Further, the two runs above return
+**the identical `18 warnings / 0 errors`** with and without the seat file, which measures the thing
+that would otherwise be assumed: **the seat file is lint-clean, so its omission from the count could
+not have hidden a finding.** The divergence is a bookkeeping defect in a published integer, not a
+gate flip, and it is stated as such only because the falsifier says so.
+
+#### Register
+
+**`141 files` joins the forbidden-figure register beside `16 findings / 12 files` (§3.1.2).** It may
+not be quoted downstream as the lint floor's file count at this tree. **The figure of record is
+`142 files`**, under the committed command, at `b3b736c`. No other §3 figure is disturbed.
+
+---
