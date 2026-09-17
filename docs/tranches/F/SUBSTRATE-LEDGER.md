@@ -231,6 +231,68 @@ a figure is read from the tree, never predicted into it).
 
 ### 1.8 AFTER — the settled reading
 
-*(written by this same unit immediately after the LAND-set commit; see the dated block appended below)*
+**Read from the settled bytes, 2026-09-17, unit F.W0.a, after the LAND-set commit. Double-run; both
+passes agreed.**
+
+**The two commits of this minute:**
+
+| # | hash | meaning |
+|---|---|---|
+| 1 | **`3079a92`** | `docs(F.W0): substrate ledger + 28-path land-or-abandon minute` — §1.0–§1.7 of this file |
+| 2 | **`1193003`** | `chore(F.W0): LAND the 27 M.W1a working-tree paths (G-1, OG-F1 worktree-as-baseline)` — the LAND set, **27 files**, both named exceptions inside it |
+
+**AFTER porcelain** — ⟨cmd⟩ `git status --porcelain` → **1 line** (double-run: 1, 1):
+
+```
+?? docs/tranches/N/valuejs-inbound-2026-07-27-facility19-migration-table.md
+```
+
+**The settled tree, measured:**
+
+- ⟨cmd⟩ `git rev-parse --short HEAD` → **`1193003`** (was `cd26c65`).
+- ⟨cmd⟩ `git diff --name-only HEAD | /usr/bin/grep -c .` → **0** — **no tracked path diverges from HEAD.**
+  The audited substrate and the committed substrate are now the same bytes; this is the fact §1.1 promised
+  and the whole point of the wave's goal criterion.
+- ⟨cmd⟩ `git show HEAD:web/package.json | /usr/bin/grep -E 'glass-ui|keyframes|value\.js'` →
+  `"@mkbabb/glass-ui": "^4.0.0",` · `"@mkbabb/keyframes.js": "^4.3.0",` · `"@mkbabb/value.js": "^0.13.0",`.
+  **The 4.0.0 premise is now held by a commit.** (At `cd26c65` the same command returned `^3.1.0` / `^2.2.0`
+  / `^0.10.0`.)
+- ⟨cmd⟩ `git show 1193003 --name-only --format= | /usr/bin/grep -c .` → **27**.
+- Both named exceptions verified **inside** commit `1193003` at the bytes — ⟨cmd⟩
+  `git show 1193003 -- <the two paths> | /usr/bin/grep -E '^[+-] '` →
+  `-    <div class="eq-toggle glass-subtle">` / `+    <div class="eq-toggle glass-wash">` and
+  `-            class="paper-search-results glass-elevated"` / `+            class="paper-search-results glass-floating"`.
+  **Neither was lost. Rows 24 and 25 landed.**
+
+### 1.9 G-1's reading at this unit's close — stated honestly, not rounded up
+
+G-1's GREEN has two limbs (F-W0 §4 G-1). This unit closes with one **complete** and one **at residue 1**:
+
+| limb | state at close | evidence |
+|---|---|---|
+| *"every one of the 28 paths carries a named disposition (LAND / ABANDON / LAND-WITH-CORRECTION) in `SUBSTRATE-LEDGER.md`"* | **COMPLETE — 28 of 28** | §1.4's table, one row per §2a-i path, every row carrying a disposition and a reason |
+| *"`git status --porcelain` is empty **or** its residue is exactly the ruled-ABANDON set"* | **RESIDUE = 1** | the ruled-ABANDON set is **∅** (§1.5), and the residue is the single `??` O-14 letter — ruled **LAND**, act routed to **G-2** |
+
+**So G-1 is NOT green at this unit's close, and this ledger says so rather than claiming it.** The residue is
+one path, its disposition is ruled, and its landing is **G-2's single act at unit *b***, the next unit in the
+wave's strictly-serial order (`a → b → e → c → d → f`, §2b). **G-1 turns GREEN at unit *b*'s
+`chore(F.W0): commit the O-14 letter` and not before.** Unit *a* did not perform that act, because §2a
+assigns the letter's `commit` access and §7b's commit plan assigns the commit itself to unit *b*, and a seat
+that absorbs a neighbouring unit's declared gate act to make its own gate read green is doing the thing this
+programme exists to stop.
+
+**Nothing in this minute is blocked on that residue.** Every path unit *b*, *c*, *d*, *e* and *f* needs is
+**RELEASED** as of `1193003` (§2b: *"unit a holds all 28 paths… and must release them before b..f"*), and
+the two G-10 lift sites carried in the ` M` set — `EditorControlsDock.vue` and `ConvergenceTimeline.vue` —
+are now committed, so unit *f* lifts against a base a commit holds.
+
+**Downstream stamps this minute authorizes:**
+
+- **G-6 (unit *d*) is stamped `BRANCH = LAND`** — its born-RED facts are measured against the **landed 4.0.0
+  manifest** at `1193003`, not the superseded 3.1.0 one. The ABANDON arm of §6a lock 5 **did not fire**.
+- **§6a lock 3's first edge is satisfied**: G-1's tree is settled, so G-11 may re-resolve anchors against a
+  tree a commit holds, and only then may unit *f* touch a line number.
+- **§6a lock 10 is satisfied**: G-15(a)'s tree-touching leg may now run on the settled tree. **No stash
+  artefact exists, because no stash was ever taken.**
 
 ---
