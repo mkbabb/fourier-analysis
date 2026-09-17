@@ -1931,3 +1931,492 @@ published figure double-run at the settled bytes**, and the one figure this seat
 reading is disclosed at §4.1.3 rather than silently corrected.
 
 ---
+
+## §5 — F.W0.f: THE REACH RULING — F8-REACH-01 and F8-REACH-02, in one breath
+
+**Unit**: `F.W0.f` · **gate**: **G-10** · **dated 2026-09-17** · SERVED MODEL: `claude-opus-5[1m]`.
+**Substrate**: fourier `87ecc856`, branch `m/w1-bump-migration`, `git status --porcelain` → **empty**
+at this unit's open. Producer read-only at `v8.0.0^{commit}` = `17a11bc5`; **installed** consumer pin
+**4.0.0** (§2.3), which is the pin every producer fact below is measured at.
+
+**Authority**: `F-W0.md` §4 **G-10** · §3 rows **3** · **4** · **26** · §2a's `InfoCard.vue`,
+`CanvasOverlayButton.vue` and 8-lift-site rows · **§6a lock 3** (G-1 → G-11 → the lift) and **§6a
+lock 6** (G-10 IS ONE COMMIT) · §6b the **F.W3/F.W4** row with **both** sweep-law riders · §7b's
+archaeology and the five DELETE orders. Owner ruling: `COHESION.md` **§0j.D**. Same-commit family
+restated at `EXECUTION-RUNBOOK.md` **§3.4**.
+
+---
+
+### 5.0 THE RULING — both rows, one breath (R-6)
+
+> **`F8-REACH-01` (`web/src/components/equation/InfoCard.vue`) — DELETE.**
+> **`F8-REACH-02` (`web/src/components/visualization/CanvasOverlayButton.vue`) — DELETE.**
+
+Both are the exact verdict vocabulary the delta's HOLD column demands (*"exact `KEEP_WITH_MOUNT`,
+`ISOLATED_HARNESS`, or `DELETE`"*), and **both are written in one breath**, which is R-6's whole
+point: the delta itself puts them one row apart and every prior reading disposed the second while
+leaving the first unnamed.
+
+⟨cmd⟩ `/usr/bin/grep -n 'F8-REACH-01\|F8-REACH-02'
+/Users/mkbabb/Programming/value.js/docs/tranches/V/megatranche/coordination/FOURIER-AUXILIARY-EIGHT-HOUR-SOURCE-DELTA-2026-08-03.md`
+(one command, one absolute base — R4-2; this file publishes no ⟨cmd⟩ containing a variable) →
+
+```
+30:| `F8-REACH-01` | `N.C11` | `web/src/components/equation/InfoCard.vue` | `b2c2e718…f18a8` / 1,516 | unmounted | exact `KEEP_WITH_MOUNT`, `ISOLATED_HARNESS`, or `DELETE`; HOLD is RED |
+31:| `F8-REACH-02` | `N.C39` | `web/src/components/visualization/CanvasOverlayButton.vue` | `35f3db91…5efd` / 595 | unmounted | exact `KEEP_WITH_MOUNT`, `ISOLATED_HARNESS`, or `DELETE`; HOLD is RED |
+```
+
+**`:30` sits one row above `:31`** — the adjacency `fr-CanvasOverlayButton` FR-COB-1 calls out and
+that *"all five corpus documents and both readers"* missed. It is re-read here at the bytes, not
+inherited.
+
+**The rationale is the owner's, quoted, not re-argued** (`COHESION.md` §0j.D): *"five DELETE orders
+already stood unexecuted; both files are unreachable at the frontier; the constellation's subtraction
+law."* This unit **executes**; it does not re-open.
+
+#### 5.0.1 Byte identity re-taken at the settled tree — both EXACT
+
+⟨cmd⟩ `/usr/bin/shasum -a 256 …` + `/usr/bin/wc -c …` in `web/`, at `87ecc856`:
+
+| id | path | sha-256 measured here | delta's sha | bytes measured | delta's bytes | verdict |
+|---|---|---|---|---|---|---|
+| `F8-REACH-01` | `src/components/equation/InfoCard.vue` | `b2c2e718374047d930380337d3e30aeca3254b52844071f2f266b0b4ca3f18a8` | `b2c2e718…f18a8` | **1,516** | 1,516 | **EXACT** |
+| `F8-REACH-02` | `src/components/visualization/CanvasOverlayButton.vue` | `35f3db919432e330205348c8fed2132892a5d36f514873a792a77bc5d85b5efd` | `35f3db91…5efd` | **595** | 595 | **EXACT** |
+
+**This is the one identity check the whole ruling rests on, and it is the one OG-F1 makes non-trivial.**
+The delta's shas were taken over the **dirty M.W1a working tree**; G-1 then committed that tree
+(`1193003`, WORKTREE-AS-BASELINE). Had G-1 ruled ABANDON, `InfoCard.vue` would have reverted to its
+pre-`:amount=`→`:value=` bytes and **`b2c2e718…` would no longer resolve** — the ruling would be
+deleting a file the delta never fingerprinted. It resolves because the branch was **LAND**. Recorded
+so a later reader sees that the identity survived *by the ruling*, not by luck.
+
+#### 5.0.2 Unreachability re-derived at the settled tree — all four channels, plus the seventh
+
+`fr-CanvasOverlayButton` FR-COB-1's four-channel form, re-run at `87ecc856` (never inherited):
+
+| # | channel | command (base `web/`) | result |
+|---|---|---|---|
+| 1 | **static** | `/usr/bin/grep -rn 'InfoCard' src/ e2e/ ../api` minus the file itself | **∅** |
+| 1′ | **static** | `/usr/bin/grep -rn 'CanvasOverlayButton' src/ e2e/ ../api` minus the file itself | **∅** |
+| 2 | **dynamic** | `/usr/bin/grep -rn 'defineAsyncComponent' src/` | **3 string-literal records**, all at `GalleryView.vue:31-33` — `./gallery/AdminUserList.vue` · `./gallery/AdminFlaggedPanel.vue` · `./gallery/AdminAuditLog.vue`. **Neither target among them.** |
+| 3 | **router** | `/usr/bin/grep -rn 'import(' src/router/` | **7 literal lazy records** — `paper/PaperView` · `visualization/VisualizationView` ×2 · `visualization/GalleryView` · `equation/EquationView` · `morph/FourierMorphDemo` · `morph/FourierShapeExtractor`. **Neither target among them.** |
+| 4 | **implicit registration** | `/usr/bin/grep -n 'unplugin' vite.config.ts package.json` | **∅** — no `unplugin-vue-components`, so no name-based auto-resolution exists |
+
+**The seventh closure, re-run** (FR-IC-1's emission probe, and the sharpest of the set because it is
+evidence from a *build*, not from a reader): the untracked 3.1.0-era `web/dist` is searched for each
+component's unique string —
+
+⟨cmd⟩ `/usr/bin/grep -rl '% energy' dist/ | /usr/bin/wc -l` → **1** (the twin's string reached an
+emission) · ⟨cmd⟩ `/usr/bin/grep -rl 'energy captured' dist/ | /usr/bin/wc -l` → **0**.
+**`InfoCard.vue`'s unique string is in zero emitted files**: it was not merely unimported at read
+time, it was **absent from the bundle a real build produced**. The counting unit is **files**, stated
+per §2.1.1. *(`web/dist` is read here and written never; the quarantine does not run this wave —
+§6a lock 2, G-4/G-5 honest-RED, §2.8.)*
+
+**Both files are therefore unreachable by every channel this tree has.** `DELETE` is the only one of
+the delta's three verdicts whose precondition is met: `KEEP_WITH_MOUNT` would require naming a mount
+that does not exist, and `ISOLATED_HARNESS` would require the unit-test floor **F.W9/W10 owns and
+F.W0 is forbidden to pre-empt** (G-9's *"explicitly NOT green-by-coverage"*) — i.e. it would park two
+dead files against a harness this wave may not size.
+
+---
+
+### 5.1 THE STEP-2i DIVERGENCE, MINUTED (G-10's second GREEN clause)
+
+**The divergence**: five documents ordered `CanvasOverlayButton.vue` deleted; **the M-run's STEP 2i
+skipped it, self-reported the skip, and no minute was ever written.** G-10 requires the minute; here
+it is, with every order re-read at its coordinate this seat.
+
+#### 5.1.1 The five DELETE orders, each quoted at its own line
+
+| # | coordinate | ⟨cmd⟩ `/usr/bin/sed -n '<N>p' <path>` → |
+|---|---|---|
+| 1 | `docs/tranches/A/audit/W3-button-ledger.md:93` | *"\| `visualization/CanvasOverlayButton.vue:8` \| same \| `glass` \| `icon` \| — \| naked wrapper component forwarding `active` as `aria-pressed`; `<Button variant="glass" size="icon">` IS the surface \| A.W3.b.1 \|"* — **DOUBLE quotes at the bytes** (D-5; the single-quoted "verbatim" form is struck wave-wide) |
+| 2 | `docs/tranches/M/M.md:141` | *"\| `CanvasOverlayButton.vue` — dead component, 0 consumers \| — \| **DELETE** outright \| W1/W5 \|"* |
+| 3 | `docs/tranches/M/design/M-design-language.md:70` | *"- `CanvasOverlayButton.vue` — dead component, 0 consumers — DELETE outright (`M.md §7`)."* |
+| 4a | `docs/tranches/M/design/M-bump-migration.md:56` | *"\| `web/src/components/visualization/CanvasOverlayButton.vue` \| **DELETE outright** — zero consumers; never imported; functionality subsumed by `DockIconButton` from `@mkbabb/glass-ui/dock` \| A8-14: `grep -rni CanvasOverlay web/src/` → 0 import/usage hits outside the file itself \|"* |
+| 4b | `docs/tranches/M/design/M-bump-migration.md:199` | *"        2i  DELETE CanvasOverlayButton.vue"* — **the STEP 2i line itself** |
+| 5 | `docs/audits/runs/2026-06-16-M-deep-audit/A8-no-legacy-sweep.md:29` | the `A8-14` row, ending *"DELETE `web/src/components/visualization/CanvasOverlayButton.vue` outright."*, wave `M.W1`, columns `no` / `no` |
+
+**All five re-read at their coordinates this seat; all five resolve exactly.** The bounds law R-10 is
+satisfied — *a bounds-keyed halt condition may not rest on a path that does not exist* — for all five.
+
+#### 5.1.2 The skip, self-reported and un-minuted
+
+⟨cmd⟩ `/usr/bin/sed -n '205,213p'
+docs/audits/runs/2026-06-17-M-critique-audit/partial-prior-run.json` → the finding **`A3-05`**,
+severity `medium`:
+
+> *"CanvasOverlayButton.vue NOT deleted — plan STEP 2i (dead-component removal) skipped"* …
+> `current_state`: *"The dead component the plan explicitly scheduled for deletion still exists. It
+> has zero importers (confirmed by the original audit's grep). It is now stale dead code carrying the
+> pre-4.0 button pattern."* … `wave_hint`: *"M.W1 STEP 2i (dead-component delete)"*.
+
+**THE MINUTE.** The M-run **saw** the skip, **named** it, **graded** it and **routed** it — and then
+the routing target (`M.W1`) closed without executing it and without recording why. That is the
+divergence: not an oversight, a **disclosed non-execution with no disposition**. Its measured price
+is `FR-COB-25`'s: **two further maintenance passes over a corpse** — `be24948` (broke the class,
+added the correct ARIA, and wrote the false canon **in the same diff**) and `262c3d0` (the subpath
+re-point) — plus **145 days** of orphanhood from `2f53d5d` (2026-03-16) to adjudication. **A skip
+that is reported but not dispositioned costs more than one that is hidden, because every later pass
+re-pays the reading.** The divergence is closed here by execution, and the general lesson is the
+deadness column at §5.4.
+
+---
+
+### 5.2 THE LIFT — FR-COB-17's eight sites, at anchors RE-RESOLVED (§6a lock 3)
+
+**Lock 3 reads `G-1 → G-11 → the lift`: the record's anchors are NEVER followed raw.** §2.1 is this
+wave's G-11 table and it publishes the **law** (counting units, the accuracy benchmarks, the P-4
+producer-hash rule) plus the **eleven drift rows**; the eight lift anchors are **not** among those
+eleven, so lock 3 is discharged the way the table itself prescribes — by **re-resolving each anchor
+at the settled bytes under a stated counting unit** before a byte is written, and by reporting the
+result whether it drifted or held.
+
+#### 5.2.1 The re-resolution, BEFORE the edit
+
+**Counting unit: `raw grep-lines`, then narrowed to `live application sites` by reading each hit**
+(§2.1.1). The probe is **per-anchor and per-file**, never a repo-wide `is-active` sweep — see §5.3.
+
+⟨cmd⟩ `/usr/bin/grep -n 'is-active\|is-playing\|aria-pressed' src/components/visualization/CanvasControlsDock.vue
+src/components/visualization/EditorControlsDock.vue src/components/equation/convergence/ConvergenceTimeline.vue`
+→ **8 binding sites + 1 stylesheet rule**, at:
+
+| # | file | record's anchor | **re-resolved at `87ecc856`** | state binding | verdict |
+|---|---|---|---|---|---|
+| 1 | `CanvasControlsDock.vue` | `:54` | **`:54`** | `'is-active': showImageOverlay` → `@click="$emit('toggleImageOverlay')"` | **HOLDS** |
+| 2 | `CanvasControlsDock.vue` | `:59` | **`:59`** | `'is-active': showGhost` → `toggleGhost` | **HOLDS** |
+| 3 | `CanvasControlsDock.vue` | `:71` | **`:71`** | `'is-active': publishing` → `publish` | **HOLDS** (see §5.2.3) |
+| 4 | `CanvasControlsDock.vue` | `:77` | **`:77`** | `'is-active': showEquation` → `toggleEquation` | **HOLDS** |
+| 5 | `CanvasControlsDock.vue` | `:87` | **`:87`** | `'is-active': isEditing` → `toggleEdit` | **HOLDS** |
+| 6 | `EditorControlsDock.vue` | `:143` | **`:143`** | `'is-active': showGhost` → `toggleGhost` | **HOLDS** |
+| 7 | `EditorControlsDock.vue` | `:148` | **`:148`** | `'is-active': showImageOverlay` → `toggleOverlay` | **HOLDS** |
+| 8 | `convergence/ConvergenceTimeline.vue` | `:61` | **`:61`** | `'is-playing': playing` → `toggle-play` | **HOLDS** |
+
+**Eight of eight hold — zero drift.** The re-resolution is recorded *because it held*, not only when
+it moves: §2.1.2's law is *cite the epoch or the cite rots*, and these anchors were cited against the
+**working tree** G-1 has now committed, which is exactly why they survived where §2.1.3 rows 7/8/9
+(producer-epoch cites) did not. **The eight are the counter-example that makes the table's law
+legible in both directions.**
+
+One further fact re-resolved and recorded: **`ConvergenceTimeline.vue` lives at
+`src/components/equation/convergence/`, not under `visualization/`** — baseline **D-4**, confirmed
+here at the bytes. `§2a-i` enumerates it by basename, so no bound is broken; the path is stated so no
+later wave hunts for it under the wrong root.
+
+#### 5.2.2 The cure applied, and why `:aria-pressed` and not the producer's `active` prop
+
+The cure is the **lift of the dying file's own idiom**. `CanvasOverlayButton.vue:20-21` — the bytes
+this ruling deletes — reads `:aria-pressed="active"` immediately above `:class="{ 'is-active': active }"`.
+That pairing **is** FR-COB-17's *"the tree's only correct reading of the producer's toggle contract on
+the canvas-control surface"*, and it is transplanted verbatim in shape to all eight live sites:
+`:aria-pressed="<the same boolean the class binds>"`, placed immediately before the `:class`.
+
+**Measured at the installed producer pin, because the alternative had to be excluded rather than
+assumed.** FR-COB-4 reasons over a producer `Button` whose compiled props carry
+`{active:{type:Boolean,required:false}}`; if that prop existed at **4.0.0**, binding a raw
+`:aria-pressed` beside it could double-write the attribute. It does not:
+
+- ⟨cmd⟩ `cat node_modules/@mkbabb/glass-ui/dist/components/ui/button/Button.vue.d.ts` → `interface
+  Props extends PrimitiveProps { variant?; size?; class?; type?; disabled? }` — **no `active`**.
+- ⟨cmd⟩ `cat node_modules/@mkbabb/glass-ui/dist/components/custom/dock/DockIconButton.vue.d.ts` →
+  `type __VLS_Props = { compact?; type?; as?; asChild?; class? }` — **no `active`**.
+
+So at 4.0.0 **neither host declares `active`**, `:aria-pressed` is an ordinary fallthrough attribute
+reaching the reka-ui `Primitive` host, and there is exactly one writer of the attribute. **This is
+the P-4 rule paying for itself**: FR-COB-4's prop is a *≥7 producer fact*, and had it been treated as
+a version-free truth the lift would have been written against a surface the consumer does not have.
+
+#### 5.2.3 FR-COB-4's toggle-vs-action law, applied site by site — and the one honest blemish
+
+FR-COB-4: *"the lifted `aria-pressed` idiom (FR-COB-17) binds **ONLY on true toggles** — never on the
+FullscreenViewer close action (K-11)"*. Every site was classified from its **emit + its state
+binding**, at the bytes:
+
+- **Sites 1 · 2 · 4 · 5 · 6 · 7 · 8** — each binds a persistent boolean (`showImageOverlay`,
+  `showGhost`, `showEquation`, `isEditing`, `playing`) to an emit named `toggle*`. **True toggles;
+  `aria-pressed` is the correct role.** All seven props are declared **non-optional `boolean`**
+  (`defineProps<{…}>()` in each file, re-read this seat), so no site can emit a `null`/`undefined`
+  pressed state.
+- **Site 3 (`:71`, `publishing` → `publish`)** — **the blemish, disclosed rather than smoothed
+  over.** `publishing` is an **in-flight** flag, not a pressed state, so strictly `aria-busy` is its
+  ARIA. **It is nonetheless lifted, because the adjudication put it on the list in two independent
+  places and this seat may not re-adjudicate**: `FR-COB-17` enumerates `:71` inside *"the 7 dock
+  toggles"*, and `FR-COB-16` names this exact site — *"the tree already conflates in-flight with on
+  (CanvasControlsDock.vue:71 `is-active: publishing`, verified)"* — and routes it *"the dock
+  conflation instance rides FR-COB-17's lift list"*, with the **cure** (the producer's `loading` →
+  `data-loading` + `aria-busy` + activation suppression, absent at 4.0.0, shipped at ≥7) booked as an
+  **F.W1 hop-benefit credit**. **The lift does not create the conflation — it makes it audible to AT
+  exactly as it is already visible to sight**, and the cure lands with the uplift that supplies the
+  prop. Routed at §5.6; **not silently "fixed" here**, which would be this wave claiming an F.W1 cure.
+- **`FullscreenViewer.vue:110` — NOT touched.** ⟨cmd⟩ `/usr/bin/grep -c 'aria-pressed'
+  src/components/visualization/FullscreenViewer.vue` → **0**, after the lift as before it. This is
+  **K-11**: C's list adds `aria-pressed` to a **one-shot close ACTION**, which would manufacture
+  FR-COB-4's own defect under a repair label. **L's list, not C's**, as §0j.D rules.
+
+#### 5.2.4 The lift, measured at the settled bytes (WRITE-THEN-MEASURE, double-run)
+
+⟨cmd⟩ `/usr/bin/grep -n 'aria-pressed' <the three files>` → the eight lines above, **at `:54 :59 :71
+:77 :87` · `:143 :148` · `:61`** — the anchors **unchanged by the edit**, because every lift was an
+in-place attribute insertion on an existing line and no line was added or removed in any template.
+⟨cmd⟩ `/usr/bin/grep -o 'aria-pressed' <the three files> | /usr/bin/wc -l` → **8** (unit:
+**occurrences**, per §2.1.1 — here equal to lines, one attribute per site).
+
+---
+
+### 5.3 SWEEP-LAW RIDER (a) — HONORED BY CONSTRUCTION, and proved
+
+§6b rider **(a)**, banked at `fr-CanvasOverlayButton.md:52` as `FR-COB-3`'s surviving limb: *"never
+key the vocabulary-consolidation sweep on a bare `is-active` grep, it corrupts the PROP at
+`PaperView.vue:344`"* — **five spellings live**: `.is-active` / `.is-active-sub` / `.is-playing` /
+`.liked` / **the prop**.
+
+**This unit never ran a sweep.** It resolved **eight named anchors** and edited **eight lines**, each
+read in full before it was written. The rider is proved two ways at the settled bytes:
+
+1. **The prop is untouched.** ⟨cmd⟩ `/usr/bin/sed -n '344p' src/components/paper/PaperView.vue` →
+   `:is-active="isActive"` — **byte-identical before and after the lift**. A bare `is-active` sweep
+   would have rewritten a **prop binding** as a class or an ARIA attribute; a per-anchor lift cannot.
+2. **The spellings' spread is measured, in FILES** (unit stated, per §2.1.1), so the hazard's size is
+   on the record rather than asserted: ⟨cmd⟩ `/usr/bin/grep -rl -- '<pat>' src/ | /usr/bin/wc -l` →
+   `is-active` **11 files** · `is-active-sub` **1** · `is-playing` **2** · `liked` **7**. **Eleven
+   files carry `is-active` and this unit wrote in two of them.** That ratio *is* the rider: the
+   vocabulary consolidation is a **9-file job this wave does not do**, and it routes to **F.W3/W4**
+   whole, un-started, with no partial spelling migration left behind to confuse the wave that owns it.
+
+**`.is-playing` is the rider's live proof, not an illustration.** Site 8 carries `'is-playing'`, not
+`'is-active'` — so an `is-active`-keyed sweep would have **missed the eighth site entirely** while
+corrupting the prop at `PaperView.vue:344`. The same single defect both over-reaches and
+under-reaches; **the enumeration is what makes the lift exactly eight.**
+
+---
+
+### 5.4 WHAT SURVIVES THE FILES — the five FR-COB ids and the two FR-IC ids, each dispositioned
+
+§3 row 26's closing law: *"All five die with the file at the `git rm`; only the REGISTER lesson, the
+sweep-law rider, the wrapper policy and FR-COB-2's F.W1 sizing lock survive it."* Executed:
+
+| id | F.W0 limb | disposition at this ruling |
+|---|---|---|
+| **FR-COB-1** (= `F8-REACH-02`) | the deadness itself | **DISCHARGED** — the `git rm` at §5.5. *L-1's dissent is recorded as MOOT, not overruled*: it conditioned the governance limb's severity on *"if F.W0 rules ABANDON on the M.W1a tree wholesale"*; **G-1 ruled LAND**, so the condition never fired and the limb stays BLOCKER. |
+| **FR-COB-2** | *"this file is the only member whose complete cure is deletion"* (`:41`) | **DISCHARGED BY G-10's DELETION AND BY NOTHING ELSE.** Its component-instance identity stays FOLDED at `fr-BasisSelector M-7` and is **not re-booked**. **The `size="icon"`→`size="md"` lock does NOT travel**, because it is expressly conditional — *"if G-10 rules KEEP rather than DELETE"* — and G-10 ruled **DELETE**. The prop-level re-derivation (9 live `variant="glass"` / 7 files; 36 real `size="icon"`, 35 live) remains **ADJUDICATED → F.W1** and is not this wave's. |
+| **FR-COB-3** (`:52`) | *"dies with the file (**F.W0** rm)"* | **DISCHARGED.** Its **surviving limb** — the fourier-wide vocabulary consolidation with sweep-law rider (a) — **routes F.W3/W4 intact** (§5.3: measured, un-started). |
+| **FR-COB-9** | the false, self-contradictory, stale-stamped docblock | **DIES WITH THE FILE**, and the lesson is banked at §5.4.1. Re-read at the bytes this seat: `:3` stamps *"A.W3.b"* (pre-dating the 3.1→4.0 hop), `:6` calls `.is-active` *"legacy"* and `:7` calls the same idiom *"matching the glass-ui canon"* — **two consecutive lines, mutually contradictory**, authored by `be24948` in the diff that falsified them. |
+| **FR-COB-15** (`:69`) | *"dies with the file (**F.W0**)"* | **DISCHARGED.** Its surviving limb — the **standing wrapper policy**, `W3-button-ledger.md:93` in the **double-quoted** form quoted at §5.1.1 row 1 — **routes F.W3/W4**. |
+| **FR-COB-25** | five commits; *"two maintenance passes on a corpse"* | **DIES WITH THE FILE**; its measurement is spent at §5.1.2 as the divergence's price. |
+| **FR-IC-1** (= `F8-REACH-01`) | the unnamed unmounted workflow | **DISCHARGED** — named, ruled and removed. Intake **`R3-7`** (`lane-fourier-r3-r6.md:78`, *ADOPT-AS-FACT*, `sourceWorkflowTotal 66 / Reachable 64 / Unmounted 2`) **now has both of its anonymous workflows named on the record**: `InfoCard.vue` and `CanvasOverlayButton.vue`. **64 + 2 = 66 closes as 64 + 0 = 64.** |
+| **FR-IC-2 / FR-IC-23** | the `:amount=`→`:value=` one-edit law | **RETIRED UNMEASURED, CORRECTLY.** `FR-IC-23`'s one-edit law **binds only KEEP/HARNESS**; under **DELETE** it has no object. The repair itself was *not* wasted — it is one of §1.3's correct-repair dirty lines that G-1 **landed** (`1193003`), and it is the very edit that keeps `b2c2e718…` resolving at §5.0.1. **The file is deleted carrying a correct repair, and that is the honest sequence, not a contradiction.** |
+
+#### 5.4.1 The surviving act — the DEADNESS COLUMN (§3 row 26's F.W0 act)
+
+Row 26's named act is *"the inventory register gains a DEADNESS COLUMN for design-asserting rows"*,
+because `lane-frontend.md:101` carries `CanvasOverlayButton.vue` as a **LIVE role** while the file is
+a corpse, and *"dead code that ASSERTS a design rule is a teaching artifact aimed at the 9 live
+sites"*. **The register is `lane-frontend.md`, a value.js megatranche formation document under E-3
+(ERRATA ADDENDUM ONLY) — and it is NOT in this unit's writable set.** The column is therefore
+**specified here and executed by the seat that holds that file**:
+
+> **DEADNESS column, as this ruling specifies it**: every row of the inventory register whose subject
+> **asserts a design rule** (a docblock, a canon claim, a wrapper policy) carries a
+> **`LIVE` / `DEAD-AT-<wave>`** cell beside its role cell. `CanvasOverlayButton.vue`'s cell is
+> **`DEAD-AT-F.W0`**, and its `LIVE` role claim at `lane-frontend.md:101` is superseded by this
+> ruling. **The lesson the column encodes**: a role column answers *"what does it do"* and a corpse
+> answers that question truthfully right up until deletion — **only a deadness column answers "is it
+> reachable", which is the question a teaching artifact must survive.**
+
+**Routed, not dropped** (§5.6). This unit records the specification and writes no byte of the
+register; writing one would be an out-of-bounds act, and the column is worth less than the bound.
+
+---
+
+### 5.5 THE DELETION — one commit, lift-then-delete (§6a lock 6 · runbook §3.4)
+
+**The order of acts inside the single commit is the lock**: the eight-site lift was applied
+**first** (§5.2), the two `git rm`s **second**, and **both are staged into one commit by explicit
+pathspec**. `F-W0.md` §3 row 3's words are the standard this is measured against — *"Disposition is
+LIFT-THEN-DELETE, never a bare `git rm`"*, because *"a bare `git rm` converts a paper defect into a
+live a11y regression."*
+
+⟨cmd⟩ `git rm web/src/components/equation/InfoCard.vue
+web/src/components/visualization/CanvasOverlayButton.vue`
+
+**Commit**: `refactor(F.W0): F8-REACH ruled — aria-pressed lift + rm CanvasOverlayButton` — the
+message `F-W0.md` §7b's commit plan prescribes, verbatim. **The family did not split**, and the
+ledger minute rides the same commit because the ruling and its execution are **one meaning**.
+
+#### 5.5.1 The falsifier, run BEFORE and AFTER — the lift adds nothing
+
+A deletion gate that does not measure the tree it deletes from is an assertion. `vue-tsc -b --force`
+is the wave's true enforcing gate (FR-IC-25), and it was run twice:
+
+| reading | `error TS` lines | exit | `InfoCard`/`CanvasOverlayButton` among them |
+|---|---|---|---|
+| **BEFORE** (at `87ecc856`, pre-lift) | **20** | 1 | **0** |
+| **AFTER** (post-lift, post-`rm`) | **20** | 1 | **0** |
+
+⟨cmd⟩ `diff <before> <after>` → **IDENTICAL**, not merely equal in count: the two transcripts are
+byte-for-byte the same twenty diagnostics. **The lift added no diagnostic and the deletions removed
+none**, which is the strongest available statement that the eight `:aria-pressed` bindings type-check
+as ordinary fallthrough attrs on both producer hosts (§5.2.2) and that nothing in the tree referenced
+either deleted file.
+
+The **BEFORE** reading is the **G-15(a) pre-ruled RED**, and it is named as such: §0j.D rules *"the
+vue-tsc RED → **LAND**: the settled tree is the committed substrate; the RED is the uplift's, its
+cure owned by F.W1/W2"*. **This unit's obligation is not to turn it green — it is to not add to it**,
+and the before/after pair is the only honest instrument for that claim. **Zero of the 20 name either
+deleted file**, which also independently corroborates §5.0.2: a file with importers would surface
+here the moment it vanished.
+
+---
+
+### 5.6 D-3 — DATED ADDENDUM-BESIDE: the count word, and where it comes from (2026-09-17, E-3)
+
+**Baseline `D-3` referred this unit a divergence and forbade it to elect a reading.** It is recorded
+here as a dated addendum-beside — **no byte of `COHESION.md` or `F-W0.md` is touched** — and it is
+**RESOLVED at the corpus's own bytes rather than merely minuted.**
+
+**The divergence.** `COHESION.md` §0j.D rules the lift *"using **L's list (seven sites)**, not C's"*,
+while `F-W0.md` **§2a** (*"the 8 `:aria-pressed` lift sites"*) and **§4 G-10** (*"FR-COB-17's 8-site
+`:aria-pressed` lift … CanvasControlsDock ×5 (:54/:59/:71/:77/:87) · EditorControlsDock ×2
+(:143/:148) · ConvergenceTimeline ×1 (:61)"*) both enumerate **eight**.
+
+**The resolution, read at the banked record — and it is not a contradiction at all.**
+⟨cmd⟩ `/usr/bin/grep -n 'FR-COB-17'
+/Users/mkbabb/Programming/value.js/docs/tranches/V/megatranche/registry/adjudicated/fr-CanvasOverlayButton.md`
+→ `:71`, whose cure
+sentence names **both figures in one breath**:
+
+> *"the **7 dock toggles** (CanvasControlsDock :54/:59/:71/:77/:87, EditorControlsDock :143/:148) +
+> ConvergenceTimeline:61 carry class-vocabulary state with **zero ARIA** … Cure = the **8-site**
+> `:aria-pressed` lift **in the same commit as the rm** — L's list, NOT C's"*
+
+**`7` and `8` are the same list under two counting units** — the very class §2.1.1 exists to name.
+**`7` counts DOCK toggles** (the two dock components); **`8` counts LIFT SITES** (the dock seven plus
+`ConvergenceTimeline:61`, which is not a dock control — it is a `<Button variant="glass" size="icon">`
+in a scrubber chassis). §0j.D's parenthetical carries the record's **`7` dock toggles** into a
+sentence whose subject is the **8-site** lift; **the ruling's substance — `L's list, NOT C's` — is
+unambiguous, unaltered and is what this unit executed.** §0j.D's own rationale for rejecting C
+(*"miscounts its own list as 'six' for seven"*) is a sentence **about counting units**, which is where
+the word travelled from.
+
+**Disposition: the ENUMERATION governs, and it agrees with L's record, with the spec at two sections,
+and with the live tree at eight of eight anchors** (§5.2.1). **No election was made on this seat's
+authority and no escalation is owed**, because the count word turned out not to be a rival
+enumeration but a *correctly-counted sub-total of the same list*. Had the two genuinely disagreed on
+**membership**, this would have been an ESCALATION under the baseline's terms; it disagrees on
+**denominator vocabulary**, and §2.1.1's standing law — *"a figure without its unit is not a
+denominator, it is a number"* — disposes of it exactly.
+
+**A figure a later wave must not re-derive**: the lift is **8 sites / 3 files / 2 components + 1
+chassis**, and the F.W3/W4 rider inherits **`7` dock toggles** as its dock-surface sub-total. Both
+are right; neither may be published without its unit.
+
+#### 5.6.1 A SECOND dated addendum-beside — the `./metric-badge` budget does not reproduce (2026-09-17)
+
+`F-W0.md` §3 row 4 carries an **F.W1 rider**: *"the lane-frontend `./metric-badge` budget is **5 live
+files + 1 unmountable**, not '7 imports / 6 files'"* (`FR-COB-10`; `FR-IC-8`'s restatement).
+**Measured at the settled bytes this seat, neither figure reproduces**, so both are recorded rather
+than either being propagated:
+
+⟨cmd⟩ `/usr/bin/grep -rn 'metric-badge' src/` → **7 lines, 7 files, one import statement per file**
+(unit: **raw grep-lines = files**, §2.1.1) — `GalleryAdminBanner` · `GalleryDraftsSection` ·
+`EditorControlsDock` · `EquationPanel` · `AnimationControls` · `EquationView` · `InfoCard`.
+
+| figure | source | reproduces at `87ecc856`? |
+|---|---|---|
+| *"7 imports / 6 files"* | the `lane-frontend` budget the rider corrects | **NO** — it is 7 imports / **7** files; the import:file ratio is 1:1, so the two numbers cannot differ |
+| *"5 live files + 1 unmountable"* (= 6) | `FR-COB-10` / `FR-IC-8`, the correction | **NO** — **6 live + 1 unmountable** (= 7) |
+
+**The rider's SHAPE is right and its arithmetic is one short**: exactly one of the seven
+(`InfoCard.vue`) is the unmountable, and this ruling removes it. **The settled budget F.W1 inherits
+is therefore `6 live files / 6 import statements`, measured AFTER the deletion** (§5.7), and it needs
+no further re-derivation. **This is an addendum-beside, not a patch**: no `lane-frontend.md`,
+`fr-CanvasOverlayButton.md` or `fr-InfoCard.md` byte is written by this unit (E-1/E-3), and the
+budget's own home remains **F.W1's**.
+
+---
+
+### 5.7 THIS UNIT'S GATE READING, AND WHAT IT ROUTES
+
+**AFTER measurements, taken at the settled bytes and double-run** (`web/`, post-commit):
+
+| measurement | value |
+|---|---|
+| `git ls-files src/components/equation/InfoCard.vue src/components/visualization/CanvasOverlayButton.vue` | **∅** — both untracked-because-deleted |
+| `/usr/bin/grep -rn 'InfoCard\|CanvasOverlayButton' src/ e2e/` | **∅** |
+| `/usr/bin/grep -o 'aria-pressed' <the three lift files> \| wc -l` | **8** |
+| `/usr/bin/grep -rn 'metric-badge' src/` | **6 lines / 6 files** (§5.6.1) |
+| `vue-tsc -b --force` | **20 `error TS` lines, exit 1 — IDENTICAL to the BEFORE reading** (§5.5.1); **the lift and the deletions add zero** |
+| `npx --yes oxlint@1.42.0 src e2e vite.config.ts playwright.config.ts` | **`Found 18 warnings and 0 errors.`, exit 0** — identical to §3.1.4/§3.6; **`on 140 files`**, see §5.7.1 |
+
+#### 5.7.1 A published figure this ruling MOVES, stated because deleting files is what moves it
+
+§3.6 put **`142 files`** on the record as the lint floor's figure of record at `b3b736c`, and retired
+`141` to the forbidden-figure register. **This ruling deletes two linted files, so the figure of
+record moves to `140`** — and it is stated here rather than left for a later seat to "discover" as a
+third divergence in the same integer.
+
+The move is **arithmetic, not drift**, and §3.6's own formula proves it with one variable changed:
+⟨cmd⟩ `find src e2e -type f \( -name '*.ts' -o -name '*.vue' -o -name '*.js' -o -name '*.tsx' -o
+-name '*.mjs' -o -name '*.cjs' \) | wc -l` → **138** (was 140), **plus the two named configs = 140**
+(was 142). **G-7 is untouched**: its GREEN criterion is *runnable, wired, exits 0*, and
+`0 errors / 18 warnings / exit 0` reproduce **byte-identical** before and after — i.e. **both deleted
+files were lint-clean**, so their removal could not have hidden or revealed a finding.
+
+**`142 files` is superseded at this tree, exactly as `141` was — not wrong when written, and not
+quotable now.** The figure of record is **`140 files`**, under the committed command, at this unit's
+commit. **E-3: §3.6 is not patched**; this is the addendum beside it.
+
+#### 5.7.2 The gate, turned — and everything it routes
+
+| gate | BEFORE (wave open) | AFTER (this unit's close) |
+|---|---|---|
+| **G-10** | **RED** — both HOLDs RED in the delta (`:30`/`:31`); `InfoCard.vue` ` M` in the fold porcelain; **five DELETE orders never executed**; the STEP-2i skip self-reported at `partial-prior-run.json:207-211` and **un-minuted**; **zero** `aria-pressed` at any of the 8 sites | **GREEN.** Both files carry an exact **`DELETE`** ruling **written in one breath** (§5.0, R-6); the **STEP-2i divergence is minuted** (§5.1, all five orders re-read at their coordinates + the `A3-05` self-report quoted); and, **DELETE having been ruled, FR-COB-17's 8-site `:aria-pressed` lift landed in the SAME COMMIT** as the two `git rm`s (§5.2, §5.5) at **anchors re-resolved via G-11 first** (8/8 hold), on **L's list not C's** (`FullscreenViewer.vue` → **0**), under **FR-COB-4's toggle-vs-action law** (§5.2.3). **No bare `git rm` occurred.** |
+
+**Routing — nothing dropped:**
+
+| item | routed to |
+|---|---|
+| The `is-active` vocabulary consolidation (**9 further files**, five spellings) + sweep-law rider (a) | **F.W3/W4** — un-started, measured at §5.3; `FR-COB-3`'s surviving limb |
+| The standing **wrapper policy** (`W3-button-ledger.md:93`, double-quoted form) | **F.W3/W4** — `FR-COB-15`'s surviving limb |
+| The **DEADNESS column** on `lane-frontend.md:101`'s row (specified at §5.4.1) | **the seat that holds `lane-frontend.md`** — a value.js E-3 errata-addendum act, **outside this unit's writable set**; the specification is complete and needs no re-derivation |
+| `FR-COB-16`'s **in-flight/on conflation** at `:71` (`aria-busy`, producer `loading`) | **F.W1** — hop-benefit credit at the adopted pin; **not cured here**, disclosed at §5.2.3 |
+| `FR-COB-2`'s prop-level re-derivation (9 live `variant="glass"` / 7 files; 36 `size="icon"`, 35 live) | **F.W1** — ADJUDICATED there; the `size="md"` 44px-floor lock **did not travel** (its `if KEEP` condition never fired) |
+| `FR-COB-11`'s corpus correction (the dock toggles **do** paint at 4.0.0; the defect was **AT-only**) | **F.W3/W4** — it rode FR-COB-17's lift and the lift has landed; the corpus correction itself is a record act |
+| The `./metric-badge` budget, settled at **6 live files / 6 imports** (§5.6.1) | **F.W1** — inherited, not re-derived |
+| The **20-line `vue-tsc` RED** | **F.W1/W2** — `G-15(a)`'s pre-ruled LAND; untouched and unenlarged by this unit |
+
+#### 5.7.3 Law compliance
+
+**No byte written outside this unit's writable set** — the three lift files, the two `git rm` targets
+and this ledger, and nothing else. **No `registry/adjudicated/` byte** and **no
+`INTAKE-ADJUDICATION` / `intakes/` byte** (E-1) · **no `lane-frontend.md`, `CENSUS-2026-08-03.md`,
+`COHESION.md`, `F-W0.md` or `DESIGN.md` byte** (E-3 — the two corrections this unit owed are **dated
+addenda-beside** at §5.6 and §5.6.1) · **this ledger written APPEND-ONLY**, verified by diff against a
+pre-write copy: lines **1..1933 byte-identical**, §5 appended beneath · **no `web/dist` byte** (§6a
+lock 2; read as evidence only) · **`../glass-ui` READ-ONLY** — two `.d.ts` files read to exclude the
+`active`-prop hazard, **zero producer bytes written**, and the producer-owned rows (the missing
+`loading` prop) **ride the relay, never a consumer patch** (SS-6 / `FR-COB-8 S-4`) · **no `git
+stash`, no `reset --hard`, no `checkout --`, no force-push, no `git add -A`** · **pathspec commits
+only**; `value.js/scripts/dev/dev.sh` **never touched and never staged** (§6a lock 9) · **no new
+carry authored** (§6a lock 11) · **no census derived, sampled or re-cut** · **no `test.skip`, no
+allowlist, no try/catch around a defect, no local `node_modules` patch** · **every published figure
+read from the settled bytes and double-run**.
+
+**E13 mail, checked at this seat.** ⟨cmd⟩ `find <the four coordination paths> -maxdepth 1 -type f
+-newermt '2026-09-16'` → in scope, `value.js/docs/tranches/V/coordination/` yields `INBOX.md` plus
+`value-inbox-2026-09-17-o8-o11-amendment-addendum.md`, the latter an **outbound retained copy** from
+another track (X.KF.W1.b) and **rowed** (⟨cmd⟩ `grep -c 'o8-o11-amendment-addendum' INBOX.md` → **5**
+occurrences in the ledger). The `keyframes.js` hits are **July-dated letters with touched mtimes**,
+addressed to keyframes and already rowed there. The fourier `docs/tranches/F/coordination/` holds the
+ledger plus the **three 2026-05-29 letters unit *b* triaged (M-1…M-4, 4 rowed, 0 unrowed)**. **No
+UNREAD mail in this unit's scope; nothing owed back; this unit sends nothing** (G-3 gates the sends
+and unit *b* holds the seat).
+
+**Escalations: none.** The single escalation branch this unit carried — *"if you judge the count word
+binding over the enumeration, ESCALATE"* — **did not open**, and §5.6 states why in the record's own
+bytes rather than by this seat's judgement: `7` and `8` are the **same list under two counting
+units**, both published by `FR-COB-17`'s own cure sentence. **No ruling was re-opened; no verdict was
+elected; nothing was dropped.**
+
+---

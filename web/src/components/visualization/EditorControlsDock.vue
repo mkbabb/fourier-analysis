@@ -140,12 +140,12 @@ const magnetModel = computed<number[]>({
                 <template #content>
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Contour trace">
-                            <DockIconButton :class="{ 'is-active': showGhost }" @click="emit('toggleGhost')">
+                            <DockIconButton :aria-pressed="showGhost" :class="{ 'is-active': showGhost }" @click="emit('toggleGhost')">
                                 <component :is="showGhost ? Eye : EyeOff" :size="20" />
                             </DockIconButton>
                         </Tooltip>
                         <Tooltip text="Image overlay">
-                            <DockIconButton :class="{ 'is-active': showImageOverlay }" @click="emit('toggleOverlay')">
+                            <DockIconButton :aria-pressed="showImageOverlay" :class="{ 'is-active': showImageOverlay }" @click="emit('toggleOverlay')">
                                 <Image :size="20" />
                             </DockIconButton>
                         </Tooltip>

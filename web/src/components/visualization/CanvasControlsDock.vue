@@ -51,12 +51,12 @@ watch(
                 <template #content>
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Image overlay">
-                            <DockIconButton :class="{ 'is-active': showImageOverlay }" @click="$emit('toggleImageOverlay')">
+                            <DockIconButton :aria-pressed="showImageOverlay" :class="{ 'is-active': showImageOverlay }" @click="$emit('toggleImageOverlay')">
                                 <ImageIcon :size="20" />
                             </DockIconButton>
                         </Tooltip>
                         <Tooltip text="Contour trace">
-                            <DockIconButton :class="{ 'is-active': showGhost }" @click="$emit('toggleGhost')">
+                            <DockIconButton :aria-pressed="showGhost" :class="{ 'is-active': showGhost }" @click="$emit('toggleGhost')">
                                 <Spline :size="20" />
                             </DockIconButton>
                         </Tooltip>
@@ -68,13 +68,13 @@ watch(
 
             <!-- Publish -->
             <Tooltip v-if="hasContour" text="Publish to Gallery" side="bottom">
-                <DockIconButton :class="{ 'is-active': publishing }" @click="$emit('publish')">
+                <DockIconButton :aria-pressed="publishing" :class="{ 'is-active': publishing }" @click="$emit('publish')">
                     <Upload class="h-4.5 w-4.5" :class="{ 'animate-pulse': publishing }" />
                 </DockIconButton>
             </Tooltip>
             <!-- Equation -->
             <Tooltip v-if="hasData" text="Equation" side="bottom">
-                <DockIconButton :class="{ 'is-active': showEquation }" @click="$emit('toggleEquation')">
+                <DockIconButton :aria-pressed="showEquation" :class="{ 'is-active': showEquation }" @click="$emit('toggleEquation')">
                     <Sigma class="h-4.5 w-4.5" />
                 </DockIconButton>
             </Tooltip>
@@ -84,7 +84,7 @@ watch(
 
         <!-- Edit (always visible when contour exists) -->
         <Tooltip v-if="hasContour" text="Edit contour" side="bottom">
-            <DockIconButton :class="{ 'is-active': isEditing }" @click="$emit('toggleEdit')">
+            <DockIconButton :aria-pressed="isEditing" :class="{ 'is-active': isEditing }" @click="$emit('toggleEdit')">
                 <Pencil class="h-4.5 w-4.5" />
             </DockIconButton>
         </Tooltip>
