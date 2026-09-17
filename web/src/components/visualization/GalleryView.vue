@@ -10,7 +10,7 @@ import * as api from "@/lib/api";
 import type { Visualization, WorkspaceDraft } from "@/lib/types";
 import { Layers, Trash2, Crown, X } from "lucide-vue-next";
 
-import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
+import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
     Dialog,
@@ -220,7 +220,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
     <div class="flex flex-col gap-4 overflow-y-auto h-full py-4">
         <!-- Tab toggle + search (tight grouping) -->
         <div class="flex flex-col gap-1.5 px-4">
-            <UnderlineTabs
+            <SegmentedTabs variant="underline"
                 :options="tabOptions"
                 :model-value="activeTab"
                 @update:model-value="activeTab = $event as typeof activeTab"
@@ -399,7 +399,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
 
         <!-- A.W5.c — gallery batch-confirm dialog. -->
         <Dialog v-model:open="batchDialogOpen">
-            <DialogContent variant="opaque" class="max-w-sm">
+            <DialogContent surface="opaque" class="max-w-sm">
                 <DialogHeader>
                     <DialogTitle>
                         <template v-if="pendingBatch?.action === 'delete'">

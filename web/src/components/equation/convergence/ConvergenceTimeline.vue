@@ -4,7 +4,7 @@
  *
  * P.W5 Lane B.4 — migrated from the 166 LOC shadow recipe (manual
  * pointer-state-machine + `glass-track`/`glass-fill`/`glass-thumb` paints)
- * to `<Slider variant="glass-scrubber">`. The play button + harmonics
+ * to `<Slider variant="standard">`. The play button + harmonics
  * count column remain consumer-owned (chassis-level concerns; not the
  * slider scrubber proper). Dock-keep-open isn't directly wired here —
  * this site isn't a `<GlassDock>` descendant — but the variant's internal
@@ -68,7 +68,7 @@ function onValueCommit() {
         <div class="timeline-track-wrap">
             <Slider
                 v-model="tArr"
-                variant="glass-scrubber"
+                variant="standard"
                 :min="0"
                 :max="100"
                 :step="1"

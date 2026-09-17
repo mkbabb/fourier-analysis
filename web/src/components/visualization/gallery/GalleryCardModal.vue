@@ -69,7 +69,7 @@ function timeAgo(iso: string): string {
 <template>
     <Dialog v-model:open="open">
         <DialogContent
-            variant="opaque"
+            surface="opaque"
             class="modal-card max-w-[28rem] w-full max-h-[90vh] overflow-y-auto p-0 border-2 border-foreground/15 rounded-xl"
         >
             <div class="relative overflow-hidden rounded-xl">

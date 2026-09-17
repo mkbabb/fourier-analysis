@@ -72,7 +72,7 @@ const caretLabel = computed(() =>
                 </button>
             </Tooltip>
             <div class="mini-progress"><div class="mini-fill" :style="{ width: (anim.t * 100) + '%' }" /></div>
-            <MetricBadge :amount="anim.speed" unit="×" size="sm" class="summary-speed" />
+            <MetricBadge :value="anim.speed" unit="×" size="sm" class="summary-speed" />
         </template>
 
         <!-- ═══ EXPANDED FULL CONTROLS ═══ -->

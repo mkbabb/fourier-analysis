@@ -458,7 +458,7 @@ function timeAgo(iso: string): string {
 
         <!-- Destructive-confirm dialog — replaces native `confirm()`. -->
         <Dialog v-model:open="dialogOpen">
-            <DialogContent variant="opaque" class="max-w-sm">
+            <DialogContent surface="opaque" class="max-w-sm">
                 <DialogHeader>
                     <DialogTitle>
                         <template v-if="pending?.kind === 'prune'">Prune empty users?</template>

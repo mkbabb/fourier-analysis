@@ -67,7 +67,7 @@ watchDebounced(
 
 <template>
     <div
-        class="eq-panel glass-subtle"
+        class="eq-panel glass-wash"
         tabindex="-1"
         @keydown.esc="emit('close')"
     >
@@ -75,7 +75,7 @@ watchDebounced(
             <span class="text-sm font-medium text-foreground">Equation</span>
             <div class="flex items-center gap-2">
                 <MetricBadge
-                    :amount="(energy * 100).toFixed(1)"
+                    :value="(energy * 100).toFixed(1)"
                     unit="%"
                     size="sm"
                     :color="eColor"

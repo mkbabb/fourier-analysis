@@ -6,7 +6,7 @@ const model = defineModel<EquationDisplayMode>({ required: true });
 </script>
 
 <template>
-    <div class="eq-toggle glass-subtle">
+    <div class="eq-toggle glass-wash">
         <Button
             variant="ghost"
             size="sm"

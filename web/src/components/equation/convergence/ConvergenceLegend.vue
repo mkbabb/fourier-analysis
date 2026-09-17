@@ -14,7 +14,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div v-if="harmonics.length" class="legend-overlay glass-subtle">
+    <div v-if="harmonics.length" class="legend-overlay glass-wash">
         <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'sum' }"
             @pointerenter="emit('hover', 'sum')" @pointerleave="emit('leave')">
             <span class="legend-dot legend-dot--golden" />

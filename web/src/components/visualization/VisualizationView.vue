@@ -24,7 +24,7 @@ import CoefficientsPanel from "./CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
-import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
+import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
 
@@ -179,7 +179,7 @@ async function onCanvasFileSelect(e: Event) {
         <div v-else class="flex flex-col flex-1 min-h-0">
             <!-- Mobile tab bar -->
             <div class="flex px-3 py-1 bg-background lg:hidden">
-                <UnderlineTabs
+                <SegmentedTabs variant="underline"
                     :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
                     :model-value="mobileView"
                     @update:model-value="mobileView = $event as 'controls' | 'canvas'" />

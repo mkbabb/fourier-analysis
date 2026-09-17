@@ -107,14 +107,14 @@ watch(() => props.search.isOpen.value, (open) => {
     <div class="floating-toc lg:hidden">
         <div class="floating-toc-anchor">
             <!-- Search mode: input replaces section title -->
-            <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search glass-medium">
+            <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search glass-resting">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" />
                 <Button variant="ghost" size="icon" class="floating-toc-search-close" @click="closeMobileSearch" title="Close search">
                     <X class="h-4 w-4" />
                 </Button>
             </div>
             <!-- Normal mode: section title + search icon -->
-            <Button v-else ref="tocTrigger" variant="ghost" class="floating-toc-bar glass-medium" @click="floatingTocOpen = !floatingTocOpen">
+            <Button v-else ref="tocTrigger" variant="ghost" class="floating-toc-bar glass-resting" @click="floatingTocOpen = !floatingTocOpen">
                 <span class="floating-toc-section cm-serif">
                     <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
                     {{ currentSection?.title }}
@@ -130,7 +130,7 @@ watch(() => props.search.isOpen.value, (open) => {
                 <div
                     v-if="floatingTocOpen"
                     ref="dropdownRef"
-                    class="floating-toc-dropdown glass-medium"
+                    class="floating-toc-dropdown glass-floating"
                     tabindex="-1"
                     @keydown.esc="dismissDropdown"
                 >

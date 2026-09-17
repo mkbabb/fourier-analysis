@@ -77,7 +77,7 @@ const hasActiveFilters = computed(() =>
         <!-- Filter drawer (overlaid, does not affect flow) -->
         <Transition name="filter-drawer">
             <div v-if="showFilters" class="filter-anchor">
-                <div class="filter-panel glass-medium">
+                <div class="filter-panel glass-resting">
                     <div class="flex items-center gap-2">
                         <Select
                             :model-value="tierFilter"

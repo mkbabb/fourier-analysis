@@ -36,7 +36,7 @@ defineExpose({ resultsRef });
         <div
             v-if="search.isOpen.value && !search.isExpanded.value && search.results.value.length > 0"
             ref="resultsRef"
-            class="paper-search-results glass-elevated"
+            class="paper-search-results glass-floating"
         >
             <Button
                 v-for="(r, i) in search.results.value"

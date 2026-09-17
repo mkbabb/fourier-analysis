@@ -262,7 +262,7 @@ function timeAgo(iso: string | null): string {
 
         <!-- Destructive-confirm dialog — replaces native `confirm()`. -->
         <Dialog v-model:open="dialogOpen">
-            <DialogContent variant="opaque" class="max-w-sm">
+            <DialogContent surface="opaque" class="max-w-sm">
                 <DialogHeader>
                     <DialogTitle>Delete gallery entry?</DialogTitle>
                     <DialogDescription>

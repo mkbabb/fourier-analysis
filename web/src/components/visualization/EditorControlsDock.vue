@@ -110,11 +110,11 @@ const magnetModel = computed<number[]>({
                     <div class="magnet-popover-content">
                         <div class="flex items-center justify-between gap-3 px-1">
                             <span class="text-xs font-medium text-foreground whitespace-nowrap">Magnet</span>
-                            <MetricBadge :amount="magnetRadius" size="sm" />
+                            <MetricBadge :value="magnetRadius" size="sm" />
                         </div>
                         <Slider
                             v-model="magnetModel"
-                            variant="glass-scrubber"
+                            variant="standard"
                             :min="0"
                             :max="10"
                             :step="1"

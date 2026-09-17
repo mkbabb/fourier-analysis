@@ -29,7 +29,7 @@ const eColor = computed(() => energyColor(props.energy));
                 {{ info.label }}
             </span>
             <MetricBadge
-                :amount="(energy * 100).toFixed(1)"
+                :value="(energy * 100).toFixed(1)"
                 unit="% energy captured"
                 size="sm"
                 :color="eColor"

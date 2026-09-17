@@ -55,7 +55,7 @@ function getBasisLabel(item: WorkspaceDraft): string {
             @click="collapsed = !collapsed"
         >
             <span class="cm-serif text-sm font-semibold tracking-tight">My Drafts</span>
-            <MetricBadge :amount="sortedDrafts.length" size="sm" />
+            <MetricBadge :value="sortedDrafts.length" size="sm" />
             <ChevronDown
                 :size="16"
                 class="ml-auto text-muted-foreground transition-transform duration-200 ease-in-out"

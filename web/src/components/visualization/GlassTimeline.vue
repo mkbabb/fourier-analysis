@@ -4,7 +4,7 @@
  *
  * P.W5 Lane B.4 + B.1 — migrated from the 175 LOC shadow recipe (manual
  * pointer-state-machine + `glass-track`/`glass-fill`/`glass-thumb` paints +
- * legacy string-key dock injects) to `<Slider variant="glass-scrubber">`.
+ * legacy string-key dock injects) to `<Slider variant="standard">`.
  * The variant ships the 3-layer track + thumb + halo paints, the dock
  * keep-open contract (via `useOptionalDockContext()` internally), focus
  * ring, ARIA wiring, and keyboard step. We retain the caret-label which is
@@ -64,7 +64,7 @@ function onValueCommit() {
         </div>
         <Slider
             v-model="tArr"
-            variant="glass-scrubber"
+            variant="standard"
             :min="0"
             :max="100"
             :step="1"

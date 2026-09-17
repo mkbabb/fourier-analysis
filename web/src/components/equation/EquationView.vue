@@ -10,7 +10,7 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from "@mkbabb/glass-ui/
 import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
 import { Info } from "lucide-vue-next";
 
-import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
+import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import FunctionInput from "./FunctionInput.vue";
 import EquationResult from "./EquationResult.vue";
 import EquationModeToggle from "./EquationModeToggle.vue";
@@ -185,7 +185,7 @@ watchDebounced(
     <div class="flex flex-col flex-1 min-h-0">
         <!-- Mobile tab bar -->
         <div class="flex px-3 py-1 bg-background lg:hidden">
-            <UnderlineTabs
+            <SegmentedTabs variant="underline"
                 :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
                 :model-value="mobileView"
                 @update:model-value="mobileView = $event as 'controls' | 'canvas'" />
@@ -258,7 +258,7 @@ watchDebounced(
                         <Transition name="pop">
                             <div
                                 v-if="hoveredCoeff && popoverHtml"
-                                class="coeff-popover glass-elevated"
+                                class="coeff-popover glass-floating"
                                 :style="{ left: `${popoverPos.x}px`, top: `${popoverPos.y}px` }"
                             >
                                 <div class="coeff-popover-inner" v-html="popoverHtml" />
@@ -290,7 +290,7 @@ watchDebounced(
                                         }"
                                     >{{ tierInfo.label }}</span>
                                     <MetricBadge
-                                        :amount="(displayEnergy * 100).toFixed(1)"
+                                        :value="(displayEnergy * 100).toFixed(1)"
                                         unit="% energy"
                                         size="sm"
                                         :color="eColor"

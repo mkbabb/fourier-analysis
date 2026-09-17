@@ -43,14 +43,14 @@ function formatBytes(bytes: number): string {
 
         <div v-if="stats && !loading" class="grid grid-cols-[repeat(auto-fit,minmax(5rem,1fr))] gap-2">
             <MetricBadge
-                :amount="stats.total_entries"
+                :value="stats.total_entries"
                 label="entries"
                 label-position="stacked"
                 size="md"
                 class="admin-stat"
             />
             <MetricBadge
-                :amount="stats.featured"
+                :value="stats.featured"
                 label="featured"
                 label-position="stacked"
                 size="md"
@@ -58,7 +58,7 @@ function formatBytes(bytes: number): string {
                 class="admin-stat"
             />
             <MetricBadge
-                :amount="stats.saved"
+                :value="stats.saved"
                 label="saved"
                 label-position="stacked"
                 size="md"
@@ -66,21 +66,21 @@ function formatBytes(bytes: number): string {
                 class="admin-stat"
             />
             <MetricBadge
-                :amount="stats.total_views"
+                :value="stats.total_views"
                 label="views"
                 label-position="stacked"
                 size="md"
                 class="admin-stat"
             />
             <MetricBadge
-                :amount="stats.total_likes"
+                :value="stats.total_likes"
                 label="likes"
                 label-position="stacked"
                 size="md"
                 class="admin-stat"
             />
             <MetricBadge
-                :amount="formatBytes(stats.storage_bytes)"
+                :value="formatBytes(stats.storage_bytes)"
                 label="storage"
                 label-position="stacked"
                 size="md"

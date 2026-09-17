@@ -16,7 +16,7 @@
                 />
                 <Slider
                     v-model="lowModel"
-                    variant="glass-scrubber"
+                    variant="standard"
                     :min="1"
                     :max="highLevel - 1"
                     :step="1"
@@ -39,7 +39,7 @@
                 />
                 <Slider
                     v-model="highModel"
-                    variant="glass-scrubber"
+                    variant="standard"
                     :min="lowLevel + 1"
                     :max="100"
                     :step="1"

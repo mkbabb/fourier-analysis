@@ -390,7 +390,7 @@ onUnmounted(() => {
 
         <!-- Bottom overlay: page indicator (left) + back button (right) -->
         <div class="paper-bottom-overlay">
-            <div class="overlay-page glass-subtle fira-code">
+            <div class="overlay-page glass-wash fira-code">
                 pg {{ currentPage }}<span class="overlay-page-sep">/</span>{{ totalPages }}
             </div>
 
