@@ -92,7 +92,57 @@ jobs:
         run: npm ci
       - name: Type-check
         working-directory: web
+        # X·F F.W0 (G-7 + G-8) — this one command now carries three gates that
+        # did not exist before the wave:
+        #   • G-7 the unused-code gate — `noUnusedLocals` + `noUnusedParameters`
+        #     in `web/tsconfig.json`. `MG-θ` books an entire defect family behind
+        #     their absence; the flags ARE the gate, and `vue-tsc` is what runs
+        #     them, so wiring is by construction here.
+        #   • G-8 the SCOPE widening — `include` now reaches `vite.config.ts`,
+        #     `playwright.config.ts` and `e2e/**/*.ts`. `PP-TSSCOPE`: the only
+        #     type gate in this repo never checked its own build config or its
+        #     own test suite.
+        #   • the DELETIONS the flags surface route to F.W3/W4 — landing the
+        #     gate is this wave's act, driving it is theirs.
         run: npx vue-tsc -b --force
+      - name: Lint floor (X·F F.W0, G-7)
+        working-directory: web
+        # FR-IC-25 — an unwired gate is an ornament, so the floor lands here and
+        # not in a README. It runs through `npx` at an EXACT pin because
+        # `web/package.json` is reserved to F.W0's unit *a* (§2b) and a
+        # devDependency is a manifest byte this wave may not write; the repo
+        # already invokes its toolchain this way (`npx vue-tsc`, `npx vite`,
+        # `npx playwright`). oxlint is zero-config by design, which is what makes
+        # it landable without an `eslint.config.*` byte either.
+        #
+        # FLOOR SEMANTICS, STATED SO NOTHING IS MASKED: this fails the job on a
+        # `correctness`-category ERROR. The first run over the settled tree found
+        # **0 errors and 18 warnings across 141 files** (measured 2026-09-17,
+        # double-run); every one of the 18 is enumerated in
+        # `docs/tranches/F/SUBSTRATE-LEDGER.md` §3 and routed — none is
+        # suppressed, allowlisted or disabled. Tightening to `--deny-warnings`
+        # is F.W9/W10's act, together with the `lint` npm script (§6b: "the lint
+        # script as a CI gate" is the W9/W10 half).
+        run: npx --yes oxlint@1.42.0 src e2e vite.config.ts playwright.config.ts
+      - name: Unit-runner seat (X·F F.W0, G-9)
+        working-directory: web
+        # `PP-NOTEST (= L-13) ≡ R-20 ≡ fr-App C-13`: `web/` has no unit runner,
+        # and probe-C1b-class defects (valid-and-wrong output — the `PP-LEN`
+        # shape) are catchable by nothing else. R-20 proves Playwright cannot
+        # substitute.
+        #
+        # F.W0 owns the SEAT; F.W9's `G-F9-1` owns the FLOOR (the spec
+        # population and its thresholds). This is ONE asserting spec proving the
+        # seat live and is explicitly NOT coverage — neither gate may be
+        # discharged by the other's evidence.
+        #
+        # The runner is Node's built-in one: already installed (it ships with
+        # the Node this job provisions), already typed by `@types/node` (in the
+        # lock), and therefore already inside the `vue-tsc` scope G-8 widened —
+        # all three of G-9's clauses with ZERO manifest bytes. Requires Node
+        # >= 22.6 for `--experimental-strip-types`; `node-version: "22"` above
+        # resolves to the latest 22.x.
+        run: node --test --experimental-strip-types e2e/unit/figure-dimensions.unit.ts
       - name: Build
         working-directory: web
         run: npm run build

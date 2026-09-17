@@ -113,6 +113,21 @@ jobs:
         working-directory: web
         run: npx vue-tsc -b --force
 
+      # X·F F.W0 (FR-IC-25) — the floor and the seat are mirrored here for a
+      # reason that is NOT belt-and-braces: the `changes` gate above admits
+      # `workflow_dispatch` unconditionally, so a MANUAL re-ship reaches this job
+      # with NO CI run behind it at all. On that path these two steps are the
+      # only place either gate exists. Identical invocations to `ci.yml`; see
+      # that file for the full rationale and `docs/tranches/F/SUBSTRATE-LEDGER.md`
+      # §3 for the first-run findings.
+      - name: Lint floor (X·F F.W0, G-7)
+        working-directory: web
+        run: npx --yes oxlint@1.42.0 src e2e vite.config.ts playwright.config.ts
+
+      - name: Unit-runner seat (X·F F.W0, G-9)
+        working-directory: web
+        run: node --test --experimental-strip-types e2e/unit/figure-dimensions.unit.ts
+
       - name: Deploy to Cloudflare Pages (build + wrangler)
         id: pages
         env:

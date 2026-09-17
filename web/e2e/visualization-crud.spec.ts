@@ -620,9 +620,17 @@ for (const vp of VIEWPORTS) {
         // (`aria-hidden="true"`) while keeping their focusable triggers inside
         // (glass-ui omits `inert`) — an axe `aria-hidden-focus` **serious**
         // violation that is vendored, not app-owned, and identical across all
-        // viewports. The app consumes the PUBLISHED `@mkbabb/glass-ui@^2.0.0`, so
-        // the fix is a glass-ui release (`inert` on the collapsed layer) + a
-        // guarded `^2→^3` bump — booked as an inv-16′ sweep ask
+        // viewports.
+        //
+        // X·F F.W0 (G-9, row 19) — JUSTIFICATION CORRECTED TO THE 4.0.0 TRUTH.
+        // This read "the app consumes the PUBLISHED `@mkbabb/glass-ui@^2.0.0`,
+        // so the fix is a glass-ui release (`inert` on the collapsed layer) + a
+        // guarded `^2→^3` bump". The bump already happened — the declared pin is
+        // `^4.0.0`, the installed producer is 4.0.0 — and it did not carry the
+        // fix: `grep -c 'inert' node_modules/@mkbabb/glass-ui/dist/glass-ui.js`
+        // → **0** (measured 2026-09-17). The unblock is a producer release that
+        // ships `inert`, relayed to glass-ui; never a consumer-side patch
+        // (SS-6). Booked as an inv-16′ sweep ask
         // (`docs/constellation/ADOPTION-ASKS.md`, glass-ui-a11y). `test.fixme`
         // keeps the job honest (acknowledged, booked baseline — NOT a hidden
         // failure); the `published view` + `ExportModal` keystones below still

@@ -100,10 +100,21 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
     // violation (`aria-hidden-focus`) that is NOT app-owned: glass-ui's
     // `ConfiguratorLayer` (`@mkbabb/glass-ui/configurator`, used by ContourSettings)
     // renders its collapsed body with `aria-hidden="true"` while keeping the
-    // focusable controls inside it (it omits `inert`). The app consumes the
-    // PUBLISHED `@mkbabb/glass-ui@^2.0.0`, so the fix is a glass-ui release
-    // (`inert` on the collapsed layer) + a guarded `^2→^3` bump — booked as an
-    // inv-16′ sweep ask (`docs/constellation/ADOPTION-ASKS.md`, glass-ui-a11y).
+    // focusable controls inside it (it omits `inert`).
+    //
+    // X·F F.W0 (G-9, row 19) — JUSTIFICATION CORRECTED TO THE 4.0.0 TRUTH.
+    // This prose read "the app consumes the PUBLISHED `@mkbabb/glass-ui@^2.0.0`,
+    // so the fix is a glass-ui release (`inert` on the collapsed layer) + a
+    // guarded `^2→^3` bump". Both halves are false at the settled tree: the
+    // declared pin is `^4.0.0` and the installed producer is **4.0.0**, so the
+    // bump this premise waits on ALREADY HAPPENED — and it did not carry the
+    // fix. Measured at this seat, 2026-09-17:
+    //   `grep -c 'inert' node_modules/@mkbabb/glass-ui/dist/glass-ui.js` → **0**.
+    // The collapsed layer still omits `inert` at the ADOPTED pin, so the unblock
+    // condition is a producer release that actually ships it — a glass-ui BH
+    // relay item, never a consumer-side patch (SS-6) and never another bump.
+    // Booked as an inv-16′ sweep ask (`docs/constellation/ADOPTION-ASKS.md`,
+    // glass-ui-a11y).
     // `test.fixme` keeps the e2e job honest (an acknowledged, booked baseline,
     // NOT a hidden failure); keystones 2–4 below still enforce a11y on the OPEN
     // Configurator / ExportModal / AnimationControls dropdown.
@@ -127,8 +138,12 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
     // extraction strategy"`); after that fix the ONLY residual is the vendored
     // collapsed-layer defect. `test.fixme` keeps the job honest (acknowledged,
     // booked baseline — `docs/constellation/ADOPTION-ASKS.md`, glass-ui-a11y —
-    // NOT a hidden failure) pending the glass-ui `inert` release + guarded
-    // `^2→^3` bump. Keystones 3–4 below still enforce a11y on the Dialog +
+    // NOT a hidden failure) pending a glass-ui release that ships `inert` on the
+    // collapsed layer. **The premise is corrected to the 4.0.0 truth (X·F F.W0,
+    // G-9, row 19): the `^2→^3` bump this cell used to wait on is two majors
+    // stale — the app is pinned `^4.0.0`, the installed producer IS 4.0.0, and
+    // its dist carries ZERO `inert` occurrences (measured 2026-09-17).**
+    // Keystones 3–4 below still enforce a11y on the Dialog +
     // dropdown surfaces, which carry no such collapsed-region defect.
     test.fixme("keystone: ContourSettings Configurator-open is a11y-clean", async ({ page }) => {
         await openWorkspace(page);
@@ -186,9 +201,12 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
     //     groupings carry `role="group"`.
     // The ONLY residual is the vendored collapsed-layer `aria-hidden-focus`, so
     // `test.fixme` keeps the job honest (acknowledged, booked baseline — NOT a
-    // hidden failure) pending the glass-ui `inert` release + the guarded
-    // `^2→^3` bump (inv-16′ sweep candidate). When that lands, un-fixme: the
-    // open-menu surface is already clean.
+    // hidden failure) pending a glass-ui release that ships `inert` on the
+    // collapsed layer (inv-16′ sweep candidate). **Corrected to the 4.0.0 truth
+    // (X·F F.W0, G-9, row 19): the guarded `^2→^3` bump this cell used to name
+    // is two majors stale and is not the unblock — the adopted 4.0.0 dist has
+    // ZERO `inert` occurrences (measured 2026-09-17).** When the producer ships
+    // it, un-fixme: the open-menu surface is already clean.
     test.fixme("keystone: AnimationControls dropdown-open is a11y-clean", async ({ page }) => {
         await openWorkspace(page);
 
@@ -199,6 +217,47 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
         await expect(menu).toBeVisible({ timeout: 5_000 });
 
         await checkA11y(page, "AnimationControls dropdown-open");
+    });
+
+    // ── Keystone 5 — the Equation Explorer route ──
+    // X·F F.W0 (G-9), row 19 = the `R-3` axe-keystone rider (fr-SliderControl,
+    // = D-4) ⊕ `D-i1` (fr-ContourSettings). Keystones 1–4 never leave the
+    // visualization route, so the axe gate has never reached the equation
+    // route — and that is the ONLY route where `SliderControl`'s `subtitle`
+    // slot renders. Gap verified by both readers at adjudication; re-verified
+    // at the settled tree by this seat, 2026-09-17:
+    //   `grep -rn 'subtitle' src/components/equation/FunctionInput.vue`
+    //   → `:182` "terms in the Fourier sum" · `:215` "shown in expanded (a+b) view"
+    // and `SliderControl.vue:69` renders `<span class="slider-subtitle">` only
+    // when that prop is passed. Nothing on `/visualize` passes it.
+    //
+    // ROUTE-SPELLING DRIFT, RECORDED NOT SILENTLY ADOPTED: the banked row (and
+    // F-W0.md §4 G-9) spells the route `/equations`. The live router declares
+    // `path: "/equation"` (`src/router/index.ts:92`, name `equation`) and there
+    // is no `/equations` record — a D-19-class anchor drift. The INTENT is
+    // taken at the true bytes: this keystone addresses `/equation`. The
+    // divergence is minuted in `docs/tranches/F/SUBSTRATE-LEDGER.md` §3.
+    //
+    // AUTHORED, NOT RUN (F-W0.md §3 row 19; F.W0 lands ONLY the keystone-route
+    // extension + the corrected justification prose). Its first execution is
+    // CI's. Un-`fixme`-ing `fr-BasisSelector` B-3 at `:133` is a four-test
+    // operation routed to F.W3/W4 and is NOT performed here — this keystone is
+    // armed, not skipped, because a `fixme` on a brand-new gate is the very
+    // defect row 19 books.
+    test("keystone: /equation is a11y-clean", async ({ page }) => {
+        await page.goto("/equation");
+
+        // Settle on the mount condition this keystone exists for — the rendered
+        // `SliderControl` subtitle — not a blind timeout. The "Controls"
+        // CollapsibleSection is `:default-open="true"`, and the desktop grid
+        // renders the left panel unconditionally (the mobile tab bar is
+        // `lg:hidden`), so the subtitle is in the default desktop DOM.
+        await page.waitForLoadState("networkidle", { timeout: 60_000 });
+        await expect(page.locator(".slider-subtitle").first()).toBeVisible({
+            timeout: 60_000,
+        });
+
+        await checkA11y(page, "/equation");
     });
 
     // ── Invariant 19 — auto-recompute regression guard ──

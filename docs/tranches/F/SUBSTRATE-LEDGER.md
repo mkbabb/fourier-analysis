@@ -1093,3 +1093,444 @@ double-run at the settled bytes, and the three that this seat's own instruments 
 disclosed at §2.1.3, §2.2.2 row 12 and §2.3.6 rather than quietly conformed.**
 
 ---
+
+## §3 — F.W0.c: the toolchain gates — the unused-code gate, the lint floor, the scope widening, the seat
+
+**Unit F.W0.c · 2026-09-17 · seat model `claude-opus-5[1m]`.**
+
+**Authority**: F-W0 §4 **G-7** · **G-8** · **G-9** + its F.W9 disjointness clause · §3 rows **15** ·
+**16** · **17** · **18** · **19** · **38** · §2a rows for `web/tsconfig.json`, `web/e2e/`,
+`ci.yml`/`deploy-pages.yml` · **§6a lock 7** (row 16 is a RIDER on `M-10`, never landed alone;
+WAVE-LOCK: no `basisFilter` wiring without `normalizeBasisKey`) · **§6b** the F.W9/F.W10 row ·
+**§7b** the format/lint cadence. Wave record: `value.js/docs/tranches/X/execution/C/F-W0.md`.
+
+### 3.0 The substrate this section is measured at, and what this unit may not touch
+
+Every figure below is read from the tree at ⟨cmd⟩ `git rev-parse --short HEAD` → **`9930e80`**
+(unit *e*'s close), branch `m/w1-bump-migration`. Every published count is **double-run** and both
+passes agreed; where they are counts of a moving file they carry the date they were taken
+(§2.5.4 pin-hygiene).
+
+**Writable set, hard**: `web/tsconfig.json` · `.github/workflows/ci.yml` ·
+`.github/workflows/deploy-pages.yml` · `web/e2e/**` · this ledger. **NOT writable, and the bound is
+load-bearing rather than incidental**: `web/package.json` + `web/package-lock.json` — F-W0 §2b is
+categorical (*"unit a holds all 28 paths — including `package.json`/`package-lock.json`, whose only
+F.W0 act is a's land-or-abandon ruling"*). **Two of this unit's three gates name an act that would
+ordinarily be a manifest byte** (a lint dependency; a unit-runner dependency). **Neither was written.**
+§3.1.4 and §3.3.1 record how each gate was met without one, and why that is a cure rather than a
+dodge. `web/src/**` is likewise not writable, which is why every deletion the gates surface is
+**routed to F.W3/W4 and none is performed here** (§7b: *land the gate, then let it drive*).
+
+### 3.1 G-7 — AN UNUSED-CODE GATE + A LINT FLOOR EXIST AND ARE WIRED
+
+#### 3.1.1 The tsconfig act
+
+`web/tsconfig.json` carried **13** `compilerOptions` and **0** of the three flags `MG-θ` names
+(⟨cmd⟩, at open, `/usr/bin/grep -c 'noUnusedLocals\|noUnusedParameters\|noUncheckedIndexedAccess'`
+→ **0**). It now carries **16** — ⟨cmd⟩ `node -p "Object.keys(require('./tsconfig.json').compilerOptions).length"`
+→ **16** — the three additions being `noUnusedLocals: true`, `noUnusedParameters: true` and
+`allowImportingTsExtensions: true` (§3.4: a disclosed consequence of the seat, not a gate flag).
+
+**The gate is wired by construction**: the flags live in the project `vue-tsc` compiles, and
+`ci.yml` + `deploy-pages.yml` both run `npx vue-tsc -b --force`. FR-IC-25 is satisfied at the one
+place the corpus proves is the true enforcing gate (row 38).
+
+#### 3.1.2 THE FIRST-RUN YIELD — measured 18 findings / 14 files against a predicted 16 / 12. THE DIVERGENCE IS MINUTED, NOT ADOPTED
+
+G-7's GREEN clause banks a **predicted** first-run yield, *"twice-executed independently: 16 findings
+/ 12 files"*, with the rider that *"labels.ts rows are destructured locals, not params — the honest
+count stays 16/12"*. **Measured at the settled tree, the yield is 18 findings across 14 files.**
+
+⟨cmd⟩ (`web/`, double-run, byte-identical output both passes)
+`npx vue-tsc --noEmit -p tsconfig.json --noUnusedLocals --noUnusedParameters`
+→ **19** diagnostic lines, of which **one** is the pre-existing `TS2882` that G-15(a) rules is the
+uplift's and F.W1/W2's (§2.6.1) and is **excluded from this gate's denominator**. Counting units,
+stated beside the pattern (pt-leaf K7): a **finding** = one emitted diagnostic line; a **file** = one
+distinct path in column 1.
+⟨cmd⟩ `… | /usr/bin/grep -v TS2882 | /usr/bin/grep -c .` → **18**
+⟨cmd⟩ `… | /usr/bin/grep -v TS2882 | /usr/bin/sed 's/(.*//' | sort -u | /usr/bin/grep -c .` → **14**
+⟨cmd⟩ `/usr/bin/grep -o 'error TS[0-9]*' | sort | uniq -c` → **17 × TS6133** · **1 × TS6196**
+(· 1 × TS2882, excluded).
+
+**THE 18, ENUMERATED — so that F.W3/W4 consumes measured rows and never a predicted integer.**
+
+| # | site | diagnostic |
+|---|---|---|
+| 1 | `src/components/equation/composables/useCoeffHover.ts(22,5)` | TS6133 `notation` |
+| 2 | `src/components/equation/EquationView.vue(57,7)` | TS6133 `loading` |
+| 3 | `src/components/equation/FrequencyGraph.vue(2,43)` | TS6133 `onUnmounted` |
+| 4 | `src/components/layout/AppHeader.vue(49,7)` | TS6133 `workspaceStore` |
+| 5 | `src/components/paper/PaperView.vue(20,1)` | TS6133 `PaperSectionData` |
+| 6 | `src/components/paper/search/usePaperSearch.ts(10,10)` | TS6133 `SearchEntry` |
+| 7 | `src/components/visualization/BasisSelector.vue(11,7)` | TS6133 `fourierModes` |
+| 8 | `src/components/visualization/ContourEditorCanvas.vue(42,9)` | TS6133 `dragging` |
+| 9 | `src/components/visualization/gallery/GalleryCard.vue(9,1)` | TS6133 `VIZ_COLORS` |
+| 10 | `src/components/visualization/gallery/GalleryCard.vue(10,1)` | TS6133 `PathPreview` |
+| 11 | `src/components/visualization/ImageUpload.vue(2,15)` | TS6133 `computed` |
+| 12 | `src/components/visualization/lib/canvas-drawing/labels.ts(20,18)` | TS6133 `width` |
+| 13 | `src/components/visualization/lib/canvas-drawing/labels.ts(20,25)` | TS6133 `height` |
+| 14 | `src/components/visualization/lib/canvas-drawing/labels.ts(85,18)` | TS6133 `width` |
+| 15 | `src/components/visualization/lib/canvas-drawing/labels.ts(85,25)` | TS6133 `height` |
+| 16 | `src/components/visualization/VisualizationView.vue(2,25)` | TS6133 `watch` |
+| 17 | `src/lib/api.ts(5,5)` | TS6196 `AnimationSettings` |
+| 18 | `src/lib/contourEditing.ts(20,53)` | TS6133 `tension` |
+
+**Rows 9 and 10 are `MG-θ`'s named instances and they resolve exactly**: `GalleryCard`'s two dead
+imports, `VIZ_COLORS` at `:9` and `PathPreview` at `:10` — the latter being **`PP-DEAD`'s F.W0
+instance**, the `noUnusedLocals` rider named at row 15. The **labels.ts four** (rows 12–15) are
+destructured locals, exactly as the prediction's rider says, and they are **counted**, not discounted.
+
+**THE DIVERGENCE, STATED AND NOT RECONCILED AWAY.** Measured **18 / 14**; predicted **16 / 12**;
+delta **+2 / +2**. The prediction is a *prediction* — G-7's own clause calls it
+"twice-independently-**predicted**" — and this seat did not find a reading of the tree that returns
+16, so it **publishes the measurement and leaves the prediction standing as what it was** rather than
+trimming two rows to meet it. Two facts bound the possible explanations and neither is asserted as
+the cause, because neither was measured by this seat: the predicting seats read the tree **before**
+unit *a* landed it (the contents are identical — OG-F1 landed the working tree as baseline — but the
+toolchain the predictions were taken under is not knowable from here), and the settled lock now
+resolves **typescript 6.0.3 / vue-tsc 3.3.5** (§2.6.1 leg 2) where the pre-bump lock resolved
+**5.9.3 / 2.2.12**. **Determining which is a falsifier that needs a second tree, and §2c forbids a
+worktree.** Routed below.
+
+**FORBIDDEN-FIGURE ENTRY (joins §2.2.6's register): `16 findings / 12 files` may NOT be quoted
+downstream as a measured yield.** It is a prediction of record. The measured yield at the settled
+tree, dated 2026-09-17, is **18 / 14**, and it is itself a **dated reading of a moving tree** — F.W3/W4
+re-measures before it deletes rather than deleting this list.
+
+#### 3.1.3 `noUncheckedIndexedAccess` — DECIDED: **DEFERRED, as a rider on M-10**, with its consumer named
+
+G-7 requires this flag **decided** — *"set, or minuted as deferred with M-10's `BasisKey` unit named
+as its consumer"* (row 16). **It is DEFERRED, and the deferral is compelled rather than chosen**:
+§6a **lock 7** states that row 16 (`fr-BasisSelector i-3` = `LC-missed-7`) is *"a **rider on `M-10`**,
+never landed alone"*, and carries the **WAVE-LOCK** *"no `basisFilter` wiring without
+`normalizeBasisKey` (the store repeats the widening at `gallery.ts:38`)"*. Setting the flag in this
+wave **is** landing it alone. **No `basisFilter` byte was written by this unit, and no `gallery.ts`
+byte was read into any act.**
+
+**THE CONSUMER, NAMED AS THE GATE REQUIRES**: `M-10`'s repair unit — **`BasisKey` + `normalizeBasisKey`
++ `satisfies`**, at **F.W3/W4**. The flag is what makes that unit *enforceable*; the unit is what makes
+the flag *landable*. They land together or neither lands.
+
+**THE SIZING INPUT, MEASURED HERE SO F.W3/W4 NEVER HAS TO GUESS AT IT** — ⟨cmd⟩ (`web/`, read-only,
+flag forced on the command line, tsconfig untouched by the probe, double-run identical)
+`npx vue-tsc --noEmit -p tsconfig.json --noUncheckedIndexedAccess`
+→ **287** diagnostics, **286** excluding the F.W1/W2-owned `TS2882`, across **35** files. That is the
+true size of the transaction the flag opens, and it is **sixteen times** the unused-code gate's yield —
+which is the whole argument for the rider: landed alone it would bury CI under 286 diagnostics whose
+cures belong to a unit two waves away.
+
+**Do not over-credit the flag** (row 16's own rider, carried forward): `PP-LEN`'s asymmetric failure —
+X-longer → literal `NaN`; Y-longer → a syntactically perfect, silently mis-framed path — is catchable
+**only by a unit test**, which is why G-9's seat exists at all.
+
+#### 3.1.4 THE LINT FLOOR — landed, wired, and GREEN on its first run
+
+**The bounds problem, stated before the cure.** A lint floor ordinarily costs two bytes this unit may
+not write: a devDependency in `web/package.json` (reserved to unit *a*) and a config file at `web/`
+(outside the writable set entirely). **Neither was written, and nothing was suppressed to avoid
+writing them.** The floor is **oxlint**, which is zero-config by design, invoked through `npx` at an
+**exact pin** — the idiom this repo already uses for its whole toolchain (`npx vue-tsc`, `npx vite`,
+`npx playwright`), and the one the wave record names as the honest default.
+
+**Wired** (FR-IC-25 — an unwired gate is an ornament), at **both** workflows:
+
+| file | step | command |
+|---|---|---|
+| `ci.yml` | `Lint floor (X·F F.W0, G-7)`, `web-build` job, between Type-check and Build | `npx --yes oxlint@1.42.0 src e2e vite.config.ts playwright.config.ts` |
+| `deploy-pages.yml` | `Lint floor (X·F F.W0, G-7)`, `deploy` job, after Type-check | identical |
+
+**Why `deploy-pages.yml` too, and it is not belt-and-braces.** That workflow's `changes` gate admits
+`github.event_name == 'workflow_dispatch'` **unconditionally** — a manual re-ship reaches the deploy
+job with **no CI run behind it at all**. On that path the mirrored steps are the only place either
+gate exists. (`deploy-pages.yml` is in this unit's writable set precisely so this hole could be
+closed.)
+
+**FIRST RUN, at the settled tree** — ⟨cmd⟩ (`web/`, double-run, identical both passes)
+`npx --yes oxlint@1.42.0 src e2e vite.config.ts playwright.config.ts`
+→ **`Found 18 warnings and 0 errors.`**, `141 files`, `90 rules`, **exit 0**.
+
+**FLOOR SEMANTICS, STATED SO NOTHING READS AS MASKED.** The floor fails a job on a
+**`correctness`-category ERROR**. It is **GREEN today (0 errors)** and fails the day one lands — which
+is what a floor is. The **18 warnings are published in full below and routed**; not one is
+suppressed, allowlisted, `eslint-disable`d or excluded by path. **Tightening to `--deny-warnings` is
+F.W9/W10's act**, together with the `lint` npm script, per §6b: *"the lint script as a CI gate
+(fr-PaperSidebar M7)"* is the W9/W10 half, and a `lint` script is a manifest byte this unit may not
+write in any case. The two halves are disjoint by construction, not by convention.
+
+**THE 18, ENUMERATED** (⟨cmd⟩ `… --format=unix`; **9** distinct files):
+
+| rule | sites |
+|---|---|
+| `eslint(no-unused-vars)` | `labels.ts:20:18` · `:20:25` · `:85:18` · `:85:25` · `usePaperSearch.ts:10:10` · `contourEditing.ts:20:53` · `api.ts:5:5` · `useCoeffHover.ts:22:5` |
+| `eslint(no-unused-expressions)` | `GalleryView.vue:128:5` · `ConvergencePlot.vue:197:9` · `:215:13` · `:229:9` |
+| `eslint-plugin-unicorn(no-new-array)` | `svg-fourier.ts:39:40` · `:100:37` |
+| `typescript-eslint(no-non-null-asserted-optional-chain)` | `e2e/workspace-flow.spec.ts:63:64` · `:107:64` · `:158:64` |
+| `eslint-plugin-unicorn(no-useless-fallback-in-spread)` | `api.ts:124:9` |
+
+**The two instruments are NOT the same instrument, and the coincidence of both yielding 18 is an
+accident of arithmetic that this ledger refuses to let stand as a correspondence.** They overlap on
+**7** rows (the `no-unused-vars` set minus `usePaperSearch`'s import, which both see) and diverge
+everywhere else: the flags catch unused *type* imports the linter's default set does not
+(`TS6196 AnimationSettings`), and the linter catches **11 rows the type gate cannot see at any flag
+setting** — including **three `no-non-null-asserted-optional-chain` in `e2e/workspace-flow.spec.ts`**,
+a correctness hazard **inside the e2e suite that no gate in this repo had ever read** until G-8's
+widening put it in scope this same act. That is §3.2's thesis arriving as evidence rather than as
+argument.
+
+**WHAT THE FLOOR DOES *NOT* CATCH, SAID PLAINLY.** `FR-USB-21`'s `catch (e: any)` class is **not** in
+the default `correctness` set. Re-measured here per §2.5.4 rather than inherited: ⟨cmd⟩
+`/usr/bin/grep -rn 'catch *([a-zA-Z_]* *: *any)' src | /usr/bin/grep -c .` → **34**, across **7**
+files — **the banked 34 is CONFIRMED at the settled tree** (the record's own correction UP from
+"≥20" holds). The rule that would catch it is **`typescript/no-explicit-any`**, and ⟨cmd⟩
+`npx --yes oxlint@1.42.0 -D typescript/no-explicit-any src e2e` → **49 errors** (the 34 catch-sites
+plus 15 other `any` annotations). **It is deliberately NOT wired**: wiring it would land the floor
+born-RED with 49 errors whose cures are F.W3/W4 deletions, and a floor that is red on the day it
+lands blocks F.W1 for work that is not F.W1's. **Routed: cures F.W3/W4, tightening F.W9/W10.** The
+gap is named here so no later wave mistakes the floor's green for coverage of the `: any` family.
+
+### 3.2 G-8 — THE TYPE GATE NOW COVERS ITS OWN BUILD CONFIG AND ITS OWN SPECS
+
+#### 3.2.1 The widening
+
+`include` carried **4** entries and reached neither the build config nor the test suite (`PP-TSSCOPE`:
+*"the only type gate never checks its own test suite or build config"*). It now carries **7** —
+⟨cmd⟩ `node -p "JSON.stringify(require('./tsconfig.json').include)"` →
+`["src/**/*.ts","src/**/*.d.ts","src/**/*.vue","env.d.ts","vite.config.ts","playwright.config.ts","e2e/**/*.ts"]`.
+**One project, not a second**: a second project would need a second tsconfig, and `FR-EQR-30` books
+that *"every `tsconfig.app.json` citation in the corpus is DEAD — web/ holds exactly one tsconfig"*.
+Re-verified at this act: ⟨cmd⟩ `ls web/tsconfig*.json` → `tsconfig.json` alone. **Minting a second one
+to satisfy a gate about scope would re-open the very citation class the corpus just closed.**
+
+**The denominator is preserved.** ⟨cmd⟩ `ls e2e/*.spec.ts | /usr/bin/grep -c .` → **8**, unchanged by
+this unit: G-9's keystone-route extension was authored **into an existing spec** rather than as a
+ninth file, precisely so §2.2's **8**-spec denominator survives the act that touches the directory.
+**A 7-spec figure remains FORBIDDEN** (§2.2.6), and a 9-spec figure is not created here.
+
+#### 3.2.2 THE DELTA THE WIDENING EXPOSED — and it is the find, not the cost
+
+⟨cmd⟩ `npx vue-tsc -b --force` at the widened scope (double-run, identical) → **20** diagnostics.
+Decomposed by owner:
+
+| # | origin | diagnostic | owner |
+|---|---|---|---|
+| 18 | `src/**` | the unused-code yield of §3.1.2 | **F.W3/W4** (deletions) |
+| 1 | `src/components/paper/PaperView.vue(12,8)` | `TS2882` side-effect import of `@mkbabb/latex-paper/theme` | **F.W1/W2** — ruled at §2.6.1, pre-existing, **not** this unit's |
+| 1 | `vite.config.ts(51,21)` | `TS2769` No overload matches this call | **F.W1** — see below |
+
+**The `e2e` half is CLEAN: all 8 specs and `playwright.config.ts` type-check with ZERO diagnostics**,
+and so do the two files this unit authored (§3.3). **The entire delta of the widening is one
+diagnostic, and it is a real defect the scope gap had been hiding for the life of the repo.**
+
+**AND IT IS `MISS-A7`, CONFIRMED AT THE TYPE LEVEL FOR THE FIRST TIME.** Row 7 books
+*"`npm run build` is unrunnable at the pin (vite-8/manualChunks) — silently disabling every
+build-based falsifier in all three challenge files across the whole family"*. The widened gate now
+prints the mechanism verbatim:
+
+> `Type '{ manualChunks: { "vendor-vue": string[]; … } }' is not assignable to type
+> 'OutputOptions | OutputOptions[] | undefined'. … Object literal may only specify known properties,
+> and '"vendor-vue"' does not exist in type 'ManualChunksFunction'.`
+
+At the landed vite 8 pin, `output.manualChunks` accepts **a function only**; `vite.config.ts:50-59`
+passes the record form (`vendor-vue` · `vendor-ui` · `vendor-math` · `vendor-paper` ·
+`vendor-keyframes`). **`MISS-A7` was a build-time claim resting on an unrunnable build; it is now a
+compile-time fact that any seat can reproduce in two seconds without a build.**
+
+#### 3.2.3 THE RULING — the exclusion arm is DECLINED, with its reason
+
+G-8 offers two arms: *"`vue-tsc -b` is green over the widened scope, **or** the exclusion is recorded
+as a ruling with its reason."*
+
+> **RULED: `vite.config.ts` IS NOT EXCLUDED.** Excluding the one file the widening found a defect in
+> is an **allowlist** — it would make the gate green by deleting its only finding, which is the
+> masking-fallback class this programme forbids outright and which `PP-TSSCOPE` exists to convict.
+> The exclusion arm is for a scope that **cannot** be reached; this one was reached, and what it
+> returned is evidence. **The file stays in scope and the diagnostic is ROUTED to its owner.**
+>
+> **The cure is `MISS-A7`'s and it is not writable from here**: `vite.config.ts` is not in this
+> unit's writable set, the cure is the record-form → function-form migration of `manualChunks`, and
+> it lands with **F.W1**'s build unblock, where the emitted-CSS falsifier the ruling-6 rider owes
+> (§2.6.4) also lands. **No consumer-side patch, no `@ts-expect-error`, no narrowing cast was
+> applied** — the diagnostic stands, visible, in CI.
+>
+> **FALSIFIER**: a vite 8 release whose `OutputOptions.manualChunks` accepts the record form again,
+> or a measured run in which the widened scope emits this diagnostic for a reason other than the
+> record/function shape. Neither holds at the settled tree.
+
+**THE HONEST COMPILE READING, so no later wave reads a false green.** `npx vue-tsc -b --force` exits
+**1** at the settled tree with the **20** diagnostics above. **It exited 1 before this unit ran too**
+(§2.6.1 leg 3: one diagnostic, `TS2882`), and G-15(a) has already ruled that RED F.W1/W2's and handed
+it over as F.W1's born-RED witness. **This unit did not inherit a green gate and does not hand one
+on.** What it hands on is a gate that now **sees** three classes it was blind to — unused code, the
+build config, the test suite — with every finding enumerated and owned. **G-8's SCOPE limb is
+discharged; its compile limb is RED with two externally-owned diagnostics, and this ledger says so
+rather than choosing the reading that flatters the seat.**
+
+### 3.3 G-9 — THE UNIT-RUNNER SEAT (and the FLOOR is F.W9's, not this wave's)
+
+**R-5, declared identically at both ends**: **F.W0's G-9 owns the SEAT** — a runner installed, wired
+into `ci.yml`, inside G-8's type scope, with **ONE asserting spec** proving it live — and **F.W9's
+`G-F9-1` owns the FLOOR** (the spec population and its thresholds). *The seat is a precondition of
+the floor, never a down payment on it, and neither gate may be discharged by the other's evidence.*
+**This section claims the seat and nothing else. It is explicitly NOT green-by-coverage, and the one
+spec below may not be cited as coverage by any wave.**
+
+#### 3.3.1 The declared bounds question, ANSWERED — a runner that needs no manifest byte
+
+The wave record raises this at open rather than leaving it to an implementer: G-9's word is *"a runner
+is **installed**"*, and a vitest devDependency is a `web/package.json` byte reserved to unit *a*.
+**The answer is a runner that is already installed: Node's built-in test runner.**
+
+| G-9 clause | how it is met | receipt |
+|---|---|---|
+| *a runner is installed* | it ships with the Node both workflows already provision (`actions/setup-node@v4`, `node-version: "22"`) — nothing to add to any manifest | `node --test`, core since Node 18; `--experimental-strip-types` since 22.6 |
+| *wired into `ci.yml`* | step **`Unit-runner seat (X·F F.W0, G-9)`** in `web-build`, and mirrored in `deploy-pages.yml` for the `workflow_dispatch` hole (§3.1.4) | `run: node --test --experimental-strip-types e2e/unit/figure-dimensions.unit.ts` |
+| *inside G-8's type scope* | the spec is `.ts` under `e2e/**/*.ts`, which §3.2.1 put in `include`; its only imports are `node:test` + `node:assert/strict`, typed by `@types/node` — **already in the lock**, so the scope resolves with zero installs | ⟨cmd⟩ `npx vue-tsc -b --force` → the spec contributes **0** of the 20 diagnostics |
+| *ONE asserting spec* | one file, one `test()` | `web/e2e/unit/figure-dimensions.unit.ts` |
+
+**ZERO manifest bytes were written, and no escalation was needed.** ⟨cmd⟩ `git status --porcelain`
+shows `web/package.json` and `web/package-lock.json` **absent from this unit's diff** at every commit.
+
+**ROUTED, not concealed**: when **F.W9** lands the floor it lands a manifest transaction with it and
+may re-home these assertions onto vitest plus a component harness — which is the runner the floor
+will want, since `R-20` proves the `SliderControl` class needs a *component* test. **The seat proved
+the ground; it does not pick the floor's runner**, and F.W9 is free to replace it wholesale without
+re-arguing whether a unit runner can exist here.
+
+#### 3.3.2 The ONE asserting spec — what it asserts, and where it lives
+
+`web/e2e/unit/figure-dimensions.unit.ts`. Subject: `src/lib/figureDimensions.ts`, a leaf module with
+no imports whose exported table is a **`Record<string, readonly [number, number]>`** — the exact
+loose-`Record` shape row 16 names, where an index read type-checks as non-optional because
+`noUncheckedIndexedAccess` is unset. **The flag that would express the invariant is deferred by §3.1.3,
+so the invariant is asserted instead** — which is the seat earning its place on its first day rather
+than asserting `true === true`.
+
+⟨cmd⟩ (double-run, `web/`) `node --test --experimental-strip-types e2e/unit/figure-dimensions.unit.ts`
+→ `✔ figure dimensions are well formed and hasModernVariants answers the map` · `pass 1` · `fail 0` ·
+**exit 0**, both passes.
+
+**WHY IT LIVES UNDER `e2e/`, disclosed rather than rationalised**: `web/e2e/` is the **only writable
+source directory** in this unit's bounds. It is a home of convenience, and F.W9 should move it.
+**It does not disturb the e2e suite**: Playwright's default `testMatch` is
+`**/*.@(spec|test).?(c|m)[jt]s?(x)` and the file is `.unit.ts`. Proved, not assumed —
+⟨cmd⟩ `npx playwright test --list | /usr/bin/grep -c 'figure-dimensions'` → **0**, and
+⟨cmd⟩ `npx playwright test --list | tail -1` → **`Total: 69 tests in 8 files`** (68 before this unit;
+**+1 is the keystone of §3.3.3, and the file count stays 8** — §3.2.1's denominator survives).
+
+#### 3.3.3 The axe keystone-route extension — AUTHORED, not run
+
+Row 19 (`R-3` axe-keystone rider, `fr-SliderControl` = D-4, ⊕ `D-i1`): the axe keystone set does not
+reach the equation route — *"the only route where SliderControl's `subtitle` renders"* — and F.W0
+lands **only** the keystone-route extension plus the corrected justification text.
+
+**THE ROUTE-SPELLING DRIFT, RECORDED AND NOT SILENTLY ADOPTED (a D-19 instance inside a gate
+clause).** Row 19 and §4 G-9 both spell the route **`/equations`**. The live router declares
+⟨cmd⟩ `/usr/bin/grep -n 'path: "/equation"' web/src/router/index.ts` → **`92:            path: "/equation",`**
+(name `equation`), and there is **no `/equations` record**. **The INTENT is taken at the true bytes**:
+the keystone addresses **`/equation`**. Per §2.1's law the divergence is minuted here rather than
+followed raw — a seat following the banked spelling would have authored a keystone against a route
+that 404s, which is exactly the *"lands OUTSIDE the file"* failure the anchor table exists to prevent.
+
+**The gap is re-verified, not inherited.** ⟨cmd⟩ `/usr/bin/grep -rn 'subtitle'
+src/components/equation/FunctionInput.vue` → **`:182`** *"terms in the Fourier sum"* and **`:215`**
+*"shown in expanded (a+b) view"*, both on `<SliderControl>`; `SliderControl.vue:69` renders
+`<span class="slider-subtitle">` only when that prop is passed; nothing on `/visualize` passes it.
+**The banked gap holds at the settled tree.**
+
+**LANDED**: `web/e2e/visualization-ux.spec.ts` — **Keystone 5, `keystone: /equation is a11y-clean`**,
+armed (`test(...)`), settling on `networkidle` plus the rendered `.slider-subtitle` rather than a
+blind timeout, then the file's existing `checkA11y` helper (zero serious/critical axe violations
+across `wcag2a/2aa/21a/21aa`).
+
+- **ARMED, NOT `fixme`.** A brand-new gate born `test.fixme` is the defect row 19 books, and a
+  `skip`/`fixme` around an unmeasured surface is a masking fallback. It is armed.
+- **AUTHORED, NOT RUN — as the spec directs**, and the residual is stated rather than hidden: this
+  seat did **not** execute it (it needs a live backend + vite server, and row 19 forbids landing work
+  on a tree F.W1 is about to move). **Its first execution is CI's, and its outcome is UNMEASURED at
+  this seat.** If it fails there, the finding is a real `/equation` a11y defect and is F.W3/W4's — the
+  gate will have done its job on its first outing. **Routed as such.**
+- **Un-`fixme`-ing `fr-BasisSelector` B-3 at `:133` is NOT performed here** — row 19 routes that
+  four-test operation to F.W3/W4, and no existing `test.fixme` state was changed by this unit.
+
+#### 3.3.4 THE CORRECTED JUSTIFICATION TEXT — the 4.0.0 `inert` truth, measured
+
+Row 19 requires the keystone prose *"corrected to the **4.0.0 `inert`** truth"*; the banked complaint
+is that *"the only a11y gate over ContourSettings is a `test.fixme` resting on a premise FALSE at the
+installed pin."* The stale premise appeared at **four** sites — ⟨cmd⟩ (at open)
+`/usr/bin/grep -rn '\^2\.0\.0\|\^2→\^3' e2e/` → `visualization-ux.spec.ts:104` · `:105` · `:131` ·
+`:190` and `visualization-crud.spec.ts:623` · `:625` — all reading, in substance, *"the app consumes
+the PUBLISHED `@mkbabb/glass-ui@^2.0.0`, so the fix is a glass-ui release (`inert` on the collapsed
+layer) + a guarded `^2→^3` bump."*
+
+**THE MEASURED TRUTH, this seat, 2026-09-17, at the ADOPTED bytes** (producer tree never touched;
+`glass-ui` is READ-ONLY always):
+
+| fact | ⟨cmd⟩ | value |
+|---|---|---|
+| declared consumer pin | `web/package.json` at the settled tree | **`^4.0.0`** |
+| installed producer | `node -p "require('./node_modules/@mkbabb/glass-ui/package.json').version"` | **4.0.0** |
+| `inert` in the adopted dist | `/usr/bin/grep -c 'inert' node_modules/@mkbabb/glass-ui/dist/glass-ui.js` | **0** |
+
+**Both halves of the old premise are false, and the second is the interesting one: the bump the prose
+was waiting for ALREADY HAPPENED, and it did not carry the fix.** The collapsed layer still omits
+`inert` at 4.0.0, so the unblock condition is **a producer release that actually ships it** — a
+glass-ui BH relay item — **never another bump, and never a consumer-side patch (SS-6)**. All four
+sites now say that, with the `grep -c … → 0` receipt inline at two of them. **No `test.fixme` state
+was touched**: the prose is corrected so that when F.W3/W4 re-arms, the justification it re-arms
+against is true.
+
+### 3.4 `allowImportingTsExtensions` — a disclosed consequence of the seat, not a smuggled flag
+
+The seat spec imports `../../src/lib/figureDimensions.ts` **with its extension**, because Node's ESM
+loader resolves no extensions and TypeScript's `bundler` resolution rejects a `.ts` specifier without
+this flag. **It is a permission, not a requirement**: it forbids nothing that was previously legal, no
+existing import was rewritten, and Vite resolves explicit `.ts` specifiers natively. It is disclosed
+here because it is the **third** new `compilerOptions` key (§3.1.1) and a later seat counting
+"G-7 added two flags" against a 16-key file would otherwise find an unexplained third. **The
+alternative was a seat spec that imports nothing and asserts nothing real, which is an ornament.**
+
+### 3.5 This unit's gate reading, and what it routes
+
+| gate | BEFORE (open baseline) | AFTER (this unit's close) |
+|---|---|---|
+| **G-7** | **RED** — 13 compilerOptions, **0-of-3** flags; `scripts` has no `lint`; no eslint/prettier in either dep block | **GREEN.** `noUnusedLocals` + `noUnusedParameters` set and wired by construction into both workflows' `vue-tsc`; `noUncheckedIndexedAccess` **DECIDED — deferred as an `M-10` rider with `BasisKey`/`normalizeBasisKey` named as its consumer** (§6a lock 7 honoured; the 286/35 sizing measured and published); a **lint floor landed, wired into `ci.yml` AND `deploy-pages.yml`, first run 0 errors / 18 warnings / 141 files, exit 0**. First-run yield of the unused-code gate **measured 18/14 against the predicted 16/12 — divergence MINUTED, not adopted**, with all 18 enumerated and routed |
+| **G-8** | **RED** — `include` 4 entries; `vite.config.ts`, `playwright.config.ts` and all 8 specs outside `vue-tsc -b` entirely | **GREEN on the scope limb, with the compile residue RULED and ROUTED.** `include` 4 → 7; all 8 specs + `playwright.config.ts` type-check **CLEAN**; the widening's entire delta is **one** diagnostic, `vite.config.ts(51,21) TS2769`, which is **`MISS-A7` confirmed at the type level**. **The exclusion arm is DECLINED with its reason** (excluding the only finding is an allowlist). **Compile limb RED with 20 diagnostics, every one externally owned**: 18 → F.W3/W4, `TS2882` → F.W1/W2 (already ruled at §2.6.1), `TS2769` → F.W1. The 8-spec denominator is preserved |
+| **G-9** | **RED** — no unit runner in `scripts`, `vitest` in neither dep block; axe keystone set never reaches the equation route | **GREEN.** The **SEAT** stands: Node's built-in runner (installed by construction, **zero manifest bytes**), wired into both workflows, **inside G-8's type scope** (contributes 0 diagnostics), **ONE asserting spec** passing double-run at exit 0 and **not collected by Playwright** (69 tests / **8** files). The axe keystone-route extension is **AUTHORED (not run)** against **`/equation`** — the banked `/equations` spelling is a recorded drift, INTENT taken at the true bytes — and the justification prose at **all four stale sites** is corrected to the measured 4.0.0 `inert` truth (**`grep -c 'inert' … → 0`**). **Explicitly NOT green-by-coverage; F.W9's `G-F9-1` FLOOR is untouched and undischarged** |
+
+**Routing — nothing dropped:**
+
+| item | routed to |
+|---|---|
+| The **18** unused-code findings (enumerated, §3.1.2) — deletions | **F.W3/W4** (§7b: land the gate, let it drive; no hand-fix here) |
+| `noUncheckedIndexedAccess` + its **286/35** transaction | **F.W3/W4**, as the `M-10` `BasisKey` + `normalizeBasisKey` + `satisfies` unit; **WAVE-LOCK carried**: no `basisFilter` wiring without the normaliser (`gallery.ts:38` repeats the widening) |
+| `vite.config.ts(51,21) TS2769` — the record→function `manualChunks` migration | **F.W1**, with the `MISS-A7` build unblock (and the ruling-6 emitted-CSS falsifier it gates, §2.6.4) |
+| `PaperView.vue(12,8) TS2882` | **F.W1/W2** — already ruled and handed over at §2.6.1; **re-stated, not re-booked** |
+| The **18** lint-floor warnings (enumerated, §3.1.4) | **F.W3/W4** for the cures; **F.W9/W10** for `--deny-warnings` + the `lint` npm script (§6b) |
+| `FR-USB-21`'s `catch (e: any)` — **34** sites / **7** files, re-measured and confirmed; `-D typescript/no-explicit-any` → **49** errors | **F.W3/W4** cures · **F.W9/W10** tightening. **Deliberately NOT wired now**, reason at §3.1.4 |
+| The **seat's home** (`web/e2e/unit/`) and its runner choice | **F.W9** — free to re-home onto vitest + a component harness with the manifest transaction the floor needs |
+| **Keystone 5's first execution** (authored, not run — outcome UNMEASURED here) | **CI**, then **F.W3/W4** if it surfaces an `/equation` a11y defect |
+| The glass-ui `inert` absence at the adopted 4.0.0 dist (`grep -c` → **0**) | **glass-ui BH relay** — a producer act. **No consumer patch** (SS-6); the three `fixme` keystones stay booked with corrected prose |
+| Un-`fixme`-ing `fr-BasisSelector` B-3 `:133` (four-test operation) | **F.W3/W4** — row 19; not performed here |
+| The **16/12 vs 18/14** divergence's cause (pre-land toolchain vs post-land) | **unresolved by design** — its falsifier needs a second tree and §2c forbids a worktree; the measurement stands, the prediction is retired to the forbidden-figure register |
+
+**Escalations: none.** No §7a trigger fired. In particular **the declared bounds question did not
+become one**: all three of G-9's clauses were met without a `web/package.json` or `package-lock.json`
+byte, so the ESCALATE-rather-than-expand branch never opened.
+
+**Law compliance at this seat**: **no write outside the writable set** — ⟨cmd⟩ `git status --porcelain`,
+taken immediately before this unit's commit, listed exactly `web/tsconfig.json` · `.github/workflows/ci.yml` ·
+`.github/workflows/deploy-pages.yml` · `web/e2e/visualization-ux.spec.ts` ·
+`web/e2e/visualization-crud.spec.ts` · `web/e2e/unit/` · this ledger, and nothing else ·
+**`web/package.json` and `web/package-lock.json` untouched** (§2b) · **no `web/src/**` byte written** —
+every deletion the gates found is routed, none performed · **no `node_modules` patched**, `glass-ui`
+read **only** to measure `inert` · **no masking**: no `test.skip`/`test.fixme` added, no
+`eslint-disable`, no `@ts-expect-error`, no `try/catch` around a defect, no path allowlisted out of a
+gate — the exclusion arm G-8 offers was **declined in writing** · **no hand-formatting** (§7b): the
+only edits to existing files are the mandated comment-prose corrections and the two workflow steps ·
+**no `git add -A`, no `git stash`, no `reset --hard`, no `checkout --`, no force-push** ·
+`value.js/scripts/dev/dev.sh` never touched, never staged · pathspec commits only · no cron ·
+`execution/LEDGER.md` untouched (its F.W0 row is the wave seat's) · **every published figure
+double-run at the settled bytes**, and the one figure this seat could not make agree with the record
+(16/12) is **published as a divergence rather than conformed to**.
+
+---
