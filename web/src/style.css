@@ -115,18 +115,29 @@
     }
 }
 
-/* A.W2.c — folded from `styles/ios-fixes.css` (deleted): mobile-first
-   responsive root font sizing. Global concern, hosted at the entry. */
-html {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
-}
+/* A.W2.c — folded from `styles/ios-fixes.css` (deleted). Global concern,
+   hosted at the entry.
 
-@media (min-width: 768px) {
-    html {
-        font-size: 1rem;
-        line-height: 1.5rem;
-    }
+   X.F.W4 — COHESION §0j.D **G-15(b), RULED**: *"the root-size fork →
+   `html{font-size:1.125rem}` under 768px GOES: the 12.5% inflation compounds
+   with `--ui-scale` (67.5px against the token author's 60px); F.W1's
+   token-parity re-tune absorbs it, F.W4 executes per component."*
+
+   The mobile arm inflated EVERY rem in the app by 12.5% on exactly the
+   viewports where the producer's coarse-pointer scaling is already at work, so
+   the two multiplied. It also minted a third breakpoint the app does not
+   otherwise have: components query 640px, the root queried 768px, and the
+   128px band between them ran at a different rem — which is why the `/morph`
+   title rendered LARGER at 640-767 than at ≥768 (FMD-29 · HLG-19) and why the
+   header toggle's rendered ladder was non-monotonic at 45 → 49.5 → 44 px
+   (FM-21). One root size, and the ladder is monotonic by construction.
+
+   ⊘ What this does NOT decide is FM-21's own question — which scaling system
+   owns the app's absolute-pixel figures. That is POSED at §3 D10 and answered
+   nowhere here. */
+html {
+    font-size: 1rem;
+    line-height: 1.5rem;
 }
 
 /* KaTeX faces are self-hosted, same-origin, via the `katex/dist/katex.min.css`
