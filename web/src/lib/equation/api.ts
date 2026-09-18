@@ -54,4 +54,10 @@ export async function simplifyCoefficients(
     });
 }
 
-export { isAbortError } from "../api";
+/**
+ * The two abort keys this route owns. Named here so the teardown that cancels
+ * them cannot drift from the calls that register them (`L·M-7`).
+ */
+export const EQUATION_ABORT_KEYS = ["eq-compute", "eq-simplify"] as const;
+
+export { isAbortError, abortInflight } from "../api";

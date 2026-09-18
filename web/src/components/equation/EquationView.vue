@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onScopeDispose } from "vue";
 import { watchDebounced, useMediaQuery } from "@vueuse/core";
-import { computeEquation, simplifyCoefficients, isAbortError } from "@/lib/equation/api";
+import {
+    computeEquation,
+    simplifyCoefficients,
+    isAbortError,
+    abortInflight,
+    EQUATION_ABORT_KEYS,
+} from "@/lib/equation/api";
 import type { NotationMode, ComputeEquationRequest, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
 import { TIER_INFO, energyColor } from "@/lib/equation/notation";
@@ -178,6 +184,21 @@ function failureMessage(e: unknown, fallback: string): string {
     return msg || fallback;
 }
 
+/**
+ * `L·M-2` — abort identity. `abortable(key)` cancels the prior controller
+ * SYNCHRONOUSLY before the first await, so request A's `finally` used to clear
+ * `computing` while request B was still in flight: a whole network round trip
+ * with the template fallen through to the EMPTY state mid-compute (⊘ that empty
+ * state is `I-2`-protected — it is this defect's only visible symptom and is not
+ * an "unused branch"). Reachable from a cold load, since the initial compute is
+ * routinely superseded by a preset or an Enter press. A generation counter per
+ * abort key makes every write and every flag clear belong to the request that is
+ * actually current. doSimplify carries the same shape: it was consequence-free
+ * only while `simplifying` had no template consumer, and `D-B4` just gave it one.
+ */
+let computeGeneration = 0;
+let simplifyGeneration = 0;
+
 async function doCompute(force = false) {
     const req = currentRequest();
     if (!req.expression) return;
@@ -187,10 +208,12 @@ async function doCompute(force = false) {
         return;
     }
 
+    const gen = ++computeGeneration;
     computing.value = true;
     error.value = null;
     try {
         const res = await computeEquation(req);
+        if (gen !== computeGeneration) return;
         result.value = res;
         lastComputeKey = key;
         displayLatex.value = res.latex;
@@ -202,9 +225,11 @@ async function doCompute(force = false) {
         effectiveN.value = res.effective_n;
         saveCachedResult(key, res, displayLatex.value, displayEnergy.value);
     } catch (e) {
-        if (!isAbortError(e)) error.value = failureMessage(e, "Computation failed");
+        if (!isAbortError(e) && gen === computeGeneration) {
+            error.value = failureMessage(e, "Computation failed");
+        }
     } finally {
-        computing.value = false;
+        if (gen === computeGeneration) computing.value = false;
     }
 }
 
@@ -214,9 +239,11 @@ async function doSimplify() {
     const key = displayKey(req);
     if (key === lastDisplayKey) return;
 
+    const gen = ++simplifyGeneration;
     simplifying.value = true;
     try {
         const resp = await simplifyCoefficients(components.value, req.budget, req.notation);
+        if (gen !== simplifyGeneration) return;
         displayLatex.value = resp.latex;
         displayEnergy.value = resp.energy_captured;
         lastDisplayKey = key;
@@ -232,11 +259,22 @@ async function doSimplify() {
         // postures at two async seams forty lines apart, and the silent one is
         // the seam the user drives most — every notation click, every budget
         // drag. It gets doCompute's banner.
-        if (!isAbortError(e)) error.value = failureMessage(e, "Could not re-render the series");
+        if (!isAbortError(e) && gen === simplifyGeneration) {
+            error.value = failureMessage(e, "Could not re-render the series");
+        }
     } finally {
-        simplifying.value = false;
+        if (gen === simplifyGeneration) simplifying.value = false;
     }
 }
+
+/**
+ * `L·M-7` — this lazily-loaded route component had no teardown at all, so a
+ * dead instance's resolved handler wrote six refs and re-saved the cache AFTER a
+ * fresh instance had already restored it. `abortInflight` exists at
+ * `lib/api.ts:61` with four call sites, all in `stores/workspace.ts`; the
+ * equation route was the one async surface not using it.
+ */
+onScopeDispose(() => abortInflight([...EQUATION_ABORT_KEYS]));
 
 // ── Watches ──
 
