@@ -353,16 +353,35 @@ const activeCount = computed(() => {
 
 // ── Watches ──
 
-watch(() => [props.originalPoints, props.coefficients], (_, old) => {
-    if (old?.[0]) {
-        const oldOy = (old[0] as { x: number[]; y: number[] }).y;
-        snapshotForTransition(transition, oldOy, trigHarmonics.value, dcTerm.value?.coefficient_re ?? 0, props.originalPoints.x, props.domain);
+/**
+ * `L-M1` — the snapshot was taken from the NEW state and called PREVIOUS.
+ *
+ * `trigHarmonics` and `dcTerm` are computeds, and a pre-flush watcher runs after
+ * the source has already mutated, so both re-evaluated to the incoming values:
+ * only `oldOy` was genuinely old. Every harmonic and DC lerp was therefore an
+ * IDENTITY for all `tp`, `prevMinY`/`prevMaxY` were derived from a hybrid state
+ * that never existed on screen, and the composable's own docblock was false on
+ * three of its four claims. The watcher already held the answer in `old[1]`.
+ *
+ * ⊘ `deep: true` goes in the SAME edit and not as a separate tidy: a deep watcher
+ * on in-place mutation hands back the same reference as both arguments, which
+ * destabilises the very `old` tuple this cure reads. Both props are replaced
+ * wholesale on every response, so the getter's array identity is the honest
+ * trigger (`SP-16`'s member: the deep traversal was priced for nothing).
+ */
+watch(() => [props.originalPoints, props.coefficients] as const, (_now, old) => {
+    const oldPoints = old?.[0];
+    const oldCoefficients = old?.[1];
+    if (oldPoints && oldCoefficients) {
+        const oldHarmonics = groupTrigHarmonics(oldCoefficients, props.nHarmonics);
+        const oldDc = oldCoefficients.find((c) => c.n === 0)?.coefficient_re ?? 0;
+        snapshotForTransition(transition, oldPoints.y, oldHarmonics, oldDc, oldPoints.x, props.domain);
         cancelTransition?.();
         cancelTransition = startTransition(transition, draw, prefersReducedMotion.value);
     } else {
         draw();
     }
-}, { deep: true });
+});
 
 watch(() => props.nHarmonics, () => { if (!playing.value) draw(); });
 

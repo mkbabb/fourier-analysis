@@ -97,3 +97,32 @@ describe("snapshotForTransition", () => {
         expect(state.prevMaxY).toBeCloseTo(1 + pad, 12);
     });
 });
+
+/**
+ * X·F F.W4 `.b` — `fr-ConvergencePlot L-M1`'s rider, landing in the SAME edit as
+ * the `old[1]` fix, per the record: *"a 6-line unit test on
+ * `snapshotForTransition` rides the same edit"*.
+ *
+ * RD-8's adopted cell names WHY the identity-lerp survived: *"there is no seam at
+ * which the identity-lerp could have been observed"*. This is that seam. The
+ * caller used to hand this function the NEW harmonics and call them previous, so
+ * every lerp was an identity; what catches that is an assertion that the output
+ * DEPENDS on the harmonics argument at all.
+ */
+describe("snapshotForTransition — the L-M1 seam", () => {
+    it("derives the snapshot bounds from the harmonics it is GIVEN", () => {
+        const domain: [number, number] = [0, 2 * Math.PI];
+        const origX = [0, Math.PI / 2, Math.PI];
+        const origY = [0, 0, 0];
+        const from = createTransitionState();
+        const to = createTransitionState();
+
+        snapshotForTransition(from, origY, [{ k: 1, a_n: 1, b_n: 0, amplitude: 1 }], 0, origX, domain);
+        snapshotForTransition(to, origY, [{ k: 1, a_n: 5, b_n: 0, amplitude: 5 }], 0, origX, domain);
+
+        // Identical bounds here would mean the argument was ignored — which is
+        // exactly what the caller's bug made true for every real transition.
+        expect(from.prevMaxY).not.toBeCloseTo(to.prevMaxY, 6);
+        expect(from.prevHarmonics[0]!.a_n).toBe(1);
+    });
+});
