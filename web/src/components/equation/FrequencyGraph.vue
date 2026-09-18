@@ -1,21 +1,40 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import type { BasisComponent } from "@/lib/types";
 
+/**
+ * `FR-CP-R-7` / `DECISIONS-F.W4.md` **D2**, executed as ruled — this seat
+ * re-decides nothing.
+ *
+ * (a) RULED DELETE. The selection contract — `toggle-harmonic` /
+ *     `hover-harmonic`, `activeIndices`, the `@click` handler and the
+ *     `cursor-pointer` that advertised it — had ZERO consumers repo-wide. Wiring
+ *     it would have been new feature scope in a defect-mass wave, the house law
+ *     forbids shipping an affordance with no consumer, and the wire arm dragged a
+ *     mandatory `onUnmounted` teardown behind it. It is gone, and with it the
+ *     dead `onUnmounted` import that was the spec's own reminder that the open
+ *     half of a paired contract had been authored without its close
+ *     (`FR-FG-22`, which stays INFO precisely BECAUSE this arm ruled delete).
+ *
+ * (b) DEFERRED-WITH-DEFAULT: the shipped LINEAR arm stays, no control is wired,
+ *     and NOTHING on the log side is deleted — the annotated transform, the axis
+ *     label's log branch and the tooltip's log row all survive untouched. The
+ *     D-axis minority (that LOG is the correct default, the 0.008 floor being the
+ *     linear arm's own admission) is preserved and routed to SS-3/SS-4.
+ *
+ * ⊘ The touch constraint binds under BOTH arms and is NOT deferred: the hit-test
+ *     lives in POINTER handlers now. `onClick` used to read state that only
+ *     `mousemove` ever wrote, so the whole inspection path was silently dead on
+ *     the touch arm this route supports.
+ */
 const props = withDefaults(defineProps<{
     components: BasisComponent[];
-    activeIndices?: Set<number>;
     maxBars?: number;
     logScale?: boolean;
 }>(), {
     maxBars: 60,
     logScale: false,
 });
-
-const emit = defineEmits<{
-    "toggle-harmonic": [index: number];
-    "hover-harmonic": [index: number | null];
-}>();
 
 const canvasRef = ref<HTMLCanvasElement>();
 const scrollRef = ref<HTMLDivElement>();
@@ -74,7 +93,6 @@ function draw() {
 
     for (let i = 0; i < n; i++) {
         const comp = comps[i];
-        const isActive = !props.activeIndices || props.activeIndices.has(comp.index);
         const isHovered = hoveredBar.value === i;
 
         const x = startX + i * (BAR_W + BAR_GAP);
@@ -83,7 +101,7 @@ function draw() {
         const y = pad.top + plotH - barH;
         const color = spectrumColor(i, n);
 
-        ctx.globalAlpha = isActive ? (isHovered ? 1.0 : 0.85) : 0.25;
+        ctx.globalAlpha = isHovered ? 1.0 : 0.85;
 
         if (isHovered) {
             ctx.shadowColor = color;
@@ -104,7 +122,7 @@ function draw() {
         ctx.shadowBlur = 0;
 
         // Index label
-        ctx.globalAlpha = isActive ? 0.5 : 0.2;
+        ctx.globalAlpha = 0.5;
         ctx.fillStyle = getComputedStyle(canvas).getPropertyValue("color") || "#888";
         ctx.font = "9px 'Fira Code', monospace";
         ctx.textAlign = "center";
@@ -129,32 +147,26 @@ function hitTest(clientX: number): number | null {
     return null;
 }
 
-function onMouseMove(e: MouseEvent) {
+/** The hit-test lives here, on the pointer, so touch reaches it at all. */
+function onPointerMove(e: PointerEvent) {
     const idx = hitTest(e.clientX);
-    if (idx !== hoveredBar.value) {
-        hoveredBar.value = idx;
-        emit("hover-harmonic", idx !== null ? displayComponents.value[idx].index : null);
-        const rect = scrollRef.value!.getBoundingClientRect();
-        tooltipPos.value = { x: e.clientX - rect.left + scrollRef.value!.scrollLeft, y: e.clientY - rect.top };
-        draw();
+    if (idx === hoveredBar.value) return;
+    hoveredBar.value = idx;
+    const scroll = scrollRef.value;
+    if (scroll) {
+        const rect = scroll.getBoundingClientRect();
+        tooltipPos.value = { x: e.clientX - rect.left + scroll.scrollLeft, y: e.clientY - rect.top };
     }
+    draw();
 }
 
-function onMouseLeave() {
-    if (hoveredBar.value !== null) {
-        hoveredBar.value = null;
-        emit("hover-harmonic", null);
-        draw();
-    }
+function onPointerLeave() {
+    if (hoveredBar.value === null) return;
+    hoveredBar.value = null;
+    draw();
 }
 
-function onClick() {
-    if (hoveredBar.value !== null) {
-        emit("toggle-harmonic", displayComponents.value[hoveredBar.value].index);
-    }
-}
-
-watch(() => [props.components, props.logScale, props.maxBars, props.activeIndices], () => draw(), { deep: true });
+watch(() => [props.components, props.logScale, props.maxBars], () => draw(), { deep: true });
 
 onMounted(() => draw());
 </script>
@@ -176,10 +188,11 @@ onMounted(() => draw());
         >
             <canvas
                 ref="canvasRef"
-                class="block cursor-pointer text-muted-foreground"
-                @mousemove="onMouseMove"
-                @mouseleave="onMouseLeave"
-                @click="onClick"
+                class="block text-muted-foreground"
+                @pointermove="onPointerMove"
+                @pointerdown="onPointerMove"
+                @pointerleave="onPointerLeave"
+                @pointercancel="onPointerLeave"
             />
             <!-- Tooltip -->
             <div

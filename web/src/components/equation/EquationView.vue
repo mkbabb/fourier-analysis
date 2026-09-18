@@ -360,7 +360,11 @@ watchDebounced(
                         @compute="doCompute(true)"
                     />
                     <Transition name="slide-down">
-                        <EqCoefficientsPanel v-if="components.length" :components="components" />
+                        <EqCoefficientsPanel
+                            v-if="components.length"
+                            :components="components"
+                            :rendered-terms="budget"
+                        />
                     </Transition>
                 </div>
             </div>
