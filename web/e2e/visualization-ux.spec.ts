@@ -260,6 +260,67 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
         await checkA11y(page, "/equation");
     });
 
+    // ── Keystones 6–8 — `/paper`, `/morph`, `/demo/shape-extractor` ──
+    //
+    // X·F F.W4 `.g`, `G-F4-A11Y-ROUTE`: *"`checkA11y(page, "equation")` +
+    // `/paper` + `/morph` + `/demo/shape-extractor` join the axe keystone set;
+    // zero serious/critical"*. Before this block, axe reached `/visualize`,
+    // `/v/{slug}` and (since F.W0) `/equation` — three of the seven routes the
+    // router declares. Half the app had never been graded: `/paper` is the
+    // largest DOM in the repo (`PS D-B2` books its 2.39/3.00 contrast pairs
+    // unverified for exactly this reason), and the two morph surfaces carry
+    // `HLG-*`/`FSE-*` rows whose witnesses do not exist.
+    //
+    // ⊘ THE GATE'S OWN PREDICTION IS FALSIFIED AT THE BYTES, RECORDED RATHER
+    // THAN SMOOTHED. The gate cell predicts *"the moment `/equation` joins,
+    // fr-CL M-R2 + FR-EQR-6/R2-r3 fire TWO `scrollable-region-focusable` BEFORE
+    // any hover finding — that is the RED"*. `/equation` had already joined
+    // (F.W0), and the measured RED, double-run at this seat 2026-09-18, is ONE
+    // `[critical] button-name` on `.is-auto-active` (`FunctionInput.vue:192` —
+    // the `icon-only` Auto/Parseval `Button` with no accessible name). ZERO
+    // `scrollable-region-focusable` of either kind. The prediction is struck by
+    // measurement; the cure belongs to `.b`, and the dated addendum-beside is
+    // `<vjs>/docs/tranches/X/fourier/F-W4-ADDENDA-g-2026-09-18.md`.
+    //
+    // Each keystone settles on its own rendered content — never a blind
+    // timeout — so a route that fails to boot fails loudly instead of grading
+    // an empty `<main>`.
+
+    test("keystone: /paper is a11y-clean", async ({ page }) => {
+        await page.goto("/paper");
+        await page.waitForLoadState("networkidle", { timeout: 60_000 });
+        // The compiled article's own H1 — present only once latex-paper has
+        // mounted the document body, which is the whole surface being graded.
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible({
+            timeout: 60_000,
+        });
+        await checkA11y(page, "/paper");
+    });
+
+    test("keystone: /morph is a11y-clean", async ({ page }) => {
+        await page.goto("/morph");
+        await page.waitForLoadState("networkidle", { timeout: 60_000 });
+        // `HarmonicLevelGrid`'s three phase sections are the route's control
+        // mass (`HLG-37`'s contrast rungs, `HLG-20`'s rails); grading before
+        // they mount would miss every row this route owns.
+        await expect(page.getByRole("heading", { name: "Morph", exact: true })).toBeVisible({
+            timeout: 60_000,
+        });
+        await checkA11y(page, "/morph");
+    });
+
+    test("keystone: /demo/shape-extractor is a11y-clean", async ({ page }) => {
+        await page.goto("/demo/shape-extractor");
+        await page.waitForLoadState("networkidle", { timeout: 60_000 });
+        // The Sun/Moon figure headings — the two shapes `FSE-*` books, and the
+        // same surface whose 375px horizontal amputation the occlusion gate now
+        // measures (`visual-baseline.spec.ts`, `FSE-M-4`).
+        await expect(page.getByRole("heading", { name: "Moon", exact: true })).toBeVisible({
+            timeout: 60_000,
+        });
+        await checkA11y(page, "/demo/shape-extractor");
+    });
+
     // ── Invariant 19 — auto-recompute regression guard ──
     // RED BASELINE: `saveContourPoints` (workspace.ts) nulls epicycleData /
     // basesData and launches no recompute; the ContourSettings watcher does not
