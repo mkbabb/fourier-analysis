@@ -2,7 +2,7 @@
 import { ref, computed, watch } from "vue";
 import { watchDebounced, useMediaQuery } from "@vueuse/core";
 import { computeEquation, simplifyCoefficients, isAbortError } from "@/lib/equation/api";
-import type { NotationMode, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
+import type { NotationMode, ComputeEquationRequest, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
 import { TIER_INFO, energyColor } from "@/lib/equation/notation";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -75,23 +75,74 @@ const coefficients = computed(() => result.value?.coefficients ?? []);
 const { hoveredCoeff, popoverPos, popoverHtml, onMouseMove: onCoeffMove, onMouseLeave: onCoeffLeave } =
     useCoeffHover(coefficients);
 
-// ── Cache keys ──
-let lastComputeKey = cachedRes ? `${expression.value}|${domainStart.value}|${domainEnd.value}|${nHarmonics.value}` : "";
-let lastDisplayKey = cachedRes ? `${lastComputeKey}|${notation.value}|${budget.value}` : "";
+// ── The ONE normalization seam ──
+//
+// `M-CK` — `computeKey()` used to return 4 fields while the POST carried 7,
+// including `notation` and `budget`, both of which the server reads to build the
+// response (`equations.py:91` `simplify_series(terms, budget, notation)` →
+// `latex`; `:96` `render_latex_sigma(terms, notation)` → `latex_sigma`). A key
+// that under-determines its own request is a memo that returns the wrong answer,
+// and it is why BOTH prescribed cures for `B-1` reproduced `B-1` one layer down.
+// `R2-N5` rides the same seam: the key read the UNTRIMMED expression while the
+// body sent the trimmed one, so a trailing space was a cache miss for an
+// identical request. Normalize ONCE, here, and key off the result — never off
+// the refs.
+const N_EVAL_POINTS = 500;
 
-function computeKey(): string {
-    return `${expression.value}|${domainStart.value}|${domainEnd.value}|${nHarmonics.value}`;
+function currentRequest(): ComputeEquationRequest {
+    return {
+        expression: expression.value.trim(),
+        domain_start: domainStart.value,
+        domain_end: domainEnd.value,
+        n_harmonics: nHarmonics.value,
+        n_eval_points: N_EVAL_POINTS,
+        notation: notation.value,
+        budget: budget.value,
+    };
 }
-function displayKey(): string {
-    return `${lastComputeKey}|${notation.value}|${budget.value}`;
+
+/**
+ * The compute operation's identity — six of the seven request fields.
+ *
+ * `budget` is deliberately absent and the omission is SOUND, which is the thing
+ * the old key could not say: every field of the compute response is either
+ * determined by one of these six (`coefficients`, `original_points`,
+ * `effective_n`, and — the `B-1` fix — `latex_sigma`, which is
+ * notation-determined), or is repaired by the `doSimplify` the memo branch calls
+ * on its way out (`latex` and `energy_captured`, which are exactly what
+ * `/simplify` returns). Putting `budget` in here would turn every Display-terms
+ * drag into a fresh symbolic integration for a string `/simplify` already owns.
+ */
+function computeKey(req: ComputeEquationRequest): string {
+    return JSON.stringify([
+        req.expression,
+        req.domain_start,
+        req.domain_end,
+        req.n_harmonics,
+        req.n_eval_points,
+        req.notation,
+    ]);
 }
+
+/** The render identity: the computed state, times the two knobs that re-render it. */
+function displayKey(req: ComputeEquationRequest): string {
+    return JSON.stringify([lastComputeKey, req.notation, req.budget]);
+}
+
+// ── Cache keys ──
+//
+// `L·M-3` — seeded from the record's OWN key, never re-derived from the inputs
+// the user may have edited since. When they disagree, `:174`'s guard below fires
+// a corrective recompute instead of showing an old result under new inputs.
+let lastComputeKey = cachedRes?.key ?? "";
+let lastDisplayKey = cachedRes ? displayKey(currentRequest()) : "";
 
 // ── API ──
 
 async function doCompute(force = false) {
-    const expr = expression.value.trim();
-    if (!expr) return;
-    const key = computeKey();
+    const req = currentRequest();
+    if (!req.expression) return;
+    const key = computeKey(req);
     if (!force && key === lastComputeKey && result.value) {
         await doSimplify();
         return;
@@ -100,24 +151,17 @@ async function doCompute(force = false) {
     computing.value = true;
     error.value = null;
     try {
-        result.value = await computeEquation({
-            expression: expr,
-            domain_start: domainStart.value,
-            domain_end: domainEnd.value,
-            n_harmonics: nHarmonics.value,
-            n_eval_points: 500,
-            notation: notation.value,
-            budget: budget.value,
-        });
+        const res = await computeEquation(req);
+        result.value = res;
         lastComputeKey = key;
-        displayLatex.value = result.value.latex;
-        displayLatexSigma.value = result.value.latex_sigma;
-        displayEnergy.value = result.value.energy_captured;
+        displayLatex.value = res.latex;
+        displayLatexSigma.value = res.latex_sigma;
+        displayEnergy.value = res.energy_captured;
         // Capture display key BEFORE effectiveN triggers the vizHarmonics→budget
         // chain, so a subsequent doSimplify can detect the budget changed.
-        lastDisplayKey = displayKey();
-        effectiveN.value = result.value.effective_n;
-        saveCachedResult(result.value, displayLatex.value, displayEnergy.value);
+        lastDisplayKey = displayKey(req);
+        effectiveN.value = res.effective_n;
+        saveCachedResult(key, res, displayLatex.value, displayEnergy.value);
     } catch (e) {
         if (!isAbortError(e)) {
             error.value = e instanceof Error ? e.message : "Computation failed";
@@ -129,16 +173,19 @@ async function doCompute(force = false) {
 
 async function doSimplify() {
     if (!components.value.length) return;
-    const key = displayKey();
+    const req = currentRequest();
+    const key = displayKey(req);
     if (key === lastDisplayKey) return;
 
     simplifying.value = true;
     try {
-        const resp = await simplifyCoefficients(components.value, budget.value, notation.value);
+        const resp = await simplifyCoefficients(components.value, req.budget, req.notation);
         displayLatex.value = resp.latex;
         displayEnergy.value = resp.energy_captured;
         lastDisplayKey = key;
-        if (result.value) saveCachedResult(result.value, displayLatex.value, displayEnergy.value);
+        if (result.value) {
+            saveCachedResult(lastComputeKey, result.value, displayLatex.value, displayEnergy.value);
+        }
     } catch (e) {
         if (!isAbortError(e)) { /* silent */ }
     } finally {
@@ -170,13 +217,25 @@ watch(
     }),
 );
 
-// Initial compute (only if no cached result)
-if (!result.value) doCompute();
+// Initial compute. `L·M-3` — nullity is not the question; PROVENANCE is. A
+// restored result whose own key disagrees with the restored inputs is a result
+// for a different request, and the corrective recompute the old `!result.value`
+// test could never fire now does.
+if (!result.value || computeKey(currentRequest()) !== lastComputeKey) doCompute();
 
-// Cheap re-render on notation/budget change
+// `B-1` — the Notation control used to be inert in the DEFAULT mode: `eqMode`
+// starts at `"sigma"`, `activeLatex` prefers `displayLatexSigma`, and the ONLY
+// writer of `displayLatexSigma` is a compute — `/simplify` has no `latex_sigma`
+// field on either side of the wire. Routing notation through `doCompute` is the
+// cure the key fix above makes possible: the notation is IN the compute
+// identity, so the memo no longer swallows the change, and the `force` memo
+// branch (`L·m-1`, dead until now because nothing ever called `doCompute(false)`
+// with a result in hand) comes alive as the cheap path for a budget-only edit.
+// ⊘ `latex_sigma` on `SimplifyResponse` is the F.W5–W8 contract half; until it
+// lands, a notation change costs a recompute, and that is the honest price.
 watchDebounced(
     () => [notation.value, budget.value] as const,
-    () => { if (result.value) doSimplify(); },
+    () => { if (result.value) doCompute(); },
     { debounce: 200 },
 );
 </script>
