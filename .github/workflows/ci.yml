@@ -124,6 +124,27 @@ jobs:
         # is F.W9/W10's act, together with the `lint` npm script (§6b: "the lint
         # script as a CI gate" is the W9/W10 half).
         run: npx --yes oxlint@1.42.0 src e2e vite.config.ts playwright.config.ts
+      - name: Keyed-loop + duplicate-import gate (X·F F.W4, G-F4-NO-UNUSED)
+        working-directory: web
+        # The ESLint leg of `G-F4-NO-UNUSED`. The gate's OTHER leg —
+        # `noUnusedLocals`/`noUnusedParameters` on the shared tsconfig — landed
+        # at F.W0 `b3b736c` and runs in the `Type-check` step above; F.W4 claims
+        # no credit for it (`greenBeforeCure` #1). This step lands the half the
+        # gate still owed: `vue/require-v-for-key` + `no-duplicate-imports` over
+        # `web/src`, wired, blocking.
+        #
+        # ⊘ oxlint is NOT replaced. It is zero-config and correctness-scoped and
+        # parses no Vue template AST, so it can carry neither of these two rules.
+        # Both floors run; neither discharges the other.
+        #
+        # BORN-RED BY DESIGN, and the roster is published rather than hidden:
+        # 10 `no-duplicate-imports` errors and 0 `vue/require-v-for-key` errors
+        # at the settled bytes (measured 2026-09-18, double-run). Each of the 10
+        # is routed by path to its owning unit in
+        # `<vjs>/docs/tranches/X/execution/C/F-W4.md` §`.g`. No `eslint-disable`,
+        # no `--max-warnings`, no `continue-on-error` — the step goes green when
+        # the sites are cured, and by no other means.
+        run: npm run lint
       - name: Unit-runner seat (X·F F.W0, G-9)
         working-directory: web
         # `PP-NOTEST (= L-13) ≡ R-20 ≡ fr-App C-13`: `web/` has no unit runner,
