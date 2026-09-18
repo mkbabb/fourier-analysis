@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
-import { GlassDock, DockControl } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
 import {
@@ -121,8 +121,20 @@ const magnetModel = computed<number[]>({
             <Wand2 class="shrink-0 dock-summary-glyph" aria-hidden="true" />
         </template>
 
-        <!-- Expanded controls -->
-        <div class="flex items-center gap-2 w-full">
+        <!--
+          Expanded controls.
+
+          X.F.W4 · SP-6 / `fr-EditorControlsDock D-18` — `gap-2` pinned the row
+          at a fixed 0.5rem against the family's `--dock-layer-gap`
+          (0.375rem × `--dock-scale`): 33% wide at 1×, and frozen on touch where
+          the scale moves and the literal does not. The token governs now.
+
+          ⊘ The row's banked cure was "discharged for free by INFO-3's
+          `DockLayerGroup` adoption", and that premise has MOVED at 8.0.0 — see
+          the separator note below. The defect is cured directly instead, which
+          is what the row actually describes.
+        -->
+        <div class="dock-row flex items-center w-full">
             <Tooltip text="Undo">
                 <DockControl aria-label="Undo" :disabled="!canUndo" @click="emit('undo')">
                     <Undo2 />
@@ -134,7 +146,7 @@ const magnetModel = computed<number[]>({
                 </DockControl>
             </Tooltip>
 
-            <span class="dock-separator" />
+            <DockSeparator />
 
             <Tooltip text="Smooth">
                 <DockControl class="is-amber" aria-label="Smooth contour" @click="emit('smooth')">
@@ -180,7 +192,7 @@ const magnetModel = computed<number[]>({
                 </PopoverContent>
             </Popover>
 
-            <span class="dock-separator" />
+            <DockSeparator />
 
             <!-- Overlay stack (ghost + image) -->
             <Popover trigger="hover" keep-dock-open>
@@ -219,17 +231,32 @@ const magnetModel = computed<number[]>({
 <style scoped>
 @reference "tailwindcss";
 
-/* ── Dock layout helpers ── */
-.dock-separator {
-    width: 1px;
-    height: 1.5rem;
-    background: color-mix(in srgb, var(--foreground) 20%, transparent);
-    flex-shrink: 0;
-}
-
-.dock-spacer {
-    flex: 1;
-}
+/**
+ * X.F.W4 · SP-6 / `fr-EditorControlsDock D-9 · L-8` (+D-26; and `INFO-3`,
+ * answered rather than obeyed) — the scoped `.dock-separator` and `.dock-spacer`
+ * rules are DELETED and `<DockSeparator>` is adopted.
+ *
+ * Both classes are shipped by the producer in `@layer components`, and scoped
+ * styles are UNLAYERED, so these two rules beat them unconditionally: the
+ * hairline lost the library's `0 0.375rem` margin, re-based its tint off a
+ * local `color-mix` instead of `--dock-hairline` (and off its dark-arm
+ * re-base), and forfeited `role="separator"` + `data-orientation` entirely. The
+ * drift was visible on one stage: the sibling dock's copy carried
+ * `margin: 0 0.125rem` — two docks, one canvas, two hairline rhythms. Both
+ * copies are gone.
+ *
+ * ⊘ `INFO-3`'s further ask — "the separator cure should take the whole family",
+ * adopting `DockLayerGroup`/`DockLayer` to discharge `D-18` and `D-26` in the
+ * same edit — is NOT executed, and the reason is a measured change in the
+ * producer, not a decision to do less. At 4.0.0 `DockLayerGroup` was a grouping
+ * primitive carrying a gap token. At 8.0.0 it is a multi-FACE switcher: it
+ * composes `<DockCrossfade>`, registers `<DockLayer>` descriptors, and renders a
+ * `role="tablist"` of `role="tab"` buttons with roving focus. This dock has ONE
+ * face. Adopting it would mint a tablist over a single tab to obtain a gap —
+ * the kind of adoption-for-its-own-sake this program treats as a defect. The
+ * gap is taken from `--dock-layer-gap` directly, which is the same number from
+ * the same authority. Recorded as a dated addendum-beside (E-3).
+ */
 
 /* X.F.W4 · SP-5 (B-2) + `fr-CanvasControlsDock M-7`'s token leg — the collapsed
    identity glyph reads the dock's own glyph rung and the substrate's muted-glyph
@@ -244,6 +271,10 @@ const magnetModel = computed<number[]>({
         var(--foreground) calc(var(--opacity-icon-muted) * 100%),
         transparent
     );
+}
+
+.dock-row {
+    gap: var(--dock-layer-gap);
 }
 
 .dock-badge {

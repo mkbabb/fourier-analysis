@@ -4,7 +4,7 @@ import {
     Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
-import { GlassDock, DockControl } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 
 defineProps<{
     isEditing: boolean;
@@ -84,7 +84,7 @@ watch(
                 </PopoverContent>
             </Popover>
 
-            <div class="dock-separator" />
+            <DockSeparator />
 
             <!-- Publish -->
             <Tooltip v-if="hasContour" text="Publish to Gallery" side="bottom">
@@ -99,7 +99,7 @@ watch(
                 </DockControl>
             </Tooltip>
 
-            <div class="dock-separator" />
+            <DockSeparator />
         </template>
 
         <!-- Edit (always visible when contour exists) -->
@@ -154,13 +154,11 @@ watch(
 </template>
 
 <style scoped>
-.dock-separator {
-    width: 1px;
-    height: 1.5rem;
-    margin: 0 0.125rem;
-    background: color-mix(in srgb, var(--foreground) 20%, transparent);
-    flex-shrink: 0;
-}
+/* X.F.W4 · SP-6 / `fr-EditorControlsDock D-9 · L-8` — this dock's copy of the
+   shadowing `.dock-separator` rule, deleted with its twin. Its `0 0.125rem`
+   margin against the sibling's `0` was the drift that made two docks on one
+   canvas paint two different hairline rhythms; `<DockSeparator>` supplies one
+   rhythm, one tint and `role="separator"` to both. */
 
 .view-btn-wrap {
     position: relative;

@@ -434,14 +434,28 @@ async function onCanvasFileSelect(e: Event) {
     display: flex;
     justify-content: center;
     pointer-events: none;
-    overflow: visible;
 }
 .controls-overlay > * { pointer-events: auto; }
 
-/* ── Transitions (A.W3.d — bezier→tokens; transition:all→named properties) ── */
-.expand-pop-enter-active { transition: opacity 0.3s var(--ease-standard), transform 0.35s var(--ease-apple-spring); }
-.expand-pop-leave-active { transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard); }
-.expand-pop-enter-from, .expand-pop-leave-to { opacity: 0; transform: scale(0.3); }
+/* X.F.W4 · SP-6 / `fr-VisualizationView L-17 · D-16 · MIN-3` — the dead-CSS
+   census, all five declarations, deleted with their zero-consumer proofs:
+
+     • `overflow: visible` on `.controls-overlay` (just above) restated the
+       initial value, so it was inert — and worse than inert, because its
+       evident intent is structurally defeated by TWO ancestors
+       (`.viz-panel-right { overflow: hidden }`, and the producer stage cell's
+       own `overflow-hidden`). It was simultaneously a no-op AND a false
+       "escape permitted" signal to the next reader, which is the expensive
+       half.
+     • the three `.expand-pop-*` rules styled a Vue <Transition> that appeared
+       nowhere in this file: at the bytes this seat measured, every occurrence
+       of the name was one of the three rules themselves, and no template node
+       carried it. Their `transform` leg additionally consumed
+       `--ease-apple-spring`, which is declared in NO tree — ⟨cmd⟩ `grep -roh --
+       '--ease-apple-spring' node_modules/@mkbabb/glass-ui/dist | wc -l` → 0,
+       re-run at this pin.
+     • `.viz-grid`, in the narrow-viewport band, was the same shape: a class no
+       element in this file carried. */
 
 .panel-swap-enter-active, .panel-swap-leave-active { transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard); }
 .panel-swap-enter-from { opacity: 0; transform: translateY(4px); }
@@ -496,7 +510,6 @@ async function onCanvasFileSelect(e: Event) {
 
 /* ── Mobile ── */
 @media (max-width: 900px) {
-    .viz-grid { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
     .controls-overlay { left: 0.5rem; right: 0.5rem; bottom: 0.75rem; }
 }
 </style>
