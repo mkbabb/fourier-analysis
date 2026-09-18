@@ -95,9 +95,40 @@ watch(
             </DockControl>
         </Tooltip>
 
+        <!--
+          X.F.W4 · SP-5 — `fr-CanvasControlsDock M-2` ⊕ `fr-EditorControlsDock B-2`,
+          THE INVERSION LOCK. M-2's booked consumer cure was "focusable summary
+          content"; at 8.0.0 that would now be the WRONG edit, and the sibling
+          record proves why — it is exactly the shape that destroys focus there.
+          glass-ui 8.0.0 makes the summary layer itself the disclosure
+          (`role="button"` + `tabindex="0"` + `aria-label="Expand dock"` +
+          `aria-expanded`/`aria-controls`, Enter/Space expanding and handing
+          focus into the full layer), so the keyboard entry M-2 filed as absent
+          now exists and this slot's correct content is precisely what it
+          already is: NON-interactive. The consumer arm is therefore the OTHER
+          half of the row pair — D-9/C-15 ⊕ L-22: the summary must stop lying.
+
+          It advertised a fixed Pencil while Edit is `v-if="hasContour"` and the
+          dock mounts during compute-before-contour (`hasData ∋ computing`), so
+          `:start-collapsed="true"` made an over-promising pill the first-time
+          user's first state, and none of the seven reactive props reached the
+          resting face — which is also why the view-dot vanished in the dock's
+          second state. Each glyph is now conditioned on the state it stands
+          for, and the view-dot rides the summary too. M-7's token leg rides
+          here: the two hard-coded opacity utilities (the file's only opacities,
+          over live-canvas glass) become the substrate's muted-glyph dial.
+        -->
         <template #collapsed>
-            <Maximize2 class="h-4 w-4 opacity-70" />
-            <Pencil class="h-3.5 w-3.5 opacity-40" />
+            <span class="summary-glyph-wrap">
+                <Maximize2 class="dock-summary-glyph" aria-hidden="true" />
+                <span v-if="showImageOverlay || showGhost" class="view-dot" />
+            </span>
+            <Pencil
+                v-if="hasContour"
+                class="dock-summary-glyph"
+                :class="{ 'is-editing': isEditing }"
+                aria-hidden="true"
+            />
         </template>
     </GlassDock>
 </template>
@@ -127,6 +158,36 @@ watch(
     border-radius: 9999px;
     background: var(--viz-amber);
     box-shadow: 0 0 4px color-mix(in srgb, var(--viz-amber) 60%, transparent);
+}
+
+/* X.F.W4 · `fr-CanvasControlsDock` L-22 + M-7 — the resting face's glyphs read
+   the dock's own glyph rung and the substrate's muted-glyph dial. The two
+   literal opacity utilities they replace (`opacity-70`/`opacity-40`, the file's
+   only opacities) put a 14px 40%-opacity glyph over live-canvas glass; the dial
+   is one authority for every muted glyph in the system, and the size now tracks
+   `--dock-scale` — including its coarse-pointer re-declaration, which the
+   utilities froze out. */
+.summary-glyph-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dock-summary-glyph {
+    width: var(--dock-icon-glyph);
+    height: var(--dock-icon-glyph);
+    color: color-mix(
+        in srgb,
+        var(--foreground) calc(var(--opacity-icon-muted) * 100%),
+        transparent
+    );
+}
+
+/* The resting face tells the truth about the state it is resting in: an
+   in-progress edit reads at full strength, not as a muted affordance. */
+.dock-summary-glyph.is-editing {
+    color: var(--foreground);
 }
 </style>
 

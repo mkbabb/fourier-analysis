@@ -54,18 +54,56 @@ const magnetModel = computed<number[]>({
 
 <template>
     <GlassDock :collapse-delay="2000" :start-collapsed="true" fit-content>
-        <!-- Collapsed summary -->
+        <!--
+          X.F.W4 · SP-5 — `fr-EditorControlsDock B-2` ⊕ `fr-CanvasControlsDock M-2`,
+          THE INVERSION LOCK, cured on both faces in one edit.
+
+          At 4.0.0 the two docks failed inversely: this one put a real focusable
+          Save inside `#collapsed`, so keyboard entry expanded the dock, which
+          stamped `inert` on the summary layer out from under the focused button
+          and threw focus to the body (B-2); the sibling put only glyphs there,
+          so a keyboard user could never open it at all (M-2). The sibling's
+          booked cure — "focusable summary content" — would have MANUFACTURED
+          B-2 there, which is why the two rows are one object.
+
+          glass-ui 8.0.0 ships the producer half both relay letters asked for:
+          the summary layer is itself the disclosure (`role="button"`,
+          `tabindex="0"`, `aria-label="Expand dock"`, `aria-expanded`,
+          `aria-controls`), its `focusin` is `.stop`-modified so focus into the
+          summary no longer triggers the expand-flip, and its Enter/Space
+          handler expands and then MOVES focus into the full layer. The
+          destruction chain is gone at the producer.
+
+          What that leaves is a consumer defect the producer's cure creates
+          here and nowhere else: a `role="button"` host may not contain
+          interactive content, and this file's `#collapsed` did. So the Save
+          leaves the summary for `#persistent` — the never-inert region the
+          producer renders OUTSIDE `.dock-layers`, present at both poles. The
+          collapsed summary keeps a non-interactive identity glyph, the
+          disclosure semantics stay valid, and S-4/M-9's design fact — the one
+          action that persists work survives the auto-collapse — is not merely
+          preserved but strengthened: Save is now reachable in EVERY state.
+          The expanded row's duplicate Save and badge go with it (one action,
+          one control).
+        -->
+        <template #persistent>
+            <span class="dock-badge">{{ pointCount }} pts</span>
+            <Tooltip text="Save contour">
+                <DockControl
+                    class="is-save"
+                    :class="{ saved: isSaved }"
+                    :aria-label="isSaved ? 'Contour saved' : 'Save contour'"
+                    @click.stop="emit('save')"
+                >
+                    <Check v-if="isSaved" />
+                    <Save v-else />
+                </DockControl>
+            </Tooltip>
+        </template>
+
+        <!-- Collapsed summary — identity mark only; NO interactive content. -->
         <template #collapsed>
-            <div class="flex items-center gap-2">
-                <Wand2 :size="18" class="shrink-0 text-foreground/50" />
-                <span class="dock-badge">{{ pointCount }} pts</span>
-                <Tooltip text="Save contour">
-                    <DockControl class="is-save" :class="{ saved: isSaved }" @click.stop="emit('save')">
-                        <Check v-if="isSaved" :size="18" />
-                        <Save v-else :size="18" />
-                    </DockControl>
-                </Tooltip>
-            </div>
+            <Wand2 class="shrink-0 dock-summary-glyph" aria-hidden="true" />
         </template>
 
         <!-- Expanded controls -->
@@ -159,14 +197,6 @@ const magnetModel = computed<number[]>({
             </Tooltip>
 
             <span class="dock-spacer" />
-            <span class="dock-badge">{{ pointCount }} pts</span>
-
-            <Tooltip text="Save contour">
-                <DockControl class="is-save" :class="{ saved: isSaved }" @click="emit('save')">
-                    <Check v-if="isSaved" :size="20" />
-                    <Save v-else :size="20" />
-                </DockControl>
-            </Tooltip>
         </div>
     </GlassDock>
 </template>
@@ -184,6 +214,21 @@ const magnetModel = computed<number[]>({
 
 .dock-spacer {
     flex: 1;
+}
+
+/* X.F.W4 · SP-5 (B-2) + `fr-CanvasControlsDock M-7`'s token leg — the collapsed
+   identity glyph reads the dock's own glyph rung and the substrate's muted-glyph
+   dial instead of a literal size and an ad-hoc `/50` alpha, so it tracks the
+   `--dock-scale` ladder (including the coarse-pointer re-declaration) the way
+   every other glyph in the dock does. */
+.dock-summary-glyph {
+    width: var(--dock-icon-glyph);
+    height: var(--dock-icon-glyph);
+    color: color-mix(
+        in srgb,
+        var(--foreground) calc(var(--opacity-icon-muted) * 100%),
+        transparent
+    );
 }
 
 .dock-badge {
