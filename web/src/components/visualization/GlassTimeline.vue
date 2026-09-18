@@ -92,7 +92,10 @@ function onValueCommit() {
     transform: translateX(-50%);
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    /* X.F.W4 · SP-4 / `fr-AnimationControls M-7` — raw `ease` and a bare
+       duration on a surface that is otherwise tokenised; and the caret's fade
+       was ungated, one of the two child surfaces that extend D-8's inventory. */
+    transition: opacity var(--duration-normal) var(--ease-standard);
     z-index: var(--z-popover);
     user-select: none;
     -webkit-user-select: none;
@@ -122,5 +125,11 @@ function onValueCommit() {
    equivalent to surface-tint at the same N%). */
 .timeline-slider {
     --slider-scrub-track-height: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .timeline-caret {
+        transition: none;
+    }
 }
 </style>

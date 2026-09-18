@@ -90,9 +90,23 @@ const anim = useAnimationStore();
     font-weight: 500;
     color: var(--muted-foreground);
     line-height: 1;
-    transition: color 0.15s;
+    /* X.F.W4 · SP-4 / `fr-AnimationControls M-7` — the bare `0.15s`, twelve
+       lines below the A.W3.d comment that claims this file uses the canonical
+       token, now uses it. */
+    transition: color var(--duration-fast) var(--ease-standard);
 }
 .easing-chip.is-active .easing-chip-label {
     color: var(--easing-accent);
+}
+
+/* X.F.W4 · SP-4 / `fr-AnimationControls M-7` + `D-8`'s inventory — the three
+   child transitions in this mounted subtree were reduced-motion-ungated, which
+   is what extends D-8's count from six surfaces to eight. The blanket is
+   declared once, here, over the two properties this file animates. */
+@media (prefers-reduced-motion: reduce) {
+    .easing-chip,
+    .easing-chip-label {
+        transition: none;
+    }
 }
 </style>

@@ -7,6 +7,27 @@ import type { EasingName } from "@/stores/animation";
 import { useToast } from "@/composables/useToast";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 
+/**
+ * X.F.W4 · SP-4 — `prefers-reduced-motion`, read LIVE at every call.
+ *
+ * ⊘ FR-AH-6 (*"one predicate, one home"*) — the app carries further copies of
+ * this predicate (`composables/useFourierMorph.ts` for the morph clock,
+ * `router/index.ts` for the View-Transitions gate). WHICH home survives is
+ * F.W5's rider to decide, so this seat does not pre-empt it: the predicate
+ * lives with the clock it gates, every site carries this note, and the collapse
+ * is one move whenever the ruling lands.
+ *
+ * It is a function and not a captured boolean because the preference can change
+ * mid-session; a value read once at module scope is a gate that silently stops
+ * being one.
+ */
+function prefersReducedMotion(): boolean {
+    return (
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true
+    );
+}
+
 export function useWorkspaceLoader(activeBases: Ref<string[]>) {
     const route = useRoute();
     const router = useRouter();
@@ -95,6 +116,27 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
 
     // Auto-play when computation data first arrives.
     // Does NOT override the user's basis selection on recomputes.
+    //
+    // X.F.W4 · SP-4 / `fr-AnimationControls D-8 · C-19` — the 60fps clock was
+    // entirely ungated and it AUTO-STARTED here, which is the half of that row
+    // this site owns: the reader arrives, and motion begins without being asked
+    // for. Decoration in this file was gated and substance was not.
+    //
+    // ⊘ M-D1's TERMINAL-FRAME LAW is the whole reason this is not simply
+    // `if (reduced) return`. Suppressing playback at mount freezes the canvas at
+    // t = 0 — for an epicycle drawing, the state in which nothing has been drawn
+    // yet — so the "accessible" arm would show a reduced-motion reader a blank
+    // instrument and call it an accommodation. The reduced arm therefore SEEKS
+    // THE TERMINAL FRAME (t = 1, the fully traced curve) and leaves the clock
+    // stopped: the same information, delivered as a static image.
+    //
+    // ⊘ Bounds, declared rather than half-landed: the rAF loop itself lives in
+    // `stores/animation.ts`, which is unit `.f`'s file in this wave. An explicit
+    // press of Play still starts an ungated loop, and that is a deliberate user
+    // action, not an auto-start. The store-side gate (park the loop, or honour
+    // the preference inside `tick`) is declared to `.f` and is NOT written from
+    // here; what is cured here is every path on which the app starts moving on
+    // its own.
     let hadDataBefore = false;
     watch(
         () => [store.epicycleData, store.basesData] as const,
@@ -103,6 +145,7 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
                 hadDataBefore = false;
                 return;
             }
+            const reduced = prefersReducedMotion();
             if (!hadDataBefore) {
                 hadDataBefore = true;
                 // First data arrival: ensure fourier-epicycles is selected
@@ -112,9 +155,16 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
                         ...activeBases.value.filter((b) => !b.startsWith("fourier")),
                     ];
                 }
+                if (reduced) {
+                    // Stop first, THEN seed: `reset()` pauses and zeroes, so
+                    // seeking before it would be overwritten by it.
+                    anim.reset();
+                    anim.seek(1);
+                    return;
+                }
                 anim.reset();
                 anim.play();
-            } else if (!anim.playing) {
+            } else if (!anim.playing && !reduced) {
                 anim.play();
             }
         },

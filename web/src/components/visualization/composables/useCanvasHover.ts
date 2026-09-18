@@ -1,5 +1,23 @@
 import { onUnmounted } from "vue";
 
+/**
+ * X.F.W4 · SP-4 — `prefers-reduced-motion`, read LIVE at every call.
+ *
+ * ⊘ FR-AH-6 (*"one predicate, one home"*) — further copies live at
+ * `useWorkspaceLoader.ts`, `composables/useFourierMorph.ts` and
+ * `router/index.ts`. WHICH home survives is F.W5's rider; the predicate lives
+ * with the clock it gates and every site carries this note, so the collapse is
+ * one move whenever the ruling lands. It is a function, never a captured
+ * boolean: the preference can change mid-session, and a value read once at
+ * module scope is a gate that silently stops being one.
+ */
+function prefersReducedMotion(): boolean {
+    return (
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true
+    );
+}
+
 export interface LabelHitRegion {
     key: string;
     x: number;
@@ -49,7 +67,25 @@ export function useCanvasHover(options: {
 
     // ── Scale animation ──
 
+    /**
+     * X.F.W4 · SP-4 (G-F4-PRM-CLOCK) — two of the app's five ungated JS clocks
+     * were in this file: the hover-scale easing loop and the shimmer loop.
+     *
+     * ⊘ M-D1's TERMINAL-FRAME LAW governs both arms. Gating the loop by
+     * returning early would leave `currentScale` mid-ease — the epicycle
+     * cluster stuck at whatever fraction of the hover scale the last tick
+     * happened to land on — which is the "freeze at t = 0" failure in its
+     * general form. The reduced arm therefore SNAPS to the terminal value and
+     * redraws once: the hover state is fully expressed, it simply is not
+     * animated into.
+     */
     function updateHoverScale() {
+        if (prefersReducedMotion()) {
+            currentScale = targetScale;
+            hoverAnimFrame = null;
+            onRedraw();
+            return;
+        }
         const diff = targetScale - currentScale;
         if (Math.abs(diff) < 0.002) {
             currentScale = targetScale;
@@ -64,8 +100,19 @@ export function useCanvasHover(options: {
 
     // ── Shimmer loop ──
 
+    /**
+     * The shimmer is pure decoration — a per-frame repaint of a label that is
+     * already fully legible without it — so its reduced arm is the honest one:
+     * draw the hovered state once, and do not start a clock. There is no
+     * terminal frame to seed here because the terminal frame IS the static
+     * hovered label.
+     */
     function startShimmer() {
         if (shimmerRafId) return;
+        if (prefersReducedMotion()) {
+            onRedraw();
+            return;
+        }
         function shimmerTick() {
             if (!hoveredBasis) { shimmerRafId = null; return; }
             onRedraw();

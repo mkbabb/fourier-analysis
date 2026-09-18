@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, h } from "vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
 import {
@@ -52,6 +52,35 @@ const currentLevel = computed(() => {
 const caretLabel = computed(() =>
     isEpicycleOnly.value ? `t = ${anim.t.toFixed(2)}` : `N = ${currentLevel.value}`,
 );
+
+/**
+ * X.F.W4 · SP-4 / `fr-AnimationControls M-12` — the two 60Hz readouts,
+ * ISOLATED.
+ *
+ * Both dock layers are always mounted (the producer toggles `inert` rather than
+ * unmounting), and the template read `anim.t` directly in two places — the
+ * collapsed progress fill and the timeline caret label. That put the clock in
+ * THIS component's render effect, so the entire two-branch vnode tree — every
+ * Tooltip, the dropdown, the speed select, both hand-inlined play glyphs — was
+ * re-rendered sixty times a second, beside two Canvas2D surfaces already
+ * drawing at the same rate.
+ *
+ * Each readout now renders in a scope of its own. The parent's render effect
+ * reads neither `anim.t` nor `caretLabel`, so it re-renders when the dock's
+ * STRUCTURE changes and not when the clock ticks; the tick re-renders exactly
+ * the two nodes that display it. Nothing about what is displayed changes.
+ *
+ * ⊘ They are components and not `v-memo`/`shallowRef` tricks because the cure
+ * has to be a render BOUNDARY: memoisation still runs the parent's render and
+ * only skips patching, which is the cost this row is about. Magnitude at a real
+ * profile → SS-13.
+ */
+const MiniProgressReadout = () =>
+    h("div", { class: "mini-progress" }, [
+        h("div", { class: "mini-fill", style: { width: `${anim.t * 100}%` } }),
+    ]);
+
+const TimelineReadout = () => h(GlassTimeline, { label: caretLabel.value });
 </script>
 
 <template>
@@ -71,7 +100,7 @@ const caretLabel = computed(() =>
                     </Transition>
                 </button>
             </Tooltip>
-            <div class="mini-progress"><div class="mini-fill" :style="{ width: (anim.t * 100) + '%' }" /></div>
+            <MiniProgressReadout />
             <Metric :value="anim.speed" unit="×" size="sm" class="summary-speed" />
         </template>
 
@@ -88,7 +117,7 @@ const caretLabel = computed(() =>
             </Tooltip>
 
             <!-- Timeline -->
-            <GlassTimeline :label="caretLabel" />
+            <TimelineReadout />
 
             <!-- Speed -->
             <Tooltip text="Playback speed">
@@ -188,7 +217,14 @@ const caretLabel = computed(() =>
 
 /* ── Collapsed summary ── */
 .mini-progress { width: 3rem; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
-.mini-fill { height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 25%, transparent); transition: width 0.1s linear; }
+/* X.F.W4 · SP-4 / `fr-AnimationControls M-8` — the `transition: width 0.1s
+   linear` is DELETED, not shortened. `width` here is rewritten every rAF tick,
+   so a 100ms transition was retargeted every ~16ms and never once completed:
+   the collapsed dock's only position readout was structurally ~100ms behind the
+   clock it claimed to report, and the browser ran a live interpolation for the
+   entire playback to achieve that. One line removed fixes correctness AND cost,
+   and removes an ungated-motion surface from D-8's inventory. */
+.mini-fill { height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 25%, transparent); }
 .summary-speed { @apply text-base; color: color-mix(in srgb, var(--foreground) 35%, transparent); }
 
 /* ── Transitions ── */
