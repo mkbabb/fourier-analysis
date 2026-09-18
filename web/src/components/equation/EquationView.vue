@@ -162,6 +162,22 @@ let lastDisplayKey = cachedRes ? displayKey(currentRequest()) : "";
 
 // ── API ──
 
+/**
+ * `C·D-02`, the client half — the banner's truthiness gate used to be the whole
+ * error channel, and `title` falls back to `response.statusText`, which is `""`
+ * over HTTP/2: an empty string is falsy, so a real failure rendered as SILENCE.
+ * A failure always names itself here, whatever the envelope managed to carry.
+ *
+ * ⊘ The other half is `lib/api-problem.ts`'s destructure, which removes `detail`
+ * from `...extensions` and then drops FastAPI's array-shaped
+ * `{"detail":[{loc,msg,type}]}` on a `typeof detail === "string"` test — that
+ * file is unit `.f`'s and the row is declared to it, never written from here.
+ */
+function failureMessage(e: unknown, fallback: string): string {
+    const msg = e instanceof Error ? e.message.trim() : "";
+    return msg || fallback;
+}
+
 async function doCompute(force = false) {
     const req = currentRequest();
     if (!req.expression) return;
@@ -186,9 +202,7 @@ async function doCompute(force = false) {
         effectiveN.value = res.effective_n;
         saveCachedResult(key, res, displayLatex.value, displayEnergy.value);
     } catch (e) {
-        if (!isAbortError(e)) {
-            error.value = e instanceof Error ? e.message : "Computation failed";
-        }
+        if (!isAbortError(e)) error.value = failureMessage(e, "Computation failed");
     } finally {
         computing.value = false;
     }
@@ -206,11 +220,19 @@ async function doSimplify() {
         displayLatex.value = resp.latex;
         displayEnergy.value = resp.energy_captured;
         lastDisplayKey = key;
+        // `L·m-10` — `error` was cleared ONLY by doCompute, so a failed compute's
+        // banner outlived every successful notation and budget re-render. Any
+        // successful settle clears it.
+        error.value = null;
         if (result.value) {
             saveCachedResult(lastComputeKey, result.value, displayLatex.value, displayEnergy.value);
         }
     } catch (e) {
-        if (!isAbortError(e)) { /* silent */ }
+        // `D·D-B4` — this was a terminal no-op (`/* silent */`): opposite error
+        // postures at two async seams forty lines apart, and the silent one is
+        // the seam the user drives most — every notation click, every budget
+        // drag. It gets doCompute's banner.
+        if (!isAbortError(e)) error.value = failureMessage(e, "Could not re-render the series");
     } finally {
         simplifying.value = false;
     }
@@ -306,33 +328,60 @@ watchDebounced(
             </div>
 
             <!-- Right panel -->
-            <div class="eq-panel-right" :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop }">
+            <div
+                class="eq-panel-right"
+                :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop, 'is-busy': loading }"
+                :aria-busy="loading"
+            >
                 <!-- Loading (no prior result) -->
-                <div v-if="computing && !result" class="flex items-center justify-center flex-1">
+                <div v-if="computing && !result" class="flex items-center justify-center flex-1" role="status">
                     <div class="flex flex-col items-center gap-3">
-                        <div class="size-6 animate-spin rounded-full border-2 border-border border-t-primary" />
+                        <div class="size-6 animate-spin rounded-full border-2 border-border border-t-primary" aria-hidden="true" />
                         <p class="text-sm text-muted-foreground fira-code">Computing…</p>
                     </div>
                 </div>
 
                 <!-- Error (no prior result) -->
                 <div v-else-if="error && !result" class="flex items-center justify-center flex-1">
-                    <div class="cartoon-card p-4 max-w-md text-center">
+                    <div class="cartoon-card p-4 max-w-md text-center" role="alert">
                         <p class="text-sm font-medium text-foreground mb-1">Computation failed</p>
-                        <p class="text-sm text-muted-foreground fira-code">{{ error }}</p>
+                        <p class="text-sm text-muted-foreground fira-code break-words">{{ error }}</p>
+                        <Button emphasis="secondary" size="sm" class="mt-3" @click="doCompute(true)">
+                            Try again
+                        </Button>
                     </div>
                 </div>
 
                 <!-- Results -->
                 <template v-else-if="result">
-                    <!-- Re-compute status banners -->
-                    <div v-if="computing" class="cartoon-card px-3 py-2 flex items-center gap-2 text-sm shrink-0">
-                        <div class="size-3.5 animate-spin rounded-full border-[1.5px] border-border border-t-primary" />
-                        <span class="text-muted-foreground fira-code">Recomputing…</span>
+                    <!-- Re-compute status banners. `D·D-M6` — the async surfaces
+                         had zero live-region semantics, so a screen-reader user
+                         got no announcement of start, completion or failure;
+                         this pass lands with `D-B4`'s `loading` wiring, as the
+                         record asks. -->
+                    <div
+                        v-if="loading"
+                        class="cartoon-card px-3 py-2 flex items-center gap-2 text-sm shrink-0"
+                        role="status"
+                    >
+                        <div class="size-3.5 animate-spin rounded-full border-[1.5px] border-border border-t-primary" aria-hidden="true" />
+                        <span class="text-muted-foreground fira-code">
+                            {{ computing ? "Recomputing…" : "Re-rendering…" }}
+                        </span>
                     </div>
-                    <div v-else-if="error" class="cartoon-card px-3 py-2 flex items-center gap-2 text-sm border-red-500/30 bg-red-500/5 shrink-0">
-                        <span class="font-medium text-red-400">Error:</span>
-                        <span class="text-muted-foreground fira-code truncate">{{ error }}</span>
+                    <div
+                        v-else-if="error"
+                        class="cartoon-card px-3 py-2 flex items-start gap-2 text-sm border-red-500/30 bg-red-500/5 shrink-0"
+                        role="alert"
+                    >
+                        <span class="font-medium text-red-400 shrink-0">Error:</span>
+                        <!-- `D·D-M7` — the message used to `truncate` with no
+                             `title`, no wrap and no way to read the rest of it,
+                             and neither error surface offered a retry. -->
+                        <span class="text-muted-foreground fira-code break-words min-w-0" :title="error">{{ error }}</span>
+                        <Button emphasis="quiet" size="sm" class="ml-auto shrink-0" @click="doCompute(true)">
+                            Retry
+                        </Button>
                     </div>
 
                     <!-- Equation card -->
@@ -479,6 +528,14 @@ watchDebounced(
     @apply flex flex-col gap-3 min-h-0 min-w-0 flex-1;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+/* `D·D-B4` — the unified busy state was designed and never wired: `loading` had
+   zero consumers. The equation stage dims while either async seam is in flight,
+   which is the sighted half of the `aria-busy` the panel now also carries. */
+.eq-panel-right.is-busy .eq-card {
+    opacity: 0.6;
+    transition: opacity 0.15s var(--ease-standard);
 }
 
 /* ── Equation card ── */
