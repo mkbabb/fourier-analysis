@@ -18,15 +18,37 @@ import {
     lerpPoints,
     pointsToSvgPath,
 } from "@/lib/svg-fourier";
-import {
-    EASING_PRESETS,
-    EASING_PRESET_NAMES,
-    getEasingFn,
-    type EasingFn,
-    type EasingPreset,
-} from "@/lib/easings";
 
-export { EASING_PRESETS, EASING_PRESET_NAMES, type EasingFn, type EasingPreset };
+/**
+ * X.F.W4 · FR-AH-7 ⊕ FR-AH-24 · L-14 — THE EAGER value.js EDGE, CUT, AND THE
+ * BARREL RE-EXPORT WITH IT.
+ *
+ * The static edge that used to sit here — `import { … } from "@/lib/easings"` —
+ * was the whole reason `vendor-math` rode the eager bundle on EVERY route:
+ * `main.ts → App → AppHeader → DarkModeToggle → useFourierMorph → @/lib/easings
+ * → @mkbabb/value.js`. The header mounts on every route, so every visitor paid
+ * for the easing library whether or not they ever morphed anything.
+ *
+ * ⊘ CURE-COMPLETENESS (FR-AH-7's own lock): striking the import alone is HALF
+ * the cure. The colocation re-export beneath it — `export { EASING_PRESETS,
+ * EASING_PRESET_NAMES, type EasingFn, type EasingPreset }` — re-created the
+ * same static edge for anyone importing it from here, so the eager chain would
+ * have survived the deletion that was supposed to kill it. Both go. The
+ * re-export had zero consumers in any case (⟨cmd⟩ the tree: every reader of
+ * those four names imports them from `@/lib/easings` directly or through
+ * `useMorphConfig`, never from this module), which is FR-AH-24 · L-14's
+ * independent leg — the mechanism was carried by FR-AH-7, the ID was not, and
+ * it is named here so the cure is traceable to the row that bought it.
+ * ⊘ The re-export surface is `EASING_PRESETS` / `EASING_PRESET_NAMES` plus the
+ * two types — NOT `getEasingFn`, which was imported and used but never
+ * re-exported. The deletion is exactly that surface.
+ *
+ * `getEasingFn` is still needed, inside `morphTo` alone, which is already
+ * behind `await getAnimationCtor()`'s dynamic boundary — so it is resolved by a
+ * dynamic import in the same await window. No new round trip on any path that
+ * was not already waiting, and nothing on the boot path at all.
+ */
+type EasingFn = (t: number) => number;
 
 export type MorphPhase = "idle" | "settle-out" | "morph" | "settle-in";
 
@@ -271,8 +293,13 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
          * cannot be reported as a completion.
          */
         try {
-            // Resolve the value.js-bearing engine lazily (cached after first morph).
-            const Animation = await getAnimationCtor();
+            // Resolve the value.js-bearing engine and the easing catalog lazily.
+            // Both are behind THIS await window, so the cost is paid by the
+            // first morph and by no other page view (FR-AH-7).
+            const [Animation, { getEasingFn }] = await Promise.all([
+                getAnimationCtor(),
+                import("@/lib/easings"),
+            ]);
             if (superseded()) return;
 
             const {
@@ -286,9 +313,9 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
                 settleInEasing,
             } = config.value;
 
-            const easeOut = getEasingFn(settleOutEasing);
-            const easeMorph = getEasingFn(morphEasing);
-            const easeIn = getEasingFn(settleInEasing);
+            const easeOut: EasingFn = getEasingFn(settleOutEasing);
+            const easeMorph: EasingFn = getEasingFn(morphEasing);
+            const easeIn: EasingFn = getEasingFn(settleInEasing);
 
             const totalMs = settleOutMs + morphMs + settleInMs;
 

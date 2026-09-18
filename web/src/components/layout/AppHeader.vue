@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useWorkspaceStore } from "@/stores/workspace";
 import { useGalleryStore } from "@/stores/gallery";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/visualization/gallery/UserSlugBar.vue";
@@ -46,7 +45,11 @@ function onTabSelect(path: string) {
     router.push(path);
 }
 
-const workspaceStore = useWorkspaceStore();
+/* FR-AH-19 — `useWorkspaceStore()` was instantiated here and never read: a
+   Pinia store mounted on every route, on the app's only always-present
+   component, for nothing. It is the enabling condition G-F4-NO-UNUSED was
+   turned on to expose, and it is one of the eighteen diagnostics the gate is
+   RED on. */
 const galleryStore = useGalleryStore();
 </script>
 
