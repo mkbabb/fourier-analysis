@@ -82,28 +82,45 @@ async function handleToggle() {
     padding: 0;
     border-radius: 50%;
     background: transparent;
-    transition: transform 200ms ease;
+    /* DMT N-5 — the literals restated the producer's own registers exactly
+       (`--duration-fast: 0.2s`, `--ease-standard`); they are read from them. */
+    transition: transform var(--duration-fast) var(--ease-standard);
     flex-shrink: 0;
 }
 
-.sun-moon-toggle:hover {
-    outline: none;
-    transform: scale(1.12);
+/* SP-15 · DMT N-16 — hover is gated on a real hover pointer. This file owned
+   the tree's largest hover transform, and on touch UAs that latch `:hover` it
+   stayed latched after a tap. DMT N-7: the 1.12 scale was the tree's largest,
+   untokenized, on the control with the smallest ink tolerance — it takes the
+   producer's `--scale-hover` register (1.08 at the adopted pin) instead.
+   DMT N-9 (rescoped per K-8): the `outline: none` inside `:hover` was a DEAD
+   declaration — the base rule declares no outline, so it duplicated nothing
+   and only made the ring look like it was being suppressed. Deleted. */
+@media (hover: hover) {
+    .sun-moon-toggle:hover {
+        transform: scale(var(--scale-hover));
+    }
 }
 
-.sun-moon-toggle:focus {
-    outline: none;
-}
-
+/* FM-2 rider ⊕ DMT N-6 — `--color-ring` was the tree's ONLY reference to that
+   name and glass-ui 8.0.0 declares neither it nor `--ring`, so this outline was
+   invalid at computed-value time and dropped: the header's dark-mode control
+   had no focus ring. Decided by one build, no browser, exactly as banked. */
 .sun-moon-toggle:focus-visible {
-    outline: 2px solid var(--color-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
     outline-offset: 2px;
 }
 
-/* Reduced motion */
+/* SP-4 · DMT N-8 — the reduced arm nulled `transition` only, so the hover
+   transform survived as an INSTANTANEOUS snap: motion reduction inverted into
+   motion sharpening. The transform is removed with the transition. */
 @media (prefers-reduced-motion: reduce) {
     .sun-moon-toggle {
         transition: none;
+    }
+
+    .sun-moon-toggle:hover {
+        transform: none;
     }
 }
 </style>

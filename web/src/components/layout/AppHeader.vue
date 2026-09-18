@@ -189,8 +189,10 @@ const galleryStore = useGalleryStore();
     color: color-mix(in srgb, var(--foreground) 70%, transparent);
 }
 
+/* FM-2 rider — `--ring` is undeclared at 8.0.0, so this outline was invalid
+   and dropped: the app's only nav control had no focus ring. See style.css. */
 .nav-trigger:focus-visible {
-    outline: 2px solid var(--ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
     outline-offset: 2px;
 }
 

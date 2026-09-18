@@ -224,11 +224,29 @@ html {
    GalleryCard.vue — all four scoped-styled. Because Vue's scoped styles
    add a data-attribute selector, the ring lives at the global layer so it
    applies regardless of the component scope hash. */
+/* X.F.W4 / FM-2 rider — `--ring` IS NOT A TOKEN AT THE ADOPTED PIN.
+
+   glass-ui 8.0.0 declares neither `--ring` nor `--color-ring` anywhere
+   (⟨cmd⟩ `grep -roh -- '--[a-z-]*ring[a-z-]*: *[^;}]*' dist --include='*.css'
+   | sort -u` → `--focus-ring-color` · `--focus-ring-shadow` ·
+   `--focus-ring-width` · `--control-edge-ring` · `--dock-ring` · …, and no
+   `--ring`), and neither does this app. An `outline` whose colour is an
+   undeclared `var()` is invalid at computed-value time and is DROPPED — so
+   these four classes, which exist for no other purpose, have been painting NO
+   focus ring at all. Six read sites across five files, exactly as FM-2 banked;
+   the three inside this unit's bounds are cured here and at `AppHeader.vue` /
+   `DarkModeToggle.vue`. The remaining three are named, not written, because
+   their files belong to sibling units: `ImageUpload.vue:200` (→ `.c`) and
+   `GalleryCard.vue:222`/`:223` (→ `.d`).
+
+   `--focus-ring-color` and `--focus-ring-width` are the producer's own
+   registers — the same pair its `.focus-ring:focus-visible` recipe paints
+   with — so the app's hand-rolled rings and the producer's now agree. */
 .sidebar-link:focus-visible,
 .floating-toc-item:focus-visible,
 .callout-btn:focus-visible,
 .gallery-card:focus-visible {
-    outline: 2px solid var(--ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
     outline-offset: 2px;
     border-radius: inherit;
 }
