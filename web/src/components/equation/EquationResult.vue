@@ -49,7 +49,7 @@ function copyLatex() {
             @click="copyLatex"
         >
             <Transition name="icon-swap" mode="out-in">
-                <Check v-if="status === 'success'" class="h-4.5 w-4.5 text-green-500" />
+                <Check v-if="status === 'success'" class="h-4.5 w-4.5 copy-ok" />
                 <Copy v-else class="h-4.5 w-4.5" />
             </Transition>
         </Button>
@@ -89,6 +89,16 @@ function copyLatex() {
     .eq-scroll-region :deep(.katex) {
         font-size: 1.8em;
     }
+}
+
+/* `FR-EQR-7` — `text-green-500` measured 2.101:1 on the light `--card`, under the
+   1.4.11 3:1 floor, and the design system's own light-arm `--success` fails at
+   2.175:1, so adopting it would have been a token-shaped restatement of the same
+   defect. The app's meaning-bearing ramp clears the floor in BOTH arms
+   (4.272 light / 7.193 dark, this seat's arithmetic). ⊘ The `--success` light
+   rung itself is a producer row and rides the GLASS-RELAY letter. */
+.copy-ok {
+    color: var(--section-color-4);
 }
 
 .copy-pos {

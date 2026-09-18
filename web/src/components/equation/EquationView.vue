@@ -10,7 +10,7 @@ import {
 } from "@/lib/equation/api";
 import type { NotationMode, ComputeEquationRequest, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
-import { TIER_INFO, energyColor } from "@/lib/equation/notation";
+import { tierInfo, energyColor } from "@/lib/equation/notation";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
@@ -72,7 +72,7 @@ const components = computed<BasisComponent[]>(() => {
     }));
 });
 
-const tierInfo = computed(() => result.value ? (TIER_INFO[result.value.tier] ?? TIER_INFO.spline) : null);
+const tier = computed(() => result.value ? tierInfo(result.value.tier) : null);
 const eColor = computed(() => energyColor(displayEnergy.value));
 
 const coefficients = computed(() => result.value?.coefficients ?? []);
@@ -455,7 +455,7 @@ watchDebounced(
                              union's placement contract is side/sideOffset/align/
                              alignOffset, so the attribute would have fallen
                              through to the DOM doing nothing (FR-TT-5's class). -->
-                        <Popover v-if="tierInfo" trigger="hover" :open-delay="200" :close-delay="150">
+                        <Popover v-if="tier" trigger="hover" :open-delay="200" :close-delay="150">
                             <PopoverTrigger as-child>
                                 <Button emphasis="primary" size="md" icon-only class="info-anchor">
                                     <!-- F.W1 / D·D-M11 — the one hand-inlined copy the
@@ -467,14 +467,20 @@ watchDebounced(
                             </PopoverTrigger>
                             <PopoverContent class="info-hovercard" side="bottom" :side-offset="6" align="end">
                                 <div class="flex items-center gap-2 flex-wrap">
+                                    <!-- `D·D-B3` — the ink is a token now, and the plate
+                                         is TRANSPARENT: a 15% tint of the ink itself
+                                         darkened the ground under the very colour it was
+                                         tinting, which is what took every stop further
+                                         below the floor. The border still carries the
+                                         tier hue; the label is graded against the
+                                         popover it actually sits on. -->
                                     <span
                                         class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border-[1.5px]"
                                         :style="{
-                                            background: `color-mix(in srgb, ${tierInfo.color} 15%, transparent)`,
-                                            borderColor: `color-mix(in srgb, ${tierInfo.color} 30%, transparent)`,
-                                            color: tierInfo.color,
+                                            borderColor: `color-mix(in srgb, ${tier.color} 45%, transparent)`,
+                                            color: tier.color,
                                         }"
-                                    >{{ tierInfo.label }}</span>
+                                    >{{ tier.label }}</span>
                                     <Metric
                                         :value="(displayEnergy * 100).toFixed(1)"
                                         unit="% energy"
@@ -484,7 +490,7 @@ watchDebounced(
                                 </div>
                                 <div class="flex gap-1.5 items-start text-sm text-muted-foreground mt-2">
                                     <Info class="size-3.5 shrink-0 mt-0.5" />
-                                    <p>{{ tierInfo.description }}</p>
+                                    <p>{{ tier.description }}</p>
                                 </div>
                             </PopoverContent>
                         </Popover>

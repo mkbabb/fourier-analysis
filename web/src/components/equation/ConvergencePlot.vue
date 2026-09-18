@@ -125,6 +125,17 @@ function draw() {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
+    // `D-1` — the neutral ink, READ FROM THE CASCADE rather than frozen. The
+    // canvas carries `text-muted-foreground`, so `getComputedStyle().color` hands
+    // back the USED value (an `rgb()` Canvas2D can paint) with `light-dark()` and
+    // the alias chain already resolved by the engine — the same probe the sibling
+    // `FrequencyGraph` uses for its index labels, and the only form that follows
+    // a theme flip without a string-parsing guess. The three frozen greys it
+    // replaces (`rgba(150,150,150,.2)` axes · `rgba(150,150,150,.07)` grid ·
+    // `rgba(180,180,180,.55)` original) were theme-blind by construction and put
+    // every meaning-bearing mark under the 1.4.11 floor in the default arm.
+    const ink = getComputedStyle(canvas).getPropertyValue("color").trim() || "#888";
+
     const w = rect.width, h = rect.height;
     const ox = props.originalPoints.x, oy = props.originalPoints.y;
     if (!ox.length) return;
@@ -211,12 +222,15 @@ function draw() {
     ];
 
     // Grid
-    drawPlotGrid(ctx, w, h, PAD, minX, maxX, minY, maxY, toScreen);
+    drawPlotGrid(ctx, w, h, PAD, minX, maxX, minY, maxY, toScreen, ink);
 
     // Original f(x) — rendered over the closed [a, b] grid so the curve visually
-    // closes (periodic wrap appended as final sample).
+    // closes (periodic wrap appended as final sample). Hover is carried by stroke
+    // WIDTH, which was always the second channel here; the brightness step that
+    // used to carry it is what put the resting curve at 1.40:1.
     const isOrigHov = hoveredCurve.value === "original";
-    ctx.strokeStyle = isOrigHov ? "rgba(220,220,220,0.85)" : "rgba(180,180,180,0.55)";
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = isOrigHov ? 1 : 0.85;
     ctx.lineWidth = isOrigHov ? 3.5 : 2.5;
     ctx.setLineDash([6, 4]);
     const origPts: [number, number][] = [];
@@ -228,6 +242,7 @@ function draw() {
     }
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
 
     // Individual harmonics
     const harmPts: CurveHitRegion[] = [];
