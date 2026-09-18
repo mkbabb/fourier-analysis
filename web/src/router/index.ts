@@ -12,6 +12,9 @@ import { supportsViewTransitions } from "@mkbabb/glass-ui";
 // the back-and-forth with the gallery. Every other navigation falls straight
 // through to the unchanged remount path (the floor). glass-ui's
 // `view-transition.css` owns the `::view-transition-*` LOOK + the PRM carve.
+// ⊘ FR-AH-6 — one predicate, one home. A second copy lives at
+// `composables/useFourierMorph.ts`, gating the morph clock. WHICH home survives
+// is F.W5's rider; both sites carry this note so the collapse is one move.
 const prefersReducedMotion = () =>
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
