@@ -3,8 +3,17 @@ import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { useClipboard } from "@mkbabb/glass-ui";
 import { Check, Copy } from "@lucide/vue";
-import katex from "katex";
+import { renderLatex, plainLatex } from "@/lib/equation/render";
 
+/**
+ * F.W4 / FR-EQR-18 — the `v-html` subtree below is a FOUR-FILE, TWO-LANGUAGE
+ * contract that this component owns the DOM of and never named:
+ * `latex_rendering.py` mints `\htmlClass{eq-coeff eq-…}` (`:175/:176/:216/:248`)
+ * · `EquationView.vue`'s `.eq-card :deep(.eq-coeff)` block styles it ·
+ * `useCoeffHover.ts` hit-tests it. `\htmlClass` is therefore LOAD-BEARING, and
+ * withdrawing KaTeX's `trust` deletes the hover feature silently — see the trust
+ * HANDLER in `lib/equation/render.ts` (fr-EquationView I-3).
+ */
 const props = defineProps<{
     latex: string;
 }>();
@@ -16,21 +25,16 @@ const props = defineProps<{
    false and silently, so the icon swap below reads the state by name. */
 const { status, copy } = useClipboard({ resetMs: 2000 });
 
-const renderedHtml = computed(() => {
-    if (!props.latex) return "";
-    try {
-        return katex.renderToString(props.latex, {
-            displayMode: true,
-            throwOnError: false,
-            trust: true,
-        });
-    } catch {
-        return `<code>${props.latex}</code>`;
-    }
-});
+const renderedHtml = computed(() => renderLatex(props.latex));
 
+/**
+ * FR-EQR-4 — the clipboard gets the PORTABLE form. `eqMode` defaults to
+ * `"sigma"` and the sigma renders are the ones carrying `\htmlClass`, so the raw
+ * copy emitted LaTeX that fails with `Undefined control sequence` in every
+ * consumer but this one, in the app's own default mode.
+ */
 function copyLatex() {
-    copy(props.latex);
+    copy(plainLatex(props.latex));
 }
 </script>
 

@@ -10,7 +10,7 @@ import NotationPills from "@/components/equation/NotationPills.vue";
 import { X } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Metric } from "@mkbabb/glass-ui/metric";
-import katex from "katex";
+import { renderLatex } from "@/lib/equation/render";
 
 const emit = defineEmits<{ close: [] }>();
 
@@ -22,18 +22,7 @@ const energy = ref(1);
 const loading = ref(false);
 const error = ref<string | null>(null);
 
-const renderedHtml = computed(() => {
-    if (!latex.value) return "";
-    try {
-        return katex.renderToString(latex.value, {
-            displayMode: true,
-            throwOnError: false,
-            trust: true,
-        });
-    } catch {
-        return `<span class="text-red-400">${latex.value}</span>`;
-    }
-});
+const renderedHtml = computed(() => renderLatex(latex.value));
 
 const eColor = computed(() => energyColor(energy.value));
 

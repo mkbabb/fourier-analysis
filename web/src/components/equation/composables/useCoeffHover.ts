@@ -4,9 +4,18 @@
  */
 
 import { ref, computed, type Ref } from "vue";
-import katex from "katex";
-import type { FourierTermDTO, NotationMode } from "@/lib/equation/types";
+import { renderLatex } from "@/lib/equation/render";
+import type { FourierTermDTO } from "@/lib/equation/types";
+import { groupTrigHarmonics } from "../lib/harmonics";
 import { VIZ_COLORS } from "@/lib/colors";
+
+/**
+ * How many rows the popover shows before it elides. ONE constant for all three
+ * branches: `L·m-12` — the `an`/`bn` branch tested `>= 6` AFTER pushing while
+ * `cn`/`An` tested `> 6` before, so exactly six harmonics rendered a trailing ⋮
+ * promising a seventh that does not exist in one branch and not in the others.
+ */
+const MAX_ROWS = 6;
 
 export type CoeffKind = "an" | "bn" | "cn" | "An";
 
@@ -17,10 +26,13 @@ const CLASS_MAP: Record<string, CoeffKind> = {
     "eq-An": "An",
 };
 
-export function useCoeffHover(
-    coefficients: Ref<FourierTermDTO[]>,
-    notation: Ref<NotationMode>,
-) {
+/**
+ * `L·m-2` — this composable took a `notation` ref it never read, advertising a
+ * notation-sensitive contract it does not have. The parameter is gone rather
+ * than wired: the class the hover lands on (`eq-an` vs `eq-cn` vs `eq-An`)
+ * already IS the notation, chosen by the renderer that emitted the symbol.
+ */
+export function useCoeffHover(coefficients: Ref<FourierTermDTO[]>) {
     const hoveredCoeff = ref<CoeffKind | null>(null);
     const popoverPos = ref({ x: 0, y: 0 });
 
@@ -53,9 +65,7 @@ export function useCoeffHover(
         const kind = hoveredCoeff.value;
         if (!kind) return "";
         const coeffs = coefficients.value;
-        const harmonics = coeffs.filter((c) => c.n !== 0);
         const lines: string[] = [];
-        const seen = new Set<number>();
 
         // D.W4.d — KaTeX cannot resolve CSS vars; read the resolved
         // `--viz-amber` hex via VIZ_COLORS at render time (the runtime
@@ -65,41 +75,36 @@ export function useCoeffHover(
         const amber = VIZ_COLORS.amber || VIZ_COLORS.golden;
 
         if (kind === "an" || kind === "bn") {
-            for (const t of harmonics) {
-                const k = Math.abs(t.n);
-                if (seen.has(k)) continue;
-                seen.add(k);
-                const pos = harmonics.find((h) => h.n === k);
-                const neg = harmonics.find((h) => h.n === -k);
-                const cP = pos ? [pos.coefficient_re, pos.coefficient_im] : [0, 0];
-                const cN = neg ? [neg.coefficient_re, neg.coefficient_im] : [0, 0];
-                const val = kind === "an" ? cP[0] + cN[0] : -(cP[1] - cN[1]);
-                if (Math.abs(val) > 1e-10) {
-                    const label = kind === "an" ? "a" : "b";
-                    lines.push(`{\\color{${amber}}${label}_{${k}}} = ${val.toFixed(4)}`);
-                }
-                if (lines.length >= 6) { lines.push("\\vdots"); break; }
+            // `L·m-3` — the ±n → (a_n, b_n) fold used to be implemented a second
+            // time right here, with an epsilon four orders of magnitude apart
+            // from the canonical one (`|val| > 1e-10` against `amp > 1e-14`), so
+            // a harmonic in that band appeared in the legend and not in the
+            // popover. ONE fold, ONE epsilon: the legend's own grouping. It also
+            // retires the in-loop `find` pair — the O(n²) half banked at
+            // `fr-ConvergencePlot L-m12`.
+            const harmonics = groupTrigHarmonics(coeffs);
+            for (const h of harmonics.slice(0, MAX_ROWS)) {
+                const label = kind === "an" ? "a" : "b";
+                const val = kind === "an" ? h.a_n : h.b_n;
+                lines.push(`{\\color{${amber}}${label}_{${h.k}}} = ${val.toFixed(4)}`);
             }
+            if (harmonics.length > MAX_ROWS) lines.push("\\vdots");
         } else if (kind === "cn") {
-            for (const t of coeffs.slice(0, 6)) {
+            for (const t of coeffs.slice(0, MAX_ROWS)) {
                 const im = t.coefficient_im;
                 const val = `${t.coefficient_re.toFixed(3)}${im >= 0 ? "+" : ""}${im.toFixed(3)}i`;
                 lines.push(`{\\color{${amber}}c_{${t.n}}} = ${val}`);
             }
-            if (coeffs.length > 6) lines.push("\\vdots");
+            if (coeffs.length > MAX_ROWS) lines.push("\\vdots");
         } else if (kind === "An") {
-            for (const t of coeffs.slice(0, 6)) {
+            for (const t of coeffs.slice(0, MAX_ROWS)) {
                 lines.push(`{\\color{${amber}}A_{${t.n}}} = ${t.amplitude.toFixed(4)}`);
             }
-            if (coeffs.length > 6) lines.push("\\vdots");
+            if (coeffs.length > MAX_ROWS) lines.push("\\vdots");
         }
 
         if (!lines.length) return "";
-        try {
-            return katex.renderToString(lines.join(" \\\\ "), {
-                displayMode: true, throwOnError: false, trust: true,
-            });
-        } catch { return ""; }
+        return renderLatex(lines.join(" \\\\ "));
     });
 
     return { hoveredCoeff, popoverPos, popoverHtml, onMouseMove, onMouseLeave };

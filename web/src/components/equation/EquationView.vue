@@ -73,7 +73,7 @@ const coefficients = computed(() => result.value?.coefficients ?? []);
 
 // ── Coefficient hover (composable) ──
 const { hoveredCoeff, popoverPos, popoverHtml, onMouseMove: onCoeffMove, onMouseLeave: onCoeffLeave } =
-    useCoeffHover(coefficients, notation);
+    useCoeffHover(coefficients);
 
 // ── Cache keys ──
 let lastComputeKey = cachedRes ? `${expression.value}|${domainStart.value}|${domainEnd.value}|${nHarmonics.value}` : "";

@@ -4,7 +4,7 @@ import type { FourierTermDTO } from "@/lib/equation/types";
 import { applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
 import { easeInOutSine } from "@mkbabb/value.js/easing";
 import { lerp } from "@mkbabb/value.js/math";
-import katex from "katex";
+import { renderLatex } from "@/lib/equation/render";
 
 import { drawPlotGrid, type PlotPadding } from "./lib/grid";
 import { hitTestCurves, type CurveHitRegion } from "./lib/hit-test";
@@ -253,9 +253,12 @@ function onCanvasLeave() {
     if (!playing.value) draw();
 }
 
+/**
+ * `L-M8 + C-9` — the old catch returned the raw interpolated user expression
+ * into a `v-html` sink. `renderLatex` escapes on that path, at the one home.
+ */
 function renderKatexInline(latex: string): string {
-    try { return katex.renderToString(latex, { throwOnError: false, displayMode: false }); }
-    catch { return latex; }
+    return renderLatex(latex, { displayMode: false });
 }
 
 const tooltipHtml = computed(() => {
