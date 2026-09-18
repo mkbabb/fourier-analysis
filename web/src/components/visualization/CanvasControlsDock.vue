@@ -71,12 +71,12 @@ watch(
                 <PopoverContent side="top" align="center">
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Image overlay">
-                            <DockControl :active="showImageOverlay" @click="$emit('toggleImageOverlay')">
+                            <DockControl aria-label="Image overlay" :active="showImageOverlay" @click="$emit('toggleImageOverlay')">
                                 <ImageIcon />
                             </DockControl>
                         </Tooltip>
                         <Tooltip text="Contour trace">
-                            <DockControl :active="showGhost" @click="$emit('toggleGhost')">
+                            <DockControl aria-label="Contour trace" :active="showGhost" @click="$emit('toggleGhost')">
                                 <Spline />
                             </DockControl>
                         </Tooltip>
@@ -88,13 +88,13 @@ watch(
 
             <!-- Publish -->
             <Tooltip v-if="hasContour" text="Publish to Gallery" side="bottom">
-                <DockControl :active="publishing" @click="$emit('publish')">
+                <DockControl aria-label="Publish to Gallery" :active="publishing" @click="$emit('publish')">
                     <Upload :class="{ 'animate-pulse': publishing }" />
                 </DockControl>
             </Tooltip>
             <!-- Equation -->
             <Tooltip v-if="hasData" text="Equation" side="bottom">
-                <DockControl :active="showEquation" @click="$emit('toggleEquation')">
+                <DockControl aria-label="Equation" :active="showEquation" @click="$emit('toggleEquation')">
                     <Sigma />
                 </DockControl>
             </Tooltip>
@@ -104,13 +104,13 @@ watch(
 
         <!-- Edit (always visible when contour exists) -->
         <Tooltip v-if="hasContour" text="Edit contour" side="bottom">
-            <DockControl :active="isEditing" @click="$emit('toggleEdit')">
+            <DockControl aria-label="Edit contour" :active="isEditing" @click="$emit('toggleEdit')">
                 <Pencil />
             </DockControl>
         </Tooltip>
         <!-- Fullscreen -->
         <Tooltip text="Fullscreen" side="bottom">
-            <DockControl @click="$emit('toggleFullscreen')">
+            <DockControl aria-label="Fullscreen" @click="$emit('toggleFullscreen')">
                 <Maximize2 />
             </DockControl>
         </Tooltip>

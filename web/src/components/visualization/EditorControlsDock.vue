@@ -10,11 +10,12 @@ import {
     Undo2,
     Redo2,
     Wand2,
+    Sparkles,
     Minimize2,
     Trash2,
-    Image,
+    ImageIcon,
     Eye,
-    EyeOff,
+    Spline,
     Magnet,
     RotateCcw,
     Save,
@@ -92,7 +93,7 @@ const magnetModel = computed<number[]>({
                 <DockControl
                     class="is-save"
                     :class="{ saved: isSaved }"
-                    :aria-label="isSaved ? 'Contour saved' : 'Save contour'"
+                    aria-label="Save contour"
                     @click.stop="emit('save')"
                 >
                     <Check v-if="isSaved" />
@@ -101,7 +102,21 @@ const magnetModel = computed<number[]>({
             </Tooltip>
         </template>
 
-        <!-- Collapsed summary — identity mark only; NO interactive content. -->
+        <!--
+          Collapsed summary — identity mark only; NO interactive content.
+
+          X.F.W4 · `fr-EditorControlsDock M-5` ⊕ `fr-CanvasControlsDock M-8 / C-9`
+          — ONE GLYPH PER MEANING, across BOTH docks, because they swap in place
+          over one canvas on the `isEditing` flip and a reader sees them as one
+          surface. `Wand2` was this dock's identity mark AND its Smooth action,
+          one gesture apart (Smooth is now `Sparkles`); `Eye` was the overlay
+          MENU trigger here and the ghost-ON STATE glyph, so the trigger painted
+          identically in all four overlay states, while the sibling spelt the
+          same trace toggle `Spline` (both are `Spline` now, and the state rides
+          `aria-pressed`/`data-active` where it belongs); and `import { Image }`
+          shadowed the global (C-17) for a glyph lucide also exports as
+          `ImageIcon`, which is what the sibling already imports.
+        -->
         <template #collapsed>
             <Wand2 class="shrink-0 dock-summary-glyph" aria-hidden="true" />
         </template>
@@ -109,12 +124,12 @@ const magnetModel = computed<number[]>({
         <!-- Expanded controls -->
         <div class="flex items-center gap-2 w-full">
             <Tooltip text="Undo">
-                <DockControl :disabled="!canUndo" @click="emit('undo')">
+                <DockControl aria-label="Undo" :disabled="!canUndo" @click="emit('undo')">
                     <Undo2 />
                 </DockControl>
             </Tooltip>
             <Tooltip text="Redo">
-                <DockControl :disabled="!canRedo" @click="emit('redo')">
+                <DockControl aria-label="Redo" :disabled="!canRedo" @click="emit('redo')">
                     <Redo2 />
                 </DockControl>
             </Tooltip>
@@ -122,17 +137,17 @@ const magnetModel = computed<number[]>({
             <span class="dock-separator" />
 
             <Tooltip text="Smooth">
-                <DockControl class="is-amber" @click="emit('smooth')">
-                    <Wand2 />
+                <DockControl class="is-amber" aria-label="Smooth contour" @click="emit('smooth')">
+                    <Sparkles />
                 </DockControl>
             </Tooltip>
             <Tooltip text="Simplify">
-                <DockControl class="is-sky" @click="emit('simplify')">
+                <DockControl class="is-sky" aria-label="Simplify contour" @click="emit('simplify')">
                     <Minimize2 />
                 </DockControl>
             </Tooltip>
             <Tooltip text="Delete point">
-                <DockControl class="is-rose" :disabled="!canDelete" @click="emit('delete')">
+                <DockControl class="is-rose" aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
                     <Trash2 />
                 </DockControl>
             </Tooltip>
@@ -140,7 +155,7 @@ const magnetModel = computed<number[]>({
             <!-- Magnet popover with slider -->
             <Popover trigger="hover" keep-dock-open>
                 <PopoverTrigger as-child>
-                    <DockControl aria-label="Magnet radius">
+                    <DockControl aria-label="Magnet options">
                         <Magnet :class="magnetRadius > 0 ? 'text-viz-fourier' : ''" />
                     </DockControl>
                 </PopoverTrigger>
@@ -177,13 +192,13 @@ const magnetModel = computed<number[]>({
                 <PopoverContent side="top" align="center">
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Contour trace">
-                            <DockControl :active="showGhost" @click="emit('toggleGhost')">
-                                <component :is="showGhost ? Eye : EyeOff" />
+                            <DockControl aria-label="Contour trace" :active="showGhost" @click="emit('toggleGhost')">
+                                <Spline />
                             </DockControl>
                         </Tooltip>
                         <Tooltip text="Image overlay">
-                            <DockControl :active="showImageOverlay" @click="emit('toggleOverlay')">
-                                <Image />
+                            <DockControl aria-label="Image overlay" :active="showImageOverlay" @click="emit('toggleOverlay')">
+                                <ImageIcon />
                             </DockControl>
                         </Tooltip>
                     </div>
@@ -191,7 +206,7 @@ const magnetModel = computed<number[]>({
             </Popover>
 
             <Tooltip text="Reset to extraction">
-                <DockControl @click="emit('reset')">
+                <DockControl aria-label="Reset to extraction" @click="emit('reset')">
                     <RotateCcw />
                 </DockControl>
             </Tooltip>
@@ -251,8 +266,18 @@ const magnetModel = computed<number[]>({
 .is-save:hover:not(:disabled) {
     background: color-mix(in srgb, var(--viz-fourier) 15%, transparent);
 }
+/* X.F.W4 · `fr-EditorControlsDock M-7` — one control, two hover registers,
+   keyed by a boolean the CSS ignored. This unlayered `color` beat the layered
+   hover unconditionally, so in the saved state the plate retinted toward
+   `--viz-fourier` on hover while the glyph stayed `--success` green: a
+   half-hover no one authored, on the control users hover to confirm. The
+   saved state now owns BOTH registers. */
 .is-save.saved {
     color: var(--success);
+    --btn-hover-color: var(--success);
+}
+.is-save.saved:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--success) 15%, transparent);
 }
 
 .magnet-popover-content {
