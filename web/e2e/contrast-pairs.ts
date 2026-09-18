@@ -90,12 +90,16 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // 1.4.11. The cell's own fill is `var(--card)`; the input's is
     // `var(--background)` — the two grounds differ and the registry keeps them
     // apart rather than averaging them.
+    // ⊘ `.a` CURED THESE AND MOVED THE EXPRESSIONS, per this file's own rule.
+    // The two boundary mixes went 12%/15% → 50% of `--foreground`; the stacks
+    // below are the values that paint TODAY, and `banked` keeps the pre-cure
+    // figures so the drift line reads as the cure rather than as a surprise.
     {
         id: "HLG-37[grid-cell-border]",
         what: ".grid-cell 1.5px boundary against its own fill",
         stack: [
             "var(--card)",
-            "color-mix(in srgb, var(--foreground) 12%, transparent)",
+            "color-mix(in srgb, var(--foreground) 50%, transparent)",
         ],
         kind: "non-text",
         banked: { light: 1.275, dark: 1.398 },
@@ -106,18 +110,67 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
         what: ".level-input 1.5px boundary against its own fill",
         stack: [
             "var(--background)",
-            "color-mix(in srgb, var(--foreground) 15%, transparent)",
+            "color-mix(in srgb, var(--foreground) 50%, transparent)",
         ],
         kind: "non-text",
         banked: { light: 1.361, dark: 1.403 },
         owner: ".a",
     },
+    // ⊘ NOT CURED, AND NOT MOVED — this one is a PRODUCER row. `--card` and
+    // `--background` carry the same luminance in the light arm, so no consumer
+    // edit can give the cell's fill separation from the page without re-minting
+    // a palette token app-wide. It rides `.z`'s SS-6 relay as a GLASS-RELAY ask
+    // and stays RED here, which is the honest reading. The cell's boundary
+    // (above) is what now carries the affordance.
     {
         id: "HLG-37[grid-cell-fill]",
         what: ".grid-cell fill against the page — the 1.000:1 separation",
         stack: ["var(--background)", "var(--card)"],
         kind: "non-text",
         banked: { light: 1.0 },
+        owner: ".a",
+    },
+    // ── fr-FourierMorphDemo FMD-18 ⊕ FMD-19, the bound/focus blue ──
+    // `#60a5fa` measured 2.446:1 on the page and 2.354:1 on `--card` — below
+    // 1.4.11 in the light arm at both of its sites. `.a` tokenised both to
+    // `--viz-legendre`.
+    {
+        id: "FMD-18[bound-tile-border]",
+        what: ".grid-cell.is-bound boundary against the cell fill",
+        stack: ["var(--card)", "var(--viz-legendre)"],
+        kind: "non-text",
+        banked: { light: 2.354, dark: 5.485 },
+        owner: ".a",
+    },
+    {
+        id: "FMD-19[level-input-focus-border]",
+        what: ".level-input:focus boundary against its own fill",
+        stack: ["var(--background)", "var(--viz-legendre)"],
+        kind: "non-text",
+        banked: { light: 2.446, dark: 7.778 },
+        owner: ".a",
+    },
+    // ── fr-DarkModeToggle DMT M-2, moved out of the awaiting-owner roster ──
+    // The glyph is the button's only visual content and its only sighted state
+    // channel. It was two hard-coded sRGB triples; `.a` routed both through the
+    // palette (FR-AH-23) and the mix through oklab (DMT N-13), so the resting
+    // colour in each arm is now a token and both are expressible here. The two
+    // rows are the two resting states, and each is graded in BOTH arms because
+    // a glyph that only passes in the theme it belongs to is half a reading.
+    {
+        id: "DMT M-2[sun]",
+        what: "the light-arm sun glyph against the page — the banked 2.51:1",
+        stack: ["var(--background)", "var(--viz-amber)"],
+        kind: "non-text",
+        banked: { light: 2.513 },
+        owner: ".a",
+    },
+    {
+        id: "DMT M-2[moon]",
+        what: "the dark-arm moon glyph against the page",
+        stack: ["var(--background)", "var(--viz-legendre)"],
+        kind: "non-text",
+        banked: { dark: 7.484 },
         owner: ".a",
     },
 
@@ -291,12 +344,6 @@ export const PAIRS_AWAITING_THEIR_OWNER: Array<{
         what: "ConvergencePlot axes — painted to canvas, read from the 2D context",
         banked: "1.19 light / 1.38 dark",
         owner: ".b",
-    },
-    {
-        id: "DMT M-2",
-        what: "DarkModeToggle",
-        banked: "2.51",
-        owner: ".a",
     },
     {
         id: "ECD D-5",

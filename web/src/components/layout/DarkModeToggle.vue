@@ -26,34 +26,55 @@ import moonData from "@/assets/fourier-paths/moon.json";
 const sunShape = prepareFourierShape(sunData as any);
 const moonShape = prepareFourierShape(moonData as any);
 
-// Sun: warm orange   Moon: legendre purple
-const SUN_COLOR = [232, 136, 69] as const;   // #E88845
-const MOON_COLOR = [192, 132, 252] as const; // #c084fc — matches VIZ_COLORS.legendre
-
 const { isDark, toggleDark } = useGlobalDark();
 /** true when morphing toward dark (moon), false when morphing toward light (sun) */
 const morphingToDark = ref(false);
 
 const morph = useFourierMorph();
 
-function lerpColor(a: readonly number[], b: readonly number[], t: number): string {
-    const r = Math.round(a[0] + (b[0] - a[0]) * t);
-    const g = Math.round(a[1] + (b[1] - a[1]) * t);
-    const bl = Math.round(a[2] + (b[2] - a[2]) * t);
-    return `rgb(${r},${g},${bl})`;
-}
-
-const strokeColor = computed(() => {
-    if (morph.phase.value === "idle") {
-        return isDark.value
-            ? lerpColor(SUN_COLOR, MOON_COLOR, 1)
-            : lerpColor(SUN_COLOR, MOON_COLOR, 0);
+/**
+ * X.F.W4 · FR-AH-23 ⊕ DMT M-2 ⊕ DMT N-13 — the glyph's colour, in one
+ * expression, through the resolved palette.
+ *
+ * Three banked rows died together here, and the cure is smaller than any one of
+ * them:
+ *
+ *  · **FR-AH-23** — the two endpoints were hard-coded sRGB triples (`#E88845`,
+ *    `#c084fc`) with a comment claiming the second "matches VIZ_COLORS.legendre".
+ *    They are now the palette tokens themselves, so the glyph follows the
+ *    cascade — including this app's own light-arm `--viz-amber` darkening — and
+ *    there is nothing left to drift out of match. The row's precondition is met:
+ *    `fr-BasisCanvas D-1`'s resolver cure landed at F.W2, so the `#888888`
+ *    fallback the routing had to wait for no longer exists in `lib/colors.ts`.
+ *  · **DMT M-2** — the light-mode glyph is the button's ONLY visual content and
+ *    its only sighted state channel, and it measured **2.513:1** against the
+ *    page (`#E88845`; WCAG 1.4.11 wants 3:1). `--viz-amber` measures
+ *    **4.709:1** light / **10.940:1** dark; `--viz-legendre` **5.541:1** light /
+ *    **8.080:1** dark. Every resting state now clears the floor in both arms,
+ *    and it clears 1.4.3's 4.5:1 as well.
+ *  · **DMT N-13** — the channel-wise sRGB lerp collapsed chroma ~37% at t=0.5
+ *    between two hues ~250° apart and passed through a dusty rose belonging to
+ *    neither state. `color-mix(in oklab, …)` interpolates perceptually, in the
+ *    space the substrate already declares as its standard, with the engine
+ *    doing the work — no colour maths, no second palette import, and nothing
+ *    added to this component's eager boundary.
+ *
+ * The idle branch also loses its dead arithmetic: it used to call the lerp with
+ * t=1 and t=0 to recompute two constants.
+ */
+/** 0 = fully sun, 1 = fully moon. */
+const morphT = computed(() => {
+    if (morph.phase.value !== "idle") {
+        const p = morph.morphProgress.value;
+        return morphingToDark.value ? p : 1 - p;
     }
-    const [from, to] = morphingToDark.value
-        ? [SUN_COLOR, MOON_COLOR]
-        : [MOON_COLOR, SUN_COLOR];
-    return lerpColor(from, to, morph.morphProgress.value);
+    return isDark.value ? 1 : 0;
 });
+
+const strokeColor = computed(
+    () =>
+        `color-mix(in oklab, var(--viz-amber) ${((1 - morphT.value) * 100).toFixed(1)}%, var(--viz-legendre))`,
+);
 
 onMounted(() => {
     morph.setShape(isDark.value ? moonShape : sunShape);

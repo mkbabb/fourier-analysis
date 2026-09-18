@@ -174,7 +174,9 @@ function getPath(level: number): string {
 .level-input {
     width: 3.5rem;
     padding: 0.125rem 0.375rem;
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+    /* SP-3 · HLG-37 — 15% over `--background` measured 1.361 L / 1.400 D
+       (the banked figures, reproduced); 50% measures 3.322 L / 4.486 D. */
+    border: 1.5px solid color-mix(in srgb, var(--foreground) 50%, transparent);
     border-radius: 0.375rem;
     background: var(--background);
     color: var(--foreground);
@@ -198,9 +200,15 @@ function getPath(level: number): string {
     margin: 0;
 }
 
+/* SP-3 · FMD-18 ⊕ FMD-19 — the bound/focus blue is TOKENISED. `#60a5fa`
+   measured 2.446:1 against the page (the banked 2.45, reproduced) and 2.354:1
+   against `--card`, so it failed 1.4.11 in the light arm at both of its sites,
+   while the byte-identical input in the sibling card focused on a conformant
+   `var(--accent-red)`. `--viz-legendre` is this app's own blue-violet basis
+   token and measures 5.541 L / 8.080 D against the page. */
 .level-input:focus {
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.15);
+    border-color: var(--viz-legendre);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--viz-legendre) 20%, transparent);
 }
 
 /* X.F.W4 / SP-6 · HLG-3 ⊕ FMD-3 — the dead per-slider retint hook is DELETED.
@@ -260,7 +268,20 @@ function getPath(level: number): string {
     .grid-cell {
         flex-direction: column;
         flex-shrink: 0;
-        border: 1.5px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+        /* SP-3 · HLG-37 — the control boundary, raised to the 1.4.11 floor.
+           `--foreground` at 12% over `--card` measured 1.275 L / 1.395 D: the
+           cell's entire boundary vocabulary was sub-3:1 in BOTH arms, which is
+           what made a grid of twelve controls read as one undifferentiated
+           strip. At 50% it measures 3.291 L / 3.984 D. (Re-derived from the
+           token values; the 12% reading reproduces the banked 1.275/1.398 to
+           the thousandth, which is what validates the model.) */
+        border: 1.5px solid color-mix(in srgb, var(--foreground) 50%, transparent);
+        /* ⊘ NOT cured here, and not smoothed: `--card` and `--background` are
+           the SAME luminance in the light arm (1.000:1), so the cell's FILL
+           carries no separation from the page whatever the consumer does. That
+           is a producer palette fact, so it rides the SS-6 relay as a
+           GLASS-RELAY ask and stays honestly RED in the pair registry — it is
+           not re-minted here as a frontend hack. */
         background: var(--card);
     }
 
