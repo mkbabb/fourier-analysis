@@ -42,7 +42,8 @@ const previewViewBox = computed(() => {
                         <path
                             :d="previewPath"
                             fill="none"
-                            stroke="hsl(40 90% 55% / 0.85)"
+                            stroke="var(--contour-stroke)"
+                            stroke-opacity="0.85"
                             stroke-width="2"
                             vector-effect="non-scaling-stroke"
                         />
@@ -54,7 +55,18 @@ const previewViewBox = computed(() => {
 </template>
 
 <style scoped>
+/* The contour stroke is the brand amber, taken from the semantic token rather
+   than re-authored as a literal: the retired inline amber (hue 40, 90%, 55%)
+   composited to 1.660:1 against light `--card`, while `--viz-amber` clears AA
+   at both pins. The alpha stays on `stroke-opacity`, where the cascade — and a
+   token audit — can still see the hue.
+
+   The token is declared at each of the two contour surfaces' own roots because
+   `ContourPreview` and `ContourEditorCanvas` have no shared ancestor — the
+   editor mounts standalone under `FullscreenViewer` as well as beside this
+   preview under `VisualizationView`. */
 .preview-svg {
+    --contour-stroke: var(--viz-amber);
     width: 160px;
     height: 160px;
     display: block;

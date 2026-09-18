@@ -258,7 +258,8 @@ defineExpose({
                 <path
                     :d="splinePath"
                     fill="none"
-                    stroke="hsl(40 90% 55% / 0.85)"
+                    stroke="var(--contour-stroke)"
+                    stroke-opacity="0.85"
                     stroke-width="3"
                     vector-effect="non-scaling-stroke"
                     class="spline-path"
@@ -282,7 +283,20 @@ defineExpose({
 </template>
 
 <style scoped>
+/* The contour stroke is the brand amber, taken from the semantic token rather
+   than re-authored as an inline literal at every paint site: the retired
+   inline amber (hue 40, 90%, 55%) composited to 1.660:1 against light
+   `--card`, while `--viz-amber` clears AA at both pins. Every alpha moves to
+   `stroke-opacity` / `fill-opacity` / a
+   `color-mix()` stop, so the hue stays a token the cascade — and a token audit
+   — can still see.
+
+   The token is declared at each of the two contour surfaces' own roots because
+   `ContourEditorCanvas` and `ContourPreview` have no shared ancestor: this
+   shell mounts standalone under `FullscreenViewer` as well as beside the
+   preview under `VisualizationView`. */
 .editor-shell {
+    --contour-stroke: var(--viz-amber);
     flex: 1;
     min-height: 0;
     border-radius: var(--radius);
@@ -304,19 +318,20 @@ defineExpose({
 }
 
 .control-point {
-    fill: hsl(40 90% 55% / 0.6);
-    stroke: hsl(40 90% 55%);
+    fill: var(--contour-stroke);
+    fill-opacity: 0.6;
+    stroke: var(--contour-stroke);
     stroke-width: 2.5;
     cursor: grab;
-    transition: fill 0.15s, r 0.15s;
+    transition: fill-opacity 0.15s, r 0.15s;
 }
 
 .control-point:hover {
-    fill: hsl(40 90% 55% / 0.5);
+    fill-opacity: 0.5;
 }
 
 .spline-path {
-    filter: drop-shadow(0 0 2px hsl(40 90% 55% / 0.3));
+    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--contour-stroke) 30%, transparent));
     transition: filter 0.2s ease;
 }
 
@@ -325,12 +340,13 @@ defineExpose({
 }
 
 @keyframes golden-shimmer {
-    0%, 100% { filter: drop-shadow(0 0 2px hsl(40 90% 55% / 0.3)); }
-    50% { filter: drop-shadow(0 0 5px hsl(40 90% 55% / 0.5)); }
+    0%, 100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--contour-stroke) 30%, transparent)); }
+    50% { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--contour-stroke) 50%, transparent)); }
 }
 
 .control-point.selected {
-    fill: hsl(40 90% 55%);
+    fill: var(--contour-stroke);
+    fill-opacity: 1;
     stroke: var(--background);
 }
 
