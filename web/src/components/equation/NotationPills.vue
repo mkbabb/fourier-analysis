@@ -13,19 +13,23 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div class="flex flex-wrap justify-center gap-1.5">
+    <div class="flex flex-wrap justify-center gap-1.5" role="group" aria-label="Notation">
+        <!-- `D·D-M12`, same edit — the pills signalled selection by tint alone,
+             against the pattern `notation.ts`'s own docblock describes
+             (`aria-pressed` driving an instance-scoped tint). -->
         <Button
             v-for="opt in NOTATION_OPTIONS"
             :key="opt.value"
             emphasis="secondary"
             size="sm"
             class="notation-pill"
+            :aria-pressed="modelValue === opt.value"
             :class="{ 'notation-active': modelValue === opt.value }"
             :style="modelValue === opt.value ? { '--pill-color': opt.color } : {}"
             @click="emit('update:modelValue', opt.value)"
         >
             <span class="cm-serif font-semibold text-[1.3em] leading-none min-w-[1.2em] h-[1em]
-                         inline-flex items-center justify-center">
+                         inline-flex items-center justify-center" aria-hidden="true">
                 {{ opt.icon }}
             </span>
             {{ opt.label }}

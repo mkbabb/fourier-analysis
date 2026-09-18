@@ -28,24 +28,54 @@ const { status, copy } = useClipboard({ resetMs: 2000 });
 const renderedHtml = computed(() => renderLatex(props.latex));
 
 /**
- * FR-EQR-4 — the clipboard gets the PORTABLE form. `eqMode` defaults to
+ * `FR-EQR-5` — the copy outcome was a colour-and-glyph swap with no text
+ * equivalent, and the composable's own four-state `status` carries a `failure`
+ * arm the callsite discarded (it fired `copy()` with no await, no then, no
+ * `onCopyError`). At the adopted pin the exec-command fallback is gone, so a
+ * failure is MORE likely than it was and was still reported to no one. This is
+ * the announcement; `status` is read by name, never through a boolean.
+ */
+const copyAnnouncement = computed(() => {
+    if (status.value === "success") return "LaTeX copied to the clipboard";
+    if (status.value === "failure") return "Could not copy — the clipboard refused the write";
+    return "";
+});
+
+/**
+ * `FR-EQR-4` — the clipboard gets the PORTABLE form. `eqMode` defaults to
  * `"sigma"` and the sigma renders are the ones carrying `\htmlClass`, so the raw
  * copy emitted LaTeX that fails with `Undefined control sequence` in every
  * consumer but this one, in the app's own default mode.
+ *
+ * `FR-EQR-25` / `FR-EQR-13` — the click path is guarded where the render path
+ * short-circuits (`:disabled="!latex"`), so `copy("")` can no longer flash a
+ * green Check for a copy of nothing, and the affordance stops being live over a
+ * stale equation during a recompute.
  */
-function copyLatex() {
-    copy(plainLatex(props.latex));
+async function copyLatex() {
+    await copy(plainLatex(props.latex));
 }
 </script>
 
 <template>
     <div class="eq-result-root">
-        <div class="eq-scroll-region" v-html="renderedHtml" />
+        <!-- `FR-EQR-6` — a scroll container with no tabindex, no role and no
+             accessible name, over a KaTeX span tree that contains no focusable
+             descendant: the equation was unreachable by keyboard. -->
+        <div
+            class="eq-scroll-region"
+            tabindex="0"
+            role="region"
+            aria-label="Rendered Fourier series"
+            v-html="renderedHtml"
+        />
         <Button
             emphasis="primary"
             size="md" icon-only
             class="copy-pos"
+            aria-label="Copy LaTeX"
             title="Copy LaTeX"
+            :disabled="!latex"
             @click="copyLatex"
         >
             <Transition name="icon-swap" mode="out-in">
@@ -53,6 +83,9 @@ function copyLatex() {
                 <Copy v-else class="h-4.5 w-4.5" />
             </Transition>
         </Button>
+        <!-- `FR-EQR-5` — the copy outcome was colour-and-glyph only, and the
+             composable's own reported failure was swallowed a second time. -->
+        <p class="sr-only" role="status">{{ copyAnnouncement }}</p>
     </div>
 </template>
 
@@ -63,26 +96,43 @@ function copyLatex() {
     position: relative;
 }
 
-/* Scrollable equation region — horizontal scroll, no vertical clip */
+/* Scrollable equation region — horizontal scroll, no vertical clip.
+
+   `FR-EQR-8` — `text-align: center` was NOT the operative centring: the vendor
+   sheet centres `.katex-display` and its `> .katex` child directly, so deleting
+   the declaration alone is a no-op (K-7 killed that cure). A centred,
+   `white-space: nowrap` display box inside `overflow-x: auto` puts the
+   inline-START overhang outside the scrollable overflow region — `scrollLeft`
+   floors at 0 — so the leading terms of an over-wide equation were unreachable
+   with zero cue. A flex container with `justify-content: safe center` centres
+   while it fits and degrades to `start` the moment it does not, and KaTeX's own
+   centring goes inert on a shrink-to-fit flex item. */
 .eq-scroll-region {
     width: 100%;
-    text-align: center;
+    display: flex;
+    justify-content: safe center;
+    align-items: flex-start;
     padding: 2rem 1rem 1rem;
     min-height: 4.5rem;
     overflow-x: auto;
     scrollbar-width: thin;
 }
 
-/* Override global katex-display to prevent clipping fractions */
+/* Override global katex-display to prevent clipping fractions.
+
+   `FR-EQR-22` — the `!important` was unearned: this scoped `(0,3,0)` selector
+   already beats `style.css`'s `(0,1,0)` unaided and the vendor sheet sets no
+   overflow at all, so the flag was defending against nothing. The `.katex`
+   rule's `overflow: visible` restated the initial value. Both are gone; the
+   block otherwise keeps its superlative. */
 .eq-scroll-region :deep(.katex-display) {
     margin: 0;
     padding: 0.5rem 0;
-    overflow: visible !important;
+    overflow: visible;
 }
 
 .eq-scroll-region :deep(.katex) {
     font-size: 1.4em;
-    overflow: visible;
 }
 
 @media (min-width: 768px) {

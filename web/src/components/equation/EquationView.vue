@@ -457,7 +457,13 @@ watchDebounced(
                              through to the DOM doing nothing (FR-TT-5's class). -->
                         <Popover v-if="tier" trigger="hover" :open-delay="200" :close-delay="150">
                             <PopoverTrigger as-child>
-                                <Button emphasis="primary" size="md" icon-only class="info-anchor">
+                                <!-- `D·D-B2` — the info button had NO accessible name:
+                                     an icon-only Button wrapping a bare glyph, with
+                                     `PopoverTrigger as-child` forwarding no naming
+                                     attribute. The convention exists three siblings
+                                     over. -->
+                                <Button emphasis="primary" size="md" icon-only class="info-anchor"
+                                        aria-label="About this approximation">
                                     <!-- F.W1 / D·D-M11 — the one hand-inlined copy the
                                          import-keyed lucide sweep is blind to: this markup
                                          was element-identical to lucide `Info`, which this
@@ -655,7 +661,10 @@ watchDebounced(
 <!-- Global style for portaled Popover content -->
 <style>
 .info-hovercard {
-    z-index: var(--z-modal);
+    /* `M-ZM` — this painted at `--z-modal` (140) on a ladder that ships an
+       exactly-named `--z-hovercard` rung (120) two levels below, so a
+       hover-opened, close-delayed surface could outlive and overlay a dialog. */
+    z-index: var(--z-hovercard);
     width: 300px;
     padding: 0.75rem;
     color: var(--popover-foreground);
@@ -664,6 +673,8 @@ watchDebounced(
     border-radius: 0.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     animation: tooltip-in 0.15s var(--ease-out-expo);
-    user-select: none;
+    /* `M-US` — `user-select: none` is defensible for a one-line label and wrong
+       for an explanatory paragraph: it made the tier description, which the
+       record nominates as copy that should survive any redesign, uncopyable. */
 }
 </style>

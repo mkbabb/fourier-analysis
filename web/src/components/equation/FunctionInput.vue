@@ -152,10 +152,14 @@ const activePreset = computed(() =>
                     </div>
 
                     <!-- Compute button -->
+                    <!-- `D·D-m6` — Compute with an empty expression was a dead
+                         button: the handler bare-returns, with no `:disabled` and
+                         no message. -->
                     <Button
                         emphasis="primary"
                         size="sm"
                         class="compute-btn"
+                        :disabled="!expression.trim()"
                         @click="emit('compute')"
                     >
                         <Play class="h-3.5 w-3.5" />
@@ -198,11 +202,19 @@ const activePreset = computed(() =>
                             @update:model-value="(v: number) => { nHarmonics = v; emit('update:autoHarmonics', false); }"
                         />
                         <Tooltip side="bottom">
+                            <!-- `D·D-B2` (second nameless control in the same
+                                 subtree) — the Tooltip supplies a DESCRIPTION, and a
+                                 description is never a name. `C·D-22`: the old
+                                 `:disabled="!effectiveN"` could never fire from
+                                 either end — the ref is seeded to 20 and
+                                 `compute_effective_n(minimum=3)` returns ≥ 3 on every
+                                 server path, including `total_energy <= 0`. -->
                             <Button
                                 emphasis="primary"
                                 size="md" icon-only
+                                aria-label="Auto-select harmonics by Parseval energy"
+                                :aria-pressed="autoHarmonics"
                                 :class="{ 'is-auto-active': autoHarmonics }"
-                                :disabled="!effectiveN"
                                 @click="toggleAuto"
                             >
                                 <Wand2 class="h-4.5 w-4.5" />

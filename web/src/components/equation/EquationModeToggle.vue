@@ -6,31 +6,55 @@ const model = defineModel<EquationDisplayMode>({ required: true });
 </script>
 
 <template>
-    <div class="eq-toggle glass-wash">
-        <Button
-            emphasis="quiet"
-            size="sm"
-            class="eq-toggle-btn"
-            :class="{ 'is-active': model === 'sigma' }"
-            title="Sigma notation (compact)"
-            @click="model = 'sigma'"
-        >
-            <span class="eq-toggle-icon">&Sigma;</span>
-        </Button>
-        <Button
-            emphasis="quiet"
-            size="sm"
-            class="eq-toggle-btn"
-            :class="{ 'is-active': model === 'expanded' }"
-            title="Expanded terms"
-            @click="model = 'expanded'"
-        >
-            <span class="eq-toggle-icon eq-toggle-icon--mono">a + b</span>
-        </Button>
+    <!-- `D·D-M12` — the two states were signalled by COLOUR ALONE
+         (`is-active` → amber + an 8% wash), with `title=` as the only label, on a
+         primitive whose CVA already ships `aria-pressed:` arms and whose house
+         pattern is documented three files away. `aria-pressed` is the one
+         attribute the sanctioned mechanism needs, and it gives AT the state the
+         paint was carrying by itself. -->
+    <div class="eq-toggle-frame">
+        <div class="eq-toggle glass-wash" role="group" aria-label="Equation display mode">
+            <Button
+                emphasis="quiet"
+                size="sm"
+                class="eq-toggle-btn"
+                :class="{ 'is-active': model === 'sigma' }"
+                :aria-pressed="model === 'sigma'"
+                aria-label="Sigma notation (compact)"
+                title="Sigma notation (compact)"
+                @click="model = 'sigma'"
+            >
+                <span class="eq-toggle-icon" aria-hidden="true">&Sigma;</span>
+            </Button>
+            <Button
+                emphasis="quiet"
+                size="sm"
+                class="eq-toggle-btn"
+                :class="{ 'is-active': model === 'expanded' }"
+                :aria-pressed="model === 'expanded'"
+                aria-label="Expanded terms"
+                title="Expanded terms"
+                @click="model = 'expanded'"
+            >
+                <span class="eq-toggle-icon eq-toggle-icon--mono" aria-hidden="true">a + b</span>
+            </Button>
+        </div>
     </div>
 </template>
 
 <style scoped>
+/* `M-FR` — the focus ring was CLIPPED off both buttons. glass-ui's Button CVA
+   carries `focus-ring`, whose recipe is `outline: none` plus a purely OUTSET
+   `box-shadow` (2px ring + 8px glow), and an `overflow: hidden` ancestor clips a
+   descendant's box-shadow while the native outline fallback is already deleted —
+   so keyboard focus on Σ / a+b was invisible at the outer boundary. `overflow:
+   clip` does not help. The pill's rounded clip is kept; the ring now has a frame
+   to land in. */
+.eq-toggle-frame {
+    padding: 4px;
+    display: inline-flex;
+}
+
 .eq-toggle {
     display: flex;
     border-radius: 9999px;

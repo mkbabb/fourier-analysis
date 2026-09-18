@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { TrigHarmonic } from "../lib/harmonics";
-import { spectrumColor } from "../lib/harmonics";
+import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
+import { spectrumColor, type TrigHarmonic } from "../lib/harmonics";
 
 defineProps<{
     harmonics: TrigHarmonic[];
@@ -14,7 +14,18 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div v-if="harmonics.length" class="legend-overlay glass-wash">
+    <!-- `D-7` ⊕ `FR-EQR-23` — ONE adoption, two records. `scrollbar-width: thin`
+         was the ENTIRE overflow affordance on a column that routinely overflows
+         (one entry per harmonic, up to the UI's 100), and `M-R2`'s ordering lock
+         is discharged by the same edit: the producer's port ships `tabindex="0"`
+         and `role="region"` when named, so the `scrollable-region-focusable`
+         finding cannot fire ahead of the hover findings on this route. -->
+    <FadingScroll
+        v-if="harmonics.length"
+        axis="y"
+        aria-label="Curve legend"
+        class="legend-overlay glass-wash"
+    >
         <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'sum' }"
             @pointerenter="emit('hover', 'sum')" @pointerleave="emit('leave')">
             <span class="legend-dot legend-dot--golden" />
@@ -36,22 +47,24 @@ const emit = defineEmits<{
             <span class="legend-dot" :style="{ background: spectrumColor(i, harmonics.length) }" />
             <span class="legend-label">n={{ h.k }}</span>
         </div>
-    </div>
+    </FadingScroll>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
 
+/* The port's own `overflow-y` / `scrollbar-width` belong to `<FadingScroll>`
+   now; what stays here is placement, plate and rhythm. */
 .legend-overlay {
-    @apply absolute top-2 right-2 flex flex-col gap-0.5 pointer-events-auto;
+    @apply absolute top-2 right-2 pointer-events-auto;
     max-height: calc(100% - 16px);
-    overflow-y: auto;
-    overflow-x: hidden;
     padding: 8px 12px;
     border-radius: 8px;
-    scrollbar-width: thin;
     z-index: var(--z-content);
     min-width: 100px;
+}
+.legend-entry + .legend-entry {
+    margin-top: 2px;
 }
 
 .legend-entry {
