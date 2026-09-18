@@ -80,8 +80,3 @@ export function snapshotForTransition(
     state.prevMinY = rawMin - pad;
     state.prevMaxY = rawMax + pad;
 }
-
-/** Lerp a single value. */
-export function lerp(a: number, b: number, t: number): number {
-    return a + (b - a) * t;
-}

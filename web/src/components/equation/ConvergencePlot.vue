@@ -3,12 +3,13 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import type { FourierTermDTO } from "@/lib/equation/types";
 import { applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
 import { easeInOutSine } from "@mkbabb/value.js/easing";
+import { lerp } from "@mkbabb/value.js/math";
 import katex from "katex";
 
 import { drawPlotGrid, type PlotPadding } from "./lib/grid";
 import { hitTestCurves, type CurveHitRegion } from "./lib/hit-test";
 import { groupTrigHarmonics, harmonicProgress, spectrumColor, type TrigHarmonic } from "./lib/harmonics";
-import { createTransitionState, startTransition, snapshotForTransition, lerp } from "./composables/useCurveTransition";
+import { createTransitionState, startTransition, snapshotForTransition } from "./composables/useCurveTransition";
 
 import ConvergenceLegend from "./convergence/ConvergenceLegend.vue";
 import ConvergenceTimeline from "./convergence/ConvergenceTimeline.vue";
