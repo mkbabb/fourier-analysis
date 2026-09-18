@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { type Point2D, closedSplinePath } from "@/lib/contourEditing";
+import { type Point2D, closedSplinePath, contourBounds } from "@/lib/contourEditing";
 import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
+
+/** The authored framing of this preview; the editor's is its own. */
+const PREVIEW_MARGIN = 0.1;
 
 const props = defineProps<{
     points: Point2D[] | undefined;
@@ -13,27 +16,33 @@ const previewPath = computed(() => {
     return closedSplinePath(pts);
 });
 
-const previewViewBox = computed(() => {
-    const pts = props.points;
-    if (!pts || pts.length < 2) return "0 0 1 1";
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const p of pts) {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
-    }
-    const pad = (maxX - minX) * 0.1;
-    // Flip Y: SVG viewBox uses negative Y since we scale(1,-1) inside
-    return `${minX - pad} ${-(maxY + pad)} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`;
-});
+/**
+ * X.F.W4 · `fr-ContourPreview` row 40 — the bounding-box loop that used to sit
+ * here was a byte-identical clone of `ContourEditorCanvas.vue:60-66` (row 33),
+ * and it carried three defects the clone's twin did not: an X-derived pad spent
+ * on both axes (row 7), no degenerate-extent floor (row 17) and no finite
+ * screen (row 28-client). All three die with the extraction.
+ */
+const bounds = computed(() => contourBounds(props.points, PREVIEW_MARGIN));
+
+/**
+ * `null` bounds are UNRENDERABLE, and the component now says so instead of
+ * emitting a viewBox the UA silently ignores — the whole of row 28-client's
+ * "blanks in silence" mechanism.
+ */
+const previewViewBox = computed(() => bounds.value?.viewBox ?? "0 0 1 1");
 </script>
 
 <template>
     <div class="cartoon-card px-3 py-2">
         <CollapsibleSection title="Preview" subtitle="live contour shape" :default-open="true">
             <div class="flex items-center justify-center p-2">
+                <!-- Row 28-client: an unrenderable point set used to emit an
+                     invalid viewBox and blank the surface with no explanation.
+                     It now says what it knows. -->
+                <p v-if="!bounds" class="preview-empty">No contour to preview yet</p>
                 <svg
+                    v-else
                     :viewBox="previewViewBox"
                     preserveAspectRatio="xMidYMid meet"
                     class="preview-svg"
@@ -70,5 +79,12 @@ const previewViewBox = computed(() => {
     width: 160px;
     height: 160px;
     display: block;
+}
+
+.preview-empty {
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    color: var(--muted-foreground);
 }
 </style>
