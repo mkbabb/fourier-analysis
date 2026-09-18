@@ -183,7 +183,12 @@ function getPath(level: number): string {
     text-align: center;
     outline: none;
     flex-shrink: 0;
-    transition: border-color 0.15s ease;
+    /* SP-5 · HLG-40 — the focus indicator animated incoherently: this list
+       carried `border-color` alone while `:focus` changes border-color AND
+       box-shadow, so the ring popped in and out against an easing border. Both
+       changed properties are listed, on the producer's own registers. */
+    transition: border-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard);
     -moz-appearance: textfield;
 }
 
@@ -198,13 +203,18 @@ function getPath(level: number): string {
     box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.15);
 }
 
-/* A.W2.c — glass-scrubber per-instance retint hook + flex stretch. */
+/* X.F.W4 / SP-6 · HLG-3 ⊕ FMD-3 — the dead per-slider retint hook is DELETED.
+   The four `--slider-scrub-*` declarations had ZERO readers at the adopted
+   8.0.0 pin (⟨cmd⟩ `grep -roh -- '--slider-scrub[a-z-]*' dist | sort -u` → ∅),
+   and this file's copy was dead a SECOND way the record could not see: the
+   `:style="{'--track-color': …}"` binding that fed them was removed from this
+   component before the uplift, so every operand resolved `var(--track-color)`
+   → invalid-at-computed-value-time. Two sliders, zero tint delivered.
+   ⊘ The sibling declarations at `MorphPhaseConfig.vue` and `SliderControl.vue`
+   still have their `--track-color` writer and are NOT this unit's rows
+   (`MPC-*` is `.c`'s section) — named in this unit's receipt, not touched. */
 .level-slider-track {
     flex: 1;
-    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
-    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
-    --slider-scrub-thumb-bg: var(--track-color);
-    --slider-scrub-thumb-bg-hover: var(--track-color);
 }
 
 /* ── Preview grid ────────────────────────────── */
@@ -214,42 +224,74 @@ function getPath(level: number): string {
     gap: 0.5rem;
     overflow-x: auto;
     overflow-y: hidden;
+    /* FMD-18 — the top gutter. `overflow-y: hidden` plus a one-sided
+       `padding-bottom` clipped this strip's own outward decorations (ring,
+       lift, focus) at the TOP edge only. The gutter is two-sided now, so the
+       affordances the cells paint are the affordances the user sees. */
+    padding-top: 0.375rem;
     padding-bottom: 0.375rem;
     scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
 }
 
-.grid-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.125rem;
-    padding: 0.375rem;
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 12%, transparent);
-    border-radius: 0.5rem;
-    background: var(--card);
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
-}
+/* X.F.W4 / SP-6 · FMD-13 — the `.grid-cell` re-skin is DELETED down to the
+   divergence the producer ships no variant for.
 
-.grid-cell:hover {
-    border-color: color-mix(in srgb, var(--accent-red) 50%, transparent);
-    transform: scale(1.04);
-}
+   Gone (the recipe owns them, in `@layer components`, and unlayered scoped CSS
+   was silently beating it): `display` / `align-items` / `gap` / `padding` /
+   `border-radius` / `cursor` / the three-leg `transition` shorthand (HLG-6 —
+   it truncated the producer's six-leg tokenised list) / `background`
+   (it replaced the `glass-capsule` plate `emphasis="secondary"` selects).
+   Kept, and LAYERED: the column stack and the no-shrink, which is what makes a
+   horizontally-scrolling strip of shape tiles out of a row of buttons.
 
-.grid-cell:active {
-    transform: scale(0.96);
-}
+   ⊘ TWO BANKED MECHANISMS DIED AT THE ADOPTED PIN — recorded, not smoothed.
+   (i) `FMD-16`/`HLG-2` (*"`.grid-cell` keeps the recipe's fixed
+   `h-(--control-h-md)` while stacking ~2× that in content"*) was measured at
+   4.0.0. At 8.0.0 the recipe declares `min-block-size: var(--button-size)` — a
+   FLOOR — and a fixed `block-size` only under `[data-icon-only]`, which these
+   cells are not. There is no overflow to cure; the `--ui-scale` coarse-growth
+   residue is real and is routed, not booked here.
+   (ii) `HLG-7` (*"the state box-shadows replace `.focus-ring:focus-visible`'s
+   entire focus paint"*) was measured against 4.0.0's `outline:none` + shadow
+   recipe. At 8.0.0 the paint is `outline: var(--focus-ring-width) solid …;
+   outline-offset: 2px` — a DIFFERENT property, so a `box-shadow` state cannot
+   replace it and the ring survives both states. */
+@layer glass-overrides {
+    .grid-cell {
+        flex-direction: column;
+        flex-shrink: 0;
+        border: 1.5px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+        background: var(--card);
+    }
 
-.grid-cell.active {
-    border-color: var(--accent-red);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-red) 15%, transparent);
-}
+    /* SP-15 / DMT N-16 — ungated `:hover` latched on touch UAs after a tap and
+       read as *selected* beside the real `.active` state. */
+    @media (hover: hover) {
+        .grid-cell:hover {
+            border-color: color-mix(in srgb, var(--accent-red) 50%, transparent);
+            transform: scale(1.04);
+        }
+    }
 
-.grid-cell.is-bound {
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 1.5px rgba(96, 165, 250, 0.2);
+    .grid-cell:active {
+        transform: scale(0.96);
+    }
+
+    /* FMD-18 — the state classes are ORDERED and SCOPED. `.is-bound` and
+       `.active` are both (0,2,0); source order decided the paint, and the boot
+       state (highLevel = 50) is always a bound tile, so the *selected* tile was
+       overpainted by *bound* at every idle rest. `.active` is now declared last
+       and `.is-bound` is qualified `:not(.active)`: the two states are
+       independent facts and the selection is the one that wins. */
+    .grid-cell.is-bound:not(.active) {
+        border-color: var(--viz-legendre);
+        box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--viz-legendre) 25%, transparent);
+    }
+
+    .grid-cell.active {
+        border-color: var(--accent-red);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-red) 15%, transparent);
+    }
 }
 
 .grid-svg {

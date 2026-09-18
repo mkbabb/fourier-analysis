@@ -18,6 +18,31 @@
              main.ts (fingerprinted, same-origin). Zero third-party origins. -->
         <link rel="stylesheet" href="/fonts.css" />
 
+        <!-- X.F.W4 / SP-6 · FR-AH-30 — THE CASCADE-LAYER ORDER, declared once,
+             in the document head, before any stylesheet this document loads.
+
+             A cascade layer takes its position from where its name FIRST
+             appears, and nothing later can move it. Declaring the order inside
+             `src/style.css` does not work here and the failure is silent: Vite
+             emits SFC `<style>` output BEFORE the entry stylesheet (`main.ts`
+             imports `App.vue` above `./style.css`), so the first `@layer
+             glass-overrides { … }` block in a component registered the layer
+             FIRST — i.e. at the BOTTOM of the order, beneath `components`. That
+             is the same inverted outcome `FR-AH-30` adjudicates dead for the
+             `@layer components` remedy, reached by a different route. Measured
+             at the emitted bundle before this line existed: `glass-overrides`
+             at byte 4193, `components` at 45523.
+
+             An authored `<style>` in the head is first in document order in
+             BOTH modes — the build appends its `<link>` at the end of `<head>`,
+             and the dev server injects `<style>` elements at the end too — so
+             this is the one position that fixes the order for every layer the
+             app and its producer use. `glass-overrides` is last, which is the
+             only shape that lets a deliberate consumer override beat glass-ui's
+             `@layer components` recipes BY ORDER instead of by being unlayered.
+        -->
+        <style>@layer theme, base, components, utilities, glass-overrides;</style>
+
         <script>
             // Init dark mode before first paint to prevent flash
             // Checks both legacy key ("theme") and VueUse key ("vueuse-color-scheme")

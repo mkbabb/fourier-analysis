@@ -68,12 +68,12 @@
 
             <!-- Export / Reset -->
             <div class="export-row">
-                <Button emphasis="primary" class="btn-export" @click="morphConfig.copyToClipboard()">
-                    <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" class="btn-icon" />
+                <Button emphasis="primary" @click="morphConfig.copyToClipboard()">
+                    <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" />
                     {{ morphConfig.status.value === 'success' ? 'Copied' : 'Export' }}
                 </Button>
-                <Button emphasis="secondary" class="btn-reset" @click="handleReset">
-                    <RotateCcw class="btn-icon" />
+                <Button emphasis="secondary" @click="handleReset">
+                    <RotateCcw />
                     Reset
                 </Button>
             </div>
@@ -277,54 +277,22 @@ function handleReset() {
     padding-top: 0.5rem;
 }
 
-.btn-icon {
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
-}
+/* X.F.W4 / SP-6 · FMD-13 (⊕ FMD-28 ⊕ FMD-35) — the two Button re-skins are
+   DELETED, not layered.
 
-.btn-export {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    border: 0;
-    background: var(--foreground);
-    color: var(--background);
-    font-family: var(--font-mono);
-    @apply text-base;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.15s ease, opacity 0.15s ease;
-}
+   `.btn-export` and `.btn-reset` restated, in unlayered scoped CSS, every
+   declaration the producer's `.button` recipe already carries in
+   `@layer components` — display / min-block-size (the coarse-pointer floor via
+   `--control-h-md`) / align-items / justify-content / gap / padding-inline /
+   border / border-radius / colour / font / font-size / font-weight / the
+   six-leg tokenised transition — and then overrode the plate, so the emitted
+   `data-emphasis="primary"`/`"secondary"` was a lie: it selected a recipe the
+   consumer had already erased. `emphasis` now governs both controls, which is
+   also what restores their press, hover and focus paint.
 
-.btn-export:hover {
-    opacity: 0.85;
-}
-
-.btn-export:active {
-    transform: scale(0.97);
-}
-
-.btn-reset {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    background: none;
-    color: var(--muted-foreground);
-    font-family: var(--font-mono);
-    @apply text-base;
-    font-weight: 500;
-    cursor: pointer;
-    transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.btn-reset:hover {
-    border-color: color-mix(in srgb, var(--foreground) 30%, transparent);
-    color: var(--foreground);
-}
+   `.btn-icon` pinned the lucide glyphs at a bare 15px against a button that
+   obeys the coarse-pointer floor; the recipe's
+   `.button > svg:not([class*="size-"]) { inline-size: var(--ui-glyph) }` owns
+   glyph sizing and the class name does not opt out of it. Deleted; the class
+   stays on the markup only where it is a hook, and here it was not. */
 </style>

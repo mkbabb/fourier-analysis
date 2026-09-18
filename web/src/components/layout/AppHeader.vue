@@ -319,52 +319,66 @@ const galleryStore = useGalleryStore();
 
 <!-- Global style for portaled components -->
 <style>
-/* @global — portaled glass-ui PopoverContent (the attribution card) */
-.hover-card-content {
-    min-width: 17rem;
-}
+/* X.F.W4 / SP-6 · FR-AH-11 (+MISS-3) — the ONE cascade decision, executed.
 
-/* @global — portaled glass-ui DropdownMenuContent */
-.nav-dropdown {
-    min-width: 12rem;
-    padding: 0.5rem;
-}
+   The four classes below escape scoping because their elements are PORTALED
+   out of this component's subtree; that mechanism is correct and unchanged
+   (superlative S-6). What was wrong is that the block was UNLAYERED, so it
+   beat glass-ui's `@layer components` menu recipe wholesale.
 
-.nav-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    border: none;
-    background: none;
-    color: color-mix(in srgb, var(--foreground) 60%, transparent);
-    font-family: var(--font-serif);
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.12s ease, color 0.12s ease;
-    outline: none;
-}
+   DELETED, not layered — the producer's `.glass-menu-row` recipe governs them
+   and the override carried no deliberate intent (rowClass ships
+   `interactive-item glass-menu-row relative flex w-full cursor-default
+   select-none items-center py-1 px-2 text-dropdown …`, re-read at the adopted
+   8.0.0 pin):
+     · the base re-skin (padding / border / background / colour / font-family /
+       font-size / font-weight / cursor / display+align) — it replaced the
+       glass plate, the density rung, the `text-dropdown` type rung and the
+       `min-block-size: max(2rem, var(--touch-target, 2.75rem))` coarse-pointer
+       floor;
+     · `transition: background .12s, color .12s` (MISS-3) — it TRUNCATED the
+       producer's six-leg list (background-color/color/border-color/box-shadow/
+       translate/scale) while declaring no `translate`, so the layered hover
+       rule's `--menu-row-lift: -1px` still fired, INSTANTLY. Every row kept
+       the lift and lost the spring: read as jitter, not as a bug;
+     · `outline: none` — it deleted the focus paint outright;
+     · the `:hover` / `[data-highlighted]` re-skin — it replaced the glass
+       hover plate with a flat tint.
 
-.nav-dropdown-item:hover,
-.nav-dropdown-item[data-highlighted] {
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
-    color: var(--foreground);
-}
+   KEPT, inside `@layer glass-overrides` (declared after `utilities` in
+   style.css) — genuine consumer divergence the producer ships no variant for:
+   the portaled surfaces' own sizing, the icon+label gap this app's rows carry,
+   and the current-route amber state. */
+@layer glass-overrides {
+    /* portaled glass-ui PopoverContent (the attribution card) */
+    .hover-card-content {
+        min-width: 17rem;
+    }
 
-.nav-dropdown-item.is-active {
-    color: var(--viz-amber);
-    background: color-mix(in srgb, var(--viz-amber) 8%, transparent);
-}
+    /* portaled glass-ui DropdownMenuContent */
+    .nav-dropdown {
+        min-width: 12rem;
+        padding: 0.5rem;
+    }
 
-.nav-dropdown-item.is-active .nav-item-icon {
-    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--viz-amber) 50%, transparent));
-}
+    /* icon + label rows: the producer's row recipe carries no gap */
+    .nav-dropdown-item {
+        gap: 0.625rem;
+    }
 
-.nav-item-icon {
-    width: 1.25rem;
-    height: 1.25rem;
-    flex-shrink: 0;
+    .nav-dropdown-item.is-active {
+        color: var(--viz-amber);
+        background: color-mix(in srgb, var(--viz-amber) 8%, transparent);
+    }
+
+    .nav-dropdown-item.is-active .nav-item-icon {
+        filter: drop-shadow(0 0 3px color-mix(in srgb, var(--viz-amber) 50%, transparent));
+    }
+
+    .nav-item-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+        flex-shrink: 0;
+    }
 }
 </style>
