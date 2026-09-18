@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
 import { useFourierMorph } from "@/composables/useFourierMorph";
@@ -105,6 +105,30 @@ onMounted(() => {
     morph.setShape(isDark.value ? moonShape : sunShape);
 });
 
+/**
+ * X.F.W4 · DMT M-1 — the glyph FOLLOWS `isDark`; it does not merely echo this
+ * component's own click.
+ *
+ * `useGlobalDark()` is a global singleton with more than one live writer — the
+ * pre-paint script in `index.html`, an OS scheme change, and any other consumer
+ * — and the glyph was written exactly twice in this file: once at mount and
+ * once in `handleToggle`. Every other path left the header showing a sun on a
+ * dark page. The watcher re-seeds whenever the truth moves under an IDLE glyph;
+ * a morph this component is itself running owns the glyph until it finishes, so
+ * the watcher stands aside rather than fighting it.
+ *
+ * ⊘ SEQUENCING LOCK: this watcher is only safe ON TOP of FR-AH-8/FR-AH-9's
+ * cancellation. `setShape` calls `stopAnim`, and before the epoch token
+ * `stopAnim` ADVANCED the running coroutine instead of killing it — so a
+ * watcher firing mid-morph would have handed the glyph to two writers. The
+ * cancellation lands with-or-before the watcher, as the lock requires, and both
+ * are in this one commit.
+ */
+watch(isDark, (dark) => {
+    if (morph.phase.value !== "idle") return;
+    morph.setShape(dark ? moonShape : sunShape);
+});
+
 async function handleToggle() {
     if (morph.phase.value !== "idle") return;
 
@@ -114,7 +138,22 @@ async function handleToggle() {
     morphingToDark.value = !isDark.value;
     toggleDark();
 
-    await morph.morphTo(from, to);
+    try {
+        await morph.morphTo(from, to);
+    } catch (err) {
+        /**
+         * FMD-9's consumer half. The engine lives behind a dynamic import, so
+         * this rejects for real when a chunk cannot be fetched. ⊘ This is NOT a
+         * catch around a defect: the theme HAS already flipped, so the truthful
+         * frame is the DESTINATION — the same terminal-frame answer the reduced
+         * arm gives — and leaving the glyph on the departure shape would make
+         * the header lie about the page it is sitting on. The failure is
+         * reported rather than swallowed; the memo it poisoned is cleared in
+         * `getAnimationCtor`, so the next activation is a real retry.
+         */
+        morph.setShape(to);
+        console.error("[DarkModeToggle] morph engine unavailable; snapped to the destination shape", err);
+    }
 }
 </script>
 

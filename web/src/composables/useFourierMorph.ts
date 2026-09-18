@@ -61,7 +61,22 @@ type AnimationCtor = typeof KeyframesAnimation;
 let enginePromise: Promise<AnimationCtor> | null = null;
 function getAnimationCtor(): Promise<AnimationCtor> {
     if (!enginePromise) {
-        enginePromise = loadAnimationEngine().then((engine) => engine.KeyframesAnimation);
+        /**
+         * X.F.W4 · FMD-9 — the memo is POISONED ON EXISTENCE, not on success.
+         * It was assigned before the promise settled and carried no `.catch`,
+         * so ONE transient chunk-load failure — a deploy mid-session, a flaky
+         * network — made every later morph re-await the same rejected promise
+         * for the life of the page, and surfaced as an unhandled rejection
+         * nobody could act on. Clearing it in the catch makes the next attempt
+         * a real retry; re-throwing keeps the failure the caller's to handle
+         * rather than swallowing it here.
+         */
+        enginePromise = loadAnimationEngine()
+            .then((engine) => engine.KeyframesAnimation)
+            .catch((err: unknown) => {
+                enginePromise = null;
+                throw err;
+            });
     }
     return enginePromise;
 }
@@ -109,6 +124,24 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
     let activeShape: FourierShape | null = null;
     let currentAnim: KeyframesAnimation | null = null;
 
+    /**
+     * X.F.W4 · FR-AH-9 ⊕ FR-AH-21 ⊕ FMD-5 — THE EPOCH TOKEN.
+     *
+     * The engine's `stop()` RESOLVES the pending `play()` rather than rejecting
+     * it. `morphTo` is a three-await coroutine, so every call that meant to KILL
+     * a running morph — `stopAnim`, `setShape`, `setLevel`, a second `morphTo`,
+     * `onUnmounted` — instead ADVANCED it: the awaits all fell through and the
+     * dead coroutine kept writing `currentPoints`, `harmonicLevel` and `phase`
+     * on top of whatever superseded it. Anti-teardown, in the literal sense.
+     *
+     * A monotonic epoch is the whole cure. Every superseding act bumps it; the
+     * coroutine captures its own value and checks it after each await and inside
+     * each tick. A superseded run then does nothing at all instead of racing —
+     * and, critically, it does not reset `phase`, which is how the old code
+     * turned a teardown into a spurious "idle".
+     */
+    let epoch = 0;
+
     function setShape(shape: FourierShape) {
         stopAnim();
         activeShape = shape;
@@ -136,6 +169,10 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
     }
 
     function stopAnim() {
+        // Supersede first: `stop()` resolves the pending `play()`, so the
+        // coroutine WILL resume, and the epoch is what makes that resumption a
+        // no-op instead of a second writer.
+        epoch += 1;
         if (currentAnim) {
             currentAnim.stop();
             currentAnim = null;
@@ -205,71 +242,110 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
             return;
         }
 
-        // Resolve the value.js-bearing engine lazily (cached after first morph).
-        const Animation = await getAnimationCtor();
-
-        const {
-            settleOutMs,
-            morphMs,
-            settleInMs,
-            lowLevel,
-            highLevel,
-            settleOutEasing,
-            morphEasing,
-            settleInEasing,
-        } = config.value;
-
-        const easeOut = getEasingFn(settleOutEasing);
-        const easeMorph = getEasingFn(morphEasing);
-        const easeIn = getEasingFn(settleInEasing);
-
-        const totalMs = settleOutMs + morphMs + settleInMs;
-
-        // Phase 1: Settle out
+        /**
+         * X.F.W4 · DMT M-3 ⊕ FMD-6 — THE GUARD'S HOLE, CLOSED.
+         *
+         * Both consumers guard re-entry with `phase !== "idle"`, and `phase` was
+         * first written AFTER `await getAnimationCtor()` — a genuine dynamic
+         * import. Two activations inside that window both read `"idle"`, both
+         * passed, and both ran: the guard was exactly as wide as the chunk
+         * fetch and widest on the cold path it exists to protect. The phase is
+         * claimed BEFORE the await, so the second caller is turned away by the
+         * first caller's own write.
+         */
         phase.value = "settle-out";
-        await new Promise<void>((resolve) => {
-            currentAnim = createTweenAnimation(Animation, settleOutMs, (tRaw: number) => {
-                const t = easeOut(tRaw);
-                const level = highLevel + (lowLevel - highLevel) * t;
-                harmonicLevel.value = level;
-                currentPoints.value = interpolateAtHarmonicLevel(from, Math.max(lowLevel, level));
-                morphProgress.value = (tRaw * settleOutMs) / totalMs;
+
+        // FR-AH-9's epoch, captured after `stopAnim()` above bumped it.
+        const myEpoch = epoch;
+        const superseded = () => epoch !== myEpoch;
+
+        /**
+         * X.F.W4 · FR-AH-20 — `try/finally`, because a throw BRICKED the control.
+         *
+         * Anything that threw past this point — the engine import, a frame
+         * callback, a malformed shape — left `phase` on a non-idle value
+         * forever, and both consumers' guards read that value. One transient
+         * failure and the toggle never worked again for the life of the page,
+         * with no visible symptom to explain it. The finally restores idle, and
+         * restores it ONLY if this run is still the live one, so a teardown
+         * cannot be reported as a completion.
+         */
+        try {
+            // Resolve the value.js-bearing engine lazily (cached after first morph).
+            const Animation = await getAnimationCtor();
+            if (superseded()) return;
+
+            const {
+                settleOutMs,
+                morphMs,
+                settleInMs,
+                lowLevel,
+                highLevel,
+                settleOutEasing,
+                morphEasing,
+                settleInEasing,
+            } = config.value;
+
+            const easeOut = getEasingFn(settleOutEasing);
+            const easeMorph = getEasingFn(morphEasing);
+            const easeIn = getEasingFn(settleInEasing);
+
+            const totalMs = settleOutMs + morphMs + settleInMs;
+
+            // Phase 1: Settle out
+            await new Promise<void>((resolve) => {
+                currentAnim = createTweenAnimation(Animation, settleOutMs, (tRaw: number) => {
+                    if (superseded()) return;
+                    const t = easeOut(tRaw);
+                    const level = highLevel + (lowLevel - highLevel) * t;
+                    harmonicLevel.value = level;
+                    currentPoints.value = interpolateAtHarmonicLevel(from, Math.max(lowLevel, level));
+                    morphProgress.value = (tRaw * settleOutMs) / totalMs;
+                });
+                currentAnim.play().then(() => resolve());
             });
-            currentAnim.play().then(() => resolve());
-        });
+            if (superseded()) return;
 
-        // Phase 2: Morph
-        phase.value = "morph";
-        const fromLowPoints = interpolateAtHarmonicLevel(from, lowLevel);
-        const toLowPoints = interpolateAtHarmonicLevel(to, lowLevel);
+            // Phase 2: Morph
+            phase.value = "morph";
+            const fromLowPoints = interpolateAtHarmonicLevel(from, lowLevel);
+            const toLowPoints = interpolateAtHarmonicLevel(to, lowLevel);
 
-        await new Promise<void>((resolve) => {
-            currentAnim = createTweenAnimation(Animation, morphMs, (tRaw: number) => {
-                const t = easeMorph(tRaw);
-                currentPoints.value = lerpPoints(fromLowPoints, toLowPoints, t);
-                morphProgress.value = (settleOutMs + tRaw * morphMs) / totalMs;
+            await new Promise<void>((resolve) => {
+                currentAnim = createTweenAnimation(Animation, morphMs, (tRaw: number) => {
+                    if (superseded()) return;
+                    const t = easeMorph(tRaw);
+                    currentPoints.value = lerpPoints(fromLowPoints, toLowPoints, t);
+                    morphProgress.value = (settleOutMs + tRaw * morphMs) / totalMs;
+                });
+                currentAnim.play().then(() => resolve());
             });
-            currentAnim.play().then(() => resolve());
-        });
+            if (superseded()) return;
 
-        // Phase 3: Settle in
-        phase.value = "settle-in";
-        activeShape = to;
+            // Phase 3: Settle in
+            phase.value = "settle-in";
+            activeShape = to;
 
-        await new Promise<void>((resolve) => {
-            currentAnim = createTweenAnimation(Animation, settleInMs, (tRaw: number) => {
-                const t = easeIn(tRaw);
-                const level = lowLevel + (highLevel - lowLevel) * t;
-                harmonicLevel.value = level;
-                currentPoints.value = interpolateAtHarmonicLevel(to, Math.min(highLevel, level));
-                morphProgress.value = (settleOutMs + morphMs + tRaw * settleInMs) / totalMs;
+            await new Promise<void>((resolve) => {
+                currentAnim = createTweenAnimation(Animation, settleInMs, (tRaw: number) => {
+                    if (superseded()) return;
+                    const t = easeIn(tRaw);
+                    const level = lowLevel + (highLevel - lowLevel) * t;
+                    harmonicLevel.value = level;
+                    currentPoints.value = interpolateAtHarmonicLevel(to, Math.min(highLevel, level));
+                    morphProgress.value = (settleOutMs + morphMs + tRaw * settleInMs) / totalMs;
+                });
+                currentAnim.play().then(() => resolve());
             });
-            currentAnim.play().then(() => resolve());
-        });
+            if (superseded()) return;
 
-        phase.value = "idle";
-        morphProgress.value = 1;
-        currentAnim = null;
+            morphProgress.value = 1;
+        } finally {
+            if (!superseded()) {
+                phase.value = "idle";
+                currentAnim = null;
+            }
+        }
     }
 
     onUnmounted(() => stopAnim());

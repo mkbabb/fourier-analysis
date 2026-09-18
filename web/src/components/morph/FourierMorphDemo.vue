@@ -72,7 +72,7 @@
                     <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" />
                     {{ morphConfig.status.value === 'success' ? 'Copied' : 'Export' }}
                 </Button>
-                <Button emphasis="secondary" @click="handleReset">
+                <Button emphasis="secondary" :disabled="isAnimating" @click="handleReset">
                     <RotateCcw />
                     Reset
                 </Button>
@@ -131,7 +131,15 @@ async function handleToggle() {
     const to = isMoon.value ? sunShape : moonShape;
     isMoon.value = !isMoon.value;
 
-    await morph.morphTo(from, to);
+    try {
+        await morph.morphTo(from, to);
+    } catch (err) {
+        /* FMD-9's consumer half — see DarkModeToggle for the reasoning. The
+           shape state has already advanced, so the destination IS the truthful
+           frame; the failure is reported, not swallowed. */
+        morph.setShape(to);
+        console.error("[FourierMorphDemo] morph engine unavailable; snapped to the destination shape", err);
+    }
 }
 
 function handlePreviewClick(level: number) {
@@ -173,6 +181,12 @@ function handlePreviewClick(level: number) {
 }
 
 function handleReset() {
+    /* FMD-5 — Reset was UNGUARDED: pressed mid-morph it called `setShape`,
+       whose `stopAnim` resolved the pending `play()` and so ADVANCED the very
+       coroutine it meant to kill. The epoch token now makes that resumption a
+       no-op, and the guard keeps the config from moving under a live morph in
+       the first place. */
+    if (isAnimating.value) return;
     morphConfig.reset();
     morph.setShape(currentShape.value);
 }
