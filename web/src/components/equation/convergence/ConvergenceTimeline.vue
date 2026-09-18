@@ -58,7 +58,18 @@ function onValueCommit() {
 
 <template>
     <div class="timeline-dock">
-        <Button emphasis="primary" size="md" icon-only class="play-btn" :aria-pressed="playing" :class="{ 'is-playing': playing }" @click="emit('toggle-play')">
+        <!-- `D·D-3` / `C·C-2` (SP-7) — the play control was named by nothing at
+             all: an icon-only Button over two inline SVGs. The label carries the
+             ACTION, and `aria-pressed` already carried the state. -->
+        <Button
+            emphasis="primary"
+            size="md" icon-only
+            class="play-btn"
+            :aria-label="playing ? 'Pause the convergence sweep' : 'Play the convergence sweep'"
+            :aria-pressed="playing"
+            :class="{ 'is-playing': playing }"
+            @click="emit('toggle-play')"
+        >
             <Transition name="icon-swap" mode="out-in">
                 <svg v-if="playing" class="size-3" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
                 <svg v-else class="size-3" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
@@ -66,22 +77,27 @@ function onValueCommit() {
         </Button>
 
         <div class="timeline-track-wrap">
+            <!-- `D·D-4` / `C·C-3` / `D·D-3` — the `aria-valuenow`/`-valuemin`/
+                 `-valuemax` trio was a FALLTHROUGH: it landed on the component's
+                 root while the primitive computes its own range attributes from
+                 the model, so the three either did nothing or announced a
+                 different quantity (the harmonic COUNT) than the control moves
+                 (the sweep position). They are deleted, and the count gets the
+                 live region it always needed — see the span below. -->
             <Slider
                 v-model="tArr"
                 :min="0"
                 :max="100"
                 :step="1"
-                :aria-valuenow="activeCount"
-                aria-valuemin="0"
-                :aria-valuemax="totalHarmonics"
-                aria-label="Harmonics timeline"
+                :aria-valuetext="`${activeCount} of ${totalHarmonics} harmonics`"
+                aria-label="Convergence sweep position"
                 class="convergence-slider"
                 @pointerdown="onPointerDown"
                 @value-commit="onValueCommit"
             />
         </div>
 
-        <span class="timeline-count">N={{ activeCount }}/{{ totalHarmonics }}</span>
+        <span class="timeline-count" role="status" aria-live="polite">N={{ activeCount }}/{{ totalHarmonics }}</span>
     </div>
 </template>
 
@@ -102,10 +118,14 @@ function onValueCommit() {
     font-variant-numeric: tabular-nums;
 }
 
+/* `D·D-5` + `C·C-5` (SP-9) — the literal `1.75rem` box defeated BOTH producer
+   knobs: the coarse `--ui-scale` ×1.5 and the `--control-floor` → `--touch-target`
+   44px clamp. At fourier's root the rendered phone figure was 31.5px against a
+   49.5px floor. The delete is the half that holds under either producer branch,
+   and it is the only leg schedulable today: with the literals gone the primitive's
+   own `icon-only` geometry governs and rides the comfort axis it was written for. */
 .play-btn {
     @apply flex items-center justify-center shrink-0 rounded-full cursor-pointer;
-    width: 1.75rem;
-    height: 1.75rem;
     border: 1.5px solid color-mix(in srgb, var(--foreground) 10%, transparent);
     background: color-mix(in srgb, var(--background) 60%, transparent);
     backdrop-filter: blur(8px);

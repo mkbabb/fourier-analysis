@@ -45,6 +45,14 @@ const displayLatex = ref(cachedRes?.latex ?? "");
 const displayLatexSigma = ref(cachedRes?.result?.latex_sigma ?? "");
 const displayEnergy = ref(cachedRes?.energy ?? 1);
 const effectiveN = ref(cachedRes?.result?.effective_n ?? 20);
+/**
+ * `fr-ConvergencePlot L-M2` / `M-L1`, the callsite half — the plot used to bind
+ * the LIVE domain refs against last-successful-response data, and
+ * `onDomainInput` writes the model and emits nothing, so a typed domain edit
+ * rendered wrong-frequency curves against old coefficients for an UNBOUNDED
+ * window. The plot is given the domain that produced the data it is drawing.
+ */
+const resultDomain = ref<[number, number]>([domainStart.value, domainEnd.value]);
 const autoHarmonics = ref(true);
 const eqMode = ref<EquationDisplayMode>("sigma");
 const mobileView = ref<"controls" | "canvas">("controls");
@@ -223,6 +231,7 @@ async function doCompute(force = false) {
         // chain, so a subsequent doSimplify can detect the budget changed.
         lastDisplayKey = displayKey(req);
         effectiveN.value = res.effective_n;
+        resultDomain.value = [req.domain_start, req.domain_end];
         saveCachedResult(key, res, displayLatex.value, displayEnergy.value);
     } catch (e) {
         if (!isAbortError(e) && gen === computeGeneration) {
@@ -513,7 +522,7 @@ watchDebounced(
                             :original-points="result.original_points"
                             :coefficients="result.coefficients"
                             :n-harmonics="vizHarmonics"
-                            :domain="[domainStart, domainEnd]"
+                            :domain="resultDomain"
                             :expression="expression"
                         />
                     </div>

@@ -228,6 +228,10 @@ function draw() {
     ctx.clearRect(0, 0, w, h);
 
     const [domA, domB] = props.domain;
+    // `M-L1` — the precondition nothing stated. A zero-width domain divides by
+    // zero in `omega` and in `toScreen`'s x-mapping; a reversed one renders a
+    // mirrored projection. Neither is a frame worth painting.
+    if (!(domB > domA)) return;
     const harmonics = trigHarmonics.value;
     const totalH = harmonics.length;
     const dc = dcTerm.value;
@@ -351,10 +355,22 @@ function draw() {
 
 function onCanvasMove(e: MouseEvent) {
     const canvas = canvasRef.value;
-    if (!canvas) return;
+    const container = containerRef.value;
+    if (!canvas || !container) return;
     const rect = canvas.getBoundingClientRect();
-    mousePos.value = { x: e.clientX, y: e.clientY };
     const hit = hitTestCurves(cachedScreenCurves, e.clientX - rect.left, e.clientY - rect.top);
+    // `L-m10` — `mousePos` was written on EVERY move regardless of hover state,
+    // so a pointer crossing empty plot re-rendered the template for a tooltip
+    // that was not shown. It is written only when there is something to place.
+    if (hit !== null) {
+        // `D·D-m9` — the template used to call `getBoundingClientRect()` TWICE
+        // per render for one rect, unthrottled, over a KaTeX subtree. One read,
+        // at the event, and the tooltip positions off plain numbers.
+        const cr = container.getBoundingClientRect();
+        mousePos.value = { x: e.clientX - cr.left + 14, y: e.clientY - cr.top - 32 };
+    } else {
+        mousePos.value = null;
+    }
     if (hit !== hoveredCurve.value) { hoveredCurve.value = hit; if (!playing.value) draw(); }
 }
 
@@ -410,6 +426,14 @@ function onScrubEnd() {
 function onLegendEnter(key: string) { hoveredCurve.value = key; if (!playing.value) draw(); }
 function onLegendLeave() { hoveredCurve.value = null; if (!playing.value) draw(); }
 
+const plotDescription = computed(() => {
+    const total = trigHarmonics.value.length;
+    if (!total) return "Convergence plot: no harmonics to draw yet.";
+    return `Convergence plot: the function f(x), its ${total}-harmonic Fourier sum, `
+        + `and each harmonic drawn separately. ${activeCount.value} of ${total} harmonics `
+        + `have entered at the current position in the sweep.`;
+});
+
 const activeCount = computed(() => {
     const total = trigHarmonics.value.length;
     const eT = easedT.value;
@@ -451,6 +475,18 @@ watch(() => [props.originalPoints, props.coefficients] as const, (_now, old) => 
 });
 
 watch(() => props.nHarmonics, () => { if (!playing.value) draw(); });
+
+/**
+ * `L-M2` — `props.domain` feeds `omega`, the x-grid, the closing sample and
+ * `maxX`, and had NO watcher at all, so a domain change repainted only if
+ * something else happened to trigger a draw. The divergence window was
+ * UNBOUNDED at the callsite, which bound live refs against last-response data:
+ * a typed domain edit emitted nothing, so the plot rendered wrong-frequency
+ * curves and a backwards closing segment until the user pressed Compute, which
+ * may be never. The callsite now sources `domain` from the request that produced
+ * the result; this watcher is the other half, for the props that reach it.
+ */
+watch(() => [props.domain, props.expression], () => { if (!playing.value) draw(); });
 
 // ── Lifecycle ──
 
@@ -504,9 +540,16 @@ onUnmounted(() => {
 
 <template>
     <div ref="containerRef" class="convergence-container">
+        <!-- `D-5` — the plot is the route's primary figure and announced as
+             nothing at all: no role, no name, no text equivalent. `role="img"`
+             plus a name that carries the READING (which curves, how many
+             harmonics, where the sweep is) is the text equivalent a canvas
+             cannot otherwise have. -->
         <canvas
             ref="canvasRef"
             class="block size-full text-muted-foreground"
+            role="img"
+            :aria-label="plotDescription"
             @mousemove="onCanvasMove"
             @mouseleave="onCanvasLeave"
         />
@@ -515,10 +558,7 @@ onUnmounted(() => {
         <div
             v-if="hoveredCurve && mousePos && tooltipHtml"
             class="curve-tooltip"
-            :style="{
-                left: (mousePos.x - (containerRef?.getBoundingClientRect().left ?? 0) + 14) + 'px',
-                top: (mousePos.y - (containerRef?.getBoundingClientRect().top ?? 0) - 32) + 'px',
-            }"
+            :style="{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }"
             v-html="tooltipHtml"
         />
 
