@@ -110,12 +110,12 @@ const magnetModel = computed<number[]>({
         <div class="flex items-center gap-2 w-full">
             <Tooltip text="Undo">
                 <DockControl :disabled="!canUndo" @click="emit('undo')">
-                    <Undo2 :size="20" />
+                    <Undo2 />
                 </DockControl>
             </Tooltip>
             <Tooltip text="Redo">
                 <DockControl :disabled="!canRedo" @click="emit('redo')">
-                    <Redo2 :size="20" />
+                    <Redo2 />
                 </DockControl>
             </Tooltip>
 
@@ -123,17 +123,17 @@ const magnetModel = computed<number[]>({
 
             <Tooltip text="Smooth">
                 <DockControl class="is-amber" @click="emit('smooth')">
-                    <Wand2 :size="20" />
+                    <Wand2 />
                 </DockControl>
             </Tooltip>
             <Tooltip text="Simplify">
                 <DockControl class="is-sky" @click="emit('simplify')">
-                    <Minimize2 :size="20" />
+                    <Minimize2 />
                 </DockControl>
             </Tooltip>
             <Tooltip text="Delete point">
                 <DockControl class="is-rose" :disabled="!canDelete" @click="emit('delete')">
-                    <Trash2 :size="20" />
+                    <Trash2 />
                 </DockControl>
             </Tooltip>
 
@@ -141,7 +141,7 @@ const magnetModel = computed<number[]>({
             <Popover trigger="hover" keep-dock-open>
                 <PopoverTrigger as-child>
                     <DockControl aria-label="Magnet radius">
-                        <Magnet :size="20" :class="magnetRadius > 0 ? 'text-viz-fourier' : ''" />
+                        <Magnet :class="magnetRadius > 0 ? 'text-viz-fourier' : ''" />
                     </DockControl>
                 </PopoverTrigger>
                 <PopoverContent side="top" align="center">
@@ -171,19 +171,19 @@ const magnetModel = computed<number[]>({
             <Popover trigger="hover" keep-dock-open>
                 <PopoverTrigger as-child>
                     <DockControl aria-label="Overlay options">
-                        <Eye :size="20" />
+                        <Eye />
                     </DockControl>
                 </PopoverTrigger>
                 <PopoverContent side="top" align="center">
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Contour trace">
                             <DockControl :active="showGhost" @click="emit('toggleGhost')">
-                                <component :is="showGhost ? Eye : EyeOff" :size="20" />
+                                <component :is="showGhost ? Eye : EyeOff" />
                             </DockControl>
                         </Tooltip>
                         <Tooltip text="Image overlay">
                             <DockControl :active="showImageOverlay" @click="emit('toggleOverlay')">
-                                <Image :size="20" />
+                                <Image />
                             </DockControl>
                         </Tooltip>
                     </div>
@@ -192,7 +192,7 @@ const magnetModel = computed<number[]>({
 
             <Tooltip text="Reset to extraction">
                 <DockControl @click="emit('reset')">
-                    <RotateCcw :size="20" />
+                    <RotateCcw />
                 </DockControl>
             </Tooltip>
 

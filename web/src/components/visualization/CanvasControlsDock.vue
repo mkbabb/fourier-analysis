@@ -39,12 +39,32 @@ watch(
 
 <template>
     <GlassDock ref="dockRef" fit-content :start-collapsed="true">
+        <!--
+          X.F.W4 · SP-9 — `fr-CanvasControlsDock D-5 / L-7 / C-7` (+D-13/D-14) ⊕
+          `fr-EditorControlsDock D-10 / L-4`: BOTH icon-size idioms are deleted,
+          in both docks, in one edit — because they are inverse failures of the
+          same cascade and curing one alone re-states the divergence.
+
+          This file pinned its glyphs with utility CLASSES (`h-4.5 w-4.5`),
+          which live in `@layer utilities` and therefore BEAT the producer's
+          `@layer components` rule `.dock-icon-button > svg { width:
+          var(--dock-icon-glyph) }`. The pin was real, and it froze the glyph
+          out of the `--dock-scale` ladder — including the coarse-pointer
+          re-declaration of `--dock-scale` AND `--dock-icon-glyph` on
+          `.glass-dock[data-size]`, so on touch the glyph-to-plate ratio sat at
+          0.385 against the system's 0.50. The sibling used `:size="20"`
+          presentation attributes, which LOSE to the same rule and did nothing
+          at 14 of 15 sites. Two docks over one canvas, four unrelated glyph
+          sizes, and the author demonstrably knew the winning idiom — it is in
+          the file next door. Neither idiom survives; the producer's rung
+          governs both docks, which is what makes them agree.
+        -->
         <template v-if="!isEditing">
             <!-- View options popover (image overlay + contour trace) -->
             <Popover trigger="hover" keep-dock-open>
                 <PopoverTrigger as-child>
                     <DockControl class="view-btn-wrap" aria-label="View options">
-                        <Eye class="h-4.5 w-4.5" />
+                        <Eye />
                         <span v-if="showImageOverlay || showGhost" class="view-dot" />
                     </DockControl>
                 </PopoverTrigger>
@@ -52,12 +72,12 @@ watch(
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Image overlay">
                             <DockControl :active="showImageOverlay" @click="$emit('toggleImageOverlay')">
-                                <ImageIcon :size="20" />
+                                <ImageIcon />
                             </DockControl>
                         </Tooltip>
                         <Tooltip text="Contour trace">
                             <DockControl :active="showGhost" @click="$emit('toggleGhost')">
-                                <Spline :size="20" />
+                                <Spline />
                             </DockControl>
                         </Tooltip>
                     </div>
@@ -69,13 +89,13 @@ watch(
             <!-- Publish -->
             <Tooltip v-if="hasContour" text="Publish to Gallery" side="bottom">
                 <DockControl :active="publishing" @click="$emit('publish')">
-                    <Upload class="h-4.5 w-4.5" :class="{ 'animate-pulse': publishing }" />
+                    <Upload :class="{ 'animate-pulse': publishing }" />
                 </DockControl>
             </Tooltip>
             <!-- Equation -->
             <Tooltip v-if="hasData" text="Equation" side="bottom">
                 <DockControl :active="showEquation" @click="$emit('toggleEquation')">
-                    <Sigma class="h-4.5 w-4.5" />
+                    <Sigma />
                 </DockControl>
             </Tooltip>
 
@@ -85,13 +105,13 @@ watch(
         <!-- Edit (always visible when contour exists) -->
         <Tooltip v-if="hasContour" text="Edit contour" side="bottom">
             <DockControl :active="isEditing" @click="$emit('toggleEdit')">
-                <Pencil class="h-4.5 w-4.5" />
+                <Pencil />
             </DockControl>
         </Tooltip>
         <!-- Fullscreen -->
         <Tooltip text="Fullscreen" side="bottom">
             <DockControl @click="$emit('toggleFullscreen')">
-                <Maximize2 class="h-4.5 w-4.5" />
+                <Maximize2 />
             </DockControl>
         </Tooltip>
 
