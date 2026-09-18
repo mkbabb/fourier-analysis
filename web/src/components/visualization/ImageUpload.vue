@@ -3,7 +3,7 @@ import { ref, computed, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useImageUpload } from "./composables/useImageUpload";
 import { thumbnailUrl } from "@/lib/api";
-import { ImagePlus, Upload, ImageOff } from "lucide-vue-next";
+import { ImagePlus, Upload, ImageOff } from "@lucide/vue";
 
 const store = useWorkspaceStore();
 const fileInput = ref<HTMLInputElement>();

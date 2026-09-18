@@ -5,7 +5,7 @@
  * DC, Y-bounds) and drives a 500ms eased interpolation to the new state.
  */
 
-import { easeInOutSine } from "@mkbabb/value.js";
+import { easeInOutSine } from "@mkbabb/value.js/easing";
 
 export interface TrigHarmonic {
     k: number;

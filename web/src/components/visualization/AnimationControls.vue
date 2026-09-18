@@ -3,11 +3,11 @@ import { computed } from "vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
 import {
-    Download, EllipsisVertical, } from "lucide-vue-next";
+    Download, EllipsisVertical, } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import { GlassDock, DockDropdownTrigger } from "@mkbabb/glass-ui/dock";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/dropdown-menu";
-import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
+import { GlassDock, DockTrigger } from "@mkbabb/glass-ui/dock";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
+import { Metric } from "@mkbabb/glass-ui/metric";
 import GlassTimeline from "./GlassTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
 import SpeedSelect from "./SpeedSelect.vue";
@@ -72,7 +72,7 @@ const caretLabel = computed(() =>
                 </button>
             </Tooltip>
             <div class="mini-progress"><div class="mini-fill" :style="{ width: (anim.t * 100) + '%' }" /></div>
-            <MetricBadge :value="anim.speed" unit="×" size="sm" class="summary-speed" />
+            <Metric :value="anim.speed" unit="×" size="sm" class="summary-speed" />
         </template>
 
         <!-- ═══ EXPANDED FULL CONTROLS ═══ -->
@@ -101,11 +101,11 @@ const caretLabel = computed(() =>
                  management, Esc + click-outside dismissal all from the
                  primitive; replaces the hand-rolled popup + onClickOutside). -->
             <DropdownMenu :modal="false">
-                <DockDropdownTrigger aria-label="More options">
+                <DockTrigger for="dropdown" aria-label="More options">
                     <Tooltip text="More options">
                         <EllipsisVertical class="h-4 w-4" />
                     </Tooltip>
-                </DockDropdownTrigger>
+                </DockTrigger>
                 <DropdownMenuContent class="menu-popup" :side-offset="8" align="end">
                     <!-- The Speed + Easing controls are rich grouped settings,
                          not command items; `role="group"` makes them allowed

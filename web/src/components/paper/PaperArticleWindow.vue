@@ -5,7 +5,7 @@ import {
     type FlatPaperSection,
 } from "@mkbabb/latex-paper/vue";
 import type { ComponentPublicInstance } from "vue";
-import { ArrowRight } from "lucide-vue-next";
+import { ArrowRight } from "@lucide/vue";
 import { FIGURE_DIMENSIONS, hasModernVariants } from "@/lib/figureDimensions";
 
 const props = defineProps<{

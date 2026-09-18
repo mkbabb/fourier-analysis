@@ -6,12 +6,12 @@
  * 2. morph:       Cross-fade point arrays from shape A (low) → shape B (low)
  * 3. settle-in:   New shape resolves from low harmonics → full harmonics
  *
- * All transitions are driven by keyframes.js Animation instances
+ * All transitions are driven by keyframes.js `KeyframesAnimation` instances
  * with easing functions (from value.js) applied to the interpolation t.
  */
 
 import { ref, computed, onUnmounted, type Ref } from "vue";
-import { loadAnimationEngine, type Animation } from "@mkbabb/keyframes.js";
+import { loadAnimationEngine, type KeyframesAnimation } from "@mkbabb/keyframes.js";
 import type { FourierShape } from "@/lib/svg-fourier";
 import {
     interpolateAtHarmonicLevel,
@@ -30,15 +30,18 @@ export { EASING_PRESETS, EASING_PRESET_NAMES, type EasingFn, type EasingPreset }
 
 export type MorphPhase = "idle" | "settle-out" | "morph" | "settle-in";
 
-// keyframes 2.2.0 moves the value.js-bearing `Animation` engine behind the
+// keyframes 2.2.0 moves the value.js-bearing animation engine behind the
 // `loadAnimationEngine()` dynamic boundary, so value.js no longer rides the
 // eager bundle — it loads on first morph. The browser caches the engine module
 // after the first resolve, so this promise is constructed at most once.
-type AnimationCtor = typeof Animation;
+// F.W1 — at keyframes 6 the engine class is `KeyframesAnimation` (the bare
+// `Animation` name is gone from both the type surface and the engine object);
+// the boundary, the lazy promise and the tween shape below are unchanged.
+type AnimationCtor = typeof KeyframesAnimation;
 let enginePromise: Promise<AnimationCtor> | null = null;
 function getAnimationCtor(): Promise<AnimationCtor> {
     if (!enginePromise) {
-        enginePromise = loadAnimationEngine().then((engine) => engine.Animation);
+        enginePromise = loadAnimationEngine().then((engine) => engine.KeyframesAnimation);
     }
     return enginePromise;
 }
@@ -84,7 +87,7 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
     const morphProgress = ref(0);
 
     let activeShape: FourierShape | null = null;
-    let currentAnim: Animation | null = null;
+    let currentAnim: KeyframesAnimation | null = null;
 
     function setShape(shape: FourierShape) {
         stopAnim();
@@ -123,7 +126,7 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
         AnimationCtor: AnimationCtor,
         durationMs: number,
         onTick: (t: number) => void,
-    ): Animation {
+    ): KeyframesAnimation {
         const a = new AnimationCtor({
             duration: durationMs,
             iterationCount: 1,

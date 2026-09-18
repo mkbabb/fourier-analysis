@@ -6,9 +6,9 @@ import type { NotationMode, ComputeEquationResponse, FourierTermDTO, EquationDis
 import type { BasisComponent } from "@/lib/types";
 import { TIER_INFO, energyColor } from "@/lib/equation/notation";
 import { Button } from "@mkbabb/glass-ui/button";
-import { HoverCard, HoverCardTrigger, HoverCardContent } from "@mkbabb/glass-ui/hover-card";
-import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
-import { Info } from "lucide-vue-next";
+import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
+import { Metric } from "@mkbabb/glass-ui/metric";
+import { Info } from "@lucide/vue";
 
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import FunctionInput from "./FunctionInput.vue";
@@ -270,16 +270,25 @@ watchDebounced(
                             <EquationModeToggle v-model="eqMode" />
                         </div>
 
-                        <!-- Info hover card -->
-                        <HoverCard v-if="tierInfo" :open-delay="200" :close-delay="150">
-                            <HoverCardTrigger as-child>
-                                <Button variant="glass" size="icon" class="info-anchor">
-                                    <svg class="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
-                                    </svg>
+                        <!-- Info card. F.W1 / FR-COB-19 — `./hover-card` is
+                             definition-absent at the adopted pin; the Popover
+                             union takes it, with `trigger="hover"` preserving the
+                             preview register and seating the click root on coarse
+                             pointers. `:collision-padding` is gone with it: the
+                             union's placement contract is side/sideOffset/align/
+                             alignOffset, so the attribute would have fallen
+                             through to the DOM doing nothing (FR-TT-5's class). -->
+                        <Popover v-if="tierInfo" trigger="hover" :open-delay="200" :close-delay="150">
+                            <PopoverTrigger as-child>
+                                <Button emphasis="primary" size="md" icon-only class="info-anchor">
+                                    <!-- F.W1 / D·D-M11 — the one hand-inlined copy the
+                                         import-keyed lucide sweep is blind to: this markup
+                                         was element-identical to lucide `Info`, which this
+                                         file already imports. -->
+                                    <Info class="size-[18px]" />
                                 </Button>
-                            </HoverCardTrigger>
-                            <HoverCardContent class="info-hovercard" side="bottom" :side-offset="6" :collision-padding="12" align="end">
+                            </PopoverTrigger>
+                            <PopoverContent class="info-hovercard" side="bottom" :side-offset="6" align="end">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span
                                         class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border-[1.5px]"
@@ -289,19 +298,19 @@ watchDebounced(
                                             color: tierInfo.color,
                                         }"
                                     >{{ tierInfo.label }}</span>
-                                    <MetricBadge
+                                    <Metric
                                         :value="(displayEnergy * 100).toFixed(1)"
                                         unit="% energy"
                                         size="sm"
-                                        :color="eColor"
+                                        :style="{ color: eColor }"
                                     />
                                 </div>
                                 <div class="flex gap-1.5 items-start text-sm text-muted-foreground mt-2">
                                     <Info class="size-3.5 shrink-0 mt-0.5" />
                                     <p>{{ tierInfo.description }}</p>
                                 </div>
-                            </HoverCardContent>
-                        </HoverCard>
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
                     <!-- Convergence plot -->
@@ -452,7 +461,7 @@ watchDebounced(
 .slide-down-leave-to     { opacity: 0; transform: translateY(-4px); }
 </style>
 
-<!-- Global style for portaled HoverCard content -->
+<!-- Global style for portaled Popover content -->
 <style>
 .info-hovercard {
     z-index: var(--z-modal);

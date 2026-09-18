@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Search, X, Minimize2 } from "lucide-vue-next";
+import { Search, X, Minimize2 } from "@lucide/vue";
 import type { PaperSearchState } from "./usePaperSearch";
 import { TYPE_LABELS, resultLabel, highlightFuzzy } from "./searchHelpers";
 
@@ -59,8 +59,8 @@ watch(
                             @keydown="search.onKeydown"
                         />
                         <Button
-                            variant="ghost"
-                            size="icon"
+                            emphasis="quiet"
+                            size="md" icon-only
                             class="paper-search-action-btn"
                             @click="search.toggleExpanded()"
                             title="Collapse"
@@ -68,8 +68,8 @@ watch(
                             <Minimize2 class="h-3.5 w-3.5" />
                         </Button>
                         <Button
-                            variant="ghost"
-                            size="icon"
+                            emphasis="quiet"
+                            size="md" icon-only
                             class="paper-search-action-btn"
                             @click="search.close()"
                             title="Close"
@@ -83,7 +83,7 @@ watch(
                         <Button
                             v-for="(r, i) in search.results.value"
                             :key="`modal-${r.id}-${r.type}-${i}`"
-                            variant="ghost"
+                            emphasis="quiet"
                             class="paper-search-result search-modal-result"
                             :class="{ 'is-selected': i === search.selectedIndex.value }"
                             @click="search.selectResult(r)"

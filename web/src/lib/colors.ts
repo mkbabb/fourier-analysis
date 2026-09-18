@@ -12,11 +12,13 @@
  * which is the only way the `light-dark()` arm and the alias chain are picked by
  * the engine rather than guessed by a string match. value.js then converts that
  * used value — whatever CSS Color 4 form the engine serialises — to hex, which
- * is what the Canvas2D consumers speak.
+ * is what the Canvas2D consumers speak (`./css` parses the used value, `./color`
+ * clips it into sRGB; both report failure as a Result, never a throw).
  */
 
 import { createTokenColorCache } from "@mkbabb/glass-ui/dom";
-import { colorUnit2, parseCSSColor, ValueUnit } from "@mkbabb/value.js";
+import { toRgba8 } from "@mkbabb/value.js/color";
+import { parseCssColor } from "@mkbabb/value.js/css";
 import { reactive } from "vue";
 
 /** Static accent colors (not section-derived) */
@@ -67,24 +69,21 @@ function toHex(r: number, g: number, b: number): string {
  * Convert one resolved CSS color to hex, or `null` when the parser does not
  * recognise it.
  *
- * `parseCSSColor` is a parser combinator: it reports a form it cannot read by
- * throwing, so the throw is this function's failure branch, not an accident
- * being swallowed. Every used value the engine serialises parses; the branch
- * exists so an unreadable one leaves the palette entry alone rather than
- * replacing a brand color with a placeholder.
+ * F.W1 — value.js 4.0.0 retires `parseCSSColor` / `colorUnit2` / `ValueUnit`
+ * (and their throw-on-unreadable contract) for a Result-shaped pipeline:
+ * `parseCssColor` on `./css` reports an unreadable form as `ok: false` with
+ * diagnostics, and `toRgba8` on `./color` clips into the sRGB gamut and hands
+ * back 0-255 channels. Both failure branches leave the palette entry alone
+ * rather than replacing a brand color with a placeholder — the same contract
+ * the throw carried, now stated in the type instead of in a `catch`.
  */
 function cssColorToHex(css: string): string | null {
-    let rgb;
-    try {
-        rgb = colorUnit2(parseCSSColor(css), "rgb").value;
-    } catch {
-        return null;
-    }
-    return toHex(
-        ValueUnit.unwrapDeep(rgb.r),
-        ValueUnit.unwrapDeep(rgb.g),
-        ValueUnit.unwrapDeep(rgb.b),
-    );
+    const parsed = parseCssColor(css);
+    if (!parsed.ok) return null;
+    const rgba = toRgba8(parsed.value, { gamut: "clip" });
+    if (!rgba.ok) return null;
+    const [r, g, b] = rgba.value;
+    return toHex(r / 255, g / 255, b / 255);
 }
 
 /**

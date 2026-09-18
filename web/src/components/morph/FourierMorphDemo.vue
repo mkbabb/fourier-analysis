@@ -68,11 +68,11 @@
 
             <!-- Export / Reset -->
             <div class="export-row">
-                <Button variant="default" size="default" class="btn-export" @click="morphConfig.copyToClipboard()">
-                    <component :is="morphConfig.copied.value ? Check : ClipboardCopy" class="btn-icon" />
-                    {{ morphConfig.copied.value ? 'Copied' : 'Export' }}
+                <Button emphasis="primary" class="btn-export" @click="morphConfig.copyToClipboard()">
+                    <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" class="btn-icon" />
+                    {{ morphConfig.status.value === 'success' ? 'Copied' : 'Export' }}
                 </Button>
-                <Button variant="outline" size="default" class="btn-reset" @click="handleReset">
+                <Button emphasis="secondary" class="btn-reset" @click="handleReset">
                     <RotateCcw class="btn-icon" />
                     Reset
                 </Button>
@@ -84,7 +84,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { ClipboardCopy, Check, RotateCcw } from "lucide-vue-next";
+import { ClipboardCopy, Check, RotateCcw } from "@lucide/vue";
 import MorphShapePreview from "@/components/morph/MorphShapePreview.vue";
 import MorphPhaseConfig from "@/components/morph/MorphPhaseConfig.vue";
 import HarmonicLevelGrid from "@/components/morph/HarmonicLevelGrid.vue";

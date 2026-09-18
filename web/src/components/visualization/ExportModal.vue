@@ -9,7 +9,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@mkbabb/glass-ui/dialog";
-import { Download } from "lucide-vue-next";
+import { Download } from "@lucide/vue";
 
 const props = defineProps<{
     hasEpicycles: boolean;
@@ -46,7 +46,7 @@ function doExport() {
     <Dialog :open="true" @update:open="onOpenChange">
         <!-- DialogContent supplies role="dialog" + aria-modal="true" + focus-trap
              + Esc + autofocus via reka-ui's DialogPortal/DialogContent. -->
-        <DialogContent class="export-dialog">
+        <DialogContent>
             <DialogHeader>
                 <DialogTitle class="cm-serif text-lg font-semibold">Export Frame</DialogTitle>
             </DialogHeader>
@@ -71,8 +71,8 @@ function doExport() {
             </div>
 
             <DialogFooter>
-                <Button variant="outline" size="default" @click="emit('close')">Cancel</Button>
-                <Button variant="default" size="default" @click="doExport">
+                <Button emphasis="secondary" @click="emit('close')">Cancel</Button>
+                <Button emphasis="primary" @click="doExport">
                     <Download class="h-3.5 w-3.5" />
                     Save PNG
                 </Button>
@@ -83,9 +83,14 @@ function doExport() {
 
 <style scoped>
 @reference "tailwindcss";
-.export-dialog {
-    min-width: 300px;
-}
+/* F.W1 / fr-ExportModal M-γ — the `min-width: 300px` floor is DELETED, and the
+   deletion is a sequenced prerequisite of the uplift rather than a tidy-up. At
+   the adopted pin `[data-slot="dialog-content"]` sizes itself
+   `min(100% - 2 * var(--space-section), 32rem)` from inside a `:where()`, i.e.
+   at specificity (0,0,0): a consumer floor no longer merely duplicates the
+   plate's width, it OUTRANKS the gutter clamp and pushes the plate past the
+   viewport edge on the narrow widths the clamp exists to protect. The rule's
+   only declaration went with it, so the class did too. */
 
 .option-list {
     display: flex;

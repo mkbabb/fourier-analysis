@@ -20,7 +20,6 @@
                 </div>
                 <Slider
                     v-model="durationModel"
-                    variant="standard"
                     :min="50"
                     :max="800"
                     :step="10"

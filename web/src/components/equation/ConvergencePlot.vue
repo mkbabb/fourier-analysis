@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import type { FourierTermDTO } from "@/lib/equation/types";
 import { applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
-import { easeInOutSine } from "@mkbabb/value.js";
+import { easeInOutSine } from "@mkbabb/value.js/easing";
 import katex from "katex";
 
 import { drawPlotGrid, type PlotPadding } from "./lib/grid";

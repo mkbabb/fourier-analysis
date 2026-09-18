@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { useClipboard } from "@mkbabb/glass-ui";
-import { Check, Copy } from "lucide-vue-next";
+import { Check, Copy } from "@lucide/vue";
 import katex from "katex";
 
 const props = defineProps<{
@@ -10,9 +10,11 @@ const props = defineProps<{
 }>();
 
 /* P.W5 Lane B.2 — migrated from bare `navigator.clipboard.writeText` + manual
-   `copied` ref + setTimeout to glass-ui's `useClipboard` composable (the
-   reactive `copied` flag here drives the Check/Copy icon swap below). */
-const { copied, copy } = useClipboard({ resetMs: 2000 });
+   `copied` ref + setTimeout to glass-ui's `useClipboard` composable. F.W1 /
+   FR-EQR-1: at glass-ui ≥7 the composable returns `status` (a four-state
+   `ClipboardStatus`), never a `copied` boolean — the old flag went permanently
+   false and silently, so the icon swap below reads the state by name. */
+const { status, copy } = useClipboard({ resetMs: 2000 });
 
 const renderedHtml = computed(() => {
     if (!props.latex) return "";
@@ -36,14 +38,14 @@ function copyLatex() {
     <div class="eq-result-root">
         <div class="eq-scroll-region" v-html="renderedHtml" />
         <Button
-            variant="glass"
-            size="icon"
+            emphasis="primary"
+            size="md" icon-only
             class="copy-pos"
             title="Copy LaTeX"
             @click="copyLatex"
         >
             <Transition name="icon-swap" mode="out-in">
-                <Check v-if="copied" class="h-4.5 w-4.5 text-green-500" />
+                <Check v-if="status === 'success'" class="h-4.5 w-4.5 text-green-500" />
                 <Copy v-else class="h-4.5 w-4.5" />
             </Transition>
         </Button>

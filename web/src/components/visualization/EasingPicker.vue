@@ -19,7 +19,7 @@ const anim = useAnimationStore();
             <Button
                 v-for="(opt, key) in EASING_OPTIONS"
                 :key="key"
-                variant="ghost"
+                emphasis="quiet"
                 size="sm"
                 role="menuitemradio"
                 class="easing-chip"

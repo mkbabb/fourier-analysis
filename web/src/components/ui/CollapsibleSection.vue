@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@mkbabb/glass-ui'
 import { ref, watch } from 'vue'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronRight } from '@lucide/vue'
 
 const props = withDefaults(defineProps<{
     title: string;
@@ -54,19 +54,13 @@ watch(open, (isOpen) => {
 .collapsible-content {
     overflow: hidden;
 }
-/* A.W3.d — `collapsible-open` / `collapsible-close` are canonical glass-ui
-   animations (see `@mkbabb/glass-ui/styles/animations.css`); the consumer-side
-   shadow rules have been excised. Substrate keyframes resolve via global cascade. */
-.collapsible-content[data-state="open"] {
-    animation: collapsible-open 0.2s var(--ease-out);
-}
-.collapsible-content[data-state="closed"] {
-    animation: collapsible-close 0.2s var(--ease-out);
-}
-@media (prefers-reduced-motion: reduce) {
-    .collapsible-content[data-state="open"],
-    .collapsible-content[data-state="closed"] {
-        animation: none;
-    }
-}
+/* F.W1 / B-1 / G10 — the two `[data-state]` `animation` shorthands and their
+   `prefers-reduced-motion` arm are DELETED, not rewritten. A.W3.d adopted the
+   canonical `collapsible-open` / `collapsible-close` keyframes from glass-ui's
+   own sheet; glass-ui ≥7 ships neither, so an unlayered scoped shorthand naming
+   a keyframe that does not exist leaves reka's `usePresence` waiting forever on
+   an `animationend` that can never fire — every disclosure surface stops
+   closing. The producer carries its own presence motion at the adopted pin.
+   `overflow: hidden` above STAYS: it names no keyframe, and it is the clipping
+   the collapsible height transition needs. */
 </style>

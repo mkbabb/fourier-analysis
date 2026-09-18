@@ -14,7 +14,7 @@ import {
     Crown,
     Bookmark,
     Trash2,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 const props = defineProps<{
     entry: Visualization;
@@ -133,7 +133,7 @@ function timeAgo(iso: string): string {
                         <span class="font-mono">{{ entry.views }}</span>
                     </span>
                     <Button
-                        variant="ghost"
+                        emphasis="quiet"
                         size="sm"
                         class="like-btn"
                         :class="{ liked: isLiked }"
@@ -155,8 +155,8 @@ function timeAgo(iso: string): string {
             <!-- Admin overlay -->
             <div v-if="adminMode" class="absolute top-1.5 right-1.5 flex gap-1 z-5" @click.stop>
                 <Button
-                    variant="glass"
-                    size="icon"
+                    emphasis="primary"
+                    size="md" icon-only
                     class="admin-overlay-btn text-tier-featured"
                     title="Toggle featured"
                     @click="emit('set-tier', entry.slug, entry.tier === 'featured' ? 'normal' : 'featured')"
@@ -164,8 +164,8 @@ function timeAgo(iso: string): string {
                     <Crown :size="14" />
                 </Button>
                 <Button
-                    variant="glass"
-                    size="icon"
+                    emphasis="primary"
+                    size="md" icon-only
                     class="admin-overlay-btn text-tier-saved"
                     title="Toggle saved"
                     @click="emit('set-tier', entry.slug, entry.tier === 'saved' ? 'normal' : 'saved')"
@@ -173,8 +173,8 @@ function timeAgo(iso: string): string {
                     <Bookmark :size="14" />
                 </Button>
                 <Button
-                    variant="glass"
-                    size="icon"
+                    emphasis="primary"
+                    size="md" icon-only
                     class="admin-overlay-btn text-delete"
                     title="Delete"
                     @click="emit('delete', entry.slug)"

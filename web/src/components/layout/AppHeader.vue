@@ -5,19 +5,19 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useGalleryStore } from "@/stores/gallery";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/visualization/gallery/UserSlugBar.vue";
-import { Shield, ChevronDown, FileText, Eye, LayoutGrid, Sigma, Shuffle } from "lucide-vue-next";
+import { Shield, ChevronDown, FileText, Eye, LayoutGrid, Sigma, Shuffle } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
-} from "@mkbabb/glass-ui/dropdown-menu";
+} from "@mkbabb/glass-ui/menu";
 import {
-    HoverCard,
-    HoverCardTrigger,
-    HoverCardContent,
-} from "@mkbabb/glass-ui/hover-card";
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+} from "@mkbabb/glass-ui/popover";
 
 const route = useRoute();
 const router = useRouter();
@@ -53,23 +53,27 @@ const galleryStore = useGalleryStore();
 <template>
     <header class="app-header sticky top-0 z-[var(--z-overlay)] bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div class="header-inner">
-            <!-- Logo with attribution hover card -->
-            <HoverCard>
-                <HoverCardTrigger as-child>
-                    <div
-                        class="logo-trigger relative shrink-0"
-                        role="button"
-                        tabindex="0"
-                        aria-label="Go to paper"
-                        @click.stop="router.push('/paper')"
-                        @keydown.enter="router.push('/paper')"
-                    >
-                        <span class="logo-mark cm-serif font-semibold tracking-tight cursor-pointer select-none">
-                            <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
-                        </span>
-                    </div>
-                </HoverCardTrigger>
-                <HoverCardContent class="hover-card-content" align="start" :side-offset="6">
+            <!-- Logo with attribution card.
+                 F.W1 / FR-AH-13 — `./hover-card` is definition-absent at the
+                 adopted pin and the Popover union replaces it. `trigger="hover"`
+                 is passed EXPLICITLY, which is what makes the card reachable at
+                 all on touch: the union reads `(pointer: coarse)` and seats the
+                 CLICK root there, so the excludeTouch dead end is gone.
+                 That also resolves the click collision this trigger carried: a
+                 coarse tap used to open the card AND navigate away in the same
+                 gesture, so the attribution could never be read. One element
+                 carries ONE activation — the trigger discloses, and /paper stays
+                 one tap away in the nav menu beside it (`tabs[0]`). -->
+            <Popover trigger="hover">
+                <PopoverTrigger
+                    class="logo-trigger relative shrink-0"
+                    aria-label="About Fourier analysis"
+                >
+                    <span class="logo-mark cm-serif font-semibold tracking-tight cursor-pointer select-none">
+                        <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
+                    </span>
+                </PopoverTrigger>
+                <PopoverContent class="hover-card-content" align="start" :side-offset="6">
                     <div class="flex items-center gap-3">
                         <!-- Self-hosted maintainer avatar (θ): restores the zero-third-party-origins
                              posture — no avatars.githubusercontent.com handshake/beacon. Served from
@@ -102,15 +106,15 @@ const galleryStore = useGalleryStore();
                         class="block text-sm text-foreground hover:underline"
                         @click.stop
                     >View project on GitHub 🎉</a>
-                </HoverCardContent>
-            </HoverCard>
+                </PopoverContent>
+            </Popover>
 
             <div class="header-divider" />
 
             <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                     <Button
-                        variant="ghost"
+                        emphasis="quiet"
                         class="nav-trigger"
                         :aria-label="`Navigate — current section ${activeTabData.label}`"
                     >
@@ -272,7 +276,19 @@ const galleryStore = useGalleryStore();
 
 /* ── Attribution hover card ── */
 .logo-trigger {
+    /* The union's trigger renders a real <button> (`type="button"` from the
+       primitive), which is what carries Enter/Space activation natively — the
+       `role="button"` + `tabindex="0"` div it replaces carried neither once the
+       click handler moved off it. The UA button chrome is neutralised here so the
+       wordmark paints exactly as before. */
     cursor: pointer;
+    appearance: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
 }
 
 /* Share button enter/leave (A.W3.d — bezier→`--ease-apple-spring`) */
@@ -303,7 +319,7 @@ const galleryStore = useGalleryStore();
 
 <!-- Global style for portaled components -->
 <style>
-/* @global — portaled glass-ui HoverCardContent */
+/* @global — portaled glass-ui PopoverContent (the attribution card) */
 .hover-card-content {
     min-width: 17rem;
 }

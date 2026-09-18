@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import {
-    Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "lucide-vue-next";
+    Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import { HoverPopover } from "@mkbabb/glass-ui/hover-popover";
-import { GlassDock, DockIconButton } from "@mkbabb/glass-ui/dock";
+import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
+import { GlassDock, DockControl } from "@mkbabb/glass-ui/dock";
 
 defineProps<{
     isEditing: boolean;
@@ -41,42 +41,42 @@ watch(
     <GlassDock ref="dockRef" fit-content :start-collapsed="true">
         <template v-if="!isEditing">
             <!-- View options popover (image overlay + contour trace) -->
-            <HoverPopover side="top" align="center" keep-dock-open>
-                <template #trigger>
-                    <DockIconButton class="view-btn-wrap" aria-label="View options">
+            <Popover trigger="hover" keep-dock-open>
+                <PopoverTrigger as-child>
+                    <DockControl class="view-btn-wrap" aria-label="View options">
                         <Eye class="h-4.5 w-4.5" />
                         <span v-if="showImageOverlay || showGhost" class="view-dot" />
-                    </DockIconButton>
-                </template>
-                <template #content>
+                    </DockControl>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="center">
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Image overlay">
-                            <DockIconButton :aria-pressed="showImageOverlay" :class="{ 'is-active': showImageOverlay }" @click="$emit('toggleImageOverlay')">
+                            <DockControl :active="showImageOverlay" @click="$emit('toggleImageOverlay')">
                                 <ImageIcon :size="20" />
-                            </DockIconButton>
+                            </DockControl>
                         </Tooltip>
                         <Tooltip text="Contour trace">
-                            <DockIconButton :aria-pressed="showGhost" :class="{ 'is-active': showGhost }" @click="$emit('toggleGhost')">
+                            <DockControl :active="showGhost" @click="$emit('toggleGhost')">
                                 <Spline :size="20" />
-                            </DockIconButton>
+                            </DockControl>
                         </Tooltip>
                     </div>
-                </template>
-            </HoverPopover>
+                </PopoverContent>
+            </Popover>
 
             <div class="dock-separator" />
 
             <!-- Publish -->
             <Tooltip v-if="hasContour" text="Publish to Gallery" side="bottom">
-                <DockIconButton :aria-pressed="publishing" :class="{ 'is-active': publishing }" @click="$emit('publish')">
+                <DockControl :active="publishing" @click="$emit('publish')">
                     <Upload class="h-4.5 w-4.5" :class="{ 'animate-pulse': publishing }" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
             <!-- Equation -->
             <Tooltip v-if="hasData" text="Equation" side="bottom">
-                <DockIconButton :aria-pressed="showEquation" :class="{ 'is-active': showEquation }" @click="$emit('toggleEquation')">
+                <DockControl :active="showEquation" @click="$emit('toggleEquation')">
                     <Sigma class="h-4.5 w-4.5" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
 
             <div class="dock-separator" />
@@ -84,15 +84,15 @@ watch(
 
         <!-- Edit (always visible when contour exists) -->
         <Tooltip v-if="hasContour" text="Edit contour" side="bottom">
-            <DockIconButton :aria-pressed="isEditing" :class="{ 'is-active': isEditing }" @click="$emit('toggleEdit')">
+            <DockControl :active="isEditing" @click="$emit('toggleEdit')">
                 <Pencil class="h-4.5 w-4.5" />
-            </DockIconButton>
+            </DockControl>
         </Tooltip>
         <!-- Fullscreen -->
         <Tooltip text="Fullscreen" side="bottom">
-            <DockIconButton @click="$emit('toggleFullscreen')">
+            <DockControl @click="$emit('toggleFullscreen')">
                 <Maximize2 class="h-4.5 w-4.5" />
-            </DockIconButton>
+            </DockControl>
         </Tooltip>
 
         <template #collapsed>

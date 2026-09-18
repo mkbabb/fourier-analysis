@@ -2,7 +2,7 @@
 import { ref, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
-import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "lucide-vue-next";
+import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "@lucide/vue";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
@@ -109,12 +109,12 @@ watch(() => props.search.isOpen.value, (open) => {
             <!-- Search mode: input replaces section title -->
             <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search glass-resting">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" />
-                <Button variant="ghost" size="icon" class="floating-toc-search-close" @click="closeMobileSearch" title="Close search">
+                <Button emphasis="quiet" size="md" icon-only class="floating-toc-search-close" @click="closeMobileSearch" title="Close search">
                     <X class="h-4 w-4" />
                 </Button>
             </div>
             <!-- Normal mode: section title + search icon -->
-            <Button v-else ref="tocTrigger" variant="ghost" class="floating-toc-bar glass-resting" @click="floatingTocOpen = !floatingTocOpen">
+            <Button v-else ref="tocTrigger" emphasis="quiet" class="floating-toc-bar glass-resting" @click="floatingTocOpen = !floatingTocOpen">
                 <span class="floating-toc-section cm-serif">
                     <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
                     {{ currentSection?.title }}
@@ -136,7 +136,7 @@ watch(() => props.search.isOpen.value, (open) => {
                 >
                     <!-- Scroll to top -->
                     <Button
-                        variant="ghost"
+                        emphasis="quiet"
                         class="floating-toc-item floating-toc-top cm-serif"
                         @click="handleScrollToTop"
                     >
@@ -148,7 +148,7 @@ watch(() => props.search.isOpen.value, (open) => {
 
                     <template v-for="(section, si) in sections" :key="section.id">
                         <Button
-                            variant="ghost"
+                            emphasis="quiet"
                             class="floating-toc-item floating-toc-root cm-serif"
                             :class="{ 'is-active': activeRootId === section.id }"
                             :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
@@ -166,7 +166,7 @@ watch(() => props.search.isOpen.value, (open) => {
                             <Button
                                 v-for="sub in section.subsections"
                                 :key="sub.id"
-                                variant="ghost"
+                                emphasis="quiet"
                                 class="floating-toc-item floating-toc-sub cm-serif"
                                 @click="selectSection(sub.id)"
                             >

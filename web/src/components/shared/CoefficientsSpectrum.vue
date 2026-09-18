@@ -8,16 +8,24 @@
  * route's `FrequencyGraph` — is hoisted to the `#graph` slot; the equation
  * route passes nothing.
  *
- * B.W2.c — per-component amplitude readouts route through glass-ui's
- * `AnimatedDigit` (damped numerals + tabular/ss01/lnum font features) and the
+ * B.W2.c — per-component amplitude readouts are damped numerals and the
  * bespoke `:hover` CSS tooltip lifts to the glass-ui `Tooltip` primitive
  * (the local shim wraps `Tooltip` + `TooltipTrigger` + `TooltipContent`),
  * discharging the L5 §5 A8 LOW a11y gap.
+ *
+ * F.W1 / B-4 — `@mkbabb/glass-ui/animated-digit` is definition-absent at the
+ * adopted pin and this file was its only consumer repo-wide. The cure is NOT a
+ * rename: the damping composable `useAnimatedNumber` is published on `./motion`
+ * at BOTH pins, so the readout is hand-wired below onto the producer's own
+ * smoother, with the tabular-numeral font features owned here (`fira-code
+ * tabular-nums`) rather than inherited from a deleted component. `initial`
+ * seeds the smoother at the first amplitude, so a freshly mounted row does not
+ * animate up from zero.
  */
-import { computed, ref } from "vue";
+import { computed, defineComponent, h, ref, toRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { AnimatedDigit } from "@mkbabb/glass-ui/animated-digit";
-import { ChevronDown, ChevronUp } from "lucide-vue-next";
+import { useAnimatedNumber } from "@mkbabb/glass-ui/motion";
+import { ChevronDown, ChevronUp } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { BasisComponent } from "@/lib/types";
 
@@ -61,6 +69,30 @@ function formatPercent(amplitude: number): string {
 function fmtAmplitude(v: number): string {
     return v.toFixed(2);
 }
+
+/**
+ * The per-row damped amplitude readout (B-4's hand-wire). One `useAnimatedNumber`
+ * per row, owned by the row, because the smoother is a per-value scope and the
+ * rows live in a `v-for`.
+ */
+const AmplitudeReadout = defineComponent({
+    name: "AmplitudeReadout",
+    props: {
+        value: { type: Number, required: true },
+        format: { type: Function as unknown as () => (v: number) => string, required: true },
+    },
+    setup(props) {
+        const { current } = useAnimatedNumber(toRef(props, "value"), {
+            initial: props.value,
+        });
+        return () =>
+            h(
+                "span",
+                { class: "w-16 text-right fira-code text-muted-foreground tabular-nums" },
+                props.format(current.value),
+            );
+    },
+});
 </script>
 
 <template>
@@ -96,18 +128,14 @@ function fmtAmplitude(v: number): string {
                                 }"
                             />
                         </div>
-                        <AnimatedDigit
-                            :value="comp.amplitude"
-                            :format="fmtAmplitude"
-                            class="w-16 text-right fira-code text-muted-foreground tabular-nums"
-                        />
+                        <AmplitudeReadout :value="comp.amplitude" :format="fmtAmplitude" />
                     </div>
                     <template #content>
                         <div class="flex items-center gap-1.5 mb-1">
                             <span class="inline-block w-2 h-2 rounded-full" :style="{ backgroundColor: spectrumColor(i, topComponents.length) }" />
                             <span class="font-semibold">n = {{ comp.index }}</span>
                         </div>
-                        <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-admin-label">
+                        <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-mono-micro uppercase font-medium">
                             <span class="text-muted-foreground">Amplitude</span>
                             <span class="fira-code">{{ comp.amplitude.toFixed(4) }}</span>
                             <span class="text-muted-foreground">Phase</span>
@@ -124,7 +152,7 @@ function fmtAmplitude(v: number): string {
             <Tooltip :text="expanded ? 'Collapse to top 12 coefficients' : `Show top 40 of ${totalComponents} coefficients`">
                 <Button
                     v-if="totalComponents > 12"
-                    variant="ghost"
+                    emphasis="quiet"
                     size="sm"
                     class="mt-2 w-full gap-1 text-xs text-muted-foreground"
                     @click="expanded = !expanded"

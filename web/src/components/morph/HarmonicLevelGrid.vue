@@ -16,7 +16,6 @@
                 />
                 <Slider
                     v-model="lowModel"
-                    variant="standard"
                     :min="1"
                     :max="highLevel - 1"
                     :step="1"
@@ -38,7 +37,6 @@
                 />
                 <Slider
                     v-model="highModel"
-                    variant="standard"
                     :min="lowLevel + 1"
                     :max="100"
                     :step="1"
@@ -52,8 +50,7 @@
             <Button
                 v-for="level in levels"
                 :key="level"
-                variant="outline"
-                size="default"
+                emphasis="secondary"
                 class="grid-cell"
                 :class="{
                     active: level === activeLevel,

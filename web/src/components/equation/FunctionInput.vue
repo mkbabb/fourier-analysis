@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { PRESETS } from "@/lib/equation/presets";
 import type { NotationMode, PresetFunction } from "@/lib/equation/types";
-import { Wand2, Play } from "lucide-vue-next";
+import { Wand2, Play } from "@lucide/vue";
 import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -141,7 +141,7 @@ const activePreset = computed(() =>
 
                     <!-- Compute button -->
                     <Button
-                        variant="default"
+                        emphasis="primary"
                         size="sm"
                         class="compute-btn"
                         @click="emit('compute')"
@@ -156,7 +156,7 @@ const activePreset = computed(() =>
                         <div class="flex flex-wrap gap-1.5">
                             <Tooltip v-for="preset in PRESETS" :key="preset.name" :text="preset.description">
                                 <Button
-                                    variant="outline"
+                                    emphasis="secondary"
                                     size="sm"
                                     class="preset-pill"
                                     :class="{ 'is-active': activePreset?.name === preset.name }"
@@ -187,8 +187,8 @@ const activePreset = computed(() =>
                         />
                         <Tooltip side="bottom">
                             <Button
-                                variant="glass"
-                                size="icon"
+                                emphasis="primary"
+                                size="md" icon-only
                                 :class="{ 'is-auto-active': autoHarmonics }"
                                 :disabled="!effectiveN"
                                 @click="toggleAuto"

@@ -197,7 +197,7 @@ onMounted(() => draw());
                     />
                     <span class="font-semibold">n = {{ displayComponents[hoveredBar].index }}</span>
                 </div>
-                <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-admin-label">
+                <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-mono-micro uppercase font-medium">
                     <span class="text-muted-foreground">Amplitude</span>
                     <span class="fira-code">{{ displayComponents[hoveredBar].amplitude.toFixed(4) }}</span>
                     <template v-if="logScale">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { Search, X, SlidersHorizontal } from "lucide-vue-next";
+import { Search, X, SlidersHorizontal } from "@lucide/vue";
 import { basisDisplay } from "../lib/basis-display";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
@@ -54,8 +54,8 @@ const hasActiveFilters = computed(() =>
             />
             <Button
                 v-if="searchQuery"
-                variant="ghost"
-                size="icon"
+                emphasis="quiet"
+                size="md" icon-only
                 class="h-6 w-6 rounded-full text-muted-foreground"
                 @click="emit('update:searchQuery', '')"
             >
@@ -63,8 +63,8 @@ const hasActiveFilters = computed(() =>
             </Button>
             <div class="w-px h-5 bg-foreground/10 shrink-0" />
             <Button
-                variant="ghost"
-                size="icon"
+                emphasis="quiet"
+                size="md" icon-only
                 class="filter-toggle h-7 w-7 rounded-full shrink-0 text-muted-foreground"
                 :class="{ 'is-active': showFilters || hasActiveFilters }"
                 :aria-pressed="showFilters || hasActiveFilters"
@@ -113,7 +113,7 @@ const hasActiveFilters = computed(() =>
                         <Button
                             v-for="b in basisOptions"
                             :key="b.key"
-                            variant="outline"
+                            emphasis="secondary"
                             size="sm"
                             class="basis-pill-btn rounded-full font-medium"
                             :class="{ active: basisFilter === b.key }"

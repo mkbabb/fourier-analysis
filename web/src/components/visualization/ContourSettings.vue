@@ -17,7 +17,7 @@ import {
     SelectTrigger,
 } from "@mkbabb/glass-ui/select";
 import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
-import { Wand2, ChevronRight, RotateCcw, RefreshCw } from "lucide-vue-next";
+import { Wand2, ChevronRight, RotateCcw, RefreshCw } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import SliderControl from "@/components/ui/SliderControl.vue";
 
@@ -193,8 +193,8 @@ watch(
         <div class="flex items-center justify-end -mt-1 -mb-1">
             <Tooltip text="Reset to defaults">
                 <Button
-                    variant="ghost"
-                    size="icon"
+                    emphasis="quiet"
+                    size="md" icon-only
                     class="reset-icon-btn"
                     :class="{ 'is-default': isDefault }"
                     aria-label="Reset to defaults"
@@ -310,7 +310,7 @@ watch(
         <Transition name="slide-down">
             <div v-if="store.error" class="retry-banner">
                 <span class="retry-msg fira-code">{{ shortError }}</span>
-                <Button variant="destructive" size="sm" class="retry-btn" @click="runCompute" :disabled="store.computing">
+                <Button emphasis="primary" tone="destructive" size="sm" class="retry-btn" @click="runCompute" :disabled="store.computing">
                     <RefreshCw class="h-3.5 w-3.5" :class="{ 'animate-spin': store.computing }" />
                     Retry
                 </Button>
@@ -351,28 +351,19 @@ watch(
     color: color-mix(in srgb, var(--foreground) 60%, transparent);
 }
 
-/* B.W2.d — the hand-rolled `adv-open` / `adv-close` keyframes retire in
-   favour of `CollapsibleContent`'s `data-state` channel driving the
-   canonical glass-ui `collapsible-open` / `collapsible-close` keyframes
-   (shipped at `@mkbabb/glass-ui/styles/animations.css`, resolved via global
-   cascade — the same substrate animation `CollapsibleSection` adopted at
-   A.W3.d). The `--reka-collapsible-content-height` channel the substrate
-   keyframes read is supplied by the primitive. */
+/* B.W2.d retired the hand-rolled `adv-open` / `adv-close` keyframes in favour
+   of the canonical glass-ui `collapsible-open` / `collapsible-close` pair. At
+   the F.W1 pin the producer ships neither, and the consumer-side shorthands
+   that named them are deleted below (G10). */
 .advanced-content {
     overflow: hidden;
 }
-.advanced-content[data-state="open"] {
-    animation: collapsible-open 0.2s var(--ease-out);
-}
-.advanced-content[data-state="closed"] {
-    animation: collapsible-close 0.2s var(--ease-out);
-}
-@media (prefers-reduced-motion: reduce) {
-    .advanced-content[data-state="open"],
-    .advanced-content[data-state="closed"] {
-        animation: none;
-    }
-}
+/* F.W1 / B-1 / G10 — deleted symmetrically with `CollapsibleSection`'s twin:
+   the two `[data-state]` `animation` shorthands and the
+   `prefers-reduced-motion` arm both name keyframes glass-ui ≥7 no longer
+   ships, and a shorthand naming an absent keyframe hangs reka's `usePresence`
+   on an `animationend` that never fires. `overflow: hidden` above STAYS on
+   both twins. */
 
 .advanced-grid {
     display: grid;

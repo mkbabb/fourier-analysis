@@ -20,7 +20,7 @@ import { paperSections, labelMap, totalPages, pageMap, extractedMacros } from "@
 import type { PaperSectionData } from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Undo2 } from "lucide-vue-next";
+import { Undo2 } from "@lucide/vue";
 
 // ── KaTeX with app-specific macros ─────────────────────────
 const macros: Record<string, string> = {
@@ -362,7 +362,7 @@ onUnmounted(() => {
                             <ol class="list-none space-y-1.5 pl-0">
                                 <li v-for="section in sections" :key="section.id">
                                     <Button
-                                        variant="link"
+                                        emphasis="text"
                                         size="sm"
                                         class="mobile-toc-link"
                                         @click="navigateTo(section.id)"
@@ -397,8 +397,8 @@ onUnmounted(() => {
             <Transition name="fade-scale">
                 <Button
                     v-if="navStack.length > 0"
-                    variant="glass"
-                    size="icon"
+                    emphasis="primary"
+                    size="md" icon-only
                     class="overlay-btn overlay-back"
                     @click="navigateBack"
                     :title="`Back (${navStack.length} in history)`"

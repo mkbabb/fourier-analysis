@@ -4,12 +4,12 @@
  *
  * P.W5 Lane B.4 + B.1 — migrated from the 221 LOC shadow recipe (manual
  * pointer-state-machine + `glass-track`/`glass-fill`/`glass-thumb` paints +
- * legacy string-key dock injects) to `<Slider variant="standard">`
+ * legacy string-key dock injects) to `<Slider>`
  * with the canonical label + numeric-input chassis preserved as the wrapper.
  *
  * A.W3.b D5 fold — the legacy `variant?: "timeline" | "default"` prop is
  * retired here. The two branches were already cosmetically identical (both
- * mapped to `<Slider variant="standard">`) and no consumer in the
+ * mapped to `<Slider>`) and no consumer in the
  * tree passes the prop explicitly (verified via `git grep '<SliderControl'
  * | xargs grep variant`). Retirement disposition (b) per `audit/W3-adoption-
  * ledger.md`; the wrapper now commits unconditionally to the canonical
@@ -80,7 +80,6 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
         </label>
         <Slider
             v-model="sliderModel"
-            variant="standard"
             :min="min"
             :max="max"
             :step="step"

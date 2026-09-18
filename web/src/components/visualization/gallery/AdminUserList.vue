@@ -31,7 +31,7 @@ import {
     ChevronLeft,
     ChevronRight,
     X,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 const auth = useAuthStore();
 const { toast } = useToast();
@@ -262,7 +262,7 @@ function timeAgo(iso: string): string {
                 </SelectContent>
             </Select>
             <Button
-                variant="outline"
+                emphasis="secondary"
                 size="sm"
                 class="border-amber-500/30 bg-amber-500/10 text-xs text-amber-300 hover:bg-amber-500/20"
                 aria-label="Prune users with zero entries"
@@ -311,7 +311,7 @@ function timeAgo(iso: string): string {
                 {{ selected.size }} user(s) selected
             </span>
             <Button
-                variant="outline"
+                emphasis="secondary"
                 size="sm"
                 class="text-xs"
                 @click="askBatch('suspend')"
@@ -320,7 +320,7 @@ function timeAgo(iso: string): string {
                 Suspend
             </Button>
             <Button
-                variant="outline"
+                emphasis="secondary"
                 size="sm"
                 class="text-xs"
                 @click="askBatch('unsuspend')"
@@ -329,7 +329,7 @@ function timeAgo(iso: string): string {
                 Unsuspend
             </Button>
             <Button
-                variant="destructive"
+                emphasis="primary" tone="destructive"
                 size="sm"
                 class="text-xs"
                 @click="askBatch('delete')"
@@ -338,8 +338,8 @@ function timeAgo(iso: string): string {
                 Delete
             </Button>
             <Button
-                variant="ghost"
-                size="icon"
+                emphasis="quiet"
+                size="md" icon-only
                 class="h-7 w-7"
                 aria-label="Clear selection"
                 @click="clearSelection"
@@ -373,10 +373,10 @@ function timeAgo(iso: string): string {
                         <span class="font-mono text-xs truncate">{{ user.user_slug }}</span>
                         <span
                             v-if="user.status === 'suspended'"
-                            class="rounded-full bg-red-500/20 px-1.5 py-0.5 text-admin-label text-red-400"
+                            class="rounded-full bg-red-500/20 px-1.5 py-0.5 text-mono-micro uppercase font-medium text-red-400"
                         >suspended</span>
                     </div>
-                    <div class="flex gap-3 text-admin-label text-muted-foreground mt-0.5">
+                    <div class="flex gap-3 text-mono-micro uppercase font-medium text-muted-foreground mt-0.5">
                         <span>{{ user.entry_count }} entries</span>
                         <span>joined {{ timeAgo(user.created_at) }}</span>
                         <span>seen {{ timeAgo(user.last_seen_at) }}</span>
@@ -385,8 +385,8 @@ function timeAgo(iso: string): string {
                 <div class="flex items-center gap-1">
                     <Button
                         v-if="user.status !== 'suspended'"
-                        variant="ghost"
-                        size="icon"
+                        emphasis="quiet"
+                        size="md" icon-only
                         class="h-6 w-6 text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10"
                         :aria-label="`Suspend user ${user.user_slug}`"
                         title="Suspend"
@@ -396,8 +396,8 @@ function timeAgo(iso: string): string {
                     </Button>
                     <Button
                         v-else
-                        variant="ghost"
-                        size="icon"
+                        emphasis="quiet"
+                        size="md" icon-only
                         class="h-6 w-6 text-muted-foreground hover:text-green-400 hover:bg-green-500/10"
                         :aria-label="`Unsuspend user ${user.user_slug}`"
                         title="Unsuspend"
@@ -406,8 +406,8 @@ function timeAgo(iso: string): string {
                         <UserCheck class="h-3.5 w-3.5" aria-hidden="true" />
                     </Button>
                     <Button
-                        variant="ghost"
-                        size="icon"
+                        emphasis="quiet"
+                        size="md" icon-only
                         class="h-6 w-6 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                         :aria-label="`Delete user ${user.user_slug}`"
                         title="Delete"
@@ -433,8 +433,8 @@ function timeAgo(iso: string): string {
             aria-label="User list pagination"
         >
             <Button
-                variant="ghost"
-                size="icon"
+                emphasis="quiet"
+                size="md" icon-only
                 class="h-7 w-7"
                 :disabled="!hasPrev"
                 aria-label="Previous page"
@@ -444,8 +444,8 @@ function timeAgo(iso: string): string {
             </Button>
             <span aria-live="polite">{{ page }} / {{ pageCount }}</span>
             <Button
-                variant="ghost"
-                size="icon"
+                emphasis="quiet"
+                size="md" icon-only
                 class="h-7 w-7"
                 :disabled="!hasNext"
                 aria-label="Next page"
@@ -497,11 +497,12 @@ function timeAgo(iso: string): string {
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="ghost" @click="dialogOpen = false">Cancel</Button>
+                    <Button emphasis="quiet" @click="dialogOpen = false">Cancel</Button>
                     <Button
-                        :variant="
+                        emphasis="primary"
+                        :tone="
                             pending?.kind === 'batch' && pending.action !== 'delete'
-                                ? 'default'
+                                ? 'neutral'
                                 : 'destructive'
                         "
                         @click="confirmPending"

@@ -41,7 +41,7 @@ defineExpose({ resultsRef });
             <Button
                 v-for="(r, i) in search.results.value"
                 :key="`${r.id}-${r.type}-${i}`"
-                variant="ghost"
+                emphasis="quiet"
                 class="paper-search-result"
                 :class="{ 'is-selected': i === search.selectedIndex.value }"
                 @click="search.selectResult(r)"

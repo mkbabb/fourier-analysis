@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
-import { HoverPopover } from "@mkbabb/glass-ui/hover-popover";
-import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
-import { GlassDock, DockIconButton } from "@mkbabb/glass-ui/dock";
+import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
+import { Metric } from "@mkbabb/glass-ui/metric";
+import { GlassDock, DockControl } from "@mkbabb/glass-ui/dock";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
 import {
@@ -19,7 +19,7 @@ import {
     RotateCcw,
     Save,
     Check,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 const props = defineProps<{
     canUndo: boolean;
@@ -60,10 +60,10 @@ const magnetModel = computed<number[]>({
                 <Wand2 :size="18" class="shrink-0 text-foreground/50" />
                 <span class="dock-badge">{{ pointCount }} pts</span>
                 <Tooltip text="Save contour">
-                    <DockIconButton class="is-save" :class="{ saved: isSaved }" @click.stop="emit('save')">
+                    <DockControl class="is-save" :class="{ saved: isSaved }" @click.stop="emit('save')">
                         <Check v-if="isSaved" :size="18" />
                         <Save v-else :size="18" />
-                    </DockIconButton>
+                    </DockControl>
                 </Tooltip>
             </div>
         </template>
@@ -71,50 +71,49 @@ const magnetModel = computed<number[]>({
         <!-- Expanded controls -->
         <div class="flex items-center gap-2 w-full">
             <Tooltip text="Undo">
-                <DockIconButton :disabled="!canUndo" @click="emit('undo')">
+                <DockControl :disabled="!canUndo" @click="emit('undo')">
                     <Undo2 :size="20" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
             <Tooltip text="Redo">
-                <DockIconButton :disabled="!canRedo" @click="emit('redo')">
+                <DockControl :disabled="!canRedo" @click="emit('redo')">
                     <Redo2 :size="20" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
 
             <span class="dock-separator" />
 
             <Tooltip text="Smooth">
-                <DockIconButton class="is-amber" @click="emit('smooth')">
+                <DockControl class="is-amber" @click="emit('smooth')">
                     <Wand2 :size="20" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
             <Tooltip text="Simplify">
-                <DockIconButton class="is-sky" @click="emit('simplify')">
+                <DockControl class="is-sky" @click="emit('simplify')">
                     <Minimize2 :size="20" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
             <Tooltip text="Delete point">
-                <DockIconButton class="is-rose" :disabled="!canDelete" @click="emit('delete')">
+                <DockControl class="is-rose" :disabled="!canDelete" @click="emit('delete')">
                     <Trash2 :size="20" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
 
             <!-- Magnet popover with slider -->
-            <HoverPopover side="top" align="center" keep-dock-open>
-                <template #trigger>
-                    <DockIconButton aria-label="Magnet radius">
+            <Popover trigger="hover" keep-dock-open>
+                <PopoverTrigger as-child>
+                    <DockControl aria-label="Magnet radius">
                         <Magnet :size="20" :class="magnetRadius > 0 ? 'text-viz-fourier' : ''" />
-                    </DockIconButton>
-                </template>
-                <template #content>
+                    </DockControl>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="center">
                     <div class="magnet-popover-content">
                         <div class="flex items-center justify-between gap-3 px-1">
                             <span class="text-xs font-medium text-foreground whitespace-nowrap">Magnet</span>
-                            <MetricBadge :value="magnetRadius" size="sm" />
+                            <Metric :value="magnetRadius" size="sm" />
                         </div>
                         <Slider
                             v-model="magnetModel"
-                            variant="standard"
                             :min="0"
                             :max="10"
                             :step="1"
@@ -125,48 +124,48 @@ const magnetModel = computed<number[]>({
                             @pointerdown.stop
                         />
                     </div>
-                </template>
-            </HoverPopover>
+                </PopoverContent>
+            </Popover>
 
             <span class="dock-separator" />
 
             <!-- Overlay stack (ghost + image) -->
-            <HoverPopover side="top" align="center" keep-dock-open>
-                <template #trigger>
-                    <DockIconButton aria-label="Overlay options">
+            <Popover trigger="hover" keep-dock-open>
+                <PopoverTrigger as-child>
+                    <DockControl aria-label="Overlay options">
                         <Eye :size="20" />
-                    </DockIconButton>
-                </template>
-                <template #content>
+                    </DockControl>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="center">
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Contour trace">
-                            <DockIconButton :aria-pressed="showGhost" :class="{ 'is-active': showGhost }" @click="emit('toggleGhost')">
+                            <DockControl :active="showGhost" @click="emit('toggleGhost')">
                                 <component :is="showGhost ? Eye : EyeOff" :size="20" />
-                            </DockIconButton>
+                            </DockControl>
                         </Tooltip>
                         <Tooltip text="Image overlay">
-                            <DockIconButton :aria-pressed="showImageOverlay" :class="{ 'is-active': showImageOverlay }" @click="emit('toggleOverlay')">
+                            <DockControl :active="showImageOverlay" @click="emit('toggleOverlay')">
                                 <Image :size="20" />
-                            </DockIconButton>
+                            </DockControl>
                         </Tooltip>
                     </div>
-                </template>
-            </HoverPopover>
+                </PopoverContent>
+            </Popover>
 
             <Tooltip text="Reset to extraction">
-                <DockIconButton @click="emit('reset')">
+                <DockControl @click="emit('reset')">
                     <RotateCcw :size="20" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
 
             <span class="dock-spacer" />
             <span class="dock-badge">{{ pointCount }} pts</span>
 
             <Tooltip text="Save contour">
-                <DockIconButton class="is-save" :class="{ saved: isSaved }" @click="emit('save')">
+                <DockControl class="is-save" :class="{ saved: isSaved }" @click="emit('save')">
                     <Check v-if="isSaved" :size="20" />
                     <Save v-else :size="20" />
-                </DockIconButton>
+                </DockControl>
             </Tooltip>
         </div>
     </GlassDock>
@@ -195,7 +194,7 @@ const magnetModel = computed<number[]>({
     white-space: nowrap;
 }
 
-/* ── Accent variants for DockIconButton (hover tint + state) ── */
+/* ── Accent variants for DockControl (hover tint + state) ── */
 .is-amber { --btn-hover-color: var(--viz-amber); }
 .is-sky { --btn-hover-color: var(--viz-chebyshev); }
 .is-rose { --btn-hover-color: var(--accent-pink); }

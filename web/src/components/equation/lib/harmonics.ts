@@ -2,7 +2,7 @@
  * Harmonic animation math, trig grouping, and spectrum colors.
  */
 
-import { easeInOutSine } from "@mkbabb/value.js";
+import { easeInOutSine } from "@mkbabb/value.js/easing";
 import type { FourierTermDTO } from "@/lib/equation/types";
 
 // ── Trig harmonic grouping ──

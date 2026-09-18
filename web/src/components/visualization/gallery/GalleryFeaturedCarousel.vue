@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Visualization } from "@/lib/types";
 import GalleryCard from "./GalleryCard.vue";
-import { Crown } from "lucide-vue-next";
+import { Crown } from "@lucide/vue";
 
 defineProps<{
     entries: Visualization[];

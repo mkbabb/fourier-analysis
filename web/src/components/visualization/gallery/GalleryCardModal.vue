@@ -13,7 +13,7 @@ import {
     Heart,
     Crown,
     Bookmark,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 const props = defineProps<{
     entry: Visualization;
@@ -107,7 +107,7 @@ function timeAgo(iso: string): string {
                                 <span class="text-muted-foreground">views</span>
                             </span>
                             <Button
-                                variant="ghost"
+                                emphasis="quiet"
                                 size="sm"
                                 class="like-btn"
                                 :class="{ liked: isLiked }"
@@ -156,7 +156,7 @@ function timeAgo(iso: string): string {
                         <!-- Admin tier controls -->
                         <div v-if="adminMode" class="flex gap-2">
                             <Button
-                                variant="outline"
+                                emphasis="secondary"
                                 size="sm"
                                 class="tier-btn"
                                 :class="{ active: entry.tier === 'featured' }"
@@ -166,7 +166,7 @@ function timeAgo(iso: string): string {
                                 <Crown :size="14" /> Featured
                             </Button>
                             <Button
-                                variant="outline"
+                                emphasis="secondary"
                                 size="sm"
                                 class="tier-btn"
                                 :class="{ active: entry.tier === 'saved' }"
@@ -179,7 +179,7 @@ function timeAgo(iso: string): string {
 
                         <!-- CTA -->
                         <Button
-                            variant="outline"
+                            emphasis="secondary"
                             size="lg"
                             class="callout-btn mt-2.5 gap-1.5 text-base font-semibold"
                             @click="emit('open-visualizer', entry.image_slug)"

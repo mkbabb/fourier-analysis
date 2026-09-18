@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Minimize2 } from "lucide-vue-next";
+import { Minimize2 } from "@lucide/vue";
 import type { ContourAsset } from "@/lib/types";
 import BasisCanvas from "./BasisCanvas.vue";
 import ContourEditorCanvas from "./ContourEditorCanvas.vue";
@@ -107,7 +107,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
             <div v-if="show" class="fs-backdrop" @click.self="emit('close')">
                 <div ref="containerRef" class="fs-container" tabindex="-1">
                     <!-- Close button -->
-                    <Button variant="glass" size="icon" class="fs-close" @click="emit('close')">
+                    <Button emphasis="primary" size="md" icon-only class="fs-close" @click="emit('close')">
                         <Minimize2 class="h-5 w-5" />
                     </Button>
 

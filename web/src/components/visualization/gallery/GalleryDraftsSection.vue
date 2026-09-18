@@ -3,9 +3,9 @@ import { ref, computed } from "vue";
 import type { WorkspaceDraft } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
-import { ChevronDown, Upload } from "lucide-vue-next";
+import { ChevronDown, Upload } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
+import { Metric } from "@mkbabb/glass-ui/metric";
 
 const props = defineProps<{
     drafts: WorkspaceDraft[];
@@ -50,12 +50,12 @@ function getBasisLabel(item: WorkspaceDraft): string {
 <template>
     <div v-if="sortedDrafts.length > 0" class="mx-4 rounded-lg border-[1.5px] border-foreground/8 overflow-hidden">
         <Button
-            variant="ghost"
+            emphasis="quiet"
             class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground rounded-none"
             @click="collapsed = !collapsed"
         >
             <span class="cm-serif text-sm font-semibold tracking-tight">My Drafts</span>
-            <MetricBadge :value="sortedDrafts.length" size="sm" />
+            <Metric :value="sortedDrafts.length" size="sm" />
             <ChevronDown
                 :size="16"
                 class="ml-auto text-muted-foreground transition-transform duration-200 ease-in-out"
@@ -89,7 +89,7 @@ function getBasisLabel(item: WorkspaceDraft): string {
                     </span>
                 </div>
                 <Button
-                    variant="outline"
+                    emphasis="secondary"
                     size="sm"
                     class="gap-1 text-muted-foreground shrink-0"
                     :disabled="publishing"

@@ -17,7 +17,7 @@ const emit = defineEmits<{
         <Button
             v-for="opt in NOTATION_OPTIONS"
             :key="opt.value"
-            variant="outline"
+            emphasis="secondary"
             size="sm"
             class="notation-pill"
             :class="{ 'notation-active': modelValue === opt.value }"
@@ -35,7 +35,7 @@ const emit = defineEmits<{
 
 <style scoped>
 .notation-pill {
-    border-radius: 9999px;
+    border-radius: var(--radius-pill);
     min-width: 4.5rem;
     justify-content: center;
 }

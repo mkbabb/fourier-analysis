@@ -141,3 +141,34 @@ html {
     outline-offset: 2px;
     border-radius: inherit;
 }
+
+/* F.W1 / B-2 — `.paper-texture` RESTORED as a consumer-local rule (G5's
+   texture-restore arm, landing inside the uplift transaction).
+
+   glass-ui shipped the rule in its own `@layer components`
+   (`styles/cards.css`: the four declarations plus a `:where(.dark)` blend
+   arm) and retired it at the adopted pin — 8.0.0 keeps the class only as
+   prose in `tokens/scale-paper.css`, so the app shell (`App.vue`, one
+   application) would lose its paper ground SILENTLY: no import, no prop,
+   no type, no build error.
+
+   BOTH tokens the producer's rule composed survive at 8.0.0
+   (`--paper-clean-texture` in `tokens/scale-paper.css`, `--paper-texture-size`
+   in `tokens/offsets.css`), so this is a re-declaration against the published
+   token seam, not a hand-rolled texture: no data-URI is authored here, and
+   neither surviving `@utility paper-*` recipe is used — they paint a uniform
+   opaque black over this surface (fr-SvgFilters M-1/R-3, re-measured at the
+   adopted pin). If the producer restores the rule, this block is deleted and
+   nothing else moves. */
+@layer components {
+    .paper-texture {
+        background-image: var(--paper-clean-texture);
+        background-repeat: repeat;
+        background-size: var(--paper-texture-size);
+        background-blend-mode: multiply;
+    }
+
+    :where(.dark) .paper-texture {
+        background-blend-mode: screen;
+    }
+}

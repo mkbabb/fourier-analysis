@@ -5,7 +5,7 @@ import { Button } from "@mkbabb/glass-ui/button";
 import { useClipboard } from "@mkbabb/glass-ui";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
-import { User, LogIn, LogOut, Copy, Check, Dices } from "lucide-vue-next";
+import { User, LogIn, LogOut, Copy, Check, Dices } from "@lucide/vue";
 
 const auth = useAuthStore();
 const { userSlug, isLoggedIn } = storeToRefs(auth);
@@ -17,10 +17,11 @@ const showLogin = ref(false);
 const loggingIn = ref(false);
 
 /* P.W5 Lane B.2 — migrated from bare `navigator.clipboard.writeText` + manual
-   `copied` ref + setTimeout to glass-ui's `useClipboard` composable (the
-   reactive `copied` flag drives the Check/Copy icon swap below). 1.5 s reset
-   preserved from HEAD. */
-const { copied, copy } = useClipboard({ resetMs: 1500 });
+   `copied` ref + setTimeout to glass-ui's `useClipboard` composable. F.W1 /
+   FR-EQR-1: at glass-ui ≥7 the composable returns `status`, never a `copied`
+   boolean — the icon swap below reads the state by name. 1.5 s reset preserved
+   from HEAD. */
+const { status, copy } = useClipboard({ resetMs: 1500 });
 
 const canSubmit = computed(() => slugInput.value.trim().length > 0);
 
@@ -89,20 +90,20 @@ function onKeydown(e: KeyboardEvent) {
             <User :size="12" />
             <span class="fira-code hidden sm:inline">{{ abbreviatedSlug }}</span>
             <Button
-                variant="ghost"
-                size="icon"
+                emphasis="quiet"
+                size="md" icon-only
                 class="size-5 rounded-full text-muted-foreground"
                 title="Copy slug"
                 @click="copySlug"
             >
                 <Transition name="icon-swap" mode="out-in">
-                    <Check v-if="copied" :size="12" class="text-green-500" />
+                    <Check v-if="status === 'success'" :size="12" class="text-green-500" />
                     <Copy v-else :size="12" />
                 </Transition>
             </Button>
             <Button
-                variant="ghost"
-                size="icon"
+                emphasis="quiet"
+                size="md" icon-only
                 class="size-5 rounded-full text-muted-foreground"
                 title="Log out"
                 @click="handleLogout"
@@ -115,7 +116,7 @@ function onKeydown(e: KeyboardEvent) {
         <template v-else>
             <Button
                 v-if="!showLogin"
-                variant="ghost"
+                emphasis="quiet"
                 size="sm"
                 class="size-10 sm:size-auto sm:px-2.5 sm:py-1 gap-1 rounded-full text-muted-foreground"
                 aria-label="Log in"
@@ -135,8 +136,8 @@ function onKeydown(e: KeyboardEvent) {
                     @keydown="onKeydown"
                 />
                 <Button
-                    variant="outline"
-                    size="icon"
+                    emphasis="secondary"
+                    size="md" icon-only
                     class="size-7 text-foreground"
                     aria-label="Submit slug and log in"
                     :disabled="!canSubmit || loggingIn"
@@ -145,8 +146,8 @@ function onKeydown(e: KeyboardEvent) {
                     <LogIn :size="14" />
                 </Button>
                 <Button
-                    variant="outline"
-                    size="icon"
+                    emphasis="secondary"
+                    size="md" icon-only
                     class="size-7 text-muted-foreground"
                     :disabled="loggingIn"
                     title="Generate new slug"

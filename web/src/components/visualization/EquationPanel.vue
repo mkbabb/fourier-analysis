@@ -7,9 +7,9 @@ import { energyColor } from "@/lib/equation/notation";
 import type { NotationMode } from "@/lib/equation/types";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import NotationPills from "@/components/equation/NotationPills.vue";
-import { X } from "lucide-vue-next";
+import { X } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
+import { Metric } from "@mkbabb/glass-ui/metric";
 import katex from "katex";
 
 const emit = defineEmits<{ close: [] }>();
@@ -74,15 +74,15 @@ watchDebounced(
         <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-medium text-foreground">Equation</span>
             <div class="flex items-center gap-2">
-                <MetricBadge
+                <Metric
                     :value="(energy * 100).toFixed(1)"
                     unit="%"
                     size="sm"
-                    :color="eColor"
+                    :style="{ color: eColor }"
                 />
                 <Button
-                    variant="ghost"
-                    size="icon"
+                    emphasis="quiet"
+                    size="md" icon-only
                     class="h-6 w-6 rounded-full text-muted-foreground"
                     aria-label="Close equation panel"
                     @click="emit('close')"

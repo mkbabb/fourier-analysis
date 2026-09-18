@@ -8,7 +8,7 @@ const model = defineModel<EquationDisplayMode>({ required: true });
 <template>
     <div class="eq-toggle glass-wash">
         <Button
-            variant="ghost"
+            emphasis="quiet"
             size="sm"
             class="eq-toggle-btn"
             :class="{ 'is-active': model === 'sigma' }"
@@ -18,7 +18,7 @@ const model = defineModel<EquationDisplayMode>({ required: true });
             <span class="eq-toggle-icon">&Sigma;</span>
         </Button>
         <Button
-            variant="ghost"
+            emphasis="quiet"
             size="sm"
             class="eq-toggle-btn"
             :class="{ 'is-active': model === 'expanded' }"

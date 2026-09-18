@@ -7,7 +7,7 @@ import { useAnimationStore } from "@/stores/animation";
 import { useImageUpload } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
-import { Upload } from "lucide-vue-next";
+import { Upload } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useGalleryStore } from "@/stores/gallery";
 import { useToast } from "@/composables/useToast";
@@ -165,7 +165,7 @@ async function onCanvasFileSelect(e: Event) {
                 <p class="text-xs text-muted-foreground fira-code break-all">{{ store.error }}</p>
                 <Tooltip text="Go back to upload a new image">
                     <Button
-                        variant="outline"
+                        emphasis="secondary"
                         class="mt-2 border-2 border-foreground/15"
                         @click="store.reset(); router.push('/visualize')"
                     >
@@ -360,14 +360,30 @@ async function onCanvasFileSelect(e: Event) {
 }
 @media (min-width: 1024px) { .viz-panel-left-wrap { max-width: none; margin: 0; } }
 
+/* F.W1 / FR-CP-13 ⊕ FR-CP-24 — THE GAP DECISION, made once for both rows.
+   At the adopted pin the producer FUSES adjacent inspector sections
+   (`configurator/styles.css`: a section with a following sibling squares its
+   bottom corners and drops its bottom border; a section preceded by one squares
+   its top corners and collapses `margin-block-start` to 0) so that one
+   inspector reads as ONE contiguous grouped list. That join assumes the stack
+   spaces its children with MARGINS — which is exactly what a flex `gap` is not,
+   and a `gap` the producer cannot cancel is what turns the fused group into
+   flat-ended rectangles floating 12px apart, with FR-CP-24's `border-b`
+   hairlines terminating in the same air.
+   The decision is to KEEP THE FUSING (glass-ui-first: the producer ruled the
+   grouped-list read) and to move this stack's spacing off `gap` and onto the
+   children the fusing does NOT claim. The layers touch, the shared hairline is
+   the one between them, and the non-layer cards above keep their 12px. */
 .viz-panel-left {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
     width: 100%;
     padding: 0.5rem;
     min-height: 0;
     flex: 1;
+}
+.viz-panel-left > :not(.configurator-layer):not(:last-child) {
+    margin-block-end: 0.75rem;
 }
 
 /* ── Right panel (the Configurator #stage cell body) ── */

@@ -8,7 +8,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import type { Visualization, WorkspaceDraft } from "@/lib/types";
-import { Layers, Trash2, Crown, X } from "lucide-vue-next";
+import { Layers, Trash2, Crown, X } from "@lucide/vue";
 
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -279,7 +279,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 <div class="flex flex-col items-center gap-3">
                     <Layers class="h-12 w-12 opacity-30" />
                     <p class="text-base font-medium">No visualizations yet.</p>
-                    <Button variant="outline" @click="router.push('/visualize')">
+                    <Button emphasis="secondary" @click="router.push('/visualize')">
                         Open the Visualizer →
                     </Button>
                 </div>
@@ -315,7 +315,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                     {{ selectedHashes.size }} entr(ies) selected
                 </span>
                 <Button
-                    variant="outline"
+                    emphasis="secondary"
                     size="sm"
                     class="text-xs"
                     @click="askBatchGallery('feature')"
@@ -324,7 +324,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                     Feature
                 </Button>
                 <Button
-                    variant="outline"
+                    emphasis="secondary"
                     size="sm"
                     class="text-xs"
                     @click="askBatchGallery('unfeature')"
@@ -332,7 +332,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                     Unfeature
                 </Button>
                 <Button
-                    variant="destructive"
+                    emphasis="primary" tone="destructive"
                     size="sm"
                     class="text-xs"
                     @click="askBatchGallery('delete')"
@@ -341,8 +341,8 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                     Delete
                 </Button>
                 <Button
-                    variant="ghost"
-                    size="icon"
+                    emphasis="quiet"
+                    size="md" icon-only
                     class="h-7 w-7"
                     aria-label="Clear selection"
                     @click="clearGallerySelection"
@@ -426,9 +426,10 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="ghost" @click="batchDialogOpen = false">Cancel</Button>
+                    <Button emphasis="quiet" @click="batchDialogOpen = false">Cancel</Button>
                     <Button
-                        :variant="pendingBatch?.action === 'delete' ? 'destructive' : 'default'"
+                        emphasis="primary"
+                        :tone="pendingBatch?.action === 'delete' ? 'destructive' : 'neutral'"
                         @click="performBatchGallery"
                     >
                         <template v-if="pendingBatch?.action === 'delete'">Delete</template>

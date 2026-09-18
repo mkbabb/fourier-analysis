@@ -6,7 +6,7 @@ import type { PaperSearchState } from "./search/usePaperSearch";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Collapsible, CollapsibleContent } from "@mkbabb/glass-ui/collapsible";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
-import { ChevronUp } from "lucide-vue-next";
+import { ChevronUp } from "@lucide/vue";
 
 import { ref } from "vue";
 
@@ -52,8 +52,8 @@ const sidebarState = useSidebarState<PaperSectionData>({
             <div class="sidebar-header">
                 <p class="sidebar-label cm-serif">Contents</p>
                 <Button
-                    variant="ghost"
-                    size="icon"
+                    emphasis="quiet"
+                    size="md" icon-only
                     class="sidebar-top-btn"
                     @click="scrollToTop"
                     title="Scroll to top"
@@ -69,7 +69,7 @@ const sidebarState = useSidebarState<PaperSectionData>({
                     >
                         <Tooltip :text="getPreview(section)" side="right">
                             <Button
-                                variant="ghost"
+                                emphasis="quiet"
                                 :data-toc-id="section.id"
                                 @click="scrollTo(section.id); sidebarState.toggleSection(section.id)"
                                 class="sidebar-link cm-serif"
@@ -87,7 +87,7 @@ const sidebarState = useSidebarState<PaperSectionData>({
                                 <li v-for="sub in section.subsections" :key="sub.id">
                                     <Tooltip :text="getPreview(sub)" side="right">
                                         <Button
-                                            variant="ghost"
+                                            emphasis="quiet"
                                             :data-toc-id="sub.id"
                                             @click="scrollTo(sub.id)"
                                             class="sidebar-link sidebar-sublink cm-serif"
@@ -104,7 +104,7 @@ const sidebarState = useSidebarState<PaperSectionData>({
                                     <ol v-if="sub.subsections && isInActiveChain(sub.id, activeId)" class="sidebar-subsublist">
                                         <li v-for="subsub in sub.subsections" :key="subsub.id">
                                             <Button
-                                                variant="ghost"
+                                                emphasis="quiet"
                                                 :data-toc-id="subsub.id"
                                                 @click="scrollTo(subsub.id)"
                                                 class="sidebar-link sidebar-subsublink cm-serif"

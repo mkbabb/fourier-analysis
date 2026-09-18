@@ -5,7 +5,7 @@ import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import * as api from "@/lib/api";
 import type { AuditEntry } from "@/lib/types";
-import { ScrollText, Filter as FilterIcon, X } from "lucide-vue-next";
+import { ScrollText, Filter as FilterIcon, X } from "@lucide/vue";
 
 const auth = useAuthStore();
 
@@ -100,13 +100,13 @@ function actionTone(action: string): string {
                 class="flex-1 min-w-[10rem] rounded border border-muted/30 bg-transparent px-2 py-1 text-xs focus:border-muted-foreground/60 focus:outline-none"
                 @keyup.enter="applyFilters"
             />
-            <Button variant="secondary" size="sm" class="h-7 text-xs" @click="applyFilters">
+            <Button emphasis="secondary" size="sm" class="h-7 text-xs" @click="applyFilters">
                 Apply
             </Button>
             <Button
                 v-if="hasFilters"
-                variant="ghost"
-                size="icon"
+                emphasis="quiet"
+                size="md" icon-only
                 class="h-7 w-7 text-muted-foreground"
                 title="Clear filters"
                 @click="clearFilters"

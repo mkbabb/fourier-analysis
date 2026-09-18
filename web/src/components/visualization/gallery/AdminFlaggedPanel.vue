@@ -13,7 +13,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import type { FlaggedVisualization, GalleryTier } from "@/lib/types";
-import { Flag, Trash2, XCircle, RotateCw, Star } from "lucide-vue-next";
+import { Flag, Trash2, XCircle, RotateCw, Star } from "@lucide/vue";
 
 // B.W4.c — the flagged panel re-points onto the converged `visualization`
 // entity (CRUD-CONTRACT §7). The single user-facing identity is the
@@ -173,11 +173,11 @@ function timeAgo(iso: string | null): string {
                                 aria-hidden="true"
                             />
                             <span class="font-mono text-xs truncate">{{ item.image_slug ?? item.slug }}</span>
-                            <span class="rounded-full bg-red-500/20 px-1.5 py-0.5 text-admin-label text-red-300">
+                            <span class="rounded-full bg-red-500/20 px-1.5 py-0.5 text-mono-micro uppercase font-medium text-red-300">
                                 {{ item.flag_count }} {{ item.flag_count === 1 ? "flag" : "flags" }}
                             </span>
                         </div>
-                        <div class="text-admin-label text-muted-foreground mt-1">
+                        <div class="text-mono-micro uppercase font-medium text-muted-foreground mt-1">
                             by {{ item.owner_slug ?? "anonymous" }} &middot; {{ item.tier ?? "normal" }}
                             <span v-if="item.created_at"> &middot; {{ timeAgo(item.created_at) }}</span>
                         </div>
@@ -186,7 +186,7 @@ function timeAgo(iso: string | null): string {
                             <div
                                 v-for="(flag, i) in item.flags"
                                 :key="i"
-                                class="text-admin-label text-muted-foreground pl-2 border-l border-muted"
+                                class="text-mono-micro uppercase font-medium text-muted-foreground pl-2 border-l border-muted"
                             >
                                 <span class="text-red-300">{{ reasonLabel(flag.reason) }}</span>
                                 <span v-if="flag.detail"> — {{ flag.detail }}</span>
@@ -196,8 +196,8 @@ function timeAgo(iso: string | null): string {
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
                         <Button
-                            variant="ghost"
-                            size="icon"
+                            emphasis="quiet"
+                            size="md" icon-only
                             class="h-7 w-7 text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10"
                             :aria-label="`Mark ${item.image_slug ?? item.slug} acceptable (save tier)`"
                             title="Mark acceptable (save)"
@@ -206,8 +206,8 @@ function timeAgo(iso: string | null): string {
                             <Star class="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
-                            variant="ghost"
-                            size="icon"
+                            emphasis="quiet"
+                            size="md" icon-only
                             class="h-7 w-7 text-muted-foreground hover:text-green-400 hover:bg-green-500/10"
                             :aria-label="`Dismiss flags on ${item.image_slug ?? item.slug}`"
                             title="Dismiss flags"
@@ -216,8 +216,8 @@ function timeAgo(iso: string | null): string {
                             <XCircle class="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
-                            variant="ghost"
-                            size="icon"
+                            emphasis="quiet"
+                            size="md" icon-only
                             class="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                             :aria-label="`Delete entry ${item.image_slug ?? item.slug}`"
                             title="Delete entry"
@@ -244,7 +244,7 @@ function timeAgo(iso: string | null): string {
             aria-label="Flagged entries pagination"
         >
             <Button
-                variant="ghost"
+                emphasis="quiet"
                 size="sm"
                 class="gap-1.5"
                 :disabled="loadingMore"
@@ -272,8 +272,8 @@ function timeAgo(iso: string | null): string {
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button variant="ghost" @click="dialogOpen = false">Cancel</Button>
-                    <Button variant="destructive" @click="confirmDelete">Delete</Button>
+                    <Button emphasis="quiet" @click="dialogOpen = false">Cancel</Button>
+                    <Button emphasis="primary" tone="destructive" @click="confirmDelete">Delete</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

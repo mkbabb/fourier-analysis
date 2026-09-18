@@ -6,7 +6,7 @@ import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurato
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
-import { RotateCcw } from "lucide-vue-next";
+import { RotateCcw } from "@lucide/vue";
 
 const fourierModes = ["fourier-epicycles", "fourier-series"] as const;
 
@@ -22,7 +22,7 @@ const emit = defineEmits<{
     (e: "update:nPoints", v: number): void;
 }>();
 
-/* A.W2.c — `<Slider variant="standard">` accepts an array model; the
+/* A.W2.c — `<Slider>` accepts an array model; the
    parent's scalar `nHarmonics` / `nPoints` are adapted via paired computed
    getters/setters that wrap the emit. */
 const harmonicsModel = computed<number[]>({
@@ -123,8 +123,8 @@ function toggleBasis(key: string) {
         <div class="flex items-center justify-end -mt-1 -mb-1">
             <Tooltip text="Reset to defaults">
                 <Button
-                    variant="ghost"
-                    size="icon"
+                    emphasis="quiet"
+                    size="md" icon-only
                     class="reset-icon-btn"
                     :class="{ 'is-default': isDefault }"
                     aria-label="Reset to defaults"
@@ -138,7 +138,7 @@ function toggleBasis(key: string) {
         <div class="flex flex-wrap justify-center gap-1.5 pb-1">
             <Tooltip v-for="(info, key) in basisDisplay" :key="key" :text="getBasisTooltip(key as string)">
                 <Button
-                    variant="outline"
+                    emphasis="secondary"
                     size="sm"
                     class="basis-toggle"
                     :aria-pressed="isBasisActive(key as string)"
@@ -167,7 +167,6 @@ function toggleBasis(key: string) {
                 </div>
                 <Slider
                     v-model="harmonicsModel"
-                    variant="standard"
                     :min="1"
                     :max="500"
                     :step="1"
@@ -194,7 +193,6 @@ function toggleBasis(key: string) {
                 </div>
                 <Slider
                     v-model="pointsModel"
-                    variant="standard"
                     :min="128"
                     :max="4096"
                     :step="128"

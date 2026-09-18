@@ -53,9 +53,11 @@ export function useMorphConfig(initialConfig?: Partial<MorphConfig>) {
     );
 
     /* P.W5 Lane B.2 — replaced manual `copied` ref + 2s timeout + onUnmounted
-       cleanup with glass-ui's `useClipboard` composable (auto-resets `copied`
-       and owns timer-cleanup discipline). */
-    const { copied, copy } = useClipboard({ resetMs: 2000 });
+       cleanup with glass-ui's `useClipboard` composable (it owns the reset and
+       the timer-cleanup discipline). F.W1 / FR-EQR-1: at glass-ui ≥7 that
+       composable returns `status` (`idle | pending | success | failure`), never
+       a `copied` boolean, and the state travels to consumers by that name. */
+    const { status, copy } = useClipboard({ resetMs: 2000 });
 
     function reset() {
         Object.assign(config, DEFAULT_MORPH_CONFIG);
@@ -87,7 +89,7 @@ export function useMorphConfig(initialConfig?: Partial<MorphConfig>) {
         config,
         totalMs,
         previewLevels,
-        copied,
+        status,
         reset,
         updateField,
         toJSON,

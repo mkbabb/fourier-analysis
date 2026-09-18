@@ -122,7 +122,7 @@
             </div>
         </div>
 
-        <Button id="extract-btn" variant="default" size="default" @click="extractAndOutput">
+        <Button id="extract-btn" emphasis="primary" @click="extractAndOutput">
             Extract Shape Contours
         </Button>
 
