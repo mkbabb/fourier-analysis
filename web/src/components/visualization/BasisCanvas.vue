@@ -3,8 +3,12 @@ import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { fourierPositionsAt, evaluateFourier } from "@/lib/bases";
-import { VIZ_COLORS, hexToRgba } from "@/lib/colors";
-import { goldenShimmerAlpha, clearShimmer } from "@/lib/golden-shimmer";
+import { VIZ_COLORS } from "@/lib/colors";
+import {
+    goldenShimmerAlpha,
+    goldenShimmerShadow,
+    clearShimmer,
+} from "@/lib/golden-shimmer";
 import { basisDisplay } from "./lib/basis-display";
 import type { BasisComponent } from "@/lib/types";
 import type { CanvasSurface, ViewTransform, EpicycleBbox } from "./lib/canvas-drawing";
@@ -258,7 +262,7 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
         ctx.lineWidth = isHovered ? 4 : 3;
         ctx.globalAlpha = isHovered ? shimmer : 0.85;
         if (isHovered) {
-            ctx.shadowColor = hexToRgba(VIZ_COLORS.golden, shimmer * 0.5);
+            ctx.shadowColor = goldenShimmerShadow(shimmer * 0.5);
             ctx.shadowBlur = 10;
         }
         ctx.lineJoin = "round";

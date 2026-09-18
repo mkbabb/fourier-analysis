@@ -42,6 +42,15 @@ const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
  * `rgba(…, NaN, …)` on the floor without a word — so a malformed hex is raised
  * at the boundary instead of travelling as a channel that silently paints
  * nothing.
+ *
+ * THE DECLARED HEX RESIDUAL (W.L5 ACT(2) · RD-6/RD-7), with this file and
+ * `withAlpha` below its only two lines of hand-rolled color math. It is not a
+ * missing value.js verb: `parseCssColor` + `toRgba8` read this same hex, but
+ * the callers below run inside a rAF frame callback and a full CSS parse per
+ * tick is the wrong instrument for a string this file authored itself. It is
+ * declared rather than kept: DELETION DATE = fourier's 4.1 adoption of
+ * value.js, at which point the palette hands its consumers a resolved color
+ * object and the hex hop disappears with it.
  */
 function hexChannels(hex: string): [number, number, number] {
     if (!HEX_COLOR.test(hex)) {
@@ -167,16 +176,17 @@ export function installVizColors(): void {
 }
 
 /**
- * Return an rgba() string from a hex color + alpha.
+ * A palette entry at a given alpha, as a Canvas2D paint string.
+ *
+ * The one surviving arm of the hex residual above: a canvas context takes a CSS
+ * color STRING and has no cascade to resolve `var(--token)` against, so this is
+ * the single place the palette's hex is composited with an alpha. Every canvas
+ * consumer routes through here rather than composing its own — `alpha` is the
+ * caller's, the color is the palette's, and neither is re-authored downstream.
+ *
+ * Dies with `hexChannels` at fourier's 4.1 adoption (RD-6/RD-7).
  */
-export function hexToRgba(hex: string, alpha: number): string {
+export function withAlpha(hex: string, alpha: number): string {
     const [r, g, b] = hexChannels(hex);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-/**
- * Return the RGB components of a hex color as [r, g, b].
- */
-export function hexToRgb(hex: string): [number, number, number] {
-    return hexChannels(hex);
 }

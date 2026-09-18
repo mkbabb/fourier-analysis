@@ -2,7 +2,7 @@ import type { BasisComponent } from "@/lib/types";
 import type { CanvasSurface, ViewTransform } from "./types";
 import { spectrumColor } from "./transforms";
 import { fourierPositionsAt } from "@/lib/bases";
-import { VIZ_COLORS, hexToRgba } from "@/lib/colors";
+import { VIZ_COLORS, withAlpha } from "@/lib/colors";
 
 export const BASE_EPICYCLE_SCALE = 0.38;
 export const HOVER_EPICYCLE_SCALE = 0.55;
@@ -255,7 +255,7 @@ export function drawConnectingLine(
     ctx.beginPath();
     ctx.moveTo(tipSx, tipSy);
     ctx.lineTo(traceSx, traceSy);
-    ctx.strokeStyle = hexToRgba(VIZ_COLORS.fourier, 0.25);
+    ctx.strokeStyle = withAlpha(VIZ_COLORS.fourier, 0.25);
     ctx.globalAlpha = epicycleAlpha;
     ctx.lineWidth = 1.5;
     ctx.lineCap = "round";
@@ -280,7 +280,7 @@ export function drawTipDot(
     const glowAlpha = 0.2 + 0.1 * Math.sin(performance.now() / 300);
     ctx.beginPath();
     ctx.arc(sx, sy, 20, 0, Math.PI * 2);
-    ctx.fillStyle = hexToRgba(VIZ_COLORS.fourier, glowAlpha);
+    ctx.fillStyle = withAlpha(VIZ_COLORS.fourier, glowAlpha);
     ctx.fill();
 
     // Solid dot

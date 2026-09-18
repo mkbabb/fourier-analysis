@@ -5,11 +5,25 @@
  * convergence plot to give hovered/active curves a consistent golden glow.
  */
 
-import { VIZ_COLORS, hexToRgba } from "@/lib/colors";
+import { VIZ_COLORS, withAlpha } from "@/lib/colors";
 
 /** Compute the shimmer alpha oscillation (0.85 → 1.0 at ~200ms period). */
 export function goldenShimmerAlpha(): number {
     return 0.85 + 0.15 * Math.sin(performance.now() / 200);
+}
+
+/**
+ * The golden halo paint at a given alpha — ONE source for every shimmer site.
+ *
+ * The sum swatch and the shimmer pipeline paint one identity, and they drifted
+ * apart once already: the legend swatch moved to a token while the curve kept a
+ * frozen hex, so the halo was re-derived from `VIZ_COLORS.golden` at each canvas
+ * that drew it (fr-ConvergenceLegend C-2). The halo color is now named here and
+ * nowhere else, which is what makes the swatch's own re-join a one-line change
+ * at the owning wave instead of a hunt through three canvases.
+ */
+export function goldenShimmerShadow(alpha: number): string {
+    return withAlpha(VIZ_COLORS.golden, alpha);
 }
 
 /**
@@ -52,10 +66,10 @@ export function applyGoldenShimmer(
     ctx.lineWidth = hovered ? hoverWidth : baseWidth;
 
     if (hovered) {
-        ctx.shadowColor = hexToRgba(VIZ_COLORS.golden, shimmer * 0.5);
+        ctx.shadowColor = goldenShimmerShadow(shimmer * 0.5);
         ctx.shadowBlur = hoverBlur;
     } else if (playing) {
-        ctx.shadowColor = hexToRgba(VIZ_COLORS.golden, shimmer * 0.3);
+        ctx.shadowColor = goldenShimmerShadow(shimmer * 0.3);
         ctx.shadowBlur = playBlur;
     }
 }
