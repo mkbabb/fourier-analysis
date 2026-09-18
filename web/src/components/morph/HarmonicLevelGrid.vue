@@ -44,14 +44,14 @@
                     :value="highLevel"
                     @change="emitHigh(($event.target as HTMLInputElement).value)"
                     :min="lowLevel + 1"
-                    max="100"
+                    :max="maxLevel"
                     step="1"
                     class="level-input fira-code tabular-nums"
                 />
                 <Slider
                     v-model="highModel"
                     :min="lowLevel + 1"
-                    :max="100"
+                    :max="maxLevel"
                     :step="1"
                     aria-label="High harmonic level"
                     class="level-slider-track"
@@ -105,6 +105,12 @@ const props = defineProps<{
     activeLevel: number;
     lowLevel: number;
     highLevel: number;
+    /**
+     * FM-20 — the previewed asset's own ceiling. The `100` this component used
+     * to hard-code at three sites (`max` attribute, slider `:max`, `emitHigh`'s
+     * clamp) was a literal that no shipped shape could honour.
+     */
+    maxLevel: number;
 }>();
 
 /* HLG-8 — collision-proof ids for the two `for`/`id` label pairings. */
@@ -123,7 +129,7 @@ function emitLow(raw: string) {
 }
 
 function emitHigh(raw: string) {
-    const v = Math.max(props.lowLevel + 1, Math.min(100, Number(raw) || 1));
+    const v = Math.max(props.lowLevel + 1, Math.min(props.maxLevel, Number(raw) || 1));
     emit("update:highLevel", v);
 }
 
@@ -137,9 +143,43 @@ const highModel = computed<number[]>({
     set: (arr) => emitHigh(String(arr[0] ?? 1)),
 });
 
+/**
+ * X.F.W4 · SP-19 — FM-3 (= FMD-10) ⊕ FMD-N6: THE MEMO AND THE PRECISION, which
+ * land together or not at all.
+ *
+ * `getPath` was a bare call inside a twelve-cell `v-for`, so every re-render —
+ * every `activeLevel` crossing, every slider tick — rebuilt all twelve
+ * 512-point paths from scratch: ~168 identical ~57 K-char rebuilds per toggle.
+ * And the strings it rebuilt carried full float64 coordinates, 17 significant
+ * digits per point, into a 48-or-64px box: ~667.6 KiB of `d`-attribute text
+ * RESIDENT at all times on this route, ~10 cubic segments per rendered pixel.
+ *
+ * ⊘ CURE-COMPLETENESS (the spec's lock): the memo alone leaves the 667.6 KiB
+ * resident — it only stops rebuilding it — and the precision alone leaves the
+ * rebuild churn. Both, or the row is half-landed. The precision half lands in
+ * `pointsToSvgPath` (2dp at emission — see there for why rounding the INPUT
+ * points does not work), so BOTH halves of the lock are in this one commit;
+ * `PathPreview.vue:39` is the in-tree precedent for the idiom.
+ *
+ * The cache is keyed on the shape identity as well as the level, because the
+ * two shapes share a level table and a level-keyed cache would hand the moon
+ * the sun's path.
+ */
+const pathCache = new Map<FourierShape, Map<number, string>>();
+
 function getPath(level: number): string {
+    let byLevel = pathCache.get(props.shape);
+    if (!byLevel) {
+        byLevel = new Map();
+        pathCache.set(props.shape, byLevel);
+    }
+    const hit = byLevel.get(level);
+    if (hit !== undefined) return hit;
+
     const points = interpolateAtHarmonicLevel(props.shape, level);
-    return pointsToSvgPath(points);
+    const path = pointsToSvgPath(points);
+    byLevel.set(level, path);
+    return path;
 }
 </script>
 

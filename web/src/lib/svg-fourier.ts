@@ -8,7 +8,6 @@
  * - Selecting the right harmonic level for a given animation t
  */
 
-import { catmullRomToBezier } from "@mkbabb/pencil-boil";
 import type { BasisComponent } from "./types";
 
 /** Pre-computed Fourier path data (matches Python script output). */
@@ -34,8 +33,14 @@ export interface FourierShape {
     pointsByLevel: Map<number, [number, number][]>;
 }
 
-/** Convert {x[], y[]} to [[x,y], ...] point array. */
-export function xyToPoints(xy: { x: number[]; y: number[] }): [number, number][] {
+/**
+ * Convert {x[], y[]} to [[x,y], ...] point array.
+ *
+ * FR-AH-37 — module-private. It was exported and had exactly one caller, in
+ * this file: a public surface with no public consumer, which a dead-code sweep
+ * cannot see because the export IS the reference.
+ */
+function xyToPoints(xy: { x: number[]; y: number[] }): [number, number][] {
     const points: [number, number][] = new Array(xy.x.length);
     for (let i = 0; i < xy.x.length; i++) {
         points[i] = [xy.x[i], xy.y[i]];
@@ -43,36 +48,80 @@ export function xyToPoints(xy: { x: number[]; y: number[] }): [number, number][]
     return points;
 }
 
-/** Convert a point array to an SVG path `d` string using Catmull-Rom smoothing. */
-export function pointsToSvgPath(
-    points: [number, number][],
-    closed: boolean = true,
-): string {
+/**
+ * Convert a point array to a closed SVG path `d` string using Catmull-Rom
+ * smoothing, with modular indexing so tangents wrap at the seam.
+ *
+ * X.F.W4 · FM-22 (= FR-AH-53) — THE `closed = false` BRANCH IS DELETED, and the
+ * `catmullRomToBezier` import with it. The parameter defaulted to `true` and
+ * the tree-wide caller census is exactly two, both single-argument
+ * (`useFourierMorph.ts` and `HarmonicLevelGrid.vue`), so the open branch was
+ * unreachable APP-WIDE and the producer edge behind it was dead code riding
+ * every bundle that touched this module.
+ * ⊘ HLG-43's repair hazard is respected: `@mkbabb/pencil-boil` is NOT removable
+ * as a dependency — it keeps two other live consumers
+ * (`FourierShapeExtractor.vue`, `SvgFilters.vue`). Only this EDGE dies.
+ *
+ * X.F.W4 · SP-19 — DMT N-14's 2dp EMISSION ⊕ FMD-N6's precision leg, in the one
+ * place that can carry them.
+ *
+ * Every coordinate was emitted at full float64 — 17 significant digits per
+ * number — into a `0 0 200 200` viewBox rendered at ≤180px. That is ~57 K chars
+ * per path, rebuilt and re-parsed by the engine on every frame of a morph
+ * (~1.2 MB of transient text per toggle) and ~667.6 KiB resident across the
+ * twelve-cell strip. Rounding the INPUT points does not fix it: the Catmull-Rom
+ * control points are computed from them here, so full precision comes straight
+ * back in the arithmetic — the rounding has to happen at EMISSION, which is
+ * this function.
+ *
+ * Two decimals is 0.01 user units, i.e. **0.0022px** at the toggle's 44px box
+ * and 0.009px at the strip's 200px — below what any display can resolve, and
+ * the figure DMT N-14 names.
+ */
+const EMIT_DP = 2;
+
+/** Emit a coordinate at the ladder's resolution, without trailing zeros. */
+function n(v: number): string {
+    return String(Number(v.toFixed(EMIT_DP)));
+}
+
+export function pointsToSvgPath(points: [number, number][]): string {
     if (points.length < 2) return "";
-    if (!closed) return catmullRomToBezier(points);
 
-    // For closed paths, use modular indexing so tangents wrap at the seam
-    const n = points.length;
-    let d = `M${points[0][0]},${points[0][1]}`;
+    const count = points.length;
+    let d = `M${n(points[0][0])},${n(points[0][1])}`;
 
-    for (let i = 0; i < n; i++) {
-        const p0 = points[(i - 1 + n) % n];
+    for (let i = 0; i < count; i++) {
+        const p0 = points[(i - 1 + count) % count];
         const p1 = points[i];
-        const p2 = points[(i + 1) % n];
-        const p3 = points[(i + 2) % n];
+        const p2 = points[(i + 1) % count];
+        const p3 = points[(i + 2) % count];
 
         const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
         const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
         const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
         const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
 
-        d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`;
+        d += ` C${n(cp1x)},${n(cp1y)} ${n(cp2x)},${n(cp2y)} ${n(p2[0])},${n(p2[1])}`;
     }
 
     return d + " Z";
 }
 
-/** Pre-process a FourierPathData into a FourierShape with cached point arrays. */
+/**
+ * Pre-process a FourierPathData into a FourierShape with cached point arrays.
+ *
+ * X.F.W4 · SP-19 — DMT N-15, THE THROW AT PREPARE.
+ *
+ * This module's error posture was uniformly silent, and the silence compounded:
+ * a renamed or dropped `partial_sums` key was swallowed by `if (ps)`, bracketing
+ * degraded through `loPoints ?? hiPoints ?? []`, an empty array became `d=""`,
+ * and the result was an INVISIBLE GLYPH with no diagnostic anywhere — a data
+ * contract break that renders as a design choice. The asset is a build input,
+ * so an empty map can only mean the shipped JSON and this code disagree about
+ * its shape, and that is worth failing loudly at prepare rather than silently at
+ * paint.
+ */
 export function prepareFourierShape(data: FourierPathData): FourierShape {
     const pointsByLevel = new Map<number, [number, number][]>();
 
@@ -82,6 +131,14 @@ export function prepareFourierShape(data: FourierPathData): FourierShape {
         if (ps) {
             pointsByLevel.set(level, xyToPoints(ps));
         }
+    }
+
+    if (pointsByLevel.size === 0) {
+        throw new Error(
+            `prepareFourierShape: no usable levels — ${data.levels.length} declared in \`levels\`, ` +
+                `none present in \`partial_sums\` (keys: ${Object.keys(data.partial_sums).join(", ") || "none"}). ` +
+                `The shape asset and this reader disagree about its shape.`,
+        );
     }
 
     return { data, pointsByLevel };
@@ -96,7 +153,25 @@ export function lerpPoints(
     b: [number, number][],
     t: number,
 ): [number, number][] {
-    const n = Math.min(a.length, b.length);
+    /**
+     * X.F.W4 · SP-19 — FM-23, the UNIFORM-LENGTH assertion, and the one link
+     * DMT N-15's emptiness check does NOT catch.
+     *
+     * `Math.min(a.length, b.length)` silently truncated to the shorter array, so
+     * two shapes sampled at different resolutions cross-faded into a partial
+     * path that closed early — geometrically wrong, entirely silent, and
+     * INVISIBLE to an emptiness check because both operands are non-empty. The
+     * two assertions are a pair by construction: one catches nothing present,
+     * the other catches present-but-mismatched.
+     */
+    if (a.length !== b.length) {
+        throw new Error(
+            `lerpPoints: point arrays must be the same length (got ${a.length} and ${b.length}). ` +
+                `Truncating to the shorter one produces a silently incomplete path.`,
+        );
+    }
+
+    const n = a.length;
     const out: [number, number][] = new Array(n);
     const t1 = 1 - t;
     for (let i = 0; i < n; i++) {

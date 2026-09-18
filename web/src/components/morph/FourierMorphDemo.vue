@@ -61,6 +61,7 @@
                 :active-level="nearestActiveLevel"
                 :low-level="morphConfig.config.lowLevel"
                 :high-level="morphConfig.config.highLevel"
+                :max-level="morphConfig.maxLevel.value"
                 @update:low-level="morphConfig.config.lowLevel = $event"
                 @update:high-level="morphConfig.config.highLevel = $event"
                 @select="handlePreviewClick"
@@ -90,6 +91,7 @@ import MorphPhaseConfig from "@/components/morph/MorphPhaseConfig.vue";
 import HarmonicLevelGrid from "@/components/morph/HarmonicLevelGrid.vue";
 import { useFourierMorph } from "@/composables/useFourierMorph";
 import { useMorphConfig } from "@/composables/useMorphConfig";
+import { DEFAULT_MORPH_CONFIG } from "@/composables/useFourierMorph";
 import { prepareFourierShape, nearestLevel } from "@/lib/svg-fourier";
 
 import sunData from "@/assets/fourier-paths/sun.json";
@@ -104,7 +106,13 @@ const currentShapeName = computed(() => (isMoon.value ? "Moon" : "Sun"));
 const currentShape = computed(() => (isMoon.value ? moonShape : sunShape));
 
 // ── Config + morph composables ───────────────────────────────────
-const morphConfig = useMorphConfig();
+/* FM-20 — the source-of-truth shape is named HERE, at the only place that knows
+   which shape the strip is previewing, rather than guessed inside the config. */
+const shapeMaxLevel = computed(() => {
+    const levels = currentShape.value.data.levels;
+    return levels[levels.length - 1] ?? DEFAULT_MORPH_CONFIG.highLevel;
+});
+const morphConfig = useMorphConfig(undefined, shapeMaxLevel);
 const morph = useFourierMorph({ config: { ...morphConfig.config } });
 
 // Sync live config changes into the morph composable
