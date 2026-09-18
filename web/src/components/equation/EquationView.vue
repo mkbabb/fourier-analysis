@@ -89,6 +89,29 @@ const { hoveredCoeff, popoverPos, popoverHtml, onMouseMove: onCoeffMove, onMouse
 // the refs.
 const N_EVAL_POINTS = 500;
 
+/**
+ * `B-2` / `M-BR` — the server bounds `budget` at `ge=2, le=50` on BOTH pydantic
+ * models, and one Harmonics drag from the shipped defaults used to walk the ref
+ * past 50; the 422 then landed in `doSimplify`'s silent catch and the escalated
+ * value was persisted, so the NEXT session's first compute 422'd cold.
+ *
+ * The clamp lands HERE, at the one seam every request passes through, because
+ * `M-BR` killed the slider-side cure by enumeration: the restore path never
+ * passes through the slider at all. The Display-terms control clamps its own
+ * WRITE as well (`FI-N-5`) — that is the second instance, not a duplicate of
+ * this one: it stops the ref from ever HOLDING a number the component will not
+ * send, which is what makes the displayed figure honest.
+ *
+ * ⊘ The shared bound constant across the client/server seam is F.W5–W8's
+ * (`EV-B-2`'s contract half). Until it exists this is a local mirror and says so.
+ */
+const MAX_BUDGET = 50;
+const MIN_BUDGET = 2;
+
+function clampBudget(v: number): number {
+    return Math.max(MIN_BUDGET, Math.min(MAX_BUDGET, Math.round(v)));
+}
+
 function currentRequest(): ComputeEquationRequest {
     return {
         expression: expression.value.trim(),
@@ -97,7 +120,7 @@ function currentRequest(): ComputeEquationRequest {
         n_harmonics: nHarmonics.value,
         n_eval_points: N_EVAL_POINTS,
         notation: notation.value,
-        budget: budget.value,
+        budget: clampBudget(budget.value),
     };
 }
 
@@ -195,15 +218,23 @@ async function doSimplify() {
 
 // ── Watches ──
 
-watch(vizHarmonics, (v, oldV) => {
-    if (budget.value > v) {
-        budget.value = Math.max(2, v);
-    } else if (oldV != null && oldV > 0 && budget.value <= oldV) {
-        // Budget was at or near the old cap — scale it up proportionally
-        const ratio = budget.value / oldV;
-        budget.value = Math.max(2, Math.round(v * ratio));
-    }
-});
+// `L·M-6` — the rescale arm is GONE, not re-guarded. Its comment claimed to fire
+// only when the budget sat "at or near the old cap", but `budget <= oldV` holds
+// in EVERY reachable steady state (the first branch forces `budget ≤ v`, and the
+// Display-terms slider's own `:max` IS `vizHarmonics`), so exactly one branch
+// fired on every change and the user's explicit Display-terms choice was
+// rewritten on every step of a Harmonics drag. That recurrence — `budget(v) =
+// v − 10` on a monotone up-drag — is `B-2`'s engine, and a guard that merely
+// said what the comment said would keep a rescale nobody asked for. What
+// survives is the only honest half: when the cap DROPS below the choice, the
+// choice is lowered to the cap.
+//
+// `M-BR` — `immediate: true` is the restore-time reconciliation the watcher
+// never had: `autoHarmonics` is not persisted and resets true, so a reload could
+// collapse `vizHarmonics` below a restored `budget` with no watcher fire at all.
+watch(vizHarmonics, (v) => {
+    if (budget.value > v) budget.value = Math.max(MIN_BUDGET, v);
+}, { immediate: true });
 
 watch(
     () => [expression.value, domainStart.value, domainEnd.value, nHarmonics.value, budget.value, notation.value],

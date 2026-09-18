@@ -77,6 +77,18 @@ function formatDomain(val: number): string {
     return val.toFixed(4).replace(/\.?0+$/, "");
 }
 
+/**
+ * `FI-N-5` — the Display-terms control clamped on READ and not on WRITE, so it
+ * DISPLAYED a number the component would not SEND. The two now agree: one bound,
+ * used by the model, the slider's `:max`, and the write.
+ */
+const displayTermsMax = computed(() => Math.max(2, props.vizHarmonics ?? nHarmonics.value));
+const displayTerms = computed(() => Math.min(budget.value, displayTermsMax.value));
+
+function onDisplayTerms(v: number) {
+    budget.value = Math.max(2, Math.min(displayTermsMax.value, v));
+}
+
 const activePreset = computed(() =>
     PRESETS.find(
         (p) =>
@@ -213,10 +225,10 @@ const activePreset = computed(() =>
                     <SliderControl
                         label="Display terms"
                         subtitle="shown in expanded (a+b) view"
-                        :model-value="Math.min(budget, vizHarmonics ?? nHarmonics)"
-                        :min="2" :max="Math.max(2, vizHarmonics ?? nHarmonics)" :step="1"
+                        :model-value="displayTerms"
+                        :min="2" :max="displayTermsMax" :step="1"
                         color="var(--viz-fourier)"
-                        @update:model-value="budget = $event"
+                        @update:model-value="onDisplayTerms"
                     />
                     <div>
                         <label class="text-sm font-medium text-muted-foreground mb-1.5 block">Notation</label>
