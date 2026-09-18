@@ -89,9 +89,8 @@ import { ClipboardCopy, Check, RotateCcw } from "@lucide/vue";
 import MorphShapePreview from "@/components/morph/MorphShapePreview.vue";
 import MorphPhaseConfig from "@/components/morph/MorphPhaseConfig.vue";
 import HarmonicLevelGrid from "@/components/morph/HarmonicLevelGrid.vue";
-import { useFourierMorph } from "@/composables/useFourierMorph";
+import { useFourierMorph, DEFAULT_MORPH_CONFIG } from "@/composables/useFourierMorph";
 import { useMorphConfig } from "@/composables/useMorphConfig";
-import { DEFAULT_MORPH_CONFIG } from "@/composables/useFourierMorph";
 import { prepareFourierShape, nearestLevel } from "@/lib/svg-fourier";
 
 import sunData from "@/assets/fourier-paths/sun.json";

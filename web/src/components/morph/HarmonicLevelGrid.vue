@@ -96,8 +96,11 @@
 import { computed, useId } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Slider } from "@mkbabb/glass-ui/slider";
-import type { FourierShape } from "@/lib/svg-fourier";
-import { interpolateAtHarmonicLevel, pointsToSvgPath } from "@/lib/svg-fourier";
+import {
+    interpolateAtHarmonicLevel,
+    pointsToSvgPath,
+    type FourierShape,
+} from "@/lib/svg-fourier";
 
 const props = defineProps<{
     shape: FourierShape;

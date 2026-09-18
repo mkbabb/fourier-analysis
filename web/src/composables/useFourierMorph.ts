@@ -12,11 +12,11 @@
 
 import { ref, computed, onUnmounted, type Ref } from "vue";
 import { loadAnimationEngine, type KeyframesAnimation } from "@mkbabb/keyframes.js";
-import type { FourierShape } from "@/lib/svg-fourier";
 import {
     interpolateAtHarmonicLevel,
     lerpPoints,
     pointsToSvgPath,
+    type FourierShape,
 } from "@/lib/svg-fourier";
 
 /**
