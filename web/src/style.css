@@ -36,8 +36,62 @@
    block and `[data-state="active"][role="tabpanel"]` animation are filed
    upstream as glass-ui carries — see `coordination/CONSTELLATION.md`. */
 
+/* X.F.W4 / SP-10 — FONT TRUTH: THE ONE DECISION, STATED (FR-AH-2 · MISS-FONT,
+   and §3 D10's font leg).
+
+   The decision is **COMMIT TO THE CM IDENTITY**, not `@import
+   "@mkbabb/glass-ui/styles/fonts"`. Measured, not preferred:
+
+     · glass-ui's font corpus is a deliberate separate subpath and ships
+       **132,840 B** of base64-inlined faces — exactly two families, ⟨cmd⟩
+       `grep -o 'font-family: *"[^"]*"' dist/styles/fonts.css | sort -u` →
+       `"Fira Code"` · `"Plus Jakarta Sans"`. Fourier already self-hosts Fira
+       Code same-origin (`public/fonts.css`), and Plus Jakarta Sans has ZERO
+       application sites in this app. Importing it would add a third of a
+       megabyte of CSS to make a sans the brand fork exists to REJECT.
+     · The app's own identity is Computer Modern: four CM faces vendored under
+       `/public/fonts/Serif`, a `@theme` fork that already remaps `--font-sans`
+       onto it, and 26 `cm-serif` sites across 17 files.
+
+   What was broken is that the brand fork stopped at ONE token. glass-ui bridges
+   `--font-serif` → `--font-stack-text` → `"Plus Jakarta Sans"` (a SANS, and an
+   unloaded one), `--font-display` the same, and `--font-serif-math` — the
+   variable the producer's own `@utility cm-serif{font-family:var(
+   --font-serif-math,serif)}` reads — is declared in NO tree, so every
+   `cm-serif` site fell to generic serif. That is why the masthead rendered its
+   ℱ (`fourier-f` → `--font-display`) and its wordmark (`cm-serif` →
+   `--font-serif-math`) in two unrelated fallbacks.
+
+   The three registers are bound here, to faces this app actually loads, and the
+   producer's utilities resolve through them unchanged. ⊘ `--font-mono` is NOT
+   restated: the producer already resolves it to the Fira Code this app vendors.
+   ⊘ The D-B2 unicode-range leg stays KILLED — Plus Jakarta never loads at all,
+   so there is no range to split. GLASS-RELAY (ridden, not hacked here): `cm-serif`
+   reads a variable glass-ui never declares, so it silently no-ops for every
+   consumer that does not know to declare it. */
 @theme {
+    /* ⊘ The fork is stated at each REGISTER, not at the producer's
+       `--font-stack-text` bridge head. That was tried first and MEASURED not to
+       take: `@theme` wins against `theme/bridges.css`'s leaf declarations but
+       loses against the stack head, so forking the head left `--font-serif` and
+       `--font-text` on Plus Jakarta while `--font-sans` resolved to nothing at
+       all. Four declarations that are proven to win beat one that reads
+       elegantly and silently does not. */
     --font-sans: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
+    --font-serif: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
+    /* `--font-text` is the one the PRODUCER's own `body { font-family:
+       var(--font-text) }` reads, and that rule beats this app's `@layer base`
+       binding — so forking the leaves without it left the page's own body copy
+       on an unloaded sans while every branded element moved. The omission was
+       invisible precisely because the platform fallback is also a serif. */
+    --font-text: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
+    /* The display register: Fraunces is vendored beside CM and is the face the
+       producer's `fourier-f` utility renders the masthead ℱ in. It is NOT
+       bridged to the text stack, because the two ARE different faces. */
+    --font-display: "Fraunces", "Computer Modern Serif", "Latin Modern Roman", Georgia, serif;
+    /* The variable `@utility cm-serif` reads and glass-ui never declares — the
+       one that silently no-opped 26 sites across 17 files. */
+    --font-serif-math: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
 }
 
 @layer base {

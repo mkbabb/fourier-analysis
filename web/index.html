@@ -7,11 +7,27 @@
         <meta name="description" content="An interactive treatise on Fourier analysis and orthogonal decomposition — epicycle visualizations, an equation explorer, and a full typeset paper deriving the transform through the dual lenses of linear algebra and complex analysis." />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-        <!-- Preload the critical CM Serif body + bold faces (used on every page).
-             Same-origin, vendored under /public/fonts — no crossorigin attribute. -->
-        <link rel="preload" href="/fonts/Serif/cmunrm.woff" as="font" type="font/woff" />
-        <link rel="preload" href="/fonts/Serif/cmunbx.woff" as="font" type="font/woff" />
-        <link rel="preload" href="/fonts/Serif/cmunti.woff" as="font" type="font/woff" />
+        <!-- X.F.W4 / SP-10 · FR-AH-36 — the CM preloads, made matchable.
+
+             `crossorigin` is NOT about the origin. A font fetched by
+             `@font-face` is ALWAYS made in CORS-anonymous mode, so a preload
+             WITHOUT the attribute occupies a different cache key and can never
+             be matched by the fetch it exists to warm — the previous comment's
+             same-origin reasoning was wrong on the platform rule, and these
+             three files (402,944 B) were fetched at highest priority on every
+             route and then discarded, twice over: the faces also had no
+             consumer, because `--font-serif`/`--font-serif-math` resolved to an
+             unloaded Plus Jakarta stack (FR-AH-2).
+
+             Both halves of FR-AH-36's alternative are now met — the faces have
+             a consumer (the CM identity is committed at `style.css`'s `@theme`)
+             and the preloads can match — so they live rather than die. The
+             remaining question is how many of the three belong in the critical
+             set at all; that is FR-AH-1's boot-payload budget, measured with
+             the JSON prune and not guessed here. -->
+        <link rel="preload" href="/fonts/Serif/cmunrm.woff" as="font" type="font/woff" crossorigin />
+        <link rel="preload" href="/fonts/Serif/cmunbx.woff" as="font" type="font/woff" crossorigin />
+        <link rel="preload" href="/fonts/Serif/cmunti.woff" as="font" type="font/woff" crossorigin />
 
         <!-- Self-hosted webfonts: Computer Modern Serif body face + Fraunces
              (display) + Fira Code (mono). KaTeX CSS is bundler-imported in
