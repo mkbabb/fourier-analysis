@@ -8,6 +8,7 @@
         "build": "vue-tsc -b && vite build",
         "preview": "vite preview",
         "lint": "eslint src",
+        "derive:loops": "node --experimental-strip-types scripts/derive-loops.ts",
         "test:unit": "vitest run",
         "test:unit:watch": "vitest",
         "test:e2e": "playwright test",

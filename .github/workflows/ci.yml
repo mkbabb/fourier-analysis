@@ -185,6 +185,23 @@ jobs:
         # on an import it never asked for, so the two coexist until F.W9's
         # `G-F9-1` consolidates them.
         run: npm run test:unit
+      - name: Deriver census (X·F F.W4, G-F4-DERIVER)
+        working-directory: web
+        # The gate's verb is PUBLISH: *"the deriver publishes: native-loop count
+        # BY DIRECTIVE with bounds + multiplicity, `:is` candidate sets,
+        # producer-internal loops from first-party d.ts, `url(#id)` edges,
+        # enclosing disclosure state, loop-source provenance"*. This step is the
+        # publication — the census lands in the job log of every run, so a later
+        # wave reads a dated figure instead of re-deriving one.
+        #
+        # ⊘ IT IS AN INSTRUMENT, NOT A GATE, AND THE DISTINCTION IS DELIBERATE.
+        # It has no pass/fail semantics to mask, so there is nothing here for a
+        # `continue-on-error` to hide — and none is used: if the deriver itself
+        # throws, this step fails, because a census that cannot be produced is
+        # worse than one that reports badly. The ASSERTIONS about its output
+        # live in `scripts/derive-loops.vitest.ts` and run in the blocking unit
+        # floor above.
+        run: npm run derive:loops
       - name: Build
         working-directory: web
         run: npm run build
