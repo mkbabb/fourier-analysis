@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useImageUpload } from "./composables/useImageUpload";
 import { thumbnailUrl } from "@/lib/api";
@@ -196,8 +196,16 @@ function onImgError() {
     background: color-mix(in srgb, var(--muted) 60%, transparent);
     border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
 }
+/* X.F.W4 · `FM-2`'s ring rider, the site `.a` named and handed to this unit.
+   `--ring` is declared in NO tree at the adopted pin — not by glass-ui 8.0.0,
+   not by this app — and an `outline` whose colour is an undeclared `var()` is
+   invalid at computed-value time and DROPPED. This rule, whose only purpose is
+   to paint a focus ring, has been painting none. `--focus-ring-color` and
+   `--focus-ring-width` are the producer's own registers, the same pair its
+   `.focus-ring:focus-visible` recipe uses, so the hand-rolled ring and the
+   library's now agree. */
 .source-strip:focus-visible {
-    outline: 2px solid var(--ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
     outline-offset: 2px;
 }
 .source-strip.is-dragging {

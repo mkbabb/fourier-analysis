@@ -1,9 +1,7 @@
-import { ref, watch, onMounted } from "vue";
-import type { Ref } from "vue";
+import { ref, watch, onMounted, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useAnimationStore } from "@/stores/animation";
-import type { EasingName } from "@/stores/animation";
+import { useAnimationStore, type EasingName } from "@/stores/animation";
 import { useToast } from "@/composables/useToast";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 

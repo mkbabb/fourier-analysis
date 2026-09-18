@@ -17,7 +17,13 @@ export function drawBasisLabels(
     levelText: string,
     hoveredBasis: string | null,
 ): LabelDrawResult {
-    const { ctx, width, height } = surface;
+    // X.F.W4 · G-F4-VUE-TSC-CLEAN — `width`/`height` were destructured and
+    // never read here or in `drawEpicycleLabel`: both routines anchor to the
+    // TOP-LEFT (`xBase = 16`, `yOff` from 16), so neither ever needed the
+    // surface extent. They were four of the tree's `noUnusedLocals` violations,
+    // and they are deleted rather than voided — a destructure that exists to be
+    // ignored is a claim about the drawing model that is not true.
+    const { ctx } = surface;
     const hitRegions: LabelHitRegion[] = [];
 
     const xBase = 16;
@@ -82,7 +88,7 @@ export function drawEpicycleLabel(
     surface: CanvasSurface,
     tValue: number,
 ): void {
-    const { ctx, width, height } = surface;
+    const { ctx } = surface;
 
     ctx.textAlign = "left";
     ctx.textBaseline = "top";

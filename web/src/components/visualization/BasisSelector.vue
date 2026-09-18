@@ -8,7 +8,6 @@ import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
 import { RotateCcw } from "@lucide/vue";
 
-const fourierModes = ["fourier-epicycles", "fourier-series"] as const;
 
 const props = defineProps<{
     activeBases?: string[];
