@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { useMediaQuery } from "@vueuse/core";
 import type { FourierTermDTO } from "@/lib/equation/types";
 import { applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
 import { easeInOutSine } from "@mkbabb/value.js/easing";
@@ -47,18 +48,46 @@ let cancelTransition: (() => void) | null = null;
 
 // ── Canvas state ──
 let resizeObserver: ResizeObserver | null = null;
+let visibilityObserver: IntersectionObserver | null = null;
 let rafId: number | null = null;
 let loopStartTime: number | null = null;
 let cachedScreenCurves: CurveHitRegion[] = [];
 
 const PAD: PlotPadding = { top: 14, bottom: 18, left: 12, right: 12 };
 
+/**
+ * `D-9 + C-2` — three JS clocks CSS cannot reach ran regardless of
+ * `prefers-reduced-motion`: the autoplaying ping-pong rAF (2–12 s sweeps, from
+ * mount, forever), the 500 ms transition rAF, and the shimmer's
+ * `performance.now()` alpha oscillation (which only ticks while a loop is
+ * redrawing, so gating the loops silences it too).
+ *
+ * ⊘ `M-D1` IS THE WHOLE CURE CONSTRAINT: both prescribed gates freeze the plot
+ * at `t = 0`, and at `t = 0` `easeInOutSine(0) = 0`, every `harmonicProgress`
+ * returns 0, every cursor is 0, `:205`'s guard skips EVERY harmonic stroke and
+ * hit region, and the sum collapses to DC — a blank grid whose only escape is a
+ * scrubber. The reduced arm therefore seeds the TERMINAL frame `t = 1`, where
+ * every harmonic is fully drawn: a reduced-motion reader gets the CONVERGED
+ * state, which is what the instrument is for.
+ *
+ * A user who presses Play is asking for motion explicitly, and that still works;
+ * what PRM gates is the clock nobody asked for.
+ */
+const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+/** `L-M3 + D-26` — false while the panel is `display:none` (mobile `panel-inactive`). */
+const isVisible = ref(true);
+
 // ── Animation loop ──
 
 function startLoop() {
+    // `L-B2` — the store's two guards, ported: never a second loop (the old
+    // `rafId !== null` predicate was untruthful because `tick`'s early return
+    // never nulled it), and never a loop for a plot nobody can see.
+    if (rafId !== null || !isVisible.value) return;
     loopStartTime = null;
     function tick(now: number) {
-        if (!playing.value) return;
+        if (!playing.value || !isVisible.value) { rafId = null; return; }
         if (loopStartTime === null) loopStartTime = now - t.value * animDuration.value;
         const elapsed = now - loopStartTime;
         const cycle = Math.floor(elapsed / animDuration.value);
@@ -314,7 +343,7 @@ watch(() => [props.originalPoints, props.coefficients], (_, old) => {
         const oldOy = (old[0] as { x: number[]; y: number[] }).y;
         snapshotForTransition(transition, oldOy, trigHarmonics.value, dcTerm.value?.coefficient_re ?? 0, props.originalPoints.x, props.domain);
         cancelTransition?.();
-        cancelTransition = startTransition(transition, draw);
+        cancelTransition = startTransition(transition, draw, prefersReducedMotion.value);
     } else {
         draw();
     }
@@ -325,15 +354,50 @@ watch(() => props.nHarmonics, () => { if (!playing.value) draw(); });
 // ── Lifecycle ──
 
 onMounted(() => {
-    nextTick(() => { draw(); t.value = 0; playing.value = true; startLoop(); });
+    nextTick(() => {
+        if (prefersReducedMotion.value) {
+            // The TERMINAL frame, per `M-D1`: converged, complete, and static.
+            t.value = 1;
+            playing.value = false;
+            draw();
+        } else {
+            draw();
+            t.value = 0;
+            playing.value = true;
+            startLoop();
+        }
+    });
     resizeObserver = new ResizeObserver(() => draw());
     if (containerRef.value) resizeObserver.observe(containerRef.value);
+
+    // `L-M3 + D-26` — neither clock was visibility-gated, and the mobile panel is
+    // `display:none` WHILE MOUNTED (`EquationView`'s `.panel-inactive`, default
+    // tab `controls`), so the loop, the per-frame layout read and the reactive
+    // cascade all ran unseen. A `display:none` element never intersects, which
+    // is precisely the signal needed.
+    visibilityObserver = new IntersectionObserver((entries) => {
+        const visible = entries.some((e) => e.isIntersecting);
+        if (visible === isVisible.value) return;
+        isVisible.value = visible;
+        if (visible) {
+            if (playing.value) startLoop();
+            else draw();
+        } else {
+            stopLoop();
+        }
+    });
+    if (containerRef.value) visibilityObserver.observe(containerRef.value);
 });
 
 onUnmounted(() => {
+    // `L-B2` — `playing` was never cleared, so a teardown mid-play left the flag
+    // true for any orphan tick to re-arm on; the orphan retained the whole
+    // closure (props, transition state, the cached screen curves).
+    playing.value = false;
     stopLoop();
     cancelTransition?.();
     resizeObserver?.disconnect();
+    visibilityObserver?.disconnect();
 });
 </script>
 
@@ -406,9 +470,10 @@ onUnmounted(() => {
     animation: tooltip-in 0.1s var(--ease-standard);
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .curve-tooltip {
-        animation: none;
-    }
-}
+/* `M-L7` — the local `@media (prefers-reduced-motion: reduce) { animation: none }`
+   block is GONE: glass-ui's `utilities/a11y-overrides.css` already resets
+   `animation-duration` to 0.01ms on `*` with `!important` under the same query,
+   so the component's one act of compliance was a no-op that cost a maintainer's
+   attention and bought nothing. The clocks CSS cannot reach are gated in script,
+   above, which is where the omission actually was. */
 </style>
