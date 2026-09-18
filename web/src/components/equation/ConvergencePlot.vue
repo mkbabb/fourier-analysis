@@ -104,6 +104,92 @@ function stopLoop() {
     loopStartTime = null;
 }
 
+// ── Frame geometry (memoised) ──
+
+/** Sample count of the partial-sum grid. */
+const N_POINTS = 500;
+
+interface FrameGeometry {
+    xGrid: number[];
+    /** One sampled curve per harmonic, at the transition-lerped coefficients. */
+    curves: number[][];
+    lerpDc: number;
+    /** Y-extent of the samples and of the CONVERGED series — neither is animated. */
+    tMinY: number;
+    tMaxY: number;
+}
+
+let geometryKey: readonly unknown[] | null = null;
+let geometryValue: FrameGeometry | null = null;
+
+/**
+ * `L-B3 + C-11` — the curve matrix and a COMPLETE second series evaluation were
+ * rebuilt on every frame although neither reads `t`, `easedT` or `cursors`: only
+ * the prefix reveal (`end = cursors[hi] + 1`) is animated. At the UI-reachable
+ * ceiling (N = 100, FunctionInput's slider max) that is ≈200k trig calls and
+ * ≈51k allocations per frame, doubled during the 500 ms transition window when
+ * `draw()` runs twice per frame.
+ *
+ * The memo key is exactly the record's: `[coefficients, nHarmonics, domain,
+ * transition.progress]` — identity-compared, since every one of them is replaced
+ * wholesale rather than mutated. ⊘ SEQUENCING: this lands and is MEASURED BEFORE
+ * the BasisCanvas↔FourierField convergence study (`G-F4-CONV-STUDY`, unit `.f`),
+ * or the study charges Canvas2D for recomputation it never asked for.
+ */
+function frameGeometry(
+    harmonics: TrigHarmonic[],
+    dc: FourierTermDTO | undefined,
+    tp: number,
+    domA: number,
+    domB: number,
+): FrameGeometry {
+    const key = [props.coefficients, props.nHarmonics, domA, domB, tp] as const;
+    if (geometryValue && geometryKey && key.every((k, i) => k === geometryKey![i])) {
+        return geometryValue;
+    }
+
+    const omega = (2 * Math.PI) / (domB - domA);
+    const xGrid: number[] = [];
+    // X-grid for the partial-sum curve (endpoint=false matches backend convention:
+    // the canonical equispaced Fourier sampling drops x = domB since the periodic
+    // wrap identifies it with x = domA — see api/routers/equations.py:61).
+    for (let i = 0; i < N_POINTS; i++) xGrid.push(domA + (i / N_POINTS) * (domB - domA));
+
+    const lerpH: TrigHarmonic[] = harmonics.map((h, i) => {
+        if (tp >= 1 || i >= transition.prevHarmonics.length) return h;
+        const o = transition.prevHarmonics[i];
+        return { k: h.k, a_n: lerp(o.a_n, h.a_n, tp), b_n: lerp(o.b_n, h.b_n, tp), amplitude: lerp(o.amplitude, h.amplitude, tp) };
+    });
+    const lerpDc = tp >= 1 ? (dc?.coefficient_re ?? 0) : lerp(transition.prevDcRe, dc?.coefficient_re ?? 0, tp);
+
+    const curves = lerpH.map((h) =>
+        xGrid.map((x) => h.a_n * Math.cos(h.k * omega * x) + h.b_n * Math.sin(h.k * omega * x)),
+    );
+
+    // The converged series, whose only consumers are the two extent calls below.
+    const oy = props.originalPoints.y;
+    let tMinY = Infinity, tMaxY = -Infinity;
+    for (let j = 0; j < N_POINTS; j++) {
+        let v = dc?.coefficient_re ?? 0;
+        for (let hi = 0; hi < harmonics.length; hi++) {
+            const h = harmonics[hi];
+            v += h.a_n * Math.cos(h.k * omega * xGrid[j]) + h.b_n * Math.sin(h.k * omega * xGrid[j]);
+        }
+        if (v < tMinY) tMinY = v;
+        if (v > tMaxY) tMaxY = v;
+    }
+    // ⊘ `Math.min(...oy)` on a 500-element spread is a stack-shaped hazard as well
+    // as a cost; the extents are folded instead.
+    for (let i = 0; i < oy.length; i++) {
+        if (oy[i] < tMinY) tMinY = oy[i];
+        if (oy[i] > tMaxY) tMaxY = oy[i];
+    }
+
+    geometryKey = key;
+    geometryValue = { xGrid, curves, lerpDc, tMinY, tMaxY };
+    return geometryValue;
+}
+
 // ── Draw ──
 
 function draw() {
@@ -142,18 +228,16 @@ function draw() {
     ctx.clearRect(0, 0, w, h);
 
     const [domA, domB] = props.domain;
-    const omega = (2 * Math.PI) / (domB - domA);
     const harmonics = trigHarmonics.value;
     const totalH = harmonics.length;
     const dc = dcTerm.value;
-    const nPts = 500;
     const tp = transition.progress;
 
-    // X-grid for the partial-sum curve (endpoint=false matches backend convention:
-    // the canonical equispaced Fourier sampling drops x = domB since the periodic wrap
-    // identifies it with x = domA — see api/routers/equations.py:61).
-    const xGrid: number[] = [];
-    for (let i = 0; i < nPts; i++) xGrid.push(domA + (i / nPts) * (domB - domA));
+    // `L-B3 + C-11` — the curve matrix and the full-series evaluation come from
+    // the memo, because NEITHER reads `t`, `easedT` or `cursors`: only the prefix
+    // reveal is animated, and everything under it was rebuilt from scratch on
+    // every frame.
+    const { xGrid, curves, lerpDc, tMinY, tMaxY } = frameGeometry(harmonics, dc, tp, domA, domB);
 
     // Lerp original Y
     const oyLerped = oy.map((y, i) => {
@@ -169,20 +253,9 @@ function draw() {
     const oxClosed = ox.length ? [...ox, domB] : ox;
     const oyClosed = oyLerped.length ? [...oyLerped, oyLerped[0]] : oyLerped;
 
-    // Lerp harmonic coefficients
-    const lerpH: TrigHarmonic[] = harmonics.map((h, i) => {
-        if (tp >= 1 || i >= transition.prevHarmonics.length) return h;
-        const o = transition.prevHarmonics[i];
-        return { k: h.k, a_n: lerp(o.a_n, h.a_n, tp), b_n: lerp(o.b_n, h.b_n, tp), amplitude: lerp(o.amplitude, h.amplitude, tp) };
-    });
-    const lerpDc = tp >= 1 ? (dc?.coefficient_re ?? 0) : lerp(transition.prevDcRe, dc?.coefficient_re ?? 0, tp);
-
-    // Cursor indices
+    // Cursor indices — the one genuinely per-frame quantity.
     const eT = easedT.value;
-    const cursors = lerpH.map((_, hi) => Math.floor(harmonicProgress(hi, totalH, eT) * (nPts - 1)));
-
-    // Harmonic curves
-    const curves = lerpH.map((h) => xGrid.map((x) => h.a_n * Math.cos(h.k * omega * x) + h.b_n * Math.sin(h.k * omega * x)));
+    const cursors = curves.map((_, hi) => Math.floor(harmonicProgress(hi, totalH, eT) * (N_POINTS - 1)));
 
     // Sum curve
     const BLEND = 10;
@@ -196,13 +269,7 @@ function draw() {
         return val;
     });
 
-    // Y-bounds (lerped for smooth transition)
-    const fullSum = xGrid.map((x) => {
-        let v = dc?.coefficient_re ?? 0;
-        for (const h of harmonics) v += h.a_n * Math.cos(h.k * omega * x) + h.b_n * Math.sin(h.k * omega * x);
-        return v;
-    });
-    const tMinY = Math.min(...oy, ...fullSum), tMaxY = Math.max(...oy, ...fullSum);
+    // Y-bounds (lerped for smooth transition) — from the memo, above.
     const yP = (tMaxY - tMinY) * 0.08 || 1;
     let minY: number, maxY: number;
     if (tp >= 1 || !transition.prevOrigY.length) {
@@ -253,7 +320,7 @@ function draw() {
         ctx.lineWidth = isHov ? 3.5 : 2.5;
         const pts: [number, number][] = [];
         ctx.beginPath();
-        const end = Math.min(cursors[hi] + 1, nPts);
+        const end = Math.min(cursors[hi] + 1, N_POINTS);
         for (let i = 0; i < end; i++) {
             const pt = toScreen(xGrid[i], curves[hi][i]);
             pts.push(pt);
@@ -268,7 +335,7 @@ function draw() {
     applyGoldenShimmer(ctx, { hovered: hoveredCurve.value === "sum", playing: playing.value, baseWidth: 5, hoverWidth: 7, hoverBlur: 14, playBlur: 8 });
     const sumPts: [number, number][] = [];
     ctx.beginPath();
-    for (let i = 0; i < nPts; i++) {
+    for (let i = 0; i < N_POINTS; i++) {
         const pt = toScreen(xGrid[i], sumY[i]);
         sumPts.push(pt);
         i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
