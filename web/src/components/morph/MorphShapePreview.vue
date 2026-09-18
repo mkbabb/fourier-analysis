@@ -1,7 +1,26 @@
 <template>
     <div class="demo-stage">
         <div class="stage-row">
-            <button class="morph-button cartoon-card" @click="$emit('toggle')" :disabled="disabled">
+            <!-- SP-7 · FM-1 (= FMD-2), the HOST half. The route's primary and
+                 only control had an empty accessible name: a bare `<button>`
+                 whose sole child was a bare `<svg>`.
+                 ⊘ FR-MSP-10's NAME-CURE LOCK is honoured — the name is derived
+                 from TRANSACTION-STABLE state, not from the current shape. A
+                 name built from `shapeName` INVERTS the instant the control is
+                 activated, which is worse than no name for a screen-reader user
+                 mid-gesture. What this button does never changes: it morphs
+                 between the two shapes.
+                 FMD-6 — `aria-busy` is the state channel the guard already had
+                 and never announced: `disabled` alone reads as "broken" during
+                 the 350 ms the input is swallowed. -->
+            <button
+                type="button"
+                class="morph-button cartoon-card"
+                aria-label="Morph between the sun and moon shapes"
+                :aria-busy="disabled || undefined"
+                @click="$emit('toggle')"
+                :disabled="disabled"
+            >
                 <FourierMorphSvg
                     :path="currentPath"
                     :stroke-width="4.5"

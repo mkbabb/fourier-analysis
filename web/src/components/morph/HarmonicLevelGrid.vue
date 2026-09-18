@@ -3,16 +3,28 @@
         <h3 class="card-title">Harmonic Levels</h3>
 
         <div class="levels-controls">
+            <!-- SP-7 · HLG-8 — the two number inputs were NAMELESS to AT: bare
+                 `<label>` elements with no `for`, no wrapping and no `aria-*`,
+                 so they named nothing and the inputs announced only their type.
+                 `for`/`id` is the whole cure and it also makes the visible label
+                 a click target for the input, which it never was. The ids are
+                 `useId()`-derived so two instances of this card cannot collide.
+                 ⊘ FMD-14's `LabeledField` adoption (the producer ships
+                 `./labeled-field` at the pin) covers EIGHT controls across this
+                 file and `MorphPhaseConfig.vue`; that file's rows belong to a
+                 different unit than its path, so the adoption is ROUTED, not
+                 half-landed here. -->
             <div class="level-row">
-                <label class="level-label">Low</label>
+                <label class="level-label" :for="lowId">Low</label>
                 <input
+                    :id="lowId"
                     type="number"
                     :value="lowLevel"
                     @change="emitLow(($event.target as HTMLInputElement).value)"
                     min="1"
                     :max="highLevel - 1"
                     step="1"
-                    class="level-input fira-code"
+                    class="level-input fira-code tabular-nums"
                 />
                 <Slider
                     v-model="lowModel"
@@ -25,15 +37,16 @@
             </div>
 
             <div class="level-row">
-                <label class="level-label">High</label>
+                <label class="level-label" :for="highId">High</label>
                 <input
+                    :id="highId"
                     type="number"
                     :value="highLevel"
                     @change="emitHigh(($event.target as HTMLInputElement).value)"
                     :min="lowLevel + 1"
                     max="100"
                     step="1"
-                    class="level-input fira-code"
+                    class="level-input fira-code tabular-nums"
                 />
                 <Slider
                     v-model="highModel"
@@ -80,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useId } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Slider } from "@mkbabb/glass-ui/slider";
 import type { FourierShape } from "@/lib/svg-fourier";
@@ -93,6 +106,10 @@ const props = defineProps<{
     lowLevel: number;
     highLevel: number;
 }>();
+
+/* HLG-8 — collision-proof ids for the two `for`/`id` label pairings. */
+const lowId = useId();
+const highId = useId();
 
 const emit = defineEmits<{
     "update:lowLevel": [value: number];

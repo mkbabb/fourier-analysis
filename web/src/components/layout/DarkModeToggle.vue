@@ -1,8 +1,33 @@
 <template>
+    <!--
+        X.F.W4 · SP-7 — DMT N-2 ⊕ N-3 ⊕ N-17.
+
+        N-2: a toggle announces its STATE through `aria-pressed`, and its NAME
+        stays constant — which is the project's own `DESIGN.md:25` rule and what
+        the producer's toggle does at 8.0.0. The old label described the ACTION
+        and carried the state inside the name, so AT users heard the name change
+        under them on every activation and never heard a pressed state at all.
+        ⊘ RIDER LOCK discharged: that label was a load-bearing e2e locator. It is
+        the tree's ONLY one — ⟨cmd⟩ `grep -rn -i 'switch to dark\|switch to
+        light\|sun-moon-toggle' e2e/` → exactly `paper-performance.spec.ts:328`,
+        the single line this unit is granted — and it moves in the SAME commit,
+        to the stronger `{ name, pressed: false }` form.
+
+        N-3: `type="button"`. A bare `<button>` defaults to `type="submit"`;
+        latent today with no form ancestor, and the producer sets it.
+
+        N-17: the control had no sighted affordance beyond its position — no
+        title, no tooltip — for an abstract morphing glyph. `title` carries the
+        ACTION for sighted users while `aria-label` keeps the stable name (an
+        `aria-label` always wins the accessible name, so the two do not fight).
+    -->
     <button
+        type="button"
         class="sun-moon-toggle"
+        aria-label="Dark mode"
+        :aria-pressed="isDark"
+        :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
         @click="handleToggle"
-        :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
     >
         <FourierMorphSvg
             :path="morph.currentPath.value"

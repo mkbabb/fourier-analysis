@@ -325,7 +325,7 @@ test.describe("Paper performance", () => {
             };
         });
 
-        await page.getByRole("button", { name: /switch to dark mode/i }).click();
+        await page.getByRole("button", { name: /dark mode/i, pressed: false }).click();
         await page.waitForTimeout(250);
 
         const darkCodeTheme = await strategyBlock.evaluate((element) => {

@@ -1,20 +1,47 @@
 <template>
-    <div class="cartoon-card config-card">
-        <h3 class="config-card-title">{{ title }}</h3>
+    <div class="cartoon-card config-card" role="group" :aria-labelledby="titleId">
+        <h3 class="config-card-title" :id="titleId">{{ title }}</h3>
         <p class="config-card-desc">{{ description }}</p>
 
+        <!-- SP-7 · FMD-14 ⊕ FMD-15 — this card is mounted THREE times (Settle
+             Out / Morph / Settle In) and every control inside it carried the
+             same name as its two twins, or no name at all:
+
+              · FMD-14 — the `<label>` elements have no `for`, no wrapping and
+                no `aria-*`, so they named nothing. `for`/`id` is the cure, and
+                the ids are `useId()`-derived precisely because there are three
+                instances: a literal id would collide three ways and hand every
+                label to the first card.
+              · FMD-15 — `aria-label="Duration (ms)"` was hard-coded, so all
+                three sliders announced one byte-identical name and a
+                screen-reader user could not tell which phase they were
+                dragging. The name now carries the card's own `title`, which is
+                the only thing that distinguishes the three instances.
+              · FMD-15's second leg — the card was a bare `<div>` with no
+                grouping semantics, so the three fieldsets read as one flat run
+                of six controls. `role="group"` + `aria-labelledby` on the title
+                gives each card its own boundary and its own name.
+
+             ⊘ NOT touched here: the `MPC-*` rows on this same file (the
+             SelectTrigger's missing name, `MPC-31`'s ONE CUT, the `--track-color`
+             writer feeding the dead `--slider-scrub-*` block). They belong to a
+             different unit's sections while this path belongs to this unit's
+             writable set — the seam is raised in this unit's addenda §4 rather
+             than crossed. The three `button-name` findings axe reports on this
+             route are those rows, and they are named, not silently left. -->
         <div class="config-field">
             <div class="duration-row">
-                <label class="config-label">Duration</label>
+                <label class="config-label" :for="durationId">Duration</label>
                 <div class="input-with-unit">
                     <input
+                        :id="durationId"
                         type="number"
                         :value="duration"
                         @change="emitDuration(($event.target as HTMLInputElement).value)"
                         min="50"
                         max="800"
                         step="10"
-                        class="num-input fira-code"
+                        class="num-input fira-code tabular-nums"
                     />
                     <span class="input-unit fira-code">ms</span>
                 </div>
@@ -23,7 +50,7 @@
                     :min="50"
                     :max="800"
                     :step="10"
-                    aria-label="Duration (ms)"
+                    :aria-label="`${title} duration (ms)`"
                     class="duration-slider-track"
                     :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }"
                 />
@@ -31,9 +58,9 @@
         </div>
 
         <div class="config-field">
-            <label class="config-label">Easing</label>
+            <label class="config-label" :id="easingLabelId">Easing</label>
             <Select :model-value="easing" @update:model-value="$emit('update:easing', String($event))">
-                <SelectTrigger class="w-full">
+                <SelectTrigger class="w-full" :aria-labelledby="`${easingLabelId} ${titleId}`">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -61,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useId } from "vue";
 import {
     Select,
     SelectTrigger,
@@ -83,6 +110,12 @@ const props = defineProps<{
     easing: string;
     sliderColor?: string;
 }>();
+
+/* FMD-14 ⊕ FMD-15 — this card mounts three times, so every id must be
+   instance-unique or the three copies collide and the first one wins. */
+const titleId = useId();
+const durationId = useId();
+const easingLabelId = useId();
 
 const emit = defineEmits<{
     "update:duration": [value: number];
