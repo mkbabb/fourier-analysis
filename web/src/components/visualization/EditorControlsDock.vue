@@ -5,7 +5,6 @@ import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popove
 import { Metric } from "@mkbabb/glass-ui/metric";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { Tooltip } from "@/components/ui/tooltip";
-import { VIZ_COLORS } from "@/lib/colors";
 import {
     Undo2,
     Redo2,
@@ -46,7 +45,14 @@ const emit = defineEmits<{
     save: [];
 }>();
 
-/* A.W2.c — adapt the scalar `magnetRadius` to glass-scrubber's array model. */
+/**
+ * Adapt the scalar `magnetRadius` to the slider's array model.
+ *
+ * X.F.W4 · §3 D8 (`fr-EditorControlsDock D-2 / L-3 / C-1`, +C-13/C-22) — the
+ * comment this replaces named `glass-scrubber`, which is not what the producer
+ * ships, and it named it because it belonged to the dead retint block deleted
+ * below. It dies with it (C-22).
+ */
 const magnetModel = computed<number[]>({
     get: () => [props.magnetRadius],
     set: (arr) => emit("update:magnetRadius", Math.max(0, Math.min(10, arr[0] ?? 0))),
@@ -183,8 +189,6 @@ const magnetModel = computed<number[]>({
                             :max="10"
                             :step="1"
                             aria-label="Magnet radius"
-                            class="magnet-slider-track"
-                            :style="{ '--track-color': VIZ_COLORS.fourier }"
                             @mousedown.stop
                             @pointerdown.stop
                         />
@@ -319,12 +323,29 @@ const magnetModel = computed<number[]>({
     padding: 0.375rem 0.5rem;
 }
 
-/* A.W2.c — glass-scrubber per-instance retint hook + full-width sizing. */
-.magnet-slider-track {
-    width: 100%;
-    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
-    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
-    --slider-scrub-thumb-bg: var(--track-color);
-    --slider-scrub-thumb-bg-hover: var(--track-color);
-}
+/**
+ * X.F.W4 · §3 D8 — RULED **DELETE WHOLE**, and the block is gone as ONE unit:
+ * this rule, the `magnet-slider-track` class, the `:style` `--track-color`
+ * binding, the `VIZ_COLORS` import edge and both stale `glass-scrubber`
+ * comments. Half-landing it was forbidden in terms, and for a reason — a class
+ * with no rule, or a binding with no consumer, is dead code wearing a cure's
+ * clothes.
+ *
+ * The premise re-measured at the LIVE pin, because the record states it at
+ * 4.0.0 and F.W1 moved this tree to 8.0.0: ⟨cmd⟩ `grep -roh -- '--slider-scrub[a-z-]*'
+ * node_modules/@mkbabb/glass-ui/dist | sort -u` → ∅. `--slider-scrub-*` is not
+ * a producer token namespace at EITHER pin, so all four declarations were dead
+ * at both, and two were doubly dead (the standard thumb paints `width: 0;
+ * opacity: 0` by contract — C-13).
+ *
+ * ⊘ The ONE sub-limb the ruling refused to inherit, re-earned here as it
+ * required: K-8's "even `width: 100%` is a no-op" was verified against the
+ * 4.0.0 cva base, and that probe does NOT reproduce at 8.0.0 (⟨cmd⟩ `grep -c
+ * 'w-full' dist/slider-*.js` → 0). Re-measured at the byte that governs today,
+ * double-run: the producer's own `components/slider/styles.css` declares
+ * `.glass-slider { … inline-size: 100% … }` on the slider root. The width was
+ * therefore redundant at 8.0.0 too, by a different mechanism — so the
+ * zero-visual-delta claim holds, on evidence taken at this pin rather than
+ * inherited from the last one.
+ */
 </style>
