@@ -22,7 +22,6 @@
                     :step="1"
                     aria-label="Low harmonic level"
                     class="level-slider-track"
-                    :style="{ '--track-color': VIZ_COLORS.chebyshev }"
                 />
             </div>
 
@@ -45,7 +44,6 @@
                     :step="1"
                     aria-label="High harmonic level"
                     class="level-slider-track"
-                    :style="{ '--track-color': VIZ_COLORS.chebyshev }"
                 />
             </div>
         </div>
@@ -88,7 +86,6 @@
 import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Slider } from "@mkbabb/glass-ui/slider";
-import { VIZ_COLORS } from "@/lib/colors";
 import type { FourierShape } from "@/lib/svg-fourier";
 import { interpolateAtHarmonicLevel, pointsToSvgPath } from "@/lib/svg-fourier";
 

@@ -3,8 +3,20 @@
  *
  * Primary viz colors are derived from CSS custom properties (--viz-*)
  * so they automatically adapt to light/dark mode via section-color aliases.
+ *
+ * glass-ui authors those properties as `oklch()`, as
+ * `light-dark(oklch(), oklch())` and as `var(--section-color-N)` aliases. None
+ * of those survive a `getPropertyValue()` read plus a regex, so the palette is
+ * resolved THROUGH the cascade instead: glass-ui's own `/dom` `resolveTokenColor`
+ * paints `var(--token)` onto a real CSS property and reads the USED value back,
+ * which is the only way the `light-dark()` arm and the alias chain are picked by
+ * the engine rather than guessed by a string match. value.js then converts that
+ * used value — whatever CSS Color 4 form the engine serialises — to hex, which
+ * is what the Canvas2D consumers speak.
  */
 
+import { createTokenColorCache } from "@mkbabb/glass-ui/dom";
+import { colorUnit2, parseCSSColor, ValueUnit } from "@mkbabb/value.js";
 import { reactive } from "vue";
 
 /** Static accent colors (not section-derived) */
@@ -18,60 +30,77 @@ const STATIC = {
     emerald: "#34d399",
 };
 
-/** Resolve a CSS custom property to a hex string. */
-function cssVarToHex(varName: string): string {
-    const raw = getComputedStyle(document.documentElement)
-        .getPropertyValue(varName)
-        .trim();
-    if (!raw) return "#888888";
+/** The four CSS hex forms: `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`. */
+const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
-    // If already hex
-    if (raw.startsWith("#")) return raw;
-
-    // Parse hsl(...) or raw "h s% l%" from computed style
-    const hslMatch = raw.match(
-        /hsl\(\s*([\d.]+)\s*[ ,]\s*([\d.]+)%?\s*[ ,]\s*([\d.]+)%?\s*\)/,
-    );
-    if (hslMatch) {
-        return hslToHex(+hslMatch[1], +hslMatch[2], +hslMatch[3]);
+/**
+ * Split a CSS hex color into its 0-255 RGB channels.
+ *
+ * The callers feed `ctx.strokeStyle` / `ctx.shadowColor`, and Canvas2D drops an
+ * `rgba(…, NaN, …)` on the floor without a word — so a malformed hex is raised
+ * at the boundary instead of travelling as a channel that silently paints
+ * nothing.
+ */
+function hexChannels(hex: string): [number, number, number] {
+    if (!HEX_COLOR.test(hex)) {
+        throw new TypeError(`not a CSS hex color: ${JSON.stringify(hex)}`);
     }
-
-    // Bare HSL triplet: "6 72% 49%" (Tailwind v4 convention)
-    const bareMatch = raw.match(/^([\d.]+)\s+([\d.]+)%\s+([\d.]+)%$/);
-    if (bareMatch) {
-        return hslToHex(+bareMatch[1], +bareMatch[2], +bareMatch[3]);
-    }
-
-    // Parse rgb(...)
-    const rgbMatch = raw.match(
-        /rgb\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/,
-    );
-    if (rgbMatch) {
-        return rgbToHex(+rgbMatch[1], +rgbMatch[2], +rgbMatch[3]);
-    }
-
-    return "#888888";
+    const body = hex.slice(1);
+    const short = body.length <= 4;
+    const channel = (i: number) =>
+        short
+            ? parseInt(body.charAt(i) + body.charAt(i), 16)
+            : parseInt(body.substring(i * 2, i * 2 + 2), 16);
+    return [channel(0), channel(1), channel(2)];
 }
 
-function hslToHex(h: number, s: number, l: number): string {
-    s /= 100;
-    l /= 100;
-    const a = s * Math.min(l, 1 - l);
-    const f = (n: number) => {
-        const k = (n + h / 30) % 12;
-        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-        return Math.round(255 * color)
+/** `#rrggbb` from 0-1 channels, clamped into the sRGB gamut. */
+function toHex(r: number, g: number, b: number): string {
+    const channel = (v: number) =>
+        Math.round(255 * Math.min(1, Math.max(0, v)))
             .toString(16)
             .padStart(2, "0");
-    };
-    return `#${f(0)}${f(8)}${f(4)}`;
+    return `#${channel(r)}${channel(g)}${channel(b)}`;
 }
 
-function rgbToHex(r: number, g: number, b: number): string {
-    const hex = (v: number) =>
-        Math.round(v).toString(16).padStart(2, "0");
-    return `#${hex(r)}${hex(g)}${hex(b)}`;
+/**
+ * Convert one resolved CSS color to hex, or `null` when the parser does not
+ * recognise it.
+ *
+ * `parseCSSColor` is a parser combinator: it reports a form it cannot read by
+ * throwing, so the throw is this function's failure branch, not an accident
+ * being swallowed. Every used value the engine serialises parses; the branch
+ * exists so an unreadable one leaves the palette entry alone rather than
+ * replacing a brand color with a placeholder.
+ */
+function cssColorToHex(css: string): string | null {
+    let rgb;
+    try {
+        rgb = colorUnit2(parseCSSColor(css), "rgb").value;
+    } catch {
+        return null;
+    }
+    return toHex(
+        ValueUnit.unwrapDeep(rgb.r),
+        ValueUnit.unwrapDeep(rgb.g),
+        ValueUnit.unwrapDeep(rgb.b),
+    );
 }
+
+/**
+ * One cached cascade probe per unique token expression — the un-wrap is a
+ * forced synchronous reflow, so it runs once per token and is dropped wholesale
+ * when the cascade changes.
+ */
+const tokenColors = createTokenColorCache();
+
+/** The `--viz-*` custom properties this palette tracks, by `VIZ_COLORS` key. */
+const VIZ_TOKENS = [
+    ["fourier", "--viz-fourier"],
+    ["chebyshev", "--viz-chebyshev"],
+    ["legendre", "--viz-legendre"],
+    ["amber", "--viz-amber"],
+] as const;
 
 /** Reactive VIZ_COLORS — same API as before (VIZ_COLORS.fourier etc.) */
 export const VIZ_COLORS = reactive({
@@ -79,29 +108,70 @@ export const VIZ_COLORS = reactive({
     chebyshev: "#3d72b8",
     legendre: "#9545b8",
     amber: "#b37a2d",
-    green: "#4d8f66",
     golden: STATIC.golden,
     rainbow: STATIC.rainbow,
     pink: STATIC.pink,
     emerald: STATIC.emerald,
 });
 
-/** Read --viz-* CSS vars and update VIZ_COLORS. Call on mount + theme toggle. */
+/**
+ * Read the `--viz-*` CSS properties and update VIZ_COLORS.
+ *
+ * A property that is unset, or whose used value the parser cannot read, leaves
+ * its VIZ_COLORS entry untouched: the authored brand hex is a better answer
+ * than a placeholder, and overwriting the brand hexes on mount and on every
+ * root-class flip was half of the original defect.
+ */
 export function resolveVizColors(): void {
-    VIZ_COLORS.fourier = cssVarToHex("--viz-fourier");
-    VIZ_COLORS.chebyshev = cssVarToHex("--viz-chebyshev");
-    VIZ_COLORS.legendre = cssVarToHex("--viz-legendre");
-    VIZ_COLORS.amber = cssVarToHex("--viz-amber");
-    VIZ_COLORS.green = cssVarToHex("--viz-green");
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+    // One `getComputedStyle` handle and one batched read for the whole pass: the
+    // probe below writes inline style, so an interleaved read would force its
+    // own style recalculation per token.
+    const computed = getComputedStyle(root);
+    const declared = VIZ_TOKENS.map(
+        ([key, property]) =>
+            [key, property, computed.getPropertyValue(property).trim()] as const,
+    );
+
+    tokenColors.invalidate();
+
+    for (const [key, property, value] of declared) {
+        // `var(--unset)` is guaranteed-invalid at computed-value time, so probing
+        // an unset property reads back the inherited `color` — a wrong answer
+        // rather than a miss.
+        if (!value) continue;
+        const hex = cssColorToHex(tokenColors.resolve(`var(${property})`, root));
+        if (hex) VIZ_COLORS[key] = hex;
+    }
+}
+
+/**
+ * Resolve the palette and keep it in step with the cascade.
+ *
+ * Called from `main.ts` BEFORE `app.mount()`: a root `onMounted` fires after
+ * every child's, so a child that reads the palette while it mounts would win
+ * the race and keep the authored fallback for the session.
+ *
+ * `.dark` class flips are observed by the app root. An OS-level scheme change
+ * is not a class mutation at all — `light-dark()` follows `color-scheme: light
+ * dark` — so it is observed here, where the palette lives.
+ */
+export function installVizColors(): void {
+    resolveVizColors();
+
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .addEventListener("change", () => resolveVizColors());
 }
 
 /**
  * Return an rgba() string from a hex color + alpha.
  */
 export function hexToRgba(hex: string, alpha: number): string {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
+    const [r, g, b] = hexChannels(hex);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
@@ -109,9 +179,5 @@ export function hexToRgba(hex: string, alpha: number): string {
  * Return the RGB components of a hex color as [r, g, b].
  */
 export function hexToRgb(hex: string): [number, number, number] {
-    return [
-        parseInt(hex.slice(1, 3), 16),
-        parseInt(hex.slice(3, 5), 16),
-        parseInt(hex.slice(5, 7), 16),
-    ];
+    return hexChannels(hex);
 }
