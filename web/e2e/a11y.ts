@@ -1,3 +1,4 @@
+// SERVED MODEL: claude-opus-5[1m]
 import { expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import type { AxeResults } from "axe-core";

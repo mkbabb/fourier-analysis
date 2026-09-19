@@ -1,7 +1,6 @@
+<!-- SERVED MODEL: claude-opus-5[1m] -->
 <script setup lang="ts">
 /**
- * SERVED MODEL: claude-opus-5[1m]
- *
  * X.F.W3 `.d` — `fr-AdminUserList FR-AUL-27 / FR-AUL-18 / FR-AUL-51 / FR-AUL-52`
  * (⊕ `FR-AFP-38`, `FR-AFP-39`), the ONE shared batch toolbar F-W3 §5a split (5)
  * declares. "The batch toolbar authored twice divergent on six positioning
