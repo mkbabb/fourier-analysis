@@ -17,8 +17,8 @@
 #   3. rebuild-on-rollback (reset --hard $PREV + rebuild + re-gate);
 #   4. dirty-tree-fail-loud (never a silent reset --hard over local edits).
 #
-# X·F F.W9 unit `a` (2026-09-19) re-homes M.W2 and M.W3 out of the dead M board
-# and executes them here.
+# X·F F.W9 unit `a` (2026-09-19) re-homes M.W2 / M.W3 / M.W4 here and executes
+# them. The three chronics they name, and the shape of each cure:
 #
 #   M.W2 — READINESS != LIVENESS. The gate conflated two different questions in
 #     one boolean: "is the backend process up?" (LIVENESS) and "is the edge
@@ -26,21 +26,31 @@
 #     fused verdict cannot say WHICH failed, so an inv-22 regression and a dead
 #     uvicorn produced the identical log line and the identical rollback. The
 #     two probes are now separate functions with separate verdicts, separately
-#     reported; the container half of the same cure is the image-level
-#     HEALTHCHECKs (api/Dockerfile, web/Dockerfile) plus `depends_on:
-#     condition: service_healthy` in the compose overlay, so the stack orders on
-#     READINESS rather than on container-started, and `up -d --wait` reports
-#     that ordering as its own exit status.
+#     reported and separately recorded; the container half of the same cure is
+#     the image-level HEALTHCHECKs (api/Dockerfile, web/Dockerfile) plus
+#     `depends_on: condition: service_healthy` in the compose overlay, so the
+#     stack orders on READINESS rather than on container-started.
 #
 #   M.W3 — FAIL-CLOSED inv-28. The API arm shipped whatever `origin/master`
 #     pointed at, on a bare webhook, with ZERO verification — while the SPA arm
 #     (.github/workflows/deploy-pages.yml) has been inv-28-gated since H.W2 on
 #     `conclusion == 'success' && head_branch == 'master' && event == 'push'`
-#     with every checkout pinned to `head_sha`. That guard is MIRRORED here; it
-#     is never edited there. The API now refuses any SHA without a covering
+#     with every checkout pinned to `head_sha`. That guard is MIRRORED here (it
+#     is never edited there): the API now refuses any SHA without a covering
 #     green CI run, and advances to that exact verified SHA rather than to a
-#     moving ref. Fail-closed means REFUSAL is the default: a query that cannot
-#     be answered refuses exactly as a red run does.
+#     moving ref. Fail-closed means the REFUSAL is the default: a query that
+#     cannot be answered refuses just as a red run does.
+#
+#   M.W4 — THE SILENT ROLLBACK IS KILLED, and the inv-31 observability floor
+#     stands up. The rollback was already loud on stdout, but stdout here is
+#     the webhook receiver's log, which nothing watches — and the spec's own
+#     words are that "an ALERT line in an unwatched log does not clear this
+#     gate". Every terminal outcome now goes to a WATCHED channel and leaves a
+#     durable, machine-readable deploy-of-record; the channel is REQUIRED, so
+#     an unobservable deploy refuses to start rather than running blind. The
+#     deploy-of-record is also the surface that makes the host's SHA readable
+#     at all: before it, "which commit is the host on?" had no answer from
+#     anywhere off the host, which is why the drift went 24 days unnoticed.
 #
 # It carries NO secret — the HMAC secret lives only in GitHub's webhook config
 # and the host's un-tracked hooks.json (see the precepts note staged in
@@ -105,18 +115,131 @@ readonly GREEN_MARKER="/opt/deploy/fourier-last-green"
 
 # ── M.W3 (inv-28) — the covering-CI query ────────────────────────────────────
 # The mirror of .github/workflows/deploy-pages.yml's `changes` job guard. That
-# file is the reference implementation and is READ here, never edited: its `if:`
-# requires workflow_run.conclusion == 'success' && head_branch == 'master' &&
-# event == 'push', and every checkout pins ref: head_sha. The three conjuncts
-# map onto the REST query below one-for-one (status=success, branch=…,
-# event=push), and the head_sha pin becomes `reset --hard <sha>` against the
-# verified SHA instead of against a ref that may move between query and reset.
+# file is the reference implementation and is READ here, never edited: its
+# `if:` requires workflow_run.conclusion == 'success' && head_branch ==
+# 'master' && event == 'push', and every checkout pins ref: head_sha. The three
+# conjuncts map onto the REST query below one-for-one (status=success,
+# branch=..., event=push), and the head_sha pin becomes `reset --hard <sha>`
+# against the verified SHA instead of against a moving ref.
 readonly REPO_SLUG="${FOURIER_REPO_SLUG:-mkbabb/fourier-analysis}"
 readonly CI_WORKFLOW_FILE="${FOURIER_CI_WORKFLOW:-ci.yml}"
 readonly DEPLOY_BRANCH="${FOURIER_DEPLOY_BRANCH:-master}"
 
+# ── M.W4 (inv-31) — the observability floor ──────────────────────────────────
+# DEPLOY_RECORD is the deploy-of-record: a durable, machine-readable JSON
+# document rewritten atomically on EVERY terminal outcome (OK, REFUSED,
+# ROLLED_BACK, ALERT). It is the answer to "which commit is the host on, and
+# how did it get there?" — a question that had no answer anywhere before this.
+#
+# ALERT_WEBHOOK is the WATCHED channel. It is REQUIRED: fail-closed on
+# observability. A deploy that cannot report its own failure is precisely the
+# chronic M.W4 names, and adding one more line to an unwatched log does not
+# cure it. The operator sets FOURIER_DEPLOY_ALERT_WEBHOOK in the host's
+# un-tracked hooks.json environment (a Slack/Discord/ntfy-compatible endpoint
+# accepting {"text": "..."}); it is a URL, not a secret this script may print.
+readonly DEPLOY_RECORD="${FOURIER_DEPLOY_RECORD:-/opt/deploy/fourier-deploy-record.json}"
+readonly ALERT_WEBHOOK="${FOURIER_DEPLOY_ALERT_WEBHOOK:-}"
+readonly SYSLOG_TAG="fourier-deploy"
+
 log() {
     printf '[deploy-hook %s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+}
+
+# notify LEVEL MESSAGE — the LOUD half of M.W4.
+#
+# Writes the same message to four places, because the chronic was a message
+# that reached exactly one place nobody reads:
+#   1. stdout/stderr (the webhook receiver's log — kept, never relied on);
+#   2. syslog via logger, at daemon.<level> (journald; host-queryable);
+#   3. the ALERT_WEBHOOK (the watched channel);
+#   4. the caller then records the outcome in DEPLOY_RECORD (see write_record).
+#
+# A failed webhook POST is itself escalated to stderr + syslog rather than
+# swallowed — the one thing this function may never do is go quiet.
+notify() {
+    local level="$1"; shift
+    local message="$*"
+    local stamp; stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    if [[ "${level}" == "err" ]]; then
+        printf '[deploy-hook %s] %s\n' "${stamp}" "${message}" >&2
+    else
+        log "${message}"
+    fi
+
+    if command -v logger >/dev/null 2>&1; then
+        logger -t "${SYSLOG_TAG}" -p "daemon.${level}" -- "${message}" || true
+    fi
+
+    if [[ -n "${ALERT_WEBHOOK}" ]]; then
+        local payload
+        # JSON-escape the message: backslashes first, then quotes, then newlines.
+        payload="$(printf '%s' "${message}" \
+            | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' \
+            | awk 'BEGIN{ORS=""} NR>1{print "\\n"} {print}')"
+        if ! curl -fsS --max-time 15 -X POST \
+                -H 'Content-Type: application/json' \
+                -d "{\"text\":\"[fourier deploy ${level}] ${payload}\"}" \
+                "${ALERT_WEBHOOK}" >/dev/null 2>&1; then
+            printf '[deploy-hook %s] ALERT-CHANNEL POST FAILED — the message above reached syslog only\n' \
+                "${stamp}" >&2
+            if command -v logger >/dev/null 2>&1; then
+                logger -t "${SYSLOG_TAG}" -p daemon.err -- \
+                    "ALERT-CHANNEL POST FAILED for: ${message}" || true
+            fi
+        fi
+    fi
+}
+
+# require_alert_channel — the BLOCKING half of M.W4.
+#
+# Fail-closed on observability. An unobservable deploy is refused before it can
+# touch the tree, because the alternative is the exact chronic: a rollback that
+# happened, worked or did not, and told nobody.
+require_alert_channel() {
+    if [[ -z "${ALERT_WEBHOOK}" ]]; then
+        printf '[deploy-hook %s] REFUSE — inv-31: FOURIER_DEPLOY_ALERT_WEBHOOK is unset.\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
+        printf '  A deploy that cannot report its own failure in a watched channel does not run.\n' >&2
+        printf '  Set FOURIER_DEPLOY_ALERT_WEBHOOK in the host hooks.json environment for this arm.\n' >&2
+        if command -v logger >/dev/null 2>&1; then
+            logger -t "${SYSLOG_TAG}" -p daemon.err -- \
+                "REFUSE — inv-31: FOURIER_DEPLOY_ALERT_WEBHOOK unset; deploy not attempted" || true
+        fi
+        return 1
+    fi
+}
+
+# write_record OUTCOME PREV NEW CI_RUN_ID DETAIL — the DURABLE half of inv-31.
+#
+# Atomic (write-temp-then-rename) so a reader never sees a half-written record.
+# Best-effort on the write itself: if /opt/deploy is not writable the deploy
+# must still report through the watched channel rather than die here.
+write_record() {
+    local outcome="$1" prev="$2" new="$3" ci_run_id="$4" detail="$5"
+    local stamp tmp
+    stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    tmp="${DEPLOY_RECORD}.tmp.$$"
+
+    detail="$(printf '%s' "${detail}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+
+    if ! {
+        printf '{\n'
+        printf '  "repo": "%s",\n' "${REPO_SLUG}"
+        printf '  "outcome": "%s",\n' "${outcome}"
+        printf '  "deployed_sha": "%s",\n' "${new}"
+        printf '  "previous_sha": "%s",\n' "${prev}"
+        printf '  "ci_run_id": "%s",\n' "${ci_run_id}"
+        printf '  "recorded_at": "%s",\n' "${stamp}"
+        printf '  "detail": "%s"\n' "${detail}"
+        printf '}\n'
+    } >"${tmp}" 2>/dev/null; then
+        rm -f "${tmp}" 2>/dev/null || true
+        notify warning "inv-31 — could not write the deploy-of-record at ${DEPLOY_RECORD} (outcome ${outcome} for ${new})"
+        return 0
+    fi
+    mv -f "${tmp}" "${DEPLOY_RECORD}" 2>/dev/null \
+        || notify warning "inv-31 — could not install the deploy-of-record at ${DEPLOY_RECORD}"
 }
 
 # ── M.W3 — inv-28: the API arm is fail-closed on a same-SHA green CI run ─────
@@ -139,8 +262,8 @@ gh_api() {
 # json_scalar KEY < JSON — jq when the host has it, a sed fallback when it does
 # not. The host provably lacks jq (the same reason scripts/pages-deploy.sh
 # parses wrangler's stdout rather than `--json | jq`), so the fallback is the
-# real path, not a courtesy. Only two values are read this way: total_count,
-# and the id of the first workflow run.
+# real path, not a courtesy. Only flat top-level scalars are read this way —
+# total_count, and the first workflow-run id.
 json_scalar() {
     local key="$1" body; body="$(cat)"
     if command -v jq >/dev/null 2>&1; then
@@ -161,8 +284,8 @@ json_scalar() {
     esac
 }
 
-# CI_RUN_ID is set by require_green_ci on success — the covering run id, so every
-# shipped SHA can cite the run that cleared it.
+# CI_RUN_ID is set by require_green_ci on success — the covering run id, carried
+# into the deploy-of-record so every shipped SHA cites the run that cleared it.
 CI_RUN_ID=""
 
 require_green_ci() {
@@ -172,17 +295,17 @@ require_green_ci() {
 
     log "inv-28 — asking GitHub for a covering green ${CI_WORKFLOW_FILE} run for ${sha} on ${DEPLOY_BRANCH}…"
     if ! body="$(gh_api "${query}")"; then
-        log "inv-28 REFUSE — the covering-CI query could not be answered for ${sha}; the deploy is fail-closed and did NOT run. (Transport/API failure, or a rate limit with no GITHUB_TOKEN set.)"
+        notify err "inv-28 REFUSE — the covering-CI query could not be answered for ${sha}; the deploy is fail-closed and did NOT run. (Transport/API failure, or a rate limit with no GITHUB_TOKEN set.)"
         return 1
     fi
 
     count="$(printf '%s' "${body}" | json_scalar total_count)"
     if [[ -z "${count}" ]]; then
-        log "inv-28 REFUSE — the covering-CI response for ${sha} carried no total_count; refusing rather than guessing."
+        notify err "inv-28 REFUSE — the covering-CI response for ${sha} carried no total_count; refusing rather than guessing."
         return 1
     fi
     if [[ "${count}" -lt 1 ]]; then
-        log "inv-28 REFUSE — no green ${CI_WORKFLOW_FILE} push run on ${DEPLOY_BRANCH} covers ${sha}. The API is NOT shipped. (This is the demonstrable refusal the SPA arm has had since H.W2.)"
+        notify err "inv-28 REFUSE — no green ${CI_WORKFLOW_FILE} push run on ${DEPLOY_BRANCH} covers ${sha}. The API is NOT shipped. (This is the demonstrable refusal the SPA arm has had since H.W2.)"
         return 1
     fi
 
@@ -210,10 +333,10 @@ probe_readiness() {
 # reports them APART so a failure names its own cause. NO swallow — the caller
 # relies on the exit status as the rollback trigger.
 #
-# GATE_FAILURE carries the named reason out to the caller: "liveness" (the
-# backend never came up), "readiness" (the backend is up but the edge is serving
-# the wrong contract — the inv-22 regression the fused gate could not
-# distinguish), or "liveness+readiness".
+# GATE_FAILURE carries the named reason out to the caller for the alert and the
+# deploy-of-record: "liveness" (the backend never came up), "readiness" (the
+# backend is up but the edge is serving the wrong contract — the inv-22
+# regression the fused gate could not distinguish), or "liveness+readiness".
 GATE_FAILURE=""
 
 health_gate() {
@@ -252,9 +375,8 @@ assert_clean_tree() {
     local dirty
     dirty="$(git status --porcelain --untracked-files=no)"
     if [[ -n "${dirty}" ]]; then
-        log "ABORT — host working tree is DIRTY; tracked changes would be discarded by reset --hard:"
+        notify err "ABORT — host working tree is DIRTY; tracked changes would be discarded by reset --hard. Reconcile the host tree (commit, stash, or revert) before deploying."
         printf '%s\n' "${dirty}" >&2
-        log "reconcile the host tree (commit, stash, or revert the listed paths) before deploying."
         return 1
     fi
 }
@@ -277,7 +399,8 @@ build_and_up() {
     # healthcheck in this stack is `retries`-bounded.
     #
     # That non-zero is returned to the CALLER, never allowed to abort the script:
-    # an aborting bring-up would skip the rollback entirely. A failed BUILD is a
+    # an aborting bring-up would skip the rollback and the watched-channel alert,
+    # which is precisely the silence M.W4 exists to kill. A failed BUILD is a
     # different case and keeps the abort (see above) — nothing has been brought
     # up yet, so the running stack is untouched and there is nothing to roll back.
     log "bringing up (up -d --wait — blocks on each service's HEALTHCHECK)…"
@@ -328,7 +451,8 @@ deploy() {
     local new
     new="$(git rev-parse "origin/${DEPLOY_BRANCH}")"
     if ! require_green_ci "${new}"; then
-        log "inv-28 — the host stays on ${prev}; nothing was built, nothing was brought up."
+        write_record "REFUSED" "${prev}" "${new}" "none" \
+            "inv-28: no covering green ${CI_WORKFLOW_FILE} run; the host stays on ${prev}"
         return 1
     fi
 
@@ -374,19 +498,26 @@ deploy() {
                 uv run --no-sync python -m api.scripts.run_pending_migrations; then
             log "migrations OK"
         else
-            log "WARNING — pending migrations returned non-zero; deploy STAYS GREEN (live container ran the at-rest schema); next deploy will retry"
+            # M.W4: a non-fatal anomaly still reaches the watched channel. It
+            # does not fail the deploy (the live container runs the at-rest
+            # schema), but it may never again be something only stdout knows.
+            notify warning "pending migrations returned non-zero after a GREEN deploy of ${new}; the deploy STAYS GREEN (live container ran the at-rest schema) and the next deploy retries."
         fi
 
         printf '%s\n' "${new}" >"${GREEN_MARKER}"
-        log "DEPLOY OK ${prev} -> ${new} (recorded green; liveness ok, readiness ok)"
+        write_record "OK" "${prev}" "${new}" "${CI_RUN_ID}" \
+            "health gate GREEN: liveness ok, readiness ok (inv-22)"
+        notify info "DEPLOY OK ${prev} -> ${new} (CI run ${CI_RUN_ID}; liveness ok, readiness ok)"
         return 0
     fi
 
     # 6. Rollback-on-rollback: reset to $PREV, REBUILD, up, and RE-GATE to
-    #    confirm the prior SHA came back green. Exit non-zero so the receiver
-    #    logs a failed deploy. Each arm names WHICH probe failed.
+    #    confirm the prior SHA came back green. M.W4 — every arm below is LOUD
+    #    in the watched channel and BLOCKING (non-zero exit; the green marker is
+    #    NOT advanced), and each leaves a durable deploy-of-record naming WHICH
+    #    probe failed.
     local failed_probe="${GATE_FAILURE}"
-    log "ROLLBACK — the ${failed_probe} probe failed for ${new}; reverting to ${prev}"
+    notify err "ROLLBACK — the ${failed_probe} probe failed for ${new} (CI run ${CI_RUN_ID}); reverting to ${prev}."
     git reset --hard "${prev}"
     local restored=1
     if build_and_up; then
@@ -395,15 +526,23 @@ deploy() {
         GATE_FAILURE="bring-up (compose --wait: a service never became healthy)"
     fi
     if [[ ${restored} -eq 0 ]]; then
-        log "ROLLBACK OK — site restored to last-known-good ${prev}; deploy of ${new} rejected (failing probe: ${failed_probe})"
+        write_record "ROLLED_BACK" "${prev}" "${new}" "${CI_RUN_ID}" \
+            "the ${failed_probe} probe failed for ${new}; the host is serving ${prev}"
+        notify err "ROLLBACK OK — the site is restored to last-known-good ${prev}; the deploy of ${new} is REJECTED (failing probe: ${failed_probe}). The host is NOT at the pushed SHA."
     else
-        log "ALERT — rollback to ${prev} ALSO failed the health gate (failing probe: ${GATE_FAILURE}); the site has no green target. Manual intervention required."
+        write_record "ALERT" "${prev}" "${new}" "${CI_RUN_ID}" \
+            "rollback to ${prev} ALSO failed the ${GATE_FAILURE} probe; no green target"
+        notify err "ALERT — the rollback to ${prev} ALSO failed the health gate (failing probe: ${GATE_FAILURE}). The site has NO green target. MANUAL INTERVENTION REQUIRED."
     fi
     return 1
 }
 
 # ── Entry point — serialise the whole deploy under the fourier lock ──────────
 main() {
+    # M.W4 — fail-closed on observability, BEFORE the lock and before any act
+    # that could change the host's state.
+    require_alert_channel
+
     log "fourier deploy-hook invoked (repo arg: ${1:-<none>})"
     exec 9>"${LOCKFILE}"
     flock 9
