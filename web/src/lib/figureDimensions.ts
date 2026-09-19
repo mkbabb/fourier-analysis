@@ -78,3 +78,44 @@ const TRANSCODED_FIGURES = new Set(Object.keys(FIGURE_DIMENSIONS));
 export function hasModernVariants(pngFilename: string): boolean {
     return TRANSCODED_FIGURES.has(pngFilename);
 }
+
+export interface ResolvedFigure {
+    png: string;
+    avif: string | null;
+    webp: string | null;
+    width?: number;
+    height?: number;
+}
+
+/**
+ * Resolve a figure's served URLs and intrinsic dimensions.
+ *
+ * `PAW-24`: the consumer used to run a `.pdf`→`.png` replace here and carry a
+ * doc comment stating the INVERSE of the installed contract. Measured at the
+ * producer's bytes this round — latex-paper's parser normalises the filename
+ * before any consumer sees it (`chunk-5VAEDP55.js`: *"if (!filename.includes(
+ * ".")) filename += ".png"; filename = filename.replace(/\.pdf$/, ".png")"*) —
+ * so the replace was dead and the comment was the load-bearing half of the
+ * defect. `figure.filename` arrives as a `.png` basename.
+ *
+ * `<picture>` does NOT fall back on a 404, only on an unsupported format, so
+ * the AVIF/WebP sources are emitted ONLY for figures known to carry variants.
+ *
+ * ⊘ Lives here rather than in the SFC so that it is reachable by the unit floor
+ * (`G-F4-VITEST`) — `PAW-12`'s set-equality rider is F.W9/W10's and needs a
+ * function it can import.
+ */
+export function resolveFigure(filename: string, assetBase: string): ResolvedFigure {
+    const dims = FIGURE_DIMENSIONS[filename];
+    const png = `${assetBase}${filename}`;
+    const base: ResolvedFigure = {
+        png,
+        avif: null,
+        webp: null,
+        width: dims?.[0],
+        height: dims?.[1],
+    };
+    if (!hasModernVariants(filename)) return base;
+    const stem = filename.replace(/\.png$/, "");
+    return { ...base, avif: `${assetBase}${stem}.avif`, webp: `${assetBase}${stem}.webp` };
+}

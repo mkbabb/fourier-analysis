@@ -10,8 +10,8 @@ import { computed, inject, type ComponentPublicInstance } from "vue";
 import { ArrowRight } from "@lucide/vue";
 import {
     DARK_INVERT_EXEMPT,
-    FIGURE_DIMENSIONS,
-    hasModernVariants,
+    resolveFigure,
+    type ResolvedFigure,
 } from "@/lib/figureDimensions";
 
 const props = defineProps<{
@@ -64,37 +64,6 @@ function bindSection(
     props.measureSection(id, toHTMLElement(value));
 }
 
-// I.θ — resolve a figure's served URLs, intrinsic dimensions, and modern-format
-// availability.
-//
-// `PAW-24`: the doc comment here used to say the figure source is a `.pdf`
-// name and that this function converts it. It states the INVERSE of the
-// installed contract — latex-paper's parser already basenames and normalises
-// the filename to `.png` before it reaches a consumer — so the `.pdf`→`.png`
-// replace was dead code AND the comment was teaching the next reader the wrong
-// model of the pipeline. The comment was the load-bearing half of that defect.
-// What is true: `figure.filename` arrives as a `.png` basename; figures are
-// transcoded 1:1 to `.avif`/`.webp` siblings (see `figureDimensions`), and
-// `<picture>` does NOT fall back on a 404 — only on an unsupported format — so
-// the AVIF/WebP `<source>`s are emitted ONLY for figures we know carry variants
-// (`hasModernVariants`); every other figure renders as a bare `<img>` PNG.
-function resolveFigure(filename: string) {
-    const pngName = filename;
-    const png = `${baseUrl}assets/${pngName}`;
-    const dims = FIGURE_DIMENSIONS[pngName];
-    if (hasModernVariants(pngName)) {
-        const stem = pngName.replace(/\.png$/, "");
-        return {
-            png,
-            avif: `${baseUrl}assets/${stem}.avif`,
-            webp: `${baseUrl}assets/${stem}.webp`,
-            width: dims?.[0],
-            height: dims?.[1],
-        };
-    }
-    return { png, avif: null, webp: null, width: dims?.[0], height: dims?.[1] };
-}
-
 /**
  * `PAW-18`: `resolveFigure()` was invoked SEVEN times per figure per render —
  * two regex replaces, a `Set.has`, three concatenations and a fresh object each
@@ -106,12 +75,12 @@ function resolveFigure(filename: string) {
  * A memo is not that extraction and does not pre-empt it: when the figure child
  * is extracted, this map moves into it unchanged.
  */
-const figureCache = new Map<string, ReturnType<typeof resolveFigure>>();
+const figureCache = new Map<string, ResolvedFigure>();
 
-function figure(filename: string) {
+function figure(filename: string): ResolvedFigure {
     let hit = figureCache.get(filename);
     if (!hit) {
-        hit = resolveFigure(filename);
+        hit = resolveFigure(filename, `${baseUrl}assets/`);
         figureCache.set(filename, hit);
     }
     return hit;
