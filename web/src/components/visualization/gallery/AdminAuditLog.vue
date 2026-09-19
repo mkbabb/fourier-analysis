@@ -2,6 +2,7 @@
 import { ref, computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Badge } from "@mkbabb/glass-ui/badge";
+import { Input } from "@mkbabb/glass-ui/input";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import * as api from "@/lib/api";
@@ -192,30 +193,51 @@ function actionTone(action: string): ActionTone {
                  search that was never wrong. A silent false negative on a
                  compliance surface. `enterkeyhint` names the Enter handler this
                  input already has. -->
+            <!-- X.F.W3 `.d` — `FR-AUL-6`'s RECIPE CORE, found at a fourth
+                 consumer. The row's ⟨…⟩ names three (AdminUserList,
+                 FunctionInput, GallerySearchBar) and its ratified reading is
+                 that "the RECIPE CORE is what triplicates, not bytes" — these
+                 two fields carry it exactly: a raw `<input>` with
+                 `focus:outline-none` and a hand-rolled border swap, so the
+                 focus indicator is annihilated under forced-colors and the
+                 `focus:`-not-`focus-visible:` arm fires on pointer focus too.
+                 One repair unit per consumer; this is this file's.
+
+                 ⊘ `./forms` is NOT an export of the adopted pin; `X-EXT-2`
+                 re-seats the target to `./input`, which ships the `input-pill`
+                 recipe and the restored forced-colors selector.
+
+                 The `<label class="sr-only" for>` pairs STAY (AA-13: a real
+                 label survives typing where a placeholder does not), and so do
+                 `autocapitalize`/`autocorrect`/`enterkeyhint` — they ride
+                 `$attrs` to the element, which is the producer's documented
+                 mechanism, and AA-21's iOS false-negative depends on them. -->
             <label class="sr-only" for="audit-action-filter">Action (exact match)</label>
-            <input
+            <Input
                 id="audit-action-filter"
                 v-model="actionFilter"
                 type="text"
+                size="sm"
                 placeholder="action (exact, e.g. set_tier:featured)"
                 autocapitalize="none"
                 autocorrect="off"
                 spellcheck="false"
                 enterkeyhint="search"
-                class="flex-1 min-w-[10rem] rounded border border-border bg-transparent px-2 py-1 text-xs focus:border-muted-foreground focus:outline-none"
+                class="flex-1 min-w-[10rem] text-xs"
                 @keyup.enter="applyFilters"
             />
             <label class="sr-only" for="audit-target-filter">Target (substring match)</label>
-            <input
+            <Input
                 id="audit-target-filter"
                 v-model="targetFilter"
                 type="text"
+                size="sm"
                 placeholder="target (substring match)"
                 autocapitalize="none"
                 autocorrect="off"
                 spellcheck="false"
                 enterkeyhint="search"
-                class="flex-1 min-w-[10rem] rounded border border-border bg-transparent px-2 py-1 text-xs focus:border-muted-foreground focus:outline-none"
+                class="flex-1 min-w-[10rem] text-xs"
                 @keyup.enter="applyFilters"
             />
             <!-- AA-22: `h-7` / `h-7 w-7` on 100 % of this file's Button sites

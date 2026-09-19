@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Input } from "@mkbabb/glass-ui/input";
 import { PRESETS } from "@/lib/equation/presets";
 import type { NotationMode, PresetFunction } from "@/lib/equation/types";
 import { Wand2, Play } from "@lucide/vue";
@@ -107,47 +108,66 @@ const activePreset = computed(() =>
                 <div class="space-y-3 pt-1">
                     <div>
                         <label for="fn-expression" class="text-sm font-medium text-muted-foreground mb-1 block">Expression</label>
-                        <input
+                        <!-- X.F.W3 `.d` — `fr-AdminUserList FR-AUL-6`'s
+                             consumer limb (`fr-FunctionInput D-1` + `C-5`, ⊕
+                             `FR-GSB-10`/`FR-GSB-12`). Three raw `<input>`s
+                             carrying `outline-none` over a hand-rolled recipe
+                             core: the focus indicator was ANNIHILATED under
+                             forced-colors — Tailwind v4's `.outline-hidden`
+                             (which preserves a forced-colors outline) is absent
+                             from this build, so `outline-none` is the v3
+                             `outline: 2px solid transparent` and nothing
+                             repaints it — and the `focus:`-not-`focus-visible:`
+                             border swap fired on pointer focus too.
+
+                             ▲ THE CENSUS TARGET MOVED AND IS RE-SEATED, NOT
+                             ASSUMED: the row prescribes `./forms`, and `./forms`
+                             is NOT an export of the adopted pin (`grep -rn
+                             "glass-ui/forms" web/src` → 0, and the 70-key export
+                             map has no such key). `X-EXT-2` re-seats it to
+                             `./input`, which IS exported and IS the `input-pill`
+                             recipe the row names — one of the nine
+                             forced-colors-restored selectors. `g12`'s `./forms`
+                             leg can therefore only ever close in state (b), and
+                             this unit hands `.f` that row.
+
+                             `FR-GSB-12`'s tokened placeholder rides too: the
+                             bespoke `placeholder:text-muted-foreground/50`
+                             (an alpha-mute of an already-muted ink, measured at
+                             2.02:1) is dropped for the primitive's own. -->
+                        <Input
                             id="fn-expression"
                             type="text"
                             v-model="expression"
-                            @keydown.enter="emit('compute')"
-                            class="w-full px-2.5 py-2 rounded-lg text-sm
-                                   fira-code bg-muted/40 border-[1.5px] border-border/50
-                                   text-foreground outline-none
-                                   transition-colors focus:border-primary/50
-                                   placeholder:text-muted-foreground/50"
-                            placeholder='e.g. x*(pi - x)  or  sin(2*x) + cos(3*x)'
+                            class="w-full fira-code"
+                            placeholder="e.g. x*(pi - x)  or  sin(2*x) + cos(3*x)"
                             spellcheck="false"
                             autocomplete="off"
+                            @keydown.enter="emit('compute')"
                         />
                     </div>
 
                     <div class="flex items-center gap-2">
                         <label for="fn-domain-start" class="text-sm font-medium text-muted-foreground shrink-0">Domain</label>
-                        <input
+                        <Input
                             id="fn-domain-start"
                             type="text"
+                            size="sm"
                             aria-label="Domain start"
-                            :value="formatDomain(domainStart)"
-                            @change="onDomainInput($event, (v) => domainStart = v)"
-                            class="w-20 px-1.5 py-1 rounded-md text-sm text-center
-                                   fira-code bg-muted/40 border-[1.5px] border-border/50
-                                   text-foreground outline-none
-                                   transition-colors focus:border-primary/50"
+                            :model-value="formatDomain(domainStart)"
+                            class="w-20 text-center fira-code"
                             placeholder="0"
+                            @change="onDomainInput($event, (v) => domainStart = v)"
                         />
                         <span class="text-sm text-muted-foreground">to</span>
-                        <input
+                        <Input
                             type="text"
+                            size="sm"
                             aria-label="Domain end"
-                            :value="formatDomain(domainEnd)"
-                            @change="onDomainInput($event, (v) => domainEnd = v)"
-                            class="w-20 px-1.5 py-1 rounded-md text-sm text-center
-                                   fira-code bg-muted/40 border-[1.5px] border-border/50
-                                   text-foreground outline-none
-                                   transition-colors focus:border-primary/50"
+                            :model-value="formatDomain(domainEnd)"
+                            class="w-20 text-center fira-code"
                             placeholder="2π"
+                            @change="onDomainInput($event, (v) => domainEnd = v)"
                         />
                     </div>
 
