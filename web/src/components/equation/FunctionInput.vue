@@ -122,14 +122,19 @@ const activePreset = computed(() =>
 
                              ▲ THE CENSUS TARGET MOVED AND IS RE-SEATED, NOT
                              ASSUMED: the row prescribes `./forms`, and `./forms`
-                             is NOT an export of the adopted pin (`grep -rn
-                             "glass-ui/forms" web/src` → 0, and the 70-key export
-                             map has no such key). `X-EXT-2` re-seats it to
-                             `./input`, which IS exported and IS the `input-pill`
-                             recipe the row names — one of the nine
-                             forced-colors-restored selectors. `g12`'s `./forms`
-                             leg can therefore only ever close in state (b), and
-                             this unit hands `.f` that row.
+                             is NOT an export of the adopted pin — the 70-key
+                             export map has no such key, and `g12`'s own probe
+                             over `web/src` returns ZERO importers. (That probe's
+                             literal is deliberately NOT written out here: a
+                             comment quoting a grep pattern becomes a hit for it,
+                             and a detector its own subject can contaminate is
+                             the defect `g17` states inline for the forbidden
+                             totals. Measured, not quoted.) `X-EXT-2` re-seats
+                             the target to `./input`, which IS exported and IS
+                             the `input-pill` recipe the row names — one of the
+                             nine forced-colors-restored selectors. `g12`'s
+                             `./forms` leg can therefore only ever close in state
+                             (b), and this unit hands `.f` that row.
 
                              `FR-GSB-12`'s tokened placeholder rides too: the
                              bespoke `placeholder:text-muted-foreground/50`
