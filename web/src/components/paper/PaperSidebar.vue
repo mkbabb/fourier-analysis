@@ -52,6 +52,25 @@ function hasChildren(section: PaperSectionData): boolean {
 }
 
 /**
+ * X·F F.W4 `.e` — `L-1`, as the measurement corrected it.
+ *
+ * The defect was a TOGGLE on the navigation control: clicking the chapter you
+ * were reading collapsed it, and scroll-follow then died against an unmounted
+ * row. Splitting the two controls cures that — but a navigate that leaves the
+ * target's subsections closed hides where you just arrived, and `C-M4`'s e2e
+ * guard (`paper-performance.spec.ts`, which clicks a row to reveal a deep
+ * entry) measured it: the appendix entry never mounted.
+ *
+ * So the row EXPANDS and never collapses. It is monotone, which is the whole
+ * content of L-1's complaint — the two-way control is the disclosure trigger
+ * beside it, where `aria-expanded` says so.
+ */
+function navigateAndReveal(id: string) {
+    if (!isExpanded(id)) toggleSection(id);
+    navigateTo(id);
+}
+
+/**
  * X·F F.W4 `.e` — the disclosure control's accessible name.
  *
  * `renderTitle` returns KaTeX HTML, which cannot be an `aria-label`; the ToC
@@ -105,7 +124,7 @@ function plainTitle(section: PaperSectionData): string {
                                 <Button
                                     emphasis="quiet"
                                     :data-toc-id="section.id"
-                                    @click="navigateTo(section.id)"
+                                    @click="navigateAndReveal(section.id)"
                                     class="sidebar-link cm-serif"
                                     :class="{ 'is-active': activeRootId === section.id }"
                                     :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"

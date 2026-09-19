@@ -119,15 +119,15 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
     let correctionRaf = 0;
     let overlayTimer: ReturnType<typeof setTimeout> | undefined;
     let backFlagTimer: ReturnType<typeof setTimeout> | undefined;
-    /** `L/D3`: true from the moment an overlay run starts until it finishes. */
-    let overlayInFlight = false;
+    /** `L/D3`: cancels the run currently holding the overlay, if any. */
+    let supersedeOverlayRun: (() => void) | null = null;
 
     function dispose() {
         if (correctionRaf) cancelAnimationFrame(correctionRaf);
         correctionRaf = 0;
         clearTimeout(overlayTimer);
         clearTimeout(backFlagTimer);
-        overlayInFlight = false;
+        supersedeOverlayRun = null;
     }
 
     onScopeDispose(dispose);
@@ -145,16 +145,25 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
         }
 
         // `L/D3`: `finished` was per-invocation with no in-flight guard, against
-        // SIX user-reachable entry points into `navigateTo` — a second jump
-        // during a teleport ran a second correction loop against the same
-        // scroller and the first one's `finish` could hide the overlay under
-        // the second. One run at a time; a later run supersedes nothing because
-        // it never starts.
-        if (overlayInFlight) return;
-        overlayInFlight = true;
+        // SIX user-reachable entry points into `navigateTo` — two jumps in
+        // flight ran two correction loops against one scroller, and the first
+        // one's `finish` could hide the overlay out from under the second.
+        //
+        // Serialised by SUPERSESSION, not by refusal: a later jump is the
+        // user's latest intent, so it cancels the loop and the hide-timer the
+        // earlier one left running and takes the overlay over. Dropping it
+        // would trade a visual race for a dead control — the same bargain the
+        // rest of this record refuses.
+        supersedeOverlayRun?.();
 
         let finished = false;
         const shownAt = performance.now();
+        supersedeOverlayRun = () => {
+            finished = true;
+            if (correctionRaf) cancelAnimationFrame(correctionRaf);
+            correctionRaf = 0;
+            clearTimeout(overlayTimer);
+        };
 
         const finish = () => {
             if (finished) return;
@@ -164,7 +173,7 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
                 requestAnimationFrame(() => {
                     overlay.style.opacity = "0";
                     overlay.style.pointerEvents = "none";
-                    overlayInFlight = false;
+                    supersedeOverlayRun = null;
                 });
             };
             const remaining = Math.max(
