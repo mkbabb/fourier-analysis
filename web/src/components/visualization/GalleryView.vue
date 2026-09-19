@@ -23,7 +23,6 @@ import {
 import GallerySearchBar from "./gallery/GallerySearchBar.vue";
 import GalleryFeaturedCarousel from "./gallery/GalleryFeaturedCarousel.vue";
 import GalleryInfiniteGrid from "./gallery/GalleryInfiniteGrid.vue";
-import GalleryMarquee from "./gallery/GalleryMarquee.vue";
 import GalleryCardModal from "./gallery/GalleryCardModal.vue";
 import GalleryAdminBanner from "./gallery/GalleryAdminBanner.vue";
 import GalleryDraftsSection from "./gallery/GalleryDraftsSection.vue";
@@ -256,26 +255,17 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 @set-tier="handleSetTier"
                 @delete="handleDelete"
             />
-            <!-- Empty state (D.W4.c — option A: the GalleryMarquee earns
-                 the empty state as a living preview band; a CTA Button
-                 routes to /visualize so the empty surface becomes
-                 actionable rather than inert. The marquee gracefully
-                 hides itself when entries.length < 4 (its own template
-                 guard), so a true cold-empty DB renders the CTA alone. -->
+            <!-- Empty state. X·F F.W4 §3 D1 — RULED DELETE: the D.W4.c
+                 "living preview band" never shipped. The band was mounted on
+                 `featuredEntries.length >= 4` INSIDE a block guarded by
+                 `!gallery.entries.length`, and `featuredEntries` is a filter OF
+                 `gallery.entries` — |filter(S)| ≤ |S|, so the predicate read
+                 `0 >= 4` for every input. The CTA is what the empty gallery
+                 always rendered, and it is what it renders now. -->
             <div
                 v-if="!gallery.entries.length && !gallery.loading"
                 class="flex flex-col items-center justify-center flex-1 gap-4 text-muted-foreground py-6"
             >
-                <GalleryMarquee
-                    v-if="featuredEntries.length >= 4"
-                    :entries="featuredEntries"
-                    :admin-mode="gallery.adminMode"
-                    :liked-hashes="likedHashes"
-                    @card-click="openModal"
-                    @like="handleLike"
-                    @set-tier="handleSetTier"
-                    @delete="handleDelete"
-                />
                 <div class="flex flex-col items-center gap-3">
                     <Layers class="h-12 w-12 opacity-30" />
                     <p class="text-base font-medium">No visualizations yet.</p>
