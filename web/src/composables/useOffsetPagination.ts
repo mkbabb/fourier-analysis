@@ -32,7 +32,6 @@ export function useOffsetPagination<T>(options: OffsetPaginationConfig<T>) {
     const error = ref<string | null>(null);
 
     const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
-    const offset = computed(() => (page.value - 1) * pageSize.value);
     const hasNext = computed(() => page.value < pageCount.value);
     const hasPrev = computed(() => page.value > 1);
 
@@ -64,8 +63,22 @@ export function useOffsetPagination<T>(options: OffsetPaginationConfig<T>) {
         });
     }
 
-    async function loadPage(p?: number) {
-        if (p != null) page.value = Math.max(1, Math.min(p, pageCount.value || 1));
+    async function loadPage(p?: number): Promise<void> {
+        // X·F F.W4 `.d` — AA-1 / AA-7 / FR-AUL-2 / FR-AUL-4.
+        //
+        // `page` used to be written BEFORE the await while `items`/`total` were
+        // written only on success, so a failed reload rendered the PREVIOUS
+        // page's rows under a freshly advanced page number — the affirmative
+        // statement about the ledger that AA-1 convicts. The three now commit
+        // together, on the winning response and never before it.
+        //
+        // The requested page is also clamped on the NO-ARG path (FR-AUL-4): the
+        // bare `loadPage()` four of the five post-mutation reloads use skipped
+        // the clamp entirely, and the server clamps nothing, so a deletion that
+        // empties the last page rendered "No users found" beside a pager reading
+        // "3 / 2" and a total of 40.
+        const requested =
+            p != null ? Math.max(1, Math.min(p, pageCount.value || 1)) : page.value;
         const ticket = ++run;
         const current = () => !disposed && ticket === run;
 
@@ -73,10 +86,20 @@ export function useOffsetPagination<T>(options: OffsetPaginationConfig<T>) {
         error.value = null;
 
         try {
-            const res = await options.fetchFn(pageSize.value, offset.value);
+            const res = await options.fetchFn(
+                pageSize.value,
+                (requested - 1) * pageSize.value,
+            );
             if (!current()) return;
             items.value = res.data;
             total.value = res.total;
+            const pages = Math.max(1, Math.ceil(res.total / pageSize.value));
+            page.value = Math.min(requested, pages);
+            // The requested page fell off the end of the fresh total: re-read the
+            // page that now exists rather than render an off-the-end emptiness
+            // under a real page number. `pages` is monotonically non-increasing
+            // across this path, so it settles.
+            if (page.value !== requested) return loadPage(page.value);
         } catch (e) {
             // An abort is this composable superseding itself, not a failure the
             // operator can act on. The predicate is the repo's own (`api.ts:69`,

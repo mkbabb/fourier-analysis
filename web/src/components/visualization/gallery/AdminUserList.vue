@@ -40,12 +40,31 @@ const searchQuery = ref("");
 const sortMode = ref<"newest" | "last_seen" | "entries">("newest");
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * X·F F.W4 `.d` — FR-AUL-30 / AA-28 (SP-12, the `getAdminToken()!` type-lie).
+ *
+ * Six call sites asserted a `string | null` non-null. On the null path
+ * `coreFetch` throws its own developer string — *"coreFetch: auth='admin'
+ * requires adminToken"* — which five catches rendered verbatim into an
+ * operator-facing toast. The assertion is replaced by the guard the type always
+ * demanded, and the message says what an admin can act on.
+ *
+ * ⊘ The 11-site sweep across the other two panels and the store is SP-12's lane
+ * carry; this is its AdminUserList member.
+ */
+function requireAdminToken(): string {
+    const token = auth.getAdminToken();
+    if (!token) throw new Error("Admin session has expired — re-enter admin mode.");
+    return token;
+}
+
 const {
     items: users,
     total,
     page,
     pageCount,
     loading,
+    error,
     hasNext,
     hasPrev,
     loadPage,
@@ -53,7 +72,7 @@ const {
     prevPage,
 } = useOffsetPagination<AdminUserInfo>({
     fetchFn: async (limit, offset) => {
-        const token = auth.getAdminToken()!;
+        const token = requireAdminToken();
         const result = await api.listAdminUsers(token, {
             page: Math.floor(offset / limit) + 1,
             limit,
@@ -156,8 +175,8 @@ function clearSelection() {
 watch(page, () => clearSelection());
 
 async function performBatch(action: BatchKind, slugs: string[]) {
-    const token = auth.getAdminToken()!;
     try {
+        const token = requireAdminToken();
         const result = await api.batchUsers(token, action, slugs);
         const verb =
             action === "suspend"
@@ -177,8 +196,8 @@ async function performBatch(action: BatchKind, slugs: string[]) {
 }
 
 async function handleSuspend(slug: string) {
-    const token = auth.getAdminToken()!;
     try {
+        const token = requireAdminToken();
         await api.setAdminUserStatus(token, slug, "suspended");
         toast("User suspended", "success");
         loadPage();
@@ -188,8 +207,8 @@ async function handleSuspend(slug: string) {
 }
 
 async function handleUnsuspend(slug: string) {
-    const token = auth.getAdminToken()!;
     try {
+        const token = requireAdminToken();
         await api.setAdminUserStatus(token, slug, "active");
         toast("User unsuspended", "success");
         loadPage();
@@ -199,8 +218,8 @@ async function handleUnsuspend(slug: string) {
 }
 
 async function performDelete(slug: string) {
-    const token = auth.getAdminToken()!;
     try {
+        const token = requireAdminToken();
         await api.deleteAdminUser(token, slug);
         toast("User deleted", "success");
         loadPage();
@@ -210,8 +229,8 @@ async function performDelete(slug: string) {
 }
 
 async function performPrune() {
-    const token = auth.getAdminToken()!;
     try {
+        const token = requireAdminToken();
         const result = await api.pruneEmptyUsers(token);
         toast(`Pruned ${result.pruned} empty users`, "success");
         loadPage(1);
@@ -273,12 +292,22 @@ function timeAgo(iso: string): string {
             </Button>
         </div>
 
-        <!-- Loading overlay -->
-        <div v-if="loading" class="flex justify-center py-8" role="status" aria-live="polite">
-            <div class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-            <span class="sr-only">Loading users</span>
+        <!-- Failure. FR-AUL-2: the composable produced `error` and nothing ever
+             consumed it, so a failed list load rendered the PREVIOUS page's rows
+             under the new page number — or, on first load, "No users found". The
+             read path was the only one of six that could not speak. -->
+        <div
+            v-if="error"
+            role="alert"
+            class="flex flex-col items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 py-8 text-center"
+        >
+            <Users class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
+            <p class="text-sm font-medium">The user list could not be loaded.</p>
+            <p class="max-w-prose text-xs text-muted-foreground">{{ error }}</p>
+            <Button emphasis="secondary" size="sm" @click="loadPage()">Try again</Button>
         </div>
 
+        <template v-else>
         <!-- Select-all-on-page affordance. The indeterminate visual state is
              carried by the `data-some` attribute on the row so the checkbox
              reflects partial selection in CSS. -->
@@ -348,12 +377,17 @@ function timeAgo(iso: string): string {
             </Button>
         </div>
 
-        <!-- User list -->
+        <!-- User list. FR-AUL-8: the old `v-if="loading"`/`v-if="!loading"` pair
+             were exact complements, so every 300 ms typing pause and every
+             mutation swapped the whole list for a ~56px spinner while the
+             select-all header and the batch toolbar kept rendering stale chrome
+             over the blank. The rows now dim in place and announce busy. -->
         <div
-            v-if="!loading"
             class="flex flex-col gap-1.5"
             role="list"
             aria-label="Admin user list"
+            :aria-busy="loading || undefined"
+            :class="loading && 'opacity-60'"
         >
             <div
                 v-for="user in users"
@@ -419,9 +453,20 @@ function timeAgo(iso: string): string {
             </div>
 
             <!-- Empty state -->
-            <div v-if="!users.length" class="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+            <div
+                v-if="!users.length && !loading"
+                class="flex flex-col items-center gap-2 py-8 text-muted-foreground"
+            >
                 <Users class="h-8 w-8 opacity-30" aria-hidden="true" />
-                <p class="text-sm">No users found</p>
+                <p class="text-sm">
+                    {{ searchQuery ? "No users match this search" : "No users found" }}
+                </p>
+            </div>
+            <div
+                v-else-if="!users.length && loading"
+                class="py-8 text-center text-sm text-muted-foreground"
+            >
+                Loading users…
             </div>
         </div>
 
@@ -455,6 +500,7 @@ function timeAgo(iso: string): string {
             </Button>
             <span class="ml-2">{{ total }} total</span>
         </nav>
+        </template>
 
         <!-- Destructive-confirm dialog — replaces native `confirm()`. -->
         <Dialog v-model:open="dialogOpen">

@@ -9,8 +9,20 @@ import { ScrollText, Filter as FilterIcon, X } from "@lucide/vue";
 
 const auth = useAuthStore();
 
+// The DRAFT filters — what the operator is typing.
 const actionFilter = ref<string>("");
 const targetFilter = ref<string>("");
+
+// X·F F.W4 `.d` — AA-7: the APPLIED snapshot.
+//
+// `fetchFn` used to dereference the live v-model refs at request time and
+// `applyFilters` snapshotted nothing, so Next shipped unapplied filter text
+// against a page number already advanced past a stale `pageCount`. The request
+// now reads only what Apply committed, and every "did my query match?" surface
+// (the empty-state headline AA-33, the clear affordance AA-34) reads the same
+// applied state rather than the draft.
+const appliedAction = ref<string>("");
+const appliedTarget = ref<string>("");
 
 const {
     items: entries,
@@ -18,6 +30,7 @@ const {
     page,
     pageCount,
     loading,
+    error,
     hasNext,
     hasPrev,
     loadPage,
@@ -25,12 +38,13 @@ const {
     prevPage,
 } = useOffsetPagination<AuditEntry>({
     fetchFn: async (limit, offset) => {
-        const token = auth.getAdminToken()!;
+        const token = auth.getAdminToken();
+        if (!token) throw new Error("Admin session has expired — re-enter admin mode.");
         const result = await api.listAuditLog(token, {
             page: Math.floor(offset / limit) + 1,
             limit,
-            action: actionFilter.value || undefined,
-            target: targetFilter.value || undefined,
+            action: appliedAction.value || undefined,
+            target: appliedTarget.value || undefined,
         });
         return { data: result.items, total: result.total };
     },
@@ -40,16 +54,18 @@ const {
 loadPage(1);
 
 function applyFilters() {
+    appliedAction.value = actionFilter.value.trim();
+    appliedTarget.value = targetFilter.value.trim();
     loadPage(1);
 }
 
 function clearFilters() {
     actionFilter.value = "";
     targetFilter.value = "";
-    loadPage(1);
+    applyFilters();
 }
 
-const hasFilters = computed(() => !!(actionFilter.value || targetFilter.value));
+const hasFilters = computed(() => !!(appliedAction.value || appliedTarget.value));
 
 function formatTimestamp(iso: string): string {
     const d = new Date(iso);
@@ -115,13 +131,25 @@ function actionTone(action: string): string {
             </Button>
         </div>
 
-        <!-- Loading -->
-        <div v-if="loading" class="flex justify-center py-8">
-            <div class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+        <!-- Failure. AA-1: a fetch that failed is NOT an empty ledger. The audit
+             log is a system of record, so the one thing it may never do is
+             answer a question it could not ask. -->
+        <div
+            v-if="error"
+            role="alert"
+            class="flex flex-col items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 py-8 text-center"
+        >
+            <ScrollText class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
+            <p class="text-sm font-medium">The audit log could not be loaded.</p>
+            <p class="max-w-prose text-xs text-muted-foreground">{{ error }}</p>
+            <Button emphasis="secondary" size="sm" @click="loadPage()">Try again</Button>
         </div>
 
-        <!-- Log rows -->
-        <div v-else class="flex flex-col gap-1.5">
+        <!-- Log rows. AA-17: the rows are no longer unmounted into a spinner on
+             every page turn — they dim in place and announce themselves busy, so
+             the scroll position, the focus and ~25 rows of layout survive. -->
+        <div v-else class="flex flex-col gap-1.5" :aria-busy="loading || undefined"
+             :class="loading && 'opacity-60'">
             <div
                 v-for="(entry, i) in entries"
                 :key="`${entry.timestamp}-${i}`"
@@ -147,16 +175,28 @@ function actionTone(action: string): string {
                 </span>
             </div>
 
-            <!-- Empty state -->
+            <!-- Empty state. AA-33: the HEADLINE branches on the applied-filter
+                 state. Unconditional, it asserted "No audit entries" — a claim
+                 about the system of record — for a query that simply matched
+                 nothing, and then counselled widening the search it had just
+                 denied existed. -->
             <div
-                v-if="!entries.length"
+                v-if="!entries.length && !loading"
                 class="flex flex-col items-center gap-2 py-10 text-muted-foreground"
             >
-                <ScrollText class="h-8 w-8 opacity-30" />
-                <p class="text-sm">No audit entries</p>
+                <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
+                <p class="text-sm">
+                    {{ hasFilters ? "No entries match these filters" : "No audit entries" }}
+                </p>
                 <p v-if="hasFilters" class="text-xs opacity-70">
                     Try clearing filters to widen the search.
                 </p>
+            </div>
+            <div
+                v-else-if="!entries.length && loading"
+                class="py-10 text-center text-sm text-muted-foreground"
+            >
+                Loading audit entries…
             </div>
         </div>
 
