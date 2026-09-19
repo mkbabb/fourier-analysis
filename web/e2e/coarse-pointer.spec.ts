@@ -68,18 +68,38 @@ test.describe("@coarse — the coarse-pointer cell (G-F9-13)", () => {
         // — until this project existed, that block could not apply in any run.
         await page.goto("/");
 
+        // ⊘ A CUSTOM PROPERTY IS NOT LENGTH-RESOLVED BY `getComputedStyle`: it
+        // comes back as its declared token (`"2.75rem"`), so reading one and
+        // calling `parseFloat` measures the NUMBER 2.75 and not the 44px the
+        // layout uses. The floor is therefore resolved the way the layout
+        // resolves it — through a probe element that consumes the variable —
+        // and the raw token is asserted beside it, so a change to either the
+        // declaration or its resolution is visible.
         const tokens = await page.evaluate(() => {
-            const s = getComputedStyle(document.documentElement);
-            return {
-                uiScale: s.getPropertyValue("--ui-scale").trim(),
-                controlFloor: s.getPropertyValue("--control-floor").trim(),
-                touchTarget: s.getPropertyValue("--touch-target").trim(),
+            const root = getComputedStyle(document.documentElement);
+            const probe = document.createElement("div");
+            probe.style.position = "absolute";
+            probe.style.visibility = "hidden";
+            probe.style.width = "var(--control-floor)";
+            probe.style.height = "var(--touch-target)";
+            document.body.appendChild(probe);
+            const resolved = getComputedStyle(probe);
+            const out = {
+                uiScale: root.getPropertyValue("--ui-scale").trim(),
+                controlFloorToken: root.getPropertyValue("--control-floor").trim(),
+                touchTargetToken: root.getPropertyValue("--touch-target").trim(),
+                controlFloorPx: parseFloat(resolved.width),
+                touchTargetPx: parseFloat(resolved.height),
             };
+            probe.remove();
+            return out;
         });
 
         expect(parseFloat(tokens.uiScale)).toBeCloseTo(COARSE_UI_SCALE, 3);
-        expect(parseFloat(tokens.controlFloor)).toBeCloseTo(TOUCH_TARGET_PX, 1);
-        expect(parseFloat(tokens.touchTarget)).toBeCloseTo(TOUCH_TARGET_PX, 1);
+        expect(tokens.controlFloorToken).toBe("2.75rem");
+        expect(tokens.touchTargetToken).toBe("2.75rem");
+        expect(tokens.controlFloorPx).toBeCloseTo(TOUCH_TARGET_PX, 1);
+        expect(tokens.touchTargetPx).toBeCloseTo(TOUCH_TARGET_PX, 1);
     });
 
     test("@coarse every shell-header control meets the 44px touch floor", async ({ page }) => {
