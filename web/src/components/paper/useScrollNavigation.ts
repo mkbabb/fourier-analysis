@@ -7,6 +7,19 @@ export interface ScrollNavigationOptions {
     ensureTargetWindow: (id: string) => void;
     getOffsetFor: (id: string) => number | null;
     recalculate: () => void;
+    /**
+     * X·F F.W3 `.c` — `★NAV-1`. Maps a NON-section target id (a cross-reference
+     * anchor, an equation, a theorem, a figure) to the flat section that
+     * contains it, or null when nothing is known about it.
+     *
+     * The virtual window is keyed on flat SECTIONS: `getOffsetFor` consults the
+     * layout (`findSectionOffset`) and `ensureTargetWindow` returns immediately
+     * when `itemIndex.get(id)` is null — both measured at the producer's own
+     * bytes. So an element id reached neither, and every such navigation was a
+     * silent no-op. Knowing the OWNING section is what lets this composable
+     * mount the right window and then land on the element itself.
+     */
+    resolveOwningSection?: (id: string) => string | null;
 }
 
 /**
@@ -40,6 +53,8 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
     const MAX_CORRECTIONS = 10;
     const STABLE_TARGET = 2;
     const STABILITY_PX = 6;
+    /** `★NAV-1`: frames to wait for a just-mounted element to enter the DOM. */
+    const MOUNT_ATTEMPTS = 30;
 
     const navStack = reactive<string[]>([]);
     let isBackNavigation = false;
@@ -89,6 +104,28 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
             : opts.contentStartOffsetPx.value + layoutOffset;
 
         return Math.max(0, rawTop - getScrollOffset());
+    }
+
+    /**
+     * `★NAV-1` — the absolute scroll top for an ELEMENT that is in the DOM
+     * right now, or null. This is the producer's own scroll domain
+     * (`useScrollTo` is `getElementById`-based); the fork narrowed it to flat
+     * sections and lost 71 of 164 `\ref`-family destinations and 66 of 374
+     * search entries with it.
+     */
+    function computeElementTop(
+        scroller: HTMLElement,
+        id: string,
+    ): number | null {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        return Math.max(
+            0,
+            el.getBoundingClientRect().top -
+                scroller.getBoundingClientRect().top +
+                scroller.scrollTop -
+                getScrollOffset(),
+        );
     }
 
     /**
@@ -250,58 +287,195 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
         });
     }
 
+    // ── Element targets (`★NAV-1`) ───────────────────────────
+
+    /**
+     * Runs `then` on the first frame the element exists, bounded. The window
+     * mounts on Vue's patch, not synchronously, so a `getElementById` in the
+     * same tick as `ensureTargetWindow` is a guaranteed miss — and an unbounded
+     * wait is a leak. The rAF handle is the shared `correctionRaf`, so
+     * `dispose()` and `withOverlay`'s supersession both reap it.
+     */
+    function whenElementMounted(
+        id: string,
+        then: () => void,
+        otherwise?: () => void,
+    ) {
+        let attempts = 0;
+        const look = () => {
+            correctionRaf = 0;
+            if (document.getElementById(id)) {
+                then();
+                return;
+            }
+            if (attempts++ < MOUNT_ATTEMPTS) {
+                correctionRaf = requestAnimationFrame(look);
+            } else {
+                otherwise?.();
+            }
+        };
+        correctionRaf = requestAnimationFrame(look);
+    }
+
     // ── Main navigation entry point ──────────────────────────
 
-    function performScroll(id: string) {
+    /**
+     * `★NAV-1` — RETURNS WHETHER THE TARGET RESOLVED.
+     *
+     * It used to return `void`, and callers pushed a navigation-stack entry
+     * before knowing whether anything would move: a cross-reference to an
+     * equation pushed a back-entry and then scrolled nowhere. The answer is
+     * decided here, synchronously, because it is a question about whether the
+     * id names something — not about whether the animation has finished.
+     */
+    function performScroll(id: string): boolean {
         const scroller = opts.scrollContainer.value;
-        if (!scroller) return;
+        if (!scroller) return false;
 
-        // Compute estimated position from layout (pure math, < 1ms)
+        // (1) A flat SECTION: the layout knows its offset.
         const estimated = estimateAbsoluteTop(id);
-        if (estimated == null) {
-            // Unknown section — mount and hope
-            opts.ensureTargetWindow(id);
-            return;
+        if (estimated != null) {
+            const distance = Math.abs(estimated - scroller.scrollTop);
+
+            if (distance < teleportThreshold(scroller)) {
+                // Short jump: mount target, wait for DOM, smooth scroll
+                opts.ensureTargetWindow(id);
+                nextTick(() => {
+                    requestAnimationFrame(() => {
+                        const s = opts.scrollContainer.value;
+                        if (!s) return;
+                        const top = computeAbsoluteTop(s, id) ?? estimated;
+                        s.scrollTo({ top, behavior: scrollBehavior() });
+                    });
+                });
+            } else {
+                // Far jump: teleport immediately with layout estimate.
+                // The overlay shows and scrolls BEFORE mounting heavy sections,
+                // eliminating the perceived freeze.
+                teleportTo(scroller, id, estimated);
+            }
+            return true;
         }
 
-        const distance = Math.abs(estimated - scroller.scrollTop);
+        // (2) An ELEMENT id — a `\ref` anchor, an equation, a theorem, a
+        //     figure. The window is keyed on sections, so the owning section is
+        //     what gets mounted; the element is what gets landed on.
+        const owner = opts.resolveOwningSection?.(id) ?? null;
+        const ownerTop = owner != null ? estimateAbsoluteTop(owner) : null;
+        const mounted = computeElementTop(scroller, id);
 
-        if (distance < teleportThreshold(scroller)) {
-            // Short jump: mount target, wait for DOM, smooth scroll
-            opts.ensureTargetWindow(id);
-            nextTick(() => {
-                requestAnimationFrame(() => {
+        if (ownerTop == null && mounted == null) return false;
+
+        if (ownerTop != null && owner != null) opts.ensureTargetWindow(owner);
+
+        const reference = ownerTop ?? mounted ?? 0;
+        const far =
+            Math.abs(reference - scroller.scrollTop) >=
+            teleportThreshold(scroller);
+
+        if (far && ownerTop != null) {
+            teleportToElement(scroller, id, ownerTop);
+        } else {
+            nextTick(() =>
+                whenElementMounted(id, () => {
                     const s = opts.scrollContainer.value;
                     if (!s) return;
-                    const top = computeAbsoluteTop(s, id) ?? estimated;
-                    s.scrollTo({ top, behavior: scrollBehavior() });
-                });
-            });
-        } else {
-            // Far jump: teleport immediately with layout estimate.
-            // The overlay shows and scrolls BEFORE mounting heavy sections,
-            // eliminating the perceived freeze.
-            teleportTo(scroller, id, estimated);
+                    const top = computeElementTop(s, id);
+                    if (top != null) {
+                        s.scrollTo({ top, behavior: scrollBehavior() });
+                    }
+                }),
+            );
         }
+        return true;
+    }
+
+    /**
+     * The far-jump arm of the element path: the same overlay bargain as
+     * `teleportTo`, landing on the ELEMENT rather than on the section head.
+     *
+     * ⊘ It runs `teleportTo`'s CORRECTION LOOP and not a single settled scroll,
+     * and that is not symmetry for its own sake. Measured this seat: with one
+     * `recalculate()` the virtual window's spacer arithmetic had not converged
+     * when the overlay lifted, and `.paper-grid` ended above the viewport
+     * bottom — which clamps the STICKY sidebar and left the whole Contents
+     * panel, search field included, at `top: -149px`. The section arm never
+     * showed it because it corrects for up to ten frames. A cure that lands the
+     * reader and breaks the furniture around them is not a cure.
+     */
+    function teleportToElement(
+        scroller: HTMLElement,
+        id: string,
+        initialTop: number,
+    ) {
+        withOverlay(scroller, (finish) => {
+            scroller.scrollTo({
+                top: initialTop,
+                behavior: "instant" as ScrollBehavior,
+            });
+
+            let lastTop = initialTop;
+            let stableFrames = 0;
+            let mountFrames = 0;
+            let frames = 0;
+
+            const correct = () => {
+                correctionRaf = 0;
+                opts.recalculate();
+                const top = computeElementTop(scroller, id);
+                if (top == null) {
+                    // The owning section is mounting; the element is not in the
+                    // document yet.
+                    if (mountFrames++ < MOUNT_ATTEMPTS) {
+                        correctionRaf = requestAnimationFrame(correct);
+                    } else {
+                        finish();
+                    }
+                    return;
+                }
+
+                scroller.scrollTo({
+                    top,
+                    behavior: "instant" as ScrollBehavior,
+                });
+
+                if (Math.abs(top - lastTop) < STABILITY_PX) stableFrames++;
+                else stableFrames = 0;
+                lastTop = top;
+
+                if (stableFrames >= STABLE_TARGET || frames++ >= MAX_CORRECTIONS) {
+                    finish();
+                    return;
+                }
+                correctionRaf = requestAnimationFrame(correct);
+            };
+
+            correctionRaf = requestAnimationFrame(correct);
+        });
     }
 
     function navigateTo(id: string) {
-        if (
-            !isBackNavigation &&
-            opts.activeId.value &&
-            opts.activeId.value !== id
-        ) {
-            navStack.push(opts.activeId.value);
+        const from = opts.activeId.value;
+        // `★NAV-1`: THE PUSH MOVES AFTER THE SCROLL. Every dead click used to
+        // bank a back-entry for a jump that never happened, so the history
+        // control counted navigations the reader never made and returned them
+        // to places they had never left.
+        if (!performScroll(id)) return;
+        if (!isBackNavigation && from && from !== id) {
+            navStack.push(from);
             if (navStack.length > MAX_STACK) navStack.shift();
         }
-        performScroll(id);
     }
 
     function navigateBack() {
         if (navStack.length === 0) return;
+        // Peek, then pop only on a resolved target — the same discipline as the
+        // push. A failed back-jump that swallowed its own entry would lose the
+        // reader's place twice.
+        const prev = navStack[navStack.length - 1];
+        if (prev === undefined) return;
         isBackNavigation = true;
-        const prev = navStack.pop()!;
-        performScroll(prev);
+        if (performScroll(prev)) navStack.pop();
         // `L/D9`: a 500ms window is a clock, not a completion signal — a jump
         // that settles later drops the push, one that settles sooner pushes
         // nothing. Kept as the bounded fallback it is, but owned by `dispose`

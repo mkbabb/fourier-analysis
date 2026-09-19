@@ -32,7 +32,18 @@ defineExpose({ focus });
 </script>
 
 <template>
-    <div class="paper-search-input-wrap" :class="`paper-search-input-wrap--${variant}`">
+    <!-- X·F F.W3 `.c` — `MISS-DU4`: the field's chrome was pointer-dead. The
+         24px glyph is the largest mark in the field and all of the wrap's
+         padding is hit area, and none of it did anything — while the `focus()`
+         this component already exposes was exactly what a click on it should
+         run. A wrapping `<label>` is the whole cure and it is free: the
+         `<input>` is its only labelable descendant, so the association is
+         implicit, and label activation is NOT forwarded when the click lands on
+         an interactive descendant, so the two action Buttons keep their own
+         behaviour. The accessible NAME stays the input's `aria-label` (`C-7`'s
+         naming half, already landed) — this label carries no text and is not
+         competing for it. -->
+    <label class="paper-search-input-wrap" :class="`paper-search-input-wrap--${variant}`">
         <Search class="paper-search-icon" />
         <!-- `★MF-2`: the inline arm is the same combobox as the palette's and
              had the same nothing — a placeholder standing in for a name, no
@@ -57,10 +68,24 @@ defineExpose({ focus });
             @keydown="search.onKeydown"
             @focus="search.isOpen.value = true"
         />
+        <!-- `MISS-DU1`: both action Buttons shipped at the default `md` rung,
+             which is `--control-h-md` = `max(2.5rem * --ui-scale,
+             --control-floor)` = 40px fine / 60px coarse (measured at the
+             compiled bytes: `.button{--button-size:var(--control-h-md)}` +
+             `.button[data-icon-only]{block-size:var(--button-size)}`). They
+             mount on the FIRST keystroke, so the wrap — which sized to its
+             tallest child — grew ~16px and translated the whole Contents tree
+             down with it. `xs` is `--control-h-xs` = `max(1.75rem * --ui-scale,
+             --control-floor)` = 28px fine / 44px coarse, which fits inside the
+             wrap's fixed box below, and `--control-floor` is `--touch-target`
+             — so the WCAG 2.5.8 floor is supplied EXPLICITLY by the token
+             rather than inherited from an un-overridden height
+             (`FR-PSD-BASE`'s inversion lock, honoured at the one place this
+             unit changes a control's geometry). -->
         <Button
             v-if="canExpand"
             emphasis="quiet"
-            size="md" icon-only
+            size="xs" icon-only
             type="button"
             class="paper-search-action-btn"
             @click="emit('expand')"
@@ -72,7 +97,7 @@ defineExpose({ focus });
         <Button
             v-if="search.query.value"
             emphasis="quiet"
-            size="md" icon-only
+            size="xs" icon-only
             type="button"
             class="paper-search-action-btn"
             @click="search.close()"
@@ -80,7 +105,7 @@ defineExpose({ focus });
         >
             <X class="h-3 w-3" />
         </Button>
-    </div>
+    </label>
 </template>
 
 <style scoped>
@@ -95,10 +120,24 @@ defineExpose({ focus });
     display: flex;
     align-items: center;
     gap: 0.375rem;
+    /* `MISS-DU1` — THE FIELD'S HEIGHT STOPS BEING A FUNCTION OF WHICH OPTIONAL
+       CHILDREN ARE MOUNTED. It used to be derived: `align-items: center` over
+       0.3rem block padding and a 1.5px border, so the box was as tall as its
+       tallest child and the first keystroke mounted a 40px one. A field IS a
+       control, so it takes the design system's own control rung and keeps it
+       empty or full. Both arms of the arithmetic, at the compiled tokens:
+       fine  → 40px box − 3px border = 37px content ≥ 28px (`xs` button);
+       coarse→ 60px box − 3px border = 57px content ≥ 44px (`xs` clamped to
+       `--control-floor` = `--touch-target`). Nothing can grow it. */
+    block-size: var(--control-h-md);
+    box-sizing: border-box;
     border: 1.5px solid var(--border);
     border-radius: calc(var(--radius) - 2px);
     background: var(--background);
-    padding: 0.3rem 0.5rem;
+    padding: 0 0.5rem;
+    /* `MISS-DU4`: the wrap is a `<label>` now, so it is hit area for the field
+       it labels — and it says so. */
+    cursor: text;
     transition: border-color 0.15s var(--ease-standard);
 }
 
@@ -180,6 +219,10 @@ defineExpose({ focus });
     border-radius: 0;
     background: transparent;
     padding: 0;
+    /* The bar supplies its own padding; the field keeps the control rung so the
+       search arm of `.floating-toc-bar` is exactly as tall as its trigger arm,
+       which is a `md` Button. Before `MISS-DU1` the bar itself jumped between
+       the two states. */
 }
 
 .paper-search-input-wrap--floating .paper-search-input {

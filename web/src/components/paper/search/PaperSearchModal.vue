@@ -171,7 +171,7 @@ watch(
                     dense
                     :id="search.optionId(i)"
                     :result="r"
-                    :query="search.query.value"
+                    :query="search.debouncedQuery.value"
                     :selected="i === search.selectedIndex.value"
                     @select="search.selectResult(r)"
                     @hover="search.selectedIndex.value = i"

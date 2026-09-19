@@ -142,6 +142,15 @@ export function usePaperSearch(options: {
 
     return {
         query,
+        /**
+         * X·F F.W3 `.c` — `FR-PS-HL`: TWO QUERY SOURCES IN ONE RENDER. The rows
+         * are computed from `debouncedQuery` (120ms behind), but their `<mark>`s
+         * were computed from the raw `query`, so any keystroke that broke a
+         * subsequence blanked EVERY highlight on rows still presented as
+         * matches — for 120ms, and then they came back. One source, and it is
+         * the one the rows themselves came from.
+         */
+        debouncedQuery,
         results,
         isOpen,
         isExpanded,

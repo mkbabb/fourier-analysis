@@ -104,6 +104,36 @@ useClickDelegate({
     scrollTo: (id) => _scrollTo(id),
 });
 
+/**
+ * X·F F.W3 `.c` — `★NAV-1`: the map from a NON-section destination back to the
+ * flat section that holds it.
+ *
+ * `labelMap` already knows this — every entry carries `sectionId` beside its
+ * `anchorId`/`elementId` — and the app threw it away at exactly the moment it
+ * was needed: `useClickDelegate`'s `resolve` above returns
+ * `anchorId ?? elementId ?? sectionId`, i.e. it hands the navigator the precise
+ * target and drops the only thing that could mount it. The virtual window is
+ * keyed on sections, so without the owner an element id reached a `getOffsetFor`
+ * that returned null and an `ensureTargetWindow` that returned immediately —
+ * the silent no-op the row measured at 71/164 `\ref`-family uses and 66/374
+ * search entries.
+ *
+ * Built once, over every spelling a destination can arrive as: the label key
+ * itself (search entries take `thm.label`/`fig.label` as their id), the anchor
+ * and the element id. Section destinations never reach here — they resolve in
+ * the layout, which is path (1) of `performScroll`.
+ */
+const ownerSectionByTargetId = (() => {
+    const map = new Map<string, string>();
+    for (const [key, info] of Object.entries(labelMap)) {
+        if (!info?.sectionId) continue;
+        for (const spelling of [key, info.anchorId, info.elementId]) {
+            if (spelling && !map.has(spelling)) map.set(spelling, info.sectionId);
+        }
+    }
+    return map;
+})();
+
 const { navigateTo, navigateBack, scrollToTop, performScroll, navStack } = useScrollNavigation({
     scrollContainer,
     contentStartOffsetPx: sectionStartOffsetPx,
@@ -111,6 +141,7 @@ const { navigateTo, navigateBack, scrollToTop, performScroll, navStack } = useSc
     ensureTargetWindow,
     getOffsetFor,
     recalculate,
+    resolveOwningSection: (id) => ownerSectionByTargetId.get(id) ?? null,
 });
 
 // Wire all navigation (TOC clicks, cross-references) through navigateTo

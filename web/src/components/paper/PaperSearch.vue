@@ -11,6 +11,15 @@ defineProps<{
 
 const searchInputRef = ref<InstanceType<typeof PaperSearchInput> | null>(null);
 
+/**
+ * X·F F.W3 `.c` — `FR-PS-CLIP`/`FR-PS-BDT`: the results panel is portalled to
+ * `<body>` to escape `.sidebar-nav`'s clip and the floating bar's
+ * `contain: paint`, so it needs the field's own box to hang from. This root IS
+ * that box — the element the panel used to be positioned against when it was
+ * still a descendant.
+ */
+const rootRef = ref<HTMLElement | null>(null);
+
 function focus() {
     searchInputRef.value?.focus();
 }
@@ -19,7 +28,7 @@ defineExpose({ focus });
 </script>
 
 <template>
-    <div class="paper-search" :class="`paper-search--${variant}`">
+    <div ref="rootRef" class="paper-search" :class="`paper-search--${variant}`">
         <PaperSearchInput
             ref="searchInputRef"
             :search="search"
@@ -30,6 +39,7 @@ defineExpose({ focus });
         <PaperSearchDropdown
             :search="search"
             :variant="variant"
+            :anchor="rootRef"
         />
     </div>
 </template>

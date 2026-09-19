@@ -179,20 +179,53 @@ function multiTokenFuzzy(
 }
 
 /**
- * Scores one query (pre-split, pre-lowercased tokens) against one entry.
- * Tries each field with different weights and returns the best composite score.
+ * `FR-PSD-TYPE` (⊕ `PSM-14`) — THE SCORING DECISION, MADE HERE AND EXPLICITLY.
+ *
+ * `_lc.type` is a closed internal enum and is BYTE-IDENTICAL across every entry
+ * of a type. Scored as a field at weight 10 it outranked `rawTex` (6) and
+ * `plainText` (3), so a query that fuzzy-matched a type name — `"thm"` against
+ * `"theorem"`, `"fig"` against `"figure"` — gave every member of that type the
+ * SAME score, and the sort then fell through to document order. The record
+ * measured the consequence at +37.2% over genuine hits: content-blind slabs
+ * displacing real matches.
+ *
+ * It is not fixed by re-weighting, because the defect is not the weight: a
+ * field that cannot discriminate between the entries it matches cannot RANK
+ * them, at any weight. It is fixed by taking it out of the ranking and leaving
+ * it as what it actually is — a way to ask for a KIND of thing when nothing
+ * else matched. So:
+ *
+ *   TIER 1 — the content fields (number · label · rawTex · plainText). These
+ *            differ per entry, so a score over them is a ranking.
+ *   TIER 0 — the type name, consulted ONLY when no content field matched. A
+ *            type-only hit can therefore never displace a genuine one; within
+ *            the tier the order is document order, which for "show me the
+ *            theorems" is reading order and is the right answer.
+ *
+ * ⊘ The capability survives and the slab does not. The alternative considered
+ * and rejected was deleting the type field outright: it would have silently
+ * removed `"thm"`/`"fig"`/`"eq"` as a way into the paper, which is a real use
+ * and costs nothing to keep once it cannot outrank anything.
+ *
+ * ⊘ This decision is NOT inherited from `@mkbabb/glass-ui/search`. The producer
+ * at the adopted pin scores `[label,12] [type,10] [text,3]` — the same
+ * inversion, one field wider — and its `fuzzyMatch` still carries `PSM-14`'s
+ * unbounded subtractive length penalty (`score -= max(0,(tLen-pLen)*0.1)`),
+ * which this module has already replaced with a ratio. See the `PSM-9`
+ * disposition recorded by this unit.
  */
+const TYPE_FALLBACK_WEIGHT = 10;
+
 function scoreEntry(
     tokens: string[],
     entry: SearchEntry,
-): { score: number } | null {
+): { score: number; tier: number } | null {
     let best = 0;
 
-    // Field weights — number and label matches are most valuable
+    // Content fields — number and label matches are most valuable
     const fields: [string, number][] = [
         [entry._lc.number, 18],
         [entry._lc.label, 12],
-        [entry._lc.type, 10],
         [entry._lc.rawTex, 6],
         [entry._lc.plain, 3],
     ];
@@ -203,14 +236,22 @@ function scoreEntry(
         if (m && m.score * weight > best) best = m.score * weight;
     }
 
-    if (best <= 0) return null;
     // `PSM-11`: a `matches` array used to ride every result and be read by
     // NOBODY — the highlighter re-ran the match inline because these indices
     // were computed against the LOWER-CASED field while the display label is
     // the original-case string (or a `rawTex`/`plainText` slice), so they
     // genuinely misaligned. The re-run was a correct workaround for a broken
     // contract; the contract is deleted and the re-run is the only path.
-    return { score: best };
+    if (best > 0) return { score: best, tier: 1 };
+
+    const byType = entry._lc.type
+        ? multiTokenFuzzy(tokens, entry._lc.type)
+        : null;
+    if (byType && byType.score > 0) {
+        return { score: byType.score * TYPE_FALLBACK_WEIGHT, tier: 0 };
+    }
+
+    return null;
 }
 
 // ── Search function ──────────────────────────────────────────
@@ -279,17 +320,22 @@ export function searchIndex(
         if (prefixResults) candidates = prefixResults;
     }
 
-    const scored: SearchResult[] = [];
+    const scored: { result: SearchResult; tier: number }[] = [];
     for (const entry of candidates) {
         const m = scoreEntry(tokens, entry);
         if (m) {
-            scored.push({ ...entry, score: m.score });
+            scored.push({ result: { ...entry, score: m.score }, tier: m.tier });
         }
     }
 
-    scored.sort((a, b) => b.score - a.score);
-    cache.set(q, scored);
-    return scored.slice(0, maxResults);
+    // `FR-PSD-TYPE`: tier first, score second. The tier is the whole content of
+    // the decision above — a type-only match ranks below every content match
+    // and can never displace one — and it stays out of `SearchResult`, because
+    // nothing downstream has any business reading it.
+    scored.sort((a, b) => b.tier - a.tier || b.result.score - a.result.score);
+    const ranked = scored.map((s) => s.result);
+    cache.set(q, ranked);
+    return ranked.slice(0, maxResults);
 }
 
 // ── Index construction ───────────────────────────────────────
