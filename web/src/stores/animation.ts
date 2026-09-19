@@ -85,6 +85,26 @@ export const useAnimationStore = defineStore("animation", () => {
 
     let rafId: number | null = null;
 
+    /**
+     * X.F.W3 `.a` · `fr-AnimationControls L-3` — THE CLOCK'S ANCHOR, hoisted out
+     * of `startLoop`'s closure so that a seek can invalidate it.
+     *
+     * `tick` anchors once (`startTime = now - t * dur`) and then derives `t`
+     * from elapsed time on every subsequent frame. While the anchor lived
+     * inside the loop, nothing outside the loop could reach it — so any seek
+     * that did not stop the clock first was overwritten on the very next frame.
+     * That is why keyboard seeks did not work: reka routes ←/→/Home/End/Page
+     * through `updateValues({ commit: true })` with no pointer event at all, so
+     * no scrub session opens, the clock keeps running, and the keystroke was
+     * erased ~16ms after it landed. Pointer drags survived only because they
+     * PAUSE the clock for the length of the drag.
+     *
+     * Clearing the anchor is the whole cure: the next tick re-derives it from
+     * wherever `t` now is, and the clock continues from the seeked position
+     * instead of snapping back to the trajectory it was on.
+     */
+    let startTime: number | null = null;
+
     // I.γ — off-screen rAF gating. The epicycle canvas is a 60fps loop that
     // burns CPU/GPU/battery while scrolled off-screen or hidden behind the
     // fullscreen layer. Each mounted `BasisCanvas` registers its on-screen
@@ -139,7 +159,7 @@ export const useAnimationStore = defineStore("animation", () => {
         // `AnimationControls.vue` — unit `.c`'s file — and is cited, not taken.)
         if (!playing.value || !anyCanvasVisible.value || scrubbing.value || rafId !== null) return;
 
-        let startTime: number | null = null;
+        startTime = null;
         const dur = duration.value / speed.value;
 
         function tick(now: number) {
@@ -211,11 +231,23 @@ export const useAnimationStore = defineStore("animation", () => {
 
     function seek(normalizedT: number) {
         t.value = Math.max(0, Math.min(1, normalizedT));
+        // `L-3` — every seek re-anchors, whoever made it and whatever the clock
+        // is doing. The guarantee this buys is the one the gate asks for: a
+        // position the reader chose survives the next frame.
+        startTime = null;
     }
 
     function reset() {
         pause();
         t.value = 0;
+        // `fr-AnimationControls L-1b` — `scrubbing` had exactly two writers, and
+        // `reset()` was neither: a reset taken mid-drag left the flag stranded
+        // true, which forces the trail's full-rebuild branch on every frame and
+        // keeps `startLoop`'s own guard closed. The unconditional session pair
+        // in the timeline composition means the UI can no longer strand it; this
+        // closes the one path that never went through the UI at all.
+        scrubbing.value = false;
+        startTime = null;
     }
 
     // Restart loop when speed changes mid-play

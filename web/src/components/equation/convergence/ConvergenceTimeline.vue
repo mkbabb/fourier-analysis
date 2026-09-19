@@ -1,23 +1,27 @@
 <script setup lang="ts">
 /**
- * Convergence timeline scrubber — play button + scrub track + N=… count.
+ * Convergence transport — play control, the one scrub composition, N=… count.
  *
- * P.W5 Lane B.4 — migrated from the 166 LOC shadow recipe (manual
- * pointer-state-machine + `glass-track`/`glass-fill`/`glass-thumb` paints)
- * to `<Slider>`. The play button + harmonics
- * count column remain consumer-owned (chassis-level concerns; not the
- * slider scrubber proper). Dock-keep-open isn't directly wired here —
- * this site isn't a `<GlassDock>` descendant — but the variant's internal
- * `useOptionalDockContext()` resolves to `null` and the behavior is a
- * no-op, matching the surrounding consumer pattern.
+ * X.F.W3 `.a` — `fr-AnimationControls C-4 / M-1 / M-14` ⊕ `fr-ConvergenceTimeline
+ * L·D-7`. This file WAS a verbatim fork of `visualization/GlassTimeline.vue`:
+ * the same latch, the same `[0..1] → [0..100]` adapter, the same dead retint
+ * token, re-authored a second time because the original had no `modelValue` and
+ * no emits and bound the animation store directly. The composition is
+ * parameterised now, so what is left here is what was always genuinely this
+ * site's: a play button, a harmonic count, and the wiring between them.
  *
- * Scrub events are emitted to the parent as before (toggle-play +
- * scrub-start + scrub-move + scrub-end); we adapt the `[0..1]` `t` axis
- * to reka-ui's integer slider model by scaling by 100.
+ * The scrub axis, the session pair, the caret and the announcement all live in
+ * the composition. This host's own contribution to them is one decision —
+ * `step` — and it is the decision `C·C-7` demanded be made inside the
+ * re-derivation rather than after it. See below.
+ *
+ * ⊘ The parent's event surface is UNCHANGED (`toggle-play` · `scrub-start` ·
+ * `scrub-move` · `scrub-end` over `t` · `playing` · `activeCount` ·
+ * `totalHarmonics`): `ConvergencePlot.vue` is another unit's file, and a fold
+ * that re-cut its callsite would be this unit writing outside its bounds.
  */
-import { computed, ref } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Slider } from "@mkbabb/glass-ui/slider";
+import GlassTimeline from "@/components/visualization/GlassTimeline.vue";
 
 const props = defineProps<{
     t: number;
@@ -33,27 +37,35 @@ const emit = defineEmits<{
     "scrub-end": [];
 }>();
 
-const scrubbing = ref(false);
+/**
+ * `fr-ConvergenceTimeline C·C-7`, THE AXIS DECISION.
+ *
+ * The integer `[0..100]` axis the fork carried under-resolved the quantity this
+ * control actually moves: adjacent harmonics are 0.004823 apart at the tightest,
+ * and 99 of 99 pairs fell inside a single step — so a third of the sweep
+ * addressed positions the reader could not reach. `:max="1000"` was the named
+ * ANTI-CURE, on the ground that it multiplies the announcement rate tenfold.
+ *
+ * On the float axis, step and announcement are no longer the same knob. `0.001`
+ * is five times finer than the tightest harmonic gap, so every pair is
+ * addressable; and the announcement is `valueText`, keyed on the HARMONIC
+ * COUNT, so it changes at most once per harmonic however fine the step is. The
+ * anti-cure's objection is answered by arithmetic rather than conceded to.
+ */
+const STEP = 0.001;
 
-const tArr = computed<number[]>({
-    get: () => [Math.round(props.t * 100)],
-    set: (arr) => {
-        const next = Math.max(0, Math.min(1, (arr[0] ?? 0) / 100));
-        emit("scrub-move", next);
-    },
-});
-
-function onPointerDown() {
-    if (scrubbing.value) return;
-    scrubbing.value = true;
-    emit("scrub-start");
-}
-
-function onValueCommit() {
-    if (!scrubbing.value) return;
-    scrubbing.value = false;
-    emit("scrub-end");
-}
+/**
+ * `D·D-4` / `C·C-3` / `D·D-3` — the `aria-valuenow`/`-valuemin`/`-valuemax`
+ * trio this replaces was a FALLTHROUGH onto the component root, where the
+ * primitive's own range attributes already live on the thumb, so the three
+ * either did nothing or announced a different quantity (the harmonic COUNT)
+ * than the control moves (the sweep position). `aria-valuetext` went the same
+ * way. The count is the humane reading of the position, so it is authored ONTO
+ * the thumb through the producer's `valueText` prop — and the count also keeps
+ * the live region below, which is what a reader not on the control hears.
+ */
+const harmonicValueText = (): string =>
+    `${props.activeCount} of ${props.totalHarmonics} harmonics`;
 </script>
 
 <template>
@@ -77,23 +89,15 @@ function onValueCommit() {
         </Button>
 
         <div class="timeline-track-wrap">
-            <!-- `D·D-4` / `C·C-3` / `D·D-3` — the `aria-valuenow`/`-valuemin`/
-                 `-valuemax` trio was a FALLTHROUGH: it landed on the component's
-                 root while the primitive computes its own range attributes from
-                 the model, so the three either did nothing or announced a
-                 different quantity (the harmonic COUNT) than the control moves
-                 (the sweep position). They are deleted, and the count gets the
-                 live region it always needed — see the span below. -->
-            <Slider
-                v-model="tArr"
-                :min="0"
-                :max="100"
-                :step="1"
-                :aria-valuetext="`${activeCount} of ${totalHarmonics} harmonics`"
-                aria-label="Convergence sweep position"
-                size="md"
-                @pointerdown="onPointerDown"
-                @value-commit="onValueCommit"
+            <GlassTimeline
+                class="convergence-timeline"
+                :model-value="t"
+                :step="STEP"
+                accessible-name="Convergence sweep position"
+                :value-text="harmonicValueText"
+                @update:model-value="emit('scrub-move', $event)"
+                @scrub-start="emit('scrub-start')"
+                @scrub-end="emit('scrub-end')"
             />
         </div>
 
@@ -152,12 +156,15 @@ function onValueCommit() {
 }
 
 /*
-   X.F.W3 `.a` · `MPC-3` — the retint namespace this rule wrote is
-   definition-absent at the producer, so the 20px height was never applied.
-   `R-1`'s *height via `size`* leg lands it: the producer's `md` step IS
-   1.25rem = 20px, which is also its default, so the height is now declared
-   where the producer can read it and the rule itself is gone.
+   The composition's track knob, set on ITS root — which is the element this
+   scope reaches, since a child component's root carries the parent's scope id.
+   `MPC-3`'s height leg gave this site 20px, and the producer's `md` step is
+   exactly that; the knob keeps the figure here rather than making the
+   composition's default a two-host compromise.
 */
+.convergence-timeline {
+    --timeline-track-height: 20px;
+}
 
 /* ── Transitions ── */
 .icon-swap-enter-active,

@@ -80,7 +80,34 @@ const MiniProgressReadout = () =>
         h("div", { class: "mini-fill", style: { width: `${anim.t * 100}%` } }),
     ]);
 
-const TimelineReadout = () => h(GlassTimeline, { label: caretLabel.value });
+/**
+ * X.F.W3 `.a` — the timeline is a parameterised composition now, so this host
+ * supplies the binding the fork used to take by reaching into the store itself
+ * (`fr-AnimationControls C-4 / M-1 / M-14`: no `modelValue`, no emits, a hard
+ * `useAnimationStore()` bind — which is exactly why a second site could not
+ * reuse it and forked instead).
+ *
+ * The render-boundary this functional component exists for is unchanged and is
+ * the reason the bindings live HERE and not in the template: `anim.t` and
+ * `caretLabel` are read inside this render scope, so the clock re-renders the
+ * two nodes that display it and not the dock's whole two-branch vnode tree.
+ *
+ * `step` is this host's axis decision, the counterpart of the convergence
+ * host's: `t` is continuous here and nothing quantises it, so one arrow key
+ * moves 1% — the granularity the integer axis used to give, now expressed on
+ * the `[0..1]` axis the producer's own contract states.
+ */
+const TimelineReadout = () =>
+    h(GlassTimeline, {
+        modelValue: anim.t,
+        accessibleName: "Timeline",
+        label: caretLabel.value,
+        step: 0.01,
+        valueText: () => caretLabel.value,
+        "onUpdate:modelValue": (next: number) => anim.seek(next),
+        onScrubStart: () => anim.startScrub(),
+        onScrubEnd: () => anim.endScrub(),
+    });
 </script>
 
 <template>
