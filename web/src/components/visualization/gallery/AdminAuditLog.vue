@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Badge } from "@mkbabb/glass-ui/badge";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import * as api from "@/lib/api";
 import type { AuditEntry } from "@/lib/types";
-import { ScrollText, Filter as FilterIcon, X } from "@lucide/vue";
+import {
+    ScrollText,
+    Filter as FilterIcon,
+    X,
+    ChevronLeft,
+    ChevronRight,
+} from "@lucide/vue";
 
 const auth = useAuthStore();
 
@@ -67,6 +74,14 @@ function clearFilters() {
 
 const hasFilters = computed(() => !!(appliedAction.value || appliedTarget.value));
 
+// AA-34: the clear affordance is permanently mounted (it may not reflow the bar
+// it sits in), so its ENABLED state — unlike the empty-state headline's, which
+// must read the applied snapshot — covers the draft too: there is something to
+// clear the moment the operator has typed it.
+const canClear = computed(
+    () => hasFilters.value || !!(actionFilter.value || targetFilter.value),
+);
+
 function formatTimestamp(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
@@ -80,54 +95,154 @@ function formatTimestamp(iso: string): string {
     });
 }
 
-function actionTone(action: string): string {
-    if (action.startsWith("delete") || action === "prune_empty_users") {
-        return "text-red-300 bg-red-500/10 border-red-500/20";
-    }
-    if (action.startsWith("set_user_status")) {
-        return "text-amber-300 bg-amber-500/10 border-amber-500/20";
-    }
-    if (action.startsWith("set_tier") || action.startsWith("dismiss")) {
-        return "text-emerald-300 bg-emerald-500/10 border-emerald-500/20";
-    }
-    if (action.startsWith("batch")) {
-        return "text-violet-300 bg-violet-500/10 border-violet-500/20";
-    }
-    return "text-sky-300 bg-sky-500/10 border-sky-500/20";
+/**
+ * X·F F.W4 `.d` — AA-3 (BLOCKER) ⊕ AA-19 ⊕ AA-20 ⊕ AA-24 ⊕ AA-5's display arm.
+ *
+ * The map this replaces was five single-theme raw palette triples — the file's
+ * only hand-rolled colour authority — whose five inks read 1.36–1.81:1 in the
+ * DEFAULT light arm (dark passed at 7.6–10.1:1: authored dark-only), on the ink
+ * that IS the action string. It returned class names, so no primitive could ever
+ * own the chip.
+ *
+ * Two ruled defects were structural, not chromatic, and they decide the shape:
+ *
+ *   AA-24 — `startsWith` in AUTHORING order, not severity order, so
+ *   `batch_users:delete` (the vocabulary's most destructive verb, `admin.py:497`)
+ *   fell past the `delete` arm into violet, pixel-identical to
+ *   `batch_users:unsuspend`. A severity inversion inside the map itself.
+ *
+ *   AA-5 — the collection's SECOND writer (`janitor.py:59-99`, which inserts
+ *   into `db.admin_audit` without calling `log_audit`) emits nine `janitor:*`
+ *   actions; not one matched any arm, so `janitor:hard_delete_visualizations`
+ *   and `janitor:prune_audit` — the audit log pruning its own history — rendered
+ *   in the benign sky DEFAULT.
+ *
+ * Both die at the same point: classify on the action's VERB tokens rather than
+ * on its leading namespace, so severity survives any prefix (`batch_users:`,
+ * `janitor:`) and an action nobody has classified renders NEUTRAL rather than
+ * wearing a tint that asserts it was.
+ *
+ * ⊘ The violet `batch` register is NOT carried forward as a relay ask. AA-3's
+ * ruling offered one because 5-member TONES has no violet home; AA-24 then ruled
+ * the batch arm's OWN existence the defect — `batch` is a severity question, not
+ * a hue. Asking the producer for a violet tone would ship the inversion into the
+ * design system. Recorded as a relay NOTE (not an ask) in
+ * `F-W4-ADDENDA-d-2026-09-18.md` for `.z`'s letter.
+ *
+ * ⊘ The SHARED taxonomy — one enumerated vocabulary both writers and this
+ * display agree on — is the seam cure AA-5/AA-6/AA-24 all point at, and it is
+ * F.W5–W8's cross-tier work. This is the display arm only, which is what F.W4
+ * was given.
+ */
+type ActionTone = "destructive" | "warning" | "success" | "neutral";
+
+const DESTRUCTIVE_VERBS = ["delete", "prune", "purge", "reap"];
+const STATUS_VERBS = ["suspend", "suspended", "unsuspend", "status", "ban"];
+const CURATION_VERBS = ["tier", "dismiss", "feature", "featured", "save", "saved"];
+
+function actionTone(action: string): ActionTone {
+    const verbs = new Set(action.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+    if (DESTRUCTIVE_VERBS.some((v) => verbs.has(v))) return "destructive";
+    if (STATUS_VERBS.some((v) => verbs.has(v))) return "warning";
+    if (CURATION_VERBS.some((v) => verbs.has(v))) return "success";
+    return "neutral";
 }
 </script>
 
 <template>
     <div class="flex flex-col gap-3 px-4 py-2">
-        <!-- Filter bar -->
-        <div class="flex flex-wrap items-center gap-2 rounded-lg border border-muted/40 bg-muted/5 p-2">
-            <FilterIcon class="h-3.5 w-3.5 text-muted-foreground" />
+        <!-- Filter bar. AA-4: the whole chassis was drawn with the FILL token
+             `--muted` used as a border at 30–40 % alpha — 1.01–1.07:1 in BOTH
+             arms, against a 3:1 non-text floor, at four sites. `border-border` is
+             not the cure either (1.90:1, still under the floor): the house
+             `@utility cartoon-card` is, and the sibling admin surface already
+             applies it to the identical row and toolbar surfaces. One class
+             restores plate + 2px border + offset stamp together. -->
+        <!-- AA-35: the panel mounts inside GalleryView's own scroller with no
+             `max-h`/`overflow` of its own, so ~25 rows scrolled the filter bar off
+             the viewport entirely — the operator could no longer see, let alone
+             change, the query whose results they were reading (and with AA-17 cured
+             the rows now persist across page turns, so the bar is needed MORE). The
+             sibling's control surface is already `sticky top-2 z-10`; this is the
+             same seat, not a new mechanism. -->
+        <div class="cartoon-card sticky top-2 z-10 flex flex-wrap items-center gap-2 p-2">
+            <FilterIcon class="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <!-- AA-6: the placeholder advertised prefixes the server does not
+                 honour. `admin.py:631-632` is BARE EQUALITY on `action` (only the
+                 TARGET clause, `:633-634`, is a regex), and the placeholder's own
+                 example `set_tier` matches zero rows forever, because every writer
+                 emits `set_tier:{tier}` (verified `:185,:444,:497`). Composed with
+                 AA-1, "your filter matched nothing" and "the request never
+                 completed" were pixel-identical — so the operator's only feedback
+                 about an impossible query was a screen that also meant failure.
+                 ⊘ The `$in`-over-a-generated-taxonomy cure is the F.W5 seam
+                 co-sign; the placeholder telling the truth is F.W4's, and it is
+                 what stops the operator writing a query that cannot match. -->
+            <!-- AA-13: both fields were labelled by `placeholder` ALONE — the
+                 accessible name vanishes on the first keystroke, and the
+                 placeholder was also the field's only syntax documentation. A real
+                 `<label for>` survives typing; the sr-only seat keeps the bar's
+                 geometry.
+
+                 AA-21: iOS sentence-autocapitalisation silently defeats the
+                 exact-match action filter. The server's action clause carries no
+                 `$options:"i"` (only the immune target clause does), so `delete`
+                 typed on a phone arrives as `Delete`, matches zero rows, and — with
+                 AA-6 and AA-33 — renders as "no entries" plus counsel to widen a
+                 search that was never wrong. A silent false negative on a
+                 compliance surface. `enterkeyhint` names the Enter handler this
+                 input already has. -->
+            <label class="sr-only" for="audit-action-filter">Action (exact match)</label>
             <input
+                id="audit-action-filter"
                 v-model="actionFilter"
                 type="text"
-                placeholder="action (e.g. delete, set_tier)"
-                class="flex-1 min-w-[10rem] rounded border border-muted/30 bg-transparent px-2 py-1 text-xs focus:border-muted-foreground/60 focus:outline-none"
+                placeholder="action (exact, e.g. set_tier:featured)"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="search"
+                class="flex-1 min-w-[10rem] rounded border border-border bg-transparent px-2 py-1 text-xs focus:border-muted-foreground focus:outline-none"
                 @keyup.enter="applyFilters"
             />
+            <label class="sr-only" for="audit-target-filter">Target (substring match)</label>
             <input
+                id="audit-target-filter"
                 v-model="targetFilter"
                 type="text"
                 placeholder="target (substring match)"
-                class="flex-1 min-w-[10rem] rounded border border-muted/30 bg-transparent px-2 py-1 text-xs focus:border-muted-foreground/60 focus:outline-none"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="search"
+                class="flex-1 min-w-[10rem] rounded border border-border bg-transparent px-2 py-1 text-xs focus:border-muted-foreground focus:outline-none"
                 @keyup.enter="applyFilters"
             />
-            <Button emphasis="secondary" size="sm" class="h-7 text-xs" @click="applyFilters">
-                Apply
-            </Button>
+            <!-- AA-22: `h-7` / `h-7 w-7` on 100 % of this file's Button sites
+                 MECHANICALLY deleted the producer's WCAG-2.5.5 clamp. The cva emits
+                 token rungs — `h-(--control-h-sm)` is `max(scaled, --control-floor)`
+                 and the coarse-pointer block lifts scale to 1.5 and the floor to
+                 44 px — but `cn`'s `["height", /^h-/]` bucket is last-write-wins, so
+                 a consumer literal pins 28 px on every pointer. The rung is the
+                 size prop; there is nothing left for the class to say.
+
+                 AA-34 ⊕ AA-39: the clear affordance was `v-if`'d into a
+                 `flex-wrap` bar of two `flex-1 min-w-[10rem]` fields, so applying a
+                 filter shrank (and could wrap) the very fields in play. It now
+                 holds its seat and disables, and it is named by `aria-label` — the
+                 house idiom — not by `title`, which no touch user and no screen
+                 reader reliably receives. -->
+            <Button emphasis="secondary" size="sm" @click="applyFilters">Apply</Button>
             <Button
-                v-if="hasFilters"
                 emphasis="quiet"
-                size="md" icon-only
-                class="h-7 w-7 text-muted-foreground"
-                title="Clear filters"
+                size="sm"
+                icon-only
+                :disabled="!canClear"
+                class="text-muted-foreground"
+                aria-label="Clear filters"
                 @click="clearFilters"
             >
-                <X class="h-3.5 w-3.5" />
+                <X class="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
         </div>
 
@@ -148,30 +263,61 @@ function actionTone(action: string): string {
         <!-- Log rows. AA-17: the rows are no longer unmounted into a spinner on
              every page turn — they dim in place and announce themselves busy, so
              the scroll position, the focus and ~25 rows of layout survive. -->
+        <!-- AA-9: four unlabeled columns in a wrapper that is `flex`, so every
+             row's `grid-cols-[auto_auto_1fr_auto]` is its OWN formatting context
+             and the column edges step row to row; the file carried zero `role` and
+             zero `aria-*`. Both siblings already label this exact shape with the
+             same three attributes (`role="list"` + `aria-label` + `role="listitem"`),
+             so the house cure is in the tree — it does not compete with the fuller
+             `DataTable` seat, which is a later wave's question. -->
         <div v-else class="flex flex-col gap-1.5" :aria-busy="loading || undefined"
+             role="list" aria-label="Admin audit entries"
              :class="loading && 'opacity-60'">
             <div
                 v-for="(entry, i) in entries"
                 :key="`${entry.timestamp}-${i}`"
-                class="grid grid-cols-[auto_auto_1fr_auto] items-center gap-2 rounded-md border border-muted/30 bg-muted/5 px-3 py-1.5 text-xs"
+                role="listitem"
+                class="cartoon-card grid grid-cols-[auto_auto_1fr_auto] items-center gap-2 px-3 py-1.5 text-xs"
             >
                 <span class="font-mono text-muted-foreground tabular-nums">
                     {{ formatTimestamp(entry.timestamp) }}
                 </span>
-                <span
-                    class="rounded border px-1.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wide"
-                    :class="actionTone(entry.action)"
+                <Badge
+                    variant="secondary"
+                    :tone="actionTone(entry.action)"
+                    size="sm"
+                    class="font-mono uppercase"
                 >
                     {{ entry.action }}
-                </span>
+                </Badge>
+                <!-- AA-40: the truncated target and the sliced hash disclosed on
+                     `title` hover ALONE — mouse-privileged, and unreachable by
+                     keyboard or touch. `HoverCard` is removed at the adopted pin,
+                     so the ruled route is Tooltip-or-copy. The assistive half
+                     lands here as real text: the full value is in the DOM,
+                     visually hidden, so a screen reader and a touch user receive
+                     it while the row keeps its density. ⊘ The SIGHTED-keyboard
+                     half is a design ruling this unit was not given — a per-cell
+                     Tooltip trigger adds two tab stops to each of 25 rows (a
+                     2.4.3 cost) and a per-row disclosure is a new control. Named
+                     as a residual to F.W5–W8 in this unit's receipt; `title` is
+                     kept meanwhile, so nothing regresses for the pointer. -->
                 <span class="font-mono text-foreground/80 truncate" :title="entry.target">
                     {{ entry.target || "—" }}
                 </span>
+                <!-- AA-15: `text-[0.65rem]` was an off-scale magic 10.4 px desktop
+                     / 11.7 px mobile (the root inverts on small viewports) on the
+                     two least-legible columns. The ruled cure named
+                     `@utility text-admin-label`; that utility is NOT emitted at
+                     the adopted 8.0.0 pin (census cell falsified — see the
+                     addendum). `text-mono-micro` IS, and it carries the same
+                     mono + micro-rung + caps-tracking recipe off `--type-micro`. -->
                 <span
-                    class="font-mono text-[0.65rem] text-muted-foreground"
+                    class="text-mono-micro text-muted-foreground"
                     :title="entry.ip_hash"
                 >
-                    {{ entry.ip_hash.slice(0, 10) }}
+                    <span aria-hidden="true">{{ entry.ip_hash.slice(0, 10) }}</span>
+                    <span class="sr-only">IP hash {{ entry.ip_hash }}</span>
                 </span>
             </div>
 
@@ -200,28 +346,65 @@ function actionTone(action: string): string {
             </div>
         </div>
 
-        <!-- Pagination -->
-        <div
+        <!-- AA-12: this file's loading block was the siblings' block with
+             `role="status"` / `aria-live` / the sr-only sentence DELETED — a
+             byte-identical spinner, 2-of-2 siblings carrying the full treatment,
+             and zero a11y attributes anywhere in this file. Mounted permanently
+             and outside every gate, because a region that appears at the same
+             moment as its message is the shape that does not fire. -->
+        <p class="sr-only" role="status" aria-live="polite">
+            {{
+                error
+                    ? "The audit log could not be loaded."
+                    : loading
+                      ? "Loading audit entries."
+                      : entries.length
+                        ? `Showing ${entries.length} audit entries, page ${page} of ${pageCount}, ${total} total.`
+                        : hasFilters
+                          ? "No audit entries match these filters."
+                          : "No audit entries."
+            }}
+        </p>
+
+        <!-- AA-11: this footer was a degraded copy of the sibling's — a `<div>`
+             holding two RAW `<button>`s and a plain `<span>`, where the sibling
+             holds `<nav aria-label>` + producer Buttons + per-control
+             `aria-label`s + an `aria-live` counter. Same composable, same shape,
+             two different answers; the raw buttons also opted out of every
+             producer affordance including the coarse-pointer clamp (AA-22).
+             ⊘ The carry the sibling recorded stands and is re-recorded here: a
+             canonical glass-ui `<Pagination>` is ABSENT from the export map at
+             the adopted pin (as it was at 4.0.0 and 7.0.0 — the retirement has
+             now held across three majors), so this local control is the seat, not
+             a substitute for one. -->
+        <nav
             v-if="pageCount > 1"
             class="flex items-center justify-center gap-2 text-xs text-muted-foreground"
+            aria-label="Audit log pagination"
         >
-            <button
+            <Button
+                emphasis="quiet"
+                size="sm"
+                icon-only
                 :disabled="!hasPrev"
-                class="rounded border px-2 py-1 disabled:opacity-30"
+                aria-label="Previous page"
                 @click="prevPage()"
             >
-                Prev
-            </button>
-            <span>{{ page }} / {{ pageCount }}</span>
-            <button
+                <ChevronLeft class="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
+            <span aria-live="polite">{{ page }} / {{ pageCount }}</span>
+            <Button
+                emphasis="quiet"
+                size="sm"
+                icon-only
                 :disabled="!hasNext"
-                class="rounded border px-2 py-1 disabled:opacity-30"
+                aria-label="Next page"
                 @click="nextPage()"
             >
-                Next
-            </button>
+                <ChevronRight class="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
             <span class="ml-2">{{ total }} total</span>
-        </div>
+        </nav>
     </div>
 </template>
 

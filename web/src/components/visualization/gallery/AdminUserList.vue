@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onScopeDispose } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Input } from "@mkbabb/glass-ui/input";
+import { Badge } from "@mkbabb/glass-ui/badge";
 import { Checkbox } from "@mkbabb/glass-ui";
 import {
     Dialog,
@@ -365,12 +367,38 @@ function timeAgo(iso: string): string {
                     class="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
                     aria-hidden="true"
                 />
-                <input
+                <!-- FR-AUL-6 ⊕ FR-AUL-23 ⊕ FR-AUL-40 — one swap, three cures.
+                     The raw `<input>` carried `outline-none` + `focus:ring-1`,
+                     which annihilates the focus indicator under forced-colors:
+                     the v4 forced-colors escape `.outline-hidden` is absent from
+                     the build (unused), and the producer's restore block is a
+                     CLOSED selector list this element was not in — while the
+                     Checkbox two elements away carries `focus-ring` natively. Its
+                     bare `border` drew in `currentColor` (v4 preflight resets
+                     `border: 0 solid` with no colour, `.border` carries none, and
+                     no base `border-color` rule exists in the stack): a near-black
+                     hairline in light mode on the one field surrounded by muted
+                     token edges — the classic v3→v4 casualty. And `type="text"`
+                     on a machine-generated lowercase-slug datum hand-waved the
+                     clear control the UA supplies for free.
+                     ⊘ Census correction: the ruled cure named `./forms` → `Input`.
+                     `./forms` does NOT exist at the adopted glass-ui 8.0.0 pin —
+                     the export map carries `./input`, `./label`, `./labeled-field`,
+                     `./search`, `./textarea`, `./number-field` in its place, and
+                     the base class is `field-control glass-control-edge`, not
+                     `input-pill`. Same primitive, relocated; booked in the
+                     addendum. -->
+                <Input
                     v-model="searchQuery"
-                    type="text"
+                    type="search"
+                    size="sm"
                     placeholder="Search users..."
                     aria-label="Search users"
-                    class="w-full rounded-md border bg-background/50 py-1.5 pl-7 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    enterkeyhint="search"
+                    class="w-full pl-7"
                 />
             </div>
             <Select v-model="sortMode">
@@ -386,12 +414,28 @@ function timeAgo(iso: string): string {
                     <SelectItem value="entries">Most entries</SelectItem>
                 </SelectContent>
             </Select>
+            <!-- FR-AUL-7 (prune arm) ⊕ FR-AUL-26 ⊕ FR-AUL-41.
+                 The control read ≈1.3:1 in the light arm — `amber-300` ink on a
+                 10 %-alpha `amber-500` plate, a third hand-rolled palette literal
+                 on the panel's most consequential global operation.
+                 The producer's `ButtonTone` is `neutral | destructive` by the
+                 sub-range law ("a command is neutral or it is destructive;
+                 success/warning/info are MESSAGE tones and live on Alert/Toast"),
+                 so the amber the literals were reaching for has no command
+                 register — and the honest one is `destructive`: prune deletes
+                 users. `emphasis="secondary"` keeps it out of the primary slot.
+                 FR-AUL-26 (WCAG 2.5.3, Level A): the visible string "Prune empty",
+                 the `aria-label` "Prune users with zero entries" and the `title`
+                 "Remove users with 0 entries" were three MUTUALLY EXCLUSIVE names
+                 for one irrevocable operation — a speech-input user reading the
+                 button aloud could not activate it. The accessible name now
+                 CONTAINS the visible string, and FR-AUL-41's divergent `title` is
+                 gone rather than made to disagree more quietly. -->
             <Button
                 emphasis="secondary"
+                tone="destructive"
                 size="sm"
-                class="border-amber-500/30 bg-amber-500/10 text-xs text-amber-300 hover:bg-amber-500/20"
-                aria-label="Prune users with zero entries"
-                title="Remove users with 0 entries"
+                aria-label="Prune empty users — removes every user with zero entries"
                 @click="askPrune"
             >
                 Prune empty
@@ -463,36 +507,41 @@ function timeAgo(iso: string): string {
             <span class="flex-1 text-xs text-muted-foreground">
                 {{ selected.size }} {{ selected.size === 1 ? "user" : "users" }} selected
             </span>
+            <!-- FR-AUL-41: `title` was carrying the ONLY explanation of why a
+                 control is unavailable — and `title` on a DISABLED element is
+                 reachable by no one: not the pointer (no hover target), not the
+                 keyboard (not focusable), not a screen reader. Tooltip cannot take
+                 it either, for the same reason. A described-by sentence is exposed
+                 on a disabled button in the accessibility tree, which is where the
+                 reason has to live. -->
             <Button
                 emphasis="secondary"
                 size="sm"
                 class="text-xs"
                 :disabled="busy || suspendableCount === 0"
-                :title="
-                    suspendableCount === 0
-                        ? 'Every selected user is already suspended'
-                        : undefined
-                "
+                :aria-describedby="suspendableCount === 0 ? 'batch-suspend-why' : undefined"
                 @click="askBatch('suspend')"
             >
                 <Ban class="mr-1 size-3.5" aria-hidden="true" />
                 Suspend<span v-if="suspendableCount">&nbsp;({{ suspendableCount }})</span>
             </Button>
+            <span id="batch-suspend-why" class="sr-only">
+                Every selected user is already suspended.
+            </span>
             <Button
                 emphasis="secondary"
                 size="sm"
                 class="text-xs"
                 :disabled="busy || unsuspendableCount === 0"
-                :title="
-                    unsuspendableCount === 0
-                        ? 'No selected user is suspended'
-                        : undefined
-                "
+                :aria-describedby="unsuspendableCount === 0 ? 'batch-reinstate-why' : undefined"
                 @click="askBatch('unsuspend')"
             >
                 <UserCheck class="mr-1 size-3.5" aria-hidden="true" />
                 Reinstate<span v-if="unsuspendableCount">&nbsp;({{ unsuspendableCount }})</span>
             </Button>
+            <span id="batch-reinstate-why" class="sr-only">
+                No selected user is suspended.
+            </span>
             <Button
                 emphasis="primary" tone="destructive"
                 size="sm"
@@ -542,10 +591,21 @@ function timeAgo(iso: string): string {
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                         <span class="font-mono text-xs truncate">{{ user.user_slug }}</span>
-                        <span
+                        <!-- FR-AUL-7: the SOLE "suspended" signifier was
+                             `bg-red-500/20` + `text-red-400` over light
+                             `--card: hsl(36 48% 97%)` ≈ 2.0:1 at the 10 px micro
+                             rung — a hand-rolled palette literal reaching past the
+                             repo's own ratified axe-contrast carry to a value ~2.5×
+                             worse than the one the project had already rejected.
+                             `Badge tone="destructive"` is the producer's paired
+                             `--destructive` / `--destructive-foreground` register,
+                             which is calibrated in both arms. -->
+                        <Badge
                             v-if="user.status === 'suspended'"
-                            class="rounded-full bg-red-500/20 px-1.5 py-0.5 text-mono-micro uppercase font-medium text-red-400"
-                        >suspended</span>
+                            tone="destructive"
+                            size="sm"
+                            class="uppercase"
+                        >suspended</Badge>
                     </div>
                     <div class="flex gap-3 text-mono-micro uppercase font-medium text-muted-foreground mt-0.5">
                         <span>{{ user.entry_count }} entries</span>
@@ -601,26 +661,59 @@ function timeAgo(iso: string): string {
                 </div>
             </div>
 
-            <!-- Empty state -->
-            <div
-                v-if="!users.length && !loading"
-                class="flex flex-col items-center gap-2 py-8 text-muted-foreground"
-            >
-                <Users class="h-8 w-8 opacity-30" aria-hidden="true" />
-                <p class="text-sm">
-                    {{ searchQuery ? "No users match this search" : "No users found" }}
-                </p>
-            </div>
-            <div
-                v-else-if="!users.length && loading"
-                class="py-8 text-center text-sm text-muted-foreground"
-            >
-                Loading users…
-            </div>
         </div>
 
+        <!-- FR-AUL-34: these two blocks were INSIDE the `role="list"` container
+             and carry no `listitem` role — axe `aria-required-children`, manifest
+             exactly when the list is empty, which is the only moment they render.
+             Hoisted to siblings; the list keeps only its rows. -->
+        <div
+            v-if="!users.length && !loading"
+            class="flex flex-col items-center gap-2 py-8 text-muted-foreground"
+        >
+            <Users class="h-8 w-8 opacity-30" aria-hidden="true" />
+            <p class="text-sm">
+                {{ searchQuery ? "No users match this search" : "No users found" }}
+            </p>
+        </div>
+        <div
+            v-else-if="!users.length && loading"
+            class="py-8 text-center text-sm text-muted-foreground"
+        >
+            Loading users…
+        </div>
+
+        <!-- FR-AUL-9: search results were never announced, and BOTH of this
+             panel's live regions were conditionally mounted WITH their content —
+             the spinner's `role="status"` sat inside `v-if="loading"`, and the
+             pager's `aria-live` span inside `<nav v-if="pageCount > 1">`, which
+             unmounts precisely when a search narrows the result set. That is the
+             announcement pattern least likely to ever fire: a region born at the
+             same instant as its message has nothing to change. `{{ total }}` — the
+             one datum that answers "did my search work?" — was behind the same
+             gate. One region, mounted always, outside every gate. -->
+        <p class="sr-only" role="status" aria-live="polite">
+            {{
+                error
+                    ? "The user list could not be loaded."
+                    : loading
+                      ? "Loading users."
+                      : users.length
+                        ? `Showing ${users.length} users, page ${page} of ${pageCount}, ${total} total.`
+                        : searchQuery
+                          ? "No users match this search."
+                          : "No users found."
+            }}
+        </p>
+
         <!-- Pagination — minimal local Button-based control;
-             a canonical glass-ui `<Pagination>` primitive is the named carry. -->
+             a canonical glass-ui `<Pagination>` primitive is the named carry.
+             AA-22 (family arm): the two `h-7 w-7` literals are gone. `cn`'s
+             `["height", /^h-/]` bucket is last-write-wins, so a consumer literal
+             overwrites the cva's `h-(--control-h-*)` rung — and that rung is a
+             `max(scaled, --control-floor)` clamp whose coarse-pointer block is the
+             producer's whole WCAG-2.5.5 mechanism. `h-7` pinned 28 px on touch. -->
+
         <nav
             v-if="pageCount > 1"
             class="flex items-center justify-center gap-2 text-xs text-muted-foreground"
@@ -628,8 +721,8 @@ function timeAgo(iso: string): string {
         >
             <Button
                 emphasis="quiet"
-                size="md" icon-only
-                class="h-7 w-7"
+                size="sm"
+                icon-only
                 :disabled="!hasPrev"
                 aria-label="Previous page"
                 @click="prevPage()"
@@ -639,8 +732,8 @@ function timeAgo(iso: string): string {
             <span aria-live="polite">{{ page }} / {{ pageCount }}</span>
             <Button
                 emphasis="quiet"
-                size="md" icon-only
-                class="h-7 w-7"
+                size="sm"
+                icon-only
                 :disabled="!hasNext"
                 aria-label="Next page"
                 @click="nextPage()"
