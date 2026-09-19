@@ -325,8 +325,39 @@ test.describe("Paper performance", () => {
             };
         });
 
-        await page.getByRole("button", { name: /dark mode/i, pressed: false }).click();
-        await page.waitForTimeout(250);
+        // X·F F.W9 `.b` — `G-F9-12`'s spec-side residue (`fr-DarkModeToggle`
+        // K-1 / N-2's rider). This was `await page.waitForTimeout(250)` against
+        // a theme morph the record measures at ~350 ms: a fixed wait shorter
+        // than the transition it waits for, which is a flake by construction
+        // and, when it does not flake, is 250 ms of dead time on every run.
+        //
+        // The cure is to wait on the STATE rather than on the clock. The
+        // toggle's `aria-pressed` is the theme's own contract (N-2), and the
+        // code block's resolved background is the thing under assertion, so
+        // both are settled before the second reading is taken. Nothing is
+        // swallowed: a theme that never flips reddens here, loudly, instead of
+        // producing two identical readings 250 ms apart.
+        const toggle = page.getByRole("button", { name: /dark mode/i, pressed: false });
+        await toggle.click();
+        await expect(page.getByRole("button", { name: /dark mode/i })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+            { timeout: 10_000 },
+        );
+        await expect
+            .poll(
+                () =>
+                    strategyBlock.evaluate(
+                        (el) => getComputedStyle(el as HTMLElement).backgroundColor,
+                    ),
+                {
+                    message:
+                        "the code block's background never left its light-theme value " +
+                        "after the toggle flipped",
+                    timeout: 10_000,
+                },
+            )
+            .not.toBe(lightCodeTheme.backgroundColor);
 
         const darkCodeTheme = await strategyBlock.evaluate((element) => {
             const style = getComputedStyle(element as HTMLElement);
