@@ -141,7 +141,6 @@ const created = useTimeAgo(() => props.entry.created_at);
                         emphasis="quiet"
                         size="sm"
                         class="like-btn"
-                        :class="{ liked: isLiked }"
                         :aria-pressed="isLiked"
                         @click.stop="emit('like', entry.slug)"
                     >
@@ -288,13 +287,19 @@ const created = useTimeAgo(() => props.entry.created_at);
     font-size: 0.875rem;
     color: var(--muted-foreground);
 }
+/* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).
+   The like control already SET `aria-pressed` and then painted from a parallel
+   `.liked` class: two channels for one state, either changeable without the
+   other, and only one of them visible to the producer's `forced-colors` and
+   `prefers-contrast` arms — which key on ARIA exclusively. The class binding is
+   deleted and the rules key on the attribute. */
 .like-btn:hover,
-.like-btn.liked {
+.like-btn[aria-pressed="true"] {
     color: var(--like);
     background: transparent;
 }
 
-.like-btn.liked :deep(svg) {
+.like-btn[aria-pressed="true"] :deep(svg) {
     /* A.W3.d — bezier→`--ease-apple-spring`. `like-bounce` is a fourier-local
        keyframe (no glass-ui shadow); CONSTELLATION carry candidate (P-tranche). */
     animation: like-bounce 0.3s var(--ease-apple-spring);
@@ -307,7 +312,7 @@ const created = useTimeAgo(() => props.entry.created_at);
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .like-btn.liked :deep(svg) {
+    .like-btn[aria-pressed="true"] :deep(svg) {
         animation: none;
     }
 }

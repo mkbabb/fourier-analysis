@@ -127,11 +127,21 @@ const galleryStore = useGalleryStore();
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent class="nav-dropdown" :side-offset="6" align="start">
+                    <!-- X.F.W3 `.e` / `fr-App MG-eta` ⊕ the published active-state
+                         vocabulary (`FR-COB-3`). `aria-current` appeared NOWHERE
+                         in this tree — ⟨cmd⟩ this seat, `grep -rn 'aria-current'
+                         src` → 0 — so the app's only navigation marked its
+                         current section by DECORATION ALONE and a screen-reader
+                         user heard five undifferentiated items. `aria-current`
+                         is the vocabulary's channel for exactly this state, and
+                         the rules below key on it, so the announcement and the
+                         paint are the same fact rather than two bindings that
+                         can drift apart. -->
                     <DropdownMenuItem
                         v-for="tab in tabs"
                         :key="tab.value"
                         class="nav-dropdown-item"
-                        :class="{ 'is-active': activeTab === tab.value }"
+                        :aria-current="activeTab === tab.value ? 'page' : undefined"
                         @select="onTabSelect(tab.value)"
                     >
                         <component :is="tab.icon" class="nav-item-icon" />
@@ -353,7 +363,8 @@ const galleryStore = useGalleryStore();
    KEPT, inside `@layer glass-overrides` (declared after `utilities` in
    style.css) — genuine consumer divergence the producer ships no variant for:
    the portaled surfaces' own sizing, the icon+label gap this app's rows carry,
-   and the current-route amber state. */
+   and the current-route amber state, which keys on `aria-current` per the
+   vocabulary published in `style.css`. */
 @layer glass-overrides {
     /* portaled glass-ui PopoverContent (the attribution card) */
     .hover-card-content {
@@ -371,12 +382,12 @@ const galleryStore = useGalleryStore();
         gap: 0.625rem;
     }
 
-    .nav-dropdown-item.is-active {
+    .nav-dropdown-item[aria-current] {
         color: var(--viz-amber);
         background: color-mix(in srgb, var(--viz-amber) 8%, transparent);
     }
 
-    .nav-dropdown-item.is-active .nav-item-icon {
+    .nav-dropdown-item[aria-current] .nav-item-icon {
         filter: drop-shadow(0 0 3px color-mix(in srgb, var(--viz-amber) 50%, transparent));
     }
 

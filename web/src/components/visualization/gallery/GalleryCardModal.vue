@@ -166,7 +166,6 @@ const created = useTimeAgo(() => props.entry.created_at);
                                 emphasis="quiet"
                                 size="sm"
                                 class="like-btn"
-                                :class="{ liked: isLiked }"
                                 :aria-pressed="isLiked"
                                 aria-label="Like"
                                 :aria-describedby="`modal-like-count-${entry.slug}`"
@@ -230,13 +229,19 @@ const created = useTimeAgo(() => props.entry.created_at);
                             </div>
                         </div>
 
-                        <!-- Admin tier controls -->
+                        <!-- Admin tier controls.
+                             X.F.W3 `.e` — the two `:class="{ active: … }"`
+                             bindings here were the vocabulary's SIXTH spelling
+                             and they were DEAD: no `.tier-btn.active` rule
+                             exists in this file or anywhere else, and the plate
+                             below already keys on `aria-pressed`. A dead
+                             spelling is worse than a live one — it teaches the
+                             next reader a channel that does nothing. -->
                         <div v-if="adminMode" class="flex gap-2">
                             <Button
                                 emphasis="secondary"
                                 size="sm"
                                 class="tier-btn"
-                                :class="{ active: entry.tier === 'featured' }"
                                 :aria-pressed="entry.tier === 'featured'"
                                 :aria-label="
                                     entry.tier === 'featured'
@@ -251,7 +256,6 @@ const created = useTimeAgo(() => props.entry.created_at);
                                 emphasis="secondary"
                                 size="sm"
                                 class="tier-btn"
-                                :class="{ active: entry.tier === 'saved' }"
                                 :aria-pressed="entry.tier === 'saved'"
                                 :aria-label="
                                     entry.tier === 'saved'
@@ -342,8 +346,14 @@ const created = useTimeAgo(() => props.entry.created_at);
     font-size: 0.875rem;
     color: var(--muted-foreground);
 }
+/* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).
+   The like control already SET `aria-pressed` and then painted from a parallel
+   `.liked` class: two channels for one state, either changeable without the
+   other, and only one of them visible to the producer's `forced-colors` and
+   `prefers-contrast` arms — which key on ARIA exclusively. The class binding is
+   deleted and the rules key on the attribute. */
 .like-btn:hover,
-.like-btn.liked {
+.like-btn[aria-pressed="true"] {
     color: var(--like);
     background: transparent;
 }
