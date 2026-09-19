@@ -13,6 +13,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import type { FlaggedVisualization, GalleryTier } from "@/lib/types";
+import { problemMessage } from "./adminError";
 import { Flag, Trash2, XCircle, RotateCw, Star } from "@lucide/vue";
 
 // B.W4.c — the flagged panel re-points onto the converged `visualization`
@@ -32,39 +33,72 @@ const nextCursor = ref<string | null>(null);
 const hasMore = ref(false);
 const loading = ref(false);
 const loadingMore = ref(false);
+/**
+ * X·F F.W4 `.d` — FR-AFP-6: the error state IS the empty state.
+ *
+ * A failed load showed a transient toast and then "No flagged content" — a false
+ * all-clear on a safety surface, whose only retry control was gated on
+ * `hasMore`, which is false after a failed first load. The queue now says which
+ * of the two it means, and offers the retry in the state that needs it.
+ */
+const error = ref<string | null>(null);
+
+/**
+ * FR-AFP-25 (SP-12, the AA-28 idiom at this file): four `getAdminToken()!`
+ * assertions over a `string | null`. On the null path `coreFetch` threw its own
+ * developer string, which four catches rendered verbatim into an admin toast.
+ */
+function requireAdminToken(): string {
+    const token = auth.getAdminToken();
+    if (!token) throw new Error("Admin session has expired — re-enter admin mode.");
+    return token;
+}
 
 async function fetchFlagged(cursor: string | null) {
-    const token = auth.getAdminToken()!;
+    const token = requireAdminToken();
     return api.listFlaggedVisualizations(token, {
         limit: 20,
         cursor: cursor ?? undefined,
     });
 }
 
-async function reload() {
+/**
+ * FR-AFP-67: `reload()` used to handle AND discard every error and never
+ * rethrow, so `await reload()` could not reject and the three mutation handlers'
+ * catches were structurally dead for refresh failures — each of which toasts
+ * SUCCESS before reloading. A delete that succeeded and a refresh that 500'd
+ * left the deleted row rendered, with live buttons, under a success toast.
+ * `reload` now reports through its RETURN VALUE: one error channel per action.
+ */
+async function reload(): Promise<boolean> {
     loading.value = true;
+    error.value = null;
     try {
         const result = await fetchFlagged(null);
         flaggedEntries.value = result.items;
         nextCursor.value = result.next_cursor;
         hasMore.value = result.has_more;
-    } catch (e: any) {
-        toast(e.message ?? "Failed to load flagged entries", "error");
+        return true;
+    } catch (e: unknown) {
+        if (api.isAbortError(e)) return false;
+        error.value = problemMessage(e, "Failed to load flagged entries");
+        return false;
     } finally {
         loading.value = false;
     }
 }
 
 async function loadMore() {
-    if (!hasMore.value || loadingMore.value) return;
+    if (!hasMore.value || loading.value || loadingMore.value) return;
     loadingMore.value = true;
     try {
         const result = await fetchFlagged(nextCursor.value);
         flaggedEntries.value.push(...result.items);
         nextCursor.value = result.next_cursor;
         hasMore.value = result.has_more;
-    } catch (e: any) {
-        toast(e.message ?? "Failed to load flagged entries", "error");
+    } catch (e: unknown) {
+        if (api.isAbortError(e)) return;
+        toast(problemMessage(e, "Failed to load flagged entries"), "error");
     } finally {
         loadingMore.value = false;
     }
@@ -85,27 +119,43 @@ async function confirmDelete() {
     const target = pendingDelete.value;
     dialogOpen.value = false;
     if (!target) return;
-    const token = auth.getAdminToken()!;
     try {
         // Moderate-delete the converged entity by slug (CRUD-CONTRACT §7); the
         // admin client carries `If-Match: *` server-side (admin override, §3).
+        const token = requireAdminToken();
         await api.adminDeleteVisualization(token, target.slug);
-        toast("Entry deleted", "success");
-        await reload();
-    } catch (e: any) {
-        toast(e.message ?? "Failed to delete entry", "error");
+        // FR-AFP-67: the success toast fires only once the refresh that proves it
+        // has landed. Toasting first and reloading after is what left a deleted
+        // row rendered, with live buttons, under a success toast.
+        if (await reload()) toast("Entry deleted", "success");
+    } catch (e: unknown) {
+        if (!api.isAbortError(e)) {
+            toast(problemMessage(e, "Failed to delete entry"), "error");
+        }
     }
     pendingDelete.value = null;
 }
 
 async function handleDismiss(slug: string) {
-    const token = auth.getAdminToken()!;
     try {
+        const token = requireAdminToken();
         const result = await api.dismissVisualizationFlags(token, slug);
-        toast(`Dismissed ${result.dismissed} flags`, "success");
-        await reload();
-    } catch (e: any) {
-        toast(e.message ?? "Failed to dismiss", "error");
+        // FR-AFP-35: the count agrees with itself. "Dismissed 1 flags" and a
+        // reachable "Dismissed 0 flags" both shipped eleven lines from a row that
+        // pluralises correctly.
+        const n = result.dismissed;
+        if (await reload()) {
+            toast(
+                n === 0
+                    ? "No flags left to dismiss"
+                    : `Dismissed ${n} ${n === 1 ? "flag" : "flags"}`,
+                "success",
+            );
+        }
+    } catch (e: unknown) {
+        if (!api.isAbortError(e)) {
+            toast(problemMessage(e, "Failed to dismiss"), "error");
+        }
     }
 }
 
@@ -114,13 +164,14 @@ async function handleDismiss(slug: string) {
 // flag pressure while keeping it live), resolving against the converged entity
 // by slug via `setVisualizationTier`.
 async function handleSetTier(slug: string, tier: GalleryTier) {
-    const token = auth.getAdminToken()!;
     try {
+        const token = requireAdminToken();
         await api.setVisualizationTier(token, slug, tier);
-        toast(`Tier set to ${tier}`, "success");
-        await reload();
-    } catch (e: any) {
-        toast(e.message ?? "Failed to set tier", "error");
+        if (await reload()) toast(`Tier set to ${tier}`, "success");
+    } catch (e: unknown) {
+        if (!api.isAbortError(e)) {
+            toast(problemMessage(e, "Failed to set tier"), "error");
+        }
     }
 }
 
@@ -148,9 +199,23 @@ function timeAgo(iso: string | null): string {
 
 <template>
     <div class="flex flex-col gap-3 px-4 py-2">
-        <div v-if="loading" class="flex justify-center py-8" role="status" aria-live="polite">
-            <div class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-            <span class="sr-only">Loading flagged entries</span>
+        <!-- Failure ≠ all-clear. FR-AFP-6: a failed load rendered the transient
+             toast and then "No flagged content" — a false all-clear on the
+             surface whose whole purpose is telling an operator that something is
+             wrong. FR-AFP-58: the busy state is TEXT, not the spinner the PRM
+             blanket freezes into a static three-quarter ring. -->
+        <div
+            v-if="error"
+            role="alert"
+            class="flex flex-col items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 py-8 text-center"
+        >
+            <Flag class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
+            <p class="text-sm font-medium">The moderation queue could not be loaded.</p>
+            <p class="max-w-prose text-xs text-muted-foreground">{{ error }}</p>
+            <p class="text-xs text-muted-foreground">
+                This is not an all-clear — the queue is unread, not empty.
+            </p>
+            <Button emphasis="secondary" size="sm" @click="reload()">Try again</Button>
         </div>
 
         <div
@@ -158,6 +223,8 @@ function timeAgo(iso: string | null): string {
             class="flex flex-col gap-2"
             role="list"
             aria-label="Flagged gallery entries"
+            :aria-busy="loading || undefined"
+            :class="loading && 'opacity-60'"
         >
             <div
                 v-for="item in flaggedEntries"
@@ -229,10 +296,24 @@ function timeAgo(iso: string | null): string {
                 </div>
             </div>
 
-            <div v-if="!flaggedEntries.length" class="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-                <Flag class="h-8 w-8 opacity-30" aria-hidden="true" />
-                <p class="text-sm">No flagged content</p>
-            </div>
+        </div>
+
+        <!-- FR-AFP-30: the empty state is a SIBLING of the `role="list"`
+             container, not a non-`listitem` child of it — and per FR-AFP-1 it is
+             the only child production ever renders, so the illegal nesting was
+             not an edge case but the shipped shape. -->
+        <div
+            v-if="!error && !loading && !flaggedEntries.length"
+            class="flex flex-col items-center gap-2 py-8 text-muted-foreground"
+        >
+            <Flag class="h-8 w-8 opacity-30" aria-hidden="true" />
+            <p class="text-sm">No flagged content</p>
+        </div>
+        <div
+            v-else-if="!error && loading && !flaggedEntries.length"
+            class="py-8 text-center text-sm text-muted-foreground"
+        >
+            Loading flagged entries…
         </div>
 
         <!-- Cursor "load more" — the converged flagged stream is cursor-paginated
