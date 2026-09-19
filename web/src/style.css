@@ -152,9 +152,28 @@ html {
     font-size: 1.02em;
 }
 
+/* X.F.W4 / `PAW-55` — the declaration that computed to its own opposite.
+
+   `overflow-x: auto; overflow-y: visible` reads as "scroll wide math sideways,
+   never clip it vertically". CSS Overflow 3 §3 says otherwise: when one axis is
+   not `visible`, a `visible` on the other axis COMPUTES TO `auto`. So the
+   authored line was dead, every display-math box on the `/paper` route (~263 of
+   them, all entering through one `PaperSectionBlocks` call) became a
+   BLOCK-AXIS scroll container, and tall KaTeX ink — `\overbrace`, stacked
+   limits, tall delimiters — was clipped at the padding box with the 0.75rem
+   block padding as its only headroom.
+
+   `clip` is the value that does what `visible` was written to mean: it is
+   exempt from the computed-value rule, so it composes with `auto` on the inline
+   axis, and it makes the box a non-scroll container again.
+   `overflow-clip-margin` then hands the block axis real headroom instead of the
+   padding's incidental 0.75rem. ⊘ Whether any SPECIFIC equation was clipping
+   at the old line is the row's own SS-13 probe and is not claimed here — the
+   dead declaration is the defect, and it is cured. */
 .katex-display {
     overflow-x: auto;
-    overflow-y: visible;
+    overflow-y: clip;
+    overflow-clip-margin: 0.75rem;
     padding: 0.75rem 0;
     margin: 1rem 0;
 }
@@ -207,14 +226,50 @@ html {
    `hsl(35 76% 35%)` ≈ 4.6:1 (clears AA). Dark-mode value stays put. The
    companion glass-ui carry (rebaseline the upstream light token) is held
    as a coordination ask. */
+/* X.F.W4 / `PV ★MF-10` ⟨= banked `fr-PaperSidebar D-M4 extended`⟩ — the three
+   light-arm section-ramp stops that do not reach 4.5:1, joined to the block
+   above because they are the SAME fork in the same shape.
+
+   The finding and its replacements are unit `.e`'s, handed over measured; the
+   tokens are authored in `glass-ui/dist/styles/tokens/{color-radius,dark-arm,
+   light-dark}.css` and forked HERE, which is why `.e` declared them rather than
+   writing them — this file is `.f`'s ownership window, and glass-ui is
+   READ-ONLY (the ramp's own WIDTH — thirteen stops, thirteen roots — is a
+   producer row and rides the relay, not this sheet).
+
+   ⊘ THE HANDED-OVER L VALUES ARE TAKEN 0.003–0.006 DARKER, and the reason is
+   the PLATE. `.e` measured live against `rgb(251 250 248)` = `--background`,
+   where its values read 4.63/4.61/4.61. The ramp also paints on `--card`
+   (`hsl(30 85% 96%)` = `rgb(253 245 236)`), which is the STRICTER of the two
+   light plates, and against it those same values read 4.454/4.438/4.433 — all
+   three back under the floor. The values below clear 4.5:1 on BOTH, arithmetic
+   double-run at CSS Color 4's own oklch→sRGB and cross-checked against `.e`'s
+   live readings to within 0.03:
+
+     stop-4   oklch(0.538 0.088 171.1)   card 4.511:1   background 4.687:1
+     stop-10  oklch(0.541 0.103 128.8)   card 4.513:1   background 4.690:1
+     stop-11  oklch(0.540 0.092 208.0)   card 4.508:1   background 4.684:1
+
+   Chroma and hue are untouched in all three — only L moves, by 0.013 / 0.015 /
+   0.061 — so every chapter keeps the hue that identifies it, which is the whole
+   point of a section ramp. The DARK arm is not touched at all: it reads
+   7.4–10.2:1 across all thirteen stops and needs nothing, so each stop is
+   restored to the producer's dark value below, exactly as `--section-color-5`
+   already was. */
 :root {
     --viz-amber: hsl(35 76% 35%);
     --section-color-5: hsl(35 76% 35%);
+    --section-color-4: oklch(0.538 0.088 171.1);
+    --section-color-10: oklch(0.541 0.103 128.8);
+    --section-color-11: oklch(0.540 0.092 208.0);
 }
 .dark {
-    /* Dark-mode value stays as glass-ui ships (hsl(37 73% 67%)). */
+    /* Dark-mode values stay as glass-ui ships them. */
     --viz-amber: hsl(37 73% 67%);
     --section-color-5: hsl(37 73% 67%);
+    --section-color-4: oklch(0.776 0.105 172.6);
+    --section-color-10: oklch(0.794 0.116 127.9);
+    --section-color-11: oklch(0.805 0.095 206.7);
 }
 
 /* D.W4.d — `:focus-visible` rings on the TOC link classes + the gallery

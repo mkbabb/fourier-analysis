@@ -102,12 +102,34 @@ function cssColorToHex(css: string): string | null {
  */
 const tokenColors = createTokenColorCache();
 
-/** The `--viz-*` custom properties this palette tracks, by `VIZ_COLORS` key. */
+/**
+ * The `--viz-*` custom properties this palette tracks, by `VIZ_COLORS` key.
+ *
+ * X.F.W4 / `fr-ConvergencePlot D-1`, the `golden` limb (the finding is unit
+ * `.b`'s; this resolver is `.f`'s file). `golden` was absent from this list —
+ * theme-blind BY ENUMERATION — so the one entry the sum curve, the hover trail
+ * and the shimmer all paint with stayed frozen at the authored `#f0b632` in
+ * both arms. In the light arm that hex reads **1.766:1** against
+ * `--background`: not a near miss on the 3:1 graphical-object floor, roughly
+ * half of it, on the curve the instrument exists to show.
+ *
+ * ⊘ The token it resolves to is `--viz-amber`, and NOT a newly minted
+ * `--viz-golden`. Both were offered by the declaring unit, and this one claims
+ * no colour authority: `--viz-amber` is already forked by this app in BOTH arms
+ * for exactly this reason (`style.css`, D.W4.d), and it measures **4.709:1**
+ * against `--background` / **4.532:1** against `--card` in light and
+ * **10.940:1** in dark. Minting a second gold would be this seat inventing a
+ * brand colour, which is a design decision no row grants it. ⊘ The tree already
+ * treats the two as one ink where it has to — `useCoeffHover.ts:75` reads
+ * `VIZ_COLORS.amber || VIZ_COLORS.golden` — so the alias makes an existing
+ * fallback honest rather than introducing a collision.
+ */
 const VIZ_TOKENS = [
     ["fourier", "--viz-fourier"],
     ["chebyshev", "--viz-chebyshev"],
     ["legendre", "--viz-legendre"],
     ["amber", "--viz-amber"],
+    ["golden", "--viz-amber"],
 ] as const;
 
 /** Reactive VIZ_COLORS — same API as before (VIZ_COLORS.fourier etc.) */
