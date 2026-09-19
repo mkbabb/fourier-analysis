@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+import { ADMIN_TOKEN, stubAdminApi } from "./fixtures/gallery";
+
 /**
  * X·F F.W4 `.g` — `G-F4-ADMIN-AXE`: *"one spec enters admin mode and runs axe
  * over the banner + panels"*.
@@ -34,106 +36,14 @@ import AxeBuilder from "@axe-core/playwright";
  * route and the three admin panels.
  */
 
-const ADMIN_TOKEN = "e2e-admin-token";
-
-/** The fixture set, typed by the shapes `lib/types.ts` declares. */
-const ADMIN_STATS = {
-    total_entries: 128,
-    featured: 7,
-    saved: 41,
-    normal: 80,
-    total_views: 9314,
-    total_likes: 452,
-    storage_bytes: 73_400_320,
-};
-
-const ADMIN_USERS = {
-    items: [
-        {
-            user_slug: "amber-fox-12",
-            created_at: "2026-04-02T10:15:00Z",
-            last_seen_at: "2026-09-17T22:41:00Z",
-            entry_count: 9,
-            status: "active",
-        },
-        {
-            user_slug: "quiet-heron-77",
-            created_at: "2026-06-19T08:02:00Z",
-            last_seen_at: "2026-09-01T11:20:00Z",
-            entry_count: 2,
-            status: "suspended",
-        },
-    ],
-    total: 2,
-    page: 1,
-    pages: 1,
-};
-
-const ADMIN_FLAGGED = {
-    items: [
-        {
-            slug: "spiral-lattice-04",
-            flag_count: 3,
-            flags: [
-                {
-                    reporter_slug: "amber-fox-12",
-                    reason: "inappropriate",
-                    detail: "reported from the gallery grid",
-                    created_at: "2026-09-10T14:00:00Z",
-                },
-            ],
-            image_slug: "img-spiral-lattice-04",
-            owner_slug: "quiet-heron-77",
-            tier: "normal",
-            created_at: "2026-08-30T09:00:00Z",
-        },
-    ],
-    next_cursor: null,
-    has_more: false,
-};
-
-const ADMIN_AUDIT = {
-    items: [
-        {
-            timestamp: "2026-09-17T22:44:10Z",
-            action: "set_tier",
-            target: "spiral-lattice-04",
-            ip_hash: "6f1c9a2d",
-        },
-        {
-            timestamp: "2026-09-17T21:02:55Z",
-            action: "delete",
-            target: "gull-figure-19",
-            ip_hash: "b03e77aa",
-        },
-    ],
-    total: 2,
-    page: 1,
-    pages: 1,
-};
-
-function json(body: unknown) {
-    return {
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(body),
-    };
-}
-
-/** Serve the admin surface deterministically; leave every other route live. */
-async function stubAdminApi(page: Page): Promise<void> {
-    await page.route("**/api/admin/verify", (r) => r.fulfill(json({ ok: true })));
-    await page.route("**/api/admin/stats", (r) => r.fulfill(json(ADMIN_STATS)));
-    await page.route("**/api/admin/users**", (r) => r.fulfill(json(ADMIN_USERS)));
-    await page.route("**/api/admin/flagged**", (r) => r.fulfill(json(ADMIN_FLAGGED)));
-    await page.route("**/api/admin/audit**", (r) => r.fulfill(json(ADMIN_AUDIT)));
-    // The gallery grid itself: an empty page keeps the reading about the ADMIN
-    // surface and off the card grid, which the `/visualize` keystones already
-    // cover and `.d` owns.
-    await page.route("**/api/visualizations**", (r) =>
-        r.fulfill(json({ items: [], next_cursor: null, has_more: false })),
-    );
-}
+/**
+ * X·F F.W9 `.b` (§4a-7, author once / cite many): the fixture set and the
+ * network stub that were declared inline here now live in
+ * `./fixtures/gallery`, because this wave needed the SAME deterministic
+ * surface for `G-F9-9` (open a card) and `G-F9-23` (photograph one). A second
+ * copy would have been a second oracle. Every assertion in this file is
+ * unchanged; only the source of the fixtures moved.
+ */
 
 /** Inject axe into `page` and assert zero serious/critical violations. */
 async function checkA11y(page: Page, label: string): Promise<void> {

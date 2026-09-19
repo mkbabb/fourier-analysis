@@ -1,5 +1,7 @@
 // SERVED MODEL: claude-opus-5[1m]
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+
+import { ENTRY, stubGallery } from "./fixtures/gallery";
 
 /**
  * X·F F.W9 `.b` — the S4 seat (`G-F9-7`), plus `G-F9-9` and `G-F9-10`.
@@ -38,62 +40,16 @@ import { test, expect, type Page } from "@playwright/test";
  * file; where an assertion is RED, it routes.
  */
 
-/** One deterministic gallery row, shaped by `lib/types.ts`'s `Visualization`. */
-const ENTRY = {
-    slug: "amber-fox-spiral-one",
-    owner_slug: "amber-fox-12",
-    visibility: "public",
-    content_hash: "c0ffee00",
-    image_slug: "img-amber-fox-spiral-one",
-    contour_hash: "deadbeef",
-    active_bases: ["fourier-epicycles"],
-    n_harmonics: 64,
-    set_hash: "5e7ha5h0",
-    fork_of: null,
-    fork_of_hash: null,
-    fork_count: 0,
-    version_count: 1,
-    title: "Amber fox spiral",
-    description: null,
-    tags: [],
-    palette_slug: null,
-    views: 12,
-    likes: 3,
-    tier: "normal",
-    pinned: false,
-    created_at: "2026-09-01T10:00:00Z",
-    updated_at: "2026-09-01T10:00:00Z",
-    deleted_at: null,
-};
-
-/** A 1×1 transparent PNG, so thumbnail requests resolve instead of 404-ing. */
-const PIXEL_PNG = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-    "base64",
-);
-
 /**
- * Serve the gallery list deterministically.
+ * The fixtures live in `./fixtures/gallery` and are shared with F.W4's admin
+ * axe keystone and this wave's visual checkpoint — authored once, cited three
+ * times (§4a-7). `stubGallery` serves the list and its thumbnails; the reason
+ * it is a network stub rather than a seeded database is recorded there.
  *
- * WHY THE NETWORK BOUNDARY AND NOT A SEEDED DATABASE: `G-F9-9` asks that a spec
- * OPEN A CARD. A fresh CI database renders an empty grid, so the card that must
- * be opened would not exist and the test would pass vacuously — which is the
- * whole defect class this seat is here to end. Only the HTTP boundary is
- * stubbed; the store, the components and the modal are the shipped code path.
- * This is the idiom `gallery-admin-a11y.spec.ts` established at F.W4.
+ * `G-F9-9` asks that a spec OPEN A CARD. A fresh CI database renders an empty
+ * grid, so the card to be opened would not exist and the test would pass
+ * vacuously — the very defect class this seat ends.
  */
-async function stubGallery(page: Page, items: unknown[] = [ENTRY]): Promise<void> {
-    await page.route("**/api/visualizations**", (route) =>
-        route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ items, next_cursor: null, has_more: false }),
-        }),
-    );
-    await page.route("**/api/images/**", (route) =>
-        route.fulfill({ status: 200, contentType: "image/png", body: PIXEL_PNG }),
-    );
-}
 
 test.describe("Gallery UX", () => {
     test("gallery page renders with tabs and search bar", async ({ page }) => {
