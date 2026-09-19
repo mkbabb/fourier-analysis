@@ -217,11 +217,21 @@ test.describe("Gallery UX", () => {
         await expect(modal.getByText("Open Visualizer")).toBeVisible();
     });
 
-    test("no console errors on gallery page", async ({ page }) => {
-        const consoleErrors: string[] = [];
+    test("no console errors OR warnings on gallery page", async ({ page }) => {
+        // ── `G-F9-10` ──
+        // The guard filtered `msg.type() === "error"` only. `GCM-4` emits two
+        // dev `console.warn`s per card open and `FR-EQR-3`'s four
+        // zero-console-error gates were all reading through the same blind
+        // spot: a warning was, by construction, not an event.
+        //
+        // §4a-9's INTERACTION LOCK ("no widening before F.W1 lands") is
+        // RELEASED — F.W1 CLOSED 2026-09-18 — so the widening lands here, which
+        // is the wave this spec's own §2.3 S4 row assigns it to.
+        const messages: string[] = [];
         page.on("console", (msg) => {
-            if (msg.type() === "error") {
-                consoleErrors.push(msg.text());
+            const type = msg.type();
+            if (type === "error" || type === "warning") {
+                messages.push(`[${type}] ${msg.text()}`);
             }
         });
 
@@ -231,14 +241,24 @@ test.describe("Gallery UX", () => {
             timeout: 30_000,
         });
 
-        const realErrors = consoleErrors.filter(
-            (e) =>
-                !e.includes("favicon") &&
-                !e.includes("404") &&
-                !e.includes("ERR_CONNECTION_REFUSED") &&
-                !e.includes("429"),
+        // ⊘ THE FILTER IS A TRANSPORT FILTER, NOT A DEFECT FILTER, AND THE
+        // DISTINCTION IS WHY IT IS ALLOWED TO EXIST. Each entry below is a
+        // browser-level fetch outcome that says nothing about the app's own
+        // console hygiene; none of them can mask an app warning, because an app
+        // warning does not contain these strings. Nothing app-authored is
+        // filtered, and no entry was added to make a run pass.
+        const real = messages.filter(
+            (m) =>
+                !m.includes("favicon") &&
+                !m.includes("ERR_CONNECTION_REFUSED") &&
+                !m.includes("Failed to load resource"),
         );
-        expect(realErrors).toEqual([]);
+        expect(
+            real,
+            "console errors AND warnings on /gallery (the guard is no longer " +
+                "blind to `warn` — GCM-4, FR-EQR-3):\n" +
+                real.map((m) => `  • ${m}`).join("\n"),
+        ).toEqual([]);
     });
 });
 
