@@ -1,4 +1,5 @@
-import { ref, computed, type Ref } from "vue";
+import { ref, computed, onScopeDispose, getCurrentScope, type Ref } from "vue";
+import { isAbortError } from "@/lib/api";
 
 /**
  * Offset-based pagination with an active fetchFn loader.
@@ -35,19 +36,56 @@ export function useOffsetPagination<T>(options: OffsetPaginationConfig<T>) {
     const hasNext = computed(() => page.value < pageCount.value);
     const hasPrev = computed(() => page.value > 1);
 
+    // X·F F.W4 `.d` — AA-8 / AA-18 / AA-27 (SP-1, abort identity).
+    //
+    // `adminFetch` keys its AbortController registry on the full query-bearing
+    // path, so two loads of the SAME page abort each other while two loads of
+    // DIFFERENT pages never do. Before this token the composable could not tell
+    // the three outcomes apart: an abort was rendered as a failure, a superseded
+    // response overwrote a fresher one (last-to-resolve paints), and the loser's
+    // `finally` cleared `loading` while the winner was still in flight — the
+    // mid-load empty-state flash.
+    //
+    // `run` is the generation. Every load takes a ticket; only the holder of the
+    // current ticket may write ANY of `items`/`total`/`error`/`loading`. A
+    // disposed scope revokes every outstanding ticket, so a late resolver writes
+    // into a dead scope no more than a superseded one writes over a live page.
+    //
+    // ⊘ The registry's own reap (`finally { inflight.delete(key) }`, AA-27) and
+    // the key SHAPE (per-operation instead of per-URL, FR-AUL-3 / R6-8) live in
+    // `lib/api.ts` and are NOT this unit's: SP-1 books component instances only.
+    let run = 0;
+    let disposed = false;
+    if (getCurrentScope()) {
+        onScopeDispose(() => {
+            disposed = true;
+            run++;
+            loading.value = false;
+        });
+    }
+
     async function loadPage(p?: number) {
         if (p != null) page.value = Math.max(1, Math.min(p, pageCount.value || 1));
+        const ticket = ++run;
+        const current = () => !disposed && ticket === run;
+
         loading.value = true;
         error.value = null;
 
         try {
             const res = await options.fetchFn(pageSize.value, offset.value);
+            if (!current()) return;
             items.value = res.data;
             total.value = res.total;
         } catch (e) {
+            // An abort is this composable superseding itself, not a failure the
+            // operator can act on. The predicate is the repo's own (`api.ts:69`,
+            // consumed at 14 sites); its absence here is what made every
+            // double-Apply read as an error.
+            if (isAbortError(e) || !current()) return;
             error.value = e instanceof Error ? e.message : "Failed to load";
         } finally {
-            loading.value = false;
+            if (current()) loading.value = false;
         }
     }
 
