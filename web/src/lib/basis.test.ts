@@ -26,7 +26,9 @@ describe("normalizeBasisKey", () => {
     });
 
     it("is the WAVE-LOCK's predicate: a family filter cannot match a stored key", () => {
-        const stored: BasisKey[] = ["fourier-epicycles", "fourier-series"];
+        // `active_bases` arrives off the wire as `string[]`, which is why the
+        // naive comparison below compiles in the app and returns nothing.
+        const stored: string[] = ["fourier-epicycles", "fourier-series"] satisfies BasisKey[];
         // This is the F.W5-W8 defect stated as a test: the naive comparison
         // returns nothing for the Fourier pill, the normalised one returns both.
         expect(stored.filter((b) => b === "fourier")).toHaveLength(0);

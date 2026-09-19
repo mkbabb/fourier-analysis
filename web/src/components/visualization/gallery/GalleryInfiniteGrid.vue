@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Visualization } from "@/lib/types";
+import type { GalleryTier, Visualization } from "@/lib/types";
 import { InfiniteScroll } from "@mkbabb/glass-ui/infinite-scroll";
 import GalleryCard from "./GalleryCard.vue";
 
@@ -12,13 +12,17 @@ defineProps<{
     selectedHashes?: Set<string>;
 }>();
 
+/**
+ * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` ⊕ `GCM-39` — the union is
+ * imported, and the relayed payload is named for what the card sends: a slug.
+ */
 const emit = defineEmits<{
     "load-more": [];
     "card-click": [entry: Visualization];
-    like: [hash: string];
-    "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
-    delete: [hash: string];
-    "toggle-select": [hash: string, checked: boolean];
+    like: [slug: string];
+    "set-tier": [slug: string, tier: GalleryTier];
+    delete: [slug: string];
+    "toggle-select": [slug: string, checked: boolean];
 }>();
 </script>
 
@@ -36,9 +40,9 @@ const emit = defineEmits<{
                     :selected="selectedHashes?.has(entry.slug) ?? false"
                     @click="emit('card-click', entry)"
                     @like="emit('like', $event)"
-                    @set-tier="(hash, tier) => emit('set-tier', hash, tier)"
+                    @set-tier="(slug, tier) => emit('set-tier', slug, tier)"
                     @delete="emit('delete', $event)"
-                    @toggle-select="(hash, checked) => emit('toggle-select', hash, checked)"
+                    @toggle-select="(slug, checked) => emit('toggle-select', slug, checked)"
                 />
             </div>
             <template #loading>

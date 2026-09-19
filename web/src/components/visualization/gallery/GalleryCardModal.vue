@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@mkbabb/glass-ui/dialog";
-import type { Visualization } from "@/lib/types";
+import type { GalleryTier, Visualization } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
 import { useTimeAgo } from "@/lib/time";
 import { basisChips } from "../lib/basis-display";
@@ -22,11 +22,16 @@ const props = defineProps<{
     isLiked?: boolean;
 }>();
 
+/**
+ * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` ⊕ `GCM-39` — the union is
+ * imported rather than re-spelled, and the payload label matches what is
+ * actually emitted (`entry.slug`).
+ */
 const emit = defineEmits<{
     close: [];
-    like: [hash: string];
+    like: [slug: string];
     "open-visualizer": [imageSlug: string];
-    "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
+    "set-tier": [slug: string, tier: GalleryTier];
 }>();
 
 // D.W4.c — re-pointed onto the glass-ui `<Dialog>` primitive (already in

@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Checkbox } from "@mkbabb/glass-ui";
-import type { Visualization } from "@/lib/types";
+import type { GalleryTier, Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { useTimeAgo } from "@/lib/time";
 import { basisChips } from "../lib/basis-display";
@@ -27,12 +27,20 @@ const props = defineProps<{
     selected?: boolean;
 }>();
 
+/**
+ * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` ⊕ `GCM-39`.
+ *
+ * The closed `GalleryTier` union stops being re-declared inline, and the
+ * payload label is corrected AT SOURCE: every one of these events is emitted
+ * with `entry.slug`, and has been since the slug migration — calling it `hash`
+ * made the reader look for a hash that no call site passes.
+ */
 const emit = defineEmits<{
     click: [];
-    like: [hash: string];
-    "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
-    delete: [hash: string];
-    "toggle-select": [hash: string, checked: boolean];
+    like: [slug: string];
+    "set-tier": [slug: string, tier: GalleryTier];
+    delete: [slug: string];
+    "toggle-select": [slug: string, checked: boolean];
 }>();
 
 const isLiked = computed(() => props.likedHashes?.has(props.entry.slug) ?? false);
