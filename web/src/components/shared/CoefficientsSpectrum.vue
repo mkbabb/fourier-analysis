@@ -24,6 +24,7 @@
  */
 import { computed, defineComponent, h, ref, toRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
 import { useAnimatedNumber } from "@mkbabb/glass-ui/motion";
 import { ChevronDown, ChevronUp } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -107,47 +108,74 @@ const AmplitudeReadout = defineComponent({
             </span>
         </div>
 
-        <div v-if="topComponents.length" class="space-y-1 max-h-[300px] overflow-y-auto">
-            <TransitionGroup name="coeff-list">
-                <Tooltip
-                    v-for="(comp, i) in topComponents"
-                    :key="`${comp.index}-${i}`"
-                    side="bottom"
-                >
-                    <div class="coeff-row flex items-center gap-2 text-xs">
-                        <span class="w-8 text-right fira-code text-muted-foreground tabular-nums">
-                            {{ comp.index >= 0 ? "+" : "" }}{{ comp.index }}
-                        </span>
-                        <div class="flex-1 h-3 rounded-full bg-muted/50 overflow-hidden">
-                            <div
-                                class="h-full rounded-full transition-all duration-500 ease-out"
-                                :style="{
-                                    width: `${(comp.amplitude / maxAmplitude) * 100}%`,
-                                    backgroundColor: spectrumColor(i, topComponents.length),
-                                    minWidth: '2px',
-                                }"
-                            />
+        <div v-if="topComponents.length">
+            <!-- X.F.W3 `.d` — `fr-CoefficientsSpectrum M-6`, THE FadingScroll
+                 ADOPTION FAMILY. This was an unnamed 300px scroll port with no
+                 `tabindex`, no `role` and no name, and the consequence is the
+                 row's own sentence: a keyboard user presses "Show more", the
+                 list grows from 12 rows to 40, and they reach nothing — the
+                 port that now overflows is not in the tab order and announces
+                 itself to nobody. The producer's own note is the same finding
+                 from the other side: "Unnamed ports remain ordinary focusable
+                 scroll containers."
+
+                 `./fading-scroll` ships at the pin and IS the port: one div
+                 carrying `role="region"`, the name, `tabindex="0"` and
+                 state-aware edge feathering. The `max-h` rung and the row
+                 spacing stay here — they are this readout's, not the port's.
+
+                 "Show more" is deliberately OUTSIDE the port: it is the control
+                 that changes what the port holds, so it may not scroll out of
+                 reach of the person operating it.
+
+                 ⊘ `overscroll-behavior` on the port is SS-13's, not this
+                 edit's, and is carried named rather than smuggled in. -->
+            <FadingScroll
+                axis="y"
+                aria-label="Fourier coefficient spectrum"
+                class="space-y-1 max-h-[300px]"
+            >
+                <TransitionGroup name="coeff-list">
+                    <Tooltip
+                        v-for="(comp, i) in topComponents"
+                        :key="`${comp.index}-${i}`"
+                        side="bottom"
+                    >
+                        <div class="coeff-row flex items-center gap-2 text-xs">
+                            <span class="w-8 text-right fira-code text-muted-foreground tabular-nums">
+                                {{ comp.index >= 0 ? "+" : "" }}{{ comp.index }}
+                            </span>
+                            <div class="flex-1 h-3 rounded-full bg-muted/50 overflow-hidden">
+                                <div
+                                    class="h-full rounded-full transition-all duration-500 ease-out"
+                                    :style="{
+                                        width: `${(comp.amplitude / maxAmplitude) * 100}%`,
+                                        backgroundColor: spectrumColor(i, topComponents.length),
+                                        minWidth: '2px',
+                                    }"
+                                />
+                            </div>
+                            <AmplitudeReadout :value="comp.amplitude" :format="fmtAmplitude" />
                         </div>
-                        <AmplitudeReadout :value="comp.amplitude" :format="fmtAmplitude" />
-                    </div>
-                    <template #content>
-                        <div class="flex items-center gap-1.5 mb-1">
-                            <span class="inline-block w-2 h-2 rounded-full" :style="{ backgroundColor: spectrumColor(i, topComponents.length) }" />
-                            <span class="font-semibold">n = {{ comp.index }}</span>
-                        </div>
-                        <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-mono-micro uppercase font-medium">
-                            <span class="text-muted-foreground">Amplitude</span>
-                            <span class="fira-code">{{ comp.amplitude.toFixed(4) }}</span>
-                            <span class="text-muted-foreground">Phase</span>
-                            <span class="fira-code">{{ formatPhase(comp.phase) }}</span>
-                            <span class="text-muted-foreground">Relative</span>
-                            <span class="fira-code">{{ formatPercent(comp.amplitude) }}</span>
-                            <span class="text-muted-foreground">Re / Im</span>
-                            <span class="fira-code">{{ comp.coefficient[0].toFixed(3) }} / {{ comp.coefficient[1].toFixed(3) }}</span>
-                        </div>
-                    </template>
-                </Tooltip>
-            </TransitionGroup>
+                        <template #content>
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <span class="inline-block w-2 h-2 rounded-full" :style="{ backgroundColor: spectrumColor(i, topComponents.length) }" />
+                                <span class="font-semibold">n = {{ comp.index }}</span>
+                            </div>
+                            <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-mono-micro uppercase font-medium">
+                                <span class="text-muted-foreground">Amplitude</span>
+                                <span class="fira-code">{{ comp.amplitude.toFixed(4) }}</span>
+                                <span class="text-muted-foreground">Phase</span>
+                                <span class="fira-code">{{ formatPhase(comp.phase) }}</span>
+                                <span class="text-muted-foreground">Relative</span>
+                                <span class="fira-code">{{ formatPercent(comp.amplitude) }}</span>
+                                <span class="text-muted-foreground">Re / Im</span>
+                                <span class="fira-code">{{ comp.coefficient[0].toFixed(3) }} / {{ comp.coefficient[1].toFixed(3) }}</span>
+                            </div>
+                        </template>
+                    </Tooltip>
+                </TransitionGroup>
+            </FadingScroll>
 
             <Tooltip :text="expanded ? 'Collapse to top 12 coefficients' : `Show top 40 of ${totalComponents} coefficients`">
                 <Button

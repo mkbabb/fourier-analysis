@@ -95,6 +95,32 @@ export interface WorkspaceDraft {
 
 export type GalleryTier = "featured" | "saved" | "normal";
 
+/**
+ * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` — THE TIER FILTER, and THE SORT
+ * CANON.
+ *
+ * `GalleryTier` is a CLOSED union with one canonical home and three importers,
+ * and it was still RE-DECLARED INLINE at eight sites across six files —
+ * verbatim six times, hand-widened with `"all"` twice. Measured at this seat,
+ * 2026-09-19: ⟨cmd⟩ `grep -rn '"featured" | "saved" | "normal"' src` →
+ * `gallery.ts:34` · `GallerySearchBar.vue:17`/`:24` · `GalleryInfiniteGrid.vue:19`
+ * · `GalleryCard.vue:32` · `GalleryFeaturedCarousel.vue:53` ·
+ * `GalleryCardModal.vue:28` · `GalleryView.vue:152`. The two widened spellings
+ * are why the filter variant is named HERE rather than re-derived per consumer:
+ * a hand-widening is how a closed union stops being closed.
+ *
+ * ⊘ The SORT canon is minted from the vocabulary THIS APP offers, which is the
+ * only one measurable from this tree: the three `SelectItem`s the search bar
+ * renders. The corpus books the server as accepting five keys; `api.ts` types
+ * the parameter as a bare `string` at both call sites, so the server's set is
+ * not readable from here and widening this union to meet it is a decision that
+ * needs the API contract, not a guess. Named as residue rather than invented.
+ */
+export type GalleryTierFilter = GalleryTier | "all";
+
+/** The gallery's sort vocabulary — authored three times, with no canon. */
+export type GallerySort = "newest" | "views" | "likes";
+
 // ── Session/Auth ──
 
 export interface SessionResponse {

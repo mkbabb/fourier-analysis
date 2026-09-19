@@ -3,9 +3,10 @@ import { computed } from "vue";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@mkbabb/glass-ui/dialog";
-import type { Visualization } from "@/lib/types";
+import type { GalleryTier, Visualization } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
-import { basisDisplay } from "../lib/basis-display";
+import { useTimeAgo } from "@/lib/time";
+import { basisChips } from "../lib/basis-display";
 import { VIZ_COLORS } from "@/lib/colors";
 import {
     ArrowRight,
@@ -21,11 +22,16 @@ const props = defineProps<{
     isLiked?: boolean;
 }>();
 
+/**
+ * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` ⊕ `GCM-39` — the union is
+ * imported rather than re-spelled, and the payload label matches what is
+ * actually emitted (`entry.slug`).
+ */
 const emit = defineEmits<{
     close: [];
-    like: [hash: string];
+    like: [slug: string];
     "open-visualizer": [imageSlug: string];
-    "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
+    "set-tier": [slug: string, tier: GalleryTier];
 }>();
 
 // D.W4.c — re-pointed onto the glass-ui `<Dialog>` primitive (already in
@@ -38,32 +44,25 @@ const open = computed({
     set: (v: boolean) => { if (!v) emit("close"); },
 });
 
-const basisLabels = computed(() =>
-    (props.entry.active_bases ?? [])
-        .map((b) => {
-            const key = b.startsWith("fourier") ? "fourier" : b;
-            const cfg = basisDisplay[key];
-            if (!cfg) return null;
-            const label =
-                b === "fourier-epicycles"
-                    ? "Epicycles"
-                    : b === "fourier-series"
-                      ? "Series"
-                      : cfg.label;
-            return { icon: cfg.icon, label, color: cfg.color };
-        })
-        .filter(Boolean) as { icon: string; label: string; color: string }[],
-);
+/**
+ * X.F.W3 `.e` / `fr-BasisSelector M-10` — the byte-identical twin of this
+ * computed lived in the sibling file, and a third spelling on the canvas. All
+ * three now call one builder: the key->family bridge and the mode-label ladder
+ * are `lib/basis.ts`'s, and the chip assembly is the display table's.
+ */
+const basisLabels = computed(() => basisChips(props.entry.active_bases));
 
-function timeAgo(iso: string): string {
-    const ms = Date.now() - new Date(iso).getTime();
-    const m = Math.floor(ms / 60000);
-    if (m < 1) return "just now";
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-}
+/**
+ * X.F.W3 `.e` / `fr-AdminUserList FR-AUL-17` ⊕ `fr-GalleryCardModal GCM-34` —
+ * the local copy retires onto `lib/time.ts`.
+ *
+ * The copy this replaces had the sub-minute floor and nothing else: no cap
+ * (`GCM-34`'s "truncates at days forever"), no negative guard, no NaN guard,
+ * no `<time>`, and it sampled `Date.now()` DURING RENDER — so on a gallery
+ * page left open the ages froze at whatever they read when the card last
+ * patched. `useTimeAgo` binds the app's ONE shared clock.
+ */
+const created = useTimeAgo(() => props.entry.created_at);
 </script>
 
 <template>
@@ -130,7 +129,7 @@ function timeAgo(iso: string): string {
                         <!-- Slug + stats row -->
                         <div class="flex items-center gap-1.5">
                             <span class="text-sm text-muted-foreground font-mono flex-1 min-w-0 truncate">{{ entry.image_slug }}</span>
-                            <span class="text-sm text-muted-foreground shrink-0">{{ timeAgo(entry.created_at) }}</span>
+                            <time class="text-sm text-muted-foreground shrink-0" :datetime="created.datetime" :title="created.absolute">{{ created.text }}</time>
                         </div>
 
                         <!-- Stats row -->
@@ -167,7 +166,6 @@ function timeAgo(iso: string): string {
                                 emphasis="quiet"
                                 size="sm"
                                 class="like-btn"
-                                :class="{ liked: isLiked }"
                                 :aria-pressed="isLiked"
                                 aria-label="Like"
                                 :aria-describedby="`modal-like-count-${entry.slug}`"
@@ -231,13 +229,19 @@ function timeAgo(iso: string): string {
                             </div>
                         </div>
 
-                        <!-- Admin tier controls -->
+                        <!-- Admin tier controls.
+                             X.F.W3 `.e` — the two `:class="{ active: … }"`
+                             bindings here were the vocabulary's SIXTH spelling
+                             and they were DEAD: no `.tier-btn.active` rule
+                             exists in this file or anywhere else, and the plate
+                             below already keys on `aria-pressed`. A dead
+                             spelling is worse than a live one — it teaches the
+                             next reader a channel that does nothing. -->
                         <div v-if="adminMode" class="flex gap-2">
                             <Button
                                 emphasis="secondary"
                                 size="sm"
                                 class="tier-btn"
-                                :class="{ active: entry.tier === 'featured' }"
                                 :aria-pressed="entry.tier === 'featured'"
                                 :aria-label="
                                     entry.tier === 'featured'
@@ -252,7 +256,6 @@ function timeAgo(iso: string): string {
                                 emphasis="secondary"
                                 size="sm"
                                 class="tier-btn"
-                                :class="{ active: entry.tier === 'saved' }"
                                 :aria-pressed="entry.tier === 'saved'"
                                 :aria-label="
                                     entry.tier === 'saved'
@@ -343,8 +346,14 @@ function timeAgo(iso: string): string {
     font-size: 0.875rem;
     color: var(--muted-foreground);
 }
+/* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).
+   The like control already SET `aria-pressed` and then painted from a parallel
+   `.liked` class: two channels for one state, either changeable without the
+   other, and only one of them visible to the producer's `forced-colors` and
+   `prefers-contrast` arms — which key on ARIA exclusively. The class binding is
+   deleted and the rules key on the attribute. */
 .like-btn:hover,
-.like-btn.liked {
+.like-btn[aria-pressed="true"] {
     color: var(--like);
     background: transparent;
 }

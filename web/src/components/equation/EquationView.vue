@@ -14,6 +14,7 @@ import { tierInfo, energyColor } from "@/lib/equation/notation";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
+import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
 import { Info } from "@lucide/vue";
 
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
@@ -353,7 +354,18 @@ watchDebounced(
         <div class="eq-grid">
             <!-- Left panel -->
             <div class="eq-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
-                <div class="eq-panel-left">
+                <!-- X.F.W3 `.d` — `fr-EquationView D·D-M14`, dying inside the
+                     `M-6` FadingScroll adoption exactly as the family books it.
+                     The trailing feather was a `::after` on the WRAPPER: a fixed
+                     2.5rem gradient painted unconditionally whenever the panel
+                     was mounted at ≥1024px and `display:none` below it — so it
+                     lied in both directions at once, hiding content that had
+                     already been scrolled to the end and vanishing on the
+                     viewport where a 480px column overflows most. The producer's
+                     port measures its own scroll extent and feathers the edge
+                     that actually has trailing overflow, at every width, and it
+                     names the port while it is at it. -->
+                <FadingScroll axis="y" aria-label="Equation controls" class="eq-panel-left">
                     <FunctionInput
                         v-model:expression="expression"
                         v-model:domain-start="domainStart"
@@ -375,7 +387,7 @@ watchDebounced(
                             :rendered-terms="budget"
                         />
                     </Transition>
-                </div>
+                </FadingScroll>
             </div>
 
             <!-- Right panel -->
@@ -572,17 +584,12 @@ watchDebounced(
 @media (max-width: 1023px) { .eq-panel-left-wrap { overflow: visible; flex: none; } }
 @media (min-width: 1024px) { .eq-panel-left-wrap { max-width: none; margin: 0; } }
 
-.eq-panel-left-wrap::after {
-    content: '';
-    @apply absolute bottom-0 left-0 right-0 pointer-events-none;
-    height: 2.5rem;
-    background: linear-gradient(to bottom, transparent, var(--background));
-    z-index: 2;
-}
-@media (max-width: 1023px) { .eq-panel-left-wrap::after { display: none; } }
-
+/* X.F.W3 `.d` — `D·D-M14`: the hand-rolled `::after` feather is DELETED, not
+   re-tuned. `<FadingScroll axis="y">` owns the port's scroll behaviour and its
+   edge treatment, so the port's own `overflow-y` retires with the gradient;
+   what stays here is the LAYOUT this column asks for. */
 .eq-panel-left {
-    @apply flex flex-col gap-3 w-full pb-8 overflow-y-auto min-h-0 flex-1;
+    @apply flex flex-col gap-3 w-full pb-8 min-h-0 flex-1;
 }
 @media (min-width: 1024px) { .eq-panel-left { padding-right: 0.25rem; } }
 

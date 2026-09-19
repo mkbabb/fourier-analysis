@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Response } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import { checkA11y } from "./a11y";
 import * as path from "node:path";
 
 /**
@@ -80,27 +80,10 @@ const CONTOUR_SETTINGS = {
 
 // ── axe-core keystone helper ────────────────────────────────────────────────
 
-/** Inject axe-core into `page` and assert zero serious/critical violations. */
-async function checkA11y(page: Page, label: string): Promise<void> {
-    const results = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-        .analyze();
-
-    const blocking = results.violations.filter(
-        (v) => v.impact === "serious" || v.impact === "critical",
-    );
-
-    expect(
-        blocking,
-        `axe-core serious/critical violations at "${label}":\n` +
-            blocking
-                .map(
-                    (v) =>
-                        `  • [${v.impact}] ${v.id} — ${v.help} (${v.nodes.length} node(s))`,
-                )
-                .join("\n"),
-    ).toEqual([]);
-}
+/**
+ * X.F.W3 `.d` — `LC-1`. The divergent twin of `visualization-ux.spec.ts`’s
+ * helper; both are retired onto the one home in `e2e/a11y.ts`.
+ */
 
 // ── session / auth ──────────────────────────────────────────────────────────
 
@@ -635,6 +618,49 @@ for (const vp of VIEWPORTS) {
         // keeps the job honest (acknowledged, booked baseline — NOT a hidden
         // failure); the `published view` + `ExportModal` keystones below still
         // enforce a11y on surfaces without the collapsed-region defect.
+        //
+        // ▲▲ X.F.W3 `.d` — `fr-ExportModal LC-2`: THE RATIONALE ABOVE IS FALSE ON
+        // ALL THREE OF ITS CLAUSES AT THE ADOPTED PIN, AND THE PROBE THAT ESTABLISHED
+        // THE FIRST ONE WAS A FALSE NEGATIVE BY CONSTRUCTION. Measured at this seat,
+        // 2026-09-19, against the installed 8.0.0:
+        //
+        //   (a) "glass-ui omits `inert`" — DEAD. `ConfiguratorLayer`’s collapsed
+        //       region emits `inert: !open || void 0` DIRECTLY BESIDE
+        //       `"aria-hidden": !open` on the `configurator-layer-region` div. This
+        //       is banked `K-13` and it reproduces at the bytes.
+        //
+        //       The F.W0 probe that concluded otherwise is re-run verbatim and it
+        //       STILL returns 0 — because it reads the wrong file:
+        //         `grep -c inert dist/glass-ui.js`            → 0
+        //         `grep -c inert dist/configurator-*.js`      → 2
+        //         `grep -rl inert dist/*.js | wc -l`          → 6
+        //       `glass-ui.js` is the ROOT BARREL chunk of a ~60-subpath split build;
+        //       `ConfiguratorLayer` is not in it. A one-chunk grep cannot falsify a
+        //       claim about a split package, whatever it returns.
+        //
+        //   (b) "consumes the PUBLISHED ^2.0.0" → already corrected once to ^4.0.0,
+        //       and stale again: the adopted pin is 8.0.0.
+        //
+        //   (c) "keystones 2–4 below still enforce a11y on surfaces without the
+        //       collapsed-region defect" — STRUCTURALLY FALSE, and it is the reason
+        //       `LC-1` exists. Those keystones run `openWorkspace` BEFORE opening
+        //       their surface, so their unscoped runs evaluated the very collapsed
+        //       layers this `fixme` excludes, over a strict DOM SUPERSET of this
+        //       test’s page — and passed only because a visible `[role=dialog]`
+        //       converts `aria-hidden-focus` from a violation into an `incomplete`.
+        //       Two adjacent tests asserted contradictory things about one DOM. The
+        //       modal keystones are SCOPED now (see `e2e/a11y.ts`), so the claim is
+        //       true of them going forward rather than false of them silently.
+        //
+        // WHY THE `fixme` STAYS ANYWAY, stated rather than quietly kept: `LC-2`’s
+        // cure is "RE-RUN this keystone at the installed pin; K-13 predicts green →
+        // delete the fixme AND its rationale". The prediction is now supported at
+        // the bytes, but the RUN is the precondition and it needs the full stack
+        // (uvicorn + Mongo + vite via `scripts/e2e.sh`) — this suite declares no
+        // `webServer`, and standing that stack up is not this unit’s act. Deleting a
+        // booked baseline on a prediction instead of a measurement is the failure
+        // mode `LC-2` is itself convicting. The deletion is named as this unit’s
+        // residual, one green run away.
         test.fixme(`a11y keystone: workspace default is clean @ ${vp.name} @mutating`, async ({
             page,
         }) => {
@@ -664,7 +690,15 @@ for (const vp of VIEWPORTS) {
             const dialog = page.locator('[role="dialog"]').first();
             await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-            await checkA11y(page, `ExportModal Dialog-open @ ${vp.name}`);
+            // `LC-1`: SCOPED, for the reason the adjudication states in terms
+            // — this test runs `establishSession` + `openWorkspace` BEFORE
+            // opening the dialog, so its unscoped run evaluated the very
+            // collapsed layers the `fixme` above excludes, over a strict DOM
+            // SUPERSET of the suppressed test’s page. It passed only through
+            // the modal suppression. Scoped, it measures the dialog.
+            await checkA11y(page, `ExportModal Dialog-open @ ${vp.name}`, {
+                include: '[role="dialog"]',
+            });
         });
     });
 }

@@ -23,6 +23,8 @@ import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
+import { useRelativeTime } from "@/lib/time";
+import BatchActionBar from "./BatchActionBar.vue";
 import type { AdminUserInfo } from "@/lib/types";
 import { problemMessage } from "./adminError";
 import {
@@ -33,7 +35,6 @@ import {
     Users,
     ChevronLeft,
     ChevronRight,
-    X,
 } from "@lucide/vue";
 
 const auth = useAuthStore();
@@ -347,15 +348,26 @@ async function performPrune() {
     }
 }
 
-function timeAgo(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-}
+/**
+ * X.F.W3 `.e` / `fr-AdminUserList FR-AUL-17` — the fourth of five copies
+ * retires onto `lib/time.ts`, and the list maps itself ONCE per tick.
+ *
+ * The copy this replaces was the no-floor dialect: a three-second-old account
+ * read "0m ago" here and "just now" in the gallery card beside it. It also
+ * sampled `Date.now()` during render, so on an admin page left open the two
+ * columns froze. `useRelativeTime` binds the app's ONE shared clock, and the
+ * mapping lives in a computed so a row costs one `relativeTime` call per field
+ * per tick rather than one per template read.
+ */
+const relative = useRelativeTime();
+
+const userRows = computed(() =>
+    users.value.map((user) => ({
+        user,
+        joined: relative(user.created_at),
+        seen: relative(user.last_seen_at),
+    })),
+);
 </script>
 
 <template>
@@ -490,23 +502,28 @@ function timeAgo(iso: string): string {
         <!-- Floating batch-action toolbar. Renders when the selection set is
              non-empty; routes through the destructive-confirm dialog before
              firing `batchUsers` against `{ok, affected, errors?}`. -->
-        <!-- FR-AUL-33: `role="toolbar"` was asserted with zero tabindex and zero
-             keydown in 529 lines and no producer primitive behind it — an
-             announced affordance contradicting its own interaction. `role="group"`
-             is what this actually is, and every control stays reachable.
-             FR-AUL-37: the stray `shadow-cartoon` utility is dropped — built-CSS
-             source order put it AFTER `.cartoon-card`, so this one element
-             rendered a different shadow family from every other card on the page.
-             -->
-        <div
-            v-if="selected.size > 0"
-            role="group"
-            aria-label="Batch user actions"
-            class="cartoon-card sticky top-2 z-10 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+        <!-- X.F.W3 `.e` — the HOST half of section-5a split (5). The toolbar
+             chrome was authored TWICE, divergent on six positioning decisions;
+             `.d` settled all six once in `BatchActionBar.vue` at `aa9e12c`, and
+             this call site adopts it rather than re-deciding any of them. What
+             this surface keeps is what is actually its own: its verbs, their
+             counts, and the `aria-describedby` sentences that explain why a
+             control is unavailable.
+
+             Two of the six change behaviour HERE and both are `.d`'s decisions,
+             not this seat's: the bar seats at the BOTTOM edge (FR-AUL-51 — a
+             `sticky top-2` bar inside the scroller it shares with the list
+             displaces every row downward at the first tick, so the pointer that
+             ticked row n is then over row n−1), and the plate takes the single
+             z-tier. The inline inset is the host's, supplied through `class`,
+             because the two hosts' padding contexts differ. -->
+        <BatchActionBar
+            :count="selected.size"
+            noun="user"
+            label="Batch user actions"
+            :busy="busy"
+            @clear="clearSelection"
         >
-            <span class="flex-1 text-xs text-muted-foreground">
-                {{ selected.size }} {{ selected.size === 1 ? "user" : "users" }} selected
-            </span>
             <!-- FR-AUL-41: `title` was carrying the ONLY explanation of why a
                  control is unavailable — and `title` on a DISABLED element is
                  reachable by no one: not the pointer (no hover target), not the
@@ -552,16 +569,7 @@ function timeAgo(iso: string): string {
                 <Trash2 class="mr-1 size-3.5" aria-hidden="true" />
                 Delete
             </Button>
-            <Button
-                emphasis="quiet"
-                size="xs" icon-only
-                :disabled="busy"
-                aria-label="Clear selection"
-                @click="clearSelection"
-            >
-                <X class="size-3.5" aria-hidden="true" />
-            </Button>
-        </div>
+        </BatchActionBar>
 
         <!-- User list. FR-AUL-8: the old `v-if="loading"`/`v-if="!loading"` pair
              were exact complements, so every 300 ms typing pause and every
@@ -576,7 +584,7 @@ function timeAgo(iso: string): string {
             :class="loading && 'opacity-60'"
         >
             <div
-                v-for="user in users"
+                v-for="{ user, joined, seen } in userRows"
                 :key="user.user_slug"
                 role="listitem"
                 class="cartoon-card flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
@@ -609,8 +617,8 @@ function timeAgo(iso: string): string {
                     </div>
                     <div class="flex gap-3 text-mono-micro uppercase font-medium text-muted-foreground mt-0.5">
                         <span>{{ user.entry_count }} entries</span>
-                        <span>joined {{ timeAgo(user.created_at) }}</span>
-                        <span>seen {{ timeAgo(user.last_seen_at) }}</span>
+                        <span>joined <time :datetime="joined.datetime" :title="joined.absolute">{{ joined.text }}</time></span>
+                        <span>seen <time :datetime="seen.datetime" :title="seen.absolute">{{ seen.text }}</time></span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1">

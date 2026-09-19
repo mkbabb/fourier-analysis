@@ -3,9 +3,10 @@ import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Checkbox } from "@mkbabb/glass-ui";
-import type { Visualization } from "@/lib/types";
+import type { GalleryTier, Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
-import { basisDisplay } from "../lib/basis-display";
+import { useTimeAgo } from "@/lib/time";
+import { basisChips } from "../lib/basis-display";
 // FR-GFC-22 / G-F4-DEAD-DEP: `VIZ_COLORS` and `PathPreview` were imported and
 // never referenced — zero occurrences of either identifier anywhere else in this
 // file (`grep -c` = 1 each, the import line itself), so the card was pulling a
@@ -26,42 +27,43 @@ const props = defineProps<{
     selected?: boolean;
 }>();
 
+/**
+ * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` ⊕ `GCM-39`.
+ *
+ * The closed `GalleryTier` union stops being re-declared inline, and the
+ * payload label is corrected AT SOURCE: every one of these events is emitted
+ * with `entry.slug`, and has been since the slug migration — calling it `hash`
+ * made the reader look for a hash that no call site passes.
+ */
 const emit = defineEmits<{
     click: [];
-    like: [hash: string];
-    "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
-    delete: [hash: string];
-    "toggle-select": [hash: string, checked: boolean];
+    like: [slug: string];
+    "set-tier": [slug: string, tier: GalleryTier];
+    delete: [slug: string];
+    "toggle-select": [slug: string, checked: boolean];
 }>();
 
 const isLiked = computed(() => props.likedHashes?.has(props.entry.slug) ?? false);
 
-const basisLabels = computed(() =>
-    (props.entry.active_bases ?? [])
-        .map((b) => {
-            const key = b.startsWith("fourier") ? "fourier" : b;
-            const cfg = basisDisplay[key];
-            if (!cfg) return null;
-            const label =
-                b === "fourier-epicycles"
-                    ? "Epicycles"
-                    : b === "fourier-series"
-                      ? "Series"
-                      : cfg.label;
-            return { icon: cfg.icon, label, color: cfg.color };
-        })
-        .filter(Boolean) as { icon: string; label: string; color: string }[],
-);
+/**
+ * X.F.W3 `.e` / `fr-BasisSelector M-10` — the byte-identical twin of this
+ * computed lived in the sibling file, and a third spelling on the canvas. All
+ * three now call one builder: the key->family bridge and the mode-label ladder
+ * are `lib/basis.ts`'s, and the chip assembly is the display table's.
+ */
+const basisLabels = computed(() => basisChips(props.entry.active_bases));
 
-function timeAgo(iso: string): string {
-    const ms = Date.now() - new Date(iso).getTime();
-    const m = Math.floor(ms / 60000);
-    if (m < 1) return "just now";
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-}
+/**
+ * X.F.W3 `.e` / `fr-AdminUserList FR-AUL-17` ⊕ `fr-GalleryCardModal GCM-34` —
+ * the local copy retires onto `lib/time.ts`.
+ *
+ * The copy this replaces had the sub-minute floor and nothing else: no cap
+ * (`GCM-34`'s "truncates at days forever"), no negative guard, no NaN guard,
+ * no `<time>`, and it sampled `Date.now()` DURING RENDER — so on a gallery
+ * page left open the ages froze at whatever they read when the card last
+ * patched. `useTimeAgo` binds the app's ONE shared clock.
+ */
+const created = useTimeAgo(() => props.entry.created_at);
 </script>
 
 <template>
@@ -110,7 +112,7 @@ function timeAgo(iso: string): string {
             <!-- Header -->
             <div class="flex items-center gap-1.5 px-3 pt-2 pb-1">
                 <span class="text-sm text-muted-foreground truncate flex-1 min-w-0 font-mono">{{ entry.image_slug }}</span>
-                <span class="text-sm text-muted-foreground whitespace-nowrap shrink-0">{{ timeAgo(entry.created_at) }}</span>
+                <time class="text-sm text-muted-foreground whitespace-nowrap shrink-0" :datetime="created.datetime" :title="created.absolute">{{ created.text }}</time>
             </div>
 
             <!-- Basis pills -->
@@ -139,7 +141,6 @@ function timeAgo(iso: string): string {
                         emphasis="quiet"
                         size="sm"
                         class="like-btn"
-                        :class="{ liked: isLiked }"
                         :aria-pressed="isLiked"
                         @click.stop="emit('like', entry.slug)"
                     >
@@ -286,13 +287,19 @@ function timeAgo(iso: string): string {
     font-size: 0.875rem;
     color: var(--muted-foreground);
 }
+/* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).
+   The like control already SET `aria-pressed` and then painted from a parallel
+   `.liked` class: two channels for one state, either changeable without the
+   other, and only one of them visible to the producer's `forced-colors` and
+   `prefers-contrast` arms — which key on ARIA exclusively. The class binding is
+   deleted and the rules key on the attribute. */
 .like-btn:hover,
-.like-btn.liked {
+.like-btn[aria-pressed="true"] {
     color: var(--like);
     background: transparent;
 }
 
-.like-btn.liked :deep(svg) {
+.like-btn[aria-pressed="true"] :deep(svg) {
     /* A.W3.d — bezier→`--ease-apple-spring`. `like-bounce` is a fourier-local
        keyframe (no glass-ui shadow); CONSTELLATION carry candidate (P-tranche). */
     animation: like-bounce 0.3s var(--ease-apple-spring);
@@ -305,7 +312,7 @@ function timeAgo(iso: string): string {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .like-btn.liked :deep(svg) {
+    .like-btn[aria-pressed="true"] :deep(svg) {
         animation: none;
     }
 }

@@ -59,8 +59,12 @@ function xyToPoints(xy: { x: number[]; y: number[] }): [number, number][] {
  * unreachable APP-WIDE and the producer edge behind it was dead code riding
  * every bundle that touched this module.
  * ⊘ HLG-43's repair hazard is respected: `@mkbabb/pencil-boil` is NOT removable
- * as a dependency — it keeps two other live consumers
- * (`FourierShapeExtractor.vue`, `SvgFilters.vue`). Only this EDGE dies.
+ * as a dependency. X.F.W3 `.e` CORRECTS THIS CELL AT THE BYTES: `SvgFilters.vue`
+ * was deleted with `fr-App L-5`⊕`L-8`⊕`m-1`, so the consumer list is now ONE —
+ * ⟨cmd⟩ this seat, 2026-09-19, `grep -rn 'pencil-boil' src` →
+ * `FourierShapeExtractor.vue:155` alone. The conclusion is unchanged and that is
+ * why the cell is corrected rather than deleted: one live consumer keeps the
+ * dependency, and only this EDGE dies.
  *
  * X.F.W4 · SP-19 — DMT N-14's 2dp EMISSION ⊕ FMD-N6's precision leg, in the one
  * place that can carry them.

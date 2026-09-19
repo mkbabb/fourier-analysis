@@ -2,7 +2,9 @@
 import { ref, computed } from "vue";
 import { Search, X, SlidersHorizontal } from "@lucide/vue";
 import { basisDisplay } from "../lib/basis-display";
+import type { GallerySort, GalleryTierFilter } from "@/lib/types";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Separator } from "@mkbabb/glass-ui/separator";
 import {
     Select,
     SelectTrigger,
@@ -11,19 +13,23 @@ import {
     SelectValue,
 } from "@mkbabb/glass-ui/select";
 
-const props = defineProps<{
-    searchQuery: string;
-    sort: "newest" | "views" | "likes";
-    tierFilter: "all" | "featured" | "saved" | "normal";
-    basisFilter: string;
-}>();
-
-const emit = defineEmits<{
-    "update:searchQuery": [value: string];
-    "update:sort": [value: "newest" | "views" | "likes"];
-    "update:tierFilter": [value: "all" | "featured" | "saved" | "normal"];
-    "update:basisFilter": [value: string];
-}>();
+/**
+ * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` ⊕ `fr-GallerySearchBar FR-GSB-30`.
+ *
+ * Four hand-written prop/emit pairs collapse into four `defineModel`s — the
+ * external contract is UNCHANGED (`v-model:x` and the `update:x` events it
+ * compiles to are exactly what the host already binds), so no call site moves
+ * and thirteen lines leave this file.
+ *
+ * The two unions stop being re-declared. `tierFilter` was a HAND-WIDENED copy
+ * of the closed `GalleryTier` union, which is the direction a closed union
+ * stops being closed in, so the widening is named once in `lib/types.ts` and
+ * imported here.
+ */
+const searchQuery = defineModel<string>("searchQuery", { required: true });
+const sort = defineModel<GallerySort>("sort", { required: true });
+const tierFilter = defineModel<GalleryTierFilter>("tierFilter", { required: true });
+const basisFilter = defineModel<string>("basisFilter", { required: true });
 
 const showFilters = ref(false);
 
@@ -36,13 +42,27 @@ const basisOptions = computed(() =>
     })),
 );
 
-const hasActiveFilters = computed(() =>
-    props.tierFilter !== "all" || props.sort !== "newest" || props.basisFilter !== "",
+/**
+ * `FR-GSB-30` — the predicate now answers the question its name asks.
+ *
+ * It folded `sort !== "newest"` into something called "filters" (a sort order
+ * filters nothing) and omitted `searchQuery` (which filters more than anything
+ * else on the bar). Both are corrected: sort leaves, the query joins, and the
+ * query is compared TRIMMED because that is what the bar emits.
+ */
+const hasActiveFilters = computed(
+    () =>
+        tierFilter.value !== "all" ||
+        basisFilter.value !== "" ||
+        searchQuery.value.trim() !== "",
 );
 </script>
 
 <template>
-    <div class="search-bar-root">
+    <!-- FR-GSB-30 — the bar had no landmark at all: `role="search"` is what
+         makes it reachable by landmark navigation, and the label is what tells
+         a second search on the page apart from this one. -->
+    <div class="search-bar-root" role="search" aria-label="Gallery search and filters">
         <div class="search-pill">
             <!-- FR-GSB-11: FIVE controls on this bar had no accessible name, not
                  the three every axis enumerated. The input was named by
@@ -68,8 +88,8 @@ const hasActiveFilters = computed(() =>
                 autocorrect="off"
                 spellcheck="false"
                 enterkeyhint="search"
-                class="search-input fira-code flex-1 min-w-0 bg-transparent border-none text-foreground text-sm outline-none placeholder:text-muted-foreground/50"
-                @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
+                class="search-input fira-code flex-1 min-w-0 bg-transparent border-none text-foreground text-sm outline-none"
+                @input="searchQuery = ($event.target as HTMLInputElement).value.trimStart()"
             />
             <Button
                 v-if="searchQuery"
@@ -78,17 +98,20 @@ const hasActiveFilters = computed(() =>
                 icon-only
                 class="rounded-full text-muted-foreground"
                 aria-label="Clear search"
-                @click="emit('update:searchQuery', '')"
+                @click="searchQuery = ''"
             >
                 <X :size="14" aria-hidden="true" />
             </Button>
-            <div class="w-px h-5 bg-foreground/10 shrink-0" aria-hidden="true" />
+            <!-- FR-GSB-30 — the hand-rolled rule measured 1.22:1 / 1.26:1: a
+                 divider nobody could see. `./separator` ships at the adopted pin
+                 with the producer's own border register, so this is an ADOPTION,
+                 not a contrast nudge — there is no local number left to drift. -->
+            <Separator orientation="vertical" decorative class="h-5 shrink-0" />
             <Button
                 emphasis="quiet"
                 size="xs"
                 icon-only
                 class="filter-toggle rounded-full shrink-0 text-muted-foreground"
-                :class="{ 'is-active': showFilters || hasActiveFilters }"
                 :aria-pressed="showFilters || hasActiveFilters"
                 :aria-expanded="showFilters"
                 aria-controls="gallery-filter-drawer"
@@ -106,7 +129,7 @@ const hasActiveFilters = computed(() =>
                     <div class="flex items-center gap-2">
                         <Select
                             :model-value="tierFilter"
-                            @update:model-value="emit('update:tierFilter', $event as any)"
+                            @update:model-value="tierFilter = $event as GalleryTierFilter"
                         >
                             <SelectTrigger
                                 class="w-full h-8 text-sm border border-foreground/12 rounded-lg"
@@ -124,7 +147,7 @@ const hasActiveFilters = computed(() =>
 
                         <Select
                             :model-value="sort"
-                            @update:model-value="emit('update:sort', $event as any)"
+                            @update:model-value="sort = $event as GallerySort"
                         >
                             <SelectTrigger
                                 class="w-full h-8 text-sm border border-foreground/12 rounded-lg"
@@ -147,10 +170,9 @@ const hasActiveFilters = computed(() =>
                             emphasis="secondary"
                             size="sm"
                             class="basis-pill-btn rounded-full font-medium"
-                            :class="{ active: basisFilter === b.key }"
                             :aria-pressed="basisFilter === b.key"
                             :style="{ '--pill-c': b.color }"
-                            @click="emit('update:basisFilter', basisFilter === b.key ? '' : b.key)"
+                            @click="basisFilter = basisFilter === b.key ? '' : b.key"
                         >
                             <span class="cm-serif font-semibold text-[1.1em]">{{ b.icon }}</span>
                             {{ b.label }}
@@ -165,10 +187,17 @@ const hasActiveFilters = computed(() =>
 <style scoped>
 @reference "tailwindcss";
 
+/* FR-GSB-30 — ONE measure, named once.
+   `32rem` was authored twice with no shared property, on the pill and on the
+   drawer that must line up with it, so the two could drift apart silently.
+   `justify-content: flex-start` is DELETED on corrected grounds (K-10): it is
+   live whenever the root exceeds 32rem and dead only because `normal` already
+   behaves as `flex-start` for a flex container — so it was restating the
+   initial value, not holding a layout. */
 .search-bar-root {
+    --search-measure: 32rem;
     position: relative;
     display: flex;
-    justify-content: flex-start;
 }
 
 .search-pill {
@@ -176,18 +205,31 @@ const hasActiveFilters = computed(() =>
     align-items: center;
     gap: 0.5rem;
     width: 100%;
-    max-width: 32rem;
+    max-width: var(--search-measure);
     padding: 0.375rem 0.75rem;
     border-radius: 0.5rem;
     background: color-mix(in srgb, var(--muted) 50%, transparent);
     border: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
 }
 
+/* FR-GSB-30 ⊕ FR-GSB-12 — ONE placeholder authority.
+   A `placeholder:text-muted-foreground/50` utility sat on the input's class
+   list AND this rule sat here unlayered, so the utility was dead code that
+   read as the live one. The utility is deleted in the same hunk that keeps
+   this rule, because leaving either half alone leaves two authorities
+   standing — which is the whole of what the row books. */
 .search-input::placeholder {
     color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }
 
-.filter-toggle.is-active {
+/* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).
+   The control already SET `aria-pressed` and then painted from a parallel
+   `.is-active` class, so the announcement and the paint were two channels for
+   one state and either could be changed without the other. The class binding
+   is deleted and the rule keys on the attribute — which is also what makes the
+   state visible under `forced-colors`, where the producer's arms read ARIA and
+   nothing else. The sibling rule twenty lines below has always done this. */
+.filter-toggle[aria-pressed="true"] {
     color: var(--foreground);
     background: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
@@ -199,7 +241,7 @@ const hasActiveFilters = computed(() =>
     left: 0;
     z-index: var(--z-bar);
     width: 100%;
-    max-width: 32rem;
+    max-width: var(--search-measure);
     padding-top: 0.5rem;
 }
 

@@ -6,6 +6,11 @@ import { basisDisplay } from "../lib/basis-display";
 import { ChevronDown, Upload } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Metric } from "@mkbabb/glass-ui/metric";
+import {
+    Collapsible,
+    CollapsibleTrigger,
+    CollapsibleContent,
+} from "@mkbabb/glass-ui/collapsible";
 
 const props = defineProps<{
     drafts: WorkspaceDraft[];
@@ -17,7 +22,15 @@ const emit = defineEmits<{
     open: [imageSlug: string];
 }>();
 
-const collapsed = ref(false);
+/**
+ * X.F.W3 `.d` — `fr-GalleryDraftsSection M-2`: "THE CURE IS THE PRIMITIVE,
+ * NEVER THE WRAPPER."
+ *
+ * The state is spelled OPEN rather than COLLAPSED because that is the
+ * primitive's own axis (`v-model:open`), and a disclosure whose local boolean
+ * runs opposite to its chassis is how the two drift apart again.
+ */
+const open = ref(true);
 
 const sortedDrafts = computed(() =>
     props.drafts
@@ -48,22 +61,47 @@ function getBasisLabel(item: WorkspaceDraft): string {
 </script>
 
 <template>
-    <div v-if="sortedDrafts.length > 0" class="mx-4 rounded-lg border-[1.5px] border-foreground/8 overflow-hidden">
-        <Button
-            emphasis="quiet"
-            class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground rounded-none"
-            @click="collapsed = !collapsed"
-        >
-            <span class="cm-serif text-sm font-semibold tracking-tight">My Drafts</span>
-            <Metric :value="sortedDrafts.length" size="sm" />
-            <ChevronDown
-                :size="16"
-                class="ml-auto text-muted-foreground transition-transform duration-200 ease-in-out"
-                :class="{ '-rotate-90': collapsed }"
-            />
-        </Button>
+    <!-- X.F.W3 `.d` — `fr-GalleryDraftsSection M-2`, and the cure is stated as
+         the row states it: THE CURE IS THE PRIMITIVE, NEVER THE WRAPPER.
 
-        <div v-if="!collapsed" class="flex flex-col">
+         What was here: a hand-rolled disclosure — a `<Button>` toggling a local
+         boolean over a bare `v-if`, with a header span BYTE-IDENTICAL to
+         `ui/CollapsibleSection.vue:39` — while `./collapsible` is exported at
+         the pin and ships the whole contract this hand-roll skipped:
+         `aria-expanded`, `aria-controls`, the `data-state` the chevron can key
+         on, and a body that is addressable by the attribute it announces.
+
+         THE ROUTE IS THE PRIMITIVE AND NOT THE LOCAL WRAPPER, and `K-6` is why:
+         `ui/CollapsibleSection.vue` is banked-defective across exactly the axes
+         adopting it would buy — the `B-1` hang at the uplift target, `M-2`'s
+         `unmountOnHide` teardown, `M-3`'s ungated `scrollIntoView`, `M-6`'s
+         absent controlled open. A new consumer is never routed through it.
+
+         `v-if` becomes `CollapsibleContent`: the rows still leave the DOM when
+         closed (reka's `Presence` unmounts), so nothing about this list's cost
+         changes — what changes is that the trigger and the body are now WIRED
+         to each other instead of merely adjacent. -->
+    <Collapsible
+        v-if="sortedDrafts.length > 0"
+        v-model:open="open"
+        class="mx-4 rounded-lg border-[1.5px] border-foreground/8 overflow-hidden"
+    >
+        <CollapsibleTrigger as-child>
+            <Button
+                emphasis="quiet"
+                class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground rounded-none"
+            >
+                <span class="cm-serif text-sm font-semibold tracking-tight">My Drafts</span>
+                <Metric :value="sortedDrafts.length" size="sm" />
+                <ChevronDown
+                    :size="16"
+                    class="ml-auto text-muted-foreground transition-transform duration-200 ease-in-out"
+                    :class="{ '-rotate-90': !open }"
+                />
+            </Button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent class="flex flex-col">
             <div
                 v-for="draft in sortedDrafts"
                 :key="draft.imageSlug"
@@ -99,6 +137,6 @@ function getBasisLabel(item: WorkspaceDraft): string {
                     Publish
                 </Button>
             </div>
-        </div>
-    </div>
+        </CollapsibleContent>
+    </Collapsible>
 </template>

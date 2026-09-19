@@ -336,3 +336,125 @@ html {
         background-blend-mode: screen;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   X.F.W3 `.e` — THE ACTIVE-STATE VOCABULARY, PUBLISHED (`fr-CanvasOverlayButton
+   FR-COB-3` ⊕ `fr-App MG-η` ⊕ `fr-EquationView D·D-M12`).
+
+   This block is `.e`'s PUBLICATION under §5a-v2 item 1: the decision every
+   other unit applies inside the files it already owns. It is the law, not a
+   paint surface — no global rule is minted here, because each control paints
+   its own skin; what is fixed is WHICH CHANNEL carries the state and WHICH
+   SELECTOR reads it.
+
+   THE DEFECT IT ANSWERS, measured at this seat (fourier `74084fa`, worktree
+   `f3e`): FIVE spellings of one state were live —
+     ⟨cmd⟩ `grep -rl 'is-active' src | sort`       → 6 files / 18 sites
+     ⟨cmd⟩ `grep -rn 'is-active-sub' src | wc -l`  → 1
+     ⟨cmd⟩ `grep -rn 'is-playing' src | wc -l`     → 6
+     ⟨cmd⟩ `grep -rn 'liked' src | wc -l`          → 22 (6 are the class)
+     ⟨cmd⟩ `grep -rn 'aria-current' src | wc -l`   → 0
+   — and the sixth, a `:class="{ active: … }"` binding with no rule anywhere,
+   was DEAD. The banked fifth spelling, `PaperView.vue`'s `:is-active` PROP, is
+   ABSENT from this tree (⟨cmd⟩ `grep -rn ':is-active' src` → 0); its
+   prohibition below stands anyway, because the grep that would corrupt it is
+   the one a sweeping seat reaches for first.
+
+   ── THE VOCABULARY ────────────────────────────────────────────────────────
+   A control's active state is ANNOUNCED through the ARIA attribute its role
+   owes, and PAINTED from that same attribute. A bespoke class is never the
+   sole channel, and never the paint hook.
+
+     state                          channel (the ONE)          CSS hook
+     ─────────────────────────────  ─────────────────────────  ──────────────────────────
+     a toggle that stays on/off     aria-pressed="true|false"  [aria-pressed="true"]
+     a disclosure trigger           aria-expanded="true|false" [aria-expanded="true"]
+     a nav item = current location  aria-current="page"        [aria-current]
+     a selected option in a set     the primitive's own        [data-state="active"],
+                                    data-state/aria-selected/  [aria-selected="true"],
+                                    aria-checked               [aria-checked="true"]
+     a transient run state          aria-pressed on the        [aria-pressed="true"]
+     (playing, liked)               TOGGLE that owns it
+
+   A class survives ONLY as a scoping handle for a rule that also names the
+   attribute (`.filter-toggle[aria-pressed="true"]`), never as the state itself.
+   RETIRED: `.is-active` · `.is-active-sub` · `.is-playing` · `.liked` · the
+   dead `.active`.
+
+   ── THE THREE ANTI-CURES, BINDING ON EVERY APPLYING UNIT ──────────────────
+   1. SWEEP-LAW RIDER (FR-COB-3). The sweep may NEVER key on a bare
+      `is-active` grep: the token is also a PROP name in the paper route's
+      contract, and a prop rename corrupts a contract in a file the sweeping
+      unit does not own. The operand of record is the FILE LIST, per unit —
+      §5a-v2's 11-file table — never a token match.
+   2. TOGGLE-VS-ACTION (FR-COB-4). `aria-pressed` binds ONLY on a true toggle.
+      A one-shot action (close, clear, submit) gets an accessible NAME and
+      never a pressed state.
+   3. `role="radiogroup"` IS KILLED (FR-NP-19 / K-18): it ships axe-critical
+      `aria-required-children` and announces an APG contract this tree does not
+      implement. The naming cure for a bare set of buttons is `role="group"` +
+      `aria-label`. Re-adding `.glass-btn` is likewise NOT a cure — the
+      producer declares `.glass-btn` and `.btn-pill` mutually exclusive
+      (R8-17).
+
+   ── WHY THE ATTRIBUTE AND NOT THE CLASS ───────────────────────────────────
+   The producer's `prefers-contrast` and `forced-colors` arms key on ARIA
+   EXCLUSIVELY, and its Button CVA ships `aria-pressed:` arms. A class-only
+   state therefore paints nothing in those modes AND announces nothing to AT —
+   one defect with two faces, which is why one channel closes both.
+   `GallerySearchBar.vue`'s `.basis-pill-btn[aria-pressed="true"]` is the
+   tree's own prior instance of this recipe, and it is the shape generalised
+   here rather than a new invention.
+
+   ── CLOSURE ───────────────────────────────────────────────────────────────
+   g9 is TREE-WIDE and closes at `.f`, never here: `.e` publishes, each owning
+   unit applies in its own files, `.f` measures the set difference over all
+   eleven. A green reported from inside one unit would be measured over a
+   fifth of the operand.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* X.F.W3 `.e` — `fr-EquationView L·m-8`: ONE `slide-down` recipe, ONE PRM
+   intent, DECLARED.
+
+   The name was authored FOUR times with divergent durations
+   (⟨cmd⟩ `grep -rln 'slide-down-enter-active' src` → `PaperView.vue` ·
+   `ContourSettings.vue` · `VisualizationView.vue` · `EquationView.vue`) and
+   NOT ONE copy declared a reduced-motion bracket, so the app's most-used
+   entry transition ignored the setting in every route.
+
+   The canon lives here because a Transition class is global by nature — the
+   element carries the scope attribute, so an unscoped rule matches it without
+   a scope selector. The three remaining scoped copies are MORE specific
+   (`[data-v-*]` adds one attribute selector) and therefore keep winning inside
+   their own files until their owners retire them: this canon changes nothing
+   there, which is exactly why it is safe to publish from one unit. Named as
+   residue, not swept. */
+.slide-down-enter-active {
+    transition:
+        opacity 0.3s var(--ease-standard),
+        transform 0.3s var(--ease-standard);
+}
+.slide-down-leave-active {
+    transition:
+        opacity 0.2s var(--ease-in),
+        transform 0.2s var(--ease-in);
+}
+.slide-down-enter-from {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+.slide-down-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .slide-down-enter-active,
+    .slide-down-leave-active {
+        transition: none;
+    }
+    .slide-down-enter-from,
+    .slide-down-leave-to {
+        transform: none;
+    }
+}

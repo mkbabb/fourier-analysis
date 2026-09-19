@@ -8,7 +8,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import type { Visualization, WorkspaceDraft } from "@/lib/types";
-import { Layers, Trash2, Crown, X } from "@lucide/vue";
+import { Layers, Trash2, Crown } from "@lucide/vue";
 
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -26,6 +26,7 @@ import GalleryInfiniteGrid from "./gallery/GalleryInfiniteGrid.vue";
 import GalleryCardModal from "./gallery/GalleryCardModal.vue";
 import GalleryAdminBanner from "./gallery/GalleryAdminBanner.vue";
 import GalleryDraftsSection from "./gallery/GalleryDraftsSection.vue";
+import BatchActionBar from "./gallery/BatchActionBar.vue";
 
 const AdminUserList = defineAsyncComponent(() => import("./gallery/AdminUserList.vue"));
 const AdminFlaggedPanel = defineAsyncComponent(() => import("./gallery/AdminFlaggedPanel.vue"));
@@ -153,8 +154,35 @@ async function handleSetTier(hash: string, tier: "featured" | "saved" | "normal"
     if (gallery.adminMode) gallery.refreshAdminStats();
 }
 
-async function handleDelete(hash: string) {
-    if (!confirm("Delete this gallery entry?")) return;
+/**
+ * X.F.W3 `.d` — `fr-AdminUserList FR-AUL-28`'s FOURTH consumer, the one the
+ * enumeration missed: the frontend's LAST live `window.confirm()`, on the exact
+ * verb the batch Dialog twenty lines below already styles.
+ *
+ * The ratified cure law is the in-file Dialog pattern over `./dialog` — the
+ * retired `./confirm-dialog` primitive is ABSENT at the adopted 8.0.0 pin
+ * (verified in the export map: 70 keys, no `./confirm-dialog`), so a swap onto
+ * it is not available and was never the cure. The two sibling admin surfaces
+ * already hold the house shape — ONE dialog over a discriminated `pending`
+ * intent — and this file held half of it (`pendingBatch`) beside a native
+ * modal. The half becomes the whole: `pending` carries `single` or `batch`, and
+ * the native dialog dies.
+ *
+ * What the native call cost, beyond style: `confirm()` is synchronous and
+ * unthemeable, it cannot name what it is about to delete, it is suppressible
+ * per-origin by the browser (a suppressed `confirm()` returns `false`, so the
+ * delete silently never happens), and it announces nothing an assistive
+ * technology can tie back to the row that summoned it.
+ */
+function handleDelete(hash: string) {
+    // FR-AFP-8's one-token rider, applied at this surface too: the confirm
+    // names the ENTITY that gets deleted — the visualization `slug` — never a
+    // friendlier string that could denote something else.
+    pending.value = { kind: "single", slug: hash, label: hash };
+    confirmOpen.value = true;
+}
+
+async function performSingleDelete(hash: string) {
     await gallery.deleteEntry(hash);
     if (selectedSlug.value === hash) selectedSlug.value = null;
     // FR-GFC-20 (= FR-AUL-22's sibling): a mutation evicts its victim from the
@@ -171,9 +199,18 @@ async function handleDelete(hash: string) {
 // `batchGallery` against the CRUD CONTRACT `BatchResponse` shape.
 type GalleryBatchAction = "delete" | "feature" | "unfeature";
 
+/**
+ * FR-AUL-28: ONE destructive-confirm intent for this surface, in the shape both
+ * admin siblings already use. `single` is the row delete the native
+ * `confirm()` used to carry; `batch` is what `pendingBatch` carried before.
+ */
+type PendingIntent =
+    | { kind: "single"; slug: string; label: string }
+    | { kind: "batch"; action: GalleryBatchAction; hashes: string[] };
+
 const selectedHashes = ref<Set<string>>(new Set());
-const batchDialogOpen = ref(false);
-const pendingBatch = ref<{ action: GalleryBatchAction; hashes: string[] } | null>(null);
+const confirmOpen = ref(false);
+const pending = ref<PendingIntent | null>(null);
 
 function forgetSelected(hash: string) {
     if (!selectedHashes.value.has(hash)) return;
@@ -195,38 +232,52 @@ function clearGallerySelection() {
 
 function askBatchGallery(action: GalleryBatchAction) {
     if (!selectedHashes.value.size) return;
-    pendingBatch.value = { action, hashes: Array.from(selectedHashes.value) };
-    batchDialogOpen.value = true;
+    pending.value = { kind: "batch", action, hashes: Array.from(selectedHashes.value) };
+    confirmOpen.value = true;
 }
 
-async function performBatchGallery() {
-    const pending = pendingBatch.value;
-    batchDialogOpen.value = false;
-    if (!pending) return;
+/**
+ * FR-AFP-41's shape, adopted here: closing CLEARS the intent. A target left
+ * behind a closed dialog is what let a second ask land on a stale slug.
+ */
+function onConfirmOpenChange(open: boolean) {
+    confirmOpen.value = open;
+    if (!open) pending.value = null;
+}
+
+async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch" }>) {
     const token = auth.getAdminToken();
     if (!token) {
         toast("Admin token missing", "error");
         return;
     }
+    const result = await api.batchGallery(token, target.action, target.hashes);
+    const verb =
+        target.action === "delete"
+            ? "Deleted"
+            : target.action === "feature"
+              ? "Featured"
+              : "Unfeatured";
+    const n = result.affected;
+    toast(`${verb} ${n} ${n === 1 ? "entry" : "entries"}`, "success");
+    if (result.errors?.length) {
+        for (const err of result.errors) toast(err, "error");
+    }
+    clearGallerySelection();
+    await gallery.resetAndFetch();
+    if (gallery.adminMode) gallery.refreshAdminStats();
+}
+
+async function performConfirmed() {
+    const target = pending.value;
+    if (!target) return;
     try {
-        const result = await api.batchGallery(token, pending.action, pending.hashes);
-        const verb =
-            pending.action === "delete"
-                ? "Deleted"
-                : pending.action === "feature"
-                  ? "Featured"
-                  : "Unfeatured";
-        toast(`${verb} ${result.affected} entr(ies)`, "success");
-        if (result.errors?.length) {
-            for (const err of result.errors) toast(err, "error");
-        }
-        clearGallerySelection();
-        await gallery.resetAndFetch();
-        if (gallery.adminMode) gallery.refreshAdminStats();
+        if (target.kind === "single") await performSingleDelete(target.slug);
+        else await performBatchGallery(target);
     } catch (e: any) {
-        toast(e.message ?? "Batch action failed", "error");
+        toast(e.message ?? "Action failed", "error");
     } finally {
-        pendingBatch.value = null;
+        onConfirmOpenChange(false);
     }
 }
 
@@ -327,25 +378,29 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 @toggle-select="toggleEntrySelected"
             />
 
-            <!-- A.W5.c — gallery batch-action toolbar. Surfaces in admin mode
-                 when one or more cards are selected; routes through the
-                 destructive-confirm dialog before calling `batchGallery`. -->
-            <div
-                v-if="gallery.adminMode && selectedHashes.size > 0"
-                role="toolbar"
-                aria-label="Batch gallery actions"
-                class="cartoon-card sticky bottom-2 z-20 mx-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+            <!-- X.F.W3 `.d` — `FR-AUL-51`/`FR-AUL-52`: the gallery's half of the
+                 toolbar authored twice. The chrome — role, sticky edge, z-tier,
+                 plate, the clear control's un-clamped size literal, the
+                 `entr(ies)` dialect — is now `BatchActionBar`'s, decided once;
+                 the inline inset stays here because it is this column's padding
+                 context, and the verbs stay here because they are this
+                 surface's domain. -->
+            <BatchActionBar
+                v-if="gallery.adminMode"
+                :count="selectedHashes.size"
+                noun="entry"
+                noun-plural="entries"
+                label="Batch gallery actions"
+                class="mx-4"
+                @clear="clearGallerySelection"
             >
-                <span class="flex-1 text-xs text-muted-foreground">
-                    {{ selectedHashes.size }} entr(ies) selected
-                </span>
                 <Button
                     emphasis="secondary"
                     size="sm"
                     class="text-xs"
                     @click="askBatchGallery('feature')"
                 >
-                    <Crown class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                    <Crown class="mr-1 size-3.5" aria-hidden="true" />
                     Feature
                 </Button>
                 <Button
@@ -362,19 +417,10 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                     class="text-xs"
                     @click="askBatchGallery('delete')"
                 >
-                    <Trash2 class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                    <Trash2 class="mr-1 size-3.5" aria-hidden="true" />
                     Delete
                 </Button>
-                <Button
-                    emphasis="quiet"
-                    size="md" icon-only
-                    class="h-7 w-7"
-                    aria-label="Clear selection"
-                    @click="clearGallerySelection"
-                >
-                    <X class="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
-            </div>
+            </BatchActionBar>
         </template>
 
         <!-- Drafts tab -->
@@ -422,44 +468,64 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
             @set-tier="handleSetTier"
         />
 
-        <!-- A.W5.c — gallery batch-confirm dialog. -->
-        <Dialog v-model:open="batchDialogOpen">
+        <!-- X.F.W3 `.d` / FR-AUL-28 — ONE destructive-confirm dialog for this
+             surface, carrying both intents. The `single` arm is what
+             `window.confirm("Delete this gallery entry?")` used to be: it now
+             NAMES the entry it is about to delete, which the native modal
+             structurally could not. -->
+        <Dialog :open="confirmOpen" @update:open="onConfirmOpenChange">
             <DialogContent surface="opaque" class="max-w-sm">
                 <DialogHeader>
                     <DialogTitle>
-                        <template v-if="pendingBatch?.action === 'delete'">
-                            Delete {{ pendingBatch.hashes.length }} entr(ies)?
+                        <template v-if="pending?.kind === 'single'">
+                            Delete this gallery entry?
                         </template>
-                        <template v-else-if="pendingBatch?.action === 'feature'">
-                            Feature {{ pendingBatch.hashes.length }} entr(ies)?
+                        <template v-else-if="pending?.action === 'delete'">
+                            Delete {{ pending.hashes.length }}
+                            {{ pending.hashes.length === 1 ? "entry" : "entries" }}?
                         </template>
-                        <template v-else-if="pendingBatch?.action === 'unfeature'">
-                            Unfeature {{ pendingBatch.hashes.length }} entr(ies)?
+                        <template v-else-if="pending?.action === 'feature'">
+                            Feature {{ pending.hashes.length }}
+                            {{ pending.hashes.length === 1 ? "entry" : "entries" }}?
+                        </template>
+                        <template v-else-if="pending?.action === 'unfeature'">
+                            Unfeature {{ pending.hashes.length }}
+                            {{ pending.hashes.length === 1 ? "entry" : "entries" }}?
                         </template>
                     </DialogTitle>
                     <DialogDescription>
-                        <template v-if="pendingBatch?.action === 'delete'">
+                        <template v-if="pending?.kind === 'single'">
+                            This shall permanently delete
+                            <span class="font-mono">{{ pending.label }}</span>.
+                            The action is irrevocable.
+                        </template>
+                        <template v-else-if="pending?.action === 'delete'">
                             This shall permanently delete the selected gallery entries.
                             The action is irrevocable.
                         </template>
-                        <template v-else-if="pendingBatch?.action === 'feature'">
+                        <template v-else-if="pending?.action === 'feature'">
                             The selected entries shall be promoted to the featured tier.
                         </template>
-                        <template v-else-if="pendingBatch?.action === 'unfeature'">
+                        <template v-else-if="pending?.action === 'unfeature'">
                             The selected entries shall be returned to the normal tier.
                         </template>
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button emphasis="quiet" @click="batchDialogOpen = false">Cancel</Button>
+                    <Button emphasis="quiet" @click="onConfirmOpenChange(false)">Cancel</Button>
                     <Button
                         emphasis="primary"
-                        :tone="pendingBatch?.action === 'delete' ? 'destructive' : 'neutral'"
-                        @click="performBatchGallery"
+                        :tone="
+                            pending?.kind === 'single' || pending?.action === 'delete'
+                                ? 'destructive'
+                                : 'neutral'
+                        "
+                        @click="performConfirmed"
                     >
-                        <template v-if="pendingBatch?.action === 'delete'">Delete</template>
-                        <template v-else-if="pendingBatch?.action === 'feature'">Feature</template>
-                        <template v-else-if="pendingBatch?.action === 'unfeature'">Unfeature</template>
+                        <template v-if="pending?.kind === 'single'">Delete</template>
+                        <template v-else-if="pending?.action === 'delete'">Delete</template>
+                        <template v-else-if="pending?.action === 'feature'">Feature</template>
+                        <template v-else-if="pending?.action === 'unfeature'">Unfeature</template>
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { type Point2D, closedSplinePath, contourBounds } from "@/lib/contourEditing";
-import CollapsibleSection from "@/components/ui/CollapsibleSection.vue";
+import { ConfiguratorLayer } from "@mkbabb/glass-ui/configurator";
 
 /** The authored framing of this preview; the editor's is its own. */
 const PREVIEW_MARGIN = 0.1;
@@ -34,33 +34,53 @@ const previewViewBox = computed(() => bounds.value?.viewBox ?? "0 0 1 1");
 </script>
 
 <template>
-    <div class="cartoon-card px-3 py-2">
-        <CollapsibleSection title="Preview" subtitle="live contour shape" :default-open="true">
-            <div class="flex items-center justify-center p-2">
-                <!-- Row 28-client: an unrenderable point set used to emit an
-                     invalid viewBox and blank the surface with no explanation.
-                     It now says what it knows. -->
-                <p v-if="!bounds" class="preview-empty">No contour to preview yet</p>
-                <svg
-                    v-else
-                    :viewBox="previewViewBox"
-                    preserveAspectRatio="xMidYMid meet"
-                    class="preview-svg"
-                >
-                    <g transform="scale(1,-1)">
-                        <path
-                            :d="previewPath"
-                            fill="none"
-                            stroke="var(--contour-stroke)"
-                            stroke-opacity="0.85"
-                            stroke-width="2"
-                            vector-effect="non-scaling-stroke"
-                        />
-                    </g>
-                </svg>
-            </div>
-        </CollapsibleSection>
-    </div>
+    <!-- X.F.W3 `.d` — `fr-ContourPreview` row 3 (⊕ row 24). The local
+         wrapper was the wrong hierarchy register (a 14px/600 header twelve
+         pixels above a sanctioned 20.4px/600 ConfiguratorLayer sibling) and
+         its disclosure state was structurally uncontrollable: `open =
+         ref(props.defaultOpen)` SNAPSHOTS the prop at setup, there is no
+         `defineExpose` and no model passthrough, so `:default-open="true"`
+         restated a default nothing could ever change. The producer's layer
+         is controllable (`v-model:open`), uncontrolled by default, and is
+         what the three stack-mates already mount.
+
+         Row 24 rides it free, exactly as adjudicated: the wrapper's trigger
+         was this aside's sole tab stop wearing no design-system focus
+         recipe — neither `.focus-ring` nor `.interactive-item` applied, so
+         only the UA ring rendered — and the producer's trigger carries
+         `focus-ring` in its own class list at the pin.
+
+         ⊘ Row 16 (the heading the wrapper renders as a `<span>`) is F.W4's
+         and is NOT closed by this adoption — the adjudication says so in
+         terms: "ConfiguratorLayer adoption does NOT close this (its surface
+         is button/expanded/controls, no heading)". Carried forward named;
+         the `<h3>` interlock this wave honours is ImageUpload's roster 10,
+         which is the route's only heading. -->
+    <ConfiguratorLayer label="Preview" sub="live contour shape">
+        <div class="flex items-center justify-center p-2">
+            <!-- Row 28-client: an unrenderable point set used to emit an
+                 invalid viewBox and blank the surface with no explanation.
+                 It now says what it knows. -->
+            <p v-if="!bounds" class="preview-empty">No contour to preview yet</p>
+            <svg
+                v-else
+                :viewBox="previewViewBox"
+                preserveAspectRatio="xMidYMid meet"
+                class="preview-svg"
+            >
+                <g transform="scale(1,-1)">
+                    <path
+                        :d="previewPath"
+                        fill="none"
+                        stroke="var(--contour-stroke)"
+                        stroke-opacity="0.85"
+                        stroke-width="2"
+                        vector-effect="non-scaling-stroke"
+                    />
+                </g>
+            </svg>
+        </div>
+    </ConfiguratorLayer>
 </template>
 
 <style scoped>
