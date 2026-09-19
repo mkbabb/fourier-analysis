@@ -113,16 +113,40 @@ deploy_out="$("${WRANGLER[@]}" pages deploy "$BUILD_DIR" \
 DEPLOY_URL="$(printf '%s\n' "$deploy_out" | grep -oE 'https://[a-z0-9]+\.[a-z0-9-]+\.pages\.dev' | head -1 || true)"
 DEPLOY_ID="$(printf '%s' "$DEPLOY_URL" | sed -E 's#https://([a-z0-9]+)\..*#\1#' || true)"
 log "Deployed: ${DEPLOY_URL:-https://${PAGES_PROJECT}.pages.dev/} (custom domain fourier.babb.dev)"
-if [ -n "$DEPLOY_ID" ]; then
-    log "CF deployment ID (inv-25 deploy_run_id): $DEPLOY_ID"
-    # Surface to GH Actions: job output + step summary (never the token, only the id).
-    if [ -n "${GITHUB_OUTPUT:-}" ]; then echo "cf_deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"; fi
-    if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-        {
-            echo "### Cloudflare Pages deploy"
-            echo "- project: \`$PAGES_PROJECT\`"
-            echo "- CF deployment ID (inv-25 deploy_run_id): \`$DEPLOY_ID\`"
-            echo "- rollback target (prior live): \`${ROLLBACK_ID:-none}\`"
-        } >> "$GITHUB_STEP_SUMMARY"
-    fi
+
+# X·F F.W9 (inv-25) — the capture is MANDATORY, and its failure is LOUD.
+#
+# The id was previously emitted under `if [ -n "$DEPLOY_ID" ]` with no else
+# arm: when wrangler changed its output wording, or printed the URL in a shape
+# the regex missed, the script exited 0 having shipped a deployment nobody could
+# afterwards cite. A deploy-of-record that silently fails to record IS the
+# defect inv-25 names, so one stdout shape is no longer the only chance to get
+# it: fall back to asking Cloudflare which deployment is now live, and if even
+# that cannot answer, FAIL. The upload already happened either way — the red
+# workflow is the signal that the record did not, which is the whole point.
+if [ -z "$DEPLOY_ID" ] && command -v jq >/dev/null 2>&1; then
+    log "Deployment id not parseable from wrangler's output — asking Cloudflare for the current live deployment..."
+    DEPLOY_ID="$("${WRANGLER[@]}" pages deployment list \
+        --project-name "$PAGES_PROJECT" --json 2>/dev/null \
+        | jq -r '.[0].id // empty' 2>/dev/null || true)"
+fi
+
+if [ -z "$DEPLOY_ID" ]; then
+    err "inv-25 FAILED — the SPA was deployed but its deployment ID could not be captured."
+    err "  Neither wrangler's stdout nor \`pages deployment list\` yielded an id, so this"
+    err "  deploy has NO citable deploy-of-record. The upload itself succeeded; recover the"
+    err "  id with: npx wrangler pages deployment list --project-name $PAGES_PROJECT"
+    exit 1
+fi
+
+log "CF deployment ID (inv-25 deploy_run_id): $DEPLOY_ID"
+# Surface to GH Actions: job output + step summary (never the token, only the id).
+if [ -n "${GITHUB_OUTPUT:-}" ]; then echo "cf_deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"; fi
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+        echo "### Cloudflare Pages deploy"
+        echo "- project: \`$PAGES_PROJECT\`"
+        echo "- CF deployment ID (inv-25 deploy_run_id): \`$DEPLOY_ID\`"
+        echo "- rollback target (prior live): \`${ROLLBACK_ID:-none}\`"
+    } >> "$GITHUB_STEP_SUMMARY"
 fi
