@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
+// X.F.W3 repair 1 / `FR-TT-20` — THE ONE IMPORT IDENTITY. This was the tree's
+// second identity for the tooltip shim: a deep SFC import, `@/components/ui/
+// tooltip/Tooltip.vue`, beside eight callers going through the barrel. Two
+// identities means the choke point the re-parameterisation is authored against
+// is not a choke point — a barrel-level change reaches eight files and silently
+// skips this one. The gate's own words are "normalize the TWO import identities
+// BEFORE the migration"; the barrel beside `Tooltip.vue` is the identity.
+import { Tooltip } from "@/components/ui/tooltip";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
