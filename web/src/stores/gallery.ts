@@ -178,29 +178,72 @@ export const useGalleryStore = defineStore("gallery", () => {
         }
     }
 
+    /**
+     * X·F F.W4 `.d` — the SHARED INVALIDATION CHANNEL (GCM-24 · FR-GFC-1 ·
+     * FR-AFP-11 (+FR-AFP-57) · FR-GFC-20).
+     *
+     * Two opposite defects meet here. `setTier`/`deleteEntry` DISCARDED the fresh
+     * entity the operation already returns and paid `resetAndFetch()` for it —
+     * destroying accumulated infinite-scroll state, the featured strip, the scroll
+     * offset and focus on EVERY tier toggle (and, through the public search and
+     * filter watchers, on every anonymous visitor's search pause, which refetched
+     * a provably identical page). Meanwhile `AdminFlaggedPanel` duplicated these
+     * two methods verbatim MINUS `resetAndFetch`, so the gallery kept the deleted
+     * row and the stale tier after moderation. One channel answers both: the
+     * in-place patch the store's OWN `recordView`/`restore` idiom already used,
+     * exposed so every surface that mutates an entry can invalidate it.
+     */
+    function patchEntry(slug: string, patch: Partial<Visualization>) {
+        const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
+        if (idx === -1) return;
+        entries.value[idx] = { ...entries.value[idx], ...patch };
+    }
+
+    function removeEntry(slug: string) {
+        const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
+        if (idx !== -1) entries.value.splice(idx, 1);
+    }
+
     // `slug` is the converged visualization identity (the value the gallery
     // cards emit from their `:key`).
     async function setTier(slug: string, tier: GalleryTier) {
         const token = useAuthStore().getAdminToken();
-        if (!token) return;
+        if (!token) {
+            toast("Admin session has expired — re-enter admin mode.", "error");
+            return;
+        }
         try {
-            await api.setVisualizationTier(token, slug, tier);
-            await resetAndFetch();
+            // `admin.py` re-reads and returns `_public_doc(updated)` with a fresh
+            // ETag, and `api.ts` types it `Promise<Visualization>` — the correct
+            // effect was on the wire, unclaimed, at zero network cost.
+            const updated = await api.setVisualizationTier(token, slug, tier);
+            if (updated && typeof updated === "object" && "slug" in updated) {
+                patchEntry(slug, updated);
+            } else {
+                patchEntry(slug, { tier });
+            }
             toast(`Tier set to ${tier}`, "success");
-        } catch (e: any) {
-            toast(e.message ?? "Failed to set tier", "error");
+        } catch (e: unknown) {
+            if (!api.isAbortError(e)) {
+                toast(problemMessage(e, "Failed to set tier"), "error");
+            }
         }
     }
 
     async function deleteEntry(slug: string) {
         const token = useAuthStore().getAdminToken();
-        if (!token) return;
+        if (!token) {
+            toast("Admin session has expired — re-enter admin mode.", "error");
+            return;
+        }
         try {
             await api.adminDeleteVisualization(token, slug);
-            await resetAndFetch();
+            removeEntry(slug);
             toast("Entry deleted", "success");
-        } catch (e: any) {
-            toast(e.message ?? "Failed to delete entry", "error");
+        } catch (e: unknown) {
+            if (!api.isAbortError(e)) {
+                toast(problemMessage(e, "Failed to delete entry"), "error");
+            }
         }
     }
 
@@ -327,6 +370,8 @@ export const useGalleryStore = defineStore("gallery", () => {
         activateAdmin,
         deactivateAdmin,
         refreshAdminStats,
+        patchEntry,
+        removeEntry,
         setTier,
         deleteEntry,
         softDelete,

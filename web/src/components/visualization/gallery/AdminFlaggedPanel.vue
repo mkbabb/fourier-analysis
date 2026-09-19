@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Badge } from "@mkbabb/glass-ui/badge";
 import {
     Dialog,
     DialogContent,
@@ -10,11 +11,13 @@ import {
     DialogTitle,
 } from "@mkbabb/glass-ui/dialog";
 import { useAuthStore } from "@/stores/auth";
+import { useGalleryStore } from "@/stores/gallery";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
-import type { FlaggedVisualization, GalleryTier } from "@/lib/types";
+import { thumbnailUrl } from "@/lib/api";
+import type { FlaggedVisualization, FlagInfo, GalleryTier } from "@/lib/types";
 import { problemMessage } from "./adminError";
-import { Flag, Trash2, XCircle, RotateCw, Star } from "@lucide/vue";
+import { Flag, Trash2, CheckCircle2, RotateCw, Crown, Bookmark } from "@lucide/vue";
 
 // B.W4.c — the flagged panel re-points onto the converged `visualization`
 // entity (CRUD-CONTRACT §7). The single user-facing identity is the
@@ -24,6 +27,7 @@ import { Flag, Trash2, XCircle, RotateCw, Star } from "@lucide/vue";
 // replaced with cursor "load more".
 
 const auth = useAuthStore();
+const gallery = useGalleryStore();
 const { toast } = useToast();
 
 // Cursor-paginated flagged stream (CRUD-CONTRACT §6/§7). `flaggedEntries`
@@ -70,39 +74,96 @@ async function fetchFlagged(cursor: string | null) {
  * left the deleted row rendered, with live buttons, under a success toast.
  * `reload` now reports through its RETURN VALUE: one error channel per action.
  */
+/**
+ * FR-AFP-14 (+FR-AFP-48): `reload()` and `loadMore()` carry DIFFERENT abort keys
+ * — the cursor sits in the query and `adminFetch` keys on the path — so nothing
+ * cancelled anything and a stale page-2 `push` could land on a fresh page-1
+ * array, clobbering the cursor and minting a duplicate `:key`. The race is
+ * reachable by ordinary clicking because the load-more `<nav>` was a SIBLING of
+ * the v-if/v-else pair, so an ENABLED Load-more carrying the pre-mutation cursor
+ * rendered beside the spinner during every mutation reload. One generation token
+ * for the stream; the interim `hasMore && !loading` gate is the template's.
+ */
+let streamRun = 0;
+
 async function reload(): Promise<boolean> {
+    const ticket = ++streamRun;
     loading.value = true;
     error.value = null;
     try {
         const result = await fetchFlagged(null);
+        if (ticket !== streamRun) return false;
         flaggedEntries.value = result.items;
         nextCursor.value = result.next_cursor;
         hasMore.value = result.has_more;
         return true;
     } catch (e: unknown) {
-        if (api.isAbortError(e)) return false;
+        if (api.isAbortError(e) || ticket !== streamRun) return false;
         error.value = problemMessage(e, "Failed to load flagged entries");
         return false;
     } finally {
-        loading.value = false;
+        if (ticket === streamRun) loading.value = false;
     }
 }
 
 async function loadMore() {
     if (!hasMore.value || loading.value || loadingMore.value) return;
+    const ticket = ++streamRun;
     loadingMore.value = true;
     try {
         const result = await fetchFlagged(nextCursor.value);
+        if (ticket !== streamRun) return;
         flaggedEntries.value.push(...result.items);
         nextCursor.value = result.next_cursor;
         hasMore.value = result.has_more;
     } catch (e: unknown) {
-        if (api.isAbortError(e)) return;
+        if (api.isAbortError(e) || ticket !== streamRun) return;
         toast(problemMessage(e, "Failed to load flagged entries"), "error");
     } finally {
-        loadingMore.value = false;
+        if (ticket === streamRun) loadingMore.value = false;
     }
 }
+
+/**
+ * FR-AFP-15 ⇢ FR-AFP-56, ONE change as the lock requires.
+ *
+ * Every mutation discarded all accumulated cursor pages — `reload()` reassigns
+ * after `fetchFlagged(null)` — contradicting this file's own header, on a stream
+ * whose only pagination is forward-only. The splice model already existed in
+ * `stores/gallery.ts` (`entries.splice(idx, 1)`), so a moderation act that
+ * REMOVES a row from the queue removes that row, and the pages the operator has
+ * already paid for stay paid for.
+ *
+ * The rider lands in the same change: `:key="i"` on the flag sub-loop was benign
+ * only under wholesale remount, and this edit ENDS wholesale remount — so it must
+ * land here or not at all.
+ *
+ * ⊘ The banked natural key is `(content_hash, reporter_slug)`, and `content_hash`
+ * IS NOT ON THE CLIENT TYPE: `admin.py` emits it and `FlaggedVisualization`
+ * omits it, which is FR-AFP-36's "the actual join key invisible to the
+ * component", routed F.W5-W8 with `lib/types.ts` outside this unit's bounds. The
+ * discriminator available at these bytes is `(slug, reporter_slug)`, which is
+ * unique across the RENDERED set — `slug` disambiguates the rows that
+ * `content_hash` fans out (FR-AFP-7). Stated rather than silently substituted.
+ */
+function dropEntry(slug: string) {
+    const idx = flaggedEntries.value.findIndex((e) => e.slug === slug);
+    if (idx !== -1) flaggedEntries.value.splice(idx, 1);
+}
+
+function flagKey(item: FlaggedVisualization, flag: FlagInfo): string {
+    return `${item.slug}:${flag.reporter_slug}`;
+}
+
+/**
+ * FR-AFP-16 ⊕ FR-AFP-23: three of four mutations had no in-flight guard and no
+ * `:disabled` while the correct pattern sat ten lines above in `loadingMore`, and
+ * the confirm dialog closed BEFORE the request — so a slow delete invited a
+ * second Delete on the same row and a failed one toasted against nothing. One
+ * busy flag, read by every control, released only once the act has settled.
+ */
+const busySlug = ref<string | null>(null);
+const busy = computed(() => busySlug.value !== null);
 
 reload();
 
@@ -115,28 +176,54 @@ function askDelete(slug: string, label: string) {
     dialogOpen.value = true;
 }
 
+/**
+ * FR-AFP-41 (+FR-AFP-68): `pendingDelete` was not cleared on Cancel or Escape,
+ * and the leak was REACHABLE — open a second row's confirm during an in-flight
+ * delete (the list stayed mounted, nothing was disabled) and the first handler's
+ * late null landed under the open dialog, giving an empty entity name and a
+ * Delete button that silently did nothing through `confirmDelete`'s own early
+ * return. Closing clears; a null target now SAYS so instead of no-opping.
+ */
+function onDialogOpenChange(open: boolean) {
+    dialogOpen.value = open;
+    if (!open) pendingDelete.value = null;
+}
+
 async function confirmDelete() {
     const target = pendingDelete.value;
-    dialogOpen.value = false;
-    if (!target) return;
+    if (!target) {
+        toast("Nothing to delete — the target was cleared. Try again.", "error");
+        return;
+    }
+    if (busy.value) return;
+    busySlug.value = target.slug;
     try {
         // Moderate-delete the converged entity by slug (CRUD-CONTRACT §7); the
         // admin client carries `If-Match: *` server-side (admin override, §3).
         const token = requireAdminToken();
         await api.adminDeleteVisualization(token, target.slug);
-        // FR-AFP-67: the success toast fires only once the refresh that proves it
-        // has landed. Toasting first and reloading after is what left a deleted
-        // row rendered, with live buttons, under a success toast.
-        if (await reload()) toast("Entry deleted", "success");
+        // FR-AFP-67: the success toast fires only once the act has settled.
+        // Toasting first and reloading after is what left a deleted row rendered,
+        // with live buttons, under a success toast.
+        // FR-AFP-15: the row is SPLICED out; the accumulated pages survive.
+        dropEntry(target.slug);
+        gallery.removeEntry(target.slug);
+        toast("Entry deleted", "success");
+        // FR-AFP-23: the dialog closes AFTER the request settles, so a slow delete
+        // cannot invite a second Delete on the same row.
+        onDialogOpenChange(false);
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
             toast(problemMessage(e, "Failed to delete entry"), "error");
         }
+    } finally {
+        busySlug.value = null;
     }
-    pendingDelete.value = null;
 }
 
 async function handleDismiss(slug: string) {
+    if (busy.value) return;
+    busySlug.value = slug;
     try {
         const token = requireAdminToken();
         const result = await api.dismissVisualizationFlags(token, slug);
@@ -144,18 +231,21 @@ async function handleDismiss(slug: string) {
         // reachable "Dismissed 0 flags" both shipped eleven lines from a row that
         // pluralises correctly.
         const n = result.dismissed;
-        if (await reload()) {
-            toast(
-                n === 0
-                    ? "No flags left to dismiss"
-                    : `Dismissed ${n} ${n === 1 ? "flag" : "flags"}`,
-                "success",
-            );
-        }
+        // Dismissing every flag takes the row out of the queue; splicing keeps
+        // the accumulated pages (FR-AFP-15).
+        dropEntry(slug);
+        toast(
+            n === 0
+                ? "No flags left to dismiss"
+                : `Dismissed ${n} ${n === 1 ? "flag" : "flags"}`,
+            "success",
+        );
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
             toast(problemMessage(e, "Failed to dismiss"), "error");
         }
+    } finally {
+        busySlug.value = null;
     }
 }
 
@@ -164,14 +254,34 @@ async function handleDismiss(slug: string) {
 // flag pressure while keeping it live), resolving against the converged entity
 // by slug via `setVisualizationTier`.
 async function handleSetTier(slug: string, tier: GalleryTier) {
+    if (busy.value) return;
+    busySlug.value = slug;
     try {
         const token = requireAdminToken();
-        await api.setVisualizationTier(token, slug, tier);
-        if (await reload()) toast(`Tier set to ${tier}`, "success");
+        const updated = await api.setVisualizationTier(token, slug, tier);
+        // FR-AFP-11 (+FR-AFP-57) / GCM-24's shape: the operation ALREADY RETURNS
+        // the fresh entity (`admin.py` re-reads and returns `_public_doc(updated)`;
+        // `api.ts` types it `Promise<Visualization>`), so the row is patched in
+        // place at zero network cost instead of being paid for with a full reset.
+        // ⊘ The cross-surface half — this panel duplicated the gallery store's
+        // `setTier`/`deleteEntry` verbatim MINUS `resetAndFetch`, so
+        // `gallery.entries` kept the stale tier after moderation — is the store's
+        // shared-invalidation cure, landed beside this one.
+        const idx = flaggedEntries.value.findIndex((e) => e.slug === slug);
+        if (idx !== -1) {
+            flaggedEntries.value[idx] = {
+                ...flaggedEntries.value[idx],
+                tier: updated?.tier ?? tier,
+            };
+        }
+        gallery.patchEntry(slug, { tier });
+        toast(`Tier set to ${tier}`, "success");
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
             toast(problemMessage(e, "Failed to set tier"), "error");
         }
+    } finally {
+        busySlug.value = null;
     }
 }
 
@@ -230,67 +340,146 @@ function timeAgo(iso: string | null): string {
                 v-for="item in flaggedEntries"
                 :key="item.slug"
                 role="listitem"
-                class="rounded-lg border border-red-500/20 bg-red-500/5 p-3"
+                class="flagged-card rounded-card p-3"
+                :aria-busy="busySlug === item.slug || undefined"
             >
-                <div class="flex items-start justify-between gap-2">
+                <div class="flex items-start gap-3">
+                    <!-- FR-AFP-21: the panel that moderates IMAGES rendered no
+                         image. It is the only gallery surface holding
+                         `image_slug` that printed it as text, while
+                         `thumbnailUrl` takes exactly the field in hand and five
+                         sibling surfaces render the asset. An adjudicator was
+                         asked to rule on evidence they could not see. -->
+                    <img
+                        v-if="item.image_slug"
+                        :src="thumbnailUrl(item.image_slug)"
+                        :alt="`Reported image ${item.image_slug}`"
+                        class="size-16 shrink-0 rounded-md border border-border/60 bg-muted object-cover"
+                        loading="lazy"
+                    />
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 text-sm">
                             <Flag
-                                class="h-3.5 w-3.5 text-red-400 shrink-0"
+                                class="size-3.5 shrink-0 text-destructive"
                                 aria-hidden="true"
                             />
-                            <span class="font-mono text-xs truncate">{{ item.image_slug ?? item.slug }}</span>
-                            <span class="rounded-full bg-red-500/20 px-1.5 py-0.5 text-mono-micro uppercase font-medium text-red-300">
+                            <span class="font-mono text-xs truncate">{{ item.slug }}</span>
+                            <!-- FR-AFP-61: the flag pill is `./badge`, exported at
+                                 the pin, in the tone the producer owns. The
+                                 bespoke `bg-red-500/20` + `text-red-300` pill was
+                                 the queue's RANKING datum at ≈1.3–1.4:1 light. -->
+                            <Badge tone="destructive" size="sm">
                                 {{ item.flag_count }} {{ item.flag_count === 1 ? "flag" : "flags" }}
-                            </span>
+                            </Badge>
                         </div>
-                        <div class="text-mono-micro uppercase font-medium text-muted-foreground mt-1">
-                            by {{ item.owner_slug ?? "anonymous" }} &middot; {{ item.tier ?? "normal" }}
+                        <!-- ⊘ X·F F.W4 `.d` — census correction, AA-15's premise.
+                             `text-admin-label` is NOT emitted at the adopted
+                             glass-ui 8.0.0 pin: `grep -ro 'text-admin-label'
+                             node_modules/@mkbabb/glass-ui/dist` returns EMPTY, and
+                             no `--text-admin-label` theme key exists either — the
+                             string survives only inside `cn`'s class-name bucket
+                             regex. `text-mono-micro` IS emitted and is the rung
+                             the sibling admin surface already uses for this exact
+                             job. Booked as a falsified census cell in
+                             `F-W4-ADDENDA-d-2026-09-18.md`. -->
+                        <div class="mt-1 text-mono-micro text-muted-foreground">
+                            by {{ item.owner_slug ?? "anonymous" }}
                             <span v-if="item.created_at"> &middot; {{ timeAgo(item.created_at) }}</span>
+                        </div>
+                        <!-- FR-AFP-59: the tier — the exact state the Save button
+                             mutates — rendered as a raw lowercase wire token in
+                             the 10px muted meta line, bypassing the product's real
+                             tier design language. Composed with FR-AFP-10 (Save
+                             does not dequeue), that word was the ONLY visible
+                             change after this panel's sole non-destructive remedy.
+                             ⊘ The closed-domain TYPE narrows with FR-AFP-31; the
+                             tier↔flag semantics are F.W5-W8's. -->
+                        <div class="mt-1 flex items-center gap-1 text-xs capitalize" :data-tier="item.tier ?? 'normal'">
+                            <Crown
+                                v-if="item.tier === 'featured'"
+                                :size="13"
+                                class="text-tier-featured"
+                                aria-hidden="true"
+                            />
+                            <Bookmark
+                                v-else-if="item.tier === 'saved'"
+                                :size="13"
+                                class="text-tier-saved"
+                                aria-hidden="true"
+                            />
+                            <span>{{ item.tier ?? "normal" }}</span>
                         </div>
                         <!-- Flag details -->
                         <div class="mt-2 flex flex-col gap-1">
+                            <!-- FR-AFP-63: reporter free text is adversarially
+                                 controlled and rendered unbounded inside the one
+                                 flex child explicitly allowed to shrink. The file
+                                 was careful about exactly this one element short.
+                                 FR-AFP-20-adjacent: the provenance line stops
+                                 being an alpha-mute of an already-muted ink. -->
                             <div
-                                v-for="(flag, i) in item.flags"
-                                :key="i"
-                                class="text-mono-micro uppercase font-medium text-muted-foreground pl-2 border-l border-muted"
+                                v-for="flag in item.flags"
+                                :key="flagKey(item, flag)"
+                                class="border-l border-border/70 pl-2 text-xs text-muted-foreground"
                             >
-                                <span class="text-red-300">{{ reasonLabel(flag.reason) }}</span>
-                                <span v-if="flag.detail"> — {{ flag.detail }}</span>
-                                <span class="opacity-60"> ({{ flag.reporter_slug }}, {{ timeAgo(flag.created_at) }})</span>
+                                <span class="font-medium text-destructive">{{ reasonLabel(flag.reason) }}</span>
+                                <span v-if="flag.detail" class="line-clamp-3 break-words">
+                                    {{ flag.detail }}
+                                </span>
+                                <span class="block font-mono">
+                                    {{ flag.reporter_slug }} &middot; {{ timeAgo(flag.created_at) }}
+                                </span>
                             </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
+                    <!-- FR-AFP-45: the glyphs contradicted their effects —
+                         `XCircle`, a REJECT mark, was the benign dismiss tinted
+                         green, and `Star`, a promotion, was tinted blue. Each
+                         control now carries a visible word beside a glyph that
+                         means what the act does. FR-AFP-34 / FR-AFP-19: ONE label
+                         source (no `title` duplicating the accessible name into a
+                         second SR announcement), the wire vocabulary "(save
+                         tier)" is out of the accessible name, and the labels name
+                         the ENTITY (`slug`), not the shared asset FK.
+                         FR-AFP-8 (one-token rider): `item.slug` is what gets
+                         deleted, so `item.slug` is what the confirm names —
+                         `image_slug` is an asset FK every remix shares.
+                         FR-AFP-16: every control is disabled while this row's own
+                         act is in flight. -->
+                    <div class="flex shrink-0 flex-col items-stretch gap-1">
                         <Button
-                            emphasis="quiet"
-                            size="md" icon-only
-                            class="h-7 w-7 text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10"
-                            :aria-label="`Mark ${item.image_slug ?? item.slug} acceptable (save tier)`"
-                            title="Mark acceptable (save)"
+                            emphasis="secondary"
+                            size="xs"
+                            class="gap-1 text-xs"
+                            :disabled="busy"
+                            :aria-label="`Mark ${item.slug} acceptable`"
                             @click="handleSetTier(item.slug, 'saved')"
                         >
-                            <Star class="h-4 w-4" aria-hidden="true" />
+                            <Bookmark class="size-3.5" aria-hidden="true" />
+                            Keep
                         </Button>
                         <Button
-                            emphasis="quiet"
-                            size="md" icon-only
-                            class="h-7 w-7 text-muted-foreground hover:text-green-400 hover:bg-green-500/10"
-                            :aria-label="`Dismiss flags on ${item.image_slug ?? item.slug}`"
-                            title="Dismiss flags"
+                            emphasis="secondary"
+                            size="xs"
+                            class="gap-1 text-xs"
+                            :disabled="busy"
+                            :aria-label="`Dismiss flags on ${item.slug}`"
                             @click="handleDismiss(item.slug)"
                         >
-                            <XCircle class="h-4 w-4" aria-hidden="true" />
+                            <CheckCircle2 class="size-3.5" aria-hidden="true" />
+                            Dismiss
                         </Button>
                         <Button
-                            emphasis="quiet"
-                            size="md" icon-only
-                            class="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
-                            :aria-label="`Delete entry ${item.image_slug ?? item.slug}`"
-                            title="Delete entry"
-                            @click="askDelete(item.slug, item.image_slug ?? item.slug)"
+                            emphasis="secondary"
+                            tone="destructive"
+                            size="xs"
+                            class="gap-1 text-xs"
+                            :disabled="busy"
+                            :aria-label="`Delete entry ${item.slug}`"
+                            @click="askDelete(item.slug, item.slug)"
                         >
-                            <Trash2 class="h-4 w-4" aria-hidden="true" />
+                            <Trash2 class="size-3.5" aria-hidden="true" />
+                            Delete
                         </Button>
                     </div>
                 </div>
@@ -320,7 +509,7 @@ function timeAgo(iso: string | null): string {
              (CRUD-CONTRACT §6); there is no total/page count, so the offset
              nav is replaced by an opaque-cursor incremental loader. -->
         <nav
-            v-if="hasMore"
+            v-if="hasMore && !loading"
             class="flex items-center justify-center text-xs text-muted-foreground"
             aria-label="Flagged entries pagination"
         >
@@ -328,7 +517,7 @@ function timeAgo(iso: string | null): string {
                 emphasis="quiet"
                 size="sm"
                 class="gap-1.5"
-                :disabled="loadingMore"
+                :disabled="loadingMore || busy"
                 aria-label="Load more flagged entries"
                 @click="loadMore()"
             >
@@ -342,7 +531,7 @@ function timeAgo(iso: string | null): string {
         </nav>
 
         <!-- Destructive-confirm dialog — replaces native `confirm()`. -->
-        <Dialog v-model:open="dialogOpen">
+        <Dialog :open="dialogOpen" @update:open="onDialogOpenChange">
             <DialogContent surface="opaque" class="max-w-sm">
                 <DialogHeader>
                     <DialogTitle>Delete gallery entry?</DialogTitle>
@@ -353,8 +542,16 @@ function timeAgo(iso: string | null): string {
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button emphasis="quiet" @click="dialogOpen = false">Cancel</Button>
-                    <Button emphasis="primary" tone="destructive" @click="confirmDelete">Delete</Button>
+                    <Button emphasis="quiet" :disabled="busy" @click="onDialogOpenChange(false)">
+                        Cancel
+                    </Button>
+                    <Button
+                        emphasis="primary"
+                        tone="destructive"
+                        :loading="busy"
+                        :disabled="busy"
+                        @click="confirmDelete"
+                    >Delete</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -362,5 +559,13 @@ function timeAgo(iso: string | null): string {
 </template>
 
 <style scoped>
-@reference "tailwindcss";
+/* FR-AFP-3 / FR-AFP-61: the card was drawn in hard-coded Tailwind reds with zero
+   `dark:` and zero tokens — ≈1.3–2.6:1 against the resolved light tokens, and the
+   outline failed SC 1.4.11 in BOTH themes (1.33 light / 1.20 dark). The plate is
+   now the destructive TOKEN at an edge weight the producer's own ink scale sets,
+   so it moves with the theme instead of against it. */
+.flagged-card {
+    border: 1px solid color-mix(in oklab, var(--destructive) 45%, transparent);
+    background: color-mix(in oklab, var(--destructive) 6%, transparent);
+}
 </style>

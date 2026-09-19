@@ -1,3 +1,4 @@
+// SERVED MODEL: claude-opus-5[1m]
 import { ApiProblem } from "@/lib/api-problem";
 import { isAbortError } from "@/lib/api";
 
