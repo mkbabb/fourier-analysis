@@ -6,8 +6,11 @@ import { Checkbox } from "@mkbabb/glass-ui";
 import type { Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { basisDisplay } from "../lib/basis-display";
-import { VIZ_COLORS } from "@/lib/colors";
-import PathPreview from "@/components/ui/PathPreview.vue";
+// FR-GFC-22 / G-F4-DEAD-DEP: `VIZ_COLORS` and `PathPreview` were imported and
+// never referenced — zero occurrences of either identifier anywhere else in this
+// file (`grep -c` = 1 each, the import line itself), so the card was pulling a
+// colour table and a whole SFC into its chunk to use neither. `noUnusedLocals`
+// had been reporting both as TS6133 the entire time.
 import {
     Eye,
     Heart,

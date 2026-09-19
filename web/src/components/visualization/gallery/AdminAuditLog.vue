@@ -407,7 +407,3 @@ function actionTone(action: string): ActionTone {
         </nav>
     </div>
 </template>
-
-<style scoped>
-@reference "tailwindcss";
-</style>

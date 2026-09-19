@@ -102,7 +102,3 @@ function getBasisLabel(item: WorkspaceDraft): string {
         </div>
     </div>
 </template>
-
-<style scoped>
-@reference "tailwindcss";
-</style>

@@ -44,8 +44,6 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-@reference "tailwindcss";
-
 .featured-section {
     padding: 0 1rem;
 }

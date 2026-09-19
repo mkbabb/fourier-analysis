@@ -195,8 +195,6 @@ function timeAgo(iso: string): string {
 </template>
 
 <style scoped>
-@reference "tailwindcss";
-
 /* Card shadow */
 .modal-card {
     box-shadow: var(--shadow-modal);

@@ -837,7 +837,3 @@ function timeAgo(iso: string): string {
         </Dialog>
     </div>
 </template>
-
-<style scoped>
-@reference "tailwindcss";
-</style>
