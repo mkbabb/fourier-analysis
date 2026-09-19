@@ -1,10 +1,37 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import * as path from "node:path";
 
 const TEST_IMAGE = path.resolve(
     import.meta.dirname,
     "../../assets/animals/golden-retriever.webp",
 );
+
+/**
+ * X·F F.W9 `.b` — `G-F9-2`'s own surface, cured before the floor was told to
+ * deny warnings.
+ *
+ * Three sites read `page.url().match(/\/w\/([^/]+)/)?.[1]!` — a non-null
+ * assertion ON an optional chain, which is the one combination that cannot be
+ * true: if the match fails, `?.` yields `undefined` and `!` silences exactly
+ * that, so the spec carried `undefined` forward as a slug and failed later, in
+ * the API call, with an unrelated message. `oxlint` grades it
+ * `typescript-eslint(no-non-null-asserted-optional-chain)` and it was one of
+ * the ten findings the floor could not fail on.
+ *
+ * The cure is the assertion the `!` was standing in for, written once. It
+ * throws with the URL it actually saw, so a redirect that never happened is
+ * reported as a redirect that never happened.
+ */
+function imageSlugFrom(page: Page): string {
+    const url = page.url();
+    const slug = url.match(/\/w\/([^/]+)/)?.[1];
+    if (!slug) {
+        throw new Error(
+            `expected a /w/{imageSlug} workspace URL after the upload redirect; got ${url}`,
+        );
+    }
+    return slug;
+}
 
 test.describe.serial("Asset-based workspace flow", () => {
     test("upload → extract → canvas renders", async ({ page }) => {
@@ -60,7 +87,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await fileInput.setInputFiles(TEST_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
-        const imageSlug = page.url().match(/\/w\/([^/]+)/)?.[1]!;
+        const imageSlug = imageSlugFrom(page);
 
         // Wait for canvas — meaning extraction + compute already happened
         const canvas = page.locator("canvas").first();
@@ -104,7 +131,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await fileInput.setInputFiles(TEST_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
-        const imageSlug = page.url().match(/\/w\/([^/]+)/)?.[1]!;
+        const imageSlug = imageSlugFrom(page);
 
         // Extract contour
         const contour = await page.evaluate(async (slug) => {
@@ -155,7 +182,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await fileInput.setInputFiles(TEST_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
-        const imageSlug = page.url().match(/\/w\/([^/]+)/)?.[1]!;
+        const imageSlug = imageSlugFrom(page);
 
         const blobResponse = await page.evaluate(async (slug) => {
             const res = await fetch(`/api/images/${slug}/blob`);

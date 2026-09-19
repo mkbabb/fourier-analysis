@@ -194,7 +194,38 @@ jobs:
         # suppressed, allowlisted or disabled. Tightening to `--deny-warnings`
         # is F.W9/W10's act, together with the `lint` npm script (§6b: "the lint
         # script as a CI gate" is the W9/W10 half).
-        run: npx --yes oxlint@1.42.0 src e2e vite.config.ts playwright.config.ts
+        #
+        # ── X·F F.W9 `.b` (`G-F9-2` · §2.4's `M7` row): THE TIGHTENING, TAKEN ──
+        #
+        # The routing above is discharged here. It had to be, because the floor
+        # as it stood could not fail on anything oxlint grades a WARNING, which
+        # is most of what oxlint finds: measured 2026-09-19, seeding a duplicate
+        # object key into a checked file produced *"Found 1 warning and 0
+        # errors"* and **exit 0**. A gate that reports a real defect and exits 0
+        # is the ornament `FR-IC-25` names, so the 0-errors/18-warnings reading
+        # above was a reading of a step that could not redden.
+        #
+        # `--deny-warnings` makes every finding blocking. No `--allow`, no
+        # ignore file, no rule disabled, no `continue-on-error` — the only way
+        # this step goes green is the sites being cured.
+        #
+        # BORN-RED, WITH THE ROSTER PUBLISHED RATHER THAN HIDDEN. Seven findings
+        # remain at the settled bytes (measured 2026-09-19, double-run), all in
+        # `web/src/**` — product source, which F.W9 does not own (*"F.W9 owns
+        # GATES. F.W9 owns no CURE."*). Each routes to whichever wave next opens
+        # its file:
+        #   · `eslint(no-unused-expressions)` ×4 —
+        #       `components/equation/ConvergencePlot.vue:312,331,345`
+        #       `components/visualization/GalleryView.vue:148`
+        #   · `eslint-plugin-unicorn(no-new-array)` ×2 —
+        #       `lib/svg-fourier.ts:44,179`
+        #   · `eslint-plugin-unicorn(no-useless-fallback-in-spread)` ×1 —
+        #       `lib/api.ts:188`
+        # The three findings this floor convicted inside `web/e2e/` — F.W9's own
+        # surface — were CURED before the flag landed
+        # (`workspace-flow.spec.ts`'s non-null assertions on optional chains);
+        # `oxlint e2e` now reads *"Found 0 warnings and 0 errors"*.
+        run: npx --yes oxlint@1.42.0 --deny-warnings src e2e vite.config.ts playwright.config.ts
       - name: Keyed-loop + duplicate-import gate (X·F F.W4, G-F4-NO-UNUSED)
         working-directory: web
         # The ESLint leg of `G-F4-NO-UNUSED`. The gate's OTHER leg —
