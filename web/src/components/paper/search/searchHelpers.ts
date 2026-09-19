@@ -63,24 +63,38 @@ export function resultLabel(r: SearchResult): string {
  * `highlightFuzzy("𝔽ourier basis", "basis")` marked one character off, and
  * `highlightFuzzy("İstanbul set", "set")` marked the wrong characters
  * entirely. Mathematical alphanumerics are plausible in this paper's labels.
- * The fix is to do the matching over the SAME units the renderer uses: the
- * code-point array is built first and the match runs over its joined form with
- * an index map back to code points.
+ *
+ * There are TWO length axes here and they are not the same defect. A code point
+ * outside the BMP is two code units, so a code-unit index overshoots the
+ * renderer's array; and `toLowerCase()` may return MORE code points than it was
+ * given (`"İ"` → `"i"` + U+0307), so an index into the lower-cased text does not
+ * name the same character in the original at all. One map closes both: the
+ * lower-cased text is built one code point at a time, and every code unit it
+ * emits records the index of the ORIGINAL code point that produced it. The
+ * matcher then indexes what it indexes, and the renderer marks what the reader
+ * actually sees.
+ *
+ * ⊘ Lower-casing per code point rather than per string gives up the handful of
+ * context-sensitive foldings (Greek final sigma). That is the right trade for a
+ * highlighter: a mark one character wide in the wrong place is visible to every
+ * reader, and a σ/ς near-miss costs a highlight on a query no one has typed.
  */
 export function highlightFuzzy(text: string, query: string): string {
     if (!query.trim() || !text) return escapeHtml(text);
 
     const chars = [...text];
-    // code-unit offset → code-point index
+    // lower-cased code-unit offset → ORIGINAL code-point index
     const unitToPoint = new Map<number, number>();
-    let unit = 0;
+    let textLc = "";
     for (let point = 0; point < chars.length; point++) {
-        unitToPoint.set(unit, point);
-        unit += chars[point].length;
+        const lower = chars[point].toLowerCase();
+        for (let k = 0; k < lower.length; k++) {
+            unitToPoint.set(textLc.length + k, point);
+        }
+        textLc += lower;
     }
 
     const tokens = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
-    const textLc = text.toLowerCase();
     const matchSet = new Set<number>();
 
     for (const token of tokens) {
