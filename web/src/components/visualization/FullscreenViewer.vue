@@ -1,6 +1,54 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+/**
+ * X.F.W3 `.d` — `fr-FullscreenViewer FV-2` (⊕ `FV-1`, `FV-3`, `FV-5`, `FV-6`,
+ * `FV-7`, `FV-10`, `FV-17`), a BLOCKER cured by ADOPTING THE DIALOG CHASSIS —
+ * the one that already ships in-tree ONE DIRECTORY OVER (`ExportModal.vue`
+ * imports `@mkbabb/glass-ui/dialog`).
+ *
+ * WHAT THIS FILE WAS: full dialog BEHAVIOUR with zero dialog SEMANTICS. A
+ * `<Teleport to="body">` backdrop, a hand-rolled Tab wrap, a document-level
+ * Escape listener, a hand-rolled focus restore — and no `role="dialog"`, no
+ * `aria-modal`, no inert background. An assistive technology was handed a
+ * viewport-filling surface it was never told was modal, over a document it was
+ * never told had stopped.
+ *
+ * The three sharpest limbs, each dying at the chassis rather than at a patch:
+ *
+ *   `FV-2`/`FV-17` — THE TRAP'S OWN PREDICATE WAS BLIND. `focusableEls()`
+ *   filtered on `el.offsetParent !== null`, which sees `display:none` and sees
+ *   nothing else: an element inside a `visibility:hidden` subtree, or inside an
+ *   `inert` one, has a non-null `offsetParent` and was counted as a trap stop.
+ *   So Tab could land on a control the user could neither see nor operate.
+ *   reka's trap is built on the platform's own inertness, not on a layout read.
+ *
+ *   `FV-1`/`FV-6` — THE Z-TIER WAS A LOCAL INVENTION. `--z-fullscreen` (150)
+ *   sat above every glass floating primitive (≤130), so a tooltip, a popover or
+ *   a select opened from inside this surface painted BEHIND it. The chassis
+ *   sits on the design system's own `z-modal` rung, which the floating tiers
+ *   are ordered against by construction. `R-6`'s z-tier caveat rides this
+ *   adoption rather than being re-litigated here.
+ *
+ *   `FV-7` — the `@click.self` on the backdrop was STRUCTURALLY DEAD: the
+ *   container is `width:100%;height:100%`, so the backdrop had no exposed
+ *   surface for `.self` to ever match. It is not ported; outside-dismissal is
+ *   the chassis's, and on a viewport-filling surface the honest answer is that
+ *   there IS no outside — which is why `dismiss="deliberate"` is chosen: Escape
+ *   closes, and the visible Minimize control closes, and nothing else pretends
+ *   to.
+ *
+ * `FV-3`/`FV-5`/`FV-10` dissolve in the same adoption (the portal, the scroll
+ * lock and the focus restore are all the chassis's now). The ~60 lines of trap,
+ * listener and restore below are DELETED, not wrapped.
+ *
+ * ⊘ `FB-1` — the second `<ContourEditorCanvas>` mounted here with no `ref` and
+ * no listeners, so fullscreen contour edits are silently discarded — is NOT
+ * cured here. It rides `fr-ContourEditorCanvas D`/`B-5`'s banked BLOCKER with
+ * its own F.W1 sequencing rider, and `ContourEditorCanvas.vue` is in no bounds
+ * row of this unit. Named, not half-landed.
+ */
+import { ref } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@mkbabb/glass-ui/dialog";
 import { Minimize2 } from "@lucide/vue";
 import type { ContourAsset } from "@/lib/types";
 import BasisCanvas from "./BasisCanvas.vue";
@@ -24,138 +72,93 @@ const emit = defineEmits<{
 }>();
 
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
-const containerRef = ref<HTMLElement>();
-const show = ref(false);
 
-// ── Focus trap (A2 MED) ──
-// The teleported fullscreen layer must contain Tab focus; without this, Tab
-// leaks to the background document behind the overlay.  A tiny inline trap
-// (no new dep): wrap Tab from last→first and Shift+Tab from first→last across
-// the container's focusable descendants, scoped to the Teleport target.
-let lastFocused: HTMLElement | null = null;
-
-const FOCUSABLE =
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function focusableEls(): HTMLElement[] {
-    const root = containerRef.value;
-    if (!root) return [];
-    return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (el) => el.offsetParent !== null || el === document.activeElement,
-    );
+/**
+ * The chassis owns open/closed; this component stays a controlled consumer, as
+ * `ExportModal` already is. `@update:open` fires `false` on Escape and on the
+ * close control, so one bridge covers every dismissal path — where the old file
+ * had a document `keydown` listener, a `@click.self`, and a Button, each
+ * calling `emit("close")` by hand.
+ */
+function onOpenChange(open: boolean) {
+    if (!open) emit("close");
 }
-
-function onTrapKeydown(e: KeyboardEvent) {
-    if (e.key !== "Tab") return;
-    const els = focusableEls();
-    if (els.length === 0) {
-        e.preventDefault();
-        containerRef.value?.focus();
-        return;
-    }
-    const first = els[0];
-    const last = els[els.length - 1];
-    const active = document.activeElement as HTMLElement | null;
-    if (e.shiftKey) {
-        if (active === first || !containerRef.value?.contains(active)) {
-            e.preventDefault();
-            last.focus();
-        }
-    } else if (active === last || !containerRef.value?.contains(active)) {
-        e.preventDefault();
-        first.focus();
-    }
-}
-
-watch(() => props.visible, (v) => {
-    if (v) {
-        lastFocused = document.activeElement as HTMLElement | null;
-        show.value = true;
-        // Autofocus the first focusable inside the layer once it mounts.
-        nextTick(() => {
-            const els = focusableEls();
-            (els[0] ?? containerRef.value)?.focus();
-        });
-    } else {
-        show.value = false;
-        // Return focus to the trigger that opened the viewer.
-        lastFocused?.focus?.();
-        lastFocused = null;
-    }
-}, { immediate: true });
-
-function onAfterLeave() {
-    // Nothing needed — the teleport stays in DOM but invisible
-}
-
-function onKeydown(e: KeyboardEvent) {
-    if (!props.visible) return;
-    if (e.key === "Escape") {
-        emit("close");
-        return;
-    }
-    onTrapKeydown(e);
-}
-
-onMounted(() => document.addEventListener("keydown", onKeydown));
-onUnmounted(() => document.removeEventListener("keydown", onKeydown));
 </script>
 
 <template>
-    <Teleport to="body">
-        <Transition name="fs" @after-leave="onAfterLeave">
-            <div v-if="show" class="fs-backdrop" @click.self="emit('close')">
-                <div ref="containerRef" class="fs-container" tabindex="-1">
-                    <!-- Close button -->
-                    <Button emphasis="primary" size="md" icon-only class="fs-close" @click="emit('close')">
-                        <Minimize2 class="h-5 w-5" />
-                    </Button>
+    <Dialog :open="props.visible" @update:open="onOpenChange">
+        <DialogContent
+            class="fs-dialog"
+            surface="opaque"
+            dismiss="deliberate"
+            :scroll="false"
+        >
+            <!-- Every modal surface owes a name. The old one had none at all;
+                 this one says what it is and keeps the chrome the viewport
+                 treatment wants. -->
+            <DialogTitle class="sr-only">
+                {{ isEditing ? "Contour editor, fullscreen" : "Visualization, fullscreen" }}
+            </DialogTitle>
 
-                    <!-- Canvas fills the viewport -->
-                    <ContourEditorCanvas
-                        v-if="isEditing && contour"
-                        :contour="contour"
-                        :image-slug="imageSlug ?? null"
-                        :show-image-overlay="showImageOverlay"
-                    />
-                    <BasisCanvas
-                        v-else
-                        ref="canvasComponent"
-                        :active-bases="activeBases"
-                        :show-ghost="showGhost"
-                        :show-image-overlay="showImageOverlay"
-                    />
+            <Button
+                emphasis="primary"
+                size="md"
+                icon-only
+                class="fs-close"
+                aria-label="Exit fullscreen"
+                @click="emit('close')"
+            >
+                <Minimize2 class="h-5 w-5" />
+            </Button>
 
-                    <!-- Timeline overlaid at the bottom -->
-                    <div v-if="!isEditing" class="fs-controls">
-                        <AnimationControls
-                            :active-bases="activeBases"
-                            :show-ghost="showGhost"
-                            :show-image-overlay="showImageOverlay"
-                            max-width="60rem"
-                            @toggle-ghost="emit('toggleGhost')"
-                            @toggle-image-overlay="emit('toggleImageOverlay')"
-                            @export-frame="canvasComponent?.exportFrame()"
-                        />
-                    </div>
-                </div>
+            <!-- Canvas fills the viewport -->
+            <ContourEditorCanvas
+                v-if="isEditing && contour"
+                :contour="contour"
+                :image-slug="imageSlug ?? null"
+                :show-image-overlay="showImageOverlay"
+            />
+            <BasisCanvas
+                v-else
+                ref="canvasComponent"
+                :active-bases="activeBases"
+                :show-ghost="showGhost"
+                :show-image-overlay="showImageOverlay"
+            />
+
+            <!-- Timeline overlaid at the bottom -->
+            <div v-if="!isEditing" class="fs-controls">
+                <AnimationControls
+                    :active-bases="activeBases"
+                    :show-ghost="showGhost"
+                    :show-image-overlay="showImageOverlay"
+                    max-width="60rem"
+                    @toggle-ghost="emit('toggleGhost')"
+                    @toggle-image-overlay="emit('toggleImageOverlay')"
+                    @export-frame="canvasComponent?.exportFrame()"
+                />
             </div>
-        </Transition>
-    </Teleport>
+        </DialogContent>
+    </Dialog>
 </template>
 
 <style scoped>
-.fs-backdrop {
-    position: fixed;
+/* PLACEMENT IS THIS FILE'S BUSINESS, CHROME IS NOT — `FV-13`'s ruling, applied
+   to the chassis. The dialog's default seat is a centred floating card; this
+   surface IS the viewport, so the geometry is overridden here and NOTHING about
+   the producer's glass register, motion, veil or z-rung is re-authored. The
+   deleted `--z-fullscreen` backdrop is exactly the local invention `FV-1`
+   books. */
+.fs-dialog {
     inset: 0;
-    z-index: var(--z-fullscreen);
-    background: var(--background);
-}
-
-.fs-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    transform: none;
+    border-radius: 0;
+    border: none;
+    padding: 0;
     display: flex;
     flex-direction: column;
 }
@@ -167,14 +170,14 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
    was a no-op duplication that two corpus superlatives certified as craft. The
    CHROME STRIP below is the real design judgement and it stays — a card frame
    is meaningless when the surface IS the viewport. */
-.fs-container :deep(.canvas-container),
-.fs-container :deep(.editor-shell) {
+.fs-dialog :deep(.canvas-container),
+.fs-dialog :deep(.editor-shell) {
     border: none;
     border-radius: 0;
     box-shadow: none;
 }
 
-.fs-container :deep(.canvas-container:hover) {
+.fs-dialog :deep(.canvas-container:hover) {
     border-color: transparent;
     box-shadow: none;
 }
@@ -241,20 +244,8 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
    `max-width` prop (see template), replacing the former
    `--animation-dock-max-width` CSS-var contract. */
 
-/* ── Fullscreen enter/leave transitions ── */
-/* A.W3.d — bezier→`--ease-out-expo`. */
-.fs-enter-active {
-    transition: opacity 0.25s var(--ease-standard), transform 0.3s var(--ease-out-expo);
-}
-.fs-leave-active {
-    transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard);
-}
-.fs-enter-from {
-    opacity: 0;
-    transform: scale(0.95);
-}
-.fs-leave-to {
-    opacity: 0;
-    transform: scale(0.95);
-}
+/* X.F.W3 `.d` — the hand-rolled `fs-*` enter/leave transition is DELETED with
+   the backdrop it animated. `DialogContent` carries the producer's own modal
+   motion, including its reduced-motion arm; a second, unlayered scale/opacity
+   pair over the top is the `FV-12` class of defect, not a preservation. */
 </style>
