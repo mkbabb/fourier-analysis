@@ -1,5 +1,4 @@
-import { reactive, nextTick } from "vue";
-import type { Ref } from "vue";
+import { reactive, nextTick, type Ref } from "vue";
 
 export interface ScrollNavigationOptions {
     scrollContainer: Ref<HTMLElement | null>;
@@ -9,6 +8,31 @@ export interface ScrollNavigationOptions {
     getOffsetFor: (id: string) => number | null;
     recalculate: () => void;
 }
+
+/**
+ * X·F F.W4 `.e` — `PAW-47` under **LAW-4**: ONE clearance authority.
+ *
+ * The theme authors three `scroll-margin-top` rules (5rem/6rem) that NOTHING
+ * consults — no `scrollIntoView` on paper targets, no router `scrollBehavior` —
+ * while the app substitutes `rawTop − getScrollOffset()`, whose answer on a
+ * desktop landing is **8px** (`C-02`: the global `.floating-toc-bar` query
+ * matches an element that is `display:none`-adjacent and boxless, so
+ * `offsetHeight` is 0 and the branch returns 0 + 8 rather than the authored
+ * 16). Two authorities, neither consuming the other, and every ToC or
+ * cross-reference destination landing inside the 32px top edge-fade scrim.
+ *
+ * There is one authority now and this is it. Its VALUE is a dependent of the
+ * `PAW-44` decision (`D4`), which `DECISIONS-F.W4.md` rules
+ * DEFERRED-WITH-DEFAULT — *"carry the stack as INERT-BY-MEASUREMENT … author
+ * PAW-47's clearance constant ONCE, against the inert geometry"*. Against the
+ * inert geometry the only thing to clear is the scrim: `.paper-root::before` is
+ * `height: 2rem` (32px). The constant clears it with a small margin, and the
+ * mobile bar's measured height is added when that bar is actually painted.
+ *
+ * ⊘ If `PAW-44` is ever decided RESTORE, this constant is the single place the
+ * sticky stack's height has to be accounted for — which is what LAW-4 is for.
+ */
+const SCRIM_CLEARANCE_PX = 40;
 
 export function useScrollNavigation(opts: ScrollNavigationOptions) {
     const MAX_STACK = 20;
@@ -20,9 +44,30 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
     const navStack = reactive<string[]>([]);
     let isBackNavigation = false;
 
+    // ── `SP-4` / `PV D/M-1` ⊕ `D/m-16` ⊕ `PS D-M10` — the motion signal ──────
+    // Both `scrollTo({behavior:"smooth"})` sites were PRM-ungated, one
+    // conditional from correct and fifteen lines from this file's own `instant`
+    // idiom; the census credited a "smooth-scroll opt-out" that never existed
+    // (that `matchMedia` gates the progress-bar listener alone). And PRM was
+    // sampled once at arm time everywhere it WAS read — a preference the user
+    // changes mid-session is a signal, not a boot-time constant, so this reads
+    // the live `matches` and keeps the listener for anything that caches it.
+    const prmQuery =
+        typeof window !== "undefined" && typeof window.matchMedia === "function"
+            ? window.matchMedia("(prefers-reduced-motion: reduce)")
+            : null;
+
+    /** The reduced arm gets the same DESTINATION, arrived at without travel. */
+    function scrollBehavior(): ScrollBehavior {
+        return prmQuery?.matches ? "instant" : "smooth";
+    }
+
     function getScrollOffset(): number {
         const bar = document.querySelector(".floating-toc-bar") as HTMLElement | null;
-        return bar ? bar.offsetHeight + 8 : 16;
+        // A boxless (unpainted) bar measures 0 — the `C-02` reading. Only a bar
+        // that actually occupies space adds its height to the clearance.
+        const barHeight = bar?.offsetHeight ?? 0;
+        return SCRIM_CLEARANCE_PX + barHeight;
     }
 
     /**
@@ -188,7 +233,7 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
                     const s = opts.scrollContainer.value;
                     if (!s) return;
                     const top = computeAbsoluteTop(s, id) ?? estimated;
-                    s.scrollTo({ top, behavior: "smooth" });
+                    s.scrollTo({ top, behavior: scrollBehavior() });
                 });
             });
         } else {
@@ -239,7 +284,7 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
             });
             return;
         }
-        scroller.scrollTo({ top: 0, behavior: "smooth" });
+        scroller.scrollTo({ top: 0, behavior: scrollBehavior() });
     }
 
     return { navigateTo, navigateBack, scrollToTop, performScroll, navStack };
