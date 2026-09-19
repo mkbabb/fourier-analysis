@@ -15,7 +15,7 @@ import MobileFloatingToc from "./MobileFloatingToc.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
 import PaperSearchModal from "./search/PaperSearchModal.vue";
 import { createPreviewLookup } from "./paperTree";
-import { PAPER_TOC_KEY, type PaperTocModel } from "./paperToc";
+import { PAPER_TOC_KEY, assertSectionRampFits, type PaperTocModel } from "./paperToc";
 import { useScrollNavigation } from "./useScrollNavigation";
 import { usePaperSearch } from "./search/usePaperSearch";
 // One specifier, one import — the type used to arrive on a second `import type`
@@ -125,7 +125,6 @@ function handleGlobalKeydown(e: KeyboardEvent) {
     }
 }
 
-const sections = computed(() => paperSections);
 const currentPage = ref(pageMap[flatSections[0]?.id] ?? 1);
 const paperRootStyle = computed(() =>
     scrollViewportHeightPx.value > 0
@@ -267,6 +266,9 @@ const tocModel: PaperTocModel = {
 
 provide(PAPER_TOC_KEY, tocModel);
 
+// `★MF-10`: the ramp is exactly saturated at this paper's 13 roots.
+assertSectionRampFits(paperSections.length);
+
 const { queueSidebarFollow } = useSidebarFollow({
     sidebarEl: sidebarNavEl,
     activeId,
@@ -396,7 +398,7 @@ onUnmounted(() => {
                             class="mb-14 cm-serif text-sm text-muted-foreground lg:hidden"
                         >
                             <ol class="list-none space-y-1.5 pl-0">
-                                <li v-for="section in sections" :key="section.id">
+                                <li v-for="section in paperSections" :key="section.id">
                                     <Button
                                         emphasis="text"
                                         size="sm"
@@ -426,21 +428,31 @@ onUnmounted(() => {
 
         <!-- Bottom overlay: page indicator (left) + back button (right) -->
         <div class="paper-bottom-overlay">
-            <div class="overlay-page glass-wash fira-code">
+            <!-- `D/M-8` + `★MF-8`: the product's only reading-location
+                 affordance was excluded three independent ways — 2.88:1 ink, no
+                 announcement, and `user-select: none` so it could not even be
+                 copied. `role="status"` announces the page politely as it
+                 changes; the ink is the strong rung; the text is selectable. -->
+            <div class="overlay-page glass-wash fira-code" role="status" aria-live="polite">
                 pg {{ currentPage }}<span class="overlay-page-sep">/</span>{{ totalPages }}
             </div>
 
             <Transition name="fade-scale">
+                <!-- `D/M-6`: name-from-content outranks `title`, so once the
+                     badge rendered the sole history control announced itself as
+                     a NUMBER — "2" — and below two as "Back (1 in history)".
+                     The name is fixed and the count is decoration. -->
                 <Button
                     v-if="navStack.length > 0"
                     emphasis="primary"
                     size="md" icon-only
+                    type="button"
                     class="overlay-btn overlay-back"
+                    aria-label="Back"
                     @click="navigateBack"
-                    :title="`Back (${navStack.length} in history)`"
                 >
                     <Undo2 class="h-3.5 w-3.5" />
-                    <span v-if="navStack.length > 1" class="overlay-badge">{{ navStack.length }}</span>
+                    <span v-if="navStack.length > 1" class="overlay-badge" aria-hidden="true">{{ navStack.length }}</span>
                 </Button>
             </Transition>
         </div>
@@ -476,8 +488,9 @@ onUnmounted(() => {
         color-mix(in srgb, var(--background) 55%, transparent),
         transparent 70%
     );
-    mask-image: linear-gradient(to bottom, black, transparent);
-    -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+    /* `D/m-13`: the gradient's own stop already fades to transparent at 70%;
+       the mask ramped the same 2rem a second time, so the fade was applied
+       twice and read as nothing. One attenuation, the gradient's. */
 }
 
 .paper-root::after {
@@ -487,8 +500,7 @@ onUnmounted(() => {
         color-mix(in srgb, var(--background) 55%, transparent),
         transparent 70%
     );
-    mask-image: linear-gradient(to top, black, transparent);
-    -webkit-mask-image: linear-gradient(to top, black, transparent);
+
 }
 
 .paper-scroll {
@@ -546,6 +558,13 @@ onUnmounted(() => {
     pointer-events: none;
     /* A.W3.d — bezier→`--ease-out-expo`. */
     transition: opacity 180ms var(--ease-out-expo);
+}
+
+/* `★MF-7`: `will-change: opacity` stood permanently on a fixed full-viewport
+   element for chrome that only appears during a far jump — a compositor layer
+   the size of the window, held for the whole session. It is declared only while
+   the overlay is actually being shown. */
+.teleport-overlay[style*="opacity: 1"] {
     will-change: opacity;
 }
 
@@ -558,7 +577,7 @@ onUnmounted(() => {
     border-radius: 0.75rem;
     border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     background: var(--card);
-    box-shadow: 3px 3px 0px 0px color-mix(in srgb, var(--foreground) 8%, transparent);
+    box-shadow: var(--shadow-cartoon);
     padding: 1.25rem 1rem;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -630,7 +649,9 @@ onUnmounted(() => {
     -webkit-backdrop-filter: blur(8px);
     color: color-mix(in srgb, var(--foreground) 70%, transparent);
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    /* `D/M-15`: hand-typed shadows, and the cure table's correction is carried
+       — `--shadow-md`, never `--shadow-soft`. */
+    box-shadow: var(--shadow-md);
     /* A.W3.d — named properties + canonical token, no `transition: all`. */
     transition:
         color 0.2s var(--ease-out-expo),
@@ -640,10 +661,22 @@ onUnmounted(() => {
         transform 0.2s var(--ease-out-expo);
 }
 
+/* `★MF-1`: this block is UNLAYERED and the producer's focus ring is a
+   `box-shadow` in `@layer components`, so the resting shadow above overwrote
+   the ring while the layered `outline: none` survived — no visible focus
+   indicator at all on the sole history control (WCAG 2.4.7 AA), and the app's
+   own outline allowlist does not name `.overlay-btn`. The ring is restored as
+   an OUTLINE, which no `box-shadow` can contest, with the producer's own
+   registers. */
+.overlay-btn:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: 2px;
+}
+
 .overlay-btn:hover {
     color: var(--foreground);
     border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-lg);
     transform: scale(1.05);
 }
 
@@ -672,11 +705,15 @@ onUnmounted(() => {
 .overlay-page {
     pointer-events: auto;
     @apply text-sm;
-    color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+    /* `D/M-8`: 2.88:1 at the authored 70% dilution, reproduced to three
+       decimals by both readers. `--muted-foreground-strong` — which the record
+       notes exists and is unused — measures 7.882:1 light / 10.295:1 dark, and
+       it is also the register declared for ink over a glass plate
+       (`--on-glass-muted-strong`), which is what `.glass-wash` makes this. */
+    color: var(--muted-foreground-strong);
     border-radius: 0.375rem;
     padding: 0.25rem 0.5rem;
     letter-spacing: 0.02em;
-    user-select: none;
 }
 
 .overlay-page-sep {
@@ -692,13 +729,12 @@ onUnmounted(() => {
                 opacity 0.25s var(--ease-out-expo);
 }
 
-.slide-down-enter-from {
-    transform: translateY(-100%);
-    opacity: 0;
-}
-
+/* `D/M-5`: `translateY(-100%)` resolved against `.floating-toc`'s own
+   `height: 0` root — zero distance, so only the co-declared opacity ever
+   showed. A real length is the whole cure. */
+.slide-down-enter-from,
 .slide-down-leave-to {
-    transform: translateY(-100%);
+    transform: translateY(-2.75rem);
     opacity: 0;
 }
 

@@ -44,6 +44,41 @@ export interface PaperTocModel extends PaperTocState {
 export const PAPER_TOC_KEY: InjectionKey<PaperTocModel> = Symbol("paper-toc");
 
 /**
+ * X·F F.W4 `.e` — `PV ★MF-10` (= `fr-PaperSidebar L-10` ⊕ `D-M4 extended`).
+ *
+ * The section ramp has ZERO headroom: the design system declares stops 0..12
+ * and this paper has exactly 13 roots, so the ramp is exactly saturated. A
+ * fourteenth chapter — one `\chapter` in the LaTeX — makes
+ * `var(--section-color-13)` invalid at computed-value time at four
+ * fallback-free sites, and an IACVT colour is DROPPED: the heading inherits
+ * whatever it inherits, silently, in the one place the reader uses colour to
+ * know where they are.
+ *
+ * Two guards, and they are different guards. The modulo keeps the ramp TOTAL
+ * for any index; the fallback keeps it legible if the token itself ever goes
+ * missing. The assertion below is the third: it does not repair anything, it
+ * says out loud, in development, that the ramp has been outgrown — because the
+ * failure this cures is one that produces no error of its own.
+ */
+export const SECTION_COLOR_STOPS = 13;
+
+export function sectionColorVar(rootIndex: number): string {
+    const stop = ((rootIndex % SECTION_COLOR_STOPS) + SECTION_COLOR_STOPS) % SECTION_COLOR_STOPS;
+    return `var(--section-color-${stop}, var(--foreground))`;
+}
+
+/** Dev-only: the ramp is saturated, so growth is the thing to hear about. */
+export function assertSectionRampFits(rootCount: number): void {
+    if (import.meta.env.DEV && rootCount > SECTION_COLOR_STOPS) {
+        console.warn(
+            `paper ToC: ${rootCount} root sections against a ${SECTION_COLOR_STOPS}-stop ` +
+                `section ramp — colours now repeat (stop = index % ${SECTION_COLOR_STOPS}). ` +
+                `Widening the ramp is a producer change (glass-ui BH relay), not a consumer one.`,
+        );
+    }
+}
+
+/**
  * Inject the one model. A host mounted outside `PaperView` is a programming
  * error, and it says so here rather than failing later as an `undefined` read
  * inside a template.

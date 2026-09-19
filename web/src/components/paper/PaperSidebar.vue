@@ -3,7 +3,7 @@ import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
-import { injectPaperToc } from "./paperToc";
+import { injectPaperToc, sectionColorVar } from "./paperToc";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
     Collapsible,
@@ -94,15 +94,30 @@ function plainTitle(section: PaperSectionData): string {
             <PaperSearch :search="search" variant="sidebar" />
             <div class="sidebar-header">
                 <p class="sidebar-label cm-serif">Contents</p>
-                <Button
-                    emphasis="quiet"
-                    size="md" icon-only
-                    class="sidebar-top-btn"
-                    @click="scrollToTop"
-                    title="Scroll to top"
-                >
-                    <ChevronUp class="h-3 w-3" />
-                </Button>
+                <!-- `D-B3(a)(b)(c)`: a 20×20 box under SC 2.5.8's 24px floor,
+                     a glyph and a border that never reached 3:1 in any state,
+                     and an accessible name that was a native `title` — the one
+                     control in this file denied the project Tooltip.
+                     ⊘ `PS-M2` RELAY-BEFORE-RENAME: the CLASS NAME is unchanged.
+                     latex-paper's shipped `useSidebarFollow` hard-codes
+                     `.sidebar-top-btn` in its pointer exemption, so a rename
+                     here silently converts scroll-to-top clicks into sticky
+                     manual-override suspensions. The relay carries the
+                     data-attribute hook; this cure restyles and never renames.
+                     (Measured this seat: glass-ui's own `useSidebarFollow` twin
+                     hard-codes the same private class — the relay is owed to
+                     BOTH producers.) -->
+                <Tooltip text="Scroll to top" side="right">
+                    <Button
+                        emphasis="quiet"
+                        size="md" icon-only
+                        class="sidebar-top-btn"
+                        aria-label="Scroll to top"
+                        @click="scrollToTop"
+                    >
+                        <ChevronUp class="sidebar-top-icon" />
+                    </Button>
+                </Tooltip>
             </div>
             <ol class="sidebar-list">
                 <li v-for="(section, si) in sections" :key="section.id">
@@ -127,7 +142,7 @@ function plainTitle(section: PaperSectionData): string {
                                     @click="navigateAndReveal(section.id)"
                                     class="sidebar-link cm-serif"
                                     :class="{ 'is-active': activeRootId === section.id }"
-                                    :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
+                                    :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
                                 >
                                     <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
                                     <span v-html="renderTitle(section.title)" />
@@ -157,7 +172,7 @@ function plainTitle(section: PaperSectionData): string {
                                             class="sidebar-link sidebar-sublink cm-serif"
                                             :class="{ 'is-active-sub': isActive(sub.id) || isInActiveChain(sub.id) }"
                                                 :style="isActive(sub.id)
-                                                    ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
+                                                    ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
                                                     : {}"
                                         >
                                             <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
@@ -173,7 +188,7 @@ function plainTitle(section: PaperSectionData): string {
                                                 @click="navigateTo(subsub.id)"
                                                 class="sidebar-link sidebar-subsublink cm-serif"
                                                 :style="isActive(subsub.id)
-                                                    ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
+                                                    ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
                                                     : {}"
                                             >
                                                 <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
@@ -242,7 +257,12 @@ function plainTitle(section: PaperSectionData): string {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+    /* `D-B2`: the 60% dilution measured 2.39:1 light / 3.00:1 dark against a
+       4.5:1 floor — triple-derived in the record, and axe never visits this
+       route to catch it. Full strength is 5.021:1 light / 5.440:1 dark over
+       `--card` (this seat's re-derivation, method cross-checked against
+       `G-F4-CONTRAST-FLOOR`'s own readings of the diluted pairs). */
+    color: var(--muted-foreground);
     margin: 0;
 }
 
@@ -251,12 +271,15 @@ function plainTitle(section: PaperSectionData): string {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.25rem;
-    height: 1.25rem;
+    /* `D-B3(a)`: 20×20 is under SC 2.5.8's 24px minimum. */
+    min-width: 1.5rem;
+    min-height: 1.5rem;
     border-radius: 0.25rem;
-    border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+    /* `D-B3(b)`: border 1.27:1 and glyph 1.87:1 — neither reached the 3:1
+       non-text floor in any state. Both are full-strength tokens now. */
+    border: 1px solid var(--border);
     background: none;
-    color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+    color: var(--muted-foreground);
     cursor: pointer;
     /* A.W3.d — named properties + canonical token, no `transition: all`. */
     transition: color 0.15s var(--ease-standard), border-color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
@@ -264,8 +287,16 @@ function plainTitle(section: PaperSectionData): string {
 
 .sidebar-top-btn:hover {
     color: var(--foreground);
-    border-color: var(--border);
+    border-color: var(--muted-foreground);
     background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+/* `D-B3(d)` is KILLED as filed — `size-3` is a no-op against the button
+   chunk's `[&_svg:not([class*=size-])]` guard — so the glyph is sized by a
+   `size-*` utility, the one escape the producer documents (`D/M-11`). */
+.sidebar-top-icon {
+    width: 0.75rem;
+    height: 0.75rem;
 }
 
 .sidebar-list {
@@ -322,6 +353,11 @@ function plainTitle(section: PaperSectionData): string {
     display: block;
     width: 100%;
     text-align: left;
+    /* `D-M10` = `C-M1(a)`: the Button base ships `whitespace-nowrap`, which
+       nothing here reset — so ToC titles could not wrap in a 220px rail and
+       minted a horizontal scroll axis instead. The authored `line-height:
+       1.35` below is the tell that these rows were meant to wrap. */
+    white-space: normal;
     background: none;
     border: none;
     cursor: pointer;
@@ -331,20 +367,32 @@ function plainTitle(section: PaperSectionData): string {
     padding: 0.28rem 0.625rem;
     border-radius: calc(var(--radius) - 2px);
     color: var(--muted-foreground);
-    /* A.W3.d — bezier→`--ease-out-expo`. */
-    transition: color 0.25s var(--ease-out-expo),
-                background-color 0.25s var(--ease-out-expo),
-                font-weight 0.15s var(--ease-standard);
+    /* `PV ★MF-6`: `font-weight` was in the transitioned set — a reflow per
+       frame plus synthesized-weight snapping against the remapped serif, and
+       only for full-motion users. Deleted, not re-tuned.
+       `D-M6`: the durations are the canonical registers now, and a colour
+       cross-fade gets the standard curve rather than the expo one the
+       producer's own doctrine reserves for movement. */
+    transition:
+        color var(--duration-fast) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard);
 }
 
 .sidebar-link:hover {
     color: var(--foreground);
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
+    background: color-mix(in srgb, var(--muted) 70%, transparent);
 }
 
+/* `D-M3`: the hover plate measured 1.022:1 light / 1.08 dark — a response the
+   eye cannot see — and the ACTIVE row, the likeliest pointer target, had none
+   at all because `background: none` won by source order over the hover rule.
+   The plate is a real one now and the active row keeps it. */
 .sidebar-link.is-active {
-    background: none;
     font-weight: 600;
+}
+
+.sidebar-link.is-active:hover {
+    background: color-mix(in srgb, var(--muted) 70%, transparent);
 }
 
 .sidebar-number {

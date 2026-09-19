@@ -3,7 +3,7 @@ import { ref, watch, nextTick, onUnmounted, useId, useTemplateRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "@lucide/vue";
 import PaperSearch from "./PaperSearch.vue";
-import { injectPaperToc } from "./paperToc";
+import { injectPaperToc, sectionColorVar } from "./paperToc";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
 
@@ -99,7 +99,7 @@ watch(() => props.search.isOpen.value, (open) => {
             <!-- Search mode: input replaces section title -->
             <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search glass-resting">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" />
-                <Button emphasis="quiet" size="md" icon-only class="floating-toc-search-close" @click="closeMobileSearch" title="Close search">
+                <Button emphasis="quiet" size="md" icon-only type="button" class="floating-toc-search-close" @click="closeMobileSearch" aria-label="Close search">
                     <X class="h-4 w-4" />
                 </Button>
             </div>
@@ -165,7 +165,7 @@ watch(() => props.search.isOpen.value, (open) => {
                             emphasis="quiet"
                             class="floating-toc-item floating-toc-root cm-serif"
                             :class="{ 'is-active': activeRootId === section.id }"
-                            :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
+                            :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
                             @click="toggleSection(section.id)"
                         >
                             <component
@@ -297,7 +297,9 @@ watch(() => props.search.isOpen.value, (open) => {
     padding: 0.25rem;
     border: none;
     background: none;
-    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+    /* `D/M-9`: the 60% dilution is below the floor; the plain rung measures
+       5.197:1 light / 7.716:1 dark against the page. */
+    color: var(--muted-foreground);
     cursor: pointer;
     flex-shrink: 0;
 }
@@ -311,7 +313,8 @@ watch(() => props.search.isOpen.value, (open) => {
     height: 1rem;
     flex-shrink: 0;
     opacity: 0.6;
-    transition: transform 0.2s ease;
+    /* A.W3.d — the file's last untokenised easing. */
+    transition: transform var(--duration-fast) var(--ease-standard);
 }
 .floating-toc-chevron.rotate-180 {
     opacity: 0.8;
@@ -343,7 +346,7 @@ watch(() => props.search.isOpen.value, (open) => {
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+    color: var(--muted-foreground);
     font-size: 0.75rem;
     line-height: 1rem;
 }
@@ -391,7 +394,8 @@ watch(() => props.search.isOpen.value, (open) => {
 .floating-toc-sub {
     padding-left: 2.25rem;
     font-size: 0.8125rem;
-    color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+    /* `D/M-9`: same class of dilution, same cure. */
+    color: var(--muted-foreground);
 }
 
 .floating-toc-item:hover,
