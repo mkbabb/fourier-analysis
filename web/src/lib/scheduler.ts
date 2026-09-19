@@ -10,12 +10,25 @@
  * none is privileged the behaviour degrades to a macrotask hop — never a
  * rip-out.
  *
- * NOT applied to the epicycle/morph RENDER loop: that is already rAF-paced AND
- * off-screen-gated (I.γ, `stores/animation.ts`), and yielding mid-frame would
- * tear a draw. The genuine unbounded consumer is the gallery infinite-scroll
- * accumulation (`stores/gallery.ts`) — `processInChunks` yields between card
- * batches so a long scroll never monopolises the main thread. The MEASURED INP
- * delta + any deeper long-task instrumentation is W6 (the instrumented gate).
+ * NOT applied to the EPICYCLE render loop: that one is rAF-paced, off-screen-
+ * gated (I.γ, `stores/animation.ts`) and — since X.F.W4 — reduced-motion gated,
+ * and yielding mid-frame would tear a draw. The genuine unbounded consumer is
+ * the gallery infinite-scroll accumulation (`stores/gallery.ts`) —
+ * `processInChunks` yields between card batches so a long scroll never
+ * monopolises the main thread. The MEASURED INP delta + any deeper long-task
+ * instrumentation is W6 (the instrumented gate).
+ *
+ * ⊘ `FMD-22`'s second half (X·F F.W4 `.f`; the finding is unit `.a`'s, the file
+ * is this unit's): this paragraph used to say "the epicycle/morph RENDER loop"
+ * and claim BOTH were off-screen-gated by `stores/animation.ts`. The MORPH loop
+ * is not: it is driven by keyframes.js `KeyframesAnimation` instances inside
+ * `composables/useFourierMorph.ts`, owns no `requestAnimationFrame` of its own,
+ * registers no `IntersectionObserver`, and has never passed through this
+ * store's `setCanvasVisible` reference count. A comment that names a safety
+ * property a loop does not have is worse than no comment, because the next
+ * reader stops looking. The morph clock's own gate is `morphTo`'s
+ * reduced-motion short-circuit, landed at `.a`; off-screen gating it is not
+ * booked by any row and is not claimed here.
  */
 
 interface SchedulerLike {
