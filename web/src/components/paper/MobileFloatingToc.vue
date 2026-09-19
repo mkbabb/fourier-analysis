@@ -164,7 +164,7 @@ watch(() => props.search.isOpen.value, (open) => {
                         <Button
                             emphasis="quiet"
                             class="floating-toc-item floating-toc-root cm-serif"
-                            :class="{ 'is-active': activeRootId === section.id }"
+                            :aria-current="activeRootId === section.id ? 'location' : undefined"
                             :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
                             @click="toggleSection(section.id)"
                         >
@@ -398,13 +398,25 @@ watch(() => props.search.isOpen.value, (open) => {
     color: var(--muted-foreground);
 }
 
+/* X.F.W3 repair 1 — the published active-state vocabulary, applied
+   (`FR-COB-3` ⊕ `fr-App MG-η`). A toc row is a nav item marking the current
+   location, so the channel is `aria-current` and the paint keys on it. The
+   value is `location` rather than `page` because these rows address SECTIONS
+   INSIDE one document, not sibling routes; the vocabulary's CSS hook is
+   `[aria-current]`, value-agnostic by construction, and the AppHeader route
+   tabs that do address pages keep `page`. `.is-active` announced nothing, so
+   the current section was marked by weight and colour alone and a
+   screen-reader user heard an undifferentiated list. The conditional `:style`
+   beside it stays: it carries a PER-SECTION colour the cascade cannot express
+   without a variable, it is not a state spelling, and the same shape is already
+   the tree's idiom at `BasisSelector.vue:144`. */
 .floating-toc-item:hover,
-.floating-toc-item.is-active {
+.floating-toc-item[aria-current] {
     background: color-mix(in srgb, var(--muted) 50%, transparent);
     color: var(--foreground);
 }
 
-.floating-toc-item.is-active {
+.floating-toc-item[aria-current] {
     font-weight: 600;
 }
 

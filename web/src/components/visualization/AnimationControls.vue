@@ -120,7 +120,7 @@ const TimelineReadout = () =>
         <!-- ═══ COLLAPSED SUMMARY ═══ -->
         <template #collapsed>
             <Tooltip :text="anim.playing ? 'Pause' : 'Play'">
-                <button class="play-btn play-btn--mini" :class="{ 'is-playing': anim.playing }" :aria-label="anim.playing ? 'Pause animation' : 'Play animation'" @click.stop="anim.toggle">
+                <button class="play-btn play-btn--mini" :aria-pressed="anim.playing" :aria-label="anim.playing ? 'Pause animation' : 'Play animation'" @click.stop="anim.toggle">
                     <Transition name="icon-swap" mode="out-in">
                         <svg v-if="anim.playing" class="play-icon" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
                         <svg v-else class="play-icon" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
@@ -135,7 +135,7 @@ const TimelineReadout = () =>
         <div class="flex items-center gap-2 w-full">
             <!-- Play/Pause -->
             <Tooltip :text="anim.playing ? 'Pause animation' : 'Play animation'">
-                <button class="play-btn" :class="{ 'is-playing': anim.playing }" :aria-label="anim.playing ? 'Pause animation' : 'Play animation'" @click="anim.toggle">
+                <button class="play-btn" :aria-pressed="anim.playing" :aria-label="anim.playing ? 'Pause animation' : 'Play animation'" @click="anim.toggle">
                     <Transition name="icon-swap" mode="out-in">
                         <svg v-if="anim.playing" class="play-icon" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
                         <svg v-else class="play-icon" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
@@ -229,10 +229,20 @@ const TimelineReadout = () =>
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%);
     pointer-events: none;
 }
-.play-btn.is-playing::before { animation: rainbow-drift 2.5s var(--ease-standard) infinite; }
+/* X.F.W3 repair 1 — the published active-state vocabulary, applied (`style.css`
+   §"THE ACTIVE-STATE VOCABULARY, PUBLISHED"; `FR-COB-3`). The play control is a
+   true toggle (`anim.toggle`), so its run state is announced on `aria-pressed`
+   — the channel the vocabulary's own table gives "a transient run state" — and
+   painted from that same attribute. `.is-playing` was the state itself, on a
+   control that announced nothing: a screen-reader user could not tell a playing
+   dock from a paused one, and the class and the aria-label could drift apart
+   because nothing bound them. The sibling `ConvergenceTimeline.vue` play
+   control already set `aria-pressed`; now both speak one vocabulary.
+   Specificity is unmoved — an attribute selector scores as a class. */
+.play-btn[aria-pressed="true"]::before { animation: rainbow-drift 2.5s var(--ease-standard) infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-    .play-btn.is-playing::before { animation: none; }
+    .play-btn[aria-pressed="true"]::before { animation: none; }
 }
 .play-btn:hover { transform: scale(1.08); border-color: rgba(255, 255, 255, 0.4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 20px rgba(200, 100, 255, 0.2), 0 2px 12px rgba(100, 180, 255, 0.15); }
 .play-btn:active { transform: scale(0.93); }

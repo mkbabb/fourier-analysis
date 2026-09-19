@@ -79,7 +79,6 @@ const harmonicValueText = (): string =>
             class="play-btn"
             :aria-label="playing ? 'Pause the convergence sweep' : 'Play the convergence sweep'"
             :aria-pressed="playing"
-            :class="{ 'is-playing': playing }"
             @click="emit('toggle-play')"
         >
             <Transition name="icon-swap" mode="out-in">
@@ -144,7 +143,13 @@ const harmonicValueText = (): string =>
     background: color-mix(in srgb, var(--background) 85%, transparent);
     color: var(--foreground);
 }
-.play-btn.is-playing {
+/* X.F.W3 repair 1 — the published active-state vocabulary, applied (`FR-COB-3`).
+   This control already SET `aria-pressed` and then painted from a parallel
+   `.is-playing` class: two channels for one state, either changeable without
+   the other, and only ONE of them visible to the producer's `forced-colors` and
+   `prefers-contrast` arms, which key on ARIA exclusively. The class binding is
+   deleted and the rule keys on the attribute. */
+.play-btn[aria-pressed="true"] {
     background: color-mix(in srgb, var(--foreground) 8%, transparent);
     border-color: color-mix(in srgb, var(--foreground) 20%, transparent);
     color: var(--foreground);

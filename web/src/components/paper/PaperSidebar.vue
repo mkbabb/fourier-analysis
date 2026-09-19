@@ -148,7 +148,7 @@ function plainTitle(section: PaperSectionData): string {
                                     :data-toc-id="section.id"
                                     @click="navigateAndReveal(section.id)"
                                     class="sidebar-link cm-serif"
-                                    :class="{ 'is-active': activeRootId === section.id }"
+                                    :aria-current="activeRootId === section.id ? 'location' : undefined"
                                     :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
                                 >
                                     <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
@@ -177,7 +177,7 @@ function plainTitle(section: PaperSectionData): string {
                                             :data-toc-id="sub.id"
                                             @click="navigateTo(sub.id)"
                                             class="sidebar-link sidebar-sublink cm-serif"
-                                            :class="{ 'is-active-sub': isActive(sub.id) || isInActiveChain(sub.id) }"
+                                            :aria-current="isActive(sub.id) ? 'location' : undefined"
                                                 :style="isActive(sub.id)
                                                     ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
                                                     : {}"
@@ -194,6 +194,7 @@ function plainTitle(section: PaperSectionData): string {
                                                 :data-toc-id="subsub.id"
                                                 @click="navigateTo(subsub.id)"
                                                 class="sidebar-link sidebar-subsublink cm-serif"
+                                                :aria-current="isActive(subsub.id) ? 'location' : undefined"
                                                 :style="isActive(subsub.id)
                                                     ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
                                                     : {}"
@@ -407,11 +408,29 @@ function plainTitle(section: PaperSectionData): string {
    eye cannot see — and the ACTIVE row, the likeliest pointer target, had none
    at all because `background: none` won by source order over the hover rule.
    The plate is a real one now and the active row keeps it. */
-.sidebar-link.is-active {
+/* X.F.W3 repair 1 — the published active-state vocabulary, applied
+   (`FR-COB-3` ⊕ `fr-App MG-η`). Two spellings died here, not one. `.is-active`
+   on the section row was the state itself on a control that announced nothing;
+   `.is-active-sub` on the subsection row was the vocabulary's DEAD spelling —
+   no `.is-active-sub` rule exists in this file or anywhere in the tree (⟨cmd⟩
+   `grep -rn 'is-active-sub' src` → that one binding), so it painted nothing
+   while teaching the next reader a channel that does nothing. Both are now
+   `aria-current`, the channel the vocabulary gives a nav item marking the
+   current location; `location` and not `page`, because these rows address
+   SECTIONS INSIDE one document rather than sibling routes, and the hook
+   `[aria-current]` is value-agnostic by construction. The sub-subsection row
+   gains the same attribute: it could already be the current location and was
+   the one rank that announced it by neither class nor attribute. The
+   conditional `:style` beside each stays — a per-section colour the cascade
+   cannot express without a variable, not a state spelling. Note the ROW
+   SEMANTICS the attribute fixes: the old sub binding was `isActive(sub.id) ||
+   isInActiveChain(sub.id)`, which would have marked an ANCESTOR of the current
+   section as current; `aria-current` is bound to `isActive` alone. */
+.sidebar-link[aria-current] {
     font-weight: 600;
 }
 
-.sidebar-link.is-active:hover {
+.sidebar-link[aria-current]:hover {
     background: color-mix(in srgb, var(--muted) 70%, transparent);
 }
 
@@ -421,7 +440,7 @@ function plainTitle(section: PaperSectionData): string {
     opacity: 0.5;
 }
 
-.sidebar-link.is-active .sidebar-number {
+.sidebar-link[aria-current] .sidebar-number {
     opacity: 0.8;
 }
 

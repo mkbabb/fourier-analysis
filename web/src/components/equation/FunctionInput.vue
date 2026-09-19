@@ -200,7 +200,7 @@ const activePreset = computed(() =>
                                     emphasis="secondary"
                                     size="sm"
                                     class="preset-pill"
-                                    :class="{ 'is-active': activePreset?.name === preset.name }"
+                                    :aria-pressed="activePreset?.name === preset.name"
                                     @click="applyPreset(preset)"
                                 >
                                     {{ preset.name }}
@@ -290,7 +290,16 @@ const activePreset = computed(() =>
 .preset-pill {
     border-radius: 9999px;
 }
-.preset-pill.is-active {
+/* X.F.W3 repair 1 — the published active-state vocabulary, applied
+   (`FR-COB-3`). A preset pill is a selected option in a set, and this set has no
+   primitive under it to lend its own `data-state`: the pills are plain
+   `Button`s, and anti-cure 3 kills `role="radiogroup"` (it ships an
+   axe-critical `aria-required-children` and announces an APG contract this tree
+   does not implement). The channel is therefore `aria-pressed`, exactly as the
+   sibling pill sets in `BasisSelector.vue` and `GallerySearchBar.vue` already
+   use it, and the paint keys on that same attribute instead of on a class that
+   announced nothing. */
+.preset-pill[aria-pressed="true"] {
     background: color-mix(in srgb, var(--viz-fourier) 12%, transparent);
     border-color: color-mix(in srgb, var(--viz-fourier) 40%, transparent);
     color: var(--viz-fourier);
