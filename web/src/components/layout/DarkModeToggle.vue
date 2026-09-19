@@ -39,6 +39,47 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * X.F.W3 `.e` / `fr-AppHeader FR-AH-1`'s F.W3 rider (⊕ `fr-DarkModeToggle I-2`
+ * / `SR-2`, `N-10`, `N-11`) — THE SHADOW-RECONCILE, PERFORMED AND RECORDED.
+ *
+ * The row is explicit that this is a RECONCILE, NOT A REPLACE, and the
+ * re-baseline it turns on is now settled rather than pending: `I-2` was written
+ * against 4.0.0's `./controls`, `SR-2` moved the target to `./dark-mode-toggle`
+ * at 8.0.0, and P-10's re-pin is RULED (`v8.0.0` @ `17a11bc5`, landed at F.W1),
+ * so the seat is live today and the comparison can actually be made.
+ *
+ * MEASURED AT THE ADOPTED PIN, ⟨cmd⟩ this seat, 2026-09-19,
+ * `cat node_modules/@mkbabb/glass-ui/dist/components/dark-mode-toggle/DarkModeToggle.vue.d.ts`:
+ * the producer's component takes `size` ("sm" | "md" | "lg" | "control" |
+ * "dock") and `disableTransitions`. That is the WHOLE surface — no slot, no
+ * glyph input, no render override.
+ *
+ * THE RECONCILE, stated so a later seat does not re-open it as an oversight:
+ *
+ *  · WHAT IS ALREADY THE PRODUCER'S, and stays: the STATE. This file has held
+ *    `useGlobalDark()` since F.W4 and reads the shared singleton's `isDark`
+ *    and `toggleDark` — it never duplicated the controller, which is the half
+ *    an adoption would otherwise buy. The pre-paint script and the palette
+ *    sync now sit on the same singleton (X.F.W3 `.e`'s dark-mode item), so
+ *    there is exactly one dark-mode authority in this app and it is the
+ *    producer's.
+ *  · WHAT IS THIS APP'S, and cannot be handed over: the GLYPH. The control's
+ *    entire visual content is a Fourier-series morph between two pre-computed
+ *    epicycle paths — the app's own subject, rendered by its own engine,
+ *    driven by `useFourierMorph` — and the producer's component exposes no
+ *    seam for it. Adopting it would not simplify this file; it would DELETE
+ *    the thing the file exists for.
+ *  · THEREFORE: no replacement. The divergence is genuine consumer
+ *    divergence, not shadow, and it is recorded here rather than re-derived
+ *    every time the export map is read. `N-10`/`N-11` resolve inside this
+ *    reading: the control's name, pressed state and type are already the
+ *    producer's own idiom (F.W4, `SP-7`), so what remained to reconcile was
+ *    the CHASSIS question, and the answer is that the chassis is the glyph.
+ *
+ * ⊘ NOT this unit's, and unmoved: `FR-AH-1`'s 450,631 B eager-payload row is
+ * F.W4's and is not touched here.
+ */
 import { ref, computed, onMounted, watch } from "vue";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
