@@ -44,46 +44,74 @@ const hasActiveFilters = computed(() =>
 <template>
     <div class="search-bar-root">
         <div class="search-pill">
-            <Search class="text-muted-foreground shrink-0" :size="16" />
+            <!-- FR-GSB-11: FIVE controls on this bar had no accessible name, not
+                 the three every axis enumerated. The input was named by
+                 `placeholder` alone — a name that vanishes on the first keystroke.
+                 The clear and filter buttons are icon-only, and lucide spreads
+                 `aria-hidden` onto every glyph by default, so neither Button had
+                 anything left to synthesise a name from: axe reads them as
+                 `button-name` CRITICAL. Both `<SelectTrigger>`s fall to their
+                 SELECTED VALUE ("Newest, combobox, collapsed" — nothing in that
+                 utterance says it sorts), because reka renders `role="combobox"`
+                 with no name and auto-hides the chevron.
+                 The filter toggle also carries `aria-expanded`/`aria-controls`: it
+                 is a disclosure, and `aria-pressed` alone described a state the
+                 drawer's existence, not the button's, actually holds. -->
+            <Search class="text-muted-foreground shrink-0" :size="16" aria-hidden="true" />
+            <label class="sr-only" for="gallery-search-input">Search gallery by slug</label>
             <input
-                type="text"
+                id="gallery-search-input"
+                type="search"
                 :value="searchQuery"
                 placeholder="Search by slug..."
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="search"
                 class="search-input fira-code flex-1 min-w-0 bg-transparent border-none text-foreground text-sm outline-none placeholder:text-muted-foreground/50"
                 @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
             />
             <Button
                 v-if="searchQuery"
                 emphasis="quiet"
-                size="md" icon-only
-                class="h-6 w-6 rounded-full text-muted-foreground"
+                size="xs"
+                icon-only
+                class="rounded-full text-muted-foreground"
+                aria-label="Clear search"
                 @click="emit('update:searchQuery', '')"
             >
-                <X :size="14" />
+                <X :size="14" aria-hidden="true" />
             </Button>
-            <div class="w-px h-5 bg-foreground/10 shrink-0" />
+            <div class="w-px h-5 bg-foreground/10 shrink-0" aria-hidden="true" />
             <Button
                 emphasis="quiet"
-                size="md" icon-only
-                class="filter-toggle h-7 w-7 rounded-full shrink-0 text-muted-foreground"
+                size="xs"
+                icon-only
+                class="filter-toggle rounded-full shrink-0 text-muted-foreground"
                 :class="{ 'is-active': showFilters || hasActiveFilters }"
                 :aria-pressed="showFilters || hasActiveFilters"
+                :aria-expanded="showFilters"
+                aria-controls="gallery-filter-drawer"
+                aria-label="Filters and sorting"
                 @click.stop="showFilters = !showFilters"
             >
-                <SlidersHorizontal :size="15" />
+                <SlidersHorizontal :size="15" aria-hidden="true" />
             </Button>
         </div>
 
         <!-- Filter drawer (overlaid, does not affect flow) -->
         <Transition name="filter-drawer">
-            <div v-if="showFilters" class="filter-anchor">
+            <div v-if="showFilters" id="gallery-filter-drawer" class="filter-anchor">
                 <div class="filter-panel glass-resting">
                     <div class="flex items-center gap-2">
                         <Select
                             :model-value="tierFilter"
                             @update:model-value="emit('update:tierFilter', $event as any)"
                         >
-                            <SelectTrigger class="w-full h-8 text-sm border border-foreground/12 rounded-lg">
+                            <SelectTrigger
+                                class="w-full h-8 text-sm border border-foreground/12 rounded-lg"
+                                aria-label="Filter by tier"
+                            >
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -98,7 +126,10 @@ const hasActiveFilters = computed(() =>
                             :model-value="sort"
                             @update:model-value="emit('update:sort', $event as any)"
                         >
-                            <SelectTrigger class="w-full h-8 text-sm border border-foreground/12 rounded-lg">
+                            <SelectTrigger
+                                class="w-full h-8 text-sm border border-foreground/12 rounded-lg"
+                                aria-label="Sort order"
+                            >
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
