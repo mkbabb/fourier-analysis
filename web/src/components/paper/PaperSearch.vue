@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import PaperSearchInput from "./search/PaperSearchInput.vue";
 import PaperSearchDropdown from "./search/PaperSearchDropdown.vue";
-import PaperSearchModal from "./search/PaperSearchModal.vue";
 import type { PaperSearchState } from "./search/usePaperSearch";
 import { ref } from "vue";
 
@@ -31,9 +30,6 @@ defineExpose({ focus });
         <PaperSearchDropdown
             :search="search"
             :variant="variant"
-        />
-        <PaperSearchModal
-            :search="search"
         />
     </div>
 </template>

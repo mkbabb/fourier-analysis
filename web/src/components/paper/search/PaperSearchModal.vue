@@ -1,7 +1,29 @@
 <script setup lang="ts">
+/**
+ * X·F F.W4 `.e` — `PSM-2 ⊕ PSM-6 ⊕ PSM-3`, cured as ONE thing.
+ *
+ * `PSM-3`: this component used to mount TWICE below 1024px — once inside the
+ * CSS-hidden desktop sidebar, once inside the mobile bar — against ONE shared
+ * `isExpanded`. Both teleported to `<body>`, both raced `nextTick` focus, and a
+ * document-global query for the results panel deterministically found the
+ * invisible one. It is now mounted ONCE, by `PaperView`, the ancestor both
+ * hosts share; the hosts keep only their triggers.
+ *
+ * `PSM-2`: it was not a dialog — no role, no name, no focus trap, no focus
+ * restore, no background inert, no scroll lock, Escape bound to the input
+ * alone. The producer ships all of that: `Dialog` + `DialogContent` at the
+ * installed 8.0.0 (the dismissal grammar's `free` rung = ✕ · Esc · outside).
+ * Adopting it is the cure, not a hand-rolled trap.
+ *
+ * `PSM-6`: `@keydown` was on the input, while every result row and both header
+ * actions are native tabbable buttons — the moment focus left the input, ↑/↓/
+ * Enter/Escape died while the footer kept advertising them. The handler is on
+ * the dialog content now, so the model follows the focus.
+ */
 import { ref, watch, nextTick } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Search, X, Minimize2 } from "@lucide/vue";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@mkbabb/glass-ui/dialog";
+import { Search } from "@lucide/vue";
 import type { PaperSearchState } from "./usePaperSearch";
 import PaperSearchResultRow from "./PaperSearchResultRow.vue";
 
@@ -11,6 +33,39 @@ const props = defineProps<{
 
 const modalInputRef = ref<HTMLInputElement | null>(null);
 const resultsRef = ref<HTMLElement | null>(null);
+
+/**
+ * The palette geometry, bound INLINE — and the reason is `PSM-1`'s own
+ * mechanism read once more at the bytes.
+ *
+ * Everything this component renders (header, listbox, footer) carries this
+ * SFC's scope id and is styled by the block below, portal or no portal. The
+ * `DialogContent` ROOT is a child component's root inside reka's portal, and a
+ * scope id does not cross that — the identical rule that orphaned 43 blocks
+ * here in the first place. Measured, not assumed: with the geometry authored as
+ * a scoped `.search-modal` class the panel computed `top: 450px` from the
+ * producer's own centred-plate rule, i.e. the class matched nothing.
+ *
+ * So the four declarations that must beat a producer default are bound as
+ * inline style, where no scoping question exists; the producer keeps the
+ * surface, the scrim, the shadow and the entrance (`PSM-38`/`PSM-12`).
+ */
+const panelStyle = {
+    /* The producer's plate is a `grid`; a command palette is a column whose
+       middle row scrolls, which is why the display mode is declared here too —
+       without it the footer is pushed past the cap and clipped. */
+    display: "flex",
+    flexDirection: "column",
+    top: "min(12vh, 6rem)",
+    left: "50%",
+    translate: "-50% 0",
+    /* `PSM-21`: the panel's own cap on the axis the mobile keyboard moves. */
+    inlineSize: "min(36rem, calc(100dvw - 2rem))",
+    maxBlockSize: "70dvh",
+    padding: "0",
+    gap: "0",
+    overflow: "hidden",
+} as const;
 
 // Focus modal input when expanded
 watch(
@@ -40,128 +95,116 @@ watch(
 </script>
 
 <template>
-    <Teleport to="body">
-        <Transition name="search-modal">
-            <div
-                v-if="search.isExpanded.value"
-                class="search-modal-overlay"
-                @click.self="search.toggleExpanded()"
-            >
-                <div class="search-modal">
-                    <!-- Modal header with input -->
-                    <div class="search-modal-header">
-                        <Search class="search-modal-icon" />
-                        <input
-                            ref="modalInputRef"
-                            type="text"
-                            class="search-modal-input"
-                            placeholder="Search paper..."
-                            :value="search.query.value"
-                            @input="search.query.value = ($event.target as HTMLInputElement).value"
-                            @keydown="search.onKeydown"
-                        />
-                        <Button
-                            emphasis="quiet"
-                            size="md" icon-only
-                            type="button"
-                            class="paper-search-action-btn"
-                            @click="search.toggleExpanded()"
-                            aria-label="Collapse to the inline results"
-                        >
-                            <Minimize2 class="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                            emphasis="quiet"
-                            size="md" icon-only
-                            type="button"
-                            class="paper-search-action-btn"
-                            @click="search.close()"
-                            aria-label="Close search and clear the query"
-                        >
-                            <X class="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
+    <Dialog
+        modal
+        :open="search.isExpanded.value"
+        @update:open="(open: boolean) => { if (!open) search.toggleExpanded(); }"
+    >
+        <DialogContent
+            class="search-modal"
+            dismiss="free"
+            :style="panelStyle"
+            @keydown="search.onKeydown"
+        >
+            <DialogTitle class="sr-only">Search the paper</DialogTitle>
+            <DialogDescription class="sr-only">
+                Type to search sections, theorems, equations and figures. Use the up and
+                down arrows to move through the results and Enter to go to one.
+            </DialogDescription>
 
-                    <!-- Modal results -->
-                    <div ref="resultsRef" class="search-modal-results" v-if="search.results.value.length > 0">
-                        <PaperSearchResultRow
-                            v-for="(r, i) in search.results.value"
-                            :key="`modal-${r.id}-${r.type}-${i}`"
-                            dense
-                            :result="r"
-                            :query="search.query.value"
-                            :selected="i === search.selectedIndex.value"
-                            @select="search.selectResult(r)"
-                            @hover="search.selectedIndex.value = i"
-                        />
-                    </div>
-                    <div v-else class="search-modal-empty">
-                        No results
-                    </div>
-
-                    <!-- Modal footer -->
-                    <div class="search-modal-footer">
-                        <span class="search-modal-hint fira-code">
-                            <kbd class="kbd">&uarr;</kbd><kbd class="kbd">&darr;</kbd> navigate
-                        </span>
-                        <span class="search-modal-hint fira-code">
-                            <kbd class="kbd">&crarr;</kbd> select
-                        </span>
-                        <!-- `PSM-26`: the legend used to read "esc close". Escape
-                             COLLAPSES when expanded and keeps the query; only the
-                             ✕ destroys it. The legend now says what the key
-                             does. -->
-                        <span class="search-modal-hint fira-code">
-                            <kbd class="kbd">esc</kbd> collapse
-                        </span>
-                    </div>
-                </div>
+            <!-- Modal header with input -->
+            <div class="search-modal-header">
+                <Search class="search-modal-icon" aria-hidden="true" />
+                <input
+                    ref="modalInputRef"
+                    type="text"
+                    class="search-modal-input"
+                    placeholder="Search paper..."
+                    aria-label="Search the paper"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    :aria-expanded="search.results.value.length > 0"
+                    :aria-controls="search.listboxId"
+                    :aria-activedescendant="
+                        search.results.value.length > 0
+                            ? search.optionId(search.selectedIndex.value)
+                            : undefined
+                    "
+                    :value="search.query.value"
+                    @input="search.query.value = ($event.target as HTMLInputElement).value"
+                />
+                <!-- `PSM-26`: Collapse and Close were two visually identical
+                     ghost icons with opposite data semantics — one preserved the
+                     query, the other destroyed it with no undo — told apart only
+                     by a `title` at an icon size that rendered identically. The
+                     dialog's own ✕ (and Esc, and outside) now COLLAPSE; the
+                     destructive one says what it destroys, in words. -->
+                <Button
+                    emphasis="quiet"
+                    size="sm"
+                    type="button"
+                    @click="search.close()"
+                >
+                    Clear
+                </Button>
             </div>
-        </Transition>
-    </Teleport>
+
+            <!-- Modal results -->
+            <div
+                v-if="search.results.value.length > 0"
+                :id="search.listboxId"
+                ref="resultsRef"
+                class="search-modal-results"
+                role="listbox"
+                aria-label="Search results"
+            >
+                <PaperSearchResultRow
+                    v-for="(r, i) in search.results.value"
+                    :key="`modal-${r.id}-${r.type}-${i}`"
+                    dense
+                    :id="search.optionId(i)"
+                    :result="r"
+                    :query="search.query.value"
+                    :selected="i === search.selectedIndex.value"
+                    @select="search.selectResult(r)"
+                    @hover="search.selectedIndex.value = i"
+                />
+            </div>
+            <div v-else :id="search.listboxId" class="search-modal-empty" role="listbox" aria-label="Search results">
+                No results
+            </div>
+
+            <!-- Modal footer -->
+            <div class="search-modal-footer">
+                <span class="search-modal-hint fira-code">
+                    <kbd class="kbd">&uarr;</kbd><kbd class="kbd">&darr;</kbd> navigate
+                </span>
+                <span class="search-modal-hint fira-code">
+                    <kbd class="kbd">&crarr;</kbd> select
+                </span>
+                <!-- The legend used to read "esc close". Escape COLLAPSES and
+                     keeps the query; only Clear destroys it. -->
+                <span class="search-modal-hint fira-code">
+                    <kbd class="kbd">esc</kbd> collapse
+                </span>
+            </div>
+        </DialogContent>
+    </Dialog>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
 /* X·F F.W4 `.e` — `PSM-1`: the modal's rules lived in `PaperSearch.vue` and
-   reached NOTHING here: this component's subTree is the `<Teleport>` vnode, so
-   the single-root scope-id inheritance rule cannot fire, and the panel shipped
-   as an unstyled block appended to `<body>`. They live in their own SFC now —
-   a component's own elements carry its scope id through a Teleport. */
-.search-modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-modal);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: min(12vh, 6rem);
-    /* `PSM-12`: the scrim was `--background` at 55% OVER `--background` — no
-       scrim at all in either arm. The producer ships one. */
-    background: var(--overlay-scrim);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-}
+   reached NOTHING here: this component's subTree is the Teleport the dialog
+   mounts, so the single-root scope-id inheritance rule cannot fire, and the
+   panel shipped as an unstyled block appended to `<body>`. They live in their
+   own SFC now — a component's own elements carry its scope id wherever they are
+   portalled.
 
-.search-modal {
-    /* `PSM-21`: `dvh` for the panel's own cap, so the mobile keyboard's
-       viewport inset is accounted for on the axis that was measured in `vh`. */
-    width: min(36rem, calc(100dvw - 2rem));
-    max-height: 70dvh;
-    display: flex;
-    flex-direction: column;
-    border-radius: 0.75rem;
-    /* `PSM-12`: the plate was the PAGE token, so in dark mode the modal and the
-       page behind it were the same colour and the only remaining boundary was a
-       1.5px hairline at 2.82:1 — under the 3:1 SC 1.4.11 floor. `--card` is a
-       distinct surface in BOTH arms, and the boundary is now a token shadow
-       rather than hardcoded black over near-black. */
-    border: 1.5px solid var(--border);
-    background: var(--card);
-    box-shadow: var(--shadow-modal);
-    overflow: hidden;
-}
-
+   `PSM-38`/`PSM-12`: the scrim, the plate and the shadow are the producer's
+   (`DialogContent`), not hand-rolled literals. What is left here is the palette
+   GEOMETRY — a top-anchored command bar rather than the dialog's centred
+   plate — and nothing that a design token already answers. */
 .search-modal-header {
     display: flex;
     align-items: center;
@@ -205,28 +248,6 @@ watch(
     color: var(--muted-foreground);
 }
 
-/* The colocated twin of `PaperSearchInput`'s rule: each SFC owns the chrome it
-   renders, which is what `PSM-1`'s cure means. */
-.paper-search-action-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.15rem;
-    border: none;
-    background: none;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    border-radius: 3px;
-    transition:
-        color 0.12s var(--ease-standard),
-        background-color 0.12s var(--ease-standard);
-}
-
-.paper-search-action-btn:hover {
-    color: var(--foreground);
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
-}
-
 .search-modal-results {
     flex: 1;
     min-height: 0;
@@ -254,8 +275,13 @@ watch(
 .search-modal-hint {
     @apply text-sm;
     /* `PSM-4`: 1.888:1 at the authored 45% dilution — the pair the registry
-       banked at 1.88 and the harness reproduces. */
-    color: var(--muted-foreground);
+       banked at 1.88 and the harness reproduces. The STRONG rung, not the
+       plain one: this ink sits on the producer's translucent plate, where the
+       page behind it is part of the composite, and the strong rung is the
+       register the design system declares for exactly that
+       (`--muted-foreground-strong: var(--on-glass-muted-strong)`) — 7.882:1
+       light / 10.295:1 dark against the page. */
+    color: var(--muted-foreground-strong);
     display: flex;
     align-items: center;
     gap: 0.25rem;
@@ -267,50 +293,8 @@ watch(
    axis it touched (9.6px in a 1.125rem box at 3px radius) and is deleted, not
    re-tuned. */
 
-/* ── Modal transition ────────────────────────────────────── */
-/* `PSM-40`: the enter pair disagreed — overlay 0.2s, child 0.25s — so Vue's
-   `whenTransitionEnds` timed out on the overlay and cancelled the child's
-   transform near its end. The leave pair already matched, which is how we know
-   the author meant them to. */
-.search-modal-enter-active,
-.search-modal-enter-active .search-modal {
-    transition:
-        opacity 0.2s var(--ease-standard),
-        transform 0.2s var(--ease-out-expo);
-}
-
-.search-modal-leave-active,
-.search-modal-leave-active .search-modal {
-    transition:
-        opacity 0.15s var(--ease-standard),
-        transform 0.15s var(--ease-in);
-}
-
-.search-modal-enter-from {
-    opacity: 0;
-}
-
-.search-modal-enter-from .search-modal {
-    opacity: 0;
-    transform: scale(0.96) translateY(-8px);
-}
-
-.search-modal-leave-to {
-    opacity: 0;
-}
-
-.search-modal-leave-to .search-modal {
-    opacity: 0;
-    transform: scale(0.97) translateY(-4px);
-}
-
-/* `PSM-32`: under PRM the producer's universal reset drops `transform` from the
-   transitioned set, so the enter-from frame applied statically and then
-   snapped. Reduced motion gets a plain cross-fade with no spatial offset. */
-@media (prefers-reduced-motion: reduce) {
-    .search-modal-enter-from .search-modal,
-    .search-modal-leave-to .search-modal {
-        transform: none;
-    }
-}
+/* `PSM-32`/`PSM-40`: the hand-rolled enter/leave pair is gone with the
+   overlay it animated — `DialogContent`'s `motion` axis owns the entrance now,
+   including its reduced-motion arm, so the mismatched 0.2s/0.25s durations and
+   the statically-applied enter-from frame have nothing left to disagree about. */
 </style>

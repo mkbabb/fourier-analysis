@@ -2,20 +2,24 @@
  * Vue composable for paper search — manages reactive state, debouncing,
  * keyboard navigation, modal expand, and result selection.
  */
-import { ref, watch, computed, type ComputedRef } from "vue";
+import { ref, watch, computed, useId, type ComputedRef } from "vue";
 import type { PaperSectionData } from "@mkbabb/latex-paper";
-import {
-    buildSearchIndex,
-    searchIndex,
-    type SearchEntry,
-    type SearchResult,
-} from "./paperSearchIndex";
+import { buildSearchIndex, searchIndex, type SearchResult } from "./paperSearchIndex";
 
 export function usePaperSearch(options: {
     sections: PaperSectionData[];
     navigateTo: (id: string) => void;
 }) {
     const index = buildSearchIndex(options.sections);
+
+    // ── `PV ★MF-2` — the ARIA wiring for a combobox that had none ──────────
+    // The surface implements a full combobox/listbox keyboard model and shipped
+    // one `aria-` attribute in the whole directory. Ids minted here because the
+    // input, the listbox and the rows live in three different components and
+    // must agree on them.
+    const uid = useId();
+    const listboxId = `paper-search-listbox-${uid}`;
+    const optionId = (i: number) => `paper-search-option-${uid}-${i}`;
 
     const query = ref("");
     const isOpen = ref(false);
@@ -102,6 +106,8 @@ export function usePaperSearch(options: {
         open,
         toggleExpanded,
         onKeydown,
+        listboxId,
+        optionId,
     };
 }
 

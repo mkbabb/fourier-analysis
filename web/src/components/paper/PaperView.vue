@@ -13,6 +13,7 @@ import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import PaperSidebar from "./PaperSidebar.vue";
 import MobileFloatingToc from "./MobileFloatingToc.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
+import PaperSearchModal from "./search/PaperSearchModal.vue";
 import { createPreviewLookup } from "./paperTree";
 import { PAPER_TOC_KEY, type PaperTocModel } from "./paperToc";
 import { useScrollNavigation } from "./useScrollNavigation";
@@ -363,6 +364,12 @@ onUnmounted(() => {
                 />
             </Transition>
 
+            <!-- `PSM-3`: ONE modal, owned by the ancestor both ToC hosts share.
+                 It used to be rendered inside `PaperSearch`, which mounts twice
+                 below 1024px — two overlays, two inputs racing focus, and one
+                 shared `isExpanded` driving both. -->
+            <PaperSearchModal :search="search" />
+
             <div class="paper-layout mx-auto max-w-5xl px-2 pt-2 pb-0 sm:pt-2 sm:pb-0 sm:px-6">
                 <div class="paper-grid">
                     <!-- Desktop sidebar TOC -->
@@ -378,8 +385,16 @@ onUnmounted(() => {
                             </h1>
                         </header>
 
-                        <!-- Mobile-only inline TOC -->
-                        <nav ref="mobileNavRef" class="mb-14 cm-serif text-sm text-muted-foreground lg:hidden">
+                        <!-- Mobile-only inline TOC. `D/m-6`: the landmark had no
+                             name, so a reader listing landmarks found two
+                             unlabelled navs on one page. `L/D15`: this third ToC
+                             is also the IntersectionObserver sentinel for the
+                             floating bar — stated, because nothing else said so. -->
+                        <nav
+                            ref="mobileNavRef"
+                            aria-label="Chapters"
+                            class="mb-14 cm-serif text-sm text-muted-foreground lg:hidden"
+                        >
                             <ol class="list-none space-y-1.5 pl-0">
                                 <li v-for="section in sections" :key="section.id">
                                     <Button

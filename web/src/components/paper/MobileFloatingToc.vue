@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
+import { ref, watch, nextTick, onUnmounted, useId, useTemplateRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "@lucide/vue";
 import PaperSearch from "./PaperSearch.vue";
@@ -22,6 +22,7 @@ const props = defineProps<{
 const { sections, activeRootId, isExpanded, toggleSection, navigateTo, scrollToTop } =
     injectPaperToc();
 
+const dropdownId = `floating-toc-${useId()}`;
 const floatingTocOpen = ref(false);
 const searchActive = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
@@ -102,24 +103,48 @@ watch(() => props.search.isOpen.value, (open) => {
                     <X class="h-4 w-4" />
                 </Button>
             </div>
-            <!-- Normal mode: section title + search icon -->
-            <Button v-else ref="tocTrigger" emphasis="quiet" class="floating-toc-bar glass-resting" @click="floatingTocOpen = !floatingTocOpen">
-                <span class="floating-toc-section cm-serif">
-                    <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
-                    {{ currentSection?.title }}
-                </span>
-                <span class="floating-toc-actions">
-                    <span class="floating-toc-search-btn" @click.stop="openMobileSearch" title="Search paper">
-                        <Search class="h-3.5 w-3.5" />
+            <!-- Normal mode: section title + search icon.
+                 `D/B-4`: the search control was a click-only `<span>` NESTED
+                 INSIDE this button — no keyboard path, no role, no name, and
+                 Enter on the focused parent toggled the ToC instead. It is a
+                 real sibling `<Button>` now, outside the trigger.
+                 `D/M-13`: the trigger announces its disclosure state and the
+                 panel it controls. -->
+            <div v-else class="floating-toc-bar floating-toc-bar--trigger glass-resting">
+                <Button
+                    ref="tocTrigger"
+                    emphasis="quiet"
+                    type="button"
+                    class="floating-toc-title-btn"
+                    :aria-expanded="floatingTocOpen"
+                    :aria-controls="dropdownId"
+                    @click="floatingTocOpen = !floatingTocOpen"
+                >
+                    <span class="floating-toc-section cm-serif">
+                        <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
+                        {{ currentSection?.title }}
                     </span>
                     <ChevronDown class="floating-toc-chevron" :class="{ 'rotate-180': floatingTocOpen }" />
-                </span>
-            </Button>
+                </Button>
+                <Button
+                    emphasis="quiet"
+                    size="md" icon-only
+                    type="button"
+                    class="floating-toc-search-btn"
+                    aria-label="Search paper"
+                    @click="openMobileSearch"
+                >
+                    <Search class="h-3.5 w-3.5" />
+                </Button>
+            </div>
             <Transition name="toc-expand">
                 <div
                     v-if="floatingTocOpen"
+                    :id="dropdownId"
                     ref="dropdownRef"
                     class="floating-toc-dropdown glass-floating"
+                    role="group"
+                    aria-label="Table of contents"
                     tabindex="-1"
                     @keydown.esc="dismissDropdown"
                 >
@@ -171,6 +196,7 @@ watch(() => props.search.isOpen.value, (open) => {
             <div
                 v-if="floatingTocOpen"
                 class="floating-toc-backdrop"
+                aria-hidden="true"
                 @click="dismissDropdown"
             />
         </div>
@@ -217,20 +243,32 @@ watch(() => props.search.isOpen.value, (open) => {
     min-width: 0;
 }
 
-.floating-toc-actions {
+.floating-toc-title-btn {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    flex-shrink: 0;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    padding: 0;
 }
 
 .floating-toc-search-btn {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     padding: 0.25rem;
     border-radius: 0.25rem;
-    color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    /* `PV D/M-9`: the 50% dilution measured 2.x:1 against the bar. */
+    color: var(--muted-foreground);
     /* A.W3.d — named properties + canonical token, no `transition: all`. */
     transition: color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
 }
