@@ -1,0 +1,19 @@
+# X·F F.W9 `.b` — `G-F9-23`.
+#
+# `web/.gitignore` is a single line, `*.png`, which excludes every PNG anywhere
+# under `web/`. That rule was written for build output, and for build output it
+# is right. It is wrong for ONE class of file, and the wrongness is total: a
+# Playwright screenshot BASELINE is not an artifact of a run, it is the
+# reference a run is measured against. With `*.png` in force, a comparing
+# checkpoint cannot be committed at all — every run finds no baseline, writes
+# one, and passes. An instrument that mints its own oracle on every run is the
+# thing `G-F9-23` exists to replace, and this rule is why the repo had no
+# alternative.
+#
+# The exclusion is therefore narrowed HERE, in the directory that owns the
+# evidence, rather than loosened at `web/` where the build output lives. Only
+# `*-snapshots/` — Playwright's own baseline directory naming — is re-included;
+# `web/e2e/screenshots/` and every other PNG under `web/` stay ignored exactly
+# as before.
+!*-snapshots/
+!*-snapshots/**/*.png
