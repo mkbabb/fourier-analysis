@@ -157,6 +157,11 @@ async function handleDelete(hash: string) {
     if (!confirm("Delete this gallery entry?")) return;
     await gallery.deleteEntry(hash);
     if (selectedSlug.value === hash) selectedSlug.value = null;
+    // FR-GFC-20 (= FR-AUL-22's sibling): a mutation evicts its victim from the
+    // selection set. A deleted slug that stayed checked kept the batch toolbar
+    // claiming a count that included an entity the server no longer has, and the
+    // next batch would have issued an operation against it.
+    forgetSelected(hash);
 }
 
 // ── A.W5.c: gallery multi-select + batch ─────────────────────────────────
@@ -169,6 +174,13 @@ type GalleryBatchAction = "delete" | "feature" | "unfeature";
 const selectedHashes = ref<Set<string>>(new Set());
 const batchDialogOpen = ref(false);
 const pendingBatch = ref<{ action: GalleryBatchAction; hashes: string[] } | null>(null);
+
+function forgetSelected(hash: string) {
+    if (!selectedHashes.value.has(hash)) return;
+    const next = new Set(selectedHashes.value);
+    next.delete(hash);
+    selectedHashes.value = next;
+}
 
 function toggleEntrySelected(hash: string, checked: boolean) {
     const next = new Set(selectedHashes.value);
@@ -271,10 +283,12 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 :entries="featuredEntries"
                 :admin-mode="gallery.adminMode"
                 :liked-hashes="likedHashes"
+                :selected-hashes="selectedHashes"
                 @card-click="openModal"
                 @like="handleLike"
                 @set-tier="handleSetTier"
                 @delete="handleDelete"
+                @toggle-select="toggleEntrySelected"
             />
             <!-- Empty state. X·F F.W4 §3 D1 — RULED DELETE: the D.W4.c
                  "living preview band" never shipped. The band was mounted on

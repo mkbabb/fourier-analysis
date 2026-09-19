@@ -7,6 +7,7 @@ defineProps<{
     entries: Visualization[];
     adminMode?: boolean;
     likedHashes?: Set<string>;
+    selectedHashes?: Set<string>;
 }>();
 
 const emit = defineEmits<{
@@ -14,6 +15,7 @@ const emit = defineEmits<{
     like: [hash: string];
     "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
     delete: [hash: string];
+    "toggle-select": [hash: string, checked: boolean];
 }>();
 </script>
 
@@ -29,14 +31,27 @@ const emit = defineEmits<{
                 :key="entry.slug"
                 class="featured-card-wrapper"
             >
+                <!-- FR-GFC-2 ⊕ FR-GFC-23: the card declares `selected` and
+                     emits `toggle-select`, the grid host binds both, and THIS
+                     host — the other live mount of the same card — bound
+                     neither. In admin mode the featured row therefore rendered
+                     its checkboxes permanently unchecked and dropped every click
+                     on the floor: a selection made there could not join the batch,
+                     and a card selected in the grid then appeared UNSELECTED in
+                     the carousel above it. Asserted from the props table, not
+                     assumed: `selected` is optional with no default, so the
+                     unbound prop is `undefined` and the card's `?? false` is what
+                     produced the null-target square. -->
                 <GalleryCard
                     :entry="entry"
                     :admin-mode="adminMode"
                     :liked-hashes="likedHashes"
+                    :selected="selectedHashes?.has(entry.slug) ?? false"
                     @click="emit('card-click', entry)"
                     @like="emit('like', $event)"
                     @set-tier="(h, t) => emit('set-tier', h, t)"
                     @delete="emit('delete', $event)"
+                    @toggle-select="(hash, checked) => emit('toggle-select', hash, checked)"
                 />
             </div>
         </div>
