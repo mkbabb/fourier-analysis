@@ -5,6 +5,7 @@ import { Badge } from "@mkbabb/glass-ui/badge";
 import { Checkbox } from "@mkbabb/glass-ui";
 import type { Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
+import { useTimeAgo } from "@/lib/time";
 import { basisDisplay } from "../lib/basis-display";
 // FR-GFC-22 / G-F4-DEAD-DEP: `VIZ_COLORS` and `PathPreview` were imported and
 // never referenced — zero occurrences of either identifier anywhere else in this
@@ -53,15 +54,17 @@ const basisLabels = computed(() =>
         .filter(Boolean) as { icon: string; label: string; color: string }[],
 );
 
-function timeAgo(iso: string): string {
-    const ms = Date.now() - new Date(iso).getTime();
-    const m = Math.floor(ms / 60000);
-    if (m < 1) return "just now";
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-}
+/**
+ * X.F.W3 `.e` / `fr-AdminUserList FR-AUL-17` ⊕ `fr-GalleryCardModal GCM-34` —
+ * the local copy retires onto `lib/time.ts`.
+ *
+ * The copy this replaces had the sub-minute floor and nothing else: no cap
+ * (`GCM-34`'s "truncates at days forever"), no negative guard, no NaN guard,
+ * no `<time>`, and it sampled `Date.now()` DURING RENDER — so on a gallery
+ * page left open the ages froze at whatever they read when the card last
+ * patched. `useTimeAgo` binds the app's ONE shared clock.
+ */
+const created = useTimeAgo(() => props.entry.created_at);
 </script>
 
 <template>
@@ -110,7 +113,7 @@ function timeAgo(iso: string): string {
             <!-- Header -->
             <div class="flex items-center gap-1.5 px-3 pt-2 pb-1">
                 <span class="text-sm text-muted-foreground truncate flex-1 min-w-0 font-mono">{{ entry.image_slug }}</span>
-                <span class="text-sm text-muted-foreground whitespace-nowrap shrink-0">{{ timeAgo(entry.created_at) }}</span>
+                <time class="text-sm text-muted-foreground whitespace-nowrap shrink-0" :datetime="created.datetime" :title="created.absolute">{{ created.text }}</time>
             </div>
 
             <!-- Basis pills -->

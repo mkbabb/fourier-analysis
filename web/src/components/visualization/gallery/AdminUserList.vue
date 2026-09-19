@@ -23,6 +23,7 @@ import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
+import { useRelativeTime } from "@/lib/time";
 import type { AdminUserInfo } from "@/lib/types";
 import { problemMessage } from "./adminError";
 import {
@@ -347,15 +348,26 @@ async function performPrune() {
     }
 }
 
-function timeAgo(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-}
+/**
+ * X.F.W3 `.e` / `fr-AdminUserList FR-AUL-17` — the fourth of five copies
+ * retires onto `lib/time.ts`, and the list maps itself ONCE per tick.
+ *
+ * The copy this replaces was the no-floor dialect: a three-second-old account
+ * read "0m ago" here and "just now" in the gallery card beside it. It also
+ * sampled `Date.now()` during render, so on an admin page left open the two
+ * columns froze. `useRelativeTime` binds the app's ONE shared clock, and the
+ * mapping lives in a computed so a row costs one `relativeTime` call per field
+ * per tick rather than one per template read.
+ */
+const relative = useRelativeTime();
+
+const userRows = computed(() =>
+    users.value.map((user) => ({
+        user,
+        joined: relative(user.created_at),
+        seen: relative(user.last_seen_at),
+    })),
+);
 </script>
 
 <template>
@@ -576,7 +588,7 @@ function timeAgo(iso: string): string {
             :class="loading && 'opacity-60'"
         >
             <div
-                v-for="user in users"
+                v-for="{ user, joined, seen } in userRows"
                 :key="user.user_slug"
                 role="listitem"
                 class="cartoon-card flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
@@ -609,8 +621,8 @@ function timeAgo(iso: string): string {
                     </div>
                     <div class="flex gap-3 text-mono-micro uppercase font-medium text-muted-foreground mt-0.5">
                         <span>{{ user.entry_count }} entries</span>
-                        <span>joined {{ timeAgo(user.created_at) }}</span>
-                        <span>seen {{ timeAgo(user.last_seen_at) }}</span>
+                        <span>joined <time :datetime="joined.datetime" :title="joined.absolute">{{ joined.text }}</time></span>
+                        <span>seen <time :datetime="seen.datetime" :title="seen.absolute">{{ seen.text }}</time></span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1">
