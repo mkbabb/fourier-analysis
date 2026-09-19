@@ -4,9 +4,13 @@ import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Collapsible, CollapsibleContent } from "@mkbabb/glass-ui/collapsible";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@mkbabb/glass-ui/collapsible";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
-import { ChevronUp } from "@lucide/vue";
+import { ChevronRight, ChevronUp } from "@lucide/vue";
 
 import { ref } from "vue";
 
@@ -43,6 +47,32 @@ const sidebarState = useSidebarState<PaperSectionData>({
     scrollToTop: () => props.scrollToTop(),
     getChildren: (n) => n.subsections,
 });
+
+// X·F F.W4 `.e` — `fr-PaperSidebar D-M11`: `v-if="section.subsections"` is
+// truthy for `[]`, so an empty array would mint a disclosure control with
+// nothing behind it. The contract hole is closed at the predicate; no node in
+// this paper carries `subsections: []` today, which is exactly why it went
+// unnoticed.
+function hasChildren(section: PaperSectionData): boolean {
+    return (section.subsections?.length ?? 0) > 0;
+}
+
+/**
+ * X·F F.W4 `.e` — the disclosure control's accessible name.
+ *
+ * `renderTitle` returns KaTeX HTML, which cannot be an `aria-label`; the ToC
+ * titles carry `$…$` math. This strips the math and any markup to a plain
+ * string so the trigger is NAMED rather than described (SP-7: a description is
+ * never a name), and `aria-expanded` — supplied by `CollapsibleTrigger` — is
+ * what conveys the state.
+ */
+function plainTitle(section: PaperSectionData): string {
+    return section.title
+        .replace(/\$[^$]*\$/g, "")
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
 </script>
 
 <template>
@@ -63,26 +93,47 @@ const sidebarState = useSidebarState<PaperSectionData>({
             </div>
             <ol class="sidebar-list">
                 <li v-for="(section, si) in sections" :key="section.id">
+                    <!-- X·F F.W4 `.e` — `fr-PaperSidebar L-5(a)` + `L-1`: NAVIGATE
+                         AND TOGGLE ARE TWO CONTROLS. The row navigates and does
+                         nothing else (clicking the chapter you are reading no
+                         longer collapses it); the disclosure is a real
+                         `CollapsibleTrigger as-child`, which is what puts
+                         `aria-expanded`/`aria-controls` on the control that owns
+                         them. `@update:open` is now reached by exactly ONE path —
+                         the trigger — so the double-toggle L-5(a) predicted for
+                         "the day a trigger lands" cannot form. -->
                     <Collapsible
                         :open="sidebarState.isExpanded(section.id)"
                         @update:open="sidebarState.toggleSection(section.id)"
                     >
-                        <Tooltip :text="getPreview(section)" side="right">
-                            <Button
-                                emphasis="quiet"
-                                :data-toc-id="section.id"
-                                @click="scrollTo(section.id); sidebarState.toggleSection(section.id)"
-                                class="sidebar-link cm-serif"
-                                :class="{ 'is-active': activeRootId === section.id }"
-                                :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
-                            >
-                                <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
-                                <span v-html="renderTitle(section.title)" />
-                            </Button>
-                        </Tooltip>
+                        <div class="sidebar-row">
+                            <Tooltip :text="getPreview(section)" side="right">
+                                <Button
+                                    emphasis="quiet"
+                                    :data-toc-id="section.id"
+                                    @click="scrollTo(section.id)"
+                                    class="sidebar-link cm-serif"
+                                    :class="{ 'is-active': activeRootId === section.id }"
+                                    :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
+                                >
+                                    <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
+                                    <span v-html="renderTitle(section.title)" />
+                                </Button>
+                            </Tooltip>
+                            <CollapsibleTrigger v-if="hasChildren(section)" as-child>
+                                <Button
+                                    emphasis="quiet"
+                                    size="md" icon-only
+                                    class="sidebar-disclosure"
+                                    :aria-label="`Subsections of ${plainTitle(section)}`"
+                                >
+                                    <ChevronRight class="sidebar-disclosure-icon" />
+                                </Button>
+                            </CollapsibleTrigger>
+                        </div>
                         <!-- Subsections — glass-ui Collapsible drives the
                              expand/collapse animation via `data-state`. -->
-                        <CollapsibleContent v-if="section.subsections" class="sidebar-sublist-wrapper">
+                        <CollapsibleContent v-if="hasChildren(section)">
                             <ol class="sidebar-sublist">
                                 <li v-for="sub in section.subsections" :key="sub.id">
                                     <Tooltip :text="getPreview(sub)" side="right">
@@ -213,6 +264,47 @@ const sidebarState = useSidebarState<PaperSectionData>({
     gap: 0.0625rem;
 }
 
+/* X·F F.W4 `.e` — `L-5(a)`/`L-1`: the row is navigate + disclosure, two
+   controls side by side. The title takes the free space; the trigger keeps its
+   own hit box so a disclosure click can never be a navigation click. */
+.sidebar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+}
+
+.sidebar-row > :first-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-disclosure {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    border-radius: calc(var(--radius) - 2px);
+}
+
+.sidebar-disclosure:hover {
+    color: var(--foreground);
+    background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.sidebar-disclosure-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    transition: transform 0.15s var(--ease-standard);
+}
+
+.sidebar-disclosure[data-state="open"] .sidebar-disclosure-icon {
+    transform: rotate(90deg);
+}
+
 .sidebar-link {
     display: block;
     width: 100%;
@@ -253,12 +345,15 @@ const sidebarState = useSidebarState<PaperSectionData>({
 }
 
 /* W3.5.c — Collapsible animation driven by glass-ui `CollapsibleContent`
-   (reka-ui's `--reka-collapsible-content-height` CSS var). The previous
-   hand-rolled `grid-template-rows: 0fr → 1fr` shim is retired. */
-.sidebar-sublist-wrapper {
-    overflow: hidden;
-}
-
+   (reka-ui's `--reka-collapsible-content-height` CSS var).
+   X·F F.W4 `.e` — `fr-PaperSidebar D-B1` re-measured at the ADOPTED pin: the
+   recipe `.disclosure-content{animation-name:disclosure-open|close;
+   animation-duration:var(--spring-present-duration); overflow:hidden}` is
+   emitted by `dist/glass-ui.css`, which `dist/styles/index.css` imports at its
+   tail — so the comment above is TRUE at 8.0.0 and was false only at the 4.0.0
+   pin the record was taken against (root cause `M1`). `C-m8`: the local
+   `.sidebar-sublist-wrapper{overflow:hidden}` restated that producer invariant
+   verbatim and is deleted rather than doubled. */
 .sidebar-sublist {
     list-style: none;
     padding: 0 0 0 0.625rem;
