@@ -2,11 +2,17 @@
 import {
     PaperSection,
     PaperSectionBlocks,
+    PAPER_CONTEXT,
+    type PaperContext,
     type FlatPaperSection,
 } from "@mkbabb/latex-paper/vue";
-import type { ComponentPublicInstance } from "vue";
+import { computed, inject, type ComponentPublicInstance } from "vue";
 import { ArrowRight } from "@lucide/vue";
-import { FIGURE_DIMENSIONS, hasModernVariants } from "@/lib/figureDimensions";
+import {
+    DARK_INVERT_EXEMPT,
+    FIGURE_DIMENSIONS,
+    hasModernVariants,
+} from "@/lib/figureDimensions";
 
 const props = defineProps<{
     visibleItems: FlatPaperSection[];
@@ -18,10 +24,33 @@ const props = defineProps<{
 
 const baseUrl = import.meta.env.BASE_URL;
 
+/**
+ * X·F F.W4 `.e` — `PAW-26` (`L-10`, rescoped by `K-12`).
+ *
+ * Two different facts used to arrive as the same `null`: "this ref is a
+ * component instance, not an element" (unreachable at runtime — every callsite
+ * binds a real element) and "this section has unmounted". The caller cannot
+ * tell them apart, and `disconnectSection` deletes from the element map while
+ * leaving a stale measured height behind, so the second one is the one that
+ * matters and it was silent.
+ *
+ * ⊘ `K-12` is load-bearing and the TYPE IS NOT DEAD CODE: the inline arrow is
+ * contextually typed from Vue's ref signature, so narrowing fails under
+ * `strictFunctionTypes` without `ComponentPublicInstance` in the union. This
+ * import is an explicit exception to the no-unused sweep and to the SCRUB's
+ * zero-consumer proofs — it is consumed by the type checker, not by a call.
+ */
 function toHTMLElement(
     value: Element | ComponentPublicInstance | null,
 ): HTMLElement | null {
-    return value instanceof HTMLElement ? value : null;
+    if (value instanceof HTMLElement) return value;
+    if (import.meta.env.DEV && value != null) {
+        console.warn(
+            "paper window: a section ref resolved to something that is not an HTMLElement " +
+                "— measurement will be skipped for it (this is NOT the unmount path)",
+        );
+    }
+    return null;
 }
 
 function bindRoot(value: Element | ComponentPublicInstance | null) {
@@ -36,13 +65,21 @@ function bindSection(
 }
 
 // I.θ — resolve a figure's served URLs, intrinsic dimensions, and modern-format
-// availability. The figure source is a `.pdf` name; figures are rasterized to
-// `.png` and transcoded 1:1 to `.avif`/`.webp` siblings (see figureDimensions).
+// availability.
+//
+// `PAW-24`: the doc comment here used to say the figure source is a `.pdf`
+// name and that this function converts it. It states the INVERSE of the
+// installed contract — latex-paper's parser already basenames and normalises
+// the filename to `.png` before it reaches a consumer — so the `.pdf`→`.png`
+// replace was dead code AND the comment was teaching the next reader the wrong
+// model of the pipeline. The comment was the load-bearing half of that defect.
+// What is true: `figure.filename` arrives as a `.png` basename; figures are
+// transcoded 1:1 to `.avif`/`.webp` siblings (see `figureDimensions`), and
 // `<picture>` does NOT fall back on a 404 — only on an unsupported format — so
 // the AVIF/WebP `<source>`s are emitted ONLY for figures we know carry variants
 // (`hasModernVariants`); every other figure renders as a bare `<img>` PNG.
 function resolveFigure(filename: string) {
-    const pngName = filename.replace(/\.pdf$/, ".png");
+    const pngName = filename;
     const png = `${baseUrl}assets/${pngName}`;
     const dims = FIGURE_DIMENSIONS[pngName];
     if (hasModernVariants(pngName)) {
@@ -57,6 +94,38 @@ function resolveFigure(filename: string) {
     }
     return { png, avif: null, webp: null, width: dims?.[0], height: dims?.[1] };
 }
+
+/**
+ * `PAW-18`: `resolveFigure()` was invoked SEVEN times per figure per render —
+ * two regex replaces, a `Set.has`, three concatenations and a fresh object each
+ * time, with no CSE in the compiler — multiplied by the remount-per-patch the
+ * window produces. The resolution is memoised per filename; the data behind it
+ * is a build-time constant, so a cached answer cannot go stale.
+ *
+ * ⊘ The record routes this as a rider on `PAW-3`'s extraction, which is F.W3's.
+ * A memo is not that extraction and does not pre-empt it: when the figure child
+ * is extracted, this map moves into it unchanged.
+ */
+const figureCache = new Map<string, ReturnType<typeof resolveFigure>>();
+
+function figure(filename: string) {
+    let hit = figureCache.get(filename);
+    if (!hit) {
+        hit = resolveFigure(filename);
+        figureCache.set(filename, hit);
+    }
+    return hit;
+}
+
+// `PAW-23`: `{{ callout.text }}` was the ONE authored string on this surface
+// that bypassed the paper's own renderer — every other string rides
+// `renderTitle`/`v-html`. It is latent only because both configured callouts
+// happen to be math-free, and the type is untyped against TeX, so the first
+// callout with a `$…$` in it ships raw source to the reader.
+const paper = inject<PaperContext>(PAPER_CONTEXT);
+const renderCalloutText = computed(
+    () => paper?.renderTitle ?? ((text: string) => text),
+);
 </script>
 
 <template>
@@ -81,26 +150,42 @@ function resolveFigure(filename: string) {
                 :section-index="item.rootIndex"
             >
                 <PaperSectionBlocks :section="item.section">
-                    <template #figure="{ figure }">
+                    <template #figure="{ figure: fig }">
                         <picture>
                             <source
-                                v-if="resolveFigure(figure.filename).avif"
-                                :srcset="resolveFigure(figure.filename).avif!"
+                                v-if="figure(fig.filename).avif"
+                                :srcset="figure(fig.filename).avif!"
                                 type="image/avif"
                             />
                             <source
-                                v-if="resolveFigure(figure.filename).webp"
-                                :srcset="resolveFigure(figure.filename).webp!"
+                                v-if="figure(fig.filename).webp"
+                                :srcset="figure(fig.filename).webp!"
                                 type="image/webp"
                             />
+                            <!-- `PAW-7`: `alt` bound the UN-RENDERED caption —
+                                 `$…$` source that the visible `<figcaption>`
+                                 puts through KaTeX — and duplicated that
+                                 caption verbatim for anyone who heard both. A
+                                 figure whose description is already adjacent
+                                 and rendered takes an empty alt.
+                                 `PAW-6`: the dark-inversion discriminator is a
+                                 named exemption set in `figureDimensions.ts`,
+                                 not a `filename.includes("portrait")` guess
+                                 that was wrong in both directions on the only
+                                 two figures it decided. ⊘ `K-17` is carried
+                                 there: the real repair is asset-side and rides
+                                 the LATEX-PAPER relay. -->
                             <img
-                                :src="resolveFigure(figure.filename).png"
-                                :alt="figure.caption"
-                                :width="resolveFigure(figure.filename).width"
-                                :height="resolveFigure(figure.filename).height"
+                                :src="figure(fig.filename).png"
+                                alt=""
+                                :width="figure(fig.filename).width"
+                                :height="figure(fig.filename).height"
                                 class="max-w-full rounded-lg shadow-sm"
-                                :class="figure.filename.includes('portrait') ? 'paper-portrait' : 'paper-figure'"
-                                style="max-height: 400px"
+                                :class="
+                                    DARK_INVERT_EXEMPT.has(fig.filename)
+                                        ? 'paper-portrait'
+                                        : 'paper-figure'
+                                "
                                 loading="lazy"
                                 decoding="async"
                             />
@@ -108,12 +193,20 @@ function resolveFigure(filename: string) {
                     </template>
                     <template #callout="{ callout }">
                         <div class="interactive-callout">
-                            <p class="cm-serif text-sm text-muted-foreground mb-3">{{ callout.text }}</p>
+                            <p
+                                class="cm-serif text-sm text-muted-foreground mb-3"
+                                v-html="renderCalloutText(callout.text)"
+                            />
                             <router-link
                                 :to="callout.link"
                                 class="callout-btn"
                             >
-                                <span class="fourier-f">ℱ</span>
+                                <!-- `PAW-21`: U+2131 announced as "script
+                                     capital F ourier" INSIDE the control's
+                                     accessible name. The ArrowRight beside it is
+                                     genuinely exempt (lucide auto-hides it),
+                                     which made this the sole pollutant. -->
+                                <span class="fourier-f" aria-hidden="true">ℱ</span>
                                 <span>Open Visualizer</span>
                                 <ArrowRight class="h-4 w-4" />
                             </router-link>
@@ -134,12 +227,12 @@ function resolveFigure(filename: string) {
 
 <style scoped>
 @reference "tailwindcss";
-.paper-window-root {
-    min-width: 0;
-}
-
+/* `PAW-57`: three dead defensive declarations lived here — `min-width: 0` on
+   two plain in-flow block wrappers (it differs from `auto` only for flex/grid
+   ITEMS) and `width: 100%` on a margin-less, border-less block (identical to
+   `auto`). Deleted with zero behaviour change; the LIVE guards elsewhere in
+   this file are untouched. */
 .paper-window-section {
-    min-width: 0;
 
     /* I.γ — defer layout/paint (incl. KaTeX typesetting + figure decode) for the
        warm-but-off-screen sections the JS window keeps mounted (overscanAfterPx
@@ -168,7 +261,6 @@ function resolveFigure(filename: string) {
 }
 
 .paper-window-spacer {
-    width: 100%;
     pointer-events: none;
 }
 
@@ -185,6 +277,19 @@ function resolveFigure(filename: string) {
     text-align: center;
 }
 
+/* `PAW-9`: the cap was an INLINE `style="max-height: 400px"` — compiled as a
+   static style prop, so it outranked every author sheet short of `!important`
+   and no media query could reach it — starving tall figures inside the measure
+   (f01 rendered 280×400 with 56% of its box unused). ⊘ `K-7`'s correction is
+   carried: the 48rem column is never realised, so the true measure is the
+   corrected figure and not the axis's "≥640px". Cascade-reachable now, and
+   relative to the viewport the figure actually sits in. */
+.paper-figure,
+.paper-portrait {
+    max-block-size: min(60svh, 34rem);
+    block-size: auto;
+}
+
 .callout-btn {
     display: inline-flex;
     align-items: center;
@@ -196,7 +301,11 @@ function resolveFigure(filename: string) {
     background: var(--primary);
     border-radius: 9999px;
     text-decoration: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    /* `PAW-19` — the last un-tokenised easing in `components/paper/`, against
+       four sibling files already migrated under the A.W3.d ledger. */
+    transition:
+        transform var(--duration-fast) var(--ease-out-expo),
+        box-shadow var(--duration-fast) var(--ease-out-expo);
     box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 

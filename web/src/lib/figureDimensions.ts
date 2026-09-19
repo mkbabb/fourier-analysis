@@ -48,6 +48,29 @@ export const FIGURE_DIMENSIONS: Record<string, readonly [number, number]> = {
     "f25_hermite_eigenfunctions.png": [2651, 1744],
 };
 
+/**
+ * X·F F.W4 `.e` — `PAW-6`: figures the dark arm must NOT photo-negate.
+ *
+ * The consumer used to decide this with `filename.includes("portrait")`, and
+ * the record measured that substring wrong in BOTH directions on the only two
+ * figures where it decides anything: `f21` matches and was left un-inverted (a
+ * white slab inside `hsl(24 8% 16%)`), while `f20` does not match and WAS
+ * inverted — the Fourier engraving, photo-negated.
+ *
+ * The discriminator is data now, not a guess about a filename. ⊘ `K-17` is
+ * carried and it is why this is an exemption list rather than a cure: NO
+ * whole-figure boolean is correct for `f20`, whose panels are mixed. The real
+ * repair is asset-side — re-rasterise `f20`'s panels separately, or ship
+ * dark-mode variants and retire whole-figure `invert()` altogether — and it
+ * travels on the LATEX-PAPER relay. Until then this list is wrong for neither
+ * of the two figures the record measured, where the substring was wrong for
+ * both, and the line-art figures keep the inversion that serves them.
+ */
+export const DARK_INVERT_EXEMPT: ReadonlySet<string> = new Set([
+    "f20_contour_pipeline.png",
+    "f21_epicycle_portraits.png",
+]);
+
 /** Figures transcoded to AVIF + WebP alongside the PNG (the `<picture>` set). */
 const TRANSCODED_FIGURES = new Set(Object.keys(FIGURE_DIMENSIONS));
 
