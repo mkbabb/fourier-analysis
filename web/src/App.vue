@@ -3,30 +3,61 @@ import { nextTick, onScopeDispose, useTemplateRef } from "vue";
 import { RouterView, useRouter } from "vue-router";
 import { TooltipProvider } from "@mkbabb/glass-ui/tooltip";
 import { Toaster } from "@mkbabb/glass-ui/toast";
+import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import AppHeader from "@/components/layout/AppHeader.vue";
-import { useVizColorSync } from "@/lib/colors";
+import { resolveVizColors } from "@/lib/colors";
 
 /**
  * X.F.W3 `.e` / `fr-App MG-γ` ⊕ `m-2`/`L-3`/`C-7` ⊕ `L-6` — THE ONE DARK-MODE
- * OWNER, CONSUMER HALF.
+ * OWNER, RUNTIME HALF. Re-homed HERE at X.F.W3 Repair 1 (`LW-W3-1`).
  *
- * What stood here was a hand-rolled `MutationObserver` on `documentElement`'s
- * class list that was NEVER disconnected, fired `resolveVizColors()` — five
- * `getComputedStyle` reads, each a forced synchronous reflow — on every firing,
- * and observed the wrong event besides: an OS-level scheme change mutates no
- * class at all, because `light-dark()` follows `color-scheme`.
+ * WHY IT LIVES IN THIS FILE. `.e` wrote this arm into `web/src/lib/colors.ts`,
+ * which carries no §1 Bounds row and no §5e Files line — a bounds expansion,
+ * and §6 line 1 makes that a triumvirate event rather than an edit. The code
+ * was sound and the room was wrong, so the `colors.ts` hunk is reverted to its
+ * pre-wave bytes and the arm stands in the file that owns the defect it cures:
+ * `App.vue` is a §1 row (cluster H), and the hand-rolled authority this
+ * replaces was authored here.
  *
- * It also re-resolved the palette in `onMounted`, which `main.ts` had already
- * done before mount for a documented reason (a root's `onMounted` fires LAST,
- * so a child reading the palette while it mounts must not be racing it). The
- * duplicate read is gone with the observer.
+ * WHAT STOOD HERE: a `MutationObserver` on `documentElement`'s class list that
+ * was NEVER disconnected, fired `resolveVizColors()` — five `getComputedStyle`
+ * reads, each a forced synchronous reflow — on every firing, and observed the
+ * wrong event besides, since an OS-level scheme change mutates no class at all
+ * (`light-dark()` follows `color-scheme`). It also re-resolved the palette in
+ * `onMounted`, which `main.ts` had already done before mount for a documented
+ * reason (a root's `onMounted` fires LAST, so a child reading the palette while
+ * it mounts must not be racing it).
  *
- * The composable returns a stop handle (`L-6`). Nothing calls it here — this is
- * the app root and it does not unmount — and that is the point of returning it
- * rather than the point against: the previous authority could not be stopped
- * even in principle.
+ * ⊘ WHY THE SEED IS HERE AND EXPLICIT. `useGlobalDark`'s `initialValue` is
+ * ONE-SHOT: only the call that constructs the singleton is honoured, and a
+ * later conflicting seed THROWS. This `<script setup>` body runs at ROOT setup
+ * — before every descendant's, so before `DarkModeToggle.vue`'s bare
+ * `useGlobalDark()` — which is what stops a component becoming the seeder by
+ * mounting first. `"auto"` is vueuse's own default and is passed anyway,
+ * because the producer's contract is to pair it with `darkModeSyncScript()` in
+ * `index.html` so the parse-time answer and the runtime answer are the SAME
+ * answer.
+ *
+ * ⊘ WHY `onFlipSettled` AND NOT `installDarkModeSync`. Both live on the same
+ * subpath and watch the same singleton, so neither can miss a flip the other
+ * catches. They differ in exactly the respect `L-6` names: `installDarkModeSync`
+ * returns `void`, `onFlipSettled` returns its own unsubscribe — and a composable
+ * that cannot be stopped is how the observer this replaces got written. It is
+ * also the hook the producer documents FOR a palette memo: every subscriber
+ * drains in ONE coalesced post-flip task instead of paying N reflows on the
+ * flip's own frame.
+ *
+ * ⊘ THE RESIDUE, DISCLOSED. `installVizColors()`'s own
+ * `prefers-color-scheme` listener in `colors.ts` came back with the revert. It
+ * is redundant beside the `"auto"` seed rather than harmful — `resolveVizColors`
+ * is idempotent, so an OS flip costs one extra token re-read — and deleting it
+ * is a one-line edit in a file this wave may not open. It is escalated, not
+ * swept.
  */
-useVizColorSync();
+const stopVizColorSync = useGlobalDark({ initialValue: "auto" }).onFlipSettled(
+    () => resolveVizColors(),
+);
+onScopeDispose(stopVizColorSync);
 
 /**
  * X.F.W3 `.e` / `fr-App MG-alpha` — SCROLL POSITION, RESTORED; and the one

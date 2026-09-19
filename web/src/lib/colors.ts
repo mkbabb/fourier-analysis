@@ -16,7 +16,6 @@
  * clips it into sRGB; both report failure as a Result, never a throw).
  */
 
-import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import { createTokenColorCache } from "@mkbabb/glass-ui/dom";
 import { toRgba8 } from "@mkbabb/value.js/color";
 import { parseCssColor } from "@mkbabb/value.js/css";
@@ -179,61 +178,23 @@ export function resolveVizColors(): void {
 }
 
 /**
- * Resolve the palette once, and seed the app's single dark-mode owner.
+ * Resolve the palette and keep it in step with the cascade.
  *
- * Called from `main.ts` BEFORE `app.mount()` for two reasons, both load-bearing:
- * a root `onMounted` fires after every child's, so a child that reads the
- * palette while it mounts would win the race and keep the authored fallback for
- * the session; and this is the app's FIRST `useGlobalDark()` call, so it is the
- * one that gets to seed the singleton.
+ * Called from `main.ts` BEFORE `app.mount()`: a root `onMounted` fires after
+ * every child's, so a child that reads the palette while it mounts would win
+ * the race and keep the authored fallback for the session.
  *
- * X.F.W3 `.e` / `fr-App MG-γ` ⊕ `m-2`/`L-3`/`C-7` ⊕ `L-6` ⊕ `R-8` — THE ONE
- * DARK-MODE OWNER, RUNTIME HALF.
- *
- * The seed is `"auto"` and it is passed EXPLICITLY even though it is vueuse's
- * default, because the producer's own contract asks for it: `useGlobalDark`'s
- * `initialValue` is ONE-SHOT, and pairing it with `darkModeSyncScript()` is
- * what makes the parse-time answer in `index.html` and the runtime answer the
- * SAME answer. Owning the seed here, at the shell's first call, also means no
- * component can accidentally become the seeder by mounting first.
- *
- * ⊘ THE LOCAL `prefers-color-scheme` LISTENER IS DELETED, not moved. It was a
- * second, permanent, never-removed authority on a question the singleton
- * already answers: with an `"auto"` seed, vueuse's `useDark` tracks the OS
- * query itself, and the producer's watcher writes `color-scheme` on every flip
- * (R-8's coupling). Two listeners for one event is the same defect shape as the
- * MutationObserver this row retires, one layer down.
+ * `.dark` class flips are observed by the app root. An OS-level scheme change
+ * is not a class mutation at all — `light-dark()` follows `color-scheme: light
+ * dark` — so it is observed here, where the palette lives.
  */
 export function installVizColors(): void {
     resolveVizColors();
-    useGlobalDark({ initialValue: "auto" });
-}
 
-/**
- * Keep the palette in step with the theme, and hand back the way to stop.
- *
- * `L-6`'s shape, and it costs no new dependency edge: the app already imports
- * `@mkbabb/glass-ui/dark` at `DarkModeToggle.vue`, so the adoption is free.
- *
- * ⊘ WHY `onFlipSettled` AND NOT `installDarkModeSync`. Both live on the same
- * subpath and fire on the same event — each watches the singleton's `isDark`,
- * so neither can miss a flip the other catches. They differ in exactly one
- * respect, and it is the one `L-6` names: `installDarkModeSync` returns
- * `void`, while `onFlipSettled` returns its own unsubscribe function. A
- * composable that cannot be stopped is how the defect this replaces got
- * written. `onFlipSettled` is also the hook the producer documents FOR this
- * job — it drains every registered callback in ONE coalesced post-flip task,
- * which is what a palette memo wants: the re-resolve costs a forced synchronous
- * reflow per token, and doing it in the flip's own frame is how a theme toggle
- * turns into a jank spike.
- *
- * ⊘ WHAT THIS REPLACES. `App.vue` hand-rolled a `MutationObserver` on
- * `documentElement`'s class list, NEVER disconnected it, and re-read five
- * computed properties per firing. It observed the wrong thing besides: an
- * OS-level scheme change is not a class mutation at all.
- */
-export function useVizColorSync(): () => void {
-    return useGlobalDark().onFlipSettled(() => resolveVizColors());
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .addEventListener("change", () => resolveVizColors());
 }
 
 /**
