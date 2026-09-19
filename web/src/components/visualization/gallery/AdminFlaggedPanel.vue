@@ -16,6 +16,7 @@ import { useGalleryStore } from "@/stores/gallery";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import { thumbnailUrl } from "@/lib/api";
+import { useRelativeTime } from "@/lib/time";
 import type { FlaggedVisualization, FlagInfo, GalleryTier } from "@/lib/types";
 import { problemMessage } from "./adminError";
 import { Flag, Trash2, CheckCircle2, RotateCw, Crown, Bookmark } from "@lucide/vue";
@@ -296,16 +297,20 @@ function reasonLabel(reason: string): string {
     return labels[reason] ?? reason;
 }
 
-function timeAgo(iso: string | null): string {
-    if (!iso) return "";
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-}
+/**
+ * X.F.W3 repair 1 (g15, leg 1) — the fifth local relative-time copy retires
+ * onto `lib/time.ts`, the one the wave created.
+ *
+ * This was the ADMIN dialect, and its disagreement with the gallery dialect was
+ * visible in the product: with no sub-minute floor it printed "0m ago" for a
+ * three-second-old flag while the card beside it said "just now". It also
+ * sampled `Date.now()` during render — on a moderation queue, where the age of
+ * a report is the operator's whole ordering signal — and shipped neither a cap,
+ * nor a negative guard for clock skew, nor a NaN guard. `useRelativeTime` is
+ * the list form of the app's one shared clock, taken once here because a
+ * composable cannot be called per row of a `v-for`.
+ */
+const relativeTimeOf = useRelativeTime();
 </script>
 
 <template>
@@ -405,7 +410,12 @@ function timeAgo(iso: string | null): string {
                              `F-W4-ADDENDA-d-2026-09-18.md`. -->
                         <div class="mt-1 text-mono-micro text-muted-foreground">
                             by {{ item.owner_slug ?? "anonymous" }}
-                            <span v-if="item.created_at"> &middot; {{ timeAgo(item.created_at) }}</span>
+                            <span v-if="item.created_at"> &middot;
+                                <time
+                                    :datetime="relativeTimeOf(item.created_at).datetime"
+                                    :title="relativeTimeOf(item.created_at).absolute"
+                                >{{ relativeTimeOf(item.created_at).text }}</time>
+                            </span>
                         </div>
                         <!-- FR-AFP-59: the tier — the exact state the Save button
                              mutates — rendered as a raw lowercase wire token in
@@ -448,7 +458,11 @@ function timeAgo(iso: string | null): string {
                                     {{ flag.detail }}
                                 </span>
                                 <span class="block font-mono">
-                                    {{ flag.reporter_slug }} &middot; {{ timeAgo(flag.created_at) }}
+                                    {{ flag.reporter_slug }} &middot;
+                                    <time
+                                        :datetime="relativeTimeOf(flag.created_at).datetime"
+                                        :title="relativeTimeOf(flag.created_at).absolute"
+                                    >{{ relativeTimeOf(flag.created_at).text }}</time>
                                 </span>
                             </div>
                         </div>

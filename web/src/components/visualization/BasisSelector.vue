@@ -5,6 +5,7 @@ import { Button } from "@mkbabb/glass-ui/button";
 import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
+import { normalizeBasisKey } from "@/lib/basis";
 import { basisDisplay } from "./lib/basis-display";
 import { RotateCcw } from "@lucide/vue";
 
@@ -94,7 +95,13 @@ function toggleBasis(key: string) {
         // Cycle: epicycles -> series -> off -> epicycles
         const hasEpi = selected.value.includes("fourier-epicycles");
         const hasSeries = selected.value.includes("fourier-series");
-        const otherBases = selected.value.filter(b => !b.startsWith("fourier"));
+        // X.F.W3 repair 1 (g15, leg 2) — the inline family test retires onto
+        // `normalizeBasisKey`, the domain's one owner. The predicate here is
+        // "not in the fourier family", and spelling it as a `startsWith` was
+        // one of seven copies of the same bridge between the FOUR keys
+        // `active_bases` emits and the THREE families `basisDisplay` is keyed
+        // by — the bridge the canon exists to hold.
+        const otherBases = selected.value.filter(b => normalizeBasisKey(b) !== "fourier");
         selected.value = [...otherBases];
         if (hasEpi) {
             selected.value.push("fourier-series");

@@ -2,6 +2,8 @@
 import { ref, computed } from "vue";
 import type { WorkspaceDraft } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
+import { normalizeBasisKey } from "@/lib/basis";
+import { useRelativeTime } from "@/lib/time";
 import { basisDisplay } from "../lib/basis-display";
 import { ChevronDown, Upload } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -38,24 +40,28 @@ const sortedDrafts = computed(() =>
         .sort((a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? "")),
 );
 
-function timeAgo(iso: string): string {
-    const ms = Date.now() - new Date(iso).getTime();
-    const m = Math.floor(ms / 60000);
-    if (m < 1) return "just now";
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-}
+/**
+ * X.F.W3 repair 1 (g15, legs 1 and 2) — the two domains this file re-authored
+ * retire onto the units the wave created for them.
+ *
+ * The local relative-time helper was one of FIVE divergent copies in two
+ * dialects, and `lib/time.ts` is now their one home. This copy's
+ * dialect disagreed with the admin one about the sub-minute floor, so the same
+ * three-second-old row read "just now" here and "0m ago" in the panel beside
+ * it — and like every copy it sampled `Date.now()` DURING RENDER, so the string
+ * froze at whatever it said when the component last patched, on a surface whose
+ * whole content is "how long ago". `useRelativeTime` is the LIST form of the
+ * one clock: a `v-for` cannot call a composable per row, so the shared ticking
+ * clock is taken once here and applied per row. It also brings the cap, the
+ * negative guard and the NaN guard this copy had none of.
+ */
+const relativeTimeOf = useRelativeTime();
 
 function getBasisLabel(item: WorkspaceDraft): string {
     const bases = item.animationSettings?.active_bases ?? [];
     if (bases.length === 0) return "";
     return bases
-        .map((b) => {
-            const key = b.startsWith("fourier") ? "fourier" : b;
-            return basisDisplay[key]?.label ?? b;
-        })
+        .map((b) => basisDisplay[normalizeBasisKey(b)]?.label ?? b)
         .join(", ");
 }
 </script>
@@ -123,7 +129,10 @@ function getBasisLabel(item: WorkspaceDraft): string {
                     <span class="text-sm text-muted-foreground">
                         {{ getBasisLabel(draft) }}
                         <span v-if="getBasisLabel(draft)"> &middot; </span>
-                        {{ timeAgo(draft.lastOpenedAt) }}
+                        <time
+                            :datetime="relativeTimeOf(draft.lastOpenedAt).datetime"
+                            :title="relativeTimeOf(draft.lastOpenedAt).absolute"
+                        >{{ relativeTimeOf(draft.lastOpenedAt).text }}</time>
                     </span>
                 </div>
                 <Button

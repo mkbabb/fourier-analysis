@@ -30,7 +30,7 @@
  * tabpanels, and `"tabs"` would be the same class of false announcement
  * `FR-AUL-33` convicted on the batch toolbar.
  */
-import type { Visualization } from "@/lib/types";
+import type { GalleryTier, Visualization } from "@/lib/types";
 import GalleryCard from "./GalleryCard.vue";
 import {
     Carousel,
@@ -50,7 +50,11 @@ defineProps<{
 const emit = defineEmits<{
     "card-click": [entry: Visualization];
     like: [hash: string];
-    "set-tier": [hash: string, tier: "featured" | "saved" | "normal"];
+    // X.F.W3 repair 1 (g15, leg 3) — the inline union retires onto
+    // `GalleryTier`, its one canonical home. A closed union re-declared at the
+    // consumer is a union that stops being closed the first time one copy is
+    // widened, which is exactly what had already happened twice elsewhere.
+    "set-tier": [hash: string, tier: GalleryTier];
     delete: [hash: string];
     "toggle-select": [hash: string, checked: boolean];
 }>();

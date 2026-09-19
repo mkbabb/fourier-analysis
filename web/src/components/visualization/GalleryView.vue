@@ -7,7 +7,7 @@ import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
-import type { Visualization, WorkspaceDraft } from "@/lib/types";
+import type { GalleryTier, Visualization, WorkspaceDraft } from "@/lib/types";
 import { Layers, Trash2, Crown } from "@lucide/vue";
 
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
@@ -149,7 +149,11 @@ async function handleLike(hash: string) {
     likedHashes.value = s;
 }
 
-async function handleSetTier(hash: string, tier: "featured" | "saved" | "normal") {
+// X.F.W3 repair 1 (g15, leg 3) — the inline union retires onto `GalleryTier`,
+// its one canonical home. This is the tier handler the carousel and the grid
+// both emit into, so an inline re-declaration here is the copy most likely to
+// drift from the type the store actually stores.
+async function handleSetTier(hash: string, tier: GalleryTier) {
     await gallery.setTier(hash, tier);
     if (gallery.adminMode) gallery.refreshAdminStats();
 }
