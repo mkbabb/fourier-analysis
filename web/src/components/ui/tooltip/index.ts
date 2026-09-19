@@ -79,8 +79,12 @@
  *    child, or a bare SVG, and the failure is invisible: no warning, no
  *    tooltip, no keyboard path. THE CONTRACT: the default slot must resolve to
  *    EXACTLY ONE element, and that element must be focusable. The shim warns
- *    in dev when the first half is violated; the second half cannot be decided
- *    from a vnode and is stated instead.
+ *    in dev when the FOCUSABLE half is violated — that is the half which
+ *    actually breaks keyboard access, and it is decidable from the mounted
+ *    DOM. The one-element half is NOT guarded: deciding it means re-invoking
+ *    the slot outside the render function, which emits a dev warn of its own,
+ *    and a guard that trades one warning for another is not a guard. It is
+ *    stated in words instead, here and in the component's usage block.
  *
  * ── THE INPUT-MODALITY CONTRACT, STATED (FR-TT-2) ─────────────────────────
  * This shim wires a DESCRIPTION — `aria-describedby`, and only while the
