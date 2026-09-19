@@ -4,6 +4,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore, type EasingName } from "@/stores/animation";
 import { useToast } from "@/composables/useToast";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
+import { normalizeBasisKey } from "@/lib/basis";
 
 /**
  * X.F.W4 · SP-4 — `prefers-reduced-motion`, read LIVE at every call.
@@ -148,9 +149,16 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
                 hadDataBefore = true;
                 // First data arrival: ensure fourier-epicycles is selected
                 if (!activeBases.value.includes("fourier-epicycles")) {
+                    // X.F.W3 `.e` / `fr-BasisSelector M-10` — the key->family
+                    // bridge, one of seven inline spellings, retired onto the
+                    // canon. The predicate is "not a Fourier basis", and saying
+                    // so through `normalizeBasisKey` is what keeps the family
+                    // question answered in one place when a fifth basis lands.
                     activeBases.value = [
                         "fourier-epicycles",
-                        ...activeBases.value.filter((b) => !b.startsWith("fourier")),
+                        ...activeBases.value.filter(
+                            (b) => normalizeBasisKey(b) !== "fourier",
+                        ),
                     ];
                 }
                 if (reduced) {

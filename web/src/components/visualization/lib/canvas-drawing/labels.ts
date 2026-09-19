@@ -2,6 +2,7 @@ import type { CanvasSurface } from "./types";
 import { basisDisplay } from "../basis-display";
 import type { LabelHitRegion } from "../../composables/useCanvasHover";
 import { VIZ_COLORS } from "@/lib/colors";
+import { basisModeLabel, normalizeBasisKey } from "@/lib/basis";
 import { goldenShimmerAlpha, applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
 
 export interface LabelDrawResult {
@@ -32,12 +33,13 @@ export function drawBasisLabels(
     let yOff = 16;
 
     for (const basisKey of activeBases) {
-        const basisName = basisKey.startsWith("fourier") ? "fourier" : basisKey;
+        // X.F.W3 `.e` / `fr-BasisSelector M-10` — the canvas spelling of the
+        // key->family bridge and of the mode-label ladder, both retired onto
+        // `lib/basis.ts`. The bridge was authored 7× tree-wide and the ladder 4×.
+        const basisName = normalizeBasisKey(basisKey);
         const cfg = basisDisplay[basisName];
         if (!cfg) continue;
-        const modeLabel = basisKey === "fourier-epicycles" ? "Epicycles"
-            : basisKey === "fourier-series" ? "Series"
-            : cfg.label;
+        const modeLabel = basisModeLabel(basisKey, cfg.label);
 
         const isHovered = hoveredBasis === basisKey;
         const labelShimmer = isHovered ? goldenShimmerAlpha() : 0;

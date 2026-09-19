@@ -6,7 +6,7 @@ import { Checkbox } from "@mkbabb/glass-ui";
 import type { Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { useTimeAgo } from "@/lib/time";
-import { basisDisplay } from "../lib/basis-display";
+import { basisChips } from "../lib/basis-display";
 // FR-GFC-22 / G-F4-DEAD-DEP: `VIZ_COLORS` and `PathPreview` were imported and
 // never referenced — zero occurrences of either identifier anywhere else in this
 // file (`grep -c` = 1 each, the import line itself), so the card was pulling a
@@ -37,22 +37,13 @@ const emit = defineEmits<{
 
 const isLiked = computed(() => props.likedHashes?.has(props.entry.slug) ?? false);
 
-const basisLabels = computed(() =>
-    (props.entry.active_bases ?? [])
-        .map((b) => {
-            const key = b.startsWith("fourier") ? "fourier" : b;
-            const cfg = basisDisplay[key];
-            if (!cfg) return null;
-            const label =
-                b === "fourier-epicycles"
-                    ? "Epicycles"
-                    : b === "fourier-series"
-                      ? "Series"
-                      : cfg.label;
-            return { icon: cfg.icon, label, color: cfg.color };
-        })
-        .filter(Boolean) as { icon: string; label: string; color: string }[],
-);
+/**
+ * X.F.W3 `.e` / `fr-BasisSelector M-10` — the byte-identical twin of this
+ * computed lived in the sibling file, and a third spelling on the canvas. All
+ * three now call one builder: the key->family bridge and the mode-label ladder
+ * are `lib/basis.ts`'s, and the chip assembly is the display table's.
+ */
+const basisLabels = computed(() => basisChips(props.entry.active_bases));
 
 /**
  * X.F.W3 `.e` / `fr-AdminUserList FR-AUL-17` ⊕ `fr-GalleryCardModal GCM-34` —
