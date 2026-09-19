@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted, useTemplateRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import { ChevronDown, ChevronRight, ChevronUp, Search, X } from "@lucide/vue";
 import PaperSearch from "./PaperSearch.vue";
+import { injectPaperToc } from "./paperToc";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
 
 const props = defineProps<{
-    sections: PaperSectionData[];
-    activeRootId: string | null;
     currentSection: PaperSectionData | null;
-    scrollTo: (id: string) => void;
-    scrollToTop: () => void;
     renderTitle: (title: string) => string;
     scrollContainer: HTMLElement | null;
     search: PaperSearchState;
 }>();
+
+// ── The ONE ToC model, injected (COHESION §0o ESC-2 / §3 D9) ───────────────
+// This host built the THIRD parallel derivation of the paper tree — its own
+// `useSidebarState` over the same sections, with `activeRootId` passed twice
+// because it had no use for the leaf id. It now reads the view's model, so
+// "expanded here" and "expanded there" are the same fact.
+const { sections, activeRootId, isExpanded, toggleSection, navigateTo, scrollToTop } =
+    injectPaperToc();
 
 const floatingTocOpen = ref(false);
 const searchActive = ref(false);
@@ -58,29 +62,14 @@ onUnmounted(() => {
     }
 });
 
-// ── Section expand/collapse — delegated to glass-ui's `useSidebarState`
-//    (W3.5.c). Discharges the user-expanded/user-collapsed reactive Sets
-//    that previously lived locally; symmetric with the desktop sidebar.
-//    `activeId` is unused on mobile (no nested highlighting) — pass
-//    `activeRootId` as a stand-in so the composable's default-expansion
-//    rule still pivots on the user's current section.
-const sidebarState = useSidebarState<PaperSectionData>({
-    sections: props.sections,
-    activeId: () => props.activeRootId,
-    activeRootId: () => props.activeRootId,
-    scrollTo: (id) => props.scrollTo(id),
-    scrollToTop: () => props.scrollToTop(),
-    getChildren: (n) => n.subsections,
-});
-
 function selectSection(id: string) {
     floatingTocOpen.value = false;
-    props.scrollTo(id);
+    navigateTo(id);
 }
 
 function handleScrollToTop() {
     floatingTocOpen.value = false;
-    props.scrollToTop();
+    scrollToTop();
 }
 
 function openMobileSearch() {
@@ -152,17 +141,17 @@ watch(() => props.search.isOpen.value, (open) => {
                             class="floating-toc-item floating-toc-root cm-serif"
                             :class="{ 'is-active': activeRootId === section.id }"
                             :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
-                            @click="sidebarState.toggleSection(section.id)"
+                            @click="toggleSection(section.id)"
                         >
                             <component
-                                :is="sidebarState.isExpanded(section.id) ? ChevronDown : ChevronRight"
+                                :is="isExpanded(section.id) ? ChevronDown : ChevronRight"
                                 v-if="section.subsections?.length"
                                 class="floating-toc-collapse-icon"
                             />
                             <span class="fira-code text-xs opacity-50">{{ section.number }}.</span>
                             {{ section.title }}
                         </Button>
-                        <template v-if="sidebarState.isExpanded(section.id)">
+                        <template v-if="isExpanded(section.id)">
                             <Button
                                 v-for="sub in section.subsections"
                                 :key="sub.id"

@@ -6,18 +6,27 @@ import {
     flattenPaperSections,
     useClickDelegate,
     useSidebarFollow,
-    useTreeIndex,
     useVirtualSectionWindow,
 } from "@mkbabb/latex-paper/vue";
 import "@mkbabb/latex-paper/theme";
+import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import PaperSidebar from "./PaperSidebar.vue";
 import MobileFloatingToc from "./MobileFloatingToc.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
-import { getPaperPreview, paperSectionToTreeNode } from "./paperTree";
+import { createPreviewLookup } from "./paperTree";
+import { PAPER_TOC_KEY, type PaperTocModel } from "./paperToc";
 import { useScrollNavigation } from "./useScrollNavigation";
 import { usePaperSearch } from "./search/usePaperSearch";
-import { paperSections, labelMap, totalPages, pageMap, extractedMacros } from "@/lib/paperContent";
-import type { PaperSectionData } from "@/lib/paperContent";
+// One specifier, one import — the type used to arrive on a second `import type`
+// line from the same module (`no-duplicate-imports`, TS6133 when it fell dead).
+import {
+    paperSections,
+    labelMap,
+    totalPages,
+    pageMap,
+    extractedMacros,
+    type PaperSectionData,
+} from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Undo2 } from "@lucide/vue";
@@ -41,11 +50,9 @@ const scrollContainer = ref<HTMLElement | null>(null);
 const sectionWindowRoot = ref<HTMLElement | null>(null);
 const sectionStartOffsetPx = ref(0);
 const scrollViewportHeightPx = ref(0);
-const sidebarRef = ref<InstanceType<typeof PaperSidebar> | null>(null);
+const sidebarNavEl = ref<HTMLElement | null>(null);
 const baseUrl = import.meta.env.BASE_URL;
 const flatSections = flattenPaperSections(paperSections);
-const treeNodes = paperSections.map(paperSectionToTreeNode);
-const { index: treeIndex, isActive, isInActiveChain } = useTreeIndex(treeNodes);
 
 // ── Build PaperContext and wire up tracking ────────────────
 let _scrollTo: (id: string) => void = () => {};
@@ -229,7 +236,36 @@ function bindScrollContainerObserver(scroller: HTMLElement | null) {
     scrollContainerResizeObserver.observe(scroller);
 }
 
-const sidebarNavEl = computed(() => sidebarRef.value?.sidebarNav ?? null);
+// ── The ONE ToC model (COHESION §0o ESC-2, executing §3 D9) ────────────────
+// Ruled: one model, owned by the paper view — the highest common ancestor of
+// sidebar and body — and provided through a TYPED `InjectionKey`. Before this,
+// the same 98-node tree was derived three times across two producers
+// (`useTreeIndex` here + `useSidebarState` in each of the two ToC hosts), and
+// the winner was decided by nothing. `useSidebarState` wins on measurement: it
+// already returns the index, the active/in-chain predicates AND the expansion
+// state, which is the whole model; the losing index and the `paperTree.ts`
+// adapter that fed it are deleted.
+const sidebarState = useSidebarState<PaperSectionData>({
+    sections: paperSections,
+    activeId: () => activeId.value,
+    activeRootId: () => activeRootId.value,
+    scrollTo: (id) => navigateTo(id),
+    scrollToTop: () => scrollToTop(),
+    getChildren: (n) => n.subsections,
+});
+
+const tocModel: PaperTocModel = {
+    ...sidebarState,
+    // `M6` retired: the view reads the ToC element through the model it
+    // provides, never through a child's untyped `defineExpose`.
+    registerNavEl: (el) => {
+        sidebarNavEl.value = el;
+    },
+    getPreview: createPreviewLookup(),
+};
+
+provide(PAPER_TOC_KEY, tocModel);
+
 const { queueSidebarFollow } = useSidebarFollow({
     sidebarEl: sidebarNavEl,
     activeId,
@@ -237,12 +273,14 @@ const { queueSidebarFollow } = useSidebarFollow({
     scrollSource: scrollContainer,
 });
 
-const currentSection = computed(() => {
-    if (!activeRootId.value) return null;
-    const entry = treeIndex.get(activeRootId.value);
-    if (!entry) return null;
-    return paperSections.find((s) => s.id === entry.node.id) ?? null;
-});
+// `L/D11` — the index round-trip was provably an identity (`entry.node.id`
+// found in the very array the entry's node came from); the entry carries the
+// node itself.
+const currentSection = computed(() =>
+    activeRootId.value
+        ? (sidebarState.treeIndex.get(activeRootId.value)?.node ?? null)
+        : null,
+);
 
 onMounted(() => {
     mobileTocObserver = new IntersectionObserver(
@@ -318,11 +356,7 @@ onUnmounted(() => {
             <Transition name="slide-down">
                 <MobileFloatingToc
                     v-if="!mobileTocVisible"
-                    :sections="sections"
-                    :active-root-id="activeRootId"
                     :current-section="currentSection"
-                    :scroll-to="navigateTo"
-                    :scroll-to-top="scrollToTop"
                     :render-title="renderTitle"
                     :scroll-container="scrollContainer"
                     :search="search"
@@ -332,20 +366,7 @@ onUnmounted(() => {
             <div class="paper-layout mx-auto max-w-5xl px-2 pt-2 pb-0 sm:pt-2 sm:pb-0 sm:px-6">
                 <div class="paper-grid">
                     <!-- Desktop sidebar TOC -->
-                    <PaperSidebar
-                        ref="sidebarRef"
-                        :sections="sections"
-                        :active-root-id="activeRootId"
-                        :active-id="activeId"
-                        :scroll-to="navigateTo"
-                        :scroll-to-top="scrollToTop"
-                        :render-title="renderTitle"
-                        :tree-index="treeIndex"
-                        :is-active="isActive"
-                        :is-in-active-chain="isInActiveChain"
-                        :get-preview="getPaperPreview"
-                        :search="search"
-                    />
+                    <PaperSidebar :render-title="renderTitle" :search="search" />
 
                     <!-- Main article -->
                     <article class="paper-article leading-relaxed">

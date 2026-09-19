@@ -3,50 +3,44 @@ import Tooltip from "@/components/ui/tooltip/Tooltip.vue";
 import PaperSearch from "./PaperSearch.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
+import { injectPaperToc } from "./paperToc";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@mkbabb/glass-ui/collapsible";
-import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import { ChevronRight, ChevronUp } from "@lucide/vue";
 
-import { ref } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 
-const props = defineProps<{
-    sections: PaperSectionData[];
-    activeRootId: string | null;
-    activeId: string | null;
-    scrollTo: (id: string) => void;
-    scrollToTop: () => void;
+defineProps<{
     renderTitle: (title: string) => string;
-    treeIndex: Map<string, any>;
-    isActive: (id: string, activeId: string | null) => boolean;
-    isInActiveChain: (id: string, activeId: string | null) => boolean;
-    getPreview: (section: PaperSectionData) => string;
     search: PaperSearchState;
 }>();
 
-const sidebarNav = ref<HTMLElement | null>(null);
-defineExpose({ sidebarNav });
+// ── The ONE ToC model, injected (COHESION §0o ESC-2 / §3 D9) ───────────────
+// This host used to build its own `useSidebarState` — the second of three
+// parallel derivations of the same tree — and expose its nav element through
+// an untyped `defineExpose` for a composable in a third package to reach into.
+// Both are retired: `PaperView` owns the model, provides it on a typed key,
+// and reads this element through `registerNavEl`.
+const toc = injectPaperToc();
+const {
+    sections,
+    activeRootId,
+    isActive,
+    isInActiveChain,
+    isExpanded,
+    toggleSection,
+    navigateTo,
+    scrollToTop,
+    getPreview,
+} = toc;
 
-// ── Section expand/collapse — delegated to glass-ui's `useSidebarState`
-//    (W3.5.c). The composable encapsulates the userExpanded/userCollapsed
-//    reactive Sets + isExpanded/toggleSection logic that previously lived
-//    in both `PaperSidebar.vue` and `MobileFloatingToc.vue`. We supply
-//    `getChildren` because `PaperSectionData` stores children under
-//    `subsections` rather than the canonical `children` key — glass-ui's
-//    composable was augmented (same commit) to accept this override,
-//    symmetric with `useTreeIndex` / `useScrollTracker`.
-const sidebarState = useSidebarState<PaperSectionData>({
-    sections: props.sections,
-    activeId: () => props.activeId,
-    activeRootId: () => props.activeRootId,
-    scrollTo: (id) => props.scrollTo(id),
-    scrollToTop: () => props.scrollToTop(),
-    getChildren: (n) => n.subsections,
-});
+const sidebarNav = ref<HTMLElement | null>(null);
+watch(sidebarNav, (el) => toc.registerNavEl(el), { immediate: true });
+onBeforeUnmount(() => toc.registerNavEl(null));
 
 // X·F F.W4 `.e` — `fr-PaperSidebar D-M11`: `v-if="section.subsections"` is
 // truthy for `[]`, so an empty array would mint a disclosure control with
@@ -103,15 +97,15 @@ function plainTitle(section: PaperSectionData): string {
                          the trigger — so the double-toggle L-5(a) predicted for
                          "the day a trigger lands" cannot form. -->
                     <Collapsible
-                        :open="sidebarState.isExpanded(section.id)"
-                        @update:open="sidebarState.toggleSection(section.id)"
+                        :open="isExpanded(section.id)"
+                        @update:open="toggleSection(section.id)"
                     >
                         <div class="sidebar-row">
                             <Tooltip :text="getPreview(section)" side="right">
                                 <Button
                                     emphasis="quiet"
                                     :data-toc-id="section.id"
-                                    @click="scrollTo(section.id)"
+                                    @click="navigateTo(section.id)"
                                     class="sidebar-link cm-serif"
                                     :class="{ 'is-active': activeRootId === section.id }"
                                     :style="activeRootId === section.id ? { color: `var(--section-color-${si})` } : {}"
@@ -140,10 +134,10 @@ function plainTitle(section: PaperSectionData): string {
                                         <Button
                                             emphasis="quiet"
                                             :data-toc-id="sub.id"
-                                            @click="scrollTo(sub.id)"
+                                            @click="navigateTo(sub.id)"
                                             class="sidebar-link sidebar-sublink cm-serif"
-                                            :class="{ 'is-active-sub': isActive(sub.id, activeId) || isInActiveChain(sub.id, activeId) }"
-                                                :style="isActive(sub.id, activeId)
+                                            :class="{ 'is-active-sub': isActive(sub.id) || isInActiveChain(sub.id) }"
+                                                :style="isActive(sub.id)
                                                     ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
                                                     : {}"
                                         >
@@ -152,14 +146,14 @@ function plainTitle(section: PaperSectionData): string {
                                         </Button>
                                     </Tooltip>
                                     <!-- Sub-subsections -->
-                                    <ol v-if="sub.subsections && isInActiveChain(sub.id, activeId)" class="sidebar-subsublist">
+                                    <ol v-if="sub.subsections && isInActiveChain(sub.id)" class="sidebar-subsublist">
                                         <li v-for="subsub in sub.subsections" :key="subsub.id">
                                             <Button
                                                 emphasis="quiet"
                                                 :data-toc-id="subsub.id"
-                                                @click="scrollTo(subsub.id)"
+                                                @click="navigateTo(subsub.id)"
                                                 class="sidebar-link sidebar-subsublink cm-serif"
-                                                :style="isActive(subsub.id, activeId)
+                                                :style="isActive(subsub.id)
                                                     ? { color: `var(--section-color-${si})`, fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
                                                     : {}"
                                             >
