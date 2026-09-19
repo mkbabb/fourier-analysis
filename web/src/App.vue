@@ -3,7 +3,6 @@ import { RouterView } from "vue-router";
 import { TooltipProvider } from "@mkbabb/glass-ui/tooltip";
 import { Toaster } from "@mkbabb/glass-ui/toast";
 import AppHeader from "@/components/layout/AppHeader.vue";
-import SvgFilters from "@/components/decorative/SvgFilters.vue";
 import { useVizColorSync } from "@/lib/colors";
 
 /**
@@ -30,7 +29,6 @@ useVizColorSync();
 </script>
 
 <template>
-    <SvgFilters />
     <TooltipProvider :delay-duration="400" :skip-delay-duration="200">
         <div class="h-dvh flex flex-col bg-background text-foreground paper-texture overflow-hidden">
             <AppHeader />
