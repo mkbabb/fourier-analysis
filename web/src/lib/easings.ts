@@ -214,6 +214,35 @@ export const ANIMATION_EASINGS: Record<AnimationEasingName, {
     expo:    { label: "Exponential", fn: easeInOutExpo,     description: "Dramatic slow-fast-slow" },
 };
 
+/** The catalog's keys, as the closed domain a restored value must land in. */
+export const ANIMATION_EASING_NAMES = Object.keys(
+    ANIMATION_EASINGS,
+) as readonly AnimationEasingName[];
+
+/** Is this an easing this app can actually run? */
+export function isAnimationEasingName(v: unknown): v is AnimationEasingName {
+    return typeof v === "string" && v in ANIMATION_EASINGS;
+}
+
+/**
+ * `AC-L-11 + M-10`'s easing half (X·F F.W4 `.f`) — the restore seam's coercion.
+ *
+ * The loader restored a persisted easing with `as.easing as EasingName`: an
+ * assertion of an OPEN string into this six-key union. A drifted or hand-edited
+ * record therefore produced an `AnimationEasingName` the catalog has no entry
+ * for, and the two consumers degraded in different directions — the store's
+ * `ANIMATION_EASINGS[easing]?.fn ?? identity` fell silently to LINEAR while the
+ * picker, matching on the same key, showed NO active chip. One assertion, two
+ * incompatible silent degradations. Coercing at the seam makes the off-catalog
+ * state unrepresentable downstream instead of merely unlikely.
+ */
+export function coerceAnimationEasingName(
+    v: unknown,
+    fallback: AnimationEasingName = "sine",
+): AnimationEasingName {
+    return isAnimationEasingName(v) ? v : fallback;
+}
+
 // ── SVG path utilities ──────────────────────────────────────────────
 
 /** Generate an SVG path `d` attribute by sampling an easing function (normalized 0-1 coords). */

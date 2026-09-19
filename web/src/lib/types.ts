@@ -155,7 +155,13 @@ export interface FlaggedVisualization {
     flags: FlagInfo[];
     image_slug: string | null;
     owner_slug: string | null;
-    tier: string | null;
+    // `FR-AFP-59`'s type half (X·F F.W4 `.f`; the same narrowing `FR-AFP-31`
+    // asks for on `FlagReason`'s side). `GalleryTier` is closed on BOTH wire
+    // sides — `Visualization.tier` above already says so — and this row alone
+    // widened it back to `string`, which is why a drifted vocabulary could ship
+    // a raw wire token into the panel's meta line and into the `data-tier`
+    // recipe the sibling gallery card resolves against a closed set.
+    tier: GalleryTier | null;
     created_at: string | null;
 }
 

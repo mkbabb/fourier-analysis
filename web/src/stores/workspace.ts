@@ -13,7 +13,12 @@ import type {
 import * as api from "@/lib/api";
 import { problemMessage } from "@/lib/api-problem";
 import { saveDraft, loadDraft, listDrafts } from "@/lib/draftStorage";
-import { defaultContourSettings, defaultAnimationSettings } from "@/lib/defaults";
+import {
+    defaultContourSettings,
+    defaultAnimationSettings,
+    coerceContourSettings,
+    coerceAnimationSettings,
+} from "@/lib/defaults";
 
 // B.W4 — the workspace's save/publish actions write to the converged
 // `/visualizations` entity (CRUD-CONTRACT §1). Navigation identity is the
@@ -161,14 +166,14 @@ export const useWorkspaceStore = defineStore("workspace", () => {
                     if (revision.value !== rev) return;
                 }
                 contour.value = draftContour ? markRaw(draftContour) : null;
-                contourSettings.value = {
-                    ...defaultContourSettings(),
-                    ...draft.contourSettings,
-                };
-                animationSettings.value = {
-                    ...defaultAnimationSettings(),
-                    ...draft.animationSettings,
-                };
+                // SP-13 — the restore seam. An IndexedDB record is not typed at
+                // runtime by anything: the prior spread put whatever had been
+                // persisted straight onto the live settings, which is how an
+                // off-catalog `speed` reached a control that could not show it
+                // and an off-catalog `easing` reached two consumers that
+                // degraded in opposite directions (`AC-L-11 + M-10`).
+                contourSettings.value = coerceContourSettings(draft.contourSettings);
+                animationSettings.value = coerceAnimationSettings(draft.animationSettings);
                 epicycleData.value = draft.epicycleData ? markRaw(draft.epicycleData) : null;
                 basesData.value = draft.basesData ? markRaw(draft.basesData) : null;
             } else {
@@ -211,14 +216,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (revision.value !== rev) return;
             imageSlug.value = viz.image_slug;
             imageMeta.value = meta;
-            contourSettings.value = {
-                ...defaultContourSettings(),
-                ...viz.contour_settings,
-            };
-            animationSettings.value = {
-                ...defaultAnimationSettings(),
-                ...viz.animation_settings,
-            };
+            // SP-13 — the same seam on the server path. `Visualization` is a
+            // declared TypeScript shape, not a checked one, so a drifted or
+            // hand-written row arrives here with exactly the same authority an
+            // IndexedDB draft has: none.
+            contourSettings.value = coerceContourSettings(viz.contour_settings);
+            animationSettings.value = coerceAnimationSettings(viz.animation_settings);
             // Load the contour asset (FK kept under the convergence).
             const contourAsset = await api.getContour(viz.contour_hash);
             if (revision.value !== rev) return;
