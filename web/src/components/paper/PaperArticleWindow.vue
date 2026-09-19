@@ -8,6 +8,7 @@ import {
 } from "@mkbabb/latex-paper/vue";
 import { computed, inject, type ComponentPublicInstance } from "vue";
 import { ArrowRight } from "@lucide/vue";
+import { Button } from "@mkbabb/glass-ui/button";
 import {
     DARK_INVERT_EXEMPT,
     resolveFigure,
@@ -166,19 +167,59 @@ const renderCalloutText = computed(
                                 class="cm-serif text-sm text-muted-foreground mb-3"
                                 v-html="renderCalloutText(callout.text)"
                             />
-                            <router-link
-                                :to="callout.link"
+                            <!-- X.F.W3 `.d` — `fr-PaperArticleWindow PAW-8`
+                                 (⊕ `PAW-20`, `PAW-41`). `.callout-btn` was a
+                                 DIVERGENT TWIN: the identical call to action as
+                                 the six glass Buttons on this route, wearing a
+                                 contradictory chassis — a bare `<router-link>`
+                                 hand-drawn in twenty lines of scoped CSS, under
+                                 one shared UNLAYERED global focus rule that was
+                                 its only indicator.
+
+                                 The cure is the `R3-7a` precedent shape: the
+                                 glass `Button` `as-child`, a THIN SKIN. The link
+                                 keeps being a link — `as-child` merges the
+                                 command’s chrome into the `<router-link>` rather
+                                 than wrapping it, so the href, the router’s
+                                 active handling and middle-click all survive, and
+                                 the control joins the ladder its six siblings are
+                                 already on.
+
+                                 `PAW-20` dies inside the adoption (no second
+                                 chassis is left to diverge) and `PAW-41`’s
+                                 off-token radius rides it — the pill is the
+                                 primitive’s own now.
+
+                                 ⊘ `PAW-22` → banked `GCM-23` (drop
+                                 `border-radius: inherit` rule-wide) is NOT taken
+                                 here, and `K-5`’s LOCK is why: that deletion must
+                                 be SITE-SCOPED, and this bare router-link had no
+                                 other indicator to fall back on. It carries the
+                                 producer’s `focus-ring` now, which is what makes
+                                 the site-scoped deletion safe LATER; the
+                                 rule-wide sweep is still not this unit’s act.
+                                 ⊘ `PAW-53`: the adopted chassis needs a real
+                                 border under forced-colors, or the glass-ui rung
+                                 extended to it — NOT discharged by this adoption
+                                 (SC-10), and carried out as a relay note.
+
+                                 `PAW-21`: U+2131 announced as “script capital F
+                                 ourier” INSIDE the control’s accessible name. The
+                                 ArrowRight beside it is genuinely exempt (lucide
+                                 auto-hides it), which made this the sole
+                                 pollutant. -->
+                            <Button
+                                as-child
+                                emphasis="primary"
+                                size="lg"
                                 class="callout-btn"
                             >
-                                <!-- `PAW-21`: U+2131 announced as "script
-                                     capital F ourier" INSIDE the control's
-                                     accessible name. The ArrowRight beside it is
-                                     genuinely exempt (lucide auto-hides it),
-                                     which made this the sole pollutant. -->
-                                <span class="fourier-f" aria-hidden="true">ℱ</span>
-                                <span>Open Visualizer</span>
-                                <ArrowRight class="h-4 w-4" />
-                            </router-link>
+                                <router-link :to="callout.link">
+                                    <span class="fourier-f" aria-hidden="true">ℱ</span>
+                                    <span>Open Visualizer</span>
+                                    <ArrowRight class="h-4 w-4" />
+                                </router-link>
+                            </Button>
                         </div>
                     </template>
                 </PaperSectionBlocks>
@@ -259,30 +300,13 @@ const renderCalloutText = computed(
     block-size: auto;
 }
 
-.callout-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1.5rem;
-    @apply text-base;
-    font-weight: 600;
-    color: var(--primary-foreground);
-    background: var(--primary);
-    border-radius: 9999px;
-    text-decoration: none;
-    /* `PAW-19` — the last un-tokenised easing in `components/paper/`, against
-       four sibling files already migrated under the A.W3.d ledger. */
-    transition:
-        transform var(--duration-fast) var(--ease-out-expo),
-        box-shadow var(--duration-fast) var(--ease-out-expo);
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent);
-}
-
-.callout-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 35%, transparent);
-}
-
+/* X.F.W3 `.d` / `PAW-8` — the hand-drawn chassis is DELETED, not re-tuned. The
+   inline-flex box, the gap, the pad, the weight, the primary fill and ink, the
+   9999px pill, the `text-decoration: none`, the hover lift and both shadow
+   steps all belong to `<Button emphasis="primary" size="lg">`, and `PAW-19`’s
+   tokenised easing retires with the transition it was correcting — the
+   primitive carries its own, including the reduced-motion arm this hand-roll
+   never had. What is left is the GLYPH, which is this callout’s alone. */
 .callout-btn .fourier-f {
     font-size: 1.1em;
     opacity: 0.85;
