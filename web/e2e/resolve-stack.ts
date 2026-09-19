@@ -11,10 +11,19 @@ import type { Page } from "@playwright/test";
  * `scripts/contrast.ts` — happens outside the browser.
  *
  * It lives here rather than inside a spec because a spec cannot be imported.
- * ⊘ RESIDUE, named rather than silently carried: `contrast-floor.spec.ts` still
+ *
+ * X.F.W3 `.d` — THE BOOKED RESIDUE IS DISCHARGED. This header used to end: "⊘
+ * RESIDUE, named rather than silently carried: `contrast-floor.spec.ts` still
  * holds its own private copy of `resolveStack`/`openArm`, and re-pointing that
  * spec at this module is a change to another unit's authored gate. The
- * duplication is booked for the wave's adjudicator, not resolved here.
+ * duplication is booked for the wave's adjudicator, not resolved here."
+ *
+ * COHESION §0x note (iv) ruled it: this file is the ONE `resolveStack`/`openArm`
+ * home and `contrast-floor.spec.ts` imports it. The two copies had already
+ * diverged on the thing that decides whether a reading is trustworthy —
+ * ⟨`grep -c SENTINEL`⟩ **3** here, **0** in the spec's copy — so the spec was
+ * running the version that CANNOT detect a rejected colour expression. It has
+ * the detector now. Definitions of either function outside this file: **0**.
  */
 
 export type Arm = "light" | "dark";
