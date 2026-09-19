@@ -218,7 +218,19 @@ async function onCanvasFileSelect(e: Event) {
                  docks lift into the `#stage` slot; the control panels (each now
                  a `ConfiguratorLayer`) stack in the controls aside (default
                  slot). The bespoke `cartoon-card` panel backgrounds retire for
-                 the substrate's layered chassis. -->
+                 the substrate's layered chassis.
+
+                 X.F.W3 repair 1 (g14 leg 3) — THE SCOPE OF THAT RETIREMENT,
+                 STATED, because the sentence above read as a tree-wide claim
+                 and one `cartoon-card` still paints in this very file. It is
+                 `:191`, the no-workspace ERROR card, and it is not a panel: the
+                 retirement is of the CONTROL-PANEL stack's backgrounds, which
+                 the `ConfiguratorLayer`s below now carry, and the error card
+                 stands outside the `Configurator` in the `v-else-if` branch
+                 above it. It keeps the shim deliberately — it is a lone
+                 bordered card on an empty route, with no layered chassis around
+                 it to belong to. The census that governs the shim is re-measured
+                 at `style.css`'s own declaration. -->
             <Configurator scroll-mode="auto" class="viz-configurator">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>

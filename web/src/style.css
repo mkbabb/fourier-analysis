@@ -208,8 +208,16 @@ html {
 /* D.W4.a — `.cartoon-card` shim (the dead-class resurrection).
    glass-ui removed the `.cartoon-card` recipe at C.W5 (cards.css:2);
    `cartoon-surface` survives as a decoration-only utility (cards.css:33).
-   Fourier consumes `.cartoon-card` at 14 application sites (13 files; one
-   uses it 5 times). The shim re-binds the class against `cartoon-surface`
+   X.F.W3 repair 1 (g14 leg 2) — THE FIGURE IS RE-MEASURED AT THESE BYTES, not
+   re-copied: ⟨cmd⟩ this seat, 2026-09-19, double-run,
+   `git grep -o 'class="[^"]*cartoon-card' -- src | wc -l` → **16 application
+   sites**, `… -l … | wc -l` → **10 files**, one of them (`EquationView.vue`)
+   using it 5 times. The authored figure — "14 application sites (13 files)" —
+   was stale in both terms and in opposite directions, and a stale census inside
+   the shim that exists BECAUSE of the census is the reading a later seat trusts
+   without re-running. The counts above exclude prose mentions and this
+   declaration; the FILES figure counts files carrying an application site, not
+   files naming the token. The shim re-binds the class against `cartoon-surface`
    (the 2px border + offset-stamp shadow + hover-lift) and the existing
    `--border`/`--card` tokens, restoring parity with the pre-C.W5 visual
    without touching glass-ui. Cross-repo re-publish recorded as a
