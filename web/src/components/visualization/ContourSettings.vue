@@ -23,8 +23,34 @@ import SliderControl from "@/components/ui/SliderControl.vue";
 
 const advancedOpen = ref(false);
 
+/**
+ * X.F.W3 `.d` — `fr-ContourSettings M-16` (≡ `C-9` / `L-M3`(contract) / `D-i2`),
+ * the panel half of §5a split (4). THE CONTRACT IS INBOUND-ONLY, AND SAYS SO HERE.
+ *
+ * Both mount sites bound `v-model:n-harmonics` / `v-model:n-points` over a
+ * component that declares props and nothing else — zero `defineEmits`, zero
+ * `emit(` in the whole file — so the binding advertised a writeback this panel
+ * structurally cannot perform, while the sibling six lines away
+ * (`BasisSelector`) declares and emits the identical pair. The reader cannot
+ * tell from either end which child owns the two scalars.
+ *
+ * M-16 offered two cures: props-only at the call sites, or real emits here. The
+ * bytes decide it: every use of the pair in this file is a READ
+ * (`currentComputeKey`, `runCompute`'s settings write, the two watch sources) —
+ * the panel consumes the harmonic budget to key and trigger a recompute and
+ * never authors it. Minting emits to honour a contract nothing would ever fire
+ * is a second fiction, so the contract is declared INBOUND and the two
+ * `v-model:` call sites drop to `:` bindings at the host.
+ *
+ * ⊘ The host half is `VisualizationView.vue`'s, which is `.e`'s file (§5a split
+ * (4)): `.e` opens only after this commit lands, and until it does the call
+ * sites are unchanged and inert — exactly as they have shipped. Nothing
+ * regresses in the interval, because the writeback never worked.
+ */
 const props = defineProps<{
+    /** Inbound only — the harmonic budget the recompute is keyed on. */
     nHarmonics: number;
+    /** Inbound only — the resample resolution the recompute is keyed on. */
     nPoints: number;
 }>();
 
@@ -187,6 +213,15 @@ watch(
 </script>
 
 <template>
+    <!-- X.F.W3 `.d` — `fr-ContourSettings i-3`, the default-collapsed IA, is
+         RECORDED HERE AND EXECUTED NOWHERE. COHESION §0x `S-6b` ruled it
+         2026-09-19: "Contour settings are secondary to the canvas; progressive
+         disclosure is the audit's own posture. No per-viewer persistence is
+         minted for it in this wave." The ruling AGREES with the shipped byte —
+         `:default-open="false"` below is what i-3 measured and what S-6b
+         affirms — so the correct act is to leave it untouched and say why, and
+         `.d`'s spec order ("i-3's ruling is RECORDED, not executed") is
+         satisfied by exactly that. No `open`/persistence prop is added. -->
     <ConfiguratorLayer label="Contour" sub="edge extraction settings" :default-open="false">
         <!-- Panel-wide reset: ConfiguratorLayer has no header-actions slot, so
              the affordance lives at the top of the layer body. -->
