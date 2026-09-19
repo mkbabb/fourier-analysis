@@ -17,8 +17,8 @@
 #   3. rebuild-on-rollback (reset --hard $PREV + rebuild + re-gate);
 #   4. dirty-tree-fail-loud (never a silent reset --hard over local edits).
 #
-# X·F F.W9 unit `a` (2026-09-19) re-homes M.W2 out of the dead M board and
-# executes it here.
+# X·F F.W9 unit `a` (2026-09-19) re-homes M.W2 and M.W3 out of the dead M board
+# and executes them here.
 #
 #   M.W2 — READINESS != LIVENESS. The gate conflated two different questions in
 #     one boolean: "is the backend process up?" (LIVENESS) and "is the edge
@@ -32,9 +32,20 @@
 #     READINESS rather than on container-started, and `up -d --wait` reports
 #     that ordering as its own exit status.
 #
+#   M.W3 — FAIL-CLOSED inv-28. The API arm shipped whatever `origin/master`
+#     pointed at, on a bare webhook, with ZERO verification — while the SPA arm
+#     (.github/workflows/deploy-pages.yml) has been inv-28-gated since H.W2 on
+#     `conclusion == 'success' && head_branch == 'master' && event == 'push'`
+#     with every checkout pinned to `head_sha`. That guard is MIRRORED here; it
+#     is never edited there. The API now refuses any SHA without a covering
+#     green CI run, and advances to that exact verified SHA rather than to a
+#     moving ref. Fail-closed means REFUSAL is the default: a query that cannot
+#     be answered refuses exactly as a red run does.
+#
 # It carries NO secret — the HMAC secret lives only in GitHub's webhook config
 # and the host's un-tracked hooks.json (see the precepts note staged in
-# DEPLOY-RECONCILE.md). It carries NO SSH key and NO password.
+# DEPLOY-RECONCILE.md). It carries NO SSH key and NO password. GITHUB_TOKEN, if
+# set, is read from the environment and NEVER logged or echoed.
 
 set -euo pipefail
 
@@ -92,8 +103,92 @@ readonly LOCKFILE="/run/lock/fourier-deploy.lock"
 # operator to reconcile the host tree, so the first baseline is reproducible.)
 readonly GREEN_MARKER="/opt/deploy/fourier-last-green"
 
+# ── M.W3 (inv-28) — the covering-CI query ────────────────────────────────────
+# The mirror of .github/workflows/deploy-pages.yml's `changes` job guard. That
+# file is the reference implementation and is READ here, never edited: its `if:`
+# requires workflow_run.conclusion == 'success' && head_branch == 'master' &&
+# event == 'push', and every checkout pins ref: head_sha. The three conjuncts
+# map onto the REST query below one-for-one (status=success, branch=…,
+# event=push), and the head_sha pin becomes `reset --hard <sha>` against the
+# verified SHA instead of against a ref that may move between query and reset.
+readonly REPO_SLUG="${FOURIER_REPO_SLUG:-mkbabb/fourier-analysis}"
+readonly CI_WORKFLOW_FILE="${FOURIER_CI_WORKFLOW:-ci.yml}"
+readonly DEPLOY_BRANCH="${FOURIER_DEPLOY_BRANCH:-master}"
+
 log() {
     printf '[deploy-hook %s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+}
+
+# ── M.W3 — inv-28: the API arm is fail-closed on a same-SHA green CI run ─────
+# gh_api PATH_AND_QUERY — one read-only GitHub REST call. `curl -f` makes every
+# non-2xx a non-zero exit, which is what fail-closed needs: the caller cannot
+# mistake an error body for an answer. GITHUB_TOKEN is used when present (higher
+# rate limit / private repos) and is never echoed.
+gh_api() {
+    local url="https://api.github.com/$1"
+    local -a auth=()
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        auth=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+    fi
+    curl -fsS --max-time 20 \
+        -H 'Accept: application/vnd.github+json' \
+        -H 'X-GitHub-Api-Version: 2022-11-28' \
+        "${auth[@]}" "${url}"
+}
+
+# json_scalar KEY < JSON — jq when the host has it, a sed fallback when it does
+# not. The host provably lacks jq (the same reason scripts/pages-deploy.sh
+# parses wrangler's stdout rather than `--json | jq`), so the fallback is the
+# real path, not a courtesy. Only two values are read this way: total_count,
+# and the id of the first workflow run.
+json_scalar() {
+    local key="$1" body; body="$(cat)"
+    if command -v jq >/dev/null 2>&1; then
+        printf '%s' "${body}" | jq -r --arg k "${key}" '
+            if $k == "run_id" then (.workflow_runs[0].id // empty)
+            else (.[$k] // empty) end' 2>/dev/null
+        return 0
+    fi
+    case "${key}" in
+        total_count)
+            printf '%s' "${body}" | tr ',' '\n' \
+                | sed -n 's/.*"total_count"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -1
+            ;;
+        run_id)
+            printf '%s' "${body}" \
+                | sed -n 's/.*"workflow_runs"[[:space:]]*:[[:space:]]*\[[[:space:]]*{[[:space:]]*"id"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -1
+            ;;
+    esac
+}
+
+# CI_RUN_ID is set by require_green_ci on success — the covering run id, so every
+# shipped SHA can cite the run that cleared it.
+CI_RUN_ID=""
+
+require_green_ci() {
+    local sha="$1" body count
+    local query="repos/${REPO_SLUG}/actions/workflows/${CI_WORKFLOW_FILE}/runs"
+    query+="?head_sha=${sha}&branch=${DEPLOY_BRANCH}&event=push&status=success&per_page=1"
+
+    log "inv-28 — asking GitHub for a covering green ${CI_WORKFLOW_FILE} run for ${sha} on ${DEPLOY_BRANCH}…"
+    if ! body="$(gh_api "${query}")"; then
+        log "inv-28 REFUSE — the covering-CI query could not be answered for ${sha}; the deploy is fail-closed and did NOT run. (Transport/API failure, or a rate limit with no GITHUB_TOKEN set.)"
+        return 1
+    fi
+
+    count="$(printf '%s' "${body}" | json_scalar total_count)"
+    if [[ -z "${count}" ]]; then
+        log "inv-28 REFUSE — the covering-CI response for ${sha} carried no total_count; refusing rather than guessing."
+        return 1
+    fi
+    if [[ "${count}" -lt 1 ]]; then
+        log "inv-28 REFUSE — no green ${CI_WORKFLOW_FILE} push run on ${DEPLOY_BRANCH} covers ${sha}. The API is NOT shipped. (This is the demonstrable refusal the SPA arm has had since H.W2.)"
+        return 1
+    fi
+
+    CI_RUN_ID="$(printf '%s' "${body}" | json_scalar run_id)"
+    CI_RUN_ID="${CI_RUN_ID:-unknown}"
+    log "inv-28 GREEN — ${sha} is covered by ${CI_WORKFLOW_FILE} run ${CI_RUN_ID}"
 }
 
 # ── M.W2 — the two probes, asked and answered separately ─────────────────────
@@ -224,12 +319,21 @@ deploy() {
         log "rollback target = current HEAD ${prev} (no green marker yet — first deploy)"
     fi
 
-    # 3. Advance to the pushed SHA.
+    # 3. M.W3 (inv-28) — resolve the candidate SHA, then REFUSE it unless a
+    #    same-SHA green CI run covers it. The fetch is read-only; nothing in the
+    #    working tree moves until the gate has passed. This is the head_sha pin:
+    #    the deploy advances to a NAMED, VERIFIED commit, never to a ref that
+    #    may have moved between the query and the reset.
     git fetch origin
-    git reset --hard origin/master
     local new
-    new="$(git rev-parse HEAD)"
-    log "advancing ${prev} -> ${new}"
+    new="$(git rev-parse "origin/${DEPLOY_BRANCH}")"
+    if ! require_green_ci "${new}"; then
+        log "inv-28 — the host stays on ${prev}; nothing was built, nothing was brought up."
+        return 1
+    fi
+
+    log "advancing ${prev} -> ${new} (covered by CI run ${CI_RUN_ID})"
+    git reset --hard "${new}"
 
     # 3b. G.W7 (T3) — did this delta touch the bind-mounted nginx config? If so
     # the bring-up must force-recreate nginx (a plain `up -d` would leave the
