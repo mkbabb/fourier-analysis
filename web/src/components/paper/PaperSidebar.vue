@@ -276,8 +276,21 @@ function plainTitle(section: PaperSectionData): string {
     min-height: 1.5rem;
     border-radius: 0.25rem;
     /* `D-B3(b)`: border 1.27:1 and glyph 1.87:1 — neither reached the 3:1
-       non-text floor in any state. Both are full-strength tokens now. */
-    border: 1px solid var(--border);
+       non-text floor in any state.
+
+       ⊘ The glyph alone was not enough, and the harness caught the shortfall
+       this seat's own first pass had claimed away. `--border` is the token for
+       a DIVIDER, whose job is to be quiet; SC 1.4.11 governs the BOUNDARY of a
+       control, which is the thing a reader must find. Re-derived at the bytes
+       through `G-F4-CONTRAST-FLOOR`'s own method: `--border` over `--card`
+       reads 1.865:1 light / 2.001:1 dark — still under 3:1 after the 8.0.0
+       uplift — while `--muted-foreground` reads 5.021:1 / 5.440:1. The hover
+       rule below ALREADY used `--muted-foreground` for this border, so the
+       resting state was the weaker of the two: the affordance was hardest to
+       see exactly when nobody was pointing at it. Resting takes that ink and
+       hover moves up to `--foreground` (15.992:1 / 12.435:1 over the hover
+       plate), so the floor is met at rest and the state change stays legible. */
+    border: 1px solid var(--muted-foreground);
     background: none;
     color: var(--muted-foreground);
     cursor: pointer;
@@ -287,7 +300,7 @@ function plainTitle(section: PaperSectionData): string {
 
 .sidebar-top-btn:hover {
     color: var(--foreground);
-    border-color: var(--muted-foreground);
+    border-color: var(--foreground);
     background: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
