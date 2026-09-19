@@ -28,7 +28,7 @@
  *   · The projection the old `:140-142` asserted did not occur — see the rule
  *     at the foot of this file.
  */
-import { computed } from "vue";
+import { computed, useAttrs } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
 
 const props = defineProps<{
@@ -44,7 +44,53 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: "update:modelValue", v: number): void;
+    /**
+     * X.F.W3 `.a` · `g10` ⊕ `fr-SliderControl R-7` — THE RE-EMITTED SETTLE EVENT.
+     *
+     * The primitive emits two things, and this wrapper declared one. The one it
+     * dropped is the one that says a drag is OVER, so every consumer saw only
+     * the per-step stream and had to invent its own coalescing — which produced
+     * three different dialects across the tree (1000ms, 300ms, and none at
+     * all), and the "none" case is a synchronous `sessionStorage.setItem` per
+     * accepted step off a 100-step track.
+     *
+     * A wrapper earns its existence by ADDING contract the primitive lacks; it
+     * never earns it by removing some. Re-emitting is the whole cure: a
+     * consumer that wants the settle event can have it, and the debounce
+     * dialects become one consumer's choice rather than a forced invention.
+     */
+    (e: "valueCommit", v: number): void;
 }>();
+
+/**
+ * `g10`'s WRAPPER LAW, at the one wrapper whose anti-rule is written into the
+ * gate: *"NEVER blanket `inheritAttrs: false` on SliderControl — `class`
+ * fallthrough is WANTED; cure = explicit passthrough."*
+ *
+ * Both halves of that are honoured by SPLITTING the fallthrough rather than by
+ * disabling it. Before this, every attribute a consumer set landed on the outer
+ * `<div>`: `class` and `style` correctly, since the chassis IS the thing being
+ * laid out — and `aria-describedby`, `id`, `data-*`, `disabled` and every
+ * native listener incorrectly, onto a plain div with no role, while the control
+ * that has the role never saw them. The asymmetry was silent in both
+ * directions.
+ *
+ * So the layout attributes go to the chassis and everything else goes to the
+ * control, and the split is explicit rather than a blanket switch. The
+ * consumer's own bindings are applied AFTER the derived ones on the control, so
+ * an explicitly-passed `aria-label` beats the one derived from `label` — stated
+ * intent outranks a default.
+ */
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+
+const chassisAttrs = computed(() => ({ class: attrs.class, style: attrs.style }));
+
+const controlAttrs = computed(() => {
+    const { class: _class, style: _style, ...rest } = attrs;
+    return rest;
+});
 
 function clamp(v: number, lo: number, hi: number): number {
     return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo;
@@ -64,6 +110,21 @@ const sliderModel = computed<number[]>({
     set: (arr) => emit("update:modelValue", clamp(arr[0] ?? props.min, props.min, props.max)),
 });
 
+function onValueCommit(arr: number[]) {
+    const raw = arr?.[0];
+    if (raw === undefined || !Number.isFinite(raw)) return;
+    emit("valueCommit", clamp(raw, props.min, props.max));
+}
+
+/**
+ * The chassis's own half of the `disabled` contract. `disabled` reaches the
+ * control through the split above, but the inline numeric input is this
+ * wrapper's addition and the producer knows nothing about it — so without this
+ * a disabled slider still had a live number field beside it, which is the
+ * disabled state lying.
+ */
+const isDisabled = computed(() => attrs.disabled === "" || attrs.disabled === true);
+
 const displayValue = computed(() =>
     props.formatValue ? props.formatValue(props.modelValue) : String(props.modelValue),
 );
@@ -71,7 +132,7 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
 </script>
 
 <template>
-    <div class="slider-control">
+    <div class="slider-control" v-bind="chassisAttrs">
         <label class="slider-label">
             <span>
                 <slot>{{ label }}</slot>
@@ -84,6 +145,7 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
                 :min="isNumericDisplay ? min : undefined"
                 :max="isNumericDisplay ? max : undefined"
                 :step="isNumericDisplay ? step : undefined"
+                :disabled="isDisabled"
                 @input="onInput"
             />
         </label>
@@ -95,6 +157,8 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
             :aria-label="label"
             class="slider-track-host"
             :style="{ '--track-color': color }"
+            v-bind="controlAttrs"
+            @value-commit="onValueCommit"
         />
     </div>
 </template>
