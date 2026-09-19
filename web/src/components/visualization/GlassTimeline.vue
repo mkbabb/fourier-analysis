@@ -119,12 +119,15 @@ function onValueCommit() {
     white-space: nowrap;
 }
 
-/* Retint the glass-scrubber variant tokens to match HEAD's foreground-tinted
-   recipe (the variant defaults compose `--surface-tint-*`; HEAD used
-   `color-mix(in srgb, var(--foreground) N%, transparent)` which is
-   equivalent to surface-tint at the same N%). */
+/*
+   X.F.W3 `.a` · `fr-BasisSelector B-2` ⊕ `fr-SliderControl R-1` ⊕ `MPC-3` — the
+   retint namespace this rule used to write is DEFINITION-ABSENT in the producer
+   at every pin the tree has ever installed, so the declaration painted nothing.
+   The height leg lands on the producer's real token; `R-1`'s rule is
+   *height via `size`/inline*, and no `size` step is 24px (sm 12 · md 20 · lg 28).
+*/
 .timeline-slider {
-    --slider-scrub-track-height: 24px;
+    --slider-track-height: 24px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -91,7 +91,7 @@ function onValueCommit() {
                 :step="1"
                 :aria-valuetext="`${activeCount} of ${totalHarmonics} harmonics`"
                 aria-label="Convergence sweep position"
-                class="convergence-slider"
+                size="md"
                 @pointerdown="onPointerDown"
                 @value-commit="onValueCommit"
             />
@@ -151,9 +151,13 @@ function onValueCommit() {
     padding: 0 0.125rem;
 }
 
-.convergence-slider {
-    --slider-scrub-track-height: 20px;
-}
+/*
+   X.F.W3 `.a` · `MPC-3` — the retint namespace this rule wrote is
+   definition-absent at the producer, so the 20px height was never applied.
+   `R-1`'s *height via `size`* leg lands it: the producer's `md` step IS
+   1.25rem = 20px, which is also its default, so the height is now declared
+   where the producer can read it and the rule itself is gone.
+*/
 
 /* ── Transitions ── */
 .icon-swap-enter-active,

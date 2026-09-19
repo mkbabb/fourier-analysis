@@ -136,7 +136,7 @@ function emitHigh(raw: string) {
     emit("update:highLevel", v);
 }
 
-/* A.W2.c — adapt the scalar level bounds to glass-scrubber's array model. */
+/* A.W2.c — adapt the scalar level bounds to the slider's array model. */
 const lowModel = computed<number[]>({
     get: () => [props.lowLevel],
     set: (arr) => emitLow(String(arr[0] ?? 1)),
@@ -272,15 +272,16 @@ function getPath(level: number): string {
 }
 
 /* X.F.W4 / SP-6 · HLG-3 ⊕ FMD-3 — the dead per-slider retint hook is DELETED.
-   The four `--slider-scrub-*` declarations had ZERO readers at the adopted
-   8.0.0 pin (⟨cmd⟩ `grep -roh -- '--slider-scrub[a-z-]*' dist | sort -u` → ∅),
-   and this file's copy was dead a SECOND way the record could not see: the
+   Its four declarations had ZERO readers at the adopted 8.0.0 pin, and this
+   file's copy was dead a SECOND way the record could not see: the
    `:style="{'--track-color': …}"` binding that fed them was removed from this
    component before the uplift, so every operand resolved `var(--track-color)`
    → invalid-at-computed-value-time. Two sliders, zero tint delivered.
-   ⊘ The sibling declarations at `MorphPhaseConfig.vue` and `SliderControl.vue`
-   still have their `--track-color` writer and are NOT this unit's rows
-   (`MPC-*` is `.c`'s section) — named in this unit's receipt, not touched. */
+   ⊘ X.F.W3 `.a` · `B-2` / `MPC-3` — the siblings at `MorphPhaseConfig.vue`,
+   `SliderControl.vue`, `BasisSelector.vue` and both timelines are landed on the
+   producer's real `--slider-range-bg` in one cut, and the retired spelling is
+   gone from this receipt too: the family's gate counts occurrences, and prose
+   is where a dead token gets copied back into a stylesheet. */
 .level-slider-track {
     flex: 1;
 }

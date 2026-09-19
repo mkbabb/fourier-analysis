@@ -332,11 +332,16 @@ const magnetModel = computed<number[]>({
  * clothes.
  *
  * The premise re-measured at the LIVE pin, because the record states it at
- * 4.0.0 and F.W1 moved this tree to 8.0.0: ⟨cmd⟩ `grep -roh -- '--slider-scrub[a-z-]*'
- * node_modules/@mkbabb/glass-ui/dist | sort -u` → ∅. `--slider-scrub-*` is not
- * a producer token namespace at EITHER pin, so all four declarations were dead
- * at both, and two were doubly dead (the standard thumb paints `width: 0;
- * opacity: 0` by contract — C-13).
+ * 4.0.0 and F.W1 moved this tree to 8.0.0: the retint namespace the deleted
+ * block wrote returns ∅ from the producer's `dist` at EITHER pin, so all four
+ * declarations were dead at both, and two were doubly dead (the scrubber thumb
+ * paints `width: 0; opacity: 0` by contract — C-13).
+ *
+ * ⊘ X.F.W3 `.a` · `B-2` / `MPC-3` — the namespace is spelled out nowhere in
+ * this tree any more, including in prose: the family's retirement gate counts
+ * OCCURRENCES, and a receipt that quotes the retired spelling keeps it alive in
+ * the one place a reader is most likely to copy it from. The deletion this
+ * docblock records is unchanged; only its quotation of the dead token is.
  *
  * ⊘ The ONE sub-limb the ruling refused to inherit, re-earned here as it
  * required: K-8's "even `width: 100%` is a no-op" was verified against the

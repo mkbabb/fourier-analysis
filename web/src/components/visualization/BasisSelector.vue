@@ -309,13 +309,30 @@ function toggleBasis(key: string) {
     color: var(--foreground);
 }
 
-/* A.W2.c — glass-scrubber per-instance retint hook. The variant ships
-   neutral defaults; we project `--track-color` onto the range fill + thumb
-   so each slider inherits its corresponding `VIZ_COLORS` palette entry. */
+/*
+   X.F.W3 `.a` · `fr-BasisSelector B-2` — THE PER-INSTANCE RETINT, LANDED.
+
+   The four declarations this replaces named a namespace the producer has never
+   defined at any pin this tree has installed, so the declared per-basis colour
+   has never painted: both sliders rendered the stock capsule. The producer's
+   real knob is `--slider-range-bg`, read by `.slider-range`'s own
+   `--liquid-fill-tint`.
+
+   ⊘ `MPC-10`, the cure-rider, is why this is ONE declaration and not a rename of
+   four. The thumb pair is DELETED rather than renamed: the scrubber recipe's
+   thumb is `width: 0; opacity: 0` by contract — its leading edge IS the handle —
+   so a thumb colour is uncolourable by construction. And the range pair loses
+   its `30%`/`45%` wrappers: the producer already dilutes the tint to 88%
+   (`--liquid-fill-strength`), so a rename-only cure would have shipped net
+   α 0.264 and dropped the fill from 11.51:1 to 1.51:1 against its own track —
+   a 1.4.11 regression landed under a green token-sweep gate. Full strength is
+   the corrected cure and it is asserted, both arms, at
+   `e2e/slider-scrub-contrast.spec.ts`.
+
+   ⊘ `R-1`'s `D-14` rider: the fallback is explicit, so an unset `--track-color`
+   degrades to the producer's own capsule instead of to an invalid value.
+*/
 .basis-slider-track {
-    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
-    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
-    --slider-scrub-thumb-bg: var(--track-color);
-    --slider-scrub-thumb-bg-hover: var(--track-color);
+    --slider-range-bg: var(--track-color, var(--glass-capsule-warm));
 }
 </style>

@@ -1,5 +1,10 @@
 <template>
-    <div class="cartoon-card config-card" role="group" :aria-labelledby="titleId">
+    <div
+        class="cartoon-card config-card"
+        role="group"
+        :aria-labelledby="titleId"
+        :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }"
+    >
         <h3 class="config-card-title" :id="titleId">{{ title }}</h3>
         <p class="config-card-desc">{{ description }}</p>
 
@@ -22,13 +27,12 @@
                 of six controls. `role="group"` + `aria-labelledby` on the title
                 gives each card its own boundary and its own name.
 
-             ⊘ NOT touched here: the `MPC-*` rows on this same file (the
-             SelectTrigger's missing name, `MPC-31`'s ONE CUT, the `--track-color`
-             writer feeding the dead `--slider-scrub-*` block). They belong to a
-             different unit's sections while this path belongs to this unit's
-             writable set — the seam is raised in this unit's addenda §4 rather
-             than crossed. The three `button-name` findings axe reports on this
-             route are those rows, and they are named, not silently left. -->
+             ⊘ The `MPC-*` rows F.W4 named here and did not take — `MPC-31`'s ONE
+             CUT and the `--track-color` writer that fed a dead retint block —
+             are LANDED at X.F.W3 `.a`, in this file's share of that one cut.
+             The writer is hoisted to the card root above, because `MPC-22`'s
+             focus tint has to read the same colour the slider does and a
+             per-element binding could not reach it. -->
         <div class="config-field">
             <div class="duration-row">
                 <label class="config-label" :for="durationId">Duration</label>
@@ -45,14 +49,30 @@
                     />
                     <span class="input-unit fira-code">ms</span>
                 </div>
+                <!--
+                    `MPC-8` — this card boots AT the domain floor (`morphMs`
+                    defaults to 50 = `min`), so the range had zero extent, the
+                    scrubber's thumb is invisible by contract, and the control
+                    read as an empty grey capsule with no position indicator at
+                    all. `MPC-31` makes that the WITNESSABILITY PRECONDITION for
+                    the colour cure landing beside it: a fill nobody can see is a
+                    fill nobody can grade.
+
+                    The row offers two cures and this takes the second. Marks
+                    give the capsule a scale, and the boot state a checkpoint the
+                    thumb sits on; re-domaining was refused because the numeric
+                    input beside it still accepts the whole 50–800 band, so
+                    narrowing the track would silently make reachable durations
+                    unreachable by drag — a capability change no row grants.
+                -->
                 <Slider
                     v-model="durationModel"
                     :min="50"
                     :max="800"
                     :step="10"
+                    :marks="DURATION_MARKS"
                     :aria-label="`${title} duration (ms)`"
                     class="duration-slider-track"
-                    :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }"
                 />
             </div>
         </div>
@@ -127,7 +147,15 @@ function emitDuration(raw: string) {
     emit("update:duration", v);
 }
 
-/* A.W2.c — adapt the scalar `duration` to glass-scrubber's array model. */
+/**
+ * `MPC-8` — the decorative checkpoints, a doubling ladder across the domain.
+ * They never snap the value (the producer's own contract); they give the
+ * 89 % of the track that nothing normally reaches a legible SCALE instead of
+ * an empty extent, and they put a checkpoint under the boot position.
+ */
+const DURATION_MARKS = [50, 100, 200, 400, 800] as const;
+
+/* A.W2.c — adapt the scalar `duration` to the slider's array model. */
 const durationModel = computed<number[]>({
     get: () => [props.duration],
     set: (arr) => emitDuration(String(arr[0] ?? 50)),
@@ -217,9 +245,15 @@ const easingNames = EASING_PRESET_NAMES;
     margin: 0;
 }
 
+/*
+   `MPC-22` — the focus tint hard-coded `var(--accent-red)` beside a slider that
+   is per-instance coloured, so the moment the retint below started painting,
+   the Morph card would have focused red against a pink track. One token, read
+   from the card root, and the input focuses in the card's own colour.
+*/
 .num-input:focus {
-    border-color: var(--accent-red);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-red) 12%, transparent);
+    border-color: var(--track-color, var(--accent-red));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--track-color, var(--accent-red)) 12%, transparent);
 }
 
 .input-unit {
@@ -233,12 +267,21 @@ const easingNames = EASING_PRESET_NAMES;
     flex-shrink: 0;
 }
 
-/* A.W2.c — glass-scrubber per-instance retint hook + flex stretch. */
+/*
+   `MPC-3` (fold → `B-2` / `FMD-3`) amended by `MPC-10` — the per-instance
+   retint, landed on the producer's real knob at full strength. The four
+   declarations this replaces wrote a namespace the producer defines nowhere, so
+   all three cards painted the same stock capsule and the red/pink/red phase
+   coding delivered zero pixels.
+
+   `MPC-13`'s vocabulary leg rides here as the row requires — WITH the token
+   cure, never before: the `glass-scrubber` spelling this file carried in two
+   comments is two majors dead (the variants are `"scrubber" | "spectrum"`, and
+   `scrubber` is the default this Slider already takes), and it is gone from the
+   file rather than re-spelled.
+*/
 .duration-slider-track {
     flex: 1;
-    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
-    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
-    --slider-scrub-thumb-bg: var(--track-color);
-    --slider-scrub-thumb-bg-hover: var(--track-color);
+    --slider-range-bg: var(--track-color, var(--accent-red));
 }
 </style>
