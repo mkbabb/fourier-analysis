@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onScopeDispose } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Checkbox } from "@mkbabb/glass-ui";
 import {
@@ -22,6 +22,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import type { AdminUserInfo } from "@/lib/types";
+import { problemMessage } from "./adminError";
 import {
     Search,
     Trash2,
@@ -96,6 +97,39 @@ watch(searchQuery, () => {
 // Reload on sort change.
 watch(sortMode, () => loadPage(1));
 
+/**
+ * X·F F.W4 `.d` — FR-AUL-1 (BLOCKER): selection survives a refilter.
+ *
+ * `watch(page, clearSelection)` was the SOLE invalidation edge, and both
+ * refilters call `loadPage(1)` — which, from page 1, is an `Object.is`-guarded
+ * identity write that never fires the watcher. So a search or a sort left the
+ * ticked slugs in the set while the rows carrying them left the screen, and the
+ * batch cascade then fired at users the operator could not see, behind a confirm
+ * that named none of them. The backend is a HARD cascade with no restore (flags
+ * → visualizations → sessions → `users.delete_one`), unlike the visualizations
+ * batch, which soft-deletes.
+ *
+ * The repo convicts itself here: the sibling gallery toolbar
+ * (`GalleryView.vue`) clears its selection on BOTH of its invalidating events.
+ *
+ * ⊘ The snapshot-at-ask discipline is PRESERVED (superlative S-row): `askBatch`
+ * still freezes the set at the moment of asking. It froze a set that was already
+ * wrong; it was never the defect.
+ */
+watch([searchQuery, sortMode], () => clearSelection());
+
+/**
+ * FR-AUL-15: no unmount teardown under a mount pattern that GUARANTEES unmount
+ * (`defineAsyncComponent` + a bare `v-if`, no KeepAlive). The raw `searchTimer`
+ * outlived the component and fired `loadPage(1)` against a dead scope — and
+ * `deactivateAdmin()` both unmounts this panel and clears the token, so the
+ * orphan ran its admin fetch with no credential.
+ */
+onScopeDispose(() => {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = null;
+});
+
 // Destructive-confirm dialog state — supplants native `confirm()`.
 // `batch` actions ride the same dialog as the singular destructive flow; the
 // CRUD CONTRACT `BatchResponse` lands at the wrapper-call site.
@@ -127,14 +161,29 @@ function askBatch(action: BatchKind) {
     dialogOpen.value = true;
 }
 
+/**
+ * FR-AUL-32: an in-flight guard on the eight mutation controls. There was none —
+ * and `confirmPending` nulled `pending` AFTER its await, so a dialog re-opened
+ * during a slow mutation had its action destroyed under it and the second
+ * confirm silently no-opped. The flag is read by every control's `:disabled`, so
+ * the window closes at the affordance rather than behind it.
+ */
+const busy = ref(false);
+
 async function confirmPending() {
     const action = pending.value;
     dialogOpen.value = false;
-    if (!action) return;
-    if (action.kind === "delete") await performDelete(action.slug);
-    else if (action.kind === "prune") await performPrune();
-    else await performBatch(action.action, action.slugs);
+    // Released at the ask, not after the await: the action is already in hand.
     pending.value = null;
+    if (!action || busy.value) return;
+    busy.value = true;
+    try {
+        if (action.kind === "delete") await performDelete(action.slug);
+        else if (action.kind === "prune") await performPrune();
+        else await performBatch(action.action, action.slugs);
+    } finally {
+        busy.value = false;
+    }
 }
 
 // ── Multi-select state ─────────────────────────────────────────────────
@@ -172,6 +221,37 @@ function clearSelection() {
     selected.value = new Set();
 }
 
+/**
+ * FR-AUL-22: a single-row delete or suspend never evicted that slug from
+ * `selected` — only the batch path and the X cleared anything — so the toolbar
+ * reported a selection with no ticked box on screen and a later batch shipped the
+ * dead slug, whose `deleted_count` of 0 came back as a green "Deleted 0 user(s)".
+ * ⊘ Booked SEPARATELY from FR-AUL-1: no filter change is involved, so the
+ * watch-cure does not close it.
+ */
+function forgetSelected(slug: string) {
+    if (!selected.value.has(slug)) return;
+    const next = new Set(selected.value);
+    next.delete(slug);
+    selected.value = next;
+}
+
+/**
+ * FR-AUL-47: the toolbar offered actions provably inapplicable to the current
+ * selection — 20 active users plus Unsuspend gave a full destructive modal and
+ * then a green "Unsuspended 0 user(s)". `status` is in hand per row, so the
+ * affordance can tell the truth before the counting defect (FR-AUL-13) has to.
+ */
+const selectedUsers = computed(() =>
+    users.value.filter((u) => selected.value.has(u.user_slug)),
+);
+const suspendableCount = computed(
+    () => selectedUsers.value.filter((u) => u.status !== "suspended").length,
+);
+const unsuspendableCount = computed(
+    () => selectedUsers.value.filter((u) => u.status === "suspended").length,
+);
+
 watch(page, () => clearSelection());
 
 async function performBatch(action: BatchKind, slugs: string[]) {
@@ -184,36 +264,53 @@ async function performBatch(action: BatchKind, slugs: string[]) {
                 : action === "unsuspend"
                   ? "Unsuspended"
                   : "Deleted";
-        toast(`${verb} ${result.affected} user(s)`, "success");
+        const n = result.affected;
+        toast(`${verb} ${n} ${n === 1 ? "user" : "users"}`, "success");
         if (result.errors?.length) {
             for (const err of result.errors) toast(err, "error");
         }
         clearSelection();
-        loadPage();
-    } catch (e: any) {
-        toast(e.message ?? "Batch action failed", "error");
+        await loadPage();
+    } catch (e: unknown) {
+        if (!api.isAbortError(e)) {
+            toast(problemMessage(e, "Batch action failed"), "error");
+        }
     }
 }
 
 async function handleSuspend(slug: string) {
+    if (busy.value) return;
+    busy.value = true;
     try {
         const token = requireAdminToken();
         await api.setAdminUserStatus(token, slug, "suspended");
-        toast("User suspended", "success");
-        loadPage();
-    } catch (e: any) {
-        toast(e.message ?? "Failed to suspend", "error");
+        toast("User suspended — their active sessions have been revoked", "success");
+        forgetSelected(slug);
+        await loadPage();
+    } catch (e: unknown) {
+        if (!api.isAbortError(e)) {
+            toast(problemMessage(e, "Failed to suspend"), "error");
+        }
+    } finally {
+        busy.value = false;
     }
 }
 
 async function handleUnsuspend(slug: string) {
+    if (busy.value) return;
+    busy.value = true;
     try {
         const token = requireAdminToken();
         await api.setAdminUserStatus(token, slug, "active");
-        toast("User unsuspended", "success");
-        loadPage();
-    } catch (e: any) {
-        toast(e.message ?? "Failed to unsuspend", "error");
+        toast("User reinstated", "success");
+        forgetSelected(slug);
+        await loadPage();
+    } catch (e: unknown) {
+        if (!api.isAbortError(e)) {
+            toast(problemMessage(e, "Failed to unsuspend"), "error");
+        }
+    } finally {
+        busy.value = false;
     }
 }
 
@@ -222,9 +319,12 @@ async function performDelete(slug: string) {
         const token = requireAdminToken();
         await api.deleteAdminUser(token, slug);
         toast("User deleted", "success");
-        loadPage();
-    } catch (e: any) {
-        toast(e.message ?? "Failed to delete", "error");
+        forgetSelected(slug);
+        await loadPage();
+    } catch (e: unknown) {
+        if (!api.isAbortError(e)) {
+            toast(problemMessage(e, "Failed to delete"), "error");
+        }
     }
 }
 
@@ -232,10 +332,16 @@ async function performPrune() {
     try {
         const token = requireAdminToken();
         const result = await api.pruneEmptyUsers(token);
-        toast(`Pruned ${result.pruned} empty users`, "success");
-        loadPage(1);
-    } catch (e: any) {
-        toast(e.message ?? "Failed to prune", "error");
+        const n = result.pruned;
+        toast(`Pruned ${n} empty ${n === 1 ? "user" : "users"}`, "success");
+        clearSelection();
+        // ⊘ S-7: prune's deliberate `loadPage(1)` reset is PRESERVED — the whole
+        // population may have moved, so page 1 is the only honest destination.
+        await loadPage(1);
+    } catch (e: unknown) {
+        if (!api.isAbortError(e)) {
+            toast(problemMessage(e, "Failed to prune"), "error");
+        }
     }
 }
 
@@ -308,72 +414,103 @@ function timeAgo(iso: string): string {
         </div>
 
         <template v-else>
-        <!-- Select-all-on-page affordance. The indeterminate visual state is
-             carried by the `data-some` attribute on the row so the checkbox
-             reflects partial selection in CSS. -->
+        <!-- FR-AUL-5: the documented `data-some` indeterminate mechanism DID NOT
+             EXIST — two hits in the tree, the comment and the binding, and no
+             selector anywhere consuming it. At 5-of-20 the gate to a hard cascade
+             therefore rendered fully UNCHECKED, and clicking it added the other
+             15. The primitive ships indeterminate whole (fill + glyph swap + a
+             `boolean | "indeterminate"` contract), so the state is passed, not
+             painted. FR-AUL-36: the label is a real `<label>` with a hit area,
+             and it stops being overwritten by a count rendered fourteen lines
+             below the moment the affordance becomes useful. -->
         <div
             v-if="users.length"
             class="flex items-center gap-2 px-1 text-xs text-muted-foreground"
-            :data-some="someOnPageSelected && !allOnPageSelected || undefined"
         >
             <Checkbox
-                :model-value="allOnPageSelected"
-                aria-label="Select all users on this page"
-                class="h-4 w-4"
+                id="admin-select-all"
+                :model-value="
+                    someOnPageSelected && !allOnPageSelected
+                        ? 'indeterminate'
+                        : allOnPageSelected
+                "
+                :disabled="busy"
                 @update:model-value="(v) => toggleSelectAllOnPage(v)"
             />
-            <span>
-                {{ selected.size > 0 ? `${selected.size} selected` : "Select all on page" }}
-            </span>
+            <label for="admin-select-all" class="cursor-pointer select-none">
+                Select all on page
+                <span v-if="selected.size > 0">({{ selected.size }} selected)</span>
+            </label>
         </div>
 
         <!-- Floating batch-action toolbar. Renders when the selection set is
              non-empty; routes through the destructive-confirm dialog before
              firing `batchUsers` against `{ok, affected, errors?}`. -->
+        <!-- FR-AUL-33: `role="toolbar"` was asserted with zero tabindex and zero
+             keydown in 529 lines and no producer primitive behind it — an
+             announced affordance contradicting its own interaction. `role="group"`
+             is what this actually is, and every control stays reachable.
+             FR-AUL-37: the stray `shadow-cartoon` utility is dropped — built-CSS
+             source order put it AFTER `.cartoon-card`, so this one element
+             rendered a different shadow family from every other card on the page.
+             -->
         <div
             v-if="selected.size > 0"
-            role="toolbar"
+            role="group"
             aria-label="Batch user actions"
-            class="cartoon-card sticky top-2 z-10 flex items-center gap-2 rounded-lg px-3 py-2 text-sm shadow-cartoon"
+            class="cartoon-card sticky top-2 z-10 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
         >
             <span class="flex-1 text-xs text-muted-foreground">
-                {{ selected.size }} user(s) selected
+                {{ selected.size }} {{ selected.size === 1 ? "user" : "users" }} selected
             </span>
             <Button
                 emphasis="secondary"
                 size="sm"
                 class="text-xs"
+                :disabled="busy || suspendableCount === 0"
+                :title="
+                    suspendableCount === 0
+                        ? 'Every selected user is already suspended'
+                        : undefined
+                "
                 @click="askBatch('suspend')"
             >
-                <Ban class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
-                Suspend
+                <Ban class="mr-1 size-3.5" aria-hidden="true" />
+                Suspend<span v-if="suspendableCount">&nbsp;({{ suspendableCount }})</span>
             </Button>
             <Button
                 emphasis="secondary"
                 size="sm"
                 class="text-xs"
+                :disabled="busy || unsuspendableCount === 0"
+                :title="
+                    unsuspendableCount === 0
+                        ? 'No selected user is suspended'
+                        : undefined
+                "
                 @click="askBatch('unsuspend')"
             >
-                <UserCheck class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
-                Unsuspend
+                <UserCheck class="mr-1 size-3.5" aria-hidden="true" />
+                Reinstate<span v-if="unsuspendableCount">&nbsp;({{ unsuspendableCount }})</span>
             </Button>
             <Button
                 emphasis="primary" tone="destructive"
                 size="sm"
                 class="text-xs"
+                :disabled="busy"
                 @click="askBatch('delete')"
             >
-                <Trash2 class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                <Trash2 class="mr-1 size-3.5" aria-hidden="true" />
                 Delete
             </Button>
             <Button
                 emphasis="quiet"
-                size="md" icon-only
-                class="h-7 w-7"
+                size="xs" icon-only
+                :disabled="busy"
                 aria-label="Clear selection"
                 @click="clearSelection"
             >
-                <X class="h-3.5 w-3.5" aria-hidden="true" />
+                <X class="size-3.5" aria-hidden="true" />
             </Button>
         </div>
 
@@ -417,37 +554,49 @@ function timeAgo(iso: string): string {
                     </div>
                 </div>
                 <div class="flex items-center gap-1">
+                    <!-- FR-AUL-44: the risk ladder was INVERTED. Reversible batch
+                         reinstatement got the destructive modal while the singular
+                         suspend fired from a 24px icon with no confirmation — and
+                         `set_user_status` runs `sessions.delete_many` on suspend,
+                         an irreversible act the batch copy states and this path
+                         stated nowhere. The label now carries the consequence.
+                         FR-AUL-19 / AA-22 (SP-9): the `h-6 w-6` literals are gone.
+                         `cn`'s height bucket is last-write-wins, so they pinned
+                         24px on EVERY pointer and deleted the producer's
+                         coarse-pointer clamp; the `xs` rung is 28px fine and lifts
+                         to the 44px touch target on coarse, which is the contract
+                         those literals were negating. -->
                     <Button
                         v-if="user.status !== 'suspended'"
                         emphasis="quiet"
-                        size="md" icon-only
-                        class="h-6 w-6 text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10"
-                        :aria-label="`Suspend user ${user.user_slug}`"
-                        title="Suspend"
+                        size="xs" icon-only
+                        class="text-muted-foreground hover:text-warning"
+                        :aria-label="`Suspend user ${user.user_slug} and revoke their sessions`"
+                        :disabled="busy"
                         @click="handleSuspend(user.user_slug)"
                     >
-                        <Ban class="h-3.5 w-3.5" aria-hidden="true" />
+                        <Ban class="size-3.5" aria-hidden="true" />
                     </Button>
                     <Button
                         v-else
                         emphasis="quiet"
-                        size="md" icon-only
-                        class="h-6 w-6 text-muted-foreground hover:text-green-400 hover:bg-green-500/10"
-                        :aria-label="`Unsuspend user ${user.user_slug}`"
-                        title="Unsuspend"
+                        size="xs" icon-only
+                        class="text-muted-foreground hover:text-success"
+                        :aria-label="`Reinstate user ${user.user_slug}`"
+                        :disabled="busy"
                         @click="handleUnsuspend(user.user_slug)"
                     >
-                        <UserCheck class="h-3.5 w-3.5" aria-hidden="true" />
+                        <UserCheck class="size-3.5" aria-hidden="true" />
                     </Button>
                     <Button
                         emphasis="quiet"
-                        size="md" icon-only
-                        class="h-6 w-6 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                        size="xs" icon-only
+                        class="text-muted-foreground hover:text-destructive"
                         :aria-label="`Delete user ${user.user_slug}`"
-                        title="Delete"
+                        :disabled="busy"
                         @click="askDelete(user.user_slug)"
                     >
-                        <Trash2 class="h-3.5 w-3.5" aria-hidden="true" />
+                        <Trash2 class="size-3.5" aria-hidden="true" />
                     </Button>
                 </div>
             </div>
@@ -511,10 +660,10 @@ function timeAgo(iso: string): string {
                         <template v-else-if="pending?.kind === 'batch'">
                             {{
                                 pending.action === "delete"
-                                    ? `Delete ${pending.slugs.length} user(s)?`
+                                    ? `Delete ${pending.slugs.length} ${pending.slugs.length === 1 ? "user" : "users"}?`
                                     : pending.action === "suspend"
-                                      ? `Suspend ${pending.slugs.length} user(s)?`
-                                      : `Unsuspend ${pending.slugs.length} user(s)?`
+                                      ? `Suspend ${pending.slugs.length} ${pending.slugs.length === 1 ? "user" : "users"}?`
+                                      : `Reinstate ${pending.slugs.length} ${pending.slugs.length === 1 ? "user" : "users"}?`
                             }}
                         </template>
                         <template v-else>Delete user?</template>
@@ -525,20 +674,45 @@ function timeAgo(iso: string): string {
                             <span class="font-mono">{{ pending.slug }}</span>
                             and all their gallery entries. The action is irrevocable.
                         </template>
+                        <!-- FR-AUL-25 (copy leg): the highest-blast-radius control
+                             announced an unbounded permanent deletion with NO
+                             number and no preview, while both of its dialog
+                             neighbours named a victim or a count. The magnitude is
+                             knowable before the act — the router computes
+                             `empty_slugs` and then deletes — so the copy says that
+                             the count is owed. ⊘ The count/dry-run ENDPOINT is
+                             F.W5's; this is the F.W4 copy it carries. -->
                         <template v-else-if="pending?.kind === 'prune'">
-                            This shall permanently delete every user with zero gallery
-                            entries. The action is irrevocable.
+                            This permanently deletes every user who currently has zero
+                            gallery entries. It cannot be undone, and the number of
+                            users affected is not shown until afterwards.
                         </template>
-                        <template v-else-if="pending?.kind === 'batch' && pending.action === 'delete'">
-                            This shall permanently delete the selected users and all their
-                            gallery entries. The action is irrevocable.
-                        </template>
-                        <template v-else-if="pending?.kind === 'batch' && pending.action === 'suspend'">
-                            The selected users shall be suspended; their active sessions
-                            shall be revoked.
-                        </template>
-                        <template v-else-if="pending?.kind === 'batch' && pending.action === 'unsuspend'">
-                            The selected users shall be reinstated to active status.
+                        <!-- FR-AUL-1: the batch confirm ENUMERATES its targets.
+                             The singular path named its exact victim in font-mono
+                             while the cascade — the more dangerous action — said
+                             only "the selected users", so an operator could not
+                             see what a leaked selection had added. -->
+                        <template v-else-if="pending?.kind === 'batch'">
+                            <span v-if="pending.action === 'delete'">
+                                This permanently deletes the users below and all their
+                                gallery entries. It cannot be undone.
+                            </span>
+                            <span v-else-if="pending.action === 'suspend'">
+                                The users below are suspended and their active sessions
+                                are revoked — they are signed out everywhere.
+                            </span>
+                            <span v-else>
+                                The users below are reinstated to active status.
+                            </span>
+                            <span
+                                class="mt-2 block max-h-32 overflow-y-auto rounded border border-border/60 px-2 py-1 font-mono text-xs"
+                            >
+                                <span
+                                    v-for="slug in pending.slugs"
+                                    :key="slug"
+                                    class="block truncate"
+                                >{{ slug }}</span>
+                            </span>
                         </template>
                     </DialogDescription>
                 </DialogHeader>
@@ -560,7 +734,7 @@ function timeAgo(iso: string): string {
                                     ? "Delete"
                                     : pending.action === "suspend"
                                       ? "Suspend"
-                                      : "Unsuspend"
+                                      : "Reinstate"
                             }}
                         </template>
                         <template v-else>Delete</template>
