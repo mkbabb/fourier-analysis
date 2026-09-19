@@ -1,6 +1,7 @@
 # D.W6 — CI workflow.
 #
-# Three jobs run on push / PR against the default branch:
+# Four jobs run on push / PR against the default branch (the fourth added by
+# X·F F.W9 `.c`, `G-F9-17`):
 #
 #   1. api-tests      — uv run pytest api/tests/ with an ephemeral Mongo
 #                       service container so the ~82 @requires_mongo
@@ -18,6 +19,13 @@
 #                       the contour-extraction suite doesn't 429-cascade.
 #                       Mongo service container provided here too so the
 #                       backend can boot cleanly.
+#
+#   4. inv-27-evidence — X·F F.W9 `.c`, `G-F9-17`. Mints ONE durable, citable
+#                       record — run id, run attempt, covering commit SHA, and
+#                       every gating job's own conclusion — and mints it ONLY
+#                       for a run in which all three concluded `success`. It
+#                       is what makes *"cite a covering green run id"* an act
+#                       a later seat can perform instead of assert.
 #
 # Residual: the workflow is not yet wired into a `secrets:` block — there are
 # no inbound credentials needed for the test runs themselves (no deploy step;
@@ -374,3 +382,120 @@ jobs:
           name: playwright-report
           path: web/playwright-report/
           retention-days: 7
+
+  # ── X·F F.W9 `.c` — inv-27, THE EVIDENCE FLOOR ─────────────────────────────
+  #
+  # `F-W9.md` §2.7 states the wave's evidence law in one line: *"no gate closes
+  # on an assertion that something did not run; every green cites a covering
+  # run id"*. Before this job there was nothing to cite. A green gate row could
+  # name a commit, and a reader could take the claim or leave it — which is
+  # exactly the *green-by-assertion* posture the wave exists to abolish.
+  #
+  # WHAT IT EMITS, AND WHY THAT IS THE WHOLE JOB. The record carries the run
+  # id, the run attempt, the covering commit SHA, the ref, and each gating
+  # job's own conclusion. Every one of those values is READ FROM GitHub's
+  # context — `github.run_id`, `github.sha`, `needs.<job>.result` — and not one
+  # is computed here. That is deliberate and it is `KF.W4(d)` applied to this
+  # wave's own instrument: **a gate may not re-derive its own oracle.** This job
+  # serialises the oracle; it never becomes one.
+  #
+  # FAIL-CLOSED, TWICE. First by `needs:` — GitHub will not start this job
+  # unless all three gating jobs concluded `success`, so a red run mints no
+  # record at all. Second by the assertion step below, which re-reads the three
+  # results and exits non-zero on anything but `success`. The second check is
+  # redundant TODAY and is here on purpose: the day someone adds `if: always()`
+  # to make the summary appear on red runs, the record does not quietly start
+  # certifying failures — the job fails instead, loudly, naming the job that
+  # was not green. A silent evidence forgery is the one failure mode an
+  # evidence floor cannot survive.
+  #
+  # ⊘ NOTHING HERE IS `continue-on-error`, ALLOWLISTED OR SKIPPABLE, and the
+  # JSON is parsed before it is uploaded: a record that cannot be read back is
+  # worse than no record, so a malformed one fails the job rather than shipping.
+  inv-27-evidence:
+    name: inv-27 evidence (covering run id + SHA)
+    runs-on: ubuntu-latest
+    needs: [api-tests, web-build, e2e-tests]
+    steps:
+      - name: Assert the run is covering-green (fail-closed)
+        env:
+          API_RESULT: ${{ needs.api-tests.result }}
+          WEB_RESULT: ${{ needs.web-build.result }}
+          E2E_RESULT: ${{ needs.e2e-tests.result }}
+        run: |
+          set -eu
+          not_green=0
+          for pair in "api-tests:${API_RESULT}" "web-build:${WEB_RESULT}" "e2e-tests:${E2E_RESULT}"; do
+            job="${pair%%:*}"
+            result="${pair#*:}"
+            printf '%-12s = %s\n' "$job" "$result"
+            [ "$result" = "success" ] || not_green=1
+          done
+          if [ "$not_green" -ne 0 ]; then
+            echo "inv-27: this run is NOT covering-green — no evidence record is minted." >&2
+            exit 1
+          fi
+          echo "inv-27: all three gating jobs concluded success."
+      - name: Emit the inv-27 evidence record
+        env:
+          API_RESULT: ${{ needs.api-tests.result }}
+          WEB_RESULT: ${{ needs.web-build.result }}
+          E2E_RESULT: ${{ needs.e2e-tests.result }}
+          GH_REPO: ${{ github.repository }}
+          GH_WORKFLOW: ${{ github.workflow }}
+          GH_RUN_ID: ${{ github.run_id }}
+          GH_RUN_NUMBER: ${{ github.run_number }}
+          GH_RUN_ATTEMPT: ${{ github.run_attempt }}
+          GH_SHA: ${{ github.sha }}
+          GH_REF: ${{ github.ref }}
+          GH_REF_NAME: ${{ github.ref_name }}
+          GH_EVENT: ${{ github.event_name }}
+          GH_SERVER: ${{ github.server_url }}
+        run: |
+          set -eu
+          run_url="${GH_SERVER}/${GH_REPO}/actions/runs/${GH_RUN_ID}"
+          cat > inv-27-evidence.json <<JSON
+          {
+            "invariant": "inv-27",
+            "claim": "green-means-green: this record exists only for a run in which every gating job concluded success",
+            "emitted_by": "X.F.W9.c (G-F9-17)",
+            "repository": "${GH_REPO}",
+            "workflow": "${GH_WORKFLOW}",
+            "run_id": "${GH_RUN_ID}",
+            "run_number": "${GH_RUN_NUMBER}",
+            "run_attempt": "${GH_RUN_ATTEMPT}",
+            "run_url": "${run_url}",
+            "covering_sha": "${GH_SHA}",
+            "ref": "${GH_REF}",
+            "ref_name": "${GH_REF_NAME}",
+            "event": "${GH_EVENT}",
+            "gating_jobs": {
+              "api-tests": "${API_RESULT}",
+              "web-build": "${WEB_RESULT}",
+              "e2e-tests": "${E2E_RESULT}"
+            }
+          }
+          JSON
+          python3 -c 'import json,sys; json.load(open("inv-27-evidence.json")); print("inv-27: record parses")'
+          {
+            echo "## inv-27 — covering green run"
+            echo
+            echo "| field | value |"
+            echo "|---|---|"
+            echo "| run id | \`${GH_RUN_ID}\` |"
+            echo "| run attempt | \`${GH_RUN_ATTEMPT}\` |"
+            echo "| covering SHA | \`${GH_SHA}\` |"
+            echo "| ref | \`${GH_REF_NAME}\` (${GH_EVENT}) |"
+            echo "| api-tests | ${API_RESULT} |"
+            echo "| web-build | ${WEB_RESULT} |"
+            echo "| e2e-tests | ${E2E_RESULT} |"
+            echo
+            echo "Cite as: **run \`${GH_RUN_ID}\` @ \`${GH_SHA}\`** — ${run_url}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat inv-27-evidence.json
+      - name: Upload the inv-27 evidence record
+        uses: actions/upload-artifact@v4
+        with:
+          name: inv-27-evidence
+          path: inv-27-evidence.json
+          retention-days: 90
