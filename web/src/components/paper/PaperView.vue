@@ -183,11 +183,28 @@ let mobileTocObserver: IntersectionObserver | null = null;
 
 // ── I.δ — reading-progress bar (native-first, JS floor) ──────
 // The native `.scroll-progress` recipe owns the bar on a `scroll()`-timeline
-// engine (compositor). This listener is the SOLE writer ONLY when that recipe
-// is absent — the dual-path-single-writer discipline (no double-run): if the
-// engine supports `scroll()` timelines (or the user requests reduced motion,
-// where the native recipe is inert and a JS bar would defeat PRM), it never
-// attaches.
+// engine (compositor). This listener is the SOLE writer when that recipe is
+// absent OR INERT — the dual-path-single-writer discipline (no double-run).
+//
+// X·F F.W4 `.e` — `G-F4-PRM-CLOCK`: *"the reduced arm renders a
+// converged/static-truthful frame, never a blank one."* The prior arming
+// condition disarmed this writer under PRM on the reasoning that the native
+// recipe is inert there and a JS bar would defeat PRM. Read at the producer's
+// installed bytes, `@mkbabb/glass-ui/dist/styles/scroll-driven.css`:
+//
+//   .scroll-progress{transform-origin: 0 50%;transform: scaleX(0);}
+//   @media (prefers-reduced-motion: no-preference){ @supports (…){ … } }
+//
+// — the keyframe and the timeline BOTH sit inside the no-preference query, and
+// the base rule is `scaleX(0)`. So under PRM the native path is inert on every
+// engine, and disarming this writer as well left a 2px bar pinned at zero: a
+// reader at the end of the paper is told they have read none of it. That is the
+// blank frame the gate names, and it is worse than motion, because it is false.
+//
+// What is armed here is not a clock. It owns no timer, the bar carries no
+// transition and no easing, and one rAF coalesces a scroll burst into a single
+// write of the position the reader themselves produced. PRM asks for no
+// gratuitous motion; it does not ask to be misinformed.
 const progressBar = ref<HTMLElement | null>(null);
 const NATIVE_SCROLL_TIMELINE =
     typeof CSS !== "undefined" && CSS.supports("animation-timeline", "scroll()");
@@ -209,7 +226,9 @@ function armProgressFallback() {
     const prm =
         typeof window !== "undefined" &&
         window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (NATIVE_SCROLL_TIMELINE || prm) return;
+    // Absent OR inert — the composited path only holds the bar when it is
+    // actually running, which under PRM it never is.
+    if (NATIVE_SCROLL_TIMELINE && !prm) return;
     const s = scrollContainer.value;
     if (!s) return;
     s.addEventListener("scroll", onProgressScroll, { passive: true });
@@ -377,8 +396,9 @@ onUnmounted(() => {
                  Fallback path: when the engine lacks `scroll()` timelines, a tiny
                  feature-detected listener is the SOLE writer of the bar's
                  `scaleX` (inv-29 floor). PRM zeroes the native animation (its
-                 `@supports` block sits under `prefers-reduced-motion`); the
-                 fallback listener is not armed under PRM either. -->
+                 `@supports` block sits under `prefers-reduced-motion`), so the
+                 JS writer takes the bar over in that arm rather than leaving it
+                 pinned at zero — `G-F4-PRM-CLOCK`. -->
             <div class="paper-progress-track">
                 <div ref="progressBar" class="paper-progress-bar scroll-progress" />
             </div>
@@ -543,10 +563,9 @@ onUnmounted(() => {
 /* ── I.δ — reading-progress bar ───────────────────────────────
    The track is sticky at the top of the `.paper-scroll` viewport; the bar
    inside it scales 0→1 across the full read. The native path is glass-ui's
-   `.scroll-progress` (composited `scroll()` timeline); `--scroll-progress-
-   scroller: nearest` binds it to the enclosing `.paper-scroll` rather than the
-   document root. The JS floor writes the same `scaleX` only when `scroll()`
-   timelines are absent (and not under PRM). */
+   `.scroll-progress` (composited `scroll()` timeline), which binds to the
+   nearest scrollport — `.paper-scroll` — by its own default. The JS floor
+   writes the same `scaleX` when that path is absent or, under PRM, inert. */
 .paper-progress-track {
     position: sticky;
     top: 0;
@@ -571,8 +590,13 @@ onUnmounted(() => {
         var(--primary)
     );
     border-radius: 0 1px 1px 0;
-    /* Bind the native `scroll()` timeline to the paper scroller (not root). */
-    --scroll-progress-scroller: nearest;
+    /* ⊘ `--scroll-progress-scroller` WAS DECLARED HERE AND READ BY NOBODY. The
+       producer's recipe reads `var(--scroll-progress-timeline, scroll(nearest
+       block))` — a different name — so the declaration bound nothing, and the
+       bar tracked the nearest scrollport only because that is already the
+       default. The behaviour was right by accident and the line said it was
+       right by construction. Deleted rather than renamed: the default IS the
+       intent, and a declaration that restates a default is the next dead one. */
 }
 
 .teleport-overlay {
