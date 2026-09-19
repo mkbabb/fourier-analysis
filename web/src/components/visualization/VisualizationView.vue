@@ -103,15 +103,43 @@ function doExport(options: Record<string, boolean>) {
 
 // ── Publish to gallery ──
 const publishing = ref(false);
+
+/**
+ * X.F.W3 `.e` / `fr-VisualizationView MAJ-7` — ONE ERROR CHANNEL PER ACTION,
+ * and the diagnostic this component already holds is the one it shows.
+ *
+ * THE FALSE NOUN. `store.createSnapshot` is an ALIAS the store keeps for this
+ * one unmigrated call site; its own comment says so, and says that it creates a
+ * DRAFT VISUALIZATION rather than a snapshot row. The failure message
+ * ("Could not create snapshot") therefore named an entity the system stopped
+ * having. The call site adopts the real verb, `saveVisualization`, which is
+ * exported beside the alias — so the noun is corrected at THIS end, without
+ * reaching into a store this unit does not own. The alias is left with no
+ * caller and is named as residue for the store's owner.
+ *
+ * THE DUPLICATE CHANNEL. Two toasts served one failed save. `gallery.publish`
+ * catches and toasts every failure of its own and never rethrows, and
+ * `saveVisualization` catches everything and returns `null` — so the `catch`
+ * arm here could only ever fire a SECOND message about a failure something
+ * else had already reported, and at the settled bytes it is unreachable
+ * besides. It is deleted; `finally` keeps the busy flag, which is the only work
+ * it was actually doing.
+ *
+ * THE DISCARDED DIAGNOSTIC. `saveVisualization` writes `problemMessage(e, …)`
+ * into `store.error` — the real reason, from the real response — and this
+ * function threw it away to volunteer a constant. It is read here, with the
+ * constant demoted to the fallback it always should have been.
+ */
 async function handlePublish() {
     if (!store.imageSlug || !store.contour) return;
     publishing.value = true;
     try {
-        const snapshot = await store.createSnapshot();
-        if (!snapshot) { toast("Could not create snapshot", "error"); return; }
-        await gallery.publish(snapshot.slug, store.imageSlug);
-    } catch (e: any) {
-        toast(e.message ?? "Publish failed", "error");
+        const saved = await store.saveVisualization();
+        if (!saved) {
+            toast(store.error ?? "Could not save the visualization", "error");
+            return;
+        }
+        await gallery.publish(saved.slug, store.imageSlug);
     } finally {
         publishing.value = false;
     }
@@ -257,17 +285,33 @@ async function onCanvasFileSelect(e: Event) {
                             <ContourPreview :points="editorRef?.points" />
                             <!-- Editor tools live in the floating EditorControlsDock (B.W2.4);
                                  the static EditorToolsPanel was retired. -->
-                            <ContourSettings v-if="hasImage" v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
+                            <!-- X.F.W3 `.e` / `fr-VisualizationView MAJ-5` FOLD -> `fr-ContourSettings
+                                 M-16`, the HOST half of section-5a split (4). `.d` declared the
+                                 panel's contract INBOUND-ONLY at `be623d9` after
+                                 measuring that every use of the pair inside it is a
+                                 READ; these two mounts advertised a writeback the
+                                 panel structurally could not perform, and the
+                                 reader could not tell from either end which child
+                                 owned the two scalars. Nothing regresses: the
+                                 writeback never worked. -->
+                            <ContourSettings v-if="hasImage" :n-harmonics="nHarmonics" :n-points="nPoints" />
                         </div>
                         <div v-else key="viz-panel" class="viz-panel-left">
                             <ImageUpload />
                             <Transition name="slide-down">
-                                <BasisSelector v-if="hasData" :active-bases="activeBases"
-                                    v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints"
-                                    @update:active-bases="activeBases = $event" />
+                                <!-- MAJ-5's second limb: the SAME TAG spelled one
+                                     two-way binding two ways — `v-model:` for the
+                                     scalars and a hand-written prop+listener pair
+                                     for the bases. `BasisSelector` declares
+                                     `update:activeBases` like the other two, so
+                                     the third binding is written like the other
+                                     two. -->
+                                <BasisSelector v-if="hasData"
+                                    v-model:active-bases="activeBases"
+                                    v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
                             </Transition>
                             <Transition name="slide-down">
-                                <ContourSettings v-if="hasImage" v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
+                                <ContourSettings v-if="hasImage" :n-harmonics="nHarmonics" :n-points="nPoints" />
                             </Transition>
                             <Transition name="slide-down">
                                 <CoefficientsPanel v-if="store.epicycleData || store.computing" />
