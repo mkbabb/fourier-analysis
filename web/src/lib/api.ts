@@ -2,7 +2,6 @@ import type {
     AnimationData,
     ContourAsset,
     ContourSettings,
-    AnimationSettings,
     EpicycleData,
     ImageMeta,
     GalleryTier,
@@ -86,13 +85,39 @@ import { ApiProblem, readRateLimitResetSeconds } from "./api-problem";
 
 export type CoreAuth = "session" | "admin" | "none";
 
+/**
+ * SP-12's `getAdminToken()!` type-lie, cured where it is caused (`AA-28` =
+ * `FR-AFP-25` = `FR-AUL-30` = `GM-23`, the guard-posture family row).
+ *
+ * The store's accessor has always returned `string | null`; this seam demanded
+ * `string`, so every admin call site had to assert the null away with `!` —
+ * eleven of them — and the three call-site families then invented three
+ * different answers for a null that the type said could not happen: an
+ * assertion (the admin panels), a toast (`GalleryView`'s batch flow), and a
+ * silent `return` (`stores/gallery.ts`). The seam now ACCEPTS the null the
+ * store can produce and answers it once, so the three postures collapse to one
+ * and the `!` at the call sites is inert rather than load-bearing.
+ */
+export type AdminToken = string | null;
+
+/**
+ * `urn:fourier:admin-token-missing` — the one answer to a missing admin token.
+ *
+ * Before this, the null path threw `new Error("coreFetch: auth='admin'
+ * requires adminToken")` and five admin-facing toasts rendered that internal
+ * sentence verbatim to an operator (`FR-AUL-30`, `FR-AFP-25`). It is now an
+ * `ApiProblem`, so `problemMessage()` reads its `detail` and every existing
+ * catch reports a sentence written for the person reading it.
+ */
+export const ADMIN_TOKEN_MISSING = "urn:fourier:admin-token-missing";
+
 export interface CoreFetchOptions extends Omit<RequestInit, "body" | "signal"> {
     /** Body branches: FormData (multipart); any object (JSON-serialised); or raw BodyInit. */
     body?: FormData | BodyInit | object;
     /** Auth mode. `session` adds X-Session-Token. `admin` adds Bearer + session-token. */
     auth?: CoreAuth;
-    /** Bearer token for `auth: "admin"`. Required when auth is "admin". */
-    adminToken?: string;
+    /** Bearer token for `auth: "admin"`. Answered, not asserted, when absent. */
+    adminToken?: AdminToken;
     /** If-Match header value (typically an ETag captured by a prior read). */
     ifMatch?: string | null;
     /** Idempotency-Key header value (UUID); honoured by the API for POST + PUT. */
@@ -112,6 +137,45 @@ interface CoreFetchResult<T> {
 const MAX_RATE_LIMIT_RETRIES = 2;
 const MAX_RATE_LIMIT_RESET_SECONDS = 30; // cap server-provided wait at 30s
 
+/**
+ * `EV-L·M-4` ⊕ `C·C-34 (RD-1)` ⊕ `R2-N6` ⊕ `R2-r4` — the ~150s
+ * auto-amplification, bounded (X·F F.W4 `.f`; cure handed over by `.b`).
+ *
+ * The compute-saturation 429 is raised only after a 30s server-side semaphore
+ * wait and arrives STAMPED by `RateLimitHeaderMiddleware`, so `waitSec =
+ * min(reset ≈ 60, 30) = 30` on EVERY retry: two retries bought 60s of pure
+ * client sleeping on top of two 30s round trips, with `computing` pinned true
+ * and the spinner reading "Computing…" throughout. A per-request cap cannot see
+ * that, because each individual wait is within its cap — the budget has to be
+ * cumulative, so it is.
+ */
+const RATE_LIMIT_BUDGET_MS = 20_000;
+
+/**
+ * Sleep that an `AbortSignal` can actually cut short.
+ *
+ * The prior backoff was `await new Promise(r => setTimeout(r, waitSec * 1000))`
+ * and ignored `signal` entirely, so a 30s sleep SURVIVED the abort that was
+ * supposed to cancel it and its generation then clobbered the request that
+ * replaced it — a 30s × 2-generation clobber window on the app's most
+ * re-triggered call. The timer is cleared on abort and the rejection is the
+ * same `AbortError` the rest of this module already recognises.
+ */
+function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
+    if (signal.aborted) return Promise.reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            signal.removeEventListener("abort", onAbort);
+            resolve();
+        }, ms);
+        function onAbort() {
+            clearTimeout(timer);
+            reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+        }
+        signal.addEventListener("abort", onAbort, { once: true });
+    });
+}
+
 async function coreFetch<T>(
     path: string,
     abortKey: string,
@@ -125,7 +189,13 @@ async function coreFetch<T>(
     };
     if (auth === "admin") {
         if (!options?.adminToken) {
-            throw new Error("coreFetch: auth='admin' requires adminToken");
+            throw new ApiProblem(
+                ADMIN_TOKEN_MISSING,
+                "Admin session required",
+                401,
+                "Your admin session is no longer available. Re-enter the admin token and try again.",
+                path,
+            );
         }
         headers["Authorization"] = `Bearer ${options.adminToken}`;
     }
@@ -161,6 +231,7 @@ async function coreFetch<T>(
     const signal = options?.signal ?? abortable(abortKey);
     const retryOn429 = options?.retryOn429 ?? true;
     let attempt = 0;
+    let spentMs = 0;
     while (true) {
         const res = await fetch(`${BASE}${path}`, {
             method: options?.method,
@@ -171,8 +242,15 @@ async function coreFetch<T>(
 
         if (res.status === 429 && retryOn429 && attempt < MAX_RATE_LIMIT_RETRIES) {
             const reset = readRateLimitResetSeconds(res);
-            const waitSec = Math.min(reset ?? 2 ** attempt, MAX_RATE_LIMIT_RESET_SECONDS);
-            await new Promise((r) => setTimeout(r, waitSec * 1000));
+            const waitMs = Math.min(reset ?? 2 ** attempt, MAX_RATE_LIMIT_RESET_SECONDS) * 1000;
+            // The budget is checked BEFORE the sleep, so the caller is told the
+            // truth at the moment the wait stops being worth taking rather than
+            // after another half-minute of pretending to compute.
+            if (spentMs + waitMs > RATE_LIMIT_BUDGET_MS) {
+                throw await ApiProblem.from(res);
+            }
+            await abortableSleep(waitMs, signal);
+            spentMs += waitMs;
             attempt++;
             continue;
         }
@@ -209,6 +287,16 @@ interface ApiFetchOptions extends Omit<RequestInit, "body" | "signal"> {
     ifMatch?: string | null;
     /** Optional Idempotency-Key header (UUID; honoured by API for POST + PUT). */
     idempotencyKey?: string | null;
+    /**
+     * `EV-L·M-4` (i) — opt OUT of the 429 backoff.
+     *
+     * `retryOn429` was declared on `CoreFetchOptions` and absent here, and
+     * `apiFetch` is the only exported wrapper — so a caller could not decline
+     * the retry **even in principle**, whatever it knew about its own latency
+     * budget. The equation ops are the callers that know: an interactive
+     * compute wants the 429 reported, not slept through.
+     */
+    retryOn429?: boolean;
 }
 
 /** Default body-bearing fetch with session auth + retry-on-429 + typed ApiProblem errors. */
@@ -244,7 +332,7 @@ async function apiFetchWithETag<T>(
 /** Admin-authenticated fetch (Bearer + session token). */
 async function adminFetch<T>(
     path: string,
-    adminToken: string,
+    adminToken: AdminToken,
     options?: ApiFetchOptions,
 ): Promise<T> {
     const { data } = await coreFetch<T>(path, /* abortKey */ path, {
@@ -256,21 +344,14 @@ async function adminFetch<T>(
 }
 
 // ── Images ──
-
-export async function computeSha256(file: File): Promise<string> {
-    const buf = await file.arrayBuffer();
-    const hash = await crypto.subtle.digest("SHA-256", buf);
-    return Array.from(new Uint8Array(hash))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-}
-
-export async function checkImageHash(hash: string): Promise<ImageMeta | null> {
-    const res = await fetch(`${BASE}/api/images/by-hash/${hash}`);
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error(`Hash check failed: ${res.status}`);
-    return res.json();
-}
+//
+// `IU-25` (X·F F.W4 `.f`, SCRUB) — `computeSha256`, `checkImageHash` and
+// `imageUrl` are DELETED here, each with a zero-consumer proof banked in
+// `F-W4-SCRUB-LEDGER.md`. `checkImageHash` was additionally the module's one
+// raw `fetch` outside the parametric core, with a bare `throw` that no typed
+// catch could read — a second contract it kept only because nothing called it.
+// The upload path deduplicates server-side by sha256 (`store_image_asset`), so
+// the client-side hash-then-check pair had been superseded, not merely unused.
 
 export async function uploadImage(file: File): Promise<ImageMeta> {
     const form = new FormData();
@@ -283,10 +364,6 @@ export async function uploadImage(file: File): Promise<ImageMeta> {
 
 export async function getImageMeta(imageSlug: string): Promise<ImageMeta> {
     return apiFetch<ImageMeta>(`/api/images/${imageSlug}`, "getImageMeta");
-}
-
-export function imageUrl(imageSlug: string): string {
-    return `${BASE}/api/images/${imageSlug}/blob`;
 }
 
 export function thumbnailUrl(imageSlug: string): string {
@@ -487,12 +564,12 @@ export async function deleteSession(): Promise<{ ok: boolean }> {
 // ── Admin ──
 
 export async function verifyAdmin(
-    token: string,
+    token: AdminToken,
 ): Promise<{ ok: boolean }> {
     return adminFetch<{ ok: boolean }>("/api/admin/verify", token);
 }
 
-export async function getAdminStats(token: string): Promise<AdminStats> {
+export async function getAdminStats(token: AdminToken): Promise<AdminStats> {
     return adminFetch<AdminStats>("/api/admin/stats", token);
 }
 
@@ -504,7 +581,7 @@ export async function getAdminStats(token: string): Promise<AdminStats> {
 
 /** PUT /api/admin/visualizations/{slug}/tier — admin curation tier (§7 feature). */
 export async function setVisualizationTier(
-    token: string,
+    token: AdminToken,
     slug: string,
     tier: GalleryTier,
 ): Promise<Visualization> {
@@ -520,7 +597,7 @@ export async function setVisualizationTier(
  * default; `hard=true` is the §7 grace-bypass for illegal content).
  */
 export async function adminDeleteVisualization(
-    token: string,
+    token: AdminToken,
     slug: string,
     hard = false,
 ): Promise<{ ok: boolean }> {
@@ -536,7 +613,7 @@ export async function adminDeleteVisualization(
  * the cursor envelope `{items, next_cursor, has_more}` from `admin.py`.
  */
 export async function listFlaggedVisualizations(
-    token: string,
+    token: AdminToken,
     params: { limit?: number; cursor?: string },
 ): Promise<FlaggedCursorResponse> {
     const qs = new URLSearchParams();
@@ -551,7 +628,7 @@ export async function listFlaggedVisualizations(
 
 /** DELETE /api/admin/visualizations/{slug}/flags — dismiss flags (§7). */
 export async function dismissVisualizationFlags(
-    token: string,
+    token: AdminToken,
     slug: string,
 ): Promise<{ dismissed: number }> {
     return adminFetch<{ dismissed: number }>(
@@ -564,7 +641,7 @@ export async function dismissVisualizationFlags(
 // ── Admin: user management ──
 
 export async function listAdminUsers(
-    token: string,
+    token: AdminToken,
     params: { page?: number; limit?: number; sort?: string; q?: string },
 ): Promise<AdminUserListResponse> {
     const qs = new URLSearchParams();
@@ -580,7 +657,7 @@ export async function listAdminUsers(
 }
 
 export async function setAdminUserStatus(
-    token: string,
+    token: AdminToken,
     slug: string,
     status: "active" | "suspended",
 ): Promise<{ slug: string; status: string }> {
@@ -592,7 +669,7 @@ export async function setAdminUserStatus(
 }
 
 export async function deleteAdminUser(
-    token: string,
+    token: AdminToken,
     slug: string,
 ): Promise<{ deleted: boolean; entries_deleted: number }> {
     return adminFetch<{ deleted: boolean; entries_deleted: number }>(
@@ -603,7 +680,7 @@ export async function deleteAdminUser(
 }
 
 export async function pruneEmptyUsers(
-    token: string,
+    token: AdminToken,
 ): Promise<{ pruned: number }> {
     return adminFetch<{ pruned: number }>(
         "/api/admin/users/prune-empty",
@@ -623,7 +700,7 @@ export async function pruneEmptyUsers(
 // (`/api/admin/visualizations/batch`); the request's `hashes` field now
 // carries visualization **slugs** under the single-slug identity (§7 batch_*).
 export async function batchGallery(
-    token: string,
+    token: AdminToken,
     action: "delete" | "feature" | "unfeature",
     hashes: string[],
 ): Promise<BatchResponse> {
@@ -634,7 +711,7 @@ export async function batchGallery(
 }
 
 export async function batchUsers(
-    token: string,
+    token: AdminToken,
     action: "delete" | "suspend" | "unsuspend",
     slugs: string[],
 ): Promise<BatchResponse> {
@@ -647,7 +724,7 @@ export async function batchUsers(
 // ── Admin: audit log ──
 
 export async function listAuditLog(
-    token: string,
+    token: AdminToken,
     params: {
         page?: number;
         limit?: number;
