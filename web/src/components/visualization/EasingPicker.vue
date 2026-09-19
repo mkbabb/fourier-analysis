@@ -1,112 +1,112 @@
 <script setup lang="ts">
-import { Button } from "@mkbabb/glass-ui/button";
-import { useAnimationStore, EASING_OPTIONS, type EasingName } from "@/stores/animation";
-import EasingCurvePreview from "./EasingCurvePreview.vue";
+import { useId } from "vue";
+import { EasingCurve } from "@mkbabb/glass-ui/easing";
+import {
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuSeparator,
+} from "@mkbabb/glass-ui/menu";
+import {
+    ANIMATION_EASINGS,
+    ANIMATION_EASING_NAMES,
+    getEasingSVGPath,
+    isAnimationEasingName,
+} from "@/lib/easings";
+import { useAnimationStore } from "@/stores/animation";
 
+/**
+ * X.F.W3 `.b` — THE EASING DISPOSITION, ROUTE 1 (COHESION §0x S-6a).
+ *
+ * `fr-EasingPicker D/D-1 + C/M-6` (BLOCKER) — six easing chips were bare glass
+ * `<Button>`s wearing `role="menuitemradio"` + `aria-checked` BY HAND inside a
+ * `role="menu"` popover. The ARIA was authored correctly and the CHASSIS was
+ * absent, which is the whole defect: all four of Reka's reach mechanisms key on
+ * `[data-reka-collection-item]`, an attribute only a collection item mints, so
+ * arrows, Home/End and typeahead walked past six controls that *told* a screen
+ * reader they were a radio set. The Tab swallow and `handleMountAutoFocus` did
+ * the rest. The cure is the chassis the primitive already ships —
+ * `DropdownMenuRadioGroup` / `RadioItem` / `Label` — never a hand-rolled one.
+ *
+ * CHASSIS LOCK (Toggle.js:68, and S-6a by name): `ToggleChip` under
+ * `role="menuitemradio"` double-exposes state (`aria-pressed` AND
+ * `aria-checked` for one fact), so it is sound as STYLING and never as chassis.
+ * The ToggleChip route is REFUSED; nothing here re-styles a menu row into a chip.
+ *
+ * The three booked complications, each discharged rather than carried:
+ *   · the indicator dot — the producer's `RadioItem` renders its own
+ *     `ItemIndicator`, so the selected state is drawn by the chassis and this
+ *     file mints no `.is-active` spelling at all;
+ *   · the arrow map — Reka's menu navigation is ONE-DIMENSIONAL, and the old
+ *     3-column grid made ArrowDown mean "one to the right". The list is a single
+ *     COLUMN now, so the keyboard order and the visual order are the same order
+ *     (the spec's own first option, and the one that needs no 2-D handling);
+ *   · `./dropdown-menu` → `./menu` — the subpath moved at glass-ui 8.0.0 and the
+ *     import below is the 8.0.0 spelling.
+ *
+ * `TOKEN` / `CCOLOR` / `CARRY-1.4.3` / `INVERT` die WITH the scoped block that
+ * carried them. The in-tree `--easing-accent: hsl(248 88% 71%)` had NO scheme
+ * arm and painted a 9px label at 3.40:1 light / 3.67:1 washed — under the 1.4.3
+ * floor in both schemes, with an accent ceiling of 3.60:1 that no retune could
+ * lift. Both arms now come from the producer's own landing chain:
+ * `<EasingCurve>` sets `--easing-curve-accent: var(--motion-accent,
+ * var(--viz-legendre))` on its wrapper and strokes `currentColor`, and
+ * `--viz-legendre` is defined with BOTH arms at the adopted pin. The chip label
+ * is menu-row text in the popover's own foreground; the selection is the
+ * indicator dot. Nothing in this file paints under a floor, because nothing in
+ * this file paints.
+ *
+ * `BARREL` — the pure catalogue and the pure path builder are imported from
+ * `@/lib/easings`, which owns them, not through the animation store's compat
+ * re-export. The store is imported for the STATE it owns and for nothing else.
+ */
 const anim = useAnimationStore();
+
+const easingLabelId = useId();
+
+/**
+ * `AC-L-11 + M-10`'s posture, applied at the menu seam: the radio group's model
+ * is a producer `SelectionValue` (an open scalar), and the store's `easing` is a
+ * closed six-key union. The catalogue's own guard narrows it, so an off-catalogue
+ * value is unrepresentable downstream instead of merely unlikely — the same cure
+ * `coerceAnimationEasingName` takes at the persistence seam.
+ */
+function selectEasing(value: unknown) {
+    if (isAnimationEasingName(value)) {
+        anim.easing = value;
+    }
+}
 </script>
 
 <template>
-    <!-- `role="group"` makes this an allowed child of the parent
-         `role="menu"`; each easing chip is a mutually-exclusive option, so it
-         carries `role="menuitemradio"` + `aria-checked` — the ARIA-correct
-         child role for a radio set inside a menu (satisfies
-         `aria-required-children`; `aria-pressed` would mislabel a radio as a
-         toggle). -->
-    <div role="group" aria-label="Easing" class="easing-section">
-        <span class="easing-heading">Easing</span>
-        <div class="easing-grid">
-            <Button
-                v-for="(opt, key) in EASING_OPTIONS"
-                :key="key"
-                emphasis="quiet"
-                size="sm"
-                role="menuitemradio"
-                class="easing-chip"
-                :class="{ 'is-active': anim.easing === key }"
-                :aria-checked="anim.easing === key"
-                @click="anim.easing = key as EasingName"
-            >
-                <EasingCurvePreview
-                    :easing="(key as EasingName)"
-                    :size="28"
-                    :color="anim.easing === key ? 'var(--easing-accent)' : 'var(--muted-foreground)'"
-                />
-                <span class="easing-chip-label">{{ opt.label }}</span>
-            </Button>
-        </div>
-    </div>
+    <DropdownMenuLabel :id="easingLabelId">Easing</DropdownMenuLabel>
+    <DropdownMenuRadioGroup
+        :model-value="anim.easing"
+        :aria-labelledby="easingLabelId"
+        @update:model-value="selectEasing"
+    >
+        <DropdownMenuRadioItem
+            v-for="name in ANIMATION_EASING_NAMES"
+            :key="name"
+            :value="name"
+            :text-value="ANIMATION_EASINGS[name].label"
+            class="gap-2"
+        >
+            <!-- `text-value` is stated rather than inferred: Reka's typeahead
+                 reads an item's text content, and the plot contributes the "0"
+                 and "1" axis captions the producer draws in HTML. Left to
+                 inference, typing "s" for Sine would be matching against "01".
+
+                 The plot is DECORATIVE — the row already carries the same name
+                 as visible text and as `text-value`, so an announced
+                 `role="img"` beside it would say it a second time. -->
+            <EasingCurve
+                :strokes="[{ d: getEasingSVGPath(name) }]"
+                class="w-6 shrink-0"
+                aria-hidden="true"
+            />
+            <span>{{ ANIMATION_EASINGS[name].label }}</span>
+        </DropdownMenuRadioItem>
+    </DropdownMenuRadioGroup>
+    <DropdownMenuSeparator />
 </template>
-
-<style scoped>
-@reference "tailwindcss";
-
-/* `--easing-accent` is the viz-easing accent colour. Filed upstream as a
-   glass-ui `--viz-easing` token; see `coordination/CONSTELLATION.md`.
-   Until that lands, the carry lives here because EasingPicker is the
-   sole in-tree consumer. */
-.easing-section {
-    --easing-accent: hsl(248 88% 71%);
-    padding: 0.375rem 0.5rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-    margin-bottom: 0.125rem;
-    padding-bottom: 0.5rem;
-}
-.easing-heading {
-    display: block;
-    @apply text-sm;
-    font-weight: 500;
-    color: var(--muted-foreground);
-    margin-bottom: 0.375rem;
-    letter-spacing: 0.02em;
-}
-.easing-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.25rem;
-}
-.easing-chip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.125rem;
-    padding: 0.375rem 0.25rem 0.25rem;
-    border-radius: 0.5rem;
-    border: 1.5px solid transparent;
-    background: none;
-    cursor: pointer;
-    /* A.W3.d — named properties + canonical token, no `transition: all`. */
-    transition: background-color 0.15s var(--ease-standard), border-color 0.15s var(--ease-standard);
-}
-.easing-chip:hover {
-    background: var(--muted);
-}
-.easing-chip.is-active {
-    border-color: color-mix(in srgb, var(--easing-accent) 60%, transparent);
-    background: color-mix(in srgb, var(--easing-accent) 8%, transparent);
-}
-.easing-chip-label {
-    font-size: 0.5625rem;
-    font-weight: 500;
-    color: var(--muted-foreground);
-    line-height: 1;
-    /* X.F.W4 · SP-4 / `fr-AnimationControls M-7` — the bare `0.15s`, twelve
-       lines below the A.W3.d comment that claims this file uses the canonical
-       token, now uses it. */
-    transition: color var(--duration-fast) var(--ease-standard);
-}
-.easing-chip.is-active .easing-chip-label {
-    color: var(--easing-accent);
-}
-
-/* X.F.W4 · SP-4 / `fr-AnimationControls M-7` + `D-8`'s inventory — the three
-   child transitions in this mounted subtree were reduced-motion-ungated, which
-   is what extends D-8's count from six surfaces to eight. The blanket is
-   declared once, here, over the two properties this file animates. */
-@media (prefers-reduced-motion: reduce) {
-    .easing-chip,
-    .easing-chip-label {
-        transition: none;
-    }
-}
-</style>

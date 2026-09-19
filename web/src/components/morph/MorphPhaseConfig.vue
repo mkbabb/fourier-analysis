@@ -80,24 +80,55 @@
         <div class="config-field">
             <label class="config-label" :id="easingLabelId">Easing</label>
             <Select :model-value="easing" @update:model-value="$emit('update:easing', String($event))">
+                <!--
+                    The trigger names the selection ITSELF rather than through
+                    `<SelectValue />`, and that is forced by a producer contract
+                    two layers down: reka's `SelectItemText` publishes the
+                    selected option's `textContent` as the displayed value
+                    (`SelectItemText.vue` → `onOptionAdd({ textContent })`), and
+                    `<EasingCurve>` draws its "0"/"1" axis captions as HTML
+                    spans INSIDE the plot. Embed the plot in an option and the
+                    trigger reads "01 Ease In-Out" — measured at this seat before
+                    this cure. `text-value` on the item repairs TYPEAHEAD (reka
+                    reads the prop in preference to the node's text) but not the
+                    display, which never consults it. The label is known here, so
+                    it is written here; the producer-side row — captions as
+                    `aria-hidden` HTML text rather than SVG `<text>`, or a
+                    caption opt-out — rides the SS-6 relay, never a local hack.
+                -->
                 <SelectTrigger class="w-full" :aria-labelledby="`${easingLabelId} ${titleId}`">
-                    <SelectValue />
+                    <span class="truncate">{{ presets[easing]?.label ?? easing }}</span>
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem
                         v-for="name in easingNames"
                         :key="name"
                         :value="name"
+                        :text-value="presets[name].label"
                     >
+                        <!--
+                            `fr-EasingCurvePreview FORK` ⊕ `MPC-17` ⊕ `MPC-23`
+                            (X.F.W3 `.b`, ROUTE 1) — the fifth fork's inline
+                            40×20 sampler is GONE. This row previously baked its
+                            own box (`x = 2 + t*36`, `y = 18 - v*16`), which is
+                            a 2.25× anisotropy applied to a curve whose whole
+                            meaning is its slope; the producer's `<EasingCurve>`
+                            is a constant SQUARE frame, so the anisotropy dies
+                            by construction rather than by re-tuning.
+
+                            The curve is DECORATIVE here and says so: the option
+                            row carries its own visible text name, so an
+                            announced `role="img"` beside it would be the same
+                            name twice. `aria-hidden` on the plot wrapper, not
+                            `opacity`/`pointer-events` — those remove nothing
+                            from the a11y tree (rK-21).
+                        -->
                         <span class="flex items-center gap-2">
-                            <svg class="easing-preview" viewBox="0 0 40 20">
-                                <path
-                                    :d="easingCurvePath(name)"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.5"
-                                />
-                            </svg>
+                            <EasingCurve
+                                :strokes="[{ d: easingCurvePath(name) }]"
+                                class="w-5 shrink-0"
+                                aria-hidden="true"
+                            />
                             {{ presets[name].label }}
                         </span>
                     </SelectItem>
@@ -109,12 +140,12 @@
 
 <script setup lang="ts">
 import { computed, useId } from "vue";
+import { EasingCurve } from "@mkbabb/glass-ui/easing";
 import {
     Select,
     SelectTrigger,
     SelectContent,
     SelectItem,
-    SelectValue,
 } from "@mkbabb/glass-ui/select";
 import { Slider } from "@mkbabb/glass-ui/slider";
 import {
@@ -259,12 +290,6 @@ const easingNames = EASING_PRESET_NAMES;
 .input-unit {
     @apply text-sm;
     color: var(--muted-foreground);
-}
-
-.easing-preview {
-    width: 40px;
-    height: 20px;
-    flex-shrink: 0;
 }
 
 /*

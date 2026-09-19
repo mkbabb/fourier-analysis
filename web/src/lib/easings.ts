@@ -243,9 +243,43 @@ export function coerceAnimationEasingName(
     return isAnimationEasingName(v) ? v : fallback;
 }
 
-// ── SVG path utilities ──────────────────────────────────────────────
+// ── SVG path utilities — ONE builder, ONE `d`-precision policy ──────
 
-/** Generate an SVG path `d` attribute by sampling an easing function (normalized 0-1 coords). */
+/**
+ * THE ONE `d`-PRECISION POLICY — X.F.W3 `.b`, discharging `fr-EasingCurvePreview`
+ * FACET ⊕ SAMPLE and `fr-MorphPhaseConfig` MISS-2 (⊕ MPC-33, a FACET rider and
+ * never a fresh row). The three rows are ONE decision, and the spec requires it
+ * stated in the same edit that touches either builder — this is that edit.
+ *
+ * THE DEFECT, AT THE BYTES IT HAD: this module carried TWO curve builders
+ * twenty-six lines apart that disagreed on every axis at once.
+ * `generateCurveSVGPath` sampled 32 points into a normalized 0–1 box and
+ * quantised with `toFixed(3)`; `easingCurvePath` sampled 24 into a baked 40×20
+ * box (`x = 2 + t*36`, `y = 18 - v*16`, MPC-23's 2.25× anisotropy) and quantised
+ * not at all. Same module, opposite polarity — which is why neither could hold
+ * a policy, and why the cure is one builder rather than two agreeing ones.
+ *
+ * THE POLICY:
+ *   · space     — the producer `<EasingCurve>`'s own plot space: x rightwards
+ *                 0→1, y DOWNWARDS with 0 at the top (`y = 1 - v`). The frame is
+ *                 the producer's constant square with ±0.1 headroom (viewBox
+ *                 `-0.1 -0.1 1.2 1.2`), so NO consumer bakes a box any more.
+ *   · samples   — 32, the finer of the two (24 drew visible facets on the
+ *                 `back` arms, which are precisely the curves worth looking at).
+ *   · precision — `toFixed(3)` — 0.1 % of the unit box, under half a device
+ *                 pixel at every size either preview renders at.
+ *   · identity  — one memo, keyed by catalogue and name, so a path is built once.
+ *
+ * ⊘ The 40×20 box is NOT re-expressed as a parameter: a second space is a second
+ * policy wearing an argument, which is the defect this row names.
+ *
+ * ⊘ WRONGPAD, measured rather than assumed (this seat, 2026-09-19, over all 22
+ * presets at 2001 samples each): the catalogue's true excursion is
+ * `v ∈ [-0.096882, 1.092713]` — the three `back` arms alone — so
+ * `y = 1 - v ∈ [-0.092713, 1.096882]`, CONTAINED by the producer's ±0.1
+ * headroom with room to spare. The `clipped` excursion contract is therefore
+ * never armed by this catalogue and no consumer passes a constant `false`.
+ */
 export function generateCurveSVGPath(fn: EasingFn, n = 32): string {
     const pts: string[] = [];
     for (let i = 0; i <= n; i++) {
@@ -256,32 +290,23 @@ export function generateCurveSVGPath(fn: EasingFn, n = 32): string {
     return `M ${pts.join(" L ")}`;
 }
 
-const _svgCache = new Map<AnimationEasingName, string>();
+const _svgCache = new Map<string, string>();
 
-/** Get the cached SVG path for an animation easing curve. */
-export function getEasingSVGPath(name: AnimationEasingName): string {
-    let p = _svgCache.get(name);
-    if (!p) {
-        p = generateCurveSVGPath(ANIMATION_EASINGS[name].fn);
-        _svgCache.set(name, p);
+function cachedCurvePath(key: string, fn: EasingFn): string {
+    let p = _svgCache.get(key);
+    if (p === undefined) {
+        p = generateCurveSVGPath(fn);
+        _svgCache.set(key, p);
     }
     return p;
 }
 
-/**
- * Generate an SVG path `d` string for a morph easing curve preview.
- * Draws the easing function as a polyline in a 40x20 viewBox.
- */
+/** The animation catalogue's curve, in `<EasingCurve>` plot space. */
+export function getEasingSVGPath(name: AnimationEasingName): string {
+    return cachedCurvePath(`animation:${name}`, ANIMATION_EASINGS[name].fn);
+}
+
+/** The morph catalogue's curve, in `<EasingCurve>` plot space. */
 export function easingCurvePath(name: string): string {
-    const fn = EASING_PRESETS[name]?.fn ?? ((t: number) => t);
-    const steps = 24;
-    let d = "";
-    for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const v = fn(t);
-        const x = 2 + t * 36;
-        const y = 18 - v * 16;
-        d += i === 0 ? `M${x},${y}` : ` L${x},${y}`;
-    }
-    return d;
+    return cachedCurvePath(`preset:${name}`, getEasingFn(name));
 }

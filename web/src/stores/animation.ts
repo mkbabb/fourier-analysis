@@ -1,14 +1,28 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch, onScopeDispose } from "vue";
-import {
-    ANIMATION_EASINGS,
-    getEasingSVGPath,
-    type AnimationEasingName,
-} from "@/lib/easings";
+import { ANIMATION_EASINGS, type AnimationEasingName } from "@/lib/easings";
 import { coerceAnimationSpeed, type AnimationSpeed } from "@/lib/defaults";
 
-// Re-export for consumers that import from this module
-export { ANIMATION_EASINGS as EASING_OPTIONS, getEasingSVGPath };
+/**
+ * `fr-EasingCurvePreview BARREL` (X.F.W3 `.b`) — THE VALUE RE-EXPORTS ARE GONE.
+ *
+ * This module carried `export { ANIMATION_EASINGS as EASING_OPTIONS,
+ * getEasingSVGPath }` under the comment "Re-export for consumers that import
+ * from this module" — a self-described compat barrel, which is the forbidden
+ * shim shape, and it made a stateless leaf reach a PURE FUNCTION through a Pinia
+ * store. It had exactly two readers: `EasingCurvePreview.vue` (`getEasingSVGPath`),
+ * which is DELETED in the same commit as this line, and `EasingPicker.vue`
+ * (`EASING_OPTIONS`), which now imports the catalogue from `@/lib/easings` — the
+ * module that owns it. Neither name has a reader through here any more, so the
+ * re-export is not re-pointed, aliased or deprecated: it is deleted.
+ *
+ * ⊘ The TYPE alias below STAYS, and its reason is measured rather than assumed:
+ * `components/visualization/composables/useWorkspaceLoader.ts` imports
+ * `type EasingName` from this module and is in NO §1 bounds row for this unit,
+ * so migrating that consumer is not this seat's to take. A type alias is also
+ * not the defect the row books — no value crosses it and no bundle edge is minted
+ * by it. The residue is one import in one file, recorded for the wave's register.
+ */
 export type { AnimationEasingName as EasingName };
 
 // B.W4 — re-point disposition. The animation store holds only ephemeral
