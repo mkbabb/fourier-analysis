@@ -8,7 +8,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import type { Visualization, WorkspaceDraft } from "@/lib/types";
-import { Layers, Trash2, Crown, X } from "@lucide/vue";
+import { Layers, Trash2, Crown } from "@lucide/vue";
 
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -26,6 +26,7 @@ import GalleryInfiniteGrid from "./gallery/GalleryInfiniteGrid.vue";
 import GalleryCardModal from "./gallery/GalleryCardModal.vue";
 import GalleryAdminBanner from "./gallery/GalleryAdminBanner.vue";
 import GalleryDraftsSection from "./gallery/GalleryDraftsSection.vue";
+import BatchActionBar from "./gallery/BatchActionBar.vue";
 
 const AdminUserList = defineAsyncComponent(() => import("./gallery/AdminUserList.vue"));
 const AdminFlaggedPanel = defineAsyncComponent(() => import("./gallery/AdminFlaggedPanel.vue"));
@@ -327,25 +328,29 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 @toggle-select="toggleEntrySelected"
             />
 
-            <!-- A.W5.c — gallery batch-action toolbar. Surfaces in admin mode
-                 when one or more cards are selected; routes through the
-                 destructive-confirm dialog before calling `batchGallery`. -->
-            <div
-                v-if="gallery.adminMode && selectedHashes.size > 0"
-                role="toolbar"
-                aria-label="Batch gallery actions"
-                class="cartoon-card sticky bottom-2 z-20 mx-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+            <!-- X.F.W3 `.d` — `FR-AUL-51`/`FR-AUL-52`: the gallery's half of the
+                 toolbar authored twice. The chrome — role, sticky edge, z-tier,
+                 plate, the clear control's un-clamped size literal, the
+                 `entr(ies)` dialect — is now `BatchActionBar`'s, decided once;
+                 the inline inset stays here because it is this column's padding
+                 context, and the verbs stay here because they are this
+                 surface's domain. -->
+            <BatchActionBar
+                v-if="gallery.adminMode"
+                :count="selectedHashes.size"
+                noun="entry"
+                noun-plural="entries"
+                label="Batch gallery actions"
+                class="mx-4"
+                @clear="clearGallerySelection"
             >
-                <span class="flex-1 text-xs text-muted-foreground">
-                    {{ selectedHashes.size }} entr(ies) selected
-                </span>
                 <Button
                     emphasis="secondary"
                     size="sm"
                     class="text-xs"
                     @click="askBatchGallery('feature')"
                 >
-                    <Crown class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                    <Crown class="mr-1 size-3.5" aria-hidden="true" />
                     Feature
                 </Button>
                 <Button
@@ -362,19 +367,10 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                     class="text-xs"
                     @click="askBatchGallery('delete')"
                 >
-                    <Trash2 class="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                    <Trash2 class="mr-1 size-3.5" aria-hidden="true" />
                     Delete
                 </Button>
-                <Button
-                    emphasis="quiet"
-                    size="md" icon-only
-                    class="h-7 w-7"
-                    aria-label="Clear selection"
-                    @click="clearGallerySelection"
-                >
-                    <X class="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
-            </div>
+            </BatchActionBar>
         </template>
 
         <!-- Drafts tab -->
