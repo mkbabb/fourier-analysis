@@ -59,17 +59,46 @@
         -->
         <style>@layer theme, base, components, utilities, glass-overrides;</style>
 
+        <!-- X.F.W3 `.e` / `fr-App MG-γ` ⊕ `m-2`/`L-3`/`C-7` ⊕ `R-8` — THE
+             PRE-PAINT ARM OF THE ONE DARK-MODE OWNER.
+
+             This is the ONE real file (R-10.2), and the script it carried was
+             wrong in three independent ways, all of which a dark-OS user sees
+             as a guaranteed light flash for the length of the initial chunk
+             fetch:
+
+              1. `"auto"` FELL THROUGH BOTH ARMS. `saved === "dark"` is false
+                 for it and `!saved` is false for it, so a user who has
+                 explicitly chosen "follow the system" — which is vueuse's own
+                 default value and therefore the commonest stored state — got
+                 no class at all.
+              2. `color-scheme` WAS NEVER SET (R-8's coupling). glass-ui
+                 authors its palette through `light-dark()`, which follows
+                 `color-scheme` and NOT the `.dark` class, so even the arms
+                 that fired painted a light palette until the app booted.
+              3. THE LEGACY `"theme"` KEY DISAGREED WITH THE RUNTIME. Nothing
+                 in this tree writes it (⟨cmd⟩ this seat, `grep -rn '"theme"'
+                 src` → 0) and vueuse never reads it, so a stale `theme=dark`
+                 stamped a class the runtime immediately revoked.
+
+             The cure is the adoption the row asks for rather than three
+             patches: `@mkbabb/glass-ui/dark` ships `darkModeSyncScript()`,
+             whose whole purpose is to emit exactly this string, and the app
+             already holds the dependency edge. The bytes below are that
+             function's OUTPUT at the adopted pin, verbatim — ⟨cmd⟩ this seat,
+             2026-09-19, `node --input-type=module -e 'import {
+             darkModeSyncScript } from "@mkbabb/glass-ui/dark";
+             console.log(darkModeSyncScript())'`. A static `index.html` cannot
+             import a module in the head, so it is inlined; the generator is
+             named here so a later seat re-derives the string instead of
+             editing it by hand, and `DARK_MODE_STORAGE_KEY` from the same
+             module is the key it reads.
+
+             The runtime half is `useVizColorSync()` in `lib/colors.ts`, seeded
+             `"auto"` so the parse-time answer and the runtime answer are the
+             same answer. -->
         <script>
-            // Init dark mode before first paint to prevent flash
-            // Checks both legacy key ("theme") and VueUse key ("vueuse-color-scheme")
-            (function() {
-                var legacy = localStorage.getItem("theme");
-                var vueuse = localStorage.getItem("vueuse-color-scheme");
-                var saved = vueuse || legacy;
-                if (saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-                    document.documentElement.classList.add("dark");
-                }
-            })();
+            (function(){try{var m=localStorage.getItem("vueuse-color-scheme");var d=m==="dark"||((m===null||m==="auto")&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);var e=document.documentElement;e.classList.toggle("dark",d);e.style.colorScheme=d?"dark":"light";}catch(_){}})();
         </script>
     </head>
     <body>
