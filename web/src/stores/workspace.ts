@@ -45,13 +45,21 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const visualizationSlug = ref<string | null>(null);
     // The strong validator for `visualizationSlug`, replayed as `If-Match`.
     const visualizationETag = ref<string | null>(null);
-    const imageMeta = ref<ImageMeta | null>(null);
+    // SP-16 — `AA-36`'s shape, store-side. Both members below are SERVER- or
+    // IndexedDB-owned records that are only ever assigned WHOLESALE (`imageMeta`
+    // from `api.getImageMeta`, `drafts` from `listDrafts()`); nothing anywhere
+    // mutates a field of either in place. A deep `ref` therefore buys nothing
+    // and pays for a recursive proxy over every nested container the record
+    // carries — for `drafts` that is each draft's contour point arrays, its
+    // epicycle trace/path and its `partial_sums` map, re-wrapped on every
+    // `refreshDrafts()`.
+    const imageMeta = shallowRef<ImageMeta | null>(null);
     const contour = shallowRef<ContourAsset | null>(null);
     const epicycleData = shallowRef<EpicycleData | null>(null);
     const basesData = shallowRef<AnimationData | null>(null);
     const contourSettings = ref<ContourSettings>(defaultContourSettings());
     const animationSettings = ref<AnimationSettings>(defaultAnimationSettings());
-    const drafts = ref<WorkspaceDraft[]>([]);
+    const drafts = shallowRef<WorkspaceDraft[]>([]);
     const loading = ref(false);
     const computing = ref(false);
     const error = ref<string | null>(null);
