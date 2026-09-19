@@ -243,6 +243,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 v-if="gallery.adminMode"
                 :stats="gallery.adminStats"
                 :loading="gallery.adminStatsLoading"
+                :error="gallery.adminStatsError"
                 @logout="gallery.deactivateAdmin()"
             />
             <GalleryFeaturedCarousel

@@ -6,6 +6,7 @@ import * as api from "@/lib/api";
 import { processInChunks } from "@/lib/scheduler";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
+import { problemMessage } from "@/components/visualization/gallery/adminError";
 
 // B.W4 — the gallery store re-points onto the converged `visualization`
 // entity (CRUD-CONTRACT §1). Identity is the 4-word `slug`; the public gallery
@@ -39,6 +40,33 @@ export const useGalleryStore = defineStore("gallery", () => {
     const adminMode = ref(false);
     const adminStats = ref<AdminStats | null>(null);
     const adminStatsLoading = ref(false);
+    /**
+     * X·F F.W4 `.d` — GAB-3: the store stops swallowing.
+     *
+     * `refreshAdminStats`'s `catch { // ignore }` was the only silent action in
+     * the admin store (`activateAdmin` toasts). Loading, failed and
+     * loaded-but-never-arrived therefore rendered identically as NOTHING, and
+     * the failure image was an amber box reading "Admin Mode" with the whole
+     * downstream admin surface still enabled against a dead credential.
+     *
+     * ⊘ The leaf arm is INLINE, not a toast (the spine's own ⊘ and GAB-3's
+     * wording): the toast adapter is F.W1's and `.f`'s.
+     */
+    const adminStatsError = ref<string | null>(null);
+
+    /**
+     * GAB-20: the stats request shares an abort key with ITSELF. `adminFetch`
+     * keys the registry on the path and `/api/admin/stats` is constant, so a
+     * second refresh aborts the first — and the loser's `finally` cleared the
+     * `adminStatsLoading` flag the WINNER owned, so `loading` read false
+     * mid-flight and the grid remounted on stale data. GAB-21: `deactivateAdmin`
+     * neither aborted nor guarded an in-flight stats request, so an
+     * already-dispatched `getAdminStats` re-seeded `adminStats` AFTER an explicit
+     * logout — the Logout control sits outside the gate that would have hidden
+     * the result. One generation token answers both.
+     */
+    const ADMIN_STATS_KEY = "/api/admin/stats";
+    let statsRun = 0;
 
     // Cursor pagination state — the only paginated path through the gallery.
     const nextCursor = ref<string | null>(null);
@@ -115,21 +143,38 @@ export const useGalleryStore = defineStore("gallery", () => {
     }
 
     function deactivateAdmin() {
+        // GAB-21: cancel the in-flight stats read before the credential goes, or
+        // it lands after logout and re-seeds the panel it was logging out of.
+        // The house cure sat one module away, exported and called at four
+        // workspace transition sites and zero admin ones.
+        api.abortInflight([ADMIN_STATS_KEY]);
+        statsRun++;
         useAuthStore().adminLogout();
         adminMode.value = false;
         adminStats.value = null;
+        adminStatsError.value = null;
+        adminStatsLoading.value = false;
     }
 
     async function refreshAdminStats() {
         const token = useAuthStore().getAdminToken();
-        if (!token) return;
+        if (!token) {
+            adminStatsError.value = "Admin session has expired — re-enter admin mode.";
+            return;
+        }
+        const ticket = ++statsRun;
+        const current = () => ticket === statsRun;
         adminStatsLoading.value = true;
+        adminStatsError.value = null;
         try {
-            adminStats.value = await api.getAdminStats(token);
-        } catch {
-            // ignore
+            const stats = await api.getAdminStats(token);
+            if (!current()) return;
+            adminStats.value = stats;
+        } catch (e: unknown) {
+            if (api.isAbortError(e) || !current()) return;
+            adminStatsError.value = problemMessage(e, "Failed to load admin statistics");
         } finally {
-            adminStatsLoading.value = false;
+            if (current()) adminStatsLoading.value = false;
         }
     }
 
@@ -273,6 +318,7 @@ export const useGalleryStore = defineStore("gallery", () => {
         adminMode,
         adminStats,
         adminStatsLoading,
+        adminStatsError,
         nextCursor,
         hasMore,
         loadingMore,
