@@ -40,7 +40,27 @@ const { isLoggedIn } = storeToRefs(auth);
 const { toast } = useToast();
 
 const activeTab = ref<"gallery" | "drafts" | "users" | "flagged" | "audit">("gallery");
-const selectedEntry = ref<Visualization | null>(null);
+/**
+ * X·F F.W4 `.d` — GCM-3 (the GCM restore family's core): the modal held a
+ * SNAPSHOT.
+ *
+ * `selectedEntry` was a `ref<Visualization>` assigned the object the card
+ * emitted, so once the modal was open nothing the store learned could reach it:
+ * the like count was frozen at its open-time value (which is why GCM-2's
+ * "mutation" looks fictional and why GCM-36 cannot be certified against it), and
+ * a tier set from inside the modal re-rendered the tier chip from the stale copy.
+ * Keying on the SLUG and resolving through the store makes the modal a view of
+ * the entity rather than a photograph of it — and it is what makes GCM-24's
+ * in-place `patchEntry` visible where the user performed the action.
+ *
+ * ⊘ The sibling half of this repair unit — GCM-1 / GCM-25 / VV-BLK-1 — lives in
+ * `VisualizationView.vue` and `stores/workspace.ts`, outside this unit's writable
+ * set. Escalated whole rather than half-landed; see the unit receipt.
+ */
+const selectedSlug = ref<string | null>(null);
+const selectedEntry = computed<Visualization | null>(
+    () => gallery.entries.find((e) => e.slug === selectedSlug.value) ?? null,
+);
 const likedHashes = ref(new Set<string>());
 const viewedHashes = ref(new Set<string>());
 const publishing = ref(false);
@@ -113,7 +133,7 @@ watch(
 );
 
 function openModal(entry: Visualization) {
-    selectedEntry.value = entry;
+    selectedSlug.value = entry.slug;
     if (!viewedHashes.value.has(entry.slug)) {
         viewedHashes.value.add(entry.slug);
         gallery.recordView(entry.slug);
@@ -136,7 +156,7 @@ async function handleSetTier(hash: string, tier: "featured" | "saved" | "normal"
 async function handleDelete(hash: string) {
     if (!confirm("Delete this gallery entry?")) return;
     await gallery.deleteEntry(hash);
-    if (selectedEntry.value?.slug === hash) selectedEntry.value = null;
+    if (selectedSlug.value === hash) selectedSlug.value = null;
 }
 
 // ── A.W5.c: gallery multi-select + batch ─────────────────────────────────
@@ -382,9 +402,9 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
             :entry="selectedEntry"
             :admin-mode="gallery.adminMode"
             :is-liked="likedHashes.has(selectedEntry.slug)"
-            @close="selectedEntry = null"
+            @close="selectedSlug = null"
             @like="handleLike"
-            @open-visualizer="(slug) => { selectedEntry = null; router.push(`/w/${slug}`); }"
+            @open-visualizer="(slug) => { selectedSlug = null; router.push(`/w/${slug}`); }"
             @set-tier="handleSetTier"
         />
 

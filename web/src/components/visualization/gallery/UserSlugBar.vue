@@ -91,9 +91,26 @@ async function handleGenerate() {
     }
 }
 
+/**
+ * FR-USB-18: logout had no in-flight state and no busy affordance — no
+ * `:disabled`, no guard — so the control stayed live across the round trip and a
+ * second press issued a second DELETE. Harm is bounded (the endpoint is
+ * idempotent, unslept, and returns `{"ok": true}` unconditionally), which is why
+ * this is a minor; the affordance is still owed, and the half that does not
+ * depend on the producer is the guard and the disable. ⊘ The `loading` prop half
+ * is F.W1's and is ESC-1/G1-gated — cited, not booked here.
+ */
+const loggingOut = ref(false);
+
 async function handleLogout() {
-    await logout();
-    toast("Logged out", "info");
+    if (loggingOut.value) return;
+    loggingOut.value = true;
+    try {
+        await logout();
+        toast("Logged out", "info");
+    } finally {
+        loggingOut.value = false;
+    }
 }
 
 /**
@@ -166,6 +183,7 @@ function onKeydown(e: KeyboardEvent) {
                 icon-only
                 class="rounded-full text-muted-foreground"
                 aria-label="Log out"
+                :disabled="loggingOut"
                 @click="handleLogout"
             >
                 <LogOut :size="12" aria-hidden="true" />
