@@ -14,7 +14,20 @@ import type {
 // ── Types ────────────────────────────────────────────────────
 
 export interface SearchEntry {
+    /** The navigation target — NOT unique; see `key`. */
     id: string;
+    /**
+     * `PSM-7`/`PSM-39` — the stable identity the rows never had.
+     *
+     * `id` is the scroll target and is deliberately not unique: code and proof
+     * entries take their SECTION's id unconditionally, so the second proof in a
+     * section is indistinguishable from the first — selecting it sent the
+     * reader to the section heading with no way to tell that was wrong. A
+     * minted key gives every entry an identity of its own; `id` stays what it
+     * always was, a destination. The `v-for` keys read this instead of the
+     * array index, which was positional and re-created every row on reorder.
+     */
+    key: string;
     sectionId: string;
     type:
         | "section"
@@ -47,8 +60,6 @@ export interface SearchEntry {
 
 export interface SearchResult extends SearchEntry {
     score: number;
-    /** Matched character indices into the display label, for highlighting. */
-    matches: number[];
 }
 
 // ── Fuzzy matching (VSCode-style subsequence scorer) ─────────
@@ -120,8 +131,19 @@ export function fuzzyMatch(
 
     if (pi < pLen) return null;
 
-    // Tighter matches preferred
-    score -= Math.max(0, (tLen - pLen) * 0.1);
+    // `PSM-14` — FULL-TEXT SEARCH WAS DEAD FOR SHORT QUERIES, and the record
+    // proved it by execution: the penalty scaled with the FIELD while every
+    // bonus scales with the PATTERN, so over a 458-character body `"fo"` scored
+    // −31.6, `"conv"` −36.4, and an exact mid-body hit of the word "fourier" in
+    // a Fourier paper scored −1.1 — then `scoreEntry` dropped anything at or
+    // below zero. The preference it encodes is real (a hit in a short label is
+    // worth more than the same hit in a long body), so it is expressed as a
+    // RATIO that cannot outrun the match itself rather than as a subtraction
+    // that grows without bound.
+    //
+    // ⊘ The producer's own scoring carries the same shape; the relay letter
+    // matters as much as this fix (`PSM-14`'s own routing).
+    score *= pLen / (pLen + Math.max(0, tLen - pLen) * 0.02);
 
     return { score, matches };
 }
@@ -163,9 +185,8 @@ function multiTokenFuzzy(
 function scoreEntry(
     tokens: string[],
     entry: SearchEntry,
-): { score: number; matches: number[] } | null {
+): { score: number } | null {
     let best = 0;
-    let bestMatches: number[] = [];
 
     // Field weights — number and label matches are most valuable
     const fields: [string, number][] = [
@@ -179,66 +200,96 @@ function scoreEntry(
     for (const [text, weight] of fields) {
         if (!text) continue;
         const m = multiTokenFuzzy(tokens, text);
-        if (m && m.score * weight > best) {
-            best = m.score * weight;
-            // Only keep matches for label field (used for display highlighting)
-            bestMatches = text === entry._lc.label ? m.matches : [];
-        }
+        if (m && m.score * weight > best) best = m.score * weight;
     }
 
     if (best <= 0) return null;
-    return { score: best, matches: bestMatches };
+    // `PSM-11`: a `matches` array used to ride every result and be read by
+    // NOBODY — the highlighter re-ran the match inline because these indices
+    // were computed against the LOWER-CASED field while the display label is
+    // the original-case string (or a `rawTex`/`plainText` slice), so they
+    // genuinely misaligned. The re-run was a correct workaround for a broken
+    // contract; the contract is deleted and the re-run is the only path.
+    return { score: best };
 }
 
 // ── Search function ──────────────────────────────────────────
 
-/** Result cache: query string → results. Cleared when query prefix diverges. */
-let _cache: Map<string, SearchResult[]> = new Map();
+/**
+ * Result cache: query string → the FULL scored array for that query.
+ *
+ * `PSM-5`: this used to store the TRUNCATED top-30 and then narrow the next
+ * keystroke's candidates from it — so a row that fell out of a prefix's top 30
+ * was permanently unreachable down that keystroke path, and typing a query
+ * returned a different result set than pasting it. `PSM-30`: because the stored
+ * array was pre-sliced, the exported `maxResults` parameter was inert on every
+ * cache hit — an exported contract that did nothing. The producer caches the
+ * full array and slices per call; the fork diverged by one `.slice()`, and this
+ * is that slice put back where it belongs.
+ *
+ * `PSM-22`: the cache is keyed by query alone and is module-global, so a second
+ * index in the same session would read the first one's answers. It is owned by
+ * the index now — one cache per index, disposed with it.
+ */
+const caches = new WeakMap<SearchEntry[], Map<string, SearchResult[]>>();
+
+function cacheFor(index: SearchEntry[]): Map<string, SearchResult[]> {
+    let c = caches.get(index);
+    if (!c) {
+        c = new Map();
+        caches.set(index, c);
+    }
+    return c;
+}
+
+/** `PSM-22`/`PSM-27`: drop an index's memo — on dispose, and on close. */
+export function clearSearchCache(index: SearchEntry[]): void {
+    caches.get(index)?.clear();
+}
 
 export function searchIndex(
     index: SearchEntry[],
     query: string,
     maxResults = 30,
 ): SearchResult[] {
+    const cache = cacheFor(index);
     const q = query.toLowerCase().trim();
     if (!q) {
-        _cache.clear();
+        cache.clear();
         return [];
     }
 
-    // Cache hit
-    const cached = _cache.get(q);
-    if (cached) return cached;
+    // Cache hit — re-sliced per call, because `maxResults` is a parameter of
+    // THIS call and not of the call that happened to fill the cache.
+    const cached = cache.get(q);
+    if (cached) return cached.slice(0, maxResults);
 
     // Prune cache if it grows too large
-    if (_cache.size > 200) _cache.clear();
+    if (cache.size > 200) cache.clear();
 
     const tokens = q.split(/\s+/).filter(Boolean);
     if (tokens.length === 0) return [];
 
-    // If we have cached results for a prefix, narrow from those
+    // Narrowing from a prefix's results is sound only because the FULL scored
+    // array is what was stored: every entry that can match `q` also matched
+    // `q.slice(0, -1)`.
     let candidates = index;
     if (q.length > 1) {
-        const prefix = q.slice(0, -1);
-        const prefixResults = _cache.get(prefix);
-        if (prefixResults) {
-            // Re-score the previous result set (already filtered, much smaller)
-            candidates = prefixResults;
-        }
+        const prefixResults = cache.get(q.slice(0, -1));
+        if (prefixResults) candidates = prefixResults;
     }
 
     const scored: SearchResult[] = [];
     for (const entry of candidates) {
         const m = scoreEntry(tokens, entry);
         if (m) {
-            scored.push({ ...entry, score: m.score, matches: m.matches });
+            scored.push({ ...entry, score: m.score });
         }
     }
 
     scored.sort((a, b) => b.score - a.score);
-    const results = scored.slice(0, maxResults);
-    _cache.set(q, results);
-    return results;
+    cache.set(q, scored);
+    return scored.slice(0, maxResults);
 }
 
 // ── Index construction ───────────────────────────────────────
@@ -278,8 +329,15 @@ function makeLc(entry: Omit<SearchEntry, "_lc">): SearchEntry["_lc"] {
     };
 }
 
-function pushEntry(entries: SearchEntry[], partial: Omit<SearchEntry, "_lc">) {
-    entries.push({ ...partial, _lc: makeLc(partial) });
+function pushEntry(
+    entries: SearchEntry[],
+    partial: Omit<SearchEntry, "_lc" | "key">,
+) {
+    entries.push({
+        ...partial,
+        key: `${partial.type}:${partial.id}:${entries.length}`,
+        _lc: makeLc({ ...partial, key: "" }),
+    });
 }
 
 function isMathBlock(block: ContentBlock): block is MathBlockData {

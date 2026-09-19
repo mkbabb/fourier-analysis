@@ -118,10 +118,38 @@ _scrollTo = navigateTo;
 
 const search = usePaperSearch({ sections: paperSections, navigateTo });
 
+/**
+ * `L/D27` — ⌘K, as four separate defects.
+ *
+ * It tested `e.key === "k"`, so Shift or a caps-lock user missed it entirely;
+ * it opened only the inline dropdown (`isOpen`), which below 1024px lives in
+ * the `display:none` sidebar instance where a `focus()` on a boxless input is a
+ * no-op — undiscoverable everywhere; it had no dismiss path of its own; and it
+ * fired while the user was typing into any other field on the page.
+ *
+ * `PSM-42`: the footer advertises ↑↓/⏎/esc and omitted the key that got the
+ * user there — it does not any more, because the key now lands on the palette
+ * whose footer that is.
+ */
+function isTypingTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+    const tag = el.tagName;
+    return (
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable
+    );
+}
+
 function handleGlobalKeydown(e: KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+    if ((e.metaKey || e.ctrlKey) && e.code === "KeyK") {
+        if (isTypingTarget(e.target) && !search.isExpanded.value) return;
         e.preventDefault();
-        search.open();
+        search.openPalette();
+        return;
+    }
+    if (e.key === "Escape" && search.isExpanded.value) {
+        e.preventDefault();
+        search.close();
     }
 }
 

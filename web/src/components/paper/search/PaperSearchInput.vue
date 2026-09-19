@@ -34,11 +34,24 @@ defineExpose({ focus });
 <template>
     <div class="paper-search-input-wrap" :class="`paper-search-input-wrap--${variant}`">
         <Search class="paper-search-icon" />
+        <!-- `★MF-2`: the inline arm is the same combobox as the palette's and
+             had the same nothing — a placeholder standing in for a name, no
+             `role`, and arrows that moved a selection no reader could observe. -->
         <input
             ref="inputRef"
             type="text"
             class="paper-search-input"
             placeholder="Search paper..."
+            aria-label="Search the paper"
+            role="combobox"
+            aria-autocomplete="list"
+            :aria-expanded="search.isOpen.value && search.results.value.length > 0"
+            :aria-controls="search.listboxId"
+            :aria-activedescendant="
+                search.isOpen.value && search.results.value.length > 0
+                    ? search.optionId(search.selectedIndex.value)
+                    : undefined
+            "
             :value="search.query.value"
             @input="search.query.value = ($event.target as HTMLInputElement).value"
             @keydown="search.onKeydown"
@@ -48,9 +61,10 @@ defineExpose({ focus });
             v-if="canExpand"
             emphasis="quiet"
             size="md" icon-only
+            type="button"
             class="paper-search-action-btn"
             @click="emit('expand')"
-            :title="search.isExpanded.value ? 'Collapse' : 'Expand'"
+            :aria-label="search.isExpanded.value ? 'Collapse the search palette' : 'Expand the search palette'"
         >
             <Maximize2 v-if="!search.isExpanded.value" class="h-3 w-3" />
             <Minimize2 v-else class="h-3 w-3" />
@@ -59,9 +73,10 @@ defineExpose({ focus });
             v-if="search.query.value"
             emphasis="quiet"
             size="md" icon-only
+            type="button"
             class="paper-search-action-btn"
             @click="search.close()"
-            title="Clear search"
+            aria-label="Clear search"
         >
             <X class="h-3 w-3" />
         </Button>

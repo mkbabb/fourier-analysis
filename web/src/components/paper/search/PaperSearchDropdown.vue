@@ -30,13 +30,18 @@ defineExpose({ resultsRef });
     <Transition name="search-dropdown">
         <div
             v-if="search.isOpen.value && !search.isExpanded.value && search.results.value.length > 0"
+            :id="search.listboxId"
             ref="resultsRef"
             class="paper-search-results glass-floating"
             :class="`paper-search-results--${variant}`"
+            role="listbox"
+            aria-label="Search results"
         >
             <PaperSearchResultRow
                 v-for="(r, i) in search.results.value"
-                :key="`${r.id}-${r.type}-${i}`"
+                :key="r.key"
+                :id="search.optionId(i)"
+                role="option"
                 :result="r"
                 :query="search.query.value"
                 :selected="i === search.selectedIndex.value"

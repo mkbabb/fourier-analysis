@@ -98,13 +98,12 @@ watch(
     <Dialog
         modal
         :open="search.isExpanded.value"
-        @update:open="(open: boolean) => { if (!open) search.toggleExpanded(); }"
+        @update:open="(open: boolean) => (search.isExpanded.value = open)"
     >
         <DialogContent
             class="search-modal"
             dismiss="free"
             :style="panelStyle"
-            @keydown="search.onKeydown"
         >
             <DialogTitle class="sr-only">Search the paper</DialogTitle>
             <DialogDescription class="sr-only">
@@ -112,6 +111,14 @@ watch(
                 down arrows to move through the results and Enter to go to one.
             </DialogDescription>
 
+            <!-- `PSM-6`: the key handler is on this shell, not on the input.
+                 Every result row and both header actions are native tabbable
+                 buttons, so with the handler on the input alone ↑/↓/⏎/esc died
+                 the moment focus left it while the footer kept advertising
+                 them. Measured this seat: the listener must sit on an element
+                 THIS component renders — bound on `<DialogContent>` it lands in
+                 a producer component's `$attrs` and never reaches the DOM. -->
+            <div class="search-modal-shell" @keydown="search.onKeydown">
             <!-- Modal header with input -->
             <div class="search-modal-header">
                 <Search class="search-modal-icon" aria-hidden="true" />
@@ -160,7 +167,7 @@ watch(
             >
                 <PaperSearchResultRow
                     v-for="(r, i) in search.results.value"
-                    :key="`modal-${r.id}-${r.type}-${i}`"
+                    :key="r.key"
                     dense
                     :id="search.optionId(i)"
                     :result="r"
@@ -188,6 +195,7 @@ watch(
                     <kbd class="kbd">esc</kbd> collapse
                 </span>
             </div>
+            </div>
         </DialogContent>
     </Dialog>
 </template>
@@ -205,6 +213,14 @@ watch(
    (`DialogContent`), not hand-rolled literals. What is left here is the palette
    GEOMETRY — a top-anchored command bar rather than the dialog's centred
    plate — and nothing that a design token already answers. */
+.search-modal-shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-block-size: 0;
+    inline-size: 100%;
+}
+
 .search-modal-header {
     display: flex;
     align-items: center;
