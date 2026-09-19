@@ -274,7 +274,7 @@ function actionTone(action: string): ActionTone {
         <div
             v-if="error"
             role="alert"
-            class="flex flex-col items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 py-8 text-center"
+            class="flex flex-col items-center gap-2 rounded-card border border-destructive/40 bg-destructive/5 py-8 text-center"
         >
             <ScrollText class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
             <p class="text-sm font-medium">The audit log could not be loaded.</p>

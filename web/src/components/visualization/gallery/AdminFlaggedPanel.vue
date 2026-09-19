@@ -2,6 +2,7 @@
 import { ref, computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Badge } from "@mkbabb/glass-ui/badge";
+import { Card } from "@mkbabb/glass-ui/card";
 import {
     Dialog,
     DialogContent,
@@ -317,7 +318,7 @@ function timeAgo(iso: string | null): string {
         <div
             v-if="error"
             role="alert"
-            class="flex flex-col items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 py-8 text-center"
+            class="flex flex-col items-center gap-2 rounded-card border border-destructive/40 bg-destructive/5 py-8 text-center"
         >
             <Flag class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
             <p class="text-sm font-medium">The moderation queue could not be loaded.</p>
@@ -336,11 +337,31 @@ function timeAgo(iso: string | null): string {
             :aria-busy="loading || undefined"
             :class="loading && 'opacity-60'"
         >
-            <div
+            <!-- X.F.W3 `.d` — `FR-AFP-61`'s second limb (⊕ `AA-19`). The flag
+                 pill became `<Badge>` at F.W4; the moderation CARD was the other
+                 half of the same row and stayed a bespoke `./card`
+                 re-implementation while `./card` shipped at the pin. It adopts
+                 the primitive now.
+
+                 The destructive plate is NOT re-authored in the swap: the
+                 producer's own documented mechanism for a per-instance rim hue
+                 is `--glass-accent`, "written by the consumer on the element"
+                 (`CardProps`' docblock, which struck `variant`/`dataHue`
+                 precisely so this would be one knob). So the queue keeps the
+                 semantic destructive edge F.W4 measured into it, and it keeps it
+                 through the design system rather than beside it.
+
+                 `AA-19`'s census amendment rides here as a receipt rather than a
+                 cure: the file-granular shadow table cannot see FRAGMENT shadows
+                 — this chip, the spinner, the raw footer — which is why the
+                 aggregate it feeds is not quotable, and why `g17` closes
+                 honest-RED in this unit rather than on a number. -->
+            <Card
                 v-for="item in flaggedEntries"
                 :key="item.slug"
                 role="listitem"
-                class="flagged-card rounded-card p-3"
+                size="sm"
+                class="flagged-card"
                 :aria-busy="busySlug === item.slug || undefined"
             >
                 <div class="flex items-start gap-3">
@@ -483,7 +504,7 @@ function timeAgo(iso: string | null): string {
                         </Button>
                     </div>
                 </div>
-            </div>
+            </Card>
 
         </div>
 
@@ -562,10 +583,17 @@ function timeAgo(iso: string | null): string {
 /* FR-AFP-3 / FR-AFP-61: the card was drawn in hard-coded Tailwind reds with zero
    `dark:` and zero tokens — ≈1.3–2.6:1 against the resolved light tokens, and the
    outline failed SC 1.4.11 in BOTH themes (1.33 light / 1.20 dark). The plate is
-   now the destructive TOKEN at an edge weight the producer's own ink scale sets,
-   so it moves with the theme instead of against it. */
+   the destructive TOKEN, so it moves with the theme instead of against it.
+
+   X.F.W3 `.d` — and it now says so through the CARD'S OWN ACCENT REGISTER
+   rather than over the top of it. `--glass-accent` is the producer's documented
+   per-instance rim hue (the axis `CardProps` struck `variant` and `dataHue` to
+   consolidate into), so one declaration re-tints the primitive's edge instead of
+   a scoped `border` shorthand racing its layered one. The fill stays an explicit
+   wash because "this row is a moderation target" is a semantic this surface
+   owns, not an elevation the card grammar has a name for. */
 .flagged-card {
-    border: 1px solid color-mix(in oklab, var(--destructive) 45%, transparent);
+    --glass-accent: var(--destructive);
     background: color-mix(in oklab, var(--destructive) 6%, transparent);
 }
 </style>
