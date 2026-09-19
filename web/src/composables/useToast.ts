@@ -28,6 +28,23 @@ const TITLE_MAP: Record<ToastType, string> = {
     success: "Success",
 };
 
+/**
+ * `fr-App MG-λ` — the typed knob that was accepted and thrown away (X·F F.W4
+ * `.f`; SP-2, because this adapter IS the app's error channel).
+ *
+ * `options.duration` was declared, typed and documented, and the body read
+ * `options?.slug` alone — so every caller that asked for a longer-lived toast
+ * got the provider default and no signal that its request had been dropped.
+ * The ruling is HONOUR-OR-DELETE, never the half-landing, and the producer
+ * settles it: glass-ui 8.0.0's `ToastOptions` carries `duration` ("auto-dismiss
+ * delay in ms, forwarded to reka-ui's `ToastRoot`; omit to inherit the
+ * `ToastProvider` default; `Number.POSITIVE_INFINITY` keeps the toast open
+ * until dismissed"). The knob is therefore HONOURED — forwarded when given,
+ * omitted when not, so the provider default still governs the common case.
+ *
+ * ⊘ The `ToastVariant` limb of the same row is F.W1's fold, cited and not
+ * re-booked: this adapter already rides the producer's five-rung `tone` axis.
+ */
 function addToast(message: string, type: ToastType = "info", options?: { duration?: number; slug?: string }) {
     const description = options?.slug ? `${message} (${options.slug})` : message;
 
@@ -35,6 +52,7 @@ function addToast(message: string, type: ToastType = "info", options?: { duratio
         title: TITLE_MAP[type],
         description,
         tone: TONE_MAP[type],
+        ...(options?.duration !== undefined ? { duration: options.duration } : {}),
     });
 }
 
