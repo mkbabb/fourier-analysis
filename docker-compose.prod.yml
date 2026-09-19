@@ -103,6 +103,18 @@ services:
     # mongod; this comment supersedes it for the promoted tls.md. The flag does
     # NOT make the trust posture weaker on the client side: pymongo still does
     # full chain + SAN verification via tlsCAFile.
+    #
+    # X·F F.W9 (G-F9-19) — verdict on the honesty pivot: SUSTAINED, and the
+    # basis of that verdict is stated so it is not mistaken for a re-measurement.
+    # The pivot is upheld on the mechanism, not as-running: mongo publishes no
+    # port by design (D.W1), so the handshake cannot be probed from outside the
+    # stack, and this seat has no route to the deployed stack. What IS decidable
+    # here is the reasoning, and it holds — under server-only TLS the client
+    # presents no certificate, so without this flag mongod rejects at the
+    # handshake before SCRAM runs, and the client's own trust posture is carried
+    # entirely by tlsCAFile. The superseded tls.md §1 "inert" note stays
+    # superseded. If a future seat CAN reach a running mongod, re-measure the
+    # handshake rather than inheriting this line.
     command: ["mongod", "--tlsMode", "requireTLS",
               "--tlsCertificateKeyFile", "/etc/ssl/mongo.pem",
               "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
@@ -111,6 +123,28 @@ services:
     # G.W7 (ε.2) — no-new-privileges is safe for the stateful DB. read_only is
     # impossible (mongod writes /data/db) and cap_drop needs verification against
     # mongod 8.0's runtime caps — BOOKED as a residual (staging test).
+    #
+    # X·F F.W9 (G-F9-19) — the two G.W7 ε.2 residuals, each given the explicit
+    # verdict the gate demands instead of being carried forward a third time:
+    #
+    #   read_only  — DECLINED, PERMANENTLY. Not "not yet": mongod's dbPath must
+    #     be writable, and WiredTiger also writes lock and diagnostic paths
+    #     outside the /data/db volume. Enumerating those into tmpfs mounts is
+    #     guesswork without a running instance to check against, and a
+    #     mis-enumerated path yields a database that will not start. The
+    #     security value is also the lowest of the four services: mongo
+    #     publishes no port (D.W1) and is reachable only over app-network. The
+    #     residual is CLOSED as declined-with-reason, not re-deferred.
+    #
+    #   cap_drop   — STILL BOOKED, and its blocker is now named rather than
+    #     implied. The cure is unchanged (drop ALL, add back only what mongod
+    #     8.0 actually needs) and it is decidable ONLY against a running
+    #     instance — the same `docker inspect` capability G-F9-19 requires and
+    #     this seat does not have (no daemon here; the deployed stack is on a
+    #     host this seat has no route to). It is not landed blind, because a
+    #     capability set guessed from documentation and shipped to a production
+    #     database is the exact class of unverified hardening this gate exists
+    #     to refuse. Owner: whoever next brings the stack up.
     security_opt:
       - no-new-privileges:true
     healthcheck:
