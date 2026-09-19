@@ -1,4 +1,4 @@
-import { reactive, nextTick, type Ref } from "vue";
+import { reactive, nextTick, onScopeDispose, type Ref } from "vue";
 
 export interface ScrollNavigationOptions {
     scrollContainer: Ref<HTMLElement | null>;
@@ -111,6 +111,27 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
 
     // ── Teleport overlay ─────────────────────────────────────
 
+    // ── `L/D2` — every clock this composable starts, it can stop ────────────
+    // It owned rAF chains and two timers, exposed no dispose and had no
+    // teardown at all; the correct pattern ships in the same package. The
+    // handles live here and `onScopeDispose` reaps them, so the composable is
+    // self-disposing and its consumer needs no ceremony.
+    let correctionRaf = 0;
+    let overlayTimer: ReturnType<typeof setTimeout> | undefined;
+    let backFlagTimer: ReturnType<typeof setTimeout> | undefined;
+    /** `L/D3`: true from the moment an overlay run starts until it finishes. */
+    let overlayInFlight = false;
+
+    function dispose() {
+        if (correctionRaf) cancelAnimationFrame(correctionRaf);
+        correctionRaf = 0;
+        clearTimeout(overlayTimer);
+        clearTimeout(backFlagTimer);
+        overlayInFlight = false;
+    }
+
+    onScopeDispose(dispose);
+
     function withOverlay(
         scroller: HTMLElement,
         run: (finish: () => void) => void,
@@ -123,6 +144,15 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
             return;
         }
 
+        // `L/D3`: `finished` was per-invocation with no in-flight guard, against
+        // SIX user-reachable entry points into `navigateTo` — a second jump
+        // during a teleport ran a second correction loop against the same
+        // scroller and the first one's `finish` could hide the overlay under
+        // the second. One run at a time; a later run supersedes nothing because
+        // it never starts.
+        if (overlayInFlight) return;
+        overlayInFlight = true;
+
         let finished = false;
         const shownAt = performance.now();
 
@@ -134,6 +164,7 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
                 requestAnimationFrame(() => {
                     overlay.style.opacity = "0";
                     overlay.style.pointerEvents = "none";
+                    overlayInFlight = false;
                 });
             };
             const remaining = Math.max(
@@ -141,7 +172,7 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
                 MIN_OVERLAY_MS - (performance.now() - shownAt),
             );
             if (remaining === 0) hide();
-            else setTimeout(hide, remaining);
+            else overlayTimer = setTimeout(hide, remaining);
         };
 
         overlay.style.pointerEvents = "auto";
@@ -176,11 +207,12 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
             let frames = 0;
 
             const correct = () => {
+                correctionRaf = 0;
                 opts.recalculate();
                 const top = computeAbsoluteTop(scroller, id);
                 if (top == null) {
                     // Section not in layout yet — unlikely but retry
-                    if (frames++ < 20) requestAnimationFrame(correct);
+                    if (frames++ < 20) correctionRaf = requestAnimationFrame(correct);
                     else finish();
                     return;
                 }
@@ -201,11 +233,11 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
                     finish();
                     return;
                 }
-                requestAnimationFrame(correct);
+                correctionRaf = requestAnimationFrame(correct);
             };
 
             // Wait one frame for Vue's DOM patch from ensureTargetWindow
-            requestAnimationFrame(correct);
+            correctionRaf = requestAnimationFrame(correct);
         });
     }
 
@@ -261,7 +293,13 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
         isBackNavigation = true;
         const prev = navStack.pop()!;
         performScroll(prev);
-        setTimeout(() => {
+        // `L/D9`: a 500ms window is a clock, not a completion signal — a jump
+        // that settles later drops the push, one that settles sooner pushes
+        // nothing. Kept as the bounded fallback it is, but owned by `dispose`
+        // so it cannot outlive the view. The signal-shaped repair rides
+        // `★NAV-1`, which is F.W3's.
+        clearTimeout(backFlagTimer);
+        backFlagTimer = setTimeout(() => {
             isBackNavigation = false;
         }, 500);
     }
@@ -287,5 +325,5 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
         scroller.scrollTo({ top: 0, behavior: scrollBehavior() });
     }
 
-    return { navigateTo, navigateBack, scrollToTop, performScroll, navStack };
+    return { navigateTo, navigateBack, scrollToTop, performScroll, navStack, dispose };
 }
