@@ -41,3 +41,13 @@ RUN printf 'server {\n\
         add_header Cache-Control "public, immutable";\n\
     }\n\
 }\n' > /etc/nginx/conf.d/default.conf
+
+# X·F F.W9 (M.W2) — the image's own LIVENESS contract: is this nginx up and
+# serving the built SPA? It says nothing about the API edge, which is a
+# different container asking a different question. busybox wget ships in
+# nginx:alpine, so no package is added to run a healthcheck; the request writes
+# nothing, which matters under the overlay's read_only root FS. `retries` is
+# bounded so an unhealthy container ENDS `compose up --wait` non-zero rather
+# than hanging it — the deploy hook's rollback depends on that termination.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
+    CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1

@@ -43,4 +43,17 @@ ENV WORKERS=1
 # rewriter (one trust boundary, not two): it resolves the real client through the
 # Apache→nginx XFF chain and stamps X-Real-IP, which get_client_ip reads. A second
 # uvicorn-side XFF rewriter would re-introduce the two-identity ambiguity β.2 removes.
+#
+# X·F F.W9 (M.W2) — the image's own LIVENESS contract, declared where the image
+# is built rather than inferred by whatever polls it. This answers exactly one
+# question — "did uvicorn come up and can it answer?" — and deliberately NOT the
+# readiness question, which is about what the EDGE serves (inv-22's root-404) and
+# is asked at the gateway. Compose reads this to satisfy `depends_on: condition:
+# service_healthy`, so the stack now orders on health rather than on
+# container-started. Python's own urllib: no curl/wget in python:3.13-slim, and
+# adding a package to run a healthcheck would be the wrong cure. `retries` is
+# bounded so an unhealthy container ENDS `compose up --wait` non-zero instead of
+# hanging it — the deploy hook's rollback depends on that termination.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+    CMD ["python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)"]
 CMD ["sh", "-c", "uv run --no-sync uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers ${WORKERS}"]

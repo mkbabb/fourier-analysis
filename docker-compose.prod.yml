@@ -138,9 +138,33 @@ services:
     ports: ["127.0.0.1:${HTTP_PORT:-8100}:80"]
     volumes:
       - ./nginx/fourier.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on: [backend, frontend]
+    # X·F F.W9 (M.W2) — readiness ordering, not start ordering. The bare
+    # `[backend, frontend]` form waits only for "container created", so the
+    # gateway routinely came up before either upstream could answer and the
+    # deploy's health gate absorbed the gap as elapsed poll time. The long form
+    # blocks on each upstream's own HEALTHCHECK (api/Dockerfile,
+    # web/Dockerfile), which is what `depends_on: service_healthy` means.
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     networks: [app-network]
     restart: unless-stopped
+    # X·F F.W9 (M.W2) — the gateway's READINESS probe, and the reason it is not
+    # the same shape as the two upstream LIVENESS probes. nginx's own liveness
+    # is the static `location = /health` 200 it serves from its own config; that
+    # 200 is true whether or not the backend exists, which is precisely why it
+    # cannot be the readiness answer. Readiness here means "this gateway can
+    # serve the API", so the probe goes THROUGH the proxy to /api/health. The
+    # deploy hook asks the same two questions from outside the stack and reports
+    # them apart; this is the in-stack half of the same separation.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     # H.W4 (γ) — levelled UP to the constellation hardening FLOOR (was
     # no-new-privileges only; read_only + cap_drop were G.W7 BOOKED residuals).
     # Same nginx:alpine writable-path recipe as the frontend above: an immutable
