@@ -24,6 +24,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
+import BatchActionBar from "./BatchActionBar.vue";
 import type { AdminUserInfo } from "@/lib/types";
 import { problemMessage } from "./adminError";
 import {
@@ -34,7 +35,6 @@ import {
     Users,
     ChevronLeft,
     ChevronRight,
-    X,
 } from "@lucide/vue";
 
 const auth = useAuthStore();
@@ -502,23 +502,28 @@ const userRows = computed(() =>
         <!-- Floating batch-action toolbar. Renders when the selection set is
              non-empty; routes through the destructive-confirm dialog before
              firing `batchUsers` against `{ok, affected, errors?}`. -->
-        <!-- FR-AUL-33: `role="toolbar"` was asserted with zero tabindex and zero
-             keydown in 529 lines and no producer primitive behind it — an
-             announced affordance contradicting its own interaction. `role="group"`
-             is what this actually is, and every control stays reachable.
-             FR-AUL-37: the stray `shadow-cartoon` utility is dropped — built-CSS
-             source order put it AFTER `.cartoon-card`, so this one element
-             rendered a different shadow family from every other card on the page.
-             -->
-        <div
-            v-if="selected.size > 0"
-            role="group"
-            aria-label="Batch user actions"
-            class="cartoon-card sticky top-2 z-10 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+        <!-- X.F.W3 `.e` — the HOST half of section-5a split (5). The toolbar
+             chrome was authored TWICE, divergent on six positioning decisions;
+             `.d` settled all six once in `BatchActionBar.vue` at `aa9e12c`, and
+             this call site adopts it rather than re-deciding any of them. What
+             this surface keeps is what is actually its own: its verbs, their
+             counts, and the `aria-describedby` sentences that explain why a
+             control is unavailable.
+
+             Two of the six change behaviour HERE and both are `.d`'s decisions,
+             not this seat's: the bar seats at the BOTTOM edge (FR-AUL-51 — a
+             `sticky top-2` bar inside the scroller it shares with the list
+             displaces every row downward at the first tick, so the pointer that
+             ticked row n is then over row n−1), and the plate takes the single
+             z-tier. The inline inset is the host's, supplied through `class`,
+             because the two hosts' padding contexts differ. -->
+        <BatchActionBar
+            :count="selected.size"
+            noun="user"
+            label="Batch user actions"
+            :busy="busy"
+            @clear="clearSelection"
         >
-            <span class="flex-1 text-xs text-muted-foreground">
-                {{ selected.size }} {{ selected.size === 1 ? "user" : "users" }} selected
-            </span>
             <!-- FR-AUL-41: `title` was carrying the ONLY explanation of why a
                  control is unavailable — and `title` on a DISABLED element is
                  reachable by no one: not the pointer (no hover target), not the
@@ -564,16 +569,7 @@ const userRows = computed(() =>
                 <Trash2 class="mr-1 size-3.5" aria-hidden="true" />
                 Delete
             </Button>
-            <Button
-                emphasis="quiet"
-                size="xs" icon-only
-                :disabled="busy"
-                aria-label="Clear selection"
-                @click="clearSelection"
-            >
-                <X class="size-3.5" aria-hidden="true" />
-            </Button>
-        </div>
+        </BatchActionBar>
 
         <!-- User list. FR-AUL-8: the old `v-if="loading"`/`v-if="!loading"` pair
              were exact complements, so every 300 ms typing pause and every
