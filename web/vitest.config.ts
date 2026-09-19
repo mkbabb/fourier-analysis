@@ -34,6 +34,57 @@ import { defineConfig } from "vitest/config";
  * landed gate on an import it never asked for. The two runners coexist,
  * disclosed; consolidating them belongs to whoever lands the FLOOR
  * (F.W9 `G-F9-1`), not to the seat that lands this one.
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ * X·F F.W9 `.b` — THE FLOOR (`G-F9-1`), landed on top of that seat.
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * The seat asks "does a runner exist?"; the FLOOR asks "does the whole unit
+ * population run, and by what threshold do we know it?". The two are held
+ * apart by law (`F-W9.md` §2.4 RUNNER-SEAT DISJOINTNESS, R-5: *"F.W0's G-9
+ * owns the SEAT … F.W9's G-F9-1 owns the FLOOR … neither gate may be
+ * discharged by the other's evidence"*), and this block is only the second
+ * half.
+ *
+ * THE POPULATION, DECLARED RATHER THAN IMPLIED
+ * --------------------------------------------
+ * Three globs, and they are the whole claim:
+ *
+ *   1. `e2e/unit/ ** /*.vitest.ts`  — the seat's own home.
+ *   2. `scripts/ ** /*.vitest.ts`   — the deriver/contrast tool assertions.
+ *   3. `src/ ** /*.test.ts`         — ADDED HERE. X.F.W3 `.e` authored
+ *      `src/lib/basis.test.ts`, `src/lib/time.test.ts` and
+ *      `src/lib/equation/notation.test.ts` as vitest files (they
+ *      `import … from "vitest"`) and they matched NO runner's glob in this
+ *      repo: not this one, not the `node:test` seat, not Playwright's
+ *      `testDir: "./e2e"`. Measured before this line existed — naming all
+ *      three on the command line still returned *"No test files found,
+ *      exiting with code 1"*. Three files of real assertions ran nowhere, in
+ *      no job, and nothing said so. That silence is the defect `G-F9-1` is
+ *      the instrument for, and closing the glob is the cure.
+ *
+ * `*.test.ts` under `src/` cannot collide with Playwright: its `testDir` is
+ * `./e2e`, and `src/` is not under it.
+ *
+ * THE THRESHOLDS, EXPRESSED AS ASSERTIONS AND NOT AS PROSE
+ * -------------------------------------------------------
+ *   · `passWithNoTests` stays OFF (the default): an empty run is a RED run, so
+ *     a glob that silently stops matching cannot read as success.
+ *   · The step is BLOCKING in `ci.yml` — no `continue-on-error`.
+ *   · The population itself is asserted, by
+ *     `e2e/unit/unit-floor-population.vitest.ts`: it walks the tree for every
+ *     unit-shaped test file and fails when one is claimed by no runner. A
+ *     prose population goes stale the first time a seat adds a file; an
+ *     asserted one reddens instead. That file is the FLOOR's own falsifier.
+ *
+ * ⊘ THE TWO RUNNERS STILL COEXIST, AND THE DECISION IS RECORDED RATHER THAN
+ * TAKEN SILENTLY. `figure-dimensions.unit.ts` is F.W0's landed `G-9` evidence
+ * under `node --test`. Sweeping it in here would discharge a closed wave's
+ * gate with this wave's runner, which R-5 forbids in as many words; deleting
+ * its CI step would redden a closed wave. So it is left exactly where F.W0 put
+ * it, and the population assertion above KNOWS about it — it is claimed by the
+ * `node:test` seat, not orphaned. Consolidation, if it is ever wanted, is a
+ * decision for a wave that owns both gates; no seat of F.W9 owns F.W0's.
  */
 export default defineConfig({
     resolve: {
@@ -43,7 +94,13 @@ export default defineConfig({
     },
     test: {
         environment: "node",
-        include: ["e2e/unit/**/*.vitest.ts", "scripts/**/*.vitest.ts"],
+        include: [
+            "e2e/unit/**/*.vitest.ts",
+            "scripts/**/*.vitest.ts",
+            // X·F F.W9 `.b` (`G-F9-1`, the FLOOR): X.F.W3 `.e`'s three
+            // `src/lib` vitest files ran in NO runner until this line.
+            "src/**/*.test.ts",
+        ],
         reporters: ["default"],
     },
 });
