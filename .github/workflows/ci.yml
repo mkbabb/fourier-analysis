@@ -353,7 +353,15 @@ jobs:
         working-directory: web
         env:
           BASE_URL: "http://localhost:3000"
-        run: npx playwright test --project=chromium --reporter=list
+        # X·F F.W9 `.b` (`G-F9-13`): the matrix carries TWO cells now. The step
+        # named only `chromium`, so adding the coarse project to the config
+        # alone would have left it unrun — an instrument nobody invokes. Both
+        # are named explicitly rather than by omission, so a third cell is a
+        # deliberate edit here and not a silent inheritance.
+        #
+        # ⊘ `mobile-chromium` is Chromium under `Pixel 7` emulation. It
+        # discharges NO Safari cell (`X-W11 G8`).
+        run: npx playwright test --project=chromium --project=mobile-chromium --reporter=list
       - name: Tear down (always)
         if: always()
         run: |
