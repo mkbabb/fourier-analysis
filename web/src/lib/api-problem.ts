@@ -40,9 +40,14 @@ export class ApiProblem extends Error {
             typeof type === "string" ? type : "about:blank",
             typeof title === "string" ? title : response.statusText,
             typeof status === "number" ? status : response.status,
-            typeof detail === "string" ? detail : undefined,
+            readDetail(detail),
             typeof instance === "string" ? instance : undefined,
-            extensions,
+            // The ARRAY arm's raw value is kept addressable: `readDetail` renders
+            // it for humans, and a caller that wants the per-field structure
+            // (`loc`/`msg`/`type`) reads it back here rather than re-parsing prose.
+            typeof detail === "string" || detail === undefined
+                ? extensions
+                : { ...extensions, detail },
         );
     }
 
@@ -50,6 +55,70 @@ export class ApiProblem extends Error {
     is(typeUrn: string): boolean {
         return this.type === typeUrn;
     }
+}
+
+/**
+ * `C·D-02`'s envelope half (X·F F.W4 `.f`; the consumer half landed at `.b`).
+ *
+ * RFC 7807 types `detail` as a string, and FastAPI does not: a `HTTPException`
+ * emits `{"detail": "…"}` while a request-validation failure emits
+ * `{"detail": [{loc, msg, type}, …]}`. The prior reader tested
+ * `typeof detail === "string"` and DROPPED everything else — and because the
+ * destructure had already removed `detail` from `...extensions`, the array form
+ * survived nowhere at all: the sole actionable half of a 422 was parsed and then
+ * discarded on the way to the caller.
+ */
+function readDetail(detail: unknown): string | undefined {
+    if (typeof detail === "string") return detail.trim() || undefined;
+    if (!Array.isArray(detail)) return undefined;
+    const lines = detail
+        .map((entry) => {
+            if (typeof entry === "string") return entry;
+            if (entry === null || typeof entry !== "object") return "";
+            const { loc, msg } = entry as { loc?: unknown; msg?: unknown };
+            const message = typeof msg === "string" ? msg : "";
+            const field = Array.isArray(loc)
+                ? loc.filter((p) => typeof p === "string" || typeof p === "number").join(".")
+                : "";
+            if (!message) return field;
+            return field ? `${field}: ${message}` : message;
+        })
+        .filter((line) => line.length > 0);
+    return lines.length > 0 ? lines.join("; ") : undefined;
+}
+
+/**
+ * SP-12's RFC-7807 discard row, at the seam (`FR-AFP-22` = `FR-AUL-50` =
+ * `FR-USB-9` = the `EV-C·D-02` cohort).
+ *
+ * Every catch in this app was `catch (e: any)` reading `e.message`, and
+ * `ApiProblem`'s constructor calls `super(title)` — so `.message` carries the
+ * TITLE only and `detail`, the sole actionable half of the server's answer, was
+ * stored and never read. Three further holes close with it: `e.message ??
+ * fallback` never fires for an EMPTY message (`"" ?? x` is `""`, and
+ * `statusText` is empty under HTTP/2); a non-`Error` throw rendered
+ * `undefined`; and an aborted request's `DOMException` was reported as a
+ * failure at sites that had cancelled it themselves.
+ *
+ * ⊘ This is the SHARED home the gallery route's local copy
+ * (`components/visualization/gallery/adminError.ts`, unit `.d`) declared it
+ * owed: that file re-points here rather than keeping a second definition, which
+ * is a one-import change in a file outside this unit's bounds and is declared
+ * in `.f`'s receipt, never written from here.
+ */
+export function problemMessage(e: unknown, fallback: string): string {
+    if (e instanceof ApiProblem) {
+        const detail = e.detail?.trim();
+        if (detail) return detail;
+        const title = e.title?.trim();
+        if (title) return title;
+        return fallback;
+    }
+    if (e instanceof Error) {
+        const message = e.message?.trim();
+        if (message) return message;
+    }
+    return fallback;
 }
 
 /** Read a `RateLimit-Reset` header (seconds) for 429 backoff. */

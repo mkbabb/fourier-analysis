@@ -11,6 +11,7 @@ import type {
     WorkspaceDraft,
 } from "@/lib/types";
 import * as api from "@/lib/api";
+import { problemMessage } from "@/lib/api-problem";
 import { saveDraft, loadDraft, listDrafts } from "@/lib/draftStorage";
 import { defaultContourSettings, defaultAnimationSettings } from "@/lib/defaults";
 
@@ -124,8 +125,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             imageMeta.value = meta;
             router.push(`/w/${meta.image_slug}`);
             await _saveDraftNow();
-        } catch (e: any) {
-            if (!api.isAbortError(e)) error.value = e.message ?? "Upload failed";
+        } catch (e: unknown) {
+            if (!api.isAbortError(e)) error.value = problemMessage(e, "Upload failed");
             throw e;
         } finally {
             loading.value = false;
@@ -179,9 +180,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             }
             // Save draft immediately so gallery shows this workspace
             await _saveDraftNow();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Failed to load workspace";
+                error.value = problemMessage(e, "Failed to load workspace");
             throw e;
         } finally {
             loading.value = false;
@@ -222,9 +223,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             const contourAsset = await api.getContour(viz.contour_hash);
             if (revision.value !== rev) return;
             contour.value = markRaw(contourAsset);
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Failed to load visualization";
+                error.value = problemMessage(e, "Failed to load visualization");
             throw e;
         } finally {
             loading.value = false;
@@ -251,9 +252,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (revision.value !== rev) return;
             contour.value = markRaw(result);
             scheduleDraftSave();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Contour extraction failed";
+                error.value = problemMessage(e, "Contour extraction failed");
             throw e;
         } finally {
             endCompute();
@@ -273,9 +274,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             epicycleData.value = null;
             basesData.value = null;
             scheduleDraftSave();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Failed to save contour";
+                error.value = problemMessage(e, "Failed to save contour");
             throw e;
         } finally {
             endCompute();
@@ -298,9 +299,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (epicycleRevision !== rev) return;
             epicycleData.value = markRaw(result);
             scheduleDraftSave();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Epicycle computation failed";
+                error.value = problemMessage(e, "Epicycle computation failed");
             throw e;
         } finally {
             endCompute();
@@ -327,9 +328,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (basesRevision !== rev) return;
             basesData.value = markRaw(result);
             scheduleDraftSave();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Bases computation failed";
+                error.value = problemMessage(e, "Bases computation failed");
             throw e;
         } finally {
             endCompute();
@@ -358,8 +359,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             visualizationSlug.value = data.slug;
             visualizationETag.value = etag;
             return { slug: data.slug };
-        } catch (e: any) {
-            error.value = e.message ?? "Failed to save visualization";
+        } catch (e: unknown) {
+            if (api.isAbortError(e)) return null;
+            error.value = problemMessage(e, "Failed to save visualization");
             return null;
         }
     }
@@ -382,8 +384,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             );
             visualizationETag.value = etag;
             visualizationSlug.value = data.slug;
-        } catch (e: any) {
-            error.value = e.message ?? "Failed to update visibility";
+        } catch (e: unknown) {
+            if (!api.isAbortError(e))
+                error.value = problemMessage(e, "Failed to update visibility");
             throw e;
         }
     }
@@ -399,8 +402,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             await api.deleteVisualization(slug, visualizationETag.value);
             visualizationSlug.value = null;
             visualizationETag.value = null;
-        } catch (e: any) {
-            error.value = e.message ?? "Failed to delete visualization";
+        } catch (e: unknown) {
+            if (!api.isAbortError(e))
+                error.value = problemMessage(e, "Failed to delete visualization");
             throw e;
         }
     }
