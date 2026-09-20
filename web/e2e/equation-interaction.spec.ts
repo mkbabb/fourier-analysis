@@ -134,14 +134,55 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         const expLatex = (await series.innerText()).trim();
 
         // ── 3. BUDGET ───────────────────────────────────────────────────────
-        // `FR-EQR-31` / `D-14`. "Display terms" is the budget knob; its inline
-        // numeric input is inside the control's own `<label>`, so it is
-        // addressed by that label rather than by a class.
-        const budget = page.getByLabel(/Display terms/i);
+        // `FR-EQR-31` / `D-14`. "Display terms" is the budget knob, and the
+        // knob is THREE labelled nodes, not one: `SliderControl` names its
+        // inline numeric input through the wrapping `<label>`, and passes the
+        // same `label` down as `aria-label` on both the producer's slider host
+        // and reka-ui's `role="slider"` thumb. A bare `getByLabel` therefore
+        // resolves to 3 elements and dies of strict mode before it asserts
+        // anything — X.F.W9 repair 1, PART 1 of the cure for `Check 1`'s `HIGH-1`.
+        // The leg drives the NUMERIC input (it reads and fills a value), so it
+        // is addressed by that role; the two slider nodes carry no value to
+        // fill and are a different control surface.
+        const budget = page.getByRole("spinbutton", { name: /display terms/i });
         await expect(budget).toBeVisible();
         const budgetBefore = await budget.inputValue();
 
+        // THE BUDGET GOVERNS THE EXPANDED RENDER, NOT THE SIGMA ONE — X.F.W9
+        // repair 1, PART 2 of `HIGH-1`'s cure, found by executing the
+        // leg the locator defect had made unreachable. `eqMode` starts at
+        // `"sigma"` and `activeLatex` then prefers `latex_sigma`, which the
+        // server builds with `render_latex_sigma(terms, notation)` — a function
+        // that takes NO budget. Only `latex` (`simplify_series(terms, budget,
+        // notation)`) is budget-determined, and the control says so on its own
+        // face (`subtitle="shown in expanded (a+b) view"`). Asserting the sigma
+        // render changes under a budget edit therefore asserted something the
+        // product does not claim and could never do; the mode is switched to
+        // the surface the knob actually drives, which is also `B-1`'s shape —
+        // a knob change that silently reuses a stale result.
+        const modeToggle = page.getByRole("group", { name: "Equation display mode" });
+        const expandedMode = modeToggle.getByRole("button", { name: /Expanded terms/i });
+        await expandedMode.click();
+        await expect(expandedMode).toHaveAttribute("aria-pressed", "true", { timeout: 10_000 });
+        await expect(series.locator(".katex").first()).toBeVisible({ timeout: 30_000 });
+        const expandedBefore = (await series.innerText()).trim();
+        expect(
+            expandedBefore.length,
+            "the expanded (a+b) render is empty — the budget leg has no surface to read",
+        ).toBeGreaterThan(0);
+        // `FR-EMT-11`: the toggle must change the SURFACE, not just its own
+        // `aria-pressed`. If the two modes render identically the budget leg
+        // below would be reading the sigma string under another name.
+        expect(
+            expandedBefore,
+            "the display-mode toggle flipped but the rendered surface did not change",
+        ).not.toBe(expLatex);
+
         const narrowed = String(Math.max(2, Number(budgetBefore) - 4));
+        expect(
+            narrowed,
+            "the budget did not actually move — the leg would assert nothing",
+        ).not.toBe(budgetBefore);
         await budget.fill(narrowed);
         await budget.blur();
 
@@ -150,7 +191,17 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
                 message: "the display budget changed but the rendered series did not",
                 timeout: 30_000,
             })
-            .not.toBe(expLatex);
+            .not.toBe(expandedBefore);
+
+        // A poll is satisfied by any sample that differs, and a recompute's
+        // transient empty frame differs. The SETTLED render is therefore read
+        // back and asserted non-empty, so a blank mid-flight state cannot green
+        // this leg on its way past.
+        const expandedAfter = (await series.innerText()).trim();
+        expect(
+            expandedAfter.length,
+            "the budget edit left the expanded render empty — a transient, not a re-render",
+        ).toBeGreaterThan(0);
 
         // ── 4. RELOAD ───────────────────────────────────────────────────────
         // `B-2` / `M-BR`, the leg nothing else in the suite can reach: the
@@ -166,13 +217,46 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
             "the notation knob did not survive the reload",
         ).toHaveAttribute("aria-pressed", "true", { timeout: 30_000 });
         await expect(
-            page.getByLabel(/Display terms/i),
+            page.getByRole("spinbutton", { name: /display terms/i }),
             "the display budget did not survive the reload",
         ).toHaveValue(narrowed, { timeout: 30_000 });
 
+        // THE COLD COMPUTE IS DRIVEN, NOT AWAITED — X.F.W9 repair 1, PART 3 of
+        // `HIGH-1`'s cure, and again a thing only execution could show.
+        // The restored inputs re-derive the SAME `computeKey`, so the mount's
+        // `if (!result.value || computeKey(…) !== lastComputeKey)` memo-hits and
+        // the cold session posts NOTHING: measured over this leg's own run,
+        // `slice(reloadCount)` was empty and the bounds loop below asserted
+        // zero times — precisely the vacuity `G-F9-7` exists to abolish. The
+        // Compute button is `@compute="doCompute(true)"`, the one force path,
+        // so one click IS "the first compute of the next session" carrying the
+        // knobs the reload replayed. The roster is asserted non-empty first, so
+        // a future memo that swallowed this POST would redden the leg instead
+        // of emptying it.
+        const coldResponse = page.waitForResponse(
+            (r) => COMPUTE_URL.test(new URL(r.url()).pathname) && r.request().method() === "POST",
+            { timeout: 60_000 },
+        );
+        await page.getByRole("button", { name: "Compute" }).click();
+        const cold = await coldResponse;
+        expect(
+            cold.status(),
+            "the restored knobs 422'd on the cold compute — `B-2`'s shape exactly",
+        ).toBe(200);
+
+        const coldPayloads = computes.slice(reloadCount);
+        expect(
+            coldPayloads.length,
+            "no compute was posted after the reload — the bounds witness below would assert nothing",
+        ).toBeGreaterThan(0);
+        expect(
+            coldPayloads[coldPayloads.length - 1]!.budget,
+            "the cold compute did not carry the budget the reload restored",
+        ).toBe(Number(narrowed));
+
         // Whatever the cold session posts, it must be inside the server's own
         // bounds — the clamp is the cure `B-2` books and this is its witness.
-        for (const payload of computes.slice(reloadCount)) {
+        for (const payload of coldPayloads) {
             expect(payload.budget, `a cold compute posted an out-of-range budget`).toBeGreaterThanOrEqual(2);
             expect(payload.budget).toBeLessThanOrEqual(50);
         }
