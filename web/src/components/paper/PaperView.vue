@@ -452,7 +452,7 @@ onUnmounted(() => {
             <PaperSearchModal :search="search" />
 
             <div class="paper-layout mx-auto max-w-5xl px-2 pt-2 pb-0 sm:pt-2 sm:pb-0 sm:px-6">
-                <div class="paper-grid">
+                <div class="paper-columns">
                     <!-- Desktop sidebar TOC -->
                     <PaperSidebar :render-title="renderTitle" :search="search" />
 
@@ -688,7 +688,7 @@ onUnmounted(() => {
     }
 }
 
-.paper-grid {
+.paper-columns {
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -696,7 +696,7 @@ onUnmounted(() => {
 }
 
 @media (min-width: 1024px) {
-    .paper-grid {
+    .paper-columns {
         grid-template-columns: 220px minmax(0, 48rem);
         gap: 2rem;
     }

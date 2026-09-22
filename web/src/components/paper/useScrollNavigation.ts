@@ -397,7 +397,7 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
      * ⊘ It runs `teleportTo`'s CORRECTION LOOP and not a single settled scroll,
      * and that is not symmetry for its own sake. Measured this seat: with one
      * `recalculate()` the virtual window's spacer arithmetic had not converged
-     * when the overlay lifted, and `.paper-grid` ended above the viewport
+     * when the overlay lifted, and `.paper-columns` ended above the viewport
      * bottom — which clamps the STICKY sidebar and left the whole Contents
      * panel, search field included, at `top: -149px`. The section arm never
      * showed it because it corrects for up to ten frames. A cure that lands the

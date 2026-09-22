@@ -121,7 +121,15 @@ onScopeDispose(() => {
 
 <template>
     <TooltipProvider :delay-duration="400" :skip-delay-duration="200">
-        <div class="h-dvh flex flex-col bg-background text-foreground paper-texture overflow-hidden">
+        <div class="h-dvh flex flex-col bg-background text-foreground paper-texture overflow-hidden isolate">
+            <!-- X.F.W11.b (COHESION §0ao OA-2) — the grid is the APP's ground, not
+                 the paper's: the producer's `.paper-grid` (glass-ui
+                 `styles/paper.css`, theme-aware via its `.dark` blend arm)
+                 paints one fixed, full-viewport layer under every route.
+                 `isolate` makes this shell the stacking context, so `-z-10`
+                 sits above the shell's own ground and beneath all content;
+                 the paper keeps its own surface on top of it. -->
+            <div class="paper-grid fixed inset-0 -z-10 pointer-events-none" aria-hidden="true" />
             <!-- ⊘ X.F.W3 `.e` / `fr-App MG-epsilon` — RECORDED AS A DECISION,
                  DELIBERATELY NOT EXECUTED.
 
