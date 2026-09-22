@@ -206,7 +206,7 @@ async function handleToggle() {
     cursor: pointer;
     border: 0;
     padding: 0;
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     background: transparent;
     /* DMT N-5 — the literals restated the producer's own registers exactly
        (`--duration-fast: 0.2s`, `--ease-standard`); they are read from them. */
