@@ -191,8 +191,8 @@ const renderCalloutText = computed(
                                  primitive’s own now.
 
                                  ⊘ `PAW-22` → banked `GCM-23` (drop
-                                 `border-radius: inherit` rule-wide) is NOT taken
-                                 here, and `K-5`’s LOCK is why: that deletion must
+                                 the `inherit` corner rule-wide) was NOT taken
+                                 here (it is TAKEN at X.F.W11.a, style.css), and `K-5`’s LOCK is why: that deletion must
                                  be SITE-SCOPED, and this bare router-link had no
                                  other indicator to fall back on. It carries the
                                  producer’s `focus-ring` now, which is what makes

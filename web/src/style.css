@@ -327,14 +327,20 @@ html {
 
    `--focus-ring-color` and `--focus-ring-width` are the producer's own
    registers — the same pair its `.focus-ring:focus-visible` recipe paints
-   with — so the app's hand-rolled rings and the producer's now agree. */
+   with — so the app's hand-rolled rings and the producer's now agree.
+
+   X.F.W11.a (OA-1) — `GCM-23` TAKEN: the rule-wide `inherit` corner is gone.
+   It re-shaped each focused element to its PARENT's corner (a card's child
+   took the card's radius on focus). Each of the four now carries its own token
+   corner — `.sidebar-link` (PaperSidebar) · `.floating-toc-item` (`--radius-md`)
+   · `.callout-btn` (the glass Button's `--radius-button`) · `.gallery-card`
+   (`rounded-xl`) — and an outline follows its own element's corner. */
 .sidebar-link:focus-visible,
 .floating-toc-item:focus-visible,
 .callout-btn:focus-visible,
 .gallery-card:focus-visible {
     outline: var(--focus-ring-width) solid var(--focus-ring-color);
     outline-offset: 2px;
-    border-radius: inherit;
 }
 
 /* F.W1 / B-2 — `.paper-texture` RESTORED as a consumer-local rule (G5's
