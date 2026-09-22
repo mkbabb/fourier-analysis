@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 /**
  * X·F F.W3 `.a` — the colour-stack resolver, as a module.
@@ -99,7 +99,12 @@ export async function resolveStack(page: Page, stack: string[]): Promise<Resolve
 /** Load one page per arm; every pair in that arm reads from it. */
 export async function openArm(page: Page, arm: Arm): Promise<void> {
     await page.goto("/");
-    await page.waitForLoadState("networkidle", { timeout: 60_000 });
+    // X.F.W12 `.a` (COHESION §0as) — the app's own readiness, not the
+    // network's: `<main>` exists only once `App.vue` has mounted, which is after
+    // `main.ts` has imported every stylesheet whose tokens the stacks resolve.
+    // (`/` redirects to the saved tab; whichever route lands, the shell's
+    // `<main>` is the one mounted landmark they share.)
+    await expect(page.getByRole("main")).toBeVisible({ timeout: 60_000 });
     await page.evaluate((a: string) => {
         document.documentElement.classList.toggle("dark", a === "dark");
         // `light-dark()` follows `color-scheme`, and the producer's tokens use

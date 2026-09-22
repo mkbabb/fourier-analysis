@@ -32,29 +32,43 @@ const TEST_IMAGE = path.resolve(
 /** Upload the keystone image and wait for the workspace canvas to render. */
 async function openWorkspace(page: Page): Promise<void> {
     await page.goto("/visualize");
+    // X.F.W12 `.a` (COHESION §0as, F.W11 Check 2 MINOR) — THE READINESS IS THE
+    // APP'S OWN, NOT THE NETWORK'S. The wait used to be the network-quiet load
+    // state, a property of the whole browser under load, not of this page: under a
+    // full 9-worker run it timed out and its serial file then skipped every
+    // later test, the `:290` keystone among them. The workspace's own mount
+    // condition is the compute pair it awaits — `ContourSettings.runCompute`
+    // extracts the contour, then POSTs `compute/epicycles` and `compute/bases`
+    // together and renders from both — so the helper arms a listener for BOTH
+    // responses before the upload (a response that lands before the wait is
+    // armed cannot be missed) and requires each to answer 200.
+    const computes = Promise.all(
+        (["epicycles", "bases"] as const).map((kind) =>
+            page.waitForResponse(
+                (r) =>
+                    r.request().method() === "POST" &&
+                    new URL(r.url()).pathname.endsWith(`/compute/${kind}`),
+                { timeout: 60_000 },
+            ),
+        ),
+    );
     const fileInput = page.getByTestId("image-file-input");
     await fileInput.setInputFiles(TEST_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 15_000 });
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible({ timeout: 60_000 });
-    // Settle deterministically on the actual mount condition the keystones
-    // depend on — NOT a blind fixed timeout (flaky: too short on slow CI, so
-    // axe runs against a half-mounted DOM; wasteful on fast). The auto-compute
-    // round-trip resolving (networkidle) plus the AnimationControls dock's
-    // collapsed-summary play control rendering is the precise "dock + panels are
-    // fully mounted" signal.
-    //
-    // The dock starts collapsed by default (AnimationControls' GlassDock sets
-    // `:start-collapsed="true"`), and GlassDock hides the EXPANDED layer
-    // (`.dock-layer--full`, `visibility:hidden`) until the dock expands — so the
-    // "More options" trigger that lives there is not visible in the default
-    // state Keystone-1 asserts against. We therefore settle on the
-    // collapsed-summary mini play button (`.play-btn--mini`), which is the
+    for (const response of await computes) expect(response.status()).toBe(200);
+    // Then the mounted landmark the keystones depend on — NOT a blind fixed
+    // timeout. The dock starts collapsed by default (AnimationControls'
+    // GlassDock sets `:start-collapsed="true"`), and GlassDock hides the
+    // EXPANDED layer (`.dock-layer--full`, `visibility:hidden`) until the dock
+    // expands — so the "More options" trigger that lives there is not visible
+    // in the default state Keystone-1 asserts against. We therefore settle on
+    // the collapsed-summary mini play button (`.play-btn--mini`), which is the
     // active/visible layer's control in the default collapsed dock. Using the
     // default-state element keeps the helper from corrupting Keystone-1's
     // default-state a11y check (expanding the dock here would change every
     // keystone's measured DOM).
-    await page.waitForLoadState("networkidle", { timeout: 60_000 });
     await expect(page.locator(".animation-dock .play-btn--mini").first()).toBeVisible({
         timeout: 60_000,
     });
@@ -192,14 +206,26 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
     // armed, not skipped, because a `fixme` on a brand-new gate is the very
     // defect row 19 books.
     test("keystone: /equation is a11y-clean", async ({ page }) => {
+        // X.F.W12 `.a` (COHESION §0as) — the route's own readiness, not the
+        // network's: a fresh context has no cached result, so `/equation` POSTs
+        // its first `/api/equations/compute` on mount and renders the Controls
+        // card from the answer (the same signal `visual-checkpoint` settles on).
+        // The listener is armed before the navigation so the response cannot
+        // land unobserved.
+        const compute = page.waitForResponse(
+            (r) =>
+                r.request().method() === "POST" &&
+                /\/api\/equations\/compute$/.test(new URL(r.url()).pathname),
+            { timeout: 60_000 },
+        );
         await page.goto("/equation");
+        expect((await compute).status()).toBe(200);
 
         // Settle on the mount condition this keystone exists for — the rendered
         // `SliderControl` subtitle — not a blind timeout. The "Controls"
         // CollapsibleSection is `:default-open="true"`, and the desktop grid
         // renders the left panel unconditionally (the mobile tab bar is
         // `lg:hidden`), so the subtitle is in the default desktop DOM.
-        await page.waitForLoadState("networkidle", { timeout: 60_000 });
         await expect(page.locator(".slider-subtitle").first()).toBeVisible({
             timeout: 60_000,
         });
@@ -235,7 +261,8 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
 
     test("keystone: /paper is a11y-clean", async ({ page }) => {
         await page.goto("/paper");
-        await page.waitForLoadState("networkidle", { timeout: 60_000 });
+        // X.F.W12 `.a` (COHESION §0as) — no network-quiet wait: the route's own
+        // mounted landmark below is the readiness signal (`expect` polls it).
         // The compiled article's own H1 — present only once latex-paper has
         // mounted the document body, which is the whole surface being graded.
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible({
@@ -246,11 +273,15 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
 
     test("keystone: /morph is a11y-clean", async ({ page }) => {
         await page.goto("/morph");
-        await page.waitForLoadState("networkidle", { timeout: 60_000 });
+        // X.F.W12 `.a` (COHESION §0as) — no network-quiet wait: the route's own
+        // mounted landmark below is the readiness signal (`expect` polls it).
         // `HarmonicLevelGrid`'s three phase sections are the route's control
         // mass (`HLG-37`'s contrast rungs, `HLG-20`'s rails); grading before
         // they mount would miss every row this route owns.
         await expect(page.getByRole("heading", { name: "Morph", exact: true })).toBeVisible({
+            timeout: 60_000,
+        });
+        await expect(page.getByRole("spinbutton", { name: "Low", exact: true }).first()).toBeVisible({
             timeout: 60_000,
         });
         await checkA11y(page, "/morph");
@@ -258,7 +289,8 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
 
     test("keystone: /demo/shape-extractor is a11y-clean", async ({ page }) => {
         await page.goto("/demo/shape-extractor");
-        await page.waitForLoadState("networkidle", { timeout: 60_000 });
+        // X.F.W12 `.a` (COHESION §0as) — no network-quiet wait: the route's own
+        // mounted landmark below is the readiness signal (`expect` polls it).
         // The Sun/Moon figure headings — the two shapes `FSE-*` books, and the
         // same surface whose 375px horizontal amputation the occlusion gate now
         // measures (`visual-baseline.spec.ts`, `FSE-M-4`).
@@ -296,7 +328,13 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
 
         // Snapshot the control values before the save so we can assert they
         // are not perturbed by the auto-recompute.
-        const controls = page.locator('input[type="number"], input[type="range"]');
+        // X.F.W12 `.a` — the BasisSelector readouts are glass-ui `NumberField`
+        // spinbuttons now (an `input` carrying `role="spinbutton"`, not
+        // `type="number"`), so the snapshot names that role too; without it the
+        // two fields this guard exists to pin would silently drop out of it.
+        const controls = page.locator(
+            'input[type="number"], input[role="spinbutton"], input[type="range"]',
+        );
         const readControls = () =>
             controls
                 .evaluateAll((els) => (els as HTMLInputElement[]).map((el) => el.value));
