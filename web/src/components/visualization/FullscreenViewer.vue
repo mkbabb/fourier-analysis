@@ -142,7 +142,26 @@ function onOpenChange(open: boolean) {
     </Dialog>
 </template>
 
-<style scoped>
+<style>
+/* X.F.W10S.b — `G-F9-11` / `C2-M1`: THESE RULES ARE UNSCOPED BECAUSE THEIR
+   ROOT IS TELEPORTED. `DialogContent` renders through the chassis's portal, so
+   its element is not this component's single root and never receives this
+   file's scope attribute: while these rules sat in `<style scoped>` they
+   compiled to `.fs-dialog[data-v-…]`, matched NOTHING, and the "fullscreen"
+   viewer opened as the chassis's default 512px centred card — whose bottom
+   timeline strip (`.fs-controls`) then lay over the Exit control and took its
+   clicks. `translate: none` joins `transform: none` because the chassis centres
+   with the `translate` LONGHAND, which `transform` cannot reach.
+   Both blocks stay UNLAYERED, and that is measured, not habit: the chassis
+   seats its card in `components/dialog/styles.css` as UNLAYERED `:where(
+   [data-slot="dialog-content"])` rules (`inline-size: min(…, 32rem)`,
+   `translate: -50% -50%`), which no `@layer glass-overrides` rule can outrank —
+   placed there first, the geometry took `inset`/`max-*` and lost `inline-size`
+   and `translate` (512px, still off-centre). An unlayered class beats a
+   zero-specificity `:where()` and re-authors nothing else of the producer's
+   register; the chrome strip likewise meets this app's own unlayered scoped
+   canvas roots. */
+
 /* PLACEMENT IS THIS FILE'S BUSINESS, CHROME IS NOT — `FV-13`'s ruling, applied
    to the chassis. The dialog's default seat is a centred floating card; this
    surface IS the viewport, so the geometry is overridden here and NOTHING about
@@ -156,6 +175,7 @@ function onOpenChange(open: boolean) {
     height: 100dvh;
     max-height: none;
     transform: none;
+    translate: none;
     border-radius: 0;
     border: none;
     padding: 0;
@@ -170,18 +190,20 @@ function onOpenChange(open: boolean) {
    was a no-op duplication that two corpus superlatives certified as craft. The
    CHROME STRIP below is the real design judgement and it stays — a card frame
    is meaningless when the surface IS the viewport. */
-.fs-dialog :deep(.canvas-container),
-.fs-dialog :deep(.editor-shell) {
+.fs-dialog .canvas-container,
+.fs-dialog .editor-shell {
     border: none;
     border-radius: 0;
     box-shadow: none;
 }
 
-.fs-dialog :deep(.canvas-container:hover) {
+.fs-dialog .canvas-container:hover {
     border-color: transparent;
     box-shadow: none;
 }
+</style>
 
+<style scoped>
 /**
  * X.F.W4 · `fr-FullscreenViewer` FV-8 ⊕ FV-12 ⊕ FV-13 ⊕ FV-22, one block,
  * because they are four readings of a single decision: this control

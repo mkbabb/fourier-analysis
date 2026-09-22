@@ -1,3 +1,4 @@
+import { nextTick } from "vue";
 import { createRouter, createWebHistory, type RouteLocationNormalized } from "vue-router";
 import { supportsViewTransitions } from "@mkbabb/glass-ui";
 
@@ -170,11 +171,22 @@ router.afterEach((to: RouteLocationNormalized) => {
     applyRouteMeta(to);
 
     // I.ε — release the View-Transition update callback once the DOM has
-    // committed the new route component (next microtask + a frame).
+    // committed the new route component: Vue's next flush patches the
+    // `RouterView`, so `nextTick` is the commit.
+    //
+    // ⊘ X.F.W10S.b — `G-F9-11` / `C2-M1`: NEVER a frame here. While the update
+    // callback is pending the browser SUPPRESSES RENDERING for the document, and
+    // `requestAnimationFrame` callbacks run only inside a rendering update — so
+    // the double-rAF this release used to wait on could not fire until the
+    // browser gave up on the callback: every `/visualize` → `/w/` upload froze
+    // the page for the 4 s DOM-update timeout ("Transition was aborted because
+    // of timeout in DOM update"), dropped the pointer's hover for that long, and
+    // the late dock expansion then swallowed the first click on its Fullscreen
+    // control (the producer's click guard discards a press begun mid-morph).
     if (resolveViewSwap) {
         const release = resolveViewSwap;
         resolveViewSwap = null;
-        requestAnimationFrame(() => requestAnimationFrame(release));
+        void nextTick(release);
     }
 
     const tab = to.path;
