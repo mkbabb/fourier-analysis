@@ -304,8 +304,10 @@ html {
 }
 
 /* D.W4.d — `:focus-visible` rings on the TOC link classes + the gallery
-   card. Mirrors the canonical pattern at AppHeader.vue:174-177 (the only
-   pre-W4 conformant site). The classes are declared in scoped styles in
+   card. Mirrors the canonical pattern the app chrome paints — today
+   `AppDock.vue`, whose controls carry the producer's `--focus-ring-width` /
+   `--focus-ring-color` outline (X.F.W12 `.a`, 2026-09-22, R-e-2: re-pointed
+   from the header this cited, retired at X.F.W11 `.c`). The classes are declared in scoped styles in
    PaperSidebar.vue, MobileFloatingToc.vue, PaperArticleWindow.vue,
    GalleryCard.vue — all four scoped-styled. Because Vue's scoped styles
    add a data-attribute selector, the ring lives at the global layer so it
@@ -320,8 +322,9 @@ html {
    undeclared `var()` is invalid at computed-value time and is DROPPED — so
    these four classes, which exist for no other purpose, have been painting NO
    focus ring at all. Six read sites across five files, exactly as FM-2 banked;
-   the three inside this unit's bounds are cured here and at `AppHeader.vue` /
-   `DarkModeToggle.vue`. The remaining three are named, not written, because
+   the three inside this unit's bounds are cured here and in the app chrome —
+   now `AppDock.vue` (the header that held one retired at X.F.W11 `.c`;
+   re-pointed X.F.W12 `.a`, 2026-09-22, R-e-2) — and `DarkModeToggle.vue`. The remaining three are named, not written, because
    their files belong to sibling units: `ImageUpload.vue:200` (→ `.c`) and
    `GalleryCard.vue:222`/`:223` (→ `.d`).
 

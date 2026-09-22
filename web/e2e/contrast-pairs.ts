@@ -85,11 +85,12 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     },
 
     // ── fr-HarmonicLevelGrid HLG-37 ──
-    // *"`.grid-cell` border 1.275 L / 1.398 D, `.level-input` border 1.361 L …
-    // with 1.000:1 fill separation"*. Both borders are control boundaries →
-    // 1.4.11. The cell's own fill is `var(--card)`; the input's is
-    // `var(--background)` — the two grounds differ and the registry keeps them
-    // apart rather than averaging them.
+    // *"`.grid-cell` border 1.275 L / 1.398 D, … with 1.000:1 fill
+    // separation"*. The border is a control boundary → 1.4.11, graded against
+    // the cell's own fill, `var(--card)`.
+    // X.F.W12 `.a` (2026-09-22, COHESION §0as · R-e-2) — the quote's elided
+    // second clause graded the Harmonic-Levels number field's hand-drawn
+    // boundary. That row is RETIRED below with the chrome it described.
     // ⊘ `.a` CURED THESE AND MOVED THE EXPRESSIONS, per this file's own rule.
     // The two boundary mixes went 12%/15% → 50% of `--foreground`; the stacks
     // below are the values that paint TODAY, and `banked` keeps the pre-cure
@@ -105,17 +106,12 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
         banked: { light: 1.275, dark: 1.398 },
         owner: ".a",
     },
-    {
-        id: "HLG-37[level-input-border]",
-        what: ".level-input 1.5px boundary against its own fill",
-        stack: [
-            "var(--background)",
-            "color-mix(in srgb, var(--foreground) 50%, transparent)",
-        ],
-        kind: "non-text",
-        banked: { light: 1.361, dark: 1.403 },
-        owner: ".a",
-    },
+    // X.F.W12 `.a` (2026-09-22, COHESION §0as · R-e-2) — `HLG-37`'s field
+    // arm RETIRED. It graded a 1.5px `--foreground` 50% boundary over
+    // `--background` that F.W11 `.e` removed when the field moved onto the
+    // producer's surface; the field is now glass-ui's `NumberField`, whose
+    // `field-control` boundary is the producer's to grade. A row for a paint
+    // nothing renders could only pass on a stack the page never shows.
     // ⊘ NOT CURED, AND NOT MOVED — this one is a PRODUCER row. `--card` and
     // `--background` carry the same luminance in the light arm, so no consumer
     // edit can give the cell's fill separation from the page without re-minting
@@ -142,14 +138,11 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
         banked: { light: 2.354, dark: 5.485 },
         owner: ".a",
     },
-    {
-        id: "FMD-19[level-input-focus-border]",
-        what: ".level-input:focus boundary against its own fill",
-        stack: ["var(--background)", "var(--viz-legendre)"],
-        kind: "non-text",
-        banked: { light: 2.446, dark: 7.778 },
-        owner: ".a",
-    },
+    // X.F.W12 `.a` (2026-09-22, COHESION §0as · R-e-2) — `FMD-19` RETIRED.
+    // It graded the number field's `--viz-legendre` focus border, which F.W11
+    // `.e` retired for the producer's one focus grammar (the `field-control`
+    // `:focus-visible` outline on `--focus-ring-width`); on glass-ui's
+    // `NumberField` there is no consumer focus paint left to measure.
     // ── fr-DarkModeToggle DMT M-2, moved out of the awaiting-owner roster ──
     // The glyph is the button's only visual content and its only sighted state
     // channel. It was two hard-coded sRGB triples; `.a` routed both through the
