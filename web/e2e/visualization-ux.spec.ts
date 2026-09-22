@@ -83,72 +83,16 @@ async function openMoreOptions(page: Page): Promise<void> {
 
 test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () => {
     // ── Keystone 1 — workspace default ──
-    // H.W1 (booked red-baseline). This keystone surfaces a REAL serious a11y
-    // violation (`aria-hidden-focus`) that is NOT app-owned: glass-ui's
-    // `ConfiguratorLayer` (`@mkbabb/glass-ui/configurator`, used by ContourSettings)
-    // renders its collapsed body with `aria-hidden="true"` while keeping the
-    // focusable controls inside it (it omits `inert`).
-    //
-    // X·F F.W0 (G-9, row 19) — JUSTIFICATION CORRECTED TO THE 4.0.0 TRUTH.
-    // This prose read "the app consumes the PUBLISHED `@mkbabb/glass-ui@^2.0.0`,
-    // so the fix is a glass-ui release (`inert` on the collapsed layer) + a
-    // guarded `^2→^3` bump". Both halves are false at the settled tree: the
-    // declared pin is `^4.0.0` and the installed producer is **4.0.0**, so the
-    // bump this premise waits on ALREADY HAPPENED — and it did not carry the
-    // fix. Measured at this seat, 2026-09-17:
-    //   `grep -c 'inert' node_modules/@mkbabb/glass-ui/dist/glass-ui.js` → **0**.
-    // The collapsed layer still omits `inert` at the ADOPTED pin, so the unblock
-    // condition is a producer release that actually ships it — a glass-ui BH
-    // relay item, never a consumer-side patch (SS-6) and never another bump.
-    // Booked as an inv-16′ sweep ask (`docs/constellation/ADOPTION-ASKS.md`,
-    // glass-ui-a11y).
-    // `test.fixme` keeps the e2e job honest (an acknowledged, booked baseline,
-    // NOT a hidden failure); keystones 2–4 below still enforce a11y on the OPEN
-    // Configurator / ExportModal / AnimationControls dropdown.
-    //
-    // ▲▲ X.F.W3 `.d` — `fr-ExportModal LC-2`: THE RATIONALE ABOVE IS FALSE ON
-    // ALL THREE OF ITS CLAUSES AT THE ADOPTED PIN, AND THE PROBE THAT ESTABLISHED
-    // THE FIRST ONE WAS A FALSE NEGATIVE BY CONSTRUCTION. Measured at this seat,
-    // 2026-09-19, against the installed 8.0.0:
-    //
-    //   (a) "glass-ui omits `inert`" — DEAD. `ConfiguratorLayer`’s collapsed
-    //       region emits `inert: !open || void 0` DIRECTLY BESIDE
-    //       `"aria-hidden": !open` on the `configurator-layer-region` div. This
-    //       is banked `K-13` and it reproduces at the bytes.
-    //
-    //       The F.W0 probe that concluded otherwise is re-run verbatim and it
-    //       STILL returns 0 — because it reads the wrong file:
-    //         `grep -c inert dist/glass-ui.js`            → 0
-    //         `grep -c inert dist/configurator-*.js`      → 2
-    //         `grep -rl inert dist/*.js | wc -l`          → 6
-    //       `glass-ui.js` is the ROOT BARREL chunk of a ~60-subpath split build;
-    //       `ConfiguratorLayer` is not in it. A one-chunk grep cannot falsify a
-    //       claim about a split package, whatever it returns.
-    //
-    //   (b) "consumes the PUBLISHED ^2.0.0" → already corrected once to ^4.0.0,
-    //       and stale again: the adopted pin is 8.0.0.
-    //
-    //   (c) "keystones 2–4 below still enforce a11y on surfaces without the
-    //       collapsed-region defect" — STRUCTURALLY FALSE, and it is the reason
-    //       `LC-1` exists. Those keystones run `openWorkspace` BEFORE opening
-    //       their surface, so their unscoped runs evaluated the very collapsed
-    //       layers this `fixme` excludes, over a strict DOM SUPERSET of this
-    //       test’s page — and passed only because a visible `[role=dialog]`
-    //       converts `aria-hidden-focus` from a violation into an `incomplete`.
-    //       Two adjacent tests asserted contradictory things about one DOM. The
-    //       modal keystones are SCOPED now (see `e2e/a11y.ts`), so the claim is
-    //       true of them going forward rather than false of them silently.
-    //
-    // WHY THE `fixme` STAYS ANYWAY, stated rather than quietly kept: `LC-2`’s
-    // cure is "RE-RUN this keystone at the installed pin; K-13 predicts green →
-    // delete the fixme AND its rationale". The prediction is now supported at
-    // the bytes, but the RUN is the precondition and it needs the full stack
-    // (uvicorn + Mongo + vite via `scripts/e2e.sh`) — this suite declares no
-    // `webServer`, and standing that stack up is not this unit’s act. Deleting a
-    // booked baseline on a prediction instead of a measurement is the failure
-    // mode `LC-2` is itself convicting. The deletion is named as this unit’s
-    // residual, one green run away.
-    test.fixme("keystone: workspace default has no serious/critical a11y violations", async ({
+    // X.F.W10S.b (2026-09-22) — UN-FIXME'D ON A FULL-STACK RUN. The booked
+    // `aria-hidden-focus` (glass-ui `ConfiguratorLayer` omitting `inert`) is
+    // gone at the adopted 8.0.0 pin, as `LC-2` / `K-13` predicted: the run
+    // reports no such node. What the run DID report was app-owned —
+    // `nested-interactive` (serious) on the animation dock's collapsed summary,
+    // which glass-ui 8.0.0 makes the disclosure (`role="button"`) while this app
+    // kept its mini Play/Pause inside it. Cured in `AnimationControls.vue`
+    // (the control moves to `#persistent`); the prior rationale is deleted
+    // with the fixme, per `LC-2`'s own cure.
+    test("keystone: workspace default has no serious/critical a11y violations", async ({
         page,
     }) => {
         await openWorkspace(page);
@@ -156,26 +100,12 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
     });
 
     // ── Keystone 2 — ContourSettings Configurator open ──
-    // Same booked `glass-ui-a11y` baseline as keystone 1: opening the Contour
-    // `ConfiguratorLayer` leaves the workspace's SIBLING layers (basis,
-    // coefficients) collapsed, and glass-ui renders each collapsed layer body
-    // with `role="region" aria-hidden="true"` while keeping its focusable
-    // `btn-pill` trigger inside (it omits `inert`) — an axe `aria-hidden-focus`
-    // **serious** violation that no app-level action can avoid (the closed
-    // siblings always coexist with the open one). The app's OWN contribution to
-    // this keystone — a `button-name` **critical** on the Strategy `SelectTrigger`
-    // — was real and is FIXED in `ContourSettings.vue` (`aria-label="Contour
-    // extraction strategy"`); after that fix the ONLY residual is the vendored
-    // collapsed-layer defect. `test.fixme` keeps the job honest (acknowledged,
-    // booked baseline — `docs/constellation/ADOPTION-ASKS.md`, glass-ui-a11y —
-    // NOT a hidden failure) pending a glass-ui release that ships `inert` on the
-    // collapsed layer. **The premise is corrected to the 4.0.0 truth (X·F F.W0,
-    // G-9, row 19): the `^2→^3` bump this cell used to wait on is two majors
-    // stale — the app is pinned `^4.0.0`, the installed producer IS 4.0.0, and
-    // its dist carries ZERO `inert` occurrences (measured 2026-09-17).**
-    // Keystones 3–4 below still enforce a11y on the Dialog +
-    // dropdown surfaces, which carry no such collapsed-region defect.
-    test.fixme("keystone: ContourSettings Configurator-open is a11y-clean", async ({ page }) => {
+    // X.F.W10S.b (2026-09-22) — UN-FIXME'D ON A FULL-STACK RUN. The booked
+    // collapsed-sibling `aria-hidden-focus` no longer reproduces at 8.0.0; the
+    // one serious node the run found was keystone 1's `nested-interactive`
+    // (the dock summary), cured in `AnimationControls.vue`. The Strategy
+    // `SelectTrigger` `button-name` fix in `ContourSettings.vue` stands.
+    test("keystone: ContourSettings Configurator-open is a11y-clean", async ({ page }) => {
         await openWorkspace(page);
 
         // Expand the Contour configurator section.
@@ -218,35 +148,13 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
     });
 
     // ── Keystone 4 — AnimationControls dropdown open ──
-    // H.W1 (booked red-baseline — SAME vendored `glass-ui-a11y` defect as
-    // keystones 1–2). Opening the AnimationControls "More options" dropdown
-    // leaves the workspace's ContourSettings `ConfiguratorLayer`s collapsed in
-    // the background; glass-ui renders each collapsed layer body with
-    // `aria-hidden="true"` while keeping its focusable `btn-pill` trigger inside
-    // (it omits `inert`) — the axe `aria-hidden-focus` **serious** violation
-    // booked under `docs/constellation/ADOPTION-ASKS.md` (glass-ui-a11y). The
-    // open menu's OWN surface is a11y-clean: every app-owned defect this
-    // keystone surfaced is FIXED in-tree —
-    //   • the dropdown failed to position (Reka popper never measured) because a
-    //     `<Tooltip>` (a nested Reka PopperRoot) wrapped the `DockDropdownTrigger`
-    //     anchor → moved the tooltip inside the trigger (`AnimationControls.vue`);
-    //   • `:modal="false"` on the menu drops Reka's `aria-hidden` on `#app` (the
-    //     menu portals to <body>, so app-wide focus-scoping was spurious);
-    //   • a `button-name` **critical** on the SpeedSelect trigger → added
-    //     `aria-label="Playback speed"` (`SpeedSelect.vue`);
-    //   • an `aria-required-children` **critical** on the menu → the Export action
-    //     is now a `DropdownMenuItem` (`role="menuitem"`), the Easing chips are
-    //     `role="menuitemradio"` (`EasingPicker.vue`), and the Speed/Easing
-    //     groupings carry `role="group"`.
-    // The ONLY residual is the vendored collapsed-layer `aria-hidden-focus`, so
-    // `test.fixme` keeps the job honest (acknowledged, booked baseline — NOT a
-    // hidden failure) pending a glass-ui release that ships `inert` on the
-    // collapsed layer (inv-16′ sweep candidate). **Corrected to the 4.0.0 truth
-    // (X·F F.W0, G-9, row 19): the guarded `^2→^3` bump this cell used to name
-    // is two majors stale and is not the unblock — the adopted 4.0.0 dist has
-    // ZERO `inert` occurrences (measured 2026-09-17).** When the producer ships
-    // it, un-fixme: the open-menu surface is already clean.
-    test.fixme("keystone: AnimationControls dropdown-open is a11y-clean", async ({ page }) => {
+    // X.F.W10S.b (2026-09-22) — UN-FIXME'D ON A FULL-STACK RUN. The only
+    // residual this cell named — the vendored collapsed-layer
+    // `aria-hidden-focus` — does not reproduce at the adopted 8.0.0 pin, and
+    // the open-menu surface was already clean (the app-owned fixes listed at
+    // its authoring — the popper anchor, `:modal="false"`, the SpeedSelect
+    // name, the `menuitem`/`menuitemradio`/`group` roles — all stand).
+    test("keystone: AnimationControls dropdown-open is a11y-clean", async ({ page }) => {
         await openWorkspace(page);
 
         await openMoreOptions(page);
