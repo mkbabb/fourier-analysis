@@ -16,15 +16,18 @@
                  half-landed here. -->
             <div class="level-row">
                 <label class="level-label" :for="lowId">Low</label>
-                <Input
-                    :id="lowId"
-                    type="text"
-                    inputmode="numeric"
-                    size="sm"
+                <NumberField
                     :model-value="lowLevel"
-                    @change="emitLow(($event.target as HTMLInputElement).value)"
-                    class="level-input fira-code tabular-nums"
-                />
+                    :min="1"
+                    :max="highLevel - 1"
+                    :step="1"
+                    :format-options="INTEGER_FORMAT"
+                    size="sm"
+                    class="level-field"
+                    @update:model-value="emitLow"
+                >
+                    <NumberFieldInput :id="lowId" />
+                </NumberField>
                 <Slider
                     v-model="lowModel"
                     :min="1"
@@ -37,15 +40,18 @@
 
             <div class="level-row">
                 <label class="level-label" :for="highId">High</label>
-                <Input
-                    :id="highId"
-                    type="text"
-                    inputmode="numeric"
-                    size="sm"
+                <NumberField
                     :model-value="highLevel"
-                    @change="emitHigh(($event.target as HTMLInputElement).value)"
-                    class="level-input fira-code tabular-nums"
-                />
+                    :min="lowLevel + 1"
+                    :max="maxLevel"
+                    :step="1"
+                    :format-options="INTEGER_FORMAT"
+                    size="sm"
+                    class="level-field"
+                    @update:model-value="emitHigh"
+                >
+                    <NumberFieldInput :id="highId" />
+                </NumberField>
                 <Slider
                     v-model="highModel"
                     :min="lowLevel + 1"
@@ -93,7 +99,7 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Input } from "@mkbabb/glass-ui/input";
+import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
 import { Slider } from "@mkbabb/glass-ui/slider";
 import {
     interpolateAtHarmonicLevel,
@@ -125,24 +131,36 @@ const emit = defineEmits<{
     select: [level: number];
 }>();
 
-function emitLow(raw: string) {
-    const v = Math.max(1, Math.min(props.highLevel - 1, Number(raw) || 1));
+/*
+ * X.F.W12 `.a` — R-e-1: the two fields are the producer's `NumberField`, so
+ * the value arrives as a number (ArrowUp/ArrowDown step it by `:step`, and
+ * Reka clamps to `:min`/`:max`). A cleared field commits `NaN`, which the
+ * `|| 1` below folds to the floor exactly as the text path's `Number("")`
+ * did; the clamp stays the range authority for the slider path too.
+ */
+const INTEGER_FORMAT: Intl.NumberFormatOptions = {
+    maximumFractionDigits: 0,
+    useGrouping: false,
+};
+
+function emitLow(raw: number) {
+    const v = Math.max(1, Math.min(props.highLevel - 1, raw || 1));
     emit("update:lowLevel", v);
 }
 
-function emitHigh(raw: string) {
-    const v = Math.max(props.lowLevel + 1, Math.min(props.maxLevel, Number(raw) || 1));
+function emitHigh(raw: number) {
+    const v = Math.max(props.lowLevel + 1, Math.min(props.maxLevel, raw || 1));
     emit("update:highLevel", v);
 }
 
 /* A.W2.c — adapt the scalar level bounds to the slider's array model. */
 const lowModel = computed<number[]>({
     get: () => [props.lowLevel],
-    set: (arr) => emitLow(String(arr[0] ?? 1)),
+    set: (arr) => emitLow(arr[0] ?? 1),
 });
 const highModel = computed<number[]>({
     get: () => [props.highLevel],
-    set: (arr) => emitHigh(String(arr[0] ?? 1)),
+    set: (arr) => emitHigh(arr[0] ?? 1),
 });
 
 /**
@@ -230,21 +248,19 @@ function getPath(level: number): string {
     min-width: 2.5rem;
 }
 
-/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): the two level fields are
-   the producer's `Input` (`@mkbabb/glass-ui/input`), so the local field chrome
-   YIELDS to the producer's surface (spec `.a`: "where a component is one that
-   glass-ui ships (input …), the local styling yields"). Retired with it: the
-   hand-drawn 1.5px boundary (HLG-37), the radius, the fill, `outline: none`,
-   the two-leg focus transition (HLG-40), the `--viz-legendre` focus paint
-   (FMD-19) and the spin-button suppression — the producer's `field-control`
-   owns boundary, focus ring (`:focus-visible` outline on `--focus-ring-width`),
-   radius and fill. `type="number"` is outside `Input`'s text-shaped fence, so
-   the field is `type="text"` + `inputmode="numeric"`; the clamp in
-   `emitLow`/`emitHigh` is, as before, the range authority. What stays is
-   layout only: the measure, the centred numerals and the no-shrink. */
-.level-input {
+/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): the two level fields
+   left their hand-drawn chrome for the producer's surface — the 1.5px
+   boundary (HLG-37), the radius, the fill, `outline: none`, the two-leg focus
+   transition (HLG-40), the `--viz-legendre` focus paint (FMD-19) and the
+   spin-button suppression all retired there.
+   X.F.W12 `.a` — R-e-1 (COHESION §0as): that move went onto the text-shaped
+   `Input` and lost ArrowUp/ArrowDown stepping; the fields now ride the
+   producer's `NumberField` (`@mkbabb/glass-ui/number-field`), which owns the
+   spinbutton role, the keyboard step, the min/max clamp, the mono tabular
+   centred numerals and the `field-control` boundary/focus ring. What stays
+   here is layout only: the measure and the no-shrink beside the Slider. */
+.level-field {
     width: 3.5rem;
-    text-align: center;
     flex-shrink: 0;
 }
 

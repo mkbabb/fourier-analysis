@@ -37,15 +37,18 @@
             <div class="duration-row">
                 <label class="config-label" :for="durationId">Duration</label>
                 <div class="input-with-unit">
-                    <Input
-                        :id="durationId"
-                        type="text"
-                        inputmode="numeric"
-                        size="sm"
+                    <NumberField
                         :model-value="duration"
-                        @change="emitDuration(($event.target as HTMLInputElement).value)"
-                        class="num-input fira-code tabular-nums"
-                    />
+                        :min="50"
+                        :max="800"
+                        :step="10"
+                        :format-options="{ maximumFractionDigits: 0, useGrouping: false }"
+                        size="sm"
+                        class="num-field"
+                        @update:model-value="emitDuration"
+                    >
+                        <NumberFieldInput :id="durationId" />
+                    </NumberField>
                     <span class="input-unit fira-code">ms</span>
                 </div>
                 <!--
@@ -140,7 +143,7 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
-import { Input } from "@mkbabb/glass-ui/input";
+import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
 import {
     Select,
     SelectTrigger,
@@ -173,8 +176,11 @@ const emit = defineEmits<{
     "update:easing": [value: string];
 }>();
 
-function emitDuration(raw: string) {
-    const v = Math.max(50, Math.min(800, Math.round(Number(raw) || 50)));
+/* X.F.W12 `.a` — R-e-1: the producer's `NumberField` commits a number (a
+   cleared field commits `NaN`, folded to the floor by `|| 50` as the text
+   path's `Number("")` was); the clamp stays the range authority. */
+function emitDuration(raw: number) {
+    const v = Math.max(50, Math.min(800, Math.round(raw || 50)));
     emit("update:duration", v);
 }
 
@@ -189,7 +195,7 @@ const DURATION_MARKS = [50, 100, 200, 400, 800] as const;
 /* A.W2.c — adapt the scalar `duration` to the slider's array model. */
 const durationModel = computed<number[]>({
     get: () => [props.duration],
-    set: (arr) => emitDuration(String(arr[0] ?? 50)),
+    set: (arr) => emitDuration(arr[0] ?? 50),
 });
 
 const presets = EASING_PRESETS;
@@ -255,20 +261,18 @@ const easingNames = EASING_PRESET_NAMES;
     gap: 0.125rem;
 }
 
-/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): the duration field is the
-   producer's `Input` (`@mkbabb/glass-ui/input`), so the local field chrome
-   YIELDS to the producer's surface (spec `.a`). Retired with it: the 15%
-   boundary, the radius, the fill, `outline: none`, the border-only
-   transition, the spin-button suppression and `MPC-22`'s per-card focus tint —
-   the producer's `field-control` owns boundary, focus ring, radius and fill,
-   and one focus grammar app-wide is the point of the move. `type="number"` is
-   outside `Input`'s text-shaped fence, so the field is `type="text"` +
-   `inputmode="numeric"`; `emitDuration`'s clamp stays the range authority.
-   What stays is layout only: the measure and the right-aligned numerals
-   against their `ms` unit. */
-.num-input {
+/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): the duration field's
+   local chrome retired onto the producer's surface — the 15% boundary, the
+   radius, the fill, `outline: none`, the border-only transition, the
+   spin-button suppression and `MPC-22`'s per-card focus tint.
+   X.F.W12 `.a` — R-e-1 (COHESION §0as): that move went onto the text-shaped
+   `Input` and lost keyboard stepping; the field now rides the producer's
+   `NumberField` (`@mkbabb/glass-ui/number-field`), which owns the spinbutton
+   role, ArrowUp/ArrowDown by `:step`, the clamp, the mono tabular numerals
+   and the `field-control` boundary/focus ring. What stays is layout only:
+   the measure beside its `ms` unit. */
+.num-field {
     width: 3.5rem;
-    text-align: right;
 }
 
 .input-unit {
