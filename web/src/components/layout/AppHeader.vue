@@ -257,8 +257,14 @@ const galleryStore = useGalleryStore();
     flex-shrink: 0;
 }
 
+/* X.F.W10S.b — `E-F9b-4`: the toggle's size token rides the system's control
+   floor. `--control-floor` is `0px` under a fine pointer and `--touch-target`
+   (2.75rem) under a coarse one (glass-ui `tokens/light-dark.css`), so the fine
+   ladder below is unchanged and a touch device can no longer receive the 40px
+   box the 44px floor forbids. The same `max(rung, floor)` shape the producer's
+   own control heights use. */
 .dark-mode-toggle {
-    --toggle-size: 2.5rem;
+    --toggle-size: max(2.5rem, var(--control-floor, 0px));
 }
 
 @media (min-width: 640px) {
@@ -272,7 +278,7 @@ const galleryStore = useGalleryStore();
         height: 1.75rem;
     }
     .dark-mode-toggle {
-        --toggle-size: 2.75rem;
+        --toggle-size: max(2.75rem, var(--control-floor, 0px));
     }
 }
 
@@ -304,6 +310,13 @@ const galleryStore = useGalleryStore();
     font: inherit;
     color: inherit;
     text-align: inherit;
+    /* X.F.W10S.b — `E-F9b-4`: the wordmark is the trigger's whole box, and at
+       <640px it is the lone ℱ glyph — 20.8px wide, a touch target no finger can
+       rely on. The box takes the system's control floor on both axes (`0px`
+       fine, 44px coarse), so the glyph paints exactly as before and only the hit
+       area grows where the pointer is coarse. */
+    min-inline-size: var(--control-floor, 0px);
+    min-block-size: var(--control-floor, 0px);
 }
 
 /* Share button enter/leave (A.W3.d — bezier→`--ease-apple-spring`) */
