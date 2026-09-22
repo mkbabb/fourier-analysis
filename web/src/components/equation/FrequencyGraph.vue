@@ -255,6 +255,6 @@ onMounted(() => draw());
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
     background: var(--border);
-    border-radius: 2px;
+    border-radius: var(--radius-pill);
 }
 </style>

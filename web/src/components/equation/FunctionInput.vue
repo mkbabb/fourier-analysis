@@ -288,7 +288,7 @@ const activePreset = computed(() =>
 }
 
 .preset-pill {
-    border-radius: 9999px;
+    border-radius: var(--radius-control);
 }
 /* X.F.W3 repair 1 — the published active-state vocabulary, applied
    (`FR-COB-3`). A preset pill is a selected option in a set, and this set has no

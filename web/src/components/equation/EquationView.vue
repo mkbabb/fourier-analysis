@@ -639,7 +639,7 @@ watchDebounced(
 /* ── Golden hover on sigma coefficients ── */
 .eq-card :deep(.eq-coeff) {
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     padding: 0 2px;
     transition: color 0.12s ease, background 0.12s ease;
 }
@@ -690,7 +690,6 @@ watchDebounced(
     color: var(--popover-foreground);
     background: var(--popover);
     border: 1.5px solid var(--border);
-    border-radius: 0.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     animation: tooltip-in 0.15s var(--ease-out-expo);
     /* `M-US` — `user-select: none` is defensible for a one-line label and wrong

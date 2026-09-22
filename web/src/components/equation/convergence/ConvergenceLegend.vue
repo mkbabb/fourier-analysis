@@ -59,7 +59,6 @@ const emit = defineEmits<{
     @apply absolute top-2 right-2 pointer-events-auto;
     max-height: calc(100% - 16px);
     padding: 8px 12px;
-    border-radius: 8px;
     z-index: var(--z-content);
     min-width: 100px;
 }
