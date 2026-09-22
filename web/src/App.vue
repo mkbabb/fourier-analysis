@@ -4,7 +4,7 @@ import { RouterView, useRouter } from "vue-router";
 import { TooltipProvider } from "@mkbabb/glass-ui/tooltip";
 import { Toaster } from "@mkbabb/glass-ui/toast";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
-import AppHeader from "@/components/layout/AppHeader.vue";
+import AppDock from "@/components/layout/AppDock.vue";
 import { resolveVizColors } from "@/lib/colors";
 
 /**
@@ -130,25 +130,14 @@ onScopeDispose(() => {
                  sits above the shell's own ground and beneath all content;
                  the paper keeps its own surface on top of it. -->
             <div class="paper-grid fixed inset-0 -z-10 pointer-events-none" aria-hidden="true" />
-            <!-- ⊘ X.F.W3 `.e` / `fr-App MG-epsilon` — RECORDED AS A DECISION,
-                 DELIBERATELY NOT EXECUTED.
-
-                 `AppHeader`'s `sticky top-0` and `backdrop-blur-md` are
-                 STRUCTURALLY INERT here and have always been: the header is a
-                 flex SIBLING of `<main>`, and its own scrollport is the
-                 `overflow-hidden` shell below, whose scrollTop is pinned at 0.
-                 `sticky` therefore never engages, nothing ever passes behind
-                 the blur, and the app pays for a permanent compositing layer
-                 that composites nothing.
-
-                 The repair is a DESIGN CHOICE, not a defect fix — move the
-                 header inside the scroller (making both treatments real) or
-                 retire the treatment — and the record routes the at-rest
-                 screenshot that would decide it to SS-13 (fr-App probe 8) -> S-9.
-                 A silent flip in either direction is this row's failure mode,
-                 so the finding is written where the mechanism lives and the
-                 choice is left to the seat that holds the screenshot. -->
-            <AppHeader />
+            <!-- X.F.W11.c (COHESION §0ao OA-3) — the shell's chrome is a
+                 `GlassDock` (`AppDock.vue`); `AppHeader.vue` is retired with
+                 every control re-homed once. `fr-App MG-epsilon`'s open choice
+                 (the old header's structurally inert `sticky top-0` +
+                 `backdrop-blur-md`) is DECIDED by retirement: the dock's own
+                 plate is the surface, and the landmark stays a flex sibling of
+                 `<main>`, the app's sole scroller. -->
+            <AppDock />
             <main ref="main" class="flex-1 min-h-0 flex flex-col overflow-y-auto">
                 <RouterView />
             </main>

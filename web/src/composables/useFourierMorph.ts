@@ -25,7 +25,7 @@ import {
  *
  * The static edge that used to sit here — `import { … } from "@/lib/easings"` —
  * was the whole reason `vendor-math` rode the eager bundle on EVERY route:
- * `main.ts → App → AppHeader → DarkModeToggle → useFourierMorph → @/lib/easings
+ * `main.ts → App → AppDock (né AppHeader; X.F.W11.c) → DarkModeToggle → useFourierMorph → @/lib/easings
  * → @mkbabb/value.js`. The header mounts on every route, so every visitor paid
  * for the easing library whether or not they ever morphed anything.
  *
