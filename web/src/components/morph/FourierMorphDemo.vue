@@ -305,7 +305,7 @@ function handleReset() {
    declaration the producer's `.button` recipe already carries in
    `@layer components` — display / min-block-size (the coarse-pointer floor via
    `--control-h-md`) / align-items / justify-content / gap / padding-inline /
-   border / border-radius / colour / font / font-size / font-weight / the
+   border / corner radius / colour / font / font-size / font-weight / the
    six-leg tokenised transition — and then overrode the plate, so the emitted
    `data-emphasis="primary"`/`"secondary"` was a lie: it selected a recipe the
    consumer had already erased. `emphasis` now governs both controls, which is

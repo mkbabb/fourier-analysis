@@ -237,7 +237,7 @@ function getPath(level: number): string {
     /* SP-3 · HLG-37 — 15% over `--background` measured 1.361 L / 1.400 D
        (the banked figures, reproduced); 50% measures 3.322 L / 4.486 D. */
     border: 1.5px solid color-mix(in srgb, var(--foreground) 50%, transparent);
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
     background: var(--background);
     color: var(--foreground);
     @apply text-base;
@@ -307,7 +307,7 @@ function getPath(level: number): string {
 
    Gone (the recipe owns them, in `@layer components`, and unlayered scoped CSS
    was silently beating it): `display` / `align-items` / `gap` / `padding` /
-   `border-radius` / `cursor` / the three-leg `transition` shorthand (HLG-6 —
+   the corner radius / `cursor` / the three-leg `transition` shorthand (HLG-6 —
    it truncated the producer's six-leg tokenised list) / `background`
    (it replaced the `glass-capsule` plate `emphasis="secondary"` selects).
    Kept, and LAYERED: the column stack and the no-shrink, which is what makes a

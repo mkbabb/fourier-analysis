@@ -259,7 +259,7 @@ const easingNames = EASING_PRESET_NAMES;
     width: 3.5rem;
     padding: 0.125rem 0.375rem;
     border: 1.5px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
     background: var(--background);
     color: var(--foreground);
     @apply text-base;

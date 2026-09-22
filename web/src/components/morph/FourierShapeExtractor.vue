@@ -289,7 +289,7 @@ onUnmounted(() => {
     overflow: auto;
     font-size: 0.75rem;
     /* The region is focusable (FSE-D-8), so it must show that it is. */
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
 }
 
 .output-log:focus-visible {
