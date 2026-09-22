@@ -620,7 +620,7 @@ onUnmounted(() => {
         color-mix(in srgb, var(--primary) 70%, transparent),
         var(--primary)
     );
-    border-radius: 0 1px 1px 0;
+    border-radius: var(--radius-pill);
     /* ⊘ `--scroll-progress-scroller` WAS DECLARED HERE AND READ BY NOBODY. The
        producer's recipe reads `var(--scroll-progress-timeline, scroll(nearest
        block))` — a different name — so the declaration bound nothing, and the
@@ -657,7 +657,7 @@ onUnmounted(() => {
     -webkit-font-smoothing: antialiased;
     hyphens: auto;
     min-width: 0;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-panel);
     border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     background: var(--card);
     box-shadow: var(--shadow-cartoon);
@@ -725,7 +725,7 @@ onUnmounted(() => {
     position: relative;
     width: 2rem;
     height: 2rem;
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     border: 1.5px solid var(--border);
     background: color-mix(in srgb, var(--background) 92%, transparent);
     backdrop-filter: blur(8px);
@@ -773,7 +773,7 @@ onUnmounted(() => {
     right: -4px;
     min-width: 16px;
     height: 16px;
-    border-radius: 8px;
+    border-radius: var(--radius-badge);
     background: var(--primary);
     color: var(--primary-foreground);
     @apply text-sm;
@@ -794,7 +794,7 @@ onUnmounted(() => {
        it is also the register declared for ink over a glass plate
        (`--on-glass-muted-strong`), which is what `.glass-wash` makes this. */
     color: var(--muted-foreground-strong);
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
     padding: 0.25rem 0.5rem;
     letter-spacing: 0.02em;
 }

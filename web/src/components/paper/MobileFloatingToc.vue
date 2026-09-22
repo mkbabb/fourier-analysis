@@ -263,7 +263,7 @@ watch(() => props.search.isOpen.value, (open) => {
     justify-content: center;
     flex-shrink: 0;
     padding: 0.25rem;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     background: none;
     border: none;
     cursor: pointer;
@@ -367,7 +367,7 @@ watch(() => props.search.isOpen.value, (open) => {
     display: block;
     width: 100%;
     padding: 0.5rem 0.75rem;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
     border: none;
     background: none;
     cursor: pointer;

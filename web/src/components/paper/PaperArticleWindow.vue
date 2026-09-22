@@ -282,7 +282,7 @@ const renderCalloutText = computed(
     margin: 1.5rem 0;
     padding: 1.25rem 1.5rem;
     border: 1px solid var(--border);
-    border-radius: 0.75rem;
+    border-radius: var(--radius-panel);
     background: color-mix(in srgb, var(--muted) 25%, transparent);
     text-align: center;
 }

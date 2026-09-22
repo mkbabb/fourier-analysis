@@ -246,7 +246,7 @@ function plainTitle(section: PaperSectionData): string {
     scroll-padding-bottom: var(--sidebar-bottom-inset);
     touch-action: pan-y;
     padding: 0.625rem 0.625rem var(--sidebar-bottom-inset);
-    border-radius: 0.75rem;
+    border-radius: var(--radius-panel);
     border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
     background: var(--card);
     box-shadow: 3px 3px 0px 0px color-mix(in srgb, var(--foreground) 8%, transparent);
@@ -282,7 +282,7 @@ function plainTitle(section: PaperSectionData): string {
     /* `D-B3(a)`: 20×20 is under SC 2.5.8's 24px minimum. */
     min-width: 1.5rem;
     min-height: 1.5rem;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     /* `D-B3(b)`: border 1.27:1 and glyph 1.87:1 — neither reached the 3:1
        non-text floor in any state.
 
