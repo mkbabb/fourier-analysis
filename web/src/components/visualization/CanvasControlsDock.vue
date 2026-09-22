@@ -102,12 +102,6 @@ watch(
             <DockSeparator />
         </template>
 
-        <!-- Edit (always visible when contour exists) -->
-        <Tooltip v-if="hasContour" text="Edit contour" side="bottom">
-            <DockControl aria-label="Edit contour" :active="isEditing" @click="$emit('toggleEdit')">
-                <Pencil />
-            </DockControl>
-        </Tooltip>
         <!-- Fullscreen -->
         <Tooltip text="Fullscreen" side="bottom">
             <DockControl aria-label="Fullscreen" @click="$emit('toggleFullscreen')">
@@ -143,12 +137,27 @@ watch(
                 <Maximize2 class="dock-summary-glyph" aria-hidden="true" />
                 <span v-if="showImageOverlay || showGhost" class="view-dot" />
             </span>
-            <Pencil
-                v-if="hasContour"
-                class="dock-summary-glyph"
-                :class="{ 'is-editing': isEditing }"
-                aria-hidden="true"
-            />
+        </template>
+
+        <!--
+          X.F.W11 R-close-1 — Edit contour is the dock's one PERSISTENT control.
+          It is the editor's only door in AND out, and the comment it carried
+          ("always visible when contour exists") was false: it sat in the
+          default slot, which GlassDock hides (`visibility:hidden`) whenever the
+          dock rests collapsed, while the summary drew a non-interactive Pencil
+          that advertised it. After an in-editor save hands focus to the
+          editor's Save, the canvas dock settles collapsed and the pressed
+          toggle had no reachable face. The producer's `persistent-end` slot
+          (rendered outside both layers, present collapsed and expanded) is the
+          idiom for exactly this control; the summary's Pencil retires with it
+          (one home per control), and `:active` keeps the pressed paint.
+        -->
+        <template #persistent-end>
+            <Tooltip v-if="hasContour" text="Edit contour" side="bottom">
+                <DockControl aria-label="Edit contour" :active="isEditing" @click="$emit('toggleEdit')">
+                    <Pencil />
+                </DockControl>
+            </Tooltip>
         </template>
     </GlassDock>
 </template>
@@ -200,12 +209,6 @@ watch(
         var(--foreground) calc(var(--opacity-icon-muted) * 100%),
         transparent
     );
-}
-
-/* The resting face tells the truth about the state it is resting in: an
-   in-progress edit reads at full strength, not as a muted affordance. */
-.dock-summary-glyph.is-editing {
-    color: var(--foreground);
 }
 </style>
 
