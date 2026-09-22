@@ -9,6 +9,7 @@ import SliderControl from "@/components/ui/SliderControl.vue";
 import NotationPills from "@/components/equation/NotationPills.vue";
 import { X } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Card, CardHeader, CardContent } from "@mkbabb/glass-ui/card";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import { renderLatex } from "@/lib/equation/render";
 
@@ -55,12 +56,19 @@ watchDebounced(
 </script>
 
 <template>
-    <div
-        class="eq-panel glass-wash"
+    <!-- X.F.W11.c (COHESION §0ao OA-1) — the panel's plate is the producer's
+         `Card` (a `Surface`, tier `floating`: it floats over the canvas, so the
+         floating tier's own cast, blur and `--radius-card` corner replace the
+         hand-copied `.glass-wash` class + a local box-shadow + `rounded-xl`);
+         `CardHeader` / `CardContent` carry the producer's `--card-pad` rhythm. -->
+    <Card
+        tier="floating"
+        size="sm"
+        class="eq-panel"
         tabindex="-1"
         @keydown.esc="emit('close')"
     >
-        <div class="flex items-center justify-between gap-2">
+        <CardHeader class="flex flex-row items-center justify-between gap-2">
             <span class="text-sm font-medium text-foreground">Equation</span>
             <div class="flex items-center gap-2">
                 <Metric
@@ -79,8 +87,9 @@ watchDebounced(
                     <X class="h-3.5 w-3.5" />
                 </Button>
             </div>
-        </div>
+        </CardHeader>
 
+        <CardContent class="flex flex-col gap-2">
         <div class="flex flex-col gap-1.5">
             <NotationPills v-model="notation" />
             <SliderControl
@@ -99,18 +108,18 @@ watchDebounced(
             <div v-else-if="error" class="text-sm text-red-400 fira-code">{{ error }}</div>
             <div v-else v-html="renderedHtml" class="eq-katex" />
         </div>
-    </div>
+        </CardContent>
+    </Card>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
 .eq-panel {
-    @apply absolute flex flex-col gap-2 p-2.5 rounded-xl;
+    position: absolute;
     z-index: var(--z-controls);
     top: 3.5rem;
     left: 0.5rem;
     max-width: min(28rem, calc(100% - 1rem));
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .eq-katex :deep(.katex-display) {
