@@ -39,7 +39,7 @@ const magnetRadius = ref(3); // 0 = off, 1-10 = number of adjacent points affect
 
 // Composables
 const { pushHistory, undo, redo, initHistory, canUndo, canRedo } = useContourHistory(points);
-const { dragging, selectedIdx, onPointPointerDown: rawPointPointerDown, onPointerMove, onPointerUp, deselect } = usePointDrag(
+const { selectedIdx, onPointPointerDown: rawPointPointerDown, onPointerMove, onPointerUp, deselect } = usePointDrag(
     points,
     magnetRadius,
     svgPoint,
