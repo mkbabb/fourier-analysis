@@ -169,7 +169,23 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         // turn this green. What is checkpointed is precisely the consumer-visible
         // render: the open body of a `CollapsibleSection`, which is the element
         // the register governs.
+        //
+        // X.F.W11 `.e` (COHESION §0aq, ESC-F11d-1) — THE SETTLE-WAIT, ON THE
+        // COMPUTE ONLY. A fresh context has no cached result, so `/equation`
+        // POSTs its first compute on mount and the Controls card shows the seeded
+        // `effectiveN` (Harmonics 20 / Display 10) until the response lands and
+        // re-renders it to the Parseval count (8 / 8 for `x(π−x)`). Waiting on the
+        // subtitle alone raced that response: the same bytes captured 20/10 once
+        // and 8/8 twice. The capture now waits for the compute to answer, so it
+        // is taken of the settled panel. No threshold moves.
+        const compute = page.waitForResponse(
+            (r) =>
+                /\/api\/equations\/compute$/.test(new URL(r.url()).pathname) &&
+                r.request().method() === "POST",
+            { timeout: 60_000 },
+        );
         await page.goto("/equation");
+        expect((await compute).status()).toBe(200);
         const disclosureBody = page.locator(".slider-subtitle").first();
         await expect(disclosureBody).toBeVisible({ timeout: 60_000 });
         await freeze(page);
