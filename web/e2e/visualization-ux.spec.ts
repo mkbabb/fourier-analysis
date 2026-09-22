@@ -95,7 +95,15 @@ async function openMoreOptions(page: Page): Promise<void> {
     await moreOptions.click();
 }
 
-test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () => {
+// X.F.W12 `.a2` (COHESION §0au (b), 2026-09-22) — NOT SERIAL. The block was made
+// serial at `ca58321` with no stated reason, and under a full nine-worker run
+// one load-slow keystone then skipped every later test, the save-contour
+// keystone among them. Each test here owns its bootstrap (`openWorkspace` or
+// its own `page.goto`) and each was run ALONE from a fresh page, twice, and
+// passed (receipts: value.js `docs/tranches/X/execution/C/F-W12.md`, F.W12.a2),
+// so no test depends on a predecessor's state and the config's `fullyParallel`
+// default applies.
+test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
     // ── Keystone 1 — workspace default ──
     // X.F.W10S.b (2026-09-22) — UN-FIXME'D ON A FULL-STACK RUN. The booked
     // `aria-hidden-focus` (glass-ui `ConfiguratorLayer` omitting `inert`) is
