@@ -661,6 +661,7 @@ for (const vp of VIEWPORTS) {
         // booked baseline on a prediction instead of a measurement is the failure
         // mode `LC-2` is itself convicting. The deletion is named as this unit’s
         // residual, one green run away.
+        // 2026-09-22 (COHESION §0al): stays fixme — the mobile failure is producer-owned: glass-ui SegmentedTabs inactive underline ink 4.33:1, escalated E-F10S-b2, relayed to glass-ui BK as A-3.
         test.fixme(`a11y keystone: workspace default is clean @ ${vp.name} @mutating`, async ({
             page,
         }) => {
