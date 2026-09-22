@@ -4,6 +4,7 @@ import { Search, X, SlidersHorizontal } from "@lucide/vue";
 import { basisDisplay } from "../lib/basis-display";
 import type { GallerySort, GalleryTierFilter } from "@/lib/types";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Input } from "@mkbabb/glass-ui/input";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import {
     Select,
@@ -77,49 +78,54 @@ const hasActiveFilters = computed(
                  The filter toggle also carries `aria-expanded`/`aria-controls`: it
                  is a disclosure, and `aria-pressed` alone described a state the
                  drawer's existence, not the button's, actually holds. -->
-            <Search class="text-muted-foreground shrink-0" :size="16" aria-hidden="true" />
             <label class="sr-only" for="gallery-search-input">Search gallery by slug</label>
-            <input
+            <Input
                 id="gallery-search-input"
                 type="search"
-                :value="searchQuery"
+                :model-value="searchQuery"
                 placeholder="Search by slug..."
                 autocapitalize="none"
                 autocorrect="off"
                 spellcheck="false"
                 enterkeyhint="search"
-                class="search-input fira-code flex-1 min-w-0 bg-transparent border-none text-foreground text-sm outline-none"
+                class="search-input fira-code"
                 @input="searchQuery = ($event.target as HTMLInputElement).value.trimStart()"
             />
-            <Button
-                v-if="searchQuery"
-                emphasis="quiet"
-                size="xs"
-                icon-only
-                class="rounded-full text-muted-foreground"
-                aria-label="Clear search"
-                @click="searchQuery = ''"
-            >
-                <X :size="14" aria-hidden="true" />
-            </Button>
-            <!-- FR-GSB-30 — the hand-rolled rule measured 1.22:1 / 1.26:1: a
-                 divider nobody could see. `./separator` ships at the adopted pin
-                 with the producer's own border register, so this is an ADOPTION,
-                 not a contrast nudge — there is no local number left to drift. -->
-            <Separator orientation="vertical" decorative class="h-5 shrink-0" />
-            <Button
-                emphasis="quiet"
-                size="xs"
-                icon-only
-                class="filter-toggle rounded-full shrink-0 text-muted-foreground"
-                :aria-pressed="showFilters || hasActiveFilters"
-                :aria-expanded="showFilters"
-                aria-controls="gallery-filter-drawer"
-                aria-label="Filters and sorting"
-                @click.stop="showFilters = !showFilters"
-            >
-                <SlidersHorizontal :size="15" aria-hidden="true" />
-            </Button>
+            <!-- X.F.W11 `.e` — the glyph follows the field in tree order: the
+                 producer's field is its own stacking context (glass backdrop),
+                 so a positioned glyph BEFORE it is painted under it. -->
+            <Search class="search-icon text-muted-foreground shrink-0" :size="16" aria-hidden="true" />
+            <span class="search-actions">
+                <Button
+                    v-if="searchQuery"
+                    emphasis="quiet"
+                    size="xs"
+                    icon-only
+                    class="rounded-full text-muted-foreground"
+                    aria-label="Clear search"
+                    @click="searchQuery = ''"
+                >
+                    <X :size="14" aria-hidden="true" />
+                </Button>
+                <!-- FR-GSB-30 — the hand-rolled rule measured 1.22:1 / 1.26:1: a
+                     divider nobody could see. `./separator` ships at the adopted pin
+                     with the producer's own border register, so this is an ADOPTION,
+                     not a contrast nudge — there is no local number left to drift. -->
+                <Separator orientation="vertical" decorative class="h-5 shrink-0" />
+                <Button
+                    emphasis="quiet"
+                    size="xs"
+                    icon-only
+                    class="filter-toggle rounded-full shrink-0 text-muted-foreground"
+                    :aria-pressed="showFilters || hasActiveFilters"
+                    :aria-expanded="showFilters"
+                    aria-controls="gallery-filter-drawer"
+                    aria-label="Filters and sorting"
+                    @click.stop="showFilters = !showFilters"
+                >
+                    <SlidersHorizontal :size="15" aria-hidden="true" />
+                </Button>
+            </span>
         </div>
 
         <!-- Filter drawer (overlaid, does not affect flow) -->
@@ -200,27 +206,53 @@ const hasActiveFilters = computed(
     display: flex;
 }
 
+/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): THE PILL IS THE
+   PRODUCER'S `Input`. `.search-pill` painted a whole field — its own muted
+   fill, a 35% border and `--radius-field` — around a chromeless `<input>`
+   (`bg-transparent border-none outline-none`), which is exactly the surface
+   `@mkbabb/glass-ui/input` ships. Spec `.a`: "where a component is one that
+   glass-ui ships (input …), the local styling yields to the producer's
+   surface". The `field-control` now owns boundary, fill, pill radius and the
+   `:focus-visible` ring (the input's `outline-none` had left the bar with no
+   focus paint at all), and `.search-pill` is layout only: a positioning
+   context that seats the glyph and the actions INSIDE the producer's field.
+   The measure is still named once (`--search-measure`, FR-GSB-30). */
 .search-pill {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: var(--search-measure);
+}
+
+.search-icon {
+    position: absolute;
+    inset-inline-start: 0.75rem;
+    pointer-events: none;
+}
+
+/* Layout, not chrome: the inline padding clears the glyph at the start and
+   reserves the actions' run at the end — two `xs` rungs (`--control-h-xs`,
+   the producer's token, floored on coarse pointers) plus the separator. */
+.search-input {
+    flex: 1;
+    min-width: 0;
+    padding-inline-start: 2.25rem;
+    padding-inline-end: calc(2 * var(--control-h-xs) + 1.25rem);
+}
+
+.search-actions {
+    position: absolute;
+    inset-inline-end: 0.375rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    width: 100%;
-    max-width: var(--search-measure);
-    padding: 0.375rem 0.75rem;
-    border-radius: var(--radius-field);
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
-    border: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
 }
 
-/* FR-GSB-30 ⊕ FR-GSB-12 — ONE placeholder authority.
-   A `placeholder:text-muted-foreground/50` utility sat on the input's class
-   list AND this rule sat here unlayered, so the utility was dead code that
-   read as the live one. The utility is deleted in the same hunk that keeps
-   this rule, because leaving either half alone leaves two authorities
-   standing — which is the whole of what the row books. */
-.search-input::placeholder {
-    color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
-}
+/* FR-GSB-30 ⊕ FR-GSB-12 — ONE placeholder authority, and it is now the
+   producer's (`.field-control::placeholder` → `--muted-foreground`). The
+   local 50% dilution retires with the rest of the field chrome, as
+   `FunctionInput`'s bespoke placeholder mute did (measured there at 2.02:1). */
 
 /* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).
    The control already SET `aria-pressed` and then painted from a parallel

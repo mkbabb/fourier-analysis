@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Input } from "@mkbabb/glass-ui/input";
 import { Search, X, Maximize2, Minimize2 } from "@lucide/vue";
 import type { PaperSearchState } from "./usePaperSearch";
 
@@ -14,19 +15,22 @@ const emit = defineEmits<{
     expand: [];
 }>();
 
-const inputRef = ref<HTMLInputElement | null>(null);
+/* X.F.W11 `.e` — the field is the producer's `Input`, whose root IS the
+   `<input>` (`inheritAttrs: false`, one element), so the ref holds the
+   component instance and `$el` is the element `focus()` reaches. */
+const inputRef = ref<InstanceType<typeof Input> | null>(null);
+
+function focus() {
+    (inputRef.value?.$el as HTMLInputElement | undefined)?.focus();
+}
 
 // Auto-focus input when opened
 watch(
     () => props.search.isOpen.value,
     (open) => {
-        if (open) nextTick(() => inputRef.value?.focus());
+        if (open) nextTick(focus);
     },
 );
-
-function focus() {
-    inputRef.value?.focus();
-}
 
 defineExpose({ focus });
 </script>
@@ -44,11 +48,10 @@ defineExpose({ focus });
          naming half, already landed) — this label carries no text and is not
          competing for it. -->
     <label class="paper-search-input-wrap" :class="`paper-search-input-wrap--${variant}`">
-        <Search class="paper-search-icon" />
         <!-- `★MF-2`: the inline arm is the same combobox as the palette's and
              had the same nothing — a placeholder standing in for a name, no
              `role`, and arrows that moved a selection no reader could observe. -->
-        <input
+        <Input
             ref="inputRef"
             type="text"
             class="paper-search-input"
@@ -63,11 +66,15 @@ defineExpose({ focus });
                     ? search.optionId(search.selectedIndex.value)
                     : undefined
             "
-            :value="search.query.value"
+            :model-value="search.query.value"
             @input="search.query.value = ($event.target as HTMLInputElement).value"
             @keydown="search.onKeydown"
             @focus="search.isOpen.value = true"
         />
+        <!-- X.F.W11 `.e` — the glyph follows the field in tree order: the
+             producer's field is its own stacking context (glass backdrop), so a
+             positioned glyph BEFORE it is painted under it. -->
+        <Search class="paper-search-icon" />
         <!-- `MISS-DU1`: both action Buttons shipped at the default `md` rung,
              which is `--control-h-md` = `max(2.5rem * --ui-scale,
              --control-floor)` = 40px fine / 60px coarse (measured at the
@@ -82,29 +89,31 @@ defineExpose({ focus });
              rather than inherited from an un-overridden height
              (`FR-PSD-BASE`'s inversion lock, honoured at the one place this
              unit changes a control's geometry). -->
-        <Button
-            v-if="canExpand"
-            emphasis="quiet"
-            size="xs" icon-only
-            type="button"
-            class="paper-search-action-btn"
-            @click="emit('expand')"
-            :aria-label="search.isExpanded.value ? 'Collapse the search palette' : 'Expand the search palette'"
-        >
-            <Maximize2 v-if="!search.isExpanded.value" class="h-3 w-3" />
-            <Minimize2 v-else class="h-3 w-3" />
-        </Button>
-        <Button
-            v-if="search.query.value"
-            emphasis="quiet"
-            size="xs" icon-only
-            type="button"
-            class="paper-search-action-btn"
-            @click="search.close()"
-            aria-label="Clear search"
-        >
-            <X class="h-3 w-3" />
-        </Button>
+        <span class="paper-search-actions">
+            <Button
+                v-if="canExpand"
+                emphasis="quiet"
+                size="xs" icon-only
+                type="button"
+                class="paper-search-action-btn"
+                @click="emit('expand')"
+                :aria-label="search.isExpanded.value ? 'Collapse the search palette' : 'Expand the search palette'"
+            >
+                <Maximize2 v-if="!search.isExpanded.value" class="h-3 w-3" />
+                <Minimize2 v-else class="h-3 w-3" />
+            </Button>
+            <Button
+                v-if="search.query.value"
+                emphasis="quiet"
+                size="xs" icon-only
+                type="button"
+                class="paper-search-action-btn"
+                @click="search.close()"
+                aria-label="Clear search"
+            >
+                <X class="h-3 w-3" />
+            </Button>
+        </span>
     </label>
 </template>
 
@@ -116,45 +125,35 @@ defineExpose({ focus });
    below it — so every rule below the wrap was orphaned and the search chrome
    shipped unstyled. Colocation in the owning SFC is the cure (E-2 KISS: no new
    layer, no `:deep`, no global escape). */
+/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): THE FIELD IS THE
+   PRODUCER'S `Input`, AND THE WRAP STOPS PAINTING ONE. The wrap drew a whole
+   field around a chromeless `<input>` — its own 1.5px boundary, fill, radius
+   and a `:focus-within` ring standing in for the one `outline: none` killed —
+   which is exactly the surface `@mkbabb/glass-ui/input` ships. Spec `.a`:
+   "where a component is one that glass-ui ships (input …), the local styling
+   yields to the producer's surface". So the `field-control` now owns the
+   boundary, fill, pill radius and the `:focus-visible` ring, and the wrap is
+   layout only: a positioning context that seats the glyph and the actions
+   INSIDE the producer's field.
+   `MISS-DU1` holds structurally, not by arithmetic: the field's block size is
+   the producer's `--field-control-height` (`md` → `--control-h-md`, the same
+   rung the wrap declared), and the actions are positioned, so no optional
+   child can grow the box. `MISS-DU4` holds: the wrap is still the `<label>`,
+   so the glyph and the gutter stay hit area for the field. */
 .paper-search-input-wrap {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    /* `MISS-DU1` — THE FIELD'S HEIGHT STOPS BEING A FUNCTION OF WHICH OPTIONAL
-       CHILDREN ARE MOUNTED. It used to be derived: `align-items: center` over
-       0.3rem block padding and a 1.5px border, so the box was as tall as its
-       tallest child and the first keystroke mounted a 40px one. A field IS a
-       control, so it takes the design system's own control rung and keeps it
-       empty or full. Both arms of the arithmetic, at the compiled tokens:
-       fine  → 40px box − 3px border = 37px content ≥ 28px (`xs` button);
-       coarse→ 60px box − 3px border = 57px content ≥ 44px (`xs` clamped to
-       `--control-floor` = `--touch-target`). Nothing can grow it. */
-    block-size: var(--control-h-md);
-    box-sizing: border-box;
-    border: 1.5px solid var(--border);
-    border-radius: calc(var(--radius) - 2px);
-    background: var(--background);
-    padding: 0 0.5rem;
-    /* `MISS-DU4`: the wrap is a `<label>` now, so it is hit area for the field
-       it labels — and it says so. */
     cursor: text;
-    transition: border-color 0.15s var(--ease-standard);
-}
-
-/* `PSM-13`'s class, one file over: the input declares `outline: none`, and the
-   app's focus-ring allowlist (`style.css`) names four classes, none of them
-   this one. The wrap carries the ring for the control inside it — landing WITH
-   the colocation that makes the `outline: none` live, never after. */
-.paper-search-input-wrap:focus-within {
-    border-color: var(--focus-ring-color);
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: 2px;
 }
 
 .paper-search-icon {
+    position: absolute;
+    inset-inline-start: 0.75rem;
     width: 0.8rem;
     height: 0.8rem;
     flex-shrink: 0;
+    pointer-events: none;
     /* `PSM-4`: the authored `color-mix(…, transparent)` dilutions composited to
        1.74–2.04:1 against the plate. Full-strength is 5.197:1 light /
        7.716:1 dark (this seat's re-derivation, cross-checked against the
@@ -162,20 +161,20 @@ defineExpose({ focus });
     color: var(--muted-foreground);
 }
 
+/* Layout, not chrome: the inline padding clears the glyph at the start and
+   reserves the two `xs` actions' rung at the end (`--control-h-xs` is the
+   producer's own token, clamped to `--control-floor` on coarse pointers). */
 .paper-search-input {
     flex: 1;
     min-width: 0;
-    border: none;
-    outline: none;
-    background: transparent;
+    padding-inline-start: 1.875rem;
+    padding-inline-end: calc(2 * var(--control-h-xs) + 0.25rem);
     /* `PV ★MF-5` / `SP-14`: 0.78rem is ~12.5px, and iOS Safari zooms any input
        under 16px on focus. The substrate's `.ios` guard never fires here —
        fourier sets no `.ios` class anywhere — so the floor is declared at the
        control, where no class bookkeeping can lose it. Desktop keeps the small
        register through the `lg` arm below. */
     font-size: max(1rem, 0.78rem);
-    color: var(--foreground);
-    font-family: inherit;
 }
 
 @media (min-width: 1024px) and (pointer: fine) {
@@ -184,8 +183,11 @@ defineExpose({ focus });
     }
 }
 
-.paper-search-input::placeholder {
-    color: var(--muted-foreground);
+.paper-search-actions {
+    position: absolute;
+    inset-inline-end: 0.25rem;
+    display: flex;
+    align-items: center;
 }
 
 .paper-search-action-btn {
@@ -213,16 +215,12 @@ defineExpose({ focus });
    Authored in the parent as `.paper-search--floating .paper-search-input-wrap`,
    a descendant selector that scoping could never resolve. It is now a state of
    the element itself, driven by the `variant` prop this component already
-   receives. */
-.paper-search-input-wrap--floating {
-    border: none;
-    background: transparent;
-    padding: 0;
-    /* The bar supplies its own padding; the field keeps the control rung so the
-       search arm of `.floating-toc-bar` is exactly as tall as its trigger arm,
-       which is a `md` Button. Before `MISS-DU1` the bar itself jumped between
-       the two states. */
-}
+   receives. X.F.W11 `.e`: the variant's `border: none; background:
+   transparent; padding: 0` retire with the wrap's chrome — there is nothing
+   left on the wrap to strip, and the field inside the bar is the producer's
+   one surface. The field keeps the `md` control rung, so the search arm of
+   `.floating-toc-bar` is still exactly as tall as its trigger arm (a `md`
+   Button). */
 
 .paper-search-input-wrap--floating .paper-search-input {
     @apply text-base;

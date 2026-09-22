@@ -37,14 +37,13 @@
             <div class="duration-row">
                 <label class="config-label" :for="durationId">Duration</label>
                 <div class="input-with-unit">
-                    <input
+                    <Input
                         :id="durationId"
-                        type="number"
-                        :value="duration"
+                        type="text"
+                        inputmode="numeric"
+                        size="sm"
+                        :model-value="duration"
                         @change="emitDuration(($event.target as HTMLInputElement).value)"
-                        min="50"
-                        max="800"
-                        step="10"
                         class="num-input fira-code tabular-nums"
                     />
                     <span class="input-unit fira-code">ms</span>
@@ -141,6 +140,7 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
+import { Input } from "@mkbabb/glass-ui/input";
 import {
     Select,
     SelectTrigger,
@@ -255,36 +255,20 @@ const easingNames = EASING_PRESET_NAMES;
     gap: 0.125rem;
 }
 
+/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): the duration field is the
+   producer's `Input` (`@mkbabb/glass-ui/input`), so the local field chrome
+   YIELDS to the producer's surface (spec `.a`). Retired with it: the 15%
+   boundary, the radius, the fill, `outline: none`, the border-only
+   transition, the spin-button suppression and `MPC-22`'s per-card focus tint —
+   the producer's `field-control` owns boundary, focus ring, radius and fill,
+   and one focus grammar app-wide is the point of the move. `type="number"` is
+   outside `Input`'s text-shaped fence, so the field is `type="text"` +
+   `inputmode="numeric"`; `emitDuration`'s clamp stays the range authority.
+   What stays is layout only: the measure and the right-aligned numerals
+   against their `ms` unit. */
 .num-input {
     width: 3.5rem;
-    padding: 0.125rem 0.375rem;
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    border-radius: var(--radius-md);
-    background: var(--background);
-    color: var(--foreground);
-    @apply text-base;
-    font-weight: 600;
     text-align: right;
-    outline: none;
-    transition: border-color 0.15s ease;
-    -moz-appearance: textfield;
-}
-
-.num-input::-webkit-inner-spin-button,
-.num-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-/*
-   `MPC-22` — the focus tint hard-coded `var(--accent-red)` beside a slider that
-   is per-instance coloured, so the moment the retint below started painting,
-   the Morph card would have focused red against a pink track. One token, read
-   from the card root, and the input focuses in the card's own colour.
-*/
-.num-input:focus {
-    border-color: var(--track-color, var(--accent-red));
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--track-color, var(--accent-red)) 12%, transparent);
 }
 
 .input-unit {

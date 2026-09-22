@@ -16,14 +16,13 @@
                  half-landed here. -->
             <div class="level-row">
                 <label class="level-label" :for="lowId">Low</label>
-                <input
+                <Input
                     :id="lowId"
-                    type="number"
-                    :value="lowLevel"
+                    type="text"
+                    inputmode="numeric"
+                    size="sm"
+                    :model-value="lowLevel"
                     @change="emitLow(($event.target as HTMLInputElement).value)"
-                    min="1"
-                    :max="highLevel - 1"
-                    step="1"
                     class="level-input fira-code tabular-nums"
                 />
                 <Slider
@@ -38,14 +37,13 @@
 
             <div class="level-row">
                 <label class="level-label" :for="highId">High</label>
-                <input
+                <Input
                     :id="highId"
-                    type="number"
-                    :value="highLevel"
+                    type="text"
+                    inputmode="numeric"
+                    size="sm"
+                    :model-value="highLevel"
                     @change="emitHigh(($event.target as HTMLInputElement).value)"
-                    :min="lowLevel + 1"
-                    :max="maxLevel"
-                    step="1"
                     class="level-input fira-code tabular-nums"
                 />
                 <Slider
@@ -95,6 +93,7 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Input } from "@mkbabb/glass-ui/input";
 import { Slider } from "@mkbabb/glass-ui/slider";
 import {
     interpolateAtHarmonicLevel,
@@ -231,44 +230,22 @@ function getPath(level: number): string {
     min-width: 2.5rem;
 }
 
+/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): the two level fields are
+   the producer's `Input` (`@mkbabb/glass-ui/input`), so the local field chrome
+   YIELDS to the producer's surface (spec `.a`: "where a component is one that
+   glass-ui ships (input …), the local styling yields"). Retired with it: the
+   hand-drawn 1.5px boundary (HLG-37), the radius, the fill, `outline: none`,
+   the two-leg focus transition (HLG-40), the `--viz-legendre` focus paint
+   (FMD-19) and the spin-button suppression — the producer's `field-control`
+   owns boundary, focus ring (`:focus-visible` outline on `--focus-ring-width`),
+   radius and fill. `type="number"` is outside `Input`'s text-shaped fence, so
+   the field is `type="text"` + `inputmode="numeric"`; the clamp in
+   `emitLow`/`emitHigh` is, as before, the range authority. What stays is
+   layout only: the measure, the centred numerals and the no-shrink. */
 .level-input {
     width: 3.5rem;
-    padding: 0.125rem 0.375rem;
-    /* SP-3 · HLG-37 — 15% over `--background` measured 1.361 L / 1.400 D
-       (the banked figures, reproduced); 50% measures 3.322 L / 4.486 D. */
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 50%, transparent);
-    border-radius: var(--radius-md);
-    background: var(--background);
-    color: var(--foreground);
-    @apply text-base;
-    font-weight: 600;
     text-align: center;
-    outline: none;
     flex-shrink: 0;
-    /* SP-5 · HLG-40 — the focus indicator animated incoherently: this list
-       carried `border-color` alone while `:focus` changes border-color AND
-       box-shadow, so the ring popped in and out against an easing border. Both
-       changed properties are listed, on the producer's own registers. */
-    transition: border-color var(--duration-fast) var(--ease-standard),
-        box-shadow var(--duration-fast) var(--ease-standard);
-    -moz-appearance: textfield;
-}
-
-.level-input::-webkit-inner-spin-button,
-.level-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-/* SP-3 · FMD-18 ⊕ FMD-19 — the bound/focus blue is TOKENISED. `#60a5fa`
-   measured 2.446:1 against the page (the banked 2.45, reproduced) and 2.354:1
-   against `--card`, so it failed 1.4.11 in the light arm at both of its sites,
-   while the byte-identical input in the sibling card focused on a conformant
-   `var(--accent-red)`. `--viz-legendre` is this app's own blue-violet basis
-   token and measures 5.541 L / 8.080 D against the page. */
-.level-input:focus {
-    border-color: var(--viz-legendre);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--viz-legendre) 20%, transparent);
 }
 
 /* X.F.W4 / SP-6 · HLG-3 ⊕ FMD-3 — the dead per-slider retint hook is DELETED.
