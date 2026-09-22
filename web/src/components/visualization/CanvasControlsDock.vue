@@ -173,7 +173,7 @@ watch(
     right: -3px;
     width: 6px;
     height: 6px;
-    border-radius: 9999px;
+    border-radius: var(--radius-pill);
     background: var(--viz-amber);
     box-shadow: 0 0 4px color-mix(in srgb, var(--viz-amber) 60%, transparent);
 }

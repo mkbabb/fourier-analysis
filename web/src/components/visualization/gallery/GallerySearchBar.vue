@@ -207,7 +207,7 @@ const hasActiveFilters = computed(
     width: 100%;
     max-width: var(--search-measure);
     padding: 0.375rem 0.75rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-field);
     background: color-mix(in srgb, var(--muted) 50%, transparent);
     border: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
 }
@@ -251,7 +251,6 @@ const hasActiveFilters = computed(
     gap: 0.75rem;
     width: 100%;
     padding: 0.75rem;
-    border-radius: 0.75rem;
     box-shadow: 0 8px 24px color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 

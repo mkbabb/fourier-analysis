@@ -419,7 +419,7 @@ watch(
     background: none;
     color: var(--muted-foreground);
     cursor: pointer;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     transition: color 0.15s, opacity 0.2s;
 }
 .reset-icon-btn.is-default {
@@ -438,7 +438,7 @@ watch(
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     margin-top: 0.5rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--destructive) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--destructive) 20%, transparent);
 }
@@ -458,7 +458,7 @@ watch(
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem 0.625rem;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, var(--destructive) 30%, transparent);
     background: color-mix(in srgb, var(--destructive) 10%, transparent);
     color: var(--destructive);

@@ -167,7 +167,9 @@ function onOpenChange(open: boolean) {
    surface IS the viewport, so the geometry is overridden here and NOTHING about
    the producer's glass register, motion, veil or z-rung is re-authored. The
    deleted `--z-fullscreen` backdrop is exactly the local invention `FV-1`
-   books. */
+   books. X.F.W11.a (OA-1): the squared corner is abrogated with the same
+   reading — corner shape is the producer's chrome, so the dialog keeps the
+   `--radius-3xl` its `[data-slot="dialog-content"]` rule ships. */
 .fs-dialog {
     inset: 0;
     width: 100vw;
@@ -176,7 +178,6 @@ function onOpenChange(open: boolean) {
     max-height: none;
     transform: none;
     translate: none;
-    border-radius: 0;
     border: none;
     padding: 0;
     display: flex;
@@ -189,11 +190,11 @@ function onOpenChange(open: boolean) {
    `.canvas-container`, `ContourEditorCanvas.vue`'s `.editor-shell`), so this
    was a no-op duplication that two corpus superlatives certified as craft. The
    CHROME STRIP below is the real design judgement and it stays — a card frame
-   is meaningless when the surface IS the viewport. */
+   is meaningless when the surface IS the viewport; the children keep their
+   own token corners inside the rounded dialog (X.F.W11.a). */
 .fs-dialog .canvas-container,
 .fs-dialog .editor-shell {
     border: none;
-    border-radius: 0;
     box-shadow: none;
 }
 

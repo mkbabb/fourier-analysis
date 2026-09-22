@@ -95,7 +95,7 @@ function getBasisLabel(item: WorkspaceDraft): string {
         <CollapsibleTrigger as-child>
             <Button
                 emphasis="quiet"
-                class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground rounded-none"
+                class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground"
             >
                 <span class="cm-serif text-sm font-semibold tracking-tight">My Drafts</span>
                 <Metric :value="sortedDrafts.length" size="sm" />

@@ -103,7 +103,7 @@ function doExport() {
     align-items: center;
     justify-content: space-between;
     padding: 0.5rem 0.25rem;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: background 0.15s;
 }

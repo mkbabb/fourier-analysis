@@ -305,7 +305,7 @@ function toggleBasis(key: string) {
     background: none;
     color: var(--muted-foreground);
     cursor: pointer;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     transition: color 0.15s, opacity 0.2s;
 }
 .reset-icon-btn.is-default {

@@ -217,7 +217,7 @@ const TimelineReadout = () =>
     justify-content: center;
     width: 3rem;
     height: 2.5rem;
-    border-radius: 9999px;
+    border-radius: var(--radius-control);
     cursor: pointer;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -233,7 +233,7 @@ const TimelineReadout = () =>
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 9999px;
+    border-radius: var(--radius-control);
     background: linear-gradient(135deg, hsl(0 75% 62% / 0.55), hsl(35 85% 58% / 0.5), hsl(55 80% 55% / 0.45), hsl(140 50% 50% / 0.45), hsl(210 65% 58% / 0.5), hsl(275 55% 58% / 0.5), hsl(330 65% 58% / 0.55));
     background-size: 300% 300%;
     z-index: -1;
@@ -243,7 +243,7 @@ const TimelineReadout = () =>
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 9999px;
+    border-radius: var(--radius-control);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%);
     pointer-events: none;
 }
@@ -271,7 +271,7 @@ const TimelineReadout = () =>
 @keyframes rainbow-drift { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
 
 /* ── Collapsed summary ── */
-.mini-progress { width: 3rem; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
+.mini-progress { width: 3rem; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
 /* X.F.W4 · SP-4 / `fr-AnimationControls M-8` — the `transition: width 0.1s
    linear` is DELETED, not shortened. `width` here is rewritten every rAF tick,
    so a 100ms transition was retargeted every ~16ms and never once completed:
@@ -279,7 +279,7 @@ const TimelineReadout = () =>
    clock it claimed to report, and the browser ran a live interpolation for the
    entire playback to achieve that. One line removed fixes correctness AND cost,
    and removes an ungated-motion surface from D-8's inventory. */
-.mini-fill { height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 25%, transparent); }
+.mini-fill { height: 100%; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 25%, transparent); }
 .summary-speed { @apply text-base; color: color-mix(in srgb, var(--foreground) 35%, transparent); }
 
 /* ── Transitions ── */
@@ -309,7 +309,6 @@ const TimelineReadout = () =>
     justify-content: flex-start;
     gap: 0.375rem;
     padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
     white-space: nowrap;
 }
 </style>

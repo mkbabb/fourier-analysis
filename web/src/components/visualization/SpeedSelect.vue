@@ -100,7 +100,6 @@ const speedStr = computed({
 .speed-trigger {
     border: none;
     background: none;
-    border-radius: 9999px;
     color: var(--muted-foreground);
     /* Both longhands, because the unprefixed one alone leaves WebKit filtering. */
     backdrop-filter: none;
