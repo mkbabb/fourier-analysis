@@ -269,58 +269,95 @@ test.describe.serial("B.W2 — visualization UX coherence (a11y keystones)", () 
     });
 
     // ── Invariant 19 — auto-recompute regression guard ──
-    // RED BASELINE: `saveContourPoints` (workspace.ts) nulls epicycleData /
-    // basesData and launches no recompute; the ContourSettings watcher does not
-    // key on `store.contour`, so post-save the canvas stays blank. This
-    // assertion asserts the OPPOSITE (canvas re-renders within one rAF with no
-    // control perturbation + a single compute pass) and therefore FAILS today.
-    // Un-skip at W3 when the auto-recompute seam (the ComputeBasesRequest model
-    // + the `store.contour`-keyed auto-compute watcher) lands.
-    test.fixme(
-        "save_contour_then_recompute: canvas re-renders within one rAF after saveContourPoints",
-        async ({ page }) => {
-            await openWorkspace(page);
+    // X.F.W10S.b (2026-09-22) — UN-FIXME'D ON A FULL-STACK RUN, the product
+    // defect this cell booked cured at its root in `workspace.ts`:
+    // `saveContourPoints` NULLED `epicycleData`/`basesData` and launched no
+    // recompute. Measured before the cure, the nulling did worse than blank the
+    // canvas: the next ContourSettings compute trigger saw no data and
+    // RE-EXTRACTED the contour from the image (`POST …/extract-contour` ~220 ms
+    // after the save), so a saved edit could be replaced by a fresh extraction.
+    // The save now recomputes the saved contour, once, keeping the previous
+    // frame until the results land.
+    //
+    // The harness is re-driven through the product. The booked body reached for
+    // a `window.__store` / `window.__computeCount` seam that was never built (and
+    // called `saveContourPoints()` with no points), so un-fixme'd as written it
+    // could only fail on the missing seam or pass without saving anything. It
+    // now enters the editor, saves, and returns, by keyboard — the activation
+    // path every control owes — and every assertion is kept: the canvas keeps a
+    // live render, the controls are unperturbed, and ONE compute pass runs,
+    // counted from the network and pinned to the SAVED contour's hash.
+    test("save_contour_then_recompute: the saved contour is recomputed in one pass, the canvas keeps its render", async ({
+        page,
+    }) => {
+        await openWorkspace(page);
 
-            const canvas = page.locator("canvas").first();
+        const canvas = page.locator("canvas").first();
 
-            // Snapshot the control values before the save so we can assert they
-            // are not perturbed by the auto-recompute.
-            const controlsBefore = await page
-                .locator('input[type="number"], input[type="range"]')
-                .evaluateAll((els) =>
-                    (els as (HTMLInputElement)[]).map((el) => el.value),
-                );
+        // Snapshot the control values before the save so we can assert they
+        // are not perturbed by the auto-recompute.
+        const controls = page.locator('input[type="number"], input[type="range"]');
+        const readControls = () =>
+            controls
+                .evaluateAll((els) => (els as HTMLInputElement[]).map((el) => el.value));
+        const controlsBefore = await readControls();
 
-            // Drive a contour edit + save through the store hook (W3 exposes
-            // `window.__store`; until then this is part of the red baseline).
-            await page.evaluate(() => {
-                const store = (window as unknown as { __store?: { saveContourPoints?: () => void } }).__store;
-                store?.saveContourPoints?.();
-            });
+        // Every compute or extraction request issued from here on belongs to
+        // the save.
+        const computeCalls: string[] = [];
+        page.on("request", (req) => {
+            const path = new URL(req.url()).pathname;
+            if (req.method() === "POST" && /\/(compute\/(epicycles|bases)|extract-contour)$/.test(path))
+                computeCalls.push(path);
+        });
 
-            // One rAF (~16ms) plus a small slack: the canvas must NOT fall back
-            // to the placeholder; it must re-render the recomputed chain.
-            await page.waitForTimeout(64);
+        // Drive the save through the product, not a store hook: open the
+        // contour editor from the canvas dock (keyboard activation — the path
+        // every control owes), then press the editor's Save.
+        const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
+        await canvasDock.hover();
+        const editToggle = canvasDock.locator('[aria-label="Edit contour"]');
+        await expect(editToggle).toBeVisible({ timeout: 10_000 });
+        await editToggle.press("Enter");
+        const save = page.getByRole("button", { name: "Save contour" });
+        await expect(save).toBeVisible({ timeout: 10_000 });
 
-            // Canvas is still the live render, not the placeholder.
-            await expect(canvas).toBeVisible();
-            const box = await canvas.boundingBox();
-            expect(box!.width).toBeGreaterThan(0);
+        const saved = page.waitForResponse(
+            (res) => new URL(res.url()).pathname === "/api/contours" && res.request().method() === "POST",
+        );
+        const recomputed = Promise.all(
+            (["epicycles", "bases"] as const).map((kind) =>
+                page.waitForResponse((res) =>
+                    new URL(res.url()).pathname.endsWith(`/compute/${kind}`),
+                ),
+            ),
+        );
+        await save.press("Enter");
+        const savedRes = await saved;
+        expect(savedRes.ok(), "the contour save itself must succeed").toBe(true);
+        const { contour_hash: savedHash } = (await savedRes.json()) as { contour_hash: string };
+        const results = await recomputed;
+        for (const res of results) expect(res.ok(), `${res.url()} must succeed`).toBe(true);
 
-            // Controls were not perturbed by the auto-recompute.
-            const controlsAfter = await page
-                .locator('input[type="number"], input[type="range"]')
-                .evaluateAll((els) =>
-                    (els as (HTMLInputElement)[]).map((el) => el.value),
-                );
-            expect(controlsAfter).toEqual(controlsBefore);
+        // Back to the render, which must be the live chain, not the placeholder.
+        await canvasDock.hover();
+        await expect(editToggle).toBeVisible({ timeout: 10_000 });
+        await editToggle.press("Enter");
+        await expect(save).toBeHidden({ timeout: 10_000 });
+        await expect(canvas).toBeVisible();
+        const box = await canvas.boundingBox();
+        expect(box!.width).toBeGreaterThan(0);
 
-            // A single compute pass — not a recompute storm.
-            const computeCount = await page.evaluate(
-                () =>
-                    (window as unknown as { __computeCount?: number }).__computeCount ?? 0,
-            );
-            expect(computeCount).toBe(1);
-        },
-    );
+        // Controls were not perturbed by the auto-recompute. (The left panel
+        // remounts on leaving the editor; its controls are awaited, then read.)
+        await expect(controls).toHaveCount(controlsBefore.length, { timeout: 10_000 });
+        expect(await readControls()).toEqual(controlsBefore);
+
+        // A single compute pass — not a recompute storm — and it is the SAVED
+        // contour that is computed: no re-extraction from the image replaces it.
+        expect(computeCalls.sort()).toEqual([
+            `/api/contours/${savedHash}/compute/bases`,
+            `/api/contours/${savedHash}/compute/epicycles`,
+        ]);
+    });
 });

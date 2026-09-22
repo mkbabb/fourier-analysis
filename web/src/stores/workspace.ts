@@ -282,9 +282,17 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             api.abortInflight(["computeEpicycles", "computeBases"]);
             const result = await api.saveContour(imageSlug.value, points);
             contour.value = markRaw(result);
-            epicycleData.value = null;
-            basesData.value = null;
             scheduleDraftSave();
+            // X.F.W10S.b — `G-F9-8` (Invariant 19, the `save_contour_then_recompute`
+            // keystone). The save used to NULL `epicycleData`/`basesData` and launch
+            // nothing, and no watcher keys on `contour` — so every saved edit left
+            // the canvas on its placeholder until the user nudged an unrelated
+            // setting. The saved contour is recomputed here, once, inside this
+            // action's own `computing` bracket; the previous frame stays on screen
+            // until each result lands (the revision guards above already discard
+            // any answer for the pre-save contour), exactly as a settings
+            // recompute in `ContourSettings.runCompute` behaves.
+            await Promise.allSettled([runComputeEpicycles(), runComputeBases()]);
         } catch (e: unknown) {
             if (!api.isAbortError(e))
                 error.value = problemMessage(e, "Failed to save contour");
