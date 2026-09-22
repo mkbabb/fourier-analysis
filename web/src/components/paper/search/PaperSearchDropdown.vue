@@ -167,7 +167,6 @@ defineExpose({ resultsRef });
                 :id="search.listboxId"
                 ref="resultsRef"
                 class="paper-search-results glass-floating"
-                :class="`paper-search-results--${variant}`"
                 :style="panelStyle"
                 role="listbox"
                 aria-label="Search results"
@@ -211,12 +210,6 @@ defineExpose({ resultsRef });
     border-radius: calc(var(--radius) - 2px);
     box-shadow: var(--shadow-md);
     padding: 0.25rem;
-}
-
-.paper-search-results--floating {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
 }
 
 /* ── Inline dropdown transition ──────────────────────────── */

@@ -197,7 +197,7 @@ defineExpose({ focus });
     background: none;
     color: var(--muted-foreground);
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     /* A.W3.d — named properties + canonical tokens, no bare `transition`. */
     transition:
         color 0.12s var(--ease-standard),
@@ -216,7 +216,6 @@ defineExpose({ focus });
    receives. */
 .paper-search-input-wrap--floating {
     border: none;
-    border-radius: 0;
     background: transparent;
     padding: 0;
     /* The bar supplies its own padding; the field keeps the control rung so the

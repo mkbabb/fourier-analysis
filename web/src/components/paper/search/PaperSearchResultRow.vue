@@ -78,7 +78,7 @@ const emit = defineEmits<{
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding: 0.1rem 0.3rem;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     background: var(--muted);
     /* `PSM-4`: was `color-mix(--muted-foreground 70%, transparent)`. */
     color: var(--muted-foreground);
@@ -127,7 +127,7 @@ const emit = defineEmits<{
 .paper-search-label :deep(mark) {
     background: color-mix(in srgb, var(--warning) 35%, transparent);
     color: inherit;
-    border-radius: 1px;
+    border-radius: var(--radius-floor);
     padding: 0 1px;
 }
 
