@@ -39,7 +39,7 @@ const magnetRadius = ref(3); // 0 = off, 1-10 = number of adjacent points affect
 
 // Composables
 const { pushHistory, undo, redo, initHistory, canUndo, canRedo } = useContourHistory(points);
-const { selectedIdx, onPointPointerDown: rawPointPointerDown, onPointerMove, onPointerUp, deselect } = usePointDrag(
+const { selectedIdx, onPointPointerDown: rawPointPointerDown, onPointerMove, onPointerUp: rawPointerUp, deselect } = usePointDrag(
     points,
     magnetRadius,
     svgPoint,
@@ -153,6 +153,15 @@ function onDblClick(e: MouseEvent) {
 
 function onPointPointerDown(idx: number, e: PointerEvent) {
     rawPointPointerDown(idx, e);
+    emitState();
+}
+
+// X.F.W14.u — UIA-F-16: the drag's end writes history (`onDragEnd` pushes it,
+// and ⌘Z restores the point), but the raw handler emitted no state, so the
+// dock's Undo stayed disabled after every drag. Every history mutation emits,
+// as the other paths above and below already do.
+function onPointerUp() {
+    rawPointerUp();
     emitState();
 }
 

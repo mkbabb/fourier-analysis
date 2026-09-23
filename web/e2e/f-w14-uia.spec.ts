@@ -196,3 +196,42 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
         expect(all - noTrace, "Trace path off removes the trace").toBeGreaterThan(floor);
     });
 });
+
+/** Open the saved visualization in contour-edit mode; return the editor's shell. */
+async function openEditor(page: Page) {
+    const viz = await firstSavedViz(page);
+    await page.goto(`/v/${viz.slug}`);
+    const edit = page.getByRole("button", { name: "Edit contour" }).first();
+    await edit.hover();
+    await page.waitForTimeout(600);
+    await edit.click();
+    const shell = page.locator(".editor-shell:not(.is-hidden) > .editor-shell").first();
+    const point = page.locator("circle.control-point").nth(10);
+    await expect(point).toBeVisible();
+    return { shell, point };
+}
+
+/** Drag a control point by a few screen pixels. */
+async function dragPoint(page: Page, point: ReturnType<Page["locator"]>) {
+    const box = (await point.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 12, y + 9, { steps: 4 });
+    await page.mouse.up();
+}
+
+test.describe("UIA-F-16 — Undo enables after a point drag", () => {
+    test("a drag writes history and the dock's Undo is enabled", async ({ page }) => {
+        const { point } = await openEditor(page);
+        // The Undo control lives in the editor dock's expanded layer, which is
+        // inert while collapsed; its disabled state is read off the element.
+        const undo = page.locator('[aria-label="Undo"]').first();
+        const disabled = () =>
+            undo.evaluate((el) => (el as HTMLButtonElement).disabled || el.getAttribute("aria-disabled") === "true");
+        expect(await disabled()).toBe(true);
+        await dragPoint(page, point);
+        await expect.poll(disabled).toBe(false);
+    });
+});
