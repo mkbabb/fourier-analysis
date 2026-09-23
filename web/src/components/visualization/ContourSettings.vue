@@ -5,6 +5,8 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { Button } from "@mkbabb/glass-ui/button";
+// `./alert` has no subpath export at the 8.0.0 pin; the root barrel carries it.
+import { Alert, AlertDescription } from "@mkbabb/glass-ui";
 import {
     Collapsible,
     CollapsibleTrigger,
@@ -17,7 +19,7 @@ import {
     SelectTrigger,
 } from "@mkbabb/glass-ui/select";
 import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
-import { Wand2, ChevronRight, RotateCcw, RefreshCw } from "@lucide/vue";
+import { Wand2, ChevronRight, RotateCcw, RefreshCw, CircleAlert } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import SliderControl from "@/components/ui/SliderControl.vue";
 
@@ -230,8 +232,7 @@ watch(
                 <Button
                     emphasis="quiet"
                     size="md" icon-only
-                    class="reset-icon-btn"
-                    :class="{ 'is-default': isDefault }"
+                    :disabled="isDefault"
                     aria-label="Reset to defaults"
                     @click.stop="resetDefaults"
                 >
@@ -243,7 +244,7 @@ watch(
         <!-- Strategy -->
         <ConfiguratorRow label="Strategy">
             <Select v-model="strategy" class="w-full">
-                <SelectTrigger aria-label="Contour extraction strategy" class="w-full h-10 text-sm border-2 border-foreground/15 rounded-lg">
+                <SelectTrigger aria-label="Contour extraction strategy" class="w-full">
                     <div class="inline-flex items-center gap-1.5">
                         <Wand2 v-if="strategy === 'auto'" class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         {{ strategyLabel }}
@@ -343,13 +344,20 @@ watch(
 
         <!-- Retry banner for transient errors -->
         <Transition name="slide-down">
-            <div v-if="store.error" class="retry-banner">
-                <span class="retry-msg fira-code">{{ shortError }}</span>
-                <Button emphasis="primary" tone="destructive" size="sm" class="retry-btn" @click="runCompute" :disabled="store.computing">
-                    <RefreshCw class="h-3.5 w-3.5" :class="{ 'animate-spin': store.computing }" />
-                    Retry
-                </Button>
-            </div>
+            <!-- X.F.W13.b — the hand-rolled banner (its own border, tint and radius) and
+                 the per-instance `.retry-btn` restyle of the glass Button retire onto the
+                 producer's pair: `Alert tone="destructive"` owns the surface, the tone
+                 and the announcement; the Button owns the command. -->
+            <Alert v-if="store.error" tone="destructive" announce="polite" class="mt-2">
+                <CircleAlert />
+                <AlertDescription>
+                    <span class="retry-msg fira-code">{{ shortError }}</span>
+                    <Button emphasis="primary" tone="destructive" size="sm" :loading="store.computing" @click="runCompute">
+                        <RefreshCw />
+                        Retry
+                    </Button>
+                </AlertDescription>
+            </Alert>
         </Transition>
     </ConfiguratorLayer>
 </template>
@@ -410,73 +418,21 @@ watch(
     grid-column: 1 / -1;
 }
 
-.reset-icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    border: none;
-    background: none;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: color 0.15s, opacity 0.2s;
-}
-.reset-icon-btn.is-default {
-    opacity: 0.25;
-    pointer-events: none;
-}
-.reset-icon-btn:hover {
-    color: var(--foreground);
-}
+/* X.F.W13.b — the `.reset-icon-btn` block retires: it restated the glass Button's
+   geometry (a 4px corner on the 40x40 icon-only square, measured) and faked the
+   disabled state with `pointer-events: none` on a control that stayed focusable
+   and keyboard-live. The Button owns both: `icon-only` is the circle, and
+   `:disabled` is the one disabled channel. */
 
-/* Retry banner */
-.retry-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    margin-top: 0.5rem;
-    border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--destructive) 8%, transparent);
-    border: 1px solid color-mix(in srgb, var(--destructive) 20%, transparent);
-}
-
+/* Retry banner — the surface, tone and radius are the glass Alert's; the message
+   only truncates to one line. */
 .retry-msg {
-    @apply text-sm;
-    color: var(--destructive);
-    flex: 1;
-    min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.retry-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.625rem;
-    border-radius: var(--radius-md);
-    border: 1px solid color-mix(in srgb, var(--destructive) 30%, transparent);
-    background: color-mix(in srgb, var(--destructive) 10%, transparent);
-    color: var(--destructive);
-    @apply text-sm;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: background 0.15s, border-color 0.15s;
-}
-.retry-btn:hover {
-    background: color-mix(in srgb, var(--destructive) 18%, transparent);
-    border-color: color-mix(in srgb, var(--destructive) 40%, transparent);
-}
-.retry-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
 
 /* A.W3.d — named properties + canonical tokens, no `transition: all`. */
 .slide-down-enter-active {
