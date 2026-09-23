@@ -10,7 +10,7 @@ import { renderLatex } from "@/lib/equation/render";
 import { useCanvasSetup } from "@/components/visualization/composables/useCanvasSetup";
 import { drawPlotGrid, type PlotPadding } from "./lib/grid";
 import { hitTestCurves, type CurveHitRegion } from "./lib/hit-test";
-import { groupTrigHarmonics, harmonicProgress, spectrumColor, type TrigHarmonic } from "./lib/harmonics";
+import { groupTrigHarmonics, harmonicProgress, revealWeight, spectrumColor, type TrigHarmonic } from "./lib/harmonics";
 import { createTransitionState, startTransition, snapshotForTransition } from "./composables/useCurveTransition";
 
 import ConvergenceLegend from "./convergence/ConvergenceLegend.vue";
@@ -262,8 +262,7 @@ function draw() {
         let val = lerpDc;
         for (let hi = 0; hi < totalH; hi++) {
             const c = cursors[hi];
-            const wt = j <= c - BLEND ? 1 : j >= c + 1 ? 0 : Math.max(0, Math.min(1, (c - j + 1) / (BLEND + 1)));
-            val += curves[hi][j] * wt;
+            val += curves[hi][j] * revealWeight(j, c, BLEND, N_POINTS);
         }
         return val;
     });

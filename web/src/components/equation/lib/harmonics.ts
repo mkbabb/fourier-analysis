@@ -86,3 +86,20 @@ export function spectrumColor(
     const hue = (1 - i / Math.max(total - 1, 1)) * 300;
     return `hsla(${hue}, 85%, 55%, ${alpha})`;
 }
+
+/**
+ * The reveal weight of sample `j` for a harmonic whose cursor sits at `cursor`
+ * on an `n`-sample grid: 1 behind the cursor, 0 ahead of it, and a linear
+ * `blend`-sample ramp at the leading edge.
+ *
+ * X.F.W14.u — UIA-F-31: a FULLY revealed harmonic (`cursor` at the last
+ * sample) weighs 1 everywhere. The ramp used to stay on at the right edge, so
+ * the last `blend` samples kept weights 1/(blend+1)..blend/(blend+1) forever
+ * and the finished Sum curve fell back toward the DC value there instead of
+ * equalling DC + Σ at every sample.
+ */
+export function revealWeight(j: number, cursor: number, blend: number, n: number): number {
+    if (cursor >= n - 1 || j <= cursor - blend) return 1;
+    if (j >= cursor + 1) return 0;
+    return Math.max(0, Math.min(1, (cursor - j + 1) / (blend + 1)));
+}
