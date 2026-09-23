@@ -756,3 +756,22 @@ test.describe("UIA-F-22 — mobile paper search: one instance, and a tapped resu
         await expect.poll(() => scroller.evaluate((el) => el.scrollTop), { timeout: 10_000 }).not.toBe(before);
     });
 });
+
+test.describe("UIA-F-23 — the floating ToC's Close search closes with a query typed", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+    test("one tap on Close search closes the search and it stays closed", async ({ page }) => {
+        await page.goto("/paper");
+        const scroller = page.locator(".paper-scroll");
+        await expect.poll(() => scroller.evaluate((el) => el.scrollHeight), { timeout: 10_000 }).toBeGreaterThan(5000);
+        await scroller.evaluate((el) => el.scrollTo({ top: 2500 }));
+        await page.getByRole("button", { name: "Search paper" }).click();
+        await page.keyboard.type("Parseval");
+        await expect(page.getByRole("option").first()).toBeVisible();
+        await page.getByRole("button", { name: "Close search" }).tap();
+        await page.waitForTimeout(600);
+        await expect(page.getByRole("button", { name: "Close search" })).toHaveCount(0);
+        await expect(page.getByRole("listbox")).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Search paper" })).toBeVisible();
+    });
+});

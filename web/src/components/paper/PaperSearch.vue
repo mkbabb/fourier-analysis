@@ -7,6 +7,15 @@ import { ref } from "vue";
 defineProps<{
     search: PaperSearchState;
     variant: "sidebar" | "floating";
+    /**
+     * X.F.W14.u — UIA-F-23: the element whose pointer-downs are NOT "outside"
+     * the search. Defaults to this component's root. A host that renders the
+     * search's own controls beside it (the floating ToC's Close button) passes
+     * the whole bar, so pressing Close is not an outside press that closes the
+     * search, swaps the bar, and lands the click on the Search button that the
+     * swap just rendered under the finger (which reopened it).
+     */
+    boundary?: HTMLElement | null;
 }>();
 
 const searchInputRef = ref<InstanceType<typeof PaperSearchInput> | null>(null);
@@ -39,7 +48,7 @@ defineExpose({ focus });
         <PaperSearchDropdown
             :search="search"
             :variant="variant"
-            :anchor="rootRef"
+            :anchor="boundary ?? rootRef"
         />
     </div>
 </template>

@@ -27,6 +27,8 @@ const floatingTocOpen = ref(false);
 const searchActive = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
 const mobileSearchRef = ref<InstanceType<typeof PaperSearch> | null>(null);
+/** UIA-F-23: the whole search bar is the search's dismissal boundary. */
+const searchBarRef = ref<HTMLElement | null>(null);
 // Trigger element — focus returns here after the dropdown is dismissed
 // (A4 MED a11y discharge). glass-ui `Button` forwards its root element ref;
 // fall back to querying the focusable child if the instance exposes `$el`.
@@ -97,8 +99,8 @@ watch(() => props.search.isOpen.value, (open) => {
     <div class="floating-toc lg:hidden">
         <div class="floating-toc-anchor">
             <!-- Search mode: input replaces section title -->
-            <div v-if="searchActive" class="floating-toc-bar floating-toc-bar--search glass-resting">
-                <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" />
+            <div v-if="searchActive" ref="searchBarRef" class="floating-toc-bar floating-toc-bar--search glass-resting">
+                <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" :boundary="searchBarRef" />
                 <Button emphasis="quiet" size="md" icon-only type="button" class="floating-toc-search-close" @click="closeMobileSearch" aria-label="Close search">
                     <X class="h-4 w-4" />
                 </Button>
