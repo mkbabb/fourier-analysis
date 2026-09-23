@@ -77,14 +77,15 @@ async function uploadImage(page: Page): Promise<void> {
 test.describe("G-b — F.W13 image-mode controls act (frame 3)", () => {
     test.use({ viewport: { width: 1440, height: 900 } });
 
-    test("at rest the drop target opens the picker; with an image the Image layer discloses", async ({ page }) => {
+    test("at rest the drop target opens the picker by key; with an image the Image layer discloses", async ({ page }) => {
         const side = await openImageMode(page);
 
-        // At rest the one affordance is the main area's drop target (G-c owns
-        // the rest state's shape; here it must ACT, by pointer and by key).
+        // At rest the one affordance is the main area's drop target. G-c
+        // (f-w13-image-empty.spec.ts) owns the rest state: its shape, the
+        // sidebar's absence and the pointer pick. G-b keeps only what G-c
+        // does not drive: the affordance is the producer Button and it acts by key.
         const target = page.locator(".drop-target").getByRole("button", { name: /Drop or click to upload/ });
         await expect(target).toHaveAttribute("data-slot", "button");
-        await opensPicker(page, () => target.click());
         await opensPicker(page, () => target.press("Enter"));
 
         await uploadImage(page);
