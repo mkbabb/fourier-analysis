@@ -121,10 +121,21 @@ function drawFrame() {
 }
 
 // ── Single epicycle mode ──
+// X.F.W14.u — UIA-F-17: the export dialog's "Epicycles" and "Trace path"
+// switches were read by nobody (exportFrame destructured only grid and labels),
+// so a PNG exported with every layer off still held the chain and the trace.
+// Both frame painters take the layer set; the live draw paints every layer.
+interface FrameLayers {
+    epicycles: boolean;
+    trail: boolean;
+}
+const ALL_LAYERS: FrameLayers = { epicycles: true, trail: true };
+
 function drawEpicycleFrame(
     s: CanvasSurface,
     data: typeof store.epicycleData & {},
     view: ViewTransform,
+    layers: FrameLayers = ALL_LAYERS,
 ) {
     const hoveredBasis = hover.getHoveredBasis();
     const epicycleHovered = hoveredBasis === "fourier-epicycles";
@@ -146,7 +157,7 @@ function drawEpicycleFrame(
 
     // Trail — golden when hovered
     trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
-    trail.draw(s, view, trailColor);
+    if (layers.trail) trail.draw(s, view, trailColor);
 
     // Epicycle circles — prefix of the cumulative-position array
     const visPositions = nVis === components.length
@@ -170,11 +181,13 @@ function drawEpicycleFrame(
     }
 
     // Golden shimmer on epicycle circles when hovered
-    if (epicycleHovered) {
-        s.ctx.globalAlpha = goldenShimmerAlpha();
+    if (layers.epicycles) {
+        if (epicycleHovered) {
+            s.ctx.globalAlpha = goldenShimmerAlpha();
+        }
+        drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 4, arm: 3.5 }, epicycleHovered ? VIZ_COLORS.golden : undefined);
+        s.ctx.globalAlpha = 1;
     }
-    drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 4, arm: 3.5 }, epicycleHovered ? VIZ_COLORS.golden : undefined);
-    s.ctx.globalAlpha = 1;
 
     // Update epicycle bounds for hover detection
     if (fit) {
@@ -188,13 +201,15 @@ function drawEpicycleFrame(
         epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
     }
 
-    // Connecting line
-    if (fit) {
-        drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
-    }
+    if (layers.epicycles) {
+        // Connecting line
+        if (fit) {
+            drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+        }
 
-    // Tip dot
-    drawTipDot(s, view, tip[0], tip[1]);
+        // Tip dot
+        drawTipDot(s, view, tip[0], tip[1]);
+    }
 
     // Label with hit regions for hover detection
     const level = Math.max(1, Math.ceil(anim.easedT * components.length));
@@ -203,7 +218,11 @@ function drawEpicycleFrame(
 }
 
 // ── Multi-basis mode ──
-function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
+function drawMultiBasesFrame(
+    s: CanvasSurface,
+    view: ViewTransform,
+    layers: FrameLayers = ALL_LAYERS,
+) {
     const { ctx, width, height } = s;
     const basesData = store.basesData;
     const epicycleData = store.epicycleData;
@@ -331,10 +350,10 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
 
         // Trail
         trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
-        trail.draw(s, view, epicycleColor);
+        if (layers.trail) trail.draw(s, view, epicycleColor);
 
         // Tip dot
-        drawTipDot(s, view, tip[0], tip[1]);
+        if (layers.epicycles) drawTipDot(s, view, tip[0], tip[1]);
 
         // Epicycle overlay — prefix slice, no recomputation
         const visPositions = nVis === components.length
@@ -357,7 +376,9 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
             }
         }
 
-        drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 5, arm: 4.5 }, epicycleHovered ? epicycleColor : null);
+        if (layers.epicycles) {
+            drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 5, arm: 4.5 }, epicycleHovered ? epicycleColor : null);
+        }
 
         if (fit) {
             epicycleBounds = {
@@ -366,7 +387,9 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
                 w: fit.scaledW,
                 h: fit.scaledH,
             };
-            drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+            if (layers.epicycles) {
+                drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+            }
         }
     }
 
@@ -470,7 +493,10 @@ function exportFrame(options: Record<string, boolean> = {}) {
     const {
         withGrid: showGrid = true,
         withLabels: showLabels = true,
+        withEpicycles = true,
+        withTrail = true,
     } = options;
+    const layers: FrameLayers = { epicycles: withEpicycles, trail: withTrail };
 
     // Create an offscreen canvas at the same resolution
     const offCanvas = document.createElement("canvas");
@@ -494,9 +520,9 @@ function exportFrame(options: Record<string, boolean> = {}) {
         const onlyEpic = hasEpic && props.activeBases.length === 1;
 
         if (onlyEpic && data) {
-            drawEpicycleFrame(s, data, view);
+            drawEpicycleFrame(s, data, view, layers);
         } else {
-            drawMultiBasesFrame(s, view);
+            drawMultiBasesFrame(s, view, layers);
         }
 
         if (!showLabels) {

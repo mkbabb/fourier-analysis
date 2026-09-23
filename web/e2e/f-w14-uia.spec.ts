@@ -136,3 +136,63 @@ test.describe("UIA-F-7 — the collapsed dock's position readout paints its fill
         expect(fill.painted).toBeGreaterThan(0);
     });
 });
+
+/** Count the painted (alpha > 0) pixels of a PNG, decoded in the page. */
+async function paintedPixels(page: Page, png: Buffer): Promise<number> {
+    return page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, c.width, c.height).data;
+        let n = 0;
+        for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+        return n;
+    }, png.toString("base64"));
+}
+
+test.describe("UIA-F-17 — every export switch changes the PNG", () => {
+    test("switching Epicycles and Trace path off removes their pixels", async ({ page }) => {
+        const viz = await firstSavedViz(page);
+        await page.goto(`/v/${viz.slug}`);
+        const bar = page.locator(".mini-progress").first();
+        await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0.2);
+        const pause = page.getByRole("button", { name: "Pause animation" }).first();
+        await pause.hover();
+        await pause.click();
+        await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeAttached();
+
+        async function exportWith(off: string[]): Promise<number> {
+            const more = page.getByRole("button", { name: "More options" }).first();
+            // The dock expands under the pointer; let its morph settle first.
+            await page.getByRole("button", { name: "Play animation" }).first().hover();
+            await page.waitForTimeout(800);
+            await more.click();
+            await page.getByRole("menuitem", { name: /export/i }).click();
+            const dialog = page.getByRole("dialog", { name: "Export Frame" });
+            for (const name of off) {
+                await dialog.locator("label.option-row", { hasText: name }).getByRole("switch").click();
+            }
+            const dl = page.waitForEvent("download");
+            await dialog.getByRole("button", { name: "Save PNG" }).click();
+            const file = await (await dl).path();
+            const { readFileSync } = await import("node:fs");
+            await expect(dialog).toHaveCount(0);
+            return paintedPixels(page, readFileSync(file!));
+        }
+
+        const all = await exportWith(["Grid lines", "Labels"]);
+        const noChain = await exportWith(["Grid lines", "Labels", "Epicycles"]);
+        const noTrace = await exportWith(["Grid lines", "Labels", "Trace path"]);
+        const again = await exportWith(["Grid lines", "Labels"]);
+        // A layer's removal must stand well clear of the repeat-export noise
+        // (the same switches twice) and of a 1% floor.
+        const floor = Math.max(all * 0.01, 10 * Math.abs(all - again));
+        expect(all - noChain, "Epicycles off removes the chain").toBeGreaterThan(floor);
+        expect(all - noTrace, "Trace path off removes the trace").toBeGreaterThan(floor);
+    });
+});
