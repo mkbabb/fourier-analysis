@@ -5,6 +5,7 @@ import { useImageUpload } from "./composables/useImageUpload";
 import { thumbnailUrl } from "@/lib/api";
 import { ConfiguratorLayer } from "@mkbabb/glass-ui/configurator";
 import { Progress } from "@mkbabb/glass-ui/progress";
+import { Button } from "@mkbabb/glass-ui/button";
 import { Upload, ImageOff } from "@lucide/vue";
 
 const store = useWorkspaceStore();
@@ -82,12 +83,15 @@ function onImgError() {
                     class="w-full max-h-[200px] object-contain transition-all duration-300"
                     @error="onImgError"
                 />
+                <!-- X.F.W13.b — the overlay is a drag-over SIGNAL only. It used to be the
+                     replace command too: a pointer-only `<div @click>` with no role, no
+                     name and no tab stop, so replacing the image was unreachable from
+                     the keyboard. The command is the glass Button below. -->
                 <div
-                    class="absolute inset-0 flex items-center justify-center bg-black/0 transition-all duration-200 cursor-pointer"
+                    class="pointer-events-none absolute inset-0 flex items-center justify-center transition-colors duration-200"
                     :class="{
                         'bg-primary/10': isDragging,
                     }"
-                    @click="openFilePicker"
                 >
                     <div
                         v-if="isDragging"
@@ -98,32 +102,34 @@ function onImgError() {
                     </div>
                 </div>
             </div>
+            <Button
+                v-if="hasPreview()"
+                emphasis="secondary"
+                size="sm"
+                class="mt-2 w-full"
+                @click="openFilePicker"
+            >
+                <Upload />
+                Replace image
+            </Button>
 
             <!-- D.W4.b — Slim source-strip (replaces the redundant full-card
                  empty-state dropzone). The canvas-center placeholder is the
                  hero affordance; this strip is a secondary cue + click target.
                  Once an image lands, the thumbnail/replace card above (with
                  `hasPreview()` true) becomes the only "full" panel form. -->
-            <button
+            <!-- X.F.W13.b — the strip is the glass Button (it was a hand-rolled
+                 `<button>` restating fill, border, a 6px corner, hover and focus). -->
+            <Button
                 v-else
-                type="button"
-                class="source-strip group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150"
-                :class="{
-                    'is-dragging': isDragging,
-                }"
+                emphasis="secondary"
+                class="source-strip w-full"
+                :class="{ 'is-dragging': isDragging }"
                 @click="openFilePicker"
             >
-                <Upload
-                    class="h-4 w-4 shrink-0 transition-colors duration-150"
-                    :class="{
-                        'text-primary': isDragging,
-                        'text-muted-foreground': !isDragging,
-                    }"
-                />
-                <span class="flex-1 text-sm font-medium text-muted-foreground">
-                    Drop or click to upload — PNG/JPG/SVG ≤ 10 MB
-                </span>
-            </button>
+                <Upload />
+                Drop or click to upload — PNG/JPG/SVG ≤ 10 MB
+            </Button>
 
             <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 4 (⊕ roster 24). 47 lines of
                  hand-rolled indeterminate progress with ZERO a11y channel (`grep -c
@@ -202,33 +208,11 @@ function onImgError() {
     outline-offset: 3px;
 }
 
-/* D.W4.b — slim source-strip. Replaces the redundant full dashed-border
-   empty-state dropzone with a one-line click target that yields hero
-   primacy to the canvas placeholder. The dashed-border affordance is
-   reserved for the canvas hero; the panel's secondary cue is flat. */
-.source-strip {
-    background: color-mix(in srgb, var(--muted) 40%, transparent);
-    border: 1px solid var(--border);
-    cursor: pointer;
-}
-.source-strip:hover {
-    background: color-mix(in srgb, var(--muted) 60%, transparent);
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
-}
-/* X.F.W4 · `FM-2`'s ring rider, the site `.a` named and handed to this unit.
-   `--ring` is declared in NO tree at the adopted pin — not by glass-ui 8.0.0,
-   not by this app — and an `outline` whose colour is an undeclared `var()` is
-   invalid at computed-value time and DROPPED. This rule, whose only purpose is
-   to paint a focus ring, has been painting none. `--focus-ring-color` and
-   `--focus-ring-width` are the producer's own registers, the same pair its
-   `.focus-ring:focus-visible` recipe uses, so the hand-rolled ring and the
-   library's now agree. */
-.source-strip:focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: 2px;
-}
+/* X.F.W13.b — the source strip's hand-rolled surface (fill, border, 6px corner,
+   hover, a focus ring re-pointed at the producer's registers) retires: the glass
+   Button owns all of it. The drag-over signal keeps the one line the Button has
+   no state for. */
 .source-strip.is-dragging {
-    background: color-mix(in srgb, var(--primary) 6%, transparent);
     border-color: var(--primary);
 }
 </style>
