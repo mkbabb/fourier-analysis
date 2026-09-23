@@ -385,13 +385,16 @@ watch(
     @apply text-sm;
     font-weight: 500;
     letter-spacing: 0.03em;
-    color: color-mix(in srgb, var(--foreground) 40%, transparent);
+    /* X.F.W14.g — OA-43: a live disclosure was inked at 40 % of the
+       foreground (2.49:1 on `--card`), the literal "greyed-out" read. The
+       secondary-ink token is the one glass ships for this role. */
+    color: var(--muted-foreground);
     transition: color 0.15s;
     white-space: nowrap;
     padding: 0.125rem 0;
 }
 .advanced-trigger:hover {
-    color: color-mix(in srgb, var(--foreground) 60%, transparent);
+    color: var(--foreground);
 }
 
 /* B.W2.d retired the hand-rolled `adv-open` / `adv-close` keyframes in favour

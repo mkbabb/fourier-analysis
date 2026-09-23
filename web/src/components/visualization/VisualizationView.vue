@@ -250,7 +250,19 @@ async function onCanvasFileSelect(e: Event) {
                  bordered card on an empty route, with no layered chassis around
                  it to belong to. The census that governs the shim is re-measured
                  at `style.css`'s own declaration. -->
-            <Configurator scroll-mode="auto" class="viz-configurator" :data-sidebar="sidebarPresent ? undefined : 'none'">
+            <!-- X.F.W14.g — OA-43 ("why is the controls items, these sidebars and
+                 elements, so gray and grayed out?"). The producer's shell is a
+                 `glass-floating` plate: its light veil is `oklch(0.28 0.035 70 / 0.18)`
+                 smoke over the paper, measured rgb(215 212 207). The stage covers it
+                 with its own `--card` card, but the controls aside had nothing over it,
+                 so the controls sat on the smoke beside a cream stage, and the
+                 muted ink read 4.44:1. No opacity, filter or inert was on any
+                 ancestor. The studio is an opaque instrument on paper, so it takes
+                 glass's named OPAQUE escape (`.glass-opaque` = `--glass-level: 0` →
+                 solid `--card` + `blur(0)`, docs/canon/glass-system.md). Its veil
+                 then resolves to the same `--card` the stage and every other fourier
+                 pane paint. -->
+            <Configurator scroll-mode="auto" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
                     <div class="viz-panel-right canvas-stage" :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && !isDesktop }">

@@ -290,14 +290,22 @@ function toggleBasis(key: string) {
     background: transparent;
     color: var(--muted-foreground);
 }
+/* X.F.W14.g — OA-43: the pressed label is the basis hue carried toward the
+   ink, not the bare hue. The glass `--viz-*` family is a stroke palette (its
+   light arm sits at L 0.48–0.58), and read bare on its own 12 % tint over
+   `--card` the Epicycles label measured 3.69:1 (light) — the "greyed" read
+   of a live control. A quarter of `--foreground` in OKLab keeps the hue and
+   clears AA for all three bases in both arms (≥ 5.0:1, re-derived by
+   `e2e/f-w14-veil.spec.ts`). */
 .basis-toggle[aria-pressed="true"] {
+    --pill-ink: color-mix(in oklab, var(--pill-color) 75%, var(--foreground));
     background: color-mix(in srgb, var(--pill-color) 12%, transparent);
     border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);
-    color: var(--pill-color);
+    color: var(--pill-ink);
 }
 .basis-toggle[aria-pressed="true"]:hover {
     background: color-mix(in srgb, var(--pill-color) 16%, transparent);
-    color: var(--pill-color);
+    color: var(--pill-ink);
 }
 
 /* Compact pills on mobile so all three fit on one line */
