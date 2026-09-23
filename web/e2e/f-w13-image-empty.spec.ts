@@ -112,14 +112,14 @@ test.describe("G-c — F.W13 image mode: one drop affordance, the sidebar arrive
 });
 
 test.describe("G-c — PRM context: the sidebar arrives without motion", () => {
-    test.use({ viewport: { width: 1440, height: 900 } });
+    // X.F.W14.r (F.W13 `.c` r4): `reducedMotion` is not a Playwright test
+    // option — a bare `test.use({ reducedMotion })` is dropped, which is why it
+    // "did not reach the page". It is a browser-context option, spelled through
+    // `contextOptions` (Playwright's own documented form). The PRM context is
+    // still asserted on the page before it is relied on.
+    test.use({ viewport: { width: 1440, height: 900 }, contextOptions: { reducedMotion: "reduce" } });
 
     test("reduced motion: no sidebar at rest, then present after a pick with no transition run", async ({ page }) => {
-        // `test.use({ reducedMotion })` did not reach the page at this pin (measured:
-        // `matchMedia("(prefers-reduced-motion: reduce)").matches === false`), so the
-        // PRM context is emulated on the page itself — the idiom the suite's
-        // visual-checkpoint spec already uses — and asserted before it is relied on.
-        await page.emulateMedia({ reducedMotion: "reduce" });
         await openEmpty(page);
         expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
         await expect(page.locator(".viz-panel-left-wrap")).toHaveCount(0);
