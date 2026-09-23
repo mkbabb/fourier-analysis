@@ -8,6 +8,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockTrigger, DockControl } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
+import { Progress } from "@mkbabb/glass-ui/progress";
 import GlassTimeline from "./GlassTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
 import SpeedSelect from "./SpeedSelect.vue";
@@ -76,10 +77,21 @@ const caretLabel = computed(() =>
  * only skips patching, which is the cost this row is about. Magnitude at a real
  * profile → SS-13.
  */
+//
+// X.F.W14.u — UIA-F-7: the fill was a bare `h("div", { class: "mini-fill" })`.
+// A render-function child carries no `data-v` scope, so the SFC's scoped
+// `.mini-fill` rule never matched it: 0 px tall and transparent, the dock's only
+// position readout permanently empty. The readout is the producer's `Progress`
+// now (its own styles, a real `progressbar` with a value), still rendered in
+// this boundary so the clock re-renders only it.
 const MiniProgressReadout = () =>
-    h("div", { class: "mini-progress" }, [
-        h("div", { class: "mini-fill", style: { width: `${anim.t * 100}%` } }),
-    ]);
+    h(Progress, {
+        class: "mini-progress",
+        size: "sm",
+        modelValue: anim.t,
+        max: 1,
+        "aria-label": "Animation position",
+    });
 
 /**
  * X.F.W3 `.a` — the timeline is a parameterised composition now, so this host
@@ -225,7 +237,7 @@ const TimelineReadout = () =>
 @keyframes rainbow-drift { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
 
 /* ── Collapsed summary ── */
-.mini-progress { width: 3rem; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
+.mini-progress { width: 3rem; flex-shrink: 0; }
 /* X.F.W4 · SP-4 / `fr-AnimationControls M-8` — the `transition: width 0.1s
    linear` is DELETED, not shortened. `width` here is rewritten every rAF tick,
    so a 100ms transition was retargeted every ~16ms and never once completed:
@@ -233,7 +245,6 @@ const TimelineReadout = () =>
    clock it claimed to report, and the browser ran a live interpolation for the
    entire playback to achieve that. One line removed fixes correctness AND cost,
    and removes an ungated-motion surface from D-8's inventory. */
-.mini-fill { height: 100%; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 25%, transparent); }
 .summary-speed { @apply text-base; color: color-mix(in srgb, var(--foreground) 35%, transparent); }
 
 /* ── Transitions ── */

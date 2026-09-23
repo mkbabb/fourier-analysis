@@ -113,3 +113,26 @@ test.describe("UIA-F-50 / UIA-F-4 / UIA-F-49 — not-found and load-error states
         await expect(page.getByTestId("not-found")).toHaveCount(0);
     });
 });
+
+test.describe("UIA-F-7 — the collapsed dock's position readout paints its fill", () => {
+    test("the mini readout is a progressbar whose painted fill tracks the clock", async ({ page }) => {
+        const viz = await firstSavedViz(page);
+        await page.goto(`/v/${viz.slug}`);
+        await page.mouse.move(5, 5);
+        const bar = page.locator(".mini-progress").first();
+        await expect(bar).toHaveAttribute("role", "progressbar");
+        await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0);
+        const fill = await bar.evaluate((el) => {
+            const ind = el.firstElementChild as HTMLElement;
+            const r = ind.getBoundingClientRect();
+            const box = el.getBoundingClientRect();
+            const bg = getComputedStyle(ind).backgroundColor;
+            // The painted span is the part of the indicator inside the rail.
+            const painted = Math.max(0, Math.min(r.right, box.right) - Math.max(r.left, box.left));
+            return { h: r.height, painted, transparent: bg === "transparent" || /,\s*0\)$/.test(bg) };
+        });
+        expect(fill.h).toBeGreaterThan(0);
+        expect(fill.transparent).toBe(false);
+        expect(fill.painted).toBeGreaterThan(0);
+    });
+});
