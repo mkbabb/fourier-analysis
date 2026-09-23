@@ -13,7 +13,8 @@ import { ADMIN_TOKEN, ENTRY, stubAdminApi, stubGallery } from "./fixtures/galler
  * ⟨cmd⟩ `grep -c toHaveScreenshot web/e2e/*.spec.ts` → **0 across all 12
  * specs**; ⟨cmd⟩ `find web -name '*-snapshots' -type d` → **∅**. The repo's one
  * screenshot harness, `visual-baseline.spec.ts`, writes bare full-page PNGs
- * through `page.screenshot()` into `docs/tranches/J/audit/screenshots/` — it
+ * through `page.screenshot()` (into `web/test-results/visual-baseline/` since
+ * X.F.W14.r; into the checked-in `docs/tranches/J/audit/screenshots/` before) — it
  * CAPTURES, it does not COMPARE. So all eight checkpoint items were minted with
  * no typecheck signal (a token sign change paints; it never types) AND no
  * screenshot-diff signal. This file is the comparing half, and

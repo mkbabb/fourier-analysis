@@ -9,7 +9,7 @@
  *   VISUAL_MODE=after  npx playwright test visual-baseline.spec.ts   # W8 close
  *
  * Sweeps EVERY page (not a sample) × 3 viewports (mobile/laptop/desktop), writes
- * full-page captures under docs/tranches/J/audit/screenshots/{before,after}/, and
+ * full-page captures under web/test-results/visual-baseline/{before,after}/, and
  * runs the occlusion gate (zero horizontal overflow per page×viewport). The paired
  * before/after + the per-page DELTA.md make the recurring "a fix on page X silently
  * broke page Y" class visible at close, not in the next tranche's reconciliation.
@@ -27,12 +27,13 @@ const MODE = (process.env.VISUAL_MODE ?? "before").toLowerCase();
 // not be measured without destroying the record it is measured against. The
 // default is byte-identical to the previous behaviour; a seat that wants the
 // gate and not the captures points `VISUAL_OUT` at a scratch directory.
+// X.F.W14.r (F.W13 residual): the DEFAULT is now that scratch directory — the
+// run's own `test-results/` (git-ignored) — so a full e2e run can never again
+// rewrite the checked-in J evidence. A seat that means to re-mint the J trees
+// says so with `VISUAL_OUT`.
 const OUT =
     process.env.VISUAL_OUT ??
-    path.resolve(
-        HERE,
-        `../../docs/tranches/J/audit/screenshots/${MODE === "after" ? "after" : "before"}`,
-    );
+    path.resolve(HERE, `../test-results/visual-baseline/${MODE === "after" ? "after" : "before"}`);
 
 // EVERY route (router/index.ts). Param routes that need seeded data are captured
 // at their empty/landing state (the empty DB is itself the J-open baseline truth).
