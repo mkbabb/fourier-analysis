@@ -6,6 +6,7 @@ import { Button } from "@mkbabb/glass-ui/button";
 import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
+import { ANIMATION_DEFAULTS, CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { normalizeBasisKey } from "@/lib/basis";
 import { basisDisplay } from "./lib/basis-display";
 import { RotateCcw } from "@lucide/vue";
@@ -89,17 +90,25 @@ function getBasisTooltip(key: string): string {
     return basisTooltips[key] ?? key;
 }
 
+/**
+ * X.F.W13.b — the reset read a private copy of the defaults that had drifted
+ * from the app's one spelling (`nHarmonics: 50` here, `n_harmonics: 200` in
+ * `lib/defaults.ts`, which is what a fresh workspace actually loads). Measured
+ * on the served page: a fresh upload read N = 200 with the reset LIT, and
+ * pressing it moved N to 50 — "reset" left the defaults. It now reads the one
+ * owner, so it restores what a fresh workspace shows and is disabled there.
+ */
 const DEFAULTS = {
-    activeBases: ["fourier-epicycles"],
-    nHarmonics: 50,
-    nPoints: 1024,
+    activeBases: ANIMATION_DEFAULTS.active_bases,
+    nHarmonics: CONTOUR_DEFAULTS.n_harmonics,
+    nPoints: CONTOUR_DEFAULTS.n_points,
 } as const;
 
 const isDefault = computed(() =>
-    (props.nHarmonics ?? 50) === DEFAULTS.nHarmonics
-    && (props.nPoints ?? 1024) === DEFAULTS.nPoints
-    && selected.value.length === 1
-    && selected.value[0] === "fourier-epicycles",
+    (props.nHarmonics ?? DEFAULTS.nHarmonics) === DEFAULTS.nHarmonics
+    && (props.nPoints ?? DEFAULTS.nPoints) === DEFAULTS.nPoints
+    && selected.value.length === DEFAULTS.activeBases.length
+    && DEFAULTS.activeBases.every((b) => selected.value.includes(b)),
 );
 
 function resetDefaults() {
@@ -150,8 +159,7 @@ function toggleBasis(key: string) {
                 <Button
                     emphasis="quiet"
                     size="md" icon-only
-                    class="reset-icon-btn"
-                    :class="{ 'is-default': isDefault }"
+                    :disabled="isDefault"
                     aria-label="Reset to defaults"
                     @click.stop="resetDefaults"
                 >
@@ -308,25 +316,11 @@ function toggleBasis(key: string) {
     }
 }
 
-.reset-icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    border: none;
-    background: none;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: color 0.15s, opacity 0.2s;
-}
-.reset-icon-btn.is-default {
-    opacity: 0.25;
-    pointer-events: none;
-}
-.reset-icon-btn:hover {
-    color: var(--foreground);
-}
+/* X.F.W13.b — the `.reset-icon-btn` block retires: it restated the glass Button's
+   geometry (a 4px corner on the 40x40 icon-only square, measured) and faked the
+   disabled state with `pointer-events: none` on a control that stayed focusable
+   and keyboard-live. The Button owns both: `icon-only` is the circle, and
+   `:disabled` is the one disabled channel. */
 
 /*
    X.F.W3 `.a` · `fr-BasisSelector B-2` — THE PER-INSTANCE RETINT, LANDED.
