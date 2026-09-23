@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, h, useTemplateRef } from "vue";
+import { computed, h } from "vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
 import {
     Download, EllipsisVertical, } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import { GlassDock, DockTrigger } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockTrigger, DockControl } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import GlassTimeline from "./GlassTimeline.vue";
@@ -32,9 +32,6 @@ const emit = defineEmits<{
 const anim = useAnimationStore();
 const store = useWorkspaceStore();
 
-/** The dock's posture — the ONE play control sizes to it (mini while collapsed). */
-const dockRef = useTemplateRef<InstanceType<typeof GlassDock>>("dock");
-const dockExpanded = computed(() => dockRef.value?.expanded ?? false);
 
 const isEpicycleOnly = computed(() =>
     props.activeBases.includes("fourier-epicycles") && props.activeBases.length === 1,
@@ -138,18 +135,21 @@ const TimelineReadout = () =>
         -->
         <template #persistent>
             <Tooltip :text="anim.playing ? 'Pause animation' : 'Play animation'">
-                <button
-                    class="play-btn"
-                    :class="{ 'play-btn--mini': !dockExpanded }"
-                    :aria-pressed="anim.playing"
+                <!-- X.F.W13.b — the dock's own control (owner frame 3, OA-15). The
+                     hand-rolled `.play-btn` was a 40x32 / 48x40 stadium beside the dock's
+                     40x40 circles; `DockControl` is the circle, and its `active` is the
+                     same toggle channel (`aria-pressed` + `data-active`). -->
+                <DockControl
+                    class="play-control"
+                    :active="anim.playing"
                     :aria-label="anim.playing ? 'Pause animation' : 'Play animation'"
                     @click.stop="anim.toggle"
                 >
                     <Transition name="icon-swap" mode="out-in">
-                        <svg v-if="anim.playing" class="play-icon" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
-                        <svg v-else class="play-icon" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
+                        <svg v-if="anim.playing" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
+                        <svg v-else viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
                     </Transition>
-                </button>
+                </DockControl>
             </Tooltip>
         </template>
 
@@ -209,65 +209,21 @@ const TimelineReadout = () =>
     width: min(var(--animation-dock-max-width, 960px), calc(100dvw - 1rem));
 }
 
-/* ── Play button ── */
-.play-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 2.5rem;
-    border-radius: var(--radius-control);
-    cursor: pointer;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-    backdrop-filter: blur(12px) saturate(1.4);
-    -webkit-backdrop-filter: blur(12px) saturate(1.4);
-    color: #fff;
-    flex-shrink: 0;
-    transition: transform 0.2s, box-shadow 0.3s, border-color 0.3s;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-.play-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius-control);
-    background: linear-gradient(135deg, hsl(0 75% 62% / 0.55), hsl(35 85% 58% / 0.5), hsl(55 80% 55% / 0.45), hsl(140 50% 50% / 0.45), hsl(210 65% 58% / 0.5), hsl(275 55% 58% / 0.5), hsl(330 65% 58% / 0.55));
+/* ── Play control ── */
+/* X.F.W13.b — the hand-rolled `.play-btn` (its own glass recipe in literal
+   rgba, a 48x40 / 40x32 stadium, hover lift, press, focus outline) retires onto
+   `DockControl`, which owns the circle, the glass face, press and focus. The
+   rainbow the control wore while playing is KEPT, moved onto the producer's
+   own knob for a selected dock control (`--dock-control-active-bg`, read by
+   `[data-active]`), and its drift keeps its reduced-motion arm. */
+.play-control[data-active] {
+    --dock-control-active-bg: linear-gradient(135deg, hsl(0 75% 62% / 0.55), hsl(35 85% 58% / 0.5), hsl(55 80% 55% / 0.45), hsl(140 50% 50% / 0.45), hsl(210 65% 58% / 0.5), hsl(275 55% 58% / 0.5), hsl(330 65% 58% / 0.55));
     background-size: 300% 300%;
-    z-index: -1;
-    transition: opacity 0.3s ease;
+    animation: rainbow-drift 2.5s var(--ease-standard) infinite;
 }
-.play-btn::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius-control);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%);
-    pointer-events: none;
-}
-/* X.F.W3 repair 1 — the published active-state vocabulary, applied (`style.css`
-   §"THE ACTIVE-STATE VOCABULARY, PUBLISHED"; `FR-COB-3`). The play control is a
-   true toggle (`anim.toggle`), so its run state is announced on `aria-pressed`
-   — the channel the vocabulary's own table gives "a transient run state" — and
-   painted from that same attribute. `.is-playing` was the state itself, on a
-   control that announced nothing: a screen-reader user could not tell a playing
-   dock from a paused one, and the class and the aria-label could drift apart
-   because nothing bound them. The sibling `ConvergenceTimeline.vue` play
-   control already set `aria-pressed`; now both speak one vocabulary.
-   Specificity is unmoved — an attribute selector scores as a class. */
-.play-btn[aria-pressed="true"]::before { animation: rainbow-drift 2.5s var(--ease-standard) infinite; }
-
 @media (prefers-reduced-motion: reduce) {
-    .play-btn[aria-pressed="true"]::before { animation: none; }
+    .play-control[data-active] { animation: none; }
 }
-.play-btn:hover { transform: scale(1.08); border-color: rgba(255, 255, 255, 0.4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 20px rgba(200, 100, 255, 0.2), 0 2px 12px rgba(100, 180, 255, 0.15); }
-.play-btn:active { transform: scale(0.93); }
-.play-btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
-.play-btn--mini { width: 2.5rem; height: 2rem; }
-.play-btn--mini .play-icon { width: 14px; height: 14px; }
-.play-icon { width: 17px; height: 17px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15)); }
 @keyframes rainbow-drift { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
 
 /* ── Collapsed summary ── */
