@@ -69,7 +69,7 @@ watchDebounced(
         @keydown.esc="emit('close')"
     >
         <CardHeader class="flex flex-row items-center justify-between gap-2">
-            <span class="text-sm font-medium text-foreground">Equation</span>
+            <span class="font-serif-math text-heading font-semibold tracking-tight text-foreground" data-card-title>Equation</span>
             <div class="flex items-center gap-2">
                 <Metric
                     :value="(energy * 100).toFixed(1)"
@@ -89,8 +89,8 @@ watchDebounced(
             </div>
         </CardHeader>
 
-        <CardContent class="flex flex-col gap-2">
-        <div class="flex flex-col gap-1.5">
+        <CardContent class="flex flex-col gap-body">
+        <div class="flex flex-col gap-body">
             <NotationPills v-model="notation" />
             <SliderControl
                 label="Terms"

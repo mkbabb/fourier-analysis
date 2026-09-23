@@ -232,32 +232,24 @@ function handleReset() {
     }
 }
 
+/* X.F.W14.h · OA-45 — the page title and lede on glass's type scale
+   (`--type-display-1`, fluid, so the two breakpoint overrides retire;
+   `--type-body` for the lede), the gap on the spacing scale. Below them every
+   card title sits on `--type-heading` (MorphPhaseConfig, HarmonicLevelGrid). */
 .demo-title {
     font-family: var(--font-serif);
-    @apply text-2xl;
+    font-size: var(--type-display-1);
+    line-height: var(--type-leading-display);
     font-weight: 400;
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--space-atom);
     color: var(--foreground);
-}
-
-@media (min-width: 640px) {
-    .demo-title {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-    }
 }
 
 .demo-subtitle {
     color: var(--muted-foreground);
-    @apply text-base;
+    font-size: var(--type-body);
+    line-height: var(--type-leading-body);
     max-width: 36rem;
-}
-
-@media (min-width: 640px) {
-    .demo-subtitle {
-        @apply text-lg;
-        margin-bottom: 0;
-    }
 }
 
 /* ── Controls section ───────────────────────── */

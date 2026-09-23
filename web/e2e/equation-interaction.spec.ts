@@ -65,7 +65,7 @@ function recordComputes(page: Page): ComputePayload[] {
 /** The route's own mount condition — never a blind timeout. */
 async function openEquation(page: Page): Promise<void> {
     await page.goto("/equation");
-    await expect(page.locator(".slider-subtitle").first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator("[data-row-sub]").first()).toBeVisible({ timeout: 60_000 });
 }
 
 /** The rendered series, which is the surface every leg below reads. */
@@ -210,7 +210,7 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         // 422, and it is invisible to any test that never reloads.
         const reloadCount = computes.length;
         await page.reload();
-        await expect(page.locator(".slider-subtitle").first()).toBeVisible({ timeout: 60_000 });
+        await expect(page.locator("[data-row-sub]").first()).toBeVisible({ timeout: 60_000 });
 
         await expect(
             page.getByRole("group", { name: "Notation" }).getByRole("button", { name: /Exp/ }),

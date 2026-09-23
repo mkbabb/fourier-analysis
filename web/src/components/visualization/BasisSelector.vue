@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { Slider } from "@mkbabb/glass-ui/slider";
-import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
 import { Button } from "@mkbabb/glass-ui/button";
-import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
+import { ConfiguratorLayer } from "@mkbabb/glass-ui/configurator";
+import SliderControl from "@/components/ui/SliderControl.vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VIZ_COLORS } from "@/lib/colors";
 import { ANIMATION_DEFAULTS, CONTOUR_DEFAULTS } from "@/lib/defaults";
@@ -24,35 +23,18 @@ const emit = defineEmits<{
     (e: "update:nPoints", v: number): void;
 }>();
 
-/* A.W2.c — `<Slider>` accepts an array model; the
-   parent's scalar `nHarmonics` / `nPoints` are adapted via paired computed
-   getters/setters that wrap the emit. */
-/*
- * X.F.W12 `.a` — R-e-1 (COHESION §0as): the two readouts are the producer's
- * `NumberField`, so ArrowUp/ArrowDown step by the Slider's own `:step` and the
- * field commits a number. A cleared field commits `NaN`, folded to the floor by
- * `|| min` exactly as the old `parseInt("") || min` did; the clamp stays the
- * range authority. No grouping: `4096` must read and round-trip as `4096`.
- */
-const INTEGER_FORMAT: Intl.NumberFormatOptions = {
-    maximumFractionDigits: 0,
-    useGrouping: false,
-};
+/* X.F.W14.h · OA-45 — the two resolution rows are the app's one control-row
+   idiom (`ui/SliderControl.vue`): label and value field on one line, the slider
+   beneath. The frame's three-line row (label; the field alone on a right-aligned
+   line; a thumbless bar) retires with the local ConfiguratorRow + NumberField +
+   Slider composition. The clamps stay here, the range authority; a cleared
+   field commits `NaN`, folded to the floor by `|| min`. */
 function emitHarmonics(v: number) {
     emit("update:nHarmonics", Math.max(1, Math.min(500, Math.round(v) || 1)));
 }
 function emitPoints(v: number) {
     emit("update:nPoints", Math.max(128, Math.min(4096, Math.round(v) || 128)));
 }
-
-const harmonicsModel = computed<number[]>({
-    get: () => [props.nHarmonics ?? 50],
-    set: (arr) => emit("update:nHarmonics", Math.max(1, Math.min(500, arr[0] ?? 50))),
-});
-const pointsModel = computed<number[]>({
-    get: () => [props.nPoints ?? 1024],
-    set: (arr) => emit("update:nPoints", Math.max(128, Math.min(4096, arr[0] ?? 1024))),
-});
 
 const selected = ref<string[]>(props.activeBases ?? ["fourier-epicycles"]);
 
@@ -184,78 +166,30 @@ function toggleBasis(key: string) {
             </Tooltip>
         </div>
 
-        <ConfiguratorRow label="Harmonics" name="N">
-            <div class="w-full">
-                <div class="mb-1.5 flex items-center justify-end">
-                    <NumberField
-                        :model-value="nHarmonics"
-                        :min="1"
-                        :max="500"
-                        :step="1"
-                        :format-options="INTEGER_FORMAT"
-                        size="sm"
-                        class="inline-number"
-                        @update:model-value="emitHarmonics"
-                    >
-                        <NumberFieldInput aria-label="Harmonics" />
-                    </NumberField>
-                </div>
-                <Slider
-                    v-model="harmonicsModel"
-                    :min="1"
-                    :max="500"
-                    :step="1"
-                    aria-label="Harmonics"
-                    class="basis-slider-track"
-                    :style="{ '--track-color': VIZ_COLORS.fourier }"
-                />
-            </div>
-        </ConfiguratorRow>
-
-        <ConfiguratorRow label="Sample Points">
-            <div class="w-full">
-                <div class="mb-1.5 flex items-center justify-end">
-                    <NumberField
-                        :model-value="nPoints"
-                        :min="128"
-                        :max="4096"
-                        :step="128"
-                        :format-options="INTEGER_FORMAT"
-                        size="sm"
-                        class="inline-number"
-                        @update:model-value="emitPoints"
-                    >
-                        <NumberFieldInput aria-label="Sample Points" />
-                    </NumberField>
-                </div>
-                <Slider
-                    v-model="pointsModel"
-                    :min="128"
-                    :max="4096"
-                    :step="128"
-                    aria-label="Sample Points"
-                    class="basis-slider-track"
-                    :style="{ '--track-color': VIZ_COLORS.chebyshev }"
-                />
-            </div>
-        </ConfiguratorRow>
+        <SliderControl
+            label="Harmonics"
+            token="N"
+            :model-value="nHarmonics ?? 50"
+            :min="1"
+            :max="500"
+            :step="1"
+            :color="VIZ_COLORS.fourier"
+            @update:model-value="emitHarmonics"
+        />
+        <SliderControl
+            label="Sample Points"
+            :model-value="nPoints ?? 1024"
+            :min="128"
+            :max="4096"
+            :step="128"
+            :color="VIZ_COLORS.chebyshev"
+            @update:model-value="emitPoints"
+        />
     </ConfiguratorLayer>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
-/* X.F.W12 `.a` — R-e-1 (COHESION §0as): the two readouts moved off a native
-   `type="number"` re-skinned as a bare underline onto the producer's
-   `NumberField`; the local chrome retired with it (the transparent fill, the
-   underline border and its hover/focus paint, `outline: none`, the inherited
-   font size, the zero padding and the spin-button suppression) — the
-   producer's `field-control` owns boundary, focus ring, radius, fill and the
-   mono tabular numerals. What stays is layout only: the measure, wide enough
-   for the four-digit `4096`. */
-.inline-number {
-    width: 4.5rem;
-}
-
 .basis-icon {
     display: inline-flex;
     align-items: center;
@@ -330,30 +264,4 @@ function toggleBasis(key: string) {
    and keyboard-live. The Button owns both: `icon-only` is the circle, and
    `:disabled` is the one disabled channel. */
 
-/*
-   X.F.W3 `.a` · `fr-BasisSelector B-2` — THE PER-INSTANCE RETINT, LANDED.
-
-   The four declarations this replaces named a namespace the producer has never
-   defined at any pin this tree has installed, so the declared per-basis colour
-   has never painted: both sliders rendered the stock capsule. The producer's
-   real knob is `--slider-range-bg`, read by `.slider-range`'s own
-   `--liquid-fill-tint`.
-
-   ⊘ `MPC-10`, the cure-rider, is why this is ONE declaration and not a rename of
-   four. The thumb pair is DELETED rather than renamed: the scrubber recipe's
-   thumb is `width: 0; opacity: 0` by contract — its leading edge IS the handle —
-   so a thumb colour is uncolourable by construction. And the range pair loses
-   its `30%`/`45%` wrappers: the producer already dilutes the tint to 88%
-   (`--liquid-fill-strength`), so a rename-only cure would have shipped net
-   α 0.264 and dropped the fill from 11.51:1 to 1.51:1 against its own track —
-   a 1.4.11 regression landed under a green token-sweep gate. Full strength is
-   the corrected cure and it is asserted, both arms, at
-   `e2e/slider-scrub-contrast.spec.ts`.
-
-   ⊘ `R-1`'s `D-14` rider: the fallback is explicit, so an unset `--track-color`
-   degrades to the producer's own capsule instead of to an invalid value.
-*/
-.basis-slider-track {
-    --slider-range-bg: var(--track-color, var(--glass-capsule-warm));
-}
 </style>

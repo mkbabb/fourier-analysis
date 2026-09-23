@@ -460,7 +460,7 @@ onUnmounted(() => {
                     <article class="paper-article leading-relaxed">
                         <header class="mb-10 lg:mb-20 text-center">
                             <h1
-                                class="font-serif-math text-4xl font-bold tracking-tight sm:text-5xl md:text-[3.25rem] leading-[1.15]"
+                                class="font-serif-math text-display-2 font-bold tracking-tight leading-display"
                             >
                                 An Introduction to<br /><span class="fourier-f">ℱ</span>ourier Analysis
                             </h1>

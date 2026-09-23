@@ -27,14 +27,46 @@
  *     `"scrubber" | "spectrum"` and `scrubber` is already the default.
  *   · The projection the old `:140-142` asserted did not occur — see the rule
  *     at the foot of this file.
+ *
+ * ⊘ X.F.W14.h · OA-45 (owner frame `owner-2026-09-23-hierarchy.png`) — THE ONE
+ * CONTROL-ROW IDIOM. Every labelled slider in the app is this component; no
+ * page composes its own row. The row is two lines and only two:
+ *
+ *   line 1 — the label (glass `Label`, `--type-small`), an optional mono token
+ *            (`N`) or muted subtitle (ellipsised, never wrapping), and the value
+ *            field (glass `NumberField`) at the line's end, with an optional unit;
+ *   line 2 — the producer's `Slider`, directly beneath, with a VISIBLE thumb and
+ *            a track FILL.
+ *
+ * Rhythm is glass's spacing scale (`--space-atom` inside the row); the row never
+ * grows a third line, so every row in the app measures one height.
+ *
+ * The producer ships no slider that has both a visible thumb and a fill: the
+ * `scrubber` variant's thumb is `width: 0; opacity: 0` by contract (its fill's
+ * leading edge is the handle — the "thick bar with no visible thumb" of the
+ * frame), and the `spectrum` variant's thumb is visible but its range paints
+ * nothing. Nor does it ship a labelled slider with an inline value field
+ * (`LabeledSlider` carries no value). Both are ROUTED to glass BL by id
+ * (`BL-FW14H-1` slider thumb+fill; `BL-FW14H-2` labelled slider with inline
+ * value; the O-59 relay line). Meanwhile the row COMPOSES existing primitives
+ * through the producer's public surface: the `spectrum` variant (visible thumb)
+ * and its documented track token `--glass-slider-track-background`, painted as
+ * the fill up to the thumb's centre (reka's `contain` thumb alignment: the
+ * centre travels from half a thumb in to half a thumb short of the end).
  */
-import { computed, useAttrs } from "vue";
+import { computed, useAttrs, useId } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
 import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
+import { Label } from "@mkbabb/glass-ui/label";
 
 const props = defineProps<{
     label: string;
+    /** A muted descriptive secondary label, on the label's line (ellipsised). */
     subtitle?: string;
+    /** A mono token or spec reference beside the label (`N`). */
+    token?: string;
+    /** The value's unit, after the field (`ms`). */
+    unit?: string;
     modelValue: number;
     min: number;
     max: number;
@@ -145,41 +177,60 @@ const displayValue = computed(() =>
     props.formatValue ? props.formatValue(props.modelValue) : String(props.modelValue),
 );
 const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)));
+
+/** The field's id: the row's visible `Label` names it (`for`). */
+const fieldId = useId();
+
+/**
+ * The fill's extent, 0…1 — read by the track token in the stylesheet (see the
+ * docblock: the composition over `spectrum` until BL ships thumb + fill).
+ */
+const fillFraction = computed(() => {
+    const span = props.max - props.min;
+    return span > 0 ? (clamp(props.modelValue, props.min, props.max) - props.min) / span : 0;
+});
 </script>
 
 <template>
-    <div class="slider-control" v-bind="chassisAttrs">
-        <label class="slider-label">
-            <span>
-                <slot>{{ label }}</slot>
-                <span v-if="subtitle" class="slider-subtitle"> — {{ subtitle }}</span>
+    <div class="control-row" data-control-row v-bind="chassisAttrs">
+        <div class="control-row-line">
+            <Label :for="fieldId" class="control-row-label" data-row-label :disabled="isDisabled">
+                {{ label }}
+            </Label>
+            <span v-if="token" class="control-row-token fira-code" aria-hidden="true">{{ token }}</span>
+            <span v-if="subtitle" class="control-row-sub" data-row-sub :title="subtitle">{{ subtitle }}</span>
+            <span class="control-row-value">
+                <NumberField
+                    :model-value="isNumericDisplay ? modelValue : null"
+                    :min="min"
+                    :max="max"
+                    :step="step"
+                    :format-options="numberFormat"
+                    :disabled="isDisabled"
+                    size="sm"
+                    class="control-row-field"
+                    @update:model-value="onNumber"
+                >
+                    <NumberFieldInput
+                        :id="fieldId"
+                        class="fira-code"
+                        :aria-label="label"
+                        :placeholder="isNumericDisplay ? undefined : displayValue"
+                    />
+                </NumberField>
+                <span v-if="unit" class="control-row-unit fira-code">{{ unit }}</span>
             </span>
-            <NumberField
-                :model-value="isNumericDisplay ? modelValue : null"
-                :min="min"
-                :max="max"
-                :step="step"
-                :format-options="numberFormat"
-                :disabled="isDisabled"
-                size="sm"
-                class="inline-number"
-                @update:model-value="onNumber"
-            >
-                <NumberFieldInput
-                    class="fira-code"
-                    :aria-label="label"
-                    :placeholder="isNumericDisplay ? undefined : displayValue"
-                />
-            </NumberField>
-        </label>
+        </div>
         <Slider
             v-model="sliderModel"
+            variant="spectrum"
+            size="md"
             :min="min"
             :max="max"
             :step="step"
             :aria-label="label"
-            class="slider-track-host"
-            :style="{ '--track-color': color }"
+            class="control-row-track"
+            :style="{ '--track-color': color, '--row-fill': fillFraction }"
             v-bind="controlAttrs"
             @value-commit="onValueCommit"
         />
@@ -187,59 +238,84 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
 </template>
 
 <style scoped>
-@reference "tailwindcss";
-.slider-control {
+/*
+   X.F.W14.h — the idiom's geometry, on glass's scales only:
+   · rhythm: `--space-atom` between the two lines and between the line's parts;
+   · type: the label on `--type-small`, the subtitle and unit on `--type-caption`,
+     the token on `--type-micro`;
+   · the field keeps the producer's `sm` rung; only its measure is ours.
+*/
+.control-row {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--space-atom);
+    min-width: 0;
 }
 
-.slider-label {
+.control-row-line {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    @apply text-sm;
+    gap: var(--space-atom);
+    min-width: 0;
+}
+
+.control-row-label {
+    flex: none;
+    font-size: var(--type-small);
+    line-height: var(--type-leading-small);
     font-weight: 500;
+    color: var(--foreground);
+    white-space: nowrap;
+}
+
+.control-row-token {
+    flex: none;
+    font-size: var(--type-micro);
     color: var(--muted-foreground);
 }
 
-.slider-subtitle {
-    font-weight: 400;
-    font-size: 0.75em;
-    opacity: 0.7;
+.control-row-sub {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--type-caption);
+    color: var(--muted-foreground);
 }
 
-/* X.F.W13.b — the raw field's restyle (transparent fill, no border, a hover
-   underline, hidden spin buttons) retires with the raw field: the glass
-   NumberField owns its surface, radius and focus ring. Only its width is ours. */
-.inline-number {
+.control-row-value {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-atom);
+    margin-inline-start: auto;
+    flex: none;
+}
+
+.control-row-field {
     width: 4.5rem;
 }
 
+.control-row-unit {
+    font-size: var(--type-caption);
+    color: var(--muted-foreground);
+}
+
 /*
-   X.F.W3 `.a` · `fr-SliderControl R-1` (⊕ `B-2` / `MPC-3`) — THE PER-INSTANCE
-   RETINT, LANDED, and the `R-21` drift it was the evidence for.
-
-   The five declarations this replaces named a namespace the producer defines at
-   NO pin this tree has installed, so the `color` prop — which every one of this
-   wrapper's callsites is required to pass — delivered zero pixels and every
-   track painted the stock capsule. That is the projection the old comment
-   asserted and that never occurred.
-
-   The cure is the banked shape and not a bare rename:
-     · the range pair collapses to the producer's real `--slider-range-bg`, at
-       FULL STRENGTH — the producer already dilutes the tint to 88%, so keeping
-       the `25%`/`35%` wrappers would have shipped net α 0.22 and put the fill
-       below its own track's 1.4.11 floor under a green sweep (`MPC-10`);
-     · the thumb pair is DELETED, not renamed — the scrubber thumb is
-       `width: 0; opacity: 0` by contract, its leading edge IS the handle;
-     · the height rides the producer's own token inline, since no `size` step is
-       16px (sm 12 · md 20 · lg 28).
-   `D-14`: the fallback is explicit, so an empty `color` degrades to the
-   producer's capsule instead of to an invalid value.
+   The fill, composed over the producer's documented track token (see the
+   docblock; routed to BL). The stop sits at the thumb's centre under reka's
+   `contain` alignment: half a thumb in at the minimum, half a thumb short of the
+   end at the maximum. `--slider-thumb-size` is the producer's own size-rung
+   token on this same element; the `spectrum` thumb is 0.75 of it wide.
+   `D-14`: an empty `color` falls back to the producer's capsule tint.
 */
-.slider-track-host {
-    --slider-track-height: 16px;
-    --slider-range-bg: var(--track-color, var(--glass-capsule-warm));
+.control-row-track {
+    --row-thumb: calc(var(--slider-thumb-size, 1rem) * 0.75);
+    --row-stop: calc(var(--row-thumb) / 2 + (100% - var(--row-thumb)) * var(--row-fill, 0));
+    --glass-slider-track-background: linear-gradient(
+        to right,
+        var(--track-color, var(--glass-capsule-warm)) 0 var(--row-stop),
+        var(--muted-medium) var(--row-stop) 100%
+    );
 }
 </style>

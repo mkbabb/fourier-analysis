@@ -258,6 +258,22 @@ onUnmounted(() => {
     }
 }
 
+/* X.F.W14.h · OA-45 — the tool's headings had no size of their own (the page
+   title and the two subject names all inherited the body's 18.6 px, measured):
+   the title takes `--type-heading`, the subject names `--type-subheading`. */
+.extractor-page h1 {
+    font-family: var(--font-serif);
+    font-size: var(--type-heading);
+    line-height: var(--type-leading-heading);
+    font-weight: 400;
+}
+
+.extractor-page h2 {
+    font-size: var(--type-subheading);
+    line-height: var(--type-leading-heading);
+    margin-bottom: var(--space-atom);
+}
+
 .subject-row {
     display: flex;
     flex-wrap: wrap;

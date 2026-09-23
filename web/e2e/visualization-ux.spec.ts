@@ -200,7 +200,7 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
     // at the settled tree by this seat, 2026-09-17:
     //   `grep -rn 'subtitle' src/components/equation/FunctionInput.vue`
     //   → `:182` "terms in the Fourier sum" · `:215` "shown in expanded (a+b) view"
-    // and `SliderControl.vue:69` renders `<span class="slider-subtitle">` only
+    // and `SliderControl.vue` renders its subtitle (`[data-row-sub]`) only
     // when that prop is passed. Nothing on `/visualize` passes it.
     //
     // ROUTE-SPELLING DRIFT, RECORDED NOT SILENTLY ADOPTED: the banked row (and
@@ -237,7 +237,7 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // CollapsibleSection is `:default-open="true"`, and the desktop grid
         // renders the left panel unconditionally (the mobile tab bar is
         // `lg:hidden`), so the subtitle is in the default desktop DOM.
-        await expect(page.locator(".slider-subtitle").first()).toBeVisible({
+        await expect(page.locator("[data-row-sub]").first()).toBeVisible({
             timeout: 60_000,
         });
 

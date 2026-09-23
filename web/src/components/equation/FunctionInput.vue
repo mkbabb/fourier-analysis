@@ -101,13 +101,13 @@ const activePreset = computed(() =>
 </script>
 
 <template>
-    <div class="space-y-3">
+    <div class="space-y-family">
         <!-- Function definition -->
         <div class="cartoon-card px-3 py-2">
             <CollapsibleSection title="Function" subtitle="f(x)" :default-open="true">
-                <div class="space-y-3 pt-1">
+                <div class="space-y-body pt-1">
                     <div>
-                        <label for="fn-expression" class="text-sm font-medium text-muted-foreground mb-1 block">Expression</label>
+                        <label for="fn-expression" class="text-small font-medium text-foreground mb-atom block">Expression</label>
                         <!-- X.F.W3 `.d` — `fr-AdminUserList FR-AUL-6`'s
                              consumer limb (`fr-FunctionInput D-1` + `C-5`, ⊕
                              `FR-GSB-10`/`FR-GSB-12`). Three raw `<input>`s
@@ -153,7 +153,7 @@ const activePreset = computed(() =>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <label for="fn-domain-start" class="text-sm font-medium text-muted-foreground shrink-0">Domain</label>
+                        <label for="fn-domain-start" class="text-small font-medium text-foreground shrink-0">Domain</label>
                         <Input
                             id="fn-domain-start"
                             type="text"
@@ -164,7 +164,7 @@ const activePreset = computed(() =>
                             placeholder="0"
                             @change="onDomainInput($event, (v) => domainStart = v)"
                         />
-                        <span class="text-sm text-muted-foreground">to</span>
+                        <span class="text-small text-muted-foreground">to</span>
                         <Input
                             type="text"
                             size="sm"
@@ -193,7 +193,7 @@ const activePreset = computed(() =>
 
                     <!-- Presets -->
                     <div class="border-t border-border/40 pt-3">
-                        <label class="text-sm font-medium text-muted-foreground mb-1.5 block">Presets</label>
+                        <label class="text-small font-medium text-foreground mb-atom block">Presets</label>
                         <div class="flex flex-wrap gap-1.5">
                             <Tooltip v-for="preset in PRESETS" :key="preset.name" :text="preset.description">
                                 <Button
@@ -215,7 +215,7 @@ const activePreset = computed(() =>
         <!-- Controls -->
         <div class="cartoon-card px-3 py-2">
             <CollapsibleSection title="Controls" subtitle="harmonics & display" :default-open="true">
-                <div class="space-y-3 pt-1">
+                <div class="space-y-body pt-1">
                     <div class="flex items-end gap-2">
                         <SliderControl
                             class="flex-1"
@@ -268,7 +268,7 @@ const activePreset = computed(() =>
                         @update:model-value="onDisplayTerms"
                     />
                     <div>
-                        <label class="text-sm font-medium text-muted-foreground mb-1.5 block">Notation</label>
+                        <label class="text-small font-medium text-foreground mb-atom block">Notation</label>
                         <NotationPills v-model="notation" />
                     </div>
                 </div>

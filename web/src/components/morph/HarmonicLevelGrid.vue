@@ -1,66 +1,28 @@
 <template>
     <div class="cartoon-card levels-card">
-        <h3 class="card-title">Harmonic Levels</h3>
+        <h3 class="card-title" data-card-title>Harmonic Levels</h3>
 
         <div class="levels-controls">
-            <!-- SP-7 · HLG-8 — the two number inputs were NAMELESS to AT: bare
-                 `<label>` elements with no `for`, no wrapping and no `aria-*`,
-                 so they named nothing and the inputs announced only their type.
-                 `for`/`id` is the whole cure and it also makes the visible label
-                 a click target for the input, which it never was. The ids are
-                 `useId()`-derived so two instances of this card cannot collide.
-                 ⊘ FMD-14's `LabeledField` adoption (the producer ships
-                 `./labeled-field` at the pin) covers EIGHT controls across this
-                 file and `MorphPhaseConfig.vue`; that file's rows belong to a
-                 different unit than its path, so the adoption is ROUTED, not
-                 half-landed here. -->
-            <div class="level-row">
-                <label class="level-label" :for="lowId">Low</label>
-                <NumberField
-                    :model-value="lowLevel"
-                    :min="1"
-                    :max="highLevel - 1"
-                    :step="1"
-                    :format-options="INTEGER_FORMAT"
-                    size="sm"
-                    class="level-field"
-                    @update:model-value="emitLow"
-                >
-                    <NumberFieldInput :id="lowId" />
-                </NumberField>
-                <Slider
-                    v-model="lowModel"
-                    :min="1"
-                    :max="highLevel - 1"
-                    :step="1"
-                    aria-label="Low harmonic level"
-                    class="level-slider-track"
-                />
-            </div>
-
-            <div class="level-row">
-                <label class="level-label" :for="highId">High</label>
-                <NumberField
-                    :model-value="highLevel"
-                    :min="lowLevel + 1"
-                    :max="maxLevel"
-                    :step="1"
-                    :format-options="INTEGER_FORMAT"
-                    size="sm"
-                    class="level-field"
-                    @update:model-value="emitHigh"
-                >
-                    <NumberFieldInput :id="highId" />
-                </NumberField>
-                <Slider
-                    v-model="highModel"
-                    :min="lowLevel + 1"
-                    :max="maxLevel"
-                    :step="1"
-                    aria-label="High harmonic level"
-                    class="level-slider-track"
-                />
-            </div>
+            <SliderControl
+                label="Low"
+                :model-value="lowLevel"
+                :min="1"
+                :max="highLevel - 1"
+                :step="1"
+                color="var(--accent-red)"
+                aria-label="Low harmonic level"
+                @update:model-value="emitLow"
+            />
+            <SliderControl
+                label="High"
+                :model-value="highLevel"
+                :min="lowLevel + 1"
+                :max="maxLevel"
+                :step="1"
+                color="var(--accent-red)"
+                aria-label="High harmonic level"
+                @update:model-value="emitHigh"
+            />
         </div>
 
         <div class="grid">
@@ -97,10 +59,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useId } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
-import { Slider } from "@mkbabb/glass-ui/slider";
+import SliderControl from "@/components/ui/SliderControl.vue";
 import {
     interpolateAtHarmonicLevel,
     pointsToSvgPath,
@@ -121,9 +81,6 @@ const props = defineProps<{
     maxLevel: number;
 }>();
 
-/* HLG-8 — collision-proof ids for the two `for`/`id` label pairings. */
-const lowId = useId();
-const highId = useId();
 
 const emit = defineEmits<{
     "update:lowLevel": [value: number];
@@ -132,17 +89,12 @@ const emit = defineEmits<{
 }>();
 
 /*
- * X.F.W12 `.a` — R-e-1: the two fields are the producer's `NumberField`, so
- * the value arrives as a number (ArrowUp/ArrowDown step it by `:step`, and
- * Reka clamps to `:min`/`:max`). A cleared field commits `NaN`, which the
- * `|| 1` below folds to the floor exactly as the text path's `Number("")`
- * did; the clamp stays the range authority for the slider path too.
+ * X.F.W14.h · OA-45 — the two bounds are the app's one control-row idiom
+ * (`ui/SliderControl.vue`: label + value field on one line, the slider beneath;
+ * the field's `for`/`id` pairing, HLG-8's cure, is the idiom's own). The clamps
+ * stay here, the range authority; a cleared field commits `NaN`, folded to the
+ * floor by `|| 1`.
  */
-const INTEGER_FORMAT: Intl.NumberFormatOptions = {
-    maximumFractionDigits: 0,
-    useGrouping: false,
-};
-
 function emitLow(raw: number) {
     const v = Math.max(1, Math.min(props.highLevel - 1, raw || 1));
     emit("update:lowLevel", v);
@@ -153,15 +105,6 @@ function emitHigh(raw: number) {
     emit("update:highLevel", v);
 }
 
-/* A.W2.c — adapt the scalar level bounds to the slider's array model. */
-const lowModel = computed<number[]>({
-    get: () => [props.lowLevel],
-    set: (arr) => emitLow(arr[0] ?? 1),
-});
-const highModel = computed<number[]>({
-    get: () => [props.highLevel],
-    set: (arr) => emitHigh(arr[0] ?? 1),
-});
 
 /**
  * X.F.W4 · SP-19 — FM-3 (= FMD-10) ⊕ FMD-N6: THE MEMO AND THE PRECISION, which
@@ -205,78 +148,35 @@ function getPath(level: number): string {
 
 <style scoped>
 @reference "tailwindcss";
+/* X.F.W14.h · OA-45 — the card on the app's one card hierarchy (the same
+   rungs as MorphPhaseConfig): inset `--space-family`, the title on
+   `--type-heading` serif 600 (glass `ConfiguratorLayer`'s section-header rung), the two control rows (`SliderControl`) spaced by
+   `--space-body`. */
 .levels-card {
-    padding: 0.75rem;
+    padding: var(--space-family);
     margin-bottom: 0;
 }
 
 @media (min-width: 640px) {
     .levels-card {
-        padding: 1rem 1.25rem;
         margin-bottom: 1rem;
     }
 }
 
 .card-title {
     font-family: var(--font-serif);
-    @apply text-lg;
-    font-weight: 400;
+    font-size: var(--type-heading);
+    line-height: var(--type-leading-heading);
+    font-weight: 600;
     color: var(--foreground);
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-body);
 }
-
-/* ── Level controls ──────────────────────────── */
 
 .levels-controls {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-}
-
-.level-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.level-label {
-    @apply text-base;
-    font-weight: 500;
-    color: var(--muted-foreground);
-    white-space: nowrap;
-    min-width: 2.5rem;
-}
-
-/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): the two level fields
-   left their hand-drawn chrome for the producer's surface — the 1.5px
-   boundary (HLG-37), the radius, the fill, `outline: none`, the two-leg focus
-   transition (HLG-40), the `--viz-legendre` focus paint (FMD-19) and the
-   spin-button suppression all retired there.
-   X.F.W12 `.a` — R-e-1 (COHESION §0as): that move went onto the text-shaped
-   `Input` and lost ArrowUp/ArrowDown stepping; the fields now ride the
-   producer's `NumberField` (`@mkbabb/glass-ui/number-field`), which owns the
-   spinbutton role, the keyboard step, the min/max clamp, the mono tabular
-   centred numerals and the `field-control` boundary/focus ring. What stays
-   here is layout only: the measure and the no-shrink beside the Slider. */
-.level-field {
-    width: 3.5rem;
-    flex-shrink: 0;
-}
-
-/* X.F.W4 / SP-6 · HLG-3 ⊕ FMD-3 — the dead per-slider retint hook is DELETED.
-   Its four declarations had ZERO readers at the adopted 8.0.0 pin, and this
-   file's copy was dead a SECOND way the record could not see: the
-   `:style="{'--track-color': …}"` binding that fed them was removed from this
-   component before the uplift, so every operand resolved `var(--track-color)`
-   → invalid-at-computed-value-time. Two sliders, zero tint delivered.
-   ⊘ X.F.W3 `.a` · `B-2` / `MPC-3` — the siblings at `MorphPhaseConfig.vue`,
-   `SliderControl.vue`, `BasisSelector.vue` and both timelines are landed on the
-   producer's real `--slider-range-bg` in one cut, and the retired spelling is
-   gone from this receipt too: the family's gate counts occurrences, and prose
-   is where a dead token gets copied back into a stylesheet. */
-.level-slider-track {
-    flex: 1;
+    gap: var(--space-body);
+    margin-bottom: var(--space-family);
 }
 
 /* ── Preview grid ────────────────────────────── */

@@ -87,8 +87,14 @@ watch(open, (isOpen) => {
       <CollapsibleTrigger class="collapsible-trigger group flex flex-1 items-center gap-2 py-1.5 cursor-pointer select-none">
         <ChevronRight class="h-4 w-4 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-90': open }" />
         <span>
-          <span class="font-serif-math text-sm font-semibold tracking-tight">{{ title }}</span>
-          <span v-if="subtitle" class="ml-1.5 text-xs font-normal text-muted-foreground">— {{ subtitle }}</span>
+          <!-- X.F.W14.h · OA-45 — the card title and subtitle on the ONE card
+               hierarchy, which is the producer's own section header (glass
+               `ConfiguratorLayer`, measured: `--type-heading` serif 600, the sub a
+               `text-micro` mono muted token, no dash): the same rungs as every card
+               title in the app. `text-sm`/`text-xs` sized nothing here — glass's
+               theme bridge sets both to `initial`, so they inherited the body. -->
+          <span class="font-serif-math text-heading font-semibold tracking-tight" data-card-title>{{ title }}</span>
+          <span v-if="subtitle" class="ml-1.5 text-micro font-mono font-normal text-muted-foreground" data-card-subtitle>{{ subtitle }}</span>
         </span>
       </CollapsibleTrigger>
       <slot name="actions" />

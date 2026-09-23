@@ -5,8 +5,8 @@
         :aria-labelledby="titleId"
         :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }"
     >
-        <h3 class="config-card-title" :id="titleId">{{ title }}</h3>
-        <p class="config-card-desc">{{ description }}</p>
+        <h3 class="config-card-title" :id="titleId" data-card-title>{{ title }}</h3>
+        <p class="config-card-desc" data-card-subtitle>{{ description }}</p>
 
         <!-- SP-7 · FMD-14 ⊕ FMD-15 — this card is mounted THREE times (Settle
              Out / Morph / Settle In) and every control inside it carried the
@@ -33,51 +33,25 @@
              The writer is hoisted to the card root above, because `MPC-22`'s
              focus tint has to read the same colour the slider does and a
              per-element binding could not reach it. -->
-        <div class="config-field">
-            <div class="duration-row">
-                <label class="config-label" :for="durationId">Duration</label>
-                <div class="input-with-unit">
-                    <NumberField
-                        :model-value="duration"
-                        :min="50"
-                        :max="800"
-                        :step="10"
-                        :format-options="{ maximumFractionDigits: 0, useGrouping: false }"
-                        size="sm"
-                        class="num-field"
-                        @update:model-value="emitDuration"
-                    >
-                        <NumberFieldInput :id="durationId" />
-                    </NumberField>
-                    <span class="input-unit fira-code">ms</span>
-                </div>
-                <!--
-                    `MPC-8` — this card boots AT the domain floor (`morphMs`
-                    defaults to 50 = `min`), so the range had zero extent, the
-                    scrubber's thumb is invisible by contract, and the control
-                    read as an empty grey capsule with no position indicator at
-                    all. `MPC-31` makes that the WITNESSABILITY PRECONDITION for
-                    the colour cure landing beside it: a fill nobody can see is a
-                    fill nobody can grade.
-
-                    The row offers two cures and this takes the second. Marks
-                    give the capsule a scale, and the boot state a checkpoint the
-                    thumb sits on; re-domaining was refused because the numeric
-                    input beside it still accepts the whole 50–800 band, so
-                    narrowing the track would silently make reachable durations
-                    unreachable by drag — a capability change no row grants.
-                -->
-                <Slider
-                    v-model="durationModel"
-                    :min="50"
-                    :max="800"
-                    :step="10"
-                    :marks="DURATION_MARKS"
-                    :aria-label="`${title} duration (ms)`"
-                    class="duration-slider-track"
-                />
-            </div>
-        </div>
+        <!-- X.F.W14.h · OA-45 — the duration row is the app's one control-row
+             idiom (`ui/SliderControl.vue`): label, value field and unit on one
+             line, the slider beneath with a visible thumb (so `MPC-8`'s boot
+             state at the domain floor shows a position without relying on the
+             fill), the marks still the scale. FMD-14's `for`/`id` pairing is the
+             idiom's own; FMD-15's per-card slider name rides `aria-label`. -->
+        <SliderControl
+            class="config-field"
+            label="Duration"
+            unit="ms"
+            :model-value="duration"
+            :min="50"
+            :max="800"
+            :step="10"
+            :marks="DURATION_MARKS"
+            :color="sliderColor ?? 'var(--accent-red)'"
+            :aria-label="`${title} duration (ms)`"
+            @update:model-value="emitDuration"
+        />
 
         <div class="config-field">
             <label class="config-label" :id="easingLabelId">Easing</label>
@@ -141,16 +115,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useId } from "vue";
+import { useId } from "vue";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
-import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
 import {
     Select,
     SelectTrigger,
     SelectContent,
     SelectItem,
 } from "@mkbabb/glass-ui/select";
-import { Slider } from "@mkbabb/glass-ui/slider";
+import SliderControl from "@/components/ui/SliderControl.vue";
 import {
     EASING_PRESETS,
     EASING_PRESET_NAMES,
@@ -168,7 +141,6 @@ const props = defineProps<{
 /* FMD-14 ⊕ FMD-15 — this card mounts three times, so every id must be
    instance-unique or the three copies collide and the first one wins. */
 const titleId = useId();
-const durationId = useId();
 const easingLabelId = useId();
 
 const emit = defineEmits<{
@@ -192,109 +164,56 @@ function emitDuration(raw: number) {
  */
 const DURATION_MARKS = [50, 100, 200, 400, 800] as const;
 
-/* A.W2.c — adapt the scalar `duration` to the slider's array model. */
-const durationModel = computed<number[]>({
-    get: () => [props.duration],
-    set: (arr) => emitDuration(arr[0] ?? 50),
-});
 
 const presets = EASING_PRESETS;
 const easingNames = EASING_PRESET_NAMES;
 </script>
 
 <style scoped>
-@reference "tailwindcss";
+/*
+   X.F.W14.h · OA-45 — the card's hierarchy on glass's scales (the same idiom as
+   every control card in the app): the title on `--type-heading` serif 600 (the producer's own section-header rung, glass `ConfiguratorLayer`), the
+   description on `--type-caption`, a field label on `--type-small` (the control
+   row's label rung); the inset and the rhythm on the spacing scale
+   (`--space-family` / `--space-body` / `--space-atom`, each responsive at the
+   producer). The `text-lg` / `text-sm` / `text-base` rungs retire: `text-sm`
+   resolves to nothing under glass's theme bridge (`--text-sm: initial`), and
+   the other two sat between the scale's rungs.
+*/
 .config-card {
-    padding: 0.75rem;
-}
-
-@media (min-width: 640px) {
-    .config-card {
-        padding: 1rem 1.25rem;
-    }
+    padding: var(--space-family);
 }
 
 .config-card-title {
     font-family: var(--font-serif);
-    @apply text-lg;
-    font-weight: 400;
+    font-size: var(--type-heading);
+    line-height: var(--type-leading-heading);
+    font-weight: 600;
     color: var(--foreground);
-    margin-bottom: 0.125rem;
+    margin-bottom: var(--space-residue);
 }
 
 .config-card-desc {
-    @apply text-sm;
+    font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
     color: var(--muted-foreground);
-    margin-bottom: 0.875rem;
+    margin-bottom: var(--space-body);
 }
 
 .config-field {
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-body);
 }
 
 .config-field:last-child {
     margin-bottom: 0;
 }
 
-.duration-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
 .config-label {
     display: block;
-    @apply text-base;
+    font-size: var(--type-small);
+    line-height: var(--type-leading-small);
     font-weight: 500;
-    color: var(--muted-foreground);
-    margin-bottom: 0.375rem;
-}
-
-.duration-row .config-label {
-    margin-bottom: 0;
-    white-space: nowrap;
-}
-
-.input-with-unit {
-    display: flex;
-    align-items: center;
-    gap: 0.125rem;
-}
-
-/* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): the duration field's
-   local chrome retired onto the producer's surface — the 15% boundary, the
-   radius, the fill, `outline: none`, the border-only transition, the
-   spin-button suppression and `MPC-22`'s per-card focus tint.
-   X.F.W12 `.a` — R-e-1 (COHESION §0as): that move went onto the text-shaped
-   `Input` and lost keyboard stepping; the field now rides the producer's
-   `NumberField` (`@mkbabb/glass-ui/number-field`), which owns the spinbutton
-   role, ArrowUp/ArrowDown by `:step`, the clamp, the mono tabular numerals
-   and the `field-control` boundary/focus ring. What stays is layout only:
-   the measure beside its `ms` unit. */
-.num-field {
-    width: 3.5rem;
-}
-
-.input-unit {
-    @apply text-sm;
-    color: var(--muted-foreground);
-}
-
-/*
-   `MPC-3` (fold → `B-2` / `FMD-3`) amended by `MPC-10` — the per-instance
-   retint, landed on the producer's real knob at full strength. The four
-   declarations this replaces wrote a namespace the producer defines nowhere, so
-   all three cards painted the same stock capsule and the red/pink/red phase
-   coding delivered zero pixels.
-
-   `MPC-13`'s vocabulary leg rides here as the row requires — WITH the token
-   cure, never before: the `glass-scrubber` spelling this file carried in two
-   comments is two majors dead (the variants are `"scrubber" | "spectrum"`, and
-   `scrubber` is the default this Slider already takes), and it is gone from the
-   file rather than re-spelled.
-*/
-.duration-slider-track {
-    flex: 1;
-    --slider-range-bg: var(--track-color, var(--accent-red));
+    color: var(--foreground);
+    margin-bottom: var(--space-atom);
 }
 </style>

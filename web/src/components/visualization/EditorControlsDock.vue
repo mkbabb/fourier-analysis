@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { Slider } from "@mkbabb/glass-ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
-import { Metric } from "@mkbabb/glass-ui/metric";
+import SliderControl from "@/components/ui/SliderControl.vue";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -45,18 +43,6 @@ const emit = defineEmits<{
     save: [];
 }>();
 
-/**
- * Adapt the scalar `magnetRadius` to the slider's array model.
- *
- * X.F.W4 · §3 D8 (`fr-EditorControlsDock D-2 / L-3 / C-1`, +C-13/C-22) — the
- * comment this replaces named `glass-scrubber`, which is not what the producer
- * ships, and it named it because it belonged to the dead retint block deleted
- * below. It dies with it (C-22).
- */
-const magnetModel = computed<number[]>({
-    get: () => [props.magnetRadius],
-    set: (arr) => emit("update:magnetRadius", Math.max(0, Math.min(10, arr[0] ?? 0))),
-});
 </script>
 
 <template>
@@ -179,16 +165,19 @@ const magnetModel = computed<number[]>({
                 </PopoverTrigger>
                 <PopoverContent side="top" align="center">
                     <div class="magnet-popover-content">
-                        <div class="flex items-center justify-between gap-3 px-1">
-                            <span class="text-xs font-medium text-foreground whitespace-nowrap">Magnet</span>
-                            <Metric :value="magnetRadius" size="sm" />
-                        </div>
-                        <Slider
-                            v-model="magnetModel"
+                        <!-- X.F.W14.h · OA-45 — the magnet radius is the app's one
+                             control-row idiom (label + value field on one line,
+                             the slider beneath); the read-only `Metric` beside a
+                             thumbless bar retires with it. -->
+                        <SliderControl
+                            label="Magnet"
+                            :model-value="magnetRadius"
                             :min="0"
                             :max="10"
                             :step="1"
+                            color="var(--viz-fourier)"
                             aria-label="Magnet radius"
+                            @update:model-value="emit('update:magnetRadius', $event)"
                             @mousedown.stop
                             @pointerdown.stop
                         />
@@ -315,12 +304,11 @@ const magnetModel = computed<number[]>({
     background: color-mix(in srgb, var(--success) 15%, transparent);
 }
 
+/* X.F.W14.h — the popover holds one control row; the measure fits the label
+   beside the field, the inset is on the spacing scale. */
 .magnet-popover-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-    width: 9rem;
-    padding: 0.375rem 0.5rem;
+    width: 12rem;
+    padding: var(--space-atom) var(--space-body);
 }
 
 /**
