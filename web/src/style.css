@@ -222,10 +222,18 @@ html {
    `--border`/`--card` tokens, restoring parity with the pre-C.W5 visual
    without touching glass-ui. Cross-repo re-publish recorded as a
    coordination ask; this shim is the fourier-local KISS stop-gap. */
+/* X.F.W13.a — OA-17 (owner frame 5: "this is good, but not rounded"). The
+   shim re-bound the producer's surface and colours but never its SHAPE, so
+   every site computed `border-radius: 0px` (measured on the served /equation:
+   the Function and Controls panels, the equation card, the plot card) beside
+   the Coefficients `ConfiguratorLayer` at 16px. The producer's card radius is
+   `--radius-card` — the token its `Card` primitive and `.glass-card` read — and
+   the shim takes it at this one root, so no site restates it. */
 @utility cartoon-card {
     @apply cartoon-surface;
     border-color: var(--border);
     background: var(--card);
+    border-radius: var(--radius-card);
 }
 
 /* D.W4.d — light-mode `--viz-amber` darken (axe contrast carry).
