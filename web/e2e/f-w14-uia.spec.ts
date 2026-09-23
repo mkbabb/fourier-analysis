@@ -732,3 +732,27 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
         await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
     });
 });
+
+test.describe("UIA-F-22 — mobile paper search: one instance, and a tapped result navigates", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+    test("one listbox, no duplicate ids, and tapping a result scrolls to it", async ({ page }) => {
+        await page.goto("/paper");
+        const scroller = page.locator(".paper-scroll");
+        await expect.poll(() => scroller.evaluate((el) => el.scrollHeight), { timeout: 10_000 }).toBeGreaterThan(5000);
+        await scroller.evaluate((el) => el.scrollTo({ top: 2500 }));
+        await page.getByRole("button", { name: "Search paper" }).click();
+        await page.keyboard.type("Parseval");
+        const options = page.getByRole("option");
+        await expect(options.first()).toBeVisible();
+        const dupes = await page.evaluate(() => {
+            const ids = [...document.querySelectorAll("[id]")].map((e) => e.id).filter((id) => id.startsWith("paper-search"));
+            return ids.filter((id, i) => ids.indexOf(id) !== i).length;
+        });
+        expect(dupes).toBe(0);
+        expect(await page.getByRole("listbox").count()).toBe(1);
+        const before = await scroller.evaluate((el) => el.scrollTop);
+        await options.first().tap();
+        await expect.poll(() => scroller.evaluate((el) => el.scrollTop), { timeout: 10_000 }).not.toBe(before);
+    });
+});

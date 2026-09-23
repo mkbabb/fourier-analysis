@@ -10,6 +10,7 @@ import {
 } from "@mkbabb/latex-paper/vue";
 import "@mkbabb/latex-paper/theme";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
+import { useMediaQuery } from "@vueuse/core";
 import PaperSidebar from "./PaperSidebar.vue";
 import MobileFloatingToc from "./MobileFloatingToc.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
@@ -71,6 +72,8 @@ const paperContext: PaperContext = {
 provide(PAPER_CONTEXT, paperContext);
 
 const SCROLL_POS_KEY = "paper-active-section";
+/** The lg breakpoint the sidebar and the floating ToC split on (UIA-F-22). */
+const isDesktop = useMediaQuery("(min-width: 1024px)");
 
 const {
     visibleItems,
@@ -446,7 +449,7 @@ onUnmounted(() => {
             <!-- Mobile floating TOC bar -->
             <Transition name="slide-down">
                 <MobileFloatingToc
-                    v-if="!mobileTocVisible"
+                    v-if="!isDesktop && !mobileTocVisible"
                     :current-section="currentSection"
                     :render-title="renderTitle"
                     :scroll-container="scrollContainer"
@@ -462,8 +465,15 @@ onUnmounted(() => {
 
             <div class="paper-layout mx-auto max-w-5xl px-2 pt-2 pb-0 sm:pt-2 sm:pb-0 sm:px-6">
                 <div class="paper-columns">
-                    <!-- Desktop sidebar TOC -->
-                    <PaperSidebar :render-title="renderTitle" :search="search" />
+                    <!-- Desktop sidebar TOC. X.F.W14.u — UIA-F-22: ONE PaperSearch
+                         per breakpoint. The sidebar was only CSS-hidden below lg,
+                         so on mobile two PaperSearch instances shared one state:
+                         two listboxes with the same 30 option ids
+                         (`aria-activedescendant` resolved to the hidden list), and
+                         the hidden instance's capture-phase outside-pointerdown
+                         closed the search before a tapped result could navigate.
+                         Each host now mounts only at its own breakpoint. -->
+                    <PaperSidebar v-if="isDesktop" :render-title="renderTitle" :search="search" />
 
                     <!-- Main article -->
                     <article class="paper-article leading-relaxed">
