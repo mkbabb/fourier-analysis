@@ -62,16 +62,21 @@ const emit = defineEmits<{
 
 <template>
     <section v-if="entries.length > 0" class="featured-section" aria-labelledby="featured-heading">
-        <div class="featured-header">
-            <Crown :size="16" class="text-amber-400" />
-            <!-- The strip's name was a styled `<span>`; it is the region's
-                 heading now, and the carousel is labelled by it. -->
-            <h2 id="featured-heading" class="font-serif-math text-sm font-semibold tracking-tight">
-                Featured
-            </h2>
-            <CarouselPager class="ml-auto" />
-        </div>
+        <!-- X.F.W14.u — UIA-F-1: `CarouselPager` injects `useCarousel()`, which
+             throws by contract outside a `<Carousel>`. The header row sat
+             before the root, so any featured entry crashed the Gallery tab
+             ('useCarousel must be used within a <Carousel />'). The root now
+             holds the header, so the pager reads the deck it pages. -->
         <Carousel aria-labelledby="featured-heading" projection="none">
+            <div class="featured-header">
+                <Crown :size="16" class="text-amber-400" />
+                <!-- The strip's name was a styled `<span>`; it is the region's
+                     heading now, and the carousel is labelled by it. -->
+                <h2 id="featured-heading" class="font-serif-math text-sm font-semibold tracking-tight">
+                    Featured
+                </h2>
+                <CarouselPager class="ml-auto" />
+            </div>
             <CarouselContent class="featured-scroll">
                 <CarouselItem
                     v-for="(entry, i) in entries"
