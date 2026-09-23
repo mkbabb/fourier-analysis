@@ -559,3 +559,63 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
         await expect(page.getByRole("button", { name: /^Publish/ })).toHaveCount(before - 1);
     });
 });
+
+/** Open /equation with its result card in view (the Canvas panel below lg). */
+async function openEquationCard(page: Page) {
+    await page.goto("/equation");
+    if (page.viewportSize()!.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+    const card = page.locator(".eq-card");
+    await expect(card.locator(".katex").first()).toBeVisible({ timeout: 20_000 });
+    return card;
+}
+
+for (const vp of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    test.describe(`UIA-F-33 / UIA-F-34 — the equation card's controls sit in a header row (${vp.width})`, () => {
+        test.use({ viewport: vp, hasTouch: vp.width < 1024 });
+
+        test("no control overlaps another or the equation, and nothing is cut by the card", async ({ page }) => {
+            const card = await openEquationCard(page);
+            await card.getByRole("button", { name: /Expanded|a \+ b/ }).first().click();
+            await page.waitForTimeout(400);
+            const m = await card.evaluate((c) => {
+                const r = (e: Element) => e.getBoundingClientRect();
+                const btns = [...c.querySelectorAll("button")].map(r);
+                const eq = r(c.querySelector(".eq-scroll-region")!);
+                const inner = r(c.querySelector(".eq-scroll-region .katex-display, .eq-scroll-region .katex")!);
+                return { btns: btns.map((b) => [b.left, b.top, b.right, b.bottom]), eq: [eq.left, eq.top, eq.right, eq.bottom], inner: [inner.top, inner.bottom], card: [r(c).top, r(c).bottom] };
+            });
+            expect(m.btns.length).toBeGreaterThanOrEqual(3);
+            const hit = (a: number[], b: number[]) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+            for (let i = 0; i < m.btns.length; i++) {
+                expect(hit(m.btns[i], m.eq), `control ${i} over the equation`).toBe(false);
+                for (let j = i + 1; j < m.btns.length; j++) expect(hit(m.btns[i], m.btns[j]), `controls ${i}/${j}`).toBe(false);
+            }
+            expect(m.inner[1]).toBeLessThanOrEqual(m.card[1]);
+        });
+    });
+}
+
+test.describe("UIA-F-32 — the coefficient popover escapes the equation card", () => {
+    test("hovering a coefficient shows the whole popover, clipped by no ancestor", async ({ page }) => {
+        const card = await openEquationCard(page);
+        const coeff = card.locator(".eq-coeff").first();
+        await expect(coeff).toBeVisible();
+        await coeff.hover();
+        const pop = page.locator(".coeff-popover");
+        await expect(pop).toBeVisible();
+        await page.waitForTimeout(300);
+        const visible = await pop.evaluate((p) => {
+            const r = p.getBoundingClientRect();
+            let [l, t, rt, b] = [r.left, r.top, r.right, r.bottom];
+            for (let a = p.parentElement; a; a = a.parentElement) {
+                const cs = getComputedStyle(a);
+                if (cs.overflowX !== "visible" || cs.overflowY !== "visible") {
+                    const ar = a.getBoundingClientRect();
+                    l = Math.max(l, ar.left); t = Math.max(t, ar.top); rt = Math.min(rt, ar.right); b = Math.min(b, ar.bottom);
+                }
+            }
+            return Math.max(0, rt - l) * Math.max(0, b - t) / (r.width * r.height);
+        });
+        expect(visible).toBeGreaterThan(0.99);
+    });
+});

@@ -59,6 +59,31 @@ async function copyLatex() {
 
 <template>
     <div class="eq-result-root">
+        <!-- X.F.W14.u — UIA-F-33 / UIA-F-34: the card's controls are ONE header
+             row above the equation, never absolute layers over it. The host's
+             leading control (the Σ|a+b toggle) and its actions (Info) join the
+             Copy button here as flex siblings on one gap; the `right: 3.25rem`
+             literal that overlapped Info and Copy at 390, and the 2rem top
+             padding the equation kept to dodge them, are gone. -->
+        <div class="eq-result-header">
+            <slot name="leading" />
+            <div class="eq-result-actions">
+                <slot name="actions" />
+                <Button
+                    emphasis="primary"
+                    size="md" icon-only
+                    aria-label="Copy LaTeX"
+                    title="Copy LaTeX"
+                    :disabled="!latex"
+                    @click="copyLatex"
+                >
+                    <Transition name="icon-swap" mode="out-in">
+                        <Check v-if="status === 'success'" class="h-4.5 w-4.5 copy-ok" />
+                        <Copy v-else class="h-4.5 w-4.5" />
+                    </Transition>
+                </Button>
+            </div>
+        </div>
         <!-- `FR-EQR-6` — a scroll container with no tabindex, no role and no
              accessible name, over a KaTeX span tree that contains no focusable
              descendant: the equation was unreachable by keyboard. -->
@@ -69,20 +94,6 @@ async function copyLatex() {
             aria-label="Rendered Fourier series"
             v-html="renderedHtml"
         />
-        <Button
-            emphasis="primary"
-            size="md" icon-only
-            class="copy-pos"
-            aria-label="Copy LaTeX"
-            title="Copy LaTeX"
-            :disabled="!latex"
-            @click="copyLatex"
-        >
-            <Transition name="icon-swap" mode="out-in">
-                <Check v-if="status === 'success'" class="h-4.5 w-4.5 copy-ok" />
-                <Copy v-else class="h-4.5 w-4.5" />
-            </Transition>
-        </Button>
         <!-- `FR-EQR-5` — the copy outcome was colour-and-glyph only, and the
              composable's own reported failure was swallowed a second time. -->
         <p class="sr-only" role="status">{{ copyAnnouncement }}</p>
@@ -93,7 +104,22 @@ async function copyLatex() {
 @reference "tailwindcss";
 
 .eq-result-root {
-    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.eq-result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.5rem 0;
+}
+
+.eq-result-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-inline-start: auto;
 }
 
 /* Scrollable equation region — horizontal scroll, no vertical clip.
@@ -112,7 +138,7 @@ async function copyLatex() {
     display: flex;
     justify-content: safe center;
     align-items: flex-start;
-    padding: 2rem 1rem 1rem;
+    padding: 0.5rem 1rem 1rem;
     min-height: 4.5rem;
     overflow-x: auto;
     scrollbar-width: thin;
@@ -149,13 +175,6 @@ async function copyLatex() {
    rung itself is a producer row and rides the GLASS-RELAY letter. */
 .copy-ok {
     color: var(--section-color-4);
-}
-
-.copy-pos {
-    position: absolute;
-    z-index: var(--z-controls);
-    top: 0.5rem;
-    right: 0.5rem;
 }
 
 .icon-swap-enter-active,

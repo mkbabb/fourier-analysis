@@ -453,7 +453,66 @@ watchDebounced(
                         @mousemove="(e) => onCoeffMove(e, eqCardRef)"
                         @mouseleave="onCoeffLeave"
                     >
-                        <EquationResult :latex="activeLatex" />
+                        <EquationResult :latex="activeLatex">
+                            <template #leading>
+                                <EquationModeToggle v-model="eqMode" />
+                            </template>
+                            <template #actions>
+                                <!-- Info card. F.W1 / FR-COB-19 — `./hover-card` is
+                                     definition-absent at the adopted pin; the Popover
+                                     union takes it, with `trigger="hover"` preserving the
+                                     preview register and seating the click root on coarse
+                                     pointers. `:collision-padding` is gone with it: the
+                                     union's placement contract is side/sideOffset/align/
+                                     alignOffset, so the attribute would have fallen
+                                     through to the DOM doing nothing (FR-TT-5's class). -->
+                                <Popover v-if="tier" trigger="hover" :open-delay="200" :close-delay="150">
+                                    <PopoverTrigger as-child>
+                                        <!-- `D·D-B2` — the info button had NO accessible name:
+                                             an icon-only Button wrapping a bare glyph, with
+                                             `PopoverTrigger as-child` forwarding no naming
+                                             attribute. The convention exists three siblings
+                                             over. -->
+                                        <Button emphasis="primary" size="md" icon-only
+                                                aria-label="About this approximation">
+                                            <!-- F.W1 / D·D-M11 — the one hand-inlined copy the
+                                                 import-keyed lucide sweep is blind to: this markup
+                                                 was element-identical to lucide `Info`, which this
+                                                 file already imports. -->
+                                            <Info class="size-[18px]" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent class="info-hovercard" side="bottom" :side-offset="6" align="end">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <!-- `D·D-B3` — the ink is a token now, and the plate
+                                                 is TRANSPARENT: a 15% tint of the ink itself
+                                                 darkened the ground under the very colour it was
+                                                 tinting, which is what took every stop further
+                                                 below the floor. The border still carries the
+                                                 tier hue; the label is graded against the
+                                                 popover it actually sits on. -->
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border-[1.5px]"
+                                                :style="{
+                                                    borderColor: `color-mix(in srgb, ${tier.color} 45%, transparent)`,
+                                                    color: tier.color,
+                                                }"
+                                            >{{ tier.label }}</span>
+                                            <Metric
+                                                :value="(displayEnergy * 100).toFixed(1)"
+                                                unit="% energy"
+                                                size="sm"
+                                                :style="{ color: eColor }"
+                                            />
+                                        </div>
+                                        <div class="flex gap-1.5 items-start text-sm text-muted-foreground mt-2">
+                                            <Info class="size-3.5 shrink-0 mt-0.5" />
+                                            <p>{{ tier.description }}</p>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </template>
+                        </EquationResult>
 
                         <!-- Per-coefficient popover -->
                         <Transition name="pop">
@@ -466,64 +525,6 @@ watchDebounced(
                             </div>
                         </Transition>
 
-                        <!-- Mode toggle -->
-                        <div class="eq-mode-anchor">
-                            <EquationModeToggle v-model="eqMode" />
-                        </div>
-
-                        <!-- Info card. F.W1 / FR-COB-19 — `./hover-card` is
-                             definition-absent at the adopted pin; the Popover
-                             union takes it, with `trigger="hover"` preserving the
-                             preview register and seating the click root on coarse
-                             pointers. `:collision-padding` is gone with it: the
-                             union's placement contract is side/sideOffset/align/
-                             alignOffset, so the attribute would have fallen
-                             through to the DOM doing nothing (FR-TT-5's class). -->
-                        <Popover v-if="tier" trigger="hover" :open-delay="200" :close-delay="150">
-                            <PopoverTrigger as-child>
-                                <!-- `D·D-B2` — the info button had NO accessible name:
-                                     an icon-only Button wrapping a bare glyph, with
-                                     `PopoverTrigger as-child` forwarding no naming
-                                     attribute. The convention exists three siblings
-                                     over. -->
-                                <Button emphasis="primary" size="md" icon-only class="info-anchor"
-                                        aria-label="About this approximation">
-                                    <!-- F.W1 / D·D-M11 — the one hand-inlined copy the
-                                         import-keyed lucide sweep is blind to: this markup
-                                         was element-identical to lucide `Info`, which this
-                                         file already imports. -->
-                                    <Info class="size-[18px]" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent class="info-hovercard" side="bottom" :side-offset="6" align="end">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <!-- `D·D-B3` — the ink is a token now, and the plate
-                                         is TRANSPARENT: a 15% tint of the ink itself
-                                         darkened the ground under the very colour it was
-                                         tinting, which is what took every stop further
-                                         below the floor. The border still carries the
-                                         tier hue; the label is graded against the
-                                         popover it actually sits on. -->
-                                    <span
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border-[1.5px]"
-                                        :style="{
-                                            borderColor: `color-mix(in srgb, ${tier.color} 45%, transparent)`,
-                                            color: tier.color,
-                                        }"
-                                    >{{ tier.label }}</span>
-                                    <Metric
-                                        :value="(displayEnergy * 100).toFixed(1)"
-                                        unit="% energy"
-                                        size="sm"
-                                        :style="{ color: eColor }"
-                                    />
-                                </div>
-                                <div class="flex gap-1.5 items-start text-sm text-muted-foreground mt-2">
-                                    <Info class="size-3.5 shrink-0 mt-0.5" />
-                                    <p>{{ tier.description }}</p>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
                     </div>
 
                     <!-- Convergence plot -->
@@ -608,10 +609,14 @@ watchDebounced(
 }
 
 /* ── Equation card ── */
+/* X.F.W14.u — UIA-F-34: a floor, not a fixed box — the card grows with the
+   header row and the equation instead of cutting them at 10rem.
+   UIA-F-32: no `overflow: hidden`, so the per-coefficient popover escapes the
+   card instead of being clipped to its first line (the equation's own scroll
+   region owns the inline overflow). */
 .eq-card {
-    height: 10rem;
+    min-height: 10rem;
     flex-shrink: 0;
-    overflow: hidden;
 }
 
 /* ── Coefficient popover ── */
@@ -645,17 +650,6 @@ watchDebounced(
 .eq-card :deep(.eq-coeff:hover) {
     color: var(--viz-amber) !important;
     background: color-mix(in srgb, var(--viz-amber) 10%, transparent);
-}
-
-/* ── Anchors ── */
-.eq-mode-anchor {
-    @apply absolute top-2 left-2;
-    z-index: var(--z-controls);
-}
-.info-anchor {
-    @apply absolute top-2;
-    right: 3.25rem;
-    z-index: var(--z-bar);
 }
 
 /* ── Mobile panel toggle ── */
