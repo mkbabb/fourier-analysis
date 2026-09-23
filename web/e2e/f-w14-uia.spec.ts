@@ -420,3 +420,25 @@ test.describe("UIA-F-37 — the mobile users toolbar keeps its search usable", (
         }
     });
 });
+
+test.describe("UIA-F-42 — at 390 every audit field is legible (cured by .t's DataTable, b5a650f)", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+    test("no audit cell collapses to 0 px and no action badge overflows its pill", async ({ page }) => {
+        await openAdminTab(page, "Audit Log");
+        const table = page.locator('[aria-label="Admin audit entries"]');
+        const rows = table.locator("tbody > tr");
+        await expect(rows.first()).toBeVisible();
+        const cells = await rows.evaluateAll((trs) =>
+            trs.flatMap((tr) => [...tr.children].map((td) => ({ w: (td as HTMLElement).getBoundingClientRect().width, t: td.textContent?.trim() ?? "" }))),
+        );
+        expect(cells.length).toBeGreaterThan(0);
+        for (const c of cells) expect(c.w, `cell "${c.t}"`).toBeGreaterThan(0);
+        const badges = table.locator('[data-slot="badge"]');
+        expect(await badges.count(), "one action badge per row is measured").toBeGreaterThanOrEqual(await rows.count());
+        const spill = await badges.evaluateAll((els) =>
+            els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.textContent),
+        );
+        expect(spill).toEqual([]);
+    });
+});
