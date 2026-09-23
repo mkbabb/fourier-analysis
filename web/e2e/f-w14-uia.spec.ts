@@ -619,3 +619,28 @@ test.describe("UIA-F-32 — the coefficient popover escapes the equation card", 
         expect(visible).toBeGreaterThan(0.99);
     });
 });
+
+test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyboard", () => {
+    test("Enter opens the popover and Tab reaches both toggles; Enter toggles one", async ({ page }) => {
+        const viz = await firstSavedViz(page);
+        await page.goto(`/v/${viz.slug}`);
+        await page.getByRole("button", { name: "Edit contour" }).first().hover();
+        const view = page.getByRole("button", { name: "View options" }).first();
+        await expect(view).toBeVisible();
+        await page.waitForTimeout(600);
+        await view.focus();
+        await page.keyboard.press("Enter");
+        const names: string[] = [];
+        for (let i = 0; i < 3; i++) {
+            await page.keyboard.press("Tab");
+            names.push((await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))) ?? "");
+        }
+        expect(names).toContain("Contour trace");
+        expect(names).toContain("Image overlay");
+        const trace = page.getByRole("button", { name: "Contour trace" });
+        await trace.focus();
+        const was = await trace.getAttribute("aria-pressed");
+        await page.keyboard.press("Enter");
+        await expect(trace).not.toHaveAttribute("aria-pressed", was ?? "");
+    });
+});

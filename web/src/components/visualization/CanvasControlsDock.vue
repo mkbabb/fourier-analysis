@@ -60,8 +60,14 @@ watch(
           governs both docks, which is what makes them agree.
         -->
         <template v-if="!isEditing">
-            <!-- View options popover (image overlay + contour trace) -->
-            <Popover trigger="hover" keep-dock-open>
+            <!-- View options popover (image overlay + contour trace).
+                 X.F.W14.u — UIA-F-12: `trigger="click"`. A hover preview holds no
+                 commands: under `trigger="hover"` Enter opened it, the next Tab
+                 left for Publish and closed it, and the two toggles inside never
+                 took focus. State-changing controls ride the click popover (dock
+                 README: transient command surfaces are the menu and popover
+                 families); the editor dock's two popovers move with it. -->
+            <Popover trigger="click" keep-dock-open>
                 <PopoverTrigger as-child>
                     <DockControl class="view-btn-wrap" aria-label="View options">
                         <Eye />

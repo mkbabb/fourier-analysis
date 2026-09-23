@@ -157,7 +157,7 @@ const emit = defineEmits<{
             </Tooltip>
 
             <!-- Magnet popover with slider -->
-            <Popover trigger="hover" keep-dock-open>
+            <Popover trigger="click" keep-dock-open>
                 <PopoverTrigger as-child>
                     <DockControl aria-label="Magnet options">
                         <Magnet :class="magnetRadius > 0 ? 'text-viz-fourier' : ''" />
@@ -188,7 +188,7 @@ const emit = defineEmits<{
             <DockSeparator />
 
             <!-- Overlay stack (ghost + image) -->
-            <Popover trigger="hover" keep-dock-open>
+            <Popover trigger="click" keep-dock-open>
                 <PopoverTrigger as-child>
                     <DockControl aria-label="Overlay options">
                         <Eye />
