@@ -110,6 +110,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         api.abortInflight(["extractContour", "computeEpicycles", "computeBases", "getContour"]);
     }
 
+    // UIA-F-47: the published slugs the loaded draft carries. Every draft save
+    // rewrites the whole record, so it carries them forward instead of writing
+    // `[]` and returning a published draft to the Drafts list on reopen.
+    let draftSnapshots: string[] = [];
+
     async function _saveDraftNow() {
         if (!imageSlug.value) return;
         const raw: WorkspaceDraft = structuredClone({
@@ -119,7 +124,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             animationSettings: toRaw(animationSettings.value),
             epicycleData: epicycleData.value,
             basesData: basesData.value,
-            savedSnapshots: [],
+            savedSnapshots: [...draftSnapshots],
             lastOpenedAt: new Date().toISOString(),
         });
         await saveDraft(raw).catch((e) => { console.warn("[draft] save failed:", e); });
@@ -133,6 +138,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         // one upload; loading suppresses activation).
         if (uploading.value) return;
         uploading.value = true;
+        draftSnapshots = [];
         error.value = null;
         try {
             invalidateInFlightComputation();
@@ -170,6 +176,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (revision.value !== rev) return;
             imageSlug.value = slug;
             imageMeta.value = meta;
+            draftSnapshots = draft?.savedSnapshots ?? [];
             if (draft) {
                 let draftContour = draft.contour;
                 // Re-fetch contour from API if draft is missing image_bounds

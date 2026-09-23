@@ -90,15 +90,11 @@ const nonFeaturedEntries = computed(() =>
     gallery.entries.filter((e) => e.tier !== "featured"),
 );
 
-// Filter out drafts whose snapshots are already published
-const publishedHashes = computed(() =>
-    new Set(gallery.entries.map((e) => e.slug)),
-);
+// UIA-F-47: a draft that has become a published entity (its slug recorded in
+// `savedSnapshots` by `publishDraft`) leaves the list. The old test read the
+// slugs against the first page of the gallery, and nothing ever wrote them.
 const unpublishedDrafts = computed(() =>
-    workspace.drafts.filter((d) =>
-        !d.savedSnapshots?.length ||
-        !d.savedSnapshots.every((h) => publishedHashes.value.has(h)),
-    ),
+    workspace.drafts.filter((d) => !d.savedSnapshots?.length),
 );
 
 // X.F.W14.u — UIA-F-40: the three loads are independent, so they run in
@@ -302,6 +298,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
     publishing.value = true;
     try {
         await gallery.publishDraft(draft);
+        await workspace.refreshDrafts();
     } catch (e: any) {
         toast(e.message ?? "Publish failed", "error");
     } finally {

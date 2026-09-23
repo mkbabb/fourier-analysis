@@ -1,11 +1,12 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, toRaw } from "vue";
 import type { GalleryTier, AdminStats, WorkspaceDraft } from "@/lib/types";
 import type { Visibility, Visualization } from "@/lib/api";
 import * as api from "@/lib/api";
 import { processInChunks } from "@/lib/scheduler";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
+import { saveDraft } from "@/lib/draftStorage";
 import { problemMessage } from "@/components/visualization/gallery/adminError";
 
 // B.W4 — the gallery store re-points onto the converged `visualization`
@@ -343,6 +344,12 @@ export const useGalleryStore = defineStore("gallery", () => {
                 animation_settings: draft.animationSettings,
             });
             if (etag) etags.set(data.slug, etag);
+            // X.F.W14.u — UIA-F-47: the draft records the entity it became, so
+            // the Drafts list can drop it. `savedSnapshots` was written `[]` on
+            // every save and never filled, so a published draft stayed listed
+            // with Publish enabled and could be published again and again.
+            const raw = toRaw(draft);
+            await saveDraft({ ...raw, savedSnapshots: [...(raw.savedSnapshots ?? []), data.slug] });
             toast("Published!", "success", { slug });
             await resetAndFetch();
         } catch (e: any) {

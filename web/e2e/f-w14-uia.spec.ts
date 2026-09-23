@@ -525,3 +525,37 @@ test.describe("UIA-F-40 — the admin grid does not wait on admin stats", () => 
         expect(statsAt === 0 || gridAt < statsAt + 3000).toBe(true);
     });
 });
+
+test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
+    test("after Publish the draft row is gone, and stays gone on reload", async ({ page }) => {
+        const viz = await firstSavedViz(page);
+        const created = { ...ENTRY, slug: "bright-lattice-heron-fox", image_slug: viz.image_slug };
+        await page.route("**/api/sessions", (r) =>
+            r.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ user_slug: "amber-fox-12", token: "t" }) }),
+        );
+        await page.route("**/api/visualizations", (r) =>
+            r.request().method() === "POST"
+                ? r.fulfill({ status: 201, contentType: "application/json", headers: { ETag: '"e"' }, body: JSON.stringify(created) })
+                : r.fallback(),
+        );
+        // Open the workspace and let it extract + compute, so the local draft it
+        // saves carries a contour (a draft without one cannot be published).
+        await page.goto(`/w/${viz.image_slug}`);
+        await expect(page.locator(".mini-progress")).toBeAttached({ timeout: 30_000 });
+        await page.waitForTimeout(1500);
+        await page.goto("/gallery");
+        await page.getByRole("tab", { name: "Drafts" }).click();
+        const header = page.getByRole("button", { name: /My Drafts/ });
+        await expect(header).toBeVisible();
+        if ((await header.getAttribute("aria-expanded")) !== "true") await header.click();
+        const publish = page.getByRole("button", { name: /^Publish/ });
+        const before = await publish.count();
+        expect(before).toBeGreaterThan(0);
+        await publish.first().click();
+        await expect(page.getByText(/Published!/).first()).toBeVisible();
+        await expect(publish).toHaveCount(before - 1);
+        await page.reload();
+        await page.getByRole("tab", { name: "Drafts" }).click();
+        await expect(page.getByRole("button", { name: /^Publish/ })).toHaveCount(before - 1);
+    });
+});
