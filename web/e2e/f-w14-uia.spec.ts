@@ -672,3 +672,63 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
         }
     });
 });
+
+test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the dock at 390", () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    /** Every named control's centre hits itself inside the viewport. */
+    async function allHittable(page: Page, names: string[]) {
+        for (const name of names) {
+            const el = page.getByRole("button", { name }).or(page.getByRole("textbox", { name })).first();
+            await expect(el, name).toBeVisible();
+            const ok = await el.evaluate((b) => {
+                const r = b.getBoundingClientRect();
+                const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                return r.left >= 0 && r.right <= innerWidth && !!hit && (hit === b || b.contains(hit) || hit.contains(b));
+            });
+            expect(ok, `${name} visible and hittable`).toBe(true);
+        }
+    }
+
+    test("F-28/F-29: the login form opens in a popover; its error wraps in its own line", async ({ page }) => {
+        await page.route("**/api/sessions/login", (r) =>
+            r.fulfill({ status: 404, contentType: "application/problem+json", body: JSON.stringify({ title: "Not found", status: 404, detail: "No account uses this slug — check the four words, or generate a new slug to start fresh." }) }),
+        );
+        await page.goto("/gallery");
+        const dockBefore = await page.locator("header").first().evaluate((h) => h.getBoundingClientRect().width);
+        await page.getByRole("button", { name: "Log in" }).click();
+        const field = page.getByRole("textbox", { name: /Your slug/ });
+        await field.fill("quiet-amber-lattice-fox");
+        await allHittable(page, ["Your slug — four lowercase words joined by hyphens", "Generate a new slug", "Submit slug and log in"]);
+        expect(await page.locator("header").first().evaluate((h) => h.getBoundingClientRect().width)).toBe(dockBefore);
+        await page.getByRole("button", { name: "Submit slug and log in" }).click();
+        const err = page.locator("#user-slug-error");
+        await expect(err).toBeVisible();
+        const e = await err.evaluate((p) => ({ sw: p.scrollWidth, cw: p.clientWidth, r: p.getBoundingClientRect().right }));
+        expect(e.sw).toBeLessThanOrEqual(e.cw);
+        expect(e.r).toBeLessThanOrEqual(390);
+        await allHittable(page, ["Generate a new slug", "Submit slug and log in"]);
+    });
+
+    test("F-30: logged in, the account is one trigger and the dark-mode toggle stays on the plate", async ({ page }) => {
+        await page.addInitScript(() => {
+            localStorage.setItem("fourier-user-slug", "quiet-amber-lattice-fox");
+            localStorage.setItem("fourier-user-token", "e2e-token");
+        });
+        await page.goto("/gallery");
+        const trigger = page.getByRole("button", { name: /^Account: |^Copy your slug$/ }).first();
+        await expect(trigger).toBeAttached();
+        await page.waitForTimeout(500);
+        const toggle = page.locator(".dark-mode-toggle").first();
+        await expect(toggle).toBeVisible();
+        const t = await toggle.evaluate((b) => {
+            const r = b.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return { inView: r.right <= innerWidth, hit: !!hit && (hit === b || b.contains(hit)) };
+        });
+        expect(t).toEqual({ inView: true, hit: true });
+        await page.getByRole("button", { name: /^Account: / }).click();
+        await expect(page.getByRole("menuitem", { name: "Copy your slug" })).toBeVisible();
+        await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
+    });
+});

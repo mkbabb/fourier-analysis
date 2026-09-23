@@ -3,6 +3,15 @@ import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Input } from "@mkbabb/glass-ui/input";
+import { DockTrigger } from "@mkbabb/glass-ui/dock";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+} from "@mkbabb/glass-ui/menu";
+import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { useClipboard } from "@mkbabb/glass-ui";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
@@ -135,7 +144,6 @@ async function copySlug() {
 }
 
 function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Enter") handleLogin();
     if (e.key === "Escape") {
         showLogin.value = false;
         slugInput.value = "";
@@ -145,82 +153,49 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
+    <!-- X.F.W14.u — UIA-F-28 · UIA-F-29 · UIA-F-30: the account group is one
+         dock trigger, never a run of controls in the dock row. Logged out, the
+         inline form (a 27ch field plus two buttons, 586 px in a 312 px dock at
+         390) morphed the dock row and pushed Submit, Dice and the input off the
+         plate; its error paragraph inherited the dock root's `nowrap` and ran
+         ~400 px out of its box. Logged in, the slug pill with Copy and Log out
+         (433–468 px in a 284 px box) pushed the dark-mode toggle out. Transient
+         surfaces ride the Reka popover and menu families (dock README): "Log
+         in" opens a popover holding the form, with the error in its own line
+         beneath the field, and the account is a dropdown holding the slug, Copy
+         and Log out. The identity text and every accessible name the earlier
+         rows fixed (FR-USB-13, -17..-20, -5) are kept. -->
     <div class="flex items-center">
-        <!-- Logged in: slug pill -->
-        <!-- FR-USB-13 ⊕ FR-USB-33: below 640 px this pill communicated NO
-             identity — `hidden sm:inline` erased the abbreviation and the only
-             remaining carrier was `title`, which touch never reaches. `sm:` is a
-             WIDTH breakpoint, not a pointer query, so it was hiding the datum on
-             exactly the devices that had no other way to get it. The abbreviation
-             is five characters; it stays at every width. (It is also 1066× lossy
-             — 268,435,456 slugs collapse onto 251,712 initials — so it identifies
-             the session, never the credential.)
-             FR-USB-17..-20: `title` is not an accessible name. Both controls are
-             icon-only with auto-`aria-hidden` glyphs, so they had none at all. -->
-        <div
-            v-if="isLoggedIn"
-            class="inline-flex items-center gap-1 rounded-full border border-foreground/12 bg-foreground/3 px-1 sm:px-2 py-0.5 text-sm text-muted-foreground"
-        >
-            <User :size="12" aria-hidden="true" />
-            <span class="fira-code">{{ abbreviatedSlug }}</span>
-            <span class="sr-only">Logged in as {{ userSlug }}</span>
-            <Button
-                emphasis="quiet"
-                size="xs"
-                icon-only
-                class="rounded-full text-muted-foreground"
-                aria-label="Copy your slug"
-                @click="copySlug"
-            >
-                <Transition name="icon-swap" mode="out-in">
-                    <Check v-if="status === 'success'" :size="12" class="text-success" aria-hidden="true" />
-                    <Copy v-else :size="12" aria-hidden="true" />
-                </Transition>
-            </Button>
-            <Button
-                emphasis="quiet"
-                size="xs"
-                icon-only
-                class="rounded-full text-muted-foreground"
-                aria-label="Log out"
-                :disabled="loggingOut"
-                @click="handleLogout"
-            >
-                <LogOut :size="12" aria-hidden="true" />
-            </Button>
-        </div>
+        <DropdownMenu v-if="isLoggedIn">
+            <DockTrigger for="dropdown" :aria-label="`Account: ${userSlug}`">
+                <User aria-hidden="true" />
+                <span class="fira-code hidden sm:inline">{{ abbreviatedSlug }}</span>
+            </DockTrigger>
+            <DropdownMenuContent :side-offset="10" align="end">
+                <DropdownMenuLabel>
+                    <span class="sr-only">Logged in as </span>
+                    <span class="fira-code">{{ userSlug }}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem @select="copySlug">
+                    <Check v-if="status === 'success'" class="text-success" aria-hidden="true" />
+                    <Copy v-else aria-hidden="true" />
+                    Copy your slug
+                </DropdownMenuItem>
+                <DropdownMenuItem :disabled="loggingOut" @select="handleLogout">
+                    <LogOut aria-hidden="true" />
+                    Log out
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
 
-        <!-- Login trigger / form -->
-        <template v-else>
-            <Button
-                v-if="!showLogin"
-                emphasis="quiet"
-                size="sm"
-                class="size-10 sm:size-auto sm:px-2.5 sm:py-1 gap-1 rounded-full text-muted-foreground"
-                aria-label="Log in"
-                @click="showLogin = true"
-            >
-                <LogIn class="size-5 sm:size-3.5" />
+        <Popover v-else v-model:open="showLogin">
+            <DockTrigger for="popover" aria-label="Log in">
+                <LogIn aria-hidden="true" />
                 <span class="hidden sm:inline">Log in</span>
-            </Button>
-
-            <!-- FR-USB-5 (one element, one cure, three legs) ⊕ FR-USB-12 ⊕
-                 FR-USB-14. The raw field carried `outline-none` with a border
-                 SHIFT as its only focus replacement, and the three figures of
-                 record — focused border vs fill 1.93:1 (SC 1.4.11), resting border
-                 1.28:1, placeholder 1.73–1.76:1 (SC 1.4.3, on the only visible
-                 statement of the required format) — were reproduced to the
-                 hundredth by both readers. The resting figure re-introduced by
-                 hand the exact failure the producer's own field annotation had
-                 diagnosed and fixed; swapping to the primitive is what stops a
-                 consumer re-deriving a calibrated surface badly.
-                 FR-USB-14: `w-44` showed ≈18.8 monospace characters of a
-                 credential whose four-word contract measures min 17 / mean 26.3 /
-                 max 40 — the user could never see their whole slug at ANY
-                 breakpoint. `w-[27ch]` covers the mean; `max-w-[60vw]` keeps it
-                 inside a phone. -->
-            <div v-else class="flex items-center gap-1">
-                <div class="flex flex-col gap-0.5">
+            </DockTrigger>
+            <PopoverContent align="end" :side-offset="10" class="login-popover">
+                <form class="flex flex-col gap-2" novalidate @submit.prevent="handleLogin">
                     <label class="sr-only" for="user-slug-input">
                         Your slug — four lowercase words joined by hyphens
                     </label>
@@ -239,48 +214,53 @@ function onKeydown(e: KeyboardEvent) {
                         :invalid="!!slugError"
                         :aria-describedby="slugError ? 'user-slug-error' : undefined"
                         placeholder="your-slug-here 🐌"
-                        class="w-[27ch] max-w-[60vw] fira-code"
+                        class="w-full fira-code"
                         @keydown="onKeydown"
                         @input="slugError = null"
                     />
-                    <p
-                        v-if="slugError"
-                        id="user-slug-error"
-                        role="alert"
-                        class="max-w-[27ch] text-xs text-destructive"
-                    >
+                    <p v-if="slugError" id="user-slug-error" role="alert" class="login-error text-destructive">
                         {{ slugError }}
                     </p>
-                </div>
-                <Button
-                    emphasis="secondary"
-                    size="sm"
-                    icon-only
-                    class="text-foreground"
-                    aria-label="Submit slug and log in"
-                    :disabled="!canSubmit || loggingIn"
-                    :loading="loggingIn"
-                    @click="handleLogin"
-                >
-                    <LogIn :size="14" aria-hidden="true" />
-                </Button>
-                <Button
-                    emphasis="secondary"
-                    size="sm"
-                    icon-only
-                    class="text-muted-foreground"
-                    :disabled="loggingIn"
-                    aria-label="Generate a new slug"
-                    @click="handleGenerate"
-                >
-                    <Dices :size="14" aria-hidden="true" />
-                </Button>
-            </div>
-        </template>
+                    <div class="flex items-center justify-end gap-2">
+                        <Button
+                            type="button"
+                            emphasis="secondary"
+                            size="sm"
+                            :disabled="loggingIn"
+                            aria-label="Generate a new slug"
+                            @click="handleGenerate"
+                        >
+                            <Dices aria-hidden="true" />
+                        </Button>
+                        <Button
+                            type="submit"
+                            emphasis="primary"
+                            size="sm"
+                            aria-label="Submit slug and log in"
+                            :disabled="!canSubmit || loggingIn"
+                            :loading="loggingIn"
+                        >
+                            <LogIn aria-hidden="true" />
+                        </Button>
+                    </div>
+                </form>
+            </PopoverContent>
+        </Popover>
     </div>
 </template>
 
 <style scoped>
+.login-popover {
+    inline-size: min(22rem, calc(100vw - 2rem));
+}
+
+/* The error is its own line under the field; the dock root's `nowrap` does not
+   reach into the portalled popover, and the wrap is stated anyway. */
+.login-error {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 /* A.W3.d — named properties + canonical tokens, no `transition: all`. */
 .icon-swap-enter-active,
 .icon-swap-leave-active { transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard); }
