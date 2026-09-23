@@ -140,13 +140,15 @@ function onImgError() {
                  the producer's own docblock). The cure is unchanged; its spelling
                  is the pin's. -->
             <Transition name="rainbow-fade">
+                <!-- X.F.W14.r — the sidebar now enters on drop (F.W13 `.c` r1),
+                     so the upload in flight is this layer's busy state too. -->
                 <Progress
-                    v-if="store.computing"
+                    v-if="store.uploading || store.computing"
                     :model-value="null"
                     variant="liquid"
                     size="sm"
                     class="mt-2"
-                    aria-label="Computing the Fourier decomposition"
+                    :aria-label="store.uploading ? 'Uploading the image' : 'Computing the Fourier decomposition'"
                 />
             </Transition>
 

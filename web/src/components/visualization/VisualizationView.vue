@@ -174,11 +174,30 @@ const hasImage = computed(() => !!store.imageMeta);
  * closes only after the content's leave has run, so the leave is seen instead
  * of being cut off by the column collapsing under it.
  */
-const hasSidebar = computed(() => hasImage.value);
+/*
+ * X.F.W14.r — F.W13 `.c` residual (r1): the spec's words are "on drop (or
+ * file pick) the sidebar enters", and it entered only when the upload
+ * response LANDED (`imageMeta`). The upload in flight is the drop's own
+ * state, so the sidebar enters with it — its Image layer carrying the
+ * upload's busy signal — and the landed image fills it. An upload that fails
+ * clears the flight with no image, which is the leave path (r2).
+ */
+const hasSidebar = computed(() => hasImage.value || store.uploading);
 const sidebarPresent = ref(hasSidebar.value);
 watch(hasSidebar, (present) => {
     if (present) sidebarPresent.value = true;
 });
+
+/*
+ * The band closes on the content's `@after-leave` — which never fires when
+ * the Configurator itself unmounts under it (a failed upload swaps the
+ * workspace for the not-found card). The band's state is re-read from the
+ * sidebar's own truth whenever the chassis unmounts, so a remount never opens
+ * an empty column.
+ */
+function onConfiguratorUnmounted() {
+    sidebarPresent.value = hasSidebar.value;
+}
 
 // The ONE upload affordance with no image: the main area's drop target (a
 // glass Button + the format line). The canvas itself is no longer a
@@ -280,7 +299,7 @@ async function onCanvasFileSelect(e: Event) {
                  solid `--card` + `blur(0)`, docs/canon/glass-system.md). Its veil
                  then resolves to the same `--card` the stage and every other fourier
                  pane paint. -->
-            <Configurator scroll-mode="auto" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'">
+            <Configurator scroll-mode="auto" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'" @vue:unmounted="onConfiguratorUnmounted">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
                     <div class="viz-panel-right canvas-stage" :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && !isDesktop }">
