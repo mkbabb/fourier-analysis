@@ -17,7 +17,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@mkbabb/glass-ui/collapsible";
-import { ChevronRight, ChevronUp } from "@lucide/vue";
+import { ArrowUpToLine, ChevronRight, ChevronUp } from "@lucide/vue";
 
 import { onBeforeUnmount, ref, watch } from "vue";
 
@@ -41,6 +41,7 @@ const {
     isExpanded,
     toggleSection,
     navigateTo,
+    scrollToTop,
     getPreview,
 } = toc;
 
@@ -115,18 +116,36 @@ function plainTitle(section: PaperSectionData): string {
             <Collapsible v-model:open="contentsOpen">
                 <div class="sidebar-header">
                     <p class="sidebar-label font-serif-math">Contents</p>
-                    <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
-                        <CollapsibleTrigger as-child>
+                    <!-- X.F.W14.r — F.W13 `.a` residual (r1): the scroll-to-top the
+                         disclosure displaced returns BESIDE it, on the same glass
+                         primitive, never in its seat. It is the model's own
+                         `scrollToTop` (the one `MobileFloatingToc` calls), named for
+                         what it does, with a glyph distinct from the disclosure's. -->
+                    <div class="sidebar-header-actions">
+                        <Tooltip text="Scroll to top" side="right">
                             <Button
                                 emphasis="quiet"
                                 size="md" icon-only
-                                class="sidebar-contents-toggle"
-                                aria-label="Contents"
+                                class="sidebar-scroll-top"
+                                aria-label="Scroll to top"
+                                @click="scrollToTop()"
                             >
-                                <ChevronUp class="sidebar-contents-icon" />
+                                <ArrowUpToLine class="sidebar-contents-icon" />
                             </Button>
-                        </CollapsibleTrigger>
-                    </Tooltip>
+                        </Tooltip>
+                        <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
+                            <CollapsibleTrigger as-child>
+                                <Button
+                                    emphasis="quiet"
+                                    size="md" icon-only
+                                    class="sidebar-contents-toggle"
+                                    aria-label="Contents"
+                                >
+                                    <ChevronUp class="sidebar-contents-icon" />
+                                </Button>
+                            </CollapsibleTrigger>
+                        </Tooltip>
+                    </div>
                 </div>
                 <CollapsibleContent>
                     <ol class="sidebar-list">
@@ -265,6 +284,12 @@ function plainTitle(section: PaperSectionData): string {
     margin-bottom: 0.5rem;
 }
 
+.sidebar-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+}
+
 .sidebar-label {
     @apply text-sm;
     font-weight: 700;
@@ -355,7 +380,10 @@ function plainTitle(section: PaperSectionData): string {
     font-weight: 500;
     line-height: 1.35;
     padding: 0.28rem 0.625rem;
-    border-radius: calc(var(--radius) - 2px);
+    /* X.F.W14.r — F.W13 `.a` residual (r2): the row's corner is the glass
+       row canon, the `--radius-lg` its own `.interactive-item` / menu-row
+       idiom carries, not a hand-derived `calc(var(--radius) - 2px)`. */
+    border-radius: var(--radius-lg);
     color: var(--muted-foreground);
     /* `PV ★MF-6`: `font-weight` was in the transitioned set — a reflow per
        frame plus synthesized-weight snapping against the remapped serif, and
