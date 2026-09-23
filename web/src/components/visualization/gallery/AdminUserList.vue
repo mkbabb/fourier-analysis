@@ -500,77 +500,6 @@ const userRows = computed(() =>
             </label>
         </div>
 
-        <!-- Floating batch-action toolbar. Renders when the selection set is
-             non-empty; routes through the destructive-confirm dialog before
-             firing `batchUsers` against `{ok, affected, errors?}`. -->
-        <!-- X.F.W3 `.e` — the HOST half of section-5a split (5). The toolbar
-             chrome was authored TWICE, divergent on six positioning decisions;
-             `.d` settled all six once in `BatchActionBar.vue` at `aa9e12c`, and
-             this call site adopts it rather than re-deciding any of them. What
-             this surface keeps is what is actually its own: its verbs, their
-             counts, and the `aria-describedby` sentences that explain why a
-             control is unavailable.
-
-             Two of the six change behaviour HERE and both are `.d`'s decisions,
-             not this seat's: the bar seats at the BOTTOM edge (FR-AUL-51 — a
-             `sticky top-2` bar inside the scroller it shares with the list
-             displaces every row downward at the first tick, so the pointer that
-             ticked row n is then over row n−1), and the plate takes the single
-             z-tier. The inline inset is the host's, supplied through `class`,
-             because the two hosts' padding contexts differ. -->
-        <BatchActionBar
-            :count="selected.size"
-            noun="user"
-            label="Batch user actions"
-            :busy="busy"
-            @clear="clearSelection"
-        >
-            <!-- FR-AUL-41: `title` was carrying the ONLY explanation of why a
-                 control is unavailable — and `title` on a DISABLED element is
-                 reachable by no one: not the pointer (no hover target), not the
-                 keyboard (not focusable), not a screen reader. Tooltip cannot take
-                 it either, for the same reason. A described-by sentence is exposed
-                 on a disabled button in the accessibility tree, which is where the
-                 reason has to live. -->
-            <Button
-                emphasis="secondary"
-                size="sm"
-                class="text-xs"
-                :disabled="busy || suspendableCount === 0"
-                :aria-describedby="suspendableCount === 0 ? 'batch-suspend-why' : undefined"
-                @click="askBatch('suspend')"
-            >
-                <Ban class="mr-1 size-3.5" aria-hidden="true" />
-                Suspend<span v-if="suspendableCount">&nbsp;({{ suspendableCount }})</span>
-            </Button>
-            <span id="batch-suspend-why" class="sr-only">
-                Every selected user is already suspended.
-            </span>
-            <Button
-                emphasis="secondary"
-                size="sm"
-                class="text-xs"
-                :disabled="busy || unsuspendableCount === 0"
-                :aria-describedby="unsuspendableCount === 0 ? 'batch-reinstate-why' : undefined"
-                @click="askBatch('unsuspend')"
-            >
-                <UserCheck class="mr-1 size-3.5" aria-hidden="true" />
-                Reinstate<span v-if="unsuspendableCount">&nbsp;({{ unsuspendableCount }})</span>
-            </Button>
-            <span id="batch-reinstate-why" class="sr-only">
-                No selected user is suspended.
-            </span>
-            <Button
-                emphasis="primary" tone="destructive"
-                size="sm"
-                class="text-xs"
-                :disabled="busy"
-                @click="askBatch('delete')"
-            >
-                <Trash2 class="mr-1 size-3.5" aria-hidden="true" />
-                Delete
-            </Button>
-        </BatchActionBar>
 
         <!-- User list. FR-AUL-8: the old `v-if="loading"`/`v-if="!loading"` pair
              were exact complements, so every 300 ms typing pause and every
@@ -682,6 +611,84 @@ const userRows = computed(() =>
 
             </div>
         </Card>
+
+        <!-- X.F.W14.u — UIA-F-36: the bar is mounted AFTER the list it acts on.
+             Mounted before it, its sticky seat resolved against the top of the
+             scroller (top −591 px desktop, −771 px mobile) and its first tick
+             inserted 56–68 px above the rows — the FR-AUL-51 displacement the
+             note below says the bottom seat cures. GalleryView mounts its bar
+             after the grid for the same reason. -->
+        <!-- Floating batch-action toolbar. Renders when the selection set is
+             non-empty; routes through the destructive-confirm dialog before
+             firing `batchUsers` against `{ok, affected, errors?}`. -->
+        <!-- X.F.W3 `.e` — the HOST half of section-5a split (5). The toolbar
+             chrome was authored TWICE, divergent on six positioning decisions;
+             `.d` settled all six once in `BatchActionBar.vue` at `aa9e12c`, and
+             this call site adopts it rather than re-deciding any of them. What
+             this surface keeps is what is actually its own: its verbs, their
+             counts, and the `aria-describedby` sentences that explain why a
+             control is unavailable.
+
+             Two of the six change behaviour HERE and both are `.d`'s decisions,
+             not this seat's: the bar seats at the BOTTOM edge (FR-AUL-51 — a
+             `sticky top-2` bar inside the scroller it shares with the list
+             displaces every row downward at the first tick, so the pointer that
+             ticked row n is then over row n−1), and the plate takes the single
+             z-tier. The inline inset is the host's, supplied through `class`,
+             because the two hosts' padding contexts differ. -->
+        <BatchActionBar
+            :count="selected.size"
+            noun="user"
+            label="Batch user actions"
+            :busy="busy"
+            @clear="clearSelection"
+        >
+            <!-- FR-AUL-41: `title` was carrying the ONLY explanation of why a
+                 control is unavailable — and `title` on a DISABLED element is
+                 reachable by no one: not the pointer (no hover target), not the
+                 keyboard (not focusable), not a screen reader. Tooltip cannot take
+                 it either, for the same reason. A described-by sentence is exposed
+                 on a disabled button in the accessibility tree, which is where the
+                 reason has to live. -->
+            <Button
+                emphasis="secondary"
+                size="sm"
+                class="text-xs"
+                :disabled="busy || suspendableCount === 0"
+                :aria-describedby="suspendableCount === 0 ? 'batch-suspend-why' : undefined"
+                @click="askBatch('suspend')"
+            >
+                <Ban class="mr-1 size-3.5" aria-hidden="true" />
+                Suspend<span v-if="suspendableCount">&nbsp;({{ suspendableCount }})</span>
+            </Button>
+            <span id="batch-suspend-why" class="sr-only">
+                Every selected user is already suspended.
+            </span>
+            <Button
+                emphasis="secondary"
+                size="sm"
+                class="text-xs"
+                :disabled="busy || unsuspendableCount === 0"
+                :aria-describedby="unsuspendableCount === 0 ? 'batch-reinstate-why' : undefined"
+                @click="askBatch('unsuspend')"
+            >
+                <UserCheck class="mr-1 size-3.5" aria-hidden="true" />
+                Reinstate<span v-if="unsuspendableCount">&nbsp;({{ unsuspendableCount }})</span>
+            </Button>
+            <span id="batch-reinstate-why" class="sr-only">
+                No selected user is suspended.
+            </span>
+            <Button
+                emphasis="primary" tone="destructive"
+                size="sm"
+                class="text-xs"
+                :disabled="busy"
+                @click="askBatch('delete')"
+            >
+                <Trash2 class="mr-1 size-3.5" aria-hidden="true" />
+                Delete
+            </Button>
+        </BatchActionBar>
 
         <!-- FR-AUL-34: these two blocks were INSIDE the `role="list"` container
              and carry no `listitem` role — axe `aria-required-children`, manifest

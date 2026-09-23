@@ -1,6 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
-import { ENTRY, stubGallery } from "./fixtures/gallery";
+import { ADMIN_TOKEN, ADMIN_USERS, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
 
 /**
  * X.F.W14.u — the UIA-F register (`value.js/docs/tranches/X/audit/UI-AUDIT-fourier.md`).
@@ -369,5 +369,33 @@ test.describe("UIA-F-24 — floating ToC chapter rows navigate; the disclosure t
         await disclosure.click();
         await expect(disclosure).toHaveAttribute("aria-expanded", expanded === "true" ? "false" : "true");
         await expect(page.locator(".floating-toc-row").first()).toBeVisible();
+    });
+});
+
+/** Open the gallery in admin mode (stubbed admin API) on the named tab. */
+async function openAdminTab(page: Page, tab: string) {
+    await stubAdminApi(page);
+    await page.goto(`/gallery?admin=${ADMIN_TOKEN}`);
+    await expect(page.getByRole("region", { name: "Admin mode banner" })).toBeVisible({ timeout: 60_000 });
+    await page.getByRole("tab", { name: tab }).click();
+}
+
+test.describe("UIA-F-36 — the users batch bar docks below the list without displacing it", () => {
+    test("ticking a row neither moves the rows nor seats the bar off-screen", async ({ page }) => {
+        await openAdminTab(page, "Users");
+        const row = page.getByRole("listitem").filter({ hasText: ADMIN_USERS.items[0].user_slug }).first();
+        await expect(row).toBeVisible();
+        const topBefore = (await row.boundingBox())!.y;
+        await row.getByRole("checkbox").click();
+        const bar = page.getByRole("group", { name: "Batch user actions" });
+        await expect(bar).toBeVisible();
+        const topAfter = (await row.boundingBox())!.y;
+        expect(Math.abs(topAfter - topBefore), "the ticked row stays under the pointer").toBeLessThanOrEqual(1);
+        const box = (await bar.boundingBox())!;
+        const vh = page.viewportSize()!.height;
+        expect(box.y).toBeGreaterThanOrEqual(0);
+        expect(box.y + box.height).toBeLessThanOrEqual(vh);
+        // The bar sits after the rows it acts on.
+        expect(box.y).toBeGreaterThan(topAfter);
     });
 });
