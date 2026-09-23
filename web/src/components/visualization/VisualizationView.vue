@@ -293,7 +293,10 @@ async function onCanvasFileSelect(e: Event) {
                             <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
                             <input ref="canvasFileInput" data-testid="image-file-input" type="file" accept="image/*" class="hidden" @change="onCanvasFileSelect" />
                         </div>
-                        <div v-if="store.contour" class="editor-shell" :class="{ 'is-hidden': !isEditing }">
+                        <!-- UIA-F-15: out of edit mode the editor is opacity-hidden but
+                             mounted; `inert` keeps it out of the tab order and the
+                             pointer, so a hidden surface can never hold focus. -->
+                        <div v-if="store.contour" class="editor-shell" :class="{ 'is-hidden': !isEditing }" :inert="!isEditing">
                             <ContourEditorCanvas ref="editorRef" :contour="store.contour"
                                 :image-slug="store.imageSlug" :show-image-overlay="showImageOverlay"
                                 @state-change="onEditorStateChange" />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch } from "vue";
 import type { ContourAsset } from "@/lib/types";
 import {
     closedSplinePath,
@@ -33,6 +33,7 @@ const wStore = useWorkspaceStore();
 // State
 const points = ref<Point2D[]>([]);
 const svgRef = ref<SVGSVGElement | null>(null);
+const shellRef = ref<HTMLDivElement | null>(null);
 
 // Magnet mode: drag adjacent points with falloff
 const magnetRadius = ref(3); // 0 = off, 1-10 = number of adjacent points affected; default on
@@ -153,6 +154,10 @@ function onDblClick(e: MouseEvent) {
 
 function onPointPointerDown(idx: number, e: PointerEvent) {
     rawPointPointerDown(idx, e);
+    // The drag's `preventDefault` suppresses the compatibility mousedown, and
+    // with it the browser's focus move; the editing surface takes focus
+    // itself so its shortcuts follow the point the user just picked.
+    shellRef.value?.focus({ preventScroll: true });
     emitState();
 }
 
@@ -215,13 +220,12 @@ function getPoints(): { x: number[]; y: number[] } {
     return unzipPoints(points.value);
 }
 
-onMounted(() => {
-    window.addEventListener("keydown", onKeyDown);
-});
-
-onUnmounted(() => {
-    window.removeEventListener("keydown", onKeyDown);
-});
+// X.F.W14.u — UIA-F-15: the shortcuts were a WINDOW keydown listener on an
+// editor that stays mounted (hidden by opacity) outside edit mode, so Backspace,
+// Delete and ⌘Z were taken from the whole page: typing in a sidebar spinbutton
+// lost its keystroke and deleted a contour point out of view. They are bound on
+// the editor's own focusable surface now (the template's `@keydown`), so they
+// act only while focus is on the editor.
 
 defineExpose({
     undo: doUndo,
@@ -237,7 +241,7 @@ defineExpose({
 </script>
 
 <template>
-    <div class="editor-shell" tabindex="0">
+    <div ref="shellRef" class="editor-shell" tabindex="0" @keydown="onKeyDown">
         <svg
             ref="svgRef"
             :viewBox="viewBox"

@@ -235,3 +235,30 @@ test.describe("UIA-F-16 — Undo enables after a point drag", () => {
         await expect.poll(disabled).toBe(false);
     });
 });
+
+test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
+    test("Delete works on a picked point; out of edit mode a sidebar field keeps its Backspace", async ({ page }) => {
+        const { point } = await openEditor(page);
+        const points = page.locator("circle.control-point");
+        const before = await points.count();
+        await dragPoint(page, point); // picks (selects) the point
+        await page.keyboard.press("Delete");
+        await expect(points).toHaveCount(before - 1);
+
+        // Pick another point, then leave edit mode with it still selected.
+        await dragPoint(page, points.nth(20));
+        const edit = page.getByRole("button", { name: "Edit contour" }).first();
+        await edit.hover();
+        await page.waitForTimeout(600);
+        await edit.click();
+
+        const field = page.getByRole("spinbutton").first();
+        await field.click();
+        await page.keyboard.press("End");
+        const typed = await field.inputValue();
+        await page.keyboard.press("Backspace");
+        await expect(points).toHaveCount(before - 1);
+        await expect(field).toHaveValue(typed.slice(0, -1));
+        await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "");
+    });
+});
