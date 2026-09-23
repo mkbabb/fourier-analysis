@@ -465,3 +465,26 @@ test.describe("UIA-F-48 — the Drafts card sits inside the column gutter", () =
         expect(m.docScroll).toBeLessThanOrEqual(m.vw);
     });
 });
+
+test.describe("UIA-F-41 — the gallery column never scrolls sideways at 390 (consumer half)", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+    test("focusing the last admin tab leaves the column at scrollLeft 0", async ({ page }) => {
+        await openAdminTab(page, "Gallery");
+        const tabs = page.getByRole("tab");
+        const last = tabs.nth((await tabs.count()) - 1);
+        await last.focus();
+        await page.keyboard.press("End");
+        await page.waitForTimeout(300);
+        // The gallery column (the vertical scroller holding the strip and the
+        // sections) and the document never move sideways; only the strip's own
+        // track may.
+        const scrolled = await page.evaluate(() =>
+            [document.scrollingElement!, ...document.querySelectorAll("main *")]
+                .filter((el) => el === document.scrollingElement || (getComputedStyle(el).overflowY === "auto" && el.childElementCount > 1 && el.querySelector('[role="tablist"]')))
+                .filter((el) => el.scrollLeft > 0)
+                .map((el) => `${el.tagName}.${(el as HTMLElement).className}`.slice(0, 80)),
+        );
+        expect(scrolled).toEqual([]);
+    });
+});

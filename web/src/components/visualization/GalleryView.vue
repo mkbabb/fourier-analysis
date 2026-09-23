@@ -307,10 +307,19 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
     <div class="flex flex-col gap-4 overflow-y-auto h-full py-4">
         <!-- Tab toggle + search (tight grouping) -->
         <div class="flex flex-col gap-1.5 px-4">
-            <SegmentedTabs variant="underline"
-                :options="tabOptions"
-                v-model="activeTab"
-            />
+            <!-- X.F.W14.u — UIA-F-41 (consumer half): the strip scrolls in its
+                 own inline track. The column is `overflow-y: auto`, which makes
+                 its `overflow-x` compute to `auto` as well, so at 390 the 5-tab
+                 admin strip (456 px in a 358 px column) turned the whole column
+                 into a sideways scroller and focusing a tab slid every section
+                 ~80 px left. A producer overflow track or compact mode for
+                 SegmentedTabs is the glass half, routed under O-59. -->
+            <div class="min-w-0 overflow-x-auto [scrollbar-width:none]">
+                <SegmentedTabs variant="underline"
+                    :options="tabOptions"
+                    v-model="activeTab"
+                />
+            </div>
             <GallerySearchBar
                 v-if="activeTab === 'gallery'"
                 :search-query="gallery.searchQuery"
