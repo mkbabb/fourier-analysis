@@ -167,7 +167,7 @@ function onKeydown(e: KeyboardEvent) {
          rows fixed (FR-USB-13, -17..-20, -5) are kept. -->
     <div class="flex items-center">
         <DropdownMenu v-if="isLoggedIn">
-            <DockTrigger for="dropdown" :aria-label="`Account: ${userSlug}`">
+            <DockTrigger for="dropdown" class="account-trigger" :aria-label="`Account: ${userSlug}`">
                 <User aria-hidden="true" />
                 <span class="fira-code hidden sm:inline">{{ abbreviatedSlug }}</span>
             </DockTrigger>
@@ -190,7 +190,7 @@ function onKeydown(e: KeyboardEvent) {
         </DropdownMenu>
 
         <Popover v-else v-model:open="showLogin">
-            <DockTrigger for="popover" aria-label="Log in">
+            <DockTrigger for="popover" class="account-trigger" aria-label="Log in">
                 <LogIn aria-hidden="true" />
                 <span class="hidden sm:inline">Log in</span>
             </DockTrigger>
@@ -250,6 +250,16 @@ function onKeydown(e: KeyboardEvent) {
 </template>
 
 <style scoped>
+/* The account triggers sit in the app dock's control cell, the one measure
+   AppDock gives its own trigger faces: the block floor rides the producer's
+   `--dock-trigger-min-height` hook (set on `.app-dock`), and the inline floor
+   is this matching `min-inline-size`, so the icon-only face at 390 px holds
+   the ≥44 px coarse cell (`--dock-control-size`), not the 40 px of its icon
+   and padding. */
+.account-trigger {
+    min-inline-size: var(--dock-control-size);
+}
+
 .login-popover {
     inline-size: min(22rem, calc(100vw - 2rem));
 }
