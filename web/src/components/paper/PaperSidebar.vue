@@ -41,9 +41,11 @@ const {
     isExpanded,
     toggleSection,
     navigateTo,
-    scrollToTop,
     getPreview,
 } = toc;
+
+/** X.F.W13.a — the CONTENTS disclosure's state; the list opens on arrival. */
+const contentsOpen = ref(true);
 
 const sidebarNav = ref<HTMLElement | null>(null);
 watch(sidebarNav, (el) => toc.registerNavEl(el), { immediate: true });
@@ -99,117 +101,120 @@ function plainTitle(section: PaperSectionData): string {
     <aside class="paper-sidebar">
         <nav ref="sidebarNav" class="sidebar-nav scrollbar-thin" aria-label="Table of contents">
             <PaperSearch :search="search" variant="sidebar" />
-            <div class="sidebar-header">
-                <p class="sidebar-label cm-serif">Contents</p>
-                <!-- `D-B3(a)(b)(c)`: a 20×20 box under SC 2.5.8's 24px floor,
-                     a glyph and a border that never reached 3:1 in any state,
-                     and an accessible name that was a native `title` — the one
-                     control in this file denied the project Tooltip.
-                     ⊘ `PS-M2` RELAY-BEFORE-RENAME: the CLASS NAME is unchanged.
-                     latex-paper's shipped `useSidebarFollow` hard-codes
-                     `.sidebar-top-btn` in its pointer exemption, so a rename
-                     here silently converts scroll-to-top clicks into sticky
-                     manual-override suspensions. The relay carries the
-                     data-attribute hook; this cure restyles and never renames.
-                     (Measured this seat: glass-ui's own `useSidebarFollow` twin
-                     hard-codes the same private class — the relay is owed to
-                     BOTH producers.) -->
-                <Tooltip text="Scroll to top" side="right">
-                    <Button
-                        emphasis="quiet"
-                        size="md" icon-only
-                        class="sidebar-top-btn"
-                        aria-label="Scroll to top"
-                        @click="scrollToTop"
-                    >
-                        <ChevronUp class="sidebar-top-icon" />
-                    </Button>
-                </Tooltip>
-            </div>
-            <ol class="sidebar-list">
-                <li v-for="(section, si) in sections" :key="section.id">
-                    <!-- X·F F.W4 `.e` — `fr-PaperSidebar L-5(a)` + `L-1`: NAVIGATE
-                         AND TOGGLE ARE TWO CONTROLS. The row navigates and does
-                         nothing else (clicking the chapter you are reading no
-                         longer collapses it); the disclosure is a real
-                         `CollapsibleTrigger as-child`, which is what puts
-                         `aria-expanded`/`aria-controls` on the control that owns
-                         them. `@update:open` is now reached by exactly ONE path —
-                         the trigger — so the double-toggle L-5(a) predicted for
-                         "the day a trigger lands" cannot form. -->
-                    <Collapsible
-                        :open="isExpanded(section.id)"
-                        @update:open="toggleSection(section.id)"
-                    >
-                        <div class="sidebar-row">
-                            <Tooltip :text="getPreview(section)" side="right">
-                                <Button
-                                    emphasis="quiet"
-                                    :data-toc-id="section.id"
-                                    @click="navigateAndReveal(section.id)"
-                                    class="sidebar-link cm-serif"
-                                    :aria-current="activeRootId === section.id ? 'location' : undefined"
-                                    :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
-                                >
-                                    <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
-                                    <span v-html="renderTitle(section.title)" />
-                                </Button>
-                            </Tooltip>
-                            <CollapsibleTrigger v-if="hasChildren(section)" as-child>
-                                <Button
-                                    emphasis="quiet"
-                                    size="md" icon-only
-                                    class="sidebar-disclosure"
-                                    :aria-label="`Subsections of ${plainTitle(section)}`"
-                                >
-                                    <ChevronRight class="sidebar-disclosure-icon" />
-                                </Button>
-                            </CollapsibleTrigger>
-                        </div>
-                        <!-- Subsections — glass-ui Collapsible drives the
-                             expand/collapse animation via `data-state`. -->
-                        <CollapsibleContent v-if="hasChildren(section)">
-                            <ol class="sidebar-sublist">
-                                <li v-for="sub in section.subsections" :key="sub.id">
-                                    <Tooltip :text="getPreview(sub)" side="right">
+            <!-- X.F.W13.a — OA-13 (owner frame 1: "not rounded enough and not
+                 glass-ui idiomatic, and it doesn't even work"). The control
+                 beside CONTENTS wore a disclosure glyph in a disclosure's seat
+                 but was a scroll-to-top of the PAPER: at the paper's top — where
+                 the ToC is read — it is a no-op, and it never touched the list
+                 it sat on. It is now what it looks like: the CONTENTS
+                 disclosure, the producer's `Collapsible` owning `aria-expanded`
+                 and the open/close motion, and a glass `Button icon-only` whose
+                 own geometry (a circle: `--button-size` square, radius half of
+                 it) is no longer overwritten here. The mobile ToC keeps its
+                 scroll-to-top (`MobileFloatingToc`). -->
+            <Collapsible v-model:open="contentsOpen">
+                <div class="sidebar-header">
+                    <p class="sidebar-label cm-serif">Contents</p>
+                    <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
+                        <CollapsibleTrigger as-child>
+                            <Button
+                                emphasis="quiet"
+                                size="md" icon-only
+                                class="sidebar-contents-toggle"
+                                aria-label="Contents"
+                            >
+                                <ChevronUp class="sidebar-contents-icon" />
+                            </Button>
+                        </CollapsibleTrigger>
+                    </Tooltip>
+                </div>
+                <CollapsibleContent>
+                    <ol class="sidebar-list">
+                        <li v-for="(section, si) in sections" :key="section.id">
+                            <!-- X·F F.W4 `.e` — `fr-PaperSidebar L-5(a)` + `L-1`: NAVIGATE
+                                 AND TOGGLE ARE TWO CONTROLS. The row navigates and does
+                                 nothing else (clicking the chapter you are reading no
+                                 longer collapses it); the disclosure is a real
+                                 `CollapsibleTrigger as-child`, which is what puts
+                                 `aria-expanded`/`aria-controls` on the control that owns
+                                 them. `@update:open` is now reached by exactly ONE path —
+                                 the trigger — so the double-toggle L-5(a) predicted for
+                                 "the day a trigger lands" cannot form. -->
+                            <Collapsible
+                                :open="isExpanded(section.id)"
+                                @update:open="toggleSection(section.id)"
+                            >
+                                <div class="sidebar-row">
+                                    <Tooltip :text="getPreview(section)" side="right">
                                         <Button
                                             emphasis="quiet"
-                                            :data-toc-id="sub.id"
-                                            @click="navigateTo(sub.id)"
-                                            class="sidebar-link sidebar-sublink cm-serif"
-                                            :aria-current="isActive(sub.id) ? 'location' : undefined"
-                                                :style="isActive(sub.id)
-                                                    ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
-                                                    : {}"
+                                            :data-toc-id="section.id"
+                                            @click="navigateAndReveal(section.id)"
+                                            class="sidebar-link cm-serif"
+                                            :aria-current="activeRootId === section.id ? 'location' : undefined"
+                                            :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
                                         >
-                                            <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
-                                            <span v-html="renderTitle(sub.title)" />
+                                            <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
+                                            <span v-html="renderTitle(section.title)" />
                                         </Button>
                                     </Tooltip>
-                                    <!-- Sub-subsections -->
-                                    <ol v-if="sub.subsections && isInActiveChain(sub.id)" class="sidebar-subsublist">
-                                        <li v-for="subsub in sub.subsections" :key="subsub.id">
-                                            <Button
-                                                emphasis="quiet"
-                                                :data-toc-id="subsub.id"
-                                                @click="navigateTo(subsub.id)"
-                                                class="sidebar-link sidebar-subsublink cm-serif"
-                                                :aria-current="isActive(subsub.id) ? 'location' : undefined"
-                                                :style="isActive(subsub.id)
-                                                    ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
-                                                    : {}"
-                                            >
-                                                <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
-                                                <span v-html="renderTitle(subsub.title)" />
-                                            </Button>
+                                    <CollapsibleTrigger v-if="hasChildren(section)" as-child>
+                                        <Button
+                                            emphasis="quiet"
+                                            size="md" icon-only
+                                            class="sidebar-disclosure"
+                                            :aria-label="`Subsections of ${plainTitle(section)}`"
+                                        >
+                                            <ChevronRight class="sidebar-disclosure-icon" />
+                                        </Button>
+                                    </CollapsibleTrigger>
+                                </div>
+                                <!-- Subsections — glass-ui Collapsible drives the
+                                     expand/collapse animation via `data-state`. -->
+                                <CollapsibleContent v-if="hasChildren(section)">
+                                    <ol class="sidebar-sublist">
+                                        <li v-for="sub in section.subsections" :key="sub.id">
+                                            <Tooltip :text="getPreview(sub)" side="right">
+                                                <Button
+                                                    emphasis="quiet"
+                                                    :data-toc-id="sub.id"
+                                                    @click="navigateTo(sub.id)"
+                                                    class="sidebar-link sidebar-sublink cm-serif"
+                                                    :aria-current="isActive(sub.id) ? 'location' : undefined"
+                                                        :style="isActive(sub.id)
+                                                            ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
+                                                            : {}"
+                                                >
+                                                    <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
+                                                    <span v-html="renderTitle(sub.title)" />
+                                                </Button>
+                                            </Tooltip>
+                                            <!-- Sub-subsections -->
+                                            <ol v-if="sub.subsections && isInActiveChain(sub.id)" class="sidebar-subsublist">
+                                                <li v-for="subsub in sub.subsections" :key="subsub.id">
+                                                    <Button
+                                                        emphasis="quiet"
+                                                        :data-toc-id="subsub.id"
+                                                        @click="navigateTo(subsub.id)"
+                                                        class="sidebar-link sidebar-subsublink cm-serif"
+                                                        :aria-current="isActive(subsub.id) ? 'location' : undefined"
+                                                        :style="isActive(subsub.id)
+                                                            ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
+                                                            : {}"
+                                                    >
+                                                        <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
+                                                        <span v-html="renderTitle(subsub.title)" />
+                                                    </Button>
+                                                </li>
+                                            </ol>
                                         </li>
                                     </ol>
-                                </li>
-                            </ol>
-                        </CollapsibleContent>
-                    </Collapsible>
-                </li>
-            </ol>
+                                </CollapsibleContent>
+                            </Collapsible>
+                        </li>
+                    </ol>
+                </CollapsibleContent>
+            </Collapsible>
         </nav>
     </aside>
 </template>
@@ -274,50 +279,24 @@ function plainTitle(section: PaperSectionData): string {
     margin: 0;
 }
 
-.sidebar-top-btn {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* `D-B3(a)`: 20×20 is under SC 2.5.8's 24px minimum. */
-    min-width: 1.5rem;
-    min-height: 1.5rem;
-    border-radius: var(--radius-sm);
-    /* `D-B3(b)`: border 1.27:1 and glyph 1.87:1 — neither reached the 3:1
-       non-text floor in any state.
-
-       ⊘ The glyph alone was not enough, and the harness caught the shortfall
-       this seat's own first pass had claimed away. `--border` is the token for
-       a DIVIDER, whose job is to be quiet; SC 1.4.11 governs the BOUNDARY of a
-       control, which is the thing a reader must find. Re-derived at the bytes
-       through `G-F4-CONTRAST-FLOOR`'s own method: `--border` over `--card`
-       reads 1.865:1 light / 2.001:1 dark — still under 3:1 after the 8.0.0
-       uplift — while `--muted-foreground` reads 5.021:1 / 5.440:1. The hover
-       rule below ALREADY used `--muted-foreground` for this border, so the
-       resting state was the weaker of the two: the affordance was hardest to
-       see exactly when nobody was pointing at it. Resting takes that ink and
-       hover moves up to `--foreground` (15.992:1 / 12.435:1 over the hover
-       plate), so the floor is met at rest and the state change stays legible. */
-    border: 1px solid var(--muted-foreground);
-    background: none;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    /* A.W3.d — named properties + canonical token, no `transition: all`. */
-    transition: color 0.15s var(--ease-standard), border-color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
+/* X.F.W13.a — OA-13: the retired `.sidebar-top-btn` block overwrote the
+   producer Button's geometry and ink at the instance (`border-radius:
+   var(--radius-sm)` → a 40×40 square with 4px corners, measured on the served
+   page; a hand-set border and hover plate). The glass `Button icon-only`
+   owns all of it — a `--button-size` square with `calc(var(--button-size) / 2)`
+   corners, the quiet emphasis's ink and hover fill — so nothing is restated.
+   The glyph is sized by a `size-*`-free class the producer's
+   `svg:not([class*=size-])` guard leaves to us, and turns with the state. */
+.sidebar-contents-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.sidebar-top-btn:hover {
-    color: var(--foreground);
-    border-color: var(--foreground);
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
-}
-
-/* `D-B3(d)` is KILLED as filed — `size-3` is a no-op against the button
-   chunk's `[&_svg:not([class*=size-])]` guard — so the glyph is sized by a
-   `size-*` utility, the one escape the producer documents (`D/M-11`). */
-.sidebar-top-icon {
-    width: 0.75rem;
-    height: 0.75rem;
+/* Keyed on `aria-expanded`, not `data-state`: the Tooltip's own trigger
+   stamps `data-state` (its open/closed) on this same node and wins it. */
+.sidebar-contents-toggle[aria-expanded="false"] .sidebar-contents-icon {
+    transform: rotate(180deg);
 }
 
 .sidebar-list {
@@ -343,21 +322,11 @@ function plainTitle(section: PaperSectionData): string {
     min-width: 0;
 }
 
+/* X.F.W13.a — the disclosure is a glass `Button icon-only` (a circle by the
+   producer's own geometry); the instance-level radius / border / hover plate
+   that squared it (8px corners on a 40×40 box, measured) are retired. */
 .sidebar-disclosure {
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    border-radius: calc(var(--radius) - 2px);
-}
-
-.sidebar-disclosure:hover {
-    color: var(--foreground);
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
 .sidebar-disclosure-icon {
