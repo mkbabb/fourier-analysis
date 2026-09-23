@@ -66,7 +66,7 @@ const emit = defineEmits<{
             <Crown :size="16" class="text-amber-400" />
             <!-- The strip's name was a styled `<span>`; it is the region's
                  heading now, and the carousel is labelled by it. -->
-            <h2 id="featured-heading" class="cm-serif text-sm font-semibold tracking-tight">
+            <h2 id="featured-heading" class="font-serif-math text-sm font-semibold tracking-tight">
                 Featured
             </h2>
             <CarouselPager class="ml-auto" />

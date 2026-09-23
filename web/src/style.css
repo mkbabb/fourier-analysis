@@ -89,8 +89,10 @@
        producer's `fourier-f` utility renders the masthead ℱ in. It is NOT
        bridged to the text stack, because the two ARE different faces. */
     --font-display: "Fraunces", "Computer Modern Serif", "Latin Modern Roman", Georgia, serif;
-    /* The variable `@utility cm-serif` reads and glass-ui never declares — the
-       one that silently no-opped 26 sites across 17 files. */
+    /* The register `font-serif-math` reads. glass-ui 10.0.0 retired `cm-serif`
+       for `font-serif-math` and now declares `--font-serif-math: serif` in its
+       plain `@theme`; this `@theme` re-declaration replaces that default in the
+       one root Tailwind emits (MIGRATION.md §10.0.0, the token-root contract). */
     --font-serif-math: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
 }
 
@@ -286,29 +288,6 @@ html {
     --section-color-4: oklch(0.776 0.105 172.6);
     --section-color-10: oklch(0.794 0.116 127.9);
     --section-color-11: oklch(0.805 0.095 206.7);
-}
-
-/* X.F.W10S.b — `G-F9-5`: the muted ink of a CAPSULE TRACK is the capsule's
-   strong register, not the page's.
-
-   The single `/equation` axe node (`color-contrast`, serious) is the inactive
-   option of `EquationModeToggle`'s `SegmentedTabs` pill: ink `#8b7257` on the
-   track's composite `#e9e0d7` = **3.46:1** against the 4.5:1 text floor. The
-   producer's inactive-tab recipe reads `--muted-foreground` (mixed 12% toward
-   `--glass-capsule-warm`), and glass-ui itself re-binds that token to
-   `--on-glass-muted-strong` on its capsule family —
-   `:where(.feedback-tone, .glass-capsule)` in `styles/glass/ladder.css` — but
-   the pill track is `.glass-capsule-track`, which that list omits, so the
-   options painted in the PAGE's muted register (`--neutral-5`) over a capsule
-   plate. The cure is the producer's own binding, extended to the capsule
-   surface it missed, at the token scope (every capsule track in the app, both
-   arms — the producer ships `--on-glass-muted-strong` in light and dark), never
-   an instance override. GLASS-RELAY (the omission is the producer's; ridden by
-   mail, never patched in `node_modules`). */
-@layer glass-overrides {
-    :where(.glass-capsule-track) {
-        --muted-foreground: var(--on-glass-muted-strong);
-    }
 }
 
 /* D.W4.d — `:focus-visible` rings on the TOC link classes + the gallery

@@ -97,7 +97,7 @@ function getBasisLabel(item: WorkspaceDraft): string {
                 emphasis="quiet"
                 class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground"
             >
-                <span class="cm-serif text-sm font-semibold tracking-tight">My Drafts</span>
+                <span class="font-serif-math text-sm font-semibold tracking-tight">My Drafts</span>
                 <Metric :value="sortedDrafts.length" size="sm" />
                 <ChevronDown
                     :size="16"

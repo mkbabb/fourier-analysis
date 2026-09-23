@@ -60,7 +60,7 @@ const magnetModel = computed<number[]>({
 </script>
 
 <template>
-    <GlassDock :collapse-delay="2000" :start-collapsed="true" fit-content>
+    <GlassDock fit-content>
         <!--
           X.F.W4 · SP-5 — `fr-EditorControlsDock B-2` ⊕ `fr-CanvasControlsDock M-2`,
           THE INVERSION LOCK, cured on both faces in one edit.

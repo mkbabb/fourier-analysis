@@ -120,7 +120,7 @@ watch(() => props.search.isOpen.value, (open) => {
                     :aria-controls="dropdownId"
                     @click="floatingTocOpen = !floatingTocOpen"
                 >
-                    <span class="floating-toc-section cm-serif">
+                    <span class="floating-toc-section font-serif-math">
                         <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
                         {{ currentSection?.title }}
                     </span>
@@ -151,7 +151,7 @@ watch(() => props.search.isOpen.value, (open) => {
                     <!-- Scroll to top -->
                     <Button
                         emphasis="quiet"
-                        class="floating-toc-item floating-toc-top cm-serif"
+                        class="floating-toc-item floating-toc-top font-serif-math"
                         @click="handleScrollToTop"
                     >
                         <ChevronUp class="floating-toc-top-icon" />
@@ -163,7 +163,7 @@ watch(() => props.search.isOpen.value, (open) => {
                     <template v-for="(section, si) in sections" :key="section.id">
                         <Button
                             emphasis="quiet"
-                            class="floating-toc-item floating-toc-root cm-serif"
+                            class="floating-toc-item floating-toc-root font-serif-math"
                             :aria-current="activeRootId === section.id ? 'location' : undefined"
                             :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
                             @click="toggleSection(section.id)"
@@ -181,7 +181,7 @@ watch(() => props.search.isOpen.value, (open) => {
                                 v-for="sub in section.subsections"
                                 :key="sub.id"
                                 emphasis="quiet"
-                                class="floating-toc-item floating-toc-sub cm-serif"
+                                class="floating-toc-item floating-toc-sub font-serif-math"
                                 @click="selectSection(sub.id)"
                             >
                                 <span class="fira-code text-xs opacity-40">{{ sub.number }}.</span>

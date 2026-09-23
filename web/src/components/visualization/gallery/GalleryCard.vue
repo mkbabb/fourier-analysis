@@ -125,7 +125,7 @@ const created = useTimeAgo(() => props.entry.created_at);
                     class="basis-tint inline-flex items-center gap-[0.2rem] rounded-full font-medium whitespace-nowrap"
                     :style="{ '--pill-c': b.color }"
                 >
-                    <span class="cm-serif font-semibold text-[1.1em]">{{ b.icon }}</span>
+                    <span class="font-serif-math font-semibold text-[1.1em]">{{ b.icon }}</span>
                     {{ b.label }}
                 </Badge>
             </div>

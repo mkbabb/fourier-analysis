@@ -347,8 +347,7 @@ watchDebounced(
         <div class="flex px-3 py-1 bg-background lg:hidden">
             <SegmentedTabs variant="underline"
                 :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
-                :model-value="mobileView"
-                @update:model-value="mobileView = $event as 'controls' | 'canvas'" />
+                v-model="mobileView" />
         </div>
 
         <div class="eq-grid">
@@ -542,7 +541,7 @@ watchDebounced(
 
                 <!-- Empty state -->
                 <div v-else class="flex items-center justify-center flex-1">
-                    <p class="text-sm text-muted-foreground cm-serif italic">
+                    <p class="text-sm text-muted-foreground font-serif-math italic">
                         Enter a function to see its Fourier series
                     </p>
                 </div>

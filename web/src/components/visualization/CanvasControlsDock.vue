@@ -38,7 +38,7 @@ watch(
 </script>
 
 <template>
-    <GlassDock ref="dockRef" fit-content :start-collapsed="true">
+    <GlassDock ref="dockRef" fit-content>
         <!--
           X.F.W4 · SP-9 — `fr-CanvasControlsDock D-5 / L-7 / C-7` (+D-13/D-14) ⊕
           `fr-EditorControlsDock D-10 / L-4`: BOTH icon-size idioms are deleted,

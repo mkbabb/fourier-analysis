@@ -114,7 +114,7 @@ function plainTitle(section: PaperSectionData): string {
                  scroll-to-top (`MobileFloatingToc`). -->
             <Collapsible v-model:open="contentsOpen">
                 <div class="sidebar-header">
-                    <p class="sidebar-label cm-serif">Contents</p>
+                    <p class="sidebar-label font-serif-math">Contents</p>
                     <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
                         <CollapsibleTrigger as-child>
                             <Button
@@ -150,7 +150,7 @@ function plainTitle(section: PaperSectionData): string {
                                             emphasis="quiet"
                                             :data-toc-id="section.id"
                                             @click="navigateAndReveal(section.id)"
-                                            class="sidebar-link cm-serif"
+                                            class="sidebar-link font-serif-math"
                                             :aria-current="activeRootId === section.id ? 'location' : undefined"
                                             :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
                                         >
@@ -179,7 +179,7 @@ function plainTitle(section: PaperSectionData): string {
                                                     emphasis="quiet"
                                                     :data-toc-id="sub.id"
                                                     @click="navigateTo(sub.id)"
-                                                    class="sidebar-link sidebar-sublink cm-serif"
+                                                    class="sidebar-link sidebar-sublink font-serif-math"
                                                     :aria-current="isActive(sub.id) ? 'location' : undefined"
                                                         :style="isActive(sub.id)
                                                             ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
@@ -196,7 +196,7 @@ function plainTitle(section: PaperSectionData): string {
                                                         emphasis="quiet"
                                                         :data-toc-id="subsub.id"
                                                         @click="navigateTo(subsub.id)"
-                                                        class="sidebar-link sidebar-subsublink cm-serif"
+                                                        class="sidebar-link sidebar-subsublink font-serif-math"
                                                         :aria-current="isActive(subsub.id) ? 'location' : undefined"
                                                         :style="isActive(subsub.id)
                                                             ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }

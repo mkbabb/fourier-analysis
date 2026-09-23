@@ -196,7 +196,7 @@ const created = useTimeAgo(() => props.entry.created_at);
                              is F.W5's contract row, cited not booked. -->
                         <div class="bg-muted/30 rounded-lg px-3 py-2">
                             <div class="pb-1">
-                                <span class="cm-serif text-sm font-semibold tracking-tight">Decomposition</span>
+                                <span class="font-serif-math text-sm font-semibold tracking-tight">Decomposition</span>
                             </div>
                             <p v-if="!basisLabels.length" class="text-sm text-muted-foreground">
                                 No basis functions recorded for this visualization.
@@ -210,7 +210,7 @@ const created = useTimeAgo(() => props.entry.created_at);
                                     class="basis-tint inline-flex items-center gap-[0.2rem] rounded-full font-medium whitespace-nowrap"
                                     :style="{ '--pill-c': b.color }"
                                 >
-                                    <span class="cm-serif font-semibold text-[1.1em]">{{ b.icon }}</span>
+                                    <span class="font-serif-math font-semibold text-[1.1em]">{{ b.icon }}</span>
                                     {{ b.label }}
                                 </Badge>
                             </div>
@@ -219,7 +219,7 @@ const created = useTimeAgo(() => props.entry.created_at);
                         <!-- Parameters -->
                         <div class="bg-muted/30 rounded-lg px-3 py-2">
                             <div class="pb-1">
-                                <span class="cm-serif text-sm font-semibold tracking-tight">Parameters</span>
+                                <span class="font-serif-math text-sm font-semibold tracking-tight">Parameters</span>
                             </div>
                             <div class="flex items-center justify-between py-1">
                                 <span class="text-sm text-muted-foreground">Harmonics</span>

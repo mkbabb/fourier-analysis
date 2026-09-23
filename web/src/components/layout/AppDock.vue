@@ -68,13 +68,13 @@ const galleryStore = useGalleryStore();
 
 <template>
     <header class="app-header">
-        <GlassDock class="app-dock" orientation="horizontal" shape="pill" always-expanded>
+        <GlassDock class="app-dock" orientation="horizontal" shape="pill" :collapse="false">
             <!-- Logo + attribution card. The wordmark is the trigger's whole
                  face; at <640px it is the lone ℱ glyph and the dock's control
                  cell (≥44px coarse) is its hit box. -->
             <Popover>
                 <DockTrigger for="popover" class="logo-trigger" aria-label="About Fourier analysis">
-                    <span class="logo-mark cm-serif font-semibold tracking-tight select-none">
+                    <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
                         <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
                     </span>
                 </DockTrigger>

@@ -87,7 +87,7 @@ watch(open, (isOpen) => {
       <CollapsibleTrigger class="collapsible-trigger group flex flex-1 items-center gap-2 py-1.5 cursor-pointer select-none">
         <ChevronRight class="h-4 w-4 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-90': open }" />
         <span>
-          <span class="cm-serif text-sm font-semibold tracking-tight">{{ title }}</span>
+          <span class="font-serif-math text-sm font-semibold tracking-tight">{{ title }}</span>
           <span v-if="subtitle" class="ml-1.5 text-xs font-normal text-muted-foreground">— {{ subtitle }}</span>
         </span>
       </CollapsibleTrigger>

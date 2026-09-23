@@ -460,7 +460,7 @@ onUnmounted(() => {
                     <article class="paper-article leading-relaxed">
                         <header class="mb-10 lg:mb-20 text-center">
                             <h1
-                                class="cm-serif text-4xl font-bold tracking-tight sm:text-5xl md:text-[3.25rem] leading-[1.15]"
+                                class="font-serif-math text-4xl font-bold tracking-tight sm:text-5xl md:text-[3.25rem] leading-[1.15]"
                             >
                                 An Introduction to<br /><span class="fourier-f">ℱ</span>ourier Analysis
                             </h1>
@@ -474,7 +474,7 @@ onUnmounted(() => {
                         <nav
                             ref="mobileNavRef"
                             aria-label="Chapters"
-                            class="mb-14 cm-serif text-sm text-muted-foreground lg:hidden"
+                            class="mb-14 font-serif-math text-sm text-muted-foreground lg:hidden"
                         >
                             <ol class="list-none space-y-1.5 pl-0">
                                 <li v-for="section in paperSections" :key="section.id">

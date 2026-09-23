@@ -48,7 +48,7 @@ function doExport() {
              + Esc + autofocus via reka-ui's DialogPortal/DialogContent. -->
         <DialogContent>
             <DialogHeader>
-                <DialogTitle class="cm-serif text-lg font-semibold">Export Frame</DialogTitle>
+                <DialogTitle class="font-serif-math text-lg font-semibold">Export Frame</DialogTitle>
             </DialogHeader>
 
             <div class="option-list">

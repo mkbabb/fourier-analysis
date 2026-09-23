@@ -34,7 +34,7 @@ async function recordTransitions(page: Page): Promise<void> {
                 if (!(a instanceof CSSTransition)) continue;
                 const el = (a.effect as KeyframeEffect | null)?.target as Element | null;
                 if (!el) continue;
-                const target = el.matches(".viz-configurator")
+                const target = el.matches(".viz-configurator > [data-slot=\"configurator\"]")
                     ? "configurator"
                     : el.matches(".viz-panel-left-wrap")
                       ? "sidebar"

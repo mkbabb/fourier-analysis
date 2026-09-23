@@ -180,7 +180,7 @@ const hasActiveFilters = computed(
                             :style="{ '--pill-c': b.color }"
                             @click="basisFilter = basisFilter === b.key ? '' : b.key"
                         >
-                            <span class="cm-serif font-semibold text-[1.1em]">{{ b.icon }}</span>
+                            <span class="font-serif-math font-semibold text-[1.1em]">{{ b.icon }}</span>
                             {{ b.label }}
                         </Button>
                     </div>

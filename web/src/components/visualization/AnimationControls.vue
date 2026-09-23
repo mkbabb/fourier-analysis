@@ -115,8 +115,6 @@ const TimelineReadout = () =>
     <GlassDock
         ref="dock"
         class="animation-dock"
-        :collapse-delay="2000"
-        :start-collapsed="true"
         :style="{ '--animation-dock-max-width': maxWidth }"
     >
         <!--

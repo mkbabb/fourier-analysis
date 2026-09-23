@@ -229,8 +229,7 @@ async function onCanvasFileSelect(e: Event) {
             <div v-if="hasSidebar" class="flex px-3 py-1 bg-background lg:hidden">
                 <SegmentedTabs variant="underline"
                     :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
-                    :model-value="mobileView"
-                    @update:model-value="mobileView = $event as 'controls' | 'canvas'" />
+                    v-model="mobileView" />
             </div>
 
             <!-- B.W2.a — the visualization-route left-panel stack adopts the
@@ -384,8 +383,15 @@ async function onCanvasFileSelect(e: Event) {
    makes it flex-fill the workspace column and tunes the aside (controls)
    width band to match the prior left-panel widths. The substrate's intrinsic
    arrangement is stage-first (canvas) + controls-aside; the prior bespoke
-   grid was controls-left + canvas-right. */
-.viz-configurator {
+   grid was controls-left + canvas-right.
+
+   glass-ui 10.0.0 wraps the grid (`[data-slot="configurator"]`) in an outer
+   `.configurator-shell`, and the component's `class` prop lands on that shell
+   (the height envelope); the grid is its child. The consumer class therefore
+   names the shell, and every rule below reaches it — and the grid inside — with
+   `:deep()`, because the shell is not this component's scoped root (that is the
+   producer's `display: contents` expand host, which carries `data-sidebar`). */
+:deep(.viz-configurator) {
     flex: 1;
     min-height: 0;
     margin: 0.25rem;
@@ -406,24 +412,27 @@ async function onCanvasFileSelect(e: Event) {
         }
     }
 }
+/* The aside band rides the producer's `--configurator-aside-{min,max}` pair
+   (read by the grid's two-column container rule), set on the shell and
+   inherited by the grid: it tracks the prior 360/400/440px left-panel widths. */
 @media (min-width: 1024px) {
-    .viz-configurator {
+    :deep(.viz-configurator) {
         margin: 0.5rem;
         margin-bottom: 0.75rem;
-        /* aside band tracks the prior 360/400/440px left-panel widths. */
-        grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+        --configurator-aside-min: 320px;
+        --configurator-aside-max: 360px;
     }
 }
 @media (min-width: 1280px) {
-    .viz-configurator { grid-template-columns: minmax(0, 1fr) minmax(360px, 400px); }
+    :deep(.viz-configurator) { --configurator-aside-min: 360px; --configurator-aside-max: 400px; }
 }
 @media (min-width: 1536px) {
-    .viz-configurator { grid-template-columns: minmax(0, 1fr) minmax(400px, 440px); }
+    :deep(.viz-configurator) { --configurator-aside-min: 400px; --configurator-aside-max: 440px; }
 }
 /* On mobile the Configurator stacks (grid-cols-1); the `panel-inactive`
    toggle inside each slot drives the tab switch. */
 @media (max-width: 1023px) {
-    .viz-configurator { display: flex; flex-direction: column; }
+    :deep(.viz-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; }
 
     /* When the Configurator drops its desktop grid for the mobile flex column,
        glass-ui's `.configurator-stage` cell becomes a `flex: 0 1 auto` item
@@ -433,7 +442,7 @@ async function onCanvasFileSelect(e: Event) {
        header). On the desktop grid the cell drew its height from the grid
        track; in the flex column it must grow explicitly. Make the active stage
        cell flex-fill the column so the canvas + bottom dock lay out correctly. */
-    .viz-configurator :deep(.configurator-stage) {
+    :deep(.viz-configurator .configurator-stage) {
         flex: 1 1 0%;
         min-height: 0;
     }
@@ -623,13 +632,14 @@ async function onCanvasFileSelect(e: Event) {
    lands the band opens on the glass panel spring while the content translates in
    on the same pair; it leaves on the panel exit clock. Motion only from the glass
    motion tokens; under reduced motion none of it moves. */
-.viz-configurator {
+:deep(.viz-configurator > [data-slot="configurator"]) {
     transition: grid-template-columns var(--spring-panel-duration) var(--spring-panel);
 }
-.viz-configurator[data-sidebar="none"] {
-    grid-template-columns: minmax(0, 1fr) minmax(0px, 0px);
+[data-sidebar="none"] > :deep(.viz-configurator) {
+    --configurator-aside-min: 0px;
+    --configurator-aside-max: 0px;
 }
-.viz-configurator[data-sidebar="none"] > :deep(.configurator-aside) {
+[data-sidebar="none"] > :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
     display: none;
 }
 .viz-sidebar-enter-active {
@@ -646,7 +656,7 @@ async function onCanvasFileSelect(e: Event) {
     transform: translateX(var(--enter-overlay-slide, 0.5rem));
 }
 @media (prefers-reduced-motion: reduce) {
-    .viz-configurator,
+    :deep(.viz-configurator > [data-slot="configurator"]),
     .viz-sidebar-enter-active,
     .viz-sidebar-leave-active {
         transition: none;

@@ -62,7 +62,7 @@ const storage = computed<{ value: string; unit: string }>(() => {
     >
         <div class="flex items-center gap-1.5 mb-2">
             <Shield :size="16" class="admin-banner__mark" aria-hidden="true" />
-            <span class="cm-serif text-sm font-semibold tracking-tight">Admin Mode</span>
+            <span class="font-serif-math text-sm font-semibold tracking-tight">Admin Mode</span>
             <Button
                 emphasis="secondary"
                 size="sm"

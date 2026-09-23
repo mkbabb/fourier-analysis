@@ -28,7 +28,7 @@ const emit = defineEmits<{
             :style="modelValue === opt.value ? { '--pill-color': opt.color } : {}"
             @click="emit('update:modelValue', opt.value)"
         >
-            <span class="cm-serif font-semibold text-[1.3em] leading-none min-w-[1.2em] h-[1em]
+            <span class="font-serif-math font-semibold text-[1.3em] leading-none min-w-[1.2em] h-[1em]
                          inline-flex items-center justify-center" aria-hidden="true">
                 {{ opt.icon }}
             </span>

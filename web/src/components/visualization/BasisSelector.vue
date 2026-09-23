@@ -178,7 +178,7 @@ function toggleBasis(key: string) {
                     :style="isBasisActive(key as string) ? { '--pill-color': info.color } : {}"
                     @click="toggleBasis(key as string)"
                 >
-                    <span class="basis-icon cm-serif font-semibold" :class="{ 'basis-icon--fourier': key === 'fourier' }">{{ info.icon }}</span>
+                    <span class="basis-icon font-serif-math font-semibold" :class="{ 'basis-icon--fourier': key === 'fourier' }">{{ info.icon }}</span>
                     {{ getBasisLabel(key as string, info) }}
                 </Button>
             </Tooltip>

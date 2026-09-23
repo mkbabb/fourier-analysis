@@ -10,7 +10,7 @@ import * as api from "@/lib/api";
 import type { GalleryTier, Visualization, WorkspaceDraft } from "@/lib/types";
 import { Layers, Trash2, Crown } from "@lucide/vue";
 
-import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
+import { SegmentedTabs, type SegmentedTabOption } from "@mkbabb/glass-ui/tabs";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
     Dialog,
@@ -40,7 +40,8 @@ const auth = useAuthStore();
 const { isLoggedIn } = storeToRefs(auth);
 const { toast } = useToast();
 
-const activeTab = ref<"gallery" | "drafts" | "users" | "flagged" | "audit">("gallery");
+type GalleryTab = "gallery" | "drafts" | "users" | "flagged" | "audit";
+const activeTab = ref<GalleryTab>("gallery");
 /**
  * X·F F.W4 `.d` — GCM-3 (the GCM restore family's core): the modal held a
  * SNAPSHOT.
@@ -67,7 +68,7 @@ const viewedHashes = ref(new Set<string>());
 const publishing = ref(false);
 
 const tabOptions = computed(() => {
-    const tabs = [
+    const tabs: SegmentedTabOption<GalleryTab>[] = [
         { label: "Gallery", value: "gallery" },
         { label: "Drafts", value: "drafts" },
     ];
@@ -308,8 +309,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
         <div class="flex flex-col gap-1.5 px-4">
             <SegmentedTabs variant="underline"
                 :options="tabOptions"
-                :model-value="activeTab"
-                @update:model-value="activeTab = $event as typeof activeTab"
+                v-model="activeTab"
             />
             <GallerySearchBar
                 v-if="activeTab === 'gallery'"

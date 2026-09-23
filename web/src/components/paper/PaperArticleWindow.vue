@@ -164,7 +164,7 @@ const renderCalloutText = computed(
                     <template #callout="{ callout }">
                         <div class="interactive-callout">
                             <p
-                                class="cm-serif text-sm text-muted-foreground mb-3"
+                                class="font-serif-math text-sm text-muted-foreground mb-3"
                                 v-html="renderCalloutText(callout.text)"
                             />
                             <!-- X.F.W3 `.d` — `fr-PaperArticleWindow PAW-8`
