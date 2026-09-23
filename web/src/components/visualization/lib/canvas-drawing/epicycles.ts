@@ -154,6 +154,13 @@ export function drawEpicycleCircles(
         ctx.scale(fit.fitScale, fit.fitScale);
         ctx.translate(-fit.bboxCX, -fit.bboxCY);
     }
+    // OA-44 — strokes are CSS pixels. Under the fit scale a `lineWidth` is
+    // multiplied by `fitScale`, so a shrunk figure drew its circles and arms
+    // at sub-pixel widths (at a fit of 0.3 a 4-px circle strokes 1.2 px at
+    // alpha 0.5) and grew them past their weight on hover. Divide it back out.
+    const strokeScale = fit ? fit.fitScale : 1;
+    const circleWidth = lineWidths.circle / strokeScale;
+    const armWidth = lineWidths.arm / strokeScale;
 
     for (let i = 0; i < nVis; i++) {
         const [ccx, ccy] = toScreen(visPositions[i][0], visPositions[i][1]);
@@ -181,7 +188,7 @@ export function drawEpicycleCircles(
             ctx.lineTo(tx, ty);
             ctx.strokeStyle = color;
             ctx.globalAlpha = 0.75 * epicycleAlpha;
-            ctx.lineWidth = lineWidths.arm;
+            ctx.lineWidth = armWidth;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
             ctx.stroke();
@@ -194,7 +201,7 @@ export function drawEpicycleCircles(
         ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
         ctx.strokeStyle = color;
         ctx.globalAlpha = 0.5 * epicycleAlpha;
-        ctx.lineWidth = lineWidths.circle;
+        ctx.lineWidth = circleWidth;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
         ctx.stroke();
@@ -206,7 +213,7 @@ export function drawEpicycleCircles(
         ctx.lineTo(tx, ty);
         ctx.strokeStyle = color;
         ctx.globalAlpha = 0.75 * epicycleAlpha;
-        ctx.lineWidth = lineWidths.arm;
+        ctx.lineWidth = armWidth;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.stroke();

@@ -59,7 +59,7 @@ let epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
 const trail = new TrailManager();
 
 // ── Canvas setup ──
-const { surface, setupCanvas } = useCanvasSetup(canvasRef, containerRef, (s) => {
+const { surface, setupCanvas } = useCanvasSetup(canvasRef, (s) => {
     stableEpicycleBbox = null;
     baseFitCenter = null;
     if (store.epicycleData) drawFrame();
@@ -477,7 +477,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
     offCanvas.width = canvasRef.value.width;
     offCanvas.height = canvasRef.value.height;
     const offCtx = offCanvas.getContext("2d")!;
-    offCtx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
+    offCtx.setTransform(s.ctx.getTransform());
 
     // Swap surface ctx temporarily
     const origCtx = s.ctx;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch } from "vue";
 import type { BasisComponent } from "@/lib/types";
+import { useCanvasSetup } from "@/components/visualization/composables/useCanvasSetup";
 
 /**
  * `FR-CP-R-7` / `DECISIONS-F.W4.md` **D2**, executed as ruled — this seat
@@ -68,20 +69,18 @@ function barFraction(amplitude: number): number {
     return Math.max(val / maxAmplitude.value, 0.008);
 }
 
+// OA-44 — the app's one DPR-aware idiom. The canvas's CSS box is the template's
+// (content-sized: one column per bar); the backing store follows that box in
+// device pixels on resize, zoom and DPR change — a bar-count change resizes the
+// box and the observer redraws at the new size.
+const { surface } = useCanvasSetup(canvasRef, () => draw());
+
 function draw() {
-    const canvas = canvasRef.value;
-    if (!canvas) return;
+    const s = surface.value;
+    if (!s) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvasWidth.value;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(HEIGHT * dpr);
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${HEIGHT}px`;
-
-    const ctx = canvas.getContext("2d")!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, HEIGHT);
+    const ctx = s.ctx;
+    ctx.clearRect(0, 0, s.width, s.height);
 
     const comps = displayComponents.value;
     const n = comps.length;
@@ -123,7 +122,7 @@ function draw() {
 
         // Index label
         ctx.globalAlpha = 0.5;
-        ctx.fillStyle = getComputedStyle(canvas).getPropertyValue("color") || "#888";
+        ctx.fillStyle = getComputedStyle(ctx.canvas).getPropertyValue("color") || "#888";
         ctx.font = "9px 'Fira Code', monospace";
         ctx.textAlign = "center";
         ctx.fillText(String(comp.index), x + BAR_W / 2, HEIGHT - 4);
@@ -167,8 +166,6 @@ function onPointerLeave() {
 }
 
 watch(() => [props.components, props.logScale, props.maxBars], () => draw(), { deep: true });
-
-onMounted(() => draw());
 </script>
 
 <template>
@@ -189,6 +186,7 @@ onMounted(() => draw());
             <canvas
                 ref="canvasRef"
                 class="block text-muted-foreground"
+                :style="{ width: `${canvasWidth}px`, height: `${HEIGHT}px` }"
                 @pointermove="onPointerMove"
                 @pointerdown="onPointerMove"
                 @pointerleave="onPointerLeave"

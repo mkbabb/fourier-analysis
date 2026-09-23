@@ -7,6 +7,7 @@ import { easeInOutSine } from "@mkbabb/value.js/easing";
 import { lerp } from "@mkbabb/value.js/math";
 import { renderLatex } from "@/lib/equation/render";
 
+import { useCanvasSetup } from "@/components/visualization/composables/useCanvasSetup";
 import { drawPlotGrid, type PlotPadding } from "./lib/grid";
 import { hitTestCurves, type CurveHitRegion } from "./lib/hit-test";
 import { groupTrigHarmonics, harmonicProgress, spectrumColor, type TrigHarmonic } from "./lib/harmonics";
@@ -47,7 +48,6 @@ const transition = createTransitionState();
 let cancelTransition: (() => void) | null = null;
 
 // ── Canvas state ──
-let resizeObserver: ResizeObserver | null = null;
 let visibilityObserver: IntersectionObserver | null = null;
 let rafId: number | null = null;
 let loopStartTime: number | null = null;
@@ -192,22 +192,17 @@ function frameGeometry(
 
 // ── Draw ──
 
+// OA-44 — the backing store is the app's one DPR-aware idiom: sized to the
+// canvas's device-pixel box on resize, zoom and DPR change, never per frame
+// (the old per-draw `canvas.width =` reallocated the bitmap 60 times a second).
+const { surface } = useCanvasSetup(canvasRef, () => draw());
+
 function draw() {
     const canvas = canvasRef.value;
-    const container = containerRef.value;
-    if (!canvas || !container) return;
+    const s = surface.value;
+    if (!canvas || !s) return;
 
-    const rect = container.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-
-    const ctx = canvas.getContext("2d")!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const ctx = s.ctx;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
@@ -222,7 +217,7 @@ function draw() {
     // every meaning-bearing mark under the 1.4.11 floor in the default arm.
     const ink = getComputedStyle(canvas).getPropertyValue("color").trim() || "#888";
 
-    const w = rect.width, h = rect.height;
+    const w = s.width, h = s.height;
     const ox = props.originalPoints.x, oy = props.originalPoints.y;
     if (!ox.length) return;
     ctx.clearRect(0, 0, w, h);
@@ -504,9 +499,6 @@ onMounted(() => {
             startLoop();
         }
     });
-    resizeObserver = new ResizeObserver(() => draw());
-    if (containerRef.value) resizeObserver.observe(containerRef.value);
-
     // `L-M3 + D-26` — neither clock was visibility-gated, and the mobile panel is
     // `display:none` WHILE MOUNTED (`EquationView`'s `.panel-inactive`, default
     // tab `controls`), so the loop, the per-frame layout read and the reactive
@@ -533,7 +525,6 @@ onUnmounted(() => {
     playing.value = false;
     stopLoop();
     cancelTransition?.();
-    resizeObserver?.disconnect();
     visibilityObserver?.disconnect();
 });
 </script>
@@ -547,7 +538,7 @@ onUnmounted(() => {
              cannot otherwise have. -->
         <canvas
             ref="canvasRef"
-            class="block size-full text-muted-foreground"
+            class="absolute inset-0 size-full text-muted-foreground"
             role="img"
             :aria-label="plotDescription"
             @mousemove="onCanvasMove"
