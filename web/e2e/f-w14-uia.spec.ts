@@ -343,3 +343,31 @@ test.describe("UIA-F-20 — the paper restores its scroll position", () => {
         expect(Math.abs(top!)).toBeLessThan(900);
     });
 });
+
+test.describe("UIA-F-24 — floating ToC chapter rows navigate; the disclosure toggles", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+    test("tapping a chapter row scrolls to it; the chevron is its own control", async ({ page }) => {
+        await page.goto("/paper");
+        const scroller = page.locator(".paper-scroll");
+        // The floating bar appears once the inline contents scroll away.
+        await expect.poll(() => scroller.evaluate((el) => el.scrollHeight), { timeout: 10_000 }).toBeGreaterThan(5000);
+        await scroller.evaluate((el) => el.scrollTo({ top: 2500 }));
+        const trigger = page.locator(".floating-toc-title-btn");
+        await trigger.click();
+        const rows = page.locator(".floating-toc-root");
+        await expect(rows.first()).toBeVisible();
+        const n = await rows.count();
+        const before = await scroller.evaluate((el) => el.scrollTop);
+        await rows.nth(n - 1).click();
+        await expect(page.locator(".floating-toc-root")).toHaveCount(0);
+        await expect.poll(() => scroller.evaluate((el) => el.scrollTop), { timeout: 10_000 }).toBeGreaterThan(before + 2000);
+
+        await trigger.click();
+        const disclosure = page.getByRole("button", { name: /^Subsections of / }).first();
+        const expanded = await disclosure.getAttribute("aria-expanded");
+        await disclosure.click();
+        await expect(disclosure).toHaveAttribute("aria-expanded", expanded === "true" ? "false" : "true");
+        await expect(page.locator(".floating-toc-row").first()).toBeVisible();
+    });
+});

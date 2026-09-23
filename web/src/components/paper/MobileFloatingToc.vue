@@ -161,21 +161,38 @@ watch(() => props.search.isOpen.value, (open) => {
                     <div class="floating-toc-divider" />
 
                     <template v-for="(section, si) in sections" :key="section.id">
-                        <Button
-                            emphasis="quiet"
-                            class="floating-toc-item floating-toc-root font-serif-math"
-                            :aria-current="activeRootId === section.id ? 'location' : undefined"
-                            :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
-                            @click="toggleSection(section.id)"
-                        >
-                            <component
-                                :is="isExpanded(section.id) ? ChevronDown : ChevronRight"
+                        <!-- X.F.W14.u — UIA-F-24: navigate and toggle are two
+                             controls, mirroring PaperSidebar (L-5(a)). The row only
+                             toggled, so a chapter with no subsections could not be
+                             reached at all; the row navigates now, and the
+                             disclosure is its own labelled button. -->
+                        <div class="floating-toc-row">
+                            <Button
+                                emphasis="quiet"
+                                class="floating-toc-item floating-toc-root font-serif-math"
+                                :aria-current="activeRootId === section.id ? 'location' : undefined"
+                                :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
+                                @click="selectSection(section.id)"
+                            >
+                                <span class="fira-code text-xs opacity-50">{{ section.number }}.</span>
+                                {{ section.title }}
+                            </Button>
+                            <Button
                                 v-if="section.subsections?.length"
-                                class="floating-toc-collapse-icon"
-                            />
-                            <span class="fira-code text-xs opacity-50">{{ section.number }}.</span>
-                            {{ section.title }}
-                        </Button>
+                                emphasis="quiet"
+                                size="md"
+                                icon-only
+                                class="floating-toc-disclosure"
+                                :aria-label="`Subsections of ${section.title}`"
+                                :aria-expanded="isExpanded(section.id)"
+                                @click="toggleSection(section.id)"
+                            >
+                                <component
+                                    :is="isExpanded(section.id) ? ChevronDown : ChevronRight"
+                                    class="floating-toc-collapse-icon"
+                                />
+                            </Button>
+                        </div>
                         <template v-if="isExpanded(section.id)">
                             <Button
                                 v-for="sub in section.subsections"
@@ -382,6 +399,20 @@ watch(() => props.search.isOpen.value, (open) => {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+}
+
+.floating-toc-row {
+    display: flex;
+    align-items: center;
+}
+
+.floating-toc-row > .floating-toc-root {
+    flex: 1;
+    min-width: 0;
+}
+
+.floating-toc-disclosure {
+    flex-shrink: 0;
 }
 
 .floating-toc-collapse-icon {
