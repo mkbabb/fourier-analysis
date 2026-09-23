@@ -334,193 +334,207 @@ const relativeTimeOf = useRelativeTime();
             <Button emphasis="secondary" size="sm" @click="reload()">Try again</Button>
         </div>
 
-        <div
+        <!-- X.F.W14.t, OA-42 swept (COHESION §0bu). Each queue entry was its
+             own glass `Card`. Two adjacent entries therefore painted two rules
+             with an 8px gap between them (the upper card's 1px bottom border and
+             the lower card's 1px top border), measured at 1440 and 390. The
+             Card also dropped the `role="listitem"` it was given, so the list
+             held no listitems (UIA-F-43). The entries are now rows on ONE Card
+             plate, using the producer's table-row rule (one bottom border per
+             row, none after the last), coloured with the `--border` token. The
+             list roles sit on plain elements that keep them. -->
+        <Card
             v-else
-            class="flex flex-col gap-2"
-            role="list"
-            aria-label="Flagged gallery entries"
-            :aria-busy="loading || undefined"
+            v-show="flaggedEntries.length"
+            size="sm"
+            class="flagged-queue"
             :class="loading && 'opacity-60'"
         >
-            <!-- X.F.W3 `.d` — `FR-AFP-61`'s second limb (⊕ `AA-19`). The flag
-                 pill became `<Badge>` at F.W4; the moderation CARD was the other
-                 half of the same row and stayed a bespoke `./card`
-                 re-implementation while `./card` shipped at the pin. It adopts
-                 the primitive now.
-
-                 The destructive plate is NOT re-authored in the swap: the
-                 producer's own documented mechanism for a per-instance rim hue
-                 is `--glass-accent`, "written by the consumer on the element"
-                 (`CardProps`' docblock, which struck `variant`/`dataHue`
-                 precisely so this would be one knob). So the queue keeps the
-                 semantic destructive edge F.W4 measured into it, and it keeps it
-                 through the design system rather than beside it.
-
-                 `AA-19`'s census amendment rides here as a receipt rather than a
-                 cure: the file-granular shadow table cannot see FRAGMENT shadows
-                 — this chip, the spinner, the raw footer — which is why the
-                 aggregate it feeds is not quotable, and why `g17` closes
-                 honest-RED in this unit rather than on a number. -->
-            <Card
-                v-for="item in flaggedEntries"
-                :key="item.slug"
-                role="listitem"
-                size="sm"
-                class="flagged-card"
-                :aria-busy="busySlug === item.slug || undefined"
+            <div
+                class="flex flex-col"
+                role="list"
+                aria-label="Flagged gallery entries"
+                :aria-busy="loading || undefined"
             >
-                <div class="flex items-start gap-3">
-                    <!-- FR-AFP-21: the panel that moderates IMAGES rendered no
-                         image. It is the only gallery surface holding
-                         `image_slug` that printed it as text, while
-                         `thumbnailUrl` takes exactly the field in hand and five
-                         sibling surfaces render the asset. An adjudicator was
-                         asked to rule on evidence they could not see. -->
-                    <img
-                        v-if="item.image_slug"
-                        :src="thumbnailUrl(item.image_slug)"
-                        :alt="`Reported image ${item.image_slug}`"
-                        class="size-16 shrink-0 rounded-md border border-border/60 bg-muted object-cover"
-                        loading="lazy"
-                    />
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 text-sm">
-                            <Flag
-                                class="size-3.5 shrink-0 text-destructive"
-                                aria-hidden="true"
-                            />
-                            <span class="font-mono text-xs truncate">{{ item.slug }}</span>
-                            <!-- FR-AFP-61: the flag pill is `./badge`, exported at
-                                 the pin, in the tone the producer owns. The
-                                 bespoke `bg-red-500/20` + `text-red-300` pill was
-                                 the queue's RANKING datum at ≈1.3–1.4:1 light. -->
-                            <Badge tone="destructive" size="sm">
-                                {{ item.flag_count }} {{ item.flag_count === 1 ? "flag" : "flags" }}
-                            </Badge>
-                        </div>
-                        <!-- ⊘ X·F F.W4 `.d` — census correction, AA-15's premise.
-                             `text-admin-label` is NOT emitted at the adopted
-                             glass-ui 8.0.0 pin: `grep -ro 'text-admin-label'
-                             node_modules/@mkbabb/glass-ui/dist` returns EMPTY, and
-                             no `--text-admin-label` theme key exists either — the
-                             string survives only inside `cn`'s class-name bucket
-                             regex. `text-mono-micro` IS emitted and is the rung
-                             the sibling admin surface already uses for this exact
-                             job. Booked as a falsified census cell in
-                             `F-W4-ADDENDA-d-2026-09-18.md`. -->
-                        <div class="mt-1 text-mono-micro text-muted-foreground">
-                            by {{ item.owner_slug ?? "anonymous" }}
-                            <span v-if="item.created_at"> &middot;
-                                <time
-                                    :datetime="relativeTimeOf(item.created_at).datetime"
-                                    :title="relativeTimeOf(item.created_at).absolute"
-                                >{{ relativeTimeOf(item.created_at).text }}</time>
-                            </span>
-                        </div>
-                        <!-- FR-AFP-59: the tier — the exact state the Save button
-                             mutates — rendered as a raw lowercase wire token in
-                             the 10px muted meta line, bypassing the product's real
-                             tier design language. Composed with FR-AFP-10 (Save
-                             does not dequeue), that word was the ONLY visible
-                             change after this panel's sole non-destructive remedy.
-                             ⊘ The closed-domain TYPE narrows with FR-AFP-31; the
-                             tier↔flag semantics are F.W5-W8's. -->
-                        <div class="mt-1 flex items-center gap-1 text-xs capitalize" :data-tier="item.tier ?? 'normal'">
-                            <Crown
-                                v-if="item.tier === 'featured'"
-                                :size="13"
-                                class="text-tier-featured"
-                                aria-hidden="true"
-                            />
-                            <Bookmark
-                                v-else-if="item.tier === 'saved'"
-                                :size="13"
-                                class="text-tier-saved"
-                                aria-hidden="true"
-                            />
-                            <span>{{ item.tier ?? "normal" }}</span>
-                        </div>
-                        <!-- Flag details -->
-                        <div class="mt-2 flex flex-col gap-1">
-                            <!-- FR-AFP-63: reporter free text is adversarially
-                                 controlled and rendered unbounded inside the one
-                                 flex child explicitly allowed to shrink. The file
-                                 was careful about exactly this one element short.
-                                 FR-AFP-20-adjacent: the provenance line stops
-                                 being an alpha-mute of an already-muted ink. -->
-                            <div
-                                v-for="flag in item.flags"
-                                :key="flagKey(item, flag)"
-                                class="border-l border-border/70 pl-2 text-xs text-muted-foreground"
-                            >
-                                <span class="font-medium text-destructive">{{ reasonLabel(flag.reason) }}</span>
-                                <span v-if="flag.detail" class="line-clamp-3 break-words">
-                                    {{ flag.detail }}
-                                </span>
-                                <span class="block font-mono">
-                                    {{ flag.reporter_slug }} &middot;
+                <!-- X.F.W3 `.d` — `FR-AFP-61`'s second limb (⊕ `AA-19`). The flag
+                     pill became `<Badge>` at F.W4; the moderation CARD was the other
+                     half of the same row and stayed a bespoke `./card`
+                     re-implementation while `./card` shipped at the pin. It adopts
+                     the primitive now.
+
+                     The destructive plate is NOT re-authored in the swap: the
+                     producer's own documented mechanism for a per-instance rim hue
+                     is `--glass-accent`, "written by the consumer on the element"
+                     (`CardProps`' docblock, which struck `variant`/`dataHue`
+                     precisely so this would be one knob). So the queue keeps the
+                     semantic destructive edge F.W4 measured into it, and it keeps it
+                     through the design system rather than beside it.
+
+                     `AA-19`'s census amendment rides here as a receipt rather than a
+                     cure: the file-granular shadow table cannot see FRAGMENT shadows
+                     — this chip, the spinner, the raw footer — which is why the
+                     aggregate it feeds is not quotable, and why `g17` closes
+                     honest-RED in this unit rather than on a number. -->
+                <div
+                    v-for="item in flaggedEntries"
+                    :key="item.slug"
+                    role="listitem"
+                    class="flagged-row border-b border-border p-3 last:border-b-0"
+                    :aria-busy="busySlug === item.slug || undefined"
+                >
+                    <div class="flex items-start gap-3">
+                        <!-- FR-AFP-21: the panel that moderates IMAGES rendered no
+                             image. It is the only gallery surface holding
+                             `image_slug` that printed it as text, while
+                             `thumbnailUrl` takes exactly the field in hand and five
+                             sibling surfaces render the asset. An adjudicator was
+                             asked to rule on evidence they could not see. -->
+                        <img
+                            v-if="item.image_slug"
+                            :src="thumbnailUrl(item.image_slug)"
+                            :alt="`Reported image ${item.image_slug}`"
+                            class="size-16 shrink-0 rounded-md border border-border/60 bg-muted object-cover"
+                            loading="lazy"
+                        />
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 text-sm">
+                                <Flag
+                                    class="size-3.5 shrink-0 text-destructive"
+                                    aria-hidden="true"
+                                />
+                                <span class="font-mono text-xs truncate">{{ item.slug }}</span>
+                                <!-- FR-AFP-61: the flag pill is `./badge`, exported at
+                                     the pin, in the tone the producer owns. The
+                                     bespoke `bg-red-500/20` + `text-red-300` pill was
+                                     the queue's RANKING datum at ≈1.3–1.4:1 light. -->
+                                <Badge tone="destructive" size="sm">
+                                    {{ item.flag_count }} {{ item.flag_count === 1 ? "flag" : "flags" }}
+                                </Badge>
+                            </div>
+                            <!-- ⊘ X·F F.W4 `.d` — census correction, AA-15's premise.
+                                 `text-admin-label` is NOT emitted at the adopted
+                                 glass-ui 8.0.0 pin: `grep -ro 'text-admin-label'
+                                 node_modules/@mkbabb/glass-ui/dist` returns EMPTY, and
+                                 no `--text-admin-label` theme key exists either — the
+                                 string survives only inside `cn`'s class-name bucket
+                                 regex. `text-mono-micro` IS emitted and is the rung
+                                 the sibling admin surface already uses for this exact
+                                 job. Booked as a falsified census cell in
+                                 `F-W4-ADDENDA-d-2026-09-18.md`. -->
+                            <div class="mt-1 text-mono-micro text-muted-foreground">
+                                by {{ item.owner_slug ?? "anonymous" }}
+                                <span v-if="item.created_at"> &middot;
                                     <time
-                                        :datetime="relativeTimeOf(flag.created_at).datetime"
-                                        :title="relativeTimeOf(flag.created_at).absolute"
-                                    >{{ relativeTimeOf(flag.created_at).text }}</time>
+                                        :datetime="relativeTimeOf(item.created_at).datetime"
+                                        :title="relativeTimeOf(item.created_at).absolute"
+                                    >{{ relativeTimeOf(item.created_at).text }}</time>
                                 </span>
                             </div>
+                            <!-- FR-AFP-59: the tier — the exact state the Save button
+                                 mutates — rendered as a raw lowercase wire token in
+                                 the 10px muted meta line, bypassing the product's real
+                                 tier design language. Composed with FR-AFP-10 (Save
+                                 does not dequeue), that word was the ONLY visible
+                                 change after this panel's sole non-destructive remedy.
+                                 ⊘ The closed-domain TYPE narrows with FR-AFP-31; the
+                                 tier↔flag semantics are F.W5-W8's. -->
+                            <div class="mt-1 flex items-center gap-1 text-xs capitalize" :data-tier="item.tier ?? 'normal'">
+                                <Crown
+                                    v-if="item.tier === 'featured'"
+                                    :size="13"
+                                    class="text-tier-featured"
+                                    aria-hidden="true"
+                                />
+                                <Bookmark
+                                    v-else-if="item.tier === 'saved'"
+                                    :size="13"
+                                    class="text-tier-saved"
+                                    aria-hidden="true"
+                                />
+                                <span>{{ item.tier ?? "normal" }}</span>
+                            </div>
+                            <!-- Flag details -->
+                            <div class="mt-2 flex flex-col gap-1">
+                                <!-- FR-AFP-63: reporter free text is adversarially
+                                     controlled and rendered unbounded inside the one
+                                     flex child explicitly allowed to shrink. The file
+                                     was careful about exactly this one element short.
+                                     FR-AFP-20-adjacent: the provenance line stops
+                                     being an alpha-mute of an already-muted ink. -->
+                                <div
+                                    v-for="flag in item.flags"
+                                    :key="flagKey(item, flag)"
+                                    class="border-l border-border/70 pl-2 text-xs text-muted-foreground"
+                                >
+                                    <span class="font-medium text-destructive">{{ reasonLabel(flag.reason) }}</span>
+                                    <span v-if="flag.detail" class="line-clamp-3 break-words">
+                                        {{ flag.detail }}
+                                    </span>
+                                    <span class="block font-mono">
+                                        {{ flag.reporter_slug }} &middot;
+                                        <time
+                                            :datetime="relativeTimeOf(flag.created_at).datetime"
+                                            :title="relativeTimeOf(flag.created_at).absolute"
+                                        >{{ relativeTimeOf(flag.created_at).text }}</time>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- FR-AFP-45: the glyphs contradicted their effects —
+                             `XCircle`, a REJECT mark, was the benign dismiss tinted
+                             green, and `Star`, a promotion, was tinted blue. Each
+                             control now carries a visible word beside a glyph that
+                             means what the act does. FR-AFP-34 / FR-AFP-19: ONE label
+                             source (no `title` duplicating the accessible name into a
+                             second SR announcement), the wire vocabulary "(save
+                             tier)" is out of the accessible name, and the labels name
+                             the ENTITY (`slug`), not the shared asset FK.
+                             FR-AFP-8 (one-token rider): `item.slug` is what gets
+                             deleted, so `item.slug` is what the confirm names —
+                             `image_slug` is an asset FK every remix shares.
+                             FR-AFP-16: every control is disabled while this row's own
+                             act is in flight. -->
+                        <div class="flex shrink-0 flex-col items-stretch gap-1">
+                            <Button
+                                emphasis="secondary"
+                                size="xs"
+                                class="gap-1 text-xs"
+                                :disabled="busy"
+                                :aria-label="`Mark ${item.slug} acceptable`"
+                                @click="handleSetTier(item.slug, 'saved')"
+                            >
+                                <Bookmark class="size-3.5" aria-hidden="true" />
+                                Keep
+                            </Button>
+                            <Button
+                                emphasis="secondary"
+                                size="xs"
+                                class="gap-1 text-xs"
+                                :disabled="busy"
+                                :aria-label="`Dismiss flags on ${item.slug}`"
+                                @click="handleDismiss(item.slug)"
+                            >
+                                <CheckCircle2 class="size-3.5" aria-hidden="true" />
+                                Dismiss
+                            </Button>
+                            <Button
+                                emphasis="secondary"
+                                tone="destructive"
+                                size="xs"
+                                class="gap-1 text-xs"
+                                :disabled="busy"
+                                :aria-label="`Delete entry ${item.slug}`"
+                                @click="askDelete(item.slug, item.slug)"
+                            >
+                                <Trash2 class="size-3.5" aria-hidden="true" />
+                                Delete
+                            </Button>
                         </div>
                     </div>
-                    <!-- FR-AFP-45: the glyphs contradicted their effects —
-                         `XCircle`, a REJECT mark, was the benign dismiss tinted
-                         green, and `Star`, a promotion, was tinted blue. Each
-                         control now carries a visible word beside a glyph that
-                         means what the act does. FR-AFP-34 / FR-AFP-19: ONE label
-                         source (no `title` duplicating the accessible name into a
-                         second SR announcement), the wire vocabulary "(save
-                         tier)" is out of the accessible name, and the labels name
-                         the ENTITY (`slug`), not the shared asset FK.
-                         FR-AFP-8 (one-token rider): `item.slug` is what gets
-                         deleted, so `item.slug` is what the confirm names —
-                         `image_slug` is an asset FK every remix shares.
-                         FR-AFP-16: every control is disabled while this row's own
-                         act is in flight. -->
-                    <div class="flex shrink-0 flex-col items-stretch gap-1">
-                        <Button
-                            emphasis="secondary"
-                            size="xs"
-                            class="gap-1 text-xs"
-                            :disabled="busy"
-                            :aria-label="`Mark ${item.slug} acceptable`"
-                            @click="handleSetTier(item.slug, 'saved')"
-                        >
-                            <Bookmark class="size-3.5" aria-hidden="true" />
-                            Keep
-                        </Button>
-                        <Button
-                            emphasis="secondary"
-                            size="xs"
-                            class="gap-1 text-xs"
-                            :disabled="busy"
-                            :aria-label="`Dismiss flags on ${item.slug}`"
-                            @click="handleDismiss(item.slug)"
-                        >
-                            <CheckCircle2 class="size-3.5" aria-hidden="true" />
-                            Dismiss
-                        </Button>
-                        <Button
-                            emphasis="secondary"
-                            tone="destructive"
-                            size="xs"
-                            class="gap-1 text-xs"
-                            :disabled="busy"
-                            :aria-label="`Delete entry ${item.slug}`"
-                            @click="askDelete(item.slug, item.slug)"
-                        >
-                            <Trash2 class="size-3.5" aria-hidden="true" />
-                            Delete
-                        </Button>
-                    </div>
                 </div>
-            </Card>
 
-        </div>
+            </div>
+        </Card>
 
         <!-- FR-AFP-30: the empty state is a SIBLING of the `role="list"`
              container, not a non-`listitem` child of it — and per FR-AFP-1 it is
@@ -605,9 +619,14 @@ const relativeTimeOf = useRelativeTime();
    consolidate into), so one declaration re-tints the primitive's edge instead of
    a scoped `border` shorthand racing its layered one. The fill stays an explicit
    wash because "this row is a moderation target" is a semantic this surface
-   owns, not an elevation the card grammar has a name for. */
-.flagged-card {
+   owns, not an elevation the card grammar has a name for.
+
+   X.F.W14.t: the queue is now one Card with a row per entry. The accent sits
+   on that one plate, and the wash sits on each row it marks. */
+.flagged-queue {
     --glass-accent: var(--destructive);
+}
+.flagged-row {
     background: color-mix(in oklab, var(--destructive) 6%, transparent);
 }
 </style>

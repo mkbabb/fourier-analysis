@@ -3,6 +3,7 @@ import { ref, computed, watch, onScopeDispose } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Input } from "@mkbabb/glass-ui/input";
 import { Badge } from "@mkbabb/glass-ui/badge";
+import { Card } from "@mkbabb/glass-ui/card";
 import { Checkbox } from "@mkbabb/glass-ui";
 import {
     Dialog,
@@ -575,101 +576,112 @@ const userRows = computed(() =>
              were exact complements, so every 300 ms typing pause and every
              mutation swapped the whole list for a ~56px spinner while the
              select-all header and the batch toolbar kept rendering stale chrome
-             over the blank. The rows now dim in place and announce busy. -->
-        <div
-            class="flex flex-col gap-1.5"
-            role="list"
-            aria-label="Admin user list"
-            :aria-busy="loading || undefined"
-            :class="loading && 'opacity-60'"
-        >
+             over the blank. The rows now dim in place and announce busy.
+             X.F.W14.t, OA-42 swept (COHESION §0bu). Each row was its own
+             `cartoon-card`, so two adjacent rows painted three rules between
+             them: a 2px bottom border, the offset stamp, and the next row's 2px
+             top border. This was measured at 1440 and 390 in both themes, and it
+             is the same doubled rule the owner's frame shows in the audit log.
+             The rows now sit on one glass `Card` plate and use the producer's
+             table-row rule: one bottom border per row, none after the last
+             (glass `TableRow` + `TableBody`). The rule is coloured with the
+             `--border` token. The `role="list"` sits on an inner element
+             because the glass Card drops a consumer's `role` (UIA-F-43). -->
+        <Card v-show="userRows.length" size="sm" :class="loading && 'opacity-60'">
             <div
-                v-for="{ user, joined, seen } in userRows"
-                :key="user.user_slug"
-                role="listitem"
-                class="cartoon-card flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
-                :data-selected="selected.has(user.user_slug) || undefined"
+                class="flex flex-col"
+                role="list"
+                aria-label="Admin user list"
+                :aria-busy="loading || undefined"
             >
-                <Checkbox
-                    :model-value="selected.has(user.user_slug)"
-                    :aria-label="`Select user ${user.user_slug}`"
-                    class="h-4 w-4 shrink-0"
-                    @update:model-value="(v) => toggleSelected(user.user_slug, v)"
-                />
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span class="font-mono text-xs truncate">{{ user.user_slug }}</span>
-                        <!-- FR-AUL-7: the SOLE "suspended" signifier was
-                             `bg-red-500/20` + `text-red-400` over light
-                             `--card: hsl(36 48% 97%)` ≈ 2.0:1 at the 10 px micro
-                             rung — a hand-rolled palette literal reaching past the
-                             repo's own ratified axe-contrast carry to a value ~2.5×
-                             worse than the one the project had already rejected.
-                             `Badge tone="destructive"` is the producer's paired
-                             `--destructive` / `--destructive-foreground` register,
-                             which is calibrated in both arms. -->
-                        <Badge
-                            v-if="user.status === 'suspended'"
-                            tone="destructive"
-                            size="sm"
-                            class="uppercase"
-                        >suspended</Badge>
+                <div
+                    v-for="{ user, joined, seen } in userRows"
+                    :key="user.user_slug"
+                    role="listitem"
+                    class="flex items-center gap-3 border-b border-border px-3 py-2 text-sm last:border-b-0"
+                    :data-selected="selected.has(user.user_slug) || undefined"
+                >
+                    <Checkbox
+                        :model-value="selected.has(user.user_slug)"
+                        :aria-label="`Select user ${user.user_slug}`"
+                        class="h-4 w-4 shrink-0"
+                        @update:model-value="(v) => toggleSelected(user.user_slug, v)"
+                    />
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-xs truncate">{{ user.user_slug }}</span>
+                            <!-- FR-AUL-7: the SOLE "suspended" signifier was
+                                 `bg-red-500/20` + `text-red-400` over light
+                                 `--card: hsl(36 48% 97%)` ≈ 2.0:1 at the 10 px micro
+                                 rung — a hand-rolled palette literal reaching past the
+                                 repo's own ratified axe-contrast carry to a value ~2.5×
+                                 worse than the one the project had already rejected.
+                                 `Badge tone="destructive"` is the producer's paired
+                                 `--destructive` / `--destructive-foreground` register,
+                                 which is calibrated in both arms. -->
+                            <Badge
+                                v-if="user.status === 'suspended'"
+                                tone="destructive"
+                                size="sm"
+                                class="uppercase"
+                            >suspended</Badge>
+                        </div>
+                        <div class="flex gap-3 text-mono-micro uppercase font-medium text-muted-foreground mt-0.5">
+                            <span>{{ user.entry_count }} entries</span>
+                            <span>joined <time :datetime="joined.datetime" :title="joined.absolute">{{ joined.text }}</time></span>
+                            <span>seen <time :datetime="seen.datetime" :title="seen.absolute">{{ seen.text }}</time></span>
+                        </div>
                     </div>
-                    <div class="flex gap-3 text-mono-micro uppercase font-medium text-muted-foreground mt-0.5">
-                        <span>{{ user.entry_count }} entries</span>
-                        <span>joined <time :datetime="joined.datetime" :title="joined.absolute">{{ joined.text }}</time></span>
-                        <span>seen <time :datetime="seen.datetime" :title="seen.absolute">{{ seen.text }}</time></span>
+                    <div class="flex items-center gap-1">
+                        <!-- FR-AUL-44: the risk ladder was INVERTED. Reversible batch
+                             reinstatement got the destructive modal while the singular
+                             suspend fired from a 24px icon with no confirmation — and
+                             `set_user_status` runs `sessions.delete_many` on suspend,
+                             an irreversible act the batch copy states and this path
+                             stated nowhere. The label now carries the consequence.
+                             FR-AUL-19 / AA-22 (SP-9): the `h-6 w-6` literals are gone.
+                             `cn`'s height bucket is last-write-wins, so they pinned
+                             24px on EVERY pointer and deleted the producer's
+                             coarse-pointer clamp; the `xs` rung is 28px fine and lifts
+                             to the 44px touch target on coarse, which is the contract
+                             those literals were negating. -->
+                        <Button
+                            v-if="user.status !== 'suspended'"
+                            emphasis="quiet"
+                            size="xs" icon-only
+                            class="text-muted-foreground hover:text-warning"
+                            :aria-label="`Suspend user ${user.user_slug} and revoke their sessions`"
+                            :disabled="busy"
+                            @click="handleSuspend(user.user_slug)"
+                        >
+                            <Ban class="size-3.5" aria-hidden="true" />
+                        </Button>
+                        <Button
+                            v-else
+                            emphasis="quiet"
+                            size="xs" icon-only
+                            class="text-muted-foreground hover:text-success"
+                            :aria-label="`Reinstate user ${user.user_slug}`"
+                            :disabled="busy"
+                            @click="handleUnsuspend(user.user_slug)"
+                        >
+                            <UserCheck class="size-3.5" aria-hidden="true" />
+                        </Button>
+                        <Button
+                            emphasis="quiet"
+                            size="xs" icon-only
+                            class="text-muted-foreground hover:text-destructive"
+                            :aria-label="`Delete user ${user.user_slug}`"
+                            :disabled="busy"
+                            @click="askDelete(user.user_slug)"
+                        >
+                            <Trash2 class="size-3.5" aria-hidden="true" />
+                        </Button>
                     </div>
                 </div>
-                <div class="flex items-center gap-1">
-                    <!-- FR-AUL-44: the risk ladder was INVERTED. Reversible batch
-                         reinstatement got the destructive modal while the singular
-                         suspend fired from a 24px icon with no confirmation — and
-                         `set_user_status` runs `sessions.delete_many` on suspend,
-                         an irreversible act the batch copy states and this path
-                         stated nowhere. The label now carries the consequence.
-                         FR-AUL-19 / AA-22 (SP-9): the `h-6 w-6` literals are gone.
-                         `cn`'s height bucket is last-write-wins, so they pinned
-                         24px on EVERY pointer and deleted the producer's
-                         coarse-pointer clamp; the `xs` rung is 28px fine and lifts
-                         to the 44px touch target on coarse, which is the contract
-                         those literals were negating. -->
-                    <Button
-                        v-if="user.status !== 'suspended'"
-                        emphasis="quiet"
-                        size="xs" icon-only
-                        class="text-muted-foreground hover:text-warning"
-                        :aria-label="`Suspend user ${user.user_slug} and revoke their sessions`"
-                        :disabled="busy"
-                        @click="handleSuspend(user.user_slug)"
-                    >
-                        <Ban class="size-3.5" aria-hidden="true" />
-                    </Button>
-                    <Button
-                        v-else
-                        emphasis="quiet"
-                        size="xs" icon-only
-                        class="text-muted-foreground hover:text-success"
-                        :aria-label="`Reinstate user ${user.user_slug}`"
-                        :disabled="busy"
-                        @click="handleUnsuspend(user.user_slug)"
-                    >
-                        <UserCheck class="size-3.5" aria-hidden="true" />
-                    </Button>
-                    <Button
-                        emphasis="quiet"
-                        size="xs" icon-only
-                        class="text-muted-foreground hover:text-destructive"
-                        :aria-label="`Delete user ${user.user_slug}`"
-                        :disabled="busy"
-                        @click="askDelete(user.user_slug)"
-                    >
-                        <Trash2 class="size-3.5" aria-hidden="true" />
-                    </Button>
-                </div>
-            </div>
 
-        </div>
+            </div>
+        </Card>
 
         <!-- FR-AUL-34: these two blocks were INSIDE the `role="list"` container
              and carry no `listitem` role — axe `aria-required-children`, manifest

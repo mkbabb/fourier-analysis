@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, defineComponent, h, type PropType } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Badge } from "@mkbabb/glass-ui/badge";
+import { Card } from "@mkbabb/glass-ui/card";
+import { DataTable, type DataTableColumn } from "@mkbabb/glass-ui/data-table";
 import { Input } from "@mkbabb/glass-ui/input";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
@@ -148,6 +150,107 @@ function actionTone(action: string): ActionTone {
     if (CURATION_VERBS.some((v) => verbs.has(v))) return "success";
     return "neutral";
 }
+
+/**
+ * X.F.W14.t — OA-42 (COHESION §0bu; owner frame `owner-2026-09-23-malformed.png`).
+ *
+ * Each entry used to be a `cartoon-card` holding its own
+ * `grid-cols-[auto_auto_1fr_auto]`. The frame shows three results of that:
+ *
+ *   - Two adjacent rows painted three rules between them: the upper card's
+ *     2px bottom border, its offset stamp, and the lower card's 2px top border.
+ *     Measured at 1440 and 390 in both themes.
+ *   - Every row sized its own columns, so at 390 the `auto` tracks shared a
+ *     width the `1fr` target had already given up. The action pill was
+ *     squeezed under its text (`scrollWidth > clientWidth` for four of the
+ *     five fixture actions, `janitor:hard_delete_visualizations` among them),
+ *     and the timestamp wrapped into "Sep 17, / 2026, / …".
+ *
+ * The cure is the producer's `DataTable`. One table means one column model:
+ * the header labels the four columns (AA-9's unlabeled-columns row, answered
+ * by the seat that comment deferred to), each body row is the producer's
+ * `TableRow` with one bottom rule and no rule after the last, and the Badge
+ * cell sizes to its content. The timestamp is a `<time>` in tabular figures
+ * that never wraps, and the target is the one column that yields: it
+ * truncates, with the full value kept in `title`. At 390 the table scrolls
+ * inside the producer's own `table-container` instead of crushing a cell.
+ */
+type AuditRow = AuditEntry & { _id: string };
+
+// Entries carry no id of their own, so the page and position make the key,
+// as the list's old `${timestamp}-${i}` key did.
+const auditRows = computed<AuditRow[]>(() =>
+    entries.value.map((entry, i) => ({ ...entry, _id: `${page.value}-${i}` })),
+);
+
+const cellProps = {
+    value: { type: String, default: "" },
+    row: { type: Object as PropType<AuditRow>, required: true },
+} as const;
+
+const TimestampCell = defineComponent({
+    name: "AuditTimestampCell",
+    props: cellProps,
+    setup: (props) => () =>
+        h(
+            "time",
+            {
+                datetime: props.value,
+                class: "font-mono tabular-nums whitespace-nowrap text-muted-foreground",
+            },
+            formatTimestamp(props.value),
+        ),
+});
+
+const ActionCell = defineComponent({
+    name: "AuditActionCell",
+    props: cellProps,
+    setup: (props) => () =>
+        h(
+            Badge,
+            {
+                variant: "secondary",
+                tone: actionTone(props.value),
+                size: "sm",
+                class: "font-mono uppercase",
+            },
+            () => props.value,
+        ),
+});
+
+// AA-40: the full target stays in `title` for the pointer and is the cell's
+// own text for a screen reader; only the painted overflow is clipped.
+const TargetCell = defineComponent({
+    name: "AuditTargetCell",
+    props: cellProps,
+    setup: (props) => () =>
+        h(
+            "span",
+            { class: "block truncate font-mono text-foreground/80", title: props.value },
+            props.value || "—",
+        ),
+});
+
+// AA-15: `text-mono-micro` is the micro rung for the hash; AA-40: the sliced
+// hash is painted, the whole hash is read.
+const IpCell = defineComponent({
+    name: "AuditIpCell",
+    props: cellProps,
+    setup: (props) => () =>
+        h("span", { class: "text-mono-micro whitespace-nowrap text-muted-foreground", title: props.value }, [
+            h("span", { "aria-hidden": "true" }, props.value.slice(0, 10)),
+            h("span", { class: "sr-only" }, `IP hash ${props.value}`),
+        ]),
+});
+
+const auditColumns: DataTableColumn<AuditRow>[] = [
+    { key: "timestamp", label: "Time", component: TimestampCell },
+    { key: "action", label: "Action", component: ActionCell },
+    // `max-w-0` + `w-full` is how a table cell takes the remaining width and
+    // still lets its content truncate: the target yields, and no other cell does.
+    { key: "target", label: "Target", component: TargetCell, class: "w-full max-w-0" },
+    { key: "ip_hash", label: "IP hash", component: IpCell, align: "right" },
+];
 </script>
 
 <template>
@@ -282,91 +385,45 @@ function actionTone(action: string): ActionTone {
             <Button emphasis="secondary" size="sm" @click="loadPage()">Try again</Button>
         </div>
 
-        <!-- Log rows. AA-17: the rows are no longer unmounted into a spinner on
-             every page turn — they dim in place and announce themselves busy, so
-             the scroll position, the focus and ~25 rows of layout survive. -->
-        <!-- AA-9: four unlabeled columns in a wrapper that is `flex`, so every
-             row's `grid-cols-[auto_auto_1fr_auto]` is its OWN formatting context
-             and the column edges step row to row; the file carried zero `role` and
-             zero `aria-*`. Both siblings already label this exact shape with the
-             same three attributes (`role="list"` + `aria-label` + `role="listitem"`),
-             so the house cure is in the tree — it does not compete with the fuller
-             `DataTable` seat, which is a later wave's question. -->
-        <div v-else class="flex flex-col gap-1.5" :aria-busy="loading || undefined"
-             role="list" aria-label="Admin audit entries"
-             :class="loading && 'opacity-60'">
-            <div
-                v-for="(entry, i) in entries"
-                :key="`${entry.timestamp}-${i}`"
-                role="listitem"
-                class="cartoon-card grid grid-cols-[auto_auto_1fr_auto] items-center gap-2 px-3 py-1.5 text-xs"
+        <!-- Log rows. AA-17: the rows are not unmounted into a spinner on a
+             page turn. They dim in place, and the producer's table marks itself
+             `aria-busy` while its status is `loading`. The scroll position, the
+             focus and the rows' layout all survive.
+             AA-9 ⊕ OA-42 (X.F.W14.t): the four columns had no labels, and each
+             row laid out its own. Both are now the producer's `DataTable` (see
+             `auditColumns`): one header, one column model, and one rule per row.
+             The table sits on the glass `Card` plate that each row used to
+             carry separately. The producer's cell padding token is tightened to
+             the log's density. -->
+        <Card v-else size="sm" :class="loading && 'opacity-60'">
+            <DataTable
+                :columns="auditColumns"
+                :rows="auditRows"
+                :status="loading ? 'loading' : 'ready'"
+                :filtered="hasFilters"
+                aria-label="Admin audit entries"
+                class="[--table-cell-px:--spacing(3)] [--table-cell-py:--spacing(2)]"
             >
-                <span class="font-mono text-muted-foreground tabular-nums">
-                    {{ formatTimestamp(entry.timestamp) }}
-                </span>
-                <Badge
-                    variant="secondary"
-                    :tone="actionTone(entry.action)"
-                    size="sm"
-                    class="font-mono uppercase"
-                >
-                    {{ entry.action }}
-                </Badge>
-                <!-- AA-40: the truncated target and the sliced hash disclosed on
-                     `title` hover ALONE — mouse-privileged, and unreachable by
-                     keyboard or touch. `HoverCard` is removed at the adopted pin,
-                     so the ruled route is Tooltip-or-copy. The assistive half
-                     lands here as real text: the full value is in the DOM,
-                     visually hidden, so a screen reader and a touch user receive
-                     it while the row keeps its density. ⊘ The SIGHTED-keyboard
-                     half is a design ruling this unit was not given — a per-cell
-                     Tooltip trigger adds two tab stops to each of 25 rows (a
-                     2.4.3 cost) and a per-row disclosure is a new control. Named
-                     as a residual to F.W5–W8 in this unit's receipt; `title` is
-                     kept meanwhile, so nothing regresses for the pointer. -->
-                <span class="font-mono text-foreground/80 truncate" :title="entry.target">
-                    {{ entry.target || "—" }}
-                </span>
-                <!-- AA-15: `text-[0.65rem]` was an off-scale magic 10.4 px desktop
-                     / 11.7 px mobile (the root inverts on small viewports) on the
-                     two least-legible columns. The ruled cure named
-                     `@utility text-admin-label`; that utility is NOT emitted at
-                     the adopted 8.0.0 pin (census cell falsified — see the
-                     addendum). `text-mono-micro` IS, and it carries the same
-                     mono + micro-rung + caps-tracking recipe off `--type-micro`. -->
-                <span
-                    class="text-mono-micro text-muted-foreground"
-                    :title="entry.ip_hash"
-                >
-                    <span aria-hidden="true">{{ entry.ip_hash.slice(0, 10) }}</span>
-                    <span class="sr-only">IP hash {{ entry.ip_hash }}</span>
-                </span>
-            </div>
-
-            <!-- Empty state. AA-33: the HEADLINE branches on the applied-filter
-                 state. Unconditional, it asserted "No audit entries" — a claim
-                 about the system of record — for a query that simply matched
-                 nothing, and then counselled widening the search it had just
-                 denied existed. -->
-            <div
-                v-if="!entries.length && !loading"
-                class="flex flex-col items-center gap-2 py-10 text-muted-foreground"
-            >
-                <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
-                <p class="text-sm">
-                    {{ hasFilters ? "No entries match these filters" : "No audit entries" }}
-                </p>
-                <p v-if="hasFilters" class="text-xs opacity-70">
-                    Try clearing filters to widen the search.
-                </p>
-            </div>
-            <div
-                v-else-if="!entries.length && loading"
-                class="py-10 text-center text-sm text-muted-foreground"
-            >
-                Loading audit entries…
-            </div>
-        </div>
+                <!-- Empty state. AA-33: the HEADLINE branches on the
+                     applied-filter state. Unconditional, it asserted "No audit
+                     entries" (a claim about the system of record) for a query
+                     that only matched nothing, and then advised widening the
+                     search it had just said did not exist. -->
+                <template #filtered-empty>
+                    <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+                        <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
+                        <p class="text-sm">No entries match these filters</p>
+                        <p class="text-xs opacity-70">Try clearing filters to widen the search.</p>
+                    </div>
+                </template>
+                <template #empty>
+                    <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+                        <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
+                        <p class="text-sm">No audit entries</p>
+                    </div>
+                </template>
+            </DataTable>
+        </Card>
 
         <!-- AA-12: this file's loading block was the siblings' block with
              `role="status"` / `aria-live` / the sr-only sentence DELETED — a
