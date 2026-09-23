@@ -64,12 +64,15 @@ async function openWorkspace(page: Page): Promise<void> {
     // EXPANDED layer (`.dock-layer--full`, `visibility:hidden`) until the dock
     // expands — so the "More options" trigger that lives there is not visible
     // in the default state Keystone-1 asserts against. We therefore settle on
-    // the collapsed-summary mini play button (`.play-btn--mini`), which is the
-    // active/visible layer's control in the default collapsed dock. Using the
-    // default-state element keeps the helper from corrupting Keystone-1's
+    // the dock's Play/Pause control (the glass `DockControl` in the dock's
+    // never-inert `#persistent` region — X.F.W13.b retired the hand-rolled
+    // `.play-btn--mini`), which is visible in the default collapsed dock. Using
+    // the default-state element keeps the helper from corrupting Keystone-1's
     // default-state a11y check (expanding the dock here would change every
     // keystone's measured DOM).
-    await expect(page.locator(".animation-dock .play-btn--mini").first()).toBeVisible({
+    await expect(
+        page.getByRole("button", { name: /(Play|Pause) animation/ }).first(),
+    ).toBeVisible({
         timeout: 60_000,
     });
 }
