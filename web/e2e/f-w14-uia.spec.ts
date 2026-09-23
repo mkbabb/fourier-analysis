@@ -324,3 +324,22 @@ test.describe("UIA-F-19 — one drop, one upload", () => {
         expect(posts).toBe(1);
     });
 });
+
+test.describe("UIA-F-20 — the paper restores its scroll position", () => {
+    test("a reload returns to the saved section instead of the top", async ({ page }) => {
+        await page.goto("/paper");
+        const main = page.locator(".paper-scroll");
+        await expect.poll(() => main.evaluate((el) => el.scrollHeight), { timeout: 10_000 }).toBeGreaterThan(5000);
+        // Scroll the paper's scroller a long way into the paper.
+        await main.evaluate((el) => el.scrollTo({ top: el.scrollHeight * 0.5 }));
+        await expect
+            .poll(() => page.evaluate(() => sessionStorage.getItem("paper-active-section")), { timeout: 10_000 })
+            .not.toBeNull();
+        const saved = await page.evaluate(() => sessionStorage.getItem("paper-active-section"));
+        await page.reload();
+        await expect.poll(() => main.evaluate((el) => el.scrollTop), { timeout: 10_000 }).toBeGreaterThan(1000);
+        const top = await page.evaluate((id) => document.getElementById(id!)?.getBoundingClientRect().top ?? null, saved);
+        expect(top, `section #${saved} is brought into view`).not.toBeNull();
+        expect(Math.abs(top!)).toBeLessThan(900);
+    });
+});

@@ -192,6 +192,17 @@ const paperRootStyle = computed(() =>
 );
 let scrollContainerResizeObserver: ResizeObserver | null = null;
 
+// X.F.W14.u — UIA-F-20: the section to restore is read HERE, synchronously in
+// setup, before the persisting watcher below runs. That watcher is `immediate`
+// and the first section is active at mount, so it removed the saved key ~40 ms
+// before `onMounted`'s restore read it back — the restore always read `null`
+// and the paper reopened at the top. The watcher keeps persisting as the
+// reader scrolls; the restore consumes the value it had at entry.
+let restoreSectionId: string | null = null;
+try {
+    restoreSectionId = sessionStorage.getItem(SCROLL_POS_KEY);
+} catch {}
+
 watch(
     activeId,
     (id) => {
@@ -381,12 +392,10 @@ onMounted(() => {
         armProgressFallback();
 
         // Restore scroll position from session (skip first section — that's the top)
-        try {
-            const saved = sessionStorage.getItem(SCROLL_POS_KEY);
-            if (saved && saved !== flatSections[0]?.id && flatSections.some((s) => s.id === saved)) {
-                performScroll(saved);
-            }
-        } catch {}
+        const saved = restoreSectionId;
+        if (saved && saved !== flatSections[0]?.id && flatSections.some((s) => s.id === saved)) {
+            performScroll(saved);
+        }
     });
     window.addEventListener("resize", handleWindowResize);
     window.addEventListener("keydown", handleGlobalKeydown);
