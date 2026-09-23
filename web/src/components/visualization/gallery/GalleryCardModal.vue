@@ -63,6 +63,19 @@ const basisLabels = computed(() => basisChips(props.entry.active_bases));
  * patched. `useTimeAgo` binds the app's ONE shared clock.
  */
 const created = useTimeAgo(() => props.entry.created_at);
+
+/**
+ * X.F.W14.u — UIA-F-45: GCM-44's intent was "focus goes to the title", but the
+ * handler was a bare `.prevent`: it stopped reka's first-tabbable focus and put
+ * focus nowhere, so it stayed on the background card and Tab walked the page
+ * behind the dialog. The handler now does what the note says: prevent the
+ * default target, then focus the (programmatically focusable) title inside
+ * the content, which puts focus inside the trap.
+ */
+function focusTitle(e: Event) {
+    e.preventDefault();
+    (e.target as HTMLElement | null)?.querySelector<HTMLElement>("[data-initial-focus]")?.focus();
+}
 </script>
 
 <template>
@@ -84,9 +97,9 @@ const created = useTimeAgo(() => props.entry.created_at);
         <DialogContent
             surface="opaque"
             class="modal-card max-w-[28rem] w-full max-h-[90vh] overflow-y-auto p-0 border-2 border-foreground/15"
-            @open-auto-focus.prevent
+            @open-auto-focus="focusTitle"
         >
-            <DialogTitle class="sr-only" tabindex="-1">
+            <DialogTitle class="sr-only" tabindex="-1" data-initial-focus>
                 {{ entry.image_slug }}
             </DialogTitle>
             <!-- GCM-48 ⊕ GCM-30 ⊕ GCM-28 — one deletion, three rows.

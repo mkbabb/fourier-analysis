@@ -488,3 +488,19 @@ test.describe("UIA-F-41 — the gallery column never scrolls sideways at 390 (co
         expect(scrolled).toEqual([]);
     });
 });
+
+test.describe("UIA-F-45 — focus opens inside the card modal and stays there", () => {
+    test("initial focus is the dialog's title and Tab never reaches the page behind", async ({ page }) => {
+        await stubGallery(page, [ENTRY]);
+        await page.goto("/gallery");
+        await page.getByRole("button", { name: `Open ${ENTRY.image_slug}` }).first().click();
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await expect.poll(() => dialog.evaluate((d) => d.contains(document.activeElement))).toBe(true);
+        expect(await page.evaluate(() => document.activeElement?.hasAttribute("data-initial-focus"))).toBe(true);
+        for (let i = 0; i < 6; i++) {
+            await page.keyboard.press("Tab");
+            expect(await dialog.evaluate((d) => d.contains(document.activeElement)), `Tab #${i + 1}`).toBe(true);
+        }
+    });
+});
