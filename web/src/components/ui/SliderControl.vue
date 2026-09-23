@@ -30,6 +30,7 @@
  */
 import { computed, useAttrs } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
+import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
 
 const props = defineProps<{
     label: string;
@@ -96,11 +97,26 @@ function clamp(v: number, lo: number, hi: number): number {
     return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo;
 }
 
-function onInput(e: Event) {
-    emit(
-        "update:modelValue",
-        clamp(parseFloat((e.target as HTMLInputElement).value), props.min, props.max),
-    );
+/**
+ * X.F.W13.b — the inline numeric field is the producer's `NumberField`, not a
+ * hand-rolled `<input>` (owner frame 3, OA-15: a bare underline field with no
+ * name of its own, no corner, and no stepping keys). Its display precision is
+ * read from `step` — the digits `formatValue` spelled by hand at every callsite
+ * (`toFixed(2)` on a 0.05 step, `toFixed(1)` on 0.1/0.5, integers on 1) — so the
+ * field formats, parses and steps in one locale-aware register. A `formatValue`
+ * whose reading is NOT a number (Max Contours' `0 → "All"`) is shown as the
+ * field's placeholder over an empty value, and clearing the field commits
+ * `min`, the value that reading names.
+ */
+const fractionDigits = computed(() => String(props.step).split(".")[1]?.length ?? 0);
+const numberFormat = computed<Intl.NumberFormatOptions>(() => ({
+    minimumFractionDigits: fractionDigits.value,
+    maximumFractionDigits: fractionDigits.value,
+    useGrouping: false,
+}));
+
+function onNumber(v: number) {
+    emit("update:modelValue", clamp(v, props.min, props.max));
 }
 
 /* reka-ui's SliderRoot accepts an array model; we adapt the scalar binding
@@ -138,16 +154,23 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
                 <slot>{{ label }}</slot>
                 <span v-if="subtitle" class="slider-subtitle"> — {{ subtitle }}</span>
             </span>
-            <input
-                :type="isNumericDisplay ? 'number' : 'text'"
-                class="inline-number fira-code"
-                :value="displayValue"
-                :min="isNumericDisplay ? min : undefined"
-                :max="isNumericDisplay ? max : undefined"
-                :step="isNumericDisplay ? step : undefined"
+            <NumberField
+                :model-value="isNumericDisplay ? modelValue : null"
+                :min="min"
+                :max="max"
+                :step="step"
+                :format-options="numberFormat"
                 :disabled="isDisabled"
-                @input="onInput"
-            />
+                size="sm"
+                class="inline-number"
+                @update:model-value="onNumber"
+            >
+                <NumberFieldInput
+                    class="fira-code"
+                    :aria-label="label"
+                    :placeholder="isNumericDisplay ? undefined : displayValue"
+                />
+            </NumberField>
         </label>
         <Slider
             v-model="sliderModel"
@@ -186,27 +209,11 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
     opacity: 0.7;
 }
 
+/* X.F.W13.b — the raw field's restyle (transparent fill, no border, a hover
+   underline, hidden spin buttons) retires with the raw field: the glass
+   NumberField owns its surface, radius and focus ring. Only its width is ours. */
 .inline-number {
-    width: 2.75rem;
-    text-align: right;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid transparent;
-    color: var(--foreground);
-    font-size: inherit;
-    padding: 0;
-    outline: none;
-    -moz-appearance: textfield;
-    transition: border-color 0.15s;
-}
-.inline-number:hover,
-.inline-number:focus {
-    border-bottom-color: color-mix(in srgb, var(--foreground) 30%, transparent);
-}
-.inline-number::-webkit-inner-spin-button,
-.inline-number::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+    width: 4.5rem;
 }
 
 /*
