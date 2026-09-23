@@ -34,13 +34,20 @@ test.describe("UIA-F-1 — a featured entry renders the strip, not a crash", () 
     });
 });
 
-/** The first public saved visualization on the served API (read-only GET). */
+/**
+ * The first public saved visualization on the served API (read-only GET),
+ * read once per worker: the API rate-limits reads per window, and the suite's
+ * pages already spend that budget on their own loads.
+ */
+let savedViz: { slug: string; image_slug: string } | null = null;
 async function firstSavedViz(page: Page): Promise<{ slug: string; image_slug: string }> {
+    if (savedViz) return savedViz;
     const res = await page.request.get("/api/visualizations?limit=1");
     expect(res.ok()).toBe(true);
     const body = (await res.json()) as { items: { slug: string; image_slug: string }[] };
     expect(body.items.length, "the served API holds a saved visualization").toBeGreaterThan(0);
-    return body.items[0];
+    savedViz = body.items[0];
+    return savedViz;
 }
 
 /** Push through the app's own router (no in-app link targets `/v/` yet). */
@@ -161,10 +168,13 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
         await page.goto(`/v/${viz.slug}`);
         const bar = page.locator(".mini-progress").first();
         await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0.2);
+        // Paused by keyboard: a pointer press on a persistent dock control can
+        // be discarded by the producer's click-integrity guard mid-morph
+        // (UIA-F-8, glass), which would leave the clock running.
         const pause = page.getByRole("button", { name: "Pause animation" }).first();
-        await pause.hover();
-        await pause.click();
-        await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeAttached();
+        await pause.focus();
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeVisible();
 
         async function exportWith(off: string[]): Promise<number> {
             const more = page.getByRole("button", { name: "More options" }).first();
