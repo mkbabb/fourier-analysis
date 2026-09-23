@@ -717,54 +717,21 @@ onUnmounted(() => {
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* X.F.W13.a — OA-14 (owner frame 2: "this is not a circle"). The history
+   control measured 32×40 with `border-radius: 9999px` on the served page — a
+   stadium, not a circle. Cause at the bytes: this block pinned `width/height:
+   2rem` UNLAYERED while the glass Button's layered `min-block-size:
+   var(--button-size)` (40px at `md`) still won the block axis, so only the
+   inline axis shrank. It also restated the producer's border, fill, blur,
+   shadow, hover lift and press scale per instance (and then had to re-add a
+   focus outline its own shadow had erased, `★MF-1`). All of it retires: the
+   glass `Button icon-only` is a `--button-size` square with half-size
+   corners — a true circle — and owns its ink, press and focus ring. What
+   remains is layout only: the overlay row is `pointer-events: none`, and the
+   count badge is positioned against the button. */
 .overlay-btn {
     pointer-events: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     position: relative;
-    width: 2rem;
-    height: 2rem;
-    border-radius: var(--radius-pill);
-    border: 1.5px solid var(--border);
-    background: color-mix(in srgb, var(--background) 92%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: color-mix(in srgb, var(--foreground) 70%, transparent);
-    cursor: pointer;
-    /* `D/M-15`: hand-typed shadows, and the cure table's correction is carried
-       — `--shadow-md`, never `--shadow-soft`. */
-    box-shadow: var(--shadow-md);
-    /* A.W3.d — named properties + canonical token, no `transition: all`. */
-    transition:
-        color 0.2s var(--ease-out-expo),
-        border-color 0.2s var(--ease-out-expo),
-        background-color 0.2s var(--ease-out-expo),
-        box-shadow 0.2s var(--ease-out-expo),
-        transform 0.2s var(--ease-out-expo);
-}
-
-/* `★MF-1`: this block is UNLAYERED and the producer's focus ring is a
-   `box-shadow` in `@layer components`, so the resting shadow above overwrote
-   the ring while the layered `outline: none` survived — no visible focus
-   indicator at all on the sole history control (WCAG 2.4.7 AA), and the app's
-   own outline allowlist does not name `.overlay-btn`. The ring is restored as
-   an OUTLINE, which no `box-shadow` can contest, with the producer's own
-   registers. */
-.overlay-btn:focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: 2px;
-}
-
-.overlay-btn:hover {
-    color: var(--foreground);
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
-    box-shadow: var(--shadow-lg);
-    transform: scale(1.05);
-}
-
-.overlay-btn:active {
-    transform: scale(0.95);
 }
 
 .overlay-badge {
