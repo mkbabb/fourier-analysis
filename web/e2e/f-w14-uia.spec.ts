@@ -644,3 +644,31 @@ test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyb
         await expect(trace).not.toHaveAttribute("aria-pressed", was ?? "");
     });
 });
+
+test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible and hittable", () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test("each control's centre hits that control, inside the viewport", async ({ page }) => {
+        const viz = await firstSavedViz(page);
+        await page.goto(`/v/${viz.slug}`);
+        await page.getByRole("tab", { name: "Canvas" }).click();
+        await page.getByRole("button", { name: "Edit contour" }).first().hover();
+        await expect(page.getByRole("button", { name: "Equation" }).first()).toBeVisible();
+        await page.waitForTimeout(700);
+        const res = await page.evaluate(() => {
+            const anchor = document.querySelector(".controls-dock-anchor")!;
+            return [...anchor.querySelectorAll<HTMLElement>("button[aria-label]")]
+                .filter((b) => !b.closest("[inert]") && b.getClientRects().length)
+                .map((b) => {
+                    const r = b.getBoundingClientRect();
+                    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                    return { name: b.getAttribute("aria-label"), ok: !!hit && (hit === b || b.contains(hit)), inView: r.left >= 0 && r.right <= innerWidth };
+                });
+        });
+        expect(res.length).toBeGreaterThanOrEqual(4);
+        for (const c of res) {
+            expect(c.ok, `${c.name} is hittable`).toBe(true);
+            expect(c.inView, `${c.name} is in view`).toBe(true);
+        }
+    });
+});

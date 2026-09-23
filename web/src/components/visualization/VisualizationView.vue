@@ -311,7 +311,7 @@ async function onCanvasFileSelect(e: Event) {
                         </div>
 
                         <!-- Top controls dock -->
-                        <div v-if="hasData || (isEditing && store.contour)" class="controls-dock-anchor" :class="{ 'dock-centered': dockExpanded }">
+                        <div v-if="hasData || (isEditing && store.contour)" class="controls-dock-anchor">
                             <CanvasControlsDock
                                 v-model:expanded="dockExpanded"
                                 :is-editing="isEditing"
@@ -610,31 +610,19 @@ async function onCanvasFileSelect(e: Event) {
     }
 }
 
-/* ── Controls dock positioning ── */
+/* ── Controls dock positioning ──
+   X.F.W14.u — UIA-F-5: the dock is right-anchored at every width. Below lg the
+   expanded dock was re-seated at `left: 50%; right: auto`, and an absolute box
+   with those insets shrinks-to-fit into HALF its container: at 390 the 254 px
+   layer sat in a 121 px box, the persistent Edit control overlapped Σ Equation
+   (a tap on Σ entered edit mode), and Fullscreen lay outside the plate. Anchored
+   by `right` alone, the shrink-to-fit width is the whole stage, so the dock is
+   its content's width (dock README: fit-content), and it clears the legend. */
 .controls-dock-anchor {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
     z-index: var(--z-controls);
-    /* A.W3.d — bezier→`--ease-out-expo`. */
-    transition: left 0.3s var(--ease-out-expo),
-                right 0.3s var(--ease-out-expo),
-                transform 0.3s var(--ease-out-expo);
-}
-
-.controls-dock-anchor.dock-centered {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-}
-
-@media (min-width: 1024px) {
-    .controls-dock-anchor,
-    .controls-dock-anchor.dock-centered {
-        left: auto;
-        right: 0.5rem;
-        transform: none;
-    }
 }
 
 /* ── X.F.W13.c — the main area's drop target (the one upload affordance) ── */
