@@ -61,6 +61,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const animationSettings = ref<AnimationSettings>(defaultAnimationSettings());
     const drafts = shallowRef<WorkspaceDraft[]>([]);
     const loading = ref(false);
+    // X.F.W13.c — an upload is not a workspace load. `loading` drives the view's
+    // "Loading workspace…" plate, which REPLACES the whole workspace; raised by an
+    // upload it tore the drop target and the Configurator down mid-upload, so the
+    // sidebar could never arrive — it could only remount. The upload's busy
+    // signal is its own flag, read by the drop target that started it.
+    const uploading = ref(false);
     const computing = ref(false);
     const error = ref<string | null>(null);
     const revision = ref(0);
@@ -123,7 +129,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     // Methods
     async function uploadImage(file: File) {
-        loading.value = true;
+        uploading.value = true;
         error.value = null;
         try {
             invalidateInFlightComputation();
@@ -142,7 +148,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (!api.isAbortError(e)) error.value = problemMessage(e, "Upload failed");
             throw e;
         } finally {
-            loading.value = false;
+            uploading.value = false;
         }
     }
 
@@ -444,6 +450,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         animationSettings.value = defaultAnimationSettings();
         error.value = null;
         loading.value = false;
+        uploading.value = false;
         _computeDepth = 0;
         computing.value = false;
     }
@@ -461,6 +468,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         animationSettings,
         drafts,
         loading,
+        uploading,
         computing,
         error,
         revision,
