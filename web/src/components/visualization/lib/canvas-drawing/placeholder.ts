@@ -21,6 +21,12 @@ export function drawPlaceholder(surface: CanvasSurface, hasImage: boolean): void
         ctx.stroke();
     }
 
+    // X.F.W13.c — with no image the main area's DOM drop target (a glass Button
+    // + the format line) is the one upload affordance; a painted "Drag & drop"
+    // box under it would say the same thing twice. The box paints only while an
+    // image is computing.
+    if (!hasImage) return;
+
     // Dashed rounded rect in center
     const boxW = Math.min(280, width * 0.6);
     const boxH = 100;
@@ -56,6 +62,5 @@ export function drawPlaceholder(surface: CanvasSurface, hasImage: boolean): void
     ctx.font = "500 15px 'Fira Code', monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    const msg = hasImage ? "Computing..." : "Drag & drop an image here";
-    ctx.fillText(msg, cx, height / 2 + 18);
+    ctx.fillText("Computing...", cx, height / 2 + 18);
 }

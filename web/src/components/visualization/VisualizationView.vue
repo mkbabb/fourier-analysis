@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { watchDebounced, useMediaQuery } from "@vueuse/core";
 import { useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -151,11 +151,30 @@ const hasEpicycles = computed(() => activeBases.value.includes("fourier-epicycle
 const hasImage = computed(() => !!store.imageMeta);
 
 // ── Mobile canvas click-to-upload ──
+/**
+ * X.F.W13.c — owner frame 4 (2026-09-23, OA-16): "we should just display the
+ * main area with no right sidebar when nothing is there, and then smoothly
+ * animate in the right sidebar when something is dragged over and dropped."
+ *
+ * The sidebar exists only with an image. `sidebarPresent` holds the
+ * Configurator's aside column open for as long as the sidebar's content is in
+ * the DOM — it opens the moment an image lands (the column's width and the
+ * content's translate enter together, on the glass `--spring-panel` pair) and
+ * closes only after the content's leave has run, so the leave is seen instead
+ * of being cut off by the column collapsing under it.
+ */
+const hasSidebar = computed(() => hasImage.value);
+const sidebarPresent = ref(hasSidebar.value);
+watch(hasSidebar, (present) => {
+    if (present) sidebarPresent.value = true;
+});
+
+// The ONE upload affordance with no image: the main area's drop target (a
+// glass Button + the format line). The canvas itself is no longer a
+// pointer-only click target.
 const canvasFileInput = ref<HTMLInputElement>();
-function onCanvasClick() {
-    if (!hasImage.value && !hasData.value) {
-        canvasFileInput.value?.click();
-    }
+function openCanvasFilePicker() {
+    canvasFileInput.value?.click();
 }
 async function onCanvasFileSelect(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0];
@@ -169,9 +188,10 @@ async function onCanvasFileSelect(e: Event) {
         @drop="globalDrop" @dragover="globalDragOver"
         @dragenter="globalDragEnter" @dragleave="globalDragLeave"
     >
-        <!-- Global drag overlay -->
+        <!-- Global drag overlay — with an image in place (a drop REPLACES it).
+             With no image the main area's drop target is the one signal. -->
         <Transition name="fade">
-            <div v-if="globalDragging" class="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-background/80 backdrop-blur-sm"
+            <div v-if="globalDragging && hasImage" class="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-background/80 backdrop-blur-sm"
                 @drop="globalDrop" @dragover.prevent>
                 <div class="flex flex-col items-center gap-3 text-muted-foreground">
                     <Upload class="h-12 w-12" />
@@ -206,7 +226,7 @@ async function onCanvasFileSelect(e: Event) {
         <!-- Main workspace -->
         <div v-else class="flex flex-col flex-1 min-h-0">
             <!-- Mobile tab bar -->
-            <div class="flex px-3 py-1 bg-background lg:hidden">
+            <div v-if="hasSidebar" class="flex px-3 py-1 bg-background lg:hidden">
                 <SegmentedTabs variant="underline"
                     :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
                     :model-value="mobileView"
@@ -231,14 +251,26 @@ async function onCanvasFileSelect(e: Event) {
                  bordered card on an empty route, with no layered chassis around
                  it to belong to. The census that governs the shim is re-measured
                  at `style.css`'s own declaration. -->
-            <Configurator scroll-mode="auto" class="viz-configurator">
+            <Configurator scroll-mode="auto" class="viz-configurator" :data-sidebar="sidebarPresent ? undefined : 'none'">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
-                    <div class="viz-panel-right canvas-stage" :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop }">
-                        <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour, 'canvas-clickable': !hasImage && !hasData }" @click="onCanvasClick">
+                    <div class="viz-panel-right canvas-stage" :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && !isDesktop }">
+                        <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
                                 :show-ghost="showGhost" :show-image-overlay="showImageOverlay" />
-                            <input ref="canvasFileInput" type="file" accept="image/*" class="hidden" @change="onCanvasFileSelect" />
+                        </div>
+                        <!-- X.F.W13.c — the ONE upload affordance (owner frame 4). The
+                             sidebar's "Drop or click to upload — PNG/JPG/SVG ≤ 10 MB" card
+                             retired; click-to-browse (a glass Button) and the format/size
+                             line (the producer's caption type) live here, and the drop
+                             target signals while a file is dragged over the page. -->
+                        <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
+                            <Button emphasis="secondary" size="lg" class="drop-target-button" :loading="store.uploading" @click="openCanvasFilePicker">
+                                <Upload />
+                                Drop or click to upload
+                            </Button>
+                            <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
+                            <input ref="canvasFileInput" data-testid="image-file-input" type="file" accept="image/*" class="hidden" @change="onCanvasFileSelect" />
                         </div>
                         <div v-if="store.contour" class="editor-shell" :class="{ 'is-hidden': !isEditing }">
                             <ContourEditorCanvas ref="editorRef" :contour="store.contour"
@@ -290,7 +322,10 @@ async function onCanvasFileSelect(e: Event) {
                 </template>
 
                 <!-- ── Controls aside: the left-panel layer stack ── -->
-                <div class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
+                <!-- X.F.W13.c — the sidebar renders only with an image, and arrives
+                     with it (`viz-sidebar`, glass `--spring-panel`, PRM-honoured). -->
+                <Transition name="viz-sidebar" @after-leave="sidebarPresent = false">
+                <div v-if="hasSidebar" class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
                     <Transition name="panel-swap" mode="out-in">
                         <div v-if="isEditing" key="editor-panel" class="viz-panel-left">
                             <!-- Preview above tools -->
@@ -331,6 +366,7 @@ async function onCanvasFileSelect(e: Event) {
                         </div>
                     </Transition>
                 </div>
+                </Transition>
             </Configurator>
         </div>
 
@@ -559,9 +595,67 @@ async function onCanvasFileSelect(e: Event) {
     }
 }
 
-/* ── Clickable canvas placeholder ── */
-.canvas-clickable {
-    cursor: pointer;
+/* ── X.F.W13.c — the main area's drop target (the one upload affordance) ── */
+.drop-target {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    pointer-events: none;
+    z-index: var(--z-controls);
+}
+.drop-target > * {
+    pointer-events: auto;
+}
+/* The dragenter signal: the glass focus-ring register on the target, so a
+   dragged file reads which surface will take it. */
+.drop-target[data-dragging] .drop-target-button {
+    box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+/* ── X.F.W13.c — the sidebar arrives with content ──
+   The producer's aside is always in the Configurator's DOM (8.0.0; also at glass
+   src 10.0.1), so the host owns its column: with no image the aside takes no box
+   and its band closes to zero, and the stage fills the full width. When an image
+   lands the band opens on the glass panel spring while the content translates in
+   on the same pair; it leaves on the panel exit clock. Motion only from the glass
+   motion tokens; under reduced motion none of it moves. */
+.viz-configurator {
+    transition: grid-template-columns var(--spring-panel-duration) var(--spring-panel);
+}
+.viz-configurator[data-sidebar="none"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0px, 0px);
+}
+.viz-configurator[data-sidebar="none"] > :deep(.configurator-aside) {
+    display: none;
+}
+.viz-sidebar-enter-active {
+    transition: opacity var(--spring-panel-duration) var(--ease-out),
+                transform var(--spring-panel-duration) var(--spring-panel);
+}
+.viz-sidebar-leave-active {
+    transition: opacity var(--spring-panel-exit-duration) var(--ease-in),
+                transform var(--spring-panel-exit-duration) var(--ease-in);
+}
+.viz-sidebar-enter-from,
+.viz-sidebar-leave-to {
+    opacity: 0;
+    transform: translateX(var(--enter-overlay-slide, 0.5rem));
+}
+@media (prefers-reduced-motion: reduce) {
+    .viz-configurator,
+    .viz-sidebar-enter-active,
+    .viz-sidebar-leave-active {
+        transition: none;
+    }
+    .viz-sidebar-enter-from,
+    .viz-sidebar-leave-to {
+        opacity: 1;
+        transform: none;
+    }
 }
 
 /* ── Mobile ── */

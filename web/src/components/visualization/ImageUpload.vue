@@ -113,23 +113,10 @@ function onImgError() {
                 Replace image
             </Button>
 
-            <!-- D.W4.b — Slim source-strip (replaces the redundant full-card
-                 empty-state dropzone). The canvas-center placeholder is the
-                 hero affordance; this strip is a secondary cue + click target.
-                 Once an image lands, the thumbnail/replace card above (with
-                 `hasPreview()` true) becomes the only "full" panel form. -->
-            <!-- X.F.W13.b — the strip is the glass Button (it was a hand-rolled
-                 `<button>` restating fill, border, a 6px corner, hover and focus). -->
-            <Button
-                v-else
-                emphasis="secondary"
-                class="source-strip w-full"
-                :class="{ 'is-dragging': isDragging }"
-                @click="openFilePicker"
-            >
-                <Upload />
-                Drop or click to upload — PNG/JPG/SVG ≤ 10 MB
-            </Button>
+            <!-- X.F.W13.c — the source strip ("Drop or click to upload — PNG/JPG/SVG
+                 ≤ 10 MB") RETIRED (owner frame 4: "duplicative"). This layer renders
+                 only once an image exists (the sidebar arrives with it); with no
+                 image the main area's drop target is the one upload affordance. -->
 
             <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 4 (⊕ roster 24). 47 lines of
                  hand-rolled indeterminate progress with ZERO a11y channel (`grep -c
@@ -172,7 +159,6 @@ function onImgError() {
              is always live. -->
         <input
             ref="fileInput"
-            data-testid="image-file-input"
             type="file"
             accept="image/*"
             class="hidden"
@@ -206,13 +192,5 @@ function onImgError() {
     box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
     outline: 2px dashed var(--primary);
     outline-offset: 3px;
-}
-
-/* X.F.W13.b — the source strip's hand-rolled surface (fill, border, 6px corner,
-   hover, a focus ring re-pointed at the producer's registers) retires: the glass
-   Button owns all of it. The drag-over signal keeps the one line the Button has
-   no state for. */
-.source-strip.is-dragging {
-    border-color: var(--primary);
 }
 </style>
