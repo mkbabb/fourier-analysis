@@ -373,9 +373,13 @@ const userRows = computed(() =>
 
 <template>
     <div class="flex flex-col gap-3 px-4 py-2">
-        <!-- Search + sort + prune -->
-        <div class="flex items-center gap-2">
-            <div class="relative flex-1">
+        <!-- Search + sort + prune. X.F.W14.u — UIA-F-37: below `sm` the toolbar
+             wraps and the search takes the full row (it was crushed to 68 px,
+             "Se", beside a fixed 160 px Select); the Select's `h-8 w-[10rem]
+             text-sm` literals are gone, so its rung and type come from the
+             producer (the AA-22 note forbids the `h-*` literal). -->
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="relative basis-full sm:basis-0 sm:flex-1">
                 <Search
                     class="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
                     aria-hidden="true"
@@ -415,10 +419,7 @@ const userRows = computed(() =>
                 />
             </div>
             <Select v-model="sortMode">
-                <SelectTrigger
-                    class="h-8 w-[10rem] text-sm"
-                    aria-label="Sort users"
-                >
+                <SelectTrigger class="shrink-0" aria-label="Sort users">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

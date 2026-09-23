@@ -399,3 +399,24 @@ test.describe("UIA-F-36 — the users batch bar docks below the list without dis
         expect(box.y).toBeGreaterThan(topAfter);
     });
 });
+
+test.describe("UIA-F-37 — the mobile users toolbar keeps its search usable", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+    test("at 390 the search field spans the panel; the sort Select carries no literal height", async ({ page }) => {
+        await openAdminTab(page, "Users");
+        const search = page.getByRole("searchbox", { name: "Search users" });
+        await expect(search).toBeVisible();
+        const sw = (await search.boundingBox())!.width;
+        expect(sw, "the search field is not crushed").toBeGreaterThan(300);
+        const sort = page.getByRole("combobox", { name: "Sort users" });
+        const cls = (await sort.getAttribute("class")) ?? "";
+        expect(cls).not.toMatch(/\bh-8\b|w-\[10rem\]|\btext-sm\b/);
+        // Every toolbar control stays inside the panel's width.
+        const vw = page.viewportSize()!.width;
+        for (const el of [search, sort, page.getByRole("button", { name: /prune/i }).first()]) {
+            const b = (await el.boundingBox())!;
+            expect(b.x + b.width).toBeLessThanOrEqual(vw);
+        }
+    });
+});
