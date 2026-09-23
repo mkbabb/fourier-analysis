@@ -262,3 +262,30 @@ test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
         await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "");
     });
 });
+
+test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
+    test("a double-click sends one save and shows no false 'Could not save'", async ({ page }) => {
+        const viz = await firstSavedViz(page);
+        const saved = { ...ENTRY, slug: "quiet-amber-lattice-fox", visibility: "draft" };
+        let posts = 0;
+        await page.route("**/api/visualizations", async (route) => {
+            if (route.request().method() !== "POST") return route.fallback();
+            posts++;
+            await new Promise((r) => setTimeout(r, 700));
+            await route.fulfill({ status: 201, contentType: "application/json", headers: { ETag: '"e1"' }, body: JSON.stringify(saved) });
+        });
+        await page.route(`**/api/visualizations/${saved.slug}`, (route) =>
+            route.fulfill({ status: 200, contentType: "application/json", headers: { ETag: '"e2"' }, body: JSON.stringify({ ...saved, visibility: "public" }) }),
+        );
+        await page.goto(`/v/${viz.slug}`);
+        // The canvas dock expands under the pointer (its persistent control).
+        await page.getByRole("button", { name: "Edit contour" }).first().hover();
+        const publish = page.getByRole("button", { name: "Publish to Gallery" }).first();
+        await expect(publish).toBeVisible();
+        await page.waitForTimeout(600);
+        await publish.dblclick();
+        await expect(page.getByText(`Published! (${saved.slug})`, { exact: true })).toBeVisible({ timeout: 10_000 });
+        expect(posts).toBe(1);
+        await expect(page.getByText(/Could not save/i)).toHaveCount(0);
+    });
+});

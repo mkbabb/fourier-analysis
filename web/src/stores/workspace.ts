@@ -369,6 +369,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
      */
     async function saveVisualization(): Promise<SavedVisualizationRef | null> {
         if (!imageSlug.value || !contour.value) return null;
+        error.value = null;
         try {
             const { data, etag } = await api.createVisualization({
                 visibility: "draft",

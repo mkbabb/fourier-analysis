@@ -133,13 +133,21 @@ const publishing = ref(false);
  * function threw it away to volunteer a constant. It is read here, with the
  * constant demoted to the fallback it always should have been.
  */
+//
+// X.F.W14.u — UIA-F-18: a second activation while the first was in flight
+// started a second POST, which aborted the first (the api's per-key inflight
+// abort); the aborted save returned `null` and fell through to the fallback
+// "Could not save" toast beside the second save's "Published!". One action is
+// one outcome: a publish in flight suppresses activation (DESIGN.md: loading
+// suppresses activation), and an aborted save is not a failure — only a real
+// diagnosis (`store.error`, cleared at the save's start) is reported.
 async function handlePublish() {
-    if (!store.imageSlug || !store.contour) return;
+    if (publishing.value || !store.imageSlug || !store.contour) return;
     publishing.value = true;
     try {
         const saved = await store.saveVisualization();
         if (!saved) {
-            toast(store.error ?? "Could not save the visualization", "error");
+            if (store.error) toast(store.error, "error");
             return;
         }
         await gallery.publish(saved.slug, store.imageSlug);
