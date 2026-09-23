@@ -38,32 +38,44 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
     const nHarmonics = ref(store.contourSettings?.n_harmonics ?? CONTOUR_DEFAULTS.n_harmonics);
     const nPoints = ref(store.contourSettings?.n_points ?? 1024);
 
-    // Route-based loading on mount. The route is `/w/:imageSlug?` — the
-    // converged entity is slug-addressed, so the workspace loads off the single
-    // image slug.
-    onMounted(async () => {
-        const imageSlug = route.params.imageSlug as string | undefined;
-        if (imageSlug) {
-            await store.loadWorkspace(imageSlug);
-        } else if (store.imageSlug) {
-            router.replace(`/w/${store.imageSlug}`);
-        }
-    });
-
-    // Route param watcher for gallery navigation.
-    // Skips if the slug already matches (e.g., after uploadImage pushed the route).
-    watch(
-        () => route.params.imageSlug,
-        async (newSlug) => {
-            const slug = newSlug as string | undefined;
-            if (!slug) {
-                if (store.imageSlug) router.replace(`/w/${store.imageSlug}`);
-                return;
+    // Route-based loading. Two routes mount this view (B.W4, one slug per
+    // noun): `/w/:imageSlug?` is the working session over an image asset, and
+    // `/v/:visualizationSlug` is a SAVED visualization entity.
+    //
+    // X.F.W14.u — UIA-F-2 / UIA-F-3: the loader used to read only
+    // `imageSlug`. `/v/<slug>` therefore never sent GET `/api/visualizations/<slug>`
+    // (`loadVisualization` had no caller) and rendered the empty upload stage,
+    // and an in-app push from `/w/` to `/v/` saw `imageSlug` go undefined and
+    // `router.replace`d straight back to `/w/`. The loader now dispatches on
+    // the route's name, and acts only while one of its own two routes is the
+    // current one.
+    async function loadFromRoute(force: boolean) {
+        if (route.name === "visualization") {
+            const vizSlug = route.params.visualizationSlug as string;
+            if (force || vizSlug !== store.visualizationSlug) {
+                await store.loadVisualization(vizSlug);
             }
-            // Skip if we already have this workspace loaded (uploadImage just set it)
-            if (slug === store.imageSlug) return;
-            await store.loadWorkspace(slug);
-        },
+            return;
+        }
+        if (route.name !== "workspace") return;
+        const imageSlug = route.params.imageSlug as string | undefined;
+        if (!imageSlug) {
+            if (store.imageSlug) router.replace(`/w/${store.imageSlug}`);
+            return;
+        }
+        // Skip if we already have this workspace loaded (uploadImage just set
+        // it and pushed the route).
+        if (force || imageSlug !== store.imageSlug) {
+            await store.loadWorkspace(imageSlug);
+        }
+    }
+
+    onMounted(() => loadFromRoute(true));
+
+    // Route watcher for in-app navigation between the two routes and their slugs.
+    watch(
+        () => [route.name, route.params.imageSlug, route.params.visualizationSlug],
+        () => loadFromRoute(false),
     );
 
     // Seed animation settings from workspace (once)
