@@ -101,14 +101,21 @@ const unpublishedDrafts = computed(() =>
     ),
 );
 
+// X.F.W14.u — UIA-F-40: the three loads are independent, so they run in
+// parallel. They ran in series behind `activateAdmin`, which awaits the admin
+// stats: a slow stats call held back `/api/visualizations` and the drafts, and
+// the banner's skeletons sat above the empty-state CTA while entries existed.
+// The grid fetch starts first, so its `loading` flag is set before the first
+// frame and the empty state waits for a real answer.
 onMounted(async () => {
     const adminToken = route.query.admin as string | undefined;
-    if (adminToken) {
-        await gallery.activateAdmin(adminToken);
-        router.replace({ query: {} });
-    }
-    await workspace.refreshDrafts();
-    await gallery.resetAndFetch();
+    await Promise.all([
+        gallery.resetAndFetch(),
+        workspace.refreshDrafts(),
+        adminToken
+            ? gallery.activateAdmin(adminToken).then(() => router.replace({ query: {} }))
+            : undefined,
+    ]);
 });
 
 // Debounced search

@@ -504,3 +504,24 @@ test.describe("UIA-F-45 — focus opens inside the card modal and stays there", 
         }
     });
 });
+
+test.describe("UIA-F-40 — the admin grid does not wait on admin stats", () => {
+    test("a slow stats call neither delays the grid request nor shows the empty CTA over entries", async ({ page }) => {
+        await stubAdminApi(page, [ENTRY]);
+        let statsAt = 0;
+        let gridAt = 0;
+        const t0 = Date.now();
+        await page.route("**/api/admin/stats", async (route) => {
+            statsAt = Date.now() - t0;
+            await new Promise((r) => setTimeout(r, 3000));
+            await route.fallback();
+        });
+        page.on("request", (r) => {
+            if (new URL(r.url()).pathname === "/api/visualizations" && !gridAt) gridAt = Date.now() - t0;
+        });
+        await page.goto(`/gallery?admin=${ADMIN_TOKEN}`);
+        await expect(page.getByRole("button", { name: `Open ${ENTRY.image_slug}` }).first()).toBeVisible({ timeout: 2500 });
+        expect(gridAt, "the grid request is not queued behind stats").toBeGreaterThan(0);
+        expect(statsAt === 0 || gridAt < statsAt + 3000).toBe(true);
+    });
+});
