@@ -289,3 +289,38 @@ test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
         await expect(page.getByText(/Could not save/i)).toHaveCount(0);
     });
 });
+
+test.describe("UIA-F-19 — one drop, one upload", () => {
+    test("a file dropped over a loaded image sends exactly one POST /api/images", async ({ page }) => {
+        const viz = await firstSavedViz(page);
+        const meta = await (await page.request.get(`/api/images/${viz.image_slug}`)).json();
+        let posts = 0;
+        await page.route("**/api/images", async (route) => {
+            if (route.request().method() !== "POST") return route.fallback();
+            posts++;
+            await new Promise((r) => setTimeout(r, 400));
+            await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(meta) });
+        });
+        await page.goto(`/v/${viz.slug}`);
+        await expect(page.locator("circle.control-point, canvas").first()).toBeAttached();
+        await page.evaluate(() => {
+            const bytes = Uint8Array.from(
+                atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="),
+                (c) => c.charCodeAt(0),
+            );
+            const dt = new DataTransfer();
+            dt.items.add(new File([bytes], "drop.png", { type: "image/png" }));
+            const x = innerWidth / 3;
+            const y = innerHeight / 2;
+            const fire = (type: string) => {
+                const target = document.elementFromPoint(x, y)!;
+                target.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt, clientX: x, clientY: y }));
+            };
+            fire("dragenter");
+            fire("dragover");
+            return new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => { fire("dragover"); fire("drop"); r(); })));
+        });
+        await page.waitForTimeout(1500);
+        expect(posts).toBe(1);
+    });
+});

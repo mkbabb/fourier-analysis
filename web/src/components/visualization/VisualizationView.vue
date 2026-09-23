@@ -203,7 +203,7 @@ async function onCanvasFileSelect(e: Event) {
              With no image the main area's drop target is the one signal. -->
         <Transition name="fade">
             <div v-if="globalDragging && hasImage" class="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-background/80 backdrop-blur-sm"
-                @drop="globalDrop" @dragover.prevent>
+                @dragover.prevent>
                 <div class="flex flex-col items-center gap-3 text-muted-foreground">
                     <Upload class="h-12 w-12" />
                     <p class="text-lg font-medium">Drop image anywhere</p>

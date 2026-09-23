@@ -28,10 +28,18 @@ export function useImageUpload(onFile: (file: File) => void) {
     // Counter-based drag tracking to handle child element enter/leave events
     let dragCounter = 0;
 
+    // X.F.W14.u — UIA-F-19: the sidebar panel's drop target sits inside the
+    // view root's, so one drop reached two `handleDrop`s (three, with the
+    // overlay's) and uploaded twice: two POSTs, two router pushes, a race.
+    // One drop has one owner: the innermost target takes it (and marks it
+    // handled by preventing its default); every outer host only resets its
+    // own drag state.
     function handleDrop(e: DragEvent) {
+        const handled = e.defaultPrevented;
         e.preventDefault();
         dragCounter = 0;
         isDragging.value = false;
+        if (handled) return;
         const file = e.dataTransfer?.files[0];
         if (file && isImageFile(file)) {
             setPreview(file);

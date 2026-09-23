@@ -129,6 +129,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     // Methods
     async function uploadImage(file: File) {
+        // UIA-F-19: an upload in flight suppresses a second one (one drop,
+        // one upload; loading suppresses activation).
+        if (uploading.value) return;
         uploading.value = true;
         error.value = null;
         try {
