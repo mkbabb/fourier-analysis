@@ -121,6 +121,18 @@ export const router = createRouter({
             path: "/s/:slug",
             redirect: (to) => `/w/${to.params.slug}`,
         },
+        // X.F.W14.u — UIA-F-50: the last route. An unknown path rendered an
+        // empty `<main>` under the generic title (a soft 404); it now renders
+        // the not-found card, titled, and asks crawlers not to index it.
+        {
+            path: "/:pathMatch(.*)*",
+            name: "not-found",
+            component: () => import("@/components/shared/NotFoundCard.vue"),
+            meta: {
+                title: "Not found — Fourier Analysis",
+                noindex: true,
+            },
+        },
     ],
 });
 
@@ -165,6 +177,18 @@ function applyRouteMeta(to: RouteLocationNormalized) {
         document.head.appendChild(tag);
     }
     tag.setAttribute("content", description);
+
+    let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (to.meta.noindex) {
+        if (!robots) {
+            robots = document.createElement("meta");
+            robots.setAttribute("name", "robots");
+            document.head.appendChild(robots);
+        }
+        robots.setAttribute("content", "noindex");
+    } else {
+        robots?.remove();
+    }
 }
 
 router.afterEach((to: RouteLocationNormalized) => {

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { watchDebounced, useMediaQuery } from "@vueuse/core";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { useImageUpload } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
 import { Upload } from "@lucide/vue";
-import { Tooltip } from "@/components/ui/tooltip";
 import { useGalleryStore } from "@/stores/gallery";
 import { useToast } from "@/composables/useToast";
 import ImageUpload from "./ImageUpload.vue";
+import NotFoundCard from "@/components/shared/NotFoundCard.vue";
 import ContourSettings from "./ContourSettings.vue";
 import BasisCanvas from "./BasisCanvas.vue";
 import BasisSelector from "./BasisSelector.vue";
@@ -29,6 +29,9 @@ import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
 
 const router = useRouter();
+const route = useRoute();
+/** `/v/:visualizationSlug` (a saved entity) vs `/w/:imageSlug?` (a working session). */
+const isSavedRoute = computed(() => route.name === "visualization");
 const store = useWorkspaceStore();
 const anim = useAnimationStore();
 const gallery = useGalleryStore();
@@ -206,22 +209,29 @@ async function onCanvasFileSelect(e: Event) {
             <p class="text-sm text-muted-foreground fira-code">Loading workspace...</p>
         </div>
 
-        <!-- Error (no workspace) -->
-        <div v-else-if="store.error && !store.imageSlug" class="flex items-center justify-center flex-1">
-            <div class="mx-auto max-w-md cartoon-card p-6 text-center space-y-3">
-                <p class="text-sm font-medium text-foreground">Could not load workspace</p>
-                <p class="text-xs text-muted-foreground fira-code break-all">{{ store.error }}</p>
-                <Tooltip text="Go back to upload a new image">
-                    <Button
-                        emphasis="secondary"
-                        class="mt-2 border-2 border-foreground/15"
-                        @click="store.reset(); router.push('/visualize')"
-                    >
-                        Start fresh
-                    </Button>
-                </Tooltip>
-            </div>
-        </div>
+        <!-- Error (no workspace). X.F.W14.u — UIA-F-4: on `/v/` the error
+             branch was never reached (the loader never loaded the entity), and
+             its copy spoke only of a workspace. It is the shared not-found card
+             now, its copy route-aware and naming the slug that failed.
+             UIA-F-49: the side=top tooltip on the button covered the only
+             diagnostic line; the button's own label carries the meaning. -->
+        <NotFoundCard
+            v-else-if="store.error && !store.imageSlug"
+            :title="isSavedRoute ? 'Could not open this visualization' : 'Could not load this workspace'"
+            :description="isSavedRoute
+                ? `No saved visualization loaded from “${route.params.visualizationSlug}”.`
+                : `No image loaded from “${route.params.imageSlug}”.`"
+            :detail="store.error"
+        >
+            <template #actions>
+                <Button emphasis="primary" @click="store.reset(); router.push('/visualize')">
+                    Upload a new image
+                </Button>
+                <Button emphasis="secondary" @click="store.reset(); router.push('/gallery')">
+                    Browse the gallery
+                </Button>
+            </template>
+        </NotFoundCard>
 
         <!-- Main workspace -->
         <div v-else class="flex flex-col flex-1 min-h-0">

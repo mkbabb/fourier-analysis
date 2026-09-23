@@ -77,3 +77,39 @@ test.describe("UIA-F-2 / UIA-F-3 — /v/:visualizationSlug loads the saved entit
         expect(errors).toEqual([]);
     });
 });
+
+test.describe("UIA-F-50 / UIA-F-4 / UIA-F-49 — not-found and load-error states", () => {
+    test("F-50: an unknown path renders a titled, noindexed not-found card", async ({ page }) => {
+        await page.goto("/nope/deeper");
+        const card = page.getByTestId("not-found");
+        await expect(card.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
+        await expect(card.getByRole("button", { name: "Browse the gallery" })).toBeVisible();
+        await expect(page).toHaveTitle("Not found — Fourier Analysis");
+        await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
+        // Leaving the not-found route drops the noindex again.
+        await card.getByRole("button", { name: "Browse the gallery" }).click();
+        await expect(page).toHaveURL(/\/gallery$/);
+        await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+    });
+
+    test("F-4: /v/<unknown> names the failed slug instead of the upload prompt", async ({ page }) => {
+        await page.goto("/v/no-such-slug");
+        const card = page.getByTestId("not-found");
+        await expect(card.getByRole("heading", { name: "Could not open this visualization" })).toBeVisible();
+        await expect(card).toContainText("no-such-slug");
+        await expect(page.getByText(/Drop or click to upload/i)).toHaveCount(0);
+    });
+
+    test("F-49: the error card's action is labelled, and nothing covers the diagnosis", async ({ page }) => {
+        await page.goto("/v/no-such-slug");
+        const card = page.getByTestId("not-found");
+        const action = card.getByRole("button", { name: "Upload a new image" });
+        await action.hover();
+        await action.focus();
+        await page.waitForTimeout(700);
+        await expect(page.getByRole("tooltip")).toHaveCount(0);
+        await action.click();
+        await expect(page).toHaveURL(/\/(visualize|w)\/?$/);
+        await expect(page.getByTestId("not-found")).toHaveCount(0);
+    });
+});
