@@ -775,3 +775,27 @@ test.describe("UIA-F-23 — the floating ToC's Close search closes with a query 
         await expect(page.getByRole("button", { name: "Search paper" })).toBeVisible();
     });
 });
+
+test.describe("UIA-F-25 — the search palette has one dismissal owner", () => {
+    test("no ✕ under Clear, and Esc collapses the palette keeping the query", async ({ page }) => {
+        await page.goto("/paper");
+        const field = page.getByRole("combobox", { name: "Search the paper" }).first();
+        await field.fill("Parseval");
+        await page.getByRole("button", { name: "Expand the search palette" }).click();
+        const dialog = page.getByRole("dialog", { name: "Search the paper" });
+        await expect(dialog).toBeVisible();
+        const clear = dialog.getByRole("button", { name: "Clear" });
+        await expect(clear).toBeVisible();
+        // Nothing else paints under Clear's centre (the ✕ used to).
+        const underClear = await clear.evaluate((b) => {
+            const r = b.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return !!hit && (hit === b || b.contains(hit));
+        });
+        expect(underClear).toBe(true);
+        await expect(dialog.locator('[data-slot="dialog-close"], .dialog-close')).toHaveCount(0);
+        await page.keyboard.press("Escape");
+        await expect(dialog).toHaveCount(0);
+        await expect(field).toHaveValue("Parseval");
+    });
+});

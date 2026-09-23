@@ -102,7 +102,7 @@ watch(
     >
         <DialogContent
             class="search-modal"
-            dismiss="free"
+            dismiss="deliberate"
             :style="panelStyle"
         >
             <DialogTitle class="sr-only">Search the paper</DialogTitle>
@@ -146,7 +146,15 @@ watch(
                      by a `title` at an icon size that rendered identically. The
                      dialog's own ✕ (and Esc, and outside) now COLLAPSE; the
                      destructive one says what it destroys, in words. -->
+                <!-- X.F.W14.u — UIA-F-25: ONE dismissal owner. Under
+                     `dismiss="free"` the dialog painted its ✕ where this button
+                     sits, so `elementFromPoint(✕)` was Clear and pressing ✕
+                     wiped the query. The palette is `deliberate` (Esc and
+                     outside collapse it, keeping the query; the producer's
+                     CommandDialog drops ✕ for this geometry too), and Clear
+                     shows only when there is a query to clear. -->
                 <Button
+                    v-if="search.query.value"
                     emphasis="quiet"
                     size="sm"
                     type="button"
