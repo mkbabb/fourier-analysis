@@ -240,7 +240,9 @@ for (const vp of VIEWPORTS) {
                 // Contour editing: the magnet popover on the editor dock.
                 await page.getByRole("button", { name: "Edit contour" }).click();
                 await expandDocks(page);
-                await page.getByRole("button", { name: "Magnet options" }).hover();
+                // X.F.W14.u — UIA-F-12: the magnet popover opens on click (a
+                // hover preview may not hold a state-changing slider).
+                await page.getByRole("button", { name: "Magnet options" }).click();
                 await expect(sliderRoot(page, /Magnet/)).toBeVisible({ timeout: 10_000 });
                 await settle(page);
                 await frame("image-edit-magnet");
