@@ -57,11 +57,15 @@ async function handRolled(page: Page): Promise<string[]> {
     });
 }
 
+/**
+ * The image mode at rest (F.W13.c, OA-16): no sidebar, the main area's drop
+ * target is the one affordance. The sidebar arrives with the image, so the
+ * returned locator is asserted only after `uploadImage`.
+ */
 async function openImageMode(page: Page): Promise<Locator> {
     await page.goto("/visualize");
-    const side = page.locator(".viz-panel-left-wrap");
-    await expect(side.getByRole("button", { name: /^Image/ })).toBeVisible({ timeout: 60_000 });
-    return side;
+    await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
+    return page.locator(".viz-panel-left-wrap");
 }
 
 async function uploadImage(page: Page): Promise<void> {
@@ -73,22 +77,25 @@ async function uploadImage(page: Page): Promise<void> {
 test.describe("G-b — F.W13 image-mode controls act (frame 3)", () => {
     test.use({ viewport: { width: 1440, height: 900 } });
 
-    test("at rest: the Image layer discloses, the upload command and the canvas each open the picker", async ({ page }) => {
+    test("at rest the drop target opens the picker; with an image the Image layer discloses", async ({ page }) => {
         const side = await openImageMode(page);
 
+        // At rest the one affordance is the main area's drop target (G-c owns
+        // the rest state's shape; here it must ACT, by pointer and by key).
+        const target = page.locator(".drop-target").getByRole("button", { name: /Drop or click to upload/ });
+        await expect(target).toHaveAttribute("data-slot", "button");
+        await opensPicker(page, () => target.click());
+        await opensPicker(page, () => target.press("Enter"));
+
+        await uploadImage(page);
+
         const layer = side.getByRole("button", { name: /^Image/ });
-        await expect(layer).toHaveAttribute("aria-expanded", "true");
+        await expect(layer).toBeVisible();
+        const before = await layer.getAttribute("aria-expanded");
         await layer.click();
-        await expect(layer).toHaveAttribute("aria-expanded", "false");
+        await expect(layer).not.toHaveAttribute("aria-expanded", before ?? "");
         await layer.click();
-        await expect(layer).toHaveAttribute("aria-expanded", "true");
-
-        const upload = side.getByRole("button", { name: /Drop or click to upload/ });
-        await expect(upload).toHaveAttribute("data-slot", "button");
-        await opensPicker(page, () => upload.click());
-        await opensPicker(page, () => upload.press("Enter"));
-
-        await opensPicker(page, () => page.locator(".canvas-container.canvas-clickable").click());
+        await expect(layer).toHaveAttribute("aria-expanded", before ?? "");
 
         expect(await handRolled(page)).toEqual([]);
     });
