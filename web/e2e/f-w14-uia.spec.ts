@@ -442,3 +442,26 @@ test.describe("UIA-F-42 — at 390 every audit field is legible (cured by .t's D
         expect(spill).toEqual([]);
     });
 });
+
+test.describe("UIA-F-48 — the Drafts card sits inside the column gutter", () => {
+    test("its right edge stays inside its column and the viewport", async ({ page }) => {
+        const viz = await firstSavedViz(page);
+        await page.goto(`/w/${viz.image_slug}`); // saves this workspace as a local draft
+        await expect(page).toHaveURL(new RegExp(`/w/${viz.image_slug}$`));
+        await page.waitForTimeout(800);
+        await page.goto("/gallery");
+        await page.getByRole("tab", { name: "Drafts" }).click();
+        const header = page.getByRole("button", { name: /My Drafts/ });
+        await expect(header).toBeVisible();
+        const m = await header.evaluate((btn) => {
+            const card = btn.closest('[data-slot="collapsible"], .disclosure') ?? btn.parentElement!;
+            const col = card.parentElement!.parentElement!;
+            const r = card.getBoundingClientRect();
+            const c = col.getBoundingClientRect();
+            return { right: r.right, colRight: c.right, vw: innerWidth, docScroll: document.documentElement.scrollWidth };
+        });
+        expect(m.right).toBeLessThanOrEqual(m.colRight - 15);
+        expect(m.right).toBeLessThanOrEqual(m.vw);
+        expect(m.docScroll).toBeLessThanOrEqual(m.vw);
+    });
+});

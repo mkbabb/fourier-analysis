@@ -87,65 +87,71 @@ function getBasisLabel(item: WorkspaceDraft): string {
          closed (reka's `Presence` unmounts), so nothing about this list's cost
          changes — what changes is that the trigger and the body are now WIRED
          to each other instead of merely adjacent. -->
-    <Collapsible
-        v-if="sortedDrafts.length > 0"
-        v-model:open="open"
-        class="mx-4 rounded-lg border-[1.5px] border-foreground/8 overflow-hidden"
-    >
-        <CollapsibleTrigger as-child>
-            <Button
-                emphasis="quiet"
-                class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground"
-            >
-                <span class="font-serif-math text-sm font-semibold tracking-tight">My Drafts</span>
-                <Metric :value="sortedDrafts.length" size="sm" />
-                <ChevronDown
-                    :size="16"
-                    class="ml-auto text-muted-foreground transition-transform duration-200 ease-in-out"
-                    :class="{ '-rotate-90': !open }"
-                />
-            </Button>
-        </CollapsibleTrigger>
-
-        <CollapsibleContent class="flex flex-col">
-            <div
-                v-for="draft in sortedDrafts"
-                :key="draft.imageSlug"
-                class="draft-item flex items-center gap-2.5 py-2 px-3 border-t border-foreground/5 transition-colors duration-150 hover:bg-foreground/[0.02]"
-            >
-                <div
-                    class="w-12 h-12 rounded-md overflow-hidden shrink-0 cursor-pointer bg-muted"
-                    @click="emit('open', draft.imageSlug)"
-                >
-                    <img
-                        :src="thumbnailUrl(draft.imageSlug)"
-                        :alt="draft.imageSlug"
-                        class="w-full h-full object-cover"
-                        loading="lazy"
-                    />
-                </div>
-                <div class="flex-1 min-w-0 cursor-pointer flex flex-col gap-0.5" @click="emit('open', draft.imageSlug)">
-                    <span class="text-sm text-foreground truncate fira-code">{{ draft.imageSlug }}</span>
-                    <span class="text-sm text-muted-foreground">
-                        {{ getBasisLabel(draft) }}
-                        <span v-if="getBasisLabel(draft)"> &middot; </span>
-                        <time
-                            :datetime="relativeTimeOf(draft.lastOpenedAt).datetime"
-                            :title="relativeTimeOf(draft.lastOpenedAt).absolute"
-                        >{{ relativeTimeOf(draft.lastOpenedAt).text }}</time>
-                    </span>
-                </div>
+    <!-- X.F.W14.u — UIA-F-48 (consumer half): the gutter is the wrapper's
+         padding. `mx-4` on the Collapsible, whose producer disclosure sets
+         `inline-size: 100%`, pushed the card 16 px past the column (right
+         border, chevron and count clipped). The producer's `inline-size: 100%`
+         on a block is the glass half, routed under O-59. -->
+    <div v-if="sortedDrafts.length > 0" class="px-4">
+        <Collapsible
+            v-model:open="open"
+            class="rounded-lg border-[1.5px] border-foreground/8 overflow-hidden"
+        >
+            <CollapsibleTrigger as-child>
                 <Button
-                    emphasis="secondary"
-                    size="sm"
-                    class="gap-1 text-muted-foreground shrink-0"
-                    :disabled="publishing"
-                    @click="emit('publish', draft)"
+                    emphasis="quiet"
+                    class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground"
                 >
-                    <Upload :size="14" />
-                    Publish
+                    <span class="font-serif-math text-sm font-semibold tracking-tight">My Drafts</span>
+                    <Metric :value="sortedDrafts.length" size="sm" />
+                    <ChevronDown
+                        :size="16"
+                        class="ml-auto text-muted-foreground transition-transform duration-200 ease-in-out"
+                        :class="{ '-rotate-90': !open }"
+                    />
                 </Button>
-            </div>
-        </CollapsibleContent>
-    </Collapsible>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent class="flex flex-col">
+                <div
+                    v-for="draft in sortedDrafts"
+                    :key="draft.imageSlug"
+                    class="draft-item flex items-center gap-2.5 py-2 px-3 border-t border-foreground/5 transition-colors duration-150 hover:bg-foreground/[0.02]"
+                >
+                    <div
+                        class="w-12 h-12 rounded-md overflow-hidden shrink-0 cursor-pointer bg-muted"
+                        @click="emit('open', draft.imageSlug)"
+                    >
+                        <img
+                            :src="thumbnailUrl(draft.imageSlug)"
+                            :alt="draft.imageSlug"
+                            class="w-full h-full object-cover"
+                            loading="lazy"
+                        />
+                    </div>
+                    <div class="flex-1 min-w-0 cursor-pointer flex flex-col gap-0.5" @click="emit('open', draft.imageSlug)">
+                        <span class="text-sm text-foreground truncate fira-code">{{ draft.imageSlug }}</span>
+                        <span class="text-sm text-muted-foreground">
+                            {{ getBasisLabel(draft) }}
+                            <span v-if="getBasisLabel(draft)"> &middot; </span>
+                            <time
+                                :datetime="relativeTimeOf(draft.lastOpenedAt).datetime"
+                                :title="relativeTimeOf(draft.lastOpenedAt).absolute"
+                            >{{ relativeTimeOf(draft.lastOpenedAt).text }}</time>
+                        </span>
+                    </div>
+                    <Button
+                        emphasis="secondary"
+                        size="sm"
+                        class="gap-1 text-muted-foreground shrink-0"
+                        :disabled="publishing"
+                        @click="emit('publish', draft)"
+                    >
+                        <Upload :size="14" />
+                        Publish
+                    </Button>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    </div>
 </template>
