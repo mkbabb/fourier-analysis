@@ -9,7 +9,25 @@ import type {
     PaperProofData,
     PaperCodeBlockData,
     ContentBlock,
+    PaperLabelInfo,
 } from "@mkbabb/latex-paper";
+
+/**
+ * UIA-F-26 — a `\label` key is not a DOM id. The renderer mints the element id
+ * (`thm:residue` → `thm-residue`) and `labelMap` publishes it as `anchorId`;
+ * the navigator lands with `getElementById`, so an entry that carried the raw
+ * key mounted the right section and then searched for an element that does not
+ * exist, leaving the reader wherever the virtual window settled (Thm 4.2.1 at
+ * 6.3.8). A labelled entry's destination is its anchor; a label the map does
+ * not know falls to the owning section, never to the raw key.
+ */
+type LabelAnchors = Record<string, Pick<PaperLabelInfo, "anchorId" | "elementId">>;
+
+function anchorFor(labels: LabelAnchors, label: string | undefined): string | undefined {
+    if (!label) return undefined;
+    const info = labels[label];
+    return info?.anchorId ?? info?.elementId;
+}
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -395,6 +413,7 @@ function processContentBlocks(
     sectionId: string,
     depth: number,
     entries: SearchEntry[],
+    labels: LabelAnchors,
 ): void {
     for (const block of blocks) {
         if (typeof block === "string") continue;
@@ -415,7 +434,7 @@ function processContentBlocks(
             const thm = block.theorem as PaperTheoremData;
             const plainText = flattenNestedBlocks(thm.content);
             pushEntry(entries, {
-                id: thm.label ?? sectionId,
+                id: anchorFor(labels, thm.label) ?? sectionId,
                 sectionId,
                 type: thm.type as SearchEntry["type"],
                 number: thm.number,
@@ -426,7 +445,7 @@ function processContentBlocks(
         } else if ("figure" in block) {
             const fig = block.figure;
             pushEntry(entries, {
-                id: fig.label ?? sectionId,
+                id: anchorFor(labels, fig.label) ?? sectionId,
                 sectionId,
                 type: "figure",
                 label: stripHtml(fig.caption).slice(0, 200),
@@ -475,6 +494,7 @@ function walkSections(
     rootSectionId: string | null,
     depth: number,
     entries: SearchEntry[],
+    labels: LabelAnchors,
 ): void {
     for (const section of sections) {
         const sectionId = rootSectionId ?? section.id;
@@ -490,16 +510,19 @@ function walkSections(
             depth,
         });
 
-        processContentBlocks(section.content, section.id, depth, entries);
+        processContentBlocks(section.content, section.id, depth, entries, labels);
 
         if (section.subsections) {
-            walkSections(section.subsections, sectionId, depth + 1, entries);
+            walkSections(section.subsections, sectionId, depth + 1, entries, labels);
         }
     }
 }
 
-export function buildSearchIndex(sections: PaperSectionData[]): SearchEntry[] {
+export function buildSearchIndex(
+    sections: PaperSectionData[],
+    labels: LabelAnchors,
+): SearchEntry[] {
     const entries: SearchEntry[] = [];
-    walkSections(sections, null, 0, entries);
+    walkSections(sections, null, 0, entries, labels);
     return entries;
 }

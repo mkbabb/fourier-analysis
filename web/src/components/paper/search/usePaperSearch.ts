@@ -10,7 +10,7 @@ import {
     useId,
     type ComputedRef,
 } from "vue";
-import type { PaperSectionData } from "@mkbabb/latex-paper";
+import type { PaperLabelInfo, PaperSectionData } from "@mkbabb/latex-paper";
 import {
     buildSearchIndex,
     clearSearchCache,
@@ -21,6 +21,8 @@ import {
 
 export function usePaperSearch(options: {
     sections: PaperSectionData[];
+    /** UIA-F-26: resolves a labelled entry's `\label` key to its DOM anchor. */
+    labelMap: Record<string, PaperLabelInfo>;
     navigateTo: (id: string) => void;
 }) {
     /**
@@ -31,7 +33,7 @@ export function usePaperSearch(options: {
      */
     let _index: SearchEntry[] | null = null;
     function index(): SearchEntry[] {
-        _index ??= buildSearchIndex(options.sections);
+        _index ??= buildSearchIndex(options.sections, options.labelMap);
         return _index;
     }
 

@@ -150,7 +150,7 @@ const { navigateTo, navigateBack, scrollToTop, performScroll, navStack } = useSc
 // Wire all navigation (TOC clicks, cross-references) through navigateTo
 _scrollTo = navigateTo;
 
-const search = usePaperSearch({ sections: paperSections, navigateTo });
+const search = usePaperSearch({ sections: paperSections, labelMap, navigateTo });
 
 /**
  * `L/D27` — ⌘K, as four separate defects.
