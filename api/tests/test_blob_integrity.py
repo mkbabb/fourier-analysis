@@ -13,8 +13,8 @@ upload whose content-addressed file is missing re-writes the uploaded bytes
 (and the thumbnail) to the row's own paths.
 
 The app is driven through its real ASGI stack (routing, middleware and the
-global exception handler), so a 500 here is the 500 a browser sees. There is
-no ``httpx`` in the dependency set, hence the small raw-ASGI client below.
+global exception handler), so a 500 here is the 500 a browser sees (the
+shared raw-ASGI client ``conftest.asgi``).
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from PIL import Image
 
 from api.config import settings
 
-from conftest import requires_mongo, run_db
+from conftest import asgi as _asgi, requires_mongo, run_db
 
 
 @pytest.fixture
@@ -45,61 +45,6 @@ def _png_bytes(color: tuple[int, int, int] = (40, 120, 200)) -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", (16, 16), color).save(buf, format="PNG")
     return buf.getvalue()
-
-
-async def _asgi(
-    method: str,
-    path: str,
-    body: bytes = b"",
-    headers: list[tuple[str, str]] | None = None,
-) -> tuple[int, bytes]:
-    """One HTTP request through ``api.main.app``; returns (status, body).
-
-    Starlette's ``ServerErrorMiddleware`` sends the 500 response and then
-    re-raises the unhandled exception to the server; a real server logs it,
-    the client only ever sees the 500. This client does the same: the status
-    it returns is the status that was sent.
-    """
-    from api.main import app
-
-    scope: dict[str, Any] = {
-        "type": "http",
-        "asgi": {"version": "3.0"},
-        "http_version": "1.1",
-        "method": method,
-        "scheme": "http",
-        "path": path,
-        "raw_path": path.encode(),
-        "query_string": b"",
-        "root_path": "",
-        "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or [])],
-        "client": ("127.0.0.1", 50000),
-        "server": ("testserver", 80),
-    }
-    delivered = False
-
-    async def receive() -> dict[str, Any]:
-        nonlocal delivered
-        if not delivered:
-            delivered = True
-            return {"type": "http.request", "body": body, "more_body": False}
-        return {"type": "http.disconnect"}
-
-    status: list[int] = []
-    chunks: list[bytes] = []
-
-    async def send(message: dict[str, Any]) -> None:
-        if message["type"] == "http.response.start":
-            status.append(message["status"])
-        elif message["type"] == "http.response.body":
-            chunks.append(message.get("body", b""))
-
-    try:
-        await app(scope, receive, send)
-    except Exception:
-        if not status:
-            raise
-    return status[0], b"".join(chunks)
 
 
 async def _upload(content: bytes, name: str = "blob.png") -> tuple[int, dict[str, Any]]:

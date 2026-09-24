@@ -92,3 +92,63 @@ def run_db(body: Callable[[Any], Awaitable[Any]]) -> Any:
             client.close()
 
     return asyncio.run(_runner())
+
+
+async def asgi(
+    method: str,
+    path: str,
+    body: bytes = b"",
+    headers: list[tuple[str, str]] | None = None,
+    query: str = "",
+) -> tuple[int, bytes]:
+    """One HTTP request through ``api.main.app``; returns (status, body).
+
+    The app is driven through its real ASGI stack (routing, middleware and the
+    global exception handler), so a 500 here is the 500 a browser sees. There
+    is no ``httpx`` in the dependency set, hence this small raw-ASGI client.
+
+    Starlette's ``ServerErrorMiddleware`` sends the 500 response and then
+    re-raises the unhandled exception to the server; a real server logs it,
+    the client only ever sees the 500. This client does the same: the status
+    it returns is the status that was sent.
+    """
+    from api.main import app
+
+    scope: dict[str, Any] = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": method,
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": query.encode(),
+        "root_path": "",
+        "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or [])],
+        "client": ("127.0.0.1", 50000),
+        "server": ("testserver", 80),
+    }
+    delivered = False
+
+    async def receive() -> dict[str, Any]:
+        nonlocal delivered
+        if not delivered:
+            delivered = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        return {"type": "http.disconnect"}
+
+    status: list[int] = []
+    chunks: list[bytes] = []
+
+    async def send(message: dict[str, Any]) -> None:
+        if message["type"] == "http.response.start":
+            status.append(message["status"])
+        elif message["type"] == "http.response.body":
+            chunks.append(message.get("body", b""))
+
+    try:
+        await app(scope, receive, send)
+    except Exception:
+        if not status:
+            raise
+    return status[0], b"".join(chunks)

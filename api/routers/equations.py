@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import Any
 
+from fastapi import APIRouter, Response
+
+from api.lib.crud import errors
 from api.models.equations import (
     ComputeEquationRequest,
     ComputeEquationResponse,
@@ -14,6 +17,36 @@ from api.models.equations import (
 from api.services.computation import submit_compute_job
 
 router = APIRouter(prefix="/api/equations", tags=["equations"])
+
+
+class ExpressionInvalid(ValueError):
+    """The user's f(x) is not a finite real function of ``x`` (a client error)."""
+
+
+def _parse_function_of_x(expression: str) -> Any:
+    """Parse *expression* as a function of ``x`` alone, or raise ``ExpressionInvalid``.
+
+    A parse failure, an unknown function, a free symbol other than ``x`` or a
+    non-finite constant (``1/0`` is ``zoo``) cannot be evaluated on the grid;
+    each is the caller's input, so it answers 422, never a 500 (UIA-F-112).
+    """
+    import sympy as sp
+
+    from fourier_analysis.symbolic.parsing import parse_expression
+
+    try:
+        expr = parse_expression(expression)
+    except ValueError as e:
+        raise ExpressionInvalid(str(e)) from e
+    unknown = sorted({str(f.func) for f in expr.atoms(sp.core.function.AppliedUndef)})
+    if unknown:
+        raise ExpressionInvalid(f"Unknown function: {', '.join(unknown)}")
+    others = sorted(str(s) for s in expr.free_symbols - {sp.Symbol("x")})
+    if others:
+        raise ExpressionInvalid(f"f(x) may depend only on x, not {', '.join(others)}")
+    if expr.has(sp.zoo, sp.nan, sp.oo, -sp.oo):
+        raise ExpressionInvalid("f(x) is not finite")
+    return expr
 
 
 def _term_to_dto(term) -> FourierTermDTO:
@@ -27,7 +60,7 @@ def _term_to_dto(term) -> FourierTermDTO:
 
 
 @router.post("/compute", response_model=ComputeEquationResponse)
-async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationResponse:
+async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationResponse | Response:
     """Compute closed-form Fourier series for a user-supplied f(x).
 
     Tries three tiers:
@@ -39,7 +72,6 @@ async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationRespon
     def _run():
         import numpy as np
 
-        from fourier_analysis.symbolic.parsing import parse_expression
         from fourier_analysis.symbolic.integration import symbolic_fourier_coefficients
         from fourier_analysis.symbolic.identification import identify_sequence
         from fourier_analysis.symbolic.spline import spline_fourier_coefficients
@@ -48,8 +80,7 @@ async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationRespon
 
         import sympy as sp
 
-        # Parse expression
-        expr = parse_expression(req.expression)
+        expr = _parse_function_of_x(req.expression)
         x = sp.Symbol("x")
         domain = (req.domain_start, req.domain_end)
         period = domain[1] - domain[0]
@@ -116,7 +147,10 @@ async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationRespon
             "effective_n": eff_n,
         }
 
-    result = await submit_compute_job("equation", _run)
+    try:
+        result = await submit_compute_job("equation", _run)
+    except ExpressionInvalid as e:
+        return errors.validation_failed(detail=str(e))
 
     return ComputeEquationResponse(
         status=result["status"],
