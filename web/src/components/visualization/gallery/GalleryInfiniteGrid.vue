@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { GalleryTier, Visualization } from "@/lib/types";
 import { InfiniteScroll } from "@mkbabb/glass-ui/infinite-scroll";
+import { Skeleton } from "@mkbabb/glass-ui";
 import GalleryCard from "./GalleryCard.vue";
 
 defineProps<{
@@ -28,7 +29,6 @@ const emit = defineEmits<{
 
 <template>
     <div class="flex flex-col gap-2 px-4">
-        <p class="text-xs text-muted-foreground">{{ entries.length }} loaded</p>
         <InfiniteScroll :has-more="hasMore" :is-loading="loading" @load-more="emit('load-more')">
             <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr))">
                 <GalleryCard
@@ -45,13 +45,19 @@ const emit = defineEmits<{
                     @toggle-select="(slug, checked) => emit('toggle-select', slug, checked)"
                 />
             </div>
+            <!-- X.F.W14U.gallery — UIA-F-184 ⊕ UIA-F-247: loading is glass
+                 Skeleton cards in the grid's own measure (the hand-rolled
+                 transparent-topped ring is retired, F-71's carry), and the "N
+                 loaded" / "No more entries" chatter is gone. -->
             <template #loading>
-                <div class="flex justify-center py-4">
-                    <div class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                <div
+                    class="grid gap-3 pt-3"
+                    style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr))"
+                    role="status"
+                    aria-label="Loading visualizations"
+                >
+                    <Skeleton v-for="i in 3" :key="i" class="aspect-[4/3] rounded-card" />
                 </div>
-            </template>
-            <template #end>
-                <p v-if="entries.length" class="text-center text-xs text-muted-foreground py-4">No more entries</p>
             </template>
         </InfiniteScroll>
     </div>

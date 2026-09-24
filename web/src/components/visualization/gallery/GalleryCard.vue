@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Card } from "@mkbabb/glass-ui/card";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Checkbox } from "@mkbabb/glass-ui";
 import type { GalleryTier, Visualization } from "@/lib/types";
@@ -45,6 +46,19 @@ const emit = defineEmits<{
 
 const isLiked = computed(() => props.likedHashes?.has(props.entry.slug) ?? false);
 
+/** UIA-F-99: the human title names the card; the slug is its fallback. */
+const name = computed(() => props.entry.title?.trim() || props.entry.slug);
+
+/** UIA-F-186: the tier is the rim hue, through glass's per-instance accent. */
+const tierStyle = computed(() =>
+    props.entry.tier === "featured" || props.entry.tier === "saved"
+        ? { "--glass-accent": `var(--tier-${props.entry.tier})` }
+        : undefined,
+);
+
+/** UIA-F-189's thumbnail fallback, shared with the Drafts cards. */
+const thumbBroken = ref(false);
+
 /**
  * X.F.W3 `.e` / `fr-BasisSelector M-10` — the byte-identical twin of this
  * computed lived in the sibling file, and a third spelling on the canvas. All
@@ -67,192 +81,231 @@ const created = useTimeAgo(() => props.entry.created_at);
 </script>
 
 <template>
-    <!-- D.W4.c — keyboard-accessible card. Was a bare `<div @click>` (per
-         A3 #4 finding — unreachable by keyboard, no Enter/Space activation,
-         no focus ring). Lifted to the canonical ARIA button-on-non-button
-         pattern: role + tabindex + keydown + aria-label. Focus ring lands
-         globally via .gallery-card:focus-visible in style.css. -->
-    <div
-        class="gallery-card deferred-section w-full cursor-pointer overflow-hidden rounded-xl bg-card border-2 border-foreground/15"
-        role="button"
-        tabindex="0"
-        :aria-label="`Open ${entry.image_slug}`"
+    <!-- X.F.W14U.gallery — UIA-F-98: the card is glass Card (`--radius-card`,
+         Card's own elevation grammar), not a hand-rolled div with a 12 px
+         corner, a 2 px rim and a hard offset stamp. The open action is ONE
+         native button (the title and the thumbnail), stretched over the card
+         so the whole card still opens it; the like, admin and select controls
+         sit above the stretch. `role="button"` on the div is gone.
+         UIA-F-186: tier, focus and selection are three channels — the tier is
+         the rim hue through glass's `--glass-accent`, focus is the producer's
+         ring on the open button (and Card's own `:has(:focus-visible)` rung),
+         selection is the checked box and the selected fill.
+         UIA-F-99 ⊕ UIA-F-187: the title leads and names the card; the slug and
+         the age are a muted meta row. -->
+    <Card
+        as="article"
+        size="sm"
+        shadow
+        class="gallery-card deferred-section"
         :data-tier="entry.tier"
         :data-selected="selected || undefined"
-        @click="emit('click')"
-        @keydown.enter.prevent="emit('click')"
-        @keydown.space.prevent="emit('click')"
+        :style="tierStyle"
     >
-        <div class="relative flex flex-col">
-            <!-- A.W5.c — admin multi-select checkbox. Surfaced in admin mode,
-                 anchored top-left so it does not collide with the top-right
-                 admin overlay. Click is stopped to prevent card-open. -->
-            <div
-                v-if="adminMode"
-                class="absolute top-1.5 left-1.5 z-5 flex items-center justify-center rounded-md bg-background/70 p-1 backdrop-blur-sm"
-                @click.stop
-            >
-                <Checkbox
-                    :model-value="selected ?? false"
-                    :aria-label="`Select entry ${entry.image_slug}`"
-                    class="h-4 w-4"
-                    @update:model-value="(v) => emit('toggle-select', entry.slug, v === true)"
-                />
-            </div>
-            <!-- Thumbnail -->
-            <div class="card-image-frame relative aspect-[4/3] overflow-hidden flex items-center justify-center border-b border-foreground/8">
-                <img
-                    :src="thumbnailUrl(entry.image_slug)"
-                    :alt="entry.image_slug"
-                    class="w-full h-full object-cover opacity-85"
-                    loading="lazy"
-                />
-            </div>
-
-            <!-- Header -->
-            <div class="flex items-center gap-1.5 px-3 pt-2 pb-1">
-                <span class="text-sm text-muted-foreground truncate flex-1 min-w-0 font-mono">{{ entry.image_slug }}</span>
-                <time class="text-sm text-muted-foreground whitespace-nowrap shrink-0" :datetime="created.datetime" :title="created.absolute">{{ created.text }}</time>
-            </div>
-
-            <!-- Basis pills -->
-            <div class="flex flex-wrap gap-1 px-3 py-0.5">
-                <Badge
-                    v-for="b in basisLabels"
-                    :key="b.label"
-                    variant="outline"
-                    size="sm"
-                    class="basis-tint inline-flex items-center gap-[0.2rem] rounded-full font-medium whitespace-nowrap"
-                    :style="{ '--pill-c': b.color }"
-                >
-                    <span class="font-serif-math font-semibold text-[1.1em]">{{ b.icon }}</span>
-                    {{ b.label }}
-                </Badge>
-            </div>
-
-            <!-- Footer: stats -->
-            <div class="flex items-center justify-between px-3 pt-1.5 pb-2">
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex items-center gap-1 text-sm text-muted-foreground">
-                        <Eye :size="14" />
-                        <span class="font-mono">{{ entry.views }}</span>
-                    </span>
-                    <Button
-                        emphasis="quiet"
-                        size="sm"
-                        class="like-btn"
-                        :aria-pressed="isLiked"
-                        @click.stop="emit('like', entry.slug)"
-                    >
-                        <Heart :size="14" :fill="isLiked ? 'currentColor' : 'none'" />
-                        <span class="font-mono">{{ entry.likes }}</span>
-                    </Button>
-                </div>
-
-                <!-- Tier badge -->
-                <div v-if="entry.tier !== 'normal'" class="flex items-center justify-center w-6 h-6 rounded-full" :data-tier="entry.tier">
-                    <Crown v-if="entry.tier === 'featured'" :size="12" class="text-tier-featured" />
-                    <Bookmark v-else-if="entry.tier === 'saved'" :size="12" class="text-tier-saved" />
-                </div>
-            </div>
-
-            <!-- Admin overlay -->
-            <div v-if="adminMode" class="absolute top-1.5 right-1.5 flex gap-1 z-5" @click.stop>
-                <Button
-                    emphasis="primary"
-                    size="md" icon-only
-                    class="admin-overlay-btn text-tier-featured"
-                    title="Toggle featured"
-                    @click="emit('set-tier', entry.slug, entry.tier === 'featured' ? 'normal' : 'featured')"
-                >
-                    <Crown :size="14" />
-                </Button>
-                <Button
-                    emphasis="primary"
-                    size="md" icon-only
-                    class="admin-overlay-btn text-tier-saved"
-                    title="Toggle saved"
-                    @click="emit('set-tier', entry.slug, entry.tier === 'saved' ? 'normal' : 'saved')"
-                >
-                    <Bookmark :size="14" />
-                </Button>
-                <Button
-                    emphasis="primary"
-                    size="md" icon-only
-                    class="admin-overlay-btn text-delete"
-                    title="Delete"
-                    @click="emit('delete', entry.slug)"
-                >
-                    <Trash2 :size="14" />
-                </Button>
-            </div>
+        <div v-if="adminMode" class="card-raised absolute top-1.5 left-1.5 flex items-center justify-center rounded-md bg-background/70 p-1 backdrop-blur-sm">
+            <Checkbox
+                :model-value="selected ?? false"
+                :aria-label="`Select ${name}`"
+                class="h-4 w-4"
+                @update:model-value="(v) => emit('toggle-select', entry.slug, v === true)"
+            />
         </div>
-    </div>
+
+        <button type="button" class="card-open" :aria-label="`Open ${name}`" @click="emit('click')">
+            <span class="card-media">
+                <img
+                    v-if="!thumbBroken"
+                    :src="thumbnailUrl(entry.image_slug)"
+                    alt=""
+                    loading="lazy"
+                    @error="thumbBroken = true"
+                />
+                <span v-else class="font-serif-math text-2xl text-muted-foreground" aria-hidden="true">&Fscr;</span>
+            </span>
+            <span class="card-title font-serif-math">{{ name }}</span>
+        </button>
+
+        <div class="card-meta">
+            <span v-if="entry.title" class="truncate min-w-0">{{ entry.slug }}</span>
+            <time class="whitespace-nowrap shrink-0" :datetime="created.datetime" :title="created.absolute">{{ created.text }}</time>
+        </div>
+
+        <div v-if="basisLabels.length" class="flex flex-wrap gap-1">
+            <Badge
+                v-for="b in basisLabels"
+                :key="b.label"
+                variant="outline"
+                size="sm"
+                class="basis-tint inline-flex items-center gap-[0.2rem] font-medium whitespace-nowrap"
+                :style="{ '--pill-c': b.color }"
+            >
+                <span class="font-serif-math font-semibold text-[1.1em]" aria-hidden="true">{{ b.icon }}</span>
+                {{ b.label }}
+            </Badge>
+        </div>
+
+        <div class="card-stats">
+            <span class="inline-flex items-center gap-1">
+                <Eye :size="14" aria-hidden="true" />
+                <span class="tabular-nums">{{ entry.views }}</span>
+                <span class="sr-only">views</span>
+            </span>
+            <Button
+                emphasis="quiet"
+                size="sm"
+                class="like-btn card-raised"
+                :aria-pressed="isLiked"
+                aria-label="Like"
+                @click="emit('like', entry.slug)"
+            >
+                <Heart :size="14" :fill="isLiked ? 'currentColor' : 'none'" aria-hidden="true" />
+                <span class="tabular-nums">{{ entry.likes }}</span>
+            </Button>
+            <span v-if="entry.tier !== 'normal'" class="tier-mark ml-auto" :data-tier="entry.tier">
+                <Crown v-if="entry.tier === 'featured'" :size="14" aria-hidden="true" />
+                <Bookmark v-else-if="entry.tier === 'saved'" :size="14" aria-hidden="true" />
+                <span class="sr-only">{{ entry.tier }}</span>
+            </span>
+        </div>
+
+        <div v-if="adminMode" class="card-raised absolute top-1.5 right-1.5 flex gap-1">
+            <Button
+                emphasis="primary"
+                size="md" icon-only
+                class="admin-overlay-btn text-tier-featured"
+                title="Toggle featured"
+                @click="emit('set-tier', entry.slug, entry.tier === 'featured' ? 'normal' : 'featured')"
+            >
+                <Crown :size="14" />
+            </Button>
+            <Button
+                emphasis="primary"
+                size="md" icon-only
+                class="admin-overlay-btn text-tier-saved"
+                title="Toggle saved"
+                @click="emit('set-tier', entry.slug, entry.tier === 'saved' ? 'normal' : 'saved')"
+            >
+                <Bookmark :size="14" />
+            </Button>
+            <Button
+                emphasis="primary"
+                size="md" icon-only
+                class="admin-overlay-btn text-delete"
+                title="Delete"
+                @click="emit('delete', entry.slug)"
+            >
+                <Trash2 :size="14" />
+            </Button>
+        </div>
+    </Card>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
 
+/* X.F.W14U.gallery — UIA-F-98 ⊕ UIA-F-247: the card's content is laid out in
+   glass Card's own measures (`--card-pad`, `--card-gap` at `size="sm"`); the
+   corner, rim and cast are Card's. The bespoke lift-and-scale hover, the
+   cartoon offset stamp and the tier border/glow rules are deleted. Hover lifts
+   the cast one rung — glass's own `--card-cast-rung`, to the floating rung its
+   `:has(:focus-visible)` arm uses — never a transform. */
 .gallery-card {
-    box-shadow: var(--shadow-cartoon);
-    /* A.W3.d — bezier→`--ease-apple-spring` (closest canonical overshoot). */
-    transition:
-        transform 0.25s var(--ease-apple-spring),
-        box-shadow 0.2s var(--ease-standard),
-        border-color 0.2s var(--ease-standard);
-    /* J.W4 — content-visibility on the gallery grid item via glass-ui's
-       `.deferred-section` utility (the audit's unapplied consumer). The card is
-       an aspect-[4/3] thumbnail (~11rem at a ~15rem cell) + a meta footer, so the
-       never-painted estimate is ~17rem; `contain-intrinsic-size: auto …` caches
-       the real size after first paint (no scroll-jump). Off-screen cards skip
-       render — the CWV/scroll win. Floor: where content-visibility is absent the
-       card renders as before (inv-29). Measured delta is W6. */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--card-gap);
+    padding: var(--card-pad);
+    /* J.W4 — content-visibility via glass-ui's `.deferred-section` utility;
+       the never-painted estimate of one card. */
     --deferred-section-size: 17rem;
 }
 
-.gallery-card:hover {
-    transform: translateY(-4px) scale(1.02);
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
-    box-shadow: var(--shadow-cartoon-hover);
+@media (hover: hover) {
+    .gallery-card:hover {
+        --card-cast-rung: var(--glass-shadow-floating);
+    }
 }
 
-.gallery-card:active {
-    transform: scale(0.99);
-}
-
-/* A.W5.c — selected-for-batch state. The ring projects the focus token over
-   the card surface so the selection registers without competing with tier. */
-.gallery-card[data-selected] {
-    border-color: var(--ring);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 35%, transparent),
-        var(--shadow-cartoon);
-}
-
-/* Tier styling */
-.gallery-card[data-tier="featured"] {
-    border-color: var(--tier-featured);
-    box-shadow: 0 0 12px color-mix(in srgb, var(--tier-featured) 30%, transparent);
-}
-
+/* UIA-F-186: the tier rim is glass's accent at full strength (the element's
+   `--glass-accent` is the tier token); selection is the selected fill. */
+.gallery-card[data-tier="featured"],
 .gallery-card[data-tier="saved"] {
-    border-color: var(--tier-saved);
-    box-shadow: 0 0 8px color-mix(in srgb, var(--tier-saved) 20%, transparent);
+    --glass-accent-strength: 100%;
 }
 
-/* Image frame grid background */
-.card-image-frame {
-    background: linear-gradient(
-            color-mix(in srgb, var(--foreground) 4%, transparent) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            color-mix(in srgb, var(--foreground) 4%, transparent) 1px,
-            transparent 1px
-        ),
-        var(--muted);
-    background-size: 16px 16px, 16px 16px, auto;
+.gallery-card[data-selected] {
+    background-image: linear-gradient(
+        oklch(from var(--foreground) l c h / var(--fill-selected)),
+        oklch(from var(--foreground) l c h / var(--fill-selected))
+    );
 }
+
+/* The one open action, stretched over the card (the ::after); the controls
+   that sit above it are `.card-raised`. */
+.card-open {
+    display: flex;
+    flex-direction: column;
+    gap: var(--card-gap);
+    text-align: start;
+    border-radius: var(--radius-media);
+    cursor: pointer;
+}
+.card-open::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-card);
+}
+.card-open:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: 2px;
+}
+.card-raised {
+    z-index: 1;
+}
+
+.card-media {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--radius-media);
+    background: var(--muted);
+}
+.card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card-meta,
+.card-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+}
+.card-meta {
+    justify-content: space-between;
+}
+.card-stats {
+    gap: 0.75rem;
+}
+
+.tier-mark[data-tier="featured"] { color: var(--tier-featured); }
+.tier-mark[data-tier="saved"] { color: var(--tier-saved); }
 
 /* A.W2.e — admin-overlay button geometry. The base `<Button variant="glass"
    size="icon">` ships an `h-10 w-10` square with the canonical focus-ring /
@@ -281,10 +334,12 @@ const created = useTimeAgo(() => props.entry.created_at);
    `.like-btn` hook narrows the chassis (h-auto, p-0, gap-1) so the stat
    counter row reads as a stat counter, not a chunky pill. */
 .like-btn {
-    height: auto;
-    padding: 0;
+    position: relative;
+    min-height: 1.5rem;
+    padding: 0.25rem 0.375rem;
+    margin-inline-start: -0.375rem;
     gap: 0.25rem;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: var(--muted-foreground);
 }
 /* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).

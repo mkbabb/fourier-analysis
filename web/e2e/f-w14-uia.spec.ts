@@ -30,7 +30,7 @@ test.describe("UIA-F-1 — a featured entry renders the strip, not a crash", () 
         await expect(strip).toBeVisible();
         await expect(strip.getByRole("heading", { name: "Featured" })).toBeVisible();
         await expect(strip.getByRole("group", { name: FEATURED.title })).toBeVisible();
-        await expect(page.getByText("1 loaded")).toBeVisible();
+        await expect(page.getByRole("button", { name: `Open ${ENTRY.title}` })).toBeVisible();
         expect(errors.filter((m) => /useCarousel/.test(m))).toEqual([]);
     });
 });
@@ -475,11 +475,11 @@ test.describe("UIA-F-48 — the Drafts card sits inside the column gutter", () =
         await page.waitForTimeout(800);
         await page.goto("/gallery");
         await page.getByRole("tab", { name: "Drafts" }).click();
-        const header = page.getByRole("button", { name: /My Drafts/ });
+        const header = page.getByRole("list", { name: "Drafts" });
         await expect(header).toBeVisible();
-        const m = await header.evaluate((btn) => {
-            const card = btn.closest('[data-slot="collapsible"], .disclosure') ?? btn.parentElement!;
-            const col = card.parentElement!.parentElement!;
+        const m = await header.evaluate((list) => {
+            const card = list.querySelector("article")!;
+            const col = list.parentElement!;
             const r = card.getBoundingClientRect();
             const c = col.getBoundingClientRect();
             return { right: r.right, colRight: c.right, vw: innerWidth, docScroll: document.documentElement.scrollWidth };
@@ -517,7 +517,7 @@ test.describe("UIA-F-45 — focus opens inside the card modal and stays there", 
     test("initial focus is the dialog's title and Tab never reaches the page behind", async ({ page }) => {
         await stubGallery(page, [ENTRY]);
         await page.goto("/gallery");
-        await page.getByRole("button", { name: `Open ${ENTRY.image_slug}` }).first().click();
+        await page.getByRole("button", { name: `Open ${ENTRY.title}` }).first().click();
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
         await expect.poll(() => dialog.evaluate((d) => d.contains(document.activeElement))).toBe(true);
@@ -544,7 +544,7 @@ test.describe("UIA-F-40 — the admin grid does not wait on admin stats", () => 
             if (new URL(r.url()).pathname === "/api/visualizations" && !gridAt) gridAt = Date.now() - t0;
         });
         await page.goto(`/gallery?admin=${ADMIN_TOKEN}`);
-        await expect(page.getByRole("button", { name: `Open ${ENTRY.image_slug}` }).first()).toBeVisible({ timeout: 2500 });
+        await expect(page.getByRole("button", { name: `Open ${ENTRY.title}` }).first()).toBeVisible({ timeout: 2500 });
         expect(gridAt, "the grid request is not queued behind stats").toBeGreaterThan(0);
         expect(statsAt === 0 || gridAt < statsAt + 3000).toBe(true);
     });
@@ -591,9 +591,8 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
             .toBe(true);
         await page.goto("/gallery");
         await page.getByRole("tab", { name: "Drafts" }).click();
-        const header = page.getByRole("button", { name: /My Drafts/ });
+        const header = page.getByRole("list", { name: "Drafts" });
         await expect(header).toBeVisible();
-        if ((await header.getAttribute("aria-expanded")) !== "true") await header.click();
         const publish = page.getByRole("button", { name: /^Publish/ });
         const before = await publish.count();
         expect(before).toBeGreaterThan(0);

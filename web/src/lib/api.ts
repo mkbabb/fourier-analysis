@@ -5,6 +5,7 @@ import type {
     EpicycleData,
     ImageMeta,
     GalleryTier,
+    GalleryTierFilter,
     SessionResponse,
     UserInfo,
     AdminStats,
@@ -470,18 +471,30 @@ export async function getVisualization(
  * GET /api/visualizations — cursor-paginated list (CRUD-CONTRACT §6). The
  * anonymous/default view is `visibility=public`; `owner: "me"` (with a
  * session) returns the caller's rows in all three visibility states.
+ *
+ * X.F.W14U.gallery — UIA-F-39: the gallery's three narrowing controls reach
+ * the server (`.srv`, 798c98f). `q` is a case-insensitive substring of the
+ * title, description or a tag; `tier` is `featured|saved|normal` (`all` is the
+ * absence of the parameter); `basis` is one `active_bases` key. Every page of a
+ * listing resends the same filters beside its `cursor`.
  */
 export async function listVisualizations(params: {
     limit?: number;
     sort?: string;
     cursor?: string;
     owner?: string;
+    q?: string;
+    tier?: GalleryTierFilter;
+    basis?: string;
 }): Promise<VisualizationListResponse> {
     const qs = new URLSearchParams();
     if (params.limit != null) qs.set("limit", String(params.limit));
     if (params.sort) qs.set("sort", params.sort);
     if (params.cursor) qs.set("cursor", params.cursor);
     if (params.owner) qs.set("owner", params.owner);
+    if (params.q) qs.set("q", params.q);
+    if (params.tier && params.tier !== "all") qs.set("tier", params.tier);
+    if (params.basis) qs.set("basis", params.basis);
     const query = qs.toString();
     return apiFetch<VisualizationListResponse>(
         `/api/visualizations${query ? `?${query}` : ""}`,
@@ -522,6 +535,37 @@ export async function deleteVisualization(
         `/api/visualizations/${slug}`,
         "deleteVisualization",
         { method: "DELETE", headers },
+    );
+}
+
+/** The like state of one visualization for the session user (UIA-F-46). */
+export interface VisualizationLike {
+    slug: string;
+    liked: boolean;
+    likes: number;
+}
+
+/**
+ * PUT /api/visualizations/{slug}/like — set the session user's like state
+ * (`.srv`, 798c98f). Idempotent per user: the counter moves only when the
+ * state changes, so a repeat is a no-op and the count never drops below 0.
+ */
+export async function setVisualizationLike(
+    slug: string,
+    liked: boolean,
+): Promise<VisualizationLike> {
+    return apiFetch<VisualizationLike>(
+        `/api/visualizations/${slug}/like`,
+        `setVisualizationLike:${slug}`,
+        { method: "PUT", body: { liked } },
+    );
+}
+
+/** GET /api/visualizations/{slug}/like — the session user's like state. */
+export async function getVisualizationLike(slug: string): Promise<VisualizationLike> {
+    return apiFetch<VisualizationLike>(
+        `/api/visualizations/${slug}/like`,
+        `getVisualizationLike:${slug}`,
     );
 }
 

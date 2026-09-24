@@ -69,7 +69,7 @@ const emit = defineEmits<{
              holds the header, so the pager reads the deck it pages. -->
         <Carousel aria-labelledby="featured-heading" projection="none">
             <div class="featured-header">
-                <Crown :size="16" class="text-amber-400" />
+                <Crown :size="16" class="text-tier-featured" aria-hidden="true" />
                 <!-- The strip's name was a styled `<span>`; it is the region's
                      heading now, and the carousel is labelled by it. -->
                 <h2 id="featured-heading" class="font-serif-math text-sm font-semibold tracking-tight">
@@ -138,8 +138,11 @@ const emit = defineEmits<{
     padding-bottom: 0.5rem;
 }
 
+/* X.F.W14U.gallery (UIA-F-247, usage of space): the member measure is the
+   item's flex BASIS. glass's `.carousel-item` is `flex: 0 0 100%` (one member
+   per page), which made `width: 16rem` dead — a single featured card spanned
+   the whole column at a 4:3 aspect. */
 .featured-card-wrapper {
-    flex-shrink: 0;
-    width: 16rem;
+    flex: 0 0 16rem;
 }
 </style>

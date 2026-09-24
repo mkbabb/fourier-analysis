@@ -98,8 +98,19 @@ test.describe("UIA-F-21 — paper search labels typeset their math", () => {
 test.describe("UIA-F-46 — Like is a toggle (consumer half; the persisting endpoint routes to the server)", () => {
     test("a second press un-likes: the count returns and aria-pressed clears, in the modal and on the card", async ({ page }) => {
         await stubGallery(page, [ENTRY]);
+        // X.F.W14U.gallery (UIA-F-46): the like persists through
+        // PUT /api/visualizations/{slug}/like (`.srv`); the stub answers it.
+        const like0 = { liked: false, likes: ENTRY.likes };
+        await page.route(`**/api/visualizations/${ENTRY.slug}/like`, async (r) => {
+            if (r.request().method() === "PUT") {
+                const want = (r.request().postDataJSON() as { liked: boolean }).liked;
+                if (want !== like0.liked) like0.likes += want ? 1 : -1;
+                like0.liked = want;
+            }
+            await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ slug: ENTRY.slug, ...like0 }) });
+        });
         await page.goto("/gallery");
-        await page.getByRole("button", { name: `Open ${ENTRY.image_slug}` }).first().click();
+        await page.getByRole("button", { name: `Open ${ENTRY.title}` }).first().click();
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
         const like = dialog.locator("button[aria-pressed]").first();

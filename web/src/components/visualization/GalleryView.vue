@@ -63,9 +63,9 @@ const selectedSlug = ref<string | null>(null);
 const selectedEntry = computed<Visualization | null>(
     () => gallery.entries.find((e) => e.slug === selectedSlug.value) ?? null,
 );
-const likedHashes = ref(new Set<string>());
 const viewedHashes = ref(new Set<string>());
-const publishing = ref(false);
+/** UIA-F-103: the ONE draft being published; the others stay live. */
+const publishingSlug = ref<string | null>(null);
 
 const tabOptions = computed(() => {
     const tabs: SegmentedTabOption<GalleryTab>[] = [
@@ -121,14 +121,15 @@ watch(() => gallery.searchQuery, () => {
     searchTimer = setTimeout(() => gallery.resetAndFetch(), 300);
 });
 
-// Clear drafts and switch tab on logout
-watch(isLoggedIn, (loggedIn) => {
-    if (!loggedIn) {
-        workspace.drafts = [];
-        if (activeTab.value === "drafts") activeTab.value = "gallery";
-    } else {
-        workspace.refreshDrafts();
-    }
+// X.F.W14U.gallery — UIA-F-190: ONE rule for the local drafts. They live in
+// this browser (IndexedDB), and a fresh load lists them logged in or out; an
+// auth change now reloads them the same way the mount does. Logging out used to
+// empty the list and throw the viewer off the Drafts tab, so the same drafts
+// were visible or not depending on how the page had been reached. The like
+// state is the session user's, so it goes with the session.
+watch(isLoggedIn, () => {
+    gallery.likedSlugs = new Set();
+    workspace.refreshDrafts();
 });
 
 // Immediate refetch on filter/sort change
@@ -139,18 +140,28 @@ watch(
 
 function openModal(entry: Visualization) {
     selectedSlug.value = entry.slug;
+    gallery.readLike(entry.slug);
     if (!viewedHashes.value.has(entry.slug)) {
         viewedHashes.value.add(entry.slug);
         gallery.recordView(entry.slug);
     }
 }
 
-async function handleLike(hash: string) {
-    const result = await gallery.like(hash, !likedHashes.value.has(hash));
-    if (!result) return;
-    const s = new Set(likedHashes.value);
-    result.liked ? s.add(hash) : s.delete(hash);
-    likedHashes.value = s;
+/**
+ * UIA-F-184: a filtered listing that comes back empty says so and offers the
+ * way back; "No visualizations yet." is only true of an unfiltered gallery.
+ */
+const isFiltered = computed(
+    () =>
+        gallery.searchQuery.trim() !== "" ||
+        gallery.tierFilter !== "all" ||
+        gallery.basisFilter !== "",
+);
+
+function clearFilters() {
+    gallery.searchQuery = "";
+    gallery.tierFilter = "all";
+    gallery.basisFilter = "";
 }
 
 // X.F.W3 repair 1 (g15, leg 3) — the inline union retires onto `GalleryTier`,
@@ -294,15 +305,14 @@ async function performConfirmed() {
 watch(() => gallery.adminMode, (on) => { if (!on) clearGallerySelection(); });
 watch(activeTab, (tab) => { if (tab !== "gallery") clearGallerySelection(); });
 
+// UIA-F-103 ⊕ UIA-F-248: the store owns the publish's one error channel; this
+// host only marks which draft is busy and reloads the list afterwards.
 async function handlePublishDraft(draft: WorkspaceDraft) {
-    publishing.value = true;
+    publishingSlug.value = draft.imageSlug;
     try {
-        await gallery.publishDraft(draft);
-        await workspace.refreshDrafts();
-    } catch (e: any) {
-        toast(e.message ?? "Publish failed", "error");
+        if (await gallery.publishDraft(draft)) await workspace.refreshDrafts();
     } finally {
-        publishing.value = false;
+        publishingSlug.value = null;
     }
 }
 </script>
@@ -350,10 +360,10 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 v-if="featuredEntries.length"
                 :entries="featuredEntries"
                 :admin-mode="gallery.adminMode"
-                :liked-hashes="likedHashes"
+                :liked-hashes="gallery.likedSlugs"
                 :selected-hashes="selectedHashes"
                 @card-click="openModal"
-                @like="handleLike"
+                @like="gallery.toggleLike"
                 @set-tier="handleSetTier"
                 @delete="handleDelete"
                 @toggle-select="toggleEntrySelected"
@@ -369,8 +379,16 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 v-if="!gallery.entries.length && !gallery.loading"
                 class="flex flex-col items-center justify-center flex-1 gap-4 text-muted-foreground py-6"
             >
-                <div class="flex flex-col items-center gap-3">
-                    <Layers class="h-12 w-12 opacity-30" />
+                <div v-if="isFiltered" class="flex flex-col items-center gap-3" role="status">
+                    <Layers class="h-12 w-12 opacity-30" aria-hidden="true" />
+                    <p class="text-base font-medium">
+                        <template v-if="gallery.searchQuery.trim()">No visualizations match “{{ gallery.searchQuery.trim() }}”.</template>
+                        <template v-else>No visualizations match these filters.</template>
+                    </p>
+                    <Button emphasis="secondary" @click="clearFilters">Clear search and filters</Button>
+                </div>
+                <div v-else class="flex flex-col items-center gap-3">
+                    <Layers class="h-12 w-12 opacity-30" aria-hidden="true" />
                     <p class="text-base font-medium">No visualizations yet.</p>
                     <Button emphasis="secondary" @click="router.push('/visualize')">
                         Open the Visualizer →
@@ -385,11 +403,11 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 :loading="gallery.loading || gallery.loadingMore"
                 :has-more="gallery.hasMore"
                 :admin-mode="gallery.adminMode"
-                :liked-hashes="likedHashes"
+                :liked-hashes="gallery.likedSlugs"
                 :selected-hashes="selectedHashes"
                 @load-more="gallery.fetchNextPage()"
                 @card-click="openModal"
-                @like="handleLike"
+                @like="gallery.toggleLike"
                 @set-tier="handleSetTier"
                 @delete="handleDelete"
                 @toggle-select="toggleEntrySelected"
@@ -446,16 +464,19 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 v-if="!unpublishedDrafts.length"
                 class="flex flex-col items-center justify-center flex-1 gap-3 text-muted-foreground"
             >
-                <Layers class="h-12 w-12 opacity-30" />
+                <Layers class="h-12 w-12 opacity-30" aria-hidden="true" />
                 <p class="text-base font-medium">No drafts yet.</p>
-                <p class="text-sm opacity-70">Upload an image in the Visualizer to create a draft.</p>
+                <p class="text-sm">Upload an image in the Visualizer to create a draft.</p>
+                <!-- UIA-F-189: the empty Drafts state carries its action. -->
+                <Button emphasis="secondary" @click="router.push('/visualize')">
+                    Open the Visualizer →
+                </Button>
             </div>
             <GalleryDraftsSection
                 v-else
                 :drafts="unpublishedDrafts"
-                :publishing="publishing"
+                :publishing-slug="publishingSlug"
                 @publish="handlePublishDraft"
-                @open="router.push(`/w/${$event}`)"
             />
         </template>
 
@@ -478,10 +499,10 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
             v-if="selectedEntry"
             :entry="selectedEntry"
             :admin-mode="gallery.adminMode"
-            :is-liked="likedHashes.has(selectedEntry.slug)"
+            :is-liked="gallery.likedSlugs.has(selectedEntry.slug)"
             @close="selectedSlug = null"
-            @like="handleLike"
-            @open-visualizer="(slug) => { selectedSlug = null; router.push(`/w/${slug}`); }"
+            @like="gallery.toggleLike"
+            @open-visualizer="(slug) => { selectedSlug = null; router.push(`/v/${slug}`); }"
             @set-tier="handleSetTier"
         />
 

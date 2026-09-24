@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, toRaw } from "vue";
-import type { GalleryTier, AdminStats, WorkspaceDraft } from "@/lib/types";
+import type { GalleryTier, GalleryTierFilter, GallerySort, AdminStats, WorkspaceDraft } from "@/lib/types";
 import type { Visibility, Visualization } from "@/lib/api";
 import * as api from "@/lib/api";
 import { processInChunks } from "@/lib/scheduler";
@@ -31,13 +31,20 @@ export const useGalleryStore = defineStore("gallery", () => {
     // State
     const entries = ref<Visualization[]>([]);
     const loading = ref(false);
-    const sort = ref<"newest" | "views" | "likes">("newest");
-    const tierFilter = ref<"all" | "featured" | "saved" | "normal">("all");
+    const sort = ref<GallerySort>("newest");
+    const tierFilter = ref<GalleryTierFilter>("all");
     // The 3-state visibility filter (CRUD-CONTRACT §4). Default `public` is the
     // anonymous gallery view; `me` lists the caller's own rows in all states.
     const visibilityFilter = ref<Visibility | "public" | "me">("public");
     const searchQuery = ref("");
+    /** One `active_bases` key (`lib/basis.ts` `BasisKey`), or "" for any. */
     const basisFilter = ref("");
+    /**
+     * UIA-F-46: the slugs the session user likes, as the server last answered
+     * (`PUT`/`GET /api/visualizations/{slug}/like`). The heart's `aria-pressed`
+     * reads this one set on the card and in the modal.
+     */
+    const likedSlugs = ref(new Set<string>());
     const adminMode = ref(false);
     const adminStats = ref<AdminStats | null>(null);
     const adminStatsLoading = ref(false);
@@ -84,18 +91,38 @@ export const useGalleryStore = defineStore("gallery", () => {
         return visibilityFilter.value === "me" ? "me" : undefined;
     }
 
+    /**
+     * X.F.W14U.gallery — UIA-F-39 (BROKEN, consumer half): the query every
+     * listing sends. Search, tier and basis used to stop at the store — the
+     * watchers refetched with `sort` and `owner` alone, so no control narrowed
+     * anything. The first page and every later page send the same filters.
+     */
+    function listQuery() {
+        return {
+            limit: 20,
+            sort: sort.value,
+            owner: ownerParam(),
+            q: searchQuery.value.trim() || undefined,
+            tier: tierFilter.value,
+            basis: basisFilter.value || undefined,
+        };
+    }
+
+    /** The newest listing wins: an older response never lands after it. */
+    let listRun = 0;
+
     // Actions
 
     async function fetchNextPage() {
         if (!hasMore.value || loadingMore.value) return;
         loadingMore.value = true;
         try {
+            const run = listRun;
             const result = await api.listVisualizations({
-                limit: 20,
-                sort: sort.value,
+                ...listQuery(),
                 cursor: nextCursor.value || undefined,
-                owner: ownerParam(),
             });
+            if (run !== listRun) return;
             // J.W3 — accumulate the page in main-thread-yielding chunks so a
             // long infinite-scroll never monopolises the thread (the gallery is
             // the named consumer of the scheduler.yield floor; inv-15/inv-29).
@@ -115,19 +142,17 @@ export const useGalleryStore = defineStore("gallery", () => {
         nextCursor.value = null;
         hasMore.value = true;
         loading.value = true;
+        const run = ++listRun;
         try {
-            const result = await api.listVisualizations({
-                limit: 20,
-                sort: sort.value,
-                owner: ownerParam(),
-            });
+            const result = await api.listVisualizations(listQuery());
+            if (run !== listRun) return;
             entries.value = result.items.filter((v) => v.deleted_at == null);
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
             if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
         } finally {
-            loading.value = false;
+            if (run === listRun) loading.value = false;
         }
     }
 
@@ -275,23 +300,45 @@ export const useGalleryStore = defineStore("gallery", () => {
         }
     }
 
+    function markLiked(slug: string, liked: boolean) {
+        const next = new Set(likedSlugs.value);
+        if (liked) next.add(slug);
+        else next.delete(slug);
+        likedSlugs.value = next;
+    }
+
+    function applyLike(result: api.VisualizationLike) {
+        markLiked(result.slug, result.liked);
+        const idx = entries.value.findIndex((e) => entrySlug(e) === result.slug);
+        if (idx !== -1) entries.value[idx] = { ...entries.value[idx], likes: result.likes };
+    }
+
     /**
-     * UIA-F-46 — Like is a TOGGLE: `liked` is the state the press asks for, and
-     * the counter moves by one in that direction. It used to hard-code
-     * `liked = true` and `+1`, so every press of a pressed heart added another
-     * like (11 → 12 → 13). No like endpoint exists under the converged CRUD
-     * shape, so the count is this session's optimistic reading until the
-     * server half (routed) persists it.
+     * X.F.W14U.gallery — UIA-F-46 (BROKEN, consumer half): Like is a persisted
+     * TOGGLE. The press asks for the opposite of the state the server last
+     * answered, through `PUT /api/visualizations/{slug}/like` (`.srv`), and the
+     * heart and the count take the server's answer — never a local +1. A like
+     * needs a session user, so the first like mints the anonymous session
+     * (`ensureUser`, as publishing does).
      */
-    async function like(
-        slug: string,
-        liked: boolean,
-    ): Promise<{ liked: boolean; likes: number } | null> {
-        const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
-        if (idx === -1) return null;
-        const likes = Math.max(0, (entries.value[idx].likes ?? 0) + (liked ? 1 : -1));
-        entries.value[idx] = { ...entries.value[idx], likes };
-        return { liked, likes };
+    async function toggleLike(slug: string) {
+        try {
+            await useAuthStore().ensureUser();
+            applyLike(await api.setVisualizationLike(slug, !likedSlugs.value.has(slug)));
+        } catch (e: any) {
+            if (!api.isAbortError(e)) toast(problemMessage(e, "Could not save the like"), "error");
+        }
+    }
+
+    /** Seed one visualization's like state after a reload (logged in only). */
+    async function readLike(slug: string) {
+        if (!useAuthStore().isLoggedIn) return;
+        try {
+            applyLike(await api.getVisualizationLike(slug));
+        } catch {
+            // The heart stays unpressed: reading the state is advisory, and a
+            // failed read leaves the press itself (the PUT) authoritative.
+        }
     }
 
     async function recordView(slug: string) {
@@ -330,11 +377,22 @@ export const useGalleryStore = defineStore("gallery", () => {
         }
     }
 
-    async function publishDraft(draft: WorkspaceDraft) {
-        if (!draft.contour) throw new Error("Draft has no contour");
+    /**
+     * X.F.W14U.gallery — UIA-F-248: the toast names the PIECE that was
+     * published (the new visualization's slug), not the session user it was
+     * published as; and the refetch that follows is outside the publish's
+     * error channel, so a failed refresh reads as a failed load (its own
+     * toast), never as "Publish failed" after "Published!".
+     * UIA-F-190: a draft without a contour is not publishable, and the Drafts
+     * card says so before the press; this guard is the contract's floor.
+     */
+    async function publishDraft(draft: WorkspaceDraft): Promise<boolean> {
+        if (!draft.contour) {
+            toast("This draft has no contour to publish yet", "error");
+            return false;
+        }
         try {
-            const auth = useAuthStore();
-            const slug = await auth.ensureUser();
+            await useAuthStore().ensureUser();
             // Create the visualization directly at `public` visibility — the
             // converged entity collapses the snapshot→gallery two-step into a
             // single POST (CRUD-CONTRACT §1). `image_slug` / `contour_hash`
@@ -357,11 +415,13 @@ export const useGalleryStore = defineStore("gallery", () => {
             // with Publish enabled and could be published again and again.
             const raw = toRaw(draft);
             await saveDraft({ ...raw, savedSnapshots: [...(raw.savedSnapshots ?? []), data.slug] });
-            toast("Published!", "success", { slug });
-            await resetAndFetch();
+            toast("Published!", "success", { slug: data.slug });
         } catch (e: any) {
-            toast(e.message ?? "Publish failed", "error");
+            toast(problemMessage(e, "Publish failed"), "error");
+            return false;
         }
+        await resetAndFetch();
+        return true;
     }
 
     return {
@@ -390,7 +450,9 @@ export const useGalleryStore = defineStore("gallery", () => {
         deleteEntry,
         softDelete,
         restore,
-        like,
+        likedSlugs,
+        toggleLike,
+        readLike,
         recordView,
         publish,
         publishDraft,

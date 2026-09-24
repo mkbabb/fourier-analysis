@@ -77,7 +77,7 @@ test.describe("Gallery UX", () => {
         await expect(
             page.getByRole("search", { name: "Gallery search and filters" }),
         ).toBeVisible();
-        await expect(page.getByRole("searchbox", { name: "Search gallery by slug" })).toBeVisible();
+        await expect(page.getByRole("searchbox", { name: "Search gallery" })).toBeVisible();
     });
 
     test("switching to drafts tab shows drafts section", async ({ page }) => {
@@ -93,7 +93,7 @@ test.describe("Gallery UX", () => {
 
         // Should show either drafts or the empty state ("No drafts yet." copy
         // from GalleryView's drafts-tab empty state).
-        const draftsContent = page.getByText("No drafts yet").or(page.locator(".draft-item"));
+        const draftsContent = page.getByText("No drafts yet").or(page.locator(".draft-card"));
         await expect(draftsContent.first()).toBeVisible({ timeout: 15_000 });
     });
 
@@ -108,7 +108,10 @@ test.describe("Gallery UX", () => {
         // precondition and is asserted as one, by its accessible name rather
         // than by `.filter-toggle`, so a class rename does not silently
         // re-vacuate this.
-        const filterToggle = page.getByRole("button", { name: "Filters and sorting" });
+        // X.F.W14U.gallery (UIA-F-97): the drawer is a modal glass Popover, so
+        // while it is open the page behind it — the trigger included — is
+        // inert (aria-hidden); the trigger is read through that.
+        const filterToggle = page.getByRole("button", { name: "Filters and sorting", includeHidden: true });
         await expect(filterToggle).toBeVisible({ timeout: 30_000 });
 
         // It is a disclosure: `aria-expanded` is its contract and the drawer's
@@ -157,7 +160,7 @@ test.describe("Gallery UX", () => {
         // `GalleryCard` is a keyboard-accessible `role="button"` named
         // `Open ${entry.image_slug}` (D.W4.c). That name is the card's own
         // contract, so this does not depend on a layout class.
-        const card = page.getByRole("button", { name: `Open ${ENTRY.image_slug}` });
+        const card = page.getByRole("button", { name: `Open ${ENTRY.title}` });
         await expect(card).toBeVisible({ timeout: 30_000 });
         await card.click();
 
@@ -166,7 +169,7 @@ test.describe("Gallery UX", () => {
         // NAMED, so the name is the assertion — not the box.
         const modal = page.getByRole("dialog");
         await expect(modal).toBeVisible({ timeout: 10_000 });
-        await expect(modal).toHaveAccessibleName(ENTRY.image_slug);
+        await expect(modal).toHaveAccessibleName(ENTRY.title);
 
         // The modal's terminal affordance, which is also the checkpoint surface
         // `G-F9-23` item 5 (GCM-22's `p-0` insets) needs opened.

@@ -1,38 +1,41 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
+import { RouterLink } from "vue-router";
 import type { WorkspaceDraft } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
-import { normalizeBasisKey } from "@/lib/basis";
 import { useRelativeTime } from "@/lib/time";
-import { basisDisplay } from "../lib/basis-display";
-import { ChevronDown, Upload } from "@lucide/vue";
+import { basisChips } from "../lib/basis-display";
+import { Upload } from "@lucide/vue";
+import { Badge } from "@mkbabb/glass-ui/badge";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Metric } from "@mkbabb/glass-ui/metric";
-import {
-    Collapsible,
-    CollapsibleTrigger,
-    CollapsibleContent,
-} from "@mkbabb/glass-ui/collapsible";
+import { Card } from "@mkbabb/glass-ui/card";
 
+/**
+ * X.F.W14U.gallery — the Drafts tab speaks the Gallery's card grammar.
+ *
+ * UIA-F-101: the container was a hand-rolled 10 px box with a literal border
+ * width and alpha; every draft is now a glass Card (`--radius-card`).
+ * UIA-F-189: the "My Drafts" disclosure repeated the tab it sat in, and
+ * collapsing it left an empty page — it is gone; drafts render as cards with a
+ * Draft badge, a thumbnail at the gallery's aspect and a fallback glyph when
+ * the thumbnail fails (a broken image painted its alt text).
+ * UIA-F-102: each card has ONE focusable primary action, a link to its
+ * workspace (`/w/<imageSlug>`); Publish stays secondary.
+ * UIA-F-103: only the draft being published is busy (glass Button `loading`:
+ * aria-busy, still focusable); the others stay live, and the consumer's
+ * colour class that pinned the disabled ink to the idle ink is gone.
+ * UIA-F-190: a draft without a contour cannot be published, and says why.
+ * UIA-F-248: hover lifts the card's cast one rung (glass's `--card-cast-rung`).
+ */
 const props = defineProps<{
     drafts: WorkspaceDraft[];
-    publishing: boolean;
+    /** The imageSlug of the draft being published, if any. */
+    publishingSlug: string | null;
 }>();
 
 const emit = defineEmits<{
     publish: [draft: WorkspaceDraft];
-    open: [imageSlug: string];
 }>();
-
-/**
- * X.F.W3 `.d` — `fr-GalleryDraftsSection M-2`: "THE CURE IS THE PRIMITIVE,
- * NEVER THE WRAPPER."
- *
- * The state is spelled OPEN rather than COLLAPSED because that is the
- * primitive's own axis (`v-model:open`), and a disclosure whose local boolean
- * runs opposite to its chassis is how the two drift apart again.
- */
-const open = ref(true);
 
 const sortedDrafts = computed(() =>
     props.drafts
@@ -40,118 +43,136 @@ const sortedDrafts = computed(() =>
         .sort((a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? "")),
 );
 
-/**
- * X.F.W3 repair 1 (g15, legs 1 and 2) — the two domains this file re-authored
- * retire onto the units the wave created for them.
- *
- * The local relative-time helper was one of FIVE divergent copies in two
- * dialects, and `lib/time.ts` is now their one home. This copy's
- * dialect disagreed with the admin one about the sub-minute floor, so the same
- * three-second-old row read "just now" here and "0m ago" in the panel beside
- * it — and like every copy it sampled `Date.now()` DURING RENDER, so the string
- * froze at whatever it said when the component last patched, on a surface whose
- * whole content is "how long ago". `useRelativeTime` is the LIST form of the
- * one clock: a `v-for` cannot call a composable per row, so the shared ticking
- * clock is taken once here and applied per row. It also brings the cap, the
- * negative guard and the NaN guard this copy had none of.
- */
+/** The one shared ticking clock, applied per row (`lib/time.ts`). */
 const relativeTimeOf = useRelativeTime();
 
-function getBasisLabel(item: WorkspaceDraft): string {
-    const bases = item.animationSettings?.active_bases ?? [];
-    if (bases.length === 0) return "";
-    return bases
-        .map((b) => basisDisplay[normalizeBasisKey(b)]?.label ?? b)
-        .join(", ");
+/** The card's basis chips, in the gallery's one vocabulary (UIA-F-187). */
+function basisOf(item: WorkspaceDraft) {
+    return basisChips(item.animationSettings?.active_bases);
+}
+
+const brokenThumbs = ref(new Set<string>());
+function markBroken(slug: string) {
+    brokenThumbs.value = new Set(brokenThumbs.value).add(slug);
 }
 </script>
 
 <template>
-    <!-- X.F.W3 `.d` — `fr-GalleryDraftsSection M-2`, and the cure is stated as
-         the row states it: THE CURE IS THE PRIMITIVE, NEVER THE WRAPPER.
-
-         What was here: a hand-rolled disclosure — a `<Button>` toggling a local
-         boolean over a bare `v-if`, with a header span BYTE-IDENTICAL to
-         `ui/CollapsibleSection.vue:39` — while `./collapsible` is exported at
-         the pin and ships the whole contract this hand-roll skipped:
-         `aria-expanded`, `aria-controls`, the `data-state` the chevron can key
-         on, and a body that is addressable by the attribute it announces.
-
-         THE ROUTE IS THE PRIMITIVE AND NOT THE LOCAL WRAPPER, and `K-6` is why:
-         `ui/CollapsibleSection.vue` is banked-defective across exactly the axes
-         adopting it would buy — the `B-1` hang at the uplift target, `M-2`'s
-         `unmountOnHide` teardown, `M-3`'s ungated `scrollIntoView`, `M-6`'s
-         absent controlled open. A new consumer is never routed through it.
-
-         `v-if` becomes `CollapsibleContent`: the rows still leave the DOM when
-         closed (reka's `Presence` unmounts), so nothing about this list's cost
-         changes — what changes is that the trigger and the body are now WIRED
-         to each other instead of merely adjacent. -->
-    <!-- X.F.W14.u — UIA-F-48 (consumer half): the gutter is the wrapper's
-         padding. `mx-4` on the Collapsible, whose producer disclosure sets
-         `inline-size: 100%`, pushed the card 16 px past the column (right
-         border, chevron and count clipped). The producer's `inline-size: 100%`
-         on a block is the glass half, routed under O-59. -->
-    <div v-if="sortedDrafts.length > 0" class="px-4">
-        <Collapsible
-            v-model:open="open"
-            class="rounded-lg border-[1.5px] border-foreground/8 overflow-hidden"
-        >
-            <CollapsibleTrigger as-child>
-                <Button
-                    emphasis="quiet"
-                    class="drafts-header w-full justify-start gap-1.5 py-2 px-3 bg-muted/30 text-foreground"
-                >
-                    <span class="font-serif-math text-sm font-semibold tracking-tight">My Drafts</span>
-                    <Metric :value="sortedDrafts.length" size="sm" />
-                    <ChevronDown
-                        :size="16"
-                        class="ml-auto text-muted-foreground transition-transform duration-200 ease-in-out"
-                        :class="{ '-rotate-90': !open }"
-                    />
-                </Button>
-            </CollapsibleTrigger>
-
-            <CollapsibleContent class="flex flex-col">
-                <div
-                    v-for="draft in sortedDrafts"
-                    :key="draft.imageSlug"
-                    class="draft-item flex items-center gap-2.5 py-2 px-3 border-t border-foreground/5 transition-colors duration-150 hover:bg-foreground/[0.02]"
-                >
-                    <div
-                        class="w-12 h-12 rounded-md overflow-hidden shrink-0 cursor-pointer bg-muted"
-                        @click="emit('open', draft.imageSlug)"
-                    >
+    <ul class="drafts-grid px-4" aria-label="Drafts">
+        <li v-for="draft in sortedDrafts" :key="draft.imageSlug">
+            <Card as="article" size="sm" shadow class="draft-card">
+                <RouterLink :to="`/w/${draft.imageSlug}`" class="draft-open">
+                    <span class="draft-media">
                         <img
+                            v-if="!brokenThumbs.has(draft.imageSlug)"
                             :src="thumbnailUrl(draft.imageSlug)"
-                            :alt="draft.imageSlug"
-                            class="w-full h-full object-cover"
+                            alt=""
                             loading="lazy"
+                            @error="markBroken(draft.imageSlug)"
                         />
-                    </div>
-                    <div class="flex-1 min-w-0 cursor-pointer flex flex-col gap-0.5" @click="emit('open', draft.imageSlug)">
-                        <span class="text-sm text-foreground truncate fira-code">{{ draft.imageSlug }}</span>
-                        <span class="text-sm text-muted-foreground">
-                            {{ getBasisLabel(draft) }}
-                            <span v-if="getBasisLabel(draft)"> &middot; </span>
-                            <time
-                                :datetime="relativeTimeOf(draft.lastOpenedAt).datetime"
-                                :title="relativeTimeOf(draft.lastOpenedAt).absolute"
-                            >{{ relativeTimeOf(draft.lastOpenedAt).text }}</time>
-                        </span>
-                    </div>
+                        <span v-else class="font-serif-math text-2xl text-muted-foreground" aria-hidden="true">&Fscr;</span>
+                    </span>
+                    <span class="draft-title">{{ draft.imageSlug }}</span>
+                </RouterLink>
+                <div class="draft-meta">
+                    <Badge variant="outline" size="sm">Draft</Badge>
+                    <span v-for="b in basisOf(draft)" :key="b.label" class="whitespace-nowrap">{{ b.label }}</span>
+                    <time
+                        class="ml-auto whitespace-nowrap"
+                        :datetime="relativeTimeOf(draft.lastOpenedAt).datetime"
+                        :title="relativeTimeOf(draft.lastOpenedAt).absolute"
+                    >{{ relativeTimeOf(draft.lastOpenedAt).text }}</time>
+                </div>
+                <div class="draft-actions">
                     <Button
                         emphasis="secondary"
                         size="sm"
-                        class="gap-1 text-muted-foreground shrink-0"
-                        :disabled="publishing"
+                        class="gap-1"
+                        :loading="publishingSlug === draft.imageSlug"
+                        :disabled="!draft.contour"
+                        :aria-describedby="draft.contour ? undefined : `draft-reason-${draft.imageSlug}`"
                         @click="emit('publish', draft)"
                     >
-                        <Upload :size="14" />
+                        <Upload :size="14" aria-hidden="true" />
                         Publish
                     </Button>
+                    <span
+                        v-if="!draft.contour"
+                        :id="`draft-reason-${draft.imageSlug}`"
+                        class="text-xs text-muted-foreground"
+                    >Open it to trace a contour first.</span>
                 </div>
-            </CollapsibleContent>
-        </Collapsible>
-    </div>
+            </Card>
+        </li>
+    </ul>
 </template>
+
+<style scoped>
+/* The gallery grid's own measure (GalleryInfiniteGrid). */
+.drafts-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    list-style: none;
+    margin: 0;
+}
+
+.draft-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--card-gap);
+    padding: var(--card-pad);
+}
+@media (hover: hover) {
+    .draft-card:hover {
+        --card-cast-rung: var(--glass-shadow-floating);
+    }
+}
+
+.draft-open {
+    display: flex;
+    flex-direction: column;
+    gap: var(--card-gap);
+    border-radius: var(--radius-media);
+    color: var(--foreground);
+    text-decoration: none;
+}
+.draft-open:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: 2px;
+}
+
+.draft-media {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--radius-media);
+    background: var(--muted);
+}
+.draft-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.draft-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.draft-meta,
+.draft-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+}
+</style>
