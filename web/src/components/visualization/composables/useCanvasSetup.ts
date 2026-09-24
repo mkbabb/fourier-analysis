@@ -17,6 +17,15 @@ import type { CanvasSurface } from "../lib/canvas-drawing";
  *   `deviceScaleFactor`) Chromium still reports the physical screen's box —
  *   measured: a 300.5-px box reads 601 device px at an emulated DPR of 1 on a
  *   2× display — and a bitmap sized to it would be resampled onto the page.
+ * - The observer watches the CSS content box, so every layout change of the
+ *   box re-sizes the bitmap — including a sub-pixel one. Observing only the
+ *   device-pixel box (as the first cut did) reports a change only when that box
+ *   moves, and under DPR emulation it is the physical screen's box: measured
+ *   (F.W14 Repair 1), a stage settling from 798.59 to 798.34 CSS px left the
+ *   physical 2x box at 1597 — no entry — while the page's DPR-1 bitmap stayed
+ *   799 wide for a 798-px box. Where the engine supports it, a second observer
+ *   watches the device-pixel box too, so a snap that moves no CSS size (a
+ *   sub-pixel position shift) still re-sizes. Both read the one entry law below.
  * - A `(resolution: <dpr>dppx)` media query, re-armed at each change, catches a
  *   DPR change that moves no CSS box (the window dragged to another display),
  *   which the observer does not report where the device-pixel box is absent.
@@ -29,6 +38,7 @@ export function useCanvasSetup(
 ): { surface: ShallowRef<CanvasSurface | null>; setupCanvas: () => void } {
     const surface = shallowRef<CanvasSurface | null>(null);
     let resizeObserver: ResizeObserver | null = null;
+    let deviceObserver: ResizeObserver | null = null;
     let resolution: MediaQueryList | null = null;
 
     const devicePixelBox =
@@ -96,17 +106,19 @@ export function useCanvasSetup(
     onMounted(() => {
         setupCanvas();
         watchResolution();
+        const canvas = canvasRef.value;
+        if (!canvas) return;
         resizeObserver = new ResizeObserver(onEntries);
-        if (canvasRef.value) {
-            resizeObserver.observe(
-                canvasRef.value,
-                devicePixelBox ? { box: "device-pixel-content-box" } : undefined,
-            );
+        resizeObserver.observe(canvas);
+        if (devicePixelBox) {
+            deviceObserver = new ResizeObserver(onEntries);
+            deviceObserver.observe(canvas, { box: "device-pixel-content-box" });
         }
     });
 
     onUnmounted(() => {
         resizeObserver?.disconnect();
+        deviceObserver?.disconnect();
         resolution?.removeEventListener("change", onResolutionChange);
     });
 
