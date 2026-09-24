@@ -184,3 +184,22 @@ test.describe("UIA-F-59 — the inline results panel is sized to its content on 
         expect(read.plate).toBe(true);
     });
 });
+
+test.describe("UIA-F-62 — the mobile search bar: one clear, one close, no Expand", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+    test("the floating bar drops Expand; 'Clear search' clears and keeps the search open", async ({ page }) => {
+        const scroller = await openPaper(page);
+        await scroller.evaluate((el) => el.scrollTo({ top: 2500 }));
+        await page.getByRole("button", { name: "Search paper" }).click();
+        const input = page.getByRole("combobox", { name: "Search the paper" }).locator("visible=true").first();
+        await input.fill("Parseval");
+        await expect(page.getByRole("option").first()).toBeVisible();
+        await expect(page.getByRole("button", { name: /Expand the search palette/ }).locator("visible=true")).toHaveCount(0);
+        await page.getByRole("button", { name: "Clear search" }).locator("visible=true").tap();
+        await page.waitForTimeout(400);
+        await expect(page.getByRole("button", { name: "Close search" })).toBeVisible();
+        await expect(input).toHaveValue("");
+        await expect(input).toBeFocused();
+    });
+});

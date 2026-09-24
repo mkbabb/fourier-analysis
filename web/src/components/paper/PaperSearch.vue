@@ -42,7 +42,7 @@ defineExpose({ focus });
             ref="searchInputRef"
             :search="search"
             :variant="variant"
-            :can-expand="!!search.query.value && search.results.value.length > 0"
+            :can-expand="variant === 'sidebar' && !!search.query.value && search.results.value.length > 0"
             @expand="search.toggleExpanded()"
         />
         <PaperSearchDropdown

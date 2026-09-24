@@ -32,6 +32,17 @@ watch(
     },
 );
 
+/**
+ * UIA-F-62 — the in-field ✕ is labelled "Clear search" and it CLEARS: it used
+ * to call `close()`, which also closed the search (on the floating bar, the
+ * whole bar), so two ✕ ninety pixels apart did the same thing. Dismissal is
+ * the surface's own close; this empties the field and keeps focus in it.
+ */
+function clearQuery() {
+    props.search.clear();
+    focus();
+}
+
 defineExpose({ focus });
 </script>
 
@@ -108,7 +119,7 @@ defineExpose({ focus });
                 size="xs" icon-only
                 type="button"
                 class="paper-search-action-btn"
-                @click="search.close()"
+                @click="clearQuery"
                 aria-label="Clear search"
             >
                 <X class="h-3 w-3" />
