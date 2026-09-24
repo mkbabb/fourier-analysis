@@ -173,7 +173,7 @@ const TimelineReadout = () =>
         <!-- ═══ COLLAPSED SUMMARY — readouts only; NO interactive content ═══ -->
         <template #collapsed>
             <MiniProgressReadout />
-            <Metric :value="anim.speed" unit="×" size="sm" class="summary-speed" />
+            <Metric :value="anim.speed" unit="×" size="sm" />
         </template>
 
         <!-- ═══ EXPANDED FULL CONTROLS ═══ -->
@@ -253,7 +253,12 @@ const TimelineReadout = () =>
    clock it claimed to report, and the browser ran a live interpolation for the
    entire playback to achieve that. One line removed fixes correctness AND cost,
    and removes an ungated-motion surface from D-8's inventory. */
-.summary-speed { @apply text-base; color: color-mix(in srgb, var(--foreground) 35%, transparent); }
+/* X.F.W14U.d — OA-57, the consumer half. The speed reading is glass's Metric as
+   glass paints it. The retired `.summary-speed` inked the value at 35% while the
+   unit kept glass's muted ink, so "1" read dimmer than its own "×" and the unit
+   read as a loose glyph beside the plate (the owner's frame). Its `text-base`
+   never reached the value (`size="sm"` sets it); it only re-based the reading's
+   em gap off the dock's own size. The plate that does not wrap the summary is glass's (DOCK-COLLAPSED-FORM, O-65). */
 
 /* ── Transitions ── */
 /* A.W3.d — named properties + canonical token, no `transition: all`. */

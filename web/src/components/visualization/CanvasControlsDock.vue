@@ -207,6 +207,20 @@ watch(
     justify-content: center;
 }
 
+/* X.F.W14U.d — OA-68, the consumer's crowding. The shared `.view-dot` offsets
+   are sized for the 40px control, where they land on the control's corner, clear
+   of its glyph. Here the wrap is only the glyph's box, so the same offsets put
+   the dot on the Maximize glyph's arrow tip (the owner's side-dock frame). On
+   the resting face the dot sits just outside the glyph's top-right corner, and
+   it stays on the plate. A reserved badge seat is glass's (SIDE-DOCK-EDGE,
+   O-67 R-3), adopted at the landing repin. */
+.summary-glyph-wrap > .view-dot {
+    top: auto;
+    right: auto;
+    bottom: 100%;
+    left: 100%;
+}
+
 .dock-summary-glyph {
     width: var(--dock-icon-glyph);
     height: var(--dock-icon-glyph);
