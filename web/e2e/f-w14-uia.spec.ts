@@ -1,9 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
-import * as fs from "node:fs";
-import * as path from "node:path";
-
 import { expect, test, type Page } from "@playwright/test";
 import { ADMIN_TOKEN, ADMIN_USERS, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
+import { seededViz, type SeededViz } from "./fixtures/seed";
 
 /**
  * X.F.W14.u — the UIA-F register (`value.js/docs/tranches/X/audit/UI-AUDIT-fourier.md`).
@@ -39,77 +37,13 @@ test.describe("UIA-F-1 — a featured entry renders the strip, not a crash", () 
 
 /**
  * The saved visualization the `/v/`, dock, export, publish and drafts rows
- * drive: the first public one on the served API. X.F.W14 Repair 1 (addendum (e),
- * COHESION §0cl): a fresh database holds none, so the spec's own setup seeds one
- * the way the app does — a session, the image upload, the contour extraction,
- * then a public `POST /api/visualizations` — and never by hand. An existing
- * public visualization is reused, so repeated runs add nothing. Read once per
- * worker: the API rate-limits reads per window, and the suite's pages already
- * spend that budget on their own loads.
+ * drive. X.F.W14.s (addendum (f), COHESION §0cm): the suite's global setup
+ * (`e2e/global-seed.ts`) mints it through the public `/api` with a session,
+ * namespaced and torn down after the run; this spec reads that record and
+ * seeds nothing of its own.
  */
-const SEED_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
-const SEED_CONTOUR = {
-    strategy: "auto",
-    resize: 800,
-    blur_sigma: 2.0,
-    n_harmonics: 100,
-    n_points: 1024,
-    n_classes: 3,
-    min_contour_length: 40,
-    min_contour_area: 0.01,
-    max_contours: 5,
-    smooth_contours: 0.1,
-} as const;
-
-let savedViz: { slug: string; image_slug: string } | null = null;
-
-test.beforeAll(async ({ playwright }, testInfo) => {
-    const api = await playwright.request.newContext({ baseURL: testInfo.project.use.baseURL });
-    try {
-        const listed = await api.get("/api/visualizations?limit=1");
-        expect(listed.ok(), `GET /api/visualizations → ${listed.status()}`).toBe(true);
-        const { items } = (await listed.json()) as { items: { slug: string; image_slug: string }[] };
-        if (items.length > 0) {
-            savedViz = items[0];
-            return;
-        }
-        const session = await api.post("/api/sessions");
-        expect(session.ok(), `POST /api/sessions → ${session.status()}`).toBe(true);
-        const { token } = (await session.json()) as { token: string };
-        const headers = { "X-Session-Token": token };
-
-        const image = await api.post("/api/images", {
-            headers,
-            multipart: {
-                file: { name: path.basename(SEED_IMAGE), mimeType: "image/webp", buffer: fs.readFileSync(SEED_IMAGE) },
-            },
-        });
-        expect(image.ok(), `POST /api/images → ${image.status()}`).toBe(true);
-        const { image_slug } = (await image.json()) as { image_slug: string };
-
-        const contour = await api.post(`/api/images/${image_slug}/extract-contour`, {
-            headers,
-            data: { contour_settings: SEED_CONTOUR },
-            timeout: 60_000,
-        });
-        expect(contour.ok(), `extract-contour → ${contour.status()}`).toBe(true);
-        const { contour_hash } = (await contour.json()) as { contour_hash: string };
-
-        const created = await api.post("/api/visualizations", {
-            headers,
-            data: { visibility: "public", image_slug, contour_hash, active_bases: ["fourier-epicycles"], n_harmonics: 50 },
-        });
-        expect(created.status(), `POST /api/visualizations → ${await created.text()}`).toBe(201);
-        const { slug } = (await created.json()) as { slug: string };
-        savedViz = { slug, image_slug };
-    } finally {
-        await api.dispose();
-    }
-});
-
-function firstSavedViz(): { slug: string; image_slug: string } {
-    expect(savedViz, "the served API holds a saved visualization").not.toBeNull();
-    return savedViz!;
+function firstSavedViz(): SeededViz {
+    return seededViz();
 }
 
 /** Push through the app's own router (no in-app link targets `/v/` yet). */

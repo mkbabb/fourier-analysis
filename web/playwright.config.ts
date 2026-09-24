@@ -47,8 +47,24 @@ function excluded(...tags: RegExp[]): RegExp | undefined {
     return parts.length ? new RegExp(parts.join("|")) : undefined;
 }
 
+/**
+ * X.F.W14.s (addendum (f), COHESION §0cm + §0be) — THE GPU INSTRUMENT RUNS HEADED.
+ *
+ * `f-w14-dpr.spec.ts` (G-p, OA-44) reads canvas backing stores against the
+ * device box the engine reports. Headless Chromium under `deviceScaleFactor` 2
+ * reports a 1x `devicePixelContentBoxSize` and paints a 1x bitmap stretched 2x
+ * (measured at F.W14 Repair 1, D-2), so a headless reading measures the
+ * emulator, not the app. §0be's instrument rule is headed real-GPU Chromium;
+ * the suite declares it here as configuration: the `chromium-headed` project
+ * owns the spec and every headless project ignores it. It is never skipped.
+ */
+const GPU_INSTRUMENT = /f-w14-dpr\.spec\.ts/;
+
 export default defineConfig({
     testDir: "./e2e",
+    // X.F.W14.s — the suite seeds the records it assumes through the public
+    // `/api` and tears them down (the returned function); see e2e/global-seed.ts.
+    globalSetup: "./e2e/global-seed.ts",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
@@ -68,6 +84,13 @@ export default defineConfig({
             // fine, so running them here would report a correct fine-pointer
             // tree as broken. When PLAYWRIGHT_PROD=1 the destructive specs are
             // excluded here too — see `excluded()` above.
+            grepInvert: excluded(/@coarse/),
+            testIgnore: GPU_INSTRUMENT,
+        },
+        {
+            name: "chromium-headed",
+            use: { ...devices["Desktop Chrome"], headless: false },
+            testMatch: GPU_INSTRUMENT,
             grepInvert: excluded(/@coarse/),
         },
         /**
@@ -108,6 +131,7 @@ export default defineConfig({
             use: { ...devices["Pixel 7"] },
             grep: /@coarse/,
             grepInvert: excluded(),
+            testIgnore: GPU_INSTRUMENT,
         },
     ],
 });
