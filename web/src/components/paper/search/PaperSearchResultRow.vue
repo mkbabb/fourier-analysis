@@ -8,9 +8,16 @@
  * scoping. Both dissolve the same way — the row is a component, and its markup
  * and its styles are in it.
  */
+import { inject } from "vue";
+import { PAPER_CONTEXT } from "@mkbabb/latex-paper/vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import type { SearchResult } from "./paperSearchIndex";
-import { TYPE_LABELS, resultLabel, highlightFuzzy } from "./searchHelpers";
+import { TYPE_LABELS, highlightLabel } from "./searchHelpers";
+
+// UIA-F-21: the label's math is typeset by the paper's own KaTeX (its macros).
+const paper = inject(PAPER_CONTEXT);
+if (!paper) throw new Error("PaperSearchResultRow renders inside PaperView's PAPER_CONTEXT");
+const renderMath = paper.renderInline;
 
 defineProps<{
     result: SearchResult;
@@ -45,7 +52,7 @@ const emit = defineEmits<{
         </span>
         <span
             class="paper-search-label"
-            v-html="highlightFuzzy(resultLabel(result), query)"
+            v-html="highlightLabel(result, query, renderMath)"
         />
     </Button>
 </template>

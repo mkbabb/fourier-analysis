@@ -62,3 +62,34 @@ test.describe("UIA-F-26 — Enter on a theorem result lands on that theorem", ()
         });
     }
 });
+
+test.describe("UIA-F-21 — paper search labels typeset their math", () => {
+    test.use({ viewport: { width: 1440, height: 900 } });
+
+    for (const query of ["convergence", "pipeline", "Parseval", "energy"]) {
+        test(`"${query}": no raw TeX in any label, KaTeX present, no mark inside the math`, async ({ page }) => {
+            await openPaper(page);
+            const field = page.getByRole("combobox", { name: "Search the paper" }).first();
+            await field.fill(query);
+            await expect(page.getByRole("option").first()).toBeVisible();
+            const read = await page.evaluate(() =>
+                [...document.querySelectorAll('[role="option"] .paper-search-label')].map((label) => {
+                    const clone = label.cloneNode(true) as HTMLElement;
+                    clone.querySelectorAll(".katex").forEach((k) => k.remove());
+                    return {
+                        text: clone.textContent ?? "",
+                        katex: label.querySelectorAll(".katex").length,
+                        markInMath: label.querySelectorAll(".katex mark").length,
+                    };
+                }),
+            );
+            expect(read.length).toBeGreaterThan(0);
+            // Some result for each query carries math (the register's frames).
+            expect(read.some((r) => r.katex > 0)).toBe(true);
+            for (const r of read) {
+                expect(r.text, r.text).not.toMatch(/\$|\\[a-zA-Z]/);
+                expect(r.markInMath).toBe(0);
+            }
+        });
+    }
+});

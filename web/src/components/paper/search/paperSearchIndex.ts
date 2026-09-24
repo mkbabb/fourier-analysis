@@ -23,6 +23,18 @@ import type {
  */
 type LabelAnchors = Record<string, Pick<PaperLabelInfo, "anchorId" | "elementId">>;
 
+/**
+ * UIA-F-21 — a label cut at `limit` never severs inline math: when the cut
+ * falls inside a `$…$` span, the label ends before that span opens, so the
+ * row typesets whole math or none (a severed `$w` printed as raw TeX).
+ */
+function clipLabel(text: string, limit: number): string {
+    if (text.length <= limit) return text;
+    const cut = text.slice(0, limit);
+    const opens = [...cut.matchAll(/(?<!\\)\$/g)].map((m) => m.index ?? 0);
+    return opens.length % 2 === 1 ? cut.slice(0, opens[opens.length - 1]).trimEnd() : cut;
+}
+
 function anchorFor(labels: LabelAnchors, label: string | undefined): string | undefined {
     if (!label) return undefined;
     const info = labels[label];
@@ -448,7 +460,7 @@ function processContentBlocks(
                 id: anchorFor(labels, fig.label) ?? sectionId,
                 sectionId,
                 type: "figure",
-                label: stripHtml(fig.caption).slice(0, 200),
+                label: clipLabel(stripHtml(fig.caption), 200),
                 plainText: stripHtml(fig.caption),
                 depth,
             });
@@ -459,7 +471,7 @@ function processContentBlocks(
                 sectionId,
                 type: "code",
                 label: code.caption
-                    ? stripHtml(code.caption).slice(0, 200)
+                    ? clipLabel(stripHtml(code.caption), 200)
                     : undefined,
                 plainText:
                     (code.caption ? stripHtml(code.caption) + " " : "") +

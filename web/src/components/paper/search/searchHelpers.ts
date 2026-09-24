@@ -80,9 +80,15 @@ export function resultLabel(r: SearchResult): string {
  * reader, and a σ/ς near-miss costs a highlight on a query no one has typed.
  */
 export function highlightFuzzy(text: string, query: string): string {
-    if (!query.trim() || !text) return escapeHtml(text);
-
     const chars = [...text];
+    return renderMarked(chars, fuzzyMarks(chars, query), 0);
+}
+
+/** The ORIGINAL code-point indices of `chars` a fuzzy match of `query` marks. */
+function fuzzyMarks(chars: string[], query: string): Set<number> {
+    const matchSet = new Set<number>();
+    if (!query.trim() || chars.length === 0) return matchSet;
+
     // lower-cased code-unit offset → ORIGINAL code-point index
     const unitToPoint = new Map<number, number>();
     let textLc = "";
@@ -95,8 +101,6 @@ export function highlightFuzzy(text: string, query: string): string {
     }
 
     const tokens = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
-    const matchSet = new Set<number>();
-
     for (const token of tokens) {
         const m = fuzzyMatch(token, textLc);
         if (m) {
@@ -106,18 +110,21 @@ export function highlightFuzzy(text: string, query: string): string {
             }
         }
     }
+    return matchSet;
+}
 
-    if (matchSet.size === 0) return escapeHtml(text);
-
-    // Build highlighted string, grouping consecutive matches into single <mark> tags
+/**
+ * Escape `chars`, grouping consecutive marked points into single `<mark>`s.
+ * `offset` is the index of `chars[0]` in the text the marks were computed on.
+ */
+function renderMarked(chars: string[], marks: Set<number>, offset: number): string {
+    if (marks.size === 0) return escapeHtml(chars.join(""));
     const parts: string[] = [];
     let i = 0;
-
     while (i < chars.length) {
-        if (matchSet.has(i)) {
-            // Collect consecutive matched chars
+        if (marks.has(offset + i)) {
             let j = i;
-            while (j < chars.length && matchSet.has(j)) j++;
+            while (j < chars.length && marks.has(offset + j)) j++;
             parts.push(`<mark>${escapeHtml(chars.slice(i, j).join(""))}</mark>`);
             i = j;
         } else {
@@ -125,8 +132,52 @@ export function highlightFuzzy(text: string, query: string): string {
             i++;
         }
     }
-
     return parts.join("");
+}
+
+/** `$…$` spans (an escaped `\$` is text), in document order. */
+const INLINE_MATH = /(?<!\\)\$((?:\\\$|[^$])+?)(?<!\\)\$/g;
+
+/**
+ * UIA-F-21 — a result label as the paper reads it.
+ *
+ * Section titles, captions and theorem names carry inline TeX, and the row
+ * printed it raw (`$\mathbf{L}^2…`), with the fuzzy `<mark>`s landing inside
+ * the source. The label is split into text and `$…$` math: the math is
+ * typeset by the paper's own KaTeX renderer (the one `PAPER_CONTEXT` carries,
+ * macros and all), and the match is computed over the TEXT segments only, so
+ * a mark never lands inside the math. An equation entry with no label is its
+ * TeX, typeset whole rather than cut mid-token by the text limit.
+ */
+export function highlightLabel(
+    r: SearchResult,
+    query: string,
+    renderMath: (tex: string) => string,
+): string {
+    if (!r.label && r.rawTex) return renderMath(r.rawTex);
+    const text = resultLabel(r);
+    const segments: { math: boolean; value: string }[] = [];
+    let last = 0;
+    for (const m of text.matchAll(INLINE_MATH)) {
+        const at = m.index ?? 0;
+        if (at > last) segments.push({ math: false, value: text.slice(last, at) });
+        segments.push({ math: true, value: m[1] });
+        last = at + m[0].length;
+    }
+    if (last < text.length) segments.push({ math: false, value: text.slice(last) });
+
+    const prose = segments.filter((seg) => !seg.math).flatMap((seg) => [...seg.value]);
+    const marks = fuzzyMarks(prose, query);
+    let offset = 0;
+    return segments
+        .map((seg) => {
+            if (seg.math) return renderMath(seg.value);
+            const chars = [...seg.value];
+            const html = renderMarked(chars, marks, offset);
+            offset += chars.length;
+            return html;
+        })
+        .join("");
 }
 
 /**
