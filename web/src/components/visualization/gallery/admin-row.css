@@ -40,7 +40,8 @@
     grid-area: lead;
     inline-size: 4rem;
     block-size: 4rem;
-    border-radius: var(--radius-field);
+    /* X.F.W14U.admin — UIA-F-251: media sits on the media radius. */
+    border-radius: var(--radius-media);
     object-fit: cover;
     background: var(--muted);
     border: 1px solid var(--border);
@@ -113,7 +114,9 @@
     flex-direction: column;
     gap: 0.125rem;
     padding-inline-start: var(--space-atom);
-    border-inline-start: 2px solid color-mix(in oklab, var(--destructive) 45%, transparent);
+    /* X.F.W14U.admin — UIA-F-197: neutral ink; Delete is the row's one
+       destructive signal. */
+    border-inline-start: 2px solid var(--border);
 }
 
 .admin-row__detail {
@@ -125,7 +128,7 @@
 
 .admin-row__detail--reason {
     font-weight: 500;
-    color: var(--destructive);
+    color: var(--foreground);
 }
 
 .admin-row__actions {

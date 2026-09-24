@@ -50,6 +50,7 @@
  * eviction is the gallery's), and folding them into a shared chassis is the
  * wrapper mistake `M-2`'s cure law warns against. The toolbar is the chrome.
  */
+import { nextTick, useTemplateRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { X } from "@lucide/vue";
 
@@ -69,31 +70,58 @@ const props = withDefaults(
     { busy: false },
 );
 
-defineEmits<{ clear: [] }>();
+const emit = defineEmits<{ clear: [] }>();
 
 const plural = () => props.nounPlural ?? `${props.noun}s`;
+
+/**
+ * X.F.W14U.admin — UIA-F-192: clearing the selection unmounts this bar, and
+ * the clear control with it, so focus fell to `<body>`. Both hosts mount the
+ * bar directly AFTER the collection it acts on (UIA-F-36), so the stable
+ * neighbour is that collection: focus moves to its first enabled control (a
+ * card's or a row's own checkbox), the place the selection was made.
+ */
+const bar = useTemplateRef<HTMLElement>("bar");
+const FOCUSABLE =
+    'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+async function clear() {
+    const host = bar.value?.previousElementSibling as HTMLElement | null;
+    emit("clear");
+    await nextTick();
+    host?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+}
 </script>
 
 <template>
+    <!-- X.F.W14U.admin — UIA-F-249: the count and the verbs are ONE group
+         (the count sat far left, the verbs far right, across the whole column);
+         the clear control closes the row. UIA-F-249 / the 390 overlap: the group
+         wraps, and every verb keeps its own width, so at 390 the verbs flow onto
+         a second line instead of overlapping each other ("FeatureUnfeature"). -->
     <div
         v-if="count > 0"
+        ref="bar"
         role="group"
         :aria-label="label"
         class="cartoon-card sticky bottom-2 z-20 flex items-center gap-2 rounded-card px-3 py-2 text-small"
     >
-        <span class="flex-1 text-caption text-muted-foreground">
-            {{ count }} {{ count === 1 ? noun : plural() }} selected
-        </span>
-        <!-- The actions are the host's: each surface's verbs, counts and
-             `aria-describedby` reasons are its own domain vocabulary. -->
-        <slot />
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 [&>*]:shrink-0">
+            <span class="text-caption text-muted-foreground">
+                {{ count }} {{ count === 1 ? noun : plural() }} selected
+            </span>
+            <!-- The actions are the host's: each surface's verbs, counts and
+                 `aria-describedby` reasons are its own domain vocabulary. -->
+            <slot />
+        </div>
         <Button
             emphasis="quiet"
             size="xs"
             icon-only
+            class="shrink-0 self-start"
             :disabled="busy"
             aria-label="Clear selection"
-            @click="$emit('clear')"
+            @click="clear"
         >
             <X class="size-3.5" aria-hidden="true" />
         </Button>

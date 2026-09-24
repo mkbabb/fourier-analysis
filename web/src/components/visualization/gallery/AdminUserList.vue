@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch, onScopeDispose } from "vue";
+import { ref, computed, watch, onScopeDispose, useTemplateRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Input } from "@mkbabb/glass-ui/input";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Card } from "@mkbabb/glass-ui/card";
-import { Checkbox } from "@mkbabb/glass-ui";
+import { Alert, AlertDescription, AlertTitle, Checkbox, Skeleton } from "@mkbabb/glass-ui";
 import {
     Dialog,
     DialogContent,
@@ -20,6 +20,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@mkbabb/glass-ui/select";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@mkbabb/glass-ui/menu";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
@@ -37,6 +44,11 @@ import {
     Users,
     ChevronLeft,
     ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
+    CircleAlert,
+    EllipsisVertical,
+    Eraser,
 } from "@lucide/vue";
 
 const auth = useAuthStore();
@@ -73,6 +85,7 @@ const {
     error,
     hasNext,
     hasPrev,
+    pageSize,
     loadPage,
     nextPage,
     prevPage,
@@ -88,7 +101,22 @@ const {
         return { data: result.items, total: result.total };
     },
     pageSize: 20,
+    // UIA-F-195: a page turn lands on the list's head, not its old scroll offset.
+    scrollTarget: useTemplateRef<HTMLElement>("listHead"),
 });
+
+/** UIA-F-250: the pager's rows-per-page; a new size re-reads from page 1. */
+const PAGE_SIZES = ["20", "50", "100"] as const;
+const pageSizeModel = computed({
+    get: () => String(pageSize.value),
+    set: (v: string) => {
+        pageSize.value = Number(v);
+        loadPage(1);
+    },
+});
+
+/** UIA-F-193 / UIA-F-250: the list's one count, pluralised. */
+const totalLabel = computed(() => `${total.value} ${total.value === 1 ? "user" : "users"}`);
 
 // Load first page on mount.
 loadPage(1);
@@ -379,12 +407,13 @@ const userRows = computed(() =>
              "Se", beside a fixed 160 px Select); the Select's `h-8 w-[10rem]
              text-sm` literals are gone, so its rung and type come from the
              producer (the AA-22 note forbids the `h-*` literal). -->
-        <div class="flex flex-wrap items-center gap-2">
+        <!-- X.F.W14U.admin — UIA-F-194: the admin toolbar composition, one
+             across the admin tabs (`data-admin-toolbar`): the query field(s),
+             the view control, and ONE overflow menu for the global acts. Prune
+             — a global, irreversible delete — is no longer a persistent peer of
+             search; it sits in the overflow and still passes its confirm. -->
+        <div class="flex flex-wrap items-center gap-2" data-admin-toolbar>
             <div class="relative basis-full sm:basis-0 sm:flex-1">
-                <Search
-                    class="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
-                    aria-hidden="true"
-                />
                 <!-- FR-AUL-6 ⊕ FR-AUL-23 ⊕ FR-AUL-40 — one swap, three cures.
                      The raw `<input>` carried `outline-none` + `focus:ring-1`,
                      which annihilates the focus indicator under forced-colors:
@@ -418,9 +447,19 @@ const userRows = computed(() =>
                     enterkeyhint="search"
                     class="w-full pl-7"
                 />
+                <!-- X.F.W14U.admin — UIA-F-106 (consumer half): the glyph follows
+                     the field in tree order. The producer's field is its own
+                     stacking context (glass backdrop), so a positioned glyph
+                     BEFORE it painted under it (`elementFromPoint` at the glyph
+                     returned the INPUT) — GallerySearchBar's X.F.W11 `.e` idiom.
+                     The leading-adornment slot is the glass half (O-59). -->
+                <Search
+                    class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+                    aria-hidden="true"
+                />
             </div>
             <Select v-model="sortMode">
-                <SelectTrigger class="shrink-0" aria-label="Sort users">
+                <SelectTrigger class="min-w-0 flex-1 sm:w-auto sm:flex-none" aria-label="Sort users">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -429,48 +468,40 @@ const userRows = computed(() =>
                     <SelectItem value="entries">Most entries</SelectItem>
                 </SelectContent>
             </Select>
-            <!-- FR-AUL-7 (prune arm) ⊕ FR-AUL-26 ⊕ FR-AUL-41.
-                 The control read ≈1.3:1 in the light arm — `amber-300` ink on a
-                 10 %-alpha `amber-500` plate, a third hand-rolled palette literal
-                 on the panel's most consequential global operation.
-                 The producer's `ButtonTone` is `neutral | destructive` by the
-                 sub-range law ("a command is neutral or it is destructive;
-                 success/warning/info are MESSAGE tones and live on Alert/Toast"),
-                 so the amber the literals were reaching for has no command
-                 register — and the honest one is `destructive`: prune deletes
-                 users. `emphasis="secondary"` keeps it out of the primary slot.
-                 FR-AUL-26 (WCAG 2.5.3, Level A): the visible string "Prune empty",
-                 the `aria-label` "Prune users with zero entries" and the `title`
-                 "Remove users with 0 entries" were three MUTUALLY EXCLUSIVE names
-                 for one irrevocable operation — a speech-input user reading the
-                 button aloud could not activate it. The accessible name now
-                 CONTAINS the visible string, and FR-AUL-41's divergent `title` is
-                 gone rather than made to disagree more quietly. -->
-            <Button
-                emphasis="secondary"
-                tone="destructive"
-                size="sm"
-                aria-label="Prune empty users — removes every user with zero entries"
-                @click="askPrune"
-            >
-                Prune empty
-            </Button>
+            <!-- FR-AUL-7 / FR-AUL-26 / FR-AUL-41 stand: the act keeps its
+                 destructive register and a name that contains its visible
+                 words; it moves into the overflow (UIA-F-194). -->
+            <DropdownMenu :modal="false">
+                <DropdownMenuTrigger as-child>
+                    <Button emphasis="quiet" size="sm" icon-only aria-label="More user actions">
+                        <EllipsisVertical class="size-4" aria-hidden="true" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" :side-offset="6">
+                    <DropdownMenuItem class="text-destructive" @select="askPrune">
+                        <Eraser class="size-3.5" aria-hidden="true" />
+                        Prune empty users…
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
 
         <!-- Failure. FR-AUL-2: the composable produced `error` and nothing ever
              consumed it, so a failed list load rendered the PREVIOUS page's rows
              under the new page number — or, on first load, "No users found". The
              read path was the only one of six that could not speak. -->
-        <div
-            v-if="error"
-            role="alert"
-            class="flex flex-col items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 py-8 text-center"
-        >
-            <Users class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
-            <p class="text-small font-medium">The user list could not be loaded.</p>
-            <p class="max-w-prose text-caption text-muted-foreground">{{ error }}</p>
-            <Button emphasis="secondary" size="sm" @click="loadPage()">Try again</Button>
-        </div>
+        <!-- X.F.W14U.admin — UIA-F-199: the failure is glass Alert (the
+             destructive feedback tone, an alert glyph — not the list's own
+             icon), its description the problem's detail (`problemMessage` in
+             the composable), and one retry. -->
+        <Alert v-if="error" tone="destructive" announce="assertive">
+            <CircleAlert aria-hidden="true" />
+            <AlertTitle>The user list could not be loaded.</AlertTitle>
+            <AlertDescription class="flex flex-col items-start gap-2">
+                <span>{{ error }}</span>
+                <Button emphasis="secondary" size="sm" @click="loadPage()">Try again</Button>
+            </AlertDescription>
+        </Alert>
 
         <template v-else>
         <!-- FR-AUL-5: the documented `data-some` indeterminate mechanism DID NOT
@@ -496,10 +527,12 @@ const userRows = computed(() =>
                 :disabled="busy"
                 @update:model-value="(v) => toggleSelectAllOnPage(v)"
             />
+            <!-- UIA-F-193: the selection count is the batch bar's alone (it was
+                 printed twice); the list's own count heads the list. -->
             <label for="admin-select-all" class="cursor-pointer select-none">
                 Select all on page
-                <span v-if="selected.size > 0">({{ selected.size }} selected)</span>
             </label>
+            <h2 class="ml-auto text-caption font-medium text-foreground">{{ totalLabel }}</h2>
         </div>
 
 
@@ -518,6 +551,7 @@ const userRows = computed(() =>
              (glass `TableRow` + `TableBody`). The rule is coloured with the
              `--border` token. The `role="list"` sits on an inner element
              because the glass Card drops a consumer's `role` (UIA-F-43). -->
+        <div ref="listHead" class="scroll-mt-4" />
         <Card v-show="userRows.length" size="sm" :class="loading && 'opacity-60'">
             <div
                 class="admin-list flex flex-col"
@@ -578,50 +612,43 @@ const userRows = computed(() =>
                         </dl>
                     </div>
                     <div class="admin-row__actions" data-admin-actions>
-                        <!-- FR-AUL-44: the risk ladder was INVERTED. Reversible batch
-                             reinstatement got the destructive modal while the singular
-                             suspend fired from a 24px icon with no confirmation — and
-                             `set_user_status` runs `sessions.delete_many` on suspend,
-                             an irreversible act the batch copy states and this path
-                             stated nowhere. The label now carries the consequence.
-                             FR-AUL-19 / AA-22 (SP-9): the `h-6 w-6` literals are gone.
-                             `cn`'s height bucket is last-write-wins, so they pinned
-                             24px on EVERY pointer and deleted the producer's
-                             coarse-pointer clamp; the `xs` rung is 28px fine and lifts
-                             to the 44px touch target on coarse, which is the contract
-                             those literals were negating. -->
-                        <Button
-                            v-if="user.status !== 'suspended'"
-                            emphasis="quiet"
-                            size="xs" icon-only
-                            class="text-muted-foreground hover:text-warning"
-                            :aria-label="`Suspend user ${user.user_slug} and revoke their sessions`"
-                            :disabled="busy"
-                            @click="handleSuspend(user.user_slug)"
-                        >
-                            <Ban class="size-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button
-                            v-else
-                            emphasis="quiet"
-                            size="xs" icon-only
-                            class="text-muted-foreground hover:text-success"
-                            :aria-label="`Reinstate user ${user.user_slug}`"
-                            :disabled="busy"
-                            @click="handleUnsuspend(user.user_slug)"
-                        >
-                            <UserCheck class="size-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button
-                            emphasis="quiet"
-                            size="xs" icon-only
-                            class="text-muted-foreground hover:text-destructive"
-                            :aria-label="`Delete user ${user.user_slug}`"
-                            :disabled="busy"
-                            @click="askDelete(user.user_slug)"
-                        >
-                            <Trash2 class="size-3.5" aria-hidden="true" />
-                        </Button>
+                        <!-- X.F.W14U.admin — UIA-F-193: the per-row acts were two
+                             unlabelled 16 px glyphs of equal weight. They are one
+                             labelled row menu: Suspend (or Reinstate) and, apart,
+                             Delete in the destructive ink. FR-AUL-44's consequence
+                             stays in the Suspend label; FR-AUL-19's rung is the
+                             producer's `xs` icon button. -->
+                        <DropdownMenu :modal="false">
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    emphasis="quiet"
+                                    size="xs"
+                                    icon-only
+                                    :disabled="busy"
+                                    :aria-label="`Actions for user ${user.user_slug}`"
+                                >
+                                    <EllipsisVertical class="size-3.5" aria-hidden="true" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" :side-offset="6">
+                                <DropdownMenuItem
+                                    v-if="user.status !== 'suspended'"
+                                    @select="handleSuspend(user.user_slug)"
+                                >
+                                    <Ban class="size-3.5" aria-hidden="true" />
+                                    Suspend and revoke sessions
+                                </DropdownMenuItem>
+                                <DropdownMenuItem v-else @select="handleUnsuspend(user.user_slug)">
+                                    <UserCheck class="size-3.5" aria-hidden="true" />
+                                    Reinstate
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem class="text-destructive" @select="askDelete(user.user_slug)">
+                                    <Trash2 class="size-3.5" aria-hidden="true" />
+                                    Delete user…
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
@@ -716,11 +743,14 @@ const userRows = computed(() =>
                 {{ searchQuery ? "No users match this search" : "No users found" }}
             </p>
         </div>
+        <!-- UIA-F-250 / UIA-F-199: loading is the list's own shape in glass
+             Skeleton rows, not a bare "Loading users…" line. -->
         <div
             v-else-if="!users.length && loading"
-            class="py-8 text-center text-small text-muted-foreground"
+            class="flex flex-col gap-2"
+            aria-hidden="true"
         >
-            Loading users…
+            <Skeleton v-for="i in 3" :key="i" class="h-12 rounded-card" />
         </div>
 
         <!-- FR-AUL-9: search results were never announced, and BOTH of this
@@ -754,33 +784,37 @@ const userRows = computed(() =>
              `max(scaled, --control-floor)` clamp whose coarse-pointer block is the
              producer's whole WCAG-2.5.5 mechanism. `h-7` pinned 28 px on touch. -->
 
+        <!-- X.F.W14U.admin — UIA-F-250 ⊕ UIA-F-194 ⊕ UIA-F-252: the admin
+             pager, one composition for the offset ledgers (users, audit):
+             first · previous · "Page n of m" · next · last, the rows-per-page
+             size, and the total — one voice, no "1 / 3 … total" run. -->
         <nav
-            v-if="pageCount > 1"
-            class="flex items-center justify-center gap-2 text-caption text-muted-foreground"
+            v-if="users.length"
+            class="admin-pager flex flex-wrap items-center justify-center gap-1 text-caption text-muted-foreground"
             aria-label="User list pagination"
         >
-            <Button
-                emphasis="quiet"
-                size="sm"
-                icon-only
-                :disabled="!hasPrev"
-                aria-label="Previous page"
-                @click="prevPage()"
-            >
-                <ChevronLeft class="h-3.5 w-3.5" aria-hidden="true" />
+            <Button emphasis="quiet" size="sm" icon-only :disabled="!hasPrev" aria-label="First page" @click="loadPage(1)">
+                <ChevronsLeft class="size-4" aria-hidden="true" />
             </Button>
-            <span aria-live="polite">{{ page }} / {{ pageCount }}</span>
-            <Button
-                emphasis="quiet"
-                size="sm"
-                icon-only
-                :disabled="!hasNext"
-                aria-label="Next page"
-                @click="nextPage()"
-            >
-                <ChevronRight class="h-3.5 w-3.5" aria-hidden="true" />
+            <Button emphasis="quiet" size="sm" icon-only :disabled="!hasPrev" aria-label="Previous page" @click="prevPage()">
+                <ChevronLeft class="size-4" aria-hidden="true" />
             </Button>
-            <span class="ml-2">{{ total }} total</span>
+            <span class="px-1 tabular-nums">Page {{ page }} of {{ pageCount }}</span>
+            <Button emphasis="quiet" size="sm" icon-only :disabled="!hasNext" aria-label="Next page" @click="nextPage()">
+                <ChevronRight class="size-4" aria-hidden="true" />
+            </Button>
+            <Button emphasis="quiet" size="sm" icon-only :disabled="!hasNext" aria-label="Last page" @click="loadPage(pageCount)">
+                <ChevronsRight class="size-4" aria-hidden="true" />
+            </Button>
+            <Select v-model="pageSizeModel">
+                <SelectTrigger class="ml-2 w-auto shrink-0" aria-label="Rows per page">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem v-for="n in PAGE_SIZES" :key="n" :value="n">{{ n }} per page</SelectItem>
+                </SelectContent>
+            </Select>
+            <span class="ml-2 tabular-nums">{{ totalLabel }}</span>
         </nav>
         </template>
 
@@ -877,3 +911,14 @@ const userRows = computed(() =>
         </Dialog>
     </div>
 </template>
+
+<style scoped>
+/* X.F.W14U.admin — UIA-F-193: the row's `data-selected` hook finally has its
+   consumer — the selected fill on glass's own selection rung. */
+.admin-row[data-selected] {
+    background-image: linear-gradient(
+        oklch(from var(--foreground) l c h / var(--fill-selected)),
+        oklch(from var(--foreground) l c h / var(--fill-selected))
+    );
+}
+</style>

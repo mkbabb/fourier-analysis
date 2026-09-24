@@ -3,6 +3,14 @@ import { ref, computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Card } from "@mkbabb/glass-ui/card";
+import { Alert, AlertDescription, AlertTitle, Skeleton } from "@mkbabb/glass-ui";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@mkbabb/glass-ui/menu";
 import {
     Dialog,
     DialogContent,
@@ -20,7 +28,17 @@ import { useRelativeTime } from "@/lib/time";
 import type { FlaggedVisualization, FlagInfo, GalleryTier } from "@/lib/types";
 import { problemMessage } from "./adminError";
 import "./admin-row.css";
-import { Flag, Trash2, CheckCircle2, RotateCw, Crown, Bookmark } from "@lucide/vue";
+import {
+    Flag,
+    Trash2,
+    CheckCircle2,
+    ChevronDown,
+    CircleAlert,
+    Crown,
+    Bookmark,
+    EllipsisVertical,
+    ImageOff,
+} from "@lucide/vue";
 
 // B.W4.c — the flagged panel re-points onto the converged `visualization`
 // entity (CRUD-CONTRACT §7). The single user-facing identity is the
@@ -168,6 +186,12 @@ function flagKey(item: FlaggedVisualization, flag: FlagInfo): string {
 const busySlug = ref<string | null>(null);
 const busy = computed(() => busySlug.value !== null);
 
+/** UIA-F-198: thumbnails that failed to load fall back to a media tile. */
+const brokenThumbs = ref<Set<string>>(new Set());
+function thumbFailed(slug: string) {
+    brokenThumbs.value = new Set(brokenThumbs.value).add(slug);
+}
+
 reload();
 
 // Destructive-confirm dialog state — supplants native `confirm()`.
@@ -278,7 +302,8 @@ async function handleSetTier(slug: string, tier: GalleryTier) {
             };
         }
         gallery.patchEntry(slug, { tier });
-        toast(`Tier set to ${tier}`, "success");
+        // UIA-F-197: one word for the act — the menu says Keep, so does this.
+        toast(tier === "saved" ? `Kept ${slug}` : `Tier set to ${tier}`, "success");
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
             toast(problemMessage(e, "Failed to set tier"), "error");
@@ -321,19 +346,17 @@ const relativeTimeOf = useRelativeTime();
              surface whose whole purpose is telling an operator that something is
              wrong. FR-AFP-58: the busy state is TEXT, not the spinner the PRM
              blanket freezes into a static three-quarter ring. -->
-        <div
-            v-if="error"
-            role="alert"
-            class="flex flex-col items-center gap-2 rounded-card border border-destructive/40 bg-destructive/5 py-8 text-center"
-        >
-            <Flag class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
-            <p class="text-small font-medium">The moderation queue could not be loaded.</p>
-            <p class="max-w-prose text-caption text-muted-foreground">{{ error }}</p>
-            <p class="text-caption text-muted-foreground">
-                This is not an all-clear — the queue is unread, not empty.
-            </p>
-            <Button emphasis="secondary" size="sm" @click="reload()">Try again</Button>
-        </div>
+        <!-- X.F.W14U.admin — UIA-F-199: glass Alert, an alert glyph (the flag
+             glyph said "flagged", not "failed"), the problem's detail. -->
+        <Alert v-if="error" tone="destructive" announce="assertive">
+            <CircleAlert aria-hidden="true" />
+            <AlertTitle>The moderation queue could not be loaded.</AlertTitle>
+            <AlertDescription class="flex flex-col items-start gap-2">
+                <span>{{ error }}</span>
+                <span>This is not an all-clear — the queue is unread, not empty.</span>
+                <Button emphasis="secondary" size="sm" @click="reload()">Try again</Button>
+            </AlertDescription>
+        </Alert>
 
         <!-- X.F.W14.t, OA-42 swept (COHESION §0bu). Each queue entry was its
              own glass `Card`. Two adjacent entries therefore painted two rules
@@ -348,7 +371,6 @@ const relativeTimeOf = useRelativeTime();
             v-else
             v-show="flaggedEntries.length"
             size="sm"
-            class="flagged-queue"
             :class="loading && 'opacity-60'"
         >
             <div
@@ -392,22 +414,37 @@ const relativeTimeOf = useRelativeTime();
                     :key="item.slug"
                     role="listitem"
                     data-admin-row
-                    class="admin-row flagged-row border-b border-border last:border-b-0"
+                    class="admin-row border-b border-border last:border-b-0"
                     :aria-busy="busySlug === item.slug || undefined"
                 >
+                    <!-- UIA-F-198: a failed thumbnail falls back to a media tile
+                         (the engine's broken-image glyph and its spilled alt text
+                         are gone); both are the row's media on `--radius-media`. -->
                     <img
-                        v-if="item.image_slug"
+                        v-if="item.image_slug && !brokenThumbs.has(item.slug)"
                         data-admin-media
                         :src="thumbnailUrl(item.image_slug)"
                         :alt="`Reported image ${item.image_slug}`"
                         class="admin-row__media"
                         loading="lazy"
+                        @error="thumbFailed(item.slug)"
                     />
+                    <span
+                        v-else-if="item.image_slug"
+                        data-admin-media
+                        class="admin-row__media flex items-center justify-center bg-muted text-muted-foreground"
+                        role="img"
+                        :aria-label="`Reported image ${item.image_slug} (unavailable)`"
+                    >
+                        <ImageOff class="size-5" aria-hidden="true" />
+                    </span>
                     <div class="admin-row__body">
                         <div class="admin-row__title" data-admin-title>
-                            <Flag class="size-3.5 shrink-0 text-destructive" aria-hidden="true" />
+                            <!-- UIA-F-197: one destructive signal per row (Delete, in
+                                 the row menu); the flag glyph and count are neutral. -->
+                            <Flag class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                             <span class="admin-row__title-text">{{ item.slug }}</span>
-                            <Badge tone="destructive" size="sm">
+                            <Badge variant="outline" size="sm">
                                 {{ item.flag_count }} {{ item.flag_count === 1 ? "flag" : "flags" }}
                             </Badge>
                         </div>
@@ -425,7 +462,13 @@ const relativeTimeOf = useRelativeTime();
                                     >{{ relativeTimeOf(item.created_at).text }}</time>
                                 </dd>
                             </div>
-                            <div class="admin-row__field" data-admin-field :data-tier="item.tier ?? 'normal'">
+                            <!-- UIA-F-197: the tier shows only when it is notable. -->
+                            <div
+                                v-if="item.tier && item.tier !== 'normal'"
+                                class="admin-row__field"
+                                data-admin-field
+                                :data-tier="item.tier"
+                            >
                                 <dt>Tier</dt>
                                 <dd class="inline-flex items-center gap-1 capitalize">
                                     <Crown
@@ -440,7 +483,7 @@ const relativeTimeOf = useRelativeTime();
                                         class="text-tier-saved"
                                         aria-hidden="true"
                                     />
-                                    {{ item.tier ?? "normal" }}
+                                    {{ item.tier }}
                                 </dd>
                             </div>
                         </dl>
@@ -478,18 +521,12 @@ const relativeTimeOf = useRelativeTime();
                             Showing {{ item.flags.length }} of {{ item.flag_count }} flags
                         </p>
                     </div>
+                    <!-- X.F.W14U.admin — UIA-F-110: ONE visible action per row
+                         (Dismiss, the common act) and the rest in the row's menu:
+                         Keep, gated (UIA-F-197: disabled on a row already Saved),
+                         and Delete apart, in the destructive ink, through its
+                         confirm. Three stadiums took half a phone card. -->
                     <div class="admin-row__actions" data-admin-actions>
-                        <Button
-                            emphasis="secondary"
-                            size="xs"
-                            class="gap-1"
-                            :disabled="busy"
-                            :aria-label="`Mark ${item.slug} acceptable`"
-                            @click="handleSetTier(item.slug, 'saved')"
-                        >
-                            <Bookmark class="size-3.5" aria-hidden="true" />
-                            Keep
-                        </Button>
                         <Button
                             emphasis="secondary"
                             size="xs"
@@ -501,18 +538,33 @@ const relativeTimeOf = useRelativeTime();
                             <CheckCircle2 class="size-3.5" aria-hidden="true" />
                             Dismiss
                         </Button>
-                        <Button
-                            emphasis="secondary"
-                            tone="destructive"
-                            size="xs"
-                            class="gap-1"
-                            :disabled="busy"
-                            :aria-label="`Delete entry ${item.slug}`"
-                            @click="askDelete(item.slug, item.slug)"
-                        >
-                            <Trash2 class="size-3.5" aria-hidden="true" />
-                            Delete
-                        </Button>
+                        <DropdownMenu :modal="false">
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    emphasis="quiet"
+                                    size="xs"
+                                    icon-only
+                                    :disabled="busy"
+                                    :aria-label="`More actions for ${item.slug}`"
+                                >
+                                    <EllipsisVertical class="size-3.5" aria-hidden="true" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" :side-offset="6">
+                                <DropdownMenuItem
+                                    :disabled="item.tier === 'saved'"
+                                    @select="handleSetTier(item.slug, 'saved')"
+                                >
+                                    <Bookmark class="size-3.5" aria-hidden="true" />
+                                    Keep
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem class="text-destructive" @select="askDelete(item.slug, item.slug)">
+                                    <Trash2 class="size-3.5" aria-hidden="true" />
+                                    Delete entry…
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
@@ -530,11 +582,13 @@ const relativeTimeOf = useRelativeTime();
             <Flag class="h-8 w-8 opacity-30" aria-hidden="true" />
             <p class="text-small">No flagged content</p>
         </div>
+        <!-- UIA-F-199: loading is Skeleton rows in the queue's shape. -->
         <div
             v-else-if="!error && loading && !flaggedEntries.length"
-            class="py-8 text-center text-small text-muted-foreground"
+            class="flex flex-col gap-2"
+            aria-hidden="true"
         >
-            Loading flagged entries…
+            <Skeleton v-for="i in 3" :key="i" class="h-16 rounded-card" />
         </div>
 
         <!-- Cursor "load more" — the converged flagged stream is cursor-paginated
@@ -553,18 +607,18 @@ const relativeTimeOf = useRelativeTime();
                 aria-label="Load more flagged entries"
                 @click="loadMore()"
             >
-                <RotateCw
-                    class="h-3.5 w-3.5"
-                    :class="loadingMore && 'animate-spin'"
-                    aria-hidden="true"
-                />
+                <!-- UIA-F-251: "more below" is a chevron, not a refresh glyph. -->
+                <ChevronDown class="h-3.5 w-3.5" aria-hidden="true" />
                 {{ loadingMore ? "Loading…" : "Load more" }}
             </Button>
         </nav>
 
         <!-- Destructive-confirm dialog — replaces native `confirm()`. -->
         <Dialog :open="dialogOpen" @update:open="onDialogOpenChange">
-            <DialogContent surface="opaque" class="max-w-sm">
+            <!-- UIA-F-251: while the delete is in flight Cancel is disabled, so
+                 the dialog is `locked` (no ✕; Escape and outside rebuffed) — one
+                 lock, not three answers; otherwise a `deliberate` confirm. -->
+            <DialogContent surface="opaque" class="max-w-sm" :dismiss="busy ? 'locked' : 'deliberate'">
                 <DialogHeader>
                     <DialogTitle>Delete gallery entry?</DialogTitle>
                     <DialogDescription>
@@ -589,27 +643,3 @@ const relativeTimeOf = useRelativeTime();
         </Dialog>
     </div>
 </template>
-
-<style scoped>
-/* FR-AFP-3 / FR-AFP-61: the card was drawn in hard-coded Tailwind reds with zero
-   `dark:` and zero tokens — ≈1.3–2.6:1 against the resolved light tokens, and the
-   outline failed SC 1.4.11 in BOTH themes (1.33 light / 1.20 dark). The plate is
-   the destructive TOKEN, so it moves with the theme instead of against it.
-
-   X.F.W3 `.d` — and it now says so through the CARD'S OWN ACCENT REGISTER
-   rather than over the top of it. `--glass-accent` is the producer's documented
-   per-instance rim hue (the axis `CardProps` struck `variant` and `dataHue` to
-   consolidate into), so one declaration re-tints the primitive's edge instead of
-   a scoped `border` shorthand racing its layered one. The fill stays an explicit
-   wash because "this row is a moderation target" is a semantic this surface
-   owns, not an elevation the card grammar has a name for.
-
-   X.F.W14.t: the queue is now one Card with a row per entry. The accent sits
-   on that one plate, and the wash sits on each row it marks. */
-.flagged-queue {
-    --glass-accent: var(--destructive);
-}
-.flagged-row {
-    background: color-mix(in oklab, var(--destructive) 6%, transparent);
-}
-</style>

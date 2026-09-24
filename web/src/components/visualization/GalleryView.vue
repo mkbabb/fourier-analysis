@@ -8,7 +8,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import * as api from "@/lib/api";
 import type { GalleryTier, Visualization, WorkspaceDraft } from "@/lib/types";
-import { Layers, Trash2, Crown } from "@lucide/vue";
+import { Layers, Trash2, Crown, StarOff } from "@lucide/vue";
 
 import { SegmentedTabs, type SegmentedTabOption } from "@mkbabb/glass-ui/tabs";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -245,6 +245,15 @@ function toggleEntrySelected(hash: string, checked: boolean) {
     selectedHashes.value = next;
 }
 
+/** UIA-F-249: a batch verb is enabled only when it would change a selected entry. */
+const selectedTiers = computed(() => {
+    const tiers = new Set<string>();
+    for (const e of gallery.entries) if (selectedHashes.value.has(e.slug)) tiers.add(e.tier ?? "normal");
+    return tiers;
+});
+const canFeature = computed(() => [...selectedTiers.value].some((t) => t !== "featured"));
+const canUnfeature = computed(() => selectedTiers.value.has("featured"));
+
 function clearGallerySelection() {
     selectedHashes.value = new Set();
 }
@@ -432,7 +441,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 <Button
                     emphasis="secondary"
                     size="sm"
-                    class="text-xs"
+                    :disabled="!canFeature"
                     @click="askBatchGallery('feature')"
                 >
                     <Crown class="mr-1 size-3.5" aria-hidden="true" />
@@ -441,15 +450,15 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 <Button
                     emphasis="secondary"
                     size="sm"
-                    class="text-xs"
+                    :disabled="!canUnfeature"
                     @click="askBatchGallery('unfeature')"
                 >
+                    <StarOff class="mr-1 size-3.5" aria-hidden="true" />
                     Unfeature
                 </Button>
                 <Button
                     emphasis="primary" tone="destructive"
                     size="sm"
-                    class="text-xs"
                     @click="askBatchGallery('delete')"
                 >
                     <Trash2 class="mr-1 size-3.5" aria-hidden="true" />

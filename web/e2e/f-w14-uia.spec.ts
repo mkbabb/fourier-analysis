@@ -438,7 +438,9 @@ test.describe("UIA-F-37 — the mobile users toolbar keeps its search usable", (
         expect(cls).not.toMatch(/\bh-8\b|w-\[10rem\]|\btext-sm\b/);
         // Every toolbar control stays inside the panel's width.
         const vw = page.viewportSize()!.width;
-        for (const el of [search, sort, page.getByRole("button", { name: /prune/i }).first()]) {
+        // X.F.W14U.admin (UIA-F-194): Prune moved into the toolbar's overflow
+        // menu; the toolbar's third control is that menu's trigger.
+        for (const el of [search, sort, page.getByRole("button", { name: "More user actions" })]) {
             const b = (await el.boundingBox())!;
             expect(b.x + b.width).toBeLessThanOrEqual(vw);
         }

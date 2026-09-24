@@ -99,17 +99,19 @@ const created = useTimeAgo(() => props.entry.created_at);
         shadow
         class="gallery-card deferred-section"
         :data-tier="entry.tier"
-        :data-selected="selected || undefined"
+        :data-batch-selected="selected || undefined"
         :style="tierStyle"
     >
-        <div v-if="adminMode" class="card-raised absolute top-1.5 left-1.5 flex items-center justify-center rounded-md bg-background/70 p-1 backdrop-blur-sm">
+        <!-- X.F.W14U.admin — UIA-F-191: glass Checkbox at its own size (the
+             `h-4 w-4` literal is gone), seated in a label whose inset makes the
+             whole plate its hit target (≥ 24 px, WCAG 2.5.8). -->
+        <label v-if="adminMode" class="card-raised select-plate absolute top-1.5 left-1.5">
             <Checkbox
                 :model-value="selected ?? false"
                 :aria-label="`Select ${name}`"
-                class="h-4 w-4"
                 @update:model-value="(v) => emit('toggle-select', entry.slug, v === true)"
             />
-        </div>
+        </label>
 
         <button type="button" class="card-open" :aria-label="`Open ${name}`" @click="emit('click')">
             <span class="card-media">
@@ -171,8 +173,8 @@ const created = useTimeAgo(() => props.entry.created_at);
         <div v-if="adminMode" class="card-raised absolute top-1.5 right-1.5 flex gap-1">
             <Button
                 emphasis="primary"
-                size="md" icon-only
-                class="admin-overlay-btn text-tier-featured"
+                size="sm" icon-only
+                class="text-tier-featured"
                 title="Toggle featured"
                 @click="emit('set-tier', entry.slug, entry.tier === 'featured' ? 'normal' : 'featured')"
             >
@@ -180,8 +182,8 @@ const created = useTimeAgo(() => props.entry.created_at);
             </Button>
             <Button
                 emphasis="primary"
-                size="md" icon-only
-                class="admin-overlay-btn text-tier-saved"
+                size="sm" icon-only
+                class="text-tier-saved"
                 title="Toggle saved"
                 @click="emit('set-tier', entry.slug, entry.tier === 'saved' ? 'normal' : 'saved')"
             >
@@ -189,8 +191,8 @@ const created = useTimeAgo(() => props.entry.created_at);
             </Button>
             <Button
                 emphasis="primary"
-                size="md" icon-only
-                class="admin-overlay-btn text-delete"
+                size="sm" icon-only
+                class="text-delete"
                 title="Delete"
                 @click="emit('delete', entry.slug)"
             >
@@ -233,7 +235,15 @@ const created = useTimeAgo(() => props.entry.created_at);
     --glass-accent-strength: 100%;
 }
 
-.gallery-card[data-selected] {
+/* UIA-F-104 (X.F.W14U.admin): selection is its own layer — an outline ring
+   outside the rim, so it composes with the tier's rim hue instead of racing it
+   (a selected Saved card read exactly as an unselected one); the fill stays. */
+/* The hook is `data-batch-selected`: glass Card consumes `data-selected` (its
+   own `selected` option state) and drops it from the element, so the fill the
+   `.gallery` seat wrote never applied. */
+.gallery-card[data-batch-selected] {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
     background-image: linear-gradient(
         oklch(from var(--foreground) l c h / var(--fill-selected)),
         oklch(from var(--foreground) l c h / var(--fill-selected))
@@ -307,18 +317,23 @@ const created = useTimeAgo(() => props.entry.created_at);
 .tier-mark[data-tier="featured"] { color: var(--tier-featured); }
 .tier-mark[data-tier="saved"] { color: var(--tier-saved); }
 
-/* A.W2.e — admin-overlay button geometry. The base `<Button variant="glass"
-   size="icon">` ships an `h-10 w-10` square with the canonical focus-ring /
-   disabled / press-scale contract; the overlay needs a 1.75rem circle with
-   a lift-on-hover idiom, applied as scoped overrides over the variant. */
-.admin-overlay-btn {
-    @apply h-7 w-7 rounded-full transition-transform duration-150;
-}
-.admin-overlay-btn:hover {
-    transform: scale(1.1);
-}
-.admin-overlay-btn:active {
-    transform: scale(0.95);
+/* X.F.W14U.admin — UIA-F-191: the admin overlay buttons are glass's `sm`
+   icon-only rung as published (square, the producer's press and coarse-pointer
+   floor); the `h-7 w-7 rounded-full` literals and the local scale hover, which
+   fought the size rung into 28×40 capsules, are deleted. */
+
+/* UIA-F-191: the select control's plate — a legibility backing over the
+   thumbnail and the checkbox's hit target in one (the label). */
+.select-plate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-md);
+    background: color-mix(in oklab, var(--background) 70%, transparent);
+    cursor: pointer;
 }
 
 /* A.W2.e — basis-tint colour projection over `<Badge variant="outline">`.

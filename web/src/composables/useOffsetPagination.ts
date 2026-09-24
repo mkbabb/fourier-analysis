@@ -1,5 +1,6 @@
 import { ref, computed, onScopeDispose, getCurrentScope, type Ref } from "vue";
 import { isAbortError } from "@/lib/api";
+import { problemMessage } from "@/components/visualization/gallery/adminError";
 
 /**
  * Offset-based pagination with an active fetchFn loader.
@@ -21,6 +22,13 @@ import { isAbortError } from "@/lib/api";
 interface OffsetPaginationConfig<T> {
     fetchFn: (limit: number, offset: number) => Promise<{ data: T[]; total: number }>;
     pageSize?: number;
+    /**
+     * X.F.W14U.admin — UIA-F-195: the list's head. A page turn (a committed
+     * page that differs from the one shown) scrolls it to the top of its
+     * scroller; paging used to keep the old offset and land on the new page's
+     * last rows.
+     */
+    scrollTarget?: Readonly<Ref<HTMLElement | null>>;
 }
 
 export function useOffsetPagination<T>(options: OffsetPaginationConfig<T>) {
@@ -91,10 +99,14 @@ export function useOffsetPagination<T>(options: OffsetPaginationConfig<T>) {
                 (requested - 1) * pageSize.value,
             );
             if (!current()) return;
+            const shown = page.value;
             items.value = res.data;
             total.value = res.total;
             const pages = Math.max(1, Math.ceil(res.total / pageSize.value));
             page.value = Math.min(requested, pages);
+            if (page.value !== shown) {
+                options.scrollTarget?.value?.scrollIntoView({ block: "start", behavior: "auto" });
+            }
             // The requested page fell off the end of the fresh total: re-read the
             // page that now exists rather than render an off-the-end emptiness
             // under a real page number. `pages` is monotonically non-increasing
@@ -106,7 +118,9 @@ export function useOffsetPagination<T>(options: OffsetPaginationConfig<T>) {
             // consumed at 14 sites); its absence here is what made every
             // double-Apply read as an error.
             if (isAbortError(e) || !current()) return;
-            error.value = e instanceof Error ? e.message : "Failed to load";
+            // UIA-F-199: the problem's `detail` over its `title` — the admin
+            // surfaces' one reader (`adminError.problemMessage`), not `message`.
+            error.value = problemMessage(e, "Failed to load");
         } finally {
             if (current()) loading.value = false;
         }

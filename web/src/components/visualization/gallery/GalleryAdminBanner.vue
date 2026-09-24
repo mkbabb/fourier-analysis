@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, useTemplateRef } from "vue";
 import type { AdminStats } from "@/lib/types";
 import { Shield, LogOut, AlertTriangle } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -27,6 +27,33 @@ const emit = defineEmits<{
  * and this file was the directory's sole concatenator — typesetting " MB" as a
  * numeral through `tabular-nums`, which pins letterforms to digit widths.
  */
+/**
+ * X.F.W14U.admin — UIA-F-249: the failure sentence states what failed and the
+ * server's own detail, punctuated; it no longer blames the credential for every
+ * failure (a timeout, a 500, an offline network all read "dead credential").
+ */
+const errorSentence = computed(() => {
+    const detail = props.error?.trim() ?? "";
+    if (!detail) return "Admin statistics could not be loaded.";
+    return `Admin statistics could not be loaded: ${detail}${/[.!?]$/.test(detail) ? "" : "."}`;
+});
+
+/**
+ * X.F.W14U.admin — UIA-F-192: Log out unmounts this banner (and the button),
+ * so focus fell to `<body>`. The stable neighbour is the block mounted before
+ * the banner — the gallery's tabs and search, which outlive admin mode.
+ */
+const root = useTemplateRef<HTMLElement>("root");
+const FOCUSABLE =
+    'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+async function logout() {
+    const neighbour = root.value?.previousElementSibling as HTMLElement | null;
+    emit("logout");
+    await nextTick();
+    neighbour?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+}
+
 const UNITS = ["B", "KB", "MB", "GB", "TB", "PB"] as const;
 
 const storage = computed<{ value: string; unit: string }>(() => {
@@ -56,6 +83,7 @@ const storage = computed<{ value: string; unit: string }>(() => {
          their own busy state through the primitive's `loading` posture, and the
          cluster announces itself through one live region. -->
     <section
+        ref="root"
         class="admin-banner mx-4 px-3 py-2.5 rounded-lg border-[1.5px]"
         aria-label="Admin mode banner"
         :aria-busy="loading || undefined"
@@ -68,7 +96,7 @@ const storage = computed<{ value: string; unit: string }>(() => {
                 size="sm"
                 class="ml-auto gap-1"
                 aria-label="Log out of admin mode"
-                @click="emit('logout')"
+                @click="logout"
             >
                 <LogOut :size="14" aria-hidden="true" />
                 Log out
@@ -85,15 +113,16 @@ const storage = computed<{ value: string; unit: string }>(() => {
             class="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-caption"
         >
             <AlertTriangle class="mt-px h-3.5 w-3.5 shrink-0 text-destructive" aria-hidden="true" />
-            <span>
-                Admin statistics could not be loaded — {{ error }} The controls below may be
-                acting against a credential the server no longer accepts.
-            </span>
+            <span>{{ errorSentence }}</span>
         </p>
 
+        <!-- X.F.W14U.admin — UIA-F-105 (consumer half): below `sm` the six
+             cells sit two to a row, wide enough that no label or number splits
+             ("ENTRI/ES", "70./0"); from `sm` up the auto-fit strip is unchanged.
+             The glass half (Metric's `overflow-wrap: anywhere`) rides O-59. -->
         <div
             v-else
-            class="grid grid-cols-[repeat(auto-fit,minmax(5rem,1fr))] gap-2"
+            class="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(5rem,1fr))]"
         >
             <!-- GAB-6 / GAB-19 / GAB-27: `.admin-stat` is gone. Its six unlayered
                  scoped declarations beat the primitive's own `@layer components`
