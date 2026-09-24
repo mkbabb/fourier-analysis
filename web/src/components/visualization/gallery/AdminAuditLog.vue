@@ -326,7 +326,7 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
                 autocorrect="off"
                 spellcheck="false"
                 enterkeyhint="search"
-                class="flex-1 min-w-[10rem] text-xs"
+                class="flex-1 min-w-[10rem]"
                 @keyup.enter="applyFilters"
             />
             <label class="sr-only" for="audit-target-filter">Target (substring match)</label>
@@ -340,7 +340,7 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
                 autocorrect="off"
                 spellcheck="false"
                 enterkeyhint="search"
-                class="flex-1 min-w-[10rem] text-xs"
+                class="flex-1 min-w-[10rem]"
                 @keyup.enter="applyFilters"
             />
             <!-- AA-22: `h-7` / `h-7 w-7` on 100 % of this file's Button sites
@@ -380,8 +380,8 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
             class="flex flex-col items-center gap-2 rounded-card border border-destructive/40 bg-destructive/5 py-8 text-center"
         >
             <ScrollText class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
-            <p class="text-sm font-medium">The audit log could not be loaded.</p>
-            <p class="max-w-prose text-xs text-muted-foreground">{{ error }}</p>
+            <p class="text-small font-medium">The audit log could not be loaded.</p>
+            <p class="max-w-prose text-caption text-muted-foreground">{{ error }}</p>
             <Button emphasis="secondary" size="sm" @click="loadPage()">Try again</Button>
         </div>
 
@@ -412,14 +412,14 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
                 <template #filtered-empty>
                     <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
                         <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
-                        <p class="text-sm">No entries match these filters</p>
-                        <p class="text-xs opacity-70">Try clearing filters to widen the search.</p>
+                        <p class="text-small">No entries match these filters</p>
+                        <p class="text-caption opacity-70">Try clearing filters to widen the search.</p>
                     </div>
                 </template>
                 <template #empty>
                     <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
                         <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
-                        <p class="text-sm">No audit entries</p>
+                        <p class="text-small">No audit entries</p>
                     </div>
                 </template>
             </DataTable>
@@ -458,7 +458,7 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
              a substitute for one. -->
         <nav
             v-if="pageCount > 1"
-            class="flex items-center justify-center gap-2 text-xs text-muted-foreground"
+            class="flex items-center justify-center gap-2 text-caption text-muted-foreground"
             aria-label="Audit log pagination"
         >
             <Button

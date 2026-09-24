@@ -28,6 +28,7 @@ import { useRelativeTime } from "@/lib/time";
 import BatchActionBar from "./BatchActionBar.vue";
 import type { AdminUserInfo } from "@/lib/types";
 import { problemMessage } from "./adminError";
+import "./admin-row.css";
 import {
     Search,
     Trash2,
@@ -466,8 +467,8 @@ const userRows = computed(() =>
             class="flex flex-col items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 py-8 text-center"
         >
             <Users class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
-            <p class="text-sm font-medium">The user list could not be loaded.</p>
-            <p class="max-w-prose text-xs text-muted-foreground">{{ error }}</p>
+            <p class="text-small font-medium">The user list could not be loaded.</p>
+            <p class="max-w-prose text-caption text-muted-foreground">{{ error }}</p>
             <Button emphasis="secondary" size="sm" @click="loadPage()">Try again</Button>
         </div>
 
@@ -483,7 +484,7 @@ const userRows = computed(() =>
              below the moment the affordance becomes useful. -->
         <div
             v-if="users.length"
-            class="flex items-center gap-2 px-1 text-xs text-muted-foreground"
+            class="flex items-center gap-2 px-1 text-caption text-muted-foreground"
         >
             <Checkbox
                 id="admin-select-all"
@@ -519,7 +520,7 @@ const userRows = computed(() =>
              because the glass Card drops a consumer's `role` (UIA-F-43). -->
         <Card v-show="userRows.length" size="sm" :class="loading && 'opacity-60'">
             <div
-                class="flex flex-col"
+                class="admin-list flex flex-col"
                 role="list"
                 aria-label="Admin user list"
                 :aria-busy="loading || undefined"
@@ -528,18 +529,19 @@ const userRows = computed(() =>
                     v-for="{ user, joined, seen } in userRows"
                     :key="user.user_slug"
                     role="listitem"
-                    class="flex items-center gap-3 border-b border-border px-3 py-2 text-sm last:border-b-0"
+                    data-admin-row
+                    class="admin-row border-b border-border last:border-b-0"
                     :data-selected="selected.has(user.user_slug) || undefined"
                 >
                     <Checkbox
                         :model-value="selected.has(user.user_slug)"
                         :aria-label="`Select user ${user.user_slug}`"
-                        class="h-4 w-4 shrink-0"
+                        class="admin-row__lead h-4 w-4 shrink-0 self-center"
                         @update:model-value="(v) => toggleSelected(user.user_slug, v)"
                     />
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono text-xs truncate">{{ user.user_slug }}</span>
+                    <div class="admin-row__body">
+                        <div class="admin-row__title" data-admin-title>
+                            <span class="admin-row__title-text">{{ user.user_slug }}</span>
                             <!-- FR-AUL-7: the SOLE "suspended" signifier was
                                  `bg-red-500/20` + `text-red-400` over light
                                  `--card: hsl(36 48% 97%)` ≈ 2.0:1 at the 10 px micro
@@ -556,13 +558,26 @@ const userRows = computed(() =>
                                 class="uppercase"
                             >suspended</Badge>
                         </div>
-                        <div class="flex gap-3 text-mono-micro uppercase font-medium text-muted-foreground mt-0.5">
-                            <span>{{ user.entry_count }} entries</span>
-                            <span>joined <time :datetime="joined.datetime" :title="joined.absolute">{{ joined.text }}</time></span>
-                            <span>seen <time :datetime="seen.datetime" :title="seen.absolute">{{ seen.text }}</time></span>
-                        </div>
+                        <!-- X.F.W14 `.h` OA-50: the admin row idiom's labelled
+                             meta (`admin-row.css`) — Entries · Joined · Seen as
+                             `dt`/`dd` pairs on `--type-micro`, each pair unbroken
+                             (the uppercase run wrapped mid-pair at 390). -->
+                        <dl class="admin-row__meta" data-admin-meta>
+                            <div class="admin-row__field" data-admin-field>
+                                <dt>Entries</dt>
+                                <dd>{{ user.entry_count }}</dd>
+                            </div>
+                            <div class="admin-row__field" data-admin-field>
+                                <dt>Joined</dt>
+                                <dd><time :datetime="joined.datetime" :title="joined.absolute">{{ joined.text }}</time></dd>
+                            </div>
+                            <div class="admin-row__field" data-admin-field>
+                                <dt>Seen</dt>
+                                <dd><time :datetime="seen.datetime" :title="seen.absolute">{{ seen.text }}</time></dd>
+                            </div>
+                        </dl>
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div class="admin-row__actions" data-admin-actions>
                         <!-- FR-AUL-44: the risk ladder was INVERTED. Reversible batch
                              reinstatement got the destructive modal while the singular
                              suspend fired from a 24px icon with no confirmation — and
@@ -654,7 +669,6 @@ const userRows = computed(() =>
             <Button
                 emphasis="secondary"
                 size="sm"
-                class="text-xs"
                 :disabled="busy || suspendableCount === 0"
                 :aria-describedby="suspendableCount === 0 ? 'batch-suspend-why' : undefined"
                 @click="askBatch('suspend')"
@@ -668,7 +682,6 @@ const userRows = computed(() =>
             <Button
                 emphasis="secondary"
                 size="sm"
-                class="text-xs"
                 :disabled="busy || unsuspendableCount === 0"
                 :aria-describedby="unsuspendableCount === 0 ? 'batch-reinstate-why' : undefined"
                 @click="askBatch('unsuspend')"
@@ -682,7 +695,6 @@ const userRows = computed(() =>
             <Button
                 emphasis="primary" tone="destructive"
                 size="sm"
-                class="text-xs"
                 :disabled="busy"
                 @click="askBatch('delete')"
             >
@@ -700,13 +712,13 @@ const userRows = computed(() =>
             class="flex flex-col items-center gap-2 py-8 text-muted-foreground"
         >
             <Users class="h-8 w-8 opacity-30" aria-hidden="true" />
-            <p class="text-sm">
+            <p class="text-small">
                 {{ searchQuery ? "No users match this search" : "No users found" }}
             </p>
         </div>
         <div
             v-else-if="!users.length && loading"
-            class="py-8 text-center text-sm text-muted-foreground"
+            class="py-8 text-center text-small text-muted-foreground"
         >
             Loading users…
         </div>
@@ -744,7 +756,7 @@ const userRows = computed(() =>
 
         <nav
             v-if="pageCount > 1"
-            class="flex items-center justify-center gap-2 text-xs text-muted-foreground"
+            class="flex items-center justify-center gap-2 text-caption text-muted-foreground"
             aria-label="User list pagination"
         >
             <Button
@@ -826,7 +838,7 @@ const userRows = computed(() =>
                                 The users below are reinstated to active status.
                             </span>
                             <span
-                                class="mt-2 block max-h-32 overflow-y-auto rounded border border-border/60 px-2 py-1 font-mono text-xs"
+                                class="mt-2 block max-h-32 overflow-y-auto rounded border border-border/60 px-2 py-1 font-mono text-caption"
                             >
                                 <span
                                     v-for="slug in pending.slugs"

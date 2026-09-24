@@ -79,9 +79,9 @@ const plural = () => props.nounPlural ?? `${props.noun}s`;
         v-if="count > 0"
         role="group"
         :aria-label="label"
-        class="cartoon-card sticky bottom-2 z-20 flex items-center gap-2 rounded-card px-3 py-2 text-sm"
+        class="cartoon-card sticky bottom-2 z-20 flex items-center gap-2 rounded-card px-3 py-2 text-small"
     >
-        <span class="flex-1 text-xs text-muted-foreground">
+        <span class="flex-1 text-caption text-muted-foreground">
             {{ count }} {{ count === 1 ? noun : plural() }} selected
         </span>
         <!-- The actions are the host's: each surface's verbs, counts and

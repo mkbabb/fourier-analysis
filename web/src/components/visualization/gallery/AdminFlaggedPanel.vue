@@ -19,6 +19,7 @@ import { thumbnailUrl } from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
 import type { FlaggedVisualization, FlagInfo, GalleryTier } from "@/lib/types";
 import { problemMessage } from "./adminError";
+import "./admin-row.css";
 import { Flag, Trash2, CheckCircle2, RotateCw, Crown, Bookmark } from "@lucide/vue";
 
 // B.W4.c — the flagged panel re-points onto the converged `visualization`
@@ -326,9 +327,9 @@ const relativeTimeOf = useRelativeTime();
             class="flex flex-col items-center gap-2 rounded-card border border-destructive/40 bg-destructive/5 py-8 text-center"
         >
             <Flag class="h-8 w-8 text-destructive opacity-70" aria-hidden="true" />
-            <p class="text-sm font-medium">The moderation queue could not be loaded.</p>
-            <p class="max-w-prose text-xs text-muted-foreground">{{ error }}</p>
-            <p class="text-xs text-muted-foreground">
+            <p class="text-small font-medium">The moderation queue could not be loaded.</p>
+            <p class="max-w-prose text-caption text-muted-foreground">{{ error }}</p>
+            <p class="text-caption text-muted-foreground">
                 This is not an all-clear — the queue is unread, not empty.
             </p>
             <Button emphasis="secondary" size="sm" @click="reload()">Try again</Button>
@@ -351,7 +352,7 @@ const relativeTimeOf = useRelativeTime();
             :class="loading && 'opacity-60'"
         >
             <div
-                class="flex flex-col"
+                class="admin-list flex flex-col"
                 role="list"
                 aria-label="Flagged gallery entries"
                 :aria-busy="loading || undefined"
@@ -375,161 +376,143 @@ const relativeTimeOf = useRelativeTime();
                      — this chip, the spinner, the raw footer — which is why the
                      aggregate it feeds is not quotable, and why `g17` closes
                      honest-RED in this unit rather than on a number. -->
+                <!-- X.F.W14 `.h` OA-50: the entry is the admin row idiom
+                     (`admin-row.css`). Media inset by the row's own padding;
+                     the title one mono `--type-small` line; Owner · Posted · Tier
+                     a labelled `dl` on `--type-micro` (the bare "Normal" was the
+                     tier with no name); every flag listed, and when the queue
+                     carries fewer flag records than its count the list says so;
+                     Keep · Dismiss · Delete one horizontal group that never
+                     overruns the row (it was a stacked column whose Delete ran
+                     past the card edge). FR-AFP-21 (the image rendered),
+                     FR-AFP-45 / -34 / -19 / -8 / -16 (glyphs, names, disable
+                     while in flight) are kept whole. -->
                 <div
                     v-for="item in flaggedEntries"
                     :key="item.slug"
                     role="listitem"
-                    class="flagged-row border-b border-border p-3 last:border-b-0"
+                    data-admin-row
+                    class="admin-row flagged-row border-b border-border last:border-b-0"
                     :aria-busy="busySlug === item.slug || undefined"
                 >
-                    <div class="flex items-start gap-3">
-                        <!-- FR-AFP-21: the panel that moderates IMAGES rendered no
-                             image. It is the only gallery surface holding
-                             `image_slug` that printed it as text, while
-                             `thumbnailUrl` takes exactly the field in hand and five
-                             sibling surfaces render the asset. An adjudicator was
-                             asked to rule on evidence they could not see. -->
-                        <img
-                            v-if="item.image_slug"
-                            :src="thumbnailUrl(item.image_slug)"
-                            :alt="`Reported image ${item.image_slug}`"
-                            class="size-16 shrink-0 rounded-md border border-border/60 bg-muted object-cover"
-                            loading="lazy"
-                        />
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 text-sm">
-                                <Flag
-                                    class="size-3.5 shrink-0 text-destructive"
-                                    aria-hidden="true"
-                                />
-                                <span class="font-mono text-xs truncate">{{ item.slug }}</span>
-                                <!-- FR-AFP-61: the flag pill is `./badge`, exported at
-                                     the pin, in the tone the producer owns. The
-                                     bespoke `bg-red-500/20` + `text-red-300` pill was
-                                     the queue's RANKING datum at ≈1.3–1.4:1 light. -->
-                                <Badge tone="destructive" size="sm">
-                                    {{ item.flag_count }} {{ item.flag_count === 1 ? "flag" : "flags" }}
-                                </Badge>
+                    <img
+                        v-if="item.image_slug"
+                        data-admin-media
+                        :src="thumbnailUrl(item.image_slug)"
+                        :alt="`Reported image ${item.image_slug}`"
+                        class="admin-row__media"
+                        loading="lazy"
+                    />
+                    <div class="admin-row__body">
+                        <div class="admin-row__title" data-admin-title>
+                            <Flag class="size-3.5 shrink-0 text-destructive" aria-hidden="true" />
+                            <span class="admin-row__title-text">{{ item.slug }}</span>
+                            <Badge tone="destructive" size="sm">
+                                {{ item.flag_count }} {{ item.flag_count === 1 ? "flag" : "flags" }}
+                            </Badge>
+                        </div>
+                        <dl class="admin-row__meta" data-admin-meta>
+                            <div class="admin-row__field" data-admin-field>
+                                <dt>Owner</dt>
+                                <dd>{{ item.owner_slug ?? "anonymous" }}</dd>
                             </div>
-                            <!-- ⊘ X·F F.W4 `.d` — census correction, AA-15's premise.
-                                 `text-admin-label` is NOT emitted at the adopted
-                                 glass-ui 8.0.0 pin: `grep -ro 'text-admin-label'
-                                 node_modules/@mkbabb/glass-ui/dist` returns EMPTY, and
-                                 no `--text-admin-label` theme key exists either — the
-                                 string survives only inside `cn`'s class-name bucket
-                                 regex. `text-mono-micro` IS emitted and is the rung
-                                 the sibling admin surface already uses for this exact
-                                 job. Booked as a falsified census cell in
-                                 `F-W4-ADDENDA-d-2026-09-18.md`. -->
-                            <div class="mt-1 text-mono-micro text-muted-foreground">
-                                by {{ item.owner_slug ?? "anonymous" }}
-                                <span v-if="item.created_at"> &middot;
+                            <div v-if="item.created_at" class="admin-row__field" data-admin-field>
+                                <dt>Posted</dt>
+                                <dd>
                                     <time
                                         :datetime="relativeTimeOf(item.created_at).datetime"
                                         :title="relativeTimeOf(item.created_at).absolute"
                                     >{{ relativeTimeOf(item.created_at).text }}</time>
+                                </dd>
+                            </div>
+                            <div class="admin-row__field" data-admin-field :data-tier="item.tier ?? 'normal'">
+                                <dt>Tier</dt>
+                                <dd class="inline-flex items-center gap-1 capitalize">
+                                    <Crown
+                                        v-if="item.tier === 'featured'"
+                                        :size="12"
+                                        class="text-tier-featured"
+                                        aria-hidden="true"
+                                    />
+                                    <Bookmark
+                                        v-else-if="item.tier === 'saved'"
+                                        :size="12"
+                                        class="text-tier-saved"
+                                        aria-hidden="true"
+                                    />
+                                    {{ item.tier ?? "normal" }}
+                                </dd>
+                            </div>
+                        </dl>
+                        <!-- FR-AFP-63: reporter free text is adversarial — clamped
+                             and wrapped inside the one shrinking column. -->
+                        <ul class="admin-row__flags" :aria-label="`Flags on ${item.slug}`">
+                            <li
+                                v-for="flag in item.flags"
+                                :key="flagKey(item, flag)"
+                                class="admin-row__flag"
+                                data-admin-flag
+                            >
+                                <span class="admin-row__detail admin-row__detail--reason" data-admin-detail>{{
+                                    reasonLabel(flag.reason)
+                                }}</span>
+                                <span
+                                    v-if="flag.detail"
+                                    class="admin-row__detail line-clamp-3"
+                                    data-admin-detail
+                                >{{ flag.detail }}</span>
+                                <span class="admin-row__meta" data-admin-meta>
+                                    {{ flag.reporter_slug }} &middot;
+                                    <time
+                                        :datetime="relativeTimeOf(flag.created_at).datetime"
+                                        :title="relativeTimeOf(flag.created_at).absolute"
+                                    >{{ relativeTimeOf(flag.created_at).text }}</time>
                                 </span>
-                            </div>
-                            <!-- FR-AFP-59: the tier — the exact state the Save button
-                                 mutates — rendered as a raw lowercase wire token in
-                                 the 10px muted meta line, bypassing the product's real
-                                 tier design language. Composed with FR-AFP-10 (Save
-                                 does not dequeue), that word was the ONLY visible
-                                 change after this panel's sole non-destructive remedy.
-                                 ⊘ The closed-domain TYPE narrows with FR-AFP-31; the
-                                 tier↔flag semantics are F.W5-W8's. -->
-                            <div class="mt-1 flex items-center gap-1 text-xs capitalize" :data-tier="item.tier ?? 'normal'">
-                                <Crown
-                                    v-if="item.tier === 'featured'"
-                                    :size="13"
-                                    class="text-tier-featured"
-                                    aria-hidden="true"
-                                />
-                                <Bookmark
-                                    v-else-if="item.tier === 'saved'"
-                                    :size="13"
-                                    class="text-tier-saved"
-                                    aria-hidden="true"
-                                />
-                                <span>{{ item.tier ?? "normal" }}</span>
-                            </div>
-                            <!-- Flag details -->
-                            <div class="mt-2 flex flex-col gap-1">
-                                <!-- FR-AFP-63: reporter free text is adversarially
-                                     controlled and rendered unbounded inside the one
-                                     flex child explicitly allowed to shrink. The file
-                                     was careful about exactly this one element short.
-                                     FR-AFP-20-adjacent: the provenance line stops
-                                     being an alpha-mute of an already-muted ink. -->
-                                <div
-                                    v-for="flag in item.flags"
-                                    :key="flagKey(item, flag)"
-                                    class="border-l border-border/70 pl-2 text-xs text-muted-foreground"
-                                >
-                                    <span class="font-medium text-destructive">{{ reasonLabel(flag.reason) }}</span>
-                                    <span v-if="flag.detail" class="line-clamp-3 break-words">
-                                        {{ flag.detail }}
-                                    </span>
-                                    <span class="block font-mono">
-                                        {{ flag.reporter_slug }} &middot;
-                                        <time
-                                            :datetime="relativeTimeOf(flag.created_at).datetime"
-                                            :title="relativeTimeOf(flag.created_at).absolute"
-                                        >{{ relativeTimeOf(flag.created_at).text }}</time>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- FR-AFP-45: the glyphs contradicted their effects —
-                             `XCircle`, a REJECT mark, was the benign dismiss tinted
-                             green, and `Star`, a promotion, was tinted blue. Each
-                             control now carries a visible word beside a glyph that
-                             means what the act does. FR-AFP-34 / FR-AFP-19: ONE label
-                             source (no `title` duplicating the accessible name into a
-                             second SR announcement), the wire vocabulary "(save
-                             tier)" is out of the accessible name, and the labels name
-                             the ENTITY (`slug`), not the shared asset FK.
-                             FR-AFP-8 (one-token rider): `item.slug` is what gets
-                             deleted, so `item.slug` is what the confirm names —
-                             `image_slug` is an asset FK every remix shares.
-                             FR-AFP-16: every control is disabled while this row's own
-                             act is in flight. -->
-                        <div class="flex shrink-0 flex-col items-stretch gap-1">
-                            <Button
-                                emphasis="secondary"
-                                size="xs"
-                                class="gap-1 text-xs"
-                                :disabled="busy"
-                                :aria-label="`Mark ${item.slug} acceptable`"
-                                @click="handleSetTier(item.slug, 'saved')"
-                            >
-                                <Bookmark class="size-3.5" aria-hidden="true" />
-                                Keep
-                            </Button>
-                            <Button
-                                emphasis="secondary"
-                                size="xs"
-                                class="gap-1 text-xs"
-                                :disabled="busy"
-                                :aria-label="`Dismiss flags on ${item.slug}`"
-                                @click="handleDismiss(item.slug)"
-                            >
-                                <CheckCircle2 class="size-3.5" aria-hidden="true" />
-                                Dismiss
-                            </Button>
-                            <Button
-                                emphasis="secondary"
-                                tone="destructive"
-                                size="xs"
-                                class="gap-1 text-xs"
-                                :disabled="busy"
-                                :aria-label="`Delete entry ${item.slug}`"
-                                @click="askDelete(item.slug, item.slug)"
-                            >
-                                <Trash2 class="size-3.5" aria-hidden="true" />
-                                Delete
-                            </Button>
-                        </div>
+                            </li>
+                        </ul>
+                        <p
+                            v-if="item.flags.length < item.flag_count"
+                            class="admin-row__meta"
+                            data-admin-flag-note
+                        >
+                            Showing {{ item.flags.length }} of {{ item.flag_count }} flags
+                        </p>
+                    </div>
+                    <div class="admin-row__actions" data-admin-actions>
+                        <Button
+                            emphasis="secondary"
+                            size="xs"
+                            class="gap-1"
+                            :disabled="busy"
+                            :aria-label="`Mark ${item.slug} acceptable`"
+                            @click="handleSetTier(item.slug, 'saved')"
+                        >
+                            <Bookmark class="size-3.5" aria-hidden="true" />
+                            Keep
+                        </Button>
+                        <Button
+                            emphasis="secondary"
+                            size="xs"
+                            class="gap-1"
+                            :disabled="busy"
+                            :aria-label="`Dismiss flags on ${item.slug}`"
+                            @click="handleDismiss(item.slug)"
+                        >
+                            <CheckCircle2 class="size-3.5" aria-hidden="true" />
+                            Dismiss
+                        </Button>
+                        <Button
+                            emphasis="secondary"
+                            tone="destructive"
+                            size="xs"
+                            class="gap-1"
+                            :disabled="busy"
+                            :aria-label="`Delete entry ${item.slug}`"
+                            @click="askDelete(item.slug, item.slug)"
+                        >
+                            <Trash2 class="size-3.5" aria-hidden="true" />
+                            Delete
+                        </Button>
                     </div>
                 </div>
 
@@ -545,11 +528,11 @@ const relativeTimeOf = useRelativeTime();
             class="flex flex-col items-center gap-2 py-8 text-muted-foreground"
         >
             <Flag class="h-8 w-8 opacity-30" aria-hidden="true" />
-            <p class="text-sm">No flagged content</p>
+            <p class="text-small">No flagged content</p>
         </div>
         <div
             v-else-if="!error && loading && !flaggedEntries.length"
-            class="py-8 text-center text-sm text-muted-foreground"
+            class="py-8 text-center text-small text-muted-foreground"
         >
             Loading flagged entries…
         </div>
@@ -559,7 +542,7 @@ const relativeTimeOf = useRelativeTime();
              nav is replaced by an opaque-cursor incremental loader. -->
         <nav
             v-if="hasMore && !loading"
-            class="flex items-center justify-center text-xs text-muted-foreground"
+            class="flex items-center justify-center text-caption text-muted-foreground"
             aria-label="Flagged entries pagination"
         >
             <Button
