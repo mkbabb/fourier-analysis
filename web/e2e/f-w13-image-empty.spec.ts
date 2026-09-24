@@ -101,8 +101,14 @@ test.describe("G-c — F.W13 image mode: one drop affordance, the sidebar arrive
 
         await expect(page.locator(".configurator-aside")).toBeVisible();
         await expect(page.locator(".drop-target")).toHaveCount(0);
-        const band = await page.locator(".configurator-aside").evaluate((el) => el.getBoundingClientRect().width);
-        expect(band).toBeGreaterThanOrEqual(300);
+        // The band's width is read once the `grid-template-columns` enter has
+        // settled: a single read right after `toBeVisible()` can land mid-
+        // transition under host load (F.W14 Check 1 run 1: 108.95 px). The
+        // 300 px floor is the settled band, polled — never lowered.
+        const aside = page.locator(".configurator-aside");
+        await expect
+            .poll(() => aside.evaluate((el) => el.getBoundingClientRect().width))
+            .toBeGreaterThanOrEqual(300);
 
         const ran = await seen(page);
         expect(ran).toContain("configurator:grid-template-columns");
