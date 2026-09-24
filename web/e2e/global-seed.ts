@@ -1,4 +1,5 @@
 // SERVED MODEL: claude-opus-5-5
+import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -15,15 +16,22 @@ import { SEED_ENV, SEED_NAMESPACE, type SeededViz } from "./fixtures/seed";
  * the image upload, the contour extraction, then a public
  * `POST /api/visualizations` titled and tagged with `SEED_NAMESPACE`.
  *
- * IDEMPOTENT. The owning session token and the row's slug are recorded in
- * `e2e/.seed/<host>.json` (a self-ignoring directory). A re-run, including
- * one after a run that died before its teardown, first reads that record: a
- * live row that still carries the namespace is reused, so a re-run never adds
- * a second one. Teardown soft-deletes the row with its own session
+ * KEYED PER RUN (X.F.W14.s2, COHESION §0cv). Each run records the owning
+ * session token and the row's slug in its own file,
+ * `e2e/.seed/<host>.<pid>.<run>.json` (a self-ignoring directory), and reads
+ * only the row its own process minted, so a concurrent suite on the same host
+ * never reuses this run's row and this run's teardown never deletes another
+ * run's. Teardown soft-deletes the row with its own session
  * (`DELETE /api/visualizations/<slug>` under `If-Match`), ends the session and
- * removes the record. The uploaded image stays: images are content-addressed
- * (`/api/images/by-hash`) and the API exposes no image delete, so a re-upload
- * of the same bytes resolves to the same asset.
+ * removes the record.
+ *
+ * IDEMPOTENT. A run that died before its teardown leaves its record behind;
+ * the next run reclaims every record on this host whose process is no longer
+ * alive (the same removal the teardown does) before it mints its own, so dead
+ * runs never accumulate rows. A live process's record is never touched. The
+ * uploaded image stays: images are content-addressed (`/api/images/by-hash`)
+ * and the API exposes no image delete, so a re-upload of the same bytes
+ * resolves to the same asset.
  */
 
 const SEED_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
@@ -42,30 +50,49 @@ const SEED_CONTOUR = {
 
 interface SeedRecord extends SeededViz {
     token: string;
+    /** The Playwright runner process that minted the row. */
+    pid: number;
 }
 
-function recordPath(baseURL: string): string {
+/** This run's id; with the pid it keys the record file per run. */
+const RUN = randomUUID();
+
+function seedDir(): string {
     const dir = path.resolve(import.meta.dirname, ".seed");
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, ".gitignore"), "*\n");
-    return path.join(dir, `${new URL(baseURL).host.replace(/[^\w.-]/g, "_")}.json`);
+    return dir;
 }
 
-function readRecord(file: string): SeedRecord | null {
-    if (!fs.existsSync(file)) return null;
-    return JSON.parse(fs.readFileSync(file, "utf8")) as SeedRecord;
+function hostKey(baseURL: string): string {
+    return new URL(baseURL).host.replace(/[^\w.-]/g, "_");
+}
+
+/** Whether `pid` names a running process (`EPERM`: it runs under another user). */
+function alive(pid: number): boolean {
+    try {
+        process.kill(pid, 0);
+        return true;
+    } catch (err) {
+        return (err as NodeJS.ErrnoException).code === "EPERM";
+    }
+}
+
+/** The records dead runs on this host left behind: this process has minted
+ * nothing yet, so a record carrying its pid is a dead predecessor's. */
+function abandoned(dir: string, host: string): string[] {
+    return fs
+        .readdirSync(dir)
+        .filter((name) => name.startsWith(`${host}.`) && name.endsWith(".json"))
+        .map((name) => path.join(dir, name))
+        .filter((file) => {
+            const { pid } = JSON.parse(fs.readFileSync(file, "utf8")) as SeedRecord;
+            return pid === process.pid || !alive(pid);
+        });
 }
 
 async function ok(res: Awaited<ReturnType<APIRequestContext["get"]>>, what: string): Promise<void> {
     if (!res.ok()) throw new Error(`e2e seed: ${what} → ${res.status()} ${await res.text()}`);
-}
-
-/** The recorded row, when it is still live and still ours. */
-async function reusable(api: APIRequestContext, rec: SeedRecord): Promise<boolean> {
-    const res = await api.get(`/api/visualizations/${rec.slug}`);
-    if (!res.ok()) return false;
-    const row = (await res.json()) as { title?: string | null; deleted_at?: string | null };
-    return row.title === SEED_NAMESPACE && !row.deleted_at;
 }
 
 async function mint(api: APIRequestContext): Promise<SeedRecord> {
@@ -107,7 +134,7 @@ async function mint(api: APIRequestContext): Promise<SeedRecord> {
         throw new Error(`e2e seed: POST /api/visualizations → ${created.status()} ${await created.text()}`);
     }
     const { slug } = (await created.json()) as { slug: string };
-    return { token, slug, image_slug };
+    return { token, slug, image_slug, pid: process.pid };
 }
 
 async function remove(api: APIRequestContext, rec: SeedRecord): Promise<void> {
@@ -127,25 +154,26 @@ async function remove(api: APIRequestContext, rec: SeedRecord): Promise<void> {
 export default async function globalSeed(config: FullConfig): Promise<() => Promise<void>> {
     const baseURL = config.projects[0].use.baseURL;
     if (!baseURL) throw new Error("e2e seed: no baseURL on the first project");
-    const file = recordPath(baseURL);
+    const dir = seedDir();
+    const host = hostKey(baseURL);
     const api = await request.newContext({ baseURL });
 
-    let rec = readRecord(file);
-    if (rec && !(await reusable(api, rec))) rec = null;
-    if (!rec) {
-        rec = await mint(api);
-        fs.writeFileSync(file, JSON.stringify(rec, null, 2));
+    for (const stale of abandoned(dir, host)) {
+        await remove(api, JSON.parse(fs.readFileSync(stale, "utf8")) as SeedRecord);
+        fs.rmSync(stale, { force: true });
     }
+    const rec = await mint(api);
+    const file = path.join(dir, `${host}.${rec.pid}.${RUN}.json`);
+    fs.writeFileSync(file, JSON.stringify(rec, null, 2));
     await api.dispose();
 
     const handle: SeededViz = { slug: rec.slug, image_slug: rec.image_slug };
     process.env[SEED_ENV] = JSON.stringify(handle);
 
-    const seeded = rec;
     return async () => {
         const td = await request.newContext({ baseURL });
         try {
-            await remove(td, seeded);
+            await remove(td, rec);
             fs.rmSync(file, { force: true });
         } finally {
             await td.dispose();
