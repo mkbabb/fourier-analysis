@@ -29,8 +29,9 @@ import { seededViz } from "./fixtures/seed";
  * v180  UIA-F-180 — leaving with unsaved edits asks; Reset is undoable; the
  *       selection clears on exit.
  * v242  UIA-F-242 ⊕ F-172 (Magnet limb) — a neutral summary glyph, the point
- *       count as a glass Metric, a bare click writes no history, one hover
- *       tint, and the Magnet radius (in the menu, no red-glyph toggle)
+ *       count as a glass Metric, a bare click writes no history; the tools'
+ *       hover tints and the Magnet glyph's red are back (X.F.W14U.c2, §0db:
+ *       "one hover tint" INVERTED), and the Magnet radius (in the menu)
  *       wears the contour's hue (addendum (g)).
  *
  * Data: the e2e global seed (`e2e/global-seed.ts`) for the saved
@@ -340,10 +341,100 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         const tints = await dock.locator("button[aria-label]").evaluateAll((bs) =>
             [...new Set(bs.map((b) => getComputedStyle(b).getPropertyValue("--btn-hover-color").trim()))],
         );
-        expect(tints.length, `one hover tint (read ${JSON.stringify(tints)})`).toBeLessThanOrEqual(1);
-        // The Magnet radius is a menu row in the contour's hue, not a red glyph.
-        expect(await dock.locator('[aria-label="Magnet options"]').count(), "no red-glyph Magnet toggle").toBe(0);
+        // X.F.W14U.c2 — COHESION §0db (addendum (g)'s "and the like"): INVERTED,
+        // never deleted. The tools do not share one hover tint; each wears its
+        // hue from the one palette through DockControl's published
+        // `--btn-hover-color`: Delete the accent pink, Save the Fourier red.
+        expect.soft(tints.length, `the tools do not share one hover tint (read ${JSON.stringify(tints)})`).toBeGreaterThan(1);
+        const toolHues = await dock.evaluate((root) => {
+            const resolve = (v: string) => {
+                const s = document.createElement("span");
+                s.style.color = v;
+                root.appendChild(s);
+                const c = getComputedStyle(s).color;
+                s.remove();
+                return c;
+            };
+            const tint = (label: string) => {
+                const b = root.querySelector(`button[aria-label="${label}"]`);
+                return b ? resolve(getComputedStyle(b).getPropertyValue("--btn-hover-color").trim() || "transparent") : null;
+            };
+            return {
+                // An ink is the hue carried a quarter toward --foreground (the
+                // chip recipe, for contrast; measured in the c2 record).
+                del: tint("Delete point"), pink: resolve("color-mix(in oklab, var(--accent-pink) 75%, var(--foreground))"),
+                save: tint("Save contour"), fourier: resolve("color-mix(in oklab, var(--viz-fourier) 75%, var(--foreground))"),
+            };
+        });
+        expect.soft(toolHues.del, "Delete's hover ink is the accent pink").toBe(toolHues.pink);
+        expect.soft(toolHues.save, "Save's hover ink is the Fourier red").toBe(toolHues.fourier);
+        // Save's hover, as glass paints it: the glyph takes the tint.
+        const save = dock.getByRole("button", { name: "Save contour" }).first();
+        await save.hover();
+        await page.waitForTimeout(400);
+        expect.soft(await save.evaluate((b) => getComputedStyle(b).color), "hovered Save wears the Fourier red").toBe(toolHues.fourier);
+        // The Magnet radius stays a menu row (no popover toggle, dd123a9's
+        // structure); INVERTED colour limb: its Magnet glyph is back and wears the
+        // Fourier red while the magnet is on.
+        expect(await dock.locator('[aria-label="Magnet options"]').count(), "no Magnet popover toggle (the radius is a menu row)").toBe(0);
         await dock.getByRole("button", { name: "More editor tools" }).click();
+        await page.waitForTimeout(400);
+        const menu = page.getByRole("menu");
+        const magnetField = menu.getByRole("spinbutton", { name: /Magnet/ });
+        await magnetField.fill("4");
+        await magnetField.press("Enter");
+        await page.waitForTimeout(300);
+        const glyph = await menu.evaluate((m) => {
+            const g = m.querySelector("svg.lucide-magnet");
+            const s = document.createElement("span");
+            s.style.color = "color-mix(in oklab, var(--viz-fourier) 75%, var(--foreground))";
+            m.appendChild(s);
+            const fourier = getComputedStyle(s).color;
+            s.remove();
+            return g ? { color: getComputedStyle(g).color, fourier } : null;
+        });
+        expect.soft(glyph, "the Magnet glyph is in the menu").not.toBeNull();
+        expect.soft(glyph?.color, "the Magnet glyph wears the Fourier red while on").toBe(glyph?.fourier);
+        // Smooth and Simplify (menu rows since dd123a9) keep their hover hues:
+        // the glyph takes the hue and glass's `--menu-row-bg` carries its tint.
+        for (const [name, token] of [["Smooth contour", "--viz-amber"], ["Simplify contour", "--viz-chebyshev"]] as const) {
+            const row = menu.getByRole("menuitem", { name });
+            await row.hover();
+            await page.waitForTimeout(350);
+            const read = await row.evaluate((el, token) => {
+                const s = document.createElement("span");
+                s.style.color = `var(${token})`;
+                el.appendChild(s);
+                const hueColor = getComputedStyle(s).color;
+                s.style.color = `color-mix(in oklab, var(${token}) 75%, var(--foreground))`;
+                const want = getComputedStyle(s).color;
+                s.remove();
+                const svg = el.querySelector("svg");
+                // HSL hue and chroma of a colour painted over white (mixing
+                // toward white keeps the hue exactly).
+                const c = document.createElement("canvas");
+                c.width = c.height = 1;
+                const x = c.getContext("2d", { willReadFrequently: true })!;
+                const hc = (css: string) => {
+                    x.fillStyle = "#fff"; x.fillRect(0, 0, 1, 1);
+                    x.fillStyle = css; x.fillRect(0, 0, 1, 1);
+                    const [r, g, b] = x.getImageData(0, 0, 1, 1).data;
+                    const max = Math.max(r, g, b), min = Math.min(r, g, b), k = max - min;
+                    if (!k) return { hue: NaN, chroma: 0 };
+                    const h = max === r ? ((g - b) / k) % 6 : max === g ? (b - r) / k + 2 : (r - g) / k + 4;
+                    return { hue: (h * 60 + 360) % 360, chroma: k };
+                };
+                const bg = hc(getComputedStyle(el).backgroundColor), hue = hc(hueColor);
+                return {
+                    glyph: svg ? getComputedStyle(svg).color : null, want,
+                    chroma: bg.chroma, dHue: Math.abs(((bg.hue - hue.hue + 540) % 360) - 180),
+                };
+            }, token);
+            expect.soft(read.glyph, `hovered ${name}'s glyph wears ${token}`).toBe(read.want);
+            expect.soft(read.chroma, `hovered ${name}'s row is tinted (chroma ${read.chroma})`).toBeGreaterThanOrEqual(6);
+            expect.soft(read.dHue, `hovered ${name}'s row tint carries ${token}`).toBeLessThanOrEqual(25);
+        }
+        await page.mouse.move(2, 2);
         const magnet = await page.getByRole("menu").evaluate((menu) => {
             const row = menu.querySelector("[style*='--track-color']") as HTMLElement | null;
             const resolve = (v: string) => {

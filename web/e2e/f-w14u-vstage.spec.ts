@@ -345,7 +345,9 @@ for (const vp of WIDTHS) {
             // A one-of-three chooser is a radio group; the bases are a group of toggles.
             const fourier = side.getByRole("radiogroup", { name: "Fourier mode" });
             await expect(fourier).toBeVisible();
-            for (const name of ["Epicycles", "Series", "Off"]) await expect(fourier.getByText(name, { exact: true })).toBeVisible();
+            // Adjacent (X.F.W14U.c2): the modes carry the aria-hidden ℱ glyph, so
+            // each is found by its accessible name, which the glyph leaves unchanged.
+            for (const name of ["Epicycles", "Series", "Off"]) await expect(fourier.getByRole("radio", { name, exact: true })).toBeVisible();
             const poly = side.getByRole("group", { name: "Polynomial bases" });
             await expect(poly).toBeVisible();
             // Each group sits on one row.
@@ -353,7 +355,16 @@ for (const vp of WIDTHS) {
                 const tops = await g.locator('[data-state]').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
                 expect(new Set(tops).size).toBe(1);
             }
-            await fourier.getByText("Series", { exact: true }).click();
+            // X.F.W14U.c2 — §0db: the basis glyphs are back on the chips, inside
+            // glass's ToggleGroupItem: ℱ on Epicycles and Series, Tₙ and Pₙ on
+            // the polynomial bases; "Off" is not a basis and wears none.
+            const glyphs = await side.locator('[data-slot="toggle-group-item"]').evaluateAll((els) =>
+                els.map((e) => [e.textContent!.replace(/\s+/g, " ").trim(), e.querySelector(".basis-icon")?.textContent?.trim() ?? null]),
+            );
+            expect.soft(Object.fromEntries(glyphs), "each basis chip wears its glyph").toEqual({
+                "ℱ Epicycles": "ℱ", "ℱ Series": "ℱ", Off: null, "Tₙ Chebyshev": "Tₙ", "Pₙ Legendre": "Pₙ",
+            });
+            await fourier.getByRole("radio", { name: "Series", exact: true }).click();
             await expect(fourier.locator('[data-state="on"]')).toHaveCount(1);
             await expect(fourier.locator('[data-state="on"]')).toContainText("Series");
         });

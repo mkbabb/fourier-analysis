@@ -144,7 +144,10 @@ function resetDefaults() {
                 :model-value="fourierMode" @update:model-value="setFourierMode">
                 <ToggleGroupItem v-for="m in FOURIER_MODES" :key="m.value" :value="m.value"
                     :class="{ 'basis-chip': m.value !== 'off' }"
-                    :style="m.value !== 'off' ? { '--basis-hue': FOURIER_HUE } : undefined">{{ m.label }}</ToggleGroupItem>
+                    :style="m.value !== 'off' ? { '--basis-hue': FOURIER_HUE } : undefined">
+                    <span v-if="m.value !== 'off'" class="basis-icon basis-icon--fourier font-serif-math" aria-hidden="true">{{ basisDisplay.fourier.icon }}</span>
+                    {{ m.label }}
+                </ToggleGroupItem>
             </ToggleGroup>
             <ToggleGroup type="multiple" size="sm" aria-label="Polynomial bases"
                 :model-value="polynomialBases" @update:model-value="setPolynomialBases">
@@ -188,6 +191,13 @@ function resetDefaults() {
     line-height: 1;
     min-width: 1em;
     height: 1em;
+}
+/* X.F.W14U.c2 — §0db: the Fourier modes wear ℱ again, as the Fourier pill did
+   before `.vstage`'s restructure. The script F sits small in its em box, so it
+   is set larger and pulled into the line (the pre-`.vstage` compact rule). */
+.basis-icon--fourier {
+    font-size: 1.75em;
+    margin: -0.3em -0.05em;
 }
 /* X.F.W14U.vstage — the two choosers stack, each one row. */
 .basis-groups {

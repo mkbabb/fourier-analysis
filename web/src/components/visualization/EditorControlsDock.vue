@@ -21,6 +21,7 @@ import {
     RotateCcw,
     Save,
     Check,
+    Magnet,
 } from "@lucide/vue";
 
 const props = defineProps<{
@@ -141,8 +142,10 @@ const emit = defineEmits<{
           and six tools sat behind an unmarked sideways scroll. The row keeps
           Undo, Redo and Delete; the Magnet radius, Smooth, Simplify, the two
           view layers and Reset move into one menu, as the sibling
-          AnimationControls folds its secondaries. UIA-F-242: one hover ink
-          across the row (the per-tool amber/sky/rose tints are gone).
+          AnimationControls folds its secondaries. X.F.W14U.c2 (COHESION §0db,
+          addendum (g)'s "and the like"): UIA-F-242's "one hover ink" is
+          reversed; the tools keep their hues (Smooth amber, Simplify sky,
+          Delete rose, Save the Fourier red, the Magnet glyph red while on).
           The Magnet radius shapes the contour, so its track wears the
           contour's hue (`--viz-amber`, the stroke's ink), the owner's hue per
           F-W14U addendum (g) (§0da). UIA-F-86: Contour trace acts
@@ -163,7 +166,7 @@ const emit = defineEmits<{
             <DockSeparator />
 
             <Tooltip text="Delete point">
-                <DockControl aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
+                <DockControl class="is-rose" aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
                     <Trash2 />
                 </DockControl>
             </Tooltip>
@@ -179,7 +182,9 @@ const emit = defineEmits<{
                          app's control-row idiom), as AnimationControls' menu
                          carries speed and easing; X.F.W14.h · OA-45. -->
                     <div class="magnet-section">
+                        <Magnet class="magnet-glyph" :class="{ 'is-on': magnetRadius > 0 }" aria-hidden="true" />
                         <SliderControl
+                            class="magnet-row"
                             label="Magnet"
                             :model-value="magnetRadius"
                             :min="0"
@@ -192,11 +197,11 @@ const emit = defineEmits<{
                         />
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem @select="emit('smooth')">
+                    <DropdownMenuItem class="tool-row is-amber" @select="emit('smooth')">
                         <Sparkles class="h-4 w-4" />
                         Smooth contour
                     </DropdownMenuItem>
-                    <DropdownMenuItem @select="emit('simplify')">
+                    <DropdownMenuItem class="tool-row is-sky" @select="emit('simplify')">
                         <Minimize2 class="h-4 w-4" />
                         Simplify contour
                     </DropdownMenuItem>
@@ -279,8 +284,37 @@ const emit = defineEmits<{
     white-space: nowrap;
 }
 
+/* X.F.W14U.c2 — COHESION §0db (addendum (g)'s "and the like"): the tools'
+   hues return from the one palette, through glass's published hover tokens —
+   DockControl's `--btn-hover-color` (the glyph ink on hover) and the menu row's
+   `--menu-row-bg` — never a restyle of glass's rules. Smooth amber, Simplify
+   the Chebyshev sky, Delete the accent pink, Save the Fourier red. A tint is
+   the bare hue; an INK is the hue carried a quarter toward `--foreground` in
+   OKLab (the basis chip's recipe, X.F.W14.g OA-43): the bare amber, pink and
+   red measured 2.5–2.84:1 on the light dock and menu plates, the carried inks
+   clear 3:1 in both arms (the c2 record). */
+.is-amber { --tool-hue: var(--viz-amber); }
+.is-sky { --tool-hue: var(--viz-chebyshev); }
+.is-rose { --tool-hue: var(--accent-pink); }
+.is-save { --tool-hue: var(--viz-fourier); }
+.is-amber, .is-sky, .is-rose, .is-save {
+    --tool-ink: color-mix(in oklab, var(--tool-hue) 75%, var(--foreground));
+}
+.is-rose, .is-save {
+    --btn-hover-color: var(--tool-ink);
+}
+.tool-row {
+    --menu-row-bg: color-mix(in srgb, var(--tool-hue) 15%, transparent);
+}
+.tool-row:is(:hover, :focus, [data-highlighted]):not([data-disabled]) > svg {
+    color: var(--tool-ink);
+}
+
 .is-save {
     background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+.is-save:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--tool-hue) 15%, transparent);
 }
 /* X.F.W4 · `fr-EditorControlsDock M-7` — one control, two hover registers,
    keyed by a boolean the CSS ignored. This unlayered `color` beat the layered
@@ -301,6 +335,27 @@ const emit = defineEmits<{
 .magnet-section {
     width: 12rem;
     padding: var(--space-atom) var(--space-body);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-atom);
+}
+.magnet-row {
+    flex: 1;
+    min-width: 0;
+}
+/* X.F.W14U.c2 — the Magnet glyph is back beside its radius and wears the
+   Fourier red while the magnet is on (the pre-`.vedit` `text-viz-fourier`
+   state; the ink carried toward `--foreground` as above), the muted glyph ink
+   while it is off. */
+.magnet-glyph {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.35rem;
+    color: var(--muted-foreground);
+}
+.magnet-glyph.is-on {
+    color: color-mix(in oklab, var(--viz-fourier) 75%, var(--foreground));
 }
 
 /**
