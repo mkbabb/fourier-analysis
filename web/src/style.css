@@ -290,15 +290,6 @@ html {
     --section-color-11: oklch(0.805 0.095 206.7);
 }
 
-/* X.F.W14U.vstage — UIA-F-172: the controls' one accent. The /visualize aside
-   painted each slider in a basis hue (Harmonics red, Sample Points blue, the
-   contour rows amber); a hue on a control said nothing, and red is the error
-   ink. Every aside slider reads this one token; the basis hues stay on the
-   canvas, where they name curves. */
-:root {
-    --control-accent: var(--primary);
-}
-
 /* D.W4.d — `:focus-visible` rings on the TOC link classes + the gallery
    card. Mirrors the canonical pattern the app chrome paints — today
    `AppDock.vue`, whose controls carry the producer's `--focus-ring-width` /

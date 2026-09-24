@@ -32,7 +32,9 @@ import { seededViz } from "./fixtures/seed";
  * e170  UIA-F-170 ⊕ F-238 — the Fourier mode is a three-option chooser, the
  *       polynomial bases a toggle group; no hidden cycle, no 2+1 orphan.
  * e171  UIA-F-171 ⊕ F-146 ⊕ F-172 — Advanced is a glass Button disclosure; no
- *       tooltip wraps a non-focusable control; the sliders share one accent.
+ *       tooltip wraps a non-focusable control. F-172's "one slider accent" is
+ *       INVERTED by X.F.W14U.c1 (addendum (g)): each slider wears its owner's
+ *       hue and the pressed basis chip carries its basis tint.
  * e239  UIA-F-239 (media half) — the image preview's corner rounds the image,
  *       not letterbox space.
  *
@@ -356,7 +358,7 @@ for (const vp of WIDTHS) {
             await expect(fourier.locator('[data-state="on"]')).toContainText("Series");
         });
 
-        test("e171 · F-171 ⊕ F-146 ⊕ F-172 — Advanced is a glass disclosure; tooltips only on focusable triggers; one slider accent", async ({ page }) => {
+        test("e171 · F-171 ⊕ F-146 ⊕ F-172 — Advanced is a glass disclosure; tooltips only on focusable triggers; each slider its owner's hue", async ({ page }) => {
             await openViz(page);
             const side = page.locator(".viz-panel-left-wrap");
             await side.locator('[data-slot="configurator-layer-trigger"]', { hasText: "Contour" }).click();
@@ -384,7 +386,87 @@ for (const vp of WIDTHS) {
                 [...root.querySelectorAll<HTMLElement>('[style*="--row-fill"]')].map((el) => el.style.getPropertyValue("--track-color").trim()),
             );
             expect(fills.length).toBeGreaterThan(3);
-            expect(new Set(fills).size).toBe(1);
+            // X.F.W14U.c1 — addendum (g), COHESION §0da: the owner reverses F-172's
+            // colour limb. INVERTED (never deleted): the sliders do NOT share one
+            // accent; each wears its owner's hue from the one palette, and none is
+            // the error ink.
+            expect.soft(new Set(fills).size, "the sliders do not share one accent").toBeGreaterThan(1);
+            const hues = await side.evaluate((root, owner) => {
+                const probe = document.createElement("span");
+                root.appendChild(probe);
+                const cvs = document.createElement("canvas");
+                cvs.width = cvs.height = 1;
+                const ctx = cvs.getContext("2d", { willReadFrequently: true })!;
+                /** The used colour of `css`, painted opaque over white, as 0-255 rgb. */
+                const rgb = (css: string, under = "#fff"): number[] => {
+                    probe.style.color = "";
+                    probe.style.color = css;
+                    const used = getComputedStyle(probe).color;
+                    ctx.clearRect(0, 0, 1, 1);
+                    ctx.fillStyle = under;
+                    ctx.fillRect(0, 0, 1, 1);
+                    ctx.fillStyle = used;
+                    ctx.fillRect(0, 0, 1, 1);
+                    return [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+                };
+                const destructive = rgb("var(--destructive)");
+                const sliders = [...root.querySelectorAll<HTMLElement>('[style*="--row-fill"]')].map((el) => {
+                    const label = el.closest("[data-control-row]")?.querySelector("[data-row-label]")?.textContent?.trim() ?? "";
+                    const token = owner[label];
+                    return {
+                        label,
+                        track: rgb(el.style.getPropertyValue("--track-color").trim()),
+                        want: token ? rgb(`var(${token})`) : null,
+                    };
+                });
+                /** HSL hue (deg) and chroma (max - min, 0-255) of an rgb triple. */
+                const hc = ([r, g, b]: number[]) => {
+                    const max = Math.max(r, g, b), min = Math.min(r, g, b), c = max - min;
+                    if (c === 0) return { hue: NaN, chroma: 0 };
+                    const h = max === r ? ((g - b) / c) % 6 : max === g ? (b - r) / c + 2 : (r - g) / c + 4;
+                    return { hue: (h * 60 + 360) % 360, chroma: c };
+                };
+                // The pressed basis chips: their computed background, composited
+                // over white (mixing toward white keeps the HSL hue exactly).
+                const CHIP_OWNER: Record<string, string> = {
+                    Epicycles: "--viz-fourier", Series: "--viz-fourier",
+                    Chebyshev: "--viz-chebyshev", Legendre: "--viz-legendre",
+                };
+                const chips = [...root.querySelectorAll<HTMLElement>('[data-slot="toggle-group-item"][data-state="on"]')]
+                    .map((el) => {
+                        const label = [...el.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE)
+                            .map((n) => n.textContent).join("").trim();
+                        const token = CHIP_OWNER[label];
+                        return {
+                            label,
+                            bg: hc(rgb(getComputedStyle(el).backgroundColor)),
+                            want: token ? hc(rgb(`var(${token})`)) : null,
+                        };
+                    });
+                probe.remove();
+                return { destructive, sliders, chips };
+            }, {
+                Harmonics: "--viz-fourier",
+                "Sample Points": "--viz-chebyshev",
+                "ML Threshold": "--viz-amber",
+                "Blur Sigma": "--viz-amber",
+                "Min Area %": "--viz-amber",
+                "Max Contours": "--viz-amber",
+                Smoothing: "--viz-amber",
+            } as Record<string, string>);
+            for (const s of hues.sliders) {
+                expect.soft(s.want, `slider "${s.label}" has an owner`).not.toBeNull();
+                const off = Math.max(...s.track.map((v, i) => Math.abs(v - s.want![i])));
+                expect.soft(off, `slider "${s.label}" wears its owner's hue (track ${s.track} vs ${s.want})`).toBeLessThanOrEqual(3);
+                expect.soft(s.track, `slider "${s.label}" is not the error ink`).not.toEqual(hues.destructive);
+            }
+            expect(hues.chips.map((c) => c.label)).toContain("Epicycles");
+            for (const c of hues.chips) {
+                if (!c.want) continue; // "Off" is not a basis
+                const d = Math.abs(((c.bg.hue - c.want.hue + 540) % 360) - 180);
+                expect.soft(c.bg.chroma, `the pressed ${c.label} chip is tinted (chroma ${c.bg.chroma})`).toBeGreaterThanOrEqual(6);
+                expect.soft(d, `the pressed ${c.label} chip carries its basis hue (${c.bg.hue} vs ${c.want.hue})`).toBeLessThanOrEqual(20);
+            }
         });
     });
 }

@@ -10,12 +10,14 @@ import { normalizeBasisKey } from "@/lib/basis";
 import { basisDisplay } from "./lib/basis-display";
 import { RotateCcw } from "@lucide/vue";
 
-/* X.F.W14U.vstage — UIA-F-172: the aside's sliders wore one hue each (Harmonics
-   the Fourier red, Sample Points the Chebyshev blue, the contour rows amber), a
-   code that meant nothing. Controls take the one accent (`style.css`
-   `--control-accent`); the basis hues stay on the canvas, where they name a curve. */
-const CONTROL_ACCENT = "var(--control-accent)";
-
+/* X.F.W14U.c1 — addendum (g), COHESION §0da: the owner reverses UIA-F-172's
+   colour limb. The basis hues are fourier's visual language on the controls as
+   on the canvas, so every control that sets a basis-owned quantity wears that
+   basis's hue from the one palette (`basisDisplay`, derived from `VIZ_COLORS`):
+   Harmonics the Fourier red, Sample Points the Chebyshev blue, and the pressed
+   basis chip its own basis tint. The one-accent token `--control-accent` is
+   deleted. */
+const FOURIER_HUE = computed(() => basisDisplay.fourier.color);
 
 const props = defineProps<{
     activeBases?: string[];
@@ -140,11 +142,14 @@ function resetDefaults() {
         <div class="basis-groups">
             <ToggleGroup type="single" size="sm" aria-label="Fourier mode"
                 :model-value="fourierMode" @update:model-value="setFourierMode">
-                <ToggleGroupItem v-for="m in FOURIER_MODES" :key="m.value" :value="m.value">{{ m.label }}</ToggleGroupItem>
+                <ToggleGroupItem v-for="m in FOURIER_MODES" :key="m.value" :value="m.value"
+                    :class="{ 'basis-chip': m.value !== 'off' }"
+                    :style="m.value !== 'off' ? { '--basis-hue': FOURIER_HUE } : undefined">{{ m.label }}</ToggleGroupItem>
             </ToggleGroup>
             <ToggleGroup type="multiple" size="sm" aria-label="Polynomial bases"
                 :model-value="polynomialBases" @update:model-value="setPolynomialBases">
-                <ToggleGroupItem v-for="key in POLYNOMIAL_BASES" :key="key" :value="key">
+                <ToggleGroupItem v-for="key in POLYNOMIAL_BASES" :key="key" :value="key"
+                    class="basis-chip" :style="{ '--basis-hue': basisDisplay[key].color }">
                     <span class="basis-icon font-serif-math" aria-hidden="true">{{ basisDisplay[key].icon }}</span>
                     {{ basisDisplay[key].label }}
                 </ToggleGroupItem>
@@ -158,7 +163,7 @@ function resetDefaults() {
             :min="1"
             :max="500"
             :step="1"
-            :color="CONTROL_ACCENT"
+            :color="FOURIER_HUE"
             @update:model-value="emitHarmonics"
         />
         <SliderControl
@@ -167,7 +172,7 @@ function resetDefaults() {
             :min="128"
             :max="4096"
             :step="128"
-            :color="CONTROL_ACCENT"
+            :color="basisDisplay.chebyshev.color"
             @update:model-value="emitPoints"
         />
     </ConfiguratorLayer>
@@ -184,15 +189,28 @@ function resetDefaults() {
     min-width: 1em;
     height: 1em;
 }
-/* X.F.W14U.vstage — the two choosers stack, each one row; the local pill
-   retint (`.basis-toggle`: a 2px border, a per-basis tint) retired with the
-   pills — the ToggleGroup's pressed state is glass's own. */
+/* X.F.W14U.vstage — the two choosers stack, each one row. */
 .basis-groups {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
     padding-bottom: 0.25rem;
+}
+
+/* X.F.W14U.c1 — addendum (g): the pressed basis chip carries its basis tint.
+   The item is glass's ToggleGroupItem as published; this is the per-instance
+   retint of its own pressed state through its `class` prop, keyed on the
+   `data-state` it ships (the `.basis-toggle` recipe of X.F.W14.g, OA-43, on the
+   new item). The ink is the hue carried a quarter toward `--foreground` in
+   OKLab, which keeps the hue and clears AA on the tint in both arms (measured in
+   the c1 record). "Off" is not a basis and keeps glass's neutral pressed state. */
+.basis-chip[data-state="on"] {
+    background-color: color-mix(in srgb, var(--basis-hue) 12%, transparent);
+    color: color-mix(in oklab, var(--basis-hue) 75%, var(--foreground));
+}
+.basis-chip[data-state="on"]:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--basis-hue) 16%, transparent);
 }
 
 /* X.F.W13.b — the `.reset-icon-btn` block retires: it restated the glass Button's

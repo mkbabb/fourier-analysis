@@ -2,6 +2,7 @@
 import { ref, watch, computed } from "vue";
 import { watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { Button } from "@mkbabb/glass-ui/button";
 // `./alert` has no subpath export at the 8.0.0 pin; the root barrel carries it.
@@ -23,8 +24,10 @@ import { Tooltip } from "@/components/ui/tooltip";
 import SliderControl from "@/components/ui/SliderControl.vue";
 
 const advancedOpen = ref(false);
-/** UIA-F-172 — the aside's one control accent (`style.css` `--control-accent`). */
-const CONTROL_ACCENT = "var(--control-accent)";
+/** X.F.W14U.c1 — addendum (g) reverses UIA-F-172's colour limb: the contour
+ *  rows set contour-owned quantities and wear the contour's hue from the one
+ *  palette (`VIZ_COLORS.amber`, the ink the contour stroke paints with). */
+const CONTOUR_HUE = computed(() => VIZ_COLORS.amber);
 
 /**
  * X.F.W3 `.d` — `fr-ContourSettings M-16` (≡ `C-9` / `L-M3`(contract) / `D-i2`),
@@ -269,7 +272,7 @@ watch(
             :min="0.1"
             :max="0.9"
             :step="0.05"
-            :color="CONTROL_ACCENT"
+            :color="CONTOUR_HUE"
             :format-value="(v: number) => v.toFixed(2)"
             subtitle="saliency cutoff"
         />
@@ -281,7 +284,7 @@ watch(
             :min="0"
             :max="5"
             :step="0.1"
-            :color="CONTROL_ACCENT"
+            :color="CONTOUR_HUE"
             :format-value="(v: number) => v.toFixed(1)"
             subtitle="softens noisy edges"
         />
@@ -308,7 +311,7 @@ watch(
                         :min="0"
                         :max="20"
                         :step="0.5"
-                        :color="CONTROL_ACCENT"
+                        :color="CONTOUR_HUE"
                         :format-value="(v: number) => v.toFixed(1)"
                         subtitle="drops stray specks"
                     />
@@ -320,7 +323,7 @@ watch(
                         :min="0"
                         :max="50"
                         :step="1"
-                        :color="CONTROL_ACCENT"
+                        :color="CONTOUR_HUE"
                         :format-value="(v: number) => v === 0 ? 'All' : String(v)"
                         subtitle="1 = one silhouette"
                     />
@@ -332,7 +335,7 @@ watch(
                         :min="0"
                         :max="1"
                         :step="0.05"
-                        :color="CONTROL_ACCENT"
+                        :color="CONTOUR_HUE"
                         :format-value="(v: number) => v.toFixed(2)"
                         subtitle="irons jagged edges"
                     />
