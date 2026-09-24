@@ -55,10 +55,14 @@ function excluded(...tags: RegExp[]): RegExp | undefined {
  * reports a 1x `devicePixelContentBoxSize` and paints a 1x bitmap stretched 2x
  * (measured at F.W14 Repair 1, D-2), so a headless reading measures the
  * emulator, not the app. §0be's instrument rule is headed real-GPU Chromium;
- * the suite declares it here as configuration: the `chromium-headed` project
- * owns the spec and every headless project ignores it. It is never skipped.
+ * the suite declares it here as configuration: the spec's tests carry the
+ * `@gpu` tag, the `chromium-headed` project runs exactly those, and every
+ * headless project excludes them. They are never skipped. Tag-scoped like the
+ * `@coarse` cell below, and not by a project `testMatch`: G-F9-1
+ * (`e2e/unit/unit-floor-population.vitest.ts`) reads Playwright's population
+ * as `testDir` plus the default `testMatch`, and reddens if one is set.
  */
-const GPU_INSTRUMENT = /f-w14-dpr\.spec\.ts/;
+const GPU_INSTRUMENT = /@gpu/;
 
 export default defineConfig({
     testDir: "./e2e",
@@ -84,13 +88,12 @@ export default defineConfig({
             // fine, so running them here would report a correct fine-pointer
             // tree as broken. When PLAYWRIGHT_PROD=1 the destructive specs are
             // excluded here too — see `excluded()` above.
-            grepInvert: excluded(/@coarse/),
-            testIgnore: GPU_INSTRUMENT,
+            grepInvert: excluded(/@coarse/, GPU_INSTRUMENT),
         },
         {
             name: "chromium-headed",
             use: { ...devices["Desktop Chrome"], headless: false },
-            testMatch: GPU_INSTRUMENT,
+            grep: GPU_INSTRUMENT,
             grepInvert: excluded(/@coarse/),
         },
         /**
@@ -130,8 +133,7 @@ export default defineConfig({
             name: "mobile-chromium",
             use: { ...devices["Pixel 7"] },
             grep: /@coarse/,
-            grepInvert: excluded(),
-            testIgnore: GPU_INSTRUMENT,
+            grepInvert: excluded(GPU_INSTRUMENT),
         },
     ],
 });

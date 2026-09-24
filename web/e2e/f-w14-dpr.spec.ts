@@ -221,7 +221,7 @@ async function openImage(page: Page): Promise<void> {
 }
 
 for (const dpr of [1, 2]) {
-    test.describe(`G-p at DPR ${dpr}`, () => {
+    test.describe(`G-p at DPR ${dpr}`, { tag: "@gpu" }, () => {
         test.use({ deviceScaleFactor: dpr, viewport: { width: W, height: H } });
 
         for (const route of ["equation", "image"] as const) {
