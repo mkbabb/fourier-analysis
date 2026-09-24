@@ -11,8 +11,7 @@ import {
 import "@mkbabb/latex-paper/theme";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
 import { useMediaQuery } from "@vueuse/core";
-import PaperSidebar from "./PaperSidebar.vue";
-import MobileFloatingToc from "./MobileFloatingToc.vue";
+import PaperToc from "./PaperToc.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
 import PaperSearchModal from "./search/PaperSearchModal.vue";
 import { createPreviewLookup } from "./paperTree";
@@ -448,8 +447,9 @@ onUnmounted(() => {
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
             <Transition name="slide-down">
-                <MobileFloatingToc
+                <PaperToc
                     v-if="!isDesktop && !mobileTocVisible"
+                    presentation="floating"
                     :current-section="currentSection"
                     :render-title="renderTitle"
                     :scroll-container="scrollContainer"
@@ -473,7 +473,7 @@ onUnmounted(() => {
                          the hidden instance's capture-phase outside-pointerdown
                          closed the search before a tapped result could navigate.
                          Each host now mounts only at its own breakpoint. -->
-                    <PaperSidebar v-if="isDesktop" :render-title="renderTitle" :search="search" />
+                    <PaperToc v-if="isDesktop" presentation="rail" :render-title="renderTitle" :search="search" />
 
                     <!-- Main article -->
                     <article class="paper-article leading-relaxed">
@@ -714,10 +714,16 @@ onUnmounted(() => {
     min-width: 0;
 }
 
+/* X.F.W14U.t — OA-60: the ToC track is `auto`, sized by the one ToC's own
+   drawer width (`PaperToc.vue`, which carries the gutter as its tab rail), so
+   hiding the ToC collapses the column and the paper slides over it. `center`
+   keeps the paper centred in the room the collapsed column gives back; `start`
+   would leave it flush left, and the default would stretch the auto track. */
 @media (min-width: 1024px) {
     .paper-columns {
-        grid-template-columns: 220px minmax(0, 48rem);
-        gap: 2rem;
+        grid-template-columns: auto minmax(0, 48rem);
+        column-gap: 0;
+        justify-content: center;
     }
 }
 
