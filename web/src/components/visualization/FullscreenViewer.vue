@@ -48,7 +48,7 @@
  */
 import { ref } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@mkbabb/glass-ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@mkbabb/glass-ui/dialog";
 import { Minimize2 } from "@lucide/vue";
 import type { ContourAsset } from "@/lib/types";
 import BasisCanvas from "./BasisCanvas.vue";
@@ -99,6 +99,12 @@ function onOpenChange(open: boolean) {
             <DialogTitle class="sr-only">
                 {{ isEditing ? "Contour editor, fullscreen" : "Visualization, fullscreen" }}
             </DialogTitle>
+            <!-- X.F.W14U.vdock — UIA-F-244: the takeover says what it holds and
+                 how to leave it (Reka's missing-Description warning, and an
+                 assistive technology's only account of the surface). -->
+            <DialogDescription class="sr-only">
+                Press Escape or Exit fullscreen to return to the page.
+            </DialogDescription>
 
             <Button
                 emphasis="primary"
@@ -130,11 +136,7 @@ function onOpenChange(open: boolean) {
             <div v-if="!isEditing" class="fs-controls">
                 <AnimationControls
                     :active-bases="activeBases"
-                    :show-ghost="showGhost"
-                    :show-image-overlay="showImageOverlay"
                     max-width="60rem"
-                    @toggle-ghost="emit('toggleGhost')"
-                    @toggle-image-overlay="emit('toggleImageOverlay')"
                     @export-frame="canvasComponent?.exportFrame()"
                 />
             </div>

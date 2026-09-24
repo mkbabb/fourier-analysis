@@ -125,24 +125,35 @@ function drawFrame() {
 // switches were read by nobody (exportFrame destructured only grid and labels),
 // so a PNG exported with every layer off still held the chain and the trace.
 // Both frame painters take the layer set; the live draw paints every layer.
+//
+// X.F.W14U.vdock — UIA-F-243 ⊕ F-182: every exported layer has a switch. The
+// grey reference contour (the view's trace) was painted into every export with
+// no switch, and "Labels" off was a `clearRect(0, 0, 200, 100)` that erased a
+// fixed corner — grid included — whatever the labels' real extent. Both are
+// layers now: `ghost` (the live draw follows the view's trace toggle) and
+// `labels` (skipped, never erased).
 interface FrameLayers {
     epicycles: boolean;
     trail: boolean;
+    ghost: boolean;
+    labels: boolean;
 }
-const ALL_LAYERS: FrameLayers = { epicycles: true, trail: true };
+function liveLayers(): FrameLayers {
+    return { epicycles: true, trail: true, ghost: props.showGhost, labels: true };
+}
 
 function drawEpicycleFrame(
     s: CanvasSurface,
     data: typeof store.epicycleData & {},
     view: ViewTransform,
-    layers: FrameLayers = ALL_LAYERS,
+    layers: FrameLayers = liveLayers(),
 ) {
     const hoveredBasis = hover.getHoveredBasis();
     const epicycleHovered = hoveredBasis === "fourier-epicycles";
     const trailColor = epicycleHovered ? VIZ_COLORS.golden : VIZ_COLORS.fourier;
 
     // Ghost path
-    if (props.showGhost) {
+    if (layers.ghost) {
         drawGhostPath(s, view, data.path.x, data.path.y, true);
     }
 
@@ -212,16 +223,18 @@ function drawEpicycleFrame(
     }
 
     // Label with hit regions for hover detection
-    const level = Math.max(1, Math.ceil(anim.easedT * components.length));
-    const { hitRegions } = drawBasisLabels(s, ["fourier-epicycles"], `N = ${level}`, hoveredBasis);
-    hover.setLabelHitRegions(hitRegions);
+    if (layers.labels) {
+        const level = Math.max(1, Math.ceil(anim.easedT * components.length));
+        const { hitRegions } = drawBasisLabels(s, ["fourier-epicycles"], `N = ${level}`, hoveredBasis);
+        hover.setLabelHitRegions(hitRegions);
+    }
 }
 
 // ── Multi-basis mode ──
 function drawMultiBasesFrame(
     s: CanvasSurface,
     view: ViewTransform,
-    layers: FrameLayers = ALL_LAYERS,
+    layers: FrameLayers = liveLayers(),
 ) {
     const { ctx, width, height } = s;
     const basesData = store.basesData;
@@ -229,7 +242,7 @@ function drawMultiBasesFrame(
     const hoveredBasis = hover.getHoveredBasis();
 
     // Ghost path
-    if (props.showGhost) {
+    if (layers.ghost) {
         let origX: number[] | undefined;
         let origY: number[] | undefined;
         if (basesData) {
@@ -394,8 +407,10 @@ function drawMultiBasesFrame(
     }
 
     // Labels
-    const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis);
-    hover.setLabelHitRegions(hitRegions);
+    if (layers.labels) {
+        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis);
+        hover.setLabelHitRegions(hitRegions);
+    }
 }
 
 // ── Watchers (split: epicycle vs bases) ──
@@ -486,6 +501,18 @@ onUnmounted(() => {
 });
 
 // ── Export ──
+/** The first OPAQUE background up the canvas's ancestry, as the engine resolves it. */
+function groundColor(el: HTMLElement): string {
+    for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+        const bg = getComputedStyle(node).backgroundColor;
+        const alpha = /(?:\/\s*|rgba\([^)]*,\s*)([\d.]+%?)\)$/.exec(bg)?.[1];
+        const a = alpha === undefined ? 1 : alpha.endsWith("%") ? parseFloat(alpha) / 100 : parseFloat(alpha);
+        if (bg !== "transparent" && a >= 1) return bg;
+    }
+    // The page's own ground (the loop starts at the canvas, whose ancestry ends at <html>).
+    return getComputedStyle(document.body).backgroundColor;
+}
+
 function exportFrame(options: Record<string, boolean> = {}) {
     if (!canvasRef.value || !surface.value) return;
     const s = surface.value;
@@ -495,8 +522,10 @@ function exportFrame(options: Record<string, boolean> = {}) {
         withLabels: showLabels = true,
         withEpicycles = true,
         withTrail = true,
+        withReference = true,
+        withBackground = false,
     } = options;
-    const layers: FrameLayers = { epicycles: withEpicycles, trail: withTrail };
+    const layers: FrameLayers = { epicycles: withEpicycles, trail: withTrail, ghost: withReference, labels: showLabels };
 
     // Create an offscreen canvas at the same resolution
     const offCanvas = document.createElement("canvas");
@@ -513,6 +542,13 @@ function exportFrame(options: Record<string, boolean> = {}) {
     const basesData = store.basesData;
     if (data || basesData) {
         offCtx.clearRect(0, 0, s.width, s.height);
+        // UIA-F-243: an opaque ground on request — the ground the canvas is
+        // seen on (its nearest painted ancestor), so a dark export is a dark
+        // plate, not a light grid on nothing.
+        if (withBackground) {
+            offCtx.fillStyle = groundColor(canvasRef.value);
+            offCtx.fillRect(0, 0, s.width, s.height);
+        }
         const view = getViewTransform(s);
         if (showGrid) drawGrid(s, view);
 
@@ -525,9 +561,6 @@ function exportFrame(options: Record<string, boolean> = {}) {
             drawMultiBasesFrame(s, view, layers);
         }
 
-        if (!showLabels) {
-            offCtx.clearRect(0, 0, 200, 100);
-        }
     }
 
     // Restore

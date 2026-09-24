@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import {
-    Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "@lucide/vue";
+    Ellipsis, Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
@@ -74,7 +74,13 @@ watch(
                         <span v-if="showImageOverlay || showGhost" class="view-dot" />
                     </DockControl>
                 </PopoverTrigger>
-                <PopoverContent side="top" align="center">
+                <!-- X.F.W14U.vdock — UIA-F-76: the dock is anchored at the stage's
+                     top, so the popover opens DOWN into the canvas, end-aligned with
+                     its sibling menus (the viewport gutter is the placement's own:
+                     glass's floating placement takes no consumer collision
+                     padding). `side="top"` flipped it over the figure on desktop
+                     and over the app header at 390. -->
+                <PopoverContent side="bottom" align="end">
                     <div class="flex flex-col gap-1 p-1">
                         <Tooltip text="Image overlay">
                             <DockControl aria-label="Image overlay" :active="showImageOverlay" @click="$emit('toggleImageOverlay')">
@@ -139,8 +145,13 @@ watch(
           over live-canvas glass) become the substrate's muted-glyph dial.
         -->
         <template #collapsed>
+            <!-- X.F.W14U.vdock — UIA-F-94: the resting face wears a neutral glyph.
+                 The Maximize arrows it wore are the Fullscreen action's own glyph,
+                 so at 390 the face read as "Fullscreen" while a tap on it expanded
+                 the dock (or, beside the persistent Edit, toggled editing). A
+                 summary names no action it does not perform. -->
             <span class="summary-glyph-wrap">
-                <Maximize2 class="dock-summary-glyph" aria-hidden="true" />
+                <Ellipsis class="dock-summary-glyph" aria-hidden="true" />
                 <span v-if="showImageOverlay || showGhost" class="view-dot" />
             </span>
         </template>

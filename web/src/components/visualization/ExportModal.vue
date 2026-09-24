@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { reactive, watch } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Switch } from "@mkbabb/glass-ui/switch";
+import { LabeledSwitch } from "@mkbabb/glass-ui/labeled-field";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
 } from "@mkbabb/glass-ui/dialog";
 import { Download } from "@lucide/vue";
+import { safeGetItem, safeSetItem } from "@/composables/useSafeStorage";
 
 const props = defineProps<{
     hasEpicycles: boolean;
@@ -20,10 +22,45 @@ const emit = defineEmits<{
     (e: "close"): void;
 }>();
 
-const withEpicycles = ref(true);
-const withTrail = ref(true);
-const withGrid = ref(true);
-const withLabels = ref(true);
+/**
+ * X.F.W14U.vdock — UIA-F-243: the choices are the viewer's, remembered across
+ * opens (this dialog mounts per open, so its refs reset every time), through
+ * `useSafeStorage`'s try/catch; a missing or unreadable record is the defaults.
+ * Every exported layer has a switch — the reference contour included — and an
+ * opaque ground is one of them.
+ */
+const STORAGE_KEY = "fourier:export-options";
+const DEFAULTS = {
+    withEpicycles: true,
+    withTrail: true,
+    withReference: true,
+    withGrid: true,
+    withLabels: true,
+    withBackground: false,
+};
+type ExportOptions = typeof DEFAULTS;
+
+function restore(): ExportOptions {
+    const raw = safeGetItem(localStorage, STORAGE_KEY);
+    if (!raw) return { ...DEFAULTS };
+    let saved: unknown;
+    try {
+        saved = JSON.parse(raw);
+    } catch {
+        return { ...DEFAULTS };
+    }
+    const out = { ...DEFAULTS };
+    if (saved && typeof saved === "object") {
+        for (const key of Object.keys(DEFAULTS) as (keyof ExportOptions)[]) {
+            const v = (saved as Record<string, unknown>)[key];
+            if (typeof v === "boolean") out[key] = v;
+        }
+    }
+    return out;
+}
+
+const options = reactive(restore());
+watch(options, (next) => safeSetItem(localStorage, STORAGE_KEY, JSON.stringify(next)));
 
 // The Dialog is rendered open; reka-ui's DialogRoot drives the focus-trap,
 // Esc-to-close, and `aria-modal`. `@update:open` fires `false` on Esc /
@@ -33,12 +70,7 @@ function onOpenChange(open: boolean) {
 }
 
 function doExport() {
-    emit("export", {
-        withEpicycles: props.hasEpicycles && withEpicycles.value,
-        withTrail: withTrail.value,
-        withGrid: withGrid.value,
-        withLabels: withLabels.value,
-    });
+    emit("export", { ...options, withEpicycles: props.hasEpicycles && options.withEpicycles });
 }
 </script>
 
@@ -47,33 +79,31 @@ function doExport() {
         <!-- DialogContent supplies role="dialog" + aria-modal="true" + focus-trap
              + Esc + autofocus via reka-ui's DialogPortal/DialogContent. -->
         <DialogContent>
+            <!-- X.F.W14U.vdock — UIA-F-181 ⊕ F-229 ⊕ F-243: the title keeps glass's
+                 own title rung (the consumer `text-lg` re-sized it off the
+                 header's line box the close control centres on), and the dialog
+                 is described (Reka warned twice per open without one). -->
             <DialogHeader>
-                <DialogTitle class="font-serif-math text-lg font-semibold">Export Frame</DialogTitle>
+                <DialogTitle class="font-serif-math">Export Frame</DialogTitle>
+                <DialogDescription>Save the current frame as a PNG, with the layers you choose.</DialogDescription>
             </DialogHeader>
 
+            <!-- UIA-F-181: glass LabeledSwitch rows (label, control and hit area
+                 are the producer's), replacing the hand-rolled label + Switch rows
+                 and their 6px hover slab. -->
             <div class="option-list">
-                <label v-if="hasEpicycles" class="option-row">
-                    <span class="option-label">Epicycles</span>
-                    <Switch v-model="withEpicycles" />
-                </label>
-                <label class="option-row">
-                    <span class="option-label">Trace path</span>
-                    <Switch v-model="withTrail" />
-                </label>
-                <label class="option-row">
-                    <span class="option-label">Grid lines</span>
-                    <Switch v-model="withGrid" />
-                </label>
-                <label class="option-row">
-                    <span class="option-label">Labels</span>
-                    <Switch v-model="withLabels" />
-                </label>
+                <LabeledSwitch v-if="hasEpicycles" v-model="options.withEpicycles" label="Epicycles" layout="horizontal" />
+                <LabeledSwitch v-model="options.withTrail" label="Trace path" layout="horizontal" />
+                <LabeledSwitch v-model="options.withReference" label="Reference contour" layout="horizontal" />
+                <LabeledSwitch v-model="options.withGrid" label="Grid lines" layout="horizontal" />
+                <LabeledSwitch v-model="options.withLabels" label="Labels" layout="horizontal" />
+                <LabeledSwitch v-model="options.withBackground" label="Opaque background" layout="horizontal" />
             </div>
 
             <DialogFooter>
                 <Button emphasis="secondary" @click="emit('close')">Cancel</Button>
                 <Button emphasis="primary" @click="doExport">
-                    <Download class="h-3.5 w-3.5" />
+                    <Download />
                     Save PNG
                 </Button>
             </DialogFooter>
@@ -98,22 +128,7 @@ function doExport() {
     gap: 0.125rem;
 }
 
-.option-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0.25rem;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.option-row:hover {
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
-}
-
-.option-label {
-    @apply text-base;
-    font-weight: 500;
-}
+/* X.F.W14U.vdock — UIA-F-181: the hand-rolled `.option-row` / `.option-label`
+   rules (padding, hover slab, literal type size) retire with the rows; the
+   LabeledSwitch rows carry the producer's own. */
 </style>

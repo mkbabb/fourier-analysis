@@ -188,8 +188,12 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
             await more.click();
             await page.getByRole("menuitem", { name: /export/i }).click();
             const dialog = page.getByRole("dialog", { name: "Export Frame" });
-            for (const name of off) {
-                await dialog.locator("label.option-row", { hasText: name }).getByRole("switch").click();
+            // X.F.W14U.vdock (UIA-F-243): the dialog remembers its choices across
+            // opens, so each export SETS every layer switch rather than toggling
+            // from a presumed default.
+            for (const name of ["Epicycles", "Trace path", "Grid lines", "Labels"]) {
+                const sw = dialog.getByRole("switch", { name });
+                if ((await sw.getAttribute("aria-checked")) !== String(!off.includes(name))) await sw.click();
             }
             const dl = page.waitForEvent("download");
             await dialog.getByRole("button", { name: "Save PNG" }).click();

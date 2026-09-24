@@ -181,13 +181,6 @@ const TimelineReadout = () =>
             <!-- Timeline -->
             <TimelineReadout />
 
-            <!-- Speed -->
-            <Tooltip text="Playback speed">
-                <div class="hidden sm:block">
-                    <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" />
-                </div>
-            </Tooltip>
-
             <!-- Three-dot menu — glass-ui DropdownMenu (role="menu", focus
                  management, Esc + click-outside dismissal all from the
                  primitive; replaces the hand-rolled popup + onClickOutside). -->
@@ -197,17 +190,20 @@ const TimelineReadout = () =>
                         <EllipsisVertical class="h-4 w-4" />
                     </Tooltip>
                 </DockTrigger>
+                <!-- X.F.W14U.vdock — UIA-F-9 (BROKEN) ⊕ F-82 ⊕ F-175. Every setting
+                     is a labelled menu section in the menu's own idiom (speed and
+                     easing as radio groups; the speed Select that sat in the dock
+                     from `sm` up and inside this menu below it is gone — one
+                     control per setting, and no listbox ever opens over the
+                     menu). The sections scroll inside the plate when the space
+                     above the dock is short, and Export is pinned below them, so
+                     the menu's one command never scrolls out of view (the 390
+                     frame: sh464/ch382 put it below the fold). -->
                 <DropdownMenuContent class="menu-popup" :side-offset="8" align="end">
-                    <!-- The Speed + Easing controls are rich grouped settings,
-                         not command items; `role="group"` makes them allowed
-                         children of the `role="menu"` content (satisfies the
-                         ARIA `aria-required-children` contract) without
-                         mislabelling a combobox/toggle-grid as `menuitem`. -->
-                    <div role="group" aria-label="Speed" class="flex sm:hidden items-center gap-2 px-3 py-1.5 border-b border-border/50 mb-0.5 pb-2">
-                        <span class="text-muted-foreground text-xs">Speed</span>
-                        <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" compact />
+                    <div class="menu-sections">
+                        <SpeedSelect />
+                        <EasingPicker />
                     </div>
-                    <EasingPicker />
                     <DropdownMenuItem class="menu-item" @select="emit('exportFrame')">
                         <Download class="h-4 w-4" />
                         <span class="text-sm font-medium">Export</span>
@@ -277,6 +273,21 @@ const TimelineReadout = () =>
     flex-direction: column;
     gap: 0.125rem;
     min-width: 9rem;
+    /* X.F.W14U.vdock — UIA-F-9: the plate never outgrows the space reka
+       measures on the side it opens, and it never scrolls itself — its
+       sections do (below), so Export stays pinned in view. */
+    max-block-size: var(--reka-dropdown-menu-content-available-height);
+    overflow: hidden;
+}
+
+.menu-popup .menu-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-block-size: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 /* `<Button variant="ghost" size="sm">` ships the focus-ring + hover + press;

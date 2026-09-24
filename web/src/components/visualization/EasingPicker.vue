@@ -91,7 +91,11 @@ function selectEasing(value: unknown) {
             :value="name"
             :text-value="ANIMATION_EASINGS[name].label"
             class="gap-2"
+            @select="(e: Event) => e.preventDefault()"
         >
+            <!-- X.F.W14U.vdock — UIA-F-240: choosing an easing keeps the menu
+                 open (the speed section beside it does the same), so a curve can
+                 be compared against the next without reopening the menu. -->
             <!-- `text-value` is stated rather than inferred: Reka's typeahead
                  reads an item's text content, and the plot contributes the "0"
                  and "1" axis captions the producer draws in HTML. Left to
