@@ -113,14 +113,15 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         expect(typeof firstPayload.budget).toBe("number");
 
         // ── 2. NOTATION ─────────────────────────────────────────────────────
-        // `FR-EMT-11` / `C·D-28`. The pills are a `role="group"` named
-        // "Notation" whose members carry `aria-pressed` — the state contract.
-        const notation = page.getByRole("group", { name: "Notation" });
+        // `FR-EMT-11` / `C·D-28`. The notation is a `role="radiogroup"` named
+        // "Notation" whose radios carry `aria-checked` — the state contract
+        // (X.F.W14U.eq, UIA-F-204: glass ToggleGroup type="single").
+        const notation = page.getByRole("radiogroup", { name: "Notation" });
         await expect(notation).toBeVisible();
-        const exp = notation.getByRole("button", { name: /Exp/ });
-        await expect(exp).toHaveAttribute("aria-pressed", "false");
+        const exp = notation.getByRole("radio", { name: /Exp/ });
+        await expect(exp).toHaveAttribute("aria-checked", "false");
         await exp.click();
-        await expect(exp).toHaveAttribute("aria-pressed", "true", { timeout: 10_000 });
+        await expect(exp).toHaveAttribute("aria-checked", "true", { timeout: 10_000 });
 
         // The rendered series must actually change: notation is server-read
         // (`render_latex_sigma(terms, notation)`), so a pill that flips its own
@@ -144,7 +145,7 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         // The leg drives the NUMERIC input (it reads and fills a value), so it
         // is addressed by that role; the two slider nodes carry no value to
         // fill and are a different control surface.
-        const budget = page.getByRole("spinbutton", { name: /display terms/i });
+        const budget = page.getByRole("spinbutton", { name: /displayed harmonics/i });
         await expect(budget).toBeVisible();
         const budgetBefore = await budget.inputValue();
 
@@ -213,11 +214,11 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         await expect(page.locator("[data-row-sub]").first()).toBeVisible({ timeout: 60_000 });
 
         await expect(
-            page.getByRole("group", { name: "Notation" }).getByRole("button", { name: /Exp/ }),
+            page.getByRole("radiogroup", { name: "Notation" }).getByRole("radio", { name: /Exp/ }),
             "the notation knob did not survive the reload",
-        ).toHaveAttribute("aria-pressed", "true", { timeout: 30_000 });
+        ).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
         await expect(
-            page.getByRole("spinbutton", { name: /display terms/i }),
+            page.getByRole("spinbutton", { name: /displayed harmonics/i }),
             "the display budget did not survive the reload",
         ).toHaveValue(narrowed, { timeout: 30_000 });
 

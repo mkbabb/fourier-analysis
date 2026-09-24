@@ -1,51 +1,48 @@
 <script setup lang="ts">
-import { Button } from "@mkbabb/glass-ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@mkbabb/glass-ui/toggle-group";
 import { NOTATION_OPTIONS } from "@/lib/equation/notation";
 import type { NotationMode } from "@/lib/equation/types";
 
-defineProps<{
-    modelValue: NotationMode;
-}>();
+/**
+ * X.F.W14U.eq — UIA-F-204 (and the ToggleGroup limb UIA-F-85 names for the
+ * same file): the notation is a one-of-three choice, so it is glass's
+ * `ToggleGroup type="single"` (a radiogroup whose items are radios), the
+ * chooser its neighbours use (`BasisSelector`'s Fourier mode), not three ad-hoc
+ * Buttons carrying `aria-pressed`. Each item keeps its notation's hue on its
+ * pressed state (addendum (g): an identity colour is not a defect).
+ */
+const model = defineModel<NotationMode>({ required: true });
 
-const emit = defineEmits<{
-    "update:modelValue": [value: NotationMode];
-}>();
+function onChoose(v: unknown) {
+    // A single ToggleGroup emits `undefined` when the pressed item is pressed
+    // again; a notation is always chosen, so that is not a change.
+    if (typeof v === "string") model.value = v as NotationMode;
+}
 </script>
 
 <template>
-    <div class="flex flex-wrap justify-center gap-1.5" role="group" aria-label="Notation">
-        <!-- `D·D-M12`, same edit — the pills signalled selection by tint alone,
-             against the pattern `notation.ts`'s own docblock describes
-             (`aria-pressed` driving an instance-scoped tint). -->
-        <Button
-            v-for="opt in NOTATION_OPTIONS"
-            :key="opt.value"
-            emphasis="secondary"
-            size="sm"
-            class="notation-pill"
-            :aria-pressed="modelValue === opt.value"
-            :class="{ 'notation-active': modelValue === opt.value }"
-            :style="modelValue === opt.value ? { '--pill-color': opt.color } : {}"
-            @click="emit('update:modelValue', opt.value)"
-        >
-            <span class="font-serif-math font-semibold text-[1.3em] leading-none min-w-[1.2em] h-[1em]
-                         inline-flex items-center justify-center" aria-hidden="true">
-                {{ opt.icon }}
-            </span>
+    <ToggleGroup type="single" size="sm" aria-label="Notation" class="notation-group"
+        :model-value="model" @update:model-value="onChoose">
+        <ToggleGroupItem v-for="opt in NOTATION_OPTIONS" :key="opt.value" :value="opt.value"
+            class="notation-item" :style="{ '--pill-color': opt.color }">
+            <span class="font-serif-math font-semibold notation-glyph" aria-hidden="true">{{ opt.icon }}</span>
             {{ opt.label }}
-        </Button>
-    </div>
+        </ToggleGroupItem>
+    </ToggleGroup>
 </template>
 
 <style scoped>
-.notation-pill {
-    border-radius: var(--radius-pill);
-    min-width: 4.5rem;
-    justify-content: center;
+.notation-group {
+    flex-wrap: wrap;
 }
-.notation-active {
-    background: color-mix(in srgb, var(--pill-color) 12%, transparent);
-    border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);
-    color: var(--pill-color);
+.notation-glyph {
+    line-height: 1;
+}
+/* The pressed item's per-instance tint through glass's own `data-state`, the
+   recipe of `BasisSelector`'s `.basis-chip`: the hue carried a quarter toward
+   `--foreground` for the ink. */
+.notation-item[data-state="on"] {
+    background-color: color-mix(in srgb, var(--pill-color) 12%, transparent);
+    color: color-mix(in oklab, var(--pill-color) 75%, var(--foreground));
 }
 </style>

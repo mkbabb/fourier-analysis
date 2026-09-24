@@ -26,11 +26,18 @@ import type { BasisComponent } from "@/lib/types";
  */
 const props = defineProps<{
     components: BasisComponent[];
-    /** The term count the rendered formula is truncated to (`budget`). */
+    /** The harmonic count the rendered formula keeps (`budget`, DC as one). */
     renderedTerms?: number;
 }>();
 
-const total = computed(() => props.components.length);
+/*
+ * X.F.W14U.eq — UIA-F-35 (consumer) ⊕ F-201: the list and the formula count in
+ * ONE unit. The server's budget keeps whole harmonics (the ±n pair together,
+ * DC as one; `.srv` `798c98f`), so the list names its size in harmonics too —
+ * n = 0..20 is 41 exponential terms but 21 harmonics — and the note compares
+ * like with like.
+ */
+const total = computed(() => new Set(props.components.map((c) => Math.abs(c.index))).size);
 const truncated = computed(
     () => props.renderedTerms !== undefined && props.renderedTerms < total.value,
 );
@@ -71,12 +78,12 @@ const truncated = computed(
          BY this convergence and are recorded, not re-opened here. -->
     <ConfiguratorLayer
         label="Coefficients"
-        :sub="`all ${total} terms`"
+        :sub="`all ${total} harmonics`"
         :default-open="false"
     >
         <p v-if="truncated" class="reconcile-note">
-            The equation above renders the {{ renderedTerms }} largest by amplitude;
-            this list is the full set.
+            The expanded equation keeps the {{ renderedTerms }} strongest harmonics
+            (DC counts as one); this list is the full set.
         </p>
         <CoefficientsSpectrum :components="components" empty-text="Compute to see coefficients" />
     </ConfiguratorLayer>
@@ -84,8 +91,8 @@ const truncated = computed(
 
 <style scoped>
 .reconcile-note {
-    font-size: 0.8125rem;
-    line-height: 1.4;
+    font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
     color: var(--muted-foreground);
     margin-bottom: 0.5rem;
 }

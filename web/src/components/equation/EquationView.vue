@@ -10,8 +10,12 @@ import {
 } from "@/lib/equation/api";
 import type { NotationMode, ComputeEquationRequest, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
-import { tierInfo, energyColor } from "@/lib/equation/notation";
+import { tierInfo } from "@/lib/equation/notation";
+import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Badge } from "@mkbabb/glass-ui/badge";
+import { Card } from "@mkbabb/glass-ui/card";
+import { Progress } from "@mkbabb/glass-ui/progress";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
@@ -40,6 +44,14 @@ const notation = ref<NotationMode>(cached?.notation ?? "trig");
 const computing = ref(false);
 const simplifying = ref(false);
 const error = ref<string | null>(null);
+/**
+ * X.F.W14U.eq — UIA-F-112 / F-113 (consumer): the server answers an invalid
+ * f(x) with a typed 422 (`urn:contract:validation-failed`, `.srv` `798c98f`).
+ * That is the INPUT's fault, not the service's, so it is a field state under the
+ * Expression (never a Retry: re-sending the same bad input cannot succeed), and
+ * it lives in the Controls pane, where the user is typing at every width.
+ */
+const expressionError = ref<string | null>(null);
 const cachedRes = loadCachedResult();
 const result = ref<ComputeEquationResponse | null>(cachedRes?.result ?? null);
 const displayLatex = ref(cachedRes?.latex ?? "");
@@ -82,7 +94,20 @@ const components = computed<BasisComponent[]>(() => {
 });
 
 const tier = computed(() => result.value ? tierInfo(result.value.tier) : null);
-const eColor = computed(() => energyColor(displayEnergy.value));
+/**
+ * UIA-F-253 — the tier is glass's `Badge` on its semantic tone register (the
+ * hand-rolled stadium badge retires). R-2 from `.vedit` (UIA-F-178's twin): the
+ * energy is a measurement, so its Metric keeps glass's ink (no `energyColor`).
+ */
+const TIER_TONE = { symbolic: "success", identified: "warning", spline: "info" } as const;
+const tierTone = computed(() => TIER_TONE[(result.value?.tier ?? "spline") as keyof typeof TIER_TONE] ?? "info");
+/** UIA-F-202 — the result on screen answers an earlier request. */
+const stale = computed(() => !!result.value && (!!error.value || !!expressionError.value));
+/**
+ * UIA-F-201 — one variable across the page: the plot and its legend speak the
+ * variable the rendered series is written in.
+ */
+const seriesVariable = computed(() => activeLatex.value.match(/f\s*\(\s*([a-z])\s*\)/)?.[1] ?? "x");
 
 const coefficients = computed(() => result.value?.coefficients ?? []);
 
@@ -189,8 +214,16 @@ let lastDisplayKey = cachedRes ? displayKey(currentRequest()) : "";
  * file is unit `.f`'s and the row is declared to it, never written from here.
  */
 function failureMessage(e: unknown, fallback: string): string {
-    const msg = e instanceof Error ? e.message.trim() : "";
-    return msg || fallback;
+    return problemMessage(e, fallback);
+}
+
+/**
+ * UIA-F-112 — the server's typed rejection of the INPUT (422
+ * `urn:contract:validation-failed`). Transient failures (429, 5xx, the network)
+ * are not this, and keep the Retry.
+ */
+function isInputRejection(e: unknown): e is ApiProblem {
+    return e instanceof ApiProblem && e.status === 422 && e.type === "urn:contract:validation-failed";
 }
 
 /**
@@ -220,6 +253,7 @@ async function doCompute(force = false) {
     const gen = ++computeGeneration;
     computing.value = true;
     error.value = null;
+    expressionError.value = null;
     try {
         const res = await computeEquation(req);
         if (gen !== computeGeneration) return;
@@ -236,7 +270,8 @@ async function doCompute(force = false) {
         saveCachedResult(key, res, displayLatex.value, displayEnergy.value);
     } catch (e) {
         if (!isAbortError(e) && gen === computeGeneration) {
-            error.value = failureMessage(e, "Computation failed");
+            if (isInputRejection(e)) expressionError.value = failureMessage(e, "This expression cannot be computed");
+            else error.value = failureMessage(e, "Computation failed");
         }
     } finally {
         if (gen === computeGeneration) computing.value = false;
@@ -286,6 +321,9 @@ async function doSimplify() {
  */
 onScopeDispose(() => abortInflight([...EQUATION_ABORT_KEYS]));
 
+// UIA-F-112 — an edit answers the field's error; the next compute re-judges it.
+watch(expression, () => { expressionError.value = null; });
+
 // ── Watches ──
 
 // `L·M-6` — the rescale arm is GONE, not re-guarded. Its comment claimed to fire
@@ -302,8 +340,10 @@ onScopeDispose(() => abortInflight([...EQUATION_ABORT_KEYS]));
 // `M-BR` — `immediate: true` is the restore-time reconciliation the watcher
 // never had: `autoHarmonics` is not persisted and resets true, so a reload could
 // collapse `vizHarmonics` below a restored `budget` with no watcher fire at all.
+// X.F.W14U.eq — UIA-F-35 (consumer): the budget counts harmonics with DC as
+// one, so the cap that shows every drawn harmonic is N + 1.
 watch(vizHarmonics, (v) => {
-    if (budget.value > v) budget.value = Math.max(MIN_BUDGET, v);
+    if (budget.value > v + 1) budget.value = Math.max(MIN_BUDGET, v + 1);
 }, { immediate: true });
 
 watch(
@@ -343,8 +383,9 @@ watchDebounced(
 
 <template>
     <div class="flex flex-col flex-1 min-h-0">
-        <!-- Mobile tab bar -->
-        <div class="flex px-3 py-1 bg-background lg:hidden">
+        <!-- Mobile tab bar. UIA-F-253 — no opaque band: the strip sits on the
+             page's own ground, as `/w`'s does. -->
+        <div class="flex px-3 py-1 lg:hidden">
             <SegmentedTabs variant="underline"
                 :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
                 v-model="mobileView" />
@@ -353,39 +394,35 @@ watchDebounced(
         <div class="eq-grid">
             <!-- Left panel -->
             <div class="eq-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
-                <!-- X.F.W3 `.d` — `fr-EquationView D·D-M14`, dying inside the
-                     `M-6` FadingScroll adoption exactly as the family books it.
-                     The trailing feather was a `::after` on the WRAPPER: a fixed
-                     2.5rem gradient painted unconditionally whenever the panel
-                     was mounted at ≥1024px and `display:none` below it — so it
-                     lied in both directions at once, hiding content that had
-                     already been scrolled to the end and vanishing on the
-                     viewport where a 480px column overflows most. The producer's
-                     port measures its own scroll extent and feathers the edge
-                     that actually has trailing overflow, at every width, and it
-                     names the port while it is at it. -->
+                <!-- X.F.W3 `.d` — `D·D-M14`: the producer's FadingScroll owns the
+                     port's scroll and its edge feather. -->
                 <FadingScroll axis="y" aria-label="Equation controls" class="eq-panel-left">
-                    <FunctionInput
-                        v-model:expression="expression"
-                        v-model:domain-start="domainStart"
-                        v-model:domain-end="domainEnd"
-                        v-model:n-harmonics="nHarmonics"
-                        v-model:budget="budget"
-                        v-model:notation="notation"
-                        :effective-n="effectiveN"
-                        :energy-captured="displayEnergy"
-                        :auto-harmonics="autoHarmonics"
-                        :viz-harmonics="vizHarmonics"
-                        @update:auto-harmonics="autoHarmonics = $event"
-                        @compute="doCompute(true)"
-                    />
-                    <Transition name="slide-down">
-                        <EqCoefficientsPanel
-                            v-if="components.length"
-                            :components="components"
-                            :rendered-terms="budget"
+                    <!-- X.F.W14U.eq — UIA-F-114: the three sections are one stack of
+                         glass ConfiguratorLayers (adjacent siblings, no gap). -->
+                    <div class="eq-layers">
+                        <FunctionInput
+                            v-model:expression="expression"
+                            v-model:domain-start="domainStart"
+                            v-model:domain-end="domainEnd"
+                            v-model:n-harmonics="nHarmonics"
+                            v-model:budget="budget"
+                            v-model:notation="notation"
+                            :effective-n="effectiveN"
+                            :energy-captured="displayEnergy"
+                            :auto-harmonics="autoHarmonics"
+                            :viz-harmonics="vizHarmonics"
+                            :expression-error="expressionError"
+                            @update:auto-harmonics="autoHarmonics = $event"
+                            @compute="doCompute(true)"
                         />
-                    </Transition>
+                        <Transition name="slide-down">
+                            <EqCoefficientsPanel
+                                v-if="components.length"
+                                :components="components"
+                                :rendered-terms="budget"
+                            />
+                        </Transition>
+                    </div>
                 </FadingScroll>
             </div>
 
@@ -395,61 +432,37 @@ watchDebounced(
                 :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop, 'is-busy': loading }"
                 :aria-busy="loading"
             >
-                <!-- Loading (no prior result) -->
-                <div v-if="computing && !result" class="flex items-center justify-center flex-1" role="status">
-                    <div class="flex flex-col items-center gap-3">
-                        <div class="size-6 animate-spin rounded-full border-2 border-border border-t-primary" aria-hidden="true" />
-                        <p class="text-sm text-muted-foreground fira-code">Computing…</p>
-                    </div>
+                <!-- Loading (no prior result). X.F.W14U.eq — UIA-F-202 ⊕ F-71's
+                     carried sites: glass's indeterminate Progress, not a
+                     transparent-topped ring. -->
+                <div v-if="computing && !result" class="eq-state" role="status">
+                    <Progress :model-value="null" variant="liquid" size="sm" class="eq-state-bar" aria-label="Computing the series" />
+                    <p class="text-caption text-muted-foreground">Computing…</p>
                 </div>
 
-                <!-- Error (no prior result) -->
-                <div v-else-if="error && !result" class="flex items-center justify-center flex-1">
-                    <div class="cartoon-card p-4 max-w-md text-center" role="alert">
-                        <p class="text-sm font-medium text-foreground mb-1">Computation failed</p>
-                        <p class="text-sm text-muted-foreground fira-code break-words">{{ error }}</p>
-                        <Button emphasis="secondary" size="sm" class="mt-3" @click="doCompute(true)">
-                            Try again
-                        </Button>
-                    </div>
+                <!-- Error (no prior result): a transient failure keeps its retry. -->
+                <div v-else-if="error && !result" class="eq-state">
+                    <Card class="eq-state-card">
+                        <div role="alert" class="text-center">
+                            <p class="text-small font-medium text-foreground mb-1">Computation failed</p>
+                            <p class="text-caption text-muted-foreground fira-code break-words">{{ error }}</p>
+                            <Button emphasis="secondary" size="sm" class="mt-3" @click="doCompute(true)">
+                                Try again
+                            </Button>
+                        </div>
+                    </Card>
                 </div>
 
                 <!-- Results -->
                 <template v-else-if="result">
-                    <!-- Re-compute status banners. `D·D-M6` — the async surfaces
-                         had zero live-region semantics, so a screen-reader user
-                         got no announcement of start, completion or failure;
-                         this pass lands with `D-B4`'s `loading` wiring, as the
-                         record asks. -->
-                    <div
-                        v-if="loading"
-                        class="cartoon-card px-3 py-2 flex items-center gap-2 text-sm shrink-0"
-                        role="status"
-                    >
-                        <div class="size-3.5 animate-spin rounded-full border-[1.5px] border-border border-t-primary" aria-hidden="true" />
-                        <span class="text-muted-foreground fira-code">
-                            {{ computing ? "Recomputing…" : "Re-rendering…" }}
-                        </span>
-                    </div>
-                    <div
-                        v-else-if="error"
-                        class="cartoon-card px-3 py-2 flex items-start gap-2 text-sm border-red-500/30 bg-red-500/5 shrink-0"
-                        role="alert"
-                    >
-                        <span class="font-medium text-red-400 shrink-0">Error:</span>
-                        <!-- `D·D-M7` — the message used to `truncate` with no
-                             `title`, no wrap and no way to read the rest of it,
-                             and neither error surface offered a retry. -->
-                        <span class="text-muted-foreground fira-code break-words min-w-0" :title="error">{{ error }}</span>
-                        <Button emphasis="quiet" size="sm" class="ml-auto shrink-0" @click="doCompute(true)">
-                            Retry
-                        </Button>
-                    </div>
-
-                    <!-- Equation card -->
+                    <!-- Equation card. X.F.W14U.eq — UIA-F-202: the status surfaces
+                         are OUT OF FLOW (an overlay on this card), so a recompute or a
+                         failure moves nothing; a result that answers an earlier
+                         request is marked stale (dimmed, `data-stale`). -->
                     <div
                         ref="eqCardRef"
                         class="cartoon-card relative eq-card"
+                        :data-stale="stale || undefined"
                         @mousemove="(e) => onCoeffMove(e, eqCardRef)"
                         @mouseleave="onCoeffLeave"
                     >
@@ -458,54 +471,28 @@ watchDebounced(
                                 <EquationModeToggle v-model="eqMode" />
                             </template>
                             <template #actions>
-                                <!-- Info card. F.W1 / FR-COB-19 — `./hover-card` is
-                                     definition-absent at the adopted pin; the Popover
-                                     union takes it, with `trigger="hover"` preserving the
-                                     preview register and seating the click root on coarse
-                                     pointers. `:collision-padding` is gone with it: the
-                                     union's placement contract is side/sideOffset/align/
-                                     alignOffset, so the attribute would have fallen
-                                     through to the DOM doing nothing (FR-TT-5's class). -->
+                                <!-- Info card. F.W1 / FR-COB-19 — the Popover union's hover
+                                     arm; `D·D-B2` names the icon-only trigger. -->
                                 <Popover v-if="tier" trigger="hover" :open-delay="200" :close-delay="150">
                                     <PopoverTrigger as-child>
-                                        <!-- `D·D-B2` — the info button had NO accessible name:
-                                             an icon-only Button wrapping a bare glyph, with
-                                             `PopoverTrigger as-child` forwarding no naming
-                                             attribute. The convention exists three siblings
-                                             over. -->
                                         <Button emphasis="primary" size="md" icon-only
                                                 aria-label="About this approximation">
-                                            <!-- F.W1 / D·D-M11 — the one hand-inlined copy the
-                                                 import-keyed lucide sweep is blind to: this markup
-                                                 was element-identical to lucide `Info`, which this
-                                                 file already imports. -->
                                             <Info class="size-[18px]" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent class="info-hovercard" side="bottom" :side-offset="6" align="end">
+                                    <PopoverContent class="info-hovercard" side="bottom" :side-offset="6" align="end"
+                                        aria-label="About this approximation">
+                                        <!-- UIA-F-253 — glass Badge on its tone register; the
+                                             energy Metric keeps glass's ink (R-2). -->
                                         <div class="flex items-center gap-2 flex-wrap">
-                                            <!-- `D·D-B3` — the ink is a token now, and the plate
-                                                 is TRANSPARENT: a 15% tint of the ink itself
-                                                 darkened the ground under the very colour it was
-                                                 tinting, which is what took every stop further
-                                                 below the floor. The border still carries the
-                                                 tier hue; the label is graded against the
-                                                 popover it actually sits on. -->
-                                            <span
-                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border-[1.5px]"
-                                                :style="{
-                                                    borderColor: `color-mix(in srgb, ${tier.color} 45%, transparent)`,
-                                                    color: tier.color,
-                                                }"
-                                            >{{ tier.label }}</span>
+                                            <Badge :tone="tierTone">{{ tier.label }}</Badge>
                                             <Metric
                                                 :value="(displayEnergy * 100).toFixed(1)"
                                                 unit="% energy"
                                                 size="sm"
-                                                :style="{ color: eColor }"
                                             />
                                         </div>
-                                        <div class="flex gap-1.5 items-start text-sm text-muted-foreground mt-2">
+                                        <div class="flex gap-1.5 items-start text-small text-muted-foreground mt-2">
                                             <Info class="size-3.5 shrink-0 mt-0.5" />
                                             <p>{{ tier.description }}</p>
                                         </div>
@@ -525,10 +512,25 @@ watchDebounced(
                             </div>
                         </Transition>
 
+                        <Transition name="status-fade" mode="out-in">
+                            <div v-if="loading" class="eq-status glass-floating glass-opaque" role="status">
+                                <Progress :model-value="null" variant="liquid" size="sm" class="eq-status-bar"
+                                    :aria-label="computing ? 'Recomputing the series' : 'Re-rendering the series'" />
+                                <span class="text-caption text-muted-foreground">{{ computing ? "Recomputing…" : "Re-rendering…" }}</span>
+                            </div>
+                            <div v-else-if="error" class="eq-status glass-floating glass-opaque" role="alert">
+                                <span class="text-caption font-medium text-foreground shrink-0">Not updated</span>
+                                <span class="text-caption text-muted-foreground fira-code break-words min-w-0" :title="error">{{ error }}</span>
+                                <Button emphasis="quiet" size="sm" class="shrink-0" @click="doCompute(true)">Retry</Button>
+                            </div>
+                            <div v-else-if="expressionError" class="eq-status glass-floating glass-opaque" role="status">
+                                <span class="text-caption text-muted-foreground">Showing the last expression that computed</span>
+                            </div>
+                        </Transition>
                     </div>
 
                     <!-- Convergence plot -->
-                    <div class="cartoon-card px-3 py-2 flex-1 min-h-0 flex flex-col">
+                    <div class="cartoon-card px-3 py-2 flex-1 min-h-0 flex flex-col eq-plot-card" :data-stale="stale || undefined">
                         <ConvergencePlot
                             class="flex-1"
                             :original-points="result.original_points"
@@ -536,14 +538,15 @@ watchDebounced(
                             :n-harmonics="vizHarmonics"
                             :domain="resultDomain"
                             :expression="expression"
+                            :variable="seriesVariable"
                         />
                     </div>
                 </template>
 
                 <!-- Empty state -->
                 <div v-else class="flex items-center justify-center flex-1">
-                    <p class="text-sm text-muted-foreground font-serif-math italic">
-                        Enter a function to see its Fourier series
+                    <p class="text-small text-muted-foreground font-serif-math italic">
+                        {{ expressionError ? "Correct the expression to see its Fourier series" : "Enter a function to see its Fourier series" }}
                     </p>
                 </div>
             </div>
@@ -591,6 +594,12 @@ watchDebounced(
 .eq-panel-left {
     @apply flex flex-col gap-3 w-full pb-8 min-h-0 flex-1;
 }
+/* X.F.W14U.eq — UIA-F-114: the layers stack with no gap, so glass's
+   adjacent-layer rule joins them into one group. */
+.eq-layers {
+    display: flex;
+    flex-direction: column;
+}
 @media (min-width: 1024px) { .eq-panel-left { padding-right: 0.25rem; } }
 
 /* ── Right panel ── */
@@ -603,9 +612,53 @@ watchDebounced(
 /* `D·D-B4` — the unified busy state was designed and never wired: `loading` had
    zero consumers. The equation stage dims while either async seam is in flight,
    which is the sighted half of the `aria-busy` the panel now also carries. */
-.eq-panel-right.is-busy .eq-card {
+.eq-panel-right.is-busy .eq-card > :not(.eq-status) {
     opacity: 0.6;
     transition: opacity 0.15s var(--ease-standard);
+}
+
+/* X.F.W14U.eq — UIA-F-202: a result that answers an earlier request is dimmed
+   (never the status that says why). */
+.eq-card[data-stale] > :not(.eq-status):not(.coeff-popover),
+.eq-plot-card[data-stale] {
+    opacity: 0.55;
+    transition: opacity 0.15s var(--ease-standard);
+}
+
+/* UIA-F-202 — the status is OUT OF FLOW: a floating plate that straddles the
+   seam between the equation card and the plot (half over each card's margin,
+   clear of the equation's last line and the plot's first curve), so a
+   recompute or a failure moves nothing on the page. */
+.eq-status {
+    position: absolute;
+    inset-inline: 0.75rem;
+    bottom: 0;
+    transform: translateY(50%);
+    margin-inline: auto;
+    width: fit-content;
+    max-width: calc(100% - 1.5rem);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-panel);
+    z-index: var(--z-bar);
+}
+.eq-status-bar {
+    width: 6rem;
+    flex: none;
+}
+
+/* The cold states (no prior result): centred in the panel. */
+.eq-state {
+    @apply flex flex-col items-center justify-center flex-1 gap-3;
+}
+.eq-state-bar {
+    width: 10rem;
+}
+.eq-state-card {
+    max-width: 28rem;
+    padding: 1rem;
 }
 
 /* ── Equation card ── */
@@ -620,8 +673,13 @@ watchDebounced(
 }
 
 /* ── Coefficient popover ── */
+/* UIA-F-203 — the two floating surfaces (this and the plot's tooltip) share
+   glass's popover canon: the `--radius-panel` corner of `.popover-content`.
+   The glass primitive itself cannot host them yet (no virtual anchor export,
+   ESCALATED with `.vedit` E-2). */
 .coeff-popover {
-    @apply absolute pointer-events-none rounded-lg;
+    @apply absolute pointer-events-none;
+    border-radius: var(--radius-panel);
     transform: translateX(-50%);
     z-index: var(--z-bar);
     min-width: 160px;
@@ -664,6 +722,11 @@ watchDebounced(
 .pop-leave-active  { transition: opacity 0.1s var(--ease-in), transform 0.1s var(--ease-in); }
 .pop-enter-from    { opacity: 0; transform: translateY(-4px) scale(0.97); }
 .pop-leave-to      { opacity: 0; transform: translateY(-2px) scale(0.98); }
+
+/* The status plate owns its transform (the seam offset), so it fades only. */
+.status-fade-enter-active { transition: opacity 0.15s var(--ease-standard); }
+.status-fade-leave-active { transition: opacity 0.1s var(--ease-in); }
+.status-fade-enter-from, .status-fade-leave-to { opacity: 0; }
 
 .slide-down-enter-active { transition: opacity 0.3s var(--ease-standard), transform 0.3s var(--ease-standard); }
 .slide-down-leave-active { transition: opacity 0.2s var(--ease-in), transform 0.2s var(--ease-in); }

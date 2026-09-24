@@ -80,15 +80,17 @@ const value = computed({
    pair. Everything else — the track, the indicator, the active paint, the
    hover, the focus ring, the clipping frame that broke it — retires with the
    hand-roll. */
+/* X.F.W14U.eq — UIA-F-206: both glyphs on glass's named rungs (the operand
+   pair was an 11 px literal under the caption rung). */
 .eq-toggle-icon {
-    font-size: 16px;
+    font-size: var(--type-small);
     font-family: "Computer Modern Serif", Georgia, serif;
     font-style: italic;
 }
 
 .eq-toggle-icon--mono {
     font-family: "Fira Code", monospace;
-    font-size: 11px;
+    font-size: var(--type-caption);
     font-style: normal;
     letter-spacing: -0.5px;
 }

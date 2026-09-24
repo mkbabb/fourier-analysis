@@ -22,7 +22,11 @@ const props = defineProps<{
     nHarmonics: number;
     domain: [number, number];
     expression?: string;
+    /** UIA-F-201 — the variable the rendered series is written in (one across the page). */
+    variable?: string;
 }>();
+
+const v = computed(() => props.variable ?? "x");
 
 // ── Refs ──
 const canvasRef = ref<HTMLCanvasElement>();
@@ -184,6 +188,15 @@ function frameGeometry(
         if (oy[i] < tMinY) tMinY = oy[i];
         if (oy[i] > tMaxY) tMaxY = oy[i];
     }
+    // X.F.W14U.eq — UIA-F-205: every drawn series is inside the plot box, so the
+    // range covers each harmonic's own curve too (they oscillate about zero and
+    // ran off the canvas bottom whenever f stayed positive).
+    for (const curve of curves) {
+        for (let j = 0; j < curve.length; j++) {
+            if (curve[j] < tMinY) tMinY = curve[j];
+            if (curve[j] > tMaxY) tMaxY = curve[j];
+        }
+    }
 
     geometryKey = key;
     geometryValue = { xGrid, curves, lerpDc, tMinY, tMaxY };
@@ -342,6 +355,27 @@ function draw() {
     clearShimmer(ctx);
     ctx.restore();
 
+    // UIA-F-253 — a sweep held part-way shows where it stands: the harmonics
+    // enter from the left, so the Sum right of the front is still the partial
+    // one. A thin rule in the axis ink marks the entering harmonic's front.
+    if (eT > 0 && eT < 1) {
+        const entering = cursors.filter((c) => c > 0 && c < N_POINTS - 1);
+        if (entering.length) {
+            const front = Math.max(...entering);
+            const [fx] = toScreen(xGrid[front], minY);
+            ctx.save();
+            ctx.strokeStyle = ink;
+            ctx.globalAlpha = 0.45;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(fx, PAD.top);
+            ctx.lineTo(fx, h - PAD.bottom);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
     cachedScreenCurves = [{ key: "sum", points: sumPts }, { key: "original", points: origPts }, ...harmPts];
 }
 
@@ -385,8 +419,9 @@ function renderKatexInline(latex: string): string {
 const tooltipHtml = computed(() => {
     const h = hoveredCurve.value;
     if (!h) return "";
-    if (h === "sum") return renderKatexInline(`f(x) = ${props.expression ?? "\\text{sum}"}`);
-    if (h === "original") return renderKatexInline(`f(x) = ${props.expression ?? "f(x)"}`);
+    // UIA-F-201 — the partial sum is S_N, never "f(x) = …"; both speak the series' variable.
+    if (h === "sum") return renderKatexInline(`S_{${trigHarmonics.value.length}}(${v.value})`);
+    if (h === "original") return renderKatexInline(`f(${v.value})`);
     if (h.startsWith("h-")) {
         const harm = trigHarmonics.value[parseInt(h.slice(2))];
         return harm ? renderKatexInline(`n = ${harm.k},\\; A = ${harm.amplitude.toFixed(4)}`) : "";
@@ -535,19 +570,23 @@ onUnmounted(() => {
              plus a name that carries the READING (which curves, how many
              harmonics, where the sweep is) is the text equivalent a canvas
              cannot otherwise have. -->
-        <canvas
-            ref="canvasRef"
-            class="absolute inset-0 size-full text-muted-foreground"
-            role="img"
-            :aria-label="plotDescription"
-            @mousemove="onCanvasMove"
-            @mouseleave="onCanvasLeave"
-        />
+        <!-- X.F.W14U.eq — UIA-F-205: the plot box and the legend are two cells;
+             the legend sits in its own gutter beside the curves, never on them. -->
+        <div class="plot-box">
+            <canvas
+                ref="canvasRef"
+                class="absolute inset-0 size-full text-muted-foreground"
+                role="img"
+                :aria-label="plotDescription"
+                @mousemove="onCanvasMove"
+                @mouseleave="onCanvasLeave"
+            />
+        </div>
 
         <!-- Cursor-following tooltip -->
         <div
             v-if="hoveredCurve && mousePos && tooltipHtml"
-            class="curve-tooltip"
+            class="curve-tooltip glass-floating"
             :style="{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }"
             v-html="tooltipHtml"
         />
@@ -556,6 +595,7 @@ onUnmounted(() => {
         <ConvergenceLegend
             :harmonics="trigHarmonics"
             :hovered-curve="hoveredCurve"
+            :variable="v"
             @hover="onLegendEnter"
             @leave="onLegendLeave"
         />
@@ -581,19 +621,28 @@ onUnmounted(() => {
 .convergence-container {
     @apply w-full relative flex-1 select-none;
     min-height: 200px;
+    display: flex;
+    gap: 0.5rem;
+}
+.plot-box {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 /* ── Tooltip ── */
+/* X.F.W14U.eq — UIA-F-203: the same floating surface as the coefficient
+   popover — glass's `glass-floating` plate (template) at the popover canon's
+   `--radius-panel` corner — instead of a second hand-rolled plate. */
 .curve-tooltip {
-    @apply absolute pointer-events-none rounded-md;
+    @apply absolute pointer-events-none;
+    border-radius: var(--radius-panel);
     font-family: "Fira Code", monospace;
-    font-size: 13px;
-    line-height: 1.4;
-    padding: 5px 10px;
-    background: color-mix(in srgb, var(--popover) 92%, transparent);
+    font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
+    padding: 0.375rem 0.75rem;
     color: var(--popover-foreground);
-    border: 1.5px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--foreground) 8%, transparent);
     white-space: nowrap;
     z-index: var(--z-controls);
     /* A.W3.d — `tooltip-in` is canonical in glass-ui's animations.css; the

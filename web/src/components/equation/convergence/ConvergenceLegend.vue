@@ -5,6 +5,8 @@ import { spectrumColor, type TrigHarmonic } from "../lib/harmonics";
 defineProps<{
     harmonics: TrigHarmonic[];
     hoveredCurve: string | null;
+    /** UIA-F-201 — the series' variable (the equation's), one across the page. */
+    variable?: string;
 }>();
 
 const emit = defineEmits<{
@@ -34,7 +36,7 @@ const emit = defineEmits<{
         <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'original' }"
             @pointerenter="emit('hover', 'original')" @pointerleave="emit('leave')">
             <span class="legend-dot legend-dot--dashed" />
-            <span class="legend-label">f(x)</span>
+            <span class="legend-label">f({{ variable ?? "x" }})</span>
         </div>
         <div class="legend-divider" />
         <div
@@ -55,12 +57,15 @@ const emit = defineEmits<{
 
 /* The port's own `overflow-y` / `scrollbar-width` belong to `<FadingScroll>`
    now; what stays here is placement, plate and rhythm. */
+/* X.F.W14U.eq — UIA-F-205: the legend is the plot's second cell (its own
+   gutter), never an overlay on the curves. */
 .legend-overlay {
-    @apply absolute top-2 right-2 pointer-events-auto;
-    max-height: calc(100% - 16px);
-    padding: 8px 12px;
-    z-index: var(--z-content);
-    min-width: 100px;
+    @apply pointer-events-auto;
+    flex: none;
+    align-self: flex-start;
+    max-height: 100%;
+    padding: 0.5rem;
+    min-width: 5.5rem;
 }
 .legend-entry + .legend-entry {
     margin-top: 2px;
@@ -99,8 +104,8 @@ const emit = defineEmits<{
     @apply select-none;
     font-family: "Fira Code", monospace;
     color: var(--muted-foreground);
-    font-size: 13px;
-    line-height: 1.3;
+    font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
 }
 .legend-label--golden {
     color: var(--viz-amber);

@@ -21,6 +21,7 @@
  * that re-cut its callsite would be this unit writing outside its bounds.
  */
 import { Button } from "@mkbabb/glass-ui/button";
+import { Pause, Play } from "@lucide/vue";
 import GlassTimeline from "@/components/visualization/GlassTimeline.vue";
 
 const props = defineProps<{
@@ -81,9 +82,11 @@ const harmonicValueText = (): string =>
             :aria-pressed="playing"
             @click="emit('toggle-play')"
         >
+            <!-- X.F.W14U.eq — UIA-F-253: the app's glyph set (lucide), not two
+                 inline Font Awesome paths. -->
             <Transition name="icon-swap" mode="out-in">
-                <svg v-if="playing" class="size-3" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
-                <svg v-else class="size-3" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
+                <Pause v-if="playing" class="size-3.5" />
+                <Play v-else class="size-3.5" />
             </Transition>
         </Button>
 
@@ -113,7 +116,7 @@ const harmonicValueText = (): string =>
 
 .timeline-count {
     font-family: "Fira Code", monospace;
-    font-size: 12px;
+    font-size: var(--type-caption);
     color: var(--muted-foreground);
     width: 3.5rem;
     text-align: right;
@@ -121,38 +124,14 @@ const harmonicValueText = (): string =>
     font-variant-numeric: tabular-nums;
 }
 
-/* `D·D-5` + `C·C-5` (SP-9) — the literal `1.75rem` box defeated BOTH producer
-   knobs: the coarse `--ui-scale` ×1.5 and the `--control-floor` → `--touch-target`
-   44px clamp. At fourier's root the rendered phone figure was 31.5px against a
-   49.5px floor. The delete is the half that holds under either producer branch,
-   and it is the only leg schedulable today: with the literals gone the primitive's
-   own `icon-only` geometry governs and rides the comfort axis it was written for. */
+/* `D·D-5` + `C·C-5` (SP-9) — the literal box is gone, so the primitive's own
+   `icon-only` geometry governs on the comfort axis.
+   X.F.W14U.eq — UIA-F-253: the rest of the local repaint (border, plate,
+   backdrop, ink, hover and pressed fills over glass's Button) is deleted with
+   the Font Awesome paths: the Button's `emphasis` owns its surface, and its
+   `aria-pressed` state is the producer's to paint. */
 .play-btn {
-    @apply flex items-center justify-center shrink-0 rounded-full cursor-pointer;
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 10%, transparent);
-    background: color-mix(in srgb, var(--background) 60%, transparent);
-    backdrop-filter: blur(8px);
-    color: var(--muted-foreground);
-    /* A.W3.d — named properties + canonical token, no `transition: all`. */
-    transition:
-        color 0.15s var(--ease-standard),
-        background-color 0.15s var(--ease-standard),
-        border-color 0.15s var(--ease-standard);
-}
-.play-btn:hover {
-    background: color-mix(in srgb, var(--background) 85%, transparent);
-    color: var(--foreground);
-}
-/* X.F.W3 repair 1 — the published active-state vocabulary, applied (`FR-COB-3`).
-   This control already SET `aria-pressed` and then painted from a parallel
-   `.is-playing` class: two channels for one state, either changeable without
-   the other, and only ONE of them visible to the producer's `forced-colors` and
-   `prefers-contrast` arms, which key on ARIA exclusively. The class binding is
-   deleted and the rule keys on the attribute. */
-.play-btn[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--foreground) 8%, transparent);
-    border-color: color-mix(in srgb, var(--foreground) 20%, transparent);
-    color: var(--foreground);
+    flex-shrink: 0;
 }
 
 .timeline-track-wrap {
