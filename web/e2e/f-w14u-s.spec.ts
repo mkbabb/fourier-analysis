@@ -59,6 +59,11 @@ type Read = {
     shadow: string;
     card: boolean;
     radiusCard: number;
+    /** X.F.W14V.s2 — glass's aside, the detached card since glass 10.1.0 (O-75). */
+    aside: { l: number; r: number; t: number; b: number };
+    asideRadii: number[];
+    asideShadow: string;
+    detached: boolean;
 };
 
 async function read(page: Page): Promise<Read> {
@@ -88,6 +93,13 @@ async function read(page: Page): Promise<Read> {
             shadow: cs.boxShadow,
             card: pane.classList.contains("card"),
             radiusCard,
+            aside: rect(".configurator-aside"),
+            asideRadii: (() => {
+                const a = getComputedStyle(document.querySelector(".configurator-aside")!);
+                return [a.borderTopLeftRadius, a.borderTopRightRadius, a.borderBottomRightRadius, a.borderBottomLeftRadius].map((v) => parseFloat(v));
+            })(),
+            asideShadow: getComputedStyle(document.querySelector(".configurator-aside")!).boxShadow,
+            detached: document.querySelector('.viz-configurator [data-slot="configurator"]')?.getAttribute("data-layout") === "detached",
         };
     });
 }
@@ -106,20 +118,24 @@ for (const scheme of ["light", "dark"] as const) {
                 await page.screenshot({ path: `${FRAMES}/${PHASE}-${vp.width}-${scheme}.png` });
                 const m = await read(page);
 
-                // Glass's own card, not a local copy.
-                expect(m.card).toBe(true);
-                // Gutter from the viewport edge, and from the Configurator's edge.
-                expect(m.pane.l).toBeGreaterThan(0);
-                expect(m.vw - m.pane.r).toBeGreaterThan(m.vw - m.shell.r);
+                // Glass's own card, not a local copy. X.F.W14V.s2 (§0dd, adjacent
+                // rule): INVERTED — the consumer Card wrap is gone, and the card is
+                // glass's own detached aside (O-75, `layout="detached"`); the
+                // geometry below is RE-POINTED from the wrap to that aside.
+                expect(m.card, "no consumer Card wrap").toBe(false);
+                expect(m.detached, "the Configurator is detached").toBe(true);
+                // Gutter from the viewport edge, and inside the Configurator's edge.
+                expect(m.aside.l).toBeGreaterThan(0);
+                expect(m.vw - m.aside.r).toBeGreaterThanOrEqual(m.vw - m.shell.r);
                 // Gutter from the stage: beside it (two columns) or below it (one).
-                const beside = m.pane.l >= m.stage.r - 0.5;
-                const gap = beside ? m.pane.l - m.stage.r : m.pane.t - m.stage.b;
+                const beside = m.aside.l >= m.stage.r - 0.5;
+                const gap = beside ? m.aside.l - m.stage.r : m.aside.t - m.stage.b;
                 expect(gap).toBeGreaterThan(0);
                 // All four corners at the producer's card radius.
                 expect(m.radiusCard).toBeGreaterThan(0);
-                for (const r of m.radii) expect(Math.abs(r - m.radiusCard)).toBeLessThanOrEqual(0.5);
+                for (const r of m.asideRadii) expect(Math.abs(r - m.radiusCard)).toBeLessThanOrEqual(0.5);
                 // Its own shadow.
-                expect(m.shadow).not.toBe("none");
+                expect(m.asideShadow).not.toBe("none");
             });
         });
     }

@@ -123,13 +123,17 @@ function resetDefaults() {
 
 <template>
     <ConfiguratorLayer label="Decomposition" sub="basis &amp; resolution" :default-open="true">
-        <!-- Panel-wide reset: ConfiguratorLayer has no header-actions slot, so
-             the affordance lives at the top of the layer body. -->
-        <div class="flex items-center justify-end -mt-1 -mb-1">
+        <!-- X.F.W14U.a2 — O-68 CONFIGURATOR-HEADER-ACTIONS (glass 10.1.0,
+             COHESION §0dd). The owner: "the refresh button should be inline in
+             the section when expanded too". The layer-wide reset sits in the
+             layer's `#actions` header slot, on the label's row while the layer
+             is open (glass's default `actionsWhen="open"`); the body row it held
+             is deleted. -->
+        <template #actions>
             <Tooltip text="Reset to defaults">
                 <Button
                     emphasis="quiet"
-                    size="md" icon-only
+                    size="sm" icon-only
                     :disabled="isDefault"
                     aria-label="Reset to defaults"
                     @click.stop="resetDefaults"
@@ -137,7 +141,7 @@ function resetDefaults() {
                     <RotateCcw class="h-3.5 w-3.5" />
                 </Button>
             </Tooltip>
-        </div>
+        </template>
 
         <div class="basis-groups">
             <ToggleGroup type="single" size="sm" aria-label="Fourier mode"

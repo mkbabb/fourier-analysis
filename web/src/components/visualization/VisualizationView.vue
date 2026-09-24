@@ -35,7 +35,6 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@mkbabb/glass-ui/dialog";
-import { Card } from "@mkbabb/glass-ui/card";
 import { Progress } from "@mkbabb/glass-ui/progress";
 
 const router = useRouter();
@@ -349,7 +348,17 @@ function onCanvasFileSelect(e: Event) {
                  solid `--card` + `blur(0)`, docs/canon/glass-system.md). Its veil
                  then resolves to the same `--card` the stage and every other fourier
                  pane paint. -->
-            <Configurator scroll-mode="auto" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'">
+            <!-- X.F.W14V.s2 (glass half, adopted early) — O-75 CONFIGURATOR-DETACHED
+                 (glass 10.1.0, COHESION §0dd). The owner's frame
+                 (`owner-2026-09-24-configurator-shell-band.png`) showed the shell
+                 plate in the gutter between the stage and the controls pane, so
+                 the two did not read as two surfaces. `layout="detached"` paints
+                 no shell plate: the stage and the aside are each glass's own card
+                 over the `--configurator-detached-gap`, and the page ground shows
+                 between them. `.glass-opaque` stays: its `--glass-level: 0`
+                 inherits into both cards, so each is the solid `--card` of OA-43,
+                 and the shell it sits on paints nothing. -->
+            <Configurator scroll-mode="auto" layout="detached" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
                     <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark (glass's
@@ -477,12 +486,12 @@ function onCanvasFileSelect(e: Event) {
                 <!-- X.F.W13.c — the sidebar renders only with an image, and arrives
                      with it (`viz-sidebar`, glass `--spring-panel`, PRM-honoured). -->
                 <Transition name="viz-sidebar" @after-leave="sidebarPresent = false">
-                <!-- X.F.W14U.s (OA-59, COHESION §0cq/§0cr) — the controls pane is a
-                     detached card: from lg up it IS glass's own `Card` (its
-                     `--radius-card` corners, its own `shadow` cast), placed by this
-                     layout with an inset gutter from the stage and the viewport edge.
-                     Below lg the mobile sheet keeps its own form (a plain column). -->
-                <component :is="isDesktop ? Card : 'div'" v-if="hasSidebar" v-bind="isDesktop ? { shadow: true } : {}"
+                <!-- X.F.W14U.s (OA-59) placed a consumer `Card` inside the aside; the
+                     shell plate still showed around it (the §0cz frame). With
+                     O-75 (X.F.W14V.s2) the aside IS glass's detached card, so the
+                     wrap is a plain column again at every width. Below lg the
+                     mobile sheet keeps its own form. -->
+                <div v-if="hasSidebar"
                     class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
                     <Transition name="panel-swap" mode="out-in">
                         <div v-if="isEditing" key="editor-panel" class="viz-panel-left">
@@ -524,7 +533,7 @@ function onCanvasFileSelect(e: Event) {
                             </Transition>
                         </div>
                     </Transition>
-                </component>
+                </div>
                 </Transition>
             </Configurator>
         </div>
@@ -594,8 +603,10 @@ function onCanvasFileSelect(e: Event) {
 /* The aside band rides the producer's `--configurator-aside-{min,max}` pair
    (read by the grid's two-column container rule), set on the shell and
    inherited by the grid: it tracks the prior 360/400/440px left-panel widths.
-   X.F.W14U.s — each bound carries the detached card's two inline gutters, so
-   the card's content keeps the band it had before it was inset. */
+   X.F.W14U.s widened each bound by two `--space-body` insets; X.F.W14V.s2
+   keeps that band: the insets are now glass's detached aside card's own
+   padding and edge, and without them the layer headers ellipsised their
+   labels ("Decompos…") beside the header reset (O-68). */
 @media (min-width: 1024px) {
     :deep(.viz-configurator) {
         margin: 0.5rem;
@@ -639,6 +650,13 @@ function onCanvasFileSelect(e: Event) {
     :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
         flex: 0 0 0%;
     }
+    /* X.F.W14V.s2 — detached, the stage is its own card: an empty inactive
+       stage would still paint its 1 px border and cast as a line under the
+       tabs, and hold a detached gap above the sheet. The inactive stage takes
+       no box at all, so the mobile sheet reads as before. */
+    :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
+        display: none;
+    }
 }
 
 /* ── Left panel (controls aside body) ── */
@@ -652,12 +670,9 @@ function onCanvasFileSelect(e: Event) {
     min-height: 0;
     flex: 1;
 }
-/* X.F.W14U.s (OA-59) — from lg up the wrap is glass's `Card` (template), and
-   this is its placement only: an inset gutter on every side, so the card never
-   touches the stage (the aside's divider) or the Configurator's edge, and its
-   own corners and cast show (`width: auto` so the stretched column item takes
-   the gutter inside its band, not past it). The card is never restyled here. */
-@media (min-width: 1024px) { .viz-panel-left-wrap { width: auto; max-width: none; margin: var(--space-body); } }
+/* X.F.W14V.s2 — the X.F.W14U.s lg placement rule (an inset margin for the
+   consumer Card) is deleted with the Card: the aside is glass's detached card,
+   and glass owns the gap (`--configurator-detached-gap`). */
 
 /* F.W1 / FR-CP-13 ⊕ FR-CP-24 — THE GAP DECISION, made once for both rows.
    At the adopted pin the producer FUSES adjacent inspector sections
@@ -872,11 +887,16 @@ function onCanvasFileSelect(e: Event) {
    on the same pair; it leaves on the panel exit clock. Motion only from the glass
    motion tokens; under reduced motion none of it moves. */
 :deep(.viz-configurator > [data-slot="configurator"]) {
-    transition: grid-template-columns var(--spring-panel-duration) var(--spring-panel);
+    transition:
+        grid-template-columns var(--spring-panel-duration) var(--spring-panel),
+        gap var(--spring-panel-duration) var(--spring-panel);
 }
+/* X.F.W14V.s2 — with the aside closed the detached gap closes with its band
+   (glass's `--configurator-detached-gap`), so the stage card fills the studio. */
 [data-sidebar="none"] > :deep(.viz-configurator) {
     --configurator-aside-min: 0px;
     --configurator-aside-max: 0px;
+    --configurator-detached-gap: 0px;
 }
 [data-sidebar="none"] > :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
     display: none;
