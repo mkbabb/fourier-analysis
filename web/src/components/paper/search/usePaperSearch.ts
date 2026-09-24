@@ -74,19 +74,27 @@ export function usePaperSearch(options: {
         close();
     }
 
-    function close() {
-        isOpen.value = false;
-        isExpanded.value = false;
+    /**
+     * UIA-F-65 — empty the query and nothing else. The palette's Clear called
+     * `close()`, which also dismissed the dialog and sent focus to the page;
+     * Clear keeps the surface and its focus, and dismissal stays `close()`'s.
+     */
+    function clear() {
         query.value = "";
         selectedIndex.value = 0;
-        // `PSM-27`: `close()` was not synchronous. It cleared `query`, but
-        // `debouncedQuery` — and therefore `results` — lagged 120ms, and the
-        // memo only cleared on the next empty-query call, so reopening inside
-        // that window painted the PREVIOUS search's rows under an empty input.
-        // Everything the close claims to clear is cleared in this tick.
+        // `PSM-27`: `debouncedQuery` — and therefore `results` — lagged 120ms
+        // behind `query`, and the memo only cleared on the next empty-query
+        // call, so reopening inside that window painted the PREVIOUS search's
+        // rows under an empty input. Everything cleared is cleared in this tick.
         clearTimeout(debounceTimer);
         debouncedQuery.value = "";
         if (_index) clearSearchCache(_index);
+    }
+
+    function close() {
+        isOpen.value = false;
+        isExpanded.value = false;
+        clear();
     }
 
     function open() {
@@ -159,6 +167,7 @@ export function usePaperSearch(options: {
         selectedIndex,
         selectResult,
         close,
+        clear,
         open,
         toggleExpanded,
         openPalette,

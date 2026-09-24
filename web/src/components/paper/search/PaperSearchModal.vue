@@ -92,6 +92,12 @@ watch(
         });
     },
 );
+
+/** UIA-F-65: Clear empties the query and returns focus to the empty field. */
+function clearQuery() {
+    props.search.clear();
+    modalInputRef.value?.focus();
+}
 </script>
 
 <template>
@@ -158,7 +164,7 @@ watch(
                     emphasis="quiet"
                     size="sm"
                     type="button"
-                    @click="search.close()"
+                    @click="clearQuery"
                 >
                     Clear
                 </Button>
@@ -185,8 +191,12 @@ watch(
                     @hover="search.selectedIndex.value = i"
                 />
             </div>
+            <!-- UIA-F-63: an empty query is not a miss. The open palette said
+                 "No results" before anything was typed — the same copy as a
+                 real miss; it now says what to do, and "No results" answers
+                 only a query that matched nothing. -->
             <div v-else :id="search.listboxId" class="search-modal-empty" role="listbox" aria-label="Search results">
-                No results
+                {{ search.debouncedQuery.value ? "No results" : "Search theorems, equations, figures and sections" }}
             </div>
 
             <!-- Modal footer -->

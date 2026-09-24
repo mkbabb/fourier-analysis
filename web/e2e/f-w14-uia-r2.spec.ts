@@ -118,3 +118,38 @@ test.describe("UIA-F-46 — Like is a toggle (consumer half; the persisting endp
         await expect(card).toContainText(String(ENTRY.likes));
     });
 });
+
+test.describe("UIA-F-63 / UIA-F-65 — the palette's empty and Clear states", () => {
+    test.use({ viewport: { width: 1440, height: 900 } });
+
+    async function openPalette(page: Page) {
+        await openPaper(page);
+        await page.locator("body").click({ position: { x: 5, y: 5 } });
+        await page.keyboard.press("ControlOrMeta+k");
+        const dialog = page.getByRole("dialog", { name: "Search the paper" });
+        await expect(dialog).toBeVisible();
+        return dialog;
+    }
+
+    test("F-63: the open, empty palette does not say 'No results'; a real miss does", async ({ page }) => {
+        const dialog = await openPalette(page);
+        await expect(dialog.getByRole("combobox")).toHaveValue("");
+        await page.waitForTimeout(300);
+        await expect(dialog.getByText("No results")).toHaveCount(0);
+        await dialog.getByRole("combobox").fill("qqqqzzzzxxxx");
+        await expect(dialog.getByText("No results")).toBeVisible();
+    });
+
+    test("F-65: Clear empties the field, keeps the palette open and focuses its input", async ({ page }) => {
+        const dialog = await openPalette(page);
+        const input = dialog.getByRole("combobox");
+        await input.fill("Parseval");
+        await expect(dialog.getByRole("option").first()).toBeVisible();
+        await dialog.getByRole("button", { name: "Clear" }).click();
+        await page.waitForTimeout(300);
+        await expect(dialog).toBeVisible();
+        await expect(input).toHaveValue("");
+        await expect(input).toBeFocused();
+        await expect(dialog.getByRole("option")).toHaveCount(0);
+    });
+});
