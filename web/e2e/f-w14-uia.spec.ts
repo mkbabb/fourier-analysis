@@ -1,4 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
+import * as fs from "node:fs";
+import * as path from "node:path";
+
 import { expect, test, type Page } from "@playwright/test";
 import { ADMIN_TOKEN, ADMIN_USERS, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
 
@@ -35,19 +38,78 @@ test.describe("UIA-F-1 — a featured entry renders the strip, not a crash", () 
 });
 
 /**
- * The first public saved visualization on the served API (read-only GET),
- * read once per worker: the API rate-limits reads per window, and the suite's
- * pages already spend that budget on their own loads.
+ * The saved visualization the `/v/`, dock, export, publish and drafts rows
+ * drive: the first public one on the served API. X.F.W14 Repair 1 (addendum (e),
+ * COHESION §0cl): a fresh database holds none, so the spec's own setup seeds one
+ * the way the app does — a session, the image upload, the contour extraction,
+ * then a public `POST /api/visualizations` — and never by hand. An existing
+ * public visualization is reused, so repeated runs add nothing. Read once per
+ * worker: the API rate-limits reads per window, and the suite's pages already
+ * spend that budget on their own loads.
  */
+const SEED_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
+const SEED_CONTOUR = {
+    strategy: "auto",
+    resize: 800,
+    blur_sigma: 2.0,
+    n_harmonics: 100,
+    n_points: 1024,
+    n_classes: 3,
+    min_contour_length: 40,
+    min_contour_area: 0.01,
+    max_contours: 5,
+    smooth_contours: 0.1,
+} as const;
+
 let savedViz: { slug: string; image_slug: string } | null = null;
-async function firstSavedViz(page: Page): Promise<{ slug: string; image_slug: string }> {
-    if (savedViz) return savedViz;
-    const res = await page.request.get("/api/visualizations?limit=1");
-    expect(res.ok()).toBe(true);
-    const body = (await res.json()) as { items: { slug: string; image_slug: string }[] };
-    expect(body.items.length, "the served API holds a saved visualization").toBeGreaterThan(0);
-    savedViz = body.items[0];
-    return savedViz;
+
+test.beforeAll(async ({ playwright }, testInfo) => {
+    const api = await playwright.request.newContext({ baseURL: testInfo.project.use.baseURL });
+    try {
+        const listed = await api.get("/api/visualizations?limit=1");
+        expect(listed.ok(), `GET /api/visualizations → ${listed.status()}`).toBe(true);
+        const { items } = (await listed.json()) as { items: { slug: string; image_slug: string }[] };
+        if (items.length > 0) {
+            savedViz = items[0];
+            return;
+        }
+        const session = await api.post("/api/sessions");
+        expect(session.ok(), `POST /api/sessions → ${session.status()}`).toBe(true);
+        const { token } = (await session.json()) as { token: string };
+        const headers = { "X-Session-Token": token };
+
+        const image = await api.post("/api/images", {
+            headers,
+            multipart: {
+                file: { name: path.basename(SEED_IMAGE), mimeType: "image/webp", buffer: fs.readFileSync(SEED_IMAGE) },
+            },
+        });
+        expect(image.ok(), `POST /api/images → ${image.status()}`).toBe(true);
+        const { image_slug } = (await image.json()) as { image_slug: string };
+
+        const contour = await api.post(`/api/images/${image_slug}/extract-contour`, {
+            headers,
+            data: { contour_settings: SEED_CONTOUR },
+            timeout: 60_000,
+        });
+        expect(contour.ok(), `extract-contour → ${contour.status()}`).toBe(true);
+        const { contour_hash } = (await contour.json()) as { contour_hash: string };
+
+        const created = await api.post("/api/visualizations", {
+            headers,
+            data: { visibility: "public", image_slug, contour_hash, active_bases: ["fourier-epicycles"], n_harmonics: 50 },
+        });
+        expect(created.status(), `POST /api/visualizations → ${await created.text()}`).toBe(201);
+        const { slug } = (await created.json()) as { slug: string };
+        savedViz = { slug, image_slug };
+    } finally {
+        await api.dispose();
+    }
+});
+
+function firstSavedViz(): { slug: string; image_slug: string } {
+    expect(savedViz, "the served API holds a saved visualization").not.toBeNull();
+    return savedViz!;
 }
 
 /** Push through the app's own router (no in-app link targets `/v/` yet). */
@@ -63,7 +125,7 @@ async function routerPush(page: Page, path: string): Promise<void> {
 
 test.describe("UIA-F-2 / UIA-F-3 — /v/:visualizationSlug loads the saved entity", () => {
     test("F-2: a cold deep link sends GET /api/visualizations/<slug> and leaves the upload stage", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         const got = page.waitForResponse(
             (r) => new URL(r.url()).pathname === `/api/visualizations/${viz.slug}` && r.request().method() === "GET",
         );
@@ -75,7 +137,7 @@ test.describe("UIA-F-2 / UIA-F-3 — /v/:visualizationSlug loads the saved entit
 
     test("F-3: an in-app push /w/ → /v/ stays on /v/ with no orphaned transition", async ({ page }) => {
         const errors = pageErrors(page);
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         await page.goto(`/w/${viz.image_slug}`);
         await expect(page).toHaveURL(new RegExp(`/w/${viz.image_slug}$`));
         await routerPush(page, `/v/${viz.slug}`);
@@ -123,7 +185,7 @@ test.describe("UIA-F-50 / UIA-F-4 / UIA-F-49 — not-found and load-error states
 
 test.describe("UIA-F-7 — the collapsed dock's position readout paints its fill", () => {
     test("the mini readout is a progressbar whose painted fill tracks the clock", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await page.mouse.move(5, 5);
         const bar = page.locator(".mini-progress").first();
@@ -164,7 +226,7 @@ async function paintedPixels(page: Page, png: Buffer): Promise<number> {
 
 test.describe("UIA-F-17 — every export switch changes the PNG", () => {
     test("switching Epicycles and Trace path off removes their pixels", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         const bar = page.locator(".mini-progress").first();
         await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0.2);
@@ -209,7 +271,7 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
 
 /** Open the saved visualization in contour-edit mode; return the editor's shell. */
 async function openEditor(page: Page) {
-    const viz = await firstSavedViz(page);
+    const viz = firstSavedViz();
     await page.goto(`/v/${viz.slug}`);
     const edit = page.getByRole("button", { name: "Edit contour" }).first();
     await edit.hover();
@@ -275,7 +337,7 @@ test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
 
 test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
     test("a double-click sends one save and shows no false 'Could not save'", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         const saved = { ...ENTRY, slug: "quiet-amber-lattice-fox", visibility: "draft" };
         let posts = 0;
         await page.route("**/api/visualizations", async (route) => {
@@ -302,7 +364,7 @@ test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
 
 test.describe("UIA-F-19 — one drop, one upload", () => {
     test("a file dropped over a loaded image sends exactly one POST /api/images", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         const meta = await (await page.request.get(`/api/images/${viz.image_slug}`)).json();
         let posts = 0;
         await page.route("**/api/images", async (route) => {
@@ -455,7 +517,7 @@ test.describe("UIA-F-42 — at 390 every audit field is legible (cured by .t's D
 
 test.describe("UIA-F-48 — the Drafts card sits inside the column gutter", () => {
     test("its right edge stays inside its column and the viewport", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         await page.goto(`/w/${viz.image_slug}`); // saves this workspace as a local draft
         await expect(page).toHaveURL(new RegExp(`/w/${viz.image_slug}$`));
         await page.waitForTimeout(800);
@@ -538,7 +600,7 @@ test.describe("UIA-F-40 — the admin grid does not wait on admin stats", () => 
 
 test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
     test("after Publish the draft row is gone, and stays gone on reload", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         const created = { ...ENTRY, slug: "bright-lattice-heron-fox", image_slug: viz.image_slug };
         await page.route("**/api/sessions", (r) =>
             r.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ user_slug: "amber-fox-12", token: "t" }) }),
@@ -552,7 +614,29 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
         // saves carries a contour (a draft without one cannot be published).
         await page.goto(`/w/${viz.image_slug}`);
         await expect(page.locator(".mini-progress")).toBeAttached({ timeout: 30_000 });
-        await page.waitForTimeout(1500);
+        // The workspace's debounced draft save lands the contour after extraction;
+        // read the stored draft itself (`lib/draftStorage.ts`), not a fixed wait.
+        await expect
+            .poll(
+                () =>
+                    page.evaluate(
+                        (slug) =>
+                            new Promise<boolean>((resolve) => {
+                                const open = indexedDB.open("fourier-drafts");
+                                open.onerror = () => resolve(false);
+                                open.onsuccess = () => {
+                                    const db = open.result;
+                                    if (!db.objectStoreNames.contains("drafts")) return (db.close(), resolve(false));
+                                    const get = db.transaction("drafts").objectStore("drafts").get(slug);
+                                    get.onsuccess = () => (db.close(), resolve(Boolean(get.result?.contour)));
+                                    get.onerror = () => (db.close(), resolve(false));
+                                };
+                            }),
+                        viz.image_slug,
+                    ),
+                { message: "the workspace's draft carries its contour", timeout: 30_000 },
+            )
+            .toBe(true);
         await page.goto("/gallery");
         await page.getByRole("tab", { name: "Drafts" }).click();
         const header = page.getByRole("button", { name: /My Drafts/ });
@@ -632,7 +716,7 @@ test.describe("UIA-F-32 — the coefficient popover escapes the equation card", 
 
 test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyboard", () => {
     test("Enter opens the popover and Tab reaches both toggles; Enter toggles one", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await page.getByRole("button", { name: "Edit contour" }).first().hover();
         const view = page.getByRole("button", { name: "View options" }).first();
@@ -659,7 +743,7 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
     test.use({ viewport: { width: 390, height: 844 } });
 
     test("each control's centre hits that control, inside the viewport", async ({ page }) => {
-        const viz = await firstSavedViz(page);
+        const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await page.getByRole("tab", { name: "Canvas" }).click();
         await page.getByRole("button", { name: "Edit contour" }).first().hover();
