@@ -1,34 +1,45 @@
 import { type Ref, type ShallowRef, shallowRef, onMounted, onUnmounted } from "vue";
 import type { CanvasSurface } from "../lib/canvas-drawing";
 
+/** A box's two extents, in the `ResizeObserverSize` shape. */
+export interface BoxSize {
+    inlineSize: number;
+    blockSize: number;
+}
+
 /**
- * The one DPR-aware canvas idiom (X.F.W14 `.p`, OA-44): every canvas in the app
- * holds a backing store of exactly its CSS box in device pixels, and draws in
- * CSS pixels through the context transform.
+ * THE backing-store rule (X.F.W14 `.p2`, OA-44; COHESION §0cl), one for the
+ * stage and every canvas: the engine's device-pixel box
+ * (`devicePixelContentBoxSize`) when it reports one — the exact bitmap that
+ * maps 1:1 onto the device grid, fractional CSS boxes and page zoom included —
+ * else `Math.round(cssBox × dpr)` per axis. No other rounding exists: no
+ * `getBoundingClientRect` product where a device box is on offer, and no
+ * guard that trades the device box for a product when the two disagree.
+ */
+export function backingSize(css: BoxSize, device: BoxSize | null | undefined, dpr: number): BoxSize {
+    if (device) return { inlineSize: device.inlineSize, blockSize: device.blockSize };
+    return { inlineSize: Math.round(css.inlineSize * dpr), blockSize: Math.round(css.blockSize * dpr) };
+}
+
+/**
+ * The one DPR-aware canvas idiom (X.F.W14 `.p`/`.p2`, OA-44): every canvas in
+ * the app holds a backing store sized by `backingSize` above, and draws in CSS
+ * pixels through the context transform.
  *
  * - The canvas's CSS box is layout's (its stylesheet or its owner's `style`
  *   binding) — this composable never writes `style.width/height`, so a canvas
  *   can never be stretched by CSS from a smaller bitmap.
- * - A `ResizeObserver` on the canvas itself reads `devicePixelContentBoxSize`
- *   where the engine provides it: the exact device-pixel box, fractional CSS
- *   sizes and page zoom included. Elsewhere the box is `round(css × dpr)`.
- *   The device box is taken only while it describes the DPR the page renders
- *   at: under DPR emulation (DevTools device mode, a test's
- *   `deviceScaleFactor`) Chromium still reports the physical screen's box —
- *   measured: a 300.5-px box reads 601 device px at an emulated DPR of 1 on a
- *   2× display — and a bitmap sized to it would be resampled onto the page.
- * - The observer watches the CSS content box, so every layout change of the
- *   box re-sizes the bitmap — including a sub-pixel one. Observing only the
- *   device-pixel box (as the first cut did) reports a change only when that box
- *   moves, and under DPR emulation it is the physical screen's box: measured
- *   (F.W14 Repair 1), a stage settling from 798.59 to 798.34 CSS px left the
- *   physical 2x box at 1597 — no entry — while the page's DPR-1 bitmap stayed
- *   799 wide for a 798-px box. Where the engine supports it, a second observer
- *   watches the device-pixel box too, so a snap that moves no CSS size (a
- *   sub-pixel position shift) still re-sizes. Both read the one entry law below.
+ * - A `ResizeObserver` on the canvas's CSS content box re-sizes the bitmap on
+ *   every layout change of the box, sub-pixel ones included; where the engine
+ *   reports device-pixel boxes a second observer watches that box, so a snap
+ *   that moves no CSS size (a sub-pixel position shift, a display move) still
+ *   re-sizes. Every entry carries both boxes and goes through `backingSize`.
+ * - `setupCanvas` (mount, data arrival, DPR change) measures the box now: where
+ *   device-pixel boxes exist it re-observes, so the engine delivers a fresh
+ *   entry — the device box is only ever read off an entry — before the next
+ *   paint; elsewhere it sizes from the layout rect by the same rule's fallback.
  * - A `(resolution: <dpr>dppx)` media query, re-armed at each change, catches a
- *   DPR change that moves no CSS box (the window dragged to another display),
- *   which the observer does not report where the device-pixel box is absent.
+ *   DPR change that moves no CSS box (the window dragged to another display).
  * - The transform maps one CSS pixel onto the device grid, so a `lineWidth` of 1
  *   is one CSS pixel at any DPR.
  */
@@ -45,7 +56,10 @@ export function useCanvasSetup(
         typeof ResizeObserverEntry !== "undefined" &&
         "devicePixelContentBoxSize" in ResizeObserverEntry.prototype;
 
-    function apply(canvas: HTMLCanvasElement, width: number, height: number, deviceW: number, deviceH: number) {
+    function apply(canvas: HTMLCanvasElement, css: BoxSize, device: BoxSize | null) {
+        const { inlineSize: width, blockSize: height } = css;
+        const backing = backingSize(css, device, window.devicePixelRatio || 1);
+        const { inlineSize: deviceW, blockSize: deviceH } = backing;
         if (width === 0 || height === 0 || deviceW === 0 || deviceH === 0) return;
         // Assigning `width`/`height` reallocates (and clears) the bitmap even at
         // the same value — only a changed box pays for it.
@@ -64,32 +78,20 @@ export function useCanvasSetup(
     function setupCanvas() {
         const canvas = canvasRef.value;
         if (!canvas) return;
+        if (resizeObserver && devicePixelBox) {
+            resizeObserver.unobserve(canvas);
+            resizeObserver.observe(canvas);
+            return;
+        }
         const rect = canvas.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        apply(canvas, rect.width, rect.height, Math.round(rect.width * dpr), Math.round(rect.height * dpr));
+        apply(canvas, { inlineSize: rect.width, blockSize: rect.height }, null);
     }
 
     function onEntries(entries: ResizeObserverEntry[]) {
         const canvas = canvasRef.value;
         const entry = entries[entries.length - 1];
         if (!canvas || !entry) return;
-        const css = entry.contentBoxSize[0];
-        const dpr = window.devicePixelRatio || 1;
-        const deviceW = Math.round(css.inlineSize * dpr);
-        const deviceH = Math.round(css.blockSize * dpr);
-        const device = devicePixelBox ? entry.devicePixelContentBoxSize[0] : null;
-        // Snapping moves a device box by at most one pixel from `css × dpr`.
-        const snapped =
-            device !== null &&
-            Math.abs(device.inlineSize - deviceW) <= 1 &&
-            Math.abs(device.blockSize - deviceH) <= 1;
-        apply(
-            canvas,
-            css.inlineSize,
-            css.blockSize,
-            snapped ? device.inlineSize : deviceW,
-            snapped ? device.blockSize : deviceH,
-        );
+        apply(canvas, entry.contentBoxSize[0], devicePixelBox ? entry.devicePixelContentBoxSize[0] : null);
     }
 
     function watchResolution() {
@@ -104,15 +106,16 @@ export function useCanvasSetup(
     }
 
     onMounted(() => {
-        setupCanvas();
-        watchResolution();
         const canvas = canvasRef.value;
+        watchResolution();
         if (!canvas) return;
         resizeObserver = new ResizeObserver(onEntries);
         resizeObserver.observe(canvas);
         if (devicePixelBox) {
             deviceObserver = new ResizeObserver(onEntries);
             deviceObserver.observe(canvas, { box: "device-pixel-content-box" });
+        } else {
+            setupCanvas();
         }
     });
 

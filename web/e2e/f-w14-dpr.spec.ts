@@ -1,14 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { backingSize, type BoxSize } from "../src/components/visualization/composables/useCanvasSetup";
 
 /**
  * X.F.W14 `.p` — OA-44, crisp visualizations (COHESION §0bw; frame
  * `fourier/evidence/W14/owner-2026-09-23-blurry.png`).
  *
  * G-p, on the served page at DPR 1 and 2:
- *   1. every visible <canvas> holds a backing store of exactly
- *      round(clientWidth × dpr) × round(clientHeight × dpr) — at rest, after a
+ *   1. every visible <canvas> holds a backing store of exactly the one rule's
+ *      size (`backingSize`: the device-pixel box where the engine reports one,
+ *      else round(cssBox × dpr); `.p2`, COHESION §0cl) — at rest, after a
  *      viewport resize, after a DPR change (a window moved between displays),
  *      and after a browser-zoom step (CSS viewport and DPR change together);
  *   2. a 1-px stroke (the plot grid) read off a device-scale screen crop at rest spans
@@ -33,50 +35,70 @@ interface CanvasRead {
     height: number;
     cw: number;
     ch: number;
-    /** The CSS box at layout precision, and its edges (for the device-snapped box). */
-    box: { l: number; t: number; w: number; h: number };
+    /** The CSS content box at layout precision (a ResizeObserver entry's `contentBoxSize`). */
+    css: BoxSize;
+    /** The engine's device-pixel box (`devicePixelContentBoxSize`), null where it reports none. */
+    device: BoxSize | null;
     dpr: number;
 }
 
-/** Every visible canvas's backing store against its CSS box × the live DPR. */
+/**
+ * Every visible canvas's backing store beside the two boxes the backing rule
+ * reads, taken off one fresh ResizeObserver entry per canvas — the same entry
+ * shape `useCanvasSetup` sizes from.
+ */
 function readCanvases(page: Page): Promise<CanvasRead[]> {
-    return page.evaluate(() =>
-        [...document.querySelectorAll("canvas")]
-            .filter((c) => c.clientWidth > 0 && c.clientHeight > 0 && c.checkVisibility())
-            .map((c) => ({
+    return page.evaluate(async () => {
+        const canvases = [...document.querySelectorAll("canvas")].filter(
+            (c) => c.clientWidth > 0 && c.clientHeight > 0 && c.checkVisibility(),
+        );
+        const deviceBox =
+            typeof ResizeObserverEntry !== "undefined" && "devicePixelContentBoxSize" in ResizeObserverEntry.prototype;
+        const entries = await new Promise<Map<Element, ResizeObserverEntry>>((resolve) => {
+            if (!canvases.length) return resolve(new Map());
+            const ro = new ResizeObserver((es) => {
+                ro.disconnect();
+                resolve(new Map(es.map((e) => [e.target, e])));
+            });
+            canvases.forEach((c) => ro.observe(c));
+        });
+        const size = (s: ResizeObserverSize) => ({ inlineSize: s.inlineSize, blockSize: s.blockSize });
+        return canvases.map((c) => {
+            const e = entries.get(c)!;
+            return {
                 name: `${c.parentElement?.className.split(/\s+/)[0] || "?"} > canvas.${c.className.split(/\s+/)[0] || ""}`,
                 width: c.width,
                 height: c.height,
                 cw: c.clientWidth,
                 ch: c.clientHeight,
-                box: (({ left, top, width, height }) => ({ l: left, t: top, w: width, h: height }))(
-                    c.getBoundingClientRect(),
-                ),
+                css: size(e.contentBoxSize[0]),
+                device: deviceBox ? size(e.devicePixelContentBoxSize[0]) : null,
                 dpr: window.devicePixelRatio,
-            })),
-    );
+            };
+        });
+    });
 }
 
 /**
- * `clientWidth` is the CSS box rounded to an integer by the DOM, so on a
- * fractional box (the image-mode stage is 802.5 px wide at 1440) the literal
- * `round(clientWidth × dpr)` names a bitmap one device pixel wider than the box
- * it paints — a resample. The gate reads the same law at layout precision: the
- * backing store is `round(width × dpr)` of the CSS box, or that box snapped to
- * the device grid (`devicePixelContentBoxSize`), per axis. On an integer box
- * both equal `round(clientWidth × dpr)`.
+ * X.F.W14 `.p2` (COHESION §0cl): the gate reads the backing store against THE
+ * rule the app sizes by — `backingSize`, imported from `useCanvasSetup`, not a
+ * restatement of it: the device-pixel box where the engine reports one, else
+ * `Math.round(cssBox × dpr)`. A raw product (798.59 × 2 = 1597.18) names no
+ * bitmap, and `round(clientWidth × dpr)` rounds an already-rounded box.
  */
-function fits(size: number, start: number, extent: number, dpr: number): boolean {
-    return size === Math.round(extent * dpr) || size === Math.round((start + extent) * dpr) - Math.round(start * dpr);
+function fits(r: CanvasRead): boolean {
+    const want = backingSize(r.css, r.device, r.dpr);
+    return r.width === want.inlineSize && r.height === want.blockSize;
 }
 
 function misfits(reads: CanvasRead[]): string[] {
     return reads
-        .filter((r) => !fits(r.width, r.box.l, r.box.w, r.dpr) || !fits(r.height, r.box.t, r.box.h, r.dpr))
-        .map(
-            (r) =>
-                `${r.name} ${r.width}×${r.height} ≠ (${r.box.w}×${r.dpr})×(${r.box.h}×${r.dpr}) [client ${r.cw}×${r.ch}]`,
-        );
+        .filter((r) => !fits(r))
+        .map((r) => {
+            const want = backingSize(r.css, r.device, r.dpr);
+            const device = r.device ? `device ${r.device.inlineSize}×${r.device.blockSize}` : "no device box";
+            return `${r.name} ${r.width}×${r.height} ≠ ${want.inlineSize}×${want.blockSize} [css ${r.css.inlineSize}×${r.css.blockSize} @ dpr ${r.dpr}; ${device}; client ${r.cw}×${r.ch}]`;
+        });
 }
 
 /** Two frames — enough for a ResizeObserver / media-query change to land and repaint. */
