@@ -1,10 +1,22 @@
 import type { CanvasSurface } from "./types";
 
+/**
+ * The stage canvas with nothing to draw yet.
+ *
+ * X.F.W14U.vstage — UIA-F-73 ⊕ F-237. It painted two things that were not
+ * its to say. With no image, a 40 px grid under the page's own grid (two grids
+ * at two pitches). While an image computed, a dashed 280×100 box with an upload
+ * arrow and a faint "Computing..." at a fixed grey, which read as "drop here"
+ * while nothing was uploading. The stage's DOM owns both states now: the drop
+ * target with no image, and a `role="status"` busy mark while computing
+ * (`VisualizationView.vue`). The canvas paints the plot grid only once there is
+ * an image for it to belong to.
+ */
 export function drawPlaceholder(surface: CanvasSurface, hasImage: boolean): void {
     const { ctx, width, height } = surface;
     ctx.clearRect(0, 0, width, height);
+    if (!hasImage) return;
 
-    // Subtle grid
     ctx.strokeStyle = "rgba(150, 150, 150, 0.07)";
     ctx.lineWidth = 1;
     const step = 40;
@@ -20,47 +32,4 @@ export function drawPlaceholder(surface: CanvasSurface, hasImage: boolean): void
         ctx.lineTo(width, y);
         ctx.stroke();
     }
-
-    // X.F.W13.c — with no image the main area's DOM drop target (a glass Button
-    // + the format line) is the one upload affordance; a painted "Drag & drop"
-    // box under it would say the same thing twice. The box paints only while an
-    // image is computing.
-    if (!hasImage) return;
-
-    // Dashed rounded rect in center
-    const boxW = Math.min(280, width * 0.6);
-    const boxH = 100;
-    const bx = (width - boxW) / 2;
-    const by = (height - boxH) / 2;
-    const r = 12;
-    ctx.beginPath();
-    ctx.roundRect(bx, by, boxW, boxH, r);
-    ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = "rgba(150, 150, 150, 0.25)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Upload arrow icon
-    const cx = width / 2;
-    const cy = height / 2 - 12;
-    ctx.strokeStyle = "rgba(150, 150, 150, 0.4)";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 10);
-    ctx.lineTo(cx, cy + 10);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx - 7, cy - 3);
-    ctx.lineTo(cx, cy - 10);
-    ctx.lineTo(cx + 7, cy - 3);
-    ctx.stroke();
-
-    // Text
-    ctx.fillStyle = "rgba(150, 150, 150, 0.6)";
-    ctx.font = "500 15px 'Fira Code', monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Computing...", cx, height / 2 + 18);
 }

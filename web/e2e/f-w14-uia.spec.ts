@@ -295,6 +295,9 @@ test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
         await page.route(`**/api/visualizations/${saved.slug}`, (route) =>
             route.fulfill({ status: 200, contentType: "application/json", headers: { ETag: '"e2"' }, body: JSON.stringify({ ...saved, visibility: "public" }) }),
         );
+        // Publishing needs a session (F.W14U.vstage, UIA-F-95: logged out,
+        // Publish sends nothing); the viewer is logged in the app's own way.
+        await page.addInitScript(() => localStorage.setItem("fourier-user-slug", "e2e-publisher"));
         await page.goto(`/v/${viz.slug}`);
         // The canvas dock expands under the pointer (its persistent control).
         await page.getByRole("button", { name: "Edit contour" }).first().hover();

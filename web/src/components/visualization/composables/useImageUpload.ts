@@ -14,6 +14,7 @@ function isImageFile(file: File): boolean {
 export function useImageUpload(onFile: (file: File) => void) {
     const isDragging = ref(false);
     const preview = ref<string | null>(null);
+    const rejection = ref<string | null>(null);
 
     // Track active FileReader so we can abort on new selection or unmount
     let activeReader: FileReader | null = null;
@@ -41,10 +42,7 @@ export function useImageUpload(onFile: (file: File) => void) {
         isDragging.value = false;
         if (handled) return;
         const file = e.dataTransfer?.files[0];
-        if (file && isImageFile(file)) {
-            setPreview(file);
-            onFile(file);
-        }
+        if (file) accept(file);
     }
 
     function handleDragOver(e: DragEvent) {
@@ -74,10 +72,22 @@ export function useImageUpload(onFile: (file: File) => void) {
     function handleFileSelect(e: Event) {
         const input = e.target as HTMLInputElement;
         const file = input.files?.[0];
-        if (file && isImageFile(file)) {
-            setPreview(file);
-            onFile(file);
+        if (file) accept(file);
+    }
+
+    /**
+     * X.F.W14U.vstage — UIA-F-166: a file that is not an image was dropped
+     * and nothing said so. The rejection names the file and what is taken,
+     * for the drop target to show; the next file clears it.
+     */
+    function accept(file: File) {
+        if (!isImageFile(file)) {
+            rejection.value = `${file.name} is not an image. Choose a PNG, JPG or SVG.`;
+            return;
         }
+        rejection.value = null;
+        setPreview(file);
+        onFile(file);
     }
 
     function setPreview(file: File) {
@@ -104,6 +114,7 @@ export function useImageUpload(onFile: (file: File) => void) {
     return {
         isDragging,
         preview,
+        rejection,
         clearPreview,
         handleDrop,
         handleDragOver,

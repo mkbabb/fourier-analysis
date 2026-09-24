@@ -76,9 +76,9 @@ test.describe("G-c — F.W13 image mode: one drop affordance, the sidebar arrive
 
         // ONE upload affordance: the main area's glass Button + the format line;
         // the retired sidebar card's text is nowhere on the page.
-        const uploads = page.getByRole("button", { name: /upload/i });
+        const uploads = page.getByRole("button", { name: /upload|choose an image/i });
         await expect(uploads).toHaveCount(1);
-        const target = page.locator(".drop-target").getByRole("button", { name: "Drop or click to upload" });
+        const target = page.locator(".drop-target").getByRole("button", { name: "Choose an image" });
         await expect(target).toHaveAttribute("data-slot", "button");
         await expect(page.locator(".drop-target")).toContainText("PNG/JPG/SVG ≤ 10 MB");
         await expect(page.getByText(/Drop or click to upload —/)).toHaveCount(0);

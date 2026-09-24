@@ -84,7 +84,7 @@ test.describe("G-b — F.W13 image-mode controls act (frame 3)", () => {
         // (f-w13-image-empty.spec.ts) owns the rest state: its shape, the
         // sidebar's absence and the pointer pick. G-b keeps only what G-c
         // does not drive: the affordance is the producer Button and it acts by key.
-        const target = page.locator(".drop-target").getByRole("button", { name: /Drop or click to upload/ });
+        const target = page.locator(".drop-target").getByRole("button", { name: /Choose an image/ });
         await expect(target).toHaveAttribute("data-slot", "button");
         await opensPicker(page, () => target.press("Enter"));
 

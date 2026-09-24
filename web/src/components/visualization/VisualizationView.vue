@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { watchDebounced, useMediaQuery } from "@vueuse/core";
+import { watchDebounced, useMediaQuery, useEventListener } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
@@ -10,6 +10,7 @@ import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
 import { Upload } from "@lucide/vue";
 import { useGalleryStore } from "@/stores/gallery";
 import { useToast } from "@/composables/useToast";
+import { useAuthStore } from "@/stores/auth";
 import ImageUpload from "./ImageUpload.vue";
 import NotFoundCard from "@/components/shared/NotFoundCard.vue";
 import ContourSettings from "./ContourSettings.vue";
@@ -18,7 +19,6 @@ import BasisSelector from "./BasisSelector.vue";
 import AnimationControls from "./AnimationControls.vue";
 import ContourEditorCanvas from "./ContourEditorCanvas.vue";
 import EditorControlsDock from "./EditorControlsDock.vue";
-import ContourPreview from "./ContourPreview.vue";
 import CanvasControlsDock from "./CanvasControlsDock.vue";
 import CoefficientsPanel from "./CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
@@ -28,6 +28,7 @@ import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Card } from "@mkbabb/glass-ui/card";
+import { Progress } from "@mkbabb/glass-ui/progress";
 
 const router = useRouter();
 const route = useRoute();
@@ -36,14 +37,39 @@ const isSavedRoute = computed(() => route.name === "visualization");
 const store = useWorkspaceStore();
 const anim = useAnimationStore();
 const gallery = useGalleryStore();
+const auth = useAuthStore();
 const { toast } = useToast();
 
 // ── View state (editing, ghost, overlay — persisted to localStorage) ──
 const { isEditing, showGhost, showImageOverlay, showEquation } = useViewState();
 
 // ── Image drag-and-drop ──
-const { isDragging: globalDragging, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave } =
-    useImageUpload(async (file: File) => { await store.uploadImage(file); });
+const { isDragging: globalDragging, rejection: dropRejection, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave, handleFileSelect: globalFileSelect } =
+    useImageUpload((file: File) => store.uploadImage(file));
+
+/*
+ * X.F.W14U.vstage — UIA-F-166: a file dropped outside this view (the header
+ * band) fell through to the browser, which navigated away to the file. While
+ * the studio is mounted the window takes every file drag it does not route,
+ * so a stray drop is a no-op instead of a lost session.
+ */
+useEventListener(window, "dragover", (e: DragEvent) => e.preventDefault());
+useEventListener(window, "drop", (e: DragEvent) => e.preventDefault());
+
+/** The drop target's one message line: a rejected file, else a failed upload
+ *  (UIA-F-166 ⊕ F-167 — shown where the file was dropped, never as a failed
+ *  workspace load). */
+const dropMessage = computed(() =>
+    dropRejection.value ?? (store.uploadError ? `The upload failed: ${store.uploadError}` : null),
+);
+
+/* UIA-F-237: "Drop or click" is wrong on touch; the primary action says what it
+   does on each pointer, and while uploading it says that (UIA-F-133). */
+const isCoarsePointer = useMediaQuery("(pointer: coarse)");
+const primaryUploadLabel = computed(() => {
+    if (store.uploading) return "Uploading…";
+    return isCoarsePointer.value ? "Tap to choose an image" : "Choose an image";
+});
 
 // ── Active bases ──
 const activeBases = ref<string[]>(
@@ -142,15 +168,23 @@ const publishing = ref(false);
 // one outcome: a publish in flight suppresses activation (DESIGN.md: loading
 // suppresses activation), and an aborted save is not a failure — only a real
 // diagnosis (`store.error`, cleared at the save's start) is reported.
+//
+// X.F.W14U.vstage — UIA-F-95 ⊕ F-245: logged out, Publish made the round trip
+// the api refuses, and the one refusal arrived as two error toasts (this
+// function's, and the loader's `store.error` channel, which reports every
+// workspace diagnosis while an image is open). The gate is before the round
+// trip — a session is a precondition, said once with the way to meet it — and a
+// failed save is reported by the loader's channel alone.
 async function handlePublish() {
     if (publishing.value || !store.imageSlug || !store.contour) return;
+    if (!auth.isLoggedIn) {
+        toast("Log in to publish to the gallery.", "info");
+        return;
+    }
     publishing.value = true;
     try {
         const saved = await store.saveVisualization();
-        if (!saved) {
-            if (store.error) toast(store.error, "error");
-            return;
-        }
+        if (!saved) return;
         await gallery.publish(saved.slug, store.imageSlug);
     } finally {
         publishing.value = false;
@@ -190,15 +224,18 @@ watch(hasSidebar, (present) => {
 });
 
 /*
- * The band closes on the content's `@after-leave` — which never fires when
- * the Configurator itself unmounts under it (a failed upload swaps the
- * workspace for the not-found card). The band's state is re-read from the
- * sidebar's own truth whenever the chassis unmounts, so a remount never opens
- * an empty column.
+ * X.F.W14U.vstage — the band's `onConfiguratorUnmounted` re-read retired: a
+ * failed upload no longer swaps the Configurator for the not-found card (the
+ * card and the busy mark render inside the stage, UIA-F-70 ⊕ F-167), so the
+ * sidebar's `@after-leave` always runs and closes the band itself.
  */
-function onConfiguratorUnmounted() {
-    sidebarPresent.value = hasSidebar.value;
-}
+/** The stage's two whole-route states (UIA-F-70): a cold load, and a load that
+ *  failed with nothing on screen. Both keep the Configurator chassis. */
+const stageLoading = computed(() => store.loading && !store.imageSlug);
+const stageError = computed(() => !!store.error && !store.imageSlug);
+/** UIA-F-73 ⊕ F-71: the first compute has nothing to draw yet; the stage says
+ *  so in the DOM (one busy mark), not with a painted box. */
+const firstCompute = computed(() => store.computing && !store.epicycleData && !store.basesData);
 
 // The ONE upload affordance with no image: the main area's drop target (a
 // glass Button + the format line). The canvas itself is no longer a
@@ -207,9 +244,11 @@ const canvasFileInput = ref<HTMLInputElement>();
 function openCanvasFilePicker() {
     canvasFileInput.value?.click();
 }
-async function onCanvasFileSelect(e: Event) {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (file) await store.uploadImage(file);
+/* A picked file takes the drop's path (the same image check and rejection
+   message, UIA-F-166); the input is cleared so the same file can be picked
+   again. */
+function onCanvasFileSelect(e: Event) {
+    globalFileSelect(e);
     if (canvasFileInput.value) canvasFileInput.value.value = "";
 }
 </script>
@@ -219,52 +258,15 @@ async function onCanvasFileSelect(e: Event) {
         @drop="globalDrop" @dragover="globalDragOver"
         @dragenter="globalDragEnter" @dragleave="globalDragLeave"
     >
-        <!-- Global drag overlay — with an image in place (a drop REPLACES it).
-             With no image the main area's drop target is the one signal. -->
-        <Transition name="fade">
-            <div v-if="globalDragging && hasImage" class="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-background/80 backdrop-blur-sm"
-                @dragover.prevent>
-                <div class="flex flex-col items-center gap-3 text-muted-foreground">
-                    <Upload class="h-12 w-12" />
-                    <p class="text-lg font-medium">Drop image anywhere</p>
-                </div>
-            </div>
-        </Transition>
-
-        <!-- Loading -->
-        <div v-if="store.loading && !store.imageSlug" class="flex flex-col items-center justify-center flex-1 gap-3">
-            <div class="h-8 w-8 animate-spin rounded-full border-[2.5px] border-border border-t-primary" />
-            <p class="text-sm text-muted-foreground fira-code">Loading workspace...</p>
-        </div>
-
-        <!-- Error (no workspace). X.F.W14.u — UIA-F-4: on `/v/` the error
-             branch was never reached (the loader never loaded the entity), and
-             its copy spoke only of a workspace. It is the shared not-found card
-             now, its copy route-aware and naming the slug that failed.
-             UIA-F-49: the side=top tooltip on the button covered the only
-             diagnostic line; the button's own label carries the meaning. -->
-        <NotFoundCard
-            v-else-if="store.error && !store.imageSlug"
-            :title="isSavedRoute ? 'Could not open this visualization' : 'Could not load this workspace'"
-            :description="isSavedRoute
-                ? `No saved visualization loaded from “${route.params.visualizationSlug}”.`
-                : `No image loaded from “${route.params.imageSlug}”.`"
-            :detail="store.error"
-        >
-            <template #actions>
-                <Button emphasis="primary" @click="store.reset(); router.push('/visualize')">
-                    Upload a new image
-                </Button>
-                <Button emphasis="secondary" @click="store.reset(); router.push('/gallery')">
-                    Browse the gallery
-                </Button>
-            </template>
-        </NotFoundCard>
-
-        <!-- Main workspace -->
-        <div v-else class="flex flex-col flex-1 min-h-0">
+        <!-- Main workspace. X.F.W14U.vstage — UIA-F-70: the cold load and the
+             load error used to REPLACE this chassis (a bare ring, or a card
+             floating on the page, then the frame popping in). They render inside
+             the Configurator's stage now, as /gallery and /equation do; the
+             page-covering drag overlay retired for the stage's own signal
+             (UIA-F-166 ⊕ F-237). -->
+        <div class="flex flex-col flex-1 min-h-0">
             <!-- Mobile tab bar -->
-            <div v-if="hasSidebar" class="flex px-3 py-1 bg-background lg:hidden">
+            <div v-if="hasSidebar" class="flex px-3 py-1 lg:hidden">
                 <SegmentedTabs variant="underline"
                     :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
                     v-model="mobileView" />
@@ -300,10 +302,40 @@ async function onCanvasFileSelect(e: Event) {
                  solid `--card` + `blur(0)`, docs/canon/glass-system.md). Its veil
                  then resolves to the same `--card` the stage and every other fourier
                  pane paint. -->
-            <Configurator scroll-mode="auto" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'" @vue:unmounted="onConfiguratorUnmounted">
+            <Configurator scroll-mode="auto" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
-                    <div class="viz-panel-right canvas-stage" :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && !isDesktop }">
+                    <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark (glass's
+                         indeterminate Progress; the retired transparent-topped ring is
+                         gone), announced as a status. -->
+                    <div v-if="stageLoading" class="stage-state" role="status">
+                        <Progress :model-value="null" variant="liquid" size="sm" class="stage-busy-bar"
+                            :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'" />
+                        <p class="text-caption text-muted-foreground">{{ isSavedRoute ? "Loading the visualization…" : "Loading the workspace…" }}</p>
+                    </div>
+                    <!-- Error (no workspace). X.F.W14.u — UIA-F-4: route-aware copy
+                         naming the slug that failed; UIA-F-49: the button's own label
+                         carries the meaning. Inside the stage (UIA-F-70). -->
+                    <div v-else-if="stageError" class="stage-state">
+                        <NotFoundCard
+                            :title="isSavedRoute ? 'Could not open this visualization' : 'Could not load this workspace'"
+                            :description="isSavedRoute
+                                ? `No saved visualization loaded from “${route.params.visualizationSlug}”.`
+                                : `No image loaded from “${route.params.imageSlug}”.`"
+                            :detail="store.error"
+                        >
+                            <template #actions>
+                                <Button emphasis="primary" @click="store.reset(); router.push('/visualize')">
+                                    Upload a new image
+                                </Button>
+                                <Button emphasis="secondary" @click="store.reset(); router.push('/gallery')">
+                                    Browse the gallery
+                                </Button>
+                            </template>
+                        </NotFoundCard>
+                    </div>
+                    <div v-else class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
+                        :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && !isDesktop }">
                         <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
                                 :show-ghost="showGhost" :show-image-overlay="showImageOverlay" />
@@ -313,13 +345,33 @@ async function onCanvasFileSelect(e: Event) {
                              retired; click-to-browse (a glass Button) and the format/size
                              line (the producer's caption type) live here, and the drop
                              target signals while a file is dragged over the page. -->
+                        <!-- X.F.W14U.vstage — UIA-F-69 ⊕ F-165 ⊕ F-237: the empty stage had no
+                             hierarchy (one secondary 240×44 button in a blank stage, no
+                             heading, nothing saying what the tool does). It is composed on
+                             glass's type roles: the route's one h1, a lede, the primary
+                             action (primary emphasis, copy per pointer), the format line, a
+                             secondary path to the gallery; a rejected file or a failed
+                             upload is said here, where it was dropped (UIA-F-166 ⊕ F-167). -->
                         <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
-                            <Button emphasis="secondary" size="lg" class="drop-target-button" :loading="store.uploading" @click="openCanvasFilePicker">
-                                <Upload />
-                                Drop or click to upload
+                            <h1 class="drop-target-title font-serif-math text-display-2 font-bold tracking-tight">Draw any outline in circles</h1>
+                            <p class="drop-target-lede text-body text-muted-foreground">
+                                Upload an image: its outline is traced and redrawn by a Fourier series, a chain of rotating circles.
+                            </p>
+                            <Button emphasis="primary" size="lg" class="drop-target-button" :loading="store.uploading" @click="openCanvasFilePicker">
+                                <Upload v-if="!store.uploading" />
+                                {{ primaryUploadLabel }}
                             </Button>
                             <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
+                            <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
+                            <Button emphasis="quiet" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
                             <input ref="canvasFileInput" data-testid="image-file-input" type="file" accept="image/*" class="hidden" @change="onCanvasFileSelect" />
+                        </div>
+                        <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
+                             (the canvas no longer paints a dashed "drop here" box). -->
+                        <div v-if="firstCompute" class="stage-state stage-state--over" role="status">
+                            <Progress :model-value="null" variant="liquid" size="sm" class="stage-busy-bar"
+                                aria-label="Computing the Fourier decomposition" />
+                            <p class="text-caption text-muted-foreground">Computing the Fourier decomposition…</p>
                         </div>
                         <!-- UIA-F-15: out of edit mode the editor is opacity-hidden but
                              mounted; `inert` keeps it out of the tab order and the
@@ -386,8 +438,9 @@ async function onCanvasFileSelect(e: Event) {
                     class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
                     <Transition name="panel-swap" mode="out-in">
                         <div v-if="isEditing" key="editor-panel" class="viz-panel-left">
-                            <!-- Preview above tools -->
-                            <ContourPreview :points="editorRef?.points" />
+                            <!-- X.F.W14U.vstage — UIA-F-169: the Preview layer repeated the
+                                 stage (the editor it previews is on screen beside it) at
+                                 160 px of the aside's height; it is not mounted. -->
                             <!-- Editor tools live in the floating EditorControlsDock (B.W2.4);
                                  the static EditorToolsPanel was retired. -->
                             <!-- X.F.W3 `.e` / `fr-VisualizationView MAJ-5` FOLD -> `fr-ContourSettings
@@ -453,7 +506,10 @@ async function onCanvasFileSelect(e: Event) {
 :deep(.viz-configurator) {
     flex: 1;
     min-height: 0;
-    margin: 0.25rem;
+    /* X.F.W14U.vstage — UIA-F-237: at 390 the chassis sat 4 px from the
+       viewport edge; below lg it keeps the app's 16 px page gutter (the
+       gallery's `px-4`). */
+    margin: 0.25rem 1rem;
 }
 
 /* I.ε — the View-Transitions morph anchor. The canvas stage is the persistent
@@ -511,6 +567,13 @@ async function onCanvasFileSelect(e: Event) {
     :deep(.viz-configurator .configurator-stage) {
         flex: 1 1 0%;
         min-height: 0;
+    }
+    /* X.F.W14U.vstage — with the Controls tab up the stage's one child is
+       `display: none`, and the growing empty cell took the column's leftover
+       height as a blank band above the sheet (exposed once the Image layer
+       became a compact row, UIA-F-169). The inactive stage takes no height. */
+    :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
+        flex: 0 0 0%;
     }
 }
 
@@ -672,8 +735,26 @@ async function onCanvasFileSelect(e: Event) {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    padding-inline: 1.5rem;
+    text-align: center;
     pointer-events: none;
     z-index: var(--z-controls);
+}
+/* X.F.W14U.vstage — the empty state's hierarchy (UIA-F-69): the title, then the
+   lede one step down, then the action; the gallery path sits apart below. */
+.drop-target-title {
+    margin: 0;
+    max-inline-size: 18ch;
+    text-wrap: balance;
+}
+.drop-target-lede {
+    margin: 0 0 0.75rem;
+    max-inline-size: 52ch;
+    text-wrap: pretty;
+}
+.drop-target-message {
+    color: var(--destructive);
+    max-inline-size: 42ch;
 }
 .drop-target > * {
     pointer-events: auto;
@@ -682,6 +763,41 @@ async function onCanvasFileSelect(e: Event) {
    dragged file reads which surface will take it. */
 .drop-target[data-dragging] .drop-target-button {
     box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+/* UIA-F-166 — the whole stage signals a file dragged over it (was the button
+   only); inset, so the Configurator's rounded stage cell draws it on its own
+   rim. With an image, a drop here replaces it. */
+.canvas-stage[data-dragging]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px var(--focus-ring-color);
+    pointer-events: none;
+    z-index: var(--z-controls);
+}
+
+/* ── X.F.W14U.vstage — the stage's whole-route states (UIA-F-70 ⊕ F-73) ──
+   The cold load, the load error and the first compute render inside the
+   stage cell, centred, so the chassis never leaves. */
+.stage-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 100%;
+    padding: 1.5rem 1rem;
+}
+.stage-state--over {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    z-index: var(--z-controls);
+    pointer-events: none;
+}
+.stage-busy-bar {
+    inline-size: min(12rem, 60%);
 }
 
 /* ── X.F.W13.c — the sidebar arrives with content ──

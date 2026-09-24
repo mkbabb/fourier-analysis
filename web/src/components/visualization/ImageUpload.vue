@@ -63,55 +63,31 @@ function onImgError() {
         <h3 class="sr-only">Image</h3>
         <ConfiguratorLayer label="Image" sub="source input">
 
-            <!-- Preview with overlay replace button + drag-over dashed outline -->
-            <div
-                v-if="hasPreview()"
-                class="group relative mb-0 overflow-hidden rounded-lg animate-scale-in transition-all duration-200"
-                :class="{
-                    'ring-2 ring-dashed ring-primary ring-offset-2 ring-offset-card': isDragging,
-                }"
-            >
-                <!-- Broken image fallback -->
-                <div v-if="imgError" class="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
-                    <ImageOff class="h-10 w-10 opacity-40" />
-                    <p class="text-xs fira-code">Image unavailable</p>
+            <!-- X.F.W14U.vstage — UIA-F-169 ⊕ F-239: the image took the aside's top
+                 third (a 200 px letterboxed preview above a full-width Replace
+                 button), and its rounded corner fell on letterbox space, not on
+                 the image. It is a compact row now: the thumbnail at the image's
+                 own aspect (its box IS the image, so the media radius rounds the
+                 picture) beside its Replace command. The drag-over signal is the
+                 row's ring; the "Drop to replace" plate is the stage's
+                 (VisualizationView, F-166). -->
+            <div v-if="hasPreview()" class="image-row" :data-dragging="isDragging || undefined">
+                <div v-if="imgError" class="image-missing text-muted-foreground">
+                    <ImageOff aria-hidden="true" />
+                    <p class="text-caption">Image unavailable</p>
                 </div>
                 <img
                     v-else
                     :src="preview || (store.imageSlug ? thumbnailUrl(store.imageSlug) : '')"
                     alt="Uploaded image"
-                    class="w-full max-h-[200px] object-contain transition-all duration-300"
+                    class="image-thumb"
                     @error="onImgError"
                 />
-                <!-- X.F.W13.b — the overlay is a drag-over SIGNAL only. It used to be the
-                     replace command too: a pointer-only `<div @click>` with no role, no
-                     name and no tab stop, so replacing the image was unreachable from
-                     the keyboard. The command is the glass Button below. -->
-                <div
-                    class="pointer-events-none absolute inset-0 flex items-center justify-center transition-colors duration-200"
-                    :class="{
-                        'bg-primary/10': isDragging,
-                    }"
-                >
-                    <div
-                        v-if="isDragging"
-                        class="flex items-center gap-1.5 rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur-sm fira-code"
-                    >
-                        <Upload class="h-3 w-3" />
-                        Drop to replace
-                    </div>
-                </div>
+                <Button emphasis="secondary" size="sm" @click="openFilePicker">
+                    <Upload />
+                    Replace image
+                </Button>
             </div>
-            <Button
-                v-if="hasPreview()"
-                emphasis="secondary"
-                size="sm"
-                class="mt-2 w-full"
-                @click="openFilePicker"
-            >
-                <Upload />
-                Replace image
-            </Button>
 
             <!-- X.F.W13.c — the source strip ("Drop or click to upload — PNG/JPG/SVG
                  ≤ 10 MB") RETIRED (owner frame 4: "duplicative"). This layer renders
@@ -142,13 +118,17 @@ function onImgError() {
             <Transition name="rainbow-fade">
                 <!-- X.F.W14.r — the sidebar now enters on drop (F.W13 `.c` r1),
                      so the upload in flight is this layer's busy state too. -->
+                <!-- X.F.W14U.vstage — UIA-F-71 ⊕ F-238: computing is the stage's
+                     one busy mark (VisualizationView); this bar carried it too, and
+                     its unmount at the end of a compute jumped the Decomposition
+                     layer up ~33 px. The layer's bar is the upload's only. -->
                 <Progress
-                    v-if="store.uploading || store.computing"
+                    v-if="store.uploading"
                     :model-value="null"
                     variant="liquid"
                     size="sm"
                     class="mt-2"
-                    :aria-label="store.uploading ? 'Uploading the image' : 'Computing the Fourier decomposition'"
+                    aria-label="Uploading the image"
                 />
             </Transition>
 
@@ -188,11 +168,29 @@ function onImgError() {
     opacity: 0;
 }
 
-.ring-dashed {
-    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
-    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
-    outline: 2px dashed var(--primary);
-    outline-offset: 3px;
+/* The compact image row (F-169). The thumbnail's box is the image: bounded on
+   both axes with `auto` sizes, so it keeps the image's aspect and the media
+   radius rounds the picture itself (F-239). */
+.image-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: var(--radius-media);
+}
+.image-row[data-dragging] {
+    box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+.image-thumb {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 7.5rem;
+    max-height: 5rem;
+    border-radius: var(--radius-media);
+}
+.image-missing {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 </style>

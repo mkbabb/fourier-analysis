@@ -2,7 +2,6 @@
 import { ref, watch, computed } from "vue";
 import { watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { Button } from "@mkbabb/glass-ui/button";
 // `./alert` has no subpath export at the 8.0.0 pin; the root barrel carries it.
@@ -24,6 +23,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import SliderControl from "@/components/ui/SliderControl.vue";
 
 const advancedOpen = ref(false);
+/** UIA-F-172 — the aside's one control accent (`style.css` `--control-accent`). */
+const CONTROL_ACCENT = "var(--control-accent)";
 
 /**
  * X.F.W3 `.d` — `fr-ContourSettings M-16` (≡ `C-9` / `L-M3`(contract) / `D-i2`),
@@ -262,82 +263,79 @@ watch(
         </ConfiguratorRow>
 
         <!-- ML Threshold (visible for ml or auto) -->
-        <Tooltip v-if="strategy === 'ml' || strategy === 'auto'" text="Saliency cutoff — lower values capture more background detail">
-            <SliderControl
-                v-model="mlThreshold"
-                label="ML Threshold"
-                :min="0.1"
-                :max="0.9"
-                :step="0.05"
-                :color="VIZ_COLORS.amber"
-                :format-value="(v: number) => v.toFixed(2)"
-            />
-        </Tooltip>
+        <SliderControl v-if="strategy === 'ml' || strategy === 'auto'"
+            v-model="mlThreshold"
+            label="ML Threshold"
+            :min="0.1"
+            :max="0.9"
+            :step="0.05"
+            :color="CONTROL_ACCENT"
+            :format-value="(v: number) => v.toFixed(2)"
+            subtitle="saliency cutoff"
+        />
 
         <!-- Blur Sigma -->
-        <Tooltip text="Soften before tracing — crank it up for furry subjects or noisy backgrounds">
-            <SliderControl
-                v-model="blurSigma"
-                label="Blur Sigma"
-                :min="0"
-                :max="5"
-                :step="0.1"
-                :color="VIZ_COLORS.amber"
-                :format-value="(v: number) => v.toFixed(1)"
-            />
-        </Tooltip>
+        <SliderControl
+            v-model="blurSigma"
+            label="Blur Sigma"
+            :min="0"
+            :max="5"
+            :step="0.1"
+            :color="CONTROL_ACCENT"
+            :format-value="(v: number) => v.toFixed(1)"
+            subtitle="softens noisy edges"
+        />
 
-        <!-- Advanced divider + collapsible -->
+        <!-- X.F.W14U.vstage — UIA-F-171: the Advanced disclosure was a hand-rolled
+             divider trigger (two hairlines around a bare text trigger), a second
+             disclosure idiom in an aside whose layers use glass's. The trigger is
+             glass's Button through the Collapsible's own `as-child` seat, so it
+             carries `aria-expanded` and the Button's focus ring and press. -->
         <Collapsible v-model:open="advancedOpen">
-            <div class="advanced-divider">
-                <div class="divider-line" />
-                <CollapsibleTrigger class="advanced-trigger">
-                    <span>Advanced</span>
-                    <ChevronRight class="h-3 w-3 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
-                </CollapsibleTrigger>
-                <div class="divider-line" />
-            </div>
+            <CollapsibleTrigger as-child>
+                <Button emphasis="quiet" size="sm" class="advanced-trigger">
+                    Advanced
+                    <ChevronRight class="transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
+                </Button>
+            </CollapsibleTrigger>
 
             <CollapsibleContent class="advanced-content">
                 <div class="advanced-grid">
                     <!-- Min Area % -->
-                    <Tooltip text="Ignore tiny contours — raise to drop grass, fences, and stray edges">
-                        <SliderControl
-                            v-model="minContourArea"
-                            label="Min Area %"
-                            :min="0"
-                            :max="20"
-                            :step="0.5"
-                            :color="VIZ_COLORS.amber"
-                            :format-value="(v: number) => v.toFixed(1)"
-                        />
-                    </Tooltip>
+                    <SliderControl
+                        v-model="minContourArea"
+                        label="Min Area %"
+                        :min="0"
+                        :max="20"
+                        :step="0.5"
+                        :color="CONTROL_ACCENT"
+                        :format-value="(v: number) => v.toFixed(1)"
+                        subtitle="drops stray specks"
+                    />
 
                     <!-- Max Contours -->
-                    <Tooltip text="How many outlines to keep — 1 for a clean silhouette, more for interior detail">
-                        <SliderControl
-                            v-model="maxContours"
-                            label="Max Contours"
-                            :min="0"
-                            :max="50"
-                            :step="1"
-                            :color="VIZ_COLORS.amber"
-                            :format-value="(v: number) => v === 0 ? 'All' : String(v)"
-                        />
-                    </Tooltip>
+                    <SliderControl
+                        v-model="maxContours"
+                        label="Max Contours"
+                        :min="0"
+                        :max="50"
+                        :step="1"
+                        :color="CONTROL_ACCENT"
+                        :format-value="(v: number) => v === 0 ? 'All' : String(v)"
+                        subtitle="1 = one silhouette"
+                    />
 
                     <!-- Smoothing -->
-                    <Tooltip text="Iron out jagged edges — tame fur, leaves, and pixelated boundaries">
-                        <SliderControl
-                            v-model="smoothContours"
-                            label="Smoothing"
-                            :min="0"
-                            :max="1"
-                            :step="0.05"
-                            :color="VIZ_COLORS.amber"
-                            :format-value="(v: number) => v.toFixed(2)"
-                        />
-                    </Tooltip>
+                    <SliderControl
+                        v-model="smoothContours"
+                        label="Smoothing"
+                        :min="0"
+                        :max="1"
+                        :step="0.05"
+                        :color="CONTROL_ACCENT"
+                        :format-value="(v: number) => v.toFixed(2)"
+                        subtitle="irons jagged edges"
+                    />
                 </div>
             </CollapsibleContent>
         </Collapsible>
@@ -364,37 +362,11 @@ watch(
 
 <style scoped>
 @reference "tailwindcss";
-/* Advanced section */
-.advanced-divider {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-}
-.divider-line {
-    flex: 1;
-    height: 1px;
-    background: color-mix(in srgb, var(--foreground) 10%, transparent);
-}
+/* Advanced section — the trigger is glass's Button (X.F.W14U.vstage, F-171);
+   the host only seats it at the start of its row. */
 .advanced-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    cursor: pointer;
-    user-select: none;
-    @apply text-sm;
-    font-weight: 500;
-    letter-spacing: 0.03em;
-    /* X.F.W14.g — OA-43: a live disclosure was inked at 40 % of the
-       foreground (2.49:1 on `--card`), the literal "greyed-out" read. The
-       secondary-ink token is the one glass ships for this role. */
-    color: var(--muted-foreground);
-    transition: color 0.15s;
-    white-space: nowrap;
-    padding: 0.125rem 0;
-}
-.advanced-trigger:hover {
-    color: var(--foreground);
+    align-self: flex-start;
+    margin-top: 0.25rem;
 }
 
 /* B.W2.d retired the hand-rolled `adv-open` / `adv-close` keyframes in favour
@@ -411,14 +383,13 @@ watch(
    on an `animationend` that never fires. `overflow: hidden` above STAYS on
    both twins. */
 
+/* X.F.W14U.vstage — one column, like every other row in the aside: at half
+   the aside's width each row's hint (F-146's cure: the tooltip text became the
+   row's own subtitle) and its value field could not share one line. */
 .advanced-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.625rem 0.75rem;
+    gap: 0.625rem;
     padding-top: 0.625rem;
-}
-.advanced-grid > :last-child:nth-child(odd) {
-    grid-column: 1 / -1;
 }
 
 /* X.F.W13.b — the `.reset-icon-btn` block retires: it restated the glass Button's

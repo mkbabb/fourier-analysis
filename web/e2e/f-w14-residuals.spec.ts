@@ -125,8 +125,9 @@ test.describe("F.W14.r — the image sidebar (F.W13 `.c` residuals)", () => {
 
         release();
         await expect(page.locator(".viz-panel-left-wrap")).toHaveCount(0, { timeout: 20_000 });
-        await page.getByRole("button", { name: "Upload a new image" }).click();
-        await expect(page.locator(".drop-target")).toBeVisible({ timeout: 20_000 });
+        // X.F.W14U.vstage (UIA-F-167): the failure is shown at the drop target,
+        // not as a workspace not-found card.
+        await expect(page.locator(".drop-target").getByRole("alert")).toBeVisible({ timeout: 20_000 });
         await expect(page.locator(".viz-panel-left-wrap")).toHaveCount(0);
         const band = await page.locator(".configurator-aside").evaluate((el) => el.getBoundingClientRect().width);
         expect(band).toBe(0);

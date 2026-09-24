@@ -4,11 +4,17 @@ import { Button } from "@mkbabb/glass-ui/button";
 import { ConfiguratorLayer } from "@mkbabb/glass-ui/configurator";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import { VIZ_COLORS } from "@/lib/colors";
+import { ToggleGroup, ToggleGroupItem } from "@mkbabb/glass-ui/toggle-group";
 import { ANIMATION_DEFAULTS, CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { normalizeBasisKey } from "@/lib/basis";
 import { basisDisplay } from "./lib/basis-display";
 import { RotateCcw } from "@lucide/vue";
+
+/* X.F.W14U.vstage — UIA-F-172: the aside's sliders wore one hue each (Harmonics
+   the Fourier red, Sample Points the Chebyshev blue, the contour rows amber), a
+   code that meant nothing. Controls take the one accent (`style.css`
+   `--control-accent`); the basis hues stay on the canvas, where they name a curve. */
+const CONTROL_ACCENT = "var(--control-accent)";
 
 
 const props = defineProps<{
@@ -40,36 +46,47 @@ const selected = ref<string[]>(props.activeBases ?? ["fourier-epicycles"]);
 
 watch(() => props.activeBases, (v) => { if (v) selected.value = [...v]; });
 
-const fourierMode = computed(() => {
+/*
+ * X.F.W14U.vstage — UIA-F-170 ⊕ F-238: the Fourier pill hid a three-state cycle
+ * (epicycles → series → off) behind a binary `aria-pressed`, and the three
+ * stadium pills wrapped into a 2+1 orphan in the aside. The mode is a one-of-
+ * three chooser and the polynomial bases are N independent toggles: glass's
+ * `ToggleGroup` in its two selection modes, each on one row.
+ */
+type FourierMode = "fourier-epicycles" | "fourier-series" | "off";
+const FOURIER_MODES: { value: FourierMode; label: string }[] = [
+    { value: "fourier-epicycles", label: "Epicycles" },
+    { value: "fourier-series", label: "Series" },
+    { value: "off", label: "Off" },
+];
+const POLYNOMIAL_BASES = ["chebyshev", "legendre"] as const;
+
+const fourierMode = computed<FourierMode>(() => {
     if (selected.value.includes("fourier-epicycles")) return "fourier-epicycles";
     if (selected.value.includes("fourier-series")) return "fourier-series";
-    return null;
+    return "off";
 });
+const polynomialBases = computed(() =>
+    selected.value.filter((b) => normalizeBasisKey(b) !== "fourier"),
+);
 
-const fourierLabel = computed(() => {
-    if (fourierMode.value === "fourier-epicycles") return "Epicycles";
-    if (fourierMode.value === "fourier-series") return "Series";
-    return "Fourier";
-});
-
-function isBasisActive(key: string): boolean {
-    if (key === "fourier") return fourierMode.value !== null;
-    return selected.value.includes(key);
+function commit(next: string[]) {
+    selected.value = next;
+    emit("update:activeBases", [...next]);
 }
 
-function getBasisLabel(key: string, info: { label: string }): string {
-    if (key === "fourier") return fourierLabel.value;
-    return info.label;
+/** A single-mode group emits `undefined` when its pressed item is pressed
+ *  again; the mode is always one of three, so that is not a change. */
+function setFourierMode(mode: unknown) {
+    if (typeof mode !== "string") return;
+    const fourier = mode === "off" ? [] : [mode];
+    commit([...fourier, ...polynomialBases.value]);
 }
 
-const basisTooltips: Record<string, string> = {
-    fourier: "Fourier series — click to cycle: epicycles → series → off",
-    chebyshev: "Chebyshev polynomial approximation",
-    legendre: "Legendre polynomial approximation",
-};
-
-function getBasisTooltip(key: string): string {
-    return basisTooltips[key] ?? key;
+function setPolynomialBases(bases: unknown) {
+    const next = Array.isArray(bases) ? bases.map(String) : [];
+    const fourier = fourierMode.value === "off" ? [] : [fourierMode.value];
+    commit([...fourier, ...next]);
 }
 
 /**
@@ -100,36 +117,6 @@ function resetDefaults() {
     emit("update:nPoints", DEFAULTS.nPoints);
 }
 
-function toggleBasis(key: string) {
-    if (key === "fourier") {
-        // Cycle: epicycles -> series -> off -> epicycles
-        const hasEpi = selected.value.includes("fourier-epicycles");
-        const hasSeries = selected.value.includes("fourier-series");
-        // X.F.W3 repair 1 (g15, leg 2) — the inline family test retires onto
-        // `normalizeBasisKey`, the domain's one owner. The predicate here is
-        // "not in the fourier family", and spelling it as a `startsWith` was
-        // one of seven copies of the same bridge between the FOUR keys
-        // `active_bases` emits and the THREE families `basisDisplay` is keyed
-        // by — the bridge the canon exists to hold.
-        const otherBases = selected.value.filter(b => normalizeBasisKey(b) !== "fourier");
-        selected.value = [...otherBases];
-        if (hasEpi) {
-            selected.value.push("fourier-series");
-        } else if (hasSeries) {
-            // Go to "off" — allow empty selection (canvas handles it gracefully)
-        } else {
-            selected.value.push("fourier-epicycles");
-        }
-    } else {
-        const idx = selected.value.indexOf(key);
-        if (idx >= 0) {
-            selected.value.splice(idx, 1);
-        } else {
-            selected.value.push(key);
-        }
-    }
-    emit("update:activeBases", [...selected.value]);
-}
 </script>
 
 <template>
@@ -150,20 +137,18 @@ function toggleBasis(key: string) {
             </Tooltip>
         </div>
 
-        <div class="flex flex-wrap justify-center gap-1.5 pb-1">
-            <Tooltip v-for="(info, key) in basisDisplay" :key="key" :text="getBasisTooltip(key as string)">
-                <Button
-                    emphasis="secondary"
-                    size="sm"
-                    class="basis-toggle"
-                    :aria-pressed="isBasisActive(key as string)"
-                    :style="isBasisActive(key as string) ? { '--pill-color': info.color } : {}"
-                    @click="toggleBasis(key as string)"
-                >
-                    <span class="basis-icon font-serif-math font-semibold" :class="{ 'basis-icon--fourier': key === 'fourier' }">{{ info.icon }}</span>
-                    {{ getBasisLabel(key as string, info) }}
-                </Button>
-            </Tooltip>
+        <div class="basis-groups">
+            <ToggleGroup type="single" size="sm" aria-label="Fourier mode"
+                :model-value="fourierMode" @update:model-value="setFourierMode">
+                <ToggleGroupItem v-for="m in FOURIER_MODES" :key="m.value" :value="m.value">{{ m.label }}</ToggleGroupItem>
+            </ToggleGroup>
+            <ToggleGroup type="multiple" size="sm" aria-label="Polynomial bases"
+                :model-value="polynomialBases" @update:model-value="setPolynomialBases">
+                <ToggleGroupItem v-for="key in POLYNOMIAL_BASES" :key="key" :value="key">
+                    <span class="basis-icon font-serif-math" aria-hidden="true">{{ basisDisplay[key].icon }}</span>
+                    {{ basisDisplay[key].label }}
+                </ToggleGroupItem>
+            </ToggleGroup>
         </div>
 
         <SliderControl
@@ -173,7 +158,7 @@ function toggleBasis(key: string) {
             :min="1"
             :max="500"
             :step="1"
-            :color="VIZ_COLORS.fourier"
+            :color="CONTROL_ACCENT"
             @update:model-value="emitHarmonics"
         />
         <SliderControl
@@ -182,7 +167,7 @@ function toggleBasis(key: string) {
             :min="128"
             :max="4096"
             :step="128"
-            :color="VIZ_COLORS.chebyshev"
+            :color="CONTROL_ACCENT"
             @update:model-value="emitPoints"
         />
     </ConfiguratorLayer>
@@ -194,68 +179,20 @@ function toggleBasis(key: string) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5em;
+    font-size: 1.25em;
     line-height: 1;
-    min-width: 1.2em;
+    min-width: 1em;
     height: 1em;
 }
-.basis-icon--fourier {
-    font-size: 2.2em;
-    margin: -0.35em -0.1em;
-    transform: translateY(0.06em);
-}
-/* A.W2.e — `.basis-toggle` is the per-instance retint hook over
-   `<Button variant="outline" size="sm">`. The variant already ships the
-   focus-ring, the press-scale, the rounded-pill shape, and the disabled
-   geometry; the toggle layer adds the basis-specific tint (driven by
-   `aria-pressed`), the 5.5 rem min-width that keeps all three pills
-   uniform-width, the 2 px border weight the outline variant ships at 1 px,
-   and the mobile-compact rules. The `:where()` selector ensures these
-   override the variant's `h-9 px-3` defaults without raising specificity
-   beyond a single class. */
-.basis-toggle {
-    @apply gap-1 min-w-[5.5rem] justify-center font-medium;
-    border-width: 2px;
-    border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
-    color: var(--muted-foreground);
-}
-.basis-toggle:hover {
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
-    background: transparent;
-    color: var(--muted-foreground);
-}
-/* X.F.W14.g — OA-43: the pressed label is the basis hue carried toward the
-   ink, not the bare hue. The glass `--viz-*` family is a stroke palette (its
-   light arm sits at L 0.48–0.58), and read bare on its own 12 % tint over
-   `--card` the Epicycles label measured 3.69:1 (light) — the "greyed" read
-   of a live control. A quarter of `--foreground` in OKLab keeps the hue and
-   clears AA for all three bases in both arms (≥ 5.0:1, re-derived by
-   `e2e/f-w14-veil.spec.ts`). */
-.basis-toggle[aria-pressed="true"] {
-    --pill-ink: color-mix(in oklab, var(--pill-color) 75%, var(--foreground));
-    background: color-mix(in srgb, var(--pill-color) 12%, transparent);
-    border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);
-    color: var(--pill-ink);
-}
-.basis-toggle[aria-pressed="true"]:hover {
-    background: color-mix(in srgb, var(--pill-color) 16%, transparent);
-    color: var(--pill-ink);
-}
-
-/* Compact pills on mobile so all three fit on one line */
-@media (max-width: 639px) {
-    .basis-toggle {
-        @apply px-2 gap-0.5;
-        border-width: 1.5px;
-    }
-    .basis-icon {
-        font-size: 1.25em;
-        min-width: 1em;
-    }
-    .basis-icon--fourier {
-        font-size: 1.75em;
-        margin: -0.3em -0.05em;
-    }
+/* X.F.W14U.vstage — the two choosers stack, each one row; the local pill
+   retint (`.basis-toggle`: a 2px border, a per-basis tint) retired with the
+   pills — the ToggleGroup's pressed state is glass's own. */
+.basis-groups {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.25rem;
 }
 
 /* X.F.W13.b — the `.reset-icon-btn` block retires: it restated the glass Button's

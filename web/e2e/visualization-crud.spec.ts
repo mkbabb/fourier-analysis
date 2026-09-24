@@ -150,7 +150,7 @@ async function openWorkspace(page: Page): Promise<string> {
 
     // Positive mount signal — the dropzone copy from ImageUpload.vue.
     await expect(
-        page.getByText("Drop or click to upload", { exact: false }).first(),
+        page.getByRole("button", { name: "Choose an image" }),
     ).toBeVisible({ timeout: 15_000 });
 
     const fileInput = page.getByTestId("image-file-input");

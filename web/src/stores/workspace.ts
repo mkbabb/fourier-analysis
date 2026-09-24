@@ -67,6 +67,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     // sidebar could never arrive — it could only remount. The upload's busy
     // signal is its own flag, read by the drop target that started it.
     const uploading = ref(false);
+    // X.F.W14U.vstage — UIA-F-167: an upload failure is the drop target's to
+    // show. Written into the shared `error`, it read as a failed WORKSPACE load
+    // ("Could not load this workspace") on a route that had loaded nothing.
+    const uploadError = ref<string | null>(null);
     const computing = ref(false);
     const error = ref<string | null>(null);
     const revision = ref(0);
@@ -140,6 +144,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         uploading.value = true;
         draftSnapshots = [];
         error.value = null;
+        uploadError.value = null;
         try {
             invalidateInFlightComputation();
             contour.value = null;
@@ -154,13 +159,23 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             router.push(`/w/${meta.image_slug}`);
             await _saveDraftNow();
         } catch (e: unknown) {
-            if (!api.isAbortError(e)) error.value = problemMessage(e, "Upload failed");
-            throw e;
+            // Recorded, not rethrown: the diagnosis is `uploadError`, which the
+            // drop target shows. A rethrow reached no handler (the drop and
+            // file-pick listeners do not await), so it surfaced as an
+            // unhandled rejection beside the message.
+            if (!api.isAbortError(e)) uploadError.value = problemMessage(e, "Upload failed");
         } finally {
             uploading.value = false;
         }
     }
 
+    /*
+     * X.F.W14U.vstage — UIA-F-167: the two loads record their failure in
+     * `error` (the stage's not-found card reads it) and no longer rethrow it:
+     * the loader calls them from `onMounted` and a route watcher, neither of
+     * which awaits, so an unknown slug threw an unhandled "Not Found" beside
+     * the card that already said so.
+     */
     async function loadWorkspace(slug: string) {
         loading.value = true;
         error.value = null;
@@ -212,7 +227,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         } catch (e: unknown) {
             if (!api.isAbortError(e))
                 error.value = problemMessage(e, "Failed to load workspace");
-            throw e;
         } finally {
             loading.value = false;
         }
@@ -253,7 +267,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         } catch (e: unknown) {
             if (!api.isAbortError(e))
                 error.value = problemMessage(e, "Failed to load visualization");
-            throw e;
         } finally {
             loading.value = false;
         }
@@ -460,6 +473,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         contourSettings.value = defaultContourSettings();
         animationSettings.value = defaultAnimationSettings();
         error.value = null;
+        uploadError.value = null;
         loading.value = false;
         uploading.value = false;
         _computeDepth = 0;
@@ -480,6 +494,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         drafts,
         loading,
         uploading,
+        uploadError,
         computing,
         error,
         revision,
