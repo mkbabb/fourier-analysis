@@ -269,6 +269,9 @@ test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
         await edit.hover();
         await page.waitForTimeout(600);
         await edit.click();
+        // F.W14U.vedit — UIA-F-180: leaving with unsaved edits asks first; the
+        // case keeps its edits (a new contour asset, as the dock's Save makes).
+        await page.getByRole("dialog", { name: /unsaved/i }).getByRole("button", { name: "Save", exact: true }).click();
 
         const field = page.getByRole("spinbutton").first();
         await field.click();

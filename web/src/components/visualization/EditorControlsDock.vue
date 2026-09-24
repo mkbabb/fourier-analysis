@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import SliderControl from "@/components/ui/SliderControl.vue";
-import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockControl, DockSeparator, DockTrigger } from "@mkbabb/glass-ui/dock";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuCheckboxItem,
+    DropdownMenuSeparator,
+} from "@mkbabb/glass-ui/menu";
+import { Metric } from "@mkbabb/glass-ui/metric";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
     Undo2,
     Redo2,
-    Wand2,
+    Ellipsis,
+    EllipsisVertical,
     Sparkles,
     Minimize2,
     Trash2,
-    ImageIcon,
-    Eye,
-    Spline,
-    Magnet,
     RotateCcw,
     Save,
     Check,
@@ -79,8 +83,11 @@ const emit = defineEmits<{
           The expanded row's duplicate Save and badge go with it (one action,
           one control).
         -->
+        <!-- X.F.W14U.vedit — UIA-F-242: the point count is glass's Metric (was
+             a hand-rolled 50%-alpha span); UIA-F-88: at the Metric's small
+             rung it leaves the 390 row its width. -->
         <template #persistent>
-            <span class="dock-badge">{{ pointCount }} pts</span>
+            <Metric :value="pointCount" unit="pts" size="sm" class="dock-count" />
             <Tooltip text="Save contour">
                 <DockControl
                     class="is-save"
@@ -109,8 +116,11 @@ const emit = defineEmits<{
           shadowed the global (C-17) for a glyph lucide also exports as
           `ImageIcon`, which is what the sibling already imports.
         -->
+        <!-- X.F.W14U.vedit — UIA-F-242: the resting face wore Wand2, an action's
+             glyph (and the Auto strategy's); it wears the neutral Ellipsis the
+             sibling canvas dock wears (UIA-F-94), one glyph per meaning. -->
         <template #collapsed>
-            <Wand2 class="shrink-0 dock-summary-glyph" aria-hidden="true" />
+            <Ellipsis class="shrink-0 dock-summary-glyph" aria-hidden="true" />
         </template>
 
         <!--
@@ -126,6 +136,18 @@ const emit = defineEmits<{
           the separator note below. The defect is cured directly instead, which
           is what the row actually describes.
         -->
+        <!--
+          X.F.W14U.vedit — UIA-F-88: at 390 the nine-tool row clipped mid-glyph
+          and six tools sat behind an unmarked sideways scroll. The row keeps
+          Undo, Redo and Delete; the Magnet radius, Smooth, Simplify, the two
+          view layers and Reset move into one menu, as the sibling
+          AnimationControls folds its secondaries. UIA-F-242: one hover ink
+          across the row (the per-tool amber/sky/rose tints are gone).
+          The Magnet radius shapes the contour, so its track wears the
+          contour's hue (`--viz-amber`, the stroke's ink), the owner's hue per
+          F-W14U addendum (g) (§0da). UIA-F-86: Contour trace acts
+          on the editing surface (ContourEditorCanvas draws the saved outline).
+        -->
         <div class="dock-row flex items-center w-full">
             <Tooltip text="Undo">
                 <DockControl aria-label="Undo" :disabled="!canUndo" @click="emit('undo')">
@@ -140,83 +162,66 @@ const emit = defineEmits<{
 
             <DockSeparator />
 
-            <Tooltip text="Smooth">
-                <DockControl class="is-amber" aria-label="Smooth contour" @click="emit('smooth')">
-                    <Sparkles />
-                </DockControl>
-            </Tooltip>
-            <Tooltip text="Simplify">
-                <DockControl class="is-sky" aria-label="Simplify contour" @click="emit('simplify')">
-                    <Minimize2 />
-                </DockControl>
-            </Tooltip>
             <Tooltip text="Delete point">
-                <DockControl class="is-rose" aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
+                <DockControl aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
                     <Trash2 />
                 </DockControl>
             </Tooltip>
 
-            <!-- Magnet popover with slider -->
-            <Popover trigger="click" keep-dock-open>
-                <PopoverTrigger as-child>
-                    <DockControl aria-label="Magnet options">
-                        <Magnet :class="magnetRadius > 0 ? 'text-viz-fourier' : ''" />
-                    </DockControl>
-                </PopoverTrigger>
-                <PopoverContent side="top" align="center">
-                    <div class="magnet-popover-content">
-                        <!-- X.F.W14.h · OA-45 — the magnet radius is the app's one
-                             control-row idiom (label + value field on one line,
-                             the slider beneath); the read-only `Metric` beside a
-                             thumbless bar retires with it. -->
+            <DropdownMenu :modal="false">
+                <DockTrigger for="dropdown" aria-label="More editor tools">
+                    <Tooltip text="More editor tools">
+                        <EllipsisVertical />
+                    </Tooltip>
+                </DockTrigger>
+                <DropdownMenuContent :side-offset="8" align="end">
+                    <!-- The magnet radius is the menu's one setting section (the
+                         app's control-row idiom), as AnimationControls' menu
+                         carries speed and easing; X.F.W14.h · OA-45. -->
+                    <div class="magnet-section">
                         <SliderControl
                             label="Magnet"
                             :model-value="magnetRadius"
                             :min="0"
                             :max="10"
                             :step="1"
-                            color="var(--viz-fourier)"
+                            color="var(--viz-amber)"
                             aria-label="Magnet radius"
                             @update:model-value="emit('update:magnetRadius', $event)"
-                            @mousedown.stop
-                            @pointerdown.stop
+                            @keydown.stop
                         />
                     </div>
-                </PopoverContent>
-            </Popover>
-
-            <DockSeparator />
-
-            <!-- Overlay stack (ghost + image) -->
-            <Popover trigger="click" keep-dock-open>
-                <PopoverTrigger as-child>
-                    <DockControl aria-label="Overlay options">
-                        <Eye />
-                    </DockControl>
-                </PopoverTrigger>
-                <PopoverContent side="top" align="center">
-                    <div class="flex flex-col gap-1 p-1">
-                        <Tooltip text="Contour trace">
-                            <DockControl aria-label="Contour trace" :active="showGhost" @click="emit('toggleGhost')">
-                                <Spline />
-                            </DockControl>
-                        </Tooltip>
-                        <Tooltip text="Image overlay">
-                            <DockControl aria-label="Image overlay" :active="showImageOverlay" @click="emit('toggleOverlay')">
-                                <ImageIcon />
-                            </DockControl>
-                        </Tooltip>
-                    </div>
-                </PopoverContent>
-            </Popover>
-
-            <Tooltip text="Reset to extraction">
-                <DockControl aria-label="Reset to extraction" @click="emit('reset')">
-                    <RotateCcw />
-                </DockControl>
-            </Tooltip>
-
-            <span class="dock-spacer" />
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem @select="emit('smooth')">
+                        <Sparkles class="h-4 w-4" />
+                        Smooth contour
+                    </DropdownMenuItem>
+                    <DropdownMenuItem @select="emit('simplify')">
+                        <Minimize2 class="h-4 w-4" />
+                        Simplify contour
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                        :model-value="!!showGhost"
+                        @select="(e: Event) => e.preventDefault()"
+                        @update:model-value="emit('toggleGhost')"
+                    >
+                        Contour trace
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                        :model-value="showImageOverlay"
+                        @select="(e: Event) => e.preventDefault()"
+                        @update:model-value="emit('toggleOverlay')"
+                    >
+                        Image overlay
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem @select="emit('reset')">
+                        <RotateCcw class="h-4 w-4" />
+                        Reset to extraction
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     </GlassDock>
 </template>
@@ -270,25 +275,12 @@ const emit = defineEmits<{
     gap: var(--dock-layer-gap);
 }
 
-.dock-badge {
-    @apply text-base;
-    color: color-mix(in srgb, var(--foreground) 50%, transparent);
-    font-variant-numeric: tabular-nums;
-    padding: 0 0.375rem;
+.dock-count {
     white-space: nowrap;
 }
 
-/* ── Accent variants for DockControl (hover tint + state) ── */
-.is-amber { --btn-hover-color: var(--viz-amber); }
-.is-sky { --btn-hover-color: var(--viz-chebyshev); }
-.is-rose { --btn-hover-color: var(--accent-pink); }
-
 .is-save {
     background: color-mix(in srgb, var(--foreground) 6%, transparent);
-    --btn-hover-color: var(--viz-fourier);
-}
-.is-save:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--viz-fourier) 15%, transparent);
 }
 /* X.F.W4 · `fr-EditorControlsDock M-7` — one control, two hover registers,
    keyed by a boolean the CSS ignored. This unlayered `color` beat the layered
@@ -304,9 +296,9 @@ const emit = defineEmits<{
     background: color-mix(in srgb, var(--success) 15%, transparent);
 }
 
-/* X.F.W14.h — the popover holds one control row; the measure fits the label
-   beside the field, the inset is on the spacing scale. */
-.magnet-popover-content {
+/* X.F.W14.h — one control row; the measure fits the label beside the field,
+   the inset is on the spacing scale. */
+.magnet-section {
     width: 12rem;
     padding: var(--space-atom) var(--space-body);
 }

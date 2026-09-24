@@ -27,6 +27,14 @@ import EquationPanel from "./EquationPanel.vue";
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@mkbabb/glass-ui/dialog";
 import { Card } from "@mkbabb/glass-ui/card";
 import { Progress } from "@mkbabb/glass-ui/progress";
 
@@ -123,6 +131,45 @@ async function onEditorSave() {
     if (!editorRef.value) return;
     await store.saveContourPoints(editorRef.value.getPoints());
     editorSaved.value = true;
+}
+
+/*
+ * X.F.W14U.vedit — UIA-F-180: leaving edit mode had no exit or dirty
+ * affordance — unsaved edits stayed behind in the hidden editor. The editor's
+ * history is the dirty flag (a step to undo is an unsaved edit: a save
+ * re-seeds the history from the saved contour), and leaving with one asks:
+ * save, discard, or keep editing. Leaving always clears the selection
+ * (UIA-F-15's rider), so no hidden point stays picked.
+ */
+const leaveAsk = ref(false);
+
+function leaveEditor() {
+    editorRef.value?.clearSelection();
+    isEditing.value = false;
+}
+
+function toggleEdit() {
+    if (!isEditing.value) {
+        isEditing.value = true;
+        return;
+    }
+    if (editorState.value.canUndo) {
+        leaveAsk.value = true;
+        return;
+    }
+    leaveEditor();
+}
+
+async function saveAndLeave() {
+    leaveAsk.value = false;
+    await onEditorSave();
+    leaveEditor();
+}
+
+function discardAndLeave() {
+    leaveAsk.value = false;
+    editorRef.value?.discardEdits();
+    leaveEditor();
 }
 
 function handleExportFrame() { showExport.value = true; }
@@ -379,6 +426,7 @@ function onCanvasFileSelect(e: Event) {
                         <div v-if="store.contour" class="editor-shell" :class="{ 'is-hidden': !isEditing }" :inert="!isEditing">
                             <ContourEditorCanvas ref="editorRef" :contour="store.contour"
                                 :image-slug="store.imageSlug" :show-image-overlay="showImageOverlay"
+                                :show-ghost="showGhost"
                                 @state-change="onEditorStateChange" />
                         </div>
 
@@ -393,7 +441,7 @@ function onCanvasFileSelect(e: Event) {
                                 :has-data="!!hasData"
                                 :has-contour="!!store.contour"
                                 :publishing="publishing"
-                                @toggle-edit="isEditing = !isEditing"
+                                @toggle-edit="toggleEdit"
                                 @toggle-fullscreen="showFullscreen = true"
                                 @toggle-equation="showEquation = !showEquation"
                                 @toggle-image-overlay="showImageOverlay = !showImageOverlay"
@@ -480,6 +528,22 @@ function onCanvasFileSelect(e: Event) {
                 </Transition>
             </Configurator>
         </div>
+
+        <Dialog :open="leaveAsk" @update:open="leaveAsk = $event">
+            <DialogContent surface="opaque" class="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>Leave with unsaved edits?</DialogTitle>
+                    <DialogDescription>
+                        The contour has edits that are not saved. Save them, discard them, or keep editing.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button emphasis="quiet" @click="leaveAsk = false">Keep editing</Button>
+                    <Button emphasis="secondary" @click="discardAndLeave">Discard</Button>
+                    <Button emphasis="primary" @click="saveAndLeave">Save</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <ExportModal v-if="showExport" :has-epicycles="hasEpicycles" @export="doExport" @close="showExport = false" />
         <FullscreenViewer :visible="showFullscreen" :active-bases="activeBases" :show-ghost="showGhost"

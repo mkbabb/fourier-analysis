@@ -18,6 +18,17 @@ from fourier_analysis.symbolic.latex_format import (
 # ─────────────────────────── Expanded renderers ───────────────────────────
 
 
+def _frequency(n: int, variable: str) -> str:
+    """The exponent of e for harmonic n: `it`, `-it`, `2it`, `-3it`.
+
+    UIA-F-176: the sign leads the exponent; `i-t` (i times -t, written with
+    the sign inside) read as a subtraction.
+    """
+    sign = "-" if n < 0 else ""
+    mag = abs(n)
+    return rf"{sign}{mag if mag > 1 else ''}i{variable}"
+
+
 def render_trig(
     terms: list[FourierTerm],
     variable: str = "t",
@@ -89,8 +100,7 @@ def render_exponential(
         if t.n == 0:
             parts.append(coeff_str if coeff_str else format_number(re))
         else:
-            n_str = str(t.n) if abs(t.n) > 1 else ("-" if t.n == -1 else "")
-            parts.append(rf"{coeff_str}e^{{i{n_str}{variable}}}")
+            parts.append(rf"{coeff_str}e^{{{_frequency(t.n, variable)}}}")
 
     return " ".join(parts) if parts else "0"
 
@@ -119,7 +129,7 @@ def render_polar(
         else:
             n_str = str(t.n) if abs(t.n) > 1 else ("-" if t.n == -1 else "")
             if abs(t.phase) < 1e-10:
-                parts.append(rf"{A_str}e^{{i{n_str}{variable}}}")
+                parts.append(rf"{A_str}e^{{{_frequency(t.n, variable)}}}")
             else:
                 phi_str = format_number(t.phase)
                 if not phi_str.startswith("-"):

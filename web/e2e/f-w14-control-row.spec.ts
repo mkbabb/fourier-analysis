@@ -242,7 +242,9 @@ for (const vp of VIEWPORTS) {
                 await expandDocks(page);
                 // X.F.W14.u — UIA-F-12: the magnet popover opens on click (a
                 // hover preview may not hold a state-changing slider).
-                await page.getByRole("button", { name: "Magnet options" }).click();
+                // X.F.W14U.vedit — UIA-F-88: the Magnet row is a section of the
+                // editor dock's one menu (the 390 row kept Undo/Redo/Delete).
+                await page.getByRole("button", { name: "More editor tools" }).click();
                 await expect(sliderRoot(page, /Magnet/)).toBeVisible({ timeout: 10_000 });
                 await settle(page);
                 await frame("image-edit-magnet");
