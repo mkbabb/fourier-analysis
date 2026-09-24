@@ -69,6 +69,33 @@ def _resolve(uri: str) -> Path:
     return path
 
 
+class BlobNotFound(LookupError):
+    """A stored ``storage_uri`` whose file is absent from ``blob_dir``.
+
+    The typed not-found at the read boundary (F.W14U.b, COHESION §0cv): the
+    row outlived its bytes (a wiped or remounted blob directory). The images
+    router answers it as 404; it is never an unhandled ``FileNotFoundError``
+    surfacing as a 500.
+    """
+
+    def __init__(self, uri: str) -> None:
+        super().__init__(f"blob file missing for {uri!r}")
+        self.uri = uri
+
+
+def resolve_blob(uri: str) -> Path:
+    """Resolve ``uri`` to the path of a blob file that exists.
+
+    The read-side twin of ``_resolve``: confinement as there, plus the
+    presence check, so every reader gets a ``BlobNotFound`` for a missing file
+    instead of discovering it mid-read or mid-response.
+    """
+    path = _resolve(uri)
+    if not path.is_file():
+        raise BlobNotFound(uri)
+    return path
+
+
 def _generate_thumbnail(content: bytes, content_type: str) -> tuple[bytes, str]:
     """Generate an AVIF thumbnail from image bytes.
 
@@ -81,6 +108,20 @@ def _generate_thumbnail(content: bytes, content_type: str) -> tuple[bytes, str]:
     buf = io.BytesIO()
     img.save(buf, format="AVIF", quality=_THUMBNAIL_QUALITY)
     return buf.getvalue(), "image/avif"
+
+
+def _thumbnail_or_none(content: bytes, content_type: str, label: str) -> tuple[bytes, str] | None:
+    """The thumbnail for an upload, or ``None`` when the bytes cannot be encoded.
+
+    A thumbnail is optional by contract (``thumbnail_uri is None`` → readers
+    fall back to the primary, invariant 18), so an image PIL cannot thumbnail
+    is stored without one. One definition for the insert and dedup-hit paths.
+    """
+    try:
+        return _generate_thumbnail(content, content_type)
+    except Exception:
+        logger.warning("Thumbnail generation failed for %s", label, exc_info=True)
+        return None
 
 
 async def store_image_asset(
@@ -96,43 +137,42 @@ async def store_image_asset(
     ``get_image_asset``) — the write-path return stays a raw dict so the rest
     of the codebase, including the C.W5 regression tests, can continue to use
     subscript access against the freshly-inserted doc. The dedup-hit branch
-    DOES validate through ``ImageAsset.model_validate`` before calling
-    ``image_bytes`` so the typed contract is exercised on the path that
-    produced bug C9.
+    DOES validate through ``ImageAsset.model_validate`` (the typed contract on
+    the path that produced bug C9) and re-stores a missing primary file from
+    the uploaded bytes (F.W14U.b).
     """
     db = get_db()
 
     existing = await db.images.find_one({"sha256": sha256})
     if existing is not None:
-        # C9 (the real dedup-hit bug): the prior code read ``existing["blob"]``
-        # as a subscript, which KeyErrors on a migrated (``blob``-less) doc and
-        # was swallowed by this broad ``except`` — a silent missing-thumbnail
-        # regression on every dedup upload post-migration. Read the primary bytes
-        # through the typed shim (the relocated file) and write the regenerated
-        # thumbnail back as a FILE + ``thumbnail_uri`` — NEVER an inline
-        # ``Binary`` (that re-violated invariant 18 on the converged collection).
-        # The ``ImageAsset.model_validate`` boundary turns a missing
-        # ``storage_uri`` into a Pydantic ``ValidationError`` rather than a
-        # ``KeyError`` swallowed by a broad ``except`` (D.W3 γ transposition).
-        try:
-            existing_asset = ImageAsset.model_validate(existing)
-            primary_bytes, primary_ct = image_bytes(existing_asset)
-            regen_thumb_bytes, thumb_ct = _generate_thumbnail(primary_bytes, primary_ct)
-            slug = existing_asset.image_slug
-            (_blob_dir() / f"{slug}.thumb").write_bytes(regen_thumb_bytes)
-            thumbnail_uri = f"fs:{slug}.thumb"
-            await db.images.update_one(
-                {"_id": existing["_id"]},
-                {"$set": {"thumbnail_uri": thumbnail_uri, "thumbnail_content_type": thumb_ct}},
-            )
-            existing["thumbnail_uri"] = thumbnail_uri
-            existing["thumbnail_content_type"] = thumb_ct
-        except Exception:
-            logger.warning(
-                "Thumbnail regeneration failed for %s",
-                existing.get("image_slug"),
-                exc_info=True,
-            )
+        # The dedup hit re-establishes the row's blobs from the uploaded bytes.
+        # The row is content-addressed (``sha256`` of exactly these bytes), so
+        # ``content`` IS its primary blob: when the file is missing — a
+        # ``blob_dir`` wiped while the row survived (ESC-C4-1, COHESION §0cv) —
+        # it is re-written to the row's own ``storage_uri`` rather than read back
+        # and the failure swallowed (the prior broad ``except`` here left the
+        # image a permanent 500). The ``ImageAsset.model_validate`` boundary
+        # stays the typed contract for the doc's shape (C9, D.W3 γ): a
+        # pre-migration doc is a ``ValidationError``, not a swallowed
+        # ``KeyError``. The thumbnail is regenerated as a FILE +
+        # ``thumbnail_uri`` — NEVER an inline ``Binary`` (invariant 18).
+        existing_asset = ImageAsset.model_validate(existing)
+        slug = existing_asset.image_slug
+        primary = _resolve(existing_asset.storage_uri)
+        if not primary.is_file():
+            logger.warning("Re-storing missing blob file for %s on dedup upload", slug)
+            primary.write_bytes(content)
+        thumb_fields: dict[str, Any] = {"thumbnail_uri": None}
+        thumbnail = _thumbnail_or_none(content, existing_asset.content_type, slug)
+        if thumbnail is not None:
+            thumb_bytes, thumb_ct = thumbnail
+            (_blob_dir() / f"{slug}.thumb").write_bytes(thumb_bytes)
+            thumb_fields = {
+                "thumbnail_uri": f"fs:{slug}.thumb",
+                "thumbnail_content_type": thumb_ct,
+            }
+        await db.images.update_one({"_id": existing["_id"]}, {"$set": thumb_fields})
+        existing.update(thumb_fields)
         return cast("dict[str, Any]", existing)
 
     # Generate the thumbnail bytes (the second blob — invariant 18). Both the
@@ -142,11 +182,10 @@ async def store_image_asset(
     # ``thumbnail`` Binary writes are gone).
     primary_thumb_bytes: bytes | None = None
     thumbnail_fields: dict[str, Any] = {"thumbnail_uri": None}
-    try:
-        primary_thumb_bytes, thumb_ct = _generate_thumbnail(content, content_type)
+    thumbnail = _thumbnail_or_none(content, content_type, original_name)
+    if thumbnail is not None:
+        primary_thumb_bytes, thumb_ct = thumbnail
         thumbnail_fields = {"thumbnail_content_type": thumb_ct}
-    except Exception:
-        logger.warning("Thumbnail generation failed for %s", original_name, exc_info=True)
 
     now = datetime.now(UTC)
     record: dict[str, Any] = {
@@ -218,7 +257,7 @@ def image_bytes(asset: ImageAsset) -> tuple[bytes, str]:
     field presence is a Pydantic construction-time contract, not a runtime
     ``KeyError`` waiting in a broad ``except``.
     """
-    return _resolve(asset.storage_uri).read_bytes(), asset.content_type
+    return resolve_blob(asset.storage_uri).read_bytes(), asset.content_type
 
 
 def image_tempfile(asset: ImageAsset) -> "tempfile._TemporaryFileWrapper[bytes]":
