@@ -160,6 +160,14 @@ async function paintedPixels(page: Page, png: Buffer): Promise<number> {
 
 test.describe("UIA-F-17 — every export switch changes the PNG", () => {
     test("switching Epicycles and Trace path off removes their pixels", async ({ page }) => {
+        // A declared budget, sized from measurement (F.W14 Repair 1, R-C5-1):
+        // four full exports plus a 5.1 s wall-clock progress poll run 15.2-17.2 s
+        // at load 9-15; each post-export hover waits ~0.3 s for the dock's
+        // morph back from its menu layer (`.dock-layers` intercepts pointer
+        // events until it settles), so the case's cost is serial and scales
+        // with host load — at load 44.5 it crossed the 30 s default mid-hover
+        // of the fourth export. 60 s = 3.5x the measured 17.2 s.
+        test.setTimeout(60_000);
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         const bar = page.locator(".mini-progress").first();
