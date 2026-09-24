@@ -153,3 +153,34 @@ test.describe("UIA-F-63 / UIA-F-65 — the palette's empty and Clear states", ()
         await expect(dialog.getByRole("option")).toHaveCount(0);
     });
 });
+
+test.describe("UIA-F-59 — the inline results panel is sized to its content on the producer's menu plate", () => {
+    test.use({ viewport: { width: 1440, height: 900 } });
+
+    test("the panel is at least 22rem, inside the viewport, at --radius-card, on the menu plate", async ({ page }) => {
+        await openPaper(page);
+        const field = page.getByRole("combobox", { name: "Search the paper" }).first();
+        await field.fill("Fourier Transform");
+        const panel = page.locator(".paper-search-results");
+        await expect(panel).toBeVisible();
+        const read = await panel.evaluate((el) => {
+            const cs = getComputedStyle(el);
+            const probe = document.createElement("div");
+            probe.style.borderRadius = "var(--radius-card)";
+            el.appendChild(probe);
+            const card = getComputedStyle(probe).borderTopLeftRadius;
+            probe.remove();
+            const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+            const r = el.getBoundingClientRect();
+            return {
+                width: r.width, right: r.right, vw: window.innerWidth, rem,
+                radius: cs.borderTopLeftRadius, card,
+                plate: el.classList.contains("glass-overlay-plate") && el.getAttribute("data-reveal") === "menu",
+            };
+        });
+        expect(read.width, JSON.stringify(read)).toBeGreaterThanOrEqual(22 * read.rem);
+        expect(read.right).toBeLessThanOrEqual(read.vw);
+        expect(read.radius).toBe(read.card);
+        expect(read.plate).toBe(true);
+    });
+});

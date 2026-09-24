@@ -63,6 +63,8 @@ const isOpen = computed(
 // the document actually has.
 const GAP_PX = 4;
 const VIEWPORT_MARGIN_PX = 8;
+/** UIA-F-59: the results panel's content floor (the register's 22-26rem band). */
+const PANEL_MIN_REM = 24;
 
 const panelStyle = ref<Record<string, string>>({});
 
@@ -90,10 +92,16 @@ function measure() {
         r.top < window.innerHeight &&
         r.right > 0 &&
         r.left < window.innerWidth;
+    // UIA-F-59: the panel was clamped to the 196px rail field, so every title
+    // cut after ~10 characters. It is sized to its content: at least the
+    // field, at least PANEL_MIN_REM, free to run past the rail, never past the
+    // viewport's right margin.
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const reach = window.innerWidth - r.left - VIEWPORT_MARGIN_PX;
     panelStyle.value = {
         top: `${top}px`,
         left: `${r.left}px`,
-        width: `${r.width}px`,
+        width: `${Math.max(r.width, Math.min(PANEL_MIN_REM * rem, reach))}px`,
         maxHeight: `${Math.min(window.innerHeight * preferred, room)}px`,
         visibility: onScreen ? "visible" : "hidden",
         pointerEvents: onScreen ? "auto" : "none",
@@ -166,7 +174,8 @@ defineExpose({ resultsRef });
                 v-if="isOpen"
                 :id="search.listboxId"
                 ref="resultsRef"
-                class="paper-search-results glass-floating"
+                class="paper-search-results glass-floating glass-overlay-plate"
+                data-reveal="menu"
                 :style="panelStyle"
                 role="listbox"
                 aria-label="Search results"
@@ -206,10 +215,10 @@ defineExpose({ resultsRef });
     z-index: var(--z-popover);
     overflow-y: auto;
     overscroll-behavior: contain;
-    border: 1.5px solid var(--border);
-    border-radius: calc(var(--radius) - 2px);
-    box-shadow: var(--shadow-md);
-    padding: 0.25rem;
+    /* UIA-F-59: the hand 1.5px border, the 8px corner, the shadow and the
+       padding retire onto the producer's menu plate (`.glass-overlay-plate
+       [data-reveal=menu]`: `--radius-card`, `--overlay-pad`), which
+       `glass-floating` paints. */
 }
 
 /* ── Inline dropdown transition ──────────────────────────── */
