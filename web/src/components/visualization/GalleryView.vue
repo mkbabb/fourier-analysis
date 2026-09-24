@@ -146,7 +146,7 @@ function openModal(entry: Visualization) {
 }
 
 async function handleLike(hash: string) {
-    const result = await gallery.like(hash);
+    const result = await gallery.like(hash, !likedHashes.value.has(hash));
     if (!result) return;
     const s = new Set(likedHashes.value);
     result.liked ? s.add(hash) : s.delete(hash);

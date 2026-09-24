@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
+import { ENTRY, stubGallery } from "./fixtures/gallery";
 
 /**
  * X.F.W14.u — Repair 2 continuation of the UIA-F register
@@ -92,4 +93,28 @@ test.describe("UIA-F-21 — paper search labels typeset their math", () => {
             }
         });
     }
+});
+
+test.describe("UIA-F-46 — Like is a toggle (consumer half; the persisting endpoint routes to the server)", () => {
+    test("a second press un-likes: the count returns and aria-pressed clears, in the modal and on the card", async ({ page }) => {
+        await stubGallery(page, [ENTRY]);
+        await page.goto("/gallery");
+        await page.getByRole("button", { name: `Open ${ENTRY.image_slug}` }).first().click();
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        const like = dialog.locator("button[aria-pressed]").first();
+        await expect(like).toHaveAttribute("aria-pressed", "false");
+        await expect(like).toContainText(String(ENTRY.likes));
+        await like.click();
+        await expect(like).toHaveAttribute("aria-pressed", "true");
+        await expect(like).toContainText(String(ENTRY.likes + 1));
+        await like.click();
+        await expect(like).toHaveAttribute("aria-pressed", "false");
+        await expect(like).toContainText(String(ENTRY.likes));
+        await page.keyboard.press("Escape");
+        await expect(dialog).toHaveCount(0);
+        const card = page.locator(".like-btn").first();
+        await expect(card).toHaveAttribute("aria-pressed", "false");
+        await expect(card).toContainText(String(ENTRY.likes));
+    });
 });

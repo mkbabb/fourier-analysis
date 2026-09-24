@@ -275,14 +275,21 @@ export const useGalleryStore = defineStore("gallery", () => {
         }
     }
 
-    async function like(slug: string): Promise<{ liked: boolean; likes: number } | null> {
-        // Likes ride the read-side view counter on the converged entity; the
-        // converged surface exposes likes as a derived counter (no dedicated
-        // toggle endpoint under the CRUD shape — optimistic local bump).
+    /**
+     * UIA-F-46 — Like is a TOGGLE: `liked` is the state the press asks for, and
+     * the counter moves by one in that direction. It used to hard-code
+     * `liked = true` and `+1`, so every press of a pressed heart added another
+     * like (11 → 12 → 13). No like endpoint exists under the converged CRUD
+     * shape, so the count is this session's optimistic reading until the
+     * server half (routed) persists it.
+     */
+    async function like(
+        slug: string,
+        liked: boolean,
+    ): Promise<{ liked: boolean; likes: number } | null> {
         const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
         if (idx === -1) return null;
-        const liked = true;
-        const likes = (entries.value[idx].likes ?? 0) + 1;
+        const likes = Math.max(0, (entries.value[idx].likes ?? 0) + (liked ? 1 : -1));
         entries.value[idx] = { ...entries.value[idx], likes };
         return { liked, likes };
     }
