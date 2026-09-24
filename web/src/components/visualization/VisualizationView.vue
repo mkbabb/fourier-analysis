@@ -27,6 +27,7 @@ import EquationPanel from "./EquationPanel.vue";
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Card } from "@mkbabb/glass-ui/card";
 
 const router = useRouter();
 const route = useRoute();
@@ -376,7 +377,13 @@ async function onCanvasFileSelect(e: Event) {
                 <!-- X.F.W13.c — the sidebar renders only with an image, and arrives
                      with it (`viz-sidebar`, glass `--spring-panel`, PRM-honoured). -->
                 <Transition name="viz-sidebar" @after-leave="sidebarPresent = false">
-                <div v-if="hasSidebar" class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
+                <!-- X.F.W14U.s (OA-59, COHESION §0cq/§0cr) — the controls pane is a
+                     detached card: from lg up it IS glass's own `Card` (its
+                     `--radius-card` corners, its own `shadow` cast), placed by this
+                     layout with an inset gutter from the stage and the viewport edge.
+                     Below lg the mobile sheet keeps its own form (a plain column). -->
+                <component :is="isDesktop ? Card : 'div'" v-if="hasSidebar" v-bind="isDesktop ? { shadow: true } : {}"
+                    class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
                     <Transition name="panel-swap" mode="out-in">
                         <div v-if="isEditing" key="editor-panel" class="viz-panel-left">
                             <!-- Preview above tools -->
@@ -416,7 +423,7 @@ async function onCanvasFileSelect(e: Event) {
                             </Transition>
                         </div>
                     </Transition>
-                </div>
+                </component>
                 </Transition>
             </Configurator>
         </div>
@@ -466,25 +473,32 @@ async function onCanvasFileSelect(e: Event) {
 }
 /* The aside band rides the producer's `--configurator-aside-{min,max}` pair
    (read by the grid's two-column container rule), set on the shell and
-   inherited by the grid: it tracks the prior 360/400/440px left-panel widths. */
+   inherited by the grid: it tracks the prior 360/400/440px left-panel widths.
+   X.F.W14U.s — each bound carries the detached card's two inline gutters, so
+   the card's content keeps the band it had before it was inset. */
 @media (min-width: 1024px) {
     :deep(.viz-configurator) {
         margin: 0.5rem;
         margin-bottom: 0.75rem;
-        --configurator-aside-min: 320px;
-        --configurator-aside-max: 360px;
+        --configurator-aside-min: calc(320px + 2 * var(--space-body));
+        --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }
 }
 @media (min-width: 1280px) {
-    :deep(.viz-configurator) { --configurator-aside-min: 360px; --configurator-aside-max: 400px; }
+    :deep(.viz-configurator) { --configurator-aside-min: calc(360px + 2 * var(--space-body)); --configurator-aside-max: calc(400px + 2 * var(--space-body)); }
 }
 @media (min-width: 1536px) {
-    :deep(.viz-configurator) { --configurator-aside-min: 400px; --configurator-aside-max: 440px; }
+    :deep(.viz-configurator) { --configurator-aside-min: calc(400px + 2 * var(--space-body)); --configurator-aside-max: calc(440px + 2 * var(--space-body)); }
 }
 /* On mobile the Configurator stacks (grid-cols-1); the `panel-inactive`
    toggle inside each slot drives the tab switch. */
 @media (max-width: 1023px) {
-    :deep(.viz-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; }
+    /* X.F.W14U.s — the column may not outgrow the shell: as the shell grid's one
+       `auto` track item its automatic minimum was its content's min-content
+       (a 393 px sheet in a 380 px shell at 390, clipped 8 px past the viewport
+       edge). `min-width: 0` lets the track fit the shell; the sheet's form is
+       unchanged. */
+    :deep(.viz-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
 
     /* When the Configurator drops its desktop grid for the mobile flex column,
        glass-ui's `.configurator-stage` cell becomes a `flex: 0 1 auto` item
@@ -511,7 +525,12 @@ async function onCanvasFileSelect(e: Event) {
     min-height: 0;
     flex: 1;
 }
-@media (min-width: 1024px) { .viz-panel-left-wrap { max-width: none; margin: 0; } }
+/* X.F.W14U.s (OA-59) — from lg up the wrap is glass's `Card` (template), and
+   this is its placement only: an inset gutter on every side, so the card never
+   touches the stage (the aside's divider) or the Configurator's edge, and its
+   own corners and cast show (`width: auto` so the stretched column item takes
+   the gutter inside its band, not past it). The card is never restyled here. */
+@media (min-width: 1024px) { .viz-panel-left-wrap { width: auto; max-width: none; margin: var(--space-body); } }
 
 /* F.W1 / FR-CP-13 ⊕ FR-CP-24 — THE GAP DECISION, made once for both rows.
    At the adopted pin the producer FUSES adjacent inspector sections
