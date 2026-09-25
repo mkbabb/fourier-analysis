@@ -18,7 +18,7 @@ import { Card } from "@mkbabb/glass-ui/card";
 import { Progress } from "@mkbabb/glass-ui/progress";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
-import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
+import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Info } from "@lucide/vue";
 
 import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
@@ -399,42 +399,19 @@ watchDebounced(
                 v-model="mobileView" />
         </div>
 
-        <div class="eq-grid">
-            <!-- Left panel -->
-            <div class="eq-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
-                <!-- X.F.W3 `.d` — `D·D-M14`: the producer's FadingScroll owns the
-                     port's scroll and its edge feather. -->
-                <FadingScroll axis="y" aria-label="Equation controls" class="eq-panel-left">
-                    <!-- X.F.W14U.eq — UIA-F-114: the three sections are one stack of
-                         glass ConfiguratorLayers (adjacent siblings, no gap). -->
-                    <div class="eq-layers">
-                        <FunctionInput
-                            v-model:expression="expression"
-                            v-model:domain-start="domainStart"
-                            v-model:domain-end="domainEnd"
-                            v-model:n-harmonics="nHarmonics"
-                            v-model:budget="budget"
-                            v-model:notation="notation"
-                            :effective-n="effectiveN"
-                            :energy-captured="displayEnergy"
-                            :auto-harmonics="autoHarmonics"
-                            :viz-harmonics="vizHarmonics"
-                            :expression-error="expressionError"
-                            @update:auto-harmonics="autoHarmonics = $event"
-                            @compute="doCompute(true)"
-                        />
-                        <Transition name="slide-down">
-                            <EqCoefficientsPanel
-                                v-if="components.length"
-                                :components="components"
-                                :rendered-terms="budget"
-                            />
-                        </Transition>
-                    </div>
-                </FadingScroll>
-            </div>
-
-            <!-- Right panel -->
+        <!-- X.F.W14V.eq2 — F-W14V.md addendum (b), COHESION §0dh. /equation is a
+             stage (the series and its convergence plot) plus a controls
+             inspector (the Function and Coefficients layers), the shape
+             /visualize already is. The owner called the pages "inconsistent",
+             so one page shape takes one primitive: glass's `Configurator` with
+             `layout="detached"` (the stage and the aside are each glass's own
+             card over the page ground). The local grid, the controls column's
+             own FadingScroll (the aside's `scroll-mode="auto"` port replaces
+             it) and the stage's `cartoon-card` stamps retire with the move.
+             `.glass-opaque` is /visualize's OA-43 choice: both cards are the
+             solid `--card`. -->
+        <Configurator scroll-mode="auto" layout="detached" class="eq-configurator glass-opaque">
+            <template #stage>
             <div
                 class="eq-panel-right"
                 :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop, 'is-busy': loading }"
@@ -469,7 +446,7 @@ watchDebounced(
                          request is marked stale (dimmed, `data-stale`). -->
                     <div
                         ref="eqCardRef"
-                        class="cartoon-card relative eq-card"
+                        class="relative eq-card"
                         :data-stale="stale || undefined"
                         @mousemove="(e) => onCoeffMove(e, eqCardRef)"
                         @mouseleave="onCoeffLeave"
@@ -538,7 +515,7 @@ watchDebounced(
                     </div>
 
                     <!-- Convergence plot -->
-                    <div class="cartoon-card px-3 py-2 flex-1 min-h-0 flex flex-col eq-plot-card" :data-stale="stale || undefined">
+                    <div class="px-3 py-2 flex-1 min-h-0 flex flex-col eq-plot-card" :data-stale="stale || undefined">
                         <ConvergencePlot
                             class="flex-1"
                             :original-points="result.original_points"
@@ -558,49 +535,89 @@ watchDebounced(
                     </p>
                 </div>
             </div>
-        </div>
+            </template>
+
+            <!-- The controls aside: the sections are glass ConfiguratorLayers
+                 (X.F.W14U.eq — UIA-F-114: adjacent siblings, no gap, so glass
+                 fuses them into one group). No layer carries a reset; a reset
+                 would sit in its layer's `#actions`. -->
+            <div class="eq-panel-left-wrap" role="group" aria-label="Equation controls"
+                :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
+                <div class="eq-layers">
+                    <FunctionInput
+                        v-model:expression="expression"
+                        v-model:domain-start="domainStart"
+                        v-model:domain-end="domainEnd"
+                        v-model:n-harmonics="nHarmonics"
+                        v-model:budget="budget"
+                        v-model:notation="notation"
+                        :effective-n="effectiveN"
+                        :energy-captured="displayEnergy"
+                        :auto-harmonics="autoHarmonics"
+                        :viz-harmonics="vizHarmonics"
+                        :expression-error="expressionError"
+                        @update:auto-harmonics="autoHarmonics = $event"
+                        @compute="doCompute(true)"
+                    />
+                    <Transition name="slide-down">
+                        <EqCoefficientsPanel
+                            v-if="components.length"
+                            :components="components"
+                            :rendered-terms="budget"
+                        />
+                    </Transition>
+                </div>
+            </div>
+        </Configurator>
     </div>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
 
-/* ── Grid layout ── */
-.eq-grid {
-    @apply flex flex-col flex-1 min-h-0 p-1 gap-1;
+/* ── The Configurator chassis (X.F.W14V.eq2) ──
+   glass's `Configurator` supplies the stage|aside grid and, detached, each
+   region's card and the gap between them. The host only makes the shell
+   flex-fill the column and sets the aside's width band, as /visualize does
+   (`:deep`, because the shell is glass's element, not this component's root). */
+:deep(.eq-configurator) {
+    flex: 1;
+    min-height: 0;
+    margin: 0.25rem 1rem;
 }
 @media (min-width: 1024px) {
-    .eq-grid {
-        display: grid;
-        grid-template-columns: 360px 1fr;
-        grid-template-rows: 1fr;
-        gap: 0.5rem;
-        padding: 0.5rem;
-        padding-bottom: 0.75rem;
-        overflow: hidden;
+    :deep(.eq-configurator) {
+        margin: 0.5rem;
+        margin-bottom: 0.75rem;
+        --configurator-aside-min: calc(320px + 2 * var(--space-body));
+        --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }
 }
-@media (min-width: 1280px) { .eq-grid { grid-template-columns: 400px 1fr; } }
-@media (min-width: 1536px) { .eq-grid { grid-template-columns: 440px 1fr; } }
-
-/* ── Left panel ── */
-.eq-panel-left-wrap {
-    @apply relative flex flex-col w-full min-h-0;
-    max-width: 480px;
-    margin: 0 auto;
-    overflow-x: visible;
-    overflow-y: clip;
-    flex: 1;
+@media (min-width: 1280px) {
+    :deep(.eq-configurator) { --configurator-aside-min: calc(360px + 2 * var(--space-body)); --configurator-aside-max: calc(400px + 2 * var(--space-body)); }
 }
-@media (max-width: 1023px) { .eq-panel-left-wrap { overflow: visible; flex: none; } }
-@media (min-width: 1024px) { .eq-panel-left-wrap { max-width: none; margin: 0; } }
+@media (min-width: 1536px) {
+    :deep(.eq-configurator) { --configurator-aside-min: calc(400px + 2 * var(--space-body)); --configurator-aside-max: calc(440px + 2 * var(--space-body)); }
+}
+/* Below lg the grid is one column and the Controls/Canvas tabs pick a region,
+   the same rules /visualize carries: the column may not outgrow the shell, the
+   active stage fills it, and an inactive region takes no box (a detached card
+   would otherwise paint an empty border and hold a gap). */
+@media (max-width: 1023px) {
+    :deep(.eq-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
+    :deep(.eq-configurator .configurator-stage) { flex: 1 1 0%; min-height: 0; }
+    :deep(.eq-configurator .configurator-stage:has(> .panel-inactive)),
+    :deep(.eq-configurator .configurator-aside:has(.eq-panel-left-wrap.panel-inactive)) {
+        display: none;
+    }
+}
 
-/* X.F.W3 `.d` — `D·D-M14`: the hand-rolled `::after` feather is DELETED, not
-   re-tuned. `<FadingScroll axis="y">` owns the port's scroll behaviour and its
-   edge treatment, so the port's own `overflow-y` retires with the gradient;
-   what stays here is the LAYOUT this column asks for. */
-.eq-panel-left {
-    @apply flex flex-col gap-3 w-full pb-8 min-h-0 flex-1;
+/* ── Controls (the aside body) ── */
+.eq-panel-left-wrap {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0.5rem;
 }
 /* X.F.W14U.eq — UIA-F-114: the layers stack with no gap, so glass's
    adjacent-layer rule joins them into one group. */
@@ -608,13 +625,23 @@ watchDebounced(
     display: flex;
     flex-direction: column;
 }
-@media (min-width: 1024px) { .eq-panel-left { padding-right: 0.25rem; } }
 
-/* ── Right panel ── */
+/* ── Stage (the Configurator #stage cell body) ── */
+/* glass's `.configurator-stage` cell is a grid cell, not a flex container, so
+   the body fills it explicitly and owns its own vertical scroll. */
 .eq-panel-right {
-    @apply flex flex-col gap-3 min-h-0 min-w-0 flex-1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+}
+/* The series and its plot are two regions of the one stage card, divided by
+   glass's configurator hairline. */
+.eq-plot-card {
+    border-top: 1px solid var(--configurator-divider);
 }
 
 /* `D·D-B4` — the unified busy state was designed and never wired: `loading` had
@@ -634,8 +661,8 @@ watchDebounced(
 }
 
 /* UIA-F-202 — the status is OUT OF FLOW: a floating plate that straddles the
-   seam between the equation card and the plot (half over each card's margin,
-   clear of the equation's last line and the plot's first curve), so a
+   seam between the series and the plot (the stage's hairline; half over each
+   region's margin, clear of the equation's last line and the plot's first curve), so a
    recompute or a failure moves nothing on the page. */
 .eq-status {
     position: absolute;

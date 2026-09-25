@@ -216,7 +216,10 @@ for (const vp of VIEWPORTS) {
                 await page.goto(p.url);
                 await settle(page);
                 if (p.name === "equation" || p.name === "morph")
-                    await expect(page.locator(".glass-slider").first()).toBeVisible({ timeout: 30_000 });
+                    // X.F.W14V.eq2: glass's Configurator renders its stage before the
+                    // aside, so below lg the first slider in DOM is the stage's
+                    // (hidden on the Controls tab); wait on a rendered one.
+                    await expect(page.locator(".glass-slider:visible").first()).toBeVisible({ timeout: 30_000 });
                 await frame(p.name);
                 rows.push(...(await census(page, p.name)));
                 scales[p.name] = await scale(page);

@@ -127,13 +127,19 @@ test.describe("G-a — F.W13 radius register (frames 1, 2, 5)", () => {
         await expect(layers.last(), "Coefficients layer").toContainText("Coefficients", { timeout: 30_000 });
         const stackTop = await layers.first().evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius));
         const stackBottom = await layers.last().evaluate((el) => parseFloat(getComputedStyle(el).borderBottomLeftRadius));
-        expect(stackTop, "controls stack top border-radius").toBe(card);
-        expect(stackBottom, "controls stack bottom border-radius").toBe(card);
+        // X.F.W14V.eq2 (F-W14V.md addendum (b), §0dh): /equation moved onto
+        // glass's detached Configurator. The panels on the card radius are now
+        // glass's two cards (the stage and the aside); the stack sits inside the
+        // aside card, so its outer corners take glass's concentric inner radius
+        // (> 0, below the card's, the same at top and bottom), and the series and
+        // plot are regions of the stage card, not cards of their own.
+        expect(stackTop, "controls stack top border-radius (concentric in the aside card)").toBeGreaterThan(0);
+        expect(stackTop, "controls stack top border-radius (concentric in the aside card)").toBeLessThan(card);
+        expect(stackBottom, "controls stack bottom border-radius").toBe(stackTop);
+        const cfg = page.locator('[data-slot="configurator"][data-layout="detached"]');
         const panels: Record<string, Locator> = {
-            "equation card": page.locator(".eq-card"),
-            "plot card": page.locator(".eq-panel-right .cartoon-card").filter({
-                has: page.locator("canvas, svg"),
-            }).last(),
+            "stage card": cfg.locator(":scope > .configurator-stage"),
+            "controls card": cfg.locator(":scope > .configurator-aside"),
         };
         for (const [name, loc] of Object.entries(panels)) {
             await expect(loc, name).toBeVisible({ timeout: 30_000 });

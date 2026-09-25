@@ -191,7 +191,7 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         await expect(disclosureBody).toBeVisible({ timeout: 60_000 });
         await freeze(page);
 
-        const panel = page.locator(".eq-panel-left").first();
+        const panel = page.locator(".eq-configurator .configurator-aside").first();
         await expect(panel).toBeVisible();
         await expect(panel).toHaveScreenshot("checkpoint-disclosure-body.png", SHOT);
     });

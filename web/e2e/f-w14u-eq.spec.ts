@@ -136,7 +136,9 @@ test.describe("q114 · UIA-F-114 ⊕ F-207 — one disclosure idiom; no clipped 
 
     test("three glass ConfiguratorLayers, no local CollapsibleSection, no clipping ancestor", async ({ page }) => {
         await openEquation(page);
-        const col = page.locator(".eq-panel-left");
+        // X.F.W14V.eq2: the column is the Configurator aside's body; the scroll
+        // port is glass's (`scroll-mode="auto"`), above it.
+        const col = page.locator(".eq-panel-left-wrap");
         await expect(col.locator(".configurator-layer")).toHaveCount(3);
         await expect(col.locator(".collapsible-section")).toHaveCount(0);
         const sizes = await col.locator(".configurator-section-label").evaluateAll((els) =>
