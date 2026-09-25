@@ -21,8 +21,8 @@ const PHASE = process.env.FW14U_PHASE ?? "after";
  * `localStorage` unguarded while the store installs
  * (`getTimelineLayersStateFromStorage`), so blocked storage crashes any dev page
  * before the app's own code runs; the shipped bundle carries no such hook.
- * Serve it with `npx vite build --outDir <dir> && npx vite preview --outDir
- * <dir> --port 4190 --strictPort`.
+ * `playwright.config.ts`'s `webServer` builds and serves it on :4190 (Repair 1,
+ * C1-3), so the suite owns this instrument.
  */
 const PROD = process.env.FW14U_MISC_PROD ?? "http://localhost:4190";
 const FRAMES = "e2e/screenshots/f-w14u/misc";

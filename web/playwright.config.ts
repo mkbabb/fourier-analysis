@@ -79,6 +79,27 @@ export default defineConfig({
         trace: "on-first-retry",
         screenshot: "only-on-failure",
     },
+    /**
+     * X.F.W14U Repair 1 (Check 1 C1-3, LW-3) — THE SUITE OWNS ITS PRODUCTION
+     * INSTRUMENT. `e2e/f-w14u-misc.spec.ts`'s blocked-storage cases read the
+     * production bundle (the dev server's pinia devtools hook reads storage
+     * unguarded), served by `vite preview` on :4190; `preview` inherits
+     * `server.proxy`, so `/api` reaches the same backend. Declared here, the
+     * preview is built and started by Playwright itself instead of by a manual
+     * pre-step; a preview already listening on :4190 is reused. The prod cell
+     * reads a deployed origin and starts nothing.
+     */
+    webServer: IS_PROD_CELL
+        ? undefined
+        : {
+              command:
+                  "npx vite build --outDir dist/e2e-preview --emptyOutDir && npx vite preview --outDir dist/e2e-preview --port 4190 --strictPort",
+              url: "http://localhost:4190/",
+              reuseExistingServer: true,
+              timeout: 300_000,
+              stdout: "ignore",
+              stderr: "pipe",
+          },
     projects: [
         {
             name: "chromium",
