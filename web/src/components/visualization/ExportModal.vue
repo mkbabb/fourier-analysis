@@ -77,8 +77,13 @@ function doExport() {
 <template>
     <Dialog :open="true" @update:open="onOpenChange">
         <!-- DialogContent supplies role="dialog" + aria-modal="true" + focus-trap
-             + Esc + autofocus via reka-ui's DialogPortal/DialogContent. -->
-        <DialogContent>
+             + Esc + autofocus via reka-ui's DialogPortal/DialogContent.
+             X.F.W14V.au2 — A2-FO-L2-8 (BROKEN): in landscape (844x390) the plate
+             was 471 px tall in a 390 px viewport and could not scroll, so its
+             title and its Cancel/Save footer were off screen. `scroll` is glass's
+             own arm: the plate caps at the viewport less its gutter and scrolls
+             inside itself. (Glass's default cap is the O-74 ask.) -->
+        <DialogContent scroll>
             <!-- X.F.W14U.vdock — UIA-F-181 ⊕ F-229 ⊕ F-243: the title keeps glass's
                  own title rung (the consumer `text-lg` re-sized it off the
                  header's line box the close control centres on), and the dialog
