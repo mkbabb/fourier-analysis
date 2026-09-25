@@ -113,10 +113,23 @@ test.describe("G-a — F.W13 radius register (frames 1, 2, 5)", () => {
         expect(card).toBeGreaterThan(0);
 
         const controls = page.getByLabel("Equation controls");
+        // X.F.W14U Repair 1 (Check 1 C1-2, §0bt): `.eq` UIA-F-114 (`fcc5617`)
+        // made Function, Controls and Coefficients ONE stack of glass
+        // ConfiguratorLayers (adjacent, no gap). The stack is now the panel:
+        // its outer corners (the first layer's top, the last layer's bottom)
+        // are on the card radius, and the fused seams between layers are
+        // glass's canon, square by design. Same equality, read on the panel's
+        // own corners.
+        const layers = controls.locator(".configurator-layer");
+        await expect(layers).toHaveCount(3, { timeout: 30_000 });
+        await expect(layers.first(), "Function layer").toContainText("Function", { timeout: 30_000 });
+        await expect(layers.nth(1), "Controls layer").toContainText("Controls", { timeout: 30_000 });
+        await expect(layers.last(), "Coefficients layer").toContainText("Coefficients", { timeout: 30_000 });
+        const stackTop = await layers.first().evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius));
+        const stackBottom = await layers.last().evaluate((el) => parseFloat(getComputedStyle(el).borderBottomLeftRadius));
+        expect(stackTop, "controls stack top border-radius").toBe(card);
+        expect(stackBottom, "controls stack bottom border-radius").toBe(card);
         const panels: Record<string, Locator> = {
-            Function: controls.locator(".cartoon-card", { hasText: "Function" }),
-            Controls: controls.locator(".cartoon-card", { hasText: "Controls" }),
-            Coefficients: controls.locator(".configurator-layer", { hasText: "Coefficients" }),
             "equation card": page.locator(".eq-card"),
             "plot card": page.locator(".eq-panel-right .cartoon-card").filter({
                 has: page.locator("canvas, svg"),
