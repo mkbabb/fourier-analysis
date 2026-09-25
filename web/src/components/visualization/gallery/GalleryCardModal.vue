@@ -100,10 +100,13 @@ function focusTitle(e: Event) {
              slug and the age. The Decomposition and Parameters "plates" become
              headed sections; the admin tier is one 3-state ToggleGroup; the
              CTA is the primary action. GCM-44 stands: focus opens on the title. -->
+        <!-- X.F.W14V.au4 — A2-FO-L2-9: no `w-full`. It overrode glass's gutter
+             clamp (`min(100% - 2 * --space-section, 32rem)`), so on a phone
+             the room's corners sat on the viewport edges; the 28rem cap stays. -->
         <DialogContent
             surface="opaque"
             scroll
-            class="max-w-[28rem] w-full"
+            class="max-w-[28rem]"
             @open-auto-focus="focusTitle"
         >
             <DialogHeader>
