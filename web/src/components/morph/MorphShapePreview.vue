@@ -13,9 +13,12 @@
                  FMD-6 — `aria-busy` is the state channel the guard already had
                  and never announced: `disabled` alone reads as "broken" during
                  the 350 ms the input is swallowed. -->
-            <button
+            <!-- X.F.W14V.au3 — A2-FO-L1-13: the control's plate is glass's
+                 Surface (the local `.cartoon-card` stamp retires app-wide). -->
+            <Surface
+                as="button"
                 type="button"
-                class="morph-button cartoon-card"
+                class="morph-button"
                 aria-label="Morph between the sun and moon shapes"
                 :aria-busy="disabled || undefined"
                 @click="$emit('toggle')"
@@ -26,7 +29,7 @@
                     :stroke-width="4.5"
                     view-box="0 0 200 200"
                 />
-            </button>
+            </Surface>
 
             <!-- X.F.W3 `.d` — `fr-FourierMorphDemo FMD-12`, the info-chip
                  limb, with `fr-MorphShapePreview D-11`’s mapping rider taken as
@@ -71,6 +74,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Chip } from "@mkbabb/glass-ui/chip";
+import { Surface } from "@mkbabb/glass-ui/surface";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
 
@@ -132,7 +136,6 @@ defineEmits<{
     flex-shrink: 0;
     /* FMD-28 — tokenised: the literals restated the producer's own registers. */
     transition: border-color var(--duration-fast) var(--ease-standard),
-        box-shadow var(--duration-fast) var(--ease-standard),
         transform var(--duration-fast) var(--ease-standard);
 }
 
@@ -163,6 +166,9 @@ defineEmits<{
    and its cure survive on the base stamp; the grade is unmoved.
    SP-15 / DMT N-16 — hover is gated on a real hover pointer, so touch UAs stop
    latching the state after a tap. */
+/* X.F.W14V.au3 — A2-FO-L1-13: the cartoon stamp this block composed is retired
+   with `.cartoon-card`; the plate and its elevation are glass Surface's, so the
+   hover keeps only the app's state vocabulary below (border mix + scale). */
 /* X.F.W3 `.d` — `fr-MorphShapePreview FR-MSP-11`: ONE RING VOCABULARY, chosen
    at the re-basing, which is what the row demands (“the re-basing chooses ONE
    ring vocabulary across both files or the row is not discharged”).
@@ -187,7 +193,6 @@ defineEmits<{
 @media (hover: hover) {
     .morph-button:hover:not(:disabled) {
         border-color: color-mix(in srgb, var(--accent-red) 50%, transparent);
-        box-shadow: var(--shadow-cartoon-lg);
         transform: scale(1.02);
     }
 }

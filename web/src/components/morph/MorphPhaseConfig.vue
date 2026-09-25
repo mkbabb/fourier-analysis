@@ -1,10 +1,13 @@
 <template>
-    <div
-        class="cartoon-card config-card"
-        role="group"
-        :aria-labelledby="titleId"
-        :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }"
-    >
+    <!-- X.F.W14V.au3 — A2-FO-L1-13: the plate is glass's Card (the local
+         `.cartoon-card` stamp retires app-wide); the inset stays this card's
+         family rhythm. The title rung is A2-FO-L1-12's, ESCALATED (ESC-au3-1:
+         glass CardTitle's rung is off glass's own type scale). -->
+    <!-- FMD-15's group rides an inner host: glass Card binds its own `role`
+         (`option` when selectable, else none), so a role passed to it is
+         dropped. -->
+    <Card class="config-card" :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }">
+    <div role="group" :aria-labelledby="titleId">
         <h3 class="config-card-title" :id="titleId" data-card-title>{{ title }}</h3>
         <p class="config-card-desc" data-card-subtitle>{{ description }}</p>
 
@@ -112,11 +115,13 @@
             </Select>
         </div>
     </div>
+    </Card>
 </template>
 
 <script setup lang="ts">
 import { useId } from "vue";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
+import { Card } from "@mkbabb/glass-ui/card";
 import {
     Select,
     SelectTrigger,

@@ -52,6 +52,7 @@
  */
 import { nextTick, useTemplateRef } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Card } from "@mkbabb/glass-ui/card";
 import { X } from "@lucide/vue";
 
 const props = withDefaults(
@@ -99,13 +100,19 @@ async function clear() {
          the clear control closes the row. UIA-F-249 / the 390 overlap: the group
          wraps, and every verb keeps its own width, so at 390 the verbs flow onto
          a second line instead of overlapping each other ("FeatureUnfeature"). -->
+    <!-- X.F.W14V.au3 — A2-FO-L1-13: the bar's plate is glass's Card (the local
+         `.cartoon-card` stamp retires app-wide), on the admin toolbar's own
+         precedent (AdminAuditLog: `Card size="sm" shadow`, sticky). The group
+         and the sticky placement ride the host element: glass Card binds its own
+         `role`, so a role passed to it is dropped. -->
     <div
         v-if="count > 0"
         ref="bar"
         role="group"
         :aria-label="label"
-        class="cartoon-card sticky bottom-2 z-20 flex items-center gap-2 rounded-card px-3 py-2 text-small"
+        class="sticky bottom-2 z-20"
     >
+    <Card size="sm" shadow class="flex items-center gap-2 px-3 py-2 text-small">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 [&>*]:shrink-0">
             <span class="text-caption text-muted-foreground">
                 {{ count }} {{ count === 1 ? noun : plural() }} selected
@@ -125,5 +132,6 @@ async function clear() {
         >
             <X class="size-3.5" aria-hidden="true" />
         </Button>
+    </Card>
     </div>
 </template>

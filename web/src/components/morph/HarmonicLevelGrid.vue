@@ -1,5 +1,9 @@
 <template>
-    <div class="cartoon-card levels-card">
+    <!-- X.F.W14V.au3 — A2-FO-L1-13: the plate is glass's Card (the local
+         `.cartoon-card` stamp retires app-wide); the inset stays this card's
+         family rhythm. The title rung is A2-FO-L1-12's, ESCALATED (ESC-au3-1:
+         glass CardTitle's rung is off glass's own type scale). -->
+    <Card class="levels-card">
         <h3 class="card-title" data-card-title>Harmonic Levels</h3>
 
         <div class="levels-controls">
@@ -66,13 +70,14 @@
                 </span>
             </Button>
         </div>
-    </div>
+    </Card>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useResizeObserver } from "@vueuse/core";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Card } from "@mkbabb/glass-ui/card";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import {
     interpolateAtHarmonicLevel,

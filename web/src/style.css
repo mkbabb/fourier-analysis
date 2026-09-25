@@ -218,30 +218,11 @@ html {
     }
 }
 
-/* D.W4.a — `.cartoon-card` shim (the dead-class resurrection).
-   glass-ui removed the `.cartoon-card` recipe at C.W5 (cards.css:2);
-   `cartoon-surface` survives as a decoration-only utility (cards.css:33).
-   X.F.W3 repair 1 (g14 leg 2) — THE FIGURE IS RE-MEASURED AT THESE BYTES, not
-   re-copied: ⟨cmd⟩ this seat, 2026-09-19, double-run,
-   `git grep -o 'class="[^"]*cartoon-card' -- src | wc -l` → **16 application
-   sites**, `… -l … | wc -l` → **10 files**, one of them (`EquationView.vue`)
-   using it 5 times. The authored figure — fourteen sites across thirteen files
-   — was stale in both terms and in opposite directions, and a stale census inside
-   the shim that exists BECAUSE of the census is the reading a later seat trusts
-   without re-running. The counts above exclude prose mentions and this
-   declaration; the FILES figure counts files carrying an application site, not
-   files naming the token. The shim re-binds the class against `cartoon-surface`
-   (the 2px border + offset-stamp shadow + hover-lift) and the existing
-   `--border`/`--card` tokens, restoring parity with the pre-C.W5 visual
-   without touching glass-ui. Cross-repo re-publish recorded as a
-   coordination ask; this shim is the fourier-local KISS stop-gap. */
-/* X.F.W13.a — OA-17 (owner frame 5: "this is good, but not rounded"). The
-   shim re-bound the producer's surface and colours but never its SHAPE, so
-   every site computed `border-radius: 0px` (measured on the served /equation:
-   the Function and Controls panels, the equation card, the plot card) beside
-   the Coefficients `ConfiguratorLayer` at 16px. The producer's card radius is
-   `--radius-card` — the token its `Card` primitive and `.glass-card` read — and
-   the shim takes it at this one root, so no site restates it. */
+/* X.F.W14V.au3 — A2-FO-L1-13: the D.W4.a `.cartoon-card` shim (the
+   dead-class resurrection over glass's `cartoon-surface`, with the X.F.W13.a
+   radius) is RETIRED. Every site moved to glass Card or Surface in the same
+   change: the morph cards and the batch bar to Card, the morph control to
+   Surface (the /equation, /visualize and admin sites had already moved). */
 /* X.F.W14V.u4 — UIA-F-239: the stage's legend inset, registered as a <length>
    so `getComputedStyle` hands BasisCanvas a resolved px value (an unregistered
    custom property computes to its unresolved `calc()` text). Set on
@@ -250,13 +231,6 @@ html {
     syntax: "<length>";
     inherits: true;
     initial-value: 16px;
-}
-
-@utility cartoon-card {
-    @apply cartoon-surface;
-    border-color: var(--border);
-    background: var(--card);
-    border-radius: var(--radius-card);
 }
 
 /* D.W4.d — light-mode `--viz-amber` darken (axe contrast carry).
