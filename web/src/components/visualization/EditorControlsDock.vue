@@ -24,6 +24,13 @@ import {
     Magnet,
 } from "@lucide/vue";
 
+/*
+ * X.F.W14V.u4 — UIA-F-172 (the non-colour limb; the Fourier hue on the glyph
+ * stays, §0da): the magnet's on/off state reads in text, not by hue alone. At
+ * radius 0 the magnet is off and its field says so; on, it shows its radius.
+ */
+const magnetReadout = (radius: number) => (radius === 0 ? "Off" : String(radius));
+
 const props = defineProps<{
     canUndo: boolean;
     canRedo: boolean;
@@ -184,9 +191,10 @@ const emit = defineEmits<{
 
             <DropdownMenu :modal="false">
                 <DockTrigger for="dropdown" aria-label="More editor tools">
-                    <Tooltip text="More editor tools">
-                        <EllipsisVertical />
-                    </Tooltip>
+                    <!-- X.F.W14V.u4 — UIA-F-146: no Tooltip around the glyph. It was the
+                     as-child of a bare SVG (never focusable, so no keyboard path);
+                     the trigger's own aria-label names the control. -->
+                    <EllipsisVertical />
                 </DockTrigger>
                 <DropdownMenuContent :side-offset="8" align="end">
                     <!-- The magnet radius is the menu's one setting section (the
@@ -203,6 +211,7 @@ const emit = defineEmits<{
                             :step="1"
                             color="var(--viz-amber)"
                             aria-label="Magnet radius"
+                            :format-value="magnetReadout"
                             @update:model-value="emit('update:magnetRadius', $event)"
                             @keydown.stop
                         />

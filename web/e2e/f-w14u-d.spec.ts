@@ -32,8 +32,15 @@ async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) =
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
     await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 30_000 });
-    await expect(page.getByRole("button", { name: /Replace image/ })).toBeVisible({ timeout: 60_000 });
-    if (mobile) await page.getByRole("tab", { name: "Canvas" }).click();
+    // X.F.W14V.u4 — UIA-F-74: below lg the finished upload already shows the
+    // canvas (the sheet, with Replace image, is the other tab), so the mobile
+    // cell asserts that front instead of selecting it.
+    if (mobile) {
+        await expect(page.getByRole("tab", { name: "Canvas" })).toHaveAttribute("aria-selected", "true", { timeout: 60_000 });
+        await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 60_000 });
+    } else {
+        await expect(page.getByRole("button", { name: /Replace image/ })).toBeVisible({ timeout: 60_000 });
+    }
     if (setup) await setup(page);
     await page.mouse.move(5, 5);
     await expect(page.locator(".animation-dock")).toHaveClass(/\bcollapsed\b/, { timeout: 30_000 });

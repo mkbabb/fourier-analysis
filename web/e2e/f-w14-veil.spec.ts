@@ -30,8 +30,14 @@ async function loadImage(page: Page): Promise<void> {
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
     await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
-    // The frame's state: the sidebar is in (at 390 it is the default tab, the
-    // stage behind it).
+    // X.F.W14V.u4 — UIA-F-74: below lg a finished upload brings the canvas to
+    // the front; this setup reads the Controls sheet, so it selects that tab.
+    if (page.viewportSize()!.width < 1024) {
+        await expect(page.locator(".canvas-stage")).not.toHaveClass(/panel-inactive/, { timeout: 60_000 });
+        await page.getByRole("tab", { name: "Controls" }).click();
+    }
+    // The frame's state: the sidebar is in (at 390 the Controls tab selected
+    // above, the stage behind it).
     await expect(page.locator(".viz-panel-left-wrap")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("button", { name: /Replace image/ })).toBeVisible({ timeout: 30_000 });
     // The sidebar arrives on the glass panel spring; read it once every
@@ -154,7 +160,7 @@ function measure(page: Page): Promise<Reading> {
             veils: [...veils],
             surface: painted(side.querySelector(".viz-panel-left") ?? side),
             card: token("--card"),
-            stage: painted(document.querySelector(".canvas-container.cartoon-card") ?? document.body),
+            stage: painted(document.querySelector(".canvas-stage canvas.canvas-el") ?? document.body),
             ink,
         };
     });

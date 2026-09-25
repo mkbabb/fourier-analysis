@@ -3,7 +3,7 @@
  * Convergence transport — play control, the one scrub composition, N=… count.
  *
  * X.F.W3 `.a` — `fr-AnimationControls C-4 / M-1 / M-14` ⊕ `fr-ConvergenceTimeline
- * L·D-7`. This file WAS a verbatim fork of `visualization/GlassTimeline.vue`:
+ * L·D-7`. This file WAS a verbatim fork of `visualization/GlassTimeline.vue` (renamed `FourierTimeline.vue` at X.F.W14V.u4, UIA-F-239):
  * the same latch, the same `[0..1] → [0..100]` adapter, the same dead retint
  * token, re-authored a second time because the original had no `modelValue` and
  * no emits and bound the animation store directly. The composition is
@@ -22,7 +22,7 @@
  */
 import { Button } from "@mkbabb/glass-ui/button";
 import { Pause, Play } from "@lucide/vue";
-import GlassTimeline from "@/components/visualization/GlassTimeline.vue";
+import FourierTimeline from "@/components/visualization/FourierTimeline.vue";
 
 const props = defineProps<{
     t: number;
@@ -91,7 +91,7 @@ const harmonicValueText = (): string =>
         </Button>
 
         <div class="timeline-track-wrap">
-            <GlassTimeline
+            <FourierTimeline
                 class="convergence-timeline"
                 :model-value="t"
                 :step="STEP"

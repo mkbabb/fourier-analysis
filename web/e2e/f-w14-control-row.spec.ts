@@ -227,6 +227,12 @@ for (const vp of VIEWPORTS) {
             await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
             await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
             await page.waitForURL(/\/w\//, { timeout: 20_000 });
+            // X.F.W14V.u4 — UIA-F-74: below lg the finished upload brings the
+            // canvas to the front; the controls are read from the Controls tab.
+            if (page.viewportSize()!.width < 1024) {
+                await expect(page.locator(".canvas-stage")).not.toHaveClass(/panel-inactive/, { timeout: 60_000 });
+                await page.getByRole("tab", { name: "Controls" }).click();
+            }
             await expect(sliderRoot(page, "Harmonics")).toBeVisible({ timeout: 90_000 });
             await page.getByRole("button", { name: /^Contour/ }).first().click();
             await page.getByRole("button", { name: "Advanced" }).click();

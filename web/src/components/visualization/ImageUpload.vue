@@ -27,6 +27,16 @@ watch(() => store.imageSlug, () => {
 
 const hasPreview = () => !!store.imageMeta || preview.value;
 
+/*
+ * X.F.W14V.u4 — UIA-F-71 ⊕ F-238: whether the upload in flight REPLACES an
+ * image (read at its start: the first upload sets `imageMeta` midway, and its
+ * flight runs on through the draft save and the first compute).
+ */
+const replacing = ref(false);
+watch(() => store.uploading, (now) => {
+    if (now) replacing.value = !!store.imageMeta;
+});
+
 function openFilePicker() {
     fileInput.value?.click();
 }
@@ -122,8 +132,13 @@ function onImgError() {
                      one busy mark (VisualizationView); this bar carried it too, and
                      its unmount at the end of a compute jumped the Decomposition
                      layer up ~33 px. The layer's bar is the upload's only. -->
+                <!-- X.F.W14V.u4 — UIA-F-71 ⊕ F-238: a REPLACE upload's mark (the
+                     image is already here). The first upload's one mark is the
+                     stage's drop-target button (glass's dot ring); a second bar
+                     here doubled it, and its unmount at the end of the first
+                     compute jumped the layers below. -->
                 <Progress
-                    v-if="store.uploading"
+                    v-if="store.uploading && replacing"
                     :model-value="null"
                     variant="liquid"
                     size="sm"

@@ -286,6 +286,22 @@ watch(hasSidebar, (present) => {
 });
 
 /*
+ * X.F.W14V.u4 — below lg the two panes are tabs, and an upload decides which
+ * one is in front.
+ *  · UIA-F-74 (the `.vstage` cure, re-landed under addendum (h) E-3): when an
+ *    upload finishes, the canvas, where its result appears, is in front. The
+ *    user never lands on a thumbnail and a rail instead of the decomposition.
+ *  · UIA-F-71: the FIRST upload (no image yet) starts at the stage's drop
+ *    target, and its one busy mark is that button's. The sidebar enters on the
+ *    drop (F.W13 `.c`), so without this the tab strip put the Controls sheet
+ *    in front and hid the mark the person had just started.
+ */
+watch(() => store.uploading, (now, was) => {
+    if (now && !hasImage.value) mobileView.value = "canvas";
+    else if (was && !now && store.imageMeta) mobileView.value = "canvas";
+});
+
+/*
  * X.F.W14U.vstage — the band's `onConfiguratorUnmounted` re-read retired: a
  * failed upload no longer swaps the Configurator for the not-found card (the
  * card and the busy mark render inside the stage, UIA-F-70 ⊕ F-167), so the
@@ -742,6 +758,19 @@ function onCanvasFileSelect(e: Event) {
 /* ── Canvas crossfade ── */
 /* Both canvases are always absolutely positioned so switching between them
    is a pure opacity crossfade with no layout shift. */
+/* X.F.W14V.u4 — UIA-F-239: the legend's first row (BasisCanvas reads this).
+   Below `sm` the expanded canvas dock (anchored 0.5rem in, glass's `--dock-h`
+   tall) spans the stage's width, so the legend starts under it; wider, the
+   dock sits right of the legend and the legend keeps its 16 px. */
+.canvas-stage {
+    --legend-inset-top: 16px;
+}
+@media (width < 40rem) {
+    .canvas-stage {
+        --legend-inset-top: calc(0.5rem + var(--dock-h) + 1rem);
+    }
+}
+
 .canvas-stage > .canvas-container,
 .canvas-stage > .editor-shell {
     position: absolute;

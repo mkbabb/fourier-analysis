@@ -59,7 +59,22 @@ let epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
 const trail = new TrailManager();
 
 // ── Canvas setup ──
+/*
+ * X.F.W14V.u4 — UIA-F-239: where the legend's first row sits, read from the
+ * stage's `--legend-inset-top` (registered as a <length> in style.css, so the
+ * computed value is resolved px). Below `sm` the expanded canvas dock spans
+ * the stage and the stage sets the inset under it; elsewhere it is 16 px.
+ * Read on every (re)size, the one moment the stage's width class can change.
+ */
+let legendTop = 16;
+function readLegendTop(): void {
+    const el = containerRef.value;
+    const px = el ? parseFloat(getComputedStyle(el).getPropertyValue("--legend-inset-top")) : NaN;
+    legendTop = Number.isFinite(px) ? px : 16;
+}
+
 const { surface, setupCanvas } = useCanvasSetup(canvasRef, (s) => {
+    readLegendTop();
     stableEpicycleBbox = null;
     baseFitCenter = null;
     if (store.epicycleData) drawFrame();
@@ -225,7 +240,12 @@ function drawEpicycleFrame(
     // Label with hit regions for hover detection
     if (layers.labels) {
         const level = Math.max(1, Math.ceil(anim.easedT * components.length));
-        const { hitRegions } = drawBasisLabels(s, ["fourier-epicycles"], `N = ${level}`, hoveredBasis);
+        // X.F.W14V.u4 — UIA-F-170 (legend limb): this count is CIRCLES drawn
+        // (every ±k term of the series is its own circle, 2N + 1 of them), not
+        // the Harmonics N beside it in the pane, so it says what it counts.
+        const { hitRegions } = drawBasisLabels(
+            s, ["fourier-epicycles"], `${level} of ${components.length} circles`, hoveredBasis, legendTop,
+        );
         hover.setLabelHitRegions(hitRegions);
     }
 }
@@ -408,7 +428,9 @@ function drawMultiBasesFrame(
 
     // Labels
     if (layers.labels) {
-        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis);
+        // The partial-sum level IS the Harmonics N (the levels run 1…N), so it
+        // keeps the pane's own name for it.
+        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis, legendTop);
         hover.setLabelHitRegions(hitRegions);
     }
 }
@@ -579,9 +601,14 @@ defineExpose({ anim, exportFrame, drawImageOverlay });
 </script>
 
 <template>
+    <!-- X.F.W14V.u4 — UIA-F-68 ⊕ F-168 (stage limb): the canvas mounts only in
+         the Configurator's stage, and the stage cell is the surface. The
+         `cartoon-card` stamp it wore (a 16px corner, a 2px border and a
+         three-layer offset shadow at 0 inset inside the stage's own corner) is
+         gone; the canvas paints on the stage's card. -->
     <div
         ref="containerRef"
-        class="canvas-container cartoon-card"
+        class="canvas-container"
         @mousemove="hover.onMouseMove"
         @mouseleave="hover.onMouseLeave"
         @click="hover.onClick"

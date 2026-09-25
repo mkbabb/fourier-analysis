@@ -222,7 +222,7 @@ defineExpose({ scrubbing });
             aria-hidden="true"
             :style="{ '--caret-t': quantised }"
         >
-            <span class="caret-value fira-code">{{ label }}</span>
+            <span class="caret-value glass-floating fira-code">{{ label }}</span>
         </div>
         <Slider
             ref="sliderHost"
@@ -309,16 +309,18 @@ defineExpose({ scrubbing });
    `.timeline-caret` carries `bottom: calc(100% + 6px)` bare).
    `S-alpha` — the three scheme-paired declarations stay paired.
 */
+/* X.F.W14V.u4 — UIA-F-239: the readout was a hand-rolled plate (its own
+   popover fill, border, small shadow and a 4 px corner). It is glass's
+   `glass-floating` plate (template) at the popover canon's `--radius-panel`,
+   the same floating surface as the convergence plot's readout and the
+   coefficient popover. Only the type and the spacing stay here. */
 .caret-value {
     display: block;
     padding: 0.125rem 0.375rem;
     font-size: var(--type-small);
     font-weight: 500;
     color: var(--popover-foreground);
-    background: var(--popover);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-panel);
     white-space: nowrap;
 }
 

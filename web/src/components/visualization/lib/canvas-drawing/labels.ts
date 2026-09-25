@@ -17,6 +17,7 @@ export function drawBasisLabels(
     activeBases: string[],
     levelText: string,
     hoveredBasis: string | null,
+    top = 16,
 ): LabelDrawResult {
     // X.F.W4 · G-F4-VUE-TSC-CLEAN — `width`/`height` were destructured and
     // never read here or in `drawEpicycleLabel`: both routines anchor to the
@@ -30,7 +31,10 @@ export function drawBasisLabels(
     const xBase = 16;
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    let yOff = 16;
+    // X.F.W14V.u4 — UIA-F-239: the legend's first row starts at `top`, the
+    // stage's `--legend-inset-top` (below the expanded dock where the dock
+    // spans the stage, at the default 16 px elsewhere).
+    let yOff = top;
 
     for (const basisKey of activeBases) {
         // X.F.W3 `.e` / `fr-BasisSelector M-10` — the canvas spelling of the

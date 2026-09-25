@@ -231,6 +231,16 @@ html {
    the Coefficients `ConfiguratorLayer` at 16px. The producer's card radius is
    `--radius-card` — the token its `Card` primitive and `.glass-card` read — and
    the shim takes it at this one root, so no site restates it. */
+/* X.F.W14V.u4 — UIA-F-239: the stage's legend inset, registered as a <length>
+   so `getComputedStyle` hands BasisCanvas a resolved px value (an unregistered
+   custom property computes to its unresolved `calc()` text). Set on
+   `.canvas-stage` (VisualizationView). */
+@property --legend-inset-top {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 16px;
+}
+
 @utility cartoon-card {
     @apply cartoon-surface;
     border-color: var(--border);

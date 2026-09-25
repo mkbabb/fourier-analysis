@@ -24,7 +24,6 @@ import {
     DropdownMenuLabel,
 } from "@mkbabb/glass-ui/menu";
 import { StatusDot } from "@mkbabb/glass-ui/status-dot";
-import { Tooltip } from "@/components/ui/tooltip";
 import { isViewOffDefault } from "./composables/useViewState";
 
 const props = defineProps<{
@@ -52,9 +51,9 @@ function keepOpen(e: Event) {
 <template>
     <DropdownMenu :modal="false">
         <DockTrigger for="dropdown" class="view-layers-trigger" aria-label="View options">
-            <Tooltip text="View options">
-                <Eye />
-            </Tooltip>
+            <!-- X.F.W14V.u4 — UIA-F-146: no Tooltip around the bare SVG glyph (never
+                 focusable); the trigger's aria-label names it. -->
+            <Eye />
             <StatusDot v-if="offDefault" class="view-dot" state="active" size="sm" motion="off" />
         </DockTrigger>
         <DropdownMenuContent :side="side" align="end" :side-offset="8">

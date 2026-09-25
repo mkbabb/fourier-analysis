@@ -7,7 +7,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockTrigger, DockControl } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
-import GlassTimeline from "./GlassTimeline.vue";
+import FourierTimeline from "./FourierTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
 import SpeedSelect from "./SpeedSelect.vue";
 
@@ -113,7 +113,7 @@ const MiniProgressReadout = () =>
  * the `[0..1]` axis the producer's own contract states.
  */
 const TimelineReadout = () =>
-    h(GlassTimeline, {
+    h(FourierTimeline, {
         modelValue: anim.t,
         accessibleName: "Timeline",
         label: caretLabel.value,
@@ -146,11 +146,15 @@ const TimelineReadout = () =>
           readout, full beside the timeline.
         -->
         <template #persistent>
+            <!-- X.F.W13.b — the dock's own control (owner frame 3, OA-15). The
+                 hand-rolled `.play-btn` was a 40x32 / 48x40 stadium beside the dock's
+                 40x40 circles; `DockControl` is the circle, and its `active` is the
+                 same toggle channel (`aria-pressed` + `data-active`).
+                 X.F.W14V.u4 — UIA-F-146: this note sat INSIDE the Tooltip, so in dev
+                 the trigger's first child was a comment node and the tooltip had no
+                 element to focus; it sits outside now, and the trigger is the
+                 DockControl. -->
             <Tooltip :text="anim.playing ? 'Pause animation' : 'Play animation'">
-                <!-- X.F.W13.b — the dock's own control (owner frame 3, OA-15). The
-                     hand-rolled `.play-btn` was a 40x32 / 48x40 stadium beside the dock's
-                     40x40 circles; `DockControl` is the circle, and its `active` is the
-                     same toggle channel (`aria-pressed` + `data-active`). -->
                 <DockControl
                     class="play-control"
                     :active="anim.playing"
@@ -181,9 +185,10 @@ const TimelineReadout = () =>
                  primitive; replaces the hand-rolled popup + onClickOutside). -->
             <DropdownMenu :modal="false">
                 <DockTrigger for="dropdown" aria-label="More options">
-                    <Tooltip text="More options">
-                        <EllipsisVertical class="h-4 w-4" />
-                    </Tooltip>
+                    <!-- X.F.W14V.u4 — UIA-F-146: no Tooltip around the glyph. It was the
+                     as-child of a bare SVG (never focusable, so no keyboard path);
+                     the trigger's own aria-label names the control. -->
+                    <EllipsisVertical class="h-4 w-4" />
                 </DockTrigger>
                 <!-- X.F.W14U.vdock — UIA-F-9 (BROKEN) ⊕ F-82 ⊕ F-175. Every setting
                      is a labelled menu section in the menu's own idiom (speed and

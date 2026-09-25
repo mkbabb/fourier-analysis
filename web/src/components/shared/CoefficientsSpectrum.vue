@@ -133,15 +133,20 @@ const AmplitudeReadout = defineComponent({
             <FadingScroll
                 axis="y"
                 aria-label="Fourier coefficient spectrum"
-                class="space-y-1 max-h-[300px]"
+                class="max-h-[300px]"
             >
-                <TransitionGroup name="coeff-list">
-                    <Tooltip
+                <!-- X.F.W14V.u4 — UIA-F-146: the TransitionGroup's children were the
+                     Tooltips themselves (a fragment root, so nothing could animate
+                     and every load warned), and each tooltip wrapped a row no
+                     keyboard could reach. Each row is now a list item the group
+                     animates, and the row the tooltip describes takes focus. -->
+                <TransitionGroup name="coeff-list" tag="ul" class="space-y-1">
+                    <li
                         v-for="(comp, i) in topComponents"
                         :key="`${comp.index}-${i}`"
-                        side="bottom"
                     >
-                        <div class="coeff-row flex items-center gap-2 text-xs">
+                    <Tooltip side="bottom">
+                        <div class="coeff-row flex items-center gap-2 text-xs" tabindex="0">
                             <span class="w-8 text-right fira-code text-muted-foreground tabular-nums">
                                 {{ comp.index >= 0 ? "+" : "" }}{{ comp.index }}
                             </span>
@@ -174,12 +179,14 @@ const AmplitudeReadout = defineComponent({
                             </div>
                         </template>
                     </Tooltip>
+                    </li>
                 </TransitionGroup>
             </FadingScroll>
 
-            <Tooltip :text="expanded ? 'Collapse to top 12 coefficients' : `Show top 40 of ${totalComponents} coefficients`">
+            <!-- UIA-F-146: the condition sits on the Tooltip, so its trigger is always
+                 the Button and never an empty comment node. -->
+            <Tooltip v-if="totalComponents > 12" :text="expanded ? 'Collapse to top 12 coefficients' : `Show top 40 of ${totalComponents} coefficients`">
                 <Button
-                    v-if="totalComponents > 12"
                     emphasis="quiet"
                     size="sm"
                     class="mt-2 w-full gap-1 text-xs text-muted-foreground"
