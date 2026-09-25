@@ -8,6 +8,8 @@ import type { GalleryTier, Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { useTimeAgo } from "@/lib/time";
 import { basisChips } from "../lib/basis-display";
+import TierMark from "./TierMark.vue";
+import TierControl from "./TierControl.vue";
 // FR-GFC-22 / G-F4-DEAD-DEP: `VIZ_COLORS` and `PathPreview` were imported and
 // never referenced — zero occurrences of either identifier anywhere else in this
 // file (`grep -c` = 1 each, the import line itself), so the card was pulling a
@@ -16,8 +18,6 @@ import { basisChips } from "../lib/basis-display";
 import {
     Eye,
     Heart,
-    Crown,
-    Bookmark,
     Trash2,
 } from "@lucide/vue";
 
@@ -163,32 +163,15 @@ const created = useTimeAgo(() => props.entry.created_at);
                 <Heart :size="14" :fill="isLiked ? 'currentColor' : 'none'" aria-hidden="true" />
                 <span class="tabular-nums">{{ entry.likes }}</span>
             </Button>
-            <span v-if="entry.tier !== 'normal'" class="tier-mark ml-auto" :data-tier="entry.tier">
-                <Crown v-if="entry.tier === 'featured'" :size="14" aria-hidden="true" />
-                <Bookmark v-else-if="entry.tier === 'saved'" :size="14" aria-hidden="true" />
-                <span class="sr-only">{{ entry.tier }}</span>
-            </span>
+            <!-- X.F.W14V.au4 — A2-FO-L1-10: the one tier readout. -->
+            <TierMark :tier="entry.tier" class="ml-auto" />
         </div>
 
         <div v-if="adminMode" class="card-raised absolute top-1.5 right-1.5 flex gap-1">
-            <Button
-                emphasis="primary"
-                size="sm" icon-only
-                class="text-tier-featured"
-                title="Toggle featured"
-                @click="emit('set-tier', entry.slug, entry.tier === 'featured' ? 'normal' : 'featured')"
-            >
-                <Crown :size="14" />
-            </Button>
-            <Button
-                emphasis="primary"
-                size="sm" icon-only
-                class="text-tier-saved"
-                title="Toggle saved"
-                @click="emit('set-tier', entry.slug, entry.tier === 'saved' ? 'normal' : 'saved')"
-            >
-                <Bookmark :size="14" />
-            </Button>
+            <!-- X.F.W14V.au4 — A2-FO-L1-10: the one tier setter (the two
+                 independent Crown/Bookmark toggles were a second spelling of
+                 the modal's three-state group). -->
+            <TierControl compact :tier="entry.tier" @set="(t) => emit('set-tier', entry.slug, t)" />
             <Button
                 emphasis="primary"
                 size="sm" icon-only
@@ -314,8 +297,6 @@ const created = useTimeAgo(() => props.entry.created_at);
     gap: 0.75rem;
 }
 
-.tier-mark[data-tier="featured"] { color: var(--tier-featured); }
-.tier-mark[data-tier="saved"] { color: var(--tier-saved); }
 
 /* X.F.W14U.admin — UIA-F-191: the admin overlay buttons are glass's `sm`
    icon-only rung as published (square, the producer's press and coarse-pointer

@@ -232,27 +232,31 @@ export const useGalleryStore = defineStore("gallery", () => {
 
     // `slug` is the converged visualization identity (the value the gallery
     // cards emit from their `:key`).
-    async function setTier(slug: string, tier: GalleryTier) {
+    //
+    // X.F.W14V.au4 — A2-FO-L1-10: the ONE tier mutation. The flagged queue had
+    // forked it (its own PUT, patch and toast) because this action used to
+    // refetch; it patches in place now, so every surface calls it and reads
+    // the settled tier back from its answer (`null` when the act failed).
+    async function setTier(slug: string, tier: GalleryTier): Promise<GalleryTier | null> {
         const token = useAuthStore().getAdminToken();
         if (!token) {
             toast("Admin session has expired — re-enter admin mode.", "error");
-            return;
+            return null;
         }
         try {
             // `admin.py` re-reads and returns `_public_doc(updated)` with a fresh
             // ETag, and `api.ts` types it `Promise<Visualization>` — the correct
             // effect was on the wire, unclaimed, at zero network cost.
             const updated = await api.setVisualizationTier(token, slug, tier);
-            if (updated && typeof updated === "object" && "slug" in updated) {
-                patchEntry(slug, updated);
-            } else {
-                patchEntry(slug, { tier });
-            }
+            const settled = updated && typeof updated === "object" && "slug" in updated ? updated : null;
+            patchEntry(slug, settled ?? { tier });
             toast(`Tier set to ${tier}`, "success");
+            return settled?.tier ?? tier;
         } catch (e: unknown) {
             if (!api.isAbortError(e)) {
                 toast(problemMessage(e, "Failed to set tier"), "error");
             }
+            return null;
         }
     }
 

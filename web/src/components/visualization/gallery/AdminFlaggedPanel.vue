@@ -19,7 +19,8 @@ import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import * as api from "@/lib/api";
 import { thumbnailUrl } from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
-import type { FlaggedVisualization, FlagInfo, GalleryTier } from "@/lib/types";
+import type { FlaggedVisualization, FlagInfo } from "@/lib/types";
+import TierMark from "./TierMark.vue";
 import { problemMessage } from "@/lib/api-problem";
 import "./admin-row.css";
 import {
@@ -28,7 +29,6 @@ import {
     CheckCircle2,
     ChevronDown,
     CircleAlert,
-    Crown,
     Bookmark,
     EllipsisVertical,
     ImageOff,
@@ -255,36 +255,20 @@ async function handleDismiss(slug: string) {
 }
 
 // Moderation: lift the flagged entity's curation tier (CRUD-CONTRACT §7). A
-// reviewer who deems flagged content acceptable may "save" it (clearing the
-// flag pressure while keeping it live), resolving against the converged entity
-// by slug via `setVisualizationTier`.
-async function handleSetTier(slug: string, tier: GalleryTier) {
+// reviewer who deems flagged content acceptable may "keep" it (the saved tier:
+// clearing the flag pressure while keeping it live).
+//
+// X.F.W14V.au4 — A2-FO-L1-10: the fork is deleted. The PUT, the gallery patch,
+// the toast and the failure are the store's one `setTier`; this row patches
+// only its own copy from the settled tier the store answers.
+async function handleKeep(slug: string) {
     if (busy.value) return;
     busySlug.value = slug;
     try {
-        const token = requireAdminToken();
-        const updated = await api.setVisualizationTier(token, slug, tier);
-        // FR-AFP-11 (+FR-AFP-57) / GCM-24's shape: the operation ALREADY RETURNS
-        // the fresh entity (`admin.py` re-reads and returns `_public_doc(updated)`;
-        // `api.ts` types it `Promise<Visualization>`), so the row is patched in
-        // place at zero network cost instead of being paid for with a full reset.
-        // ⊘ The cross-surface half — this panel duplicated the gallery store's
-        // `setTier`/`deleteEntry` verbatim MINUS `resetAndFetch`, so
-        // `gallery.entries` kept the stale tier after moderation — is the store's
-        // shared-invalidation cure, landed beside this one.
+        const settled = await gallery.setTier(slug, "saved");
         const idx = flaggedEntries.value.findIndex((e) => e.slug === slug);
-        if (idx !== -1) {
-            flaggedEntries.value[idx] = {
-                ...flaggedEntries.value[idx],
-                tier: updated?.tier ?? tier,
-            };
-        }
-        gallery.patchEntry(slug, { tier });
-        // UIA-F-197: one word for the act — the menu says Keep, so does this.
-        toast(tier === "saved" ? `Kept ${slug}` : `Tier set to ${tier}`, "success");
-    } catch (e: unknown) {
-        if (!api.isAbortError(e)) {
-            toast(problemMessage(e, "Failed to set tier"), "error");
+        if (settled && idx !== -1) {
+            flaggedEntries.value[idx] = { ...flaggedEntries.value[idx], tier: settled };
         }
     } finally {
         busySlug.value = null;
@@ -448,21 +432,7 @@ const relativeTimeOf = useRelativeTime();
                                 :data-tier="item.tier"
                             >
                                 <dt>Tier</dt>
-                                <dd class="inline-flex items-center gap-1 capitalize">
-                                    <Crown
-                                        v-if="item.tier === 'featured'"
-                                        :size="12"
-                                        class="text-tier-featured"
-                                        aria-hidden="true"
-                                    />
-                                    <Bookmark
-                                        v-else-if="item.tier === 'saved'"
-                                        :size="12"
-                                        class="text-tier-saved"
-                                        aria-hidden="true"
-                                    />
-                                    {{ item.tier }}
-                                </dd>
+                                <dd><TierMark :tier="item.tier" labelled :size="12" /></dd>
                             </div>
                         </dl>
                         <!-- FR-AFP-63: reporter free text is adversarial — clamped
@@ -531,7 +501,7 @@ const relativeTimeOf = useRelativeTime();
                             <DropdownMenuContent align="end" :side-offset="6">
                                 <DropdownMenuItem
                                     :disabled="item.tier === 'saved'"
-                                    @select="handleSetTier(item.slug, 'saved')"
+                                    @select="handleKeep(item.slug)"
                                 >
                                     <Bookmark class="size-3.5" aria-hidden="true" />
                                     Keep

@@ -11,18 +11,17 @@ import {
     DialogTitle,
 } from "@mkbabb/glass-ui/dialog";
 import { Separator } from "@mkbabb/glass-ui/separator";
-import { ToggleGroup, ToggleGroupItem } from "@mkbabb/glass-ui/toggle-group";
 import type { GalleryTier, Visualization } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
 import { useTimeAgo } from "@/lib/time";
 import { basisChips } from "../lib/basis-display";
 import { VIZ_COLORS } from "@/lib/colors";
+import TierMark from "./TierMark.vue";
+import TierControl from "./TierControl.vue";
 import {
     ArrowRight,
     Eye,
     Heart,
-    Crown,
-    Bookmark,
 } from "@lucide/vue";
 
 const props = defineProps<{
@@ -115,10 +114,9 @@ function focusTitle(e: Event) {
                     <span v-if="entry.title">{{ entry.slug }}</span>
                     <span v-if="entry.title" aria-hidden="true">·</span>
                     <time :datetime="created.datetime" :title="created.absolute">{{ created.text }}</time>
-                    <Badge v-if="entry.tier !== 'normal'" variant="outline" size="sm" class="modal-tier" :data-tier="entry.tier">
-                        <Crown v-if="entry.tier === 'featured'" :size="12" aria-hidden="true" />
-                        <Bookmark v-else :size="12" aria-hidden="true" />
-                        <span class="capitalize">{{ entry.tier }}</span>
+                    <!-- X.F.W14V.au4 — A2-FO-L1-10: the one tier readout. -->
+                    <Badge v-if="entry.tier === 'featured' || entry.tier === 'saved'" variant="outline" size="sm">
+                        <TierMark :tier="entry.tier" labelled :size="12" />
                     </Badge>
                 </DialogDescription>
             </DialogHeader>
@@ -183,21 +181,8 @@ function focusTitle(e: Event) {
             </section>
 
             <section v-if="adminMode" class="modal-section">
-                <ToggleGroup
-                    type="single"
-                    size="sm"
-                    aria-label="Tier"
-                    :model-value="entry.tier ?? 'normal'"
-                    @update:model-value="(t) => typeof t === 'string' && t !== (entry.tier ?? 'normal') && emit('set-tier', entry.slug, t as GalleryTier)"
-                >
-                    <ToggleGroupItem value="normal">Normal</ToggleGroupItem>
-                    <ToggleGroupItem value="featured">
-                        <Crown :size="14" aria-hidden="true" /> Featured
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="saved">
-                        <Bookmark :size="14" aria-hidden="true" /> Saved
-                    </ToggleGroupItem>
-                </ToggleGroup>
+                <!-- X.F.W14V.au4 — A2-FO-L1-10: the one tier setter. -->
+                <TierControl :tier="entry.tier" @set="(t) => emit('set-tier', entry.slug, t)" />
             </section>
 
             <DialogFooter>
@@ -243,9 +228,6 @@ function focusTitle(e: Event) {
     letter-spacing: -0.01em;
     color: var(--foreground);
 }
-
-.modal-tier[data-tier="featured"] { color: var(--tier-featured); }
-.modal-tier[data-tier="saved"] { color: var(--tier-saved); }
 
 /* A.W2.e — basis-tint colour projection over `<Badge variant="outline">`,
    the GalleryCard recipe. */
