@@ -1,10 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import * as path from "node:path";
-
-const TEST_IMAGE = path.resolve(
-    import.meta.dirname,
-    "../../assets/animals/golden-retriever.webp",
-);
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X·F F.W9 `.b` — `G-F9-2`'s own surface, cured before the floor was told to
@@ -40,7 +35,7 @@ test.describe.serial("Asset-based workspace flow", () => {
 
         // 2. Upload image
         const fileInput = page.getByTestId("image-file-input");
-        await fileInput.setInputFiles(TEST_IMAGE);
+        await fileInput.setInputFiles(SAMPLE_IMAGE);
 
         // 3. Should redirect to /w/{imageSlug}
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
@@ -63,7 +58,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await page.goto("/visualize");
 
         const fileInput = page.getByTestId("image-file-input");
-        await fileInput.setInputFiles(TEST_IMAGE);
+        await fileInput.setInputFiles(SAMPLE_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
         const imageSlug = page.url().match(/\/w\/([^/]+)/)?.[1];
@@ -84,7 +79,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await page.goto("/visualize");
 
         const fileInput = page.getByTestId("image-file-input");
-        await fileInput.setInputFiles(TEST_IMAGE);
+        await fileInput.setInputFiles(SAMPLE_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
         const imageSlug = imageSlugFrom(page);
@@ -128,7 +123,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await page.goto("/visualize");
 
         const fileInput = page.getByTestId("image-file-input");
-        await fileInput.setInputFiles(TEST_IMAGE);
+        await fileInput.setInputFiles(SAMPLE_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
         const imageSlug = imageSlugFrom(page);
@@ -179,7 +174,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await page.goto("/visualize");
 
         const fileInput = page.getByTestId("image-file-input");
-        await fileInput.setInputFiles(TEST_IMAGE);
+        await fileInput.setInputFiles(SAMPLE_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
         const imageSlug = imageSlugFrom(page);
@@ -210,7 +205,7 @@ test.describe.serial("Asset-based workspace flow", () => {
         await page.goto("/visualize");
 
         const fileInput = page.getByTestId("image-file-input");
-        await fileInput.setInputFiles(TEST_IMAGE);
+        await fileInput.setInputFiles(SAMPLE_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
 

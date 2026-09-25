@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W14U.s — gate G-s, OA-59 (owner, 2026-09-24, frame
@@ -15,15 +15,13 @@ import * as path from "node:path";
  * Every figure is read from the served page: the radius token is resolved on
  * this page's own `:root`, never a copied pixel value.
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 const PHASE = process.env.FW14U_PHASE ?? "after";
 const FRAMES = "e2e/screenshots/f-w14u/s";
 
 async function loadImage(page: Page): Promise<void> {
     await page.goto("/visualize");
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
-    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
     // X.F.W14V.u4 — UIA-F-74: below lg a finished upload brings the canvas to
     // the front; this setup reads the Controls sheet, so it selects that tab.

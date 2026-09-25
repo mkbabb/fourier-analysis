@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { backingSize, type BoxSize } from "../src/components/shared/canvas/useCanvasSetup";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W14 `.p` — OA-44, crisp visualizations (COHESION §0bw; frame
@@ -22,8 +23,6 @@ import { backingSize, type BoxSize } from "../src/components/shared/canvas/useCa
  * (BasisCanvas — the epicycles of the owner's frame — and FrequencyGraph under
  * the Coefficients layer). `/`, `/morph`, `/gallery` mount no canvas.
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 const SHOTS = path.resolve(import.meta.dirname, "screenshots/f-w14");
 const PHASE = process.env.FW14_PHASE ?? "after";
 const W = 1440;
@@ -212,7 +211,7 @@ async function figureCrop(page: Page, name: string): Promise<void> {
 async function openImage(page: Page): Promise<void> {
     await page.goto("/visualize");
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
-    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
     await expect(page.getByRole("button", { name: /Replace image/ })).toBeVisible({ timeout: 60_000 });
     await page.getByText("Coefficients", { exact: true }).first().click();

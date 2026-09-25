@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W13.b — gate G-b: every control of the image mode ACTS (owner frame 3,
@@ -12,8 +12,6 @@ import * as path from "node:path";
  * `data-slot` (glass Button / NumberField / Select / Collapsible / Configurator)
  * or is the glass dock's own control, and every icon-only command is a circle.
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 
 /** Resolve a click's file-chooser, or fail with the control that did not open one. */
 async function opensPicker(page: Page, act: () => Promise<void>): Promise<void> {
@@ -69,7 +67,7 @@ async function openImageMode(page: Page): Promise<Locator> {
 }
 
 async function uploadImage(page: Page): Promise<void> {
-    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
     await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 60_000 });
 }

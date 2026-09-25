@@ -1,7 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
-import * as path from "node:path";
 import { seededViz } from "./fixtures/seed";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W14U.vstage — the Visualize stage's family (spec `F-W14U.md` Units :8-18;
@@ -39,14 +39,12 @@ import { seededViz } from "./fixtures/seed";
  *       not letterbox space.
  *
  * Data: the e2e global seed (`e2e/global-seed.ts`) for the saved
- * visualization; uploads use `assets/animals/golden-retriever.webp`. Network
+ * visualization; uploads use `SAMPLE_IMAGE` (`fixtures/sample.ts`). Network
  * failures and delays are stubbed with `page.route`, never seeded.
  */
 
 const PHASE = process.env.FW14U_PHASE ?? "after";
 const FRAMES = "e2e/screenshots/f-w14u/vstage";
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
-
 async function frame(page: Page, name: string): Promise<void> {
     const w = page.viewportSize()!.width;
     await page.screenshot({ path: `${FRAMES}/${PHASE}-${name}-${w}.png` });
@@ -184,7 +182,7 @@ test.describe("F.W14U.vstage — drops and upload failures (1440)", () => {
                 : route.fallback(),
         );
         await openEmpty(page);
-        await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+        await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         await expect(page.locator(".drop-target").getByRole("alert")).toBeVisible({ timeout: 20_000 });
         await expect(page.getByText(/Could not load this workspace/)).toHaveCount(0);
         await frame(page, "e167-upload-failed");
@@ -264,7 +262,7 @@ test.describe("F.W14U.vstage — upload and publish (1440)", () => {
             await route.fallback();
         });
         await openEmpty(page);
-        await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+        await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         const primary = page.locator(".drop-target button").first();
         await expect(primary).toHaveAttribute("aria-busy", "true", { timeout: 3000 });
         await expect(primary).toHaveAccessibleName(/Uploading/);

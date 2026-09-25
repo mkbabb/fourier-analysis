@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { checkA11y } from "./a11y";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * B.W2 — visualization-route UX coherence spec (Invariant 18 + 19 binding).
@@ -17,11 +17,6 @@ import * as path from "node:path";
  * wave's intent — inject axe + assert zero serious/critical violations — atop
  * the package that the W2 hard gate (H-W2-1) actually installs.
  */
-
-const TEST_IMAGE = path.resolve(
-    import.meta.dirname,
-    "../../assets/animals/golden-retriever.webp",
-);
 
 /**
  * X.F.W3 `.d` — `LC-1`. The helper was authored TWICE, here and in
@@ -53,7 +48,7 @@ async function openWorkspace(page: Page): Promise<void> {
         ),
     );
     const fileInput = page.getByTestId("image-file-input");
-    await fileInput.setInputFiles(TEST_IMAGE);
+    await fileInput.setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 15_000 });
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible({ timeout: 60_000 });

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W14U.d — OA-57 (the collapsed dock, fourier's consumer half) and OA-68
@@ -22,15 +22,13 @@ import * as path from "node:path";
  * d2 — the canvas dock's amber view dot never covers the collapsed face's
  * glyph, and it stays on the plate.
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 const PHASE = process.env.FW14U_PHASE ?? "after";
 const FRAMES = "e2e/screenshots/f-w14u/d";
 
 async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) => Promise<void>): Promise<void> {
     await page.goto("/visualize");
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
-    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 30_000 });
     // X.F.W14V.u4 — UIA-F-74: below lg the finished upload already shows the
     // canvas (the sheet, with Replace image, is the other tab), so the mobile

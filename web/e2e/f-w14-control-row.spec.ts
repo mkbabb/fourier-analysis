@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import * as fs from "node:fs";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W14.h — gate G-h, OA-45 (owner, 2026-09-23, frame
@@ -33,8 +33,6 @@ import * as path from "node:path";
  * and the card titles / control-row rhythm are read against glass's type and
  * spacing scales.
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 const PHASE = process.env.FW14_PHASE ?? "after";
 const SHOTS = "e2e/screenshots/f-w14";
 const VIEWPORTS = [
@@ -228,7 +226,7 @@ for (const vp of VIEWPORTS) {
             // Image mode (`/w`): basis + contour layers, Advanced open.
             await page.goto("/visualize");
             await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
-            await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+            await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
             await page.waitForURL(/\/w\//, { timeout: 20_000 });
             // X.F.W14V.u4 — UIA-F-74: below lg the finished upload brings the
             // canvas to the front; the controls are read from the Controls tab.

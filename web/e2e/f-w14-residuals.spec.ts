@@ -1,6 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W14.r — F.W13's residuals, gated on the served page.
@@ -17,8 +17,6 @@ import * as path from "node:path";
  *         spelling `contextOptions.reducedMotion` (a bare `reducedMotion` is
  *         not a Playwright test option, which is why F.W13 saw it not arrive).
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 
 async function openPaper(page: Page): Promise<void> {
     await page.goto("/paper");
@@ -87,7 +85,7 @@ test.describe("F.W14.r — the image sidebar (F.W13 `.c` residuals)", () => {
             await held;
             await route.fallback();
         });
-        await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+        await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         await expect.poll(() => seenUpload).toBe(true);
 
         // The response has NOT landed: no image, no `/w/<slug>` yet.
@@ -120,7 +118,7 @@ test.describe("F.W14.r — the image sidebar (F.W13 `.c` residuals)", () => {
                 body: JSON.stringify({ title: "Upload failed", status: 500, detail: "stubbed failure" }),
             });
         });
-        await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+        await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         await expect(page.locator(".viz-panel-left-wrap")).toBeVisible();
 
         release();

@@ -2,6 +2,7 @@
 import { test, expect } from "@playwright/test";
 
 import { ENTRY, stubGallery } from "./fixtures/gallery";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X·F F.W9 `.b` — the S4 seat (`G-F9-7`), plus `G-F9-9` and `G-F9-10`.
@@ -227,9 +228,7 @@ test.describe("Visualizer overlay dock", () => {
 
         // Upload an image so the canvas + overlaid CanvasControlsDock mount.
         const fileInput = page.getByTestId("image-file-input");
-        const testImage = new URL("../../assets/animals/golden-retriever.webp", import.meta.url)
-            .pathname;
-        await fileInput.setInputFiles(testImage);
+        await fileInput.setInputFiles(SAMPLE_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
 

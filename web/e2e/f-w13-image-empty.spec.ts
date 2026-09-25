@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W13.c — gate G-c: the image mode's empty state (owner frame 4,
@@ -14,8 +14,6 @@ import * as path from "node:path";
  * page started are recorded frame by frame from before the pick); in a
  * reduced-motion context the same arrival runs no transition at all.
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 
 /** The transitions the sidebar's arrival can run: the aside band + the content. */
 type Seen = { prop: string; target: string };
@@ -53,7 +51,7 @@ async function seen(page: Page): Promise<string[]> {
 }
 
 async function pickImage(page: Page): Promise<void> {
-    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
     await expect(page.locator(".viz-panel-left-wrap")).toBeVisible({ timeout: 20_000 });
 }

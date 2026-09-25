@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5[1m]
 import { test, expect } from "@playwright/test";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X·F F.W9 `.b` — `G-F9-11`: fullscreen is exercised, against the TELEPORTED
@@ -33,9 +34,6 @@ import { test, expect } from "@playwright/test";
  * ⊘ F.W9 OWNS GATES AND NO CURE.
  */
 
-const TEST_IMAGE = new URL("../../assets/animals/golden-retriever.webp", import.meta.url)
-    .pathname;
-
 test.describe("Fullscreen viewer (G-F9-11)", () => {
     test("enters fullscreen and asserts against the teleported root @mutating", async ({
         page,
@@ -44,7 +42,7 @@ test.describe("Fullscreen viewer (G-F9-11)", () => {
 
         // The viewer only mounts once there is something to view: upload, then
         // wait for the canvas the auto-compute paints.
-        await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+        await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
         await expect(page.locator("canvas").first()).toBeVisible({ timeout: 60_000 });
 

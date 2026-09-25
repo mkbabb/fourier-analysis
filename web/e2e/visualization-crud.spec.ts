@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Response } from "@playwright/test";
 import { checkA11y } from "./a11y";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * B.W4.d — visualization CRUD-lifecycle + a11y-keystone Playwright spec.
@@ -14,7 +14,8 @@ import * as path from "node:path";
  *   • A fresh `fourier` Mongo DB (the migration source collections are empty per
  *     audit/challenge.md §2 — the spec seeds its own image/contour/visualization).
  *   • Run:  `cd web && npx playwright test e2e/visualization-crud.spec.ts --project=chromium`
- * The fixture image is `assets/animals/golden-retriever.webp` (exists, repo-root).
+ * The fixture image is `SAMPLE_IMAGE` (`fixtures/sample.ts`): the owner's standard
+ * sample, `assets/portraits/daraksha.jpg` (repo-root).
  *
  * SCOPE (W4 scope item 10 + 15; hard-gate items 5 + 13; Wχ H-W4-1)
  * ----------------------------------------------------------------
@@ -46,11 +47,6 @@ import * as path from "node:path";
  * (the keys the auth store reads on bootstrap) so the in-page app + every
  * `page.evaluate(fetch(...))` call carries the same authenticated session.
  */
-
-const TEST_IMAGE = path.resolve(
-    import.meta.dirname,
-    "../../assets/animals/golden-retriever.webp",
-);
 
 /** The three viewports the lifecycle is swept at (fourier-A invariant 3). */
 const VIEWPORTS = [
@@ -155,7 +151,7 @@ async function openWorkspace(page: Page): Promise<string> {
 
     const fileInput = page.getByTestId("image-file-input");
     await expect(fileInput).toBeAttached({ timeout: 15_000 });
-    await fileInput.setInputFiles(TEST_IMAGE);
+    await fileInput.setInputFiles(SAMPLE_IMAGE);
 
     // Upload redirects to the pre-save working session `/w/{imageSlug}`.
     await page.waitForURL(/\/w\//, { timeout: 20_000 });

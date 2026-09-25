@@ -1,7 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
-import * as path from "node:path";
 import { seededViz } from "./fixtures/seed";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W14V `.u4` — the stage surface and its readouts (F-W14V.md addendum (c)
@@ -26,14 +26,12 @@ import { seededViz } from "./fixtures/seed";
  *      expanded dock.
  *
  * Served from :3100 (BASE_URL) against the API on :8000; data = the e2e global
- * seed; uploads use `assets/animals/golden-retriever.webp`. `FW14V_PHASE`
+ * seed; uploads use `SAMPLE_IMAGE` (`fixtures/sample.ts`). `FW14V_PHASE`
  * names the frames (before/after).
  */
 
 const PHASE = process.env.FW14V_PHASE ?? "after";
 const FRAMES = "e2e/screenshots/f-w14v/u4";
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
-
 async function frame(page: Page, name: string): Promise<void> {
     const w = page.viewportSize()!.width;
     await page.screenshot({ path: `${FRAMES}/${PHASE}-${name}-${w}.png` });
@@ -82,7 +80,7 @@ async function startUpload(page: Page, delayMs: number): Promise<void> {
     });
     await page.goto("/visualize");
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
-    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
 }
 
 /** Busy marks a person can see: glass's dot ring and indeterminate bars. */
@@ -153,7 +151,7 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto("/visualize");
         await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
-        await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+        await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         await page.waitForURL(/\/w\//, { timeout: 20_000 });
         await expect(page.locator(".canvas-stage")).not.toHaveClass(/panel-inactive/, { timeout: 30_000 });
         await expect(page.locator(".viz-panel-left-wrap")).toHaveClass(/panel-inactive/);
@@ -232,7 +230,7 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         });
         await page.goto("/visualize");
         await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
-        await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+        await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         const status = page.locator(".canvas-stage [role=status]").filter({ hasText: "Computing" });
         await expect(status).toBeVisible({ timeout: 30_000 });
         const layer = page.locator("[data-slot=configurator-layer]").filter({ hasText: "Decomposition" }).first();

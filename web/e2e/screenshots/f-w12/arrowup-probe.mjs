@@ -30,7 +30,7 @@ await step(page.getByRole("spinbutton", { name: "High", exact: true }).first(), 
 await step(page.getByRole("spinbutton", { name: "Duration" }).first(), "mpc-duration", 10);
 await page.goto(`${BASE}/visualize`);
 const computes = Promise.all(["epicycles", "bases"].map((k) => page.waitForResponse((r) => r.url().endsWith(`/compute/${k}`) && r.request().method() === "POST", { timeout: 90000 })));
-await page.getByTestId("image-file-input").setInputFiles(path.resolve("../assets/animals/golden-retriever.webp"));
+await page.getByTestId("image-file-input").setInputFiles(path.resolve("../assets/portraits/daraksha.jpg"));
 await computes;
 await step(page.getByRole("spinbutton", { name: "Harmonics" }), "basis-harmonics", 1);
 await step(page.getByRole("spinbutton", { name: "Sample Points" }), "basis-points", 128);

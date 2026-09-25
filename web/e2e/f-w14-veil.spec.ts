@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * X.F.W14.g — gate G-g, OA-43 (owner, 2026-09-23, frame
@@ -21,14 +21,12 @@ import * as path from "node:path";
  * Colours are resolved by the browser (a 1×1 canvas reads any CSS colour back
  * as sRGB), so the figures are the ones that paint, never a copied value.
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 const PHASE = process.env.FW14_PHASE ?? "after";
 
 async function loadImage(page: Page): Promise<void> {
     await page.goto("/visualize");
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
-    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
     // X.F.W14V.u4 — UIA-F-74: below lg a finished upload brings the canvas to
     // the front; this setup reads the Controls sheet, so it selects that tab.
