@@ -9,7 +9,11 @@ import { SAMPLE_IMAGE } from "./fixtures/sample";
  *         disclosure (not in its seat), and it scrolls the paper to the top.
  *   G-r2  `.sidebar-link` corner = glass's row canon (`--radius-lg`), computed.
  *   G-c1  `.c` r1: the sidebar enters on the pick (the upload in flight), not
- *         when the upload response lands.
+ *         when the upload response lands. Its busy mark follows `.u4`'s rule
+ *         (`8e19043`, UIA-F-71 ⊕ F-238; re-baselined at X.F.W14V Repair 1,
+ *         addendum (g) routing 1, §0bt): a FIRST upload's one mark is the
+ *         stage's drop-target button (glass's dot ring) and the aside has no
+ *         bar; a REPLACE upload's mark is the aside's "Uploading the image" bar.
  *   G-c2  `.c` r2: the leave path — an upload that fails clears the flight
  *         with no image; the sidebar is gone, and the chassis re-mounted from
  *         the not-found card opens no empty column.
@@ -91,8 +95,11 @@ test.describe("F.W14.r — the image sidebar (F.W13 `.c` residuals)", () => {
         // The response has NOT landed: no image, no `/w/<slug>` yet.
         expect(page.url()).not.toMatch(/\/w\/[^/]+/);
         const side = page.locator(".viz-panel-left-wrap");
+        const asideBar = side.getByRole("progressbar", { name: "Uploading the image" });
         await expect(side).toBeVisible();
-        await expect(side.getByRole("progressbar", { name: "Uploading the image" })).toBeVisible();
+        // First upload (`.u4` rule): the stage button is the one busy mark; no aside bar.
+        await expect(page.locator(".drop-target-button [data-slot=dot-ring]")).toBeVisible();
+        await expect(asideBar).toHaveCount(0);
         // The column opens on the panel spring; read it once the enter settles.
         await expect
             .poll(() => page.locator(".configurator-aside").evaluate((el) => el.getBoundingClientRect().width))
@@ -102,7 +109,25 @@ test.describe("F.W14.r — the image sidebar (F.W13 `.c` residuals)", () => {
         release();
         await page.waitForURL(/\/w\//, { timeout: 20_000 });
         await expect(side).toBeVisible();
-        await expect(side.getByRole("progressbar", { name: "Uploading the image" })).toHaveCount(0);
+        await expect(asideBar).toHaveCount(0, { timeout: 30_000 });
+
+        // Replace (`.u4` rule): the image is already here, so the aside's bar
+        // is the upload's mark, and it leaves when the upload lands.
+        let releaseReplace!: () => void;
+        const heldReplace = new Promise<void>((r) => (releaseReplace = r));
+        let seenReplace = false;
+        await page.unroute("**/api/images");
+        await page.route("**/api/images", async (route) => {
+            if (route.request().method() !== "POST") return route.fallback();
+            seenReplace = true;
+            await heldReplace;
+            await route.fallback();
+        });
+        await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
+        await expect.poll(() => seenReplace).toBe(true);
+        await expect(asideBar).toBeVisible();
+        releaseReplace();
+        await expect(asideBar).toHaveCount(0, { timeout: 30_000 });
     });
 
     test("G-c2 — a failed upload is the leave path: no sidebar, and no empty column after", async ({ page }) => {
