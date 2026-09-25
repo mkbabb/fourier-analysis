@@ -40,7 +40,7 @@ import { computed } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import DarkModeToggle from "./DarkModeToggle.vue";
-import UserSlugBar from "@/components/visualization/gallery/UserSlugBar.vue";
+import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, FileText, Eye, LayoutGrid, Sigma, Shuffle } from "@lucide/vue";
 import { GlassDock, DockControl, DockTrigger, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";

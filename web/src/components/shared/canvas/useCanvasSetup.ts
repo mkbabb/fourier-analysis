@@ -1,5 +1,12 @@
 import { type Ref, type ShallowRef, shallowRef, onMounted, onUnmounted } from "vue";
-import type { CanvasSurface } from "../lib/canvas-drawing";
+
+/** A canvas's 2D context with its CSS-pixel size and the device-pixel ratio it was sized at. */
+export interface CanvasSurface {
+    ctx: CanvasRenderingContext2D;
+    width: number;
+    height: number;
+    dpr: number;
+}
 
 /** A box's two extents, in the `ResizeObserverSize` shape. */
 export interface BoxSize {

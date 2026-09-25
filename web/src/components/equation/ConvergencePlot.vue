@@ -7,10 +7,10 @@ import { easeInOutSine } from "@mkbabb/value.js/easing";
 import { lerp } from "@mkbabb/value.js/math";
 import { renderLatex } from "@/lib/equation/render";
 
-import { useCanvasSetup } from "@/components/visualization/composables/useCanvasSetup";
-import { drawPlotGrid, type PlotPadding } from "./lib/grid";
-import { hitTestCurves, type CurveHitRegion } from "./lib/hit-test";
-import { groupTrigHarmonics, harmonicProgress, revealWeight, spectrumColor, type TrigHarmonic } from "./lib/harmonics";
+import { useCanvasSetup } from "@/components/shared/canvas/useCanvasSetup";
+import { drawPlotGrid, type PlotPadding } from "@/lib/equation/grid";
+import { hitTestCurves, type CurveHitRegion } from "@/lib/equation/hit-test";
+import { groupTrigHarmonics, harmonicProgress, revealWeight, spectrumColor, type TrigHarmonic } from "@/lib/equation/harmonics";
 import { createTransitionState, startTransition, snapshotForTransition } from "./composables/useCurveTransition";
 
 import ConvergenceLegend from "./convergence/ConvergenceLegend.vue";

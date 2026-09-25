@@ -11,7 +11,7 @@ import {
 } from "@/lib/golden-shimmer";
 import { basisDisplay } from "./lib/basis-display";
 import type { BasisComponent } from "@/lib/types";
-import type { CanvasSurface, ViewTransform, EpicycleBbox } from "./lib/canvas-drawing";
+import type { ViewTransform, EpicycleBbox } from "./lib/canvas-drawing";
 import {
     drawGrid,
     drawGhostPath,
@@ -29,7 +29,7 @@ import {
     epicycleAlphaFromScale,
 } from "./lib/canvas-drawing";
 import type { EpicycleFit } from "./lib/canvas-drawing";
-import { useCanvasSetup } from "./composables/useCanvasSetup";
+import { useCanvasSetup, type CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";
 import { useViewTransform } from "./composables/useViewTransform";

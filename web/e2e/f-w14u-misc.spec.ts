@@ -389,8 +389,12 @@ for (const vp of [DESKTOP, PHONE]) {
             console.log(`[r120 /paper, carried] pageerrors=${paperErrors.length}`);
             await page.goto(`${PROD}/morph`);
             await expect(stage(page)).toBeVisible({ timeout: 30_000 });
+            // X.F.W14V.au6 — A2-FO-L1-24 (d): the extractor is a dev-only route
+            // (the dev-server read is `e2e/f-w14v-au6.spec.ts`); in the
+            // production bundle its path is the not-found page, which renders
+            // with site data blocked too.
             await page.goto(`${PROD}/demo/shape-extractor`);
-            await expect(page.locator("#extract-status")).toContainText(/xtracted \d+ sun/, { timeout: 15_000 });
+            await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible({ timeout: 15_000 });
             expect(errors).toEqual([]);
         });
     });

@@ -1,6 +1,7 @@
 import { computed } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
-import type { CanvasSurface, ViewTransform } from "../lib/canvas-drawing";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
+import type { ViewTransform } from "../lib/canvas-drawing";
 
 interface Bbox {
     minX: number;

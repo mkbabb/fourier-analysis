@@ -1,5 +1,6 @@
 import type { BasisComponent } from "@/lib/types";
-import type { CanvasSurface, ViewTransform } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
+import type { ViewTransform } from "./types";
 import { spectrumColor } from "./transforms";
 import { fourierPositionsAt } from "@/lib/evaluators";
 import { VIZ_COLORS, withAlpha } from "@/lib/colors";

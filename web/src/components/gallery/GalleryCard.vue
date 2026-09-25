@@ -7,7 +7,7 @@ import { Checkbox } from "@mkbabb/glass-ui";
 import type { GalleryTier, Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { useTimeAgo } from "@/lib/time";
-import { basisChips } from "../lib/basis-display";
+import { basisChips } from "@/components/visualization/lib/basis-display";
 import TierMark from "./TierMark.vue";
 import TierControl from "./TierControl.vue";
 // FR-GFC-22 / G-F4-DEAD-DEP: `VIZ_COLORS` and `PathPreview` were imported and

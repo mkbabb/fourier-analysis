@@ -14,7 +14,7 @@ import { Separator } from "@mkbabb/glass-ui/separator";
 import type { GalleryTier, Visualization } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
 import { useTimeAgo } from "@/lib/time";
-import { basisChips } from "../lib/basis-display";
+import { basisChips } from "@/components/visualization/lib/basis-display";
 import { VIZ_COLORS } from "@/lib/colors";
 import TierMark from "./TierMark.vue";
 import TierControl from "./TierControl.vue";

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { Search, X, SlidersHorizontal } from "@lucide/vue";
-import { basisChips } from "../lib/basis-display";
+import { basisChips } from "@/components/visualization/lib/basis-display";
 import type { BasisKey } from "@/lib/basis";
 import type { GallerySort, GalleryTierFilter } from "@/lib/types";
 import { Button } from "@mkbabb/glass-ui/button";

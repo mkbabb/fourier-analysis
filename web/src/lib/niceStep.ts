@@ -1,6 +1,6 @@
 /**
  * X.F.W14V.au2 — A2-FO-L1-23: the "nice number" grid step, written once. The
- * /equation plot's grid (`components/equation/lib/grid.ts`) and the /visualize
+ * /equation plot's grid (`lib/equation/grid.ts`) and the /visualize
  * canvas grid (`components/visualization/lib/canvas-drawing/grid.ts`) each
  * carried a copy of the same ladder.
  *

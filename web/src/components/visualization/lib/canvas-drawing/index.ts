@@ -1,4 +1,4 @@
-export type { CanvasSurface, ViewTransform } from "./types";
+export type { ViewTransform } from "./types";
 export { spectrumColor, getPathBounds } from "./transforms";
 export { drawGrid } from "./grid";
 export { drawGhostPath } from "./ghost-path";

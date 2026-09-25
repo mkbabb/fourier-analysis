@@ -6,7 +6,7 @@ import { Flag, ImageOff } from "@lucide/vue";
 import { thumbnailUrl } from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
 import type { FlaggedVisualization } from "@/lib/types";
-import TierMark from "./TierMark.vue";
+import TierMark from "@/components/gallery/TierMark.vue";
 import AdminFlaggedActions from "./AdminFlaggedActions.vue";
 
 /**

@@ -1,4 +1,4 @@
-import type { CanvasSurface } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 
 /**
  * The stage canvas with nothing to draw yet.

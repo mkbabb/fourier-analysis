@@ -10,7 +10,7 @@ import type { NotationMode, PresetFunction } from "@/lib/equation/types";
 import { Wand2, Play } from "@lucide/vue";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import NotationPills from "./NotationPills.vue";
+import NotationPills from "@/components/shared/NotationPills.vue";
 
 const props = defineProps<{
     effectiveN?: number;

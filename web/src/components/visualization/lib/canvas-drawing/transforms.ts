@@ -1,4 +1,5 @@
-import type { CanvasSurface, ViewTransform } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
+import type { ViewTransform } from "./types";
 
 export function spectrumColor(i: number, total: number): string {
     const t = i / Math.max(total - 1, 1);

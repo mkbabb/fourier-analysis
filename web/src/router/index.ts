@@ -166,8 +166,7 @@ export const router = createRouter({
         {
             path: "/gallery",
             name: "gallery",
-            component: () =>
-                import("@/components/visualization/GalleryView.vue"),
+            component: () => import("@/components/gallery/GalleryView.vue"),
             meta: {
                 tab: "/gallery",
                 title: "Gallery — Fourier Analysis",
@@ -197,18 +196,25 @@ export const router = createRouter({
                     "Morph one shape into another through their shared Fourier harmonic basis — an interactive study of epicycle interpolation.",
             },
         },
-        {
-            path: "/demo/shape-extractor",
-            name: "shape-extractor",
-            component: () => import("@/components/morph/FourierShapeExtractor.vue"),
-            // UIA-F-255: an internal tool — titled, and asked out of the index;
-            // UIA-F-119: it belongs to no section.
-            meta: {
-                title: "Shape extractor (internal) — Fourier Analysis",
-                description: "An internal tool that traces the morph demo's sun and moon into contour data.",
-                noindex: true,
-            },
-        },
+        // X.F.W14V.au6 — A2-FO-L1-24 (d): a developer's tool (it traces the
+        // morph demo's sun and moon into contour data), registered on the dev
+        // server only; the production bundle carries neither the route nor its
+        // chunk (`import.meta.env.DEV` is statically false there). UIA-F-255:
+        // titled, and asked out of the index; UIA-F-119: it belongs to no section.
+        ...(import.meta.env.DEV
+            ? [
+                  {
+                      path: "/demo/shape-extractor",
+                      name: "shape-extractor",
+                      component: () => import("@/components/dev/FourierShapeExtractor.vue"),
+                      meta: {
+                          title: "Shape extractor (internal) — Fourier Analysis",
+                          description: "An internal tool that traces the morph demo's sun and moon into contour data.",
+                          noindex: true,
+                      },
+                  },
+              ]
+            : []),
         {
             path: "/s/:slug",
             name: "share",

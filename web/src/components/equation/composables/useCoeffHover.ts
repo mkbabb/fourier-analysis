@@ -6,7 +6,7 @@
 import { ref, computed, type Ref } from "vue";
 import { renderLatex } from "@/lib/equation/render";
 import type { FourierTermDTO } from "@/lib/equation/types";
-import { groupTrigHarmonics } from "../lib/harmonics";
+import { groupTrigHarmonics } from "@/lib/equation/harmonics";
 import { VIZ_COLORS } from "@/lib/colors";
 
 /**

@@ -148,7 +148,7 @@ test.describe("L1-27 — users and flagged on glass DataTable, one pager, admin-
         await openTab(page, "Users", "amber-fox-12");
         await expect(page.locator('[data-slot="data-table"]').filter({ hasText: "amber-fox-12" })).toHaveCount(1);
         await ownedBy(page.getByRole("navigation", { name: "User list pagination" }), "components/shared/Pager.vue");
-        await ownedBy(page.getByRole("searchbox", { name: "Search users" }), "gallery/AdminUserToolbar.vue");
+        await ownedBy(page.getByRole("searchbox", { name: "Search users" }), "admin/AdminUserToolbar.vue");
         const retired = await page.evaluate(() => {
             const probe = document.createElement("div");
             probe.className = "admin-row";

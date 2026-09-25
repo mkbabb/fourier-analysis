@@ -1,6 +1,7 @@
 import { niceStep } from "@/lib/niceStep";
 
-import type { CanvasSurface, ViewTransform } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
+import type { ViewTransform } from "./types";
 
 export function drawGrid(surface: CanvasSurface, view: ViewTransform): void {
     const { ctx, width, height } = surface;

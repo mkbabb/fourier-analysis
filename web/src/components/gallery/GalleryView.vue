@@ -15,18 +15,18 @@ import { Layers, Trash2, Crown, StarOff } from "@lucide/vue";
 
 import { SegmentedTabs, type SegmentedTabOption } from "@mkbabb/glass-ui/tabs";
 import { Button } from "@mkbabb/glass-ui/button";
-import GallerySearchBar from "./gallery/GallerySearchBar.vue";
-import GalleryFeaturedCarousel from "./gallery/GalleryFeaturedCarousel.vue";
-import GalleryInfiniteGrid from "./gallery/GalleryInfiniteGrid.vue";
-import GalleryCardModal from "./gallery/GalleryCardModal.vue";
-import GalleryAdminBanner from "./gallery/GalleryAdminBanner.vue";
-import GalleryDraftsSection from "./gallery/GalleryDraftsSection.vue";
-import BatchActionBar from "./gallery/BatchActionBar.vue";
+import GallerySearchBar from "./GallerySearchBar.vue";
+import GalleryFeaturedCarousel from "./GalleryFeaturedCarousel.vue";
+import GalleryInfiniteGrid from "./GalleryInfiniteGrid.vue";
+import GalleryCardModal from "./GalleryCardModal.vue";
+import GalleryAdminBanner from "./GalleryAdminBanner.vue";
+import GalleryDraftsSection from "./GalleryDraftsSection.vue";
+import BatchActionBar from "@/components/admin/BatchActionBar.vue";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 
-const AdminUserList = defineAsyncComponent(() => import("./gallery/AdminUserList.vue"));
-const AdminFlaggedPanel = defineAsyncComponent(() => import("./gallery/AdminFlaggedPanel.vue"));
-const AdminAuditLog = defineAsyncComponent(() => import("./gallery/AdminAuditLog.vue"));
+const AdminUserList = defineAsyncComponent(() => import("@/components/admin/AdminUserList.vue"));
+const AdminFlaggedPanel = defineAsyncComponent(() => import("@/components/admin/AdminFlaggedPanel.vue"));
+const AdminAuditLog = defineAsyncComponent(() => import("@/components/admin/AdminAuditLog.vue"));
 
 const route = useRoute();
 const router = useRouter();

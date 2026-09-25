@@ -1,6 +1,7 @@
 import { evaluateFourier } from "@/lib/evaluators";
 import type { BasisComponent } from "@/lib/types";
-import type { CanvasSurface, ViewTransform } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
+import type { ViewTransform } from "./types";
 
 const TRAIL_RESOLUTION = 1200;
 

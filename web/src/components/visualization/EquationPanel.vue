@@ -4,7 +4,7 @@ import { useEventListener, watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { NotationMode } from "@/lib/equation/types";
 import SliderControl from "@/components/ui/SliderControl.vue";
-import NotationPills from "@/components/equation/NotationPills.vue";
+import NotationPills from "@/components/shared/NotationPills.vue";
 import EquationResult from "@/components/equation/EquationResult.vue";
 import { useSimplifiedSeries } from "@/components/equation/composables/useSimplifiedSeries";
 import { X } from "@lucide/vue";

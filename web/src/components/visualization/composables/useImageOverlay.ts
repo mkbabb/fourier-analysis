@@ -1,7 +1,8 @@
 import { ref, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { overlayUrl } from "@/lib/api";
-import type { CanvasSurface, ViewTransform } from "../lib/canvas-drawing";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
+import type { ViewTransform } from "../lib/canvas-drawing";
 
 const MAX_CACHE_SIZE = 10;
 

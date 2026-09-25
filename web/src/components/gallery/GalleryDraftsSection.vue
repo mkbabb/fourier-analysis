@@ -4,7 +4,7 @@ import { RouterLink } from "vue-router";
 import type { WorkspaceDraft } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
-import { basisChips } from "../lib/basis-display";
+import { basisChips } from "@/components/visualization/lib/basis-display";
 import { Upload } from "@lucide/vue";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Button } from "@mkbabb/glass-ui/button";

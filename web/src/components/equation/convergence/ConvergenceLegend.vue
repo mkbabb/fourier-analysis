@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
-import { spectrumColor, type TrigHarmonic } from "../lib/harmonics";
+import { spectrumColor, type TrigHarmonic } from "@/lib/equation/harmonics";
 
 defineProps<{
     harmonics: TrigHarmonic[];

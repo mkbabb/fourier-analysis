@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { backingSize, type BoxSize } from "../src/components/visualization/composables/useCanvasSetup";
+import { backingSize, type BoxSize } from "../src/components/shared/canvas/useCanvasSetup";
 
 /**
  * X.F.W14 `.p` — OA-44, crisp visualizations (COHESION §0bw; frame

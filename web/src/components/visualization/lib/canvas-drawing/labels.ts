@@ -1,4 +1,4 @@
-import type { CanvasSurface } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { basisDisplay } from "../basis-display";
 import type { LabelHitRegion } from "../../composables/useCanvasHover";
 import { VIZ_COLORS } from "@/lib/colors";

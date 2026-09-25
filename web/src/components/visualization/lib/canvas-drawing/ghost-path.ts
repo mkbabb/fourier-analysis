@@ -1,4 +1,5 @@
-import type { CanvasSurface, ViewTransform } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
+import type { ViewTransform } from "./types";
 
 /**
  * Draw the original contour path as a faint ghost overlay.
