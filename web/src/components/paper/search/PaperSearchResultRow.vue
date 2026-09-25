@@ -81,9 +81,11 @@ defineProps<{
     min-width: 0;
     @apply text-sm;
     color: var(--foreground);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* X.F.W14V.r4 — A2-FO-X-7 x UIA-F-59, §0dy (no ellipsis): the full title,
+       wrapped, never cut — the balanced last line of `pretty`, and a long
+       unbroken token breaks rather than overflowing the plate. */
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
     line-height: 1.4;
 }
 

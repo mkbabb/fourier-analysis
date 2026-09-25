@@ -89,7 +89,7 @@ function toggleDrawer() {
                 aria-label="Table of contents"
                 :inert="!drawerOpen"
             >
-                <PaperSearch :search="search" variant="sidebar" />
+                <PaperSearch :search="search" variant="sidebar" :column="sidebarNav" />
                 <!-- X.F.W13.a — OA-13: the CONTENTS disclosure is the producer's
                      `Collapsible` (it owns `aria-expanded` and the motion) on a
                      glass `Button icon-only` whose own circle is not overwritten. -->

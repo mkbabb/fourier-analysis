@@ -46,6 +46,13 @@ const props = defineProps<{
     variant: "sidebar" | "floating";
     /** The field this panel hangs from — `PaperSearch`'s own root element. */
     anchor: HTMLElement | null;
+    /**
+     * X.F.W14V.r4 — A2-FO-X-7 x UIA-F-59: the column the plate lives in (the
+     * sidebar's `.sidebar-nav`). When given, the plate takes the column's
+     * inline box and stays above its bottom edge; when absent (the floating
+     * bar) it hangs from the field alone.
+     */
+    column: HTMLElement | null;
 }>();
 
 const resultsRef = ref<HTMLElement | null>(null);
@@ -59,7 +66,7 @@ const isOpen = computed(() => props.search.panelOpen.value);
 // the document actually has.
 const GAP_PX = 4;
 const VIEWPORT_MARGIN_PX = 8;
-/** UIA-F-59: the results panel's content floor (the register's 22-26rem band). */
+/** UIA-F-59: the floating panel's content floor (the register's 22-26rem band). */
 const PANEL_MIN_REM = 24;
 
 const panelStyle = ref<Record<string, string>>({});
@@ -74,7 +81,9 @@ function measure() {
     // `50vh`/`60vh` are now REACHABLE, so they are also now a real cap and have
     // to be clamped against the space that actually exists below the field.
     const preferred = props.variant === "floating" ? 0.6 : 0.5;
-    const room = Math.max(0, window.innerHeight - top - VIEWPORT_MARGIN_PX);
+    const col = props.column?.getBoundingClientRect() ?? null;
+    const floor = Math.min(window.innerHeight - VIEWPORT_MARGIN_PX, col ? col.bottom : Infinity);
+    const room = Math.max(0, floor - top);
     // A panel that tracks its field must also DISAPPEAR with it. `.sidebar-nav`
     // is itself a scroll port and `useSidebarFollow` scrolls it to keep the
     // active entry in view, so the field — the nav's first child — can be
@@ -87,16 +96,20 @@ function measure() {
         r.top < window.innerHeight &&
         r.right > 0 &&
         r.left < window.innerWidth;
-    // UIA-F-59: the panel was clamped to the 196px rail field, so every title
-    // cut after ~10 characters. It is sized to its content: at least the
-    // field, at least PANEL_MIN_REM, free to run past the rail, never past the
-    // viewport's right margin.
+    // X.F.W14V.r4 — A2-FO-X-7 x UIA-F-59 (F-W14V addendum (h) 4, COHESION
+    // §0eb): in the sidebar the plate IS the column's width — it never breaks
+    // out over the article (X-7), and F-59's cut titles are cured by wrapping
+    // (`PaperSearchResultRow`), not by widening. The floating bar has no
+    // column: its panel keeps F-59's content floor, at least the field, never
+    // past the viewport's right margin.
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const reach = window.innerWidth - r.left - VIEWPORT_MARGIN_PX;
+    const left = col ? col.left : r.left;
+    const width = col ? col.width : Math.max(r.width, Math.min(PANEL_MIN_REM * rem, reach));
     panelStyle.value = {
         top: `${top}px`,
-        left: `${r.left}px`,
-        width: `${Math.max(r.width, Math.min(PANEL_MIN_REM * rem, reach))}px`,
+        left: `${left}px`,
+        width: `${width}px`,
         maxHeight: `${Math.min(window.innerHeight * preferred, room)}px`,
         visibility: onScreen ? "visible" : "hidden",
         pointerEvents: onScreen ? "auto" : "none",

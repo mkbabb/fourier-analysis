@@ -16,6 +16,13 @@ defineProps<{
      * swap just rendered under the finger (which reopened it).
      */
     boundary?: HTMLElement | null;
+    /**
+     * X.F.W14V.r4 — A2-FO-X-7 x UIA-F-59: the column the results plate lives
+     * in. The sidebar passes its `.sidebar-nav`, so the plate takes that
+     * column's inline size and never breaks out over the article; titles wrap
+     * inside it instead. The floating bar passes none and hangs from its field.
+     */
+    column?: HTMLElement | null;
 }>();
 
 const searchInputRef = ref<InstanceType<typeof PaperSearchInput> | null>(null);
@@ -47,6 +54,7 @@ defineExpose({ focus });
             :search="search"
             :variant="variant"
             :anchor="boundary ?? rootRef"
+            :column="column ?? null"
         />
     </div>
 </template>

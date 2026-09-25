@@ -165,15 +165,22 @@ test.describe("UIA-F-63 / UIA-F-65 — the palette's empty and Clear states", ()
     });
 });
 
-test.describe("UIA-F-59 — the inline results panel is sized to its content on the producer's menu plate", () => {
+test.describe("UIA-F-59 — the inline results panel shows whole titles on the producer's menu plate, inside the sidebar column", () => {
     test.use({ viewport: { width: 1440, height: 900 } });
 
-    test("the panel is at least 22rem, inside the viewport, at --radius-card, on the menu plate", async ({ page }) => {
+    // X.F.W14V.r4 — NAMED §0bt OWNER-RULING RE-BASELINE (F-W14V addendum (h) 4,
+    // COHESION §0eb, A2-FO-X-7): the width limb read "at least 22rem", the
+    // breakout that cured F-59's cut titles by running the plate over the
+    // article. Ruled: the plate takes the sidebar column's inline size and the
+    // titles WRAP. The limb now asserts the column's width and F-59's own
+    // symptom directly: no title is cut (no ellipsis, scrollWidth <= clientWidth).
+    test("the panel is the sidebar column's width, inside the viewport, at --radius-card, on the menu plate, no title cut", async ({ page }) => {
         await openPaper(page);
         const field = page.getByRole("combobox", { name: "Search the paper" }).first();
         await field.fill("Fourier Transform");
         const panel = page.locator(".paper-search-results");
         await expect(panel).toBeVisible();
+        await expect(panel.getByRole("option").first()).toBeVisible();
         const read = await panel.evaluate((el) => {
             const cs = getComputedStyle(el);
             const probe = document.createElement("div");
@@ -181,16 +188,23 @@ test.describe("UIA-F-59 — the inline results panel is sized to its content on 
             el.appendChild(probe);
             const card = getComputedStyle(probe).borderTopLeftRadius;
             probe.remove();
-            const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
             const r = el.getBoundingClientRect();
+            const col = document.querySelector(".sidebar-nav")!.getBoundingClientRect();
+            const cut = [...el.querySelectorAll(".paper-search-label")]
+                .filter((l) => getComputedStyle(l).textOverflow === "ellipsis" || l.scrollWidth > l.clientWidth)
+                .map((l) => (l.textContent ?? "").slice(0, 40));
             return {
-                width: r.width, right: r.right, vw: window.innerWidth, rem,
-                radius: cs.borderTopLeftRadius, card,
+                width: r.width, left: r.left, right: r.right, vw: window.innerWidth,
+                colWidth: col.width, colLeft: col.left, colRight: col.right,
+                radius: cs.borderTopLeftRadius, card, cut,
                 plate: el.classList.contains("glass-overlay-plate") && el.getAttribute("data-reveal") === "menu",
             };
         });
-        expect(read.width, JSON.stringify(read)).toBeGreaterThanOrEqual(22 * read.rem);
+        expect(Math.abs(read.width - read.colWidth), JSON.stringify(read)).toBeLessThanOrEqual(1);
+        expect(read.left).toBeGreaterThanOrEqual(read.colLeft - 1);
+        expect(read.right).toBeLessThanOrEqual(read.colRight + 1);
         expect(read.right).toBeLessThanOrEqual(read.vw);
+        expect(read.cut, JSON.stringify(read.cut)).toEqual([]);
         expect(read.radius).toBe(read.card);
         expect(read.plate).toBe(true);
     });
