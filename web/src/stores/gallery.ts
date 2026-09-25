@@ -359,22 +359,32 @@ export const useGalleryStore = defineStore("gallery", () => {
     // `imageSlug` positional — unused under the converged identity (the slug
     // alone addresses the entity), kept so the pre-existing call site need not
     // change.
-    async function publish(slug: string, _imageSlug?: string) {
+    //
+    // X.F.W14V.u3 — UIA-F-183: the toast names the act (or the piece's title,
+    // when it has one), never the raw four-word slug; View is where the piece
+    // lives. The outcome is returned so the caller's control can show the
+    // published state instead of offering the same publish again.
+    async function publish(slug: string, _imageSlug?: string): Promise<boolean> {
         // A previously-created draft transitions to `public` (the visibility
         // lift, §4). PATCH is ETag-guarded (§0 SOTA-2).
         try {
             const etag = etags.get(slug) ?? (await api.getVisualization(slug)).etag;
-            const { etag: nextETag } = await api.updateVisualization(
+            const { data, etag: nextETag } = await api.updateVisualization(
                 slug,
                 { visibility: "public" },
                 etag,
             );
             if (nextETag) etags.set(slug, nextETag);
-            toast(`Published ${slug}`, "success", { action: { label: "View", to: `/v/${slug}` } });
-            await resetAndFetch();
+            const title = data.title?.trim();
+            toast(title ? `Published “${title}”` : "Published to the gallery", "success", {
+                action: { label: "View", to: `/v/${slug}` },
+            });
         } catch (e: any) {
             toast(problemMessage(e, "Publish failed"), "error");
+            return false;
         }
+        await resetAndFetch();
+        return true;
     }
 
     /**

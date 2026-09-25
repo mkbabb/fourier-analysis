@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { Download, Ellipsis, Maximize2, Minimize2, Pencil, Sigma, Upload } from "@lucide/vue";
+import { Download, Ellipsis, Globe, GlobeCheck, Maximize2, Minimize2, Pencil, Sigma } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { StatusDot } from "@mkbabb/glass-ui/status-dot";
@@ -17,6 +17,8 @@ const props = defineProps<{
     hasData: boolean;
     hasContour: boolean;
     publishing: boolean;
+    /** The session is the piece it published (X.F.W14V.u3, UIA-F-183). */
+    published: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -84,10 +86,18 @@ watch(
 
             <DockSeparator />
 
-            <!-- Publish -->
-            <Tooltip v-if="hasContour" text="Publish to Gallery" side="bottom">
+            <!-- Publish. X.F.W14V.u3 — UIA-F-183: publishing wears the gallery's
+                 glyph (not Upload), and once the session is the published
+                 piece the control says so and opens it instead of publishing
+                 a second copy. -->
+            <Tooltip v-if="hasContour && published" text="Published — open it" side="bottom">
+                <DockControl aria-label="Published — open it" @click="$emit('publish')">
+                    <GlobeCheck />
+                </DockControl>
+            </Tooltip>
+            <Tooltip v-else-if="hasContour" text="Publish to Gallery" side="bottom">
                 <DockControl aria-label="Publish to Gallery" :active="publishing" @click="$emit('publish')">
-                    <Upload :class="{ 'animate-pulse': publishing }" />
+                    <Globe :class="{ 'animate-pulse': publishing }" />
                 </DockControl>
             </Tooltip>
             <!-- Equation -->

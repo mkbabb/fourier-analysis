@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, shallowRef, watch, toRaw, markRaw, onScopeDispose } from "vue";
+import { ref, shallowRef, computed, watch, toRaw, markRaw, onScopeDispose } from "vue";
 import { useRouter } from "vue-router";
 import type {
     ImageMeta,
@@ -390,21 +390,47 @@ export const useWorkspaceStore = defineStore("workspace", () => {
      * converged entity (CRUD-CONTRACT §1, §4) and return its slug. The publish
      * path then lifts `draft → public` via an ETag-guarded PATCH.
      */
-    async function saveVisualization(): Promise<SavedVisualizationRef | null> {
+    /** The working session as the visualization body it would save (no visibility). */
+    function visualizationBody() {
         if (!imageSlug.value || !contour.value) return null;
+        return {
+            image_slug: imageSlug.value,
+            contour_hash: contour.value.contour_hash,
+            active_bases: animationSettings.value.active_bases?.length
+                ? animationSettings.value.active_bases
+                : ["fourier-epicycles"],
+            n_harmonics: contourSettings.value.n_harmonics,
+            contour_settings: toRaw(contourSettings.value),
+            animation_settings: toRaw(animationSettings.value),
+        };
+    }
+
+    /**
+     * X.F.W14V.u3 — UIA-F-183: every Publish created another public copy of
+     * the same piece, because the session never knew it had been published.
+     * The session now records what it published (the slug and the body it
+     * was published from). While the working session still IS that body,
+     * `publishedSlug` names the piece: the control shows the published state
+     * and opens it, and no second copy is made. An edit to anything the body
+     * carries is a new piece, and Publish is offered for it again.
+     */
+    const published = shallowRef<{ slug: string; body: string } | null>(null);
+    const publishedSlug = computed(() => {
+        const at = published.value;
+        const body = visualizationBody();
+        return at && body && JSON.stringify(body) === at.body ? at.slug : null;
+    });
+    function markPublished(slug: string) {
+        const body = visualizationBody();
+        published.value = body ? { slug, body: JSON.stringify(body) } : null;
+    }
+
+    async function saveVisualization(): Promise<SavedVisualizationRef | null> {
+        const body = visualizationBody();
+        if (!body) return null;
         error.value = null;
         try {
-            const { data, etag } = await api.createVisualization({
-                visibility: "draft",
-                image_slug: imageSlug.value,
-                contour_hash: contour.value.contour_hash,
-                active_bases: animationSettings.value.active_bases?.length
-                    ? animationSettings.value.active_bases
-                    : ["fourier-epicycles"],
-                n_harmonics: contourSettings.value.n_harmonics,
-                contour_settings: toRaw(contourSettings.value),
-                animation_settings: toRaw(animationSettings.value),
-            });
+            const { data, etag } = await api.createVisualization({ visibility: "draft", ...body });
             visualizationSlug.value = data.slug;
             visualizationETag.value = etag;
             return { slug: data.slug };
@@ -463,6 +489,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
 
     function reset() {
+        published.value = null;
         imageSlug.value = null;
         visualizationSlug.value = null;
         visualizationETag.value = null;
@@ -485,6 +512,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         imageSlug,
         visualizationSlug,
         visualizationETag,
+        publishedSlug,
         imageMeta,
         contour,
         epicycleData,
@@ -511,6 +539,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         computeEpicycles: runComputeEpicycles,
         computeBases: runComputeBases,
         saveVisualization,
+        markPublished,
         // `createSnapshot` is retained as an alias for the (unmigrated)
         // visualization-view publish call site; it now creates a `draft`
         // visualization on the converged entity rather than a snapshot row.

@@ -307,7 +307,7 @@ test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
         await expect(publish).toBeVisible();
         await page.waitForTimeout(600);
         await publish.dblclick();
-        await expect(page.getByText(`Published ${saved.slug}`, { exact: true })).toBeVisible({ timeout: 10_000 });
+        await expect(page.getByText(`Published “${saved.title}”`, { exact: true })).toBeVisible({ timeout: 10_000 });
         expect(posts).toBe(1);
         await expect(page.getByText(/Could not save/i)).toHaveCount(0);
     });

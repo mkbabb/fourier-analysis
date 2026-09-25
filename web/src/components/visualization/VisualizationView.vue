@@ -228,7 +228,16 @@ const publishing = ref(false);
 // workspace diagnosis while an image is open). The gate is before the round
 // trip — a session is a precondition, said once with the way to meet it — and a
 // failed save is reported by the loader's channel alone.
+//
+// X.F.W14V.u3 — UIA-F-183: publishing is not a dead end and does not
+// duplicate. A publish that lands is recorded on the session; while the session
+// is still what was published, the control shows Published and opens the piece
+// (no second public copy). An edit re-arms Publish for the new piece.
 async function handlePublish() {
+    if (store.publishedSlug) {
+        await router.push(`/v/${store.publishedSlug}`);
+        return;
+    }
     if (publishing.value || !store.imageSlug || !store.contour) return;
     if (!auth.isLoggedIn) {
         toast("Log in to publish to the gallery.", "info");
@@ -238,7 +247,7 @@ async function handlePublish() {
     try {
         const saved = await store.saveVisualization();
         if (!saved) return;
-        await gallery.publish(saved.slug, store.imageSlug);
+        if (await gallery.publish(saved.slug, store.imageSlug)) store.markPublished(saved.slug);
     } finally {
         publishing.value = false;
     }
@@ -464,6 +473,7 @@ function onCanvasFileSelect(e: Event) {
                                 :has-data="!!hasData"
                                 :has-contour="!!store.contour"
                                 :publishing="publishing"
+                                :published="!!store.publishedSlug"
                                 @toggle-edit="toggleEdit"
                                 @export-frame="handleExportFrame"
                                 @toggle-equation="showEquation = !showEquation"
