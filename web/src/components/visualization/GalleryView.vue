@@ -329,8 +329,12 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
 
 <template>
     <div class="flex flex-col gap-4 overflow-y-auto h-full py-4">
-        <!-- Tab toggle + search (tight grouping) -->
-        <div class="flex flex-col gap-1.5 px-[var(--page-gutter)]">
+        <!-- Tab toggle + search (tight grouping). X.F.W14V.au4 — A2-FO-L3-3:
+             at >= sm one toolbar row — the tabs lead, the search trails at its
+             own measure (`--search-measure`); the 512 px field left 896 px of
+             its own row empty and the content began a whole row lower. Below sm
+             the tabs, then the search (the "N loaded" row left at UIA-F-247). -->
+        <div class="flex flex-col gap-1.5 px-[var(--page-gutter)] sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <!-- X.F.W14.u — UIA-F-41 (consumer half): the strip scrolls in its
                  own inline track. The column is `overflow-y: auto`, which makes
                  its `overflow-x` compute to `auto` as well, so at 390 the 5-tab
@@ -346,6 +350,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
             </div>
             <GallerySearchBar
                 v-if="activeTab === 'gallery'"
+                class="sm:min-w-0 sm:flex-1 sm:justify-end"
                 :search-query="gallery.searchQuery"
                 :sort="gallery.sort"
                 :tier-filter="gallery.tierFilter"
