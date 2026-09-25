@@ -8,14 +8,8 @@ import { DataTable, type DataTableColumn } from "@mkbabb/glass-ui/data-table";
 import { Input } from "@mkbabb/glass-ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@mkbabb/glass-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@mkbabb/glass-ui/popover";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@mkbabb/glass-ui/select";
 import { useRelativeTime } from "@/lib/time";
+import Pager from "@/components/shared/Pager.vue";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import * as api from "@/lib/api";
@@ -24,10 +18,6 @@ import {
     ScrollText,
     Filter as FilterIcon,
     X,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
     CircleAlert,
 } from "@lucide/vue";
 
@@ -557,33 +547,22 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
              list's composition — first · previous · "Page n of m" · next · last,
              rows per page, the total — in one voice (it read "1 / 363 total" in
              serif under a mono ledger). -->
-        <nav
+        <!-- X.F.W14V.au4 — A2-FO-L1-27: the one offset pager (`shared/Pager`),
+             shared with the users list; glass Pagination is ADOPT-AT-LANDING
+             (UIA-F-145). -->
+        <Pager
             v-if="entries.length"
-            class="admin-pager flex flex-wrap items-center justify-center gap-1 text-caption text-muted-foreground"
-            aria-label="Audit log pagination"
-        >
-            <Button emphasis="quiet" size="sm" icon-only :disabled="!hasPrev" aria-label="First page" @click="loadPage(1)">
-                <ChevronsLeft class="size-4" aria-hidden="true" />
-            </Button>
-            <Button emphasis="quiet" size="sm" icon-only :disabled="!hasPrev" aria-label="Previous page" @click="prevPage()">
-                <ChevronLeft class="size-4" aria-hidden="true" />
-            </Button>
-            <span class="px-1 tabular-nums">Page {{ page }} of {{ pageCount }}</span>
-            <Button emphasis="quiet" size="sm" icon-only :disabled="!hasNext" aria-label="Next page" @click="nextPage()">
-                <ChevronRight class="size-4" aria-hidden="true" />
-            </Button>
-            <Button emphasis="quiet" size="sm" icon-only :disabled="!hasNext" aria-label="Last page" @click="loadPage(pageCount)">
-                <ChevronsRight class="size-4" aria-hidden="true" />
-            </Button>
-            <Select v-model="pageSizeModel">
-                <SelectTrigger class="ml-2 w-auto shrink-0" aria-label="Rows per page">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem v-for="n in PAGE_SIZES" :key="n" :value="n">{{ n }} per page</SelectItem>
-                </SelectContent>
-            </Select>
-            <span class="ml-2 tabular-nums">{{ totalLabel }}</span>
-        </nav>
+            v-model:page-size="pageSizeModel"
+            label="Audit log pagination"
+            :page="page"
+            :page-count="pageCount"
+            :has-prev="hasPrev"
+            :has-next="hasNext"
+            :sizes="PAGE_SIZES"
+            :total-label="totalLabel"
+            @go="loadPage"
+            @prev="prevPage()"
+            @next="nextPage()"
+        />
     </div>
 </template>

@@ -249,7 +249,8 @@ async function flaggedTwo(page: Page): Promise<void> {
 }
 
 function flaggedRow(list: Locator, slug: string): Locator {
-    return list.getByRole("listitem").filter({ hasText: slug }).first();
+    // X.F.W14V.au4 (A2-FO-L1-27): the queue is glass DataTable; a row keeps `data-admin-row`.
+    return list.locator("[data-admin-row]").filter({ hasText: slug }).first();
 }
 
 test.describe("a109 UIA-F-109 — the moderation row is padded", () => {
@@ -495,7 +496,7 @@ test.describe("a193 UIA-F-193 — user rows read selected; one count; labelled r
     test.use({ viewport: DESKTOP });
     test("the selected row takes a fill; a header count; the row menu names Suspend and Delete", async ({ page }) => {
         const list = await openUsers(page);
-        const rows = list.getByRole("listitem");
+        const rows = list.locator("[data-admin-row]"); // X.F.W14V.au4: DataTable rows
         await rows.first().getByRole("checkbox").click();
         const bg = (i: number) => rows.nth(i).evaluate((el) => getComputedStyle(el).backgroundColor + "|" + getComputedStyle(el).backgroundImage);
         expect(await bg(0), "selected row differs from the unselected row").not.toBe(await bg(1));

@@ -406,7 +406,8 @@ async function openAdminTab(page: Page, tab: string) {
 test.describe("UIA-F-36 — the users batch bar docks below the list without displacing it", () => {
     test("ticking a row neither moves the rows nor seats the bar off-screen", async ({ page }) => {
         await openAdminTab(page, "Users");
-        const row = page.getByRole("listitem").filter({ hasText: ADMIN_USERS.items[0].user_slug }).first();
+        // X.F.W14V.au4 (A2-FO-L1-27): the users ledger is glass DataTable.
+        const row = page.locator("[data-admin-row]").filter({ hasText: ADMIN_USERS.items[0].user_slug }).first();
         await expect(row).toBeVisible();
         const topBefore = (await row.boundingBox())!.y;
         await row.getByRole("checkbox").click();

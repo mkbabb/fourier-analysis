@@ -173,8 +173,8 @@ async function lineCount(loc: Locator) {
 
 const PANELS = [
     { tab: "Audit Log", label: "Admin audit entries", settle: "suspend_user", rows: ':scope tbody > tr, :scope .data-table-card, :scope > [role="listitem"]' },
-    { tab: "Flagged", label: "Flagged gallery entries", settle: "spiral-lattice-04", rows: '[role="listitem"]' },
-    { tab: "Users", label: "Admin user list", settle: "amber-fox-12", rows: ':scope > [role="listitem"]' },
+    { tab: "Flagged", label: "Flagged gallery entries", settle: "spiral-lattice-04", rows: ':scope tbody > tr, :scope .data-table-card' },
+    { tab: "Users", label: "Admin user list", settle: "amber-fox-12", rows: ':scope tbody > tr, :scope .data-table-card' },
 ] as const;
 
 for (const scheme of ["light", "dark"] as const) {

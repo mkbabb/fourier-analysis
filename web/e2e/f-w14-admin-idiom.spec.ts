@@ -139,10 +139,13 @@ for (const scheme of ["light", "dark"] as const) {
                         return;
                     }
 
-                    const rows = panel.locator(":scope > [role='listitem']");
+                    // X.F.W14V.au4 (A2-FO-L1-27): the users and flagged ledgers are
+                    // glass DataTable (one idiom with the audit log) — a row is a
+                    // table row, or a card below 640 px.
+                    const rows = panel.locator(":scope tbody > tr, :scope .data-table-card");
                     const n = await rows.count();
                     expect(n).toBeGreaterThanOrEqual(2);
-                    expect.soft(await panel.locator(":scope > [data-admin-row]").count(), "rows on the idiom").toBe(n);
+                    expect.soft(await panel.locator("[data-admin-row]").count(), "rows on the idiom").toBe(n);
 
                     for (const t of await sizes(rows, "[data-admin-title]")) {
                         expect.soft(t.px, `title "${t.text}" on --type-small (${rung.small})`).toBeCloseTo(rung.small, 0);
@@ -173,8 +176,18 @@ for (const scheme of ["light", "dark"] as const) {
                     // Every field labelled: no bare value.
                     const fields = panel.locator("[data-admin-field]");
                     if (p.tab === "Flagged") expect.soft(await fields.count(), "tier is a labelled field").toBeGreaterThanOrEqual(n);
+                    // X.F.W14V.au4 (A2-FO-L1-27): a field's label is its column
+                    // header in the table, or its `dt` in the card projection.
                     for (const f of await fields.all()) {
-                        expect.soft((await f.locator("dt").innerText()).trim().length, "field label").toBeGreaterThan(0);
+                        const label = await f.evaluate((el) => {
+                            const dd = el.closest("dd");
+                            if (dd) return dd.previousElementSibling?.tagName === "DT" ? dd.previousElementSibling.textContent ?? "" : "";
+                            const td = el.closest("td");
+                            if (!td) return "";
+                            const i = Array.from(td.parentElement!.children).indexOf(td);
+                            return td.closest("table")?.querySelectorAll("thead th")[i]?.textContent ?? "";
+                        });
+                        expect.soft(label.trim().length, "field label").toBeGreaterThan(0);
                     }
 
                     if (p.tab === "Flagged") {
