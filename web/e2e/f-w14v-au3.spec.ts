@@ -122,20 +122,24 @@ test.describe("X.F.W14V.au3 — equation and morph (1440)", () => {
             const titles = [...document.querySelectorAll<HTMLElement>("[data-card-title]")].filter(
                 (t) => t.getClientRects().length > 0,
             );
+            // The rung is the title's size and its own block margins plus the
+            // inset of the header that holds it (the drift was a hand-set
+            // title margin: --space-residue on one card, --space-body on another).
             return titles.map((t) => {
-                const next = t.closest("[data-slot=card-header]")?.nextElementSibling ?? t.nextElementSibling;
+                const cs = getComputedStyle(t);
+                const host = getComputedStyle(t.parentElement!);
                 return {
                     text: t.textContent!.trim(),
                     glass: t.matches("[data-slot=card-title]") && !!t.closest("[data-slot=card]"),
-                    size: getComputedStyle(t).fontSize,
-                    gap: next ? Math.round(next.getBoundingClientRect().top - t.getBoundingClientRect().bottom) : -1,
+                    size: cs.fontSize,
+                    gap: `${cs.marginTop}/${cs.marginBottom}/${host.paddingTop}`,
                 };
             });
         });
         expect(read.length, "the four /morph cards (three phases, the levels)").toBe(4);
         for (const t of read) expect(t.glass, `${t.text} is a glass CardTitle in a glass Card`).toBe(true);
         expect(new Set(read.map((t) => t.size)).size, `one title size (read ${read.map((t) => t.size)})`).toBe(1);
-        expect(new Set(read.map((t) => t.gap)).size, `one title-to-body gap (read ${read.map((t) => t.gap)})`).toBe(1);
+        expect(new Set(read.map((t) => t.gap)).size, `one title margin and header inset (read ${read.map((t) => t.gap)})`).toBe(1);
     });
 
     for (const route of ["/morph", "/equation", "/visualize"] as const) {
