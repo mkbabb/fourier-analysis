@@ -1,8 +1,8 @@
 /**
  * Pure utility functions for paper search result display — type labels,
- * label formatting, HTML escaping, and fuzzy highlight rendering.
+ * label formatting, HTML escaping, and match highlight rendering.
  */
-import { fuzzyMatch, type SearchResult } from "./paperSearchIndex";
+import { wordMatch, type SearchResult } from "./paperSearchIndex";
 
 /**
  * `PSM-17`: typed `Record<string, string>`, this defeated exhaustiveness over a
@@ -34,6 +34,37 @@ export const TYPE_LABELS: Record<SearchResult["type"], string> = {
  * is by code POINT and it backs up to a token boundary when it can, so a row
  * shows a whole prefix rather than a severed one.
  */
+/**
+ * X.F.W14U.paper — UIA-F-64: the palette's `CommandGroup` headings, one group
+ * per result type (the register's "one `<CommandGroup>` per result type").
+ */
+export const TYPE_GROUPS: Record<SearchResult["type"], string> = {
+    section: "Sections",
+    theorem: "Theorems",
+    definition: "Definitions",
+    lemma: "Lemmas",
+    proposition: "Propositions",
+    corollary: "Corollaries",
+    equation: "Equations",
+    figure: "Figures",
+    code: "Code",
+    proof: "Proofs",
+    bibliography: "Bibliography",
+    aside: "Notes",
+    example: "Examples",
+};
+
+/** Results grouped by type, groups in the order their best result ranks. */
+export function groupByType(results: SearchResult[]): { type: SearchResult["type"]; items: SearchResult[] }[] {
+    const groups = new Map<SearchResult["type"], SearchResult[]>();
+    for (const r of results) {
+        const list = groups.get(r.type);
+        if (list) list.push(r);
+        else groups.set(r.type, [r]);
+    }
+    return [...groups].map(([type, items]) => ({ type, items }));
+}
+
 const LABEL_LIMIT = 120;
 
 function truncate(text: string): string {
@@ -57,11 +88,11 @@ export function resultLabel(r: SearchResult): string {
  * against a lower-cased FIELD while this receives the display label, so its
  * indices were misaligned by construction and nothing ever read them.
  *
- * `PSM-28` — CODE POINTS, NOT CODE UNITS. `fuzzyMatch` walks the string with
+ * `PSM-28` — CODE POINTS, NOT CODE UNITS. `wordMatch` walks the string with
  * `[i]`, i.e. UTF-16 code units, while the renderer below splits with `[...t]`,
  * i.e. code points. The record reproduced both failures by execution:
- * `highlightFuzzy("𝔽ourier basis", "basis")` marked one character off, and
- * `highlightFuzzy("İstanbul set", "set")` marked the wrong characters
+ * `highlightMatch("𝔽ourier basis", "basis")` marked one character off, and
+ * `highlightMatch("İstanbul set", "set")` marked the wrong characters
  * entirely. Mathematical alphanumerics are plausible in this paper's labels.
  *
  * There are TWO length axes here and they are not the same defect. A code point
@@ -79,13 +110,13 @@ export function resultLabel(r: SearchResult): string {
  * highlighter: a mark one character wide in the wrong place is visible to every
  * reader, and a σ/ς near-miss costs a highlight on a query no one has typed.
  */
-export function highlightFuzzy(text: string, query: string): string {
+export function highlightMatch(text: string, query: string): string {
     const chars = [...text];
-    return renderMarked(chars, fuzzyMarks(chars, query), 0);
+    return renderMarked(chars, matchMarks(chars, query), 0);
 }
 
-/** The ORIGINAL code-point indices of `chars` a fuzzy match of `query` marks. */
-function fuzzyMarks(chars: string[], query: string): Set<number> {
+/** The ORIGINAL code-point indices of `chars` a word-start match of `query` marks. */
+function matchMarks(chars: string[], query: string): Set<number> {
     const matchSet = new Set<number>();
     if (!query.trim() || chars.length === 0) return matchSet;
 
@@ -102,7 +133,7 @@ function fuzzyMarks(chars: string[], query: string): Set<number> {
 
     const tokens = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
     for (const token of tokens) {
-        const m = fuzzyMatch(token, textLc);
+        const m = wordMatch(token, textLc);
         if (m) {
             for (const idx of m.matches) {
                 const point = unitToPoint.get(idx);
@@ -142,7 +173,7 @@ const INLINE_MATH = /(?<!\\)\$((?:\\\$|[^$])+?)(?<!\\)\$/g;
  * UIA-F-21 — a result label as the paper reads it.
  *
  * Section titles, captions and theorem names carry inline TeX, and the row
- * printed it raw (`$\mathbf{L}^2…`), with the fuzzy `<mark>`s landing inside
+ * printed it raw (`$\mathbf{L}^2…`), with the `<mark>`s landing inside
  * the source. The label is split into text and `$…$` math: the math is
  * typeset by the paper's own KaTeX renderer (the one `PAPER_CONTEXT` carries,
  * macros and all), and the match is computed over the TEXT segments only, so
@@ -167,7 +198,7 @@ export function highlightLabel(
     if (last < text.length) segments.push({ math: false, value: text.slice(last) });
 
     const prose = segments.filter((seg) => !seg.math).flatMap((seg) => [...seg.value]);
-    const marks = fuzzyMarks(prose, query);
+    const marks = matchMarks(prose, query);
     let offset = 0;
     return segments
         .map((seg) => {

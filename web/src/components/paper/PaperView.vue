@@ -14,7 +14,6 @@ import { useMediaQuery } from "@vueuse/core";
 import PaperToc from "./PaperToc.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
 import PaperSearchModal from "./search/PaperSearchModal.vue";
-import { createPreviewLookup } from "./paperTree";
 import { PAPER_TOC_KEY, assertSectionRampFits, type PaperTocModel } from "./paperToc";
 import { useScrollNavigation } from "./useScrollNavigation";
 import { usePaperSearch } from "./search/usePaperSearch";
@@ -30,6 +29,8 @@ import {
 } from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Card } from "@mkbabb/glass-ui/card";
+import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
 import { Undo2 } from "@lucide/vue";
 
 // ── KaTeX with app-specific macros ─────────────────────────
@@ -175,15 +176,18 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 function handleGlobalKeydown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.code === "KeyK") {
-        if (isTypingTarget(e.target) && !search.isExpanded.value) return;
+        // UIA-F-159: ⌘K from the paper's own search field opens the palette
+        // with the field's query (the retired Expand control's one job). Any
+        // other typing target keeps its keys.
+        const fromSearch = (e.target as Element | null)?.closest?.(".paper-search") != null;
+        if (isTypingTarget(e.target) && !search.isExpanded.value && !fromSearch) return;
         e.preventDefault();
         search.openPalette();
-        return;
     }
-    if (e.key === "Escape" && search.isExpanded.value) {
-        e.preventDefault();
-        search.close();
-    }
+    // X.F.W14U.paper — the palette's Escape is the dialog's (UIA-F-25: one
+    // dismissal owner; Esc collapses and KEEPS the query). A window-level
+    // Escape that called `close()` here cleared the query whenever it ran
+    // before the palette's own layer (glass `Command`'s, UIA-F-64).
 }
 
 const currentPage = ref(pageMap[flatSections[0]?.id] ?? 1);
@@ -220,65 +224,36 @@ watch(
     { immediate: true },
 );
 
-// ── Mobile floating TOC visibility ───────────────────────────
-const mobileNavRef = ref<HTMLElement | null>(null);
-const mobileTocVisible = ref(true);
-let mobileTocObserver: IntersectionObserver | null = null;
 
-// ── I.δ — reading-progress bar (native-first, JS floor) ──────
-// The native `.scroll-progress` recipe owns the bar on a `scroll()`-timeline
-// engine (compositor). This listener is the SOLE writer when that recipe is
-// absent OR INERT — the dual-path-single-writer discipline (no double-run).
-//
-// X·F F.W4 `.e` — `G-F4-PRM-CLOCK`: *"the reduced arm renders a
-// converged/static-truthful frame, never a blank one."* The prior arming
-// condition disarmed this writer under PRM on the reasoning that the native
-// recipe is inert there and a JS bar would defeat PRM. Read at the producer's
-// installed bytes, `@mkbabb/glass-ui/dist/styles/scroll-driven.css`:
-//
-//   .scroll-progress{transform-origin: 0 50%;transform: scaleX(0);}
-//   @media (prefers-reduced-motion: no-preference){ @supports (…){ … } }
-//
-// — the keyframe and the timeline BOTH sit inside the no-preference query, and
-// the base rule is `scaleX(0)`. So under PRM the native path is inert on every
-// engine, and disarming this writer as well left a 2px bar pinned at zero: a
-// reader at the end of the paper is told they have read none of it. That is the
-// blank frame the gate names, and it is worse than motion, because it is false.
-//
-// What is armed here is not a clock. It owns no timer, the bar carries no
-// transition and no easing, and one rAF coalesces a scroll burst into a single
-// write of the position the reader themselves produced. PRM asks for no
-// gratuitous motion; it does not ask to be misinformed.
-const progressBar = ref<HTMLElement | null>(null);
-const NATIVE_SCROLL_TIMELINE =
-    typeof CSS !== "undefined" && CSS.supports("animation-timeline", "scroll()");
+// ── Reading progress (glass ScrollProgressRim) ───────────────
+// X.F.W14U.paper — UIA-F-157: the hand-rolled 2px hairline (a local
+// `.paper-progress-track` running full-bleed under the dock, on the
+// `.scroll-progress` recipe plus a JS floor) is glass `ScrollProgressRim`.
+// The rim takes its aggregate as a value, so this is the one writer: one rAF
+// coalesces a scroll burst into one write of the position the reader
+// produced. It owns no clock and no easing of its own (the rim's fill
+// transition is the producer's, and its PRM arm zeroes it) — `G-F4-PRM-CLOCK`
+// holds: under reduced motion the rim still reads the true position.
+const readingProgress = ref(0);
 let progressRaf = 0;
 function writeProgress() {
     progressRaf = 0;
     const s = scrollContainer.value;
-    const bar = progressBar.value;
-    if (!s || !bar) return;
+    if (!s) return;
     const max = s.scrollHeight - s.clientHeight;
-    const p = max > 0 ? Math.min(1, Math.max(0, s.scrollTop / max)) : 0;
-    bar.style.transform = `scaleX(${p})`;
+    readingProgress.value = max > 0 ? Math.min(1, Math.max(0, s.scrollTop / max)) : 0;
 }
 function onProgressScroll() {
     if (progressRaf) return;
     progressRaf = requestAnimationFrame(writeProgress);
 }
-function armProgressFallback() {
-    const prm =
-        typeof window !== "undefined" &&
-        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    // Absent OR inert — the composited path only holds the bar when it is
-    // actually running, which under PRM it never is.
-    if (NATIVE_SCROLL_TIMELINE && !prm) return;
+function armProgress() {
     const s = scrollContainer.value;
     if (!s) return;
     s.addEventListener("scroll", onProgressScroll, { passive: true });
     writeProgress();
 }
-function disarmProgressFallback() {
+function disarmProgress() {
     scrollContainer.value?.removeEventListener("scroll", onProgressScroll);
     if (progressRaf) cancelAnimationFrame(progressRaf);
     progressRaf = 0;
@@ -352,7 +327,6 @@ const tocModel: PaperTocModel = {
     registerNavEl: (el) => {
         sidebarNavEl.value = el;
     },
-    getPreview: createPreviewLookup(),
 };
 
 provide(PAPER_TOC_KEY, tocModel);
@@ -377,21 +351,12 @@ const currentSection = computed(() =>
 );
 
 onMounted(() => {
-    mobileTocObserver = new IntersectionObserver(
-        (entries) => {
-            for (const entry of entries) {
-                mobileTocVisible.value = entry.isIntersecting;
-            }
-        },
-        { threshold: 0 },
-    );
     nextTick(() => {
-        if (mobileNavRef.value) mobileTocObserver!.observe(mobileNavRef.value);
         updateScrollViewportHeight();
         updateSectionStartOffset();
         recalculate();
         queueSidebarFollow(true);
-        armProgressFallback();
+        armProgress();
 
         // Restore scroll position from session (skip first section — that's the top)
         const saved = restoreSectionId;
@@ -419,9 +384,8 @@ watch([scrollContainer, sectionWindowRoot], ([scroller, root]) => {
 });
 
 onUnmounted(() => {
-    mobileTocObserver?.disconnect();
     scrollContainerResizeObserver?.disconnect();
-    disarmProgressFallback();
+    disarmProgress();
     window.removeEventListener("resize", handleWindowResize);
     window.removeEventListener("keydown", handleGlobalKeydown);
 });
@@ -429,30 +393,19 @@ onUnmounted(() => {
 
 <template>
     <div class="paper-root" :style="paperRootStyle">
+        <ScrollProgressRim :value="readingProgress" class="paper-progress-rim" />
         <div ref="scrollContainer" class="paper-scroll">
-            <!-- I.δ — reading-progress bar. Native path: glass-ui's
-                 `.scroll-progress` recipe (scroll-driven.css) drives the 0..1
-                 `scaleX` on the COMPOSITOR off a `scroll()` timeline
-                 (`--scroll-progress-scroller: nearest` → the enclosing
-                 `.paper-scroll`, so the bar lives INSIDE the scroller it tracks).
-                 Fallback path: when the engine lacks `scroll()` timelines, a tiny
-                 feature-detected listener is the SOLE writer of the bar's
-                 `scaleX` (inv-29 floor). PRM zeroes the native animation (its
-                 `@supports` block sits under `prefers-reduced-motion`), so the
-                 JS writer takes the bar over in that arm rather than leaving it
-                 pinned at zero — `G-F4-PRM-CLOCK`. -->
-            <div class="paper-progress-track">
-                <div ref="progressBar" class="paper-progress-bar scroll-progress" />
-            </div>
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
+            <!-- UIA-F-162: content first. The floating bar is the phone's one
+                 ToC from the top of the paper (the inline chapter list it used
+                 to wait behind pushed the text off the first screen). -->
             <Transition name="slide-down">
                 <PaperToc
-                    v-if="!isDesktop && !mobileTocVisible"
+                    v-if="!isDesktop"
                     presentation="floating"
                     :current-section="currentSection"
                     :render-title="renderTitle"
-                    :scroll-container="scrollContainer"
                     :search="search"
                 />
             </Transition>
@@ -463,7 +416,7 @@ onUnmounted(() => {
                  shared `isExpanded` driving both. -->
             <PaperSearchModal :search="search" />
 
-            <div class="paper-layout mx-auto max-w-5xl px-2 pt-2 pb-0 sm:pt-2 sm:pb-0 sm:px-6">
+            <div class="paper-layout mx-auto max-w-6xl px-2 pt-2 pb-0 sm:pt-2 sm:pb-0 sm:px-6">
                 <div class="paper-columns">
                     <!-- Desktop sidebar TOC. X.F.W14.u — UIA-F-22: ONE PaperSearch
                          per breakpoint. The sidebar was only CSS-hidden below lg,
@@ -476,7 +429,10 @@ onUnmounted(() => {
                     <PaperToc v-if="isDesktop" presentation="rail" :render-title="renderTitle" :search="search" />
 
                     <!-- Main article -->
-                    <article class="paper-article leading-relaxed">
+                    <!-- UIA-F-61: the reading surface is glass Card (opaque: the ToC
+                         drawer slides UNDER it, X.F.W14U.t), not a hand-rolled
+                         cartoon card casting against the rail's shadow. -->
+                    <Card as="article" surface="opaque" shadow class="paper-article leading-relaxed">
                         <header class="mb-10 lg:mb-20 text-center">
                             <h1
                                 class="font-serif-math text-display-2 font-bold tracking-tight leading-display"
@@ -485,32 +441,6 @@ onUnmounted(() => {
                             </h1>
                         </header>
 
-                        <!-- Mobile-only inline TOC. `D/m-6`: the landmark had no
-                             name, so a reader listing landmarks found two
-                             unlabelled navs on one page. `L/D15`: this third ToC
-                             is also the IntersectionObserver sentinel for the
-                             floating bar — stated, because nothing else said so. -->
-                        <nav
-                            ref="mobileNavRef"
-                            aria-label="Chapters"
-                            class="mb-14 font-serif-math text-sm text-muted-foreground lg:hidden"
-                        >
-                            <ol class="list-none space-y-1.5 pl-0">
-                                <li v-for="section in paperSections" :key="section.id">
-                                    <Button
-                                        emphasis="text"
-                                        size="sm"
-                                        class="mobile-toc-link"
-                                        @click="navigateTo(section.id)"
-                                    >
-                                        <template v-if="section.number">
-                                            <span>{{ section.number }}. </span>
-                                        </template>
-                                        <span v-html="renderTitle(section.title)" />
-                                    </Button>
-                                </li>
-                            </ol>
-                        </nav>
 
                         <PaperArticleWindow
                             :visible-items="visibleItems"
@@ -519,7 +449,7 @@ onUnmounted(() => {
                             :register-root="registerWindowRoot"
                             :measure-section="measureSection"
                         />
-                    </article>
+                    </Card>
                 </div>
             </div>
         </div>
@@ -531,7 +461,7 @@ onUnmounted(() => {
                  announcement, and `user-select: none` so it could not even be
                  copied. `role="status"` announces the page politely as it
                  changes; the ink is the strong rung; the text is selectable. -->
-            <div class="overlay-page glass-wash fira-code" role="status" aria-live="polite">
+            <div class="overlay-page glass-quiet fira-code" role="status" aria-live="polite">
                 pg {{ currentPage }}<span class="overlay-page-sep">/</span>{{ totalPages }}
             </div>
 
@@ -610,45 +540,6 @@ onUnmounted(() => {
     max-width: 100dvw;
 }
 
-/* ── I.δ — reading-progress bar ───────────────────────────────
-   The track is sticky at the top of the `.paper-scroll` viewport; the bar
-   inside it scales 0→1 across the full read. The native path is glass-ui's
-   `.scroll-progress` (composited `scroll()` timeline), which binds to the
-   nearest scrollport — `.paper-scroll` — by its own default. The JS floor
-   writes the same `scaleX` when that path is absent or, under PRM, inert. */
-.paper-progress-track {
-    position: sticky;
-    top: 0;
-    z-index: var(--z-overlay);
-    height: 2px;
-    width: 100%;
-    pointer-events: none;
-    /* Pull the 2px track out of the flow so it does not nudge content down. */
-    margin-bottom: -2px;
-}
-
-.paper-progress-bar {
-    height: 100%;
-    width: 100%;
-    transform-origin: 0 50%;
-    /* Initial/fallback resting state — overwritten by the native recipe's
-       `scaleX` keyframe or the JS floor's inline `transform`. */
-    transform: scaleX(0);
-    background: linear-gradient(
-        to right,
-        color-mix(in srgb, var(--primary) 70%, transparent),
-        var(--primary)
-    );
-    border-radius: var(--radius-pill);
-    /* ⊘ `--scroll-progress-scroller` WAS DECLARED HERE AND READ BY NOBODY. The
-       producer's recipe reads `var(--scroll-progress-timeline, scroll(nearest
-       block))` — a different name — so the declaration bound nothing, and the
-       bar tracked the nearest scrollport only because that is already the
-       default. The behaviour was right by accident and the line said it was
-       right by construction. Deleted rather than renamed: the default IS the
-       intent, and a declaration that restates a default is the next dead one. */
-}
-
 .teleport-overlay {
     position: fixed;
     inset: 0;
@@ -676,10 +567,8 @@ onUnmounted(() => {
     -webkit-font-smoothing: antialiased;
     hyphens: auto;
     min-width: 0;
-    border-radius: var(--radius-panel);
-    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    background: var(--card);
-    box-shadow: var(--shadow-cartoon);
+    /* UIA-F-61: radius, border, fill and cast are glass Card's (`--radius-card`,
+       the opaque plate, the one light source). The padding is the page's. */
     padding: 1.25rem 1rem;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -786,8 +675,10 @@ onUnmounted(() => {
        it is also the register declared for ink over a glass plate
        (`--on-glass-muted-strong`), which is what `.glass-wash` makes this. */
     color: var(--muted-foreground-strong);
-    border-radius: var(--radius-md);
-    padding: 0.25rem 0.5rem;
+    /* UIA-F-234: on glass-quiet, at the control radius (the Back button's
+       pill beside it) through the quiet tier's own contextual radius. */
+    --radius-ctx: var(--radius-control);
+    padding: 0.25rem 0.75rem;
     letter-spacing: 0.02em;
 }
 

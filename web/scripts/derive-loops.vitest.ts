@@ -32,16 +32,19 @@ describe("deriver (G-F4-DERIVER)", () => {
         expect(d.method.limits.length).toBeGreaterThan(0);
     });
 
-    it("BS-1: finds the paper ToC's three nested native <li v-for> (PaperToc.vue, the rail; was PaperSidebar.vue until X.F.W14U.t)", () => {
+    it("BS-1: finds the paper ToC's nested native <li v-for> — three per presentation (PaperToc.vue; was PaperSidebar.vue until X.F.W14U.t)", () => {
         // The canonical callsite-keyed miss. A census keyed on component
         // callsites reports ZERO here; all three sit on a native `<li>`.
         // X.F.W14U.t: the rail and the floating bar are one file now; the
         // floating presentation's two loops (a `<template>` and a `Button`
-        // callsite) sit beside these, so the rail's `<li>` rows are selected.
+        // callsite) sat beside these, so the rail's `<li>` rows were selected.
+        // X.F.W14U.paper (UIA-F-67): the floating ToC is the same nested list
+        // on the same model (chapter / section / subsection), so the file now
+        // carries the three native `<li v-for>` twice — rail and floating.
         const rows = d.nativeLoopsByDirective.rows.filter(
             (r) => r.file.endsWith("PaperToc.vue") && r.host === "li",
         );
-        expect(rows).toHaveLength(3);
+        expect(rows).toHaveLength(6);
         expect(rows.every((r) => r.native)).toBe(true);
         expect(rows.every((r) => r.host === "li")).toBe(true);
     });

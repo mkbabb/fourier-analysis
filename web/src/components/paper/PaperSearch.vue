@@ -38,13 +38,11 @@ defineExpose({ focus });
 
 <template>
     <div ref="rootRef" class="paper-search" :class="`paper-search--${variant}`">
-        <PaperSearchInput
-            ref="searchInputRef"
-            :search="search"
-            :variant="variant"
-            :can-expand="variant === 'sidebar' && !!search.query.value && search.results.value.length > 0"
-            @expand="search.toggleExpanded()"
-        />
+        <!-- UIA-F-159: one inline surface plus ⌘K. The Expand control was a
+             third way into the same query (and the palette's ✕ meant the
+             opposite of this field's); ⌘K from this field now carries the
+             query into the palette. -->
+        <PaperSearchInput ref="searchInputRef" :search="search" :variant="variant" />
         <PaperSearchDropdown
             :search="search"
             :variant="variant"

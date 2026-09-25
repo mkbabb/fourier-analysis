@@ -828,7 +828,9 @@ test.describe("UIA-F-25 — the search palette has one dismissal owner", () => {
         await page.goto("/paper");
         const field = page.getByRole("combobox", { name: "Search the paper" }).first();
         await field.fill("Parseval");
-        await page.getByRole("button", { name: "Expand the search palette" }).click();
+        // X.F.W14U.paper — UIA-F-159 retired the Expand control; ⌘K from the
+        // field is the one way into the palette with the field's query.
+        await field.press("ControlOrMeta+k");
         const dialog = page.getByRole("dialog", { name: "Search the paper" });
         await expect(dialog).toBeVisible();
         const clear = dialog.getByRole("button", { name: "Clear" });

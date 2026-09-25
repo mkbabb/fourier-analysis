@@ -33,6 +33,7 @@ import type { PaperSearchState } from "./search/usePaperSearch";
 import { injectPaperToc, sectionColorVar } from "./paperToc";
 import { safeGetItem, safeSetItem } from "@/composables/useSafeStorage";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@mkbabb/glass-ui/popover";
 import {
     Collapsible,
     CollapsibleContent,
@@ -48,7 +49,7 @@ import {
     Search,
     X,
 } from "@lucide/vue";
-import { nextTick, onBeforeUnmount, onUnmounted, ref, useId, useTemplateRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from "vue";
 
 const props = defineProps<{
     presentation: "rail" | "floating";
@@ -56,8 +57,6 @@ const props = defineProps<{
     search: PaperSearchState;
     /** `floating` only: the section the bar names. */
     currentSection?: PaperSectionData | null;
-    /** `floating` only: locked while the dropdown is open (iOS WebKit). */
-    scrollContainer?: HTMLElement | null;
 }>();
 
 // ── The ONE ToC model, injected (COHESION §0o ESC-2 / §3 D9) ───────────────
@@ -73,7 +72,8 @@ const {
     toggleSection,
     navigateTo,
     scrollToTop,
-    getPreview,
+    activeId,
+    treeIndex,
 } = toc;
 
 // X·F F.W4 `.e` — `fr-PaperSidebar D-M11`: `v-if="section.subsections"` is
@@ -147,34 +147,22 @@ function toggleDrawer() {
 const dropdownId = `floating-toc-${useId()}`;
 const floatingTocOpen = ref(false);
 const searchActive = ref(false);
-const dropdownRef = ref<HTMLElement | null>(null);
 const mobileSearchRef = ref<InstanceType<typeof PaperSearch> | null>(null);
 /** UIA-F-23: the whole search bar is the search's dismissal boundary. */
 const searchBarRef = ref<HTMLElement | null>(null);
-// Focus returns to the trigger after the dropdown is dismissed (A4 MED).
-const tocTriggerRef = useTemplateRef<unknown>("tocTrigger");
+// UIA-F-67: dismissal (Esc, outside), focus into the panel and back to the
+// trigger are glass Popover's. The hand-rolled `dismissDropdown`, the focus
+// hand-off and the inline `overflow: hidden` write on `.paper-scroll` (a scroll
+// lock the non-modal popover does not need) are gone.
 
-function dismissDropdown() {
-    floatingTocOpen.value = false;
-    nextTick(() => elementOf(tocTriggerRef.value)?.focus());
-}
-
-// Lock the scroll container while the dropdown is open (iOS WebKit), and move
-// focus into the dropdown so its `@keydown.esc` receives the key (A4 MED).
-watch(floatingTocOpen, (open) => {
-    if (props.scrollContainer) {
-        props.scrollContainer.style.overflow = open ? "hidden" : "";
-    }
-    if (open) {
-        nextTick(() => dropdownRef.value?.focus());
-    }
-});
-
-// Restore scroll if the component unmounts while open.
-onUnmounted(() => {
-    if (props.scrollContainer) {
-        props.scrollContainer.style.overflow = "";
-    }
+/**
+ * UIA-F-236: the bar reports the chapter AND the section being read. The
+ * active entry of the one model, when it is not the chapter itself.
+ */
+const activeLeaf = computed<PaperSectionData | null>(() => {
+    const id = activeId.value;
+    if (!id || id === activeRootId.value) return null;
+    return treeIndex.get(id)?.node ?? null;
 });
 
 function selectSection(id: string) {
@@ -217,7 +205,8 @@ watch(
             <nav
                 :id="drawerId"
                 ref="sidebarNav"
-                class="sidebar-nav scrollbar-thin"
+                class="sidebar-nav glass-quiet scrollbar-thin"
+                :data-contents="contentsOpen ? 'open' : 'closed'"
                 aria-label="Table of contents"
                 :inert="!drawerOpen"
             >
@@ -258,32 +247,46 @@ watch(
                     </div>
                     <CollapsibleContent>
                         <ol class="sidebar-list">
-                            <li v-for="(section, si) in sections" :key="section.id">
+                            <li
+                                v-for="(section, si) in sections"
+                                :key="section.id"
+                                :style="{ '--toc-accent': sectionColorVar(si) }"
+                            >
                                 <!-- X·F F.W4 `.e` — L-5(a) + L-1: navigate and toggle
                                      are two controls; `@update:open` is reached by
                                      exactly one path, the trigger. -->
+                                <!-- X.F.W14U.paper — UIA-F-156: ONE active treatment
+                                     (`.sidebar-link[aria-current]`) at every rank, in
+                                     the chapter's hue through `--toc-accent` on its
+                                     `<li>`, where each rank used to carry its own
+                                     inline `:style` literal. UIA-F-164/F-234: the
+                                     per-row statistics tooltip is gone (it covered
+                                     the article heading and collided with the search
+                                     panel). UIA-F-147 (consumer half): the rows ride
+                                     Button's own `sm` rung; the start alignment is
+                                     glass's row arm (O-59), the rest is Button's. -->
                                 <Collapsible
                                     :open="isExpanded(section.id)"
                                     @update:open="toggleSection(section.id)"
                                 >
                                     <div class="sidebar-row">
-                                        <Tooltip :text="getPreview(section)" side="right">
-                                            <Button
-                                                emphasis="quiet"
-                                                :data-toc-id="section.id"
-                                                @click="navigateAndReveal(section.id)"
-                                                class="sidebar-link font-serif-math"
-                                                :aria-current="activeRootId === section.id ? 'location' : undefined"
-                                                :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
-                                            >
-                                                <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
-                                                <span v-html="renderTitle(section.title)" />
-                                            </Button>
-                                        </Tooltip>
+                                        <Button
+                                            emphasis="quiet"
+                                            size="sm"
+                                            :data-toc-id="section.id"
+                                            @click="navigateAndReveal(section.id)"
+                                            class="sidebar-link font-serif-math"
+                                            :aria-current="activeRootId === section.id ? 'location' : undefined"
+                                        >
+                                            <span v-if="section.number" class="sidebar-number fira-code">{{ section.number }}.</span>
+                                            <span v-html="renderTitle(section.title)" />
+                                        </Button>
+                                        <!-- UIA-F-156: a compact disclosure (the `xs` rung;
+                                             the touch floor is the producer's). -->
                                         <CollapsibleTrigger v-if="hasChildren(section)" as-child>
                                             <Button
                                                 emphasis="quiet"
-                                                size="md" icon-only
+                                                size="xs" icon-only
                                                 class="sidebar-disclosure"
                                                 :aria-label="`Subsections of ${plainTitle(section)}`"
                                             >
@@ -294,32 +297,26 @@ watch(
                                     <CollapsibleContent v-if="hasChildren(section)">
                                         <ol class="sidebar-sublist">
                                             <li v-for="sub in section.subsections" :key="sub.id">
-                                                <Tooltip :text="getPreview(sub)" side="right">
-                                                    <Button
-                                                        emphasis="quiet"
-                                                        :data-toc-id="sub.id"
-                                                        @click="navigateTo(sub.id)"
-                                                        class="sidebar-link sidebar-sublink font-serif-math"
-                                                        :aria-current="isActive(sub.id) ? 'location' : undefined"
-                                                        :style="isActive(sub.id)
-                                                            ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
-                                                            : {}"
-                                                    >
-                                                        <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
-                                                        <span v-html="renderTitle(sub.title)" />
-                                                    </Button>
-                                                </Tooltip>
+                                                <Button
+                                                    emphasis="quiet"
+                                                    size="sm"
+                                                    :data-toc-id="sub.id"
+                                                    @click="navigateTo(sub.id)"
+                                                    class="sidebar-link sidebar-sublink font-serif-math"
+                                                    :aria-current="isActive(sub.id) ? 'location' : undefined"
+                                                >
+                                                    <span v-if="sub.number" class="sidebar-number fira-code">{{ sub.number }}.</span>
+                                                    <span v-html="renderTitle(sub.title)" />
+                                                </Button>
                                                 <ol v-if="sub.subsections && isInActiveChain(sub.id)" class="sidebar-subsublist">
                                                     <li v-for="subsub in sub.subsections" :key="subsub.id">
                                                         <Button
                                                             emphasis="quiet"
+                                                            size="sm"
                                                             :data-toc-id="subsub.id"
                                                             @click="navigateTo(subsub.id)"
                                                             class="sidebar-link sidebar-subsublink font-serif-math"
                                                             :aria-current="isActive(subsub.id) ? 'location' : undefined"
-                                                            :style="isActive(subsub.id)
-                                                                ? { color: sectionColorVar(si), fontWeight: '600', background: 'color-mix(in srgb, var(--muted) 40%, transparent)' }
-                                                                : {}"
                                                         >
                                                             <span v-if="subsub.number" class="sidebar-number fira-code">{{ subsub.number }}.</span>
                                                             <span v-html="renderTitle(subsub.title)" />
@@ -359,121 +356,143 @@ watch(
         </div>
     </aside>
 
-    <!-- ── floating: the bar + dropdown below lg ─────────────────────────── -->
+    <!-- ── floating: the bar + its ToC popover below lg ──────────────────── -->
+    <!-- X.F.W14U.paper — UIA-F-67: the phone ToC is glass Popover anchored to
+         the bar (dismissal, focus, Esc and focus return are the producer's; the
+         hand-rolled plate, backdrop, focus trap and the inline `overflow` write
+         on `.paper-scroll` are gone), and its tree is the rail's ONE model on
+         glass Collapsible, every level reachable. UIA-F-162/F-236: a compact
+         bar inset from the viewport edges, reporting chapter and section. -->
     <div v-else class="floating-toc lg:hidden">
         <div class="floating-toc-anchor">
             <!-- Search mode: input replaces section title -->
             <div v-if="searchActive" ref="searchBarRef" class="floating-toc-bar floating-toc-bar--search glass-resting">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" :boundary="searchBarRef" />
-                <Button emphasis="quiet" size="md" icon-only type="button" class="floating-toc-search-close" @click="closeMobileSearch" aria-label="Close search">
-                    <X class="h-4 w-4" />
+                <Button emphasis="quiet" size="sm" icon-only type="button" class="floating-toc-search-close" @click="closeMobileSearch" aria-label="Close search">
+                    <X class="floating-toc-icon" />
                 </Button>
             </div>
             <!-- Normal mode: section title + search icon. `D/B-4`: the search
-                 control is a real sibling `<Button>`, outside the trigger.
-                 `D/M-13`: the trigger announces its state and its panel. -->
+                 control is a real sibling `<Button>`, outside the trigger. -->
             <div v-else class="floating-toc-bar floating-toc-bar--trigger glass-resting">
+                <Popover v-model:open="floatingTocOpen">
+                    <PopoverTrigger as-child>
+                        <Button
+                            emphasis="quiet"
+                            size="sm"
+                            type="button"
+                            class="floating-toc-title-btn"
+                        >
+                            <span class="floating-toc-section font-serif-math">
+                                <span class="floating-toc-crumb">
+                                    <span v-if="currentSection?.number" class="floating-toc-number fira-code">{{ currentSection.number }}.</span>
+                                    <span v-if="currentSection" v-html="renderTitle(currentSection.title)" />
+                                </span>
+                                <span v-if="activeLeaf" class="floating-toc-crumb floating-toc-crumb--leaf">
+                                    <span v-if="activeLeaf.number" class="floating-toc-number fira-code">{{ activeLeaf.number }}.</span>
+                                    <span v-html="renderTitle(activeLeaf.title)" />
+                                </span>
+                            </span>
+                            <ChevronDown class="floating-toc-chevron" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        :id="dropdownId"
+                        class="floating-toc-dropdown scrollbar-thin w-[calc(100vw-1rem)] max-h-[min(70dvh,32rem)] overflow-y-auto overscroll-contain"
+                        align="start"
+                        :side-offset="6"
+                        aria-label="Table of contents"
+                    >
+                        <Button
+                            emphasis="quiet"
+                            size="sm"
+                            class="floating-toc-item floating-toc-top font-serif-math"
+                            @click="handleScrollToTop"
+                        >
+                            <ChevronUp class="floating-toc-icon" />
+                            <span>Scroll to top</span>
+                        </Button>
+                        <div class="floating-toc-divider" />
+                        <ol class="floating-toc-list">
+                            <li
+                                v-for="(section, si) in sections"
+                                :key="section.id"
+                                :style="{ '--toc-accent': sectionColorVar(si) }"
+                            >
+                                <Collapsible
+                                    :open="isExpanded(section.id)"
+                                    @update:open="toggleSection(section.id)"
+                                >
+                                    <div class="floating-toc-row">
+                                        <Button
+                                            emphasis="quiet"
+                                            size="sm"
+                                            class="floating-toc-item floating-toc-root font-serif-math"
+                                            :aria-current="activeRootId === section.id ? 'location' : undefined"
+                                            @click="selectSection(section.id)"
+                                        >
+                                            <span class="floating-toc-number fira-code">{{ section.number }}.</span>
+                                            <span v-html="renderTitle(section.title)" />
+                                        </Button>
+                                        <CollapsibleTrigger v-if="hasChildren(section)" as-child>
+                                            <Button
+                                                emphasis="quiet"
+                                                size="sm"
+                                                icon-only
+                                                class="floating-toc-disclosure"
+                                                :aria-label="`Subsections of ${plainTitle(section)}`"
+                                            >
+                                                <ChevronRight class="floating-toc-collapse-icon" />
+                                            </Button>
+                                        </CollapsibleTrigger>
+                                    </div>
+                                    <CollapsibleContent v-if="hasChildren(section)">
+                                        <ol class="floating-toc-sublist">
+                                            <li v-for="sub in section.subsections" :key="sub.id">
+                                                <Button
+                                                    emphasis="quiet"
+                                                    size="sm"
+                                                    class="floating-toc-item floating-toc-sub font-serif-math"
+                                                    :aria-current="isActive(sub.id) ? 'location' : undefined"
+                                                    @click="selectSection(sub.id)"
+                                                >
+                                                    <span class="floating-toc-number fira-code">{{ sub.number }}.</span>
+                                                    <span v-html="renderTitle(sub.title)" />
+                                                </Button>
+                                                <ol v-if="sub.subsections?.length" class="floating-toc-sublist">
+                                                    <li v-for="subsub in sub.subsections" :key="subsub.id">
+                                                        <Button
+                                                            emphasis="quiet"
+                                                            size="sm"
+                                                            class="floating-toc-item floating-toc-subsub font-serif-math"
+                                                            :aria-current="isActive(subsub.id) ? 'location' : undefined"
+                                                            @click="selectSection(subsub.id)"
+                                                        >
+                                                            <span class="floating-toc-number fira-code">{{ subsub.number }}.</span>
+                                                            <span v-html="renderTitle(subsub.title)" />
+                                                        </Button>
+                                                    </li>
+                                                </ol>
+                                            </li>
+                                        </ol>
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            </li>
+                        </ol>
+                    </PopoverContent>
+                </Popover>
                 <Button
-                    ref="tocTrigger"
                     emphasis="quiet"
-                    type="button"
-                    class="floating-toc-title-btn"
-                    :aria-expanded="floatingTocOpen"
-                    :aria-controls="dropdownId"
-                    @click="floatingTocOpen = !floatingTocOpen"
-                >
-                    <span class="floating-toc-section font-serif-math">
-                        <span class="fira-code text-xs opacity-50">{{ currentSection?.number }}.</span>
-                        {{ currentSection?.title }}
-                    </span>
-                    <ChevronDown class="floating-toc-chevron" :class="{ 'rotate-180': floatingTocOpen }" />
-                </Button>
-                <Button
-                    emphasis="quiet"
-                    size="md" icon-only
+                    size="sm"
+                    icon-only
                     type="button"
                     class="floating-toc-search-btn"
                     aria-label="Search paper"
                     @click="openMobileSearch"
                 >
-                    <Search class="h-3.5 w-3.5" />
+                    <Search class="floating-toc-icon" />
                 </Button>
             </div>
-            <Transition name="toc-expand">
-                <div
-                    v-if="floatingTocOpen"
-                    :id="dropdownId"
-                    ref="dropdownRef"
-                    class="floating-toc-dropdown glass-floating"
-                    role="group"
-                    aria-label="Table of contents"
-                    tabindex="-1"
-                    @keydown.esc="dismissDropdown"
-                >
-                    <Button
-                        emphasis="quiet"
-                        class="floating-toc-item floating-toc-top font-serif-math"
-                        @click="handleScrollToTop"
-                    >
-                        <ChevronUp class="floating-toc-top-icon" />
-                        Scroll to top
-                    </Button>
-
-                    <div class="floating-toc-divider" />
-
-                    <template v-for="(section, si) in sections" :key="section.id">
-                        <!-- X.F.W14.u — UIA-F-24: navigate and toggle are two
-                             controls, as in the rail (L-5(a)). -->
-                        <div class="floating-toc-row">
-                            <Button
-                                emphasis="quiet"
-                                class="floating-toc-item floating-toc-root font-serif-math"
-                                :aria-current="activeRootId === section.id ? 'location' : undefined"
-                                :style="activeRootId === section.id ? { color: sectionColorVar(si) } : {}"
-                                @click="selectSection(section.id)"
-                            >
-                                <span class="fira-code text-xs opacity-50">{{ section.number }}.</span>
-                                {{ section.title }}
-                            </Button>
-                            <Button
-                                v-if="hasChildren(section)"
-                                emphasis="quiet"
-                                size="md"
-                                icon-only
-                                class="floating-toc-disclosure"
-                                :aria-label="`Subsections of ${plainTitle(section)}`"
-                                :aria-expanded="isExpanded(section.id)"
-                                @click="toggleSection(section.id)"
-                            >
-                                <component
-                                    :is="isExpanded(section.id) ? ChevronDown : ChevronRight"
-                                    class="floating-toc-collapse-icon"
-                                />
-                            </Button>
-                        </div>
-                        <template v-if="isExpanded(section.id)">
-                            <Button
-                                v-for="sub in section.subsections"
-                                :key="sub.id"
-                                emphasis="quiet"
-                                class="floating-toc-item floating-toc-sub font-serif-math"
-                                @click="selectSection(sub.id)"
-                            >
-                                <span class="fira-code text-xs opacity-40">{{ sub.number }}.</span>
-                                {{ sub.title }}
-                            </Button>
-                        </template>
-                    </template>
-                </div>
-            </Transition>
-
-            <!-- Backdrop to close dropdown on outside tap -->
-            <div
-                v-if="floatingTocOpen"
-                class="floating-toc-backdrop"
-                aria-hidden="true"
-                @click="dismissDropdown"
-            />
         </div>
     </div>
 </template>
@@ -492,9 +511,9 @@ watch(
    holds it from the first frame). Expanding reverses the same width, so the
    ToC returns exactly to its place. */
 .paper-sidebar {
-    --sidebar-top-inset: 1rem;
+    --sidebar-top-inset: 0.5rem;
     --sidebar-bottom-inset: 1.5rem;
-    --paper-toc-width: 220px;
+    --paper-toc-width: 17rem;
     /* The tab rail is the gutter between the ToC and the paper. */
     --paper-toc-tab: var(--control-h-sm);
     --paper-toc-motion: var(--duration-slow) var(--ease-out-expo);
@@ -558,10 +577,22 @@ watch(
     scroll-padding-bottom: var(--sidebar-bottom-inset);
     touch-action: pan-y;
     padding: 0.625rem 0.625rem var(--sidebar-bottom-inset);
-    border-radius: var(--radius-panel);
-    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    background: var(--card);
-    box-shadow: 3px 3px 0px 0px color-mix(in srgb, var(--foreground) 8%, transparent);
+    /* X.F.W14U.paper — UIA-F-61: the rail is `.glass-quiet` (DESIGN.md:47),
+       not a hand-rolled cartoon card whose +3px cast fell against the
+       article's −3px (two light sources). Border, fill and cast are the quiet
+       tier's; the panel radius (F.W13 frame 1) reaches it through the tier's
+       own contextual radius. */
+    --radius-ctx: var(--radius-panel);
+}
+
+/* UIA-F-234: a collapsed CONTENTS reclaims its space — the card hugs its
+   header instead of keeping the list's bottom inset as an empty band. */
+.sidebar-nav[data-contents="closed"] {
+    padding-bottom: 0.625rem;
+}
+
+.sidebar-nav[data-contents="closed"] .sidebar-header {
+    margin-bottom: 0;
 }
 
 .sidebar-header {
@@ -639,71 +670,29 @@ watch(
     transform: rotate(90deg);
 }
 
+/* X.F.W14U.paper — UIA-F-147 (consumer half) + UIA-F-156: the rows are glass
+   Button at its own `sm` rung (`min-block-size: --control-h-sm`; a wrapped
+   title grows the row, nothing fights the rung). The local padding, fill,
+   border and hover paint are gone — Button's quiet emphasis owns them. What
+   stays is the row canon the F.W14.r ruling names (`--radius-lg`, G-r2), the
+   start alignment glass's list-row arm will own (O-59: `variant="row"`), and
+   the rank typography that is the ToC's hierarchy. */
 .sidebar-link {
-    display: block;
-    width: 100%;
-    text-align: left;
-    /* `D-M10` = `C-M1(a)`: the Button base ships `whitespace-nowrap`, which
-       nothing here reset — so ToC titles could not wrap in a 220px rail and
-       minted a horizontal scroll axis instead. The authored `line-height:
-       1.35` below is the tell that these rows were meant to wrap. */
+    inline-size: 100%;
+    justify-content: flex-start;
+    text-align: start;
     white-space: normal;
-    background: none;
-    border: none;
-    cursor: pointer;
     @apply text-base;
-    font-weight: 500;
     line-height: 1.35;
-    padding: 0.28rem 0.625rem;
-    /* X.F.W14.r — F.W13 `.a` residual (r2): the row's corner is the glass
-       row canon, the `--radius-lg` its own `.interactive-item` / menu-row
-       idiom carries, not a hand-derived `calc(var(--radius) - 2px)`. */
     border-radius: var(--radius-lg);
-    color: var(--muted-foreground);
-    /* `PV ★MF-6`: `font-weight` was in the transitioned set — a reflow per
-       frame plus synthesized-weight snapping against the remapped serif, and
-       only for full-motion users. Deleted, not re-tuned.
-       `D-M6`: the durations are the canonical registers now, and a colour
-       cross-fade gets the standard curve rather than the expo one the
-       producer's own doctrine reserves for movement. */
-    transition:
-        color var(--duration-fast) var(--ease-standard),
-        background-color var(--duration-fast) var(--ease-standard);
 }
 
-.sidebar-link:hover {
-    color: var(--foreground);
-    background: color-mix(in srgb, var(--muted) 70%, transparent);
-}
-
-/* `D-M3`: the hover plate measured 1.022:1 light / 1.08 dark — a response the
-   eye cannot see — and the ACTIVE row, the likeliest pointer target, had none
-   at all because `background: none` won by source order over the hover rule.
-   The plate is a real one now and the active row keeps it. */
-/* X.F.W3 repair 1 — the published active-state vocabulary, applied
-   (`FR-COB-3` ⊕ `fr-App MG-η`). Two spellings died here, not one. `.is-active`
-   on the section row was the state itself on a control that announced nothing;
-   `.is-active-sub` on the subsection row was the vocabulary's DEAD spelling —
-   no `.is-active-sub` rule exists in this file or anywhere in the tree (⟨cmd⟩
-   `grep -rn 'is-active-sub' src` → that one binding), so it painted nothing
-   while teaching the next reader a channel that does nothing. Both are now
-   `aria-current`, the channel the vocabulary gives a nav item marking the
-   current location; `location` and not `page`, because these rows address
-   SECTIONS INSIDE one document rather than sibling routes, and the hook
-   `[aria-current]` is value-agnostic by construction. The sub-subsection row
-   gains the same attribute: it could already be the current location and was
-   the one rank that announced it by neither class nor attribute. The
-   conditional `:style` beside each stays — a per-section colour the cascade
-   cannot express without a variable, not a state spelling. Note the ROW
-   SEMANTICS the attribute fixes: the old sub binding was `isActive(sub.id) ||
-   isInActiveChain(sub.id)`, which would have marked an ANCESTOR of the current
-   section as current; `aria-current` is bound to `isActive` alone. */
+/* UIA-F-156: ONE active treatment at every rank, in the chapter's hue
+   (`--toc-accent`, set on the chapter's `<li>`). */
 .sidebar-link[aria-current] {
+    color: var(--toc-accent);
     font-weight: 600;
-}
-
-.sidebar-link[aria-current]:hover {
-    background: color-mix(in srgb, var(--muted) 70%, transparent);
+    background: color-mix(in srgb, var(--muted) 40%, transparent);
 }
 
 .sidebar-number {
@@ -716,16 +705,6 @@ watch(
     opacity: 0.8;
 }
 
-/* W3.5.c — Collapsible animation driven by glass-ui `CollapsibleContent`
-   (reka-ui's `--reka-collapsible-content-height` CSS var).
-   X·F F.W4 `.e` — `fr-PaperSidebar D-B1` re-measured at the ADOPTED pin: the
-   recipe `.disclosure-content{animation-name:disclosure-open|close;
-   animation-duration:var(--spring-present-duration); overflow:hidden}` is
-   emitted by `dist/glass-ui.css`, which `dist/styles/index.css` imports at its
-   tail — so the comment above is TRUE at 8.0.0 and was false only at the 4.0.0
-   pin the record was taken against (root cause `M1`). `C-m8`: the local
-   `.sidebar-sublist-wrapper{overflow:hidden}` restated that producer invariant
-   verbatim and is deleted rather than doubled. */
 .sidebar-sublist {
     list-style: none;
     padding: 0 0 0 0.625rem;
@@ -734,7 +713,6 @@ watch(
 
 .sidebar-sublink {
     font-size: 0.78rem;
-    padding: 0.2rem 0.45rem;
 }
 
 .sidebar-subsublist {
@@ -745,88 +723,26 @@ watch(
 
 .sidebar-subsublink {
     font-size: 0.72rem;
-    padding: 0.15rem 0.32rem;
 }
 
-/* ── floating ───────────────────────────────────────────────────────────── */
+/* ── floating (below lg) ─────────────────────────────────────────────────────
+   X.F.W14U.paper — UIA-F-162: the bar is in flow at the top of the paper and
+   sticks there (content first: the first screen is the paper, not a centred
+   chapter list); it is compact (the `sm` rung, `text-sm` title) and inset from
+   the viewport edges, so the glass-resting corners never meet the screen's
+   (UIA-F-236). */
 .floating-toc {
     position: sticky;
     top: 0;
     z-index: var(--z-controls);
-    height: 0;
-    overflow: visible;
-}
-
-.floating-toc-anchor {
-    position: relative;
+    padding: 0.5rem 0.5rem 0;
 }
 
 .floating-toc-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.625rem 1rem;
-    border: none;
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-    cursor: pointer;
-    text-align: left;
-    @apply text-base;
-    font-weight: 500;
-    color: var(--foreground);
-    position: relative;
-    z-index: 2;
-}
-
-.floating-toc-section {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-    min-width: 0;
-}
-
-.floating-toc-title-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 1;
-    min-width: 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    color: inherit;
-    padding: 0;
-}
-
-.floating-toc-search-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    gap: 0.25rem;
     padding: 0.25rem;
-    border-radius: var(--radius-sm);
-    background: none;
-    border: none;
-    cursor: pointer;
-    /* `PV D/M-9`: the 50% dilution measured 2.x:1 against the bar. */
-    color: var(--muted-foreground);
-    /* A.W3.d — named properties + canonical token, no `transition: all`. */
-    transition: color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
-}
-
-.floating-toc-search-btn:hover {
-    color: var(--foreground);
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
-}
-
-.floating-toc-bar--search {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: default;
 }
 
 .floating-toc-bar--search > :first-child {
@@ -834,103 +750,95 @@ watch(
     min-width: 0;
 }
 
-.floating-toc-search-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    border: none;
-    background: none;
-    /* `D/M-9`: the 60% dilution is below the floor; the plain rung measures
-       5.197:1 light / 7.716:1 dark against the page. */
-    color: var(--muted-foreground);
-    cursor: pointer;
-    flex-shrink: 0;
+.floating-toc-title-btn {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-start;
+    text-align: start;
 }
 
-.floating-toc-search-close:hover {
+.floating-toc-section {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    @apply text-sm;
     color: var(--foreground);
 }
 
-.floating-toc-chevron {
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-    opacity: 0.6;
-    /* A.W3.d — the file's last untokenised easing. */
-    transition: transform var(--duration-fast) var(--ease-standard);
-}
-.floating-toc-chevron.rotate-180 {
-    opacity: 0.8;
+.floating-toc-crumb {
+    flex: none;
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.floating-toc-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 2;
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    max-height: 60vh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-    padding: 0.5rem;
-}
-
-.floating-toc-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-}
-
-.floating-toc-top {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
+/* UIA-F-236: the section being read, after its chapter. */
+.floating-toc-crumb--leaf {
+    flex: 1 1 0;
+    max-width: none;
     color: var(--muted-foreground);
-    font-size: 0.75rem;
-    line-height: 1rem;
 }
 
-.floating-toc-top-icon {
+.floating-toc-crumb--leaf::before {
+    content: "›";
+    margin-inline-end: 0.375rem;
+}
+
+/* UIA-F-236: the numerals' own size (a `text-xs` that lost to the row's type
+   had no effect). */
+.floating-toc-number {
+    font-size: var(--type-caption);
+    color: var(--muted-foreground);
+    margin-inline-end: 0.25rem;
+}
+
+.floating-toc-icon,
+.floating-toc-chevron {
     width: 0.875rem;
     height: 0.875rem;
-    opacity: 0.6;
+    flex: none;
 }
+
+.floating-toc-chevron {
+    color: var(--muted-foreground);
+    transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.floating-toc-title-btn[data-state="open"] .floating-toc-chevron {
+    transform: rotate(180deg);
+}
+
+/* The popover's list — the width of the phone less the bar's inset, its own
+   scroll (the producer's thin scrollbar), under the viewport's height — is
+   sized by utilities on `PopoverContent` in the template: the content element
+   is glass's (portalled, not this component's root), so no scoped rule here
+   reaches it. */
 
 .floating-toc-divider {
     height: 1px;
-    background: color-mix(in srgb, var(--border) 50%, transparent);
-    margin: 0.25rem 0.75rem;
+    margin: 0.25rem 0;
+    background: color-mix(in srgb, var(--border) 60%, transparent);
 }
 
-.floating-toc-item {
-    display: block;
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-md);
-    border: none;
-    background: none;
-    cursor: pointer;
-    text-align: left;
-    @apply text-base;
-    color: var(--muted-foreground);
-    /* A.W3.d — named properties + canonical token, no `transition: all`. */
-    transition: color 0.15s var(--ease-standard), background-color 0.15s var(--ease-standard);
+.floating-toc-list,
+.floating-toc-sublist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
-.floating-toc-root {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+.floating-toc-sublist {
+    padding-inline-start: 0.75rem;
 }
 
 .floating-toc-row {
     display: flex;
     align-items: center;
+    gap: 0.125rem;
 }
 
 .floating-toc-row > .floating-toc-root {
@@ -938,61 +846,50 @@ watch(
     min-width: 0;
 }
 
+/* UIA-F-66: rows are a start-aligned list with a numeral gutter (glass Button
+   centres its content; the row arm is glass's, O-59 / UIA-F-147), and the
+   Scroll-to-top glyph sits on its label's line. The declarations are on the
+   rows' own class, after the producer's in cascade order (scoped, unlayered). */
+.floating-toc-item {
+    inline-size: 100%;
+    justify-content: flex-start;
+    text-align: start;
+    white-space: normal;
+    line-height: 1.35;
+    border-radius: var(--radius-lg);
+}
+
+.floating-toc-sub,
+.floating-toc-subsub {
+    @apply text-sm;
+}
+
 .floating-toc-disclosure {
-    flex-shrink: 0;
+    flex: none;
 }
 
 .floating-toc-collapse-icon {
     width: 0.875rem;
     height: 0.875rem;
-    flex-shrink: 0;
-    opacity: 0.45;
+    transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.floating-toc-sub {
-    padding-left: 2.25rem;
-    font-size: 0.8125rem;
-    /* `D/M-9`: same class of dilution, same cure. */
-    color: var(--muted-foreground);
+.floating-toc-disclosure[data-state="open"] .floating-toc-collapse-icon {
+    transform: rotate(90deg);
 }
 
-/* X.F.W3 repair 1 — the published active-state vocabulary, applied
-   (`FR-COB-3` ⊕ `fr-App MG-η`). A toc row is a nav item marking the current
-   location, so the channel is `aria-current` and the paint keys on it. The
-   value is `location` rather than `page` because these rows address SECTIONS
-   INSIDE one document, not sibling routes; the vocabulary's CSS hook is
-   `[aria-current]`, value-agnostic by construction, and the AppHeader route
-   tabs that do address pages keep `page`. `.is-active` announced nothing, so
-   the current section was marked by weight and colour alone and a
-   screen-reader user heard an undifferentiated list. The conditional `:style`
-   beside it stays: it carries a PER-SECTION colour the cascade cannot express
-   without a variable, it is not a state spelling, and the same shape is already
-   the tree's idiom at `BasisSelector.vue:144`. */
-.floating-toc-item:hover,
+/* The current entry, in its chapter's hue — the rail's one treatment. A tap
+   no longer latches a look-alike: the only consumer hover paint is gated on
+   a device that hovers (UIA-F-163). */
 .floating-toc-item[aria-current] {
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
-    color: var(--foreground);
-}
-
-.floating-toc-item[aria-current] {
+    color: var(--toc-accent);
     font-weight: 600;
+    background: color-mix(in srgb, var(--muted) 40%, transparent);
 }
 
-/* ── Transition: toc-expand ──────────────────────────────── */
-/* A.W3.d — bezier→`--ease-out-expo`. */
-.toc-expand-enter-active,
-.toc-expand-leave-active {
-    transition: opacity 0.2s var(--ease-standard),
-                transform 0.2s var(--ease-out-expo);
-}
-
-.toc-expand-enter-from {
-    opacity: 0;
-    transform: translateY(-0.5rem);
-}
-
-.toc-expand-leave-to {
-    opacity: 0;
-    transform: translateY(-0.5rem);
+@media (hover: hover) {
+    .floating-toc-item:not([aria-current]):hover {
+        color: var(--foreground);
+    }
 }
 </style>

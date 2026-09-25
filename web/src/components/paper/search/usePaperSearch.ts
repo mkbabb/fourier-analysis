@@ -65,6 +65,16 @@ export function usePaperSearch(options: {
         debouncedQuery.value ? searchIndex(index(), debouncedQuery.value, 30) : [],
     );
 
+    /**
+     * X.F.W14U.paper — UIA-F-158: the inline panel is open for any settled
+     * query, matched or not (a miss says "No results"; it used to vanish, and
+     * the field looked exactly as it does with no query). The palette owns the
+     * query while it is open (UIA-F-159: one live surface at a time).
+     */
+    const panelOpen = computed(
+        () => isOpen.value && !isExpanded.value && !!debouncedQuery.value,
+    );
+
     watch(results, () => {
         selectedIndex.value = 0;
     });
@@ -105,10 +115,6 @@ export function usePaperSearch(options: {
     function openPalette() {
         isOpen.value = true;
         isExpanded.value = true;
-    }
-
-    function toggleExpanded() {
-        isExpanded.value = !isExpanded.value;
     }
 
     function onKeydown(e: KeyboardEvent) {
@@ -164,12 +170,12 @@ export function usePaperSearch(options: {
         results,
         isOpen,
         isExpanded,
+        panelOpen,
         selectedIndex,
         selectResult,
         close,
         clear,
         open,
-        toggleExpanded,
         openPalette,
         onKeydown,
         listboxId,

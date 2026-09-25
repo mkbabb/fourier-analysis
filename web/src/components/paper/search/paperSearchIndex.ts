@@ -1,6 +1,6 @@
 /**
  * Paper search index — builds a flat searchable index from parsed paper sections
- * and scores queries with VSCode-style fuzzy matching. Pure functions, no Vue reactivity.
+ * and scores queries by word-start matching (UIA-F-161). Pure functions, no Vue reactivity.
  */
 import type {
     PaperSectionData,
@@ -92,23 +92,31 @@ export interface SearchResult extends SearchEntry {
     score: number;
 }
 
-// ── Fuzzy matching (VSCode-style subsequence scorer) ─────────
+// ── Word-start matching ─────────────────────────────────────
+
+/** A letter or digit in any script: the inside of a word. */
+const WORD_CHAR = /[\p{L}\p{N}]/u;
 
 /**
- * Scores a fuzzy subsequence match of `pattern` against `text`.
- * Every character in `pattern` must appear in `text` in order.
- * Returns null if no match, otherwise { score, matches }.
+ * X.F.W14U.paper — UIA-F-161: matches `pattern` as a PREFIX OF A WORD in
+ * `text` (both already lower-cased). The subsequence scorer this replaces let
+ * any in-order scatter of letters match ("prsvl" found Parseval, "fo" found
+ * every body with an f before an o), so a query returned whatever happened to
+ * contain its letters and the rows lit single letters across the label. A
+ * token now has to begin a word; the highlight is that one contiguous run.
  *
- * Scoring bonuses:
- *   +8  match at index 0 (start of string)
- *   +7  match after a word separator (space, -, _, ., /, \, :)
- *   +6  camelCase boundary (lowercase → uppercase)
- *   +5  consecutive characters in a run
- *   +3  pattern index === text index (prefix alignment)
- *   +1  base per-character match
- *  −0.1 per excess character in text (prefer tighter matches)
+ * Returns null when no word starts with `pattern`, otherwise the score and the
+ * contiguous indices of the best occurrence.
+ *
+ * Scoring (per the best word-start occurrence):
+ *   +2 per matched character (a longer token is more specific)
+ *   +8 the occurrence starts the field
+ *   +4 the token is a whole word (the next character ends the word)
+ *   ×  pLen / (pLen + excess × 0.02): a hit in a short label outranks the
+ *      same hit in a long body, as a ratio that can never outrun the match
+ *      (`PSM-14`'s shape, kept).
  */
-export function fuzzyMatch(
+export function wordMatch(
     pattern: string,
     text: string,
 ): { score: number; matches: number[] } | null {
@@ -117,68 +125,26 @@ export function fuzzyMatch(
     if (pLen === 0) return { score: 0, matches: [] };
     if (pLen > tLen) return null;
 
-    const matches: number[] = [];
-    let pi = 0;
-    let score = 0;
-    let prevIdx = -2; // -2 so first match is never "consecutive"
-
-    for (let ti = 0; ti < tLen && pi < pLen; ti++) {
-        if (pattern[pi] !== text[ti]) continue;
-
-        matches.push(ti);
-        let cs = 1; // base
-
-        // Consecutive run bonus
-        if (prevIdx === ti - 1) cs += 5;
-
-        // Start-of-string
-        if (ti === 0) {
-            cs += 8;
-        } else {
-            const prev = text[ti - 1];
-            // Word boundary
-            if (" -_./\\:()".includes(prev)) {
-                cs += 7;
-            }
-            // camelCase boundary
-            else if (
-                text[ti] >= "A" &&
-                text[ti] <= "Z" &&
-                prev >= "a" &&
-                prev <= "z"
-            ) {
-                cs += 6;
-            }
+    let best = -1;
+    let bestAt = -1;
+    for (let at = text.indexOf(pattern); at !== -1; at = text.indexOf(pattern, at + 1)) {
+        if (at > 0 && WORD_CHAR.test(text[at - 1])) continue;
+        const next = text[at + pLen];
+        let score = 2 * pLen;
+        if (at === 0) score += 8;
+        if (next === undefined || !WORD_CHAR.test(next)) score += 4;
+        if (score > best) {
+            best = score;
+            bestAt = at;
         }
-
-        // Prefix alignment
-        if (pi === ti) cs += 3;
-
-        score += cs;
-        prevIdx = ti;
-        pi++;
     }
+    if (bestAt < 0) return null;
 
-    if (pi < pLen) return null;
-
-    // `PSM-14` — FULL-TEXT SEARCH WAS DEAD FOR SHORT QUERIES, and the record
-    // proved it by execution: the penalty scaled with the FIELD while every
-    // bonus scales with the PATTERN, so over a 458-character body `"fo"` scored
-    // −31.6, `"conv"` −36.4, and an exact mid-body hit of the word "fourier" in
-    // a Fourier paper scored −1.1 — then `scoreEntry` dropped anything at or
-    // below zero. The preference it encodes is real (a hit in a short label is
-    // worth more than the same hit in a long body), so it is expressed as a
-    // RATIO that cannot outrun the match itself rather than as a subtraction
-    // that grows without bound.
-    //
-    // ⊘ The producer's own scoring carries the same shape; the relay letter
-    // matters as much as this fix (`PSM-14`'s own routing).
-    score *= pLen / (pLen + Math.max(0, tLen - pLen) * 0.02);
-
-    return { score, matches };
+    const matches = Array.from({ length: pLen }, (_, k) => bestAt + k);
+    return { score: best * (pLen / (pLen + Math.max(0, tLen - pLen) * 0.02)), matches };
 }
 
-// ── Multi-token fuzzy search ─────────────────────────────────
+// ── Multi-token word-start search ─────────────────────────────────
 
 interface TokenMatch {
     score: number;
@@ -187,10 +153,10 @@ interface TokenMatch {
 
 /**
  * Matches a query against a single text field. The query is split into
- * whitespace tokens; every token must fuzzy-match independently (AND logic).
+ * whitespace tokens; every token must begin a word independently (AND logic).
  * Returns aggregate score + merged match indices, or null if any token fails.
  */
-function multiTokenFuzzy(
+function multiTokenMatch(
     queryTokens: string[],
     text: string,
 ): TokenMatch | null {
@@ -199,7 +165,7 @@ function multiTokenFuzzy(
     const allMatches: number[] = [];
 
     for (const token of queryTokens) {
-        const m = fuzzyMatch(token, text);
+        const m = wordMatch(token, text);
         if (!m) return null;
         total += m.score;
         for (const idx of m.matches) allMatches.push(idx);
@@ -213,7 +179,7 @@ function multiTokenFuzzy(
  *
  * `_lc.type` is a closed internal enum and is BYTE-IDENTICAL across every entry
  * of a type. Scored as a field at weight 10 it outranked `rawTex` (6) and
- * `plainText` (3), so a query that fuzzy-matched a type name — `"thm"` against
+ * `plainText` (3), so a query that matched a type name — `"thm"` against
  * `"theorem"`, `"fig"` against `"figure"` — gave every member of that type the
  * SAME score, and the sort then fell through to document order. The record
  * measured the consequence at +37.2% over genuine hits: content-blind slabs
@@ -239,7 +205,7 @@ function multiTokenFuzzy(
  *
  * ⊘ This decision is NOT inherited from `@mkbabb/glass-ui/search`. The producer
  * at the adopted pin scores `[label,12] [type,10] [text,3]` — the same
- * inversion, one field wider — and its `fuzzyMatch` still carries `PSM-14`'s
+ * inversion, one field wider — and its matcher still carries `PSM-14`'s
  * unbounded subtractive length penalty (`score -= max(0,(tLen-pLen)*0.1)`),
  * which this module has already replaced with a ratio. See the `PSM-9`
  * disposition recorded by this unit.
@@ -262,7 +228,7 @@ function scoreEntry(
 
     for (const [text, weight] of fields) {
         if (!text) continue;
-        const m = multiTokenFuzzy(tokens, text);
+        const m = multiTokenMatch(tokens, text);
         if (m && m.score * weight > best) best = m.score * weight;
     }
 
@@ -275,7 +241,7 @@ function scoreEntry(
     if (best > 0) return { score: best, tier: 1 };
 
     const byType = entry._lc.type
-        ? multiTokenFuzzy(tokens, entry._lc.type)
+        ? multiTokenMatch(tokens, entry._lc.type)
         : null;
     if (byType && byType.score > 0) {
         return { score: byType.score * TYPE_FALLBACK_WEIGHT, tier: 0 };

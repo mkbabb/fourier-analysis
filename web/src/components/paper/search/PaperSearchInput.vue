@@ -2,17 +2,12 @@
 import { ref, watch, nextTick } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Input } from "@mkbabb/glass-ui/input";
-import { Search, X, Maximize2, Minimize2 } from "@lucide/vue";
+import { Search, X } from "@lucide/vue";
 import type { PaperSearchState } from "./usePaperSearch";
 
 const props = defineProps<{
     search: PaperSearchState;
     variant: "sidebar" | "floating";
-    canExpand: boolean;
-}>();
-
-const emit = defineEmits<{
-    expand: [];
 }>();
 
 /* X.F.W11 `.e` — the field is the producer's `Input`, whose root IS the
@@ -70,10 +65,12 @@ defineExpose({ focus });
             aria-label="Search the paper"
             role="combobox"
             aria-autocomplete="list"
-            :aria-expanded="search.isOpen.value && search.results.value.length > 0"
+            spellcheck="false"
+            autocomplete="off"
+            :aria-expanded="search.panelOpen.value"
             :aria-controls="search.listboxId"
             :aria-activedescendant="
-                search.isOpen.value && search.results.value.length > 0
+                search.panelOpen.value && search.results.value.length > 0
                     ? search.optionId(search.selectedIndex.value)
                     : undefined
             "
@@ -101,18 +98,6 @@ defineExpose({ focus });
              (`FR-PSD-BASE`'s inversion lock, honoured at the one place this
              unit changes a control's geometry). -->
         <span class="paper-search-actions">
-            <Button
-                v-if="canExpand"
-                emphasis="quiet"
-                size="xs" icon-only
-                type="button"
-                class="paper-search-action-btn"
-                @click="emit('expand')"
-                :aria-label="search.isExpanded.value ? 'Collapse the search palette' : 'Expand the search palette'"
-            >
-                <Maximize2 v-if="!search.isExpanded.value" class="h-3 w-3" />
-                <Minimize2 v-else class="h-3 w-3" />
-            </Button>
             <Button
                 v-if="search.query.value"
                 emphasis="quiet"
@@ -173,13 +158,13 @@ defineExpose({ focus });
 }
 
 /* Layout, not chrome: the inline padding clears the glyph at the start and
-   reserves the two `xs` actions' rung at the end (`--control-h-xs` is the
+   reserves the one `xs` action's rung (Clear; UIA-F-159 retired Expand) at the end (`--control-h-xs` is the
    producer's own token, clamped to `--control-floor` on coarse pointers). */
 .paper-search-input {
     flex: 1;
     min-width: 0;
     padding-inline-start: 1.875rem;
-    padding-inline-end: calc(2 * var(--control-h-xs) + 0.25rem);
+    padding-inline-end: calc(var(--control-h-xs) + 0.25rem);
     /* `PV ★MF-5` / `SP-14`: 0.78rem is ~12.5px, and iOS Safari zooms any input
        under 16px on focus. The substrate's `.ios` guard never fires here —
        fourier sets no `.ios` class anywhere — so the floor is declared at the

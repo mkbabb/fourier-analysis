@@ -7,10 +7,19 @@
  * `PSM-1`: the rules that painted them lived in a third file, orphaned by
  * scoping. Both dissolve the same way — the row is a component, and its markup
  * and its styles are in it.
+ *
+ * X.F.W14U.paper — UIA-F-160 / UIA-F-64 / UIA-F-235: this is the row's CONTENT
+ * (type, number, label) and nothing else. The option that holds it belongs to
+ * its host: the palette's is glass `CommandItem` (the producer's row register,
+ * one highlighted descendant, never a tab stop), the inline panel's is a
+ * `role="option"` element in `PaperSearchDropdown`. The row used to be a
+ * `Button role="option"` — thirty tab stops appended to `<body>` — and a
+ * `dense` prop switched the modal to a `--roomy` register; both are gone.
+ * The type is glass `Badge` (the canon chip, not a 9.6px local one).
  */
 import { inject } from "vue";
 import { PAPER_CONTEXT } from "@mkbabb/latex-paper/vue";
-import { Button } from "@mkbabb/glass-ui/button";
+import { Badge } from "@mkbabb/glass-ui/badge";
 import type { SearchResult } from "./paperSearchIndex";
 import { TYPE_LABELS, highlightLabel } from "./searchHelpers";
 
@@ -22,31 +31,19 @@ const renderMath = paper.renderInline;
 defineProps<{
     result: SearchResult;
     query: string;
-    selected: boolean;
-    /** The modal's roomier register; the dropdown ships the compact one. */
-    dense?: boolean;
-}>();
-
-const emit = defineEmits<{
-    select: [];
-    hover: [];
 }>();
 </script>
 
 <template>
-    <Button
-        emphasis="quiet"
-        type="button"
-        role="option"
-        :aria-selected="selected"
-        class="paper-search-result"
-        :class="{ 'is-selected': selected, 'paper-search-result--roomy': dense }"
-        @click="emit('select')"
-        @pointermove="emit('hover')"
-    >
-        <span class="paper-search-badge" :data-type="result.type">
+    <span class="paper-search-row">
+        <Badge
+            variant="secondary"
+            size="sm"
+            class="paper-search-badge"
+            :data-type="result.type"
+        >
             {{ TYPE_LABELS[result.type] ?? result.type }}
-        </span>
+        </Badge>
         <span v-if="result.number" class="paper-search-number fira-code">
             {{ result.number }}
         </span>
@@ -54,69 +51,28 @@ const emit = defineEmits<{
             class="paper-search-label"
             v-html="highlightLabel(result, query, renderMath)"
         />
-    </Button>
+    </span>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
-.paper-search-result {
+.paper-search-row {
     display: flex;
     align-items: baseline;
     gap: 0.375rem;
     width: 100%;
-    padding: 0.35rem 0.5rem;
-    border: none;
-    background: none;
-    cursor: pointer;
-    text-align: left;
-    border-radius: calc(var(--radius) - 4px);
-    transition: background-color 0.1s var(--ease-standard);
-}
-
-.paper-search-result:hover,
-.paper-search-result.is-selected {
-    background: color-mix(in srgb, var(--muted) 50%, transparent);
+    min-width: 0;
+    text-align: start;
 }
 
 .paper-search-badge {
     flex-shrink: 0;
-    font-size: 0.6rem;
-    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 0.1rem 0.3rem;
-    border-radius: var(--radius-xs);
-    background: var(--muted);
-    /* `PSM-4`: was `color-mix(--muted-foreground 70%, transparent)`. */
-    color: var(--muted-foreground);
-    line-height: 1;
-}
-
-/* `PSM-20`: the three hardcoded HSL literals had no dark arm at all — one rule
-   block away from the `color-mix(var(--primary))` idiom their neighbour uses.
-   The section ramp is the app's own themed register for exactly this, and it
-   carries both arms. */
-.paper-search-badge[data-type="theorem"],
-.paper-search-badge[data-type="lemma"],
-.paper-search-badge[data-type="proposition"],
-.paper-search-badge[data-type="corollary"] {
-    background: color-mix(in srgb, var(--primary) 12%, transparent);
-    color: var(--primary);
-}
-
-.paper-search-badge[data-type="definition"] {
-    background: color-mix(in srgb, var(--section-color-2) 12%, transparent);
-    color: var(--section-color-2);
-}
-
-.paper-search-badge[data-type="equation"] {
-    background: color-mix(in srgb, var(--section-color-7) 12%, transparent);
-    color: var(--section-color-7);
 }
 
 .paper-search-number {
     flex-shrink: 0;
-    font-size: 0.68rem;
+    font-size: var(--type-caption);
     color: var(--muted-foreground);
 }
 
@@ -136,24 +92,5 @@ const emit = defineEmits<{
     color: inherit;
     border-radius: var(--radius-floor);
     padding: 0 1px;
-}
-
-/* The modal's register, authored there as `.search-modal-result` re-tunes —
-   the drift `PSM-18` measured. One row, one scale switch. */
-.paper-search-result--roomy {
-    padding: 0.5rem 0.625rem;
-}
-
-.paper-search-result--roomy .paper-search-badge {
-    font-size: 0.65rem;
-    padding: 0.125rem 0.375rem;
-}
-
-.paper-search-result--roomy .paper-search-number {
-    font-size: 0.72rem;
-}
-
-.paper-search-result--roomy .paper-search-label {
-    @apply text-base;
 }
 </style>

@@ -37,8 +37,6 @@ export interface PaperTocModel extends PaperTocState {
      * `any`-shaped property.
      */
     registerNavEl: (el: HTMLElement | null) => void;
-    /** A one-line preview for a section, memoised for the render path (`M5`). */
-    getPreview: (section: PaperSectionData) => string;
 }
 
 export const PAPER_TOC_KEY: InjectionKey<PaperTocModel> = Symbol("paper-toc");

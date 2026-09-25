@@ -50,12 +50,8 @@ const props = defineProps<{
 
 const resultsRef = ref<HTMLElement | null>(null);
 
-const isOpen = computed(
-    () =>
-        props.search.isOpen.value &&
-        !props.search.isExpanded.value &&
-        props.search.results.value.length > 0,
-);
+/** UIA-F-158: a query that matched nothing keeps the panel, which says so. */
+const isOpen = computed(() => props.search.panelOpen.value);
 
 // ── The anchored geometry ────────────────────────────────────
 // Physical coordinates, because the measurement is physical: the rect comes
@@ -72,10 +68,9 @@ function measure() {
     const el = props.anchor;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    // The floating arm sat flush under the field (`top: 100%`); the sidebar arm
-    // sat 4px below it. Both are preserved — this cure moves the panel out of a
-    // clip, it does not re-design the surface.
-    const top = props.variant === "floating" ? r.bottom : r.bottom + GAP_PX;
+    // UIA-F-235: both arms hang GAP_PX below their anchor. The floating arm
+    // sat flush under the bar, its corner overlapping the bar's edge.
+    const top = r.bottom + GAP_PX;
     // `50vh`/`60vh` are now REACHABLE, so they are also now a real cap and have
     // to be clamped against the space that actually exists below the field.
     const preferred = props.variant === "floating" ? 0.6 : 0.5;
@@ -172,24 +167,43 @@ defineExpose({ resultsRef });
         <Transition name="search-dropdown">
             <div
                 v-if="isOpen"
-                :id="search.listboxId"
                 ref="resultsRef"
                 class="paper-search-results glass-floating glass-overlay-plate"
                 data-reveal="menu"
                 :style="panelStyle"
-                role="listbox"
-                aria-label="Search results"
             >
-                <PaperSearchResultRow
-                    v-for="(r, i) in search.results.value"
-                    :key="r.key"
-                    :id="search.optionId(i)"
-                    :result="r"
-                    :query="search.debouncedQuery.value"
-                    :selected="i === search.selectedIndex.value"
-                    @select="search.selectResult(r)"
-                    @hover="search.selectedIndex.value = i"
-                />
+                <!-- UIA-F-160: the options are the listbox's, and none is a tab
+                     stop — the field keeps focus (pointerdown does not move
+                     it) and `aria-activedescendant` is the one cursor. Hover
+                     moves that cursor; nothing else paints a row. -->
+                <div
+                    :id="search.listboxId"
+                    role="listbox"
+                    aria-label="Search results"
+                    class="paper-search-listbox"
+                >
+                    <div
+                        v-for="(r, i) in search.results.value"
+                        :key="r.key"
+                        :id="search.optionId(i)"
+                        role="option"
+                        :aria-selected="i === search.selectedIndex.value"
+                        class="paper-search-option"
+                        :class="{ 'is-selected': i === search.selectedIndex.value }"
+                        @pointerdown.prevent
+                        @pointermove="search.selectedIndex.value = i"
+                        @click="search.selectResult(r)"
+                    >
+                        <PaperSearchResultRow :result="r" :query="search.debouncedQuery.value" />
+                    </div>
+                </div>
+                <p
+                    v-if="search.results.value.length === 0"
+                    class="paper-search-empty"
+                    role="status"
+                >
+                    No results
+                </p>
             </div>
         </Transition>
     </Teleport>
@@ -219,6 +233,27 @@ defineExpose({ resultsRef });
        padding retire onto the producer's menu plate (`.glass-overlay-plate
        [data-reveal=menu]`: `--radius-card`, `--overlay-pad`), which
        `glass-floating` paints. */
+}
+
+.paper-search-option {
+    display: flex;
+    align-items: baseline;
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius-button);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.paper-search-option[aria-selected="true"] {
+    background: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+/* UIA-F-158: an explicit miss, not a silent vanish. */
+.paper-search-empty {
+    margin: 0;
+    padding: 0.5rem;
+    @apply text-sm;
+    color: var(--muted-foreground);
 }
 
 /* ── Inline dropdown transition ──────────────────────────── */
