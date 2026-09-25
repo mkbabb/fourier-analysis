@@ -121,7 +121,7 @@ onScopeDispose(() => {
 
 <template>
     <TooltipProvider :delay-duration="400" :skip-delay-duration="200">
-        <div class="h-dvh flex flex-col bg-background text-foreground paper-texture overflow-hidden isolate">
+        <div class="app-shell h-dvh flex flex-col bg-background text-foreground paper-texture overflow-hidden isolate">
             <!-- X.F.W11.b (COHESION §0ao OA-2) — the grid is the APP's ground, not
                  the paper's: the producer's `.paper-grid` (glass-ui
                  `styles/paper.css`, theme-aware via its `.dark` blend arm)
@@ -138,7 +138,14 @@ onScopeDispose(() => {
                  plate is the surface, and the landmark stays a flex sibling of
                  `<main>`, the app's sole scroller. -->
             <AppDock />
-            <main ref="main" class="flex-1 min-h-0 flex flex-col overflow-y-auto">
+            <!-- X.F.W14V.au1 — A2-FO-L2-1: `<main>` is also the containing block
+                 of what it scrolls. Unpositioned, an out-of-flow box in a route
+                 (a gallery card's `sr-only` label, `position: absolute` with no
+                 positioned ancestor) was laid out against the document instead,
+                 at its place far down the grid, and gave the document a scroll
+                 range of its own (1031 of 844 at 390) that the shell's premise
+                 says is zero. -->
+            <main ref="main" class="relative flex-1 min-h-0 flex flex-col overflow-y-auto">
                 <RouterView />
             </main>
         </div>

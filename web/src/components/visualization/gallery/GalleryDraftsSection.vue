@@ -58,7 +58,7 @@ function markBroken(slug: string) {
 </script>
 
 <template>
-    <ul class="drafts-grid px-4" aria-label="Drafts">
+    <ul class="drafts-grid px-[var(--page-gutter)]" aria-label="Drafts">
         <li v-for="draft in sortedDrafts" :key="draft.imageSlug">
             <Card as="article" size="sm" shadow class="draft-card">
                 <RouterLink :to="`/w/${draft.imageSlug}`" class="draft-open">

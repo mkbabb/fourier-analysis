@@ -396,9 +396,14 @@ watch(
                             <ChevronDown class="floating-toc-chevron" />
                         </Button>
                     </PopoverTrigger>
+                    <!-- X.F.W14V.au1 — A2-FO-L2-16 ⊕ L2-3: the plate is inset from
+                         the landscape notch sides (it was full-bleed [0..844]) and
+                         its block size is what the popper says is left below the
+                         bar, less the home-indicator inset (it ended 3 px from the
+                         edge, inside the 21 px zone, at 844×390). -->
                     <PopoverContent
                         :id="dropdownId"
-                        class="floating-toc-dropdown scrollbar-thin w-[calc(100vw-1rem)] max-h-[min(70dvh,32rem)] overflow-y-auto overscroll-contain"
+                        class="floating-toc-dropdown scrollbar-thin w-[calc(100vw_-_1rem_-_env(safe-area-inset-left,0px)_-_env(safe-area-inset-right,0px))] max-h-[min(70dvh,32rem,calc(var(--reka-popover-content-available-height,70dvh)_-_env(safe-area-inset-bottom,0px)_-_0.5rem))] overflow-y-auto overscroll-contain"
                         align="start"
                         :side-offset="6"
                         aria-label="Table of contents"
@@ -736,6 +741,15 @@ watch(
     top: 0;
     z-index: var(--z-controls);
     padding: 0.5rem 0.5rem 0;
+}
+/* X.F.W14V.au1 — A2-FO-L2-16: short landscape (844×390) spent 153 of 390 px on
+   chrome, the floating band 81 of it. There the band is one title rung: the
+   gap above the bar drops to the residue rung (the inline inset stays, so the
+   glass corners still clear the screen's, UIA-F-236). */
+@media (orientation: landscape) and (max-height: 500px) {
+    .floating-toc {
+        padding-top: var(--space-residue);
+    }
 }
 
 .floating-toc-bar {

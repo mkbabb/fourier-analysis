@@ -254,9 +254,10 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.waitForTimeout(600);
         const strip = await page.getByRole("tablist").first().evaluate((t) => {
-            // The row that seats the tab list (the lg:hidden strip), not glass's own list.
+            // The row that seats the tab list (the shared WorkspaceTabs bar,
+            // X.F.W14V.au1), not glass's own list.
             for (let e: Element | null = t.parentElement; e; e = e.parentElement) {
-                if (e.classList.contains("px-3") && e.classList.contains("lg:hidden")) {
+                if (e.classList.contains("workspace-tabs")) {
                     const own = getComputedStyle(e).backgroundColor;
                     return own === "rgba(0, 0, 0, 0)" || own.endsWith(", 0)") ? "transparent" : own;
                 }

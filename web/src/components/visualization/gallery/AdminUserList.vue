@@ -401,7 +401,7 @@ const userRows = computed(() =>
 </script>
 
 <template>
-    <div class="flex flex-col gap-3 px-4 py-2">
+    <div class="flex flex-col gap-3 px-[var(--page-gutter)] py-2">
         <!-- Search + sort + prune. X.F.W14.u — UIA-F-37: below `sm` the toolbar
              wraps and the search takes the full row (it was crushed to 68 px,
              "Se", beside a fixed 160 px Select); the Select's `h-8 w-[10rem]

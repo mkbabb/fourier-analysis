@@ -114,7 +114,7 @@ function onTabSelect(path: string) {
                         href="https://github.com/mkbabb/fourier-analysis"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="focus-ring block text-small text-foreground hover:underline"
+                        class="about-link focus-ring text-small text-foreground hover:underline"
                     >View the project on GitHub</a>
                 </PopoverContent>
             </Popover>
@@ -144,7 +144,7 @@ function onTabSelect(path: string) {
             <DropdownMenu v-else :modal="false">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
                     <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
-                    <span>{{ activeTabData?.label ?? "Sections" }}</span>
+                    <span class="nav-trigger-label">{{ activeTabData?.label ?? "Sections" }}</span>
                     <ChevronDown class="nav-trigger-chevron" aria-hidden="true" />
                 </DockTrigger>
                 <DropdownMenuContent align="start">
@@ -243,6 +243,18 @@ function onTabSelect(path: string) {
     transition: transform var(--duration-fast) var(--ease-standard);
 }
 
+/* X.F.W14V.au1 — A2-FO-X-5: at 360 the dock's one run is 334 px of faces in a
+   316 px layer, so it panned sideways by 18 px (at every section, and the
+   longest names, "Visualize" and "Equation", more). On the narrowest phones
+   the trigger drops its visible label and keeps the section's glyph and the
+   menu chevron; its accessible name still carries the section
+   ("Navigate — current section …"). */
+@media (max-width: 24rem) {
+    .nav-trigger-label {
+        display: none;
+    }
+}
+
 .nav-trigger[data-state="open"] .nav-trigger-chevron {
     transform: rotate(180deg);
 }
@@ -254,6 +266,29 @@ function onTabSelect(path: string) {
 }
 
 /* ── About card ── */
+/* X.F.W14V.au1 — A2-FO-L2-17: the card's link was a bare inline anchor, a
+   21–24 px target on touch. It is a row whose block size is glass's touch
+   target on a coarse pointer (`--touch-target`, the same floor glass's
+   `[data-control-target]` controls take). */
+.about-link {
+    display: flex;
+    align-items: center;
+}
+@media (pointer: coarse) {
+    .about-link {
+        min-block-size: var(--touch-target);
+    }
+}
+
+/* X.F.W14V.au1 — A2-FO-L2-4: short landscape (844×390) spent 72 of 390 px on
+   the app dock's band. The dock keeps its control size (glass owns it); the
+   band around it tightens to the residue rung, so the stage gets the rows. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .app-header {
+        padding-block: var(--space-residue);
+    }
+}
+
 .about-avatar {
     inline-size: 2.5rem;
     block-size: 2.5rem;

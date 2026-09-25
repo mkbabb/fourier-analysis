@@ -255,10 +255,12 @@ function focusTitle(e: Event) {
     color: var(--pill-c);
 }
 
-/* GCM-45 — the like control keeps the 24 px target (SC 2.5.8) and the flat
-   stat-counter look; the state paints from `aria-pressed` (FR-COB-3). */
+/* GCM-45 — the flat stat-counter look; the state paints from `aria-pressed`
+   (FR-COB-3). X.F.W14V.au1 — A2-FO-L2-17: the local `min-height: 1.5rem`
+   literal is deleted. Unlayered, it beat glass Button's coarse-pointer floor
+   (`[data-control-target]` → `--touch-target`), so on touch the Like measured
+   82.5×34. The target is glass's again: 24 px on a fine pointer, 44 on touch. */
 .like-btn {
-    min-height: 1.5rem;
     padding: 0.25rem 0.375rem;
     margin-inline-start: -0.375rem;
     background: transparent;

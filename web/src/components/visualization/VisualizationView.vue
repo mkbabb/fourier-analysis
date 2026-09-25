@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch, nextTick } from "vue";
+import { ref, shallowRef, computed, watch, nextTick, useTemplateRef } from "vue";
 import { watchDebounced, useMediaQuery, useEventListener } from "@vueuse/core";
+import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
+import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
@@ -24,7 +26,6 @@ import CoefficientsPanel from "./CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
-import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
@@ -103,7 +104,16 @@ watchDebounced(
 // ── Canvas + modals ──
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
 const mobileView = ref<"controls" | "canvas">("controls");
-const isDesktop = useMediaQuery("(min-width: 1024px)");
+/*
+ * X.F.W14V.au1 — A2-FO-X-1 ⊕ L2-4: the workspace's form is read from glass's
+ * Configurator shell at glass's own split threshold (`useWorkspaceForm`), not
+ * from a viewport width that disagreed with it at 1024×768. `sheet` is the
+ * tabbed portrait form; `rail` (short and tablet landscape) and `split` show
+ * both regions, so no region is ever inactive there.
+ */
+const workspace = useTemplateRef<HTMLElement>("workspace");
+const form = useWorkspaceForm(computed(() => workspace.value?.querySelector<HTMLElement>(".viz-configurator") ?? null));
+const tabbed = computed(() => form.value === "sheet");
 const showExport = ref(false);
 const showFullscreen = ref(false);
 /*
@@ -364,13 +374,10 @@ function onCanvasFileSelect(e: Event) {
              the Configurator's stage now, as /gallery and /equation do; the
              page-covering drag overlay retired for the stage's own signal
              (UIA-F-166 ⊕ F-237). -->
-        <div class="flex flex-col flex-1 min-h-0">
-            <!-- Mobile tab bar -->
-            <div v-if="hasSidebar" class="flex px-3 py-1 lg:hidden">
-                <SegmentedTabs variant="underline"
-                    :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
-                    v-model="mobileView" />
-            </div>
+        <div ref="workspace" class="viz-workspace flex flex-col flex-1 min-h-0" :data-form="form">
+            <!-- The sheet form's Controls/Canvas strip (the one shared bar,
+                 X.F.W14V.au1 — A2-FO-L2-5). -->
+            <WorkspaceTabs v-if="hasSidebar && tabbed" v-model="mobileView" />
 
             <!-- B.W2.a — the visualization-route left-panel stack adopts the
                  glass-ui `Configurator` chassis: `BasisCanvas` + its overlaid
@@ -451,7 +458,7 @@ function onCanvasFileSelect(e: Event) {
                          an edit, a view toggle or an Export there is this stage's. -->
                     <Teleport v-else :to="fsHost" :disabled="!stageInTakeover">
                     <div class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
-                        :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && !isDesktop }">
+                        :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && tabbed }">
                         <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
                                 :show-ghost="showGhost" :show-image-overlay="showImageOverlay" />
@@ -555,7 +562,7 @@ function onCanvasFileSelect(e: Event) {
                      wrap is a plain column again at every width. Below lg the
                      mobile sheet keeps its own form. -->
                 <div v-if="hasSidebar"
-                    class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
+                    class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && tabbed }">
                     <Transition name="panel-swap" mode="out-in">
                         <div v-if="isEditing" key="editor-panel" class="viz-panel-left">
                             <!-- X.F.W14U.vstage — UIA-F-169: the Preview layer repeated the
@@ -641,9 +648,10 @@ function onCanvasFileSelect(e: Event) {
     flex: 1;
     min-height: 0;
     /* X.F.W14U.vstage — UIA-F-237: at 390 the chassis sat 4 px from the
-       viewport edge; below lg it keeps the app's 16 px page gutter (the
-       gallery's `px-4`). */
-    margin: 0.25rem 1rem;
+       viewport edge. X.F.W14V.au1 — A2-FO-L3-6: the inline margin is the ONE
+       page gutter at every width (it was 8 px at desktop beside the gallery's
+       16), so the content edge holds across a nav switch. */
+    margin: 0.25rem var(--page-gutter);
 }
 
 /* I.ε — the View-Transitions morph anchor. The canvas stage is the persistent
@@ -670,8 +678,7 @@ function onCanvasFileSelect(e: Event) {
    labels ("Decompos…") beside the header reset (O-68). */
 @media (min-width: 1024px) {
     :deep(.viz-configurator) {
-        margin: 0.5rem;
-        margin-bottom: 0.75rem;
+        margin: 0.5rem var(--page-gutter) 0.75rem;
         --configurator-aside-min: calc(320px + 2 * var(--space-body));
         --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }
@@ -682,42 +689,63 @@ function onCanvasFileSelect(e: Event) {
 @media (min-width: 1536px) {
     :deep(.viz-configurator) { --configurator-aside-min: calc(400px + 2 * var(--space-body)); --configurator-aside-max: calc(440px + 2 * var(--space-body)); }
 }
-/* On mobile the Configurator stacks (grid-cols-1); the `panel-inactive`
-   toggle inside each slot drives the tab switch. */
-@media (max-width: 1023px) {
-    /* X.F.W14U.s — the column may not outgrow the shell: as the shell grid's one
-       `auto` track item its automatic minimum was its content's min-content
-       (a 393 px sheet in a 380 px shell at 390, clipped 8 px past the viewport
-       edge). `min-width: 0` lets the track fit the shell; the sheet's form is
-       unchanged. */
-    :deep(.viz-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
+/* The sheet form (`data-form="sheet"`, X.F.W14V.au1: read from glass's shell,
+   not the viewport): one column, and the `panel-inactive` toggle inside each
+   slot drives the tab switch. */
+/* X.F.W14U.s — the column may not outgrow the shell: as the shell grid's one
+   `auto` track item its automatic minimum was its content's min-content
+   (a 393 px sheet in a 380 px shell at 390, clipped 8 px past the viewport
+   edge). `min-width: 0` lets the track fit the shell; the sheet's form is
+   unchanged. */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
 
-    /* When the Configurator drops its desktop grid for the mobile flex column,
-       glass-ui's `.configurator-stage` cell becomes a `flex: 0 1 auto` item
-       and — since the canvas-container inside is `position: absolute` — it has
-       no intrinsic height, collapsing the stage to 0px (the `<canvas>` renders
-       at ~4px and the bottom AnimationControls dock floats up under the sticky
-       header). On the desktop grid the cell drew its height from the grid
-       track; in the flex column it must grow explicitly. Make the active stage
-       cell flex-fill the column so the canvas + bottom dock lay out correctly. */
-    :deep(.viz-configurator .configurator-stage) {
-        flex: 1 1 0%;
-        min-height: 0;
-    }
-    /* X.F.W14U.vstage — with the Controls tab up the stage's one child is
-       `display: none`, and the growing empty cell took the column's leftover
-       height as a blank band above the sheet (exposed once the Image layer
-       became a compact row, UIA-F-169). The inactive stage takes no height. */
-    :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
-        flex: 0 0 0%;
-    }
-    /* X.F.W14V.s2 — detached, the stage is its own card: an empty inactive
-       stage would still paint its 1 px border and cast as a line under the
-       tabs, and hold a detached gap above the sheet. The inactive stage takes
-       no box at all, so the mobile sheet reads as before. */
-    :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
-        display: none;
-    }
+/* When the Configurator drops its desktop grid for the mobile flex column,
+   glass-ui's `.configurator-stage` cell becomes a `flex: 0 1 auto` item
+   and — since the canvas-container inside is `position: absolute` — it has
+   no intrinsic height, collapsing the stage to 0px (the `<canvas>` renders
+   at ~4px and the bottom AnimationControls dock floats up under the sticky
+   header). On the desktop grid the cell drew its height from the grid
+   track; in the flex column it must grow explicitly. Make the active stage
+   cell flex-fill the column so the canvas + bottom dock lay out correctly. */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-stage) {
+    flex: 1 1 0%;
+    min-height: 0;
+}
+/* X.F.W14U.vstage — with the Controls tab up the stage's one child is
+   `display: none`, and the growing empty cell took the column's leftover
+   height as a blank band above the sheet (exposed once the Image layer
+   became a compact row, UIA-F-169). The inactive stage takes no height. */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
+    flex: 0 0 0%;
+}
+/* X.F.W14V.s2 — detached, the stage is its own card: an empty inactive
+   stage would still paint its 1 px border and cast as a line under the
+   tabs, and hold a detached gap above the sheet. The inactive stage takes
+   no box at all, so the mobile sheet reads as before. */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
+    display: none;
+}
+
+/* X.F.W14V.au1 — A2-FO-L2-4 ⊕ X-1: the rail form (landscape, narrower than
+   glass's split). Short landscape (844×390) spent 128 of 390 px on chrome with
+   the controls a tab away and the docks over the stage; tablet landscape
+   (1024×768) stacked a 285 px stage strip over a centred column. Here the two
+   regions sit in a row: the stage takes the width, the aside is a rail beside
+   it (glass's detached gap between them), each its own glass card. */
+.viz-workspace[data-form="rail"] :deep(.viz-configurator > [data-slot="configurator"]) {
+    display: flex;
+    flex-direction: row;
+    min-width: 0;
+}
+.viz-workspace[data-form="rail"] :deep(.viz-configurator .configurator-stage) {
+    flex: 1 1 0%;
+    min-width: 0;
+    min-height: 0;
+}
+.viz-workspace[data-form="rail"] :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
+    flex: 0 0 clamp(16rem, 38%, 22rem);
+    min-height: 0;
+    border-block-start-width: 0;
 }
 
 /* ── Left panel (controls aside body) ── */
@@ -813,9 +841,14 @@ function onCanvasFileSelect(e: Event) {
 }
 
 /* ── Controls overlay ── */
+/* X.F.W14V.au1 — A2-FO-L2-2 (consumer half): the bottom docks clear the home
+   indicator. The overlay read no inset, so on a phone the animation dock ended
+   16 px inside the 34 px zone (in the stage and, teleported, in the takeover).
+   glass's `--safe-block-end` root token is the producer half (O-74); until it
+   lands the overlay adds the inset itself. */
 .controls-overlay {
     position: absolute;
-    bottom: 0.75rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
     left: 0.375rem;
     right: 0.375rem;
     z-index: var(--z-controls);
@@ -857,11 +890,9 @@ function onCanvasFileSelect(e: Event) {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s var(--ease-standard); }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* ── Mobile panel toggle ── */
-@media (max-width: 1023px) {
-    .panel-inactive {
-        display: none;
-    }
+/* ── Sheet panel toggle ── (`panel-inactive` is only set in the sheet form) */
+.panel-inactive {
+    display: none;
 }
 
 /* ── Controls dock positioning ──
@@ -1003,6 +1034,6 @@ function onCanvasFileSelect(e: Event) {
 
 /* ── Mobile ── */
 @media (max-width: 900px) {
-    .controls-overlay { left: 0.5rem; right: 0.5rem; bottom: 0.75rem; }
+    .controls-overlay { left: 0.5rem; right: 0.5rem; }
 }
 </style>

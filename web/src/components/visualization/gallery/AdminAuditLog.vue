@@ -309,7 +309,7 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
 </script>
 
 <template>
-    <div class="flex flex-col gap-3 px-4 py-2">
+    <div class="flex flex-col gap-3 px-[var(--page-gutter)] py-2">
         <!-- Filter bar. AA-4: the whole chassis was drawn with the FILL token
              `--muted` used as a border at 30–40 % alpha — 1.01–1.07:1 in BOTH
              arms, against a 3:1 non-text floor, at four sites. `border-border` is

@@ -277,17 +277,19 @@ onUnmounted(() => {
    border token. ⊘ The `stroke="red"` subject ink is deliberately LEFT: it is
    the extractor's high-contrast tracing ink, the row rules it passes, and
    tokenising it would make a debug instrument follow a theme it must not. */
+/* X.F.W14V.au1 — A2-FO-L3-6: the inline inset is the one page gutter; the
+   block padding keeps its rungs. */
 .extractor-page {
     width: 100%;
     max-width: 56rem;
     margin-inline: auto;
-    padding: var(--space-body);
+    padding: var(--space-body) var(--page-gutter);
     box-sizing: border-box;
 }
 
 @media (min-width: 640px) {
     .extractor-page {
-        padding: var(--space-family);
+        padding-block: var(--space-family);
     }
 }
 

@@ -93,7 +93,7 @@ const storage = computed<{ value: string; unit: string }>(() => {
         ref="root"
         as="section"
         size="sm"
-        class="admin-banner mx-4 px-3 py-2.5 border-[1.5px]"
+        class="admin-banner mx-[var(--page-gutter)] px-3 py-2.5 border-[1.5px]"
         aria-label="Admin mode banner"
         :aria-busy="loading || undefined"
     >

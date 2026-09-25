@@ -330,7 +330,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
 <template>
     <div class="flex flex-col gap-4 overflow-y-auto h-full py-4">
         <!-- Tab toggle + search (tight grouping) -->
-        <div class="flex flex-col gap-1.5 px-4">
+        <div class="flex flex-col gap-1.5 px-[var(--page-gutter)]">
             <!-- X.F.W14.u — UIA-F-41 (consumer half): the strip scrolls in its
                  own inline track. The column is `overflow-y: auto`, which makes
                  its `overflow-x` compute to `auto` as well, so at 390 the 5-tab

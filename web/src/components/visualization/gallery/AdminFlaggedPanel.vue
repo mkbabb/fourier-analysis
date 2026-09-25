@@ -340,7 +340,7 @@ const relativeTimeOf = useRelativeTime();
 </script>
 
 <template>
-    <div class="flex flex-col gap-3 px-4 py-2">
+    <div class="flex flex-col gap-3 px-[var(--page-gutter)] py-2">
         <!-- Failure ≠ all-clear. FR-AFP-6: a failed load rendered the transient
              toast and then "No flagged content" — a false all-clear on the
              surface whose whole purpose is telling an operator that something is

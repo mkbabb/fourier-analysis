@@ -416,7 +416,7 @@ onUnmounted(() => {
                  shared `isExpanded` driving both. -->
             <PaperSearchModal :search="search" />
 
-            <div class="paper-layout mx-auto max-w-6xl px-2 pt-2 pb-0 sm:pt-2 sm:pb-0 sm:px-6">
+            <div class="paper-layout mx-auto max-w-6xl px-[var(--page-gutter)] pt-2 pb-0 sm:pt-2 sm:pb-0">
                 <div class="paper-columns">
                     <!-- Desktop sidebar TOC. X.F.W14.u — UIA-F-22: ONE PaperSearch
                          per breakpoint. The sidebar was only CSS-hidden below lg,

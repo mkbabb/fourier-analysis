@@ -115,7 +115,7 @@ const emit = defineEmits<{
 
 <style scoped>
 .featured-section {
-    padding: 0 1rem;
+    padding: 0 var(--page-gutter);
 }
 
 .featured-header {

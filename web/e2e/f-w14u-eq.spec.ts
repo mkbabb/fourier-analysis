@@ -391,7 +391,8 @@ test.describe("q253 · UIA-F-253 — the equation's micro-issues", () => {
     test("the 390 tab strip is not an opaque band", async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto("/equation");
-        const strip = page.getByRole("tablist").first().locator("xpath=ancestor::div[contains(@class,'lg:hidden')][1]");
+        // The row that seats the tab list: the shared WorkspaceTabs bar (X.F.W14V.au1).
+        const strip = page.getByRole("tablist").first().locator("xpath=ancestor::div[contains(@class,'workspace-tabs')][1]");
         await expect(strip).toBeVisible();
         const alpha = await strip.evaluate((e) => {
             const m = getComputedStyle(e).backgroundColor.match(/rgba?\(([^)]+)\)/);

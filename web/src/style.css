@@ -103,8 +103,19 @@
         min-height: 100dvh;
     }
 
-    body {
-        padding-bottom: env(safe-area-inset-bottom);
+    /* X.F.W14V.au1 — A2-FO-L2-1: the body's `padding-bottom:
+       env(safe-area-inset-bottom)` is deleted. The app is an `h-dvh`,
+       overflow-hidden shell (`App.vue`) whose one scroller is `<main>`, so the
+       padding made the document the viewport plus the inset (878 of 844 at
+       390, 411 of 390 in landscape): the whole page scrolled by the inset and
+       a drag out of `<main>` lifted the app dock under the status bar. The
+       document's scroll range is 0 again. The bottom inset is read where it
+       matters, by the bottom-anchored overlays (`.controls-overlay`, the
+       paper's bottom overlay); the notch sides by the shell (`.app-shell`). */
+    .app-shell {
+        /* A2-FO-L2-3: `viewport-fit=cover` (index.html) draws under the
+           landscape notch sides, so the shell keeps its content clear of them. */
+        padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
     }
 
     ::selection {
@@ -284,6 +295,17 @@ html {
    7.4–10.2:1 across all thirteen stops and needs nothing, so each stop is
    restored to the producer's dark value below, exactly as `--section-color-5`
    already was. */
+/* X.F.W14V.au1 — A2-FO-L3-6 (consumer half): the ONE page gutter. Every route
+   root reads it (the tool routes' Configurator margin, the gallery column, the
+   paper column, the shape extractor, not-found, and the workspace tab strip),
+   so the content edge no longer jumps on a nav switch (it was 8 px on /visualize
+   and /equation at desktop, 4 px beside a 16 px gallery on phones). glass ships
+   no layout-gutter token at 10.1.0 (the glass half rides O-68); when it does,
+   this one line reads it. */
+:root {
+    --page-gutter: 1rem;
+}
+
 :root {
     --viz-amber: hsl(35 76% 35%);
     --section-color-5: hsl(35 76% 35%);

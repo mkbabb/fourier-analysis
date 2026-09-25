@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onScopeDispose } from "vue";
-import { watchDebounced, useMediaQuery } from "@vueuse/core";
+import { ref, computed, watch, onScopeDispose, useTemplateRef } from "vue";
+import { watchDebounced } from "@vueuse/core";
+import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
+import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import {
     computeEquation,
     simplifyCoefficients,
@@ -21,7 +23,6 @@ import { Metric } from "@mkbabb/glass-ui/metric";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Info } from "@lucide/vue";
 
-import { SegmentedTabs } from "@mkbabb/glass-ui/tabs";
 import FunctionInput from "./FunctionInput.vue";
 import EquationResult from "./EquationResult.vue";
 import EquationModeToggle from "./EquationModeToggle.vue";
@@ -69,7 +70,11 @@ const resultDomain = ref<[number, number]>([domainStart.value, domainEnd.value])
 const autoHarmonics = ref(true);
 const eqMode = ref<EquationDisplayMode>("sigma");
 const mobileView = ref<"controls" | "canvas">("controls");
-const isDesktop = useMediaQuery("(min-width: 1024px)");
+/* X.F.W14V.au1 — A2-FO-X-1 ⊕ L2-4: /visualize's form rule (`useWorkspaceForm`),
+   read from glass's shell at glass's split threshold. */
+const workspace = useTemplateRef<HTMLElement>("workspace");
+const form = useWorkspaceForm(computed(() => workspace.value?.querySelector<HTMLElement>(".eq-configurator") ?? null));
+const tabbed = computed(() => form.value === "sheet");
 const eqCardRef = ref<HTMLDivElement>();
 
 // ── Derived state ──
@@ -390,14 +395,10 @@ watchDebounced(
 </script>
 
 <template>
-    <div class="flex flex-col flex-1 min-h-0">
-        <!-- Mobile tab bar. UIA-F-253 — no opaque band: the strip sits on the
-             page's own ground, as `/w`'s does. -->
-        <div class="flex px-3 py-1 lg:hidden">
-            <SegmentedTabs variant="underline"
-                :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
-                v-model="mobileView" />
-        </div>
+    <div ref="workspace" class="eq-workspace flex flex-col flex-1 min-h-0" :data-form="form">
+        <!-- The sheet form's Controls/Canvas strip: /visualize's one shared bar
+             (X.F.W14V.au1 — A2-FO-L2-5), on the page's own ground (UIA-F-253). -->
+        <WorkspaceTabs v-if="tabbed" v-model="mobileView" />
 
         <!-- X.F.W14V.eq2 — F-W14V.md addendum (b), COHESION §0dh. /equation is a
              stage (the series and its convergence plot) plus a controls
@@ -414,7 +415,7 @@ watchDebounced(
             <template #stage>
             <div
                 class="eq-panel-right"
-                :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop, 'is-busy': loading }"
+                :class="{ 'panel-inactive': mobileView !== 'canvas' && tabbed, 'is-busy': loading }"
                 :aria-busy="loading"
             >
                 <!-- Loading (no prior result). X.F.W14U.eq — UIA-F-202 ⊕ F-71's
@@ -542,7 +543,7 @@ watchDebounced(
                  fuses them into one group). No layer carries a reset; a reset
                  would sit in its layer's `#actions`. -->
             <div class="eq-panel-left-wrap" role="group" aria-label="Equation controls"
-                :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
+                :class="{ 'panel-inactive': mobileView !== 'controls' && tabbed }">
                 <div class="eq-layers">
                     <FunctionInput
                         v-model:expression="expression"
@@ -583,12 +584,12 @@ watchDebounced(
 :deep(.eq-configurator) {
     flex: 1;
     min-height: 0;
-    margin: 0.25rem 1rem;
+    /* X.F.W14V.au1 — A2-FO-L3-6: the one page gutter, at every width. */
+    margin: 0.25rem var(--page-gutter);
 }
 @media (min-width: 1024px) {
     :deep(.eq-configurator) {
-        margin: 0.5rem;
-        margin-bottom: 0.75rem;
+        margin: 0.5rem var(--page-gutter) 0.75rem;
         --configurator-aside-min: calc(320px + 2 * var(--space-body));
         --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }
@@ -599,17 +600,50 @@ watchDebounced(
 @media (min-width: 1536px) {
     :deep(.eq-configurator) { --configurator-aside-min: calc(400px + 2 * var(--space-body)); --configurator-aside-max: calc(440px + 2 * var(--space-body)); }
 }
-/* Below lg the grid is one column and the Controls/Canvas tabs pick a region,
-   the same rules /visualize carries: the column may not outgrow the shell, the
-   active stage fills it, and an inactive region takes no box (a detached card
-   would otherwise paint an empty border and hold a gap). */
-@media (max-width: 1023px) {
-    :deep(.eq-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
-    :deep(.eq-configurator .configurator-stage) { flex: 1 1 0%; min-height: 0; }
-    :deep(.eq-configurator .configurator-stage:has(> .panel-inactive)),
-    :deep(.eq-configurator .configurator-aside:has(.eq-panel-left-wrap.panel-inactive)) {
-        display: none;
-    }
+/* The sheet form (`data-form="sheet"`, read from glass's shell): one column,
+   and the Controls/Canvas tabs pick a region, the same rules /visualize
+   carries: the column may not outgrow the shell, the active stage fills it,
+   and an inactive region takes no box (a detached card would otherwise paint
+   an empty border and hold a gap). */
+.eq-workspace[data-form="sheet"] :deep(.eq-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
+.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-stage) { flex: 1 1 0%; min-height: 0; }
+.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-stage:has(> .panel-inactive)),
+.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-aside:has(.eq-panel-left-wrap.panel-inactive)) {
+    display: none;
+}
+/* X.F.W14V.au1 — A2-FO-L2-4 ⊕ X-1: the rail form (landscape, narrower than
+   glass's split), /visualize's rule: the stage and the controls rail sit in a
+   row. Inside the stage the plot sits beside the series (at 844×390 the series
+   filled the band and the plot began below the fold). */
+.eq-workspace[data-form="rail"] :deep(.eq-configurator > [data-slot="configurator"]) {
+    display: flex;
+    flex-direction: row;
+    min-width: 0;
+}
+.eq-workspace[data-form="rail"] :deep(.eq-configurator .configurator-stage) {
+    flex: 1 1 0%;
+    min-width: 0;
+    min-height: 0;
+}
+.eq-workspace[data-form="rail"] :deep(.eq-configurator > [data-slot="configurator"] > .configurator-aside) {
+    flex: 0 0 clamp(16rem, 38%, 22rem);
+    min-height: 0;
+    border-block-start-width: 0;
+}
+.eq-workspace[data-form="rail"] .eq-panel-right {
+    flex-direction: row;
+}
+.eq-workspace[data-form="rail"] .eq-card,
+.eq-workspace[data-form="rail"] .eq-plot-card {
+    flex: 1 1 0%;
+    min-width: 0;
+}
+.eq-workspace[data-form="rail"] .eq-card {
+    overflow-y: auto;
+}
+.eq-workspace[data-form="rail"] .eq-plot-card {
+    border-top: 0;
+    border-left: 1px solid var(--configurator-divider);
 }
 
 /* ── Controls (the aside body) ── */
@@ -745,11 +779,9 @@ watchDebounced(
     background: color-mix(in srgb, var(--viz-amber) 10%, transparent);
 }
 
-/* ── Mobile panel toggle ── */
-@media (max-width: 1023px) {
-    .panel-inactive {
-        display: none;
-    }
+/* ── Sheet panel toggle ── (`panel-inactive` is only set in the sheet form) */
+.panel-inactive {
+    display: none;
 }
 
 /* ── Transitions (A.W3.d — bezier→token; transition:all→named properties) ── */

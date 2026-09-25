@@ -28,7 +28,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div class="flex flex-col gap-2 px-4">
+    <div class="flex flex-col gap-2 px-[var(--page-gutter)]">
         <InfiniteScroll :has-more="hasMore" :is-loading="loading" @load-more="emit('load-more')">
             <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr))">
                 <GalleryCard

@@ -36,7 +36,7 @@ const router = useRouter();
 </script>
 
 <template>
-    <div class="flex flex-1 items-center justify-center p-4">
+    <div class="flex flex-1 items-center justify-center py-4 px-[var(--page-gutter)]">
         <Card class="w-full max-w-md" data-testid="not-found">
             <CardHeader>
                 <CardTitle as="h1">{{ title }}</CardTitle>
