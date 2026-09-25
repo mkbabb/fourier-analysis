@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Input } from "@mkbabb/glass-ui/input";
-import { Search, X } from "@lucide/vue";
+import { X } from "@lucide/vue";
+import SearchField from "@/components/shared/SearchField.vue";
 import type { PaperSearchState } from "./usePaperSearch";
 
 const props = defineProps<{
@@ -10,16 +10,14 @@ const props = defineProps<{
     variant: "sidebar" | "floating";
 }>();
 
-/* X.F.W11 `.e` — the field is the producer's `Input`, whose root IS the
-   `<input>` (`inheritAttrs: false`, one element), so the ref holds the
-   component instance and `$el` is the element `focus()` reaches. */
-const inputRef = ref<InstanceType<typeof Input> | null>(null);
+/* The field is the shared `SearchField` (glass `Input` + the leading glyph,
+   X.F.W14V.au6), which exposes `focus()`. */
+const fieldRef = ref<InstanceType<typeof SearchField> | null>(null);
 
 function focus() {
-    (inputRef.value?.$el as HTMLInputElement | undefined)?.focus();
+    fieldRef.value?.focus();
 }
 
-// Auto-focus input when opened
 watch(
     () => props.search.isOpen.value,
     (open) => {
@@ -46,43 +44,39 @@ defineExpose({ focus });
          24px glyph is the largest mark in the field and all of the wrap's
          padding is hit area, and none of it did anything — while the `focus()`
          this component already exposes was exactly what a click on it should
-         run. A wrapping `<label>` is the whole cure and it is free: the
+         run. A wrapping `<label>` (now `SearchField`'s own root) is the whole cure and it is free: the
          `<input>` is its only labelable descendant, so the association is
          implicit, and label activation is NOT forwarded when the click lands on
          an interactive descendant, so the two action Buttons keep their own
          behaviour. The accessible NAME stays the input's `aria-label` (`C-7`'s
          naming half, already landed) — this label carries no text and is not
          competing for it. -->
-    <label class="paper-search-input-wrap" :class="`paper-search-input-wrap--${variant}`">
-        <!-- `★MF-2`: the inline arm is the same combobox as the palette's and
-             had the same nothing — a placeholder standing in for a name, no
-             `role`, and arrows that moved a selection no reader could observe. -->
-        <Input
-            ref="inputRef"
-            type="text"
-            class="paper-search-input"
-            placeholder="Search paper..."
-            aria-label="Search the paper"
-            role="combobox"
-            aria-autocomplete="list"
-            spellcheck="false"
-            autocomplete="off"
-            :aria-expanded="search.panelOpen.value"
-            :aria-controls="search.listboxId"
-            :aria-activedescendant="
-                search.panelOpen.value && search.results.value.length > 0
-                    ? search.optionId(search.selectedIndex.value)
-                    : undefined
-            "
-            :model-value="search.query.value"
-            @input="search.query.value = ($event.target as HTMLInputElement).value"
-            @keydown="search.onKeydown"
-            @focus="search.isOpen.value = true"
-        />
-        <!-- X.F.W11 `.e` — the glyph follows the field in tree order: the
-             producer's field is its own stacking context (glass backdrop), so a
-             positioned glyph BEFORE it is painted under it. -->
-        <Search class="paper-search-icon" />
+    <!-- `★MF-2`: the inline arm is the same combobox as the palette's and had
+         the same nothing — a placeholder standing in for a name, no `role`,
+         and arrows that moved a selection no reader could observe. -->
+    <SearchField
+        ref="fieldRef"
+        class="paper-search-input-wrap"
+        :class="`paper-search-input-wrap--${variant}`"
+        type="text"
+        placeholder="Search paper..."
+        aria-label="Search the paper"
+        role="combobox"
+        aria-autocomplete="list"
+        spellcheck="false"
+        autocomplete="off"
+        :aria-expanded="search.panelOpen.value"
+        :aria-controls="search.listboxId"
+        :aria-activedescendant="
+            search.panelOpen.value && search.results.value.length > 0
+                ? search.optionId(search.selectedIndex.value)
+                : undefined
+        "
+        :model-value="search.query.value"
+        @input="search.query.value = ($event.target as HTMLInputElement).value"
+        @keydown="search.onKeydown"
+        @focus="search.isOpen.value = true"
+    >
         <!-- `MISS-DU1`: both action Buttons shipped at the default `md` rung,
              which is `--control-h-md` = `max(2.5rem * --ui-scale,
              --control-floor)` = 40px fine / 60px coarse (measured at the
@@ -97,7 +91,7 @@ defineExpose({ focus });
              rather than inherited from an un-overridden height
              (`FR-PSD-BASE`'s inversion lock, honoured at the one place this
              unit changes a control's geometry). -->
-        <span class="paper-search-actions">
+        <template #actions>
             <Button
                 v-if="search.query.value"
                 emphasis="quiet"
@@ -109,8 +103,8 @@ defineExpose({ focus });
             >
                 <X class="h-3 w-3" />
             </Button>
-        </span>
-    </label>
+        </template>
+    </SearchField>
 </template>
 
 <style scoped>
@@ -119,8 +113,9 @@ defineExpose({ focus });
    ELEMENTS THEY NAME. They were authored in `PaperSearch.vue`'s single scoped
    block, where the parent's scope id reaches this component's ROOT and nothing
    below it — so every rule below the wrap was orphaned and the search chrome
-   shipped unstyled. Colocation in the owning SFC is the cure (E-2 KISS: no new
-   layer, no `:deep`, no global escape). */
+   shipped unstyled. Colocation in the owning SFC is the cure. Since
+   X.F.W14V.au6 the field is `SearchField`'s element, so the one rule that
+   keeps this host's type register names it through `:deep`. */
 /* X.F.W11 `.e` — R-d-1 (COHESION §0aq, ESC-F11d-1): THE FIELD IS THE
    PRODUCER'S `Input`, AND THE WRAP STOPS PAINTING ONE. The wrap drew a whole
    field around a chromeless `<input>` — its own 1.5px boundary, fill, radius
@@ -136,54 +131,30 @@ defineExpose({ focus });
    rung the wrap declared), and the actions are positioned, so no optional
    child can grow the box. `MISS-DU4` holds: the wrap is still the `<label>`,
    so the glyph and the gutter stay hit area for the field. */
+/* X.F.W14V.au6 — F-W14U (e): the wrap, the glyph and the actions' seat are
+   the shared `SearchField`'s (one anatomy with the gallery bar and the admin
+   toolbar). What stays here is this field's own: the actions' run it reserves
+   (the one `xs` action, Clear; UIA-F-159 retired Expand; `--control-h-xs` is
+   the producer's token, clamped to `--control-floor` on coarse pointers) and
+   its type register. */
 .paper-search-input-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-    cursor: text;
+    --search-field-end: calc(var(--control-h-xs) + 0.5rem);
 }
 
-.paper-search-icon {
-    position: absolute;
-    inset-inline-start: 0.75rem;
-    width: 0.8rem;
-    height: 0.8rem;
-    flex-shrink: 0;
-    pointer-events: none;
-    /* `PSM-4`: the authored `color-mix(…, transparent)` dilutions composited to
-       1.74–2.04:1 against the plate. Full-strength is 5.197:1 light /
-       7.716:1 dark (this seat's re-derivation, cross-checked against the
-       `G-F4-CONTRAST-FLOOR` harness's own reading of the diluted pairs). */
-    color: var(--muted-foreground);
-}
-
-/* Layout, not chrome: the inline padding clears the glyph at the start and
-   reserves the one `xs` action's rung (Clear; UIA-F-159 retired Expand) at the end (`--control-h-xs` is the
-   producer's own token, clamped to `--control-floor` on coarse pointers). */
-.paper-search-input {
-    flex: 1;
-    min-width: 0;
-    padding-inline-start: 1.875rem;
-    padding-inline-end: calc(var(--control-h-xs) + 0.25rem);
-    /* `PV ★MF-5` / `SP-14`: 0.78rem is ~12.5px, and iOS Safari zooms any input
-       under 16px on focus. The substrate's `.ios` guard never fires here —
-       fourier sets no `.ios` class anywhere — so the floor is declared at the
-       control, where no class bookkeeping can lose it. Desktop keeps the small
-       register through the `lg` arm below. */
+/* `PV ★MF-5` / `SP-14`: 0.78rem is ~12.5px, and iOS Safari zooms any input
+   under 16px on focus. The substrate's `.ios` guard never fires here —
+   fourier sets no `.ios` class anywhere — so the floor is declared at the
+   control, where no class bookkeeping can lose it. Desktop keeps the small
+   register through the `lg` arm below. (`:deep`: the field is SearchField's
+   element; this host keeps the register.) */
+.paper-search-input-wrap :deep(.search-field-input) {
     font-size: max(1rem, 0.78rem);
 }
 
 @media (min-width: 1024px) and (pointer: fine) {
-    .paper-search-input {
+    .paper-search-input-wrap :deep(.search-field-input) {
         font-size: 0.78rem;
     }
-}
-
-.paper-search-actions {
-    position: absolute;
-    inset-inline-end: 0.25rem;
-    display: flex;
-    align-items: center;
 }
 
 .paper-search-action-btn {
@@ -218,7 +189,7 @@ defineExpose({ focus });
    `.floating-toc-bar` is still exactly as tall as its trigger arm (a `md`
    Button). */
 
-.paper-search-input-wrap--floating .paper-search-input {
+.paper-search-input-wrap--floating :deep(.search-field-input) {
     @apply text-base;
 }
 </style>

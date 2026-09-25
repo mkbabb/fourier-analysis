@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { Search, X, SlidersHorizontal } from "@lucide/vue";
+import { X, SlidersHorizontal } from "@lucide/vue";
 import { basisChips } from "@/components/visualization/lib/basis-display";
 import type { BasisKey } from "@/lib/basis";
 import type { GallerySort, GalleryTierFilter } from "@/lib/types";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Input } from "@mkbabb/glass-ui/input";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
+import SearchField from "@/components/shared/SearchField.vue";
 import { ToggleGroup, ToggleGroupItem } from "@mkbabb/glass-ui/toggle-group";
 import {
     Select,
@@ -70,40 +70,40 @@ const hasActiveFilters = computed(
          makes it reachable by landmark navigation, and the label is what tells
          a second search on the page apart from this one. -->
     <div class="search-bar-root" role="search" aria-label="Gallery search and filters">
-        <div class="search-pill">
-            <!-- FR-GSB-11: FIVE controls on this bar had no accessible name, not
-                 the three every axis enumerated. The input was named by
-                 `placeholder` alone — a name that vanishes on the first keystroke.
-                 The clear and filter buttons are icon-only, and lucide spreads
-                 `aria-hidden` onto every glyph by default, so neither Button had
-                 anything left to synthesise a name from: axe reads them as
-                 `button-name` CRITICAL. Both `<SelectTrigger>`s fall to their
-                 SELECTED VALUE ("Newest, combobox, collapsed" — nothing in that
-                 utterance says it sorts), because reka renders `role="combobox"`
-                 with no name and auto-hides the chevron.
-                 The filter toggle also carries `aria-expanded`/`aria-controls`: it
-                 is a disclosure, and `aria-pressed` alone described a state the
-                 drawer's existence, not the button's, actually holds. -->
-            <label class="sr-only" for="gallery-search-input">Search gallery</label>
-            <Input
-                id="gallery-search-input"
-                type="search"
-                :model-value="searchQuery"
-                placeholder="Search titles and tags…"
-                autocapitalize="none"
-                autocorrect="off"
-                spellcheck="false"
-                enterkeyhint="search"
-                class="search-input"
-                @input="searchQuery = ($event.target as HTMLInputElement).value.trimStart()"
-            />
-            <!-- X.F.W11 `.e` — the glyph follows the field in tree order: the
-                 producer's field is its own stacking context (glass backdrop),
-                 so a positioned glyph BEFORE it is painted under it. -->
-            <Search class="search-icon text-muted-foreground shrink-0" :size="16" aria-hidden="true" />
-            <span class="search-actions">
+        <!-- FR-GSB-11: FIVE controls on this bar had no accessible name, not
+             the three every axis enumerated. The input was named by
+             `placeholder` alone — a name that vanishes on the first keystroke.
+             The clear and filter buttons are icon-only, and lucide spreads
+             `aria-hidden` onto every glyph by default, so neither Button had
+             anything left to synthesise a name from: axe reads them as
+             `button-name` CRITICAL. Both `<SelectTrigger>`s fall to their
+             SELECTED VALUE ("Newest, combobox, collapsed" — nothing in that
+             utterance says it sorts), because reka renders `role="combobox"`
+             with no name and auto-hides the chevron.
+             The filter toggle also carries `aria-expanded`/`aria-controls`: it
+             is a disclosure, and `aria-pressed` alone described a state the
+             drawer's existence, not the button's, actually holds. -->
+        <!-- X.F.W14V.au6 — F-W14U (e): the field is the shared SearchField
+             (glass Input, the leading glyph after it in tree order, the
+             actions run inside the field). Its root is a <label>, so the
+             name is `aria-label` (a wrapping label's content would fold
+             the actions' names into the field's). -->
+        <SearchField
+            id="gallery-search-input"
+            type="search"
+            :model-value="searchQuery"
+            placeholder="Search titles and tags…"
+            aria-label="Search gallery"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="search"
+            class="search-pill"
+            @input="searchQuery = ($event.target as HTMLInputElement).value.trimStart()"
+        >
+            <template #actions>
                 <!-- UIA-F-184: ONE clear control — this one; the engine's own
-                     `type=search` cancel glyph is withdrawn in the style block. -->
+                     `type=search` cancel glyph is withdrawn by SearchField (it has actions). -->
                 <Button
                     v-if="searchQuery"
                     emphasis="quiet"
@@ -193,8 +193,8 @@ const hasActiveFilters = computed(
                         </div>
                     </PopoverContent>
                 </Popover>
-            </span>
-        </div>
+            </template>
+        </SearchField>
     </div>
 </template>
 
@@ -226,48 +226,18 @@ const hasActiveFilters = computed(
    context that seats the glyph and the actions INSIDE the producer's field.
    The measure is still named once (`--search-measure`, FR-GSB-30). */
 .search-pill {
-    position: relative;
-    display: flex;
-    align-items: center;
     width: 100%;
     max-width: var(--search-measure);
-}
-
-.search-icon {
-    position: absolute;
-    inset-inline-start: 0.75rem;
-    pointer-events: none;
-}
-
-/* Layout, not chrome: the inline padding clears the glyph at the start and
-   reserves the actions' run at the end — two `xs` rungs (`--control-h-xs`,
-   the producer's token, floored on coarse pointers) plus the separator. */
-.search-input {
-    flex: 1;
-    min-width: 0;
-    padding-inline-start: 2.25rem;
-    padding-inline-end: calc(2 * var(--control-h-xs) + 1.25rem);
-}
-
-.search-actions {
-    position: absolute;
-    inset-inline-end: 0.375rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    /* The actions' run inside the field (X.F.W14V.au6, SearchField): two `xs`
+       rungs (`--control-h-xs`, the producer's token, floored on coarse
+       pointers) plus the separator. */
+    --search-field-end: calc(2 * var(--control-h-xs) + 1.25rem);
 }
 
 /* FR-GSB-30 ⊕ FR-GSB-12 — ONE placeholder authority, and it is now the
    producer's (`.field-control::placeholder` → `--muted-foreground`). The
    local 50% dilution retires with the rest of the field chrome, as
    `FunctionInput`'s bespoke placeholder mute did (measured there at 2.02:1). */
-
-/* UIA-F-184: one clear control. The engine paints its own cancel glyph on a
-   `type=search` field beside the Clear button; it is withdrawn here, on the
-   one field this bar owns. */
-.search-input::-webkit-search-cancel-button {
-    appearance: none;
-}
 
 /* The filter trigger shows that filters are narrowing the grid; its
    disclosure state is the Popover's own `aria-expanded`. */

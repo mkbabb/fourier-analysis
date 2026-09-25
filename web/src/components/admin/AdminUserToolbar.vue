@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Button } from "@mkbabb/glass-ui/button";
-import { Input } from "@mkbabb/glass-ui/input";
 import {
     Select,
     SelectContent,
@@ -14,7 +13,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@mkbabb/glass-ui/menu";
-import { EllipsisVertical, Eraser, Search } from "@lucide/vue";
+import { EllipsisVertical, Eraser } from "@lucide/vue";
+import SearchField from "@/components/shared/SearchField.vue";
 
 /**
  * X.F.W14V.au4 — A2-FO-L1-27: the users list's toolbar, split out of the
@@ -47,51 +47,43 @@ const emit = defineEmits<{ prune: [] }>();
          — a global, irreversible delete — is no longer a persistent peer of
          search; it sits in the overflow and still passes its confirm. -->
     <div class="flex flex-wrap items-center gap-2" data-admin-toolbar>
-        <div class="relative basis-full sm:basis-0 sm:flex-1">
-            <!-- FR-AUL-6 ⊕ FR-AUL-23 ⊕ FR-AUL-40 — one swap, three cures.
-                 The raw `<input>` carried `outline-none` + `focus:ring-1`,
-                 which annihilates the focus indicator under forced-colors:
-                 the v4 forced-colors escape `.outline-hidden` is absent from
-                 the build (unused), and the producer's restore block is a
-                 CLOSED selector list this element was not in — while the
-                 Checkbox two elements away carries `focus-ring` natively. Its
-                 bare `border` drew in `currentColor` (v4 preflight resets
-                 `border: 0 solid` with no colour, `.border` carries none, and
-                 no base `border-color` rule exists in the stack): a near-black
-                 hairline in light mode on the one field surrounded by muted
-                 token edges — the classic v3→v4 casualty. And `type="text"`
-                 on a machine-generated lowercase-slug datum hand-waved the
-                 clear control the UA supplies for free.
-                 ⊘ Census correction: the ruled cure named `./forms` → `Input`.
-                 `./forms` does NOT exist at the adopted glass-ui 8.0.0 pin —
-                 the export map carries `./input`, `./label`, `./labeled-field`,
-                 `./search`, `./textarea`, `./number-field` in its place, and
-                 the base class is `field-control glass-control-edge`, not
-                 `input-pill`. Same primitive, relocated; booked in the
-                 addendum. -->
-            <Input
-                v-model="query"
-                type="search"
-                size="sm"
-                placeholder="Search users..."
-                aria-label="Search users"
-                autocapitalize="none"
-                autocorrect="off"
-                spellcheck="false"
-                enterkeyhint="search"
-                class="w-full pl-7"
-            />
-            <!-- X.F.W14U.admin — UIA-F-106 (consumer half): the glyph follows
-                 the field in tree order. The producer's field is its own
-                 stacking context (glass backdrop), so a positioned glyph
-                 BEFORE it painted under it (`elementFromPoint` at the glyph
-                 returned the INPUT) — GallerySearchBar's X.F.W11 `.e` idiom.
-                 The leading-adornment slot is the glass half (O-59). -->
-            <Search
-                class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
-                aria-hidden="true"
-            />
-        </div>
+        <!-- X.F.W14V.au6 — F-W14U (e): the field is the shared SearchField
+             (glass Input + the leading glyph after it in tree order,
+             UIA-F-106), at the toolbar's `sm` rung; no actions, so the
+             engine's own clear control stays (FR-AUL-23). -->
+        <!-- FR-AUL-6 ⊕ FR-AUL-23 ⊕ FR-AUL-40 — one swap, three cures.
+             The raw `<input>` carried `outline-none` + `focus:ring-1`,
+             which annihilates the focus indicator under forced-colors:
+             the v4 forced-colors escape `.outline-hidden` is absent from
+             the build (unused), and the producer's restore block is a
+             CLOSED selector list this element was not in — while the
+             Checkbox two elements away carries `focus-ring` natively. Its
+             bare `border` drew in `currentColor` (v4 preflight resets
+             `border: 0 solid` with no colour, `.border` carries none, and
+             no base `border-color` rule exists in the stack): a near-black
+             hairline in light mode on the one field surrounded by muted
+             token edges — the classic v3→v4 casualty. And `type="text"`
+             on a machine-generated lowercase-slug datum hand-waved the
+             clear control the UA supplies for free.
+             ⊘ Census correction: the ruled cure named `./forms` → `Input`.
+             `./forms` does NOT exist at the adopted glass-ui 8.0.0 pin —
+             the export map carries `./input`, `./label`, `./labeled-field`,
+             `./search`, `./textarea`, `./number-field` in its place, and
+             the base class is `field-control glass-control-edge`, not
+             `input-pill`. Same primitive, relocated; booked in the
+             addendum. -->
+        <SearchField
+            v-model="query"
+            size="sm"
+            type="search"
+            placeholder="Search users..."
+            aria-label="Search users"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="search"
+            class="basis-full sm:basis-0 sm:flex-1"
+        />
         <Select v-model="sort">
             <SelectTrigger class="min-w-0 flex-1 sm:w-auto sm:flex-none" aria-label="Sort users">
                 <SelectValue />
