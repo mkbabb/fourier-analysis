@@ -1,17 +1,14 @@
+import { niceStep } from "@/lib/niceStep";
+
 import type { CanvasSurface, ViewTransform } from "./types";
 
 export function drawGrid(surface: CanvasSurface, view: ViewTransform): void {
     const { ctx, width, height } = surface;
     const { cx, cy, scale, toScreen } = view;
 
-    // Compute grid step in data space (~40px on screen)
-    const rawStep = 40 / scale;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    const normalized = rawStep / magnitude;
-    let step: number;
-    if (normalized <= 2) step = 2 * magnitude;
-    else if (normalized <= 5) step = 5 * magnitude;
-    else step = 10 * magnitude;
+    // The grid step in data space (~40px on screen), on the one 1-2-5 ladder
+    // (A2-FO-L1-23).
+    const step = niceStep(40 / scale);
 
     const halfW = width / (2 * scale);
     const halfH = height / (2 * scale);

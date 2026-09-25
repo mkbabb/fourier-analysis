@@ -2,21 +2,13 @@
  * Adaptive grid drawing for the equation convergence plot.
  */
 
+import { niceStep } from "@/lib/niceStep";
+
 export interface PlotPadding {
     top: number;
     bottom: number;
     left: number;
     right: number;
-}
-
-/** Compute a "nice" step size for grid lines given a data range and target count. */
-export function niceStep(range: number, targetCount: number): number {
-    const raw = range / targetCount;
-    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-    const norm = raw / mag;
-    if (norm <= 2) return 2 * mag;
-    if (norm <= 5) return 5 * mag;
-    return 10 * mag;
 }
 
 /**
@@ -55,8 +47,8 @@ export function drawPlotGrid(
     const plotW = w - pad.left - pad.right;
     const plotH = h - pad.top - pad.bottom;
 
-    const xStep = niceStep(maxX - minX, Math.max(4, plotW / 60));
-    const yStep = niceStep(maxY - minY, Math.max(3, plotH / 60));
+    const xStep = niceStep((maxX - minX) / Math.max(4, plotW / 60));
+    const yStep = niceStep((maxY - minY) / Math.max(3, plotH / 60));
 
     const priorAlpha = ctx.globalAlpha;
 
