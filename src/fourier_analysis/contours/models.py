@@ -196,7 +196,9 @@ class ContourConfig:
     """Minimum contour area as a fraction of total image area."""
 
     max_contours: int | None = 24
-    """Maximum number of contours to keep (None = unlimited)."""
+    """Ceiling on the number of contours (None = no ceiling).  The AUTO
+    pipeline's greedy selection stops on marginal value, so a sparse subject
+    draws fewer; it is never a target to fill."""
 
     smooth_contours: float = 0.03
     """Savitzky-Golay smoothing window as a fraction of contour length."""

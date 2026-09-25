@@ -161,10 +161,10 @@ def extract_feature_contours(
     image: LoadedImage,
     isolation: SubjectIsolation,
     structure_contours: list[tuple[NDArray[np.complex128], float]],
-    budget: int,
+    budget: int | None,
     config: ContourConfig,
 ) -> list[tuple[NDArray[np.complex128], float]]:
-    """Up to *budget* edge-supported ridge polylines inside the subject.
+    """Up to *budget* (``None``: all) edge-supported ridge polylines inside the subject.
 
     See the module docstring.  Returns ``(contour, area)`` pairs in centred
     complex coordinates: ``area`` is the polygon area of a closed ridge and 0.0
@@ -208,7 +208,7 @@ def extract_feature_contours(
         coverage.add(c)
     picked: list[tuple[NDArray[np.complex128], float]] = []
     for _, c, a in ranked:
-        if len(picked) >= budget:
+        if budget is not None and len(picked) >= budget:
             break
         if coverage.overlap(c) > REDUNDANT_OVERLAP:
             continue

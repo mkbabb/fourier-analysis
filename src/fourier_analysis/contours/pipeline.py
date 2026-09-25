@@ -5,8 +5,6 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from skimage import feature as skfeature
-
 from fourier_analysis.contours.assembly import assemble_contours
 from fourier_analysis.contours.features import extract_feature_contours
 from fourier_analysis.contours.geometry import _polygon_area
@@ -21,61 +19,24 @@ from fourier_analysis.contours.structure import extract_structure_contours
 from fourier_analysis.shortest_tour import build_contour_tour
 
 
-def _compute_structure_fraction(
-    image: LoadedImage,
-    isolation: SubjectIsolation,
-) -> float:
-    """Determine structure/feature budget split based on edge density within subject.
-
-    High edge density (faces, detailed subjects) → more feature budget.
-    Low edge density (simple shapes) → more structure budget.
-    """
-    subject_edges = skfeature.canny(image.detail_grayscale, sigma=0.8)
-    if isolation.subject_mask is not None and np.any(isolation.subject_mask):
-        edge_density = float(np.mean(subject_edges[isolation.subject_mask]))
-    else:
-        edge_density = float(np.mean(subject_edges))
-
-    if edge_density > 0.08:
-        return 0.15  # Face-like: 15% structure / 85% features
-    elif edge_density > 0.04:
-        return 0.25  # Moderate detail: 25/75
-    else:
-        return 0.35  # Simple subjects: 35/65
-
-
 def extract_contours_pipeline(
     image: LoadedImage,
     config: ContourConfig,
 ) -> ContourExtractionResult:
     """Run the deterministic 5-stage contour extraction pipeline.
 
-    Image -> Isolate Subject -> Extract Structure -> Extract Features -> Assemble -> Tour
+    Image -> Isolate Subject -> Structure + Feature candidates -> Select -> Tour
     """
-    max_contours = config.max_contours or 24
-
     # Stage 1: Subject isolation.
     isolation = isolate_subject(image, config)
 
-    # A7: Content-adaptive budget split based on edge density.
-    structure_fraction = _compute_structure_fraction(image, isolation)
-    structure_budget = max(1, int(max_contours * structure_fraction))
-    feature_budget = max(1, max_contours - structure_budget)
+    # Stages 2-3: every edge-supported structure run and feature ridge is a
+    # candidate (each stage only drops what repeats the silhouette or itself).
+    structure = extract_structure_contours(image, isolation, None, config)
+    features = extract_feature_contours(image, isolation, [], None, config)
 
-    # Stage 2: Structure contours (iso-intensity).
-    structure = extract_structure_contours(image, isolation, structure_budget, config)
-
-    # Dynamic reallocation: if structure yields fewer than budgeted,
-    # redirect surplus to features (helps uniform-color subjects).
-    structure_surplus = structure_budget - len(structure)
-    if structure_surplus > 0:
-        feature_budget += structure_surplus
-
-    # Stage 3: Feature contours (edge density).
-    features = extract_feature_contours(image, isolation, structure, feature_budget, config)
-
-    # Stage 4: Assembly.
-    contours = assemble_contours(isolation, structure, features, max_contours, image)
+    # Stage 4: greedy marginal-value selection; max_contours is a ceiling.
+    contours = assemble_contours(isolation, structure + features, config.max_contours, image)
 
     if not contours:
         return _empty_result(config)

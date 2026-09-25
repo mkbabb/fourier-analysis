@@ -414,25 +414,6 @@ class TestPipelineRefinements:
         assert result.contours
         assert result.diagnostics.contour_count >= 2
 
-    def test_feature_budget_adapts_to_edge_density(self, tmp_path: Path):
-        """A high-edge-density image should allocate more budget to features."""
-        from fourier_analysis.contours.image import load_image_inputs
-        from fourier_analysis.contours.isolation import isolate_subject
-        from fourier_analysis.contours.pipeline import _compute_structure_fraction
-
-        size = 256
-        arr = np.zeros((size, size), dtype=np.uint8)
-        for i in range(0, size, 4):
-            arr[i:i+2, :] = 255
-        img_path = _save_image(arr, tmp_path / "dense_edges.png")
-
-        config = ContourConfig(resize=None).normalized()
-        image = load_image_inputs(img_path, config)
-        isolation = isolate_subject(image, config)
-
-        frac = _compute_structure_fraction(image, isolation)
-        assert frac <= 0.25, f"Expected <= 0.25 structure fraction for dense edges, got {frac}"
-
     def test_nested_config_round_trip(self):
         """Nested config fields should survive normalized() and to_dict()."""
         config = ContourConfig(

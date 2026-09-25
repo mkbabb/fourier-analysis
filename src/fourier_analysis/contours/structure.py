@@ -30,7 +30,7 @@ from fourier_analysis.contours.support import (
 def extract_structure_contours(
     image: LoadedImage,
     isolation: SubjectIsolation,
-    budget: int,
+    budget: int | None,
     config: ContourConfig,
 ) -> list[tuple[NDArray[np.complex128], float]]:
     """Extract the edge-supported spans of iso-intensity contours in the subject.
@@ -42,8 +42,8 @@ def extract_structure_contours(
     fraction of the silhouette's own median support, so the bar is relative to
     the image.  An iso-line across smooth skin or cloth (an illumination band)
     has no such span and vanishes; one that follows the jaw keeps the jaw.
-    Returns up to *budget* runs by size that do not repeat the silhouette or
-    each other.
+    Returns up to *budget* runs (``None``: all of them) by size that do not
+    repeat the silhouette or each other.
     """
     source = image.detail_grayscale
     n_levels = 16
@@ -112,7 +112,7 @@ def extract_structure_contours(
         coverage.add(silhouette)
     picked: list[tuple[NDArray[np.complex128], float]] = []
     for c, a in result:
-        if len(picked) >= budget:
+        if budget is not None and len(picked) >= budget:
             break
         if coverage.overlap(c) > REDUNDANT_OVERLAP:
             continue
