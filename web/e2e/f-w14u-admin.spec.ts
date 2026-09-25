@@ -79,7 +79,8 @@ async function openFlagged(page: Page, before?: (page: Page) => Promise<void>): 
 async function openAudit(page: Page, before?: (page: Page) => Promise<void>): Promise<void> {
     await openAdmin(page, before);
     await openTab(page, "Audit Log");
-    await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 60_000 });
+    // X.F.W14V.au4 (A2-FO-L2-11): below 640 px the ledger is DataTable's cards.
+    await expect(page.locator("table tbody tr, .data-table-card").first()).toBeVisible({ timeout: 60_000 });
 }
 
 /** The distinct line boxes a text element paints (1 = it never wrapped). */

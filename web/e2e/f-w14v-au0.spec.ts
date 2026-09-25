@@ -308,7 +308,8 @@ async function walkAudit(page: Page, run: Run, tag: string): Promise<void> {
     await page.goto(`/gallery?admin=${ADMIN_TOKEN}`);
     await expect(page.getByRole("region", { name: "Admin mode banner" })).toBeVisible({ timeout: 60_000 });
     await page.getByRole("tab", { name: "Audit Log" }).click();
-    await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 60_000 });
+    // X.F.W14V.au4 (A2-FO-L2-11): below 640 px the ledger is DataTable's cards.
+    await expect(page.locator("table tbody tr, .data-table-card").first()).toBeVisible({ timeout: 60_000 });
     await shot(page, run, tag, "audit-log");
 }
 
