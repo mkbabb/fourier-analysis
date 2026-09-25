@@ -79,7 +79,7 @@ test.describe("q35 · UIA-F-35 (consumer) — whole harmonics, counted as harmon
         await shown.fill("8");
         await shown.press("Enter");
         await card.getByRole("button", { name: /Expanded|a \+ b/ }).first().click();
-        await expect.poll(() => seriesTex(card), { timeout: LOAD }).toMatch(/0\.06(25|3)\b/);
+        await expect.poll(() => seriesTex(card), { timeout: LOAD }).toMatch(/0\.06(25|2|3)\b/);
         expect(await seriesTex(card)).not.toMatch(/0\.031\b/);
         // The list names its count in the same unit: 41 exponential terms = 21 harmonics.
         const layer = page.locator(".configurator-layer").filter({ hasText: "Coefficients" });

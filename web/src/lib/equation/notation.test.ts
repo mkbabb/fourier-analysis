@@ -63,4 +63,18 @@ describe("NOTATION_OPTIONS", () => {
             "polar",
         ]);
     });
+
+    it("routes every notation ink through the palette tokens (UIA-F-241)", () => {
+        // X.F.W14V `.u2`: the three hsl literals were blind to the theme; the
+        // hues stay fourier's (§0da), carried by the one palette's tokens.
+        for (const o of NOTATION_OPTIONS) {
+            expect(o.color).toMatch(/^var\(--(viz|section-color)-[a-z0-9-]+\)$/);
+        }
+    });
+
+    it("spells every glyph as TeX, never a Unicode superscript (UIA-F-241)", () => {
+        for (const o of NOTATION_OPTIONS) {
+            expect(o.glyph).not.toMatch(/[\u2070-\u209f]/);
+        }
+    });
 });

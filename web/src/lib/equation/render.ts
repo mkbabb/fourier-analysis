@@ -112,15 +112,20 @@ export function renderLatex(latex: string, options: RenderLatexOptions = {}): st
  * `eqMode` defaults to `"sigma"`, `activeLatex` prefers the sigma render, and the
  * sigma renders are precisely the ones carrying `\htmlClass` — so the app's only
  * copy affordance emitted LaTeX that every consumer but KaTeX-with-trust rejects
- * with `Undefined control sequence`, in its own default mode. The expanded
- * renderers are already clean, so stripping the wrapper is the whole cure.
+ * with `Undefined control sequence`, in its own default mode. Both forms carry
+ * the wrapper now (below), and stripping it is the whole cure.
  *
- * The pattern is exact rather than generous on purpose: all four emission sites
- * spell `\htmlClass{<classes>}{<symbol>}` with no nested braces in either
- * argument, so a brace-free match cannot mis-parse a real equation body.
+ * The pattern is exact rather than generous on purpose. The class argument is
+ * brace-free at every emission site. The body is brace-free at the Σ sites
+ * (`a_n`), and since X.F.W14V `.u2` (UIA-F-253) the expanded renderers hook
+ * whole terms, whose bodies nest braces up to two deep (`\frac{\pi}{2}\cos(t)`,
+ * `e^{i(2t+0.5)}`). The body pattern admits exactly that nesting and no more,
+ * so a match still cannot run past its own closing brace.
  */
+const HOOK = /\\htmlClass\{[^{}]*\}\{((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)\}/g;
+
 export function plainLatex(latex: string): string {
-    return latex.replace(/\\htmlClass\{[^{}]*\}\{([^{}]*)\}/g, "$1");
+    return latex.replace(HOOK, "$1");
 }
 
 /** The single option object. Nothing else in the app constructs one. */

@@ -161,6 +161,7 @@ function currentRequest(): ComputeEquationRequest {
         n_eval_points: N_EVAL_POINTS,
         notation: notation.value,
         budget: clampBudget(budget.value),
+        auto_harmonics: autoHarmonics.value,
     };
 }
 
@@ -187,9 +188,13 @@ function computeKey(req: ComputeEquationRequest): string {
     ]);
 }
 
-/** The render identity: the computed state, times the two knobs that re-render it. */
+/**
+ * The render identity: the computed state, times the knobs that re-render it.
+ * X.F.W14V `.u2` — UIA-F-201: Auto is one of them, because the Σ form is
+ * bounded at the displayed N (the effective N under Auto, every harmonic off it).
+ */
 function displayKey(req: ComputeEquationRequest): string {
-    return JSON.stringify([lastComputeKey, req.notation, req.budget]);
+    return JSON.stringify([lastComputeKey, req.notation, req.budget, req.auto_harmonics]);
 }
 
 // ── Cache keys ──
@@ -287,9 +292,11 @@ async function doSimplify() {
     const gen = ++simplifyGeneration;
     simplifying.value = true;
     try {
-        const resp = await simplifyCoefficients(components.value, req.budget, req.notation);
+        const resp = await simplifyCoefficients(components.value, req.budget, req.notation, req.auto_harmonics);
         if (gen !== simplifyGeneration) return;
         displayLatex.value = resp.latex;
+        displayLatexSigma.value = resp.latex_sigma;
+        if (result.value) result.value.latex_sigma = resp.latex_sigma;
         displayEnergy.value = resp.energy_captured;
         lastDisplayKey = key;
         // `L·m-10` — `error` was cleared ONLY by doCompute, so a failed compute's
@@ -372,10 +379,11 @@ if (!result.value || computeKey(currentRequest()) !== lastComputeKey) doCompute(
 // identity, so the memo no longer swallows the change, and the `force` memo
 // branch (`L·m-1`, dead until now because nothing ever called `doCompute(false)`
 // with a result in hand) comes alive as the cheap path for a budget-only edit.
-// ⊘ `latex_sigma` on `SimplifyResponse` is the F.W5–W8 contract half; until it
-// lands, a notation change costs a recompute, and that is the honest price.
+// `latex_sigma` on `SimplifyResponse` landed at X.F.W14V `.u2` (UIA-F-201), so a
+// budget or Auto change re-renders BOTH forms through the memo branch; the
+// notation stays in the compute identity above, so it still recomputes.
 watchDebounced(
-    () => [notation.value, budget.value] as const,
+    () => [notation.value, budget.value, autoHarmonics.value] as const,
     () => { if (result.value) doCompute(); },
     { debounce: 200 },
 );

@@ -1,20 +1,28 @@
 import type { EquationTier, NotationMode } from "./types";
 
 /**
- * Notation pill definitions with LaTeX-style icons and colors,
- * matching the `.basis-toggle` pattern from BasisSelector (glass-ui
- * `<Button variant="outline" size="sm">` with `aria-pressed` driving an
- * instance-scoped tint).
+ * The notation choices: a KaTeX glyph and each notation's hue.
+ *
+ * X.F.W14V `.u2` — UIA-F-85 / F-241 (glyph and ink limbs, F-W14U.md addendum
+ * (h)). The inks were three hsl literals, blind to the theme (a blue "Exp" on
+ * the dark brown ground). They are now the ONE palette's tokens (`--viz-*` and
+ * glass's `--section-color-*`, both `light-dark()` pairs), and fourier's hues
+ * are KEPT, per §0da's identity law: Trig is the Fourier red (`--viz-fourier`,
+ * the basis it names), Exp the blue rung (`--section-color-2`, hue 265 in
+ * oklch, the authored hsl 224), Polar the violet rung (`--section-color-7`,
+ * hue 318 in oklch, the authored hsl 286). The glyphs are TeX, rendered by
+ * KaTeX: the Unicode superscript `eⁱ` sat at its own odd baseline.
  */
 export const NOTATION_OPTIONS: {
     label: string;
     value: NotationMode;
-    icon: string;
+    /** TeX source, rendered inline by KaTeX. */
+    glyph: string;
     color: string;
 }[] = [
-    { label: "Trig", value: "trig", icon: "sin", color: "hsl(6, 72%, 49%)" },
-    { label: "Exp", value: "exponential", icon: "eⁱ", color: "hsl(224, 58%, 46%)" },
-    { label: "Polar", value: "polar", icon: "Ae", color: "hsl(286, 46%, 47%)" },
+    { label: "Trig", value: "trig", glyph: String.raw`\sin`, color: "var(--viz-fourier)" },
+    { label: "Exp", value: "exponential", glyph: String.raw`e^{i}`, color: "var(--section-color-2)" },
+    { label: "Polar", value: "polar", glyph: "Ae", color: "var(--section-color-7)" },
 ];
 
 /**

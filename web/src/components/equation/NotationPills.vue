@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ToggleGroup, ToggleGroupItem } from "@mkbabb/glass-ui/toggle-group";
 import { NOTATION_OPTIONS } from "@/lib/equation/notation";
+import { renderLatex } from "@/lib/equation/render";
 import type { NotationMode } from "@/lib/equation/types";
 
 /**
@@ -10,7 +11,12 @@ import type { NotationMode } from "@/lib/equation/types";
  * chooser its neighbours use (`BasisSelector`'s Fourier mode), not three ad-hoc
  * Buttons carrying `aria-pressed`. Each item keeps its notation's hue on its
  * pressed state (addendum (g): an identity colour is not a defect).
+ *
+ * X.F.W14V `.u2` — UIA-F-85 / F-241: the hues are the palette's tokens (see
+ * `NOTATION_OPTIONS`), and each glyph is KaTeX, typeset on the math baseline
+ * like the series it names (the Unicode `eⁱ` sat at its own).
  */
+const glyphs = NOTATION_OPTIONS.map((o) => renderLatex(o.glyph, { displayMode: false }));
 const model = defineModel<NotationMode>({ required: true });
 
 function onChoose(v: unknown) {
@@ -23,9 +29,9 @@ function onChoose(v: unknown) {
 <template>
     <ToggleGroup type="single" size="sm" aria-label="Notation" class="notation-group"
         :model-value="model" @update:model-value="onChoose">
-        <ToggleGroupItem v-for="opt in NOTATION_OPTIONS" :key="opt.value" :value="opt.value"
+        <ToggleGroupItem v-for="(opt, i) in NOTATION_OPTIONS" :key="opt.value" :value="opt.value"
             class="notation-item" :style="{ '--pill-color': opt.color }">
-            <span class="font-serif-math font-semibold notation-glyph" aria-hidden="true">{{ opt.icon }}</span>
+            <span class="notation-glyph" aria-hidden="true" v-html="glyphs[i]" />
             {{ opt.label }}
         </ToggleGroupItem>
     </ToggleGroup>

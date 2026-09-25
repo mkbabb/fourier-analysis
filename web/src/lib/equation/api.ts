@@ -34,6 +34,7 @@ export async function simplifyCoefficients(
     components: BasisComponent[],
     budget: number,
     notation: string,
+    autoHarmonics = false,
 ): Promise<SimplifyResponse> {
     const coefficients: FourierTermDTO[] = components.map((c) => ({
         n: c.index,
@@ -47,6 +48,7 @@ export async function simplifyCoefficients(
         coefficients,
         budget,
         notation: notation as SimplifyRequest["notation"],
+        auto_harmonics: autoHarmonics,
     };
     return apiFetch<SimplifyResponse>("/api/equations/simplify", "eq-simplify", {
         method: "POST",
