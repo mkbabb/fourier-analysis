@@ -116,7 +116,7 @@ async function measure(page: Page, run: Run, view: string, note?: string): Promi
             "[data-reka-popper-content-wrapper] > *",
         ].join(",");
         const seen = new Set<Element>();
-        const plates = [] as Array<Record<string, number | string>>;
+        const plates: Plate[] = [];
         for (const el of Array.from(document.querySelectorAll(sel))) {
             if (seen.has(el)) continue;
             seen.add(el);
@@ -151,7 +151,7 @@ async function measure(page: Page, run: Run, view: string, note?: string): Promi
             plates,
         };
     });
-    run.views.push({ view, state: "framed", note, ...(m as Omit<ViewMetrics, "view" | "state">) });
+    run.views.push({ view, state: "framed", note, ...m });
 }
 
 async function frame(page: Page, tag: string, view: string): Promise<void> {
