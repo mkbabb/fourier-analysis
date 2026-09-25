@@ -13,10 +13,10 @@ import {
 import type { PaperLabelInfo, PaperSectionData } from "@mkbabb/latex-paper";
 import {
     buildSearchIndex,
-    clearSearchCache,
-    searchIndex,
+    clearPaperSearchCache,
+    searchPaper,
     type SearchEntry,
-    type SearchResult,
+    type PaperSearchResult,
 } from "./paperSearchIndex";
 
 export function usePaperSearch(options: {
@@ -61,8 +61,8 @@ export function usePaperSearch(options: {
         }, 120);
     });
 
-    const results: ComputedRef<SearchResult[]> = computed(() =>
-        debouncedQuery.value ? searchIndex(index(), debouncedQuery.value, 30) : [],
+    const results: ComputedRef<PaperSearchResult[]> = computed(() =>
+        debouncedQuery.value ? searchPaper(index(), debouncedQuery.value, 30) : [],
     );
 
     /**
@@ -79,7 +79,7 @@ export function usePaperSearch(options: {
         selectedIndex.value = 0;
     });
 
-    function selectResult(r: SearchResult) {
+    function selectResult(r: PaperSearchResult) {
         options.navigateTo(r.id);
         close();
     }
@@ -98,7 +98,7 @@ export function usePaperSearch(options: {
         // rows under an empty input. Everything cleared is cleared in this tick.
         clearTimeout(debounceTimer);
         debouncedQuery.value = "";
-        if (_index) clearSearchCache(_index);
+        if (_index) clearPaperSearchCache(_index);
     }
 
     function close() {
@@ -153,7 +153,7 @@ export function usePaperSearch(options: {
     // and the composable reaps them when its scope ends.
     onScopeDispose(() => {
         clearTimeout(debounceTimer);
-        if (_index) clearSearchCache(_index);
+        if (_index) clearPaperSearchCache(_index);
     });
 
     return {

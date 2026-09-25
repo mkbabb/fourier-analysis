@@ -2,7 +2,7 @@
  * Pure utility functions for paper search result display — type labels,
  * label formatting, HTML escaping, and match highlight rendering.
  */
-import { wordMatch, type SearchResult } from "./paperSearchIndex";
+import { wordMatch, type PaperSearchResult } from "./paperSearchIndex";
 
 /**
  * `PSM-17`: typed `Record<string, string>`, this defeated exhaustiveness over a
@@ -11,7 +11,7 @@ import { wordMatch, type SearchResult } from "./paperSearchIndex";
  * (`"bibliography"` is declared and never produced by any push site today; it
  * stays, because the type says the parser may produce it.)
  */
-export const TYPE_LABELS: Record<SearchResult["type"], string> = {
+export const TYPE_LABELS: Record<PaperSearchResult["type"], string> = {
     section: "Sec",
     theorem: "Thm",
     definition: "Def",
@@ -38,7 +38,7 @@ export const TYPE_LABELS: Record<SearchResult["type"], string> = {
  * X.F.W14U.paper — UIA-F-64: the palette's `CommandGroup` headings, one group
  * per result type (the register's "one `<CommandGroup>` per result type").
  */
-export const TYPE_GROUPS: Record<SearchResult["type"], string> = {
+export const TYPE_GROUPS: Record<PaperSearchResult["type"], string> = {
     section: "Sections",
     theorem: "Theorems",
     definition: "Definitions",
@@ -55,8 +55,8 @@ export const TYPE_GROUPS: Record<SearchResult["type"], string> = {
 };
 
 /** Results grouped by type, groups in the order their best result ranks. */
-export function groupByType(results: SearchResult[]): { type: SearchResult["type"]; items: SearchResult[] }[] {
-    const groups = new Map<SearchResult["type"], SearchResult[]>();
+export function groupByType(results: PaperSearchResult[]): { type: PaperSearchResult["type"]; items: PaperSearchResult[] }[] {
+    const groups = new Map<PaperSearchResult["type"], PaperSearchResult[]>();
     for (const r of results) {
         const list = groups.get(r.type);
         if (list) list.push(r);
@@ -75,7 +75,7 @@ function truncate(text: string): string {
     return `${lastSpace > LABEL_LIMIT * 0.6 ? cut.slice(0, lastSpace) : cut}\u2026`;
 }
 
-export function resultLabel(r: SearchResult): string {
+export function resultLabel(r: PaperSearchResult): string {
     if (r.label) return r.label;
     return truncate(r.rawTex ?? r.plainText);
 }
@@ -181,7 +181,7 @@ const INLINE_MATH = /(?<!\\)\$((?:\\\$|[^$])+?)(?<!\\)\$/g;
  * TeX, typeset whole rather than cut mid-token by the text limit.
  */
 export function highlightLabel(
-    r: SearchResult,
+    r: PaperSearchResult,
     query: string,
     renderMath: (tex: string) => string,
 ): string {

@@ -20,7 +20,7 @@
 import { inject } from "vue";
 import { PAPER_CONTEXT } from "@mkbabb/latex-paper/vue";
 import { Badge } from "@mkbabb/glass-ui/badge";
-import type { SearchResult } from "./paperSearchIndex";
+import type { PaperSearchResult } from "./paperSearchIndex";
 import { TYPE_LABELS, highlightLabel } from "./searchHelpers";
 
 // UIA-F-21: the label's math is typeset by the paper's own KaTeX (its macros).
@@ -29,7 +29,7 @@ if (!paper) throw new Error("PaperSearchResultRow renders inside PaperView's PAP
 const renderMath = paper.renderInline;
 
 defineProps<{
-    result: SearchResult;
+    result: PaperSearchResult;
     query: string;
 }>();
 </script>

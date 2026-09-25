@@ -88,7 +88,7 @@ export interface SearchEntry {
     };
 }
 
-export interface SearchResult extends SearchEntry {
+export interface PaperSearchResult extends SearchEntry {
     score: number;
 }
 
@@ -268,9 +268,9 @@ function scoreEntry(
  * index in the same session would read the first one's answers. It is owned by
  * the index now — one cache per index, disposed with it.
  */
-const caches = new WeakMap<SearchEntry[], Map<string, SearchResult[]>>();
+const caches = new WeakMap<SearchEntry[], Map<string, PaperSearchResult[]>>();
 
-function cacheFor(index: SearchEntry[]): Map<string, SearchResult[]> {
+function cacheFor(index: SearchEntry[]): Map<string, PaperSearchResult[]> {
     let c = caches.get(index);
     if (!c) {
         c = new Map();
@@ -280,15 +280,23 @@ function cacheFor(index: SearchEntry[]): Map<string, SearchResult[]> {
 }
 
 /** `PSM-22`/`PSM-27`: drop an index's memo — on dispose, and on close. */
-export function clearSearchCache(index: SearchEntry[]): void {
+export function clearPaperSearchCache(index: SearchEntry[]): void {
     caches.get(index)?.clear();
 }
 
-export function searchIndex(
+/**
+ * X.F.W14V.au5 — A2-FO-L1-4 (consumer half): the paper's ranker. glass keeps
+ * its fuzzy engine INTERNAL at 10.1.0 (no `./search` export key), so this
+ * engine is consumer-owned and no longer carries the producer's names
+ * (`searchIndex`, `clearSearchCache`, `SearchResult`): nothing here shadows
+ * glass's engine. When glass publishes `./search` this ranking is the adopt
+ * (ADOPT-AT-LANDING) and `buildSearchIndex` stays the domain half.
+ */
+export function searchPaper(
     index: SearchEntry[],
     query: string,
     maxResults = 30,
-): SearchResult[] {
+): PaperSearchResult[] {
     const cache = cacheFor(index);
     const q = query.toLowerCase().trim();
     if (!q) {
@@ -316,7 +324,7 @@ export function searchIndex(
         if (prefixResults) candidates = prefixResults;
     }
 
-    const scored: { result: SearchResult; tier: number }[] = [];
+    const scored: { result: PaperSearchResult; tier: number }[] = [];
     for (const entry of candidates) {
         const m = scoreEntry(tokens, entry);
         if (m) {
@@ -326,7 +334,7 @@ export function searchIndex(
 
     // `FR-PSD-TYPE`: tier first, score second. The tier is the whole content of
     // the decision above — a type-only match ranks below every content match
-    // and can never displace one — and it stays out of `SearchResult`, because
+    // and can never displace one — and it stays out of `PaperSearchResult`, because
     // nothing downstream has any business reading it.
     scored.sort((a, b) => b.tier - a.tier || b.result.score - a.result.score);
     const ranked = scored.map((s) => s.result);
