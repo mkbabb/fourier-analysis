@@ -313,7 +313,7 @@ def _cmd_download_models(args: argparse.Namespace) -> int:
     """Pre-download all ONNX models."""
     from fourier_analysis.contours.ml import ensure_model_downloaded, ensure_pidinet_downloaded
 
-    print("Downloading U2-Net-lite...", end=" ", flush=True)
+    print("Downloading the subject models (U2-Net, BiRefNet-lite)...", end=" ", flush=True)
     try:
         ensure_model_downloaded()
         print("OK")
