@@ -204,3 +204,19 @@ async function handleToggle() {
     }
 }
 </script>
+
+<style scoped>
+/*
+ * X.F.W14V `.dm` (addendum (f), COHESION §0dx) — the owner: "the darkmode
+ * toggle is too small as well". Glass's `.dock-icon-button > svg` sizes the
+ * glyph to `--dock-icon-glyph` (20 px here), while the dock's sibling glyphs
+ * (the section glyph, the account glyph) render in a 24 px box, so the morph
+ * read a size smaller than its neighbours. The control takes glass's own hook
+ * at glass's `--icon-xl` rung (1.5rem), the siblings' box, measured by
+ * bounding box at 1440 and 390 (`e2e/f-w14v-nav.spec.ts`). The glyph and its
+ * identity colour are unchanged.
+ */
+.sun-moon-toggle {
+    --dock-icon-glyph: var(--icon-xl);
+}
+</style>

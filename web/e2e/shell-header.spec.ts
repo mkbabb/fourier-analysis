@@ -36,6 +36,14 @@ const NAV_TABS = [
     { label: "Morph", path: "/morph" },
 ] as const;
 
+/** X.F.W14V `.nav` (§0dw): the section menu is the nav at every one of these. */
+const NAV_WIDTHS = [
+    { width: 1440, height: 900 },
+    { width: 1024, height: 768 },
+    { width: 768, height: 1024 },
+    { width: 390, height: 844 },
+] as const;
+
 test.describe("Shell header (G-F9-12)", () => {
     test("the logo trigger is named and opens its attribution card", async ({ page }) => {
         await page.goto("/");
@@ -53,51 +61,53 @@ test.describe("Shell header (G-F9-12)", () => {
         });
     });
 
-    test("the nav trigger names the current section and lists every route", async ({ page }) => {
-        // X.F.W14U.shell — UIA-F-151: at desktop width the sections are inline
-        // dock tabs; the one menu this reads lives below 1024 px.
-        await page.setViewportSize({ width: 390, height: 844 });
-        await page.goto("/gallery");
+    for (const vp of NAV_WIDTHS) {
+        test(`the nav trigger names the current section and lists every route (${vp.width})`, async ({ page }) => {
+            // X.F.W14V `.nav` — owner-ruling re-baseline (COHESION §0dw, reversing
+            // UIA-F-151's tab limb): the one menu is the nav at EVERY width, so
+            // this reads it at 1440, 1024, 768 and 390 (was: 390 only).
+            await page.setViewportSize(vp);
+            await page.goto("/gallery");
 
-        // `:aria-label="`Navigate — current section ${activeTabData.label}`"` —
-        // the trigger's name CARRIES the current section, which is the only
-        // statement of it available to a screen reader.
-        const nav = page.getByRole("button", { name: /^Navigate — current section/ });
-        await expect(nav).toBeVisible({ timeout: 30_000 });
-        await expect(nav).toHaveAccessibleName("Navigate — current section Gallery");
+            // `:aria-label="`Navigate — current section ${activeTabData.label}`"` —
+            // the trigger's name CARRIES the current section, which is the only
+            // statement of it available to a screen reader.
+            const nav = page.getByRole("button", { name: /^Navigate — current section/ });
+            await expect(nav).toBeVisible({ timeout: 30_000 });
+            await expect(nav).toHaveAccessibleName("Navigate — current section Gallery");
 
-        await nav.click();
-        const menu = page.getByRole("menu");
-        await expect(menu).toBeVisible({ timeout: 10_000 });
+            await nav.click();
+            const menu = page.getByRole("menu");
+            await expect(menu).toBeVisible({ timeout: 10_000 });
 
-        // Every declared route is reachable from the one nav affordance. A
-        // dropped tab is a route with no navigation path, and nothing else in
-        // the suite would notice.
-        for (const tab of NAV_TABS) {
-            await expect(menu.getByRole("menuitem", { name: tab.label })).toBeVisible();
-        }
-    });
-
-    test("the nav trigger actually navigates, and re-names itself when it does", async ({
-        page,
-    }) => {
-        // X.F.W14U.shell — UIA-F-151: at desktop width the sections are inline
-        // dock tabs; the one menu this reads lives below 1024 px.
-        await page.setViewportSize({ width: 390, height: 844 });
-        await page.goto("/gallery");
-
-        const nav = page.getByRole("button", { name: /^Navigate — current section/ });
-        await expect(nav).toBeVisible({ timeout: 30_000 });
-        await nav.click();
-        await page.getByRole("menuitem", { name: "Equation" }).click();
-
-        await expect(page).toHaveURL(/\/equation$/, { timeout: 15_000 });
-        // The name is derived from the route, so this is the round trip: a nav
-        // that moved the URL but not its own label would be a lie to AT users.
-        await expect(nav).toHaveAccessibleName("Navigate — current section Equation", {
-            timeout: 10_000,
+            // Every declared route is reachable from the one nav affordance. A
+            // dropped tab is a route with no navigation path, and nothing else in
+            // the suite would notice.
+            for (const tab of NAV_TABS) {
+                await expect(menu.getByRole("menuitem", { name: tab.label })).toBeVisible();
+            }
         });
-    });
+
+        test(`the nav trigger actually navigates, and re-names itself when it does (${vp.width})`, async ({
+            page,
+        }) => {
+            // X.F.W14V `.nav` — owner-ruling re-baseline (§0dw): at every width.
+            await page.setViewportSize(vp);
+            await page.goto("/gallery");
+
+            const nav = page.getByRole("button", { name: /^Navigate — current section/ });
+            await expect(nav).toBeVisible({ timeout: 30_000 });
+            await nav.click();
+            await page.getByRole("menuitem", { name: "Equation" }).click();
+
+            await expect(page).toHaveURL(/\/equation$/, { timeout: 15_000 });
+            // The name is derived from the route, so this is the round trip: a nav
+            // that moved the URL but not its own label would be a lie to AT users.
+            await expect(nav).toHaveAccessibleName("Navigate — current section Equation", {
+                timeout: 10_000,
+            });
+        });
+    }
 
     test("the dark-mode toggle announces its state through aria-pressed", async ({ page }) => {
         await page.goto("/");

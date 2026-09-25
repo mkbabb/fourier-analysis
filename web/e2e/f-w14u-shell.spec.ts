@@ -339,22 +339,48 @@ test.describe("s57 UIA-F-57 ⊕ s154 UIA-F-154 ⊕ s233 UIA-F-233 (About) ⊕ s2
     });
 });
 
-test.describe("s151 UIA-F-151 — primary nav is visible when there is room", () => {
-    test.use({ viewport: DESKTOP });
-    test("1440: the five sections are dock faces, the current one marked; no Navigate menu", async ({ page }) => {
-        await page.goto("/gallery");
-        const nav = page.getByRole("navigation", { name: "Sections" });
-        await expect(nav).toBeVisible({ timeout: 30_000 });
-        for (const label of ["Paper", "Visualize", "Gallery", "Equation", "Morph"]) {
-            await expect(nav.getByRole("link", { name: label })).toBeVisible();
-        }
-        await expect(nav.getByRole("link", { name: "Gallery" })).toHaveAttribute("aria-current", "page");
-        await expect(page.getByRole("button", { name: /^Navigate/ })).toHaveCount(0);
-        await nav.getByRole("link", { name: "Equation" }).click();
-        await expect(page).toHaveURL(/\/equation$/);
-        await expect(nav.getByRole("link", { name: "Equation" })).toHaveAttribute("aria-current", "page");
+/**
+ * X.F.W14V `.nav` — OWNER-RULING RE-BASELINE (COHESION §0dw, reversing UIA-F-151's
+ * tab limb): "this should be a dropdown, not expanded out into paper,
+ * visualize, etc." The s151 case asserted, at 1440, the `nav[aria-label=Sections]`
+ * row of five links with `aria-current` on Gallery, NO Navigate button, and a
+ * link click moving `aria-current` to Equation. Each of those assertions is
+ * re-pointed, none dropped: the row is asserted ABSENT, the Navigate trigger
+ * asserted as the ONE nav affordance, the five sections are its menu items with
+ * `aria-current` on the active one, and a keyboard open → select → close
+ * round-trip moves `aria-current` to Equation — at 1440, 1024, 768 and 390.
+ */
+for (const vp of [DESKTOP, { width: 1024, height: 768 }, { width: 768, height: 1024 }, PHONE]) {
+    test.describe(`s151 (re-baselined, §0dw) — the sections are one dropdown (${vp.width})`, () => {
+        test.use({ viewport: vp });
+        test("one Navigate trigger, no Sections tab row; the menu marks the current section; keyboard open/close", async ({ page }) => {
+            await page.goto("/gallery");
+            const trigger = page.getByRole("button", { name: /^Navigate/ });
+            await expect(trigger).toBeVisible({ timeout: 30_000 });
+            await expect(trigger).toHaveCount(1);
+            await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
+            await trigger.focus();
+            await page.keyboard.press("Enter");
+            const menu = page.getByRole("menu");
+            await expect(menu).toBeVisible();
+            for (const label of ["Paper", "Visualize", "Gallery", "Equation", "Morph"]) {
+                await expect(menu.getByRole("menuitem", { name: label })).toBeVisible();
+            }
+            await expect(menu.getByRole("menuitem", { name: "Gallery" })).toHaveAttribute("aria-current", "page");
+            await page.keyboard.press("Escape");
+            await expect(menu).toHaveCount(0);
+            await expect(trigger).toBeFocused();
+            await page.keyboard.press("Enter");
+            await expect(menu).toBeVisible();
+            await menu.getByRole("menuitem", { name: "Equation" }).focus();
+            await page.keyboard.press("Enter");
+            await expect(page).toHaveURL(/\/equation$/);
+            await expect(menu).toHaveCount(0);
+            await trigger.click();
+            await expect(page.getByRole("menu").getByRole("menuitem", { name: "Equation" })).toHaveAttribute("aria-current", "page");
+        });
     });
-});
+}
 
 test.describe("s128 UIA-F-128 ⊕ s233 (nav) ⊕ s231 UIA-F-231 — the phone nav menu", () => {
     test.use({ viewport: PHONE });

@@ -8,20 +8,19 @@
  * Fourier analysis` · the sections · the account group (`UserSlugBar`) · `Dark
  * mode`.
  *
- * FACES. Transient surfaces (the attribution card, the phone's section menu)
- * ride `DockTrigger`; the sections at desktop width are `DockControl` tabs; the
- * dark-mode control wears `DockControl` too (`DarkModeToggle.vue`). The dock's
- * hover plate, press spring, specular gleam and coarse hit floor are the
+ * FACES. Transient surfaces (the attribution card, the section menu) ride
+ * `DockTrigger`; the dark-mode control wears `DockControl` (`DarkModeToggle.vue`).
+ * The dock's hover plate, press spring, specular gleam and coarse hit floor are the
  * producer's on every control (UIA-F-153: dock faces only, no nested stadium).
  *
  * X.F.W14U.shell:
- *  - UIA-F-151: the five sections are visible when there is room (≥1024 px,
- *    measured: the inline row takes ~890 px, which a 768 px viewport cannot
- *    hold) as `DockControl shape="tab"` links, the current one `aria-current`
- *    and on glass's selected seat; below that, one menu.
- *  - UIA-F-231: the phone menu is non-modal (a press on the logo while it is
- *    open reaches About in one press), its trigger shows the section's name,
- *    and a route outside the five claims none.
+ *  - X.F.W14V `.nav` (owner ruling, COHESION §0dw, reversing UIA-F-151's tab
+ *    limb): the five sections are ONE `DockTrigger for="dropdown"` menu at
+ *    every viewport — "this should be a dropdown, not expanded out into paper,
+ *    visualize, etc." No inline tab row at any width.
+ *  - UIA-F-231: the menu is non-modal (a press on the logo while it is open
+ *    reaches About in one press), its trigger shows the section's name, and a
+ *    route outside the five claims none.
  *  - UIA-F-128 ⊕ UIA-F-233: the menu is glass's as published — no local
  *    current-row tint, no plate padding/width literals, no icon glows; the
  *    `[aria-current]` paint is glass's half (O-59).
@@ -37,13 +36,12 @@
  *    above the dock (`--space-body`).
  */
 import { computed } from "vue";
-import { RouterLink, useRoute, useRouter } from "vue-router";
-import { useMediaQuery } from "@vueuse/core";
+import { useRoute, useRouter } from "vue-router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass } from "@lucide/vue";
 import { sectionNav } from "@/router/routes";
-import { GlassDock, DockControl, DockTrigger, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockTrigger, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
@@ -72,8 +70,6 @@ const activeTabData = computed(() => tabs.find((t) => t.value === activeTab.valu
 const navName = computed(() =>
     activeTabData.value ? `Navigate — current section ${activeTabData.value.label}` : "Navigate",
 );
-
-const inlineNav = useMediaQuery("(min-width: 1024px)");
 
 function onTabSelect(path: string) {
     router.push(path);
@@ -121,27 +117,11 @@ function onTabSelect(path: string) {
 
             <DockSeparator />
 
-            <!-- UIA-F-151: the sections, inline where the dock has room. -->
-            <nav v-if="inlineNav" class="contents" aria-label="Sections">
-                <DockControl
-                    v-for="tab in tabs"
-                    :key="tab.value"
-                    shape="tab"
-                    :as="RouterLink"
-                    :to="tab.value"
-                    class="nav-tab"
-                    :aria-current="activeTab === tab.value ? 'page' : undefined"
-                    :data-active="activeTab === tab.value ? '' : undefined"
-                >
-                    <component :is="tab.icon" class="nav-tab-icon" aria-hidden="true" />
-                    <span>{{ tab.label }}</span>
-                </DockControl>
-            </nav>
-
-            <!-- Below 1024px: ONE affordance whose name carries the current
-                 section, and a non-modal menu (UIA-F-231) whose current row is
-                 `aria-current` (its paint is glass's half, UIA-F-128). -->
-            <DropdownMenu v-else :modal="false">
+            <!-- The sections: ONE affordance at every width (owner ruling,
+                 §0dw) whose name carries the current section, and a non-modal
+                 menu (UIA-F-231) whose current row is `aria-current` (its
+                 paint is glass's half, UIA-F-128). -->
+            <DropdownMenu :modal="false">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
                     <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
                     <span class="nav-trigger-label">{{ activeTabData?.label ?? "Sections" }}</span>
