@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, shallowRef, computed, watch } from "vue";
 import { watchDebounced, useMediaQuery, useEventListener } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -107,6 +107,13 @@ const mobileView = ref<"controls" | "canvas">("controls");
 const isDesktop = useMediaQuery("(min-width: 1024px)");
 const showExport = ref(false);
 const showFullscreen = ref(false);
+/*
+ * X.F.W14V.u1 — UIA-F-14 (BROKEN) ⊕ F-93: the takeover's stage host. While the
+ * takeover is open the ONE live stage below is teleported into it (never a
+ * second stage), and it returns here when the takeover closes.
+ */
+const fsHost = shallowRef<HTMLElement | null>(null);
+const stageInTakeover = computed(() => showFullscreen.value && fsHost.value !== null);
 
 // ── Editor state ──
 // B.W2 — `CanvasControlsDock` now emits `update:expanded` (sibling W2-C
@@ -390,7 +397,13 @@ function onCanvasFileSelect(e: Event) {
                             </template>
                         </NotFoundCard>
                     </div>
-                    <div v-else class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
+                    <!-- X.F.W14V.u1 — UIA-F-14 ⊕ F-93 ⊕ F-182 ⊕ F-244: this stage (the
+                         canvas, the editor with its ref and listeners, both docks,
+                         the equation panel) is the ONE live stage. Fullscreen moves
+                         it into the takeover's host rather than mounting a copy, so
+                         an edit, a view toggle or an Export there is this stage's. -->
+                    <Teleport v-else :to="fsHost" :disabled="!stageInTakeover">
+                    <div class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
                         :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && !isDesktop }">
                         <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
@@ -444,6 +457,7 @@ function onCanvasFileSelect(e: Event) {
                             <CanvasControlsDock
                                 v-model:expanded="dockExpanded"
                                 :is-editing="isEditing"
+                                v-model:is-fullscreen="showFullscreen"
                                 :show-image-overlay="showImageOverlay"
                                 :show-ghost="showGhost"
                                 :show-equation="showEquation"
@@ -451,7 +465,7 @@ function onCanvasFileSelect(e: Event) {
                                 :has-contour="!!store.contour"
                                 :publishing="publishing"
                                 @toggle-edit="toggleEdit"
-                                @toggle-fullscreen="showFullscreen = true"
+                                @export-frame="handleExportFrame"
                                 @toggle-equation="showEquation = !showEquation"
                                 @toggle-image-overlay="showImageOverlay = !showImageOverlay"
                                 @toggle-ghost="showGhost = !showGhost"
@@ -466,7 +480,7 @@ function onCanvasFileSelect(e: Event) {
 
                         <!-- Bottom dock -->
                         <div v-if="hasData && !isEditing" class="controls-overlay">
-                            <AnimationControls :active-bases="activeBases" @export-frame="handleExportFrame" />
+                            <AnimationControls :active-bases="activeBases" />
                         </div>
                         <div v-if="isEditing && store.contour" class="controls-overlay">
                             <EditorControlsDock :can-undo="editorState.canUndo" :can-redo="editorState.canRedo"
@@ -480,6 +494,7 @@ function onCanvasFileSelect(e: Event) {
                                 @reset="editorRef?.resetToExtraction()" @save="onEditorSave" />
                         </div>
                     </div>
+                    </Teleport>
                 </template>
 
                 <!-- ── Controls aside: the left-panel layer stack ── -->
@@ -555,10 +570,8 @@ function onCanvasFileSelect(e: Event) {
         </Dialog>
 
         <ExportModal v-if="showExport" :has-epicycles="hasEpicycles" @export="doExport" @close="showExport = false" />
-        <FullscreenViewer :visible="showFullscreen" :active-bases="activeBases" :show-ghost="showGhost"
-            :show-image-overlay="showImageOverlay" :is-editing="isEditing" :contour="store.contour ?? undefined"
-            :image-slug="store.imageSlug" @close="showFullscreen = false"
-            @toggle-ghost="showGhost = !showGhost" @toggle-image-overlay="showImageOverlay = !showImageOverlay" />
+        <FullscreenViewer :visible="showFullscreen" :is-editing="isEditing"
+            @update:host="fsHost = $event" @close="showFullscreen = false" />
     </div>
 </template>
 

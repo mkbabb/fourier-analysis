@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
-import {
-    Ellipsis, Maximize2, Pencil, Sigma, Upload, Eye, ImageIcon, Spline, } from "@lucide/vue";
+import { computed, ref, watch } from "vue";
+import { Download, Ellipsis, Maximize2, Minimize2, Pencil, Sigma, Upload } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { StatusDot } from "@mkbabb/glass-ui/status-dot";
+import ViewLayersMenu from "./ViewLayersMenu.vue";
+import { isViewOffDefault } from "./composables/useViewState";
 
-defineProps<{
+const props = defineProps<{
     isEditing: boolean;
+    /** The stage is hosted in the fullscreen takeover (X.F.W14V.u1). */
+    isFullscreen: boolean;
     showImageOverlay: boolean;
     showGhost: boolean;
     showEquation: boolean;
@@ -18,15 +21,22 @@ defineProps<{
 
 const emit = defineEmits<{
     toggleEdit: [];
-    toggleFullscreen: [];
+    /** The control sets the state it shows (idempotent under a replayed click). */
+    "update:isFullscreen": [value: boolean];
     toggleEquation: [];
     toggleImageOverlay: [];
     toggleGhost: [];
     publish: [];
+    exportFrame: [];
     "update:expanded": [value: boolean];
 }>();
 
 const dockRef = ref<InstanceType<typeof GlassDock>>();
+
+// UIA-F-173: the collapsed face carries the view mark only off the default.
+const viewOffDefault = computed(() =>
+    isViewOffDefault({ overlay: props.showImageOverlay, ghost: props.showGhost }),
+);
 
 // In-band coupling (W2.E): surface the dock's expanded state to the parent
 // (VisualizationView, which centres the anchor on expand) via a typed event
@@ -60,41 +70,17 @@ watch(
           governs both docks, which is what makes them agree.
         -->
         <template v-if="!isEditing">
-            <!-- View options popover (image overlay + contour trace).
-                 X.F.W14.u — UIA-F-12: `trigger="click"`. A hover preview holds no
-                 commands: under `trigger="hover"` Enter opened it, the next Tab
-                 left for Publish and closed it, and the two toggles inside never
-                 took focus. State-changing controls ride the click popover (dock
-                 README: transient command surfaces are the menu and popover
-                 families); the editor dock's two popovers move with it. -->
-            <Popover trigger="click" keep-dock-open>
-                <PopoverTrigger as-child>
-                    <DockControl class="view-btn-wrap" aria-label="View options">
-                        <Eye />
-                        <span v-if="showImageOverlay || showGhost" class="view-dot" />
-                    </DockControl>
-                </PopoverTrigger>
-                <!-- X.F.W14U.vdock — UIA-F-76: the dock is anchored at the stage's
-                     top, so the popover opens DOWN into the canvas, end-aligned with
-                     its sibling menus (the viewport gutter is the placement's own:
-                     glass's floating placement takes no consumer collision
-                     padding). `side="top"` flipped it over the figure on desktop
-                     and over the app header at 390. -->
-                <PopoverContent side="bottom" align="end">
-                    <div class="flex flex-col gap-1 p-1">
-                        <Tooltip text="Image overlay">
-                            <DockControl aria-label="Image overlay" :active="showImageOverlay" @click="$emit('toggleImageOverlay')">
-                                <ImageIcon />
-                            </DockControl>
-                        </Tooltip>
-                        <Tooltip text="Contour trace">
-                            <DockControl aria-label="Contour trace" :active="showGhost" @click="$emit('toggleGhost')">
-                                <Spline />
-                            </DockControl>
-                        </Tooltip>
-                    </div>
-                </PopoverContent>
-            </Popover>
+            <!-- X.F.W14V.u1 — UIA-F-79 ⊕ F-77 (consumer) ⊕ F-173: the view layers are
+                 ONE menu, mounted by both docks (`ViewLayersMenu.vue`): labelled
+                 CheckboxItems where a popover held two unlabelled icons. It opens
+                 down into the canvas from this top dock (UIA-F-76 kept). -->
+            <ViewLayersMenu
+                side="bottom"
+                :show-image-overlay="showImageOverlay"
+                :show-ghost="showGhost"
+                @toggle-image-overlay="emit('toggleImageOverlay')"
+                @toggle-ghost="emit('toggleGhost')"
+            />
 
             <DockSeparator />
 
@@ -110,14 +96,25 @@ watch(
                     <Sigma />
                 </DockControl>
             </Tooltip>
+            <!-- X.F.W14V.u1 — UIA-F-182: the one Export, on the canvas it exports,
+                 and it always opens the export dialog (inline and in the
+                 fullscreen takeover alike: the takeover hosts this same dock). -->
+            <Tooltip v-if="hasData" text="Export frame" side="bottom">
+                <DockControl aria-label="Export frame" @click="$emit('exportFrame')">
+                    <Download />
+                </DockControl>
+            </Tooltip>
 
             <DockSeparator />
         </template>
 
-        <!-- Fullscreen -->
-        <Tooltip text="Fullscreen" side="bottom">
-            <DockControl aria-label="Fullscreen" @click="$emit('toggleFullscreen')">
-                <Maximize2 />
+        <!-- Fullscreen. X.F.W14V.u1 — UIA-F-93 ⊕ F-244: the takeover hosts this
+             dock, so in fullscreen this control is the way out (Minimize, "Exit
+             fullscreen", with its tooltip); the free-floating Exit Button is gone. -->
+        <Tooltip :text="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'" side="bottom">
+            <DockControl :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'" @click="$emit('update:isFullscreen', !isFullscreen)">
+                <Minimize2 v-if="isFullscreen" />
+                <Maximize2 v-else />
             </DockControl>
         </Tooltip>
 
@@ -152,7 +149,7 @@ watch(
                  summary names no action it does not perform. -->
             <span class="summary-glyph-wrap">
                 <Ellipsis class="dock-summary-glyph" aria-hidden="true" />
-                <span v-if="showImageOverlay || showGhost" class="view-dot" />
+                <StatusDot v-if="viewOffDefault" class="view-dot" state="active" size="sm" motion="off" />
             </span>
         </template>
 
@@ -186,24 +183,9 @@ watch(
    canvas paint two different hairline rhythms; `<DockSeparator>` supplies one
    rhythm, one tint and `role="separator"` to both. */
 
-.view-btn-wrap {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.view-dot {
-    position: absolute;
-    top: -1px;
-    right: -3px;
-    width: 6px;
-    height: 6px;
-    border-radius: var(--radius-pill);
-    background: var(--viz-amber);
-    box-shadow: 0 0 4px color-mix(in srgb, var(--viz-amber) 60%, transparent);
-}
-
+/* X.F.W14V.u1 — UIA-F-173: the hand-rolled amber literal retired for glass's
+   StatusDot (its own size, tone and paint); what stays here is placement. The
+   View options control places its own mark (`ViewLayersMenu.vue`). */
 /* X.F.W4 · `fr-CanvasControlsDock` L-22 + M-7 — the resting face's glyphs read
    the dock's own glyph rung and the substrate's muted-glyph dial. The two
    literal opacity utilities they replace (`opacity-70`/`opacity-40`, the file's
@@ -226,10 +208,10 @@ watch(
    it stays on the plate. A reserved badge seat is glass's (SIDE-DOCK-EDGE,
    O-67 R-3), adopted at the landing repin. */
 .summary-glyph-wrap > .view-dot {
-    top: auto;
-    right: auto;
+    position: absolute;
     bottom: 100%;
     left: 100%;
+    pointer-events: none;
 }
 
 .dock-summary-glyph {

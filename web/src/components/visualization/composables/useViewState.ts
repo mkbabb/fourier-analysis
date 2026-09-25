@@ -12,13 +12,23 @@ function loadViewState(): { editing?: boolean; overlay?: boolean; equation?: boo
     }
 }
 
+/**
+ * X.F.W14V.u1 — UIA-F-173: the view layers' defaults, in one place. The view
+ * mark shows only a state off these (the trace off, or the overlay on).
+ */
+export const VIEW_DEFAULTS = { ghost: true, overlay: false } as const;
+
+export function isViewOffDefault(view: { ghost: boolean; overlay: boolean }): boolean {
+    return view.ghost !== VIEW_DEFAULTS.ghost || view.overlay !== VIEW_DEFAULTS.overlay;
+}
+
 export function useViewState() {
     const store = useWorkspaceStore();
     const saved = loadViewState();
 
     const isEditing = ref(false);
-    const showGhost = ref(true);
-    const showImageOverlay = ref(typeof saved.overlay === "boolean" ? saved.overlay : false);
+    const showGhost = ref<boolean>(VIEW_DEFAULTS.ghost);
+    const showImageOverlay = ref<boolean>(typeof saved.overlay === "boolean" ? saved.overlay : VIEW_DEFAULTS.overlay);
     const showEquation = ref(typeof saved.equation === "boolean" ? saved.equation : false);
 
     // Restore editing immediately once contour is available

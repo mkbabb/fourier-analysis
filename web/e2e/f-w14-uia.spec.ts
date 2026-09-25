@@ -181,12 +181,11 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
         await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeVisible();
 
         async function exportWith(off: string[]): Promise<number> {
-            const more = page.getByRole("button", { name: "More options" }).first();
+            // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control.
             // The dock expands under the pointer; let its morph settle first.
-            await page.getByRole("button", { name: "Play animation" }).first().hover();
+            await page.locator(".controls-dock-anchor .glass-dock").hover();
             await page.waitForTimeout(800);
-            await more.click();
-            await page.getByRole("menuitem", { name: /export/i }).click();
+            await page.locator(".controls-dock-anchor [aria-label='Export frame']").click();
             const dialog = page.getByRole("dialog", { name: "Export Frame" });
             // X.F.W14U.vdock (UIA-F-243): the dialog remembers its choices across
             // opens, so each export SETS every layer switch rather than toggling
@@ -668,7 +667,9 @@ test.describe("UIA-F-32 — the coefficient popover escapes the equation card", 
 });
 
 test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyboard", () => {
-    test("Enter opens the popover and Tab reaches both toggles; Enter toggles one", async ({ page }) => {
+    // X.F.W14V.u1 (UIA-F-79, §0bt): View options is a menu now (UIA-F-77/F-79), so its
+    // rows are reached with the menu's own keys (focus enters the menu; arrows move).
+    test("Enter opens the menu and the keys reach both rows; Enter toggles one", async ({ page }) => {
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await page.getByRole("button", { name: "Edit contour" }).first().hover();
@@ -677,18 +678,19 @@ test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyb
         await page.waitForTimeout(600);
         await view.focus();
         await page.keyboard.press("Enter");
+        await expect(page.getByRole("menu")).toBeVisible();
         const names: string[] = [];
         for (let i = 0; i < 3; i++) {
-            await page.keyboard.press("Tab");
-            names.push((await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))) ?? "");
+            names.push((await page.evaluate(() => document.activeElement?.textContent?.trim())) ?? "");
+            await page.keyboard.press("ArrowDown");
         }
         expect(names).toContain("Contour trace");
         expect(names).toContain("Image overlay");
-        const trace = page.getByRole("button", { name: "Contour trace" });
+        const trace = page.getByRole("menuitemcheckbox", { name: "Contour trace" });
         await trace.focus();
-        const was = await trace.getAttribute("aria-pressed");
+        const was = await trace.getAttribute("aria-checked");
         await page.keyboard.press("Enter");
-        await expect(trace).not.toHaveAttribute("aria-pressed", was ?? "");
+        await expect(trace).not.toHaveAttribute("aria-checked", was ?? "");
     });
 });
 

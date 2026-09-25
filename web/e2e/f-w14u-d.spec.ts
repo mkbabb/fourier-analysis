@@ -27,13 +27,14 @@ const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golde
 const PHASE = process.env.FW14U_PHASE ?? "after";
 const FRAMES = "e2e/screenshots/f-w14u/d";
 
-async function loadCollapsed(page: Page, mobile: boolean): Promise<void> {
+async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) => Promise<void>): Promise<void> {
     await page.goto("/visualize");
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
     await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 30_000 });
     await expect(page.getByRole("button", { name: /Replace image/ })).toBeVisible({ timeout: 60_000 });
     if (mobile) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (setup) await setup(page);
     await page.mouse.move(5, 5);
     await expect(page.locator(".animation-dock")).toHaveClass(/\bcollapsed\b/, { timeout: 30_000 });
     await expect(page.locator(".controls-dock-anchor .glass-dock")).toHaveClass(/\bcollapsed\b/, {
@@ -54,6 +55,27 @@ async function loadCollapsed(page: Page, mobile: boolean): Promise<void> {
             ),
         ),
     );
+}
+
+/** Switch the contour trace off through the canvas dock's View options menu. */
+async function traceOff(page: Page): Promise<void> {
+    await page.getByRole("button", { name: "Edit contour" }).first().hover();
+    await page.locator(".controls-dock-anchor [aria-label='View options']").click();
+    await page.getByRole("menuitemcheckbox", { name: "Contour trace" }).click();
+    await page.mouse.click(5, 5);
+    // The dock's collapse after an expansion settles in stages (its anchor
+    // re-seats after the layer swap); wait until its box holds still.
+    const dock = page.locator(".controls-dock-anchor .glass-dock");
+    await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 30_000 });
+    let last = "";
+    await expect
+        .poll(async () => {
+            const b = JSON.stringify(await dock.boundingBox());
+            const still = b === last;
+            last = b;
+            return still;
+        }, { intervals: [500], timeout: 15_000 })
+        .toBe(true);
 }
 
 const CASES = [
@@ -109,7 +131,9 @@ for (const c of CASES) {
         test("d2 — the canvas dock's view dot never covers the collapsed face's glyph and stays on the plate", async ({
             page,
         }) => {
-            await loadCollapsed(page, mobile);
+            // X.F.W14V.u1 (UIA-F-173, §0bt setup only): the dot now shows only off the
+            // default view, so the trace is switched off before the collapsed dot is read.
+            await loadCollapsed(page, mobile, traceOff);
             const dock = page.locator(".controls-dock-anchor .glass-dock");
             const box = (await dock.boundingBox())!;
             await page.screenshot({

@@ -108,14 +108,9 @@ for (const vp of WIDTHS) {
             expect.soft(fit.combobox, "no Select listbox is a child of the menu").toBe(0);
             expect.soft(fit.out, "every row sits inside the menu").toEqual([]);
             expect.soft(fit.overflowX, "the menu never scrolls on x").toBeLessThanOrEqual(0.5);
-            // Export is in view and is what its centre hits (not clipped by a scroller).
-            const exp = menu.getByRole("menuitem", { name: /export/i });
-            const hit = await exp.evaluate((el) => {
-                const r = el.getBoundingClientRect();
-                const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-                return { inView: r.top >= 0 && r.bottom <= innerHeight, hits: !!h && (h === el || el.contains(h)) };
-            });
-            expect.soft(hit, "Export is in view and hittable").toEqual({ inView: true, hits: true });
+            // X.F.W14V.u1 (UIA-F-182, §0bt): Export left this menu for the canvas dock
+            // (one path, always through the dialog), so the menu holds no Export.
+            await expect.soft(menu.getByRole("menuitem", { name: /export/i }), "Export is on the canvas dock").toHaveCount(0);
             // F-175: every section carries a menu label.
             for (const name of ["Speed", "Easing"]) {
                 await expect(menu.getByRole("group", { name })).toHaveCount(1);
@@ -148,14 +143,15 @@ for (const vp of WIDTHS) {
             await expandCanvasDock(page);
             const trigger = page.getByRole("button", { name: "View options" }).first();
             await trigger.click();
-            await expect(page.getByRole("button", { name: "Image overlay" })).toBeVisible();
+            // X.F.W14V.u1 (UIA-F-79, §0bt): View options is a menu of labelled rows.
+            await expect(page.getByRole("menuitemcheckbox", { name: "Image overlay" })).toBeVisible();
             await page.waitForTimeout(400);
             await frame(page, "v76-view-options");
             const g = await page.evaluate(() => {
                 const t = document.querySelector("[aria-label='View options']")!.getBoundingClientRect();
                 // The popover's own plate: the popper wrapper holding its toggles.
-                const c = document
-                    .querySelector("[aria-label='Image overlay']")!
+                const c = [...document.querySelectorAll("[role=menuitemcheckbox]")]
+                    .find((e) => e.textContent?.trim() === "Image overlay")!
                     .closest("[data-reka-popper-content-wrapper]")!
                     .getBoundingClientRect();
                 const stage = document.querySelector(".canvas-stage")!.getBoundingClientRect();
@@ -257,8 +253,9 @@ test.describe("F.W14U.vdock — the export dialog (1440)", () => {
     test.setTimeout(120_000);
 
     async function openExport(page: Page) {
-        const menu = await openMore(page);
-        await menu.getByRole("menuitem", { name: /export/i }).click();
+        // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control.
+        await expandCanvasDock(page);
+        await page.locator(".controls-dock-anchor [aria-label='Export frame']").click();
         const dialog = page.getByRole("dialog", { name: "Export Frame" });
         await expect(dialog).toBeVisible();
         await page.waitForTimeout(300);
@@ -362,7 +359,7 @@ test.describe("F.W14U.vdock — the image overlay in dark (1440)", () => {
         await pause(page);
         await expandCanvasDock(page);
         await page.getByRole("button", { name: "View options" }).first().click();
-        await page.getByRole("button", { name: "Image overlay" }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Image overlay" }).click();
         await page.keyboard.press("Escape");
         await page.waitForTimeout(900);
         await frame(page, "v174-overlay-dark");

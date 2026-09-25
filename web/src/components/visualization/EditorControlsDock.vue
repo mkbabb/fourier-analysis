@@ -5,11 +5,11 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuCheckboxItem,
     DropdownMenuSeparator,
 } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import { Tooltip } from "@/components/ui/tooltip";
+import ViewLayersMenu from "./ViewLayersMenu.vue";
 import {
     Undo2,
     Redo2,
@@ -171,6 +171,17 @@ const emit = defineEmits<{
                 </DockControl>
             </Tooltip>
 
+            <!-- X.F.W14V.u1 — UIA-F-79: the view layers are the ONE menu both docks
+                 mount (the rows sat in More tools here, under another order); it
+                 opens up from this bottom dock. -->
+            <ViewLayersMenu
+                side="top"
+                :show-image-overlay="showImageOverlay"
+                :show-ghost="!!showGhost"
+                @toggle-image-overlay="emit('toggleOverlay')"
+                @toggle-ghost="emit('toggleGhost')"
+            />
+
             <DropdownMenu :modal="false">
                 <DockTrigger for="dropdown" aria-label="More editor tools">
                     <Tooltip text="More editor tools">
@@ -205,21 +216,6 @@ const emit = defineEmits<{
                         <Minimize2 class="h-4 w-4" />
                         Simplify contour
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuCheckboxItem
-                        :model-value="!!showGhost"
-                        @select="(e: Event) => e.preventDefault()"
-                        @update:model-value="emit('toggleGhost')"
-                    >
-                        Contour trace
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem
-                        :model-value="showImageOverlay"
-                        @select="(e: Event) => e.preventDefault()"
-                        @update:model-value="emit('toggleOverlay')"
-                    >
-                        Image overlay
-                    </DropdownMenuCheckboxItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem @select="emit('reset')">
                         <RotateCcw class="h-4 w-4" />

@@ -180,26 +180,6 @@ async function openWorkspace(page: Page): Promise<string> {
     return imageSlug as string;
 }
 
-/**
- * Open the AnimationControls "More options" dropdown.
- *
- * The trigger (`[aria-label="More options"]`) lives in the dock's EXPANDED
- * layer (`.dock-layer--full`), which GlassDock keeps `visibility:hidden` while
- * the dock is in its default COLLAPSED state. Hovering the `.animation-dock`
- * container drives the dock to `expanded`, swapping the full layer to
- * `layer-active`; only then is the trigger visible + clickable. We settle on
- * the `expanded` class (the FLIP-crossfade completion signal) before clicking.
- */
-async function openMoreOptions(page: Page): Promise<void> {
-    const dock = page.locator(".animation-dock").first();
-    await dock.hover();
-    await expect(dock).toHaveClass(/expanded/, { timeout: 5_000 });
-
-    const moreOptions = page.locator('[aria-label="More options"]').first();
-    await expect(moreOptions).toBeVisible({ timeout: 5_000 });
-    await moreOptions.click();
-}
-
 // ── API lifecycle helpers (run in-page so they carry the session header) ─────
 
 /** Extract a contour for `imageSlug`, returning the `contour_hash`. */
@@ -679,13 +659,14 @@ for (const vp of VIEWPORTS) {
             await establishSession(page);
             await openWorkspace(page);
 
-            // Export lives behind the AnimationControls "More options" menu;
-            // expand the dock, open the menu, then trigger Export.
-            await openMoreOptions(page);
-            await page
-                .getByText("Export", { exact: false })
-                .first()
-                .click();
+            // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own
+            // control; expand the canvas dock, then trigger Export.
+            const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
+            await canvasDock.hover();
+            // The dock swallows a press that lands mid-expansion (glass's morph guard).
+            await expect(canvasDock).toHaveClass(/\bexpanded\b/);
+            await expect(canvasDock).not.toHaveAttribute("data-morphing");
+            await page.locator('.controls-dock-anchor [aria-label="Export frame"]').click();
 
             // The glass-ui Dialog exposes role="dialog" + aria-modal.
             const dialog = page.locator('[role="dialog"]').first();

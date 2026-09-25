@@ -103,9 +103,9 @@ async function expandEditorDock(page: Page): Promise<void> {
 async function traceControl(page: Page): Promise<Locator> {
     await expandEditorDock(page);
     const dock = editorDock(page);
-    const more = dock.getByRole("button", { name: "More editor tools" });
-    if (await more.count()) await more.click();
-    else await dock.getByRole("button", { name: "Overlay options" }).click();
+    // X.F.W14V.u1 (UIA-F-79, §0bt): the view layers are the one View options menu
+    // both docks mount (they left More editor tools).
+    await dock.getByRole("button", { name: "View options" }).click();
     await page.waitForTimeout(400);
     return page.getByRole("menuitemcheckbox", { name: "Contour trace" })
         .or(page.getByRole("button", { name: "Contour trace" })).first();

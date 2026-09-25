@@ -150,11 +150,15 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
     test("keystone: ExportModal Dialog-open is a11y-clean", async ({ page }) => {
         await openWorkspace(page);
 
-        // The export affordance lives behind the AnimationControls "More
-        // options" dropdown; expand the dock, open the menu, then trigger
-        // Export to raise the Dialog.
-        await openMoreOptions(page);
-        await page.getByText("Export", { exact: false }).first().click();
+        // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control
+        // (it left the AnimationControls "More options" menu); expand the canvas
+        // dock and trigger it to raise the Dialog.
+        const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
+        await canvasDock.hover();
+        // The dock swallows a press that lands mid-expansion (glass's morph guard).
+        await expect(canvasDock).toHaveClass(/\bexpanded\b/);
+        await expect(canvasDock).not.toHaveAttribute("data-morphing");
+        await page.locator('.controls-dock-anchor [aria-label="Export frame"]').click();
 
         // The glass-ui Dialog should expose role="dialog".
         const dialog = page.locator('[role="dialog"]').first();

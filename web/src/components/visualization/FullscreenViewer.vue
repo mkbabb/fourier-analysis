@@ -40,38 +40,49 @@
  * lock and the focus restore are all the chassis's now). The ~60 lines of trap,
  * listener and restore below are DELETED, not wrapped.
  *
- * ⊘ `FB-1` — the second `<ContourEditorCanvas>` mounted here with no `ref` and
- * no listeners, so fullscreen contour edits are silently discarded — is NOT
- * cured here. It rides `fr-ContourEditorCanvas D`/`B-5`'s banked BLOCKER with
- * its own F.W1 sequencing rider, and `ContourEditorCanvas.vue` is in no bounds
- * row of this unit. Named, not half-landed.
+ * X.F.W14V.u1 — UIA-F-14 (BROKEN) ⊕ F-93 ⊕ F-182 ⊕ F-244: THIS FILE NO LONGER
+ * MOUNTS A STAGE. It mounted a second BasisCanvas and a second
+ * ContourEditorCanvas with no ref and no listeners (FB-1: fullscreen edits were
+ * discarded, no editor dock, no canvas dock, a free-floating Exit Button, and
+ * Export bypassing the dialog). The takeover is now only the chassis and an
+ * empty host: `VisualizationView` teleports its ONE live stage (BasisCanvas,
+ * the editor with its ref and listeners, both docks, the equation panel) into
+ * the host while the takeover is open, and back when it closes. Nothing is
+ * remounted, so the canvas, the editor's history and every listener are the
+ * same objects inline and in fullscreen. The way out is the hosted canvas
+ * dock's own Fullscreen control, turned to Exit.
  */
-import { ref } from "vue";
-import { Button } from "@mkbabb/glass-ui/button";
+import type { VNode } from "vue";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@mkbabb/glass-ui/dialog";
-import { Minimize2 } from "@lucide/vue";
-import type { ContourAsset } from "@/lib/types";
-import BasisCanvas from "./BasisCanvas.vue";
-import ContourEditorCanvas from "./ContourEditorCanvas.vue";
-import AnimationControls from "./AnimationControls.vue";
 
 const props = defineProps<{
     visible: boolean;
-    activeBases: string[];
-    showGhost: boolean;
-    showImageOverlay?: boolean;
     isEditing?: boolean;
-    contour?: ContourAsset;
-    imageSlug?: string | null;
 }>();
 
 const emit = defineEmits<{
     (e: "close"): void;
-    (e: "toggleGhost"): void;
-    (e: "toggleImageOverlay"): void;
+    /** The stage host while the takeover is mounted; `null` once it is gone. */
+    (e: "update:host", host: HTMLElement | null): void;
 }>();
 
-const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
+/*
+ * The host is handed up from its `beforeMount` vnode hook, which runs inside
+ * the patch that mounts the takeover. The parent's teleport then moves the
+ * stage in as a queued render job that sorts before the chassis's modal
+ * `hideOthers` watcher (a later component). Handed up any later (a template
+ * ref is only set after the job queue has run), `hideOthers` walks the stage
+ * while it is still in the page (it keeps every `[aria-live]` region's
+ * ancestors and hides their siblings), and those marks ride into the takeover:
+ * the editor dock read as aria-hidden inside it.
+ */
+function onHostBeforeMount(vnode: VNode) {
+    emit("update:host", vnode.el as HTMLElement);
+}
+
+function onHostBeforeUnmount() {
+    emit("update:host", null);
+}
 
 /**
  * The chassis owns open/closed; this component stays a controlled consumer, as
@@ -103,43 +114,11 @@ function onOpenChange(open: boolean) {
                  how to leave it (Reka's missing-Description warning, and an
                  assistive technology's only account of the surface). -->
             <DialogDescription class="sr-only">
-                Press Escape or Exit fullscreen to return to the page.
+                Press Escape, or Exit fullscreen on the canvas dock, to return to the page.
             </DialogDescription>
 
-            <Button
-                emphasis="primary"
-                size="md"
-                icon-only
-                class="fs-close"
-                aria-label="Exit fullscreen"
-                @click="emit('close')"
-            >
-                <Minimize2 class="h-5 w-5" />
-            </Button>
-
-            <!-- Canvas fills the viewport -->
-            <ContourEditorCanvas
-                v-if="isEditing && contour"
-                :contour="contour"
-                :image-slug="imageSlug ?? null"
-                :show-image-overlay="showImageOverlay"
-            />
-            <BasisCanvas
-                v-else
-                ref="canvasComponent"
-                :active-bases="activeBases"
-                :show-ghost="showGhost"
-                :show-image-overlay="showImageOverlay"
-            />
-
-            <!-- Timeline overlaid at the bottom -->
-            <div v-if="!isEditing" class="fs-controls">
-                <AnimationControls
-                    :active-bases="activeBases"
-                    max-width="60rem"
-                    @export-frame="canvasComponent?.exportFrame()"
-                />
-            </div>
+            <!-- The ONE live stage is teleported here while the takeover is open. -->
+            <div class="fs-stage-host" @vue:before-mount="onHostBeforeMount" @vue:before-unmount="onHostBeforeUnmount" />
         </DialogContent>
     </Dialog>
 </template>
@@ -207,70 +186,16 @@ function onOpenChange(open: boolean) {
 </style>
 
 <style scoped>
-/**
- * X.F.W4 · `fr-FullscreenViewer` FV-8 ⊕ FV-12 ⊕ FV-13 ⊕ FV-22, one block,
- * because they are four readings of a single decision: this control
- * re-implemented, in unlayered scoped CSS, the chrome the `<Button>` it is
- * already wearing ships.
- *
- * FV-8 — the hover/press rules re-authored the glass chrome with ad-hoc
- * `color-mix()` literals over `--glass-bg/border-resting`, and unlayered scoped
- * CSS beats the layered utilities, so the producer's register lost. ⊘ The press
- * is the sharp half and the mechanism was corrected in adjudication: the local
- * rule set `transform`, while glass-ui's press seat is the `scale` LONGHAND, so
- * the two did not override — they COMPOUNDED, multiplying into a press deeper
- * than either author specified. Deleting the local rules is the whole cure;
- * they are a `feedback_glass_ui_first_class` violation besides.
- *
- * FV-12 — the same `transform` survived the producer's reduced-motion blanket
- * twice over: `base.css`'s `.tap-squish:active { scale: 1 }` reset targets the
- * longhand and cannot reach a `transform`, and the PRM blanket strips
- * `transform` from the TRANSITIONED set — which un-animates the jump without
- * removing it, so under `reduce` the scale applied INSTANTLY. Motion reduction
- * inverted into sharpening. It dies with the rules that declared it.
- *
- * FV-22 — `calc(var(--z-fullscreen) + 10)` minted an unnamed rung numerically
- * equal to `--z-toast`, inside the backdrop's OWN stacking context, where any
- * positive value orders identically. It bought nothing and collided nominally
- * with a named tier; `1` says what is actually meant.
- *
- * FV-13 — the 2.5rem box is left to the `<Button size="md" icon-only>` it is
- * declared on, so the control sits on the system's control ladder (and its
- * coarse-pointer floor) instead of beside it at a hand-set 40px. What remains
- * here is placement and the stacking rung: position is this file's business,
- * chrome is not.
- */
-.fs-close {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    z-index: 1;
-}
-
-.fs-controls {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    /* FV-22, the second site: same unnamed rung, same own stacking context. */
-    z-index: 1;
-    padding: 0 1rem 0.75rem;
+/* X.F.W14V.u1 — the host the live stage is teleported into fills the takeover;
+   the stage's own root (`.viz-panel-right`, `height: 100%`, `position:
+   relative`) places its canvas and docks inside it exactly as it does inline.
+   The deleted `.fs-close` / `.fs-controls` placement rules went with the
+   free-floating Exit Button and the second AnimationControls they placed. */
+.fs-stage-host {
+    position: relative;
+    flex: 1;
+    min-height: 0;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
 }
-
-@media (min-width: 640px) {
-    .fs-controls {
-        padding: 0 2rem 1rem;
-    }
-}
-
-/* Wider controls in fullscreen are now driven by the AnimationControls
-   `max-width` prop (see template), replacing the former
-   `--animation-dock-max-width` CSS-var contract. */
-
-/* X.F.W3 `.d` — the hand-rolled `fs-*` enter/leave transition is DELETED with
-   the backdrop it animated. `DialogContent` carries the producer's own modal
-   motion, including its reduced-motion arm; a second, unlayered scale/opacity
-   pair over the top is the `FV-12` class of defect, not a preservation. */
 </style>

@@ -2,11 +2,10 @@
 import { computed, h } from "vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
-import {
-    Download, EllipsisVertical, } from "@lucide/vue";
+import { EllipsisVertical } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockTrigger, DockControl } from "@mkbabb/glass-ui/dock";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
+import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import GlassTimeline from "./GlassTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
@@ -24,10 +23,6 @@ const props = withDefaults(
     }>(),
     { activeBases: () => ["fourier-epicycles"], maxWidth: "960px" },
 );
-
-const emit = defineEmits<{
-    (e: "exportFrame"): void;
-}>();
 
 const anim = useAnimationStore();
 const store = useWorkspaceStore();
@@ -196,18 +191,14 @@ const TimelineReadout = () =>
                      from `sm` up and inside this menu below it is gone — one
                      control per setting, and no listbox ever opens over the
                      menu). The sections scroll inside the plate when the space
-                     above the dock is short, and Export is pinned below them, so
-                     the menu's one command never scrolls out of view (the 390
-                     frame: sh464/ch382 put it below the fold). -->
+                     above the dock is short (the 390 frame: sh464/ch382).
+                     X.F.W14V.u1 — UIA-F-182: Export left this menu for the canvas
+                     dock, where it always opens the export dialog (one path). -->
                 <DropdownMenuContent class="menu-popup" :side-offset="8" align="end">
                     <div class="menu-sections">
                         <SpeedSelect />
                         <EasingPicker />
                     </div>
-                    <DropdownMenuItem class="menu-item" @select="emit('exportFrame')">
-                        <Download class="h-4 w-4" />
-                        <span class="text-sm font-medium">Export</span>
-                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -275,7 +266,7 @@ const TimelineReadout = () =>
     min-width: 9rem;
     /* X.F.W14U.vdock — UIA-F-9: the plate never outgrows the space reka
        measures on the side it opens, and it never scrolls itself — its
-       sections do (below), so Export stays pinned in view. */
+       sections do (below). */
     max-block-size: var(--reka-dropdown-menu-content-available-height);
     overflow: hidden;
 }
@@ -288,16 +279,5 @@ const TimelineReadout = () =>
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-}
-
-/* `<Button variant="ghost" size="sm">` ships the focus-ring + hover + press;
-   the `.menu-item` hook widens the chassis to the full menu width and pins
-   the gap + left-aligned text + nowrap layout the menu pattern requires. */
-.menu-popup .menu-item {
-    width: 100%;
-    justify-content: flex-start;
-    gap: 0.375rem;
-    padding: 0.5rem 0.75rem;
-    white-space: nowrap;
 }
 </style>
