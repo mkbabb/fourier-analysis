@@ -174,7 +174,7 @@ class ContourConfig:
     alpha_mode: AlphaMode | str = AlphaMode.AUTO
     """How to handle the image's alpha channel (if present)."""
 
-    tour_method: str = "nearest_2opt"
+    tour_method: str = "mst"
     """Algorithm for ordering contours into a continuous path."""
 
     # ── Preprocessing ─────────────────────────────────────────────────
@@ -292,7 +292,7 @@ class ContourConfig:
             blur_sigma=d.get("blur_sigma", 0.5),
             contrast_enhance=d.get("contrast_enhance", True),
             alpha_mode=d.get("alpha_mode", AlphaMode.AUTO),
-            tour_method=d.get("tour_method", "nearest_2opt"),
+            tour_method=d.get("tour_method", "mst"),
             min_contour_length=d.get("min_contour_length", 40),
             min_contour_area=d.get("min_contour_area", 0.001),
             max_contours=d.get("max_contours", 24),

@@ -422,7 +422,7 @@ def compute_metrics(
     )
     frame_fraction = float(on_frame.mean())
 
-    wiggle = ink_wiggle(run.ordered)
+    wiggle = ink_wiggle(run.contours)  # the contours, not the tour's pieces between connectors
     epi = {str(n): epicycle_error(run.tour, n, diagonal) for n in EPI_NS}
     return Metrics(
         name=img.name,
@@ -433,7 +433,7 @@ def compute_metrics(
         tol_px=tol,
         precision=precision,
         recall=recall,
-        contour_count=len(run.ordered),
+        contour_count=len(run.contours),
         ink_length=ink_length,
         tour_length=tour_length,
         median_step=median_step,

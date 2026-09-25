@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.interpolate import interp1d
+from scipy.interpolate import CubicSpline, interp1d
 
 from fourier_analysis.contours.image import LoadedImage
 
@@ -111,8 +111,15 @@ def resample_arc_length(
     if len(arc_norm) < 2:
         return contour[:n_points] if len(contour) >= n_points else contour
 
+    t_uniform = np.linspace(0, 1, n_points, endpoint=False)
+    if len(arc_norm) >= 4 and contour_clean[0] == contour_clean[-1]:
+        # A closed path (a spliced tour) is periodic: a not-a-knot end
+        # condition would overshoot wherever the seam sits beside a long segment.
+        xy = np.column_stack([contour_clean.real, contour_clean.imag])
+        spline = CubicSpline(arc_norm, xy, bc_type="periodic")
+        out = spline(t_uniform)
+        return out[:, 0] + 1j * out[:, 1]
+
     interp_re = interp1d(arc_norm, contour_clean.real, kind="cubic")
     interp_im = interp1d(arc_norm, contour_clean.imag, kind="cubic")
-
-    t_uniform = np.linspace(0, 1, n_points, endpoint=False)
     return interp_re(t_uniform) + 1j * interp_im(t_uniform)

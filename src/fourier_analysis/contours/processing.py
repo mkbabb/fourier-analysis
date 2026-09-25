@@ -8,7 +8,6 @@ from skimage import measure
 from fourier_analysis.contours.geometry import _polygon_area, _deduplicate_contours, resample_arc_length
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.models import ContourConfig
-from fourier_analysis.shortest_tour import build_contour_tour
 
 
 def _simplify_contour(
@@ -142,28 +141,3 @@ def _postprocess_raw_contours(
         candidates = candidates[: config.max_contours]
 
     return [z for z, _ in candidates], [area for _, area in candidates]
-
-
-def _maybe_prune_large_jump(
-    contours: list[NDArray[np.complex128]],
-    image: LoadedImage,
-    config: ContourConfig,
-) -> tuple[list[NDArray[np.complex128]], list[float], bool]:
-    if len(contours) < 2:
-        return contours, [_polygon_area(contour) for contour in contours], False
-
-    tour = build_contour_tour(contours, method=config.tour_method)
-    jump_threshold = max(64.0, image.diagonal * 0.20)
-
-    # Truncate at first gap exceeding threshold — guarantees contiguous prefix
-    keep_until = len(tour.ordered_contours)
-    for idx, gap in enumerate(tour.gap_lengths):
-        if gap > jump_threshold:
-            keep_until = idx + 1
-            break
-
-    if keep_until >= len(tour.ordered_contours):
-        return contours, [_polygon_area(contour) for contour in contours], False
-
-    pruned_contours = list(tour.ordered_contours[:keep_until])
-    return pruned_contours, [_polygon_area(contour) for contour in pruned_contours], True
