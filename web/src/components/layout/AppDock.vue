@@ -41,7 +41,8 @@ import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
-import { ChevronDown, Compass, FileText, Eye, LayoutGrid, Sigma, Shuffle } from "@lucide/vue";
+import { ChevronDown, Compass } from "@lucide/vue";
+import { sectionNav } from "@/router/routes";
 import { GlassDock, DockControl, DockTrigger, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
@@ -51,13 +52,12 @@ const route = useRoute();
 const router = useRouter();
 const baseUrl = import.meta.env.BASE_URL;
 
-const tabs = [
-    { label: "Paper", value: "/paper", icon: FileText },
-    { label: "Visualize", value: "/visualize", icon: Eye },
-    { label: "Gallery", value: "/gallery", icon: LayoutGrid },
-    { label: "Equation", value: "/equation", icon: Sigma },
-    { label: "Morph", value: "/morph", icon: Shuffle },
-];
+/**
+ * X.F.W14V.au6 — A2-FO-L1-25: the sections are the routes' `meta.nav`, read
+ * from the router (`router/routes.ts` declares them once); the dock keeps no
+ * list of its own.
+ */
+const tabs = sectionNav(router.getRoutes());
 
 /**
  * The section the route belongs to; `null` off the five (404, internal tools).

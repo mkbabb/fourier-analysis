@@ -105,6 +105,10 @@ describe("A2-FO-L1-25 — one section registry, declared on the routes", () => {
         ]);
         const tabs = new Set(routes.map((r) => r.meta?.tab).filter(Boolean));
         expect(new Set(nav.map((s) => s.value))).toEqual(tabs);
+        // What the dock reads at runtime: the live router's records, alias records included.
+        const { createMemoryHistory, createRouter } = await import("vue-router");
+        const live = createRouter({ history: createMemoryHistory(), routes });
+        expect(sectionNav(live.getRoutes()).map((s) => s.value)).toEqual(nav.map((s) => s.value));
     });
 
     it("AppDock builds its list from the router, not a second list", () => {
