@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useImageUpload } from "./composables/useImageUpload";
+import { useImageUploadContext } from "./composables/useImageUpload";
 import { thumbnailUrl } from "@/lib/api";
 import { ConfiguratorLayer } from "@mkbabb/glass-ui/configurator";
 import { Progress } from "@mkbabb/glass-ui/progress";
@@ -9,20 +9,19 @@ import { Button } from "@mkbabb/glass-ui/button";
 import { Upload, ImageOff } from "@lucide/vue";
 
 const store = useWorkspaceStore();
-const fileInput = ref<HTMLInputElement>();
 const imgError = ref(false);
 
-const { isDragging, preview, clearPreview, handleDrop, handleDragOver, handleDragEnter, handleDragLeave, handleFileSelect } =
-    useImageUpload(async (file: File) => {
-        imgError.value = false;
-        await store.uploadImage(file);
-    });
+/*
+ * X.F.W14V.au2 — A2-FO-L1-11: this layer is presentation only. The workspace
+ * view is the one upload owner (its `useImageUpload`, its file input, its drop
+ * target); the layer's own instance, its second input and the drop target
+ * nested inside the view's are deleted. What the layer shows is the view's.
+ */
+const { isDragging, preview, openPicker } = useImageUploadContext();
 
-// Reset component-local preview when the workspace image changes, including
-// uploads initiated from the global dropzone or canvas click target.
+// A new workspace image replaces the one that failed to load.
 watch(() => store.imageSlug, () => {
     imgError.value = false;
-    clearPreview();
 });
 
 const hasPreview = () => !!store.imageMeta || preview.value;
@@ -37,24 +36,16 @@ watch(() => store.uploading, (now) => {
     if (now) replacing.value = !!store.imageMeta;
 });
 
-function openFilePicker() {
-    fileInput.value?.click();
-}
-
 function onImgError() {
     imgError.value = true;
 }
 </script>
 
 <template>
-    <!-- The panel root stays the drop target; the `relative` seat the
-         hand-rolled absolutely-positioned bar needed retires with it. -->
-    <div
-        @drop="handleDrop"
-        @dragover="handleDragOver"
-        @dragenter="handleDragEnter"
-        @dragleave="handleDragLeave"
-    >
+    <!-- X.F.W14V.au2 — A2-FO-L1-11: the drop target is the view's (the one
+         upload owner); this root is a plain wrapper for the heading and the
+         layer. -->
+    <div>
         <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 10's INTERLOCK, honoured
              literally: "adoption must CARRY the `<h3>` (ConfiguratorLayer
              supplies no heading) or the route drops to ZERO headings."
@@ -93,7 +84,7 @@ function onImgError() {
                     class="image-thumb"
                     @error="onImgError"
                 />
-                <Button emphasis="secondary" size="sm" @click="openFilePicker">
+                <Button emphasis="secondary" size="sm" @click="openPicker">
                     <Upload />
                     Replace image
                 </Button>
@@ -149,18 +140,6 @@ function onImgError() {
 
         </ConfiguratorLayer>
 
-        <!-- The file input stays OUTSIDE the layer body on purpose: a collapsed
-             ConfiguratorLayer marks its region `inert`, and an inert input is
-             not a reliable target for the programmatic `.click()` that opens the
-             picker. The control that summons it lives inside; the input itself
-             is always live. -->
-        <input
-            ref="fileInput"
-            type="file"
-            accept="image/*"
-            class="hidden"
-            @change="handleFileSelect"
-        />
     </div>
 </template>
 

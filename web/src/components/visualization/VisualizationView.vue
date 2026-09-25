@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch, nextTick, useTemplateRef } from "vue";
+import { ref, shallowRef, computed, watch, nextTick, useTemplateRef, provide } from "vue";
 import { watchDebounced, useMediaQuery, useEventListener } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
 import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
-import { useImageUpload } from "./composables/useImageUpload";
+import { useImageUpload, IMAGE_UPLOAD_KEY } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
 import { Upload } from "@lucide/vue";
@@ -51,7 +51,7 @@ const auth = useAuthStore();
 const { isEditing, showGhost, showImageOverlay, showEquation } = useViewState();
 
 // ── Image drag-and-drop ──
-const { isDragging: globalDragging, rejection: dropRejection, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave, handleFileSelect: globalFileSelect } =
+const { isDragging: globalDragging, rejection: dropRejection, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave, handleFileSelect: globalFileSelect, preview: uploadPreview, clearPreview: clearUploadPreview } =
     useImageUpload((file: File) => store.uploadImage(file));
 
 /*
@@ -350,17 +350,24 @@ const firstCompute = computed(() => store.computing && !store.epicycleData && !s
 // The ONE upload affordance with no image: the main area's drop target (a
 // glass Button + the format line). The canvas itself is no longer a
 // pointer-only click target.
-const canvasFileInput = ref<HTMLInputElement>();
-function openCanvasFilePicker() {
-    canvasFileInput.value?.click();
+// X.F.W14V.au2 — A2-FO-L1-11: this view is the ONE upload owner. Its
+// `useImageUpload` instance and its file input serve the empty stage's button
+// and the Image layer's Replace alike (the layer injects them); the input sits
+// outside every `v-if`, so it is live in both states.
+const fileInput = ref<HTMLInputElement>();
+function openFilePicker() {
+    fileInput.value?.click();
 }
 /* A picked file takes the drop's path (the same image check and rejection
    message, UIA-F-166); the input is cleared so the same file can be picked
    again. */
-function onCanvasFileSelect(e: Event) {
+function onFileSelect(e: Event) {
     globalFileSelect(e);
-    if (canvasFileInput.value) canvasFileInput.value.value = "";
+    if (fileInput.value) fileInput.value.value = "";
 }
+// The local preview is the upload's own; a new workspace image supersedes it.
+watch(() => store.imageSlug, () => clearUploadPreview());
+provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDragging, preview: uploadPreview });
 </script>
 
 <template>
@@ -368,6 +375,11 @@ function onCanvasFileSelect(e: Event) {
         @drop="globalDrop" @dragover="globalDragOver"
         @dragenter="globalDragEnter" @dragleave="globalDragLeave"
     >
+        <!-- X.F.W14V.au2 — A2-FO-L1-11: the view's one file input (the empty
+             stage's button and the Image layer's Replace both summon it). It is
+             never inside a `v-if` or an `inert` region, so the programmatic
+             `.click()` always reaches it. -->
+        <input ref="fileInput" data-testid="image-file-input" type="file" accept="image/*" class="hidden" @change="onFileSelect" />
         <!-- Main workspace. X.F.W14U.vstage — UIA-F-70: the cold load and the
              load error used to REPLACE this chassis (a bare ring, or a card
              floating on the page, then the frame popping in). They render inside
@@ -480,14 +492,13 @@ function onCanvasFileSelect(e: Event) {
                             <p class="drop-target-lede text-body text-muted-foreground">
                                 Upload an image: its outline is traced and redrawn by a Fourier series, a chain of rotating circles.
                             </p>
-                            <Button emphasis="primary" size="lg" class="drop-target-button" :loading="store.uploading" @click="openCanvasFilePicker">
+                            <Button emphasis="primary" size="lg" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
                                 <Upload v-if="!store.uploading" />
                                 {{ primaryUploadLabel }}
                             </Button>
                             <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
                             <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
                             <Button emphasis="quiet" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
-                            <input ref="canvasFileInput" data-testid="image-file-input" type="file" accept="image/*" class="hidden" @change="onCanvasFileSelect" />
                         </div>
                         <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
                              (the canvas no longer paints a dashed "drop here" box). -->

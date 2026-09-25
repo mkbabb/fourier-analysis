@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from "vue";
+import { ref, inject, onUnmounted, type InjectionKey, type Ref } from "vue";
 
 const IMAGE_EXTENSIONS = new Set([
     "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "tiff", "tif",
@@ -122,4 +122,29 @@ export function useImageUpload(onFile: (file: File) => void) {
         handleDragLeave,
         handleFileSelect,
     };
+}
+
+/**
+ * X.F.W14V.au2 — A2-FO-L1-11: one upload owner. The workspace view holds the
+ * single `useImageUpload` and the single file input; the Image layer
+ * (`ImageUpload.vue`) is presentation only and reads what it shows (the
+ * picker, the drag state, the local preview) from here. Before, the layer ran
+ * a second instance with a second input and a drop target nested inside the
+ * view's.
+ */
+export interface ImageUploadContext {
+    /** Open the view's one file picker. */
+    openPicker: () => void;
+    isDragging: Readonly<Ref<boolean>>;
+    /** The picked or dropped file's local preview, until the upload lands. */
+    preview: Readonly<Ref<string | null>>;
+}
+
+export const IMAGE_UPLOAD_KEY: InjectionKey<ImageUploadContext> = Symbol("image-upload");
+
+/** The Image layer's read of the view's upload owner. */
+export function useImageUploadContext(): ImageUploadContext {
+    const upload = inject(IMAGE_UPLOAD_KEY);
+    if (!upload) throw new Error("The Image layer is mounted outside the workspace view, which owns the upload.");
+    return upload;
 }
