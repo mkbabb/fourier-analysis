@@ -3,6 +3,7 @@ import { computed, nextTick, useTemplateRef } from "vue";
 import type { AdminStats } from "@/lib/types";
 import { Shield, LogOut, AlertTriangle } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Card } from "@mkbabb/glass-ui/card";
 import { Metric } from "@mkbabb/glass-ui/metric";
 
 const props = defineProps<{
@@ -43,12 +44,12 @@ const errorSentence = computed(() => {
  * so focus fell to `<body>`. The stable neighbour is the block mounted before
  * the banner — the gallery's tabs and search, which outlive admin mode.
  */
-const root = useTemplateRef<HTMLElement>("root");
+const root = useTemplateRef<InstanceType<typeof Card>>("root");
 const FOCUSABLE =
     'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 async function logout() {
-    const neighbour = root.value?.previousElementSibling as HTMLElement | null;
+    const neighbour = (root.value?.$el as HTMLElement | undefined)?.previousElementSibling as HTMLElement | null;
     emit("logout");
     await nextTick();
     neighbour?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
@@ -82,9 +83,17 @@ const storage = computed<{ value: string; unit: string }>(() => {
          announcement of any kind. The tiles now hold their geometry and report
          their own busy state through the primitive's `loading` posture, and the
          cluster announces itself through one live region. -->
-    <section
+    <!-- X.F.W14V.u3 — UIA-F-149 (consumer half): the banner was a hand-rolled
+         10 px box (`rounded-lg`) holding 16 px Metric cells, so the nested
+         radius inverted the concentric law. It is a glass Card, on the card
+         radius (`--radius-card`), so no cell is rounder than its container.
+         The cell radius derived from `--radius-ctx` less the inset is glass's
+         half (O-59). -->
+    <Card
         ref="root"
-        class="admin-banner mx-4 px-3 py-2.5 rounded-lg border-[1.5px]"
+        as="section"
+        size="sm"
+        class="admin-banner mx-4 px-3 py-2.5 border-[1.5px]"
         aria-label="Admin mode banner"
         :aria-busy="loading || undefined"
     >
@@ -214,7 +223,7 @@ const storage = computed<{ value: string; unit: string }>(() => {
                         : ""
             }}
         </p>
-    </section>
+    </Card>
 </template>
 
 <style scoped>
