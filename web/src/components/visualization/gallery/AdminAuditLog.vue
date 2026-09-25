@@ -263,8 +263,13 @@ const ActionCell = defineComponent({
         h(
             Badge,
             {
-                variant: "secondary",
-                tone: actionTone(props.value),
+                // X.F.W14V.au4 — `.au0` X-8: one destructive signal per row
+                // (the F-197 neutral-cue precedent). A destructive verb keeps
+                // its solid destructive tone; every other action is a neutral
+                // outline chip (the solid success and warning fills are gone;
+                // the severity classification above still ranks them).
+                variant: actionTone(props.value) === "destructive" ? "secondary" : "outline",
+                tone: actionTone(props.value) === "destructive" ? "destructive" : "neutral",
                 size: "sm",
                 // UIA-F-111: the stored action, verbatim (no `uppercase`).
                 class: "font-mono",
@@ -303,8 +308,12 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
     { key: "action", label: "Action", component: ActionCell },
     // `max-w-0` + `w-full` is how a table cell takes the remaining width and
     // still lets its content truncate: the target yields, and no other cell does.
-    { key: "target", label: "Target", component: TargetCell, class: "w-full max-w-0" },
-    { key: "ip_hash", label: "IP hash", component: IpCell, align: "right" },
+    // X.F.W14V.au4 — A2-FO-L2-11: the column class reaches the card projection's
+    // value too, where `max-w-0` painted the target 0 px wide; the clamp is
+    // scoped to the table cell (`[td&]`).
+    { key: "target", label: "Target", component: TargetCell, class: "w-full [td&]:max-w-0" },
+    // X-8: the header never wraps ("IP hash" broke over two lines at 1440).
+    { key: "ip_hash", label: "IP hash", component: IpCell, align: "right", headerClass: "whitespace-nowrap" },
 ];
 </script>
 
@@ -387,7 +396,7 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
                     autocorrect="off"
                     spellcheck="false"
                     enterkeyhint="search"
-                    class="flex-1 min-w-[10rem]"
+                    class="flex-1 min-w-[10rem] max-w-[20rem]"
                     @keyup.enter="apply"
                 />
                 <label class="sr-only" for="audit-target-filter">Target (substring match)</label>
@@ -401,7 +410,7 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
                     autocorrect="off"
                     spellcheck="false"
                     enterkeyhint="search"
-                    class="flex-1 min-w-[10rem]"
+                    class="flex-1 min-w-[10rem] max-w-[20rem]"
                     @keyup.enter="apply"
                 />
                 <!-- AA-22: `h-7` / `h-7 w-7` on 100 % of this file's Button sites
@@ -476,34 +485,41 @@ const auditColumns: DataTableColumn<AuditRow>[] = [
         <!-- UIA-F-252: no second dim — the producer's table already marks its
              own `loading` status (the faded rows were dimmed again to 60 %). -->
         <Card v-else size="sm">
-            <DataTable
-                :columns="auditColumns"
-                :rows="auditRows"
-                :status="loading ? 'loading' : 'ready'"
-                :filtered="hasFilters"
-                aria-label="Admin audit entries"
-                class="[--table-cell-px:--spacing(3)] [--table-cell-py:--spacing(2)]"
-            >
-                <!-- Empty state. AA-33: the HEADLINE branches on the
-                     applied-filter state. Unconditional, it asserted "No audit
-                     entries" (a claim about the system of record) for a query
-                     that only matched nothing, and then advised widening the
-                     search it had just said did not exist. -->
-                <template #filtered-empty>
-                    <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-                        <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
-                        <p class="text-small">No entries match these filters</p>
-                        <!-- UIA-F-252: the clear is inline, where the advice is. -->
-                        <Button emphasis="secondary" size="sm" @click="clearFilters">Clear filters</Button>
-                    </div>
-                </template>
-                <template #empty>
-                    <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-                        <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
-                        <p class="text-small">No audit entries</p>
-                    </div>
-                </template>
-            </DataTable>
+            <!-- X.F.W14V.au4 — A2-FO-L2-11: `responsive` — below its 640 px
+                 container the ledger is glass's card-per-row projection (the
+                 582 px table sat behind a sideways pan in a 326-396 px column).
+                 The ledger's name rides a region around it, because glass names
+                 only the table projection (the cards carry no label). -->
+            <div role="region" aria-label="Admin audit entries" class="text-small">
+                <DataTable
+                    :columns="auditColumns"
+                    :rows="auditRows"
+                    :status="loading ? 'loading' : 'ready'"
+                    :filtered="hasFilters"
+                    responsive
+                    class="[--table-cell-px:--spacing(3)] [--table-cell-py:--spacing(2)]"
+                >
+                    <!-- Empty state. AA-33: the HEADLINE branches on the
+                         applied-filter state. Unconditional, it asserted "No audit
+                         entries" (a claim about the system of record) for a query
+                         that only matched nothing, and then advised widening the
+                         search it had just said did not exist. -->
+                    <template #filtered-empty>
+                        <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+                            <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
+                            <p class="text-small">No entries match these filters</p>
+                            <!-- UIA-F-252: the clear is inline, where the advice is. -->
+                            <Button emphasis="secondary" size="sm" @click="clearFilters">Clear filters</Button>
+                        </div>
+                    </template>
+                    <template #empty>
+                        <div class="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+                            <ScrollText class="h-8 w-8 opacity-30" aria-hidden="true" />
+                            <p class="text-small">No audit entries</p>
+                        </div>
+                    </template>
+                </DataTable>
+            </div>
         </Card>
 
         <!-- AA-12: this file's loading block was the siblings' block with

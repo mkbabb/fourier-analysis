@@ -135,6 +135,11 @@ async function rulesBetweenRows(rows: Locator) {
             });
         const out: { pair: number; rules: number; parts: string[] }[] = [];
         for (let i = 0; i + 1 < els.length; i++) {
+            // X.F.W14V.au4 (A2-FO-L2-11): card-per-row plates (DataTable's
+            // narrow projection) stand apart on a gap; two plates that share
+            // no edge have no rule between them to double, so the pair is out
+            // of this gate's scope.
+            if (els[i + 1].getBoundingClientRect().top > els[i].getBoundingClientRect().bottom + 1) continue;
             const a = getComputedStyle(els[i]);
             const b = getComputedStyle(els[i + 1]);
             const parts: string[] = [];
@@ -167,7 +172,7 @@ async function lineCount(loc: Locator) {
 }
 
 const PANELS = [
-    { tab: "Audit Log", label: "Admin audit entries", settle: "suspend_user", rows: ':scope tbody > tr, :scope > [role="listitem"]' },
+    { tab: "Audit Log", label: "Admin audit entries", settle: "suspend_user", rows: ':scope tbody > tr, :scope .data-table-card, :scope > [role="listitem"]' },
     { tab: "Flagged", label: "Flagged gallery entries", settle: "spiral-lattice-04", rows: '[role="listitem"]' },
     { tab: "Users", label: "Admin user list", settle: "amber-fox-12", rows: ':scope > [role="listitem"]' },
 ] as const;

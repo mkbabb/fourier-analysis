@@ -452,10 +452,17 @@ test.describe("UIA-F-42 — at 390 every audit field is legible (cured by .t's D
     test("no audit cell collapses to 0 px and no action badge overflows its pill", async ({ page }) => {
         await openAdminTab(page, "Audit Log");
         const table = page.locator('[aria-label="Admin audit entries"]');
-        const rows = table.locator("tbody > tr");
+        // X.F.W14V.au4 (A2-FO-L2-11): at 390 the ledger is DataTable's
+        // card-per-row projection; a card's fields are its title and its `dd`s.
+        const rows = table.locator("tbody > tr, .data-table-card");
         await expect(rows.first()).toBeVisible();
         const cells = await rows.evaluateAll((trs) =>
-            trs.flatMap((tr) => [...tr.children].map((td) => ({ w: (td as HTMLElement).getBoundingClientRect().width, t: td.textContent?.trim() ?? "" }))),
+            trs.flatMap((tr) =>
+                [...(tr.tagName === "TR" ? tr.children : tr.querySelectorAll(".data-table-card-title, dd"))].map((td) => ({
+                    w: (td as HTMLElement).getBoundingClientRect().width,
+                    t: td.textContent?.trim() ?? "",
+                })),
+            ),
         );
         expect(cells.length).toBeGreaterThan(0);
         for (const c of cells) expect(c.w, `cell "${c.t}"`).toBeGreaterThan(0);

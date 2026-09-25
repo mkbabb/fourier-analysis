@@ -129,7 +129,9 @@ for (const scheme of ["light", "dark"] as const) {
 
                     if (p.tab === "Audit Log") {
                         // `.t` re-read against the idiom's rungs: every cell on small or below.
-                        const cells = await sizes(panel, "td, th");
+                        // X.F.W14V.au4 (A2-FO-L2-11): below 640 px the ledger is
+                        // DataTable's card projection (title, labels, values).
+                        const cells = await sizes(panel, "td, th, .data-table-card-title, .data-table-card-label, .data-table-card-value");
                         expect(cells.length).toBeGreaterThan(0);
                         for (const c of cells) {
                             expect.soft(c.px, `audit cell "${c.text}" above --type-small (${rung.small})`).toBeLessThanOrEqual(rung.small + 0.5);
