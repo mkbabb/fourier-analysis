@@ -22,12 +22,9 @@ from fourier_analysis.contours.support import (
     clip_to_subject,
     complex_to_rc,
     normalise_to_subject,
+    support_floor,
+    supported_runs,
 )
-
-
-# A structure run whose median subject-normalised colour gradient is below this
-# follows no edge: it is an iso-line across a smooth region.
-MIN_ARC_SUPPORT = 0.1
 
 
 def extract_structure_contours(
@@ -36,13 +33,17 @@ def extract_structure_contours(
     budget: int,
     config: ContourConfig,
 ) -> list[tuple[NDArray[np.complex128], float]]:
-    """Extract iso-intensity contours within the subject region.
+    """Extract the edge-supported spans of iso-intensity contours in the subject.
 
-    Computes 16 quantile thresholds from subject pixels on detail_grayscale,
-    extracts contours at each level via marching squares, clips each to the
-    subject band (its in-subject runs survive as open strokes), deduplicates,
-    drops runs no edge supports (``MIN_ARC_SUPPORT``), and returns up to
-    *budget* contours by size that do not repeat the silhouette or each other.
+    Candidates are the iso-lines of detail_grayscale (CLAHE grey) at 16
+    subject-quantile levels.  Each is clipped to the subject band (CT-4), then
+    split into the spans an edge supports: the subject-normalised colour
+    gradient along it, median-filtered, must reach ``support_floor`` — a
+    fraction of the silhouette's own median support, so the bar is relative to
+    the image.  An iso-line across smooth skin or cloth (an illumination band)
+    has no such span and vanishes; one that follows the jaw keeps the jaw.
+    Returns up to *budget* runs by size that do not repeat the silhouette or
+    each other.
     """
     source = image.detail_grayscale
     n_levels = 16
@@ -61,6 +62,10 @@ def extract_structure_contours(
     min_length = config.min_contour_length
     min_area = config.min_contour_area * image.image_area
 
+    shape = image.grayscale.shape
+    field = normalise_to_subject(image.color_gradient, isolation.subject_mask)
+    floor = support_floor(isolation.silhouettes, field)
+
     window = band_window(isolation.subject_band, source.shape)
     offset = np.array([window[0].start, window[1].start], dtype=np.float64)
     raw_contours: list[NDArray[np.floating]] = []
@@ -69,11 +74,15 @@ def extract_structure_contours(
         for c in contours:
             if len(c) < min_length:
                 continue
-            # Keep only the in-subject runs: never a whole-contour vote.
-            if isolation.subject_band is not None:
-                raw_contours.extend(clip_to_subject(c, isolation.subject_band, min_length))
-            else:
-                raw_contours.append(c)
+            # Keep only the in-subject runs (never a whole-contour vote), and of
+            # those only the spans an edge supports.
+            runs = (
+                clip_to_subject(c, isolation.subject_band, min_length)
+                if isolation.subject_band is not None
+                else [c]
+            )
+            for run in runs:
+                raw_contours.extend(supported_runs(run, field, floor, min_length))
 
     # Postprocess: convert to complex, smooth, simplify, dedup (uncapped:
     # the ranking below picks the budget).
@@ -89,13 +98,11 @@ def extract_structure_contours(
     # Collapse nested near-concentric blobs (e.g. iso-levels of a uniform body).
     result = _deduplicate_nested(result)
 
-    # Drop runs no edge backs (an iso-line across smooth skin or shading), then
-    # rank by size: a loop by its area, an open run by the area its path spans.
-    shape = image.grayscale.shape
-    field = normalise_to_subject(image.color_gradient, isolation.subject_mask)
+    # Smoothing can pull a run off its edge: re-check the floor on what is
+    # emitted, then rank by size (a loop by its area, an open run by the area
+    # its path spans).
     result = [
-        (c, a) for c, a in result
-        if arc_support(complex_to_rc(c, shape), field) >= MIN_ARC_SUPPORT
+        (c, a) for c, a in result if arc_support(complex_to_rc(c, shape), field) >= floor
     ]
     result.sort(key=lambda p: p[1] if p[1] > 0 else _polygon_area(p[0]), reverse=True)
 

@@ -124,21 +124,22 @@ class FeatureConfig:
     are selected — only meaningful when strategy=AUTO.
     """
 
-    density_sigma: float = 1.0
-    """Gaussian sigma applied to the Canny edge density field.
+    density_sigma: float = 2.0
+    """Gaussian sigma of the Canny ridge detector for feature strokes.
     Lower values preserve finer edges (eyelids, lip lines)."""
 
     spatial_diversity_fraction: float = 0.02
-    """Minimum spacing between picked features as a fraction of
-    the image diagonal (0.02 = 2%).  Prevents near-duplicate features
-    while allowing clustered facial geometry."""
+    """Retained for configuration compatibility; feature strokes are now
+    de-duplicated by the ink they repeat, not by centre spacing."""
 
-    edge_model: str = "auto"
-    """Edge detector backend: 'auto' (use PiDiNet if cached),
-    'pidinet' (require learned edges), or 'canny' (classic only)."""
+    edge_model: str = "canny"
+    """Ridge backend for feature strokes: 'canny' (the default: no learned
+    edge weights are pinned, see ``ml._PIDINET_SHA256``), 'auto' or 'pidinet'
+    (the learned PiDiNet map when pinned weights are cached; otherwise Canny,
+    and the result's diagnostics carry a note saying so)."""
 
     def normalized(self) -> FeatureConfig:
-        edge_model = self.edge_model if self.edge_model in ("auto", "pidinet", "canny") else "auto"
+        edge_model = self.edge_model if self.edge_model in ("auto", "pidinet", "canny") else "canny"
         return FeatureConfig(
             density_sigma=max(0.1, float(self.density_sigma)),
             spatial_diversity_fraction=max(0.0, min(0.2, float(self.spatial_diversity_fraction))),
@@ -311,9 +312,9 @@ class ContourConfig:
                 detail_threshold=d.get("ml_detail_threshold", 0.3),
             ),
             feature=FeatureConfig(
-                density_sigma=d.get("feature_density_sigma", 1.0),
+                density_sigma=d.get("feature_density_sigma", 2.0),
                 spatial_diversity_fraction=d.get("spatial_diversity_fraction", 0.02),
-                edge_model=d.get("edge_model", "auto"),
+                edge_model=d.get("edge_model", "canny"),
             ),
         ).normalized()
 

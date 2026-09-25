@@ -233,8 +233,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_epi.add_argument("--resize", type=int, default=1024, help="Resize longest dimension (default: 1024)")
     p_epi.add_argument("--blur", type=float, default=0.5, help="Gaussian pre-blur sigma (default: 0.5)")
     p_epi.add_argument("--min-length", type=int, default=40, help="Minimum contour length (default: 40)")
-    p_epi.add_argument("--edge-model", default="auto", choices=["auto", "pidinet", "canny"],
-                        help="Edge detection model (default: auto)")
+    p_epi.add_argument("--edge-model", default="canny", choices=["auto", "pidinet", "canny"],
+                        help="Feature ridge backend (default: canny; PiDiNet weights are unpinned)")
     p_epi.add_argument("--max-contours", type=int, default=24, help="Maximum contours (default: 24)")
 
     # -- series --

@@ -1,21 +1,160 @@
-"""Stage 3: Edge feature contours for facial/detail features."""
+"""Stage 3: subject-local ridge features (eyes, brows, nose, mouth, necklines).
+
+A feature is an edge, so it is extracted as a ridge, not as an iso-loop of a
+blurred edge density (which draws every edge twice, once on each side, and
+rings smooth patches with blobs):
+
+1. **Ridges.**  Non-maximum-suppressed edges inside the subject band: Canny on
+   the CLAHE grey with hysteresis thresholds taken from the *subject's* own
+   gradient percentiles, or the skeleton of a pinned learned edge map
+   (``edge_model``).  The background can neither enter nor set the scale.
+2. **Linking.**  Ridge pixels are walked into polylines: open where the ridge
+   ends or branches, closed where it returns to its start.
+3. **Support.**  Each polyline is split into the spans the saliency-weighted,
+   subject-normalised edge field (``subject_edge_field``) supports at the
+   relative floor (``support_floor``), as the structure stage is.
+4. **Ranking.**  By support x arc length x on-subject share; a stroke that
+   repeats drawn ink (silhouette, structure, a picked feature) is skipped.
+"""
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 from numpy.typing import NDArray
-from skimage import feature, filters, measure, morphology
+from scipy import ndimage as ndi
+from skimage import feature, filters, morphology
 
-from fourier_analysis.contours.geometry import (
-    _compactness,
-    _contours_are_near_duplicates,
-    _polygon_area,
-)
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.isolation import SubjectIsolation
 from fourier_analysis.contours.models import ContourConfig
 from fourier_analysis.contours.processing import _postprocess_raw_contours
-from fourier_analysis.contours.support import band_window, clip_to_subject, subject_edge_field
+from fourier_analysis.contours.support import (
+    REDUNDANT_OVERLAP,
+    InkCoverage,
+    _sample,
+    arc_support,
+    band_px,
+    complex_to_rc,
+    is_closed_trace,
+    subject_edge_field,
+    support_floor,
+    supported_runs,
+)
+
+# Canny hysteresis on the subject's gradient-magnitude percentiles: a ridge
+# must reach the high percentile somewhere and stays linked above the low one.
+RIDGE_HIGH_PERCENTILE = 85.0
+RIDGE_LOW_PERCENTILE = 60.0
+# Ridge polylines are smoothed along their length by a Gaussian of this many
+# px before postprocessing: it removes the pixel staircase and stays well
+# within a pixel of the ridge on any curve a feature can have.
+RIDGE_SMOOTH_PX = 1.5
+
+_NEIGHBOURS = (
+    (0, 1), (1, 0), (0, -1), (-1, 0),  # 4-neighbours first: no corner cutting
+    (1, 1), (1, -1), (-1, 1), (-1, -1),
+)
+
+
+def ridge_map(
+    image: LoadedImage,
+    isolation: SubjectIsolation,
+    config: ContourConfig,
+) -> NDArray[np.bool_]:
+    """The one-pixel ridges features are drawn from, inside the subject band."""
+    band = isolation.subject_band
+    if band is None:
+        band = np.ones(image.grayscale.shape, dtype=bool)
+
+    learned = None
+    if config.feature.edge_model != "canny":
+        from fourier_analysis.contours.ml import predict_edge_map
+
+        learned = predict_edge_map(image)
+    if learned is not None:
+        pixels = learned[band] if band.any() else learned.ravel()
+        high = float(np.percentile(pixels, RIDGE_HIGH_PERCENTILE))
+        ridges = morphology.skeletonize(
+            filters.apply_hysteresis_threshold(learned, 0.5 * high, high) & band
+        )
+        return np.asarray(ridges, dtype=bool)
+
+    source = image.detail_grayscale
+    sigma = config.feature.density_sigma
+    smoothed = filters.gaussian(source, sigma=sigma)
+    magnitude = np.hypot(ndi.sobel(smoothed, axis=0), ndi.sobel(smoothed, axis=1))
+    region = isolation.subject_mask if isolation.subject_mask is not None else band
+    pixels = magnitude[region] if region.any() else magnitude.ravel()
+    low, high = np.percentile(pixels, [RIDGE_LOW_PERCENTILE, RIDGE_HIGH_PERCENTILE])
+    if high <= 0:
+        return np.zeros_like(band, dtype=bool)
+    return np.asarray(
+        feature.canny(source, sigma=sigma, low_threshold=low, high_threshold=high, mask=band),
+        dtype=bool,
+    )
+
+
+def link_ridges(ridges: NDArray[np.bool_], min_points: int = 2) -> list[NDArray[np.float64]]:
+    """Walk ridge pixels into ``(row, col)`` polylines.
+
+    Each walk starts at a ridge end (a pixel with one ridge neighbour) when one
+    is left, and follows unvisited neighbours (4-neighbours first) until none
+    remains; a branch becomes its own polyline, walked from its own end.  What
+    is left after the ends are exhausted are loops: a walk that finishes next
+    to its start is closed (its first point repeated last).
+    """
+    ridges = np.asarray(ridges, dtype=bool)
+    if not ridges.any():
+        return []
+    h, w = ridges.shape
+    degree = ndi.convolve(ridges.astype(np.int8), np.ones((3, 3), np.int8), mode="constant") - 1
+    visited = np.zeros_like(ridges)
+    ends = [tuple(p) for p in np.argwhere(ridges & (degree == 1))]
+    rest = [tuple(p) for p in np.argwhere(ridges)]
+
+    def walk(start: tuple[int, int]) -> list[tuple[int, int]]:
+        path = [start]
+        visited[start] = True
+        r, c = start
+        while True:
+            for dr, dc in _NEIGHBOURS:
+                rr, cc = r + dr, c + dc
+                if 0 <= rr < h and 0 <= cc < w and ridges[rr, cc] and not visited[rr, cc]:
+                    visited[rr, cc] = True
+                    path.append((rr, cc))
+                    r, c = rr, cc
+                    break
+            else:
+                return path
+
+    lines: list[NDArray[np.float64]] = []
+    for start in ends + rest:
+        if visited[start]:
+            continue
+        path = walk(start)
+        if len(path) < min_points:
+            continue
+        rc = np.asarray(path, dtype=np.float64)
+        (r0, c0), (r1, c1) = path[0], path[-1]
+        if len(path) > 3 and max(abs(r0 - r1), abs(c0 - c1)) <= 1:
+            rc = np.vstack([rc, rc[:1]])
+        lines.append(rc)
+    return lines
+
+
+def _smooth_polyline(rc: NDArray[np.float64], sigma: float) -> NDArray[np.float64]:
+    """Gaussian smoothing along a 1 px-spaced polyline (periodic when closed;
+    an open stroke keeps its endpoints)."""
+    if len(rc) < 5 or sigma <= 0:
+        return rc
+    if is_closed_trace(rc):
+        pts = ndi.gaussian_filter1d(rc[:-1], sigma, axis=0, mode="wrap")
+        return np.vstack([pts, pts[:1]])
+    out = ndi.gaussian_filter1d(rc, sigma, axis=0, mode="nearest")
+    out[0], out[-1] = rc[0], rc[-1]
+    return out
 
 
 def extract_feature_contours(
@@ -25,246 +164,54 @@ def extract_feature_contours(
     budget: int,
     config: ContourConfig,
 ) -> list[tuple[NDArray[np.complex128], float]]:
-    """Extract edge-density contours that trace facial features.
+    """Up to *budget* edge-supported ridge polylines inside the subject.
 
-    Builds a density field from max(gaussian(color_gradient), gaussian(canny)),
-    weighted by soft saliency and scaled to the subject (``subject_edge_field``),
-    extracts iso-contours at 13 levels, clips each to the subject band (its
-    in-subject runs survive as open strokes), filters to feature-scale band,
-    deduplicates against structure contours, sorts by compactness,
-    enforces spatial diversity, and returns up to *budget* contours.
+    See the module docstring.  Returns ``(contour, area)`` pairs in centred
+    complex coordinates: ``area`` is the polygon area of a closed ridge and 0.0
+    for an open one.
     """
-    # Build density field: color gradient + learned/Canny edges.
-    color_grad = image.color_gradient
+    shape = image.grayscale.shape
+    field = subject_edge_field(image.color_gradient, isolation.saliency_map, isolation.subject_mask)
+    floor = support_floor(isolation.silhouettes, field)
+    min_length = config.min_contour_length
 
-    # Try learned edge detector first (B3 integration).
-    learned_edges = None
-    if config.feature.edge_model != "canny":
-        from fourier_analysis.contours.ml import predict_edge_map
-        learned_edges = predict_edge_map(image)
+    raw: list[NDArray[np.floating]] = []
+    for line in link_ridges(ridge_map(image, isolation, config), min_points=min_length):
+        for run in supported_runs(line, field, floor, min_length):
+            raw.append(_smooth_polyline(run, RIDGE_SMOOTH_PX))
 
-    if learned_edges is not None:
-        density = filters.gaussian(learned_edges, sigma=0.5)
-        color_density = filters.gaussian(color_grad, sigma=1.0)
-        density = np.maximum(density, color_density * 0.5)
-    else:
-        # Canny path with configurable sigma (A3).
-        gray_edges = feature.canny(image.detail_grayscale, sigma=0.8)
-        density = filters.gaussian(color_grad, sigma=1.5)
-        canny_density = filters.gaussian(
-            gray_edges.astype(np.float64), sigma=config.feature.density_sigma,
-        )
-        density = np.maximum(density, canny_density)
+    # Postprocess (centred complex, light smoothing, simplification, dedup),
+    # uncapped and without the loop-area floor: the ranking picks the budget,
+    # and a small closed ridge (a nostril) is a feature, not noise.
+    processed, areas = _postprocess_raw_contours(
+        raw, image, replace(config, max_contours=None, min_contour_area=0.0)
+    )
 
-    # Scale to the subject, not the global maximum: a bright background edge
-    # must not set the levels, and saliency fades background edges out.
-    density = subject_edge_field(density, isolation.saliency_map, isolation.subject_mask)
+    mask = isolation.subject_mask
+    member = mask if mask is not None and mask.any() else np.ones(shape, dtype=bool)
 
-    # Extract contours at multiple density levels (A3: 13 levels).
-    levels = [0.04, 0.07, 0.10, 0.15, 0.20, 0.27, 0.35, 0.44, 0.54, 0.64, 0.74, 0.84, 0.92]
+    ranked: list[tuple[float, NDArray[np.complex128], float]] = []
+    for c, a in zip(processed, areas):
+        rc = complex_to_rc(c, shape)
+        support = arc_support(rc, field)
+        if support < floor:
+            continue
+        length = float(np.abs(np.diff(c)).sum())
+        share = float(np.mean(_sample(member, rc)))
+        ranked.append((support * length * share, c, a))
+    ranked.sort(key=lambda t: t[0], reverse=True)
 
-    min_length = max(config.min_contour_length, 60)
-    min_bbox_area = image.image_area * 0.0005
-    # Feature-scale band (A4): hard floor at 0.01% with compactness guard.
-    min_feature_area_hard = image.image_area * 0.0001
-    min_feature_area_soft = image.image_area * 0.0003
-    # Cap at 40% of silhouette area (if known) to allow large features
-    # like mouths and eyes while excluding near-silhouette duplicates.
-    if isolation.silhouette_area > 0:
-        max_feature_area = isolation.silhouette_area * 0.40
-    else:
-        max_feature_area = image.image_area * 0.15
-
-    window = band_window(isolation.subject_band, density.shape)
-    offset = np.array([window[0].start, window[1].start], dtype=np.float64)
-    raw_contours: list[NDArray[np.floating]] = []
-    for level in levels:
-        contours = [c + offset for c in measure.find_contours(density[window], level=level)]
-        for c in contours:
-            if len(c) < min_length:
-                continue
-            # Filter by bbox area.
-            rows, cols = c[:, 0], c[:, 1]
-            bbox_area = (rows.max() - rows.min()) * (cols.max() - cols.min())
-            if bbox_area < min_bbox_area:
-                continue
-            # Keep only the in-subject runs: never a whole-contour vote.
-            if isolation.subject_band is not None:
-                raw_contours.extend(clip_to_subject(c, isolation.subject_band, min_length))
-            else:
-                raw_contours.append(c)
-
-    # Postprocess: convert to complex, smooth, resample, simplify, dedup.
-    # Use uncapped max_contours so small features survive.
-    from dataclasses import replace as _replace
-    uncapped_config = _replace(config, max_contours=None)
-    processed, areas = _postprocess_raw_contours(raw_contours, image, uncapped_config)
-
-    candidates = _feature_scale(processed, areas, min_feature_area_hard,
-                                min_feature_area_soft, max_feature_area)
-
-    # Merge in region-based feature candidates (dark/light patches).
-    region_candidates = _extract_region_features(image, isolation, config)
-    for rc, ra in region_candidates:
-        # Dedup region candidates against edge candidates.
-        is_dup = any(
-            _contours_are_near_duplicates(rc, ra, ec, ea, image)
-            for ec, ea in candidates
-        )
-        if not is_dup:
-            candidates.append((rc, ra))
-
-    # Deduplicate against structure contours.
-    if structure_contours:
-        deduped: list[tuple[NDArray[np.complex128], float]] = []
-        for c, a in candidates:
-            is_dup = any(
-                _contours_are_near_duplicates(c, a, sc, sa, image)
-                for sc, sa in structure_contours
-            )
-            if not is_dup:
-                deduped.append((c, a))
-        candidates = deduped
-
-    # Sort by compactness × proximity to subject center.
-    # Features near the subject centroid (face area) rank higher than
-    # peripheral features (background objects, ground).
-    if isolation.subject_mask is not None and isolation.silhouette_area > 0:
-        rows, cols = np.nonzero(isolation.subject_mask)
-        h, w = isolation.subject_mask.shape
-        ref_center = complex(float(cols.mean()) - w / 2, h / 2 - float(rows.mean()))
-        subject_radius = max(1.0, (isolation.silhouette_area / np.pi) ** 0.5)
-    else:
-        ref_center = 0j
-        subject_radius = image.diagonal * 0.5
-
-    def _compactness_key(pair: tuple[NDArray[np.complex128], float]) -> float:
-        # An open stroke has no area, so no compactness: closed features
-        # (eyes, nostrils, mouths) rank first, open runs after them.
-        contour, area = pair
-        comp = _compactness(contour, area) if area > 0 else 0.0
-        center = complex(float(contour.real.mean()), float(contour.imag.mean()))
-        dist = abs(center - ref_center)
-        proximity = max(0.5, 1.0 - 0.5 * (dist / subject_radius))
-        return comp * proximity
-
-    candidates.sort(key=_compactness_key, reverse=True)
-
-    # Enforce spatial diversity (A2: configurable + adaptive relaxation).
-    min_spacing = image.diagonal * config.feature.spatial_diversity_fraction
+    coverage = InkCoverage(band_px(shape))
+    for silhouette in isolation.silhouettes:
+        coverage.add(silhouette)
+    for c, _ in structure_contours:
+        coverage.add(c)
     picked: list[tuple[NDArray[np.complex128], float]] = []
-    picked_centers: list[complex] = []
-    skipped: list[tuple[NDArray[np.complex128], float]] = []
-
-    for c, a in candidates:
+    for _, c, a in ranked:
         if len(picked) >= budget:
             break
-        center = complex(float(c.real.mean()), float(c.imag.mean()))
-        if any(abs(center - pc) < min_spacing for pc in picked_centers):
-            skipped.append((c, a))
+        if coverage.overlap(c) > REDUNDANT_OVERLAP:
             continue
         picked.append((c, a))
-        picked_centers.append(center)
-
-    # Second-pass relaxation: if first pass picked < 60% of budget,
-    # re-scan skipped candidates at half spacing (allows clustered features).
-    if len(picked) < budget * 0.6 and skipped:
-        relaxed_spacing = min_spacing * 0.5
-        for c, a in skipped:
-            if len(picked) >= budget:
-                break
-            center = complex(float(c.real.mean()), float(c.imag.mean()))
-            if any(abs(center - pc) < relaxed_spacing for pc in picked_centers):
-                continue
-            picked.append((c, a))
-            picked_centers.append(center)
-
+        coverage.add(c)
     return picked
-
-
-def _extract_region_features(
-    image: LoadedImage,
-    isolation: SubjectIsolation,
-    config: ContourConfig,
-) -> list[tuple[NDArray[np.complex128], float]]:
-    """Find dark/light patches within the subject that deviate from the subject median.
-
-    Detects filled regions (eyes, mouths) as connected components where pixel
-    intensity deviates from the subject median by >= 1 std. Morphological
-    opening removes noise fragments from textured subjects.
-    """
-    source = image.detail_grayscale
-    if isolation.subject_mask is None or not np.any(isolation.subject_mask):
-        return []
-
-    subject_pixels = source[isolation.subject_mask]
-    median = float(np.median(subject_pixels))
-    std = float(np.std(subject_pixels))
-    if std < 1e-6:
-        return []
-
-    # Dark and light masks within the subject.
-    dark_mask = (source < median - std) & isolation.subject_mask
-    light_mask = (source > median + std) & isolation.subject_mask
-
-    # Morphological cleanup (A5: disk(1) preserves thin features like eyebrows/lips).
-    selem = morphology.disk(1)
-    dark_mask = morphology.opening(dark_mask, selem)
-    light_mask = morphology.opening(light_mask, selem)
-
-    # Feature-scale bounds (A4: lowered hard floor with compactness guard).
-    min_feature_area_hard = image.image_area * 0.0001
-    min_feature_area_soft = image.image_area * 0.0003
-    if isolation.silhouette_area > 0:
-        max_feature_area = isolation.silhouette_area * 0.40
-    else:
-        max_feature_area = image.image_area * 0.15
-
-    min_length = max(config.min_contour_length, 60)
-
-    raw_contours: list[NDArray[np.floating]] = []
-    for mask in (dark_mask, light_mask):
-        contours = measure.find_contours(mask.astype(np.float64), level=0.5)
-        for c in contours:
-            if len(c) < min_length:
-                continue
-            raw_contours.append(c)
-
-    if not raw_contours:
-        return []
-
-    from dataclasses import replace as _replace
-    uncapped_config = _replace(config, max_contours=None)
-    processed, areas = _postprocess_raw_contours(raw_contours, image, uncapped_config)
-
-    return _feature_scale(processed, areas, min_feature_area_hard,
-                          min_feature_area_soft, max_feature_area)
-
-
-def _feature_scale(
-    processed: list[NDArray[np.complex128]],
-    areas: list[float],
-    min_area_hard: float,
-    min_area_soft: float,
-    max_area: float,
-) -> list[tuple[NDArray[np.complex128], float]]:
-    """The feature-scale band (A4: compactness guard for small loops).
-
-    A closed loop is judged by its area.  An open stroke (area 0.0, already
-    length-filtered) is judged by the loop its length could enclose, so a stroke
-    too long to be a feature is rejected like a loop too large to be one.
-    """
-    out: list[tuple[NDArray[np.complex128], float]] = []
-    for c, a in zip(processed, areas):
-        if a == 0.0:
-            length = float(np.abs(np.diff(c)).sum())
-            if length**2 / (4 * np.pi) > max_area:
-                continue
-            out.append((c, a))
-            continue
-        if a > max_area or a < min_area_hard:
-            continue
-        if a < min_area_soft and _compactness(c, a) < 0.15:
-            continue
-        out.append((c, a))
-    return out

@@ -224,7 +224,12 @@ def ml_masks(
 _PIDINET_MODEL_URL = (
     "https://github.com/mkbabb/fourier-analysis/releases/download/v0.1.0/pidinet-tiny.onnx"
 )
-_PIDINET_SHA256 = ""  # Populated after first export; empty disables hash check.
+# No PiDiNet export has been published and pinned (the release URL above does
+# not resolve, and the export needs PyTorch, which is not a dependency).  Until
+# a digest is set here, unverified weights are never downloaded or loaded, and
+# the feature stage runs on Canny ridges (``FeatureConfig.edge_model``
+# defaults to 'canny'; 'auto'/'pidinet' fall back with a diagnostic note).
+_PIDINET_SHA256: str | None = None
 _PIDINET_INPUT_SIZE = 512
 
 _pidinet_session_lock = threading.Lock()
@@ -235,34 +240,44 @@ def _pidinet_model_path() -> Path:
     return _CACHE_DIR / "pidinet-tiny.onnx"
 
 
+def _pidinet_verified(path: Path) -> bool:
+    return (
+        _PIDINET_SHA256 is not None
+        and path.exists()
+        and hashlib.sha256(path.read_bytes()).hexdigest() == _PIDINET_SHA256
+    )
+
+
 def ensure_pidinet_downloaded() -> Path:
-    """Download the PiDiNet-tiny ONNX weights if not already cached."""
+    """Download and verify the pinned PiDiNet-tiny ONNX weights.
+
+    Raises ``RuntimeError`` while no digest is pinned: unverified weights are
+    never fetched.
+    """
+    if _PIDINET_SHA256 is None:
+        raise RuntimeError(
+            "no pinned PiDiNet-tiny weights (ml._PIDINET_SHA256 is unset); "
+            "feature ridges use Canny"
+        )
     path = _pidinet_model_path()
-    if path.exists():
-        if _PIDINET_SHA256:
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            if digest == _PIDINET_SHA256:
-                return path
-        else:
-            return path
+    if _pidinet_verified(path):
+        return path
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     urllib.request.urlretrieve(_PIDINET_MODEL_URL, tmp)  # noqa: S310
-    if _PIDINET_SHA256:
-        digest = hashlib.sha256(tmp.read_bytes()).hexdigest()
-        if digest != _PIDINET_SHA256:
-            tmp.unlink(missing_ok=True)
-            raise RuntimeError(
-                f"SHA-256 mismatch for pidinet-tiny.onnx: "
-                f"expected {_PIDINET_SHA256}, got {digest}"
-            )
+    digest = hashlib.sha256(tmp.read_bytes()).hexdigest()
+    if digest != _PIDINET_SHA256:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"SHA-256 mismatch for pidinet-tiny.onnx: expected {_PIDINET_SHA256}, got {digest}"
+        )
     tmp.rename(path)
     return path
 
 
 def pidinet_available() -> bool:
-    """Check whether the PiDiNet ONNX model is cached (does not download)."""
-    return _pidinet_model_path().exists()
+    """Whether pinned, verified PiDiNet weights are cached (never downloads)."""
+    return _pidinet_verified(_pidinet_model_path())
 
 
 def _get_pidinet_session():
@@ -278,9 +293,9 @@ def _get_pidinet_session():
         except ImportError:
             return None
 
-        model_path = _pidinet_model_path()
-        if not model_path.exists():
+        if not pidinet_available():
             return None
+        model_path = _pidinet_model_path()
 
         _pidinet_session = ort.InferenceSession(
             str(model_path), providers=["CPUExecutionProvider"]

@@ -17,6 +17,12 @@ Contours here are raw marching-squares traces, ``(N, 2)`` arrays of
 - :func:`arc_support` — the median of a subject-normalised edge field along an
   arc: near 0 for an iso-intensity line across a smooth region, near 1 for a
   line that follows a real edge.
+- :func:`support_floor` — the relative bar a stroke must meet: a fraction of
+  the silhouette's own median support in the same field, so the bar is
+  normalised per image rather than a tuned absolute constant.
+- :func:`supported_runs` — split an arc into its edge-supported runs: an
+  iso-line that follows the jaw for a while and then wanders across a cheek
+  keeps the jaw and loses the cheek.
 """
 
 from __future__ import annotations
@@ -36,6 +42,9 @@ REDUNDANT_OVERLAP = 0.5
 FRAME_MARGIN_PX = 3.0
 # Edge fields are scaled by this subject-pixel percentile.
 SUBJECT_PERCENTILE = 95.0
+# A kept stroke's support is at least this fraction of the silhouette's median
+# support in the same field (see ``support_floor``).
+RELATIVE_SUPPORT = 0.6
 
 
 def band_px(shape: tuple[int, int]) -> float:
@@ -218,3 +227,76 @@ def band_window(band: NDArray[np.bool_] | None, shape: tuple[int, int]) -> tuple
         slice(max(0, int(rows[0]) - 1), min(shape[0], int(rows[-1]) + 2)),
         slice(max(0, int(cols[0]) - 1), min(shape[1], int(cols[-1]) + 2)),
     )
+
+
+def silhouette_support(
+    silhouettes: tuple[NDArray[np.complex128], ...] | list[NDArray[np.complex128]],
+    field: NDArray[np.floating],
+) -> float:
+    """Median of ``field`` along every silhouette together, sampled by length;
+    0 when there is no silhouette."""
+    shape = field.shape
+    samples = [
+        _sample(field, densify(complex_to_rc(z, shape))) for z in silhouettes if len(z) > 1
+    ]
+    return float(np.median(np.concatenate(samples))) if samples else 0.0
+
+
+def support_floor(
+    silhouettes: tuple[NDArray[np.complex128], ...] | list[NDArray[np.complex128]],
+    field: NDArray[np.floating],
+    fraction: float = RELATIVE_SUPPORT,
+) -> float:
+    """The support a stroke must reach: ``fraction`` of the silhouette's median
+    support in ``field``.  Without a silhouette the subject has no edge of its
+    own to measure against, and the floor is the field's subject scale (1.0 for
+    a subject-normalised field) times ``fraction``."""
+    reference = silhouette_support(silhouettes, field)
+    return fraction * (reference if reference > 0 else 1.0)
+
+
+def supported_runs(
+    rc: NDArray[np.floating],
+    field: NDArray[np.floating],
+    floor: float,
+    min_run_px: float,
+    window_px: float | None = None,
+) -> list[NDArray[np.float64]]:
+    """The spans of ``rc`` an edge supports, each at least ``min_run_px`` long.
+
+    The trace is resampled at 1 px and ``field`` sampled along it; the samples
+    are median-filtered over ``window_px`` (default: the subject band's width,
+    so a pixel-scale dip in an edge does not split it) and every maximal span
+    at or above ``floor`` is a candidate.  A span whose own median support
+    (:func:`arc_support`) is below ``floor`` is dropped.  A closed trace whose
+    every span is supported comes back closed; otherwise the runs are open
+    (the one across the seam is joined).
+    """
+    rc = np.asarray(rc, dtype=np.float64)
+    if len(rc) < 2:
+        return []
+    closed = is_closed_trace(rc)
+    dense = densify(rc)
+    if closed and len(dense) > 2:
+        dense = dense[:-1]
+    raw = _sample(field, dense)
+    size = max(1, int(round(window_px if window_px is not None else band_px(field.shape))))
+    size += 1 - size % 2
+    smooth = ndi.median_filter(raw, size=min(size, len(raw)) or 1, mode="wrap" if closed else "nearest")
+    flags = smooth >= floor
+    if flags.all():
+        whole = np.vstack([dense, dense[:1]]) if closed else dense
+        return [whole] if arc_support(whole, field) >= floor and _run_length(whole) >= min_run_px else []
+    if not flags.any():
+        return []
+    pts = dense
+    if closed:
+        start = int(np.flatnonzero(~flags)[0])
+        pts = np.roll(pts, -start, axis=0)
+        flags = np.roll(flags, -start)
+    padded = np.diff(np.concatenate([[0], flags.astype(np.int8), [0]]))
+    runs = [pts[a:b] for a, b in zip(np.flatnonzero(padded == 1), np.flatnonzero(padded == -1))]
+    return [
+        r for r in runs
+        if len(r) >= 2 and _run_length(r) >= min_run_px and arc_support(r, field) >= floor
+    ]

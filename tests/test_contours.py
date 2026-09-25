@@ -214,7 +214,11 @@ class TestExtractContours:
 
         assert result.contours
         assert result.diagnostics.used_alpha is False
-        assert result.diagnostics.total_points > 1500
+        # Detail is interior ink, not vertex count (a smooth ridge simplifies
+        # to few vertices): the strokes inside draw at least as much as the
+        # enclosing outline.
+        lengths = sorted((float(np.abs(np.diff(c)).sum()) for c in result.contours), reverse=True)
+        assert sum(lengths[1:]) >= lengths[0]
         assert result.diagnostics.primary_span_fraction > 0.7
         assert result.diagnostics.secondary_area_fraction > 0.05
         assert result.diagnostics.max_jump < 400
@@ -240,7 +244,10 @@ class TestExtractContours:
             assert result.contours, image_path.name
             assert 0.05 < result.diagnostics.retained_area_fraction <= 1.0, image_path.name
             assert result.diagnostics.max_jump < 1000, image_path.name
-            assert result.diagnostics.total_points > 400, image_path.name
+            # Ink, not vertex count (smooth strokes simplify to few vertices):
+            # at least the image's long side (the default resize) is drawn.
+            ink = sum(float(np.abs(np.diff(c)).sum()) for c in result.contours)
+            assert ink > 1024, image_path.name
 
     def test_corpus_preserves_subject_extent_or_internal_structure(self):
         assets = Path(__file__).resolve().parents[1] / "assets"

@@ -96,6 +96,9 @@ def extract_contours_pipeline(
     notes: list[str] = []
     if isolation.subject_mask is None:
         notes.append("ML subject isolation coverage below threshold; mask disabled")
+    note = _edge_model_note(config)
+    if note:
+        notes.append(note)
 
     diagnostics = ContourDiagnostics(
         requested_strategy="auto",
@@ -123,6 +126,18 @@ def extract_contours_pipeline(
         ordered_path=tour.path.copy(),
         diagnostics=diagnostics,
     )
+
+
+def _edge_model_note(config: ContourConfig) -> str | None:
+    """Say so when a learned edge model was asked for but Canny ridges ran."""
+    requested = config.feature.edge_model
+    if requested == "canny":
+        return None
+    from fourier_analysis.contours.ml import pidinet_available
+
+    if pidinet_available():
+        return None
+    return f"edge_model={requested}: no pinned PiDiNet weights cached; feature ridges used Canny"
 
 
 def _primary_span_fraction(
