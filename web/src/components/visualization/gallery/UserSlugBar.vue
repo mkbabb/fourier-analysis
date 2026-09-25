@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Input } from "@mkbabb/glass-ui/input";
@@ -28,6 +28,20 @@ const { toast } = useToast();
 const slugInput = ref("");
 const showLogin = ref(false);
 const loggingIn = ref(false);
+
+/*
+ * X.F.W14V.p — an act that needs the account (a signed-out Publish) opens THIS
+ * sign-in rather than ending in a refusal toast; closing it, signed in or not,
+ * settles the request so the act resumes or stands down (`auth.requestSignIn`).
+ */
+const { signInRequested } = storeToRefs(auth);
+watch(
+    signInRequested,
+    (requested) => {
+        if (requested) showLogin.value = true;
+    },
+    { immediate: true },
+);
 
 /* P.W5 Lane B.2 — glass-ui's `useClipboard` (at glass-ui ≥7 it returns
    `status`, never a `copied` boolean); 1.5 s reset preserved. */
@@ -120,6 +134,7 @@ function closeLogin() {
     touched.value = false;
     submitted.value = false;
     serverError.value = null;
+    auth.endSignInRequest();
 }
 
 /**

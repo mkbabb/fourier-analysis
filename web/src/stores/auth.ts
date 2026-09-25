@@ -80,11 +80,49 @@ export const useAuthStore = defineStore("auth", () => {
         } catch (e) {
             if (!(e instanceof ApiProblem && (e.status === 401 || e.status === 404))) throw e;
         }
+        forgetUser();
+        setSessionToken(null);
+    }
+
+    // ── Sign-in on request ──────────────────────────────────────────────
+    /*
+     * X.F.W14V.p — an act that needs a signed-in account (Publish) asks for the
+     * sign-in instead of ending in a refusal. `requestSignIn` opens the shell's
+     * own inline sign-in (the account popover in the app dock, which watches
+     * `signInRequested`) and settles when that surface closes: `true` once the
+     * person is signed in, `false` if they dismissed it. The caller resumes its
+     * act on `true`. A second request supersedes the first (it settles `false`).
+     */
+    const signInRequested = ref(false);
+    let settleSignIn: ((signedIn: boolean) => void) | null = null;
+
+    function requestSignIn(): Promise<boolean> {
+        if (isLoggedIn.value) return Promise.resolve(true);
+        settleSignIn?.(false);
+        signInRequested.value = true;
+        return new Promise<boolean>((resolve) => {
+            settleSignIn = resolve;
+        });
+    }
+
+    /** The inline sign-in closed: settle the pending request with the outcome. */
+    function endSignInRequest() {
+        signInRequested.value = false;
+        const settle = settleSignIn;
+        settleSignIn = null;
+        settle?.(isLoggedIn.value);
+    }
+
+    /**
+     * X.F.W14V.p — the server answered `urn:contract:owner-required`: the
+     * request carried no session, so the remembered slug is not a sign-in (its
+     * token is gone). The local account state is ended to match the server's.
+     */
+    function forgetUser() {
         userSlug.value = null;
         userToken.value = null;
         safeRemoveItem(local(), USER_SLUG_KEY);
         safeRemoveItem(local(), USER_TOKEN_KEY);
-        setSessionToken(null);
     }
 
     let _ensurePromise: Promise<string> | null = null;
@@ -140,11 +178,15 @@ export const useAuthStore = defineStore("auth", () => {
         // derived
         isLoggedIn,
         isAdminAuthenticated,
+        signInRequested,
         // user actions
         register,
         login,
         logout,
         ensureUser,
+        requestSignIn,
+        endSignInRequest,
+        forgetUser,
         // admin actions
         adminLogin,
         adminLogout,

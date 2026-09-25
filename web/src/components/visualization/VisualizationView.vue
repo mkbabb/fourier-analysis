@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch } from "vue";
+import { ref, shallowRef, computed, watch, nextTick } from "vue";
 import { watchDebounced, useMediaQuery, useEventListener } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
@@ -9,7 +9,7 @@ import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
 import { Upload } from "@lucide/vue";
 import { useGalleryStore } from "@/stores/gallery";
-import { useToast } from "@/composables/useToast";
+import { isOwnerRequired } from "@/lib/api-problem";
 import { useAuthStore } from "@/stores/auth";
 import ImageUpload from "./ImageUpload.vue";
 import NotFoundCard from "@/components/shared/NotFoundCard.vue";
@@ -45,7 +45,6 @@ const store = useWorkspaceStore();
 const anim = useAnimationStore();
 const gallery = useGalleryStore();
 const auth = useAuthStore();
-const { toast } = useToast();
 
 // ── View state (editing, ghost, overlay — persisted to localStorage) ──
 const { isEditing, showGhost, showImageOverlay, showEquation } = useViewState();
@@ -233,19 +232,42 @@ const publishing = ref(false);
 // duplicate. A publish that lands is recorded on the session; while the session
 // is still what was published, the control shows Published and opens the piece
 // (no second public copy). An edit re-arms Publish for the new piece.
+//
+// X.F.W14V.p — a signed-out Publish never ends in a toast (the owner frame: the
+// raw "A session is required to publish." over the pane). It opens the shell's
+// own inline sign-in and RESUMES once the person signs in; dismissing the
+// sign-in stands the publish down. The same holds when the client believed it
+// was signed in and the server's typed 401 `owner-required` says the save
+// carried no session: the stale local sign-in is ended and the sign-in asked
+// for. The sign-in lives in the app dock, so an open takeover is closed first.
+async function signInToPublish(): Promise<boolean> {
+    if (showFullscreen.value) {
+        showFullscreen.value = false;
+        await nextTick();
+    }
+    return auth.requestSignIn();
+}
+
+async function saveSignedIn() {
+    try {
+        return await store.saveVisualization();
+    } catch (e: unknown) {
+        if (!isOwnerRequired(e)) throw e;
+        auth.forgetUser();
+        return (await signInToPublish()) ? store.saveVisualization() : null;
+    }
+}
+
 async function handlePublish() {
     if (store.publishedSlug) {
         await router.push(`/v/${store.publishedSlug}`);
         return;
     }
     if (publishing.value || !store.imageSlug || !store.contour) return;
-    if (!auth.isLoggedIn) {
-        toast("Log in to publish to the gallery.", "info");
-        return;
-    }
+    if (!auth.isLoggedIn && !(await signInToPublish())) return;
     publishing.value = true;
     try {
-        const saved = await store.saveVisualization();
+        const saved = await saveSignedIn();
         if (!saved) return;
         if (await gallery.publish(saved.slug, store.imageSlug)) store.markPublished(saved.slug);
     } finally {

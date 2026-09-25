@@ -25,8 +25,8 @@ import { seededViz } from "./fixtures/seed";
  * e73   UIA-F-73 — while computing, the stage says so in the DOM (role=status)
  *       and the canvas paints no dashed "drop here" box.
  * e133  UIA-F-133 (consumer) — the upload button says what is happening.
- * e95   UIA-F-95 ⊕ F-245 — logged out, Publish sends nothing and one toast
- *       says how to publish.
+ * e95   UIA-F-95 ⊕ F-245 — logged out, Publish sends nothing and opens the
+ *       shell's inline sign-in (X.F.W14V.p: no toast).
  * e169  UIA-F-169 — the sidebar spends no height on duplicates: a compact image
  *       row, no Preview layer, one amplitude view.
  * e170  UIA-F-170 ⊕ F-238 — the Fourier mode is a three-option chooser, the
@@ -271,7 +271,7 @@ test.describe("F.W14U.vstage — upload and publish (1440)", () => {
         await frame(page, "e133-uploading");
     });
 
-    test("e95 · F-95 ⊕ F-245 — logged out, Publish sends nothing and one toast says how", async ({ page }) => {
+    test("e95 · F-95 ⊕ F-245 — logged out, Publish sends nothing and opens the inline sign-in", async ({ page }) => {
         let posts = 0;
         await page.route("**/api/visualizations", (route) => {
             if (route.request().method() === "POST") posts++;
@@ -288,8 +288,9 @@ test.describe("F.W14U.vstage — upload and publish (1440)", () => {
         await page.waitForTimeout(2500);
         await frame(page, "e95-publish-logged-out");
         expect(posts).toBe(0);
-        await expect(page.locator('[data-slot="toast"]')).toHaveCount(1);
-        await expect(page.locator('[data-slot="toast"]')).toContainText(/log in/i);
+        // X.F.W14V.p restated: the way to publish is the shell's inline sign-in, not a toast.
+        await expect(page.locator('[data-slot="toast"]')).toHaveCount(0);
+        await expect(page.locator("#user-slug-input")).toBeVisible();
     });
 });
 

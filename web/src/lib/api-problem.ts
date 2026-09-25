@@ -58,6 +58,15 @@ export class ApiProblem extends Error {
 }
 
 /**
+ * X.F.W14V.p — the server's typed answer to a publish sent with no session
+ * (401 `urn:contract:owner-required`, `api/routers/visualizations.py`): the
+ * caller asks for the sign-in, it does not report an error.
+ */
+export function isOwnerRequired(e: unknown): e is ApiProblem {
+    return e instanceof ApiProblem && e.is("urn:contract:owner-required");
+}
+
+/**
  * `C·D-02`'s envelope half (X·F F.W4 `.f`; the consumer half landed at `.b`).
  *
  * RFC 7807 types `detail` as a string, and FastAPI does not: a `HTTPException`

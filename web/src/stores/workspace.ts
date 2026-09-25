@@ -11,7 +11,7 @@ import type {
     WorkspaceDraft,
 } from "@/lib/types";
 import * as api from "@/lib/api";
-import { problemMessage } from "@/lib/api-problem";
+import { isOwnerRequired, problemMessage } from "@/lib/api-problem";
 import { saveDraft, loadDraft, listDrafts } from "@/lib/draftStorage";
 import {
     defaultContourSettings,
@@ -425,6 +425,13 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         published.value = body ? { slug, body: JSON.stringify(body) } : null;
     }
 
+    /**
+     * X.F.W14V.p — the typed `urn:contract:owner-required` (401: the save was
+     * sent with no session) is not a workspace diagnosis. It is rethrown to the
+     * caller, which asks for the sign-in and resumes; written into `error` it
+     * surfaced through the loader's channel as the raw "A session is required
+     * to publish." toast over the pane (the owner frame, 2026-09-24).
+     */
     async function saveVisualization(): Promise<SavedVisualizationRef | null> {
         const body = visualizationBody();
         if (!body) return null;
@@ -435,6 +442,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             visualizationETag.value = etag;
             return { slug: data.slug };
         } catch (e: unknown) {
+            if (isOwnerRequired(e)) throw e;
             if (api.isAbortError(e)) return null;
             error.value = problemMessage(e, "Failed to save visualization");
             return null;
