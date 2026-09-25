@@ -29,6 +29,18 @@ def _frequency(n: int, variable: str) -> str:
     return rf"{sign}{mag if mag > 1 else ''}i{variable}"
 
 
+def _hooked(kind: str, term: str) -> str:
+    r"""Wrap one expanded term in its coefficient family's hover hook.
+
+    X.F.W14V `.u2` — UIA-F-253 (server limb): the expanded form carried no
+    ``eq-coeff`` hooks, so coefficient hover existed only in Σ mode. The hook is
+    the Σ renderers' own ``\htmlClass{eq-coeff eq-<kind>}``; the term's leading
+    sign stays outside it, so KaTeX keeps the binary spacing between terms.
+    """
+    sign = term[0] if term[:1] in ("+", "-") else ""
+    return rf"{sign}\htmlClass{{eq-coeff eq-{kind}}}{{{term[len(sign):]}}}"
+
+
 def render_trig(
     terms: list[FourierTerm],
     variable: str = "t",
@@ -53,10 +65,10 @@ def render_trig(
         omega_t = rf"{n_str}{variable}"
 
         if abs(a_n) > threshold:
-            parts.append(rf"{format_coefficient(a_n, first=first)}\cos({omega_t})")
+            parts.append(_hooked("an", rf"{format_coefficient(a_n, first=first)}\cos({omega_t})"))
             first = False
         if abs(b_n) > threshold:
-            parts.append(rf"{format_coefficient(b_n, first=first)}\sin({omega_t})")
+            parts.append(_hooked("bn", rf"{format_coefficient(b_n, first=first)}\sin({omega_t})"))
 
     return " ".join(parts) if parts else "0"
 
@@ -100,7 +112,7 @@ def render_exponential(
         if t.n == 0:
             parts.append(coeff_str if coeff_str else format_number(re))
         else:
-            parts.append(rf"{coeff_str}e^{{{_frequency(t.n, variable)}}}")
+            parts.append(_hooked("cn", rf"{coeff_str}e^{{{_frequency(t.n, variable)}}}"))
 
     return " ".join(parts) if parts else "0"
 
@@ -129,12 +141,12 @@ def render_polar(
         else:
             n_str = str(t.n) if abs(t.n) > 1 else ("-" if t.n == -1 else "")
             if abs(t.phase) < 1e-10:
-                parts.append(rf"{A_str}e^{{{_frequency(t.n, variable)}}}")
+                parts.append(_hooked("An", rf"{A_str}e^{{{_frequency(t.n, variable)}}}"))
             else:
                 phi_str = format_number(t.phase)
                 if not phi_str.startswith("-"):
                     phi_str = "+" + phi_str
-                parts.append(rf"{A_str}e^{{i({n_str}{variable}{phi_str})}}")
+                parts.append(_hooked("An", rf"{A_str}e^{{i({n_str}{variable}{phi_str})}}"))
 
     return " ".join(parts) if parts else "0"
 

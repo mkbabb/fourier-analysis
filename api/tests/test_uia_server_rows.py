@@ -47,7 +47,10 @@ def _run(coro: Any) -> Any:
 
 
 def _coefficient_of(latex: str, fn: str, arg: str) -> float:
-    m = re.search(rf"([+-]?[0-9.]+(?:e[+-]?[0-9]+)?)\\{fn}\({re.escape(arg)}\)", latex)
+    # X.F.W14V `.u2`: each expanded term wears its hover hook, with the sign
+    # outside it (`-\htmlClass{eq-coeff eq-an}{0.063\cos(4t)}`).
+    plain = re.sub(r"\\htmlClass\{[^{}]*\}\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", r"\1", latex)
+    m = re.search(rf"([+-]?[0-9.]+(?:e[+-]?[0-9]+)?)\\{fn}\({re.escape(arg)}\)", plain)
     assert m, f"no \\{fn}({arg}) in {latex!r}"
     return float(m.group(1))
 

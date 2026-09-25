@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Response
 
 from api.lib.crud import errors
@@ -14,39 +12,15 @@ from api.models.equations import (
     SimplifyRequest,
     SimplifyResponse,
 )
-from api.services.computation import submit_compute_job
+from api.services.computation import submit_compute_job, submit_process_job
+from api.services.equation_series import (
+    ExpressionInvalid,
+    compute_series,
+    displayed_n,
+    render_sigma,
+)
 
 router = APIRouter(prefix="/api/equations", tags=["equations"])
-
-
-class ExpressionInvalid(ValueError):
-    """The user's f(x) is not a finite real function of ``x`` (a client error)."""
-
-
-def _parse_function_of_x(expression: str) -> Any:
-    """Parse *expression* as a function of ``x`` alone, or raise ``ExpressionInvalid``.
-
-    A parse failure, an unknown function, a free symbol other than ``x`` or a
-    non-finite constant (``1/0`` is ``zoo``) cannot be evaluated on the grid;
-    each is the caller's input, so it answers 422, never a 500 (UIA-F-112).
-    """
-    import sympy as sp
-
-    from fourier_analysis.symbolic.parsing import parse_expression
-
-    try:
-        expr = parse_expression(expression)
-    except ValueError as e:
-        raise ExpressionInvalid(str(e)) from e
-    unknown = sorted({str(f.func) for f in expr.atoms(sp.core.function.AppliedUndef)})
-    if unknown:
-        raise ExpressionInvalid(f"Unknown function: {', '.join(unknown)}")
-    others = sorted(str(s) for s in expr.free_symbols - {sp.Symbol("x")})
-    if others:
-        raise ExpressionInvalid(f"f(x) may depend only on x, not {', '.join(others)}")
-    if expr.has(sp.zoo, sp.nan, sp.oo, -sp.oo):
-        raise ExpressionInvalid("f(x) is not finite")
-    return expr
 
 
 def _term_to_dto(term) -> FourierTermDTO:
@@ -67,88 +41,11 @@ async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationRespon
       1. Symbolic integration (exact)
       2. Sequence identification (conjectured)
       3. Spline approximation (approximate)
+
+    The job runs in a worker process (``equation_series`` says why).
     """
-
-    def _run():
-        import numpy as np
-
-        from fourier_analysis.symbolic.integration import symbolic_fourier_coefficients
-        from fourier_analysis.symbolic.identification import identify_sequence
-        from fourier_analysis.symbolic.spline import spline_fourier_coefficients
-        from fourier_analysis.symbolic.simplification import simplify_series
-        from fourier_analysis.symbolic.models import FourierTerm
-
-        import sympy as sp
-
-        expr = _parse_function_of_x(req.expression)
-        x = sp.Symbol("x")
-        domain = (req.domain_start, req.domain_end)
-        period = domain[1] - domain[0]
-
-        # Evaluate original function on grid
-        f_numpy = sp.lambdify(x, expr, modules=["numpy"])
-        x_eval = np.linspace(domain[0], domain[1], req.n_eval_points, endpoint=False)
-        try:
-            raw = f_numpy(x_eval)
-            y_eval = np.broadcast_to(
-                np.asarray(raw, dtype=np.float64), x_eval.shape,
-            ).copy()
-        except Exception:
-            y_eval = np.array([complex(expr.subs(x, xv)).real for xv in x_eval])
-
-        # Tier 1: Symbolic integration
-        tier = "symbolic"
-        terms = symbolic_fourier_coefficients(expr, req.n_harmonics, domain, period)
-
-        # Tier 2: Sequence identification
-        if terms is None:
-            tier = "identified"
-            # Compute numerically via spline, then try to identify
-            spline_terms = spline_fourier_coefficients(
-                y_eval, x_eval, req.n_harmonics, period,
-            )
-            coeffs = [t.coefficient for t in spline_terms]
-            indices = [t.n for t in spline_terms]
-            terms = identify_sequence(coeffs, indices)
-
-        # Tier 3: Spline fallback
-        if terms is None:
-            tier = "spline"
-            terms = spline_fourier_coefficients(
-                y_eval, x_eval, req.n_harmonics, period,
-            )
-
-        # Simplify and render
-        latex, energy = simplify_series(terms, req.budget, req.notation)
-
-        from fourier_analysis.symbolic.latex_rendering import render_latex_sigma
-        from fourier_analysis.symbolic.simplification import compute_effective_n
-
-        latex_sigma = render_latex_sigma(terms, req.notation)
-        eff_n = compute_effective_n(terms)
-
-        # Reconstruct from all terms
-        y_recon = np.zeros_like(x_eval, dtype=complex)
-        for t in terms:
-            if t.n == 0:
-                y_recon += t.coefficient
-            else:
-                y_recon += t.coefficient * np.exp(1j * t.n * 2 * np.pi / period * x_eval)
-
-        return {
-            "status": "ok",
-            "tier": tier,
-            "latex": latex,
-            "latex_sigma": latex_sigma,
-            "terms": terms,
-            "original_points": {"x": x_eval.tolist(), "y": y_eval.tolist()},
-            "reconstructed_points": {"x": x_eval.tolist(), "y": y_recon.real.tolist()},
-            "energy_captured": energy,
-            "effective_n": eff_n,
-        }
-
     try:
-        result = await submit_compute_job("equation", _run)
+        result = await submit_process_job("equation", compute_series, req.model_dump())
     except ExpressionInvalid as e:
         return errors.validation_failed(detail=str(e))
 
@@ -167,9 +64,15 @@ async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationRespon
 
 @router.post("/simplify", response_model=SimplifyResponse)
 async def simplify_coefficients(req: SimplifyRequest) -> SimplifyResponse:
-    """Simplify existing DFT coefficients for display overlay."""
+    """Simplify existing DFT coefficients for display overlay.
+
+    X.F.W14V `.u2` — UIA-F-201: the answer carries the Σ form too, bounded at
+    the displayed N (``auto_harmonics``), so a notation, budget or Auto change
+    re-renders both forms without a recompute.
+    """
 
     def _run():
+        from fourier_analysis.symbolic.models import FourierTerm
         from fourier_analysis.symbolic.simplification import simplify_numerical_coefficients
 
         coeffs = [
@@ -186,12 +89,29 @@ async def simplify_coefficients(req: SimplifyRequest) -> SimplifyResponse:
         latex, energy, term_count = simplify_numerical_coefficients(
             coeffs, req.budget, req.notation,
         )
-        return {"latex": latex, "energy_captured": energy, "term_count": term_count}
+        terms = [
+            FourierTerm(
+                n=c["n"],
+                coefficient=complex(c["coefficient_re"], c["coefficient_im"]),
+                symbolic_expr=None,
+                amplitude=c["amplitude"],
+                phase=c["phase"],
+            )
+            for c in coeffs
+        ]
+        latex_sigma = render_sigma(terms, req.notation, displayed_n(terms, req.auto_harmonics))
+        return {
+            "latex": latex,
+            "latex_sigma": latex_sigma,
+            "energy_captured": energy,
+            "term_count": term_count,
+        }
 
     result = await submit_compute_job("simplify", _run)
 
     return SimplifyResponse(
         latex=result["latex"],
+        latex_sigma=result["latex_sigma"],
         energy_captured=result["energy_captured"],
         term_count=result["term_count"],
     )

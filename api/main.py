@@ -19,6 +19,7 @@ from api.config import settings
 from api.routers import contours, equations, images, sessions, visualizations
 from api.routers.admin import admin_router
 from api.routers.gallery import gallery_router
+from api.services.computation import shutdown_process_pool
 from api.services.database import close_db, connect_db
 from api.services.janitor import run_janitor
 from api.services.rate_limiter import RateLimitHeaderMiddleware
@@ -43,6 +44,7 @@ async def lifespan(app: FastAPI):
     janitor_task = asyncio.create_task(run_janitor())
     yield
     janitor_task.cancel()
+    shutdown_process_pool()
     await close_db()
 
 
