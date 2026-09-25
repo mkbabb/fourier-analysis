@@ -6,7 +6,29 @@ import type { CanvasSurface, ViewTransform } from "../lib/canvas-drawing";
 const MAX_CACHE_SIZE = 10;
 
 // Module-scoped cache survives component unmount/remount (e.g. gallery → visualizer)
-const cache = new Map<string, HTMLImageElement>();
+const cache = new Map<string, HTMLCanvasElement>();
+
+/**
+ * Luminance-key the loaded overlay once (UIA-F-174): each pixel's alpha is
+ * scaled by its darkness, so a white ground keys out and ink stays. The
+ * overlay is drawn over a transparent canvas, where a blend mode has no
+ * backdrop to act on; the key is the multiply the canvas cannot do.
+ */
+function luminanceKeyed(img: HTMLImageElement): HTMLCanvasElement {
+    const out = document.createElement("canvas");
+    out.width = img.naturalWidth;
+    out.height = img.naturalHeight;
+    const ctx = out.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, out.width, out.height);
+    const px = data.data;
+    for (let i = 0; i < px.length; i += 4) {
+        const lum = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+        px[i + 3] = Math.round(px[i + 3] * (1 - lum));
+    }
+    ctx.putImageData(data, 0, 0);
+    return out;
+}
 
 /**
  * Derive the resize value from image_bounds.
@@ -26,7 +48,7 @@ function resizeFromBounds(store: ReturnType<typeof useWorkspaceStore>): number {
 export function useImageOverlay(onImageLoaded?: () => void) {
     const store = useWorkspaceStore();
     const loading = ref(false);
-    let currentImage: HTMLImageElement | null = null;
+    let currentImage: HTMLCanvasElement | null = null;
 
     function cacheKey(): string | null {
         if (!store.imageSlug) return null;
@@ -53,9 +75,10 @@ export function useImageOverlay(onImageLoaded?: () => void) {
                     const oldest = cache.keys().next().value!;
                     cache.delete(oldest);
                 }
-                cache.set(key, img);
+                const keyed = luminanceKeyed(img);
+                cache.set(key, keyed);
                 if (cacheKey() === key) {
-                    currentImage = img;
+                    currentImage = keyed;
                     loading.value = false;
                     onImageLoaded?.();
                 }

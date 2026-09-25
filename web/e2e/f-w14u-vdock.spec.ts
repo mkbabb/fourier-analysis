@@ -327,3 +327,62 @@ test.describe("F.W14U.vdock — the export dialog (1440)", () => {
         expect.soft(gridNoLabels.corner, "F-182: the grid survives in the top-left corner").toBeGreaterThan(0);
     });
 });
+
+/**
+ * v174 UIA-F-174 — dark theme: the image overlay blends into the canvas; a
+ * white ground keys out (luminance key at `useImageOverlay.ts`), never a pale
+ * slab, and the ink stays. The seeded image is a photograph with no white
+ * ground (a false GREEN, Repair 2 R-1), so the overlay route serves a
+ * white-ground drawing: a black ring on white.
+ */
+test.describe("F.W14U.vdock — the image overlay in dark (1440)", () => {
+    test.use({ viewport: { width: 1440, height: 900 }, colorScheme: "dark" });
+    test.setTimeout(90_000);
+
+    test("v174 — a white-ground overlay keys out: no pale slab, the ink stays", async ({ page }) => {
+        await page.goto("about:blank");
+        const png = await page.evaluate(() => {
+            const c = document.createElement("canvas");
+            c.width = 768;
+            c.height = 768;
+            const g = c.getContext("2d")!;
+            g.fillStyle = "#fff";
+            g.fillRect(0, 0, 768, 768);
+            g.strokeStyle = "#000";
+            g.lineWidth = 40;
+            g.beginPath();
+            g.arc(384, 384, 250, 0, Math.PI * 2);
+            g.stroke();
+            return c.toDataURL("image/png").split(",")[1];
+        });
+        await page.route("**/api/images/*/overlay*", (route) =>
+            route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from(png, "base64") }),
+        );
+        await openViz(page);
+        await pause(page);
+        await expandCanvasDock(page);
+        await page.getByRole("button", { name: "View options" }).first().click();
+        await page.getByRole("button", { name: "Image overlay" }).click();
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(900);
+        await frame(page, "v174-overlay-dark");
+        const m = await page.evaluate(() => {
+            const cv = document.querySelector<HTMLCanvasElement>(".canvas-el")!;
+            const px = cv.getContext("2d")!.getImageData(0, 0, cv.width, cv.height).data;
+            let slab = 0;
+            let ink = 0;
+            for (let i = 0; i < px.length; i += 4) {
+                const a = px[i + 3];
+                if (a < 40 || a > 110) continue;
+                const lo = Math.min(px[i], px[i + 1], px[i + 2]);
+                const hi = Math.max(px[i], px[i + 1], px[i + 2]);
+                if (lo >= 235) slab++;
+                else if (hi <= 20) ink++;
+            }
+            return { slab, ink, total: px.length / 4 };
+        });
+        test.info().annotations.push({ type: "v174", description: JSON.stringify(m) });
+        expect(m.slab, "no pale slab: the white ground keys out").toBeLessThan(m.total * 0.001);
+        expect(m.ink, "the ring's ink stays").toBeGreaterThan(1000);
+    });
+});
