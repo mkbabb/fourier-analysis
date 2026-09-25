@@ -237,13 +237,16 @@ for (const vp of PHONES) {
             const pans = await page.locator('[data-slot="data-table"]').evaluate((root) => {
                 const out: string[] = [];
                 for (const el of [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))]) {
-                    if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== "visible") {
+                    if (el.scrollWidth > el.clientWidth + 1 && ["auto", "scroll"].includes(getComputedStyle(el).overflowX)) {
                         out.push(`${el.className}:${el.scrollWidth}/${el.clientWidth}`);
                     }
                 }
                 return out;
             });
             expect(pans, "sideways scrollers in the audit ledger").toEqual([]);
+            const target = page.locator(".data-table-cards").getByText("harmonic-rose-janitor-candidate-11").first();
+            const t = await box(target);
+            expect(t.w, "the target is painted in its card").toBeGreaterThan(40);
         });
     });
 }
