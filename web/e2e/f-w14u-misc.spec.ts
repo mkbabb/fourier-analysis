@@ -336,7 +336,27 @@ test.describe("x255 UIA-F-255 — the extractor's micro-issues", () => {
 });
 
 // ── routing, storage, the saved entity ───────────────────────────────────
-const current = (page: Page) => page.locator('.app-dock [aria-current="page"]');
+// X.F.W14V Repair 1 — §0bt owner-ruling restatement (addendum (e), COHESION
+// §0dw: the sections are ONE dropdown at every width). The route-meta facts
+// UIA-F-119/F-212 pin are read where the ruling put the section: the one
+// `nav-trigger`'s accessible name, and the open menu's `aria-current` row.
+// (Before `79ea9f6` these read the deleted inline tab row's `aria-current`.)
+const navTrigger = (page: Page) => page.locator(".app-dock").getByRole("button", { name: /^Navigate/ });
+async function expectSection(page: Page, label: string | null, msg: string) {
+    const trigger = navTrigger(page);
+    await expect(trigger, msg).toHaveAccessibleName(label ? `Navigate — current section ${label}` : "Navigate", {
+        timeout: 30_000,
+    });
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    const menu = page.getByRole("menu");
+    await expect(menu, msg).toBeVisible();
+    const current = menu.locator('[aria-current="page"]');
+    await expect(current, msg).toHaveCount(label ? 1 : 0);
+    if (label) await expect(current, msg).toContainText(label);
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+}
 
 test.describe("r119 UIA-F-119 — the dock's section comes from the route's meta", () => {
     test.use({ viewport: DESKTOP });
@@ -348,13 +368,12 @@ test.describe("r119 UIA-F-119 — the dock's section comes from the route's meta
             ["/morph", "Morph"],
         ] as const) {
             await page.goto(url);
-            await expect(current(page), url).toHaveCount(1, { timeout: 30_000 });
-            await expect(current(page), url).toContainText(label);
+            await expectSection(page, label, url);
         }
         for (const url of ["/demo/shape-extractor", "/nope"]) {
             await page.goto(url);
             await expect(page.locator(".app-dock")).toBeVisible({ timeout: 30_000 });
-            await expect(current(page), url).toHaveCount(0);
+            await expectSection(page, null, url);
         }
     });
 });
@@ -367,7 +386,7 @@ test.describe("r212 UIA-F-212 — one remembered-tab writer, from the route's me
             await page.goto("/gallery");
             await expect(page.locator(".app-dock")).toBeVisible({ timeout: 30_000 });
             await page.goto(url);
-            await expect(current(page)).toContainText("Visualize", { timeout: 30_000 });
+            await expectSection(page, "Visualize", url);
             await page.goto("/");
             await expect(page, `after ${url}`).toHaveURL(/\/visualize$/, { timeout: 30_000 });
         }
