@@ -59,6 +59,10 @@ MIGRATIONS: list[tuple[str, int]] = [
     ("api.scripts.migrate_image_blobs", 1),
     ("api.scripts.migrate_flags_field", 1),
     ("api.scripts.migrate_visualization", 1),
+    # X.F.W14V.r3 (F-81 i) — stored animation easings onto the one catalogue.
+    # Before the forks backfill: it builds VisualizationVersion from stored
+    # atoms, which the catalogue Literal refuses while a legacy key remains.
+    ("api.scripts.migrate_animation_easing", 1),
     # J.W2 — additive set_hash + fork-fields + root-version backfill (F-16).
     ("api.scripts.migrate_visualization_forks", 1),
 ]

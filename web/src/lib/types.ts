@@ -1,3 +1,5 @@
+import type { AnimationEasingName } from "./easings";
+
 export interface BasisComponent {
     index: number;
     coefficient: [number, number]; // [re, im]
@@ -45,7 +47,8 @@ export interface AnimationSettings {
     fps: number;
     duration: number;
     max_circles: number;
-    easing: string;
+    /** A name of the one easing catalogue (X.F.W14V.r3; the api's `AnimationEasing`). */
+    easing: AnimationEasingName;
     speed: number;
     active_bases: string[];
 }

@@ -1,9 +1,9 @@
 /**
  * Shared easing catalogs and utility functions.
  *
- * Two catalogs:
- *  - EASING_PRESETS: comprehensive list used by the morph subsystem (in/out/in-out variants)
- *  - ANIMATION_EASINGS: compact subset used by the animation store (in-out only)
+ * ONE catalogue (X.F.W14V.r3, F-81 i):
+ *  - EASING_PRESETS: every catalogue name (in/out/in-out variants), used by the morph subsystem
+ *  - ANIMATION_EASINGS: the animation pane's six choices — catalogue names, catalogue functions
  *
  * ESC-4 (COHESION §0o, 2026-09-18) — DRIFT REFUSED. value.js 4.0.0 deletes
  * `timingFunctions` and ships no `"."` export, so the catalogue no longer
@@ -197,22 +197,45 @@ export function getEasingFn(name: string): EasingFn {
     return EASING_PRESETS[name]?.fn ?? EASING_PRESETS.linear.fn;
 }
 
-// ── Animation easing options (compact in-out subset) ────────────────
+// ── Animation easing options (the in-out arms of the ONE catalogue) ──
 
-export type AnimationEasingName = "linear" | "sine" | "quad" | "cubic" | "circ" | "expo";
+/**
+ * X.F.W14V.r3 — F-81 (i), F-W14V addendum (h) 3(i), COHESION §0eb: ONE easing
+ * catalogue. The animation pane's six choices are catalogue NAMES (the keys of
+ * `EASING_LABELS` above) and run the catalogue's own functions; the old six
+ * short keys (`sine`, `quad`, `cubic`, `circ`, `expo`) were a second catalogue.
+ * Stored visualizations were rewritten once server-side
+ * (`api/scripts/migrate_animation_easing.py`; `api/models/shared.py`
+ * `AnimationEasing` is this same union), the IndexedDB draft store discards a
+ * pre-catalogue easing at its v3 upgrade (`draftStorage.ts`), and nothing maps
+ * an old key to a new one — no alias layer.
+ */
+export type AnimationEasingName =
+    | "linear"
+    | "ease-in-out-sine"
+    | "ease-in-out-quad"
+    | "ease-in-out-cubic"
+    | "ease-in-out-circ"
+    | "ease-in-out-expo";
 
-export const ANIMATION_EASINGS: Record<AnimationEasingName, {
-    label: string;
-    fn: EasingFn;
-    description: string;
-}> = {
-    linear:  { label: "Linear",      fn: (t) => t,          description: "Constant rate" },
-    sine:    { label: "Sine",        fn: easeInOutSine,     description: "Gentle ebb and flow" },
-    quad:    { label: "Quadratic",   fn: easeInOutQuad,     description: "Smooth acceleration" },
-    cubic:   { label: "Cubic",       fn: easeInOutCubic,    description: "Pronounced ease" },
-    circ:    { label: "Circular",    fn: easeInOutCirc,     description: "Snappy midpoint" },
-    expo:    { label: "Exponential", fn: easeInOutExpo,     description: "Dramatic slow-fast-slow" },
+/** The catalogue default for animation playback. */
+export const DEFAULT_ANIMATION_EASING: AnimationEasingName = "ease-in-out-sine";
+
+const ANIMATION_EASING_COPY: Record<AnimationEasingName, { label: string; description: string }> = {
+    linear:              { label: "Linear",      description: "Constant rate" },
+    "ease-in-out-sine":  { label: "Sine",        description: "Gentle ebb and flow" },
+    "ease-in-out-quad":  { label: "Quadratic",   description: "Smooth acceleration" },
+    "ease-in-out-cubic": { label: "Cubic",       description: "Pronounced ease" },
+    "ease-in-out-circ":  { label: "Circular",    description: "Snappy midpoint" },
+    "ease-in-out-expo":  { label: "Exponential", description: "Dramatic slow-fast-slow" },
 };
+
+export const ANIMATION_EASINGS = Object.fromEntries(
+    (Object.keys(ANIMATION_EASING_COPY) as AnimationEasingName[]).map((name) => [
+        name,
+        { ...ANIMATION_EASING_COPY[name], fn: EASING_FNS[name]! },
+    ]),
+) as Record<AnimationEasingName, { label: string; fn: EasingFn; description: string }>;
 
 /** The catalog's keys, as the closed domain a restored value must land in. */
 export const ANIMATION_EASING_NAMES = Object.keys(
@@ -238,7 +261,7 @@ export function isAnimationEasingName(v: unknown): v is AnimationEasingName {
  */
 export function coerceAnimationEasingName(
     v: unknown,
-    fallback: AnimationEasingName = "sine",
+    fallback: AnimationEasingName = DEFAULT_ANIMATION_EASING,
 ): AnimationEasingName {
     return isAnimationEasingName(v) ? v : fallback;
 }

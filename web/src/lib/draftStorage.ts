@@ -16,7 +16,11 @@ import type { WorkspaceDraft } from "./types";
 
 const DB_NAME = "fourier-drafts";
 const STORE_NAME = "drafts";
-const DB_VERSION = 2;
+// v3 (X.F.W14V.r3, F-81 i): the animation easing moved onto the one catalogue's
+// names. A pre-v3 draft's `animationSettings.easing` is a retired short key, so
+// the upgrade DISCARDS it (the restore seam then lands the catalogue default);
+// no old key is mapped onto a new one.
+const DB_VERSION = 3;
 const SLUG_INDEX = "by-visualization-slug";
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -37,6 +41,19 @@ function openDB(): Promise<IDBDatabase> {
             const oldVersion = (event as IDBVersionChangeEvent).oldVersion;
             if (oldVersion < 2 && !store.indexNames.contains(SLUG_INDEX)) {
                 store.createIndex(SLUG_INDEX, "visualizationSlug", { unique: false });
+            }
+            // v3: discard every pre-catalogue easing (see DB_VERSION).
+            if (oldVersion > 0 && oldVersion < 3) {
+                store.openCursor().onsuccess = (e) => {
+                    const cursor = (e.target as IDBRequest<IDBCursorWithValue | null>).result;
+                    if (!cursor) return;
+                    const draft = cursor.value as WorkspaceDraft;
+                    if (draft.animationSettings && "easing" in draft.animationSettings) {
+                        const { easing: _retired, ...rest } = draft.animationSettings;
+                        cursor.update({ ...draft, animationSettings: rest });
+                    }
+                    cursor.continue();
+                };
             }
         };
         req.onsuccess = () => resolve(req.result);

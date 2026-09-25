@@ -63,7 +63,7 @@ async function seedDrafts(page: Page, drafts: object[]): Promise<void> {
     await page.evaluate(
         (rows) =>
             new Promise<void>((resolve, reject) => {
-                const open = indexedDB.open("fourier-drafts", 2);
+                const open = indexedDB.open("fourier-drafts", 3);
                 open.onupgradeneeded = () => {
                     const s = open.result.createObjectStore("drafts", { keyPath: "imageSlug" });
                     s.createIndex("by-visualization-slug", "visualizationSlug", { unique: false });

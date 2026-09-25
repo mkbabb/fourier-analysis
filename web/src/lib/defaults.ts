@@ -1,9 +1,8 @@
 import type { ContourSettings, AnimationSettings } from "./types";
-import { coerceAnimationEasingName, type AnimationEasingName } from "./easings";
+// The default easing is spelled once, in the catalogue (`DEFAULT_ANIMATION_EASING`);
+// both the defaults and the restore-seam coercion below read it (X.F.W14V.r3).
+import { coerceAnimationEasingName, DEFAULT_ANIMATION_EASING } from "./easings";
 
-/** The one place the default easing is spelled; both the defaults and the
- *  restore-seam coercion below read it, so they cannot drift apart. */
-const DEFAULT_EASING: AnimationEasingName = "sine";
 
 export const CONTOUR_DEFAULTS: ContourSettings = {
     strategy: "auto",
@@ -24,7 +23,7 @@ export const ANIMATION_DEFAULTS: AnimationSettings = {
     fps: 60,
     duration: 5000,
     max_circles: 100,
-    easing: DEFAULT_EASING,
+    easing: DEFAULT_ANIMATION_EASING,
     speed: 1,
     active_bases: ["fourier-epicycles"],
 };
@@ -126,7 +125,7 @@ export function coerceAnimationSettings(raw: unknown): AnimationSettings {
         fps: finite(r.fps, base.fps),
         duration: finite(r.duration, base.duration),
         max_circles: finite(r.max_circles, base.max_circles),
-        easing: coerceAnimationEasingName(r.easing, DEFAULT_EASING),
+        easing: coerceAnimationEasingName(r.easing, DEFAULT_ANIMATION_EASING),
         speed: coerceAnimationSpeed(r.speed),
         active_bases: active.length > 0 ? active : base.active_bases,
     };

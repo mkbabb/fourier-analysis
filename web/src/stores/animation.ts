@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch, onScopeDispose } from "vue";
-import { ANIMATION_EASINGS, type AnimationEasingName } from "@/lib/easings";
+import { ANIMATION_EASINGS, DEFAULT_ANIMATION_EASING, type AnimationEasingName } from "@/lib/easings";
 import { coerceAnimationSpeed, type AnimationSpeed } from "@/lib/defaults";
 
 /**
@@ -16,14 +16,11 @@ import { coerceAnimationSpeed, type AnimationSpeed } from "@/lib/defaults";
  * module that owns it. Neither name has a reader through here any more, so the
  * re-export is not re-pointed, aliased or deprecated: it is deleted.
  *
- * ⊘ The TYPE alias below STAYS, and its reason is measured rather than assumed:
- * `components/visualization/composables/useWorkspaceLoader.ts` imports
- * `type EasingName` from this module and is in NO §1 bounds row for this unit,
- * so migrating that consumer is not this seat's to take. A type alias is also
- * not the defect the row books — no value crosses it and no bundle edge is minted
- * by it. The residue is one import in one file, recorded for the wave's register.
+ * The `type EasingName` alias that stayed for `useWorkspaceLoader.ts` is gone
+ * too (X.F.W14V.r3): the loader's `as EasingName` cast retired when
+ * `AnimationSettings.easing` became the catalogue's `AnimationEasingName`, so the
+ * alias had no reader left.
  */
-export type { AnimationEasingName as EasingName };
 
 // B.W4 — re-point disposition. The animation store holds only ephemeral
 // playback state (rAF clock, easing, scrub, ping-pong cycle); it never read or
@@ -89,7 +86,7 @@ export const useAnimationStore = defineStore("animation", () => {
         },
     });
     const duration = ref(20000); // ms per full cycle
-    const easing = ref<AnimationEasingName>("sine");
+    const easing = ref<AnimationEasingName>(DEFAULT_ANIMATION_EASING);
 
     // Globally eased t — one smooth curve, no per-segment stutter
     const easedT = computed(() => {

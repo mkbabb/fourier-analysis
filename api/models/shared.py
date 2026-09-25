@@ -2,7 +2,25 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, field_validator
+
+# X.F.W14V.r3 — F-81 (i), COHESION §0eb: the ONE easing catalogue's animation
+# domain. These are the catalogue names of ``web/src/lib/easings.ts`` (the
+# in-out arms the animation pane offers), not a second key set: the six legacy
+# keys (``sine``, ``quad``, ``cubic``, ``circ``, ``expo``) were rewritten once by
+# ``api/scripts/migrate_animation_easing.py`` and are refused here, never
+# aliased.
+AnimationEasing = Literal[
+    "linear",
+    "ease-in-out-sine",
+    "ease-in-out-quad",
+    "ease-in-out-cubic",
+    "ease-in-out-circ",
+    "ease-in-out-expo",
+]
+DEFAULT_ANIMATION_EASING: AnimationEasing = "ease-in-out-sine"
 
 
 class ContourSettings(BaseModel):
@@ -66,6 +84,6 @@ class AnimationSettings(BaseModel):
     fps: int = 30
     duration: float = 30.0
     max_circles: int = 80
-    easing: str = "sine"
+    easing: AnimationEasing = DEFAULT_ANIMATION_EASING
     speed: float = 1.0
     active_bases: list[str] = ["fourier-epicycles"]

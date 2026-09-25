@@ -1,7 +1,7 @@
 import { ref, watch, onMounted, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useAnimationStore, type EasingName } from "@/stores/animation";
+import { useAnimationStore } from "@/stores/animation";
 import { toast } from "@mkbabb/glass-ui/toast";
 import { ERROR_TOAST } from "@/lib/toast-policy";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
@@ -85,7 +85,7 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
             if (as?.active_bases?.length) {
                 activeBases.value = [...as.active_bases];
             }
-            if (as?.easing) anim.easing = as.easing as EasingName;
+            if (as?.easing) anim.easing = as.easing;
             if (as?.speed) anim.speed = as.speed;
         },
         { once: true },
