@@ -71,19 +71,6 @@ export async function loadDraft(
     });
 }
 
-/** Locate a saved draft by its converged visualization slug (§1), if cached. */
-export async function loadDraftByVisualizationSlug(
-    visualizationSlug: string,
-): Promise<WorkspaceDraft | undefined> {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, "readonly");
-        const req = tx.objectStore(STORE_NAME).index(SLUG_INDEX).get(visualizationSlug);
-        req.onsuccess = () => resolve(req.result ?? undefined);
-        req.onerror = () => reject(req.error);
-    });
-}
-
 export async function deleteDraft(key: string): Promise<void> {
     const db = await openDB();
     return new Promise((resolve, reject) => {

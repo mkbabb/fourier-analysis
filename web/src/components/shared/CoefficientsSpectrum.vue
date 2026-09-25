@@ -4,10 +4,11 @@
  * the visualization route's `CoefficientsPanel` (D7) and the equation route's
  * `EqCoefficientsPanel` (D11). The two consumers were ~95% identical: the
  * amplitude-bar `TransitionGroup`, the per-component hover tooltip, and the
- * count/expand readout. The sole structural divergence — the visualization
- * route's `FrequencyGraph` — is hoisted to the `#graph` slot; the equation
- * route passes nothing. Since X.F.W14V.au3 (A2-FO-L1-6) the two panels are
- * one, `shared/CoefficientsPanel.vue`, which forwards the slot.
+ * count/expand readout. Since X.F.W14V.au3 (A2-FO-L1-6) the two panels are
+ * one, `shared/CoefficientsPanel.vue`. The `#graph` slot that carried the
+ * visualization route's `FrequencyGraph` had no filler after UIA-F-169 (one
+ * amplitude view); it and the orphaned `FrequencyGraph.vue` are deleted
+ * (X.F.W14V.au6, A2-FO-L1-22).
  *
  * B.W2.c — per-component amplitude readouts are damped numerals and the
  * bespoke `:hover` CSS tooltip lifts to the glass-ui `Tooltip` primitive
@@ -99,10 +100,6 @@ const AmplitudeReadout = defineComponent({
 
 <template>
     <div class="pt-1">
-        <!-- Divergent slot: the visualization route passes <FrequencyGraph>;
-             the equation route passes nothing. -->
-        <slot name="graph" />
-
         <div class="flex items-center justify-end mb-2">
             <span class="fira-code text-xs text-muted-foreground">
                 {{ topComponents.length }} / {{ totalComponents }}

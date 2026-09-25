@@ -39,9 +39,7 @@ const truncated = computed(
             The expanded equation keeps the {{ renderedTerms }} strongest harmonics
             (DC counts as one); this list is the full set.
         </p>
-        <CoefficientsSpectrum :components="components" :empty-text="emptyText">
-            <template v-if="$slots.graph" #graph><slot name="graph" /></template>
-        </CoefficientsSpectrum>
+        <CoefficientsSpectrum :components="components" :empty-text="emptyText" />
     </ConfiguratorLayer>
 </template>
 

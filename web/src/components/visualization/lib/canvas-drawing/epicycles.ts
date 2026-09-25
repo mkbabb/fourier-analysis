@@ -1,7 +1,7 @@
 import type { BasisComponent } from "@/lib/types";
 import type { CanvasSurface, ViewTransform } from "./types";
 import { spectrumColor } from "./transforms";
-import { fourierPositionsAt } from "@/lib/bases";
+import { fourierPositionsAt } from "@/lib/evaluators";
 import { VIZ_COLORS, withAlpha } from "@/lib/colors";
 
 export const BASE_EPICYCLE_SCALE = 0.38;

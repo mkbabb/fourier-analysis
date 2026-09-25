@@ -2,7 +2,7 @@
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
-import { fourierPositionsAt, evaluateFourier } from "@/lib/bases";
+import { fourierPositionsAt, evaluateFourier } from "@/lib/evaluators";
 import { VIZ_COLORS } from "@/lib/colors";
 import {
     goldenShimmerAlpha,

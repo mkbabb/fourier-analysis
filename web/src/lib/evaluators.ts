@@ -1,6 +1,9 @@
 /**
- * Shared basis evaluation functions.
- * Consumed by the main-thread basis layer (bases.ts).
+ * Client-side Fourier evaluation for real-time rendering: the partial sum at t
+ * and the epicycle chain's cumulative positions. The polynomial bases are
+ * evaluated server-side; the client-side multi-basis dispatch and its
+ * Chebyshev/Legendre evaluators had no caller and are deleted (X.F.W14V.au6,
+ * A2-FO-L1-22).
  */
 
 import type { BasisComponent } from "./types";
@@ -25,67 +28,24 @@ export function evaluateFourier(
     return [re, im];
 }
 
-/** Chebyshev: sum c_k * T_k(s) via Clenshaw recurrence */
-export function evaluateChebyshev(
+/** Cumulative positions for epicycle chain (Fourier only) */
+export function fourierPositionsAt(
     components: BasisComponent[],
-    s: number,
-    maxTerms?: number,
-    buffer?: Float64Array,
-): number {
-    const n = maxTerms ?? components.length;
-    let maxDeg = 0;
-    for (let i = 0; i < n && i < components.length; i++) {
-        if (components[i].index > maxDeg) maxDeg = components[i].index;
-    }
-    const coeffs = buffer && buffer.length >= maxDeg + 1
-        ? (buffer.fill(0, 0, maxDeg + 1), buffer)
-        : new Float64Array(maxDeg + 1);
+    t: number,
+    maxCircles?: number,
+): [number, number][] {
+    const positions: [number, number][] = [[0, 0]];
+    let cx = 0,
+        cy = 0;
+    const n = maxCircles ?? components.length;
     for (let i = 0; i < n && i < components.length; i++) {
         const c = components[i];
-        if (c.index >= 0 && c.index <= maxDeg) {
-            coeffs[c.index] = c.coefficient[0];
-        }
+        const angle = 2 * Math.PI * c.index * t;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        cx += c.coefficient[0] * cos - c.coefficient[1] * sin;
+        cy += c.coefficient[0] * sin + c.coefficient[1] * cos;
+        positions.push([cx, cy]);
     }
-    if (maxDeg === 0) return coeffs[0];
-    let b1 = 0,
-        b2 = 0;
-    for (let k = maxDeg; k >= 1; k--) {
-        const tmp = 2 * s * b1 - b2 + coeffs[k];
-        b2 = b1;
-        b1 = tmp;
-    }
-    return s * b1 - b2 + coeffs[0];
-}
-
-/** Legendre: sum c_k * P_k(s) via Clenshaw recurrence */
-export function evaluateLegendre(
-    components: BasisComponent[],
-    s: number,
-    maxTerms?: number,
-    buffer?: Float64Array,
-): number {
-    const n = maxTerms ?? components.length;
-    let maxDeg = 0;
-    for (let i = 0; i < n && i < components.length; i++) {
-        if (components[i].index > maxDeg) maxDeg = components[i].index;
-    }
-    const coeffs = buffer && buffer.length >= maxDeg + 1
-        ? (buffer.fill(0, 0, maxDeg + 1), buffer)
-        : new Float64Array(maxDeg + 1);
-    for (let i = 0; i < n && i < components.length; i++) {
-        const c = components[i];
-        if (c.index >= 0 && c.index <= maxDeg) {
-            coeffs[c.index] = c.coefficient[0];
-        }
-    }
-    if (maxDeg === 0) return coeffs[0];
-    let b1 = 0,
-        b2 = 0;
-    for (let k = maxDeg; k >= 1; k--) {
-        const tmp =
-            ((2 * k + 1) * s * b1) / (k + 1) - ((k + 1) * b2) / (k + 2) + coeffs[k];
-        b2 = b1;
-        b1 = tmp;
-    }
-    return s * b1 - b2 / 2 + coeffs[0];
+    return positions;
 }

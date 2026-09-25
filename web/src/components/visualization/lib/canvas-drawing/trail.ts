@@ -1,4 +1,4 @@
-import { evaluateFourier } from "@/lib/bases";
+import { evaluateFourier } from "@/lib/evaluators";
 import type { BasisComponent } from "@/lib/types";
 import type { CanvasSurface, ViewTransform } from "./types";
 
