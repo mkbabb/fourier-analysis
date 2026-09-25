@@ -95,11 +95,10 @@ const storage = computed<{ value: string; unit: string }>(() => {
                 emphasis="secondary"
                 size="sm"
                 class="ml-auto gap-1"
-                aria-label="Log out of admin mode"
                 @click="logout"
             >
                 <LogOut :size="14" aria-hidden="true" />
-                Log out
+                Exit admin mode
             </Button>
         </div>
 

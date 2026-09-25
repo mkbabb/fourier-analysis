@@ -489,7 +489,7 @@ test.describe("g103 UIA-F-103 ⊕ g190 UIA-F-190 ⊕ g248 UIA-F-248 — publishi
         await expect(pubOf("img-draft-two")).toBeEnabled();
         // F-248: the toast names the published piece, and no "Publish failed" follows.
         // `.first()`: reka's toast also writes its text into a hidden live region.
-        await expect(page.getByText(`Published! (${created.slug})`).first()).toBeVisible({ timeout: 10_000 });
+        await expect(page.getByText(`Published ${created.slug}`).first()).toBeVisible({ timeout: 10_000 });
         await page.waitForTimeout(800);
         await expect(page.getByText(/Publish failed/)).toHaveCount(0);
     });

@@ -656,7 +656,7 @@ test.describe("a192 UIA-F-192 — focus lands on a neighbour when its control un
         await page.keyboard.press("Enter");
         await expect(page.getByRole("group", { name: "Batch gallery actions" })).toHaveCount(0);
         expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
-        await page.getByRole("button", { name: "Log out of admin mode" }).focus();
+        await page.getByRole("button", { name: "Exit admin mode" }).focus();
         await page.keyboard.press("Enter");
         await expect(page.getByRole("region", { name: "Admin mode banner" })).toHaveCount(0);
         expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");

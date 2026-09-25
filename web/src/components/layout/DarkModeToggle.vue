@@ -21,8 +21,14 @@
         ACTION for sighted users while `aria-label` keeps the stable name (an
         `aria-label` always wins the accessible name, so the two do not fight).
     -->
-    <button
-        type="button"
+    <!-- X.F.W14U.shell — UIA-F-130 (consumer half): the control wears the
+         dock's ONE face, `DockControl`, so its hover plate, press spring,
+         gleam, focus ring and cell are the dock's; the Fourier morph glyph is
+         its content. Glass's own DarkModeToggle still has no glyph seam (the
+         glass half, O-59); adopting it would delete the glyph. `aria-pressed`
+         is the state (N-2), passed as an attribute: `DockControl`'s `active`
+         would also paint the selected seat, which is not what "dark" means. -->
+    <DockControl
         class="sun-moon-toggle"
         aria-label="Dark mode"
         :aria-pressed="isDark"
@@ -35,7 +41,7 @@
             :stroke-color="strokeColor"
             view-box="0 0 200 200"
         />
-    </button>
+    </DockControl>
 </template>
 
 <script setup lang="ts">
@@ -82,6 +88,7 @@
  */
 import { ref, computed, onMounted, watch } from "vue";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
+import { DockControl } from "@mkbabb/glass-ui/dock";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
 import { useFourierMorph } from "@/composables/useFourierMorph";
 import { prepareFourierShape } from "@/lib/svg-fourier";
@@ -197,56 +204,3 @@ async function handleToggle() {
     }
 }
 </script>
-
-<style scoped>
-.sun-moon-toggle {
-    position: relative;
-    width: var(--toggle-size, 5rem);
-    height: var(--toggle-size, 5rem);
-    cursor: pointer;
-    border: 0;
-    padding: 0;
-    border-radius: var(--radius-pill);
-    background: transparent;
-    /* DMT N-5 — the literals restated the producer's own registers exactly
-       (`--duration-fast: 0.2s`, `--ease-standard`); they are read from them. */
-    transition: transform var(--duration-fast) var(--ease-standard);
-    flex-shrink: 0;
-}
-
-/* SP-15 · DMT N-16 — hover is gated on a real hover pointer. This file owned
-   the tree's largest hover transform, and on touch UAs that latch `:hover` it
-   stayed latched after a tap. DMT N-7: the 1.12 scale was the tree's largest,
-   untokenized, on the control with the smallest ink tolerance — it takes the
-   producer's `--scale-hover` register (1.08 at the adopted pin) instead.
-   DMT N-9 (rescoped per K-8): the `outline: none` inside `:hover` was a DEAD
-   declaration — the base rule declares no outline, so it duplicated nothing
-   and only made the ring look like it was being suppressed. Deleted. */
-@media (hover: hover) {
-    .sun-moon-toggle:hover {
-        transform: scale(var(--scale-hover));
-    }
-}
-
-/* FM-2 rider ⊕ DMT N-6 — `--color-ring` was the tree's ONLY reference to that
-   name and glass-ui 8.0.0 declares neither it nor `--ring`, so this outline was
-   invalid at computed-value time and dropped: the header's dark-mode control
-   had no focus ring. Decided by one build, no browser, exactly as banked. */
-.sun-moon-toggle:focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: 2px;
-}
-
-/* SP-4 · DMT N-8 — the reduced arm nulled `transition` only, so the hover
-   transform survived as an INSTANTANEOUS snap: motion reduction inverted into
-   motion sharpening. The transform is removed with the transition. */
-@media (prefers-reduced-motion: reduce) {
-    .sun-moon-toggle {
-        transition: none;
-    }
-
-    .sun-moon-toggle:hover {
-        transform: none;
-    }
-}
-</style>

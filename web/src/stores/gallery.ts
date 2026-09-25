@@ -7,7 +7,7 @@ import { processInChunks } from "@/lib/scheduler";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
 import { saveDraft } from "@/lib/draftStorage";
-import { problemMessage } from "@/components/visualization/gallery/adminError";
+import { problemMessage } from "@/lib/api-problem";
 
 // B.W4 — the gallery store re-points onto the converged `visualization`
 // entity (CRUD-CONTRACT §1). Identity is the 4-word `slug`; the public gallery
@@ -131,7 +131,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
+            if (!api.isAbortError(e)) toast(problemMessage(e, "The gallery could not be loaded — try again."), "error");
         } finally {
             loadingMore.value = false;
         }
@@ -150,7 +150,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
+            if (!api.isAbortError(e)) toast(problemMessage(e, "The gallery could not be loaded — try again."), "error");
         } finally {
             if (run === listRun) loading.value = false;
         }
@@ -164,7 +164,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             toast("Admin mode activated", "success");
             await refreshAdminStats();
         } catch (e: any) {
-            toast(e.message ?? "Invalid admin token", "error");
+            toast(problemMessage(e, "That admin token was not accepted — check it and try again."), "error");
         }
     }
 
@@ -285,7 +285,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             if (idx !== -1) entries.value.splice(idx, 1);
             toast("Deleted", "success");
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(e.message ?? "Failed to delete", "error");
+            if (!api.isAbortError(e)) toast(problemMessage(e, "Failed to delete"), "error");
         }
     }
 
@@ -296,7 +296,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             if (data.visibility === "public") entries.value.unshift(data);
             toast("Restored", "success");
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(e.message ?? "Failed to restore", "error");
+            if (!api.isAbortError(e)) toast(problemMessage(e, "Failed to restore"), "error");
         }
     }
 
@@ -370,10 +370,10 @@ export const useGalleryStore = defineStore("gallery", () => {
                 etag,
             );
             if (nextETag) etags.set(slug, nextETag);
-            toast("Published!", "success", { slug });
+            toast(`Published ${slug}`, "success", { action: { label: "View", to: `/v/${slug}` } });
             await resetAndFetch();
         } catch (e: any) {
-            toast(e.message ?? "Failed to publish", "error");
+            toast(problemMessage(e, "Publish failed"), "error");
         }
     }
 
@@ -415,7 +415,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             // with Publish enabled and could be published again and again.
             const raw = toRaw(draft);
             await saveDraft({ ...raw, savedSnapshots: [...(raw.savedSnapshots ?? []), data.slug] });
-            toast("Published!", "success", { slug: data.slug });
+            toast(`Published ${data.title?.trim() || data.slug}`, "success", { action: { label: "View", to: `/v/${data.slug}` } });
         } catch (e: any) {
             toast(problemMessage(e, "Publish failed"), "error");
             return false;

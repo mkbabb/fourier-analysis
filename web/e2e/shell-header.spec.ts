@@ -54,6 +54,9 @@ test.describe("Shell header (G-F9-12)", () => {
     });
 
     test("the nav trigger names the current section and lists every route", async ({ page }) => {
+        // X.F.W14U.shell — UIA-F-151: at desktop width the sections are inline
+        // dock tabs; the one menu this reads lives below 1024 px.
+        await page.setViewportSize({ width: 390, height: 844 });
         await page.goto("/gallery");
 
         // `:aria-label="`Navigate — current section ${activeTabData.label}`"` —
@@ -78,6 +81,9 @@ test.describe("Shell header (G-F9-12)", () => {
     test("the nav trigger actually navigates, and re-names itself when it does", async ({
         page,
     }) => {
+        // X.F.W14U.shell — UIA-F-151: at desktop width the sections are inline
+        // dock tabs; the one menu this reads lives below 1024 px.
+        await page.setViewportSize({ width: 390, height: 844 });
         await page.goto("/gallery");
 
         const nav = page.getByRole("button", { name: /^Navigate — current section/ });

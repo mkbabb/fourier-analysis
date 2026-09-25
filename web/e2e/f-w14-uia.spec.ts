@@ -308,7 +308,7 @@ test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
         await expect(publish).toBeVisible();
         await page.waitForTimeout(600);
         await publish.dblclick();
-        await expect(page.getByText(`Published! (${saved.slug})`, { exact: true })).toBeVisible({ timeout: 10_000 });
+        await expect(page.getByText(`Published ${saved.slug}`, { exact: true })).toBeVisible({ timeout: 10_000 });
         expect(posts).toBe(1);
         await expect(page.getByText(/Could not save/i)).toHaveCount(0);
     });
@@ -599,7 +599,7 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
         const before = await publish.count();
         expect(before).toBeGreaterThan(0);
         await publish.first().click();
-        await expect(page.getByText(/Published!/).first()).toBeVisible();
+        await expect(page.getByText(/^Published /).first()).toBeVisible();
         await expect(publish).toHaveCount(before - 1);
         await page.reload();
         await page.getByRole("tab", { name: "Drafts" }).click();

@@ -1,6 +1,6 @@
 import { ref, computed, onScopeDispose, getCurrentScope, type Ref } from "vue";
 import { isAbortError } from "@/lib/api";
-import { problemMessage } from "@/components/visualization/gallery/adminError";
+import { problemMessage } from "@/lib/api-problem";
 
 /**
  * Offset-based pagination with an active fetchFn loader.
@@ -119,7 +119,7 @@ export function useOffsetPagination<T>(options: OffsetPaginationConfig<T>) {
             // double-Apply read as an error.
             if (isAbortError(e) || !current()) return;
             // UIA-F-199: the problem's `detail` over its `title` — the admin
-            // surfaces' one reader (`adminError.problemMessage`), not `message`.
+            // surfaces' one reader (`lib/api-problem` problemMessage), not `message`.
             error.value = problemMessage(e, "Failed to load");
         } finally {
             if (current()) loading.value = false;

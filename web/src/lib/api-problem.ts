@@ -100,18 +100,16 @@ function readDetail(detail: unknown): string | undefined {
  * `undefined`; and an aborted request's `DOMException` was reported as a
  * failure at sites that had cancelled it themselves.
  *
- * ⊘ This is the SHARED home the gallery route's local copy
- * (`components/visualization/gallery/adminError.ts`, unit `.d`) declared it
- * owed: that file re-points here rather than keeping a second definition, which
- * is a one-import change in a file outside this unit's bounds and is declared
- * in `.f`'s receipt, never written from here.
+ * This is the ONE reader: the gallery route's duplicate
+ * (`components/visualization/gallery/adminError.ts`) is deleted and its
+ * importers read here (X.F.W14U.shell, UIA-F-121).
  */
 export function problemMessage(e: unknown, fallback: string): string {
     if (e instanceof ApiProblem) {
         const detail = e.detail?.trim();
-        if (detail) return detail;
+        if (detail && !isReasonPhrase(detail, e.status)) return detail;
         const title = e.title?.trim();
-        if (title) return title;
+        if (title && !isReasonPhrase(title, e.status)) return title;
         return fallback;
     }
     if (e instanceof Error) {
@@ -119,6 +117,36 @@ export function problemMessage(e: unknown, fallback: string): string {
         if (message) return message;
     }
     return fallback;
+}
+
+/**
+ * X.F.W14U.shell — UIA-F-121: a bare `HTTPException(403, "Forbidden")` (the
+ * server's `admin_required`) and every non-problem body reach the consumer as
+ * the HTTP reason phrase alone — "Forbidden", "Not Found" — which says neither
+ * what happened nor what to do. Such text is not a message: the caller's
+ * specific fallback is. (The server half — raising the typed `admin_forbidden`
+ * — is not this consumer's to write.)
+ */
+const REASON_PHRASES: Record<number, string> = {
+    400: "bad request",
+    401: "unauthorized",
+    403: "forbidden",
+    404: "not found",
+    405: "method not allowed",
+    409: "conflict",
+    410: "gone",
+    413: "payload too large",
+    415: "unsupported media type",
+    422: "unprocessable entity",
+    429: "too many requests",
+    500: "internal server error",
+    502: "bad gateway",
+    503: "service unavailable",
+    504: "gateway timeout",
+};
+
+function isReasonPhrase(text: string, status: number): boolean {
+    return text.toLowerCase() === REASON_PHRASES[status];
 }
 
 /** Read a `RateLimit-Reset` header (seconds) for 429 backoff. */

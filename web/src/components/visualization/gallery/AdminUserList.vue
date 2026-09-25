@@ -34,7 +34,7 @@ import * as api from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
 import BatchActionBar from "./BatchActionBar.vue";
 import type { AdminUserInfo } from "@/lib/types";
-import { problemMessage } from "./adminError";
+import { problemMessage } from "@/lib/api-problem";
 import "./admin-row.css";
 import {
     Search,

@@ -6,6 +6,7 @@ import { useGalleryStore } from "@/stores/gallery";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
+import { problemMessage } from "@/lib/api-problem";
 import * as api from "@/lib/api";
 import type { GalleryTier, Visualization, WorkspaceDraft } from "@/lib/types";
 import { Layers, Trash2, Crown, StarOff } from "@lucide/vue";
@@ -303,7 +304,7 @@ async function performConfirmed() {
         if (target.kind === "single") await performSingleDelete(target.slug);
         else await performBatchGallery(target);
     } catch (e: any) {
-        toast(e.message ?? "Action failed", "error");
+        toast(problemMessage(e, "Action failed"), "error");
     } finally {
         onConfirmOpenChange(false);
     }

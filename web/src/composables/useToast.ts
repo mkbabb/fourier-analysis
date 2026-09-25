@@ -1,20 +1,17 @@
+import { h } from "vue";
+import type { RouteLocationRaw } from "vue-router";
 import {
+    ToastAction,
     toast as glassToast,
     useToast as glassUseToast,
 } from "@mkbabb/glass-ui/toast";
+import router from "@/router";
 
 export type ToastType = "error" | "info" | "success";
 
 /**
- * F.W1 / FR-AUL-10 ⊕ FR-AUL-45 — the adapter is rewritten onto the producer's
- * TONE axis, and the tone restoration folds into the same edit.
- *
- * `ToastVariant` is definition-absent at the adopted pin: a toast reports, so it
- * carries the five-rung semantic `tone` (`neutral · success · warning · info ·
- * destructive`) and no style `variant` at all. The old map flattened BOTH
- * `success` and `info` onto `default` — every non-error toast painted the same
- * neutral plate although the Toaster maps distinct tone classes for each. The
- * three types now land on the three tones they name.
+ * F.W1 / FR-AUL-10 ⊕ FR-AUL-45 — the adapter rides the producer's TONE axis:
+ * the three types land on the three tones they name.
  */
 const TONE_MAP = {
     error: "destructive",
@@ -22,37 +19,46 @@ const TONE_MAP = {
     success: "success",
 } as const;
 
-const TITLE_MAP: Record<ToastType, string> = {
-    error: "Error",
-    info: "Info",
-    success: "Success",
-};
+/** A toast's one follow-up: a labelled action that opens a route. */
+export interface ToastLink {
+    label: string;
+    to: RouteLocationRaw;
+}
+
+export interface ToastOptions {
+    /**
+     * `fr-App MG-λ` — HONOURED: forwarded when given (glass's `ToastOptions`
+     * `duration`, ms; `Number.POSITIVE_INFINITY` keeps the toast open).
+     */
+    duration?: number;
+    /** UIA-F-248 ⊕ UIA-F-183: the follow-up a success offers (e.g. View). */
+    action?: ToastLink;
+}
 
 /**
- * `fr-App MG-λ` — the typed knob that was accepted and thrown away (X·F F.W4
- * `.f`; SP-2, because this adapter IS the app's error channel).
+ * X.F.W14U.shell — UIA-F-214 ⊕ UIA-F-256, the toast policy.
  *
- * `options.duration` was declared, typed and documented, and the body read
- * `options?.slug` alone — so every caller that asked for a longer-lived toast
- * got the provider default and no signal that its request had been dropped.
- * The ruling is HONOUR-OR-DELETE, never the half-landing, and the producer
- * settles it: glass-ui 8.0.0's `ToastOptions` carries `duration` ("auto-dismiss
- * delay in ms, forwarded to reka-ui's `ToastRoot`; omit to inherit the
- * `ToastProvider` default; `Number.POSITIVE_INFINITY` keeps the toast open
- * until dismissed"). The knob is therefore HONOURED — forwarded when given,
- * omitted when not, so the provider default still governs the common case.
- *
- * ⊘ The `ToastVariant` limb of the same row is F.W1's fold, cited and not
- * re-booked: this adapter already rides the producer's five-rung `tone` axis.
+ * - The message IS the toast. The generic "Error" / "Success" / "Info" title
+ *   only repeated the tone the plate already paints and doubled its height, so
+ *   there is no title.
+ * - An error waits for the person: it stays until dismissed (an actionable
+ *   failure must not leave on the same ~5 s clock as "Logged in"). Other tones
+ *   keep the provider default unless a caller asks.
+ * - A toast names what it is about in its own words; the `(slug)` suffix the
+ *   adapter used to append is gone (callers say what the piece is).
+ * - `action` is glass's `ToastAction` (its `altText` = the label), opening a
+ *   route through the app's router.
  */
-function addToast(message: string, type: ToastType = "info", options?: { duration?: number; slug?: string }) {
-    const description = options?.slug ? `${message} (${options.slug})` : message;
-
+function addToast(message: string, type: ToastType = "info", options?: ToastOptions) {
+    const duration = options?.duration ?? (type === "error" ? Number.POSITIVE_INFINITY : undefined);
+    const link = options?.action;
     glassToast({
-        title: TITLE_MAP[type],
-        description,
+        description: message,
         tone: TONE_MAP[type],
-        ...(options?.duration !== undefined ? { duration: options.duration } : {}),
+        ...(duration !== undefined ? { duration } : {}),
+        ...(link
+            ? { action: h(ToastAction, { altText: link.label, onClick: () => router.push(link.to) }, () => link.label) }
+            : {}),
     });
 }
 

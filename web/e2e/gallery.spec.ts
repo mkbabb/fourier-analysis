@@ -122,7 +122,7 @@ test.describe("Gallery UX", () => {
         await expect(page.locator("#gallery-filter-drawer")).toBeVisible({ timeout: 10_000 });
     });
 
-    test("login form shows emoji placeholder and dice button", async ({ page }) => {
+    test("login form shows the format placeholder and dice button", async ({ page }) => {
         await stubGallery(page);
         await page.goto("/gallery");
 
@@ -137,12 +137,12 @@ test.describe("Gallery UX", () => {
         await loginBtn.click();
 
         // The field is labelled ("Your slug — four lowercase words joined by
-        // hyphens"); the emoji placeholder is the FORMAT hint beside it, and
+        // hyphens"); the placeholder is the FORMAT hint beside it, and
         // both are asserted because `FR-USB-5` books the placeholder as the
         // only visible statement of the required shape.
         const slugInput = page.getByRole("textbox", { name: /Your slug/i });
         await expect(slugInput).toBeVisible({ timeout: 10_000 });
-        await expect(slugInput).toHaveAttribute("placeholder", "your-slug-here 🐌");
+        await expect(slugInput).toHaveAttribute("placeholder", "your-four-word-slug");
 
         await expect(page.getByRole("button", { name: "Generate a new slug" })).toBeVisible();
     });

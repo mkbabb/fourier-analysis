@@ -26,7 +26,7 @@ import * as api from "@/lib/api";
 import { thumbnailUrl } from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
 import type { FlaggedVisualization, FlagInfo, GalleryTier } from "@/lib/types";
-import { problemMessage } from "./adminError";
+import { problemMessage } from "@/lib/api-problem";
 import "./admin-row.css";
 import {
     Flag,
