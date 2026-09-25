@@ -15,7 +15,8 @@ import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { useClipboard } from "@mkbabb/glass-ui";
 import { useAuthStore } from "@/stores/auth";
 import { useGalleryStore } from "@/stores/gallery";
-import { useToast } from "@/composables/useToast";
+import { toast } from "@mkbabb/glass-ui/toast";
+import { ERROR_TOAST } from "@/lib/toast-policy";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { User, LogIn, LogOut, Copy, Check, Dices, Shield } from "@lucide/vue";
 
@@ -23,7 +24,6 @@ const auth = useAuthStore();
 const { userSlug, isLoggedIn } = storeToRefs(auth);
 const { login, logout, register } = auth;
 const gallery = useGalleryStore();
-const { toast } = useToast();
 
 const slugInput = ref("");
 const showLogin = ref(false);
@@ -106,7 +106,7 @@ async function handleLogin() {
     try {
         await login(candidate);
         closeLogin();
-        toast("Logged in", "success");
+        toast({ title: "Logged in", tone: "success" });
     } catch (e: unknown) {
         serverError.value = { slug: candidate, message: loginFailure(e) };
     } finally {
@@ -120,7 +120,7 @@ async function handleGenerate() {
     try {
         await register();
         closeLogin();
-        toast("Logged in with a new slug", "success");
+        toast({ title: "Logged in with a new slug", tone: "success" });
     } catch (e: unknown) {
         serverError.value = { slug: trimmed.value, message: problemMessage(e, "A new slug could not be made — try again.") };
     } finally {
@@ -148,11 +148,11 @@ async function handleLogout() {
     loggingOut.value = true;
     try {
         await logout();
-        toast("Logged out", "info");
+        toast({ title: "Logged out", tone: "info" });
     } catch {
         // UIA-F-256 (the logout limb): the store rethrows only a failure that
         // left the server session live; the account stays signed in and says so.
-        toast("Could not log out: the session is still active. Try again.", "error");
+        toast({ ...ERROR_TOAST, title: "Could not log out", description: "The session is still active. Try again." });
     } finally {
         loggingOut.value = false;
     }
@@ -167,12 +167,14 @@ async function copySlug() {
     if (!userSlug.value) return;
     const result = await copy(userSlug.value);
     if (!result.ok) {
-        toast(
-            result.reason === "no-api"
-                ? "This browser will not grant clipboard access — select the slug and copy it manually."
-                : "Copying failed. Select the slug and copy it manually.",
-            "error",
-        );
+        toast({
+            ...ERROR_TOAST,
+            title: "Copying failed",
+            description:
+                result.reason === "no-api"
+                    ? "This browser will not grant clipboard access — select the slug and copy it manually."
+                    : "Select the slug and copy it manually.",
+        });
     }
 }
 </script>

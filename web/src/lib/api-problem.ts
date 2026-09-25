@@ -114,18 +114,27 @@ function readDetail(detail: unknown): string | undefined {
  * importers read here (X.F.W14U.shell, UIA-F-121).
  */
 export function problemMessage(e: unknown, fallback: string): string {
+    return problemDetail(e) ?? fallback;
+}
+
+/**
+ * The actionable text a failure carries, or `undefined` when it carries none
+ * (a bare reason phrase, an empty message, a non-`Error` throw). A toast shows
+ * it as its description under the act's own title (X.F.W14V.au6, A2-FO-L1-21).
+ */
+export function problemDetail(e: unknown): string | undefined {
     if (e instanceof ApiProblem) {
         const detail = e.detail?.trim();
         if (detail && !isReasonPhrase(detail, e.status)) return detail;
         const title = e.title?.trim();
         if (title && !isReasonPhrase(title, e.status)) return title;
-        return fallback;
+        return undefined;
     }
     if (e instanceof Error) {
         const message = e.message?.trim();
         if (message) return message;
     }
-    return fallback;
+    return undefined;
 }
 
 /**

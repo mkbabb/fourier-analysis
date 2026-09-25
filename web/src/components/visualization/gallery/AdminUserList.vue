@@ -5,7 +5,8 @@ import { Card } from "@mkbabb/glass-ui/card";
 import { Alert, AlertDescription, AlertTitle, Checkbox, Skeleton } from "@mkbabb/glass-ui";
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
-import { useToast } from "@/composables/useToast";
+import { toast } from "@mkbabb/glass-ui/toast";
+import { ERROR_TOAST } from "@/lib/toast-policy";
 import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import * as api from "@/lib/api";
@@ -14,11 +15,10 @@ import AdminUserToolbar from "./AdminUserToolbar.vue";
 import AdminUserTable from "./AdminUserTable.vue";
 import Pager from "@/components/shared/Pager.vue";
 import type { AdminUserInfo } from "@/lib/types";
-import { problemMessage } from "@/lib/api-problem";
+import { problemDetail } from "@/lib/api-problem";
 import { Trash2, Ban, UserCheck, Users, CircleAlert } from "@lucide/vue";
 
 const auth = useAuthStore();
-const { toast } = useToast();
 
 const searchQuery = ref("");
 const sortMode = ref<"newest" | "last_seen" | "entries">("newest");
@@ -265,15 +265,15 @@ async function performBatch(action: BatchKind, slugs: string[]) {
                   ? "Unsuspended"
                   : "Deleted";
         const n = result.affected;
-        toast(`${verb} ${n} ${n === 1 ? "user" : "users"}`, "success");
+        toast({ title: `${verb} ${n} ${n === 1 ? "user" : "users"}`, tone: "success" });
         if (result.errors?.length) {
-            for (const err of result.errors) toast(err, "error");
+            for (const err of result.errors) toast({ ...ERROR_TOAST, title: err });
         }
         clearSelection();
         await loadPage();
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast(problemMessage(e, "Batch action failed"), "error");
+            toast({ ...ERROR_TOAST, title: "Batch action failed", description: problemDetail(e) });
         }
     }
 }
@@ -284,12 +284,12 @@ async function handleSuspend(slug: string) {
     try {
         const token = requireAdminToken();
         await api.setAdminUserStatus(token, slug, "suspended");
-        toast("User suspended — their active sessions have been revoked", "success");
+        toast({ title: "User suspended — their active sessions have been revoked", tone: "success" });
         forgetSelected(slug);
         await loadPage();
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast(problemMessage(e, "Failed to suspend"), "error");
+            toast({ ...ERROR_TOAST, title: "Failed to suspend", description: problemDetail(e) });
         }
     } finally {
         busy.value = false;
@@ -302,12 +302,12 @@ async function handleUnsuspend(slug: string) {
     try {
         const token = requireAdminToken();
         await api.setAdminUserStatus(token, slug, "active");
-        toast("User reinstated", "success");
+        toast({ title: "User reinstated", tone: "success" });
         forgetSelected(slug);
         await loadPage();
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast(problemMessage(e, "Failed to unsuspend"), "error");
+            toast({ ...ERROR_TOAST, title: "Failed to unsuspend", description: problemDetail(e) });
         }
     } finally {
         busy.value = false;
@@ -318,12 +318,12 @@ async function performDelete(slug: string) {
     try {
         const token = requireAdminToken();
         await api.deleteAdminUser(token, slug);
-        toast("User deleted", "success");
+        toast({ title: "User deleted", tone: "success" });
         forgetSelected(slug);
         await loadPage();
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast(problemMessage(e, "Failed to delete"), "error");
+            toast({ ...ERROR_TOAST, title: "Failed to delete", description: problemDetail(e) });
         }
     }
 }
@@ -333,14 +333,14 @@ async function performPrune() {
         const token = requireAdminToken();
         const result = await api.pruneEmptyUsers(token);
         const n = result.pruned;
-        toast(`Pruned ${n} empty ${n === 1 ? "user" : "users"}`, "success");
+        toast({ title: `Pruned ${n} empty ${n === 1 ? "user" : "users"}`, tone: "success" });
         clearSelection();
         // ⊘ S-7: prune's deliberate `loadPage(1)` reset is PRESERVED — the whole
         // population may have moved, so page 1 is the only honest destination.
         await loadPage(1);
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast(problemMessage(e, "Failed to prune"), "error");
+            toast({ ...ERROR_TOAST, title: "Failed to prune", description: problemDetail(e) });
         }
     }
 }

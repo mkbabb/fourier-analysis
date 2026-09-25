@@ -5,13 +5,14 @@ import { Card } from "@mkbabb/glass-ui/card";
 import { Alert, AlertDescription, AlertTitle, Skeleton } from "@mkbabb/glass-ui";
 import { useAuthStore } from "@/stores/auth";
 import { useGalleryStore } from "@/stores/gallery";
-import { useToast } from "@/composables/useToast";
+import { toast } from "@mkbabb/glass-ui/toast";
+import { ERROR_TOAST } from "@/lib/toast-policy";
 import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import * as api from "@/lib/api";
 import type { FlaggedVisualization } from "@/lib/types";
 import AdminFlaggedTable from "./AdminFlaggedTable.vue";
-import { problemMessage } from "@/lib/api-problem";
+import { problemDetail, problemMessage } from "@/lib/api-problem";
 import { ChevronDown, CircleAlert, Flag } from "@lucide/vue";
 
 // B.W4.c — the flagged panel re-points onto the converged `visualization`
@@ -23,7 +24,6 @@ import { ChevronDown, CircleAlert, Flag } from "@lucide/vue";
 
 const auth = useAuthStore();
 const gallery = useGalleryStore();
-const { toast } = useToast();
 
 // Cursor-paginated flagged stream (CRUD-CONTRACT §6/§7). `flaggedEntries`
 // accumulates across "load more"; `nextCursor`/`hasMore` drive the affordance.
@@ -113,7 +113,7 @@ async function loadMore() {
         hasMore.value = result.has_more;
     } catch (e: unknown) {
         if (api.isAbortError(e) || ticket !== streamRun) return;
-        toast(problemMessage(e, "Failed to load flagged entries"), "error");
+        toast({ ...ERROR_TOAST, title: "Failed to load flagged entries", description: problemDetail(e) });
     } finally {
         if (ticket === streamRun) loadingMore.value = false;
     }
@@ -185,10 +185,10 @@ function confirmDelete() {
             // FR-AFP-15: the row is SPLICED out; the accumulated pages survive.
             dropEntry(target.slug);
             gallery.removeEntry(target.slug);
-            toast("Entry deleted", "success");
+            toast({ title: "Entry deleted", tone: "success" });
         } catch (e: unknown) {
             if (!api.isAbortError(e)) {
-                toast(problemMessage(e, "Failed to delete entry"), "error");
+                toast({ ...ERROR_TOAST, title: "Failed to delete entry", description: problemDetail(e) });
             }
         } finally {
             busySlug.value = null;
@@ -209,15 +209,13 @@ async function handleDismiss(slug: string) {
         // Dismissing every flag takes the row out of the queue; splicing keeps
         // the accumulated pages (FR-AFP-15).
         dropEntry(slug);
-        toast(
-            n === 0
-                ? "No flags left to dismiss"
-                : `Dismissed ${n} ${n === 1 ? "flag" : "flags"}`,
-            "success",
-        );
+        toast({
+            title: n === 0 ? "No flags left to dismiss" : `Dismissed ${n} ${n === 1 ? "flag" : "flags"}`,
+            tone: "success",
+        });
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast(problemMessage(e, "Failed to dismiss"), "error");
+            toast({ ...ERROR_TOAST, title: "Failed to dismiss", description: problemDetail(e) });
         }
     } finally {
         busySlug.value = null;

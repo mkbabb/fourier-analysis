@@ -7,7 +7,8 @@
 
 import { reactive, computed, watch, type Ref } from "vue";
 import { useClipboard } from "@mkbabb/glass-ui";
-import { useToast } from "@/composables/useToast";
+import { toast } from "@mkbabb/glass-ui/toast";
+import { ERROR_TOAST } from "@/lib/toast-policy";
 import {
     DEFAULT_MORPH_CONFIG,
     type MorphConfig,
@@ -98,7 +99,6 @@ export function useMorphConfig(
        composable returns `status` (`idle | pending | success | failure`), never
        a `copied` boolean, and the state travels to consumers by that name. */
     const { status, copy } = useClipboard({ resetMs: 2000 });
-    const { toast } = useToast();
 
     function reset() {
         Object.assign(config, DEFAULT_MORPH_CONFIG);
@@ -112,7 +112,7 @@ export function useMorphConfig(
      *  (the discarded `CopyResult` left a failed Export silent). */
     async function copyToClipboard() {
         const result = await copy(toJSON());
-        if (!result.ok) toast("Copying the configuration failed — this browser did not allow clipboard access.", "error");
+        if (!result.ok) toast({ ...ERROR_TOAST, title: "Copying the configuration failed", description: "This browser did not allow clipboard access." });
     }
 
     /** Create a watcher that syncs config changes into a morph composable. */

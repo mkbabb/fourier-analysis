@@ -5,9 +5,10 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useGalleryStore } from "@/stores/gallery";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
-import { useToast } from "@/composables/useToast";
+import { toast } from "@mkbabb/glass-ui/toast";
+import { ERROR_TOAST } from "@/lib/toast-policy";
 import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
-import { problemMessage } from "@/lib/api-problem";
+import { problemDetail } from "@/lib/api-problem";
 import * as api from "@/lib/api";
 import type { GalleryTier, Visualization, WorkspaceDraft } from "@/lib/types";
 import { Layers, Trash2, Crown, StarOff } from "@lucide/vue";
@@ -33,7 +34,6 @@ const workspace = useWorkspaceStore();
 const gallery = useGalleryStore();
 const auth = useAuthStore();
 const { isLoggedIn } = storeToRefs(auth);
-const { toast } = useToast();
 
 type GalleryTab = "gallery" | "drafts" | "users" | "flagged" | "audit";
 const activeTab = ref<GalleryTab>("gallery");
@@ -261,7 +261,7 @@ function askBatchGallery(action: GalleryBatchAction) {
 async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch" }>) {
     const token = auth.getAdminToken();
     if (!token) {
-        toast("Admin token missing", "error");
+        toast({ ...ERROR_TOAST, title: "Admin token missing" });
         return;
     }
     const result = await api.batchGallery(token, target.action, target.hashes);
@@ -272,9 +272,9 @@ async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch
               ? "Featured"
               : "Unfeatured";
     const n = result.affected;
-    toast(`${verb} ${n} ${n === 1 ? "entry" : "entries"}`, "success");
+    toast({ title: `${verb} ${n} ${n === 1 ? "entry" : "entries"}`, tone: "success" });
     if (result.errors?.length) {
-        for (const err of result.errors) toast(err, "error");
+        for (const err of result.errors) toast({ ...ERROR_TOAST, title: err });
     }
     clearGallerySelection();
     await gallery.resetAndFetch();
@@ -291,7 +291,7 @@ function performConfirmed() {
             if (target.kind === "single") await performSingleDelete(target.slug);
             else await performBatchGallery(target);
         } catch (e: unknown) {
-            toast(problemMessage(e, "Action failed"), "error");
+            toast({ ...ERROR_TOAST, title: "Action failed", description: problemDetail(e) });
         }
     });
 }

@@ -2,7 +2,8 @@ import { ref, watch, onMounted, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore, type EasingName } from "@/stores/animation";
-import { useToast } from "@/composables/useToast";
+import { toast } from "@mkbabb/glass-ui/toast";
+import { ERROR_TOAST } from "@/lib/toast-policy";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { normalizeBasisKey } from "@/lib/basis";
 
@@ -32,7 +33,6 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
     const router = useRouter();
     const store = useWorkspaceStore();
     const anim = useAnimationStore();
-    const { toast } = useToast();
 
     // Seed contour settings from workspace (defaults applied immediately)
     const nHarmonics = ref(store.contourSettings?.n_harmonics ?? CONTOUR_DEFAULTS.n_harmonics);
@@ -194,7 +194,7 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
         () => store.error,
         (err) => {
             if (err && store.imageSlug) {
-                toast(err, "error");
+                toast({ ...ERROR_TOAST, title: err });
                 store.error = null;
             }
         },

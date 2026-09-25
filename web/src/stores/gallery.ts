@@ -1,13 +1,15 @@
 import { defineStore } from "pinia";
-import { ref, toRaw } from "vue";
+import { h, ref, toRaw } from "vue";
 import type { GalleryTier, GalleryTierFilter, GallerySort, AdminStats, WorkspaceDraft } from "@/lib/types";
 import type { Visibility, Visualization } from "@/lib/api";
 import * as api from "@/lib/api";
 import { processInChunks } from "@/lib/scheduler";
 import { useAuthStore } from "@/stores/auth";
-import { useToast } from "@/composables/useToast";
+import { ToastAction, toast } from "@mkbabb/glass-ui/toast";
+import router from "@/router";
+import { ERROR_TOAST } from "@/lib/toast-policy";
 import { saveDraft } from "@/lib/draftStorage";
-import { problemMessage } from "@/lib/api-problem";
+import { problemDetail, problemMessage } from "@/lib/api-problem";
 
 // B.W4 — the gallery store re-points onto the converged `visualization`
 // entity (CRUD-CONTRACT §1). Identity is the 4-word `slug`; the public gallery
@@ -25,8 +27,12 @@ function entrySlug(e: Visualization): string {
     return e.slug;
 }
 
+/** UIA-F-248 ⊕ UIA-F-183: a published piece's toast offers the piece (glass `ToastAction`; its `altText` is the label). */
+function viewAction(to: string) {
+    return h(ToastAction, { altText: "View", onClick: () => router.push(to) }, () => "View");
+}
+
 export const useGalleryStore = defineStore("gallery", () => {
-    const { toast } = useToast();
 
     // State
     const entries = ref<Visualization[]>([]);
@@ -131,7 +137,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(problemMessage(e, "The gallery could not be loaded — try again."), "error");
+            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
         } finally {
             loadingMore.value = false;
         }
@@ -150,7 +156,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(problemMessage(e, "The gallery could not be loaded — try again."), "error");
+            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
         } finally {
             if (run === listRun) loading.value = false;
         }
@@ -161,10 +167,10 @@ export const useGalleryStore = defineStore("gallery", () => {
             await api.verifyAdmin(token);
             useAuthStore().adminLogin(token);
             adminMode.value = true;
-            toast("Admin mode activated", "success");
+            toast({ title: "Admin mode activated", tone: "success" });
             await refreshAdminStats();
         } catch (e: any) {
-            toast(problemMessage(e, "That admin token was not accepted — check it and try again."), "error");
+            toast({ ...ERROR_TOAST, title: "That admin token was not accepted — check it and try again.", description: problemDetail(e) });
         }
     }
 
@@ -240,7 +246,7 @@ export const useGalleryStore = defineStore("gallery", () => {
     async function setTier(slug: string, tier: GalleryTier): Promise<GalleryTier | null> {
         const token = useAuthStore().getAdminToken();
         if (!token) {
-            toast("Admin session has expired — re-enter admin mode.", "error");
+            toast({ ...ERROR_TOAST, title: "Admin session has expired — re-enter admin mode." });
             return null;
         }
         try {
@@ -250,11 +256,11 @@ export const useGalleryStore = defineStore("gallery", () => {
             const updated = await api.setVisualizationTier(token, slug, tier);
             const settled = updated && typeof updated === "object" && "slug" in updated ? updated : null;
             patchEntry(slug, settled ?? { tier });
-            toast(`Tier set to ${tier}`, "success");
+            toast({ title: `Tier set to ${tier}`, tone: "success" });
             return settled?.tier ?? tier;
         } catch (e: unknown) {
             if (!api.isAbortError(e)) {
-                toast(problemMessage(e, "Failed to set tier"), "error");
+                toast({ ...ERROR_TOAST, title: "Failed to set tier", description: problemDetail(e) });
             }
             return null;
         }
@@ -263,16 +269,16 @@ export const useGalleryStore = defineStore("gallery", () => {
     async function deleteEntry(slug: string) {
         const token = useAuthStore().getAdminToken();
         if (!token) {
-            toast("Admin session has expired — re-enter admin mode.", "error");
+            toast({ ...ERROR_TOAST, title: "Admin session has expired — re-enter admin mode." });
             return;
         }
         try {
             await api.adminDeleteVisualization(token, slug);
             removeEntry(slug);
-            toast("Entry deleted", "success");
+            toast({ title: "Entry deleted", tone: "success" });
         } catch (e: unknown) {
             if (!api.isAbortError(e)) {
-                toast(problemMessage(e, "Failed to delete entry"), "error");
+                toast({ ...ERROR_TOAST, title: "Failed to delete entry", description: problemDetail(e) });
             }
         }
     }
@@ -287,9 +293,9 @@ export const useGalleryStore = defineStore("gallery", () => {
             etags.delete(slug);
             const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
             if (idx !== -1) entries.value.splice(idx, 1);
-            toast("Deleted", "success");
+            toast({ title: "Deleted", tone: "success" });
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(problemMessage(e, "Failed to delete"), "error");
+            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "Failed to delete", description: problemDetail(e) });
         }
     }
 
@@ -298,9 +304,9 @@ export const useGalleryStore = defineStore("gallery", () => {
             const { data, etag } = await api.restoreVisualization(slug);
             if (etag) etags.set(slug, etag);
             if (data.visibility === "public") entries.value.unshift(data);
-            toast("Restored", "success");
+            toast({ title: "Restored", tone: "success" });
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(problemMessage(e, "Failed to restore"), "error");
+            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "Failed to restore", description: problemDetail(e) });
         }
     }
 
@@ -330,7 +336,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             await useAuthStore().ensureUser();
             applyLike(await api.setVisualizationLike(slug, !likedSlugs.value.has(slug)));
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(problemMessage(e, "Could not save the like"), "error");
+            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "Could not save the like", description: problemDetail(e) });
         }
     }
 
@@ -380,11 +386,13 @@ export const useGalleryStore = defineStore("gallery", () => {
             );
             if (nextETag) etags.set(slug, nextETag);
             const title = data.title?.trim();
-            toast(title ? `Published “${title}”` : "Published to the gallery", "success", {
-                action: { label: "View", to: `/v/${slug}` },
+            toast({
+                title: title ? `Published “${title}”` : "Published to the gallery",
+                tone: "success",
+                action: viewAction(`/v/${slug}`),
             });
         } catch (e: any) {
-            toast(problemMessage(e, "Publish failed"), "error");
+            toast({ ...ERROR_TOAST, title: "Publish failed", description: problemDetail(e) });
             return false;
         }
         await resetAndFetch();
@@ -402,7 +410,7 @@ export const useGalleryStore = defineStore("gallery", () => {
      */
     async function publishDraft(draft: WorkspaceDraft): Promise<boolean> {
         if (!draft.contour) {
-            toast("This draft has no contour to publish yet", "error");
+            toast({ ...ERROR_TOAST, title: "This draft has no contour to publish yet" });
             return false;
         }
         try {
@@ -429,9 +437,13 @@ export const useGalleryStore = defineStore("gallery", () => {
             // with Publish enabled and could be published again and again.
             const raw = toRaw(draft);
             await saveDraft({ ...raw, savedSnapshots: [...(raw.savedSnapshots ?? []), data.slug] });
-            toast(`Published ${data.title?.trim() || data.slug}`, "success", { action: { label: "View", to: `/v/${data.slug}` } });
+            toast({
+                title: `Published ${data.title?.trim() || data.slug}`,
+                tone: "success",
+                action: viewAction(`/v/${data.slug}`),
+            });
         } catch (e: any) {
-            toast(problemMessage(e, "Publish failed"), "error");
+            toast({ ...ERROR_TOAST, title: "Publish failed", description: problemDetail(e) });
             return false;
         }
         await resetAndFetch();
