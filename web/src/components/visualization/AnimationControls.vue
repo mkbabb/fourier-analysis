@@ -7,7 +7,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockTrigger, DockControl } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
-import FourierTimeline from "./FourierTimeline.vue";
+import FourierTimeline from "@/components/shared/FourierTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
 import SpeedSelect from "./SpeedSelect.vue";
 

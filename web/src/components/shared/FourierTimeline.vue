@@ -3,6 +3,14 @@
  * The scrub-timeline composition — ONE session source for every `t ∈ [0, 1]`
  * axis in this app.
  *
+ * X.F.W14V.au2 — A2-FO-L1-16, the consumer half: the component lives in
+ * `components/shared/` (its hosts are /visualize's playback dock and
+ * /equation's convergence timeline; it sat in `visualization/`, so equation
+ * imported across). Its name left glass's namespace at UIA-F-239. The re-derived
+ * session below retires, and the file cuts to the axis and the readout, when
+ * glass `Slider` publishes the scrub session (the L1-16 glass ask, O-74):
+ * ADOPT-AT-LANDING.
+ *
  * X.F.W3 `.a` — `fr-AnimationControls C-4 / M-1 / M-14` ⊕ `fr-GlassTimeline
  * C-9 / L-m3 / L-i4`. This file and `equation/convergence/ConvergenceTimeline.vue`
  * were name-identical forks of one another — same latch, same `[0..1] → [0..100]`

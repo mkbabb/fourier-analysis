@@ -22,7 +22,7 @@
  */
 import { Button } from "@mkbabb/glass-ui/button";
 import { Pause, Play } from "@lucide/vue";
-import FourierTimeline from "@/components/visualization/FourierTimeline.vue";
+import FourierTimeline from "@/components/shared/FourierTimeline.vue";
 
 const props = defineProps<{
     t: number;
