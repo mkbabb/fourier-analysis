@@ -22,7 +22,7 @@ const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golde
 
 async function openPaper(page: Page): Promise<void> {
     await page.goto("/paper");
-    await expect(page.locator(".paper-sidebar .sidebar-link").first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator(".paper-sidebar .toc-link").first()).toBeVisible({ timeout: 60_000 });
 }
 
 async function openEmpty(page: Page): Promise<void> {
@@ -60,7 +60,7 @@ test.describe("F.W14.r — the desktop ToC (F.W13 `.a` residuals)", () => {
 
     test("G-r2 — `.sidebar-link` corner is glass's row canon (`--radius-lg`)", async ({ page }) => {
         await openPaper(page);
-        const read = await page.locator(".paper-sidebar .sidebar-link").first().evaluate((el) => {
+        const read = await page.locator(".paper-sidebar .toc-link").first().evaluate((el) => {
             const probe = document.createElement("div");
             probe.style.borderRadius = "var(--radius-lg)";
             el.parentElement!.appendChild(probe);

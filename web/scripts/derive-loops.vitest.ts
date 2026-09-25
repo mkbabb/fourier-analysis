@@ -32,19 +32,18 @@ describe("deriver (G-F4-DERIVER)", () => {
         expect(d.method.limits.length).toBeGreaterThan(0);
     });
 
-    it("BS-1: finds the paper ToC's nested native <li v-for> — three per presentation (PaperToc.vue; was PaperSidebar.vue until X.F.W14U.t)", () => {
+    it("BS-1: finds the paper ToC's nested native <li v-for> — ONE, in the recursive tree (PaperTocTree.vue; PaperToc.vue until X.F.W14V.au5, PaperSidebar.vue until X.F.W14U.t)", () => {
         // The canonical callsite-keyed miss. A census keyed on component
-        // callsites reports ZERO here; all three sit on a native `<li>`.
-        // X.F.W14U.t: the rail and the floating bar are one file now; the
-        // floating presentation's two loops (a `<template>` and a `Button`
-        // callsite) sat beside these, so the rail's `<li>` rows were selected.
-        // X.F.W14U.paper (UIA-F-67): the floating ToC is the same nested list
-        // on the same model (chapter / section / subsection), so the file now
-        // carries the three native `<li v-for>` twice — rail and floating.
+        // callsites reports ZERO here; the loop sits on a native `<li>`.
+        // X.F.W14U.paper (UIA-F-67) carried the three native `<li v-for>` twice
+        // (rail and floating). X.F.W14V.au5 (A2-FO-L1-1): the two hand-rolled
+        // trees are one recursive `PaperTocTree`, so ONE native `<li v-for>`
+        // renders every level in both hosts, and the hosts carry none.
         const rows = d.nativeLoopsByDirective.rows.filter(
-            (r) => r.file.endsWith("PaperToc.vue") && r.host === "li",
+            (r) => /PaperToc(Tree|Drawer|Bar)?\.vue$/.test(r.file) && r.host === "li",
         );
-        expect(rows).toHaveLength(6);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].file.endsWith("PaperTocTree.vue")).toBe(true);
         expect(rows.every((r) => r.native)).toBe(true);
         expect(rows.every((r) => r.host === "li")).toBe(true);
     });

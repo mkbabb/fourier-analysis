@@ -328,12 +328,12 @@ html {
    X.F.W11.a (OA-1) — `GCM-23` TAKEN: the rule-wide `inherit` corner is gone.
    It re-shaped each focused element to its PARENT's corner (a card's child
    took the card's radius on focus). Each of the four now carries its own token
-   corner — `.sidebar-link` (PaperSidebar; glass's row canon `--radius-lg`,
-   X.F.W14.r) · `.floating-toc-item` (`--radius-md`)
+   corner — `.toc-link` (the paper ToC tree, X.F.W14V.au5; glass's row canon
+   `--radius-lg`, X.F.W14.r) · `.floating-toc-top` (the phone bar's Scroll to top)
    · `.callout-btn` (the glass Button's `--radius-button`) · `.gallery-card`
    (`rounded-xl`) — and an outline follows its own element's corner. */
-.sidebar-link:focus-visible,
-.floating-toc-item:focus-visible,
+.toc-link:focus-visible,
+.floating-toc-top:focus-visible,
 .callout-btn:focus-visible,
 .gallery-card:focus-visible {
     outline: var(--focus-ring-width) solid var(--focus-ring-color);

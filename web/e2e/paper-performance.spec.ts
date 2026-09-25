@@ -96,7 +96,7 @@ async function activateTocEntry(page: Page, id: string) {
     if ((await entry.count()) === 0) {
         // The entry is nested under a collapsed parent. Top-level section
         // toggles are the *first* `[data-toc-id]` button inside each direct `li`
-        // child of `.sidebar-list` (the section's `Collapsible` trigger); their
+        // child of the depth-0 `.toc-list` (the section's `Collapsible` trigger); their
         // sub-entries live in a `CollapsibleContent` that mounts/unmounts with the
         // section's open state. We must snapshot ONLY the top-level toggle ids —
         // a descendant-combinator snapshot (`> li [data-toc-id]`) would also pick
@@ -106,7 +106,7 @@ async function activateTocEntry(page: Page, id: string) {
         // hanging `.evaluate()` for the full timeout. The per-`li`-first snapshot
         // is stable: top-level section toggles are always mounted.
         const toggleIds = await page
-            .locator(".sidebar-list > li")
+            .locator('.sidebar-nav .toc-list[data-depth="0"] > li')
             .evaluateAll((lis) =>
                 (lis as HTMLElement[])
                     .map((li) => li.querySelector("[data-toc-id]")?.getAttribute("data-toc-id") ?? "")
@@ -119,7 +119,7 @@ async function activateTocEntry(page: Page, id: string) {
             // clicking an already-open chapter would collapse it (churning the
             // tree across the serial tests). Expand-if-closed is idempotent.
             await page
-                .locator(`.sidebar-list > li [data-toc-id="${toggleId}"]`)
+                .locator(`.sidebar-nav .toc-list[data-depth="0"] > li [data-toc-id="${toggleId}"]`)
                 .first()
                 .evaluate((element) => {
                     const collapsible = (element as HTMLElement).closest("[data-state]");

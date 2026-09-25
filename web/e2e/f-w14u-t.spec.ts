@@ -228,7 +228,7 @@ for (const scheme of ["light", "dark"] as const) {
             await expect.poll(() => scroller.evaluate((el) => el.scrollHeight), { timeout: 10_000 }).toBeGreaterThan(5000);
             await scroller.evaluate((el) => el.scrollTo({ top: 2500 }));
             await page.locator(".floating-toc-title-btn").click();
-            await expect(page.locator(".floating-toc-root").first()).toBeVisible();
+            await expect(page.locator('.floating-toc-dropdown .toc-link[data-depth="0"]').first()).toBeVisible();
             await page.screenshot({ path: `${FRAMES}/${PHASE}-390-${scheme}-open.png` });
         });
     });

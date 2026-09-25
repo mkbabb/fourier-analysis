@@ -378,12 +378,12 @@ test.describe("UIA-F-24 — floating ToC chapter rows navigate; the disclosure t
         await scroller.evaluate((el) => el.scrollTo({ top: 2500 }));
         const trigger = page.locator(".floating-toc-title-btn");
         await trigger.click();
-        const rows = page.locator(".floating-toc-root");
+        const rows = page.locator('.floating-toc-dropdown .toc-link[data-depth="0"]');
         await expect(rows.first()).toBeVisible();
         const n = await rows.count();
         const before = await scroller.evaluate((el) => el.scrollTop);
         await rows.nth(n - 1).click();
-        await expect(page.locator(".floating-toc-root")).toHaveCount(0);
+        await expect(page.locator('.floating-toc-dropdown .toc-link[data-depth="0"]')).toHaveCount(0);
         await expect.poll(() => scroller.evaluate((el) => el.scrollTop), { timeout: 10_000 }).toBeGreaterThan(before + 2000);
 
         await trigger.click();
@@ -391,7 +391,7 @@ test.describe("UIA-F-24 — floating ToC chapter rows navigate; the disclosure t
         const expanded = await disclosure.getAttribute("aria-expanded");
         await disclosure.click();
         await expect(disclosure).toHaveAttribute("aria-expanded", expanded === "true" ? "false" : "true");
-        await expect(page.locator(".floating-toc-row").first()).toBeVisible();
+        await expect(page.locator(".floating-toc-dropdown .toc-row").first()).toBeVisible();
     });
 });
 

@@ -5,7 +5,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * X.F.W14U.paper — the paper family's UI-audit rows (register
  * `audit/UI-AUDIT-fourier.md`, sections paper-desktop / paper-search-inline /
  * paper-search-modal / paper-mobile-floating-toc), on the post-`.t` merged ToC
- * (`PaperToc.vue`, one component, two presentations).
+ * (`PaperToc.vue`, one component, two presentations; since X.F.W14V.au5 the one `PaperTocTree` in two hosts).
  *
  * One case per row (or per row limb). Every figure is read from the served
  * page. `FW14U_PHASE` names the frame set (before | after).
@@ -33,7 +33,7 @@ function inlineField(page: Page): Locator {
 /** Open the phone ToC from the floating bar. */
 async function openFloatingToc(page: Page): Promise<void> {
     await page.locator(".floating-toc-title-btn").click();
-    await expect(page.locator(".floating-toc-root").first()).toBeVisible();
+    await expect(page.locator('.floating-toc-dropdown .toc-link[data-depth="0"]').first()).toBeVisible();
 }
 
 /** Scroll the phone paper far enough that every mounting condition holds. */
@@ -115,13 +115,13 @@ test.describe("paper-desktop 1440", () => {
         await openPaper(page);
         const read = await page.evaluate(() => {
             const nav = document.querySelector(".sidebar-nav")!.getBoundingClientRect();
-            const disc = document.querySelector(".sidebar-disclosure")!.getBoundingClientRect();
+            const disc = document.querySelector(".sidebar-nav .toc-disclosure")!.getBoundingClientRect();
             // Glass Button writes its own press custom properties inline; a
             // consumer active literal is a colour, fill or weight.
-            const styled = [...document.querySelectorAll(".sidebar-link")].filter((el) =>
+            const styled = [...document.querySelectorAll(".sidebar-nav .toc-link")].filter((el) =>
                 /(^|;)\s*(color|background|font-weight)\s*:/.test(el.getAttribute("style") ?? ""),
             ).length;
-            const cur = document.querySelector(".sidebar-link[aria-current]");
+            const cur = document.querySelector(".sidebar-nav .toc-link[aria-current]");
             return { navW: nav.width, discW: disc.width, discH: disc.height, styled, current: !!cur };
         });
         expect(read.navW, JSON.stringify(read)).toBeGreaterThanOrEqual(240);
@@ -133,7 +133,7 @@ test.describe("paper-desktop 1440", () => {
 
     test("UIA-F-164 + UIA-F-234: no statistics tooltip on a row; a collapsed CONTENTS reclaims its space", async ({ page }) => {
         await openPaper(page);
-        await page.locator(".sidebar-link").nth(2).hover();
+        await page.locator(".sidebar-nav .toc-link").nth(2).hover();
         await page.waitForTimeout(900);
         await expect(page.getByRole("tooltip").locator("visible=true")).toHaveCount(0);
         const nav = page.getByRole("navigation", { name: "Table of contents" });
@@ -166,7 +166,7 @@ test.describe("paper-desktop 1440", () => {
 
     test("UIA-F-147 (consumer half): ToC rows ride Button's sm rung; no local radius or padding override", async ({ page }) => {
         await openPaper(page);
-        const read = await page.locator(".sidebar-link").first().evaluate((el) => {
+        const read = await page.locator(".sidebar-nav .toc-link").first().evaluate((el) => {
             const probe = document.createElement("div");
             probe.style.blockSize = "var(--control-h-sm)";
             probe.style.borderRadius = "var(--radius-button)";
@@ -304,7 +304,7 @@ test.describe("paper-mobile 390", () => {
         await phoneScrolled(page);
         await openFloatingToc(page);
         const read = await page.evaluate(() => {
-            const rows = [...document.querySelectorAll(".floating-toc-root")] as HTMLElement[];
+            const rows = [...document.querySelectorAll('.floating-toc-dropdown .toc-link[data-depth="0"]')] as HTMLElement[];
             const lefts = rows.map((el) => {
                 const range = document.createRange();
                 range.selectNodeContents(el);
@@ -344,7 +344,7 @@ test.describe("paper-mobile 390", () => {
             const d = discs.nth(i);
             if ((await d.getAttribute("aria-expanded")) !== "true") await d.click();
         }
-        const leafRows = await page.locator(".floating-toc-dropdown .floating-toc-subsub").count();
+        const leafRows = await page.locator('.floating-toc-dropdown .toc-link[data-depth="2"]').count();
         expect(leafRows, `deep ${deep}`).toBeGreaterThan(0);
         await page.keyboard.press("Escape");
         await expect(content).toHaveCount(0);
@@ -428,8 +428,8 @@ test.describe("paper-mobile 390", () => {
         await openFloatingToc(page);
         const disc = page.getByRole("button", { name: /^Subsections of / }).first();
         if ((await disc.getAttribute("aria-expanded")) !== "true") await disc.click();
-        await page.locator(".floating-toc-sub").nth(1).click();
-        await expect(page.locator(".floating-toc-root")).toHaveCount(0);
+        await page.locator('.floating-toc-dropdown .toc-link[data-depth="1"]').nth(1).click();
+        await expect(page.locator('.floating-toc-dropdown .toc-link[data-depth="0"]')).toHaveCount(0);
         await expect
             .poll(() => page.locator(".floating-toc-bar .floating-toc-crumb").count(), {
                 message: "the bar reports only the chapter",
