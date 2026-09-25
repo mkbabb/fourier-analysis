@@ -17,14 +17,10 @@
 import { computed } from "vue";
 import { Eye } from "@lucide/vue";
 import { DockTrigger } from "@mkbabb/glass-ui/dock";
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-} from "@mkbabb/glass-ui/menu";
+import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/menu";
 import { StatusDot } from "@mkbabb/glass-ui/status-dot";
 import { isViewOffDefault } from "./composables/useViewState";
+import ViewLayersItems from "./ViewLayersItems.vue";
 
 const props = defineProps<{
     showImageOverlay: boolean;
@@ -41,11 +37,6 @@ const emit = defineEmits<{
 const offDefault = computed(() =>
     isViewOffDefault({ overlay: props.showImageOverlay, ghost: props.showGhost }),
 );
-
-/** A row toggles its layer and keeps the menu open. */
-function keepOpen(e: Event) {
-    e.preventDefault();
-}
 </script>
 
 <template>
@@ -57,21 +48,14 @@ function keepOpen(e: Event) {
             <StatusDot v-if="offDefault" class="view-dot" state="active" size="sm" motion="off" />
         </DockTrigger>
         <DropdownMenuContent :side="side" align="end" :side-offset="8">
-            <DropdownMenuLabel>View layers</DropdownMenuLabel>
-            <DropdownMenuCheckboxItem
-                :model-value="showImageOverlay"
-                @select="keepOpen"
-                @update:model-value="emit('toggleImageOverlay')"
-            >
-                Image overlay
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-                :model-value="showGhost"
-                @select="keepOpen"
-                @update:model-value="emit('toggleGhost')"
-            >
-                Contour trace
-            </DropdownMenuCheckboxItem>
+            <!-- X.F.W14V.r1 — the rows are `ViewLayersItems.vue`, shared with the
+                 editor dock's below-sm View options submenu (addendum (h) 1). -->
+            <ViewLayersItems
+                :show-image-overlay="showImageOverlay"
+                :show-ghost="showGhost"
+                @toggle-image-overlay="emit('toggleImageOverlay')"
+                @toggle-ghost="emit('toggleGhost')"
+            />
         </DropdownMenuContent>
     </DropdownMenu>
 </template>

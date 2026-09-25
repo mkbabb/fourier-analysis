@@ -130,9 +130,16 @@ for (const width of [360, 390, 430]) {
             const scrollers = [...root.querySelectorAll<HTMLElement>("*")]
                 .filter((e) => e.scrollWidth > e.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(e).overflowX))
                 .map((e) => `${e.className} ${e.scrollWidth}/${e.clientWidth}`);
-            return { n: buttons.length, out, scrollers, plate: [plate.left, plate.right] };
+            // X.F.W14V.r1 (addendum (h) 1): the expanded layer's content fits its
+            // own box, read directly (scrollWidth <= clientWidth), whatever its
+            // overflow style.
+            const layer = root.querySelector<HTMLElement>(".dock-layer--full.is-active");
+            const fit = layer ? [layer.scrollWidth, layer.clientWidth] : null;
+            return { n: buttons.length, out, scrollers, plate: [plate.left, plate.right], fit };
         });
         console.log(`[au2] L2-15@${width} ${JSON.stringify(read)}`);
+        expect(read.fit, "the expanded editor layer is present").not.toBeNull();
+        expect(read.fit![0], "expanded layer scrollWidth <= clientWidth").toBeLessThanOrEqual(read.fit![1]);
         expect(read.scrollers, "no unmarked sideways scroller in the editor dock").toEqual([]);
         expect(read.out, "no tool outside the plate").toEqual([]);
     });

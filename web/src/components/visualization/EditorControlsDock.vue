@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { useMediaQuery } from "@vueuse/core";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { GlassDock, DockControl, DockSeparator, DockTrigger } from "@mkbabb/glass-ui/dock";
 import {
@@ -6,10 +8,16 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
 } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
+import { StatusDot } from "@mkbabb/glass-ui/status-dot";
 import { Tooltip } from "@/components/ui/tooltip";
 import ViewLayersMenu from "./ViewLayersMenu.vue";
+import ViewLayersItems from "./ViewLayersItems.vue";
+import { isViewOffDefault } from "./composables/useViewState";
 import {
     Undo2,
     Redo2,
@@ -22,6 +30,7 @@ import {
     Save,
     Check,
     Magnet,
+    Eye,
 } from "@lucide/vue";
 
 /*
@@ -55,6 +64,23 @@ const emit = defineEmits<{
     save: [];
 }>();
 
+/*
+ * X.F.W14V.r1 — F-W14V.md addendum (h) item 1 (COHESION §0eb, A2-FO-L2-15 ⊕
+ * UIA-F-88): below `sm` the expanded row (Undo · Redo · Delete · View options ·
+ * More tools, 243 px of content) overran the 167 px layer at 360 into a
+ * sideways scroll. Ruled: below `sm` the row holds Undo, Redo and More editor
+ * tools only; Delete moves into that menu as its last item behind a separator
+ * (the rose tone and the same `delete` emit, disabled with no selection), and
+ * View options becomes a submenu of the same `ViewLayersItems` rows. At ≥ sm
+ * nothing changes. `sm` is Tailwind's 40rem (640 px). The glass idiom for this
+ * (a dock priority-overflow seat) is relayed as O-85 DOCK-PRIORITY-OVERFLOW;
+ * at its landing this manual split becomes glass's (ADOPT-AT-LANDING).
+ */
+const isSm = useMediaQuery("(min-width: 640px)");
+
+const viewOffDefault = computed(() =>
+    isViewOffDefault({ overlay: props.showImageOverlay, ghost: !!props.showGhost }),
+);
 </script>
 
 <template>
@@ -172,22 +198,24 @@ const emit = defineEmits<{
 
             <DockSeparator />
 
-            <Tooltip text="Delete point">
-                <DockControl class="is-rose" aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
-                    <Trash2 />
-                </DockControl>
-            </Tooltip>
+            <template v-if="isSm">
+                <Tooltip text="Delete point">
+                    <DockControl class="is-rose" aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
+                        <Trash2 />
+                    </DockControl>
+                </Tooltip>
 
-            <!-- X.F.W14V.u1 — UIA-F-79: the view layers are the ONE menu both docks
-                 mount (the rows sat in More tools here, under another order); it
-                 opens up from this bottom dock. -->
-            <ViewLayersMenu
-                side="top"
-                :show-image-overlay="showImageOverlay"
-                :show-ghost="!!showGhost"
-                @toggle-image-overlay="emit('toggleOverlay')"
-                @toggle-ghost="emit('toggleGhost')"
-            />
+                <!-- X.F.W14V.u1 — UIA-F-79: the view layers are the ONE menu both docks
+                     mount (the rows sat in More tools here, under another order); it
+                     opens up from this bottom dock. -->
+                <ViewLayersMenu
+                    side="top"
+                    :show-image-overlay="showImageOverlay"
+                    :show-ghost="!!showGhost"
+                    @toggle-image-overlay="emit('toggleOverlay')"
+                    @toggle-ghost="emit('toggleGhost')"
+                />
+            </template>
 
             <DropdownMenu :modal="false">
                 <DockTrigger for="dropdown" aria-label="More editor tools">
@@ -230,6 +258,40 @@ const emit = defineEmits<{
                         <RotateCcw class="h-4 w-4" />
                         Reset to extraction
                     </DropdownMenuItem>
+                    <!-- X.F.W14V.r1 — below sm only (addendum (h) 1): View options as a
+                         submenu of the same rows, then Delete last, behind a separator. -->
+                    <template v-if="!isSm">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                                <Eye class="h-4 w-4" />
+                                View options
+                                <StatusDot
+                                    v-if="viewOffDefault"
+                                    state="active"
+                                    size="sm"
+                                    motion="off"
+                                />
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                                <ViewLayersItems
+                                    :show-image-overlay="showImageOverlay"
+                                    :show-ghost="!!showGhost"
+                                    @toggle-image-overlay="emit('toggleOverlay')"
+                                    @toggle-ghost="emit('toggleGhost')"
+                                />
+                            </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            class="tool-row is-rose"
+                            :disabled="!canDelete"
+                            @select="emit('delete')"
+                        >
+                            <Trash2 class="h-4 w-4" />
+                            Delete point
+                        </DropdownMenuItem>
+                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

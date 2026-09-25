@@ -15,6 +15,9 @@ import { seededViz } from "./fixtures/seed";
  *       floor picks the nearest point, and the selection wears a ring.
  * v88   UIA-F-88 — at 390 every tool of the expanded editor dock is reachable
  *       without a sideways scroll; the secondary tools sit in one menu.
+ *       Restated at X.F.W14V.r1 (owner ruling, F-W14V addendum (h) 1): below
+ *       sm the row is Undo · Redo · More editor tools; Delete (last, behind a
+ *       separator) and View options (a submenu) live in that menu.
  * v89   UIA-F-89 — at 390, editing, the Controls tab gives the pane the height.
  * v83   UIA-F-83 (consumer) ⊕ F-176 — Terms 20 renders more than four terms,
  *       every term reachable through a visible fading scroller, with
@@ -227,15 +230,37 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         });
         expect(read.out, "no expanded tool is clipped or off-screen").toEqual([]);
         expect(read.scrollers, "no unmarked sideways scroller").toBe(0);
-        // Undo, Redo and Delete stay in the row.
-        for (const name of ["Undo", "Redo", "Delete point"])
+        // X.F.W14V.r1 — NAMED OWNER-RULING RE-BASELINE (§0bt; F-W14V.md
+        // addendum (h) item 1, COHESION §0eb): below sm the row's set moves
+        // from Undo · Redo · Delete to Undo · Redo · More editor tools. Delete
+        // and View options are no longer row controls; both are asserted
+        // inside the menu below (Delete last behind a separator, View options
+        // a submenu of the same rows). No limb is deleted: each moved control
+        // is still asserted present and reachable.
+        for (const name of ["Undo", "Redo", "More editor tools"])
             await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
+        for (const name of ["Delete point", "View options"])
+            await expect(dock.getByRole("button", { name, exact: true })).toHaveCount(0);
         // The rest are one menu away.
         await dock.getByRole("button", { name: "More editor tools" }).click();
-        await expect(page.getByRole("menu").getByRole("spinbutton", { name: /Magnet/ })).toBeVisible();
-        for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction"])
-            await expect(page.getByRole("menuitem", { name })).toBeVisible();
+        const menu = page.getByRole("menu");
+        await expect(menu.getByRole("spinbutton", { name: /Magnet/ })).toBeVisible();
+        for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction", "View options", "Delete point"])
+            await expect(menu.getByRole("menuitem", { name })).toBeVisible();
+        // Delete is the menu's last item, behind a separator, in the rose tone.
+        const order = await menu.first().evaluate((m) => {
+            const kids = [...m.querySelectorAll<HTMLElement>('[role="menuitem"], [role="separator"]')];
+            return kids.map((k) => (k.getAttribute("role") === "separator" ? "|" : (k.textContent ?? "").trim()));
+        });
+        expect(order.at(-1), "Delete point is the last item").toBe("Delete point");
+        expect(order.at(-2), "a separator precedes Delete point").toBe("|");
+        await expect(menu.getByRole("menuitem", { name: "Delete point" })).toHaveClass(/is-rose/);
         await frame(page, "v88-more-menu");
+        // View options opens its submenu of the same view-layer rows.
+        await menu.getByRole("menuitem", { name: "View options" }).click();
+        for (const name of ["Image overlay", "Contour trace"])
+            await expect(page.getByRole("menuitemcheckbox", { name })).toBeVisible();
+        await frame(page, "v88-view-sub");
     });
 
     test("v89 · UIA-F-89 — at 390, editing, the Controls tab gives the pane the height", async ({ page }) => {
