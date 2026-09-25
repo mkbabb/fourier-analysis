@@ -90,3 +90,4 @@ web/playwright-report/
 
 # TLS certificates
 ssl/
+!bench/contours/reference/*.png
