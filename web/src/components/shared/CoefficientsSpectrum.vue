@@ -6,7 +6,8 @@
  * amplitude-bar `TransitionGroup`, the per-component hover tooltip, and the
  * count/expand readout. The sole structural divergence — the visualization
  * route's `FrequencyGraph` — is hoisted to the `#graph` slot; the equation
- * route passes nothing.
+ * route passes nothing. Since X.F.W14V.au3 (A2-FO-L1-6) the two panels are
+ * one, `shared/CoefficientsPanel.vue`, which forwards the slot.
  *
  * B.W2.c — per-component amplitude readouts are damped numerals and the
  * bespoke `:hover` CSS tooltip lifts to the glass-ui `Tooltip` primitive

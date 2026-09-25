@@ -27,7 +27,7 @@ import FunctionInput from "./FunctionInput.vue";
 import EquationResult from "./EquationResult.vue";
 import EquationModeToggle from "./EquationModeToggle.vue";
 import ConvergencePlot from "./ConvergencePlot.vue";
-import EqCoefficientsPanel from "./EqCoefficientsPanel.vue";
+import CoefficientsPanel from "@/components/shared/CoefficientsPanel.vue";
 
 import { loadCachedInputState, saveCachedInputState, loadCachedResult, saveCachedResult } from "./composables/useEquationCache";
 import { useCoeffHover } from "./composables/useCoeffHover";
@@ -561,7 +561,7 @@ watchDebounced(
                         @compute="doCompute(true)"
                     />
                     <Transition name="slide-down">
-                        <EqCoefficientsPanel
+                        <CoefficientsPanel
                             v-if="components.length"
                             :components="components"
                             :rendered-terms="budget"

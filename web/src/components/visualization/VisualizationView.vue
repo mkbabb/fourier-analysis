@@ -22,7 +22,7 @@ import AnimationControls from "./AnimationControls.vue";
 import ContourEditorCanvas from "./ContourEditorCanvas.vue";
 import EditorControlsDock from "./EditorControlsDock.vue";
 import CanvasControlsDock from "./CanvasControlsDock.vue";
-import CoefficientsPanel from "./CoefficientsPanel.vue";
+import CoefficientsPanel from "@/components/shared/CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
@@ -610,7 +610,14 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 <ContourSettings v-if="hasImage" :n-harmonics="nHarmonics" :n-points="nPoints" />
                             </Transition>
                             <Transition name="slide-down">
-                                <CoefficientsPanel v-if="store.epicycleData || store.computing" />
+                                <!-- UIA-F-169: the spectrum rows are the one amplitude view (no
+                                     bar chart above them). A2-FO-L1-6: the one panel /equation mounts. -->
+                                <CoefficientsPanel
+                                    v-if="store.epicycleData || store.computing"
+                                    :components="store.epicycleData?.components ?? []"
+                                    sub="Fourier spectrum"
+                                    empty-text="Compute epicycles to see coefficients"
+                                />
                             </Transition>
                         </div>
                     </Transition>
