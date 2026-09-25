@@ -128,7 +128,7 @@ const created = useTimeAgo(() => props.entry.created_at);
         </button>
 
         <div class="card-meta">
-            <span v-if="entry.title" class="truncate min-w-0">{{ entry.slug }}</span>
+            <span v-if="entry.title" class="card-slug truncate min-w-0">{{ entry.slug }}</span>
             <time class="whitespace-nowrap shrink-0" :datetime="created.datetime" :title="created.absolute">{{ created.text }}</time>
         </div>
 
@@ -142,7 +142,7 @@ const created = useTimeAgo(() => props.entry.created_at);
                 :style="{ '--pill-c': b.color }"
             >
                 <span class="font-serif-math font-semibold text-[1.1em]" aria-hidden="true">{{ b.icon }}</span>
-                {{ b.label }}
+                <span class="basis-label">{{ b.label }}</span>
             </Badge>
         </div>
 
@@ -195,6 +195,9 @@ const created = useTimeAgo(() => props.entry.created_at);
    the cast one rung — glass's own `--card-cast-rung`, to the floating rung its
    `:has(:focus-visible)` arm uses — never a transform. */
 .gallery-card {
+    /* X.F.W14V.au4 — A2-FO-L3-4: the card reads its own width (the compact
+       arm below). */
+    container: gallery-card / inline-size;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -365,6 +368,28 @@ const created = useTimeAgo(() => props.entry.created_at);
 @media (prefers-reduced-motion: reduce) {
     .like-btn[aria-pressed="true"] :deep(svg) {
         animation: none;
+    }
+}
+
+/* X.F.W14V.au4 — A2-FO-L3-4: the compact card (the phone's two-column grid,
+   about 171 px wide): the title and one meta line (the age; the slug steps
+   back, the title names the card), the basis chips as their glyphs (the name
+   stays for a screen reader). The admin grid never takes this arm
+   (GalleryInfiniteGrid.vue). */
+@container gallery-card (width < 13rem) {
+    .card-slug {
+        display: none;
+    }
+    .card-meta {
+        justify-content: flex-start;
+    }
+    .basis-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 }
 </style>

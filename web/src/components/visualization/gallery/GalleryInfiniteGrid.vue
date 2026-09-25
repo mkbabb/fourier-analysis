@@ -28,9 +28,9 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div class="flex flex-col gap-2 px-[var(--page-gutter)]">
+    <div class="gallery-grid-host flex flex-col gap-2 px-[var(--page-gutter)]">
         <InfiniteScroll :has-more="hasMore" :is-loading="loading" @load-more="emit('load-more')">
-            <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr))">
+            <div class="gallery-grid grid gap-3" :data-admin="adminMode || undefined">
                 <GalleryCard
                     v-for="entry in entries"
                     :key="entry.slug"
@@ -51,8 +51,7 @@ const emit = defineEmits<{
                  loaded" / "No more entries" chatter is gone. -->
             <template #loading>
                 <div
-                    class="grid gap-3 pt-3"
-                    style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr))"
+                    class="gallery-grid grid gap-3 pt-3"
                     role="status"
                     aria-label="Loading visualizations"
                 >
@@ -62,3 +61,24 @@ const emit = defineEmits<{
         </InfiniteScroll>
     </div>
 </template>
+
+<style scoped>
+/* X.F.W14V.au4 — A2-FO-L3-4: the grid's measure, named once (it was spelled
+   twice, inline). `minmax(14rem, 1fr)` cannot fit two columns in a 358 px
+   phone column, so auto-fill fell to one card per row (358×390, about 1.5
+   pieces a screen). Below 30rem of its own width the grid is two equal
+   columns, and the card takes its compact arm (GalleryCard.vue). Admin mode
+   keeps one column: a card's select box, its three-state tier control and its
+   Delete need 44 px touch targets each, which a 171 px card cannot seat. */
+.gallery-grid-host {
+    container-type: inline-size;
+}
+.gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+}
+@container (width < 30rem) {
+    .gallery-grid:not([data-admin]) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+</style>
