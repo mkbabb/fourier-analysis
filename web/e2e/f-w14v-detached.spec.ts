@@ -123,6 +123,22 @@ for (const scheme of ["light", "dark"] as const) {
                 const delta = gutter.map((v, i) => v - ground[i]);
                 const spread = Math.max(...delta) - Math.min(...delta);
                 const chroma = (c: Rgb) => Math.max(...c) - Math.min(...c);
+                // X.F.W14V.s2 (verify) — publish the measured pixels, so the
+                // record's gutter table is read from the run, not transcribed.
+                // The shell's own computed paint is published beside them: the
+                // `.glass-opaque` class on it must paint no band.
+                const shellPaint = await page.evaluate(() => {
+                    const bg = (sel: string) => getComputedStyle(document.querySelector(sel)!).backgroundColor;
+                    // O-77 LAYER-HEADER-LABEL (honest-RED, no consumer override):
+                    // the header labels that ellipsise beside `#actions`.
+                    const clipped = [...document.querySelectorAll(".configurator-layer-trigger *")]
+                        .filter((el) => el.children.length === 0 && (el.textContent ?? "").trim() && el.scrollWidth > el.clientWidth + 0.5)
+                        .map((el) => `${(el.textContent ?? "").trim()}(${el.scrollWidth}>${el.clientWidth})`);
+                    return { shell: bg(".viz-configurator"), grid: bg(".viz-configurator > [data-slot=\"configurator\"]"), clipped: clipped.join(";") || "none" };
+                });
+                const reading = `${vp.width}x${vp.height} ${scheme} ${beside ? "beside" : "below"} gap=${gap.toFixed(1)} gutter=${gutter} ground=${ground} delta=${delta} spread=${spread} chroma=${chroma(gutter)}/${chroma(ground)} shellBg=${shellPaint.shell} gridBg=${shellPaint.grid} o77Clipped=${shellPaint.clipped}`;
+                test.info().annotations.push({ type: "gutter", description: reading });
+                console.log(`[f-w14v gutter] ${reading}`);
                 expect.soft(spread, `the gutter (${gutter}) is the page ground's colour (${ground}): the shift ${delta} is a neutral shade`).toBeLessThanOrEqual(4);
                 expect.soft(chroma(gutter), `the gutter (${gutter}) is no more tinted than the ground (${ground})`).toBeLessThanOrEqual(chroma(ground) + 3);
             });
