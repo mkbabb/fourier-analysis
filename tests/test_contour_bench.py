@@ -20,7 +20,7 @@ from bench.contours.harness import (  # noqa: E402
     image_set,
 )
 
-SAMPLES = ("portraits-euler", "animals-golden-retriever", "animals-sun")
+SAMPLES = ("portraits-daraksha", "portraits-euler", "animals-golden-retriever", "animals-sun")
 
 
 @pytest.fixture(scope="module")
@@ -41,8 +41,9 @@ def test_bench_metrics_are_sane(name: str, public_images, tmp_path: Path) -> Non
         assert 0.0 <= v <= 1.0
     assert m.tour_length >= m.ink_length > 0
     assert m.median_step > 0
-    assert 0 <= m.jump_count <= m.contour_count
-    assert 0.0 <= m.jump_length <= m.tour_length - m.ink_length + 1e-6
+    assert 0 <= m.chord_count <= m.jump_count <= m.contour_count + m.chord_count
+    assert 0.0 <= m.chord_length <= m.ink_length
+    assert 0.0 <= m.jump_length <= m.tour_length - m.ink_length + m.chord_length + 1e-6
     errs = [m.epi_err[str(n)] for n in EPI_NS]
     assert all(e >= 0 for e in errs)
     assert errs == sorted(errs, reverse=True)  # more harmonics, less error

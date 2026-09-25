@@ -11,17 +11,24 @@ longest side is ``ContourSettings.resize``):
 - ``precision``: fraction of contour ink (each contour sampled at ~1 px) that
   lies on the subject (inside the reference mask dilated by ``tol_px``).
 - ``recall``: fraction of the reference mask's boundary that has contour ink
-  within ``tol_px``.
+  within ``tol_px`` (boundary within ``tol_px`` of the frame excluded: at the
+  bar's own tolerance it cannot be told from the frame, and frame ink is forbidden).
 - ``contour_count``, ``ink_length``, ``tour_length`` (ink + connectors,
   closed back to the start, as the Fourier series sees it).
 - ``jump_count`` / ``jump_length``: connectors (inter-contour gaps plus the
   closing gap) longer than ``JUMP_K`` x the median step of the API's resampled
-  tour (tour_length / n_points).
+  tour (tour_length / n_points), plus ``chord_count`` / ``chord_length``.
+- ``chord_count`` / ``chord_length``: straight segments *inside* the ink,
+  longer than the same threshold, that no image edge backs (median
+  subject-normalised gradient along them below ``CHORD_SUPPORT``).  A jump
+  absorbed into a contour (a force-closed loop's closing chord, a frame run)
+  is a jump on the canvas; a long machined edge is not.
 - ``background_fraction``: fraction of the resampled tour (by arc length,
   connectors included) that lies off the subject.
 - ``frame_fraction``: fraction of contour ink lying on the image frame (2 px).
-- ``wiggle``: 1 - smoothed/raw ink length at a 4 px arc-length Gaussian; the
-  staircase/noise-spur measure.
+- ``wiggle``: 1 - smoothed/raw ink length at a 4 px arc-length Gaussian (ink
+  resampled uniformly at 1 px, so the kernel is 4 px whatever the trace's point
+  density); the staircase/noise-spur measure.
 - ``epi_err_N`` for N in 50/100/200: mean |reconstruction - tour| over the
   resampled tour, as a percentage of the image diagonal (the API's epicycle
   route: resample to n_points, ``EpicycleChain.from_signal(n_harmonics=N)``).
@@ -64,6 +71,7 @@ PUBLIC_DIRS = ("assets/portraits", "assets/animals")
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 
 JUMP_K = 4.0
+CHORD_SUPPORT = 0.1
 EPI_NS = (50, 100, 200)
 TOL_FRACTION = 0.01  # boundary tolerance as a fraction of the image diagonal
 MIN_TOL_PX = 3.0
@@ -81,8 +89,12 @@ class BenchImage:
     private: bool
 
 
+PRIMARY_NAME = "portraits-daraksha"  # the owner's standard sample (F-CT addendum b)
+
+
 def image_set(include_private: bool = True) -> list[BenchImage]:
-    """The private sample (first, when present) plus the public set."""
+    """The public set, the primary sample (``PRIMARY_NAME``) first, after the
+    raw private original when it is present."""
     images: list[BenchImage] = []
     if include_private and PRIVATE_SAMPLE.is_file():
         images.append(BenchImage(PRIVATE_NAME, PRIVATE_SAMPLE, True))
@@ -91,6 +103,7 @@ def image_set(include_private: bool = True) -> list[BenchImage]:
         for p in sorted(d.iterdir()):
             if p.suffix.lower() in IMAGE_EXTS:
                 images.append(BenchImage(f"{d.name}-{p.stem.lower()}", p, False))
+    images.sort(key=lambda i: (not i.private, i.name != PRIMARY_NAME))  # stable
     return images
 
 
@@ -269,16 +282,18 @@ def save_reference(img: BenchImage, mask: NDArray[np.bool_]) -> Path:
 
 
 def densify(z: NDArray[np.complex128], step: float = 1.0) -> NDArray[np.complex128]:
-    """Sample a polyline at ~``step`` px spacing (linear, no smoothing)."""
+    """Sample a polyline uniformly by arc length, ~``step`` px apart (linear, no
+    smoothing).  Uniform, not merely subdivided: a trace whose points are denser
+    than ``step`` is thinned too, so every per-sample measure (precision, the
+    wiggle's arc-length Gaussian) weighs ink by length, whatever the point
+    density a stage happened to emit."""
     if len(z) < 2:
         return z
-    seg = np.abs(np.diff(z))
-    out = [z[:1]]
-    for a, b, L in zip(z[:-1], z[1:], seg):
-        k = max(1, int(math.ceil(L / step)))
-        t = np.arange(1, k + 1) / k
-        out.append(a + (b - a) * t)
-    return np.concatenate(out)
+    s = np.concatenate([[0.0], np.cumsum(np.abs(np.diff(z)))])
+    if s[-1] <= 0:
+        return z[:1]
+    t = np.linspace(0.0, s[-1], max(2, int(math.ceil(s[-1] / step)) + 1))
+    return np.interp(t, s, z.real) + 1j * np.interp(t, s, z.imag)
 
 
 def inside(mask: NDArray[np.bool_], rc: NDArray[np.float64]) -> NDArray[np.bool_]:
@@ -304,6 +319,8 @@ class Metrics:
     jump_count: int
     jump_length: float
     max_jump: float
+    chord_count: int
+    chord_length: float
     background_fraction: float
     frame_fraction: float
     wiggle: float
@@ -378,6 +395,31 @@ def epicycle_error(tour: NDArray[np.complex128], n: int, diagonal: float) -> flo
     return float(np.mean(np.abs(trace - tour)) / diagonal * 100.0)
 
 
+def find_chords(
+    img: BenchImage, run: PipelineRun, ref: NDArray[np.bool_], threshold: float
+) -> list[float]:
+    """Lengths of the unsupported straight segments inside the ink (see module doc)."""
+    from skimage import filters
+
+    long = [
+        (a, b) for c in run.contours for a, b in zip(c[:-1], c[1:]) if abs(b - a) > threshold
+    ]
+    if not long:
+        return []
+    gray = load_rgb(img.path, run.shape).astype(np.float64).mean(axis=2) / 255.0
+    grad = filters.sobel(gray)
+    scale = float(np.percentile(grad[ref], 95)) if ref.any() else float(grad.max())
+    grad = grad / max(scale, 1e-12)
+    out = []
+    for a, b in long:
+        rc = to_pixels(densify(np.array([a, b])), run.shape)
+        r = np.clip(np.round(rc[:, 0]).astype(int), 0, run.shape[0] - 1)
+        c = np.clip(np.round(rc[:, 1]).astype(int), 0, run.shape[1] - 1)
+        if float(np.median(grad[r, c])) < CHORD_SUPPORT:
+            out.append(float(abs(b - a)))
+    return out
+
+
 def compute_metrics(
     img: BenchImage, run: PipelineRun, ref: NDArray[np.bool_], ref_source: str
 ) -> Metrics:
@@ -388,7 +430,7 @@ def compute_metrics(
 
     if not run.ordered:
         return Metrics(img.name, img.private, w, h, ref_source, tol, 0.0, 0.0, 0,
-                       0.0, 0.0, 0.0, 0, 0.0, 0.0, 1.0, 0.0, 0.0, {str(n): float("nan") for n in EPI_NS},
+                       0.0, 0.0, 0.0, 0, 0.0, 0.0, 0, 0.0, 1.0, 0.0, 0.0, {str(n): float("nan") for n in EPI_NS},
                        run.runtime_s)
 
     ink = np.concatenate([densify(c) for c in run.ordered])
@@ -397,6 +439,11 @@ def compute_metrics(
 
     # Recall: reference boundary pixels with ink within tol.
     boundary = ref & ~ndi.binary_erosion(ref, border_value=1)  # frame is not an edge
+    # ... nor is a reference edge hugging it: within tol of the frame it can only
+    # be drawn as ink the bar reads as the frame, which frame_fraction forbids.
+    fe = int(math.ceil(tol))
+    boundary[:fe] = boundary[-fe:] = False
+    boundary[:, :fe] = boundary[:, -fe:] = False
     ink_img = np.zeros(run.shape, dtype=bool)
     r = np.clip(np.round(ink_rc[:, 0]).astype(int), 0, h - 1)
     c = np.clip(np.round(ink_rc[:, 1]).astype(int), 0, w - 1)
@@ -410,6 +457,7 @@ def compute_metrics(
     steps = np.abs(np.diff(np.append(run.tour, run.tour[0])))
     median_step = float(np.median(steps))
     jumps = gaps[gaps > JUMP_K * median_step]
+    chords = find_chords(img, run, ref, JUMP_K * median_step)
 
     tour_rc = to_pixels(run.tour, run.shape)
     background = float(1.0 - inside(band, tour_rc).mean())
@@ -437,9 +485,11 @@ def compute_metrics(
         ink_length=ink_length,
         tour_length=tour_length,
         median_step=median_step,
-        jump_count=int(jumps.size),
-        jump_length=float(jumps.sum()),
-        max_jump=float(gaps.max()) if gaps.size else 0.0,
+        jump_count=int(jumps.size) + len(chords),
+        jump_length=float(jumps.sum()) + float(sum(chords)),
+        max_jump=max([float(gaps.max()) if gaps.size else 0.0, *chords]),
+        chord_count=len(chords),
+        chord_length=float(sum(chords)),
         background_fraction=background,
         frame_fraction=frame_fraction,
         wiggle=wiggle,
@@ -514,7 +564,7 @@ def render_overlay(
     text = (
         f"{m.name}  P={m.precision:.3f} R={m.recall:.3f} bg={m.background_fraction:.3f} "
         f"frame={m.frame_fraction:.3f} wig={m.wiggle:.3f} "
-        f"n={m.contour_count} jumps={m.jump_count} ({m.jump_length:.0f}px) "
+        f"n={m.contour_count} jumps={m.jump_count} ({m.jump_length:.0f}px, chords {m.chord_count}) "
         f"epi50/100/200={m.epi_err['50']:.2f}/{m.epi_err['100']:.2f}/{m.epi_err['200']:.2f}%  "
         f"{m.runtime_s:.1f}s   right: N=100"
     )
