@@ -6,14 +6,6 @@ import { Badge } from "@mkbabb/glass-ui/badge";
 import { Card } from "@mkbabb/glass-ui/card";
 import { Alert, AlertDescription, AlertTitle, Checkbox, Skeleton } from "@mkbabb/glass-ui";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@mkbabb/glass-ui/dialog";
-import {
     Select,
     SelectContent,
     SelectItem,
@@ -30,6 +22,8 @@ import {
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
+import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
+import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import * as api from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
 import BatchActionBar from "./BatchActionBar.vue";
@@ -171,53 +165,54 @@ type PendingAction =
     | { kind: "delete"; slug: string }
     | { kind: "prune" }
     | { kind: "batch"; action: BatchKind; slugs: string[] };
-const pending = ref<PendingAction | null>(null);
-const dialogOpen = ref(false);
+
+/**
+ * FR-AUL-32: an in-flight guard on the eight mutation controls, read by every
+ * control's `:disabled`, so the window closes at the affordance rather than
+ * behind it. X.F.W14V.au4 — A2-FO-L1-9: it is also the confirm's lock
+ * (`useDestructiveConfirm`), so the row menus and the dialog read one flag, and
+ * the dialog closes after the act settles.
+ */
+const busy = ref(false);
+const confirmation = useDestructiveConfirm<PendingAction>({ busy });
+const pending = confirmation.pending;
 
 function askDelete(slug: string) {
-    pending.value = { kind: "delete", slug };
-    dialogOpen.value = true;
+    confirmation.ask({ kind: "delete", slug });
 }
 
 function askPrune() {
-    pending.value = { kind: "prune" };
-    dialogOpen.value = true;
+    confirmation.ask({ kind: "prune" });
 }
 
 function askBatch(action: BatchKind) {
     if (!selected.value.size) return;
-    pending.value = {
-        kind: "batch",
-        action,
-        slugs: Array.from(selected.value),
-    };
-    dialogOpen.value = true;
+    confirmation.ask({ kind: "batch", action, slugs: Array.from(selected.value) });
 }
 
-/**
- * FR-AUL-32: an in-flight guard on the eight mutation controls. There was none —
- * and `confirmPending` nulled `pending` AFTER its await, so a dialog re-opened
- * during a slow mutation had its action destroyed under it and the second
- * confirm silently no-opped. The flag is read by every control's `:disabled`, so
- * the window closes at the affordance rather than behind it.
- */
-const busy = ref(false);
-
-async function confirmPending() {
-    const action = pending.value;
-    dialogOpen.value = false;
-    // Released at the ask, not after the await: the action is already in hand.
-    pending.value = null;
-    if (!action || busy.value) return;
-    busy.value = true;
-    try {
+function confirmPending() {
+    return confirmation.confirm(async (action) => {
         if (action.kind === "delete") await performDelete(action.slug);
         else if (action.kind === "prune") await performPrune();
         else await performBatch(action.action, action.slugs);
-    } finally {
-        busy.value = false;
-    }
+    });
 }
+
+const confirmTitle = computed(() => {
+    const p = pending.value;
+    if (!p) return "";
+    if (p.kind === "prune") return "Prune empty users?";
+    if (p.kind === "delete") return "Delete user?";
+    const n = p.slugs.length;
+    const noun = n === 1 ? "user" : "users";
+    return p.action === "delete" ? `Delete ${n} ${noun}?` : p.action === "suspend" ? `Suspend ${n} ${noun}?` : `Reinstate ${n} ${noun}?`;
+});
+const confirmLabel = computed(() => {
+    const p = pending.value;
+    if (p?.kind === "prune") return "Prune";
+    if (p?.kind === "batch") return p.action === "delete" ? "Delete" : p.action === "suspend" ? "Suspend" : "Reinstate";
+    return "Delete";
+});
 
 // ── Multi-select state ─────────────────────────────────────────────────
 // `selected` holds the user-slugs currently checked; `selected.size`
@@ -819,96 +814,61 @@ const userRows = computed(() =>
         </template>
 
         <!-- Destructive-confirm dialog — replaces native `confirm()`. -->
-        <Dialog v-model:open="dialogOpen">
-            <DialogContent surface="opaque" class="max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>
-                        <template v-if="pending?.kind === 'prune'">Prune empty users?</template>
-                        <template v-else-if="pending?.kind === 'batch'">
-                            {{
-                                pending.action === "delete"
-                                    ? `Delete ${pending.slugs.length} ${pending.slugs.length === 1 ? "user" : "users"}?`
-                                    : pending.action === "suspend"
-                                      ? `Suspend ${pending.slugs.length} ${pending.slugs.length === 1 ? "user" : "users"}?`
-                                      : `Reinstate ${pending.slugs.length} ${pending.slugs.length === 1 ? "user" : "users"}?`
-                            }}
-                        </template>
-                        <template v-else>Delete user?</template>
-                    </DialogTitle>
-                    <DialogDescription>
-                        <template v-if="pending?.kind === 'delete'">
-                            This shall permanently delete user
-                            <span class="font-mono">{{ pending.slug }}</span>
-                            and all their gallery entries. The action is irrevocable.
-                        </template>
-                        <!-- FR-AUL-25 (copy leg): the highest-blast-radius control
-                             announced an unbounded permanent deletion with NO
-                             number and no preview, while both of its dialog
-                             neighbours named a victim or a count. The magnitude is
-                             knowable before the act — the router computes
-                             `empty_slugs` and then deletes — so the copy says that
-                             the count is owed. ⊘ The count/dry-run ENDPOINT is
-                             F.W5's; this is the F.W4 copy it carries. -->
-                        <template v-else-if="pending?.kind === 'prune'">
-                            This permanently deletes every user who currently has zero
-                            gallery entries. It cannot be undone, and the number of
-                            users affected is not shown until afterwards.
-                        </template>
-                        <!-- FR-AUL-1: the batch confirm ENUMERATES its targets.
-                             The singular path named its exact victim in font-mono
-                             while the cascade — the more dangerous action — said
-                             only "the selected users", so an operator could not
-                             see what a leaked selection had added. -->
-                        <template v-else-if="pending?.kind === 'batch'">
-                            <span v-if="pending.action === 'delete'">
-                                This permanently deletes the users below and all their
-                                gallery entries. It cannot be undone.
-                            </span>
-                            <span v-else-if="pending.action === 'suspend'">
-                                The users below are suspended and their active sessions
-                                are revoked — they are signed out everywhere.
-                            </span>
-                            <span v-else>
-                                The users below are reinstated to active status.
-                            </span>
-                            <span
-                                class="mt-2 block max-h-32 overflow-y-auto rounded border border-border/60 px-2 py-1 font-mono text-caption"
-                            >
-                                <span
-                                    v-for="slug in pending.slugs"
-                                    :key="slug"
-                                    class="block truncate"
-                                >{{ slug }}</span>
-                            </span>
-                        </template>
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button emphasis="quiet" @click="dialogOpen = false">Cancel</Button>
-                    <Button
-                        emphasis="primary"
-                        :tone="
-                            pending?.kind === 'batch' && pending.action !== 'delete'
-                                ? 'neutral'
-                                : 'destructive'
-                        "
-                        @click="confirmPending"
-                    >
-                        <template v-if="pending?.kind === 'prune'">Prune</template>
-                        <template v-else-if="pending?.kind === 'batch'">
-                            {{
-                                pending.action === "delete"
-                                    ? "Delete"
-                                    : pending.action === "suspend"
-                                      ? "Suspend"
-                                      : "Reinstate"
-                            }}
-                        </template>
-                        <template v-else>Delete</template>
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <ConfirmDialog
+            :open="confirmation.open.value"
+            :busy="busy"
+            :title="confirmTitle"
+            :confirm-label="confirmLabel"
+            :tone="pending?.kind === 'batch' && pending.action !== 'delete' ? 'neutral' : 'destructive'"
+            @update:open="confirmation.setOpen"
+            @confirm="confirmPending"
+        >
+            <template v-if="pending?.kind === 'delete'">
+                This shall permanently delete user
+                <span class="font-mono">{{ pending.slug }}</span>
+                and all their gallery entries. The action is irrevocable.
+            </template>
+            <!-- FR-AUL-25 (copy leg): the highest-blast-radius control
+                 announced an unbounded permanent deletion with NO
+                 number and no preview, while both of its dialog
+                 neighbours named a victim or a count. The magnitude is
+                 knowable before the act — the router computes
+                 `empty_slugs` and then deletes — so the copy says that
+                 the count is owed. ⊘ The count/dry-run ENDPOINT is
+                 F.W5's; this is the F.W4 copy it carries. -->
+            <template v-else-if="pending?.kind === 'prune'">
+                This permanently deletes every user who currently has zero
+                gallery entries. It cannot be undone, and the number of
+                users affected is not shown until afterwards.
+            </template>
+            <!-- FR-AUL-1: the batch confirm ENUMERATES its targets.
+                 The singular path named its exact victim in font-mono
+                 while the cascade — the more dangerous action — said
+                 only "the selected users", so an operator could not
+                 see what a leaked selection had added. -->
+            <template v-else-if="pending?.kind === 'batch'">
+                <span v-if="pending.action === 'delete'">
+                    This permanently deletes the users below and all their
+                    gallery entries. It cannot be undone.
+                </span>
+                <span v-else-if="pending.action === 'suspend'">
+                    The users below are suspended and their active sessions
+                    are revoked — they are signed out everywhere.
+                </span>
+                <span v-else>
+                    The users below are reinstated to active status.
+                </span>
+                <span
+                    class="mt-2 block max-h-32 overflow-y-auto rounded border border-border/60 px-2 py-1 font-mono text-caption"
+                >
+                    <span
+                        v-for="slug in pending.slugs"
+                        :key="slug"
+                        class="block truncate"
+                    >{{ slug }}</span>
+                </span>
+            </template>
+        </ConfirmDialog>
     </div>
 </template>
 

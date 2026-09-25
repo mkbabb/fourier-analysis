@@ -11,17 +11,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@mkbabb/glass-ui/menu";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@mkbabb/glass-ui/dialog";
 import { useAuthStore } from "@/stores/auth";
 import { useGalleryStore } from "@/stores/gallery";
 import { useToast } from "@/composables/useToast";
+import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
+import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import * as api from "@/lib/api";
 import { thumbnailUrl } from "@/lib/api";
 import { useRelativeTime } from "@/lib/time";
@@ -194,58 +188,42 @@ function thumbFailed(slug: string) {
 
 reload();
 
-// Destructive-confirm dialog state — supplants native `confirm()`.
-const pendingDelete = ref<{ slug: string; label: string } | null>(null);
-const dialogOpen = ref(false);
+/**
+ * X.F.W14V.au4 — A2-FO-L1-9: the destructive-confirm machine is
+ * `useDestructiveConfirm`'s, and the dialog is `shared/ConfirmDialog`. The
+ * rules this panel wrote for itself are the machine's now: closing clears the
+ * intent (FR-AFP-41 / -68), the dialog closes only after the delete settles
+ * (FR-AFP-23), and it is locked while the delete is in flight (UIA-F-251).
+ */
+const confirmation = useDestructiveConfirm<{ slug: string; label: string }>();
+const pendingDelete = confirmation.pending;
 
 function askDelete(slug: string, label: string) {
-    pendingDelete.value = { slug, label };
-    dialogOpen.value = true;
-}
-
-/**
- * FR-AFP-41 (+FR-AFP-68): `pendingDelete` was not cleared on Cancel or Escape,
- * and the leak was REACHABLE — open a second row's confirm during an in-flight
- * delete (the list stayed mounted, nothing was disabled) and the first handler's
- * late null landed under the open dialog, giving an empty entity name and a
- * Delete button that silently did nothing through `confirmDelete`'s own early
- * return. Closing clears; a null target now SAYS so instead of no-opping.
- */
-function onDialogOpenChange(open: boolean) {
-    dialogOpen.value = open;
-    if (!open) pendingDelete.value = null;
-}
-
-async function confirmDelete() {
-    const target = pendingDelete.value;
-    if (!target) {
-        toast("Nothing to delete — the target was cleared. Try again.", "error");
-        return;
-    }
     if (busy.value) return;
-    busySlug.value = target.slug;
-    try {
-        // Moderate-delete the converged entity by slug (CRUD-CONTRACT §7); the
-        // admin client carries `If-Match: *` server-side (admin override, §3).
-        const token = requireAdminToken();
-        await api.adminDeleteVisualization(token, target.slug);
-        // FR-AFP-67: the success toast fires only once the act has settled.
-        // Toasting first and reloading after is what left a deleted row rendered,
-        // with live buttons, under a success toast.
-        // FR-AFP-15: the row is SPLICED out; the accumulated pages survive.
-        dropEntry(target.slug);
-        gallery.removeEntry(target.slug);
-        toast("Entry deleted", "success");
-        // FR-AFP-23: the dialog closes AFTER the request settles, so a slow delete
-        // cannot invite a second Delete on the same row.
-        onDialogOpenChange(false);
-    } catch (e: unknown) {
-        if (!api.isAbortError(e)) {
-            toast(problemMessage(e, "Failed to delete entry"), "error");
+    confirmation.ask({ slug, label });
+}
+
+function confirmDelete() {
+    return confirmation.confirm(async (target) => {
+        busySlug.value = target.slug;
+        try {
+            // Moderate-delete the converged entity by slug (CRUD-CONTRACT §7); the
+            // admin client carries `If-Match: *` server-side (admin override, §3).
+            const token = requireAdminToken();
+            await api.adminDeleteVisualization(token, target.slug);
+            // FR-AFP-67: the success toast fires only once the act has settled.
+            // FR-AFP-15: the row is SPLICED out; the accumulated pages survive.
+            dropEntry(target.slug);
+            gallery.removeEntry(target.slug);
+            toast("Entry deleted", "success");
+        } catch (e: unknown) {
+            if (!api.isAbortError(e)) {
+                toast(problemMessage(e, "Failed to delete entry"), "error");
+            }
+        } finally {
+            busySlug.value = null;
         }
-    } finally {
-        busySlug.value = null;
-    }
+    });
 }
 
 async function handleDismiss(slug: string) {
@@ -613,33 +591,17 @@ const relativeTimeOf = useRelativeTime();
             </Button>
         </nav>
 
-        <!-- Destructive-confirm dialog — replaces native `confirm()`. -->
-        <Dialog :open="dialogOpen" @update:open="onDialogOpenChange">
-            <!-- UIA-F-251: while the delete is in flight Cancel is disabled, so
-                 the dialog is `locked` (no ✕; Escape and outside rebuffed) — one
-                 lock, not three answers; otherwise a `deliberate` confirm. -->
-            <DialogContent surface="opaque" class="max-w-sm" :dismiss="busy ? 'locked' : 'deliberate'">
-                <DialogHeader>
-                    <DialogTitle>Delete gallery entry?</DialogTitle>
-                    <DialogDescription>
-                        This shall permanently delete the flagged entry
-                        <span class="font-mono">{{ pendingDelete?.label }}</span>.
-                        The action is irrevocable.
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button emphasis="quiet" :disabled="busy" @click="onDialogOpenChange(false)">
-                        Cancel
-                    </Button>
-                    <Button
-                        emphasis="primary"
-                        tone="destructive"
-                        :loading="busy"
-                        :disabled="busy"
-                        @click="confirmDelete"
-                    >Delete</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <ConfirmDialog
+            :open="confirmation.open.value"
+            :busy="confirmation.busy.value"
+            title="Delete gallery entry?"
+            confirm-label="Delete"
+            @update:open="confirmation.setOpen"
+            @confirm="confirmDelete"
+        >
+            This shall permanently delete the flagged entry
+            <span class="font-mono">{{ pendingDelete?.label }}</span>.
+            The action is irrevocable.
+        </ConfirmDialog>
     </div>
 </template>

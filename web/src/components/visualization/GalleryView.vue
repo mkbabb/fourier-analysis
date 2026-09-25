@@ -6,6 +6,7 @@ import { useGalleryStore } from "@/stores/gallery";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
 import { useToast } from "@/composables/useToast";
+import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
 import { problemMessage } from "@/lib/api-problem";
 import * as api from "@/lib/api";
 import type { GalleryTier, Visualization, WorkspaceDraft } from "@/lib/types";
@@ -13,14 +14,6 @@ import { Layers, Trash2, Crown, StarOff } from "@lucide/vue";
 
 import { SegmentedTabs, type SegmentedTabOption } from "@mkbabb/glass-ui/tabs";
 import { Button } from "@mkbabb/glass-ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from "@mkbabb/glass-ui/dialog";
 import GallerySearchBar from "./gallery/GallerySearchBar.vue";
 import GalleryFeaturedCarousel from "./gallery/GalleryFeaturedCarousel.vue";
 import GalleryInfiniteGrid from "./gallery/GalleryInfiniteGrid.vue";
@@ -28,6 +21,7 @@ import GalleryCardModal from "./gallery/GalleryCardModal.vue";
 import GalleryAdminBanner from "./gallery/GalleryAdminBanner.vue";
 import GalleryDraftsSection from "./gallery/GalleryDraftsSection.vue";
 import BatchActionBar from "./gallery/BatchActionBar.vue";
+import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 
 const AdminUserList = defineAsyncComponent(() => import("./gallery/AdminUserList.vue"));
 const AdminFlaggedPanel = defineAsyncComponent(() => import("./gallery/AdminFlaggedPanel.vue"));
@@ -198,8 +192,7 @@ function handleDelete(hash: string) {
     // FR-AFP-8's one-token rider, applied at this surface too: the confirm
     // names the ENTITY that gets deleted — the visualization `slug` — never a
     // friendlier string that could denote something else.
-    pending.value = { kind: "single", slug: hash, label: hash };
-    confirmOpen.value = true;
+    confirmation.ask({ kind: "single", slug: hash, label: hash });
 }
 
 async function performSingleDelete(hash: string) {
@@ -229,8 +222,9 @@ type PendingIntent =
     | { kind: "batch"; action: GalleryBatchAction; hashes: string[] };
 
 const selectedHashes = ref<Set<string>>(new Set());
-const confirmOpen = ref(false);
-const pending = ref<PendingIntent | null>(null);
+/** X.F.W14V.au4 — A2-FO-L1-9: the intent machine is `useDestructiveConfirm`'s. */
+const confirmation = useDestructiveConfirm<PendingIntent>();
+const pending = confirmation.pending;
 
 function forgetSelected(hash: string) {
     if (!selectedHashes.value.has(hash)) return;
@@ -261,17 +255,7 @@ function clearGallerySelection() {
 
 function askBatchGallery(action: GalleryBatchAction) {
     if (!selectedHashes.value.size) return;
-    pending.value = { kind: "batch", action, hashes: Array.from(selectedHashes.value) };
-    confirmOpen.value = true;
-}
-
-/**
- * FR-AFP-41's shape, adopted here: closing CLEARS the intent. A target left
- * behind a closed dialog is what let a second ask land on a stale slug.
- */
-function onConfirmOpenChange(open: boolean) {
-    confirmOpen.value = open;
-    if (!open) pending.value = null;
+    confirmation.ask({ kind: "batch", action, hashes: Array.from(selectedHashes.value) });
 }
 
 async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch" }>) {
@@ -297,18 +281,34 @@ async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch
     if (gallery.adminMode) gallery.refreshAdminStats();
 }
 
-async function performConfirmed() {
-    const target = pending.value;
-    if (!target) return;
-    try {
-        if (target.kind === "single") await performSingleDelete(target.slug);
-        else await performBatchGallery(target);
-    } catch (e: any) {
-        toast(problemMessage(e, "Action failed"), "error");
-    } finally {
-        onConfirmOpenChange(false);
-    }
+/**
+ * FR-AFP-41's rule stands (closing clears the intent); the dialog now also
+ * locks while the act is in flight and closes after it settles.
+ */
+function performConfirmed() {
+    return confirmation.confirm(async (target) => {
+        try {
+            if (target.kind === "single") await performSingleDelete(target.slug);
+            else await performBatchGallery(target);
+        } catch (e: unknown) {
+            toast(problemMessage(e, "Action failed"), "error");
+        }
+    });
 }
+
+const confirmTitle = computed(() => {
+    const p = pending.value;
+    if (!p) return "";
+    if (p.kind === "single") return "Delete this gallery entry?";
+    const n = p.hashes.length;
+    const noun = n === 1 ? "entry" : "entries";
+    return p.action === "delete" ? `Delete ${n} ${noun}?` : p.action === "feature" ? `Feature ${n} ${noun}?` : `Unfeature ${n} ${noun}?`;
+});
+const confirmLabel = computed(() => {
+    const p = pending.value;
+    if (!p || p.kind === "single" || p.action === "delete") return "Delete";
+    return p.action === "feature" ? "Feature" : "Unfeature";
+});
 
 // Clear selection when the user leaves admin mode or switches tabs away
 // from the gallery (selections should not persist into another view).
@@ -521,62 +521,30 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
              `window.confirm("Delete this gallery entry?")` used to be: it now
              NAMES the entry it is about to delete, which the native modal
              structurally could not. -->
-        <Dialog :open="confirmOpen" @update:open="onConfirmOpenChange">
-            <DialogContent surface="opaque" class="max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>
-                        <template v-if="pending?.kind === 'single'">
-                            Delete this gallery entry?
-                        </template>
-                        <template v-else-if="pending?.action === 'delete'">
-                            Delete {{ pending.hashes.length }}
-                            {{ pending.hashes.length === 1 ? "entry" : "entries" }}?
-                        </template>
-                        <template v-else-if="pending?.action === 'feature'">
-                            Feature {{ pending.hashes.length }}
-                            {{ pending.hashes.length === 1 ? "entry" : "entries" }}?
-                        </template>
-                        <template v-else-if="pending?.action === 'unfeature'">
-                            Unfeature {{ pending.hashes.length }}
-                            {{ pending.hashes.length === 1 ? "entry" : "entries" }}?
-                        </template>
-                    </DialogTitle>
-                    <DialogDescription>
-                        <template v-if="pending?.kind === 'single'">
-                            This shall permanently delete
-                            <span class="font-mono">{{ pending.label }}</span>.
-                            The action is irrevocable.
-                        </template>
-                        <template v-else-if="pending?.action === 'delete'">
-                            This shall permanently delete the selected gallery entries.
-                            The action is irrevocable.
-                        </template>
-                        <template v-else-if="pending?.action === 'feature'">
-                            The selected entries shall be promoted to the featured tier.
-                        </template>
-                        <template v-else-if="pending?.action === 'unfeature'">
-                            The selected entries shall be returned to the normal tier.
-                        </template>
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button emphasis="quiet" @click="onConfirmOpenChange(false)">Cancel</Button>
-                    <Button
-                        emphasis="primary"
-                        :tone="
-                            pending?.kind === 'single' || pending?.action === 'delete'
-                                ? 'destructive'
-                                : 'neutral'
-                        "
-                        @click="performConfirmed"
-                    >
-                        <template v-if="pending?.kind === 'single'">Delete</template>
-                        <template v-else-if="pending?.action === 'delete'">Delete</template>
-                        <template v-else-if="pending?.action === 'feature'">Feature</template>
-                        <template v-else-if="pending?.action === 'unfeature'">Unfeature</template>
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <ConfirmDialog
+            :open="confirmation.open.value"
+            :busy="confirmation.busy.value"
+            :title="confirmTitle"
+            :confirm-label="confirmLabel"
+            :tone="pending?.kind === 'single' || pending?.action === 'delete' ? 'destructive' : 'neutral'"
+            @update:open="confirmation.setOpen"
+            @confirm="performConfirmed"
+        >
+            <template v-if="pending?.kind === 'single'">
+                This shall permanently delete
+                <span class="font-mono">{{ pending.label }}</span>.
+                The action is irrevocable.
+            </template>
+            <template v-else-if="pending?.action === 'delete'">
+                This shall permanently delete the selected gallery entries.
+                The action is irrevocable.
+            </template>
+            <template v-else-if="pending?.action === 'feature'">
+                The selected entries shall be promoted to the featured tier.
+            </template>
+            <template v-else-if="pending?.action === 'unfeature'">
+                The selected entries shall be returned to the normal tier.
+            </template>
+        </ConfirmDialog>
     </div>
 </template>
