@@ -8,21 +8,36 @@
             </p>
         </div>
 
-        <!-- ── Preview stage ──────────────────────────────────── -->
-        <MorphShapePreview
-            :current-path="morph.currentPath.value"
-            :phase="morph.phase.value"
-            :harmonic-level="Math.round(morph.harmonicLevel.value)"
-            :shape-name="currentShapeName"
-            :total-ms="morphConfig.totalMs.value"
-            :disabled="isAnimating"
-            @toggle="handleToggle"
-        />
+        <!-- X.F.W14U.misc — UIA-F-115: the morph is the page's dominant
+             content. At >=1024px the stage takes the wider column (about 55%)
+             and stays in view while the controls beside it scroll; below, the
+             stage band is sticky at the top of the scroller, so tuning a
+             control never scrolls the thing it tunes away. UIA-F-254: Export
+             and Reset sit under the stage they act on, at secondary weight. -->
+        <div class="demo-layout">
+            <section class="stage-column" aria-label="Morph stage">
+                <MorphShapePreview
+                    :current-path="morph.currentPath.value"
+                    :phase="morph.phase.value"
+                    :harmonic-level="Math.round(morph.harmonicLevel.value)"
+                    :shape-name="currentShapeName"
+                    :total-ms="morphConfig.totalMs.value"
+                    :disabled="isAnimating"
+                    @toggle="handleToggle"
+                />
+                <div class="stage-actions">
+                    <Button emphasis="secondary" size="sm" @click="morphConfig.copyToClipboard()">
+                        <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" />
+                        {{ morphConfig.status.value === 'success' ? 'Copied' : 'Export' }}
+                    </Button>
+                    <Button emphasis="quiet" size="sm" :disabled="isAnimating" @click="handleReset">
+                        <RotateCcw />
+                        Reset
+                    </Button>
+                </div>
+            </section>
 
-        <!-- ── Controls section ────────────────────────────────── -->
-        <div class="controls-section">
-            <!-- Phase config cards -->
-            <div class="config-grid">
+            <div class="controls-column">
                 <MorphPhaseConfig
                     title="Settle Out"
                     description="Shape degrades to low harmonics"
@@ -52,31 +67,22 @@
                     @update:duration="morphConfig.config.settleInMs = $event"
                     @update:easing="morphConfig.config.settleInEasing = $event"
                 />
-            </div>
 
-            <!-- Harmonic level grid -->
-            <HarmonicLevelGrid
-                :shape="currentShape"
-                :levels="morphConfig.previewLevels.value"
-                :active-level="nearestActiveLevel"
-                :low-level="morphConfig.config.lowLevel"
-                :high-level="morphConfig.config.highLevel"
-                :max-level="morphConfig.maxLevel.value"
-                @update:low-level="morphConfig.config.lowLevel = $event"
-                @update:high-level="morphConfig.config.highLevel = $event"
-                @select="handlePreviewClick"
-            />
-
-            <!-- Export / Reset -->
-            <div class="export-row">
-                <Button emphasis="primary" @click="morphConfig.copyToClipboard()">
-                    <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" />
-                    {{ morphConfig.status.value === 'success' ? 'Copied' : 'Export' }}
-                </Button>
-                <Button emphasis="secondary" :disabled="isAnimating" @click="handleReset">
-                    <RotateCcw />
-                    Reset
-                </Button>
+                <!-- UIA-F-208: mid-morph the tiles are disabled (they were
+                     silently dropped); UIA-F-210: a tile previews its level and
+                     never rewrites the Low/High range. -->
+                <HarmonicLevelGrid
+                    :shape="currentShape"
+                    :levels="morphConfig.previewLevels.value"
+                    :active-level="nearestActiveLevel"
+                    :low-level="morphConfig.config.lowLevel"
+                    :high-level="morphConfig.config.highLevel"
+                    :max-level="morphConfig.maxLevel.value"
+                    :disabled="isAnimating"
+                    @update:low-level="morphConfig.config.lowLevel = $event"
+                    @update:high-level="morphConfig.config.highLevel = $event"
+                    @select="handlePreviewClick"
+                />
             </div>
         </div>
     </div>
@@ -149,41 +155,11 @@ async function handleToggle() {
     }
 }
 
+/* X.F.W14U.misc — UIA-F-210: a preview tile PREVIEWS. It used to snap the
+   nearer of Low/High to the clicked level, silently rewriting the morph's
+   range; the range is the two sliders' alone now. */
 function handlePreviewClick(level: number) {
     if (isAnimating.value) return;
-
-    const { lowLevel, highLevel } = morphConfig.config;
-    const levels = morphConfig.previewLevels.value;
-
-    if (level < lowLevel) {
-        morphConfig.config.lowLevel = level;
-    } else if (level > highLevel) {
-        morphConfig.config.highLevel = level;
-    } else {
-        // Snap based on grid frame adjacency, not pure number distance.
-        const idx = levels.indexOf(level);
-        const lowIdx = levels.indexOf(lowLevel);
-        const highIdx = levels.indexOf(highLevel);
-
-        if (idx !== -1 && lowIdx !== -1 && highIdx !== -1) {
-            const framesToLow = idx - lowIdx;
-            const framesToHigh = highIdx - idx;
-            if (framesToLow <= framesToHigh) {
-                morphConfig.config.lowLevel = level;
-            } else {
-                morphConfig.config.highLevel = level;
-            }
-        } else {
-            const distToLow = level - lowLevel;
-            const distToHigh = highLevel - level;
-            if (distToLow <= distToHigh) {
-                morphConfig.config.lowLevel = level;
-            } else {
-                morphConfig.config.highLevel = level;
-            }
-        }
-    }
-
     morph.setLevel(currentShape.value, level);
 }
 
@@ -201,40 +177,37 @@ function handleReset() {
 
 <style scoped>
 @reference "tailwindcss";
+/* X.F.W14U.misc — UIA-F-254: `.demo-page` was its own scroll container
+   (`overflow-x: hidden` computes `overflow-y: auto`), a second scroller with a
+   rail mid-page inside `<main>`, the app's one scroller. `clip` keeps the
+   horizontal guard without minting a scroll container, which is also what
+   lets the stage stick to `<main>` (UIA-F-115). */
 .demo-page {
-    max-width: 960px;
     width: 100%;
+    max-width: 72rem;
     min-width: 0;
     margin: 0 auto;
-    padding: 0.75rem;
-    padding-bottom: 2rem;
+    padding: var(--space-body);
+    padding-bottom: var(--space-section);
     font-family: var(--font-serif);
-    overflow-x: hidden;
+    overflow-x: clip;
     box-sizing: border-box;
 }
 
 @media (min-width: 640px) {
     .demo-page {
-        padding: 2rem;
-        padding-bottom: 4rem;
+        padding-inline: var(--space-family);
     }
 }
 
 /* ── Header ─────────────────────────────────── */
 
 .demo-header {
-    margin-bottom: 1rem;
-}
-
-@media (min-width: 640px) {
-    .demo-header {
-        margin-bottom: 2rem;
-    }
+    margin-bottom: var(--space-family);
 }
 
 /* X.F.W14.h · OA-45 — the page title and lede on glass's type scale
-   (`--type-display-1`, fluid, so the two breakpoint overrides retire;
-   `--type-body` for the lede), the gap on the spacing scale. Below them every
+   (`--type-display-1`, fluid; `--type-body` for the lede). Below them every
    card title sits on `--type-heading` (MorphPhaseConfig, HarmonicLevelGrid). */
 .demo-title {
     font-family: var(--font-serif);
@@ -252,60 +225,52 @@ function handleReset() {
     max-width: 36rem;
 }
 
-/* ── Controls section ───────────────────────── */
+/* ── Layout (UIA-F-115) ─────────────────────── */
 
-.controls-section {
+.demo-layout {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-family);
 }
 
-@media (min-width: 640px) {
-    .controls-section {
-        gap: 1rem;
-    }
-}
-
-/* ── Config grid ────────────────────────────── */
-
-.config-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.625rem;
-}
-
-@media (min-width: 640px) {
-    .config-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-    }
-}
-
-/* ── Export row ──────────────────────────────── */
-
-.export-row {
+/* Below 1024px the stage band sticks to the top of `<main>` on the page's own
+   ground, so the controls scroll beneath it. */
+.stage-column {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
-    gap: 0.75rem;
-    justify-content: center;
-    padding-top: 0.5rem;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-atom);
+    padding-block: var(--space-atom);
+    background: var(--background);
 }
 
-/* X.F.W4 / SP-6 · FMD-13 (⊕ FMD-28 ⊕ FMD-35) — the two Button re-skins are
-   DELETED, not layered.
+.controls-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-body);
+    min-width: 0;
+}
 
-   `.btn-export` and `.btn-reset` restated, in unlayered scoped CSS, every
-   declaration the producer's `.button` recipe already carries in
-   `@layer components` — display / min-block-size (the coarse-pointer floor via
-   `--control-h-md`) / align-items / justify-content / gap / padding-inline /
-   border / corner radius / colour / font / font-size / font-weight / the
-   six-leg tokenised transition — and then overrode the plate, so the emitted
-   `data-emphasis="primary"`/`"secondary"` was a lie: it selected a recipe the
-   consumer had already erased. `emphasis` now governs both controls, which is
-   also what restores their press, hover and focus paint.
+@media (min-width: 1024px) {
+    .demo-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+        align-items: start;
+    }
 
-   `.btn-icon` pinned the lucide glyphs at a bare 15px against a button that
-   obeys the coarse-pointer floor; the recipe's
-   `.button > svg:not([class*="size-"]) { inline-size: var(--ui-glyph) }` owns
-   glyph sizing and the class name does not opt out of it. Deleted; the class
-   stays on the markup only where it is a hook, and here it was not. */
+    .stage-column {
+        top: var(--space-family);
+        padding-block: 0;
+        background: none;
+    }
+}
+
+.stage-actions {
+    display: flex;
+    gap: var(--space-atom);
+    justify-content: center;
+}
 </style>

@@ -1,10 +1,17 @@
 <template>
+    <!-- X.F.W14U.misc — UIA-F-211: a centred, bounded column (it sat flush left
+         under a centred dock with half the desktop empty); the title on the
+         display rung, the subject names on the heading rung; each subject framed
+         by a glass Card instead of a hand-rolled square. -->
     <div class="extractor-page">
-        <h1>Shape Extractor (internal tool)</h1>
+        <header class="extractor-header">
+            <h1>Shape extractor</h1>
+            <p class="extractor-lede">Internal tool: traces the morph demo's sun and moon into contour data.</p>
+        </header>
 
         <div class="subject-row">
             <!-- Sun SVG -->
-            <div>
+            <Card size="sm" class="subject-card">
                 <h2 :id="sunTitleId">Sun</h2>
                 <svg
                     ref="sunSvgRef"
@@ -66,10 +73,10 @@
                         <circle cx="55" cy="170" r="2.5" fill="red" />
                     </g>
                 </svg>
-            </div>
+            </Card>
 
             <!-- Moon SVG -->
-            <div>
+            <Card size="sm" class="subject-card">
                 <h2 :id="moonTitleId">Moon</h2>
                 <svg
                     ref="moonSvgRef"
@@ -123,44 +130,56 @@
                         <circle cx="155" cy="75" r="1.5" fill="red" />
                     </g>
                 </svg>
-            </div>
+            </Card>
         </div>
 
-        <Button id="extract-btn" emphasis="primary" @click="extractAndOutput">
-            Extract Shape Contours
-        </Button>
-
-        <!-- §2.K · FSE-D-8 — the output was an ANONYMOUS, UNANNOUNCED region:
-             a bare `<pre>` that a keyboard user could not reach even though it
-             scrolls, with no name and no announcement when it filled. It is now
-             a named, focusable region with a polite live announcement of the
-             OUTCOME rather than of the payload — a 128-point contour dump read
-             aloud would be worse than silence, so the status line is the live
-             text and the dump stays inside the region. -->
-        <p id="extract-status" class="output-status" role="status">{{ status }}</p>
-        <pre
-            id="output"
-            ref="outputRef"
-            class="output-log"
-            tabindex="0"
-            role="region"
-            aria-labelledby="extract-status"
-        ></pre>
+        <!-- §2.K · FSE-D-8 — the output is a named, focusable region with a
+             polite live announcement of the OUTCOME rather than of the payload
+             (a 128-point contour dump read aloud would be worse than silence).
+             X.F.W14U.misc — UIA-F-118: the dump was one unwrapped 24,047-char
+             line in an 18px-tall `<pre>` with no surface; it is pretty-printed
+             into a holder on a glass Card at the field radius, with a Copy
+             action. UIA-F-255: each run reports itself in the status line (a
+             second press looked like nothing happened), and the region wears
+             glass's one focus ring. -->
+        <Card size="sm" class="output-card">
+            <div class="output-bar">
+                <Button id="extract-btn" emphasis="primary" size="sm" @click="extractAndOutput">
+                    Extract shape contours
+                </Button>
+                <Button emphasis="secondary" size="sm" :disabled="!output" @click="copyOutput">
+                    <component :is="copyStatus === 'success' ? Check : ClipboardCopy" />
+                    {{ copyStatus === "success" ? "Copied" : "Copy" }}
+                </Button>
+            </div>
+            <p id="extract-status" class="output-status" role="status">{{ status }}</p>
+            <pre
+                id="output"
+                class="output-log focus-ring"
+                tabindex="0"
+                role="region"
+                aria-labelledby="extract-status"
+            >{{ output }}</pre>
+        </Card>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, useId } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Card } from "@mkbabb/glass-ui/card";
+import { useClipboard } from "@mkbabb/glass-ui";
+import { Check, ClipboardCopy } from "@lucide/vue";
 import { generateSunRays, wobbleDiamond, wobbleStarPolygon } from "@mkbabb/pencil-boil";
 import { extractContours } from "@/lib/svg-contours";
 
 const sunSvgRef = ref<SVGSVGElement | null>(null);
 const moonSvgRef = ref<SVGSVGElement | null>(null);
-/* FSE-M-5 — the owned-ref idiom, replacing `document.getElementById("output")`.
-   A global id lookup from inside a component reaches whatever the document
-   happens to hold, which on a route that can mount twice is not this instance. */
-const outputRef = ref<HTMLElement | null>(null);
+/* FSE-M-5 — the owned-ref idiom replaced `document.getElementById("output")`.
+   X.F.W14U.misc — UIA-F-118: the region now renders the pretty-printed text
+   itself (`{{ output }}`), so no element ref is written to. */
+const output = ref("");
+const runs = ref(0);
 const status = ref("Not extracted yet.");
 const sunTitleId = useId();
 const moonTitleId = useId();
@@ -186,17 +205,27 @@ function extractAndOutput() {
     const sunContours = extractContours(sunSvgRef.value, 128);
     const moonContours = extractContours(moonSvgRef.value, 128);
 
-    const output = {
+    const data = {
         sun: sunContours,
         moon: moonContours,
     };
 
-    if (outputRef.value) {
-        outputRef.value.textContent = JSON.stringify(output);
-    }
-    status.value = `Extracted ${sunContours.length} sun and ${moonContours.length} moon contours.`;
-    // Also put it on window for Playwright to access
-    (window as any).__fourierShapeData = output;
+    output.value = JSON.stringify(data, null, 2);
+    runs.value += 1;
+    status.value = `Run ${runs.value}: extracted ${sunContours.length} sun and ${moonContours.length} moon contours.`;
+
+    // UIA-F-255: the Playwright hook is a development affordance; production
+    // bundles never publish it.
+    if (import.meta.env.DEV) (window as any).__fourierShapeData = data;
+}
+
+/* UIA-F-118 — Copy reports its outcome in the status line (the button's face
+   says Copied; a refusal says why). */
+const { status: copyStatus, copy } = useClipboard({ resetMs: 1500 });
+
+async function copyOutput() {
+    const result = await copy(output.value);
+    if (!result.ok) status.value = "Copying failed. Select the output and copy it manually.";
 }
 
 /* FSE-L-M4 — the mount timeout was never cancelled, so a route change inside
@@ -249,67 +278,96 @@ onUnmounted(() => {
    the extractor's high-contrast tracing ink, the row rules it passes, and
    tokenising it would make a debug instrument follow a theme it must not. */
 .extractor-page {
-    padding: 1rem;
+    width: 100%;
+    max-width: 56rem;
+    margin-inline: auto;
+    padding: var(--space-body);
+    box-sizing: border-box;
 }
 
 @media (min-width: 640px) {
     .extractor-page {
-        padding: 2rem;
+        padding: var(--space-family);
     }
 }
 
-/* X.F.W14.h · OA-45 — the tool's headings had no size of their own (the page
-   title and the two subject names all inherited the body's 18.6 px, measured):
-   the title takes `--type-heading`, the subject names `--type-subheading`. */
+/* X.F.W14.h · OA-45 ⊕ X.F.W14U.misc — UIA-F-211: the tool's hierarchy on
+   glass's type scale — the title on the display rung, the lede on body, the
+   subject names on the heading rung. */
+.extractor-header {
+    margin-bottom: var(--space-family);
+}
+
 .extractor-page h1 {
     font-family: var(--font-serif);
-    font-size: var(--type-heading);
-    line-height: var(--type-leading-heading);
+    font-size: var(--type-display-2);
+    line-height: var(--type-leading-display);
     font-weight: 400;
+    margin-bottom: var(--space-atom);
+}
+
+.extractor-lede {
+    font-size: var(--type-body);
+    line-height: var(--type-leading-body);
+    color: var(--muted-foreground);
 }
 
 .extractor-page h2 {
-    font-size: var(--type-subheading);
+    font-family: var(--font-serif);
+    font-size: var(--type-heading);
     line-height: var(--type-leading-heading);
+    font-weight: 600;
     margin-bottom: var(--space-atom);
 }
 
 .subject-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    margin: 1.5rem 0;
+    justify-content: center;
+    gap: var(--space-body);
+    margin-bottom: var(--space-family);
 }
 
-@media (min-width: 640px) {
-    .subject-row {
-        gap: 2rem;
-        margin: 2rem 0;
-    }
+.subject-card {
+    padding: var(--space-body);
 }
 
 .subject-svg {
-    border: 1px solid var(--border);
+    display: block;
     max-width: 100%;
     height: auto;
 }
 
+.output-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-atom);
+    padding: var(--space-body);
+}
+
+.output-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-atom);
+}
+
 .output-status {
-    margin-top: 1rem;
+    font-size: var(--type-small);
+    line-height: var(--type-leading-small);
     color: var(--muted-foreground);
 }
 
+/* UIA-F-118: a multi-line holder at the field radius, on the card's inset
+   ground; long lines scroll inside it rather than wrapping numbers apart. */
 .output-log {
-    margin-top: 0.5rem;
-    max-height: 300px;
+    min-height: 10rem;
+    max-height: 24rem;
     overflow: auto;
-    font-size: 0.75rem;
-    /* The region is focusable (FSE-D-8), so it must show that it is. */
-    border-radius: var(--radius-md);
-}
-
-.output-log:focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: 2px;
+    padding: var(--space-atom) var(--space-body);
+    font-family: var(--font-mono);
+    font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
+    border-radius: var(--radius-field);
+    background: var(--muted);
 }
 </style>

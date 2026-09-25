@@ -9,7 +9,7 @@
                 :min="1"
                 :max="highLevel - 1"
                 :step="1"
-                color="var(--accent-red)"
+                color="var(--viz-fourier)"
                 aria-label="Low harmonic level"
                 @update:model-value="emitLow"
             />
@@ -19,13 +19,23 @@
                 :min="lowLevel + 1"
                 :max="maxLevel"
                 :step="1"
-                color="var(--accent-red)"
+                color="var(--viz-fourier)"
                 aria-label="High harmonic level"
                 @update:model-value="emitHigh"
             />
         </div>
 
-        <div class="grid">
+        <!-- X.F.W14U.misc — UIA-F-210: the strip says where it continues (a
+             fading edge on each side that has more), and a chosen tile is
+             scrolled into view. UIA-F-208: mid-morph the tiles are disabled,
+             not silently dropped. -->
+        <div
+            ref="stripRef"
+            class="grid"
+            :data-more-start="moreStart || undefined"
+            :data-more-end="moreEnd || undefined"
+            @scroll.passive="measureStrip"
+        >
             <Button
                 v-for="level in levels"
                 :key="level"
@@ -35,7 +45,8 @@
                     active: level === activeLevel,
                     'is-bound': level === lowLevel || level === highLevel,
                 }"
-                @click="$emit('select', level)"
+                :disabled="disabled"
+                @click="onSelect(level, $event)"
             >
                 <svg viewBox="0 0 200 200" class="grid-svg">
                     <path
@@ -59,6 +70,8 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref, watch } from "vue";
+import { useResizeObserver } from "@vueuse/core";
 import { Button } from "@mkbabb/glass-ui/button";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import {
@@ -79,6 +92,8 @@ const props = defineProps<{
      * clamp) was a literal that no shipped shape could honour.
      */
     maxLevel: number;
+    /** UIA-F-208: true while a morph runs; the tiles cannot act then. */
+    disabled?: boolean;
 }>();
 
 
@@ -103,6 +118,28 @@ function emitLow(raw: number) {
 function emitHigh(raw: number) {
     const v = Math.max(props.lowLevel + 1, Math.min(props.maxLevel, raw || 1));
     emit("update:highLevel", v);
+}
+
+/* X.F.W14U.misc — UIA-F-210: which edges of the strip hide tiles (the fading
+   edge is painted only there), and a chosen tile is centred in the strip. */
+const stripRef = ref<HTMLElement | null>(null);
+const moreStart = ref(false);
+const moreEnd = ref(false);
+
+function measureStrip() {
+    const el = stripRef.value;
+    if (!el) return;
+    moreStart.value = el.scrollLeft > 1;
+    moreEnd.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+}
+
+onMounted(measureStrip);
+useResizeObserver(stripRef, measureStrip);
+watch(() => props.levels, measureStrip, { flush: "post" });
+
+function onSelect(level: number, event: MouseEvent) {
+    (event.currentTarget as HTMLElement).scrollIntoView({ inline: "center", block: "nearest" });
+    emit("select", level);
 }
 
 
@@ -147,7 +184,6 @@ function getPath(level: number): string {
 </script>
 
 <style scoped>
-@reference "tailwindcss";
 /* X.F.W14.h · OA-45 — the card on the app's one card hierarchy (the same
    rungs as MorphPhaseConfig): inset `--space-family`, the title on
    `--type-heading` serif 600 (glass `ConfiguratorLayer`'s section-header rung), the two control rows (`SliderControl`) spaced by
@@ -193,6 +229,32 @@ function getPath(level: number): string {
     padding-top: 0.375rem;
     padding-bottom: 0.375rem;
     scrollbar-width: thin;
+    /* UIA-F-210 ⊕ UIA-F-254: the fading edge, only on a side that hides tiles
+       (no hard cut at the strip's end, and no feather where nothing continues). */
+    --strip-fade: var(--space-family);
+    --strip-fade-start: 0px;
+    --strip-fade-end: 0px;
+    mask-image: linear-gradient(
+        to right,
+        transparent,
+        #000 var(--strip-fade-start),
+        #000 calc(100% - var(--strip-fade-end)),
+        transparent
+    );
+}
+
+.grid[data-more-start] {
+    --strip-fade-start: var(--strip-fade);
+}
+
+.grid[data-more-end] {
+    --strip-fade-end: var(--strip-fade);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .grid {
+        scroll-behavior: smooth;
+    }
 }
 
 /* X.F.W4 / SP-6 · FMD-13 — the `.grid-cell` re-skin is DELETED down to the
@@ -258,9 +320,12 @@ function getPath(level: number): string {
        overpainted by *bound* at every idle rest. `.active` is now declared last
        and `.is-bound` is qualified `:not(.active)`: the two states are
        independent facts and the selection is the one that wins. */
+    /* X.F.W14U.misc — UIA-F-254: a bound tile (a Low/High endpoint) wore the
+       Legendre basis hue, a colour that says "Legendre" on a page with no
+       Legendre in it. An endpoint is a neutral full-strength edge (the resting
+       edge is a 50% mix), without the selection's red ring. */
     .grid-cell.is-bound:not(.active) {
-        border-color: var(--viz-legendre);
-        box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--viz-legendre) 25%, transparent);
+        border-color: var(--foreground);
     }
 
     .grid-cell.active {
@@ -282,9 +347,13 @@ function getPath(level: number): string {
     }
 }
 
+/* X.F.W14U.misc — UIA-F-57 (the morph remainder, `.shell` R-1): `text-sm` is
+   a dead utility under glass's bridge (`--text-sm: initial`); the label takes
+   the caption rung by name. */
 .grid-label {
     font-family: var(--font-mono);
-    @apply text-sm;
+    font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
     color: var(--muted-foreground);
     transition: color 0.15s;
 }

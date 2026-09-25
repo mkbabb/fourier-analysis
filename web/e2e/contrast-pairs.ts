@@ -129,13 +129,14 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // ── fr-FourierMorphDemo FMD-18 ⊕ FMD-19, the bound/focus blue ──
     // `#60a5fa` measured 2.446:1 on the page and 2.354:1 on `--card` — below
     // 1.4.11 in the light arm at both of its sites. `.a` tokenised both to
-    // `--viz-legendre`.
+    // `--viz-legendre`. X.F.W14U.misc (UIA-F-254) retired the basis hue from
+    // the bound tile: its edge is `--foreground` at full strength now.
     {
         id: "FMD-18[bound-tile-border]",
         what: ".grid-cell.is-bound boundary against the cell fill",
-        stack: ["var(--card)", "var(--viz-legendre)"],
+        stack: ["var(--card)", "var(--foreground)"],
         kind: "non-text",
-        banked: { light: 2.354, dark: 5.485 },
+        banked: {},
         owner: ".a",
     },
     // X.F.W12 `.a` (2026-09-22, COHESION §0as · R-e-2) — `FMD-19` RETIRED.

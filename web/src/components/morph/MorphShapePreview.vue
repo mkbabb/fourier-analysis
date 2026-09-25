@@ -52,18 +52,15 @@
 
                  ⊘ `L-06`’s API re-shape belongs to the re-basing decision and
                  is NOT taken: KISS. The four readings keep the words they had. -->
-            <!-- Desktop: readouts stacked beside button -->
-            <div class="demo-info desktop-info">
-                <Chip :tone="phaseTone" size="sm" class="font-mono">{{ phase }}</Chip>
-                <Metric label="n" :value="harmonicLevel" size="sm" posture="inline" />
-                <Metric label="shape" :value="shapeName" size="sm" posture="inline" />
-                <Metric label="total" :value="totalMs" unit="ms" size="sm" posture="inline" />
-            </div>
         </div>
 
-        <!-- Mobile: the same four readouts, inline below the button -->
-        <div class="demo-info mobile-info">
-            <Chip :tone="phaseTone" size="sm" class="font-mono">{{ phase }}</Chip>
+        <!-- X.F.W14U.misc — UIA-F-117 ⊕ UIA-F-254: ONE readout row (the
+             desktop and mobile copies were the same four readings twice). It
+             never wraps, and the phase chip reserves the measure of its
+             longest word ("settle-out"), so a reading that changes at animation
+             rate cannot move the controls below it. -->
+        <div class="demo-info">
+            <Chip :tone="phaseTone" size="sm" class="phase-chip font-mono">{{ phase }}</Chip>
             <Metric label="n" :value="harmonicLevel" size="sm" posture="inline" />
             <Metric label="shape" :value="shapeName" size="sm" posture="inline" />
             <Metric label="total" :value="totalMs" unit="ms" size="sm" posture="inline" />
@@ -113,29 +110,25 @@ defineEmits<{
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-@media (min-width: 640px) {
-    .demo-stage {
-        align-items: flex-start;
-        margin-bottom: 2rem;
-    }
+    gap: var(--space-atom);
+    width: 100%;
 }
 
 .stage-row {
     display: flex;
-    align-items: center;
     justify-content: center;
-    gap: 2rem;
+    width: 100%;
 }
 
+/* X.F.W14U.misc — UIA-F-115: the stage is the page's dominant content. It was
+   a fixed 120/180px square; it now takes its column up to a bound — a third of
+   the viewport's height below 1024px (the sticky band stays under ~40vh with
+   its readouts), 26rem beside the controls. */
 .morph-button {
-    width: 120px;
-    height: 120px;
+    width: min(100%, 30vh);
+    aspect-ratio: 1;
     cursor: pointer;
-    padding: 0.625rem;
+    padding: var(--space-body);
     flex-shrink: 0;
     /* FMD-28 — tokenised: the literals restated the producer's own registers. */
     transition: border-color var(--duration-fast) var(--ease-standard),
@@ -143,12 +136,16 @@ defineEmits<{
         transform var(--duration-fast) var(--ease-standard);
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
     .morph-button {
-        width: 180px;
-        height: 180px;
-        padding: 1rem;
+        width: min(100%, 26rem);
+        padding: var(--space-family);
     }
+}
+
+.morph-button :deep(svg) {
+    width: 100%;
+    height: 100%;
 }
 
 /* X.F.W4 / SP-6 · FMD-N3 (⊕ FMD-27) — the shadow COMPOSES, it does not replace.
@@ -203,29 +200,21 @@ defineEmits<{
     cursor: wait;
 }
 
-/* ── Info chips ─────────────────────────────── */
+/* ── Readouts (UIA-F-117) ───────────────────── */
 
-.desktop-info {
-    display: none;
-}
-
-.mobile-info {
+.demo-info {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.375rem;
+    flex-wrap: nowrap;
+    align-items: center;
     justify-content: center;
+    gap: var(--space-atom);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
-@media (min-width: 640px) {
-    .desktop-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .mobile-info {
-        display: none;
-    }
+.phase-chip {
+    min-inline-size: 11ch;
+    justify-content: center;
 }
 
 /* `FMD-12` — the eight `.info-chip` rules are DELETED with the divs they

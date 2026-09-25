@@ -59,16 +59,13 @@ const tabs = [
     { label: "Morph", value: "/morph", icon: Shuffle },
 ];
 
-/** The section the route belongs to; `null` off the five (404, internal tools). */
-const activeTab = computed<string | null>(() => {
-    const p = route.path;
-    if (p === "/" || p === "/paper") return "/paper";
-    if (p === "/visualize" || p.startsWith("/s/") || p.startsWith("/w/") || p.startsWith("/v/")) return "/visualize";
-    if (p === "/equation") return "/equation";
-    if (p === "/gallery") return "/gallery";
-    if (p === "/morph") return "/morph";
-    return null;
-});
+/**
+ * The section the route belongs to; `null` off the five (404, internal tools).
+ * X.F.W14U.misc — UIA-F-119 / UIA-F-212: read from the route's `meta.tab`
+ * (declared once, in the router), not a path-prefix ladder that missed the
+ * trailing-slash and alias forms.
+ */
+const activeTab = computed<string | null>(() => route.meta.tab ?? null);
 
 const activeTabData = computed(() => tabs.find((t) => t.value === activeTab.value) ?? null);
 

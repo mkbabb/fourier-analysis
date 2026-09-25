@@ -1,11 +1,12 @@
 import { ref, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { safeGetItem, safeSetItem, safeStorage } from "@/composables/useSafeStorage";
 
 const VIEW_STATE_KEY = "fourier_visualizer_view_state";
 
 function loadViewState(): { editing?: boolean; overlay?: boolean; equation?: boolean } {
     try {
-        return JSON.parse(localStorage.getItem(VIEW_STATE_KEY) ?? "{}");
+        return JSON.parse(safeGetItem(safeStorage("local"), VIEW_STATE_KEY) ?? "{}");
     } catch {
         return {};
     }
@@ -41,7 +42,9 @@ export function useViewState() {
     });
 
     watch([isEditing, showImageOverlay, showEquation], () => {
-        localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({
+        // X.F.W14U.misc — UIA-F-213: the write goes through the safe accessor
+        // (it threw on every toggle with site data blocked).
+        safeSetItem(safeStorage("local"), VIEW_STATE_KEY, JSON.stringify({
             editing: isEditing.value,
             overlay: showImageOverlay.value,
             equation: showEquation.value,

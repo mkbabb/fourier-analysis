@@ -134,6 +134,10 @@ async function handleLogout() {
     try {
         await logout();
         toast("Logged out", "info");
+    } catch {
+        // UIA-F-256 (the logout limb): the store rethrows only a failure that
+        // left the server session live; the account stays signed in and says so.
+        toast("Could not log out: the session is still active. Try again.", "error");
     } finally {
         loggingOut.value = false;
     }

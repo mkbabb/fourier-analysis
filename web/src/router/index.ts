@@ -1,6 +1,27 @@
 import { nextTick } from "vue";
 import { createRouter, createWebHistory, type RouteLocationNormalized } from "vue-router";
 import { supportsViewTransitions } from "@mkbabb/glass-ui";
+import { getImageMeta, getVisualization } from "@/lib/api";
+import { ApiProblem } from "@/lib/api-problem";
+import { safeGetItem, safeSetItem, safeStorage } from "@/composables/useSafeStorage";
+
+/** The five sections the dock names; a route's `meta.tab` is one of them, or absent. */
+export type SectionTab = "/paper" | "/visualize" | "/gallery" | "/equation" | "/morph";
+
+declare module "vue-router" {
+    interface RouteMeta {
+        title?: string;
+        description?: string;
+        noindex?: boolean;
+        /**
+         * X.F.W14U.misc — UIA-F-119 / UIA-F-212: the section this route belongs
+         * to, declared once, here. The dock's current section and the
+         * remembered tab both read it; a route without one (the internal tool,
+         * the not-found page) belongs to no section.
+         */
+        tab?: SectionTab;
+    }
+}
 
 // I.ε — the `/w/`↔`/v/` route-morph. The worked-example (`/w/:imageSlug`) and
 // the saved visualization (`/v/:visualizationSlug`) both render
@@ -20,21 +41,72 @@ const prefersReducedMotion = () =>
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-/** True when the from→to pair is a visualization-surface morph worth animating. */
+const VIZ_ROUTES = new Set(["visualization", "workspace"]);
+/** The routes that morph with the visualization surface (I.ε; UIA-F-96: the gallery's card opens the saved entity). */
+const MORPH_ROUTES = new Set([...VIZ_ROUTES, "gallery"]);
+
+/** The slug a visualization-surface route addresses (`/visualize` alone carries none). */
+function vizSlug(r: RouteLocationNormalized): string | undefined {
+    return (r.params.visualizationSlug ?? r.params.imageSlug) as string | undefined;
+}
+
+/**
+ * True when the from→to pair is a visualization-surface morph worth animating.
+ *
+ * X.F.W14U.misc — UIA-F-246: one view transition per navigation. A
+ * visualization route that carries no slug (`/visualize`) is not a
+ * destination: the loader `replace()`s it with the loaded workspace's `/w/`
+ * at once, and a transition opened for it was aborted by the one that
+ * replace opened. The transition is opened for the navigation that lands.
+ */
 function isVizMorph(
     to: RouteLocationNormalized,
     from: RouteLocationNormalized,
 ): boolean {
-    const vizNames = new Set(["visualization", "workspace"]);
-    return vizNames.has(to.name as string) && vizNames.has(from.name as string);
+    if (!MORPH_ROUTES.has(to.name as string) || !MORPH_ROUTES.has(from.name as string)) return false;
+    if (!VIZ_ROUTES.has(to.name as string) && !VIZ_ROUTES.has(from.name as string)) return false;
+    if (VIZ_ROUTES.has(to.name as string) && !vizSlug(to)) return false;
+    return to.fullPath !== from.fullPath;
 }
 
+/**
+ * X.F.W14U.misc — UIA-F-212: the remembered tab has ONE writer (`afterEach`,
+ * from `meta.tab`) and one reader (the `/` redirect), both through the safe
+ * accessor (UIA-F-120: with site data blocked, reading `localStorage` itself
+ * throws; losing storage only means no remembered tab).
+ */
 const SAVED_TAB_KEY = "fourier_active_tab";
-const VALID_TABS = new Set(["/paper", "/visualize", "/morph", "/gallery", "/equation"]);
+const DEFAULT_TAB: SectionTab = "/paper";
 
 function getSavedTab(): string {
-    const saved = localStorage.getItem(SAVED_TAB_KEY);
-    return saved && VALID_TABS.has(saved) ? saved : "/paper";
+    const saved = safeGetItem(safeStorage("local"), SAVED_TAB_KEY);
+    const tabs = new Set(router.getRoutes().map((r) => r.meta.tab));
+    return saved && tabs.has(saved as SectionTab) ? saved : DEFAULT_TAB;
+}
+
+const isNotFound = (e: unknown) => e instanceof ApiProblem && e.status === 404;
+
+/**
+ * X.F.W14U.misc — UIA-F-246: `/s/:slug` resolves to the entity it names,
+ * instead of redirecting blindly to `/w/`. A saved visualization's slug opens
+ * `/v/`; an image's opens its working session, `/w/`; a slug that names
+ * neither stays and renders the not-found card. A failure other than 404
+ * opens `/v/`, whose loader reports it.
+ */
+async function resolveShareSlug(to: RouteLocationNormalized): Promise<string | true> {
+    const slug = to.params.slug as string;
+    try {
+        await getVisualization(slug);
+        return `/v/${slug}`;
+    } catch (e) {
+        if (!isNotFound(e)) return `/v/${slug}`;
+    }
+    try {
+        await getImageMeta(slug);
+        return `/w/${slug}`;
+    } catch (e) {
+        return isNotFound(e) ? true : `/w/${slug}`;
+    }
 }
 
 export const router = createRouter({
@@ -42,13 +114,14 @@ export const router = createRouter({
     routes: [
         {
             path: "/",
-            redirect: () => getSavedTab(),
+            redirect: getSavedTab,
         },
         {
             path: "/paper",
             name: "paper",
             component: () => import("@/components/paper/PaperView.vue"),
             meta: {
+                tab: "/paper",
                 title: "Paper — Fourier Analysis",
                 description:
                     "The full typeset treatise: deriving the Fourier transform through the dual lenses of linear algebra and complex analysis — Sturm–Liouville theory, Hilbert spaces, and the spectral theorem.",
@@ -64,6 +137,7 @@ export const router = createRouter({
             component: () =>
                 import("@/components/visualization/VisualizationView.vue"),
             meta: {
+                tab: "/visualize",
                 title: "Visualize — Fourier Analysis",
                 description:
                     "Decompose any image's contour into a chain of rotating epicycles and watch the Fourier series redraw it stroke by stroke.",
@@ -76,6 +150,7 @@ export const router = createRouter({
             component: () =>
                 import("@/components/visualization/VisualizationView.vue"),
             meta: {
+                tab: "/visualize",
                 title: "Visualize — Fourier Analysis",
                 description:
                     "Decompose any image's contour into a chain of rotating epicycles and watch the Fourier series redraw it stroke by stroke.",
@@ -87,6 +162,7 @@ export const router = createRouter({
             component: () =>
                 import("@/components/visualization/GalleryView.vue"),
             meta: {
+                tab: "/gallery",
                 title: "Gallery — Fourier Analysis",
                 description:
                     "A curated gallery of community epicycle visualizations — saved Fourier decompositions of hand-traced contours.",
@@ -97,6 +173,7 @@ export const router = createRouter({
             name: "equation",
             component: () => import("@/components/equation/EquationView.vue"),
             meta: {
+                tab: "/equation",
                 title: "Equation Explorer — Fourier Analysis",
                 description:
                     "Enter an arbitrary function and watch its Fourier, Chebyshev, and Legendre series converge — coefficients, partial sums, and the convergence plot rendered live.",
@@ -107,6 +184,7 @@ export const router = createRouter({
             name: "morph",
             component: () => import("@/components/morph/FourierMorphDemo.vue"),
             meta: {
+                tab: "/morph",
                 title: "Morph — Fourier Analysis",
                 description:
                     "Morph one shape into another through their shared Fourier harmonic basis — an interactive study of epicycle interpolation.",
@@ -116,10 +194,23 @@ export const router = createRouter({
             path: "/demo/shape-extractor",
             name: "shape-extractor",
             component: () => import("@/components/morph/FourierShapeExtractor.vue"),
+            // UIA-F-255: an internal tool — titled, and asked out of the index;
+            // UIA-F-119: it belongs to no section.
+            meta: {
+                title: "Shape extractor (internal) — Fourier Analysis",
+                description: "An internal tool that traces the morph demo's sun and moon into contour data.",
+                noindex: true,
+            },
         },
         {
             path: "/s/:slug",
-            redirect: (to) => `/w/${to.params.slug}`,
+            name: "share",
+            component: () => import("@/components/shared/NotFoundCard.vue"),
+            beforeEnter: resolveShareSlug,
+            meta: {
+                title: "Not found — Fourier Analysis",
+                noindex: true,
+            },
         },
         // X.F.W14.u — UIA-F-50: the last route. An unknown path rendered an
         // empty `<main>` under the generic title (a soft 404); it now renders
@@ -213,18 +304,7 @@ router.afterEach((to: RouteLocationNormalized) => {
         void nextTick(release);
     }
 
-    const tab = to.path;
-    if (
-        tab === "/paper" ||
-        tab === "/visualize" ||
-        tab === "/morph" ||
-        tab === "/gallery" ||
-        tab === "/equation"
-    ) {
-        localStorage.setItem("fourier_active_tab", tab);
-    } else if (tab.startsWith("/w/")) {
-        localStorage.setItem("fourier_active_tab", "/visualize");
-    }
+    if (to.meta.tab) safeSetItem(safeStorage("local"), SAVED_TAB_KEY, to.meta.tab);
 });
 
 export default router;
