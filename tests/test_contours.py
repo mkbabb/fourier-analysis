@@ -57,8 +57,12 @@ class TestExtractContours:
         contours = extract_contours(img_path, ContourConfig(strategy=ContourStrategy.THRESHOLD, resize=None))
 
         assert len(contours) >= 1
-        biggest = max(contours, key=len)
-        assert len(biggest) > 50
+        biggest = max(contours, key=lambda c: np.abs(np.diff(c)).sum())
+        # The simplifier keeps as few points as the tolerance allows (CT-3), so
+        # judge the shape, not the point count: a closed circle of radius ~80.
+        assert abs(biggest[0] - biggest[-1]) < 1e-9
+        assert np.allclose(np.abs(biggest), 80, atol=2.5)
+        assert abs(np.abs(np.diff(biggest)).sum() - 2 * np.pi * 80) < 0.03 * 2 * np.pi * 80
 
     def test_canny_strategy_on_gradient_image(self, tmp_path: Path):
         """An image with clear edges should yield contours via CANNY."""
@@ -238,11 +242,12 @@ class TestExtractContours:
             assert result.diagnostics.max_jump < 1000, image_path.name
             assert result.diagnostics.total_points > 400, image_path.name
 
-    def test_animal_corpus_preserves_subject_extent_or_internal_structure(self):
-        animals_dir = Path(__file__).resolve().parents[1] / "assets" / "animals"
+    def test_corpus_preserves_subject_extent_or_internal_structure(self):
+        assets = Path(__file__).resolve().parents[1] / "assets"
 
-        for name in ["golden-retriever.webp", "giraffe.webp", "llama-1.webp", "sun.png"]:
-            result = extract_contours_result(animals_dir / name)
+        for name in ["portraits/daraksha.jpg", "animals/golden-retriever.webp",
+                     "animals/giraffe.webp", "animals/llama-1.webp", "animals/sun.png"]:
+            result = extract_contours_result(assets / name)
 
             assert result.contours
             assert (
@@ -463,3 +468,117 @@ class TestPipelineRefinements:
         """Default resize should now be 1024."""
         config = ContourConfig().normalized()
         assert config.resize == 1024
+
+
+def _segment_distance(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Distance from complex points ``p`` to the segments ``a[i]-b[i]``."""
+    ab = b - a
+    t = np.clip(((p - a) * np.conj(ab)).real / np.maximum(np.abs(ab) ** 2, 1e-12), 0, 1)
+    return np.abs(p - (a + t * ab))
+
+
+class TestSimplifyAndOpenStrokes:
+    """F.CT CT-3: a bounded simplifier and no force-closing."""
+
+    def test_douglas_peucker_bounds_the_deviation(self):
+        from fourier_analysis.contours.processing import _simplify_contour
+
+        rng = np.random.default_rng(0)
+        t = np.linspace(0, 2 * np.pi, 800)
+        # A gentle arc: every per-step turn is tiny, the total bend is not.
+        z = 300 * np.exp(1j * t / 4) + rng.normal(0, 0.1, t.size)
+        s = _simplify_contour(z, tolerance=0.5)
+        assert len(s) < len(z) / 4
+        assert s[0] == z[0] and s[-1] == z[-1]
+        # Every dropped point is within the tolerance of the simplified polyline.
+        d = np.min([_segment_distance(z, a, b) for a, b in zip(s[:-1], s[1:])], axis=0)
+        assert d.max() <= 0.5 + 1e-9
+
+    def test_closed_loop_stays_closed_and_bounded(self):
+        from fourier_analysis.contours.processing import _simplify_contour
+
+        t = np.linspace(0, 2 * np.pi, 501)
+        z = 100 * np.exp(1j * t)
+        z[-1] = z[0]
+        s = _simplify_contour(z, tolerance=0.5)
+        assert s[0] == s[-1] and 8 < len(s) < 100
+        d = np.min([_segment_distance(z, a, b) for a, b in zip(s[:-1], s[1:])], axis=0)
+        assert d.max() <= 0.5 + 1e-9
+
+    def test_open_trace_is_never_force_closed(self, tmp_path: Path):
+        from fourier_analysis.contours.image import load_image_inputs
+        from fourier_analysis.contours.processing import _postprocess_raw_contours
+
+        config = ContourConfig(resize=None, min_contour_area=0.0).normalized()
+        image = load_image_inputs(_save_image(np.zeros((200, 200)), tmp_path / "z.png"), config)
+        arc = np.column_stack([100 + 60 * np.sin(np.linspace(0, 3, 300)),
+                               100 + 60 * np.cos(np.linspace(0, 3, 300))])
+        (z,), (area,) = _postprocess_raw_contours([arc], image, config)
+        assert abs(z[0] - z[-1]) > 50  # no closing chord appended
+        assert area == 0.0
+        assert np.abs(np.diff(z)).max() < 20  # no segment jumps across the arc
+
+    def test_frame_cropped_mask_gives_open_strokes_off_the_frame(self, tmp_path: Path):
+        from fourier_analysis.contours.image import load_image_inputs
+        from fourier_analysis.contours.isolation import subject_silhouettes
+
+        mask = np.zeros((240, 200), dtype=bool)
+        yy, xx = np.ogrid[:240, :200]
+        mask[((xx - 100) ** 2 + (yy - 60) ** 2 < 50**2) | ((yy > 100) & (np.abs(xx - 100) < 80))] = True
+        # ... plus a second, separate component clear of the frame.
+        mask[(xx - 30) ** 2 + (yy - 30) ** 2 < 15**2] = True
+        config = ContourConfig(resize=None, min_contour_area=0.0).normalized()
+        image = load_image_inputs(_save_image(mask * 255, tmp_path / "m.png"), config)
+        strokes = subject_silhouettes(mask, image, config)
+
+        closed = [s for s in strokes if abs(s[0] - s[-1]) <= 1e-9]
+        opened = [s for s in strokes if abs(s[0] - s[-1]) > 1e-9]
+        assert len(closed) == 1 and len(opened) == 1  # the island loop; the cropped body
+        rc = np.concatenate([np.column_stack([120 - s.imag, s.real + 100]) for s in strokes])
+        assert rc[:, 0].max() < 240 - 3  # nothing drawn along the bottom frame
+        # No chord: every segment's midpoint is on the mask's boundary.
+        from scipy import ndimage as ndi
+
+        edge = mask & ~ndi.binary_erosion(mask, border_value=1)
+        dist = ndi.distance_transform_edt(~edge)
+        for s in strokes:
+            mid = (s[:-1] + s[1:]) / 2
+            r = np.clip(np.rint(120 - mid.imag).astype(int), 0, 239)
+            c = np.clip(np.rint(mid.real + 100).astype(int), 0, 199)
+            assert dist[r, c].max() <= 2.0
+
+
+FRAME_TOUCHING = ("portraits/daraksha.jpg", "portraits/euler.jpg", "portraits/chef.png",
+                  "animals/giraffe.webp", "animals/llama-1.webp",
+                  "animals/sponge-pineapple.JPG", "animals/sponge-scared.jpeg")
+
+
+@pytest.mark.parametrize("rel", FRAME_TOUCHING)
+def test_silhouette_traces_the_mask_boundary_and_never_the_frame(rel: str):
+    """CT-3 on the public set: every silhouette segment lies on the subject mask's
+    boundary (no chord through the body) and no silhouette ink is on the frame."""
+    from scipy import ndimage as ndi
+
+    from fourier_analysis.contours.image import load_image_inputs
+    from fourier_analysis.contours.isolation import isolate_subject
+    from fourier_analysis.contours.support import band_px
+
+    path = Path(__file__).resolve().parents[1] / "assets" / rel
+    config = ContourConfig().normalized()
+    image = load_image_inputs(path, config)
+    iso = isolate_subject(image, config)
+    mask = iso.subject_mask
+    h, w = mask.shape
+    assert iso.silhouettes
+
+    boundary = mask & ~ndi.binary_erosion(mask, border_value=1)
+    dist = ndi.distance_transform_edt(~boundary)
+    tol = band_px(mask.shape)
+    for s in iso.silhouettes:
+        mid = (s[:-1] + s[1:]) / 2
+        r = np.clip(np.rint(h / 2 - mid.imag).astype(int), 0, h - 1)
+        c = np.clip(np.rint(mid.real + w / 2).astype(int), 0, w - 1)
+        assert dist[r, c].max() <= tol, rel
+        rows, cols = h / 2 - s.imag, s.real + w / 2
+        assert rows.min() > 2 and cols.min() > 2, rel
+        assert rows.max() < h - 3 and cols.max() < w - 3, rel

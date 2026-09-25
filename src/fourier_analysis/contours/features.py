@@ -15,6 +15,7 @@ from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.isolation import SubjectIsolation
 from fourier_analysis.contours.models import ContourConfig
 from fourier_analysis.contours.processing import _postprocess_raw_contours
+from fourier_analysis.contours.support import band_window, clip_to_subject, subject_edge_field
 
 
 def extract_feature_contours(
@@ -27,7 +28,9 @@ def extract_feature_contours(
     """Extract edge-density contours that trace facial features.
 
     Builds a density field from max(gaussian(color_gradient), gaussian(canny)),
-    extracts iso-contours at 9 levels, filters to feature-scale band,
+    weighted by soft saliency and scaled to the subject (``subject_edge_field``),
+    extracts iso-contours at 13 levels, clips each to the subject band (its
+    in-subject runs survive as open strokes), filters to feature-scale band,
     deduplicates against structure contours, sorts by compactness,
     enforces spatial diversity, and returns up to *budget* contours.
     """
@@ -53,10 +56,9 @@ def extract_feature_contours(
         )
         density = np.maximum(density, canny_density)
 
-    # Normalize to [0, 1].
-    d_max = float(density.max())
-    if d_max > 0:
-        density = density / d_max
+    # Scale to the subject, not the global maximum: a bright background edge
+    # must not set the levels, and saliency fades background edges out.
+    density = subject_edge_field(density, isolation.saliency_map, isolation.subject_mask)
 
     # Extract contours at multiple density levels (A3: 13 levels).
     levels = [0.04, 0.07, 0.10, 0.15, 0.20, 0.27, 0.35, 0.44, 0.54, 0.64, 0.74, 0.84, 0.92]
@@ -73,9 +75,11 @@ def extract_feature_contours(
     else:
         max_feature_area = image.image_area * 0.15
 
+    window = band_window(isolation.subject_band, density.shape)
+    offset = np.array([window[0].start, window[1].start], dtype=np.float64)
     raw_contours: list[NDArray[np.floating]] = []
     for level in levels:
-        contours = measure.find_contours(density, level=level)
+        contours = [c + offset for c in measure.find_contours(density[window], level=level)]
         for c in contours:
             if len(c) < min_length:
                 continue
@@ -84,13 +88,11 @@ def extract_feature_contours(
             bbox_area = (rows.max() - rows.min()) * (cols.max() - cols.min())
             if bbox_area < min_bbox_area:
                 continue
-            # Filter by subject overlap.
-            if isolation.subject_mask is not None:
-                r = np.clip(c[:, 0].astype(int), 0, isolation.subject_mask.shape[0] - 1)
-                cl = np.clip(c[:, 1].astype(int), 0, isolation.subject_mask.shape[1] - 1)
-                if np.mean(isolation.subject_mask[r, cl]) <= 0.5:
-                    continue
-            raw_contours.append(c)
+            # Keep only the in-subject runs: never a whole-contour vote.
+            if isolation.subject_band is not None:
+                raw_contours.extend(clip_to_subject(c, isolation.subject_band, min_length))
+            else:
+                raw_contours.append(c)
 
     # Postprocess: convert to complex, smooth, resample, simplify, dedup.
     # Use uncapped max_contours so small features survive.
@@ -98,17 +100,8 @@ def extract_feature_contours(
     uncapped_config = _replace(config, max_contours=None)
     processed, areas = _postprocess_raw_contours(raw_contours, image, uncapped_config)
 
-    # Filter to feature-scale band (A4: compactness guard for small features).
-    candidates: list[tuple[NDArray[np.complex128], float]] = []
-    for c, a in zip(processed, areas):
-        if a > max_feature_area:
-            continue
-        if a < min_feature_area_hard:
-            continue
-        if a < min_feature_area_soft:
-            if _compactness(c, a) < 0.15:
-                continue
-        candidates.append((c, a))
+    candidates = _feature_scale(processed, areas, min_feature_area_hard,
+                                min_feature_area_soft, max_feature_area)
 
     # Merge in region-based feature candidates (dark/light patches).
     region_candidates = _extract_region_features(image, isolation, config)
@@ -136,19 +129,20 @@ def extract_feature_contours(
     # Sort by compactness × proximity to subject center.
     # Features near the subject centroid (face area) rank higher than
     # peripheral features (background objects, ground).
-    if isolation.silhouette is not None and isolation.silhouette_area > 0:
-        ref_center = complex(
-            float(isolation.silhouette.real.mean()),
-            float(isolation.silhouette.imag.mean()),
-        )
+    if isolation.subject_mask is not None and isolation.silhouette_area > 0:
+        rows, cols = np.nonzero(isolation.subject_mask)
+        h, w = isolation.subject_mask.shape
+        ref_center = complex(float(cols.mean()) - w / 2, h / 2 - float(rows.mean()))
         subject_radius = max(1.0, (isolation.silhouette_area / np.pi) ** 0.5)
     else:
         ref_center = 0j
         subject_radius = image.diagonal * 0.5
 
     def _compactness_key(pair: tuple[NDArray[np.complex128], float]) -> float:
+        # An open stroke has no area, so no compactness: closed features
+        # (eyes, nostrils, mouths) rank first, open runs after them.
         contour, area = pair
-        comp = _compactness(contour, area)
+        comp = _compactness(contour, area) if area > 0 else 0.0
         center = complex(float(contour.real.mean()), float(contour.imag.mean()))
         dist = abs(center - ref_center)
         proximity = max(0.5, 1.0 - 0.5 * (dist / subject_radius))
@@ -243,15 +237,34 @@ def _extract_region_features(
     uncapped_config = _replace(config, max_contours=None)
     processed, areas = _postprocess_raw_contours(raw_contours, image, uncapped_config)
 
-    candidates: list[tuple[NDArray[np.complex128], float]] = []
-    for c, a in zip(processed, areas):
-        if a > max_feature_area:
-            continue
-        if a < min_feature_area_hard:
-            continue
-        if a < min_feature_area_soft:
-            if _compactness(c, a) < 0.15:
-                continue
-        candidates.append((c, a))
+    return _feature_scale(processed, areas, min_feature_area_hard,
+                          min_feature_area_soft, max_feature_area)
 
-    return candidates
+
+def _feature_scale(
+    processed: list[NDArray[np.complex128]],
+    areas: list[float],
+    min_area_hard: float,
+    min_area_soft: float,
+    max_area: float,
+) -> list[tuple[NDArray[np.complex128], float]]:
+    """The feature-scale band (A4: compactness guard for small loops).
+
+    A closed loop is judged by its area.  An open stroke (area 0.0, already
+    length-filtered) is judged by the loop its length could enclose, so a stroke
+    too long to be a feature is rejected like a loop too large to be one.
+    """
+    out: list[tuple[NDArray[np.complex128], float]] = []
+    for c, a in zip(processed, areas):
+        if a == 0.0:
+            length = float(np.abs(np.diff(c)).sum())
+            if length**2 / (4 * np.pi) > max_area:
+                continue
+            out.append((c, a))
+            continue
+        if a > max_area or a < min_area_hard:
+            continue
+        if a < min_area_soft and _compactness(c, a) < 0.15:
+            continue
+        out.append((c, a))
+    return out

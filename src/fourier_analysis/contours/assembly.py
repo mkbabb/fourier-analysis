@@ -5,9 +5,10 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from fourier_analysis.contours.geometry import _contours_are_near_duplicates
+from fourier_analysis.contours.geometry import _contours_are_near_duplicates, _polygon_area
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.isolation import SubjectIsolation
+from fourier_analysis.contours.support import REDUNDANT_OVERLAP, InkCoverage, band_px
 
 
 def assemble_contours(
@@ -19,24 +20,40 @@ def assemble_contours(
 ) -> list[NDArray[np.complex128]]:
     """Deterministically merge silhouette, structure, and feature contours.
 
-    1. Always prepend silhouette (ML mask boundary traces the true subject outline).
-    2. Add structure contours (up to half remaining budget), deduped against silhouette.
+    1. Always prepend the silhouettes (the ML mask boundary: every significant
+       component, open where the frame crops it).
+    2. Add structure contours (their share of the remaining budget), deduped
+       against what is already merged.
     3. Add feature contours (remaining budget).
     4. If either pool underflows, surplus goes to the other.
-    5. Spatial outlier pruning using silhouette bbox + 25% margin.
+
+    Structure and features are already clipped to the subject (``support``),
+    so there is no centroid pruning pass.
     """
     merged: list[tuple[NDArray[np.complex128], float]] = []
+    coverage = InkCoverage(band_px(image.grayscale.shape))
 
-    # Always include silhouette — it traces the actual subject boundary
+    def is_dup(c: NDArray[np.complex128], a: float) -> bool:
+        """A near-duplicate loop, or a stroke that mostly repeats drawn ink."""
+        return coverage.overlap(c) > REDUNDANT_OVERLAP or any(
+            _contours_are_near_duplicates(c, a, mc, ma, image) for mc, ma in merged
+        )
+
+    def take(c: NDArray[np.complex128], a: float) -> None:
+        merged.append((c, a))
+        coverage.add(c)
+
+    # Always include the silhouettes — they trace the actual subject boundary
     # (including thin features like sun rays, giraffe legs, etc.) that
     # iso-intensity structure contours may smooth over.
-    if isolation.silhouette is not None:
-        merged.append((isolation.silhouette, isolation.silhouette_area))
+    for silhouette in isolation.silhouettes:
+        closed = len(silhouette) > 2 and abs(silhouette[0] - silhouette[-1]) <= 1e-9
+        take(silhouette, _polygon_area(silhouette) if closed else 0.0)
 
     # Proportional budget split based on actual yield from each stage.
     # When structure yields many contours, split is ~even.
     # When structure yields few (e.g. post-dedup uniform subjects), features get more.
-    remaining = max_contours - len(merged)
+    remaining = max(0, max_contours - len(merged))
     total_available = len(structure) + len(features)
     if total_available > 0:
         structure_budget = max(1, round(remaining * len(structure) / total_available))
@@ -50,12 +67,8 @@ def assemble_contours(
     for c, a in structure:
         if structure_added >= structure_budget:
             break
-        is_dup = any(
-            _contours_are_near_duplicates(c, a, mc, ma, image)
-            for mc, ma in merged
-        )
-        if not is_dup:
-            merged.append((c, a))
+        if not is_dup(c, a):
+            take(c, a)
             structure_added += 1
 
     # Surplus from structure underflow goes to features.
@@ -66,12 +79,8 @@ def assemble_contours(
     for c, a in features:
         if feature_added >= feature_budget:
             break
-        is_dup = any(
-            _contours_are_near_duplicates(c, a, mc, ma, image)
-            for mc, ma in merged
-        )
-        if not is_dup:
-            merged.append((c, a))
+        if not is_dup(c, a):
+            take(c, a)
             feature_added += 1
 
     # Surplus from feature underflow goes back to structure.
@@ -80,58 +89,9 @@ def assemble_contours(
         for c, a in structure[structure_added:]:
             if extra_structure <= 0:
                 break
-            is_dup = any(
-                _contours_are_near_duplicates(c, a, mc, ma, image)
-                for mc, ma in merged
-            )
-            if not is_dup:
-                merged.append((c, a))
+            if not is_dup(c, a):
+                take(c, a)
                 extra_structure -= 1
-
-    # Spatial outlier pruning using silhouette bbox if available.
-    merged = _prune_spatial_outliers(merged, isolation)
 
     return [c for c, _ in merged]
 
-
-def _prune_spatial_outliers(
-    contours: list[tuple[NDArray[np.complex128], float]],
-    isolation: SubjectIsolation,
-) -> list[tuple[NDArray[np.complex128], float]]:
-    """Remove contours whose centroid falls outside the reference bbox + 25% margin.
-
-    Uses the union of silhouette bbox and top-3 contour bboxes.  This is robust
-    when the silhouette only covers part of the subject (e.g. ML saliency
-    underestimates extent) — the top-3 structure contours expand the reference.
-    """
-    if len(contours) <= 3:
-        return contours
-
-    # Start with top-3 contour bboxes (by area, which is how they're sorted).
-    n_ref = min(3, len(contours))
-    re_min = min(float(c.real.min()) for c, _ in contours[:n_ref])
-    re_max = max(float(c.real.max()) for c, _ in contours[:n_ref])
-    im_min = min(float(c.imag.min()) for c, _ in contours[:n_ref])
-    im_max = max(float(c.imag.max()) for c, _ in contours[:n_ref])
-
-    # Expand with silhouette bbox if available.
-    if isolation.silhouette is not None:
-        s = isolation.silhouette
-        re_min = min(re_min, float(s.real.min()))
-        re_max = max(re_max, float(s.real.max()))
-        im_min = min(im_min, float(s.imag.min()))
-        im_max = max(im_max, float(s.imag.max()))
-
-    margin_re = (re_max - re_min) * 0.25
-    margin_im = (im_max - im_min) * 0.25
-    bbox = (re_min - margin_re, im_min - margin_im,
-            re_max + margin_re, im_max + margin_im)
-
-    # Always keep the first contour (silhouette).
-    pruned = [contours[0]]
-    for c, a in contours[1:]:
-        cx, cy = float(c.real.mean()), float(c.imag.mean())
-        if bbox[0] <= cx <= bbox[2] and bbox[1] <= cy <= bbox[3]:
-            pruned.append((c, a))
-
-    return pruned
