@@ -101,12 +101,33 @@ function historyKey(): string {
         : router.currentRoute.value.fullPath;
 }
 
+/*
+ * X.F.W14V.au5 — A2-FO-L1-19: ONE restoration per route. A route that owns
+ * its scroll (`meta.ownsScroll`: /paper restores its windowed article by
+ * section id, `PaperView`) is left alone here — the shell neither records nor
+ * writes `<main>` for it, so one mechanism acts on each route.
+ *
+ * The entry being LEFT is the key captured when it was entered. On a back or
+ * forward (popstate) the history state has already moved to the target when
+ * `beforeEach` runs, so a key computed there filed the leaving route's offset
+ * under the arriving entry and the restore read it back (a /morph entry left
+ * at 400 px came back at 0). The shell mounts after the initial navigation has
+ * settled, so the first entry's key is read at setup.
+ */
+let currentKey = historyKey();
+let currentOwnsScroll = router.currentRoute.value.meta.ownsScroll === true;
+
 const stopBefore = router.beforeEach(() => {
-    if (mainEl.value) offsets.set(historyKey(), mainEl.value.scrollTop);
+    if (mainEl.value && !currentOwnsScroll) {
+        offsets.set(currentKey, mainEl.value.scrollTop);
+    }
 });
 
-const stopAfter = router.afterEach(async () => {
-    const restored = offsets.get(historyKey()) ?? 0;
+const stopAfter = router.afterEach(async (to) => {
+    currentKey = historyKey();
+    currentOwnsScroll = to.meta.ownsScroll === true;
+    if (currentOwnsScroll) return;
+    const restored = offsets.get(currentKey) ?? 0;
     await nextTick();
     requestAnimationFrame(() => {
         if (mainEl.value) mainEl.value.scrollTop = restored;

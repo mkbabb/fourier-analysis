@@ -20,6 +20,12 @@ declare module "vue-router" {
          * the not-found page) belongs to no section.
          */
         tab?: SectionTab;
+        /**
+         * X.F.W14V.au5 — A2-FO-L1-19: the route restores its own scroll (its
+         * scroller is not the shell's `<main>`), so the shell's per-entry
+         * restore (`App.vue`) stands aside for it.
+         */
+        ownsScroll?: boolean;
     }
 }
 
@@ -122,6 +128,7 @@ export const router = createRouter({
             component: () => import("@/components/paper/PaperView.vue"),
             meta: {
                 tab: "/paper",
+                ownsScroll: true,
                 title: "Paper — Fourier Analysis",
                 description:
                     "The full typeset treatise: deriving the Fourier transform through the dual lenses of linear algebra and complex analysis — Sturm–Liouville theory, Hilbert spaces, and the spectral theorem.",
