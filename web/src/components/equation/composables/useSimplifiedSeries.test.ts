@@ -5,8 +5,9 @@
  * /equation route and /visualize's equation panel read it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { effectScope, ref } from "vue";
 
+import type { NotationMode } from "@/lib/equation/types";
 import type { BasisComponent } from "@/lib/types";
 
 const simplify = vi.fn();
@@ -16,7 +17,10 @@ vi.mock("@/lib/equation/api", () => ({
     abortInflight: vi.fn(),
 }));
 
-import { useSimplifiedSeries } from "./useSimplifiedSeries";
+import { useSimplifiedSeries as use } from "./useSimplifiedSeries";
+
+/** The composable lives in a component's scope; so does each test's. */
+const useSimplifiedSeries = (...args: Parameters<typeof use>) => effectScope().run(() => use(...args))!;
 
 const COMPONENTS: BasisComponent[] = [
     { index: 0, coefficient: [1, 0], amplitude: 1, phase: 0 },
@@ -32,11 +36,11 @@ describe("useSimplifiedSeries (A2-FO-L1-5)", () => {
 
     it("sends the components with the current notation, budget and Auto, and holds the answer", async () => {
         simplify.mockResolvedValue(response("a", 0.9));
-        const notation = ref<"trig" | "exp">("exp");
+        const notation = ref<NotationMode>("exponential");
         const budget = ref(7);
         const s = useSimplifiedSeries(() => COMPONENTS, { notation, budget, autoHarmonics: () => true });
         const resp = await s.simplify();
-        expect(simplify).toHaveBeenCalledWith(COMPONENTS, 7, "exp", true);
+        expect(simplify).toHaveBeenCalledWith(COMPONENTS, 7, "exponential", true);
         expect(resp?.latex).toBe("a");
         expect(s.latex.value).toBe("a");
         expect(s.latexSigma.value).toBe("\\sum a");

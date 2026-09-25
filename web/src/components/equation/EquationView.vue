@@ -5,7 +5,6 @@ import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
 import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import {
     computeEquation,
-    simplifyCoefficients,
     isAbortError,
     abortInflight,
     EQUATION_ABORT_KEYS,
@@ -31,6 +30,7 @@ import CoefficientsPanel from "@/components/shared/CoefficientsPanel.vue";
 
 import { loadCachedInputState, saveCachedInputState, loadCachedResult, saveCachedResult } from "./composables/useEquationCache";
 import { useCoeffHover } from "./composables/useCoeffHover";
+import { useSimplifiedSeries } from "./composables/useSimplifiedSeries";
 
 // ── Input state (restore from cache) ──
 const cached = loadCachedInputState();
@@ -43,7 +43,6 @@ const notation = ref<NotationMode>(cached?.notation ?? "trig");
 
 // ── Result state ──
 const computing = ref(false);
-const simplifying = ref(false);
 const error = ref<string | null>(null);
 /**
  * X.F.W14U.eq — UIA-F-112 / F-113 (consumer): the server answers an invalid
@@ -55,9 +54,6 @@ const error = ref<string | null>(null);
 const expressionError = ref<string | null>(null);
 const cachedRes = loadCachedResult();
 const result = ref<ComputeEquationResponse | null>(cachedRes?.result ?? null);
-const displayLatex = ref(cachedRes?.latex ?? "");
-const displayLatexSigma = ref(cachedRes?.result?.latex_sigma ?? "");
-const displayEnergy = ref(cachedRes?.energy ?? 1);
 const effectiveN = ref(cachedRes?.result?.effective_n ?? 20);
 /**
  * `fr-ConvergencePlot L-M2` / `M-L1`, the callsite half — the plot used to bind
@@ -86,7 +82,7 @@ const vizHarmonics = computed(() =>
     autoHarmonics.value ? Math.min(effectiveN.value, nHarmonics.value) : nHarmonics.value,
 );
 
-const loading = computed(() => computing.value || simplifying.value);
+const loading = computed(() => computing.value || series.loading.value);
 
 const components = computed<BasisComponent[]>(() => {
     if (!result.value) return [];
@@ -97,6 +93,20 @@ const components = computed<BasisComponent[]>(() => {
         phase: c.phase,
     }));
 });
+
+/**
+ * X.F.W14V.au3 — A2-FO-L1-5: the simplified series is the one flow
+ * /visualize's equation panel reads too (`useSimplifiedSeries`). A compute
+ * writes the same three refs (its response carries the series), and the cache
+ * seeds them.
+ */
+const series = useSimplifiedSeries(components, {
+    notation,
+    budget: () => clampBudget(budget.value),
+    autoHarmonics,
+    initial: { latex: cachedRes?.latex, latexSigma: cachedRes?.result?.latex_sigma, energy: cachedRes?.energy },
+});
+const { latex: displayLatex, latexSigma: displayLatexSigma, energy: displayEnergy } = series;
 
 const tier = computed(() => result.value ? tierInfo(result.value.tier) : null);
 /**
@@ -245,11 +255,11 @@ function isInputRejection(e: unknown): e is ApiProblem {
  * an "unused branch"). Reachable from a cold load, since the initial compute is
  * routinely superseded by a preset or an Enter press. A generation counter per
  * abort key makes every write and every flag clear belong to the request that is
- * actually current. doSimplify carries the same shape: it was consequence-free
- * only while `simplifying` had no template consumer, and `D-B4` just gave it one.
+ * actually current. The simplify seam carries the same shape, in
+ * `useSimplifiedSeries` (X.F.W14V.au3): it was consequence-free only while its
+ * busy flag had no template consumer, and `D-B4` gave it one.
  */
 let computeGeneration = 0;
-let simplifyGeneration = 0;
 
 async function doCompute(force = false) {
     const req = currentRequest();
@@ -290,37 +300,23 @@ async function doCompute(force = false) {
 
 async function doSimplify() {
     if (!components.value.length) return;
-    const req = currentRequest();
-    const key = displayKey(req);
+    const key = displayKey(currentRequest());
     if (key === lastDisplayKey) return;
 
-    const gen = ++simplifyGeneration;
-    simplifying.value = true;
-    try {
-        const resp = await simplifyCoefficients(components.value, req.budget, req.notation, req.auto_harmonics);
-        if (gen !== simplifyGeneration) return;
-        displayLatex.value = resp.latex;
-        displayLatexSigma.value = resp.latex_sigma;
-        if (result.value) result.value.latex_sigma = resp.latex_sigma;
-        displayEnergy.value = resp.energy_captured;
-        lastDisplayKey = key;
-        // `L·m-10` — `error` was cleared ONLY by doCompute, so a failed compute's
-        // banner outlived every successful notation and budget re-render. Any
-        // successful settle clears it.
-        error.value = null;
-        if (result.value) {
-            saveCachedResult(lastComputeKey, result.value, displayLatex.value, displayEnergy.value);
-        }
-    } catch (e) {
-        // `D·D-B4` — this was a terminal no-op (`/* silent */`): opposite error
-        // postures at two async seams forty lines apart, and the silent one is
-        // the seam the user drives most — every notation click, every budget
-        // drag. It gets doCompute's banner.
-        if (!isAbortError(e) && gen === simplifyGeneration) {
-            error.value = failureMessage(e, "Could not re-render the series");
-        }
-    } finally {
-        if (gen === simplifyGeneration) simplifying.value = false;
+    const resp = await series.simplify();
+    // `D·D-B4` — a failed re-render gets doCompute's banner (this seam was a
+    // silent no-op); a superseded or aborted call answers nothing and writes
+    // nothing (the generation rule lives in the composable now).
+    if (series.error.value) error.value = series.error.value;
+    if (!resp) return;
+    if (result.value) result.value.latex_sigma = resp.latex_sigma;
+    lastDisplayKey = key;
+    // `L·m-10` — `error` was cleared ONLY by doCompute, so a failed compute's
+    // banner outlived every successful notation and budget re-render. Any
+    // successful settle clears it.
+    error.value = null;
+    if (result.value) {
+        saveCachedResult(lastComputeKey, result.value, displayLatex.value, displayEnergy.value);
     }
 }
 

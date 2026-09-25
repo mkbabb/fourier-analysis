@@ -127,7 +127,7 @@ async function openEquation(page: Page): Promise<Locator> {
     await eq.click();
     const panel = page.locator(".eq-panel");
     await expect(panel).toBeVisible();
-    await expect(panel.locator(".eq-katex .katex").first()).toBeVisible({ timeout: 30_000 });
+    await expect(panel.locator(".eq-scroll-region .katex").first()).toBeVisible({ timeout: 30_000 });
     return panel;
 }
 
@@ -605,7 +605,7 @@ test.describe("X.F.W14U.vedit — frames at 1440 and 390", () => {
             await expect(eq).toBeVisible();
             await page.waitForTimeout(700);
             await eq.click();
-            await expect(page.locator(".eq-panel .eq-katex .katex").first()).toBeVisible({ timeout: 30_000 });
+            await expect(page.locator(".eq-panel .eq-scroll-region .katex").first()).toBeVisible({ timeout: 30_000 });
             await frame(page, "frames-equation");
         });
     }

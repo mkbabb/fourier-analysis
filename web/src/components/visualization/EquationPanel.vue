@@ -2,29 +2,30 @@
 import { ref, computed, useId } from "vue";
 import { useEventListener, watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { simplifyCoefficients, isAbortError } from "@/lib/equation/api";
 import type { NotationMode } from "@/lib/equation/types";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import NotationPills from "@/components/equation/NotationPills.vue";
+import EquationResult from "@/components/equation/EquationResult.vue";
+import { useSimplifiedSeries } from "@/components/equation/composables/useSimplifiedSeries";
 import { X } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@mkbabb/glass-ui/card";
 import { Metric } from "@mkbabb/glass-ui/metric";
-import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
 import { Progress } from "@mkbabb/glass-ui/progress";
-import { renderLatex } from "@/lib/equation/render";
 
 const emit = defineEmits<{ close: [] }>();
 
 const store = useWorkspaceStore();
 const notation = ref<NotationMode>("trig");
 const budget = ref(6);
-const latex = ref("");
-const energy = ref(1);
-const loading = ref(false);
-const error = ref<string | null>(null);
 
-const renderedHtml = computed(() => renderLatex(latex.value));
+/* X.F.W14V.au3 — A2-FO-L1-5: the simplify flow is the /equation route's own
+   (`useSimplifiedSeries`), and the body is its renderer (`EquationResult`), so
+   the panel inherits the Copy, the keyboard-reachable region and the safe-centre
+   overflow fix instead of re-implementing them beside the route. */
+const series = useSimplifiedSeries(computed(() => store.epicycleData?.components ?? []), { notation, budget });
+const { latex, energy, loading, error } = series;
+
 const titleId = useId();
 
 /*
@@ -37,30 +38,9 @@ useEventListener(document, "keydown", (e: KeyboardEvent) => {
     if (e.key === "Escape" && !e.defaultPrevented) emit("close");
 });
 
-async function fetchSimplified() {
-    if (!store.epicycleData?.components.length) return;
-    loading.value = true;
-    error.value = null;
-    try {
-        const resp = await simplifyCoefficients(
-            store.epicycleData.components,
-            budget.value,
-            notation.value,
-        );
-        latex.value = resp.latex;
-        energy.value = resp.energy_captured;
-    } catch (e) {
-        if (!isAbortError(e)) {
-            error.value = e instanceof Error ? e.message : "Failed";
-        }
-    } finally {
-        loading.value = false;
-    }
-}
-
 watchDebounced(
     () => [store.epicycleData, budget.value, notation.value] as const,
-    () => fetchSimplified(),
+    () => series.simplify(),
     { debounce: 300, immediate: true },
 );
 </script>
@@ -78,7 +58,8 @@ watchDebounced(
          Terms track beside it read as an error too); the track keeps the
          Fourier hue, the control's owner (F-W14U addendum (g), §0da). UIA-F-83 ⊕ F-176: every term the
          budget keeps is reachable through glass's FadingScroll, whose edge
-         fades say there is more. -->
+         fades say there is more; since X.F.W14V.au3 (A2-FO-L1-5) that scroller
+         is EquationResult's, the one series renderer both views mount. -->
     <!-- The dialog role sits on the host: glass Card binds its own `role`
          (`option` when selectable, else none), so a role passed to it is
          dropped. -->
@@ -122,9 +103,7 @@ watchDebounced(
                     <Progress :model-value="null" size="sm" aria-label="Simplifying the equation" />
                 </div>
                 <p v-if="error" role="alert" class="text-caption text-destructive">{{ error }}</p>
-                <FadingScroll v-else axis="x" aria-label="The equation" class="eq-scroll">
-                    <div v-html="renderedHtml" class="eq-katex" />
-                </FadingScroll>
+                <EquationResult v-else :latex="latex" dense />
             </div>
         </CardContent>
     </Card>
@@ -156,13 +135,5 @@ watchDebounced(
     position: absolute;
     inset-inline: 0;
     inset-block-start: 0;
-}
-
-.eq-katex :deep(.katex-display) {
-    @apply my-1 py-1;
-}
-
-.eq-katex :deep(.katex) {
-    font-size: 0.9em;
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
 import { useClipboard } from "@mkbabb/glass-ui";
 import { Check, Copy } from "@lucide/vue";
 import { renderLatex, plainLatex } from "@/lib/equation/render";
@@ -16,6 +17,8 @@ import { renderLatex, plainLatex } from "@/lib/equation/render";
  */
 const props = defineProps<{
     latex: string;
+    /** The small-plate type (/visualize's floating equation panel). */
+    dense?: boolean;
 }>();
 
 /* P.W5 Lane B.2 — migrated from bare `navigator.clipboard.writeText` + manual
@@ -87,13 +90,18 @@ async function copyLatex() {
         <!-- `FR-EQR-6` — a scroll container with no tabindex, no role and no
              accessible name, over a KaTeX span tree that contains no focusable
              descendant: the equation was unreachable by keyboard. -->
-        <div
-            class="eq-scroll-region"
-            tabindex="0"
-            role="region"
+        <!-- X.F.W14V.au3 — A2-FO-L1-5: this is the one series renderer; the
+             /visualize panel mounts it too. The region is glass's FadingScroll
+             (tabindex 0, a named region, and the edge fades that say more terms
+             continue — the panel's UIA-F-83 cue, which the merge keeps). -->
+        <FadingScroll
+            axis="x"
             aria-label="Rendered Fourier series"
-            v-html="renderedHtml"
-        />
+            class="eq-scroll-region"
+            :data-dense="dense || undefined"
+        >
+            <div v-html="renderedHtml" />
+        </FadingScroll>
         <!-- `FR-EQR-5` — the copy outcome was colour-and-glyph only, and the
              composable's own reported failure was swallowed a second time. -->
         <p class="sr-only" role="status">{{ copyAnnouncement }}</p>
@@ -132,7 +140,9 @@ async function copyLatex() {
    floors at 0 — so the leading terms of an over-wide equation were unreachable
    with zero cue. A flex container with `justify-content: safe center` centres
    while it fits and degrades to `start` the moment it does not, and KaTeX's own
-   centring goes inert on a shrink-to-fit flex item. */
+   centring goes inert on a shrink-to-fit flex item. The scroll itself is
+   glass FadingScroll's (`.fading-scroll--x`, X.F.W14V.au3); the rendered
+   series is its one flex item. */
 .eq-scroll-region {
     width: 100%;
     display: flex;
@@ -140,8 +150,12 @@ async function copyLatex() {
     align-items: flex-start;
     padding: 0.5rem 1rem 1rem;
     min-height: 4.5rem;
-    overflow-x: auto;
     scrollbar-width: thin;
+}
+
+.eq-scroll-region[data-dense] {
+    padding: 0;
+    min-height: 0;
 }
 
 /* Override global katex-display to prevent clipping fractions.
@@ -165,6 +179,14 @@ async function copyLatex() {
     .eq-scroll-region :deep(.katex) {
         font-size: 1.8em;
     }
+}
+
+.eq-scroll-region[data-dense] :deep(.katex) {
+    font-size: 0.9em;
+}
+
+.eq-scroll-region[data-dense] :deep(.katex-display) {
+    padding: 0.25rem 0;
 }
 
 /* `FR-EQR-7` — `text-green-500` measured 2.101:1 on the light `--card`, under the
