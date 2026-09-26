@@ -122,7 +122,7 @@ def test_a_long_join_follows_the_edge_instead_of_jumping():
 
     routed = route_connectors([a, b], isolation, image)
 
-    tour = build_contour_tour(routed)
+    tour = build_contour_tour(routed, method="mst")  # the iso-contour pipeline's tour
     assert max(tour.gap_lengths) <= 1.0 + 1e-6  # no jump: the join is ink
     ink = np.concatenate([complex_to_rc(c, shape) for c in routed])
     corner = np.hypot(ink[:, 0] - 60, ink[:, 1] - 140).min()

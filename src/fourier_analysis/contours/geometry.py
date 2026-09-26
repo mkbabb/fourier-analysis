@@ -111,6 +111,13 @@ def resample_arc_length(
     if len(arc_norm) < 2:
         return contour[:n_points] if len(contour) >= n_points else contour
 
+    step = total_length / n_points
+    seg = np.diff(arc)
+    if len(contour_clean) >= 4 and float(np.median(seg[seg > 0])) <= 0.5 * step:
+        # A dense polyline (a stroke drawing's tour): sample it where it is,
+        # with its corners, junction turns and stroke tips kept exactly.
+        return _resample_keeping_corners(contour_clean, arc_norm * total_length, n_points)
+
     t_uniform = np.linspace(0, 1, n_points, endpoint=False)
     if len(arc_norm) >= 4 and contour_clean[0] == contour_clean[-1]:
         # A closed path (a spliced tour) is periodic: a not-a-knot end
@@ -123,3 +130,64 @@ def resample_arc_length(
     interp_re = interp1d(arc_norm, contour_clean.real, kind="cubic")
     interp_im = interp1d(arc_norm, contour_clean.imag, kind="cubic")
     return interp_re(t_uniform) + 1j * interp_im(t_uniform)
+
+
+# A vertex turning more than this (degrees), read over half a sample step
+# either side, is a corner: a stroke's tip where the pen turns back, a
+# junction where it leaves by another stroke, or a drawn corner.
+CORNER_DEGREES = 60.0
+
+
+def _resample_keeping_corners(
+    z: NDArray[np.complex128],
+    s: NDArray[np.float64],
+    n_points: int,
+) -> NDArray[np.complex128]:
+    """``n_points`` samples by arc length on the polyline (linear, so nothing
+    overshoots), with every corner among them.
+
+    Corners (``CORNER_DEGREES``, the sharpest in each half-step window) and
+    the start are fixed samples; the others are shared among the runs
+    between them in proportion to length (largest remainder) and spaced
+    evenly within each run, so the spacing stays within a sample of uniform.
+    """
+    total = float(s[-1])
+    step = total / n_points
+    reach = 0.5 * step
+    before = np.interp(s - reach, s, z.real) + 1j * np.interp(s - reach, s, z.imag)
+    after = np.interp(s + reach, s, z.real) + 1j * np.interp(s + reach, s, z.imag)
+    closed = z[0] == z[-1]
+    if closed:
+        wrap = lambda t: np.mod(t, total)  # noqa: E731
+        before = np.interp(wrap(s - reach), s, z.real) + 1j * np.interp(wrap(s - reach), s, z.imag)
+        after = np.interp(wrap(s + reach), s, z.real) + 1j * np.interp(wrap(s + reach), s, z.imag)
+    u, v = z - before, after - z
+    ok = (np.abs(u) > 1e-12) & (np.abs(v) > 1e-12)
+    turn = np.zeros(len(z))
+    turn[ok] = np.degrees(np.abs(np.angle(v[ok] / u[ok])))
+    # Non-maximum suppression over the half-step window, sharpest first; on
+    # a near-tie the vertex furthest off its chord is the corner (a tip's apex).
+    deviation = np.abs(z - 0.5 * (before + after))
+    corners: list[float] = []
+    for i in np.lexsort((-deviation, -np.round(turn))):
+        if turn[i] < CORNER_DEGREES:
+            break
+        if 0.0 < s[i] < total and all(abs(s[i] - c) > reach for c in corners):
+            corners.append(float(s[i]))
+        if len(corners) >= n_points // 4:
+            break
+    fixed = np.array(sorted({0.0, *corners}))
+    ends = np.append(fixed[1:], total)
+    lengths = ends - fixed
+    free = n_points - len(fixed)
+    share = free * lengths / total
+    counts = np.floor(share).astype(int)
+    for i in np.argsort(-(share - counts))[: free - int(counts.sum())]:
+        counts[i] += 1
+    t = np.concatenate(
+        [
+            np.concatenate([[a], a + (b - a) * np.arange(1, m + 1) / (m + 1)])
+            for a, b, m in zip(fixed, ends, counts)
+        ]
+    )
+    return np.interp(t, s, z.real) + 1j * np.interp(t, s, z.imag)

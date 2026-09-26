@@ -25,7 +25,79 @@ def extract_contours_pipeline(
     image: LoadedImage,
     config: ContourConfig,
 ) -> ContourExtractionResult:
-    """Run the deterministic 5-stage contour extraction pipeline.
+    """The subject's line drawing as a stroke graph (``drawing``), walked by
+    the minimum-retrace tour.  When the line model cannot be had (offline,
+    no cached weights) the iso-contour pipeline runs instead, with a note."""
+    from fourier_analysis.contours.lines import line_model_available
+
+    if not line_model_available():
+        result = _extract_isolines(image, config)
+        return result
+    from fourier_analysis.contours.drawing import draw_subject
+
+    contours, isolation = draw_subject(image, config)
+    if not contours:
+        return _empty_result(config)
+    return _result(contours, isolation, image, config, notes=["line drawing: informative-drawings contour style"])
+
+
+def _result(
+    contours: list[NDArray[np.complex128]],
+    isolation: SubjectIsolation,
+    image: LoadedImage,
+    config: ContourConfig,
+    notes: list[str],
+) -> ContourExtractionResult:
+    tour = build_contour_tour(contours, method=config.tour_method)
+    areas = [_polygon_area(c) for c in contours]
+    total_area = sum(areas)
+    gap_lengths = np.array(tour.gap_lengths, dtype=np.float64)
+    diagnostics = ContourDiagnostics(
+        requested_strategy="auto",
+        selected_strategy="auto",
+        selected_candidate="pipeline",
+        alpha_mode="auto",
+        used_alpha=False,
+        contour_count=len(contours),
+        total_points=sum(len(c) for c in contours),
+        retained_area_fraction=min(1.0, total_area / image.image_area) if image.image_area > 0 else 0.0,
+        secondary_area_fraction=(
+            sum(areas[1:]) / total_area if total_area > 0 and len(areas) > 1 else 0.0
+        ),
+        primary_span_fraction=_primary_span_fraction(_parts(contours), image),
+        max_jump=float(gap_lengths.max()) if gap_lengths.size else 0.0,
+        mean_jump=float(gap_lengths.mean()) if gap_lengths.size else 0.0,
+        score=0.0,
+        notes=tuple(notes),
+        candidates=(),
+    )
+    return ContourExtractionResult(
+        config=config,
+        contours=contours,
+        ordered_path=tour.path.copy(),
+        diagnostics=diagnostics,
+    )
+
+
+def _parts(contours: list[NDArray[np.complex128]]) -> list[NDArray[np.complex128]]:
+    """The drawing's connected parts, each as the concatenation of its strokes
+    (strokes that share an end point are one part): a stroke graph's
+    "largest contour" is its largest part, not its longest edge."""
+    from fourier_analysis.postman_tour import _build_graph, _components
+
+    nodes, edges = _build_graph(contours)
+    label = _components(len(nodes), edges)
+    groups: dict[int, list[NDArray[np.complex128]]] = {}
+    for e in edges:
+        groups.setdefault(int(label[e.a]), []).append(e.pts)
+    return [np.concatenate(g) for g in groups.values()]
+
+
+def _extract_isolines(
+    image: LoadedImage,
+    config: ContourConfig,
+) -> ContourExtractionResult:
+    """The iso-contour pipeline (F.CT round 1), the fallback without the line model.
 
     Image -> Isolate Subject -> Structure + Feature candidates -> Select -> Tour
     """
@@ -77,7 +149,7 @@ def extract_contours_pipeline(
     max_jump = float(gap_lengths.max()) if gap_lengths.size else 0.0
     mean_jump = float(gap_lengths.mean()) if gap_lengths.size else 0.0
 
-    notes: list[str] = []
+    notes: list[str] = ["line model unavailable: iso-contour fallback"]
     if isolation.subject_mask is None:
         notes.append("ML subject isolation coverage below threshold; mask disabled")
     note = _edge_model_note(config)

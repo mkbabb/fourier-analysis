@@ -102,7 +102,12 @@ def test_background_does_not_set_the_ridge_scale(isolated):
     assert not (ridges & ~isolation.subject_band).any(), name
 
 
-def test_edge_model_defaults_to_canny_and_a_fallback_is_declared():
+def test_edge_model_defaults_to_canny_and_a_fallback_is_declared(monkeypatch):
+    """The feature edge model belongs to the iso-contour pipeline, which runs
+    when the line-drawing model cannot be had."""
+    import fourier_analysis.contours.lines as lines
+
+    monkeypatch.setattr(lines, "line_model_available", lambda: False)
     assert ContourConfig().feature.edge_model == "canny"
     assert ContourConfig.from_dict({}).feature.edge_model == "canny"
     if pidinet_available():

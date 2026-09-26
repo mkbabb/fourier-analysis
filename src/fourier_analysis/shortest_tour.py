@@ -36,7 +36,7 @@ from numpy.typing import NDArray
 from scipy.sparse.csgraph import minimum_spanning_tree  # type: ignore[import-untyped]
 from scipy.spatial import KDTree  # type: ignore[import-untyped]
 
-TOUR_METHODS = ("mst",)
+TOUR_METHODS = ("postman", "mst")
 
 _CLOSED_EPS = 1e-9
 # scipy reads a (near-)zero weight as "no edge".  Every spanning tree of the
@@ -67,7 +67,7 @@ class ContourTour:
 def build_contour_tour(
     contours: list[NDArray[np.complex128]],
     *,
-    method: str = "mst",
+    method: str = "postman",
 ) -> ContourTour:
     """Splice contours into one closed tour along their minimum spanning tree.
 
@@ -77,7 +77,10 @@ def build_contour_tour(
         Individual contours: closed loops (first point repeated last) or open
         strokes.
     method : str
-        ``"mst"`` (the only method).
+        ``"postman"`` (the default): contours are the edges of a stroke graph
+        whose coinciding ends are junctions, walked as a minimum-retrace
+        closed circuit (``fourier_analysis.postman_tour``).  ``"mst"``:
+        whole contours spliced depth-first along their minimum spanning tree.
 
     Returns
     -------
@@ -100,6 +103,11 @@ def build_contour_tour(
     if len(contours) == 1:
         c = contours[0].copy()
         return ContourTour(ordered_contours=(c,), gap_lengths=(), path=c)
+
+    if method == "postman":
+        from fourier_analysis.postman_tour import postman_tour
+
+        return postman_tour(contours)
 
     closed = [len(c) > 2 and abs(c[0] - c[-1]) <= _CLOSED_EPS for c in contours]
     verts = [c[:-1] if is_closed else c for c, is_closed in zip(contours, closed)]
