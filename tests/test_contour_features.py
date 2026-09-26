@@ -17,6 +17,7 @@ from fourier_analysis.contours.features import (  # noqa: E402
     extract_feature_contours,
     link_ridges,
     ridge_map,
+    structure_ridge_map,
 )
 from fourier_analysis.contours.image import load_image_inputs  # noqa: E402
 from fourier_analysis.contours.isolation import isolate_subject  # noqa: E402
@@ -71,7 +72,10 @@ def isolated(request):
 def test_features_are_polylines_on_the_ridge_inside_the_dilated_mask(isolated):
     name, image, isolation, config = isolated
     shape = image.grayscale.shape
-    off_ridge = ndi.distance_transform_edt(~ridge_map(image, isolation, config))
+    # A feature lies on a ridge of either scale: the pixel-scale ridges or
+    # the structure-scale ones.
+    ridges = ridge_map(image, isolation, config) | structure_ridge_map(image, isolation)
+    off_ridge = ndi.distance_transform_edt(~ridges)
 
     features = extract_feature_contours(image, isolation, [], 24, config)
 

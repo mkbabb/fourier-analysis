@@ -24,6 +24,9 @@ class LoadedImage:
     image_area: float
     diagonal: float
     source_path: Path | None = None
+    # CIELAB scaled to [0, 1] per channel (H x W x 3), the source of the
+    # coarse-scale structure gradient (``support.structure_gradient``).
+    lab: NDArray[np.float64] | None = None
 
 
 def load_image_inputs(
@@ -102,6 +105,7 @@ def load_image_inputs(
         image_area=image_area,
         diagonal=diagonal,
         source_path=Path(image_path),
+        lab=lab_norm,
     )
 
 

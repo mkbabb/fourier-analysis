@@ -46,6 +46,8 @@ from fourier_analysis.contours.support import (
     complex_to_rc,
     is_closed_trace,
     normalise_to_subject,
+    structure_edge_field,
+    structure_gradient,
     subject_edge_field,
     support_floor,
     supported_runs,
@@ -107,6 +109,30 @@ def ridge_map(
     magnitude = np.hypot(gr, gc)
     region = isolation.subject_mask if isolation.subject_mask is not None else band
     strength = ridge_contrast(magnitude, region, band_px(magnitude.shape))
+    pixels = strength[region] if region.any() else strength.ravel()
+    low, high = np.percentile(pixels, [RIDGE_LOW_PERCENTILE, RIDGE_HIGH_PERCENTILE])
+    if high <= 0:
+        return np.zeros_like(band, dtype=bool)
+    peaks = _non_maximum(magnitude, gr, gc) & band
+    ridges = filters.apply_hysteresis_threshold(np.where(peaks, strength, 0.0), low, high)
+    return np.asarray(morphology.skeletonize(ridges), dtype=bool)
+
+
+def structure_ridge_map(
+    image: LoadedImage,
+    isolation: SubjectIsolation,
+) -> NDArray[np.bool_]:
+    """The one-pixel crests of the structure-scale edge (``structure_gradient``)
+    inside the subject band, kept by hysteresis at the same subject
+    percentiles as the fine ridges.  These are the region boundaries texture
+    hides at the pixel scale: a face's outline against hair, a hairline, a
+    brow, a jaw's shadow, a collar."""
+    band = isolation.subject_band
+    if band is None:
+        band = np.ones(image.grayscale.shape, dtype=bool)
+    magnitude, gr, gc = structure_gradient(image)
+    region = isolation.subject_mask if isolation.subject_mask is not None else band
+    strength = normalise_to_subject(magnitude, region)
     pixels = strength[region] if region.any() else strength.ravel()
     low, high = np.percentile(pixels, [RIDGE_LOW_PERCENTILE, RIDGE_HIGH_PERCENTILE])
     if high <= 0:
@@ -341,41 +367,46 @@ def extract_feature_contours(
     for an open one.
     """
     shape = image.grayscale.shape
-    field = subject_edge_field(image.color_gradient, isolation.saliency_map, isolation.subject_mask)
-    floor = support_floor(isolation.silhouettes, field)
+    fine = subject_edge_field(image.color_gradient, isolation.saliency_map, isolation.subject_mask)
+    coarse = structure_edge_field(image, isolation.saliency_map, isolation.subject_mask)
     # A feature is a stroke once it is longer than the band is wide (twice the
     # band's half-width): an eyelid of a small face is shorter than the
     # configured trace minimum, which is sized for marching-squares loops.
     min_length = min(config.min_contour_length, int(np.ceil(FEATURE_MIN_BANDS * band_px(shape))))
-
-    raw: list[NDArray[np.floating]] = []
-    pieces = link_ridges(ridge_map(image, isolation, config), min_points=2)
-    joined = join_ridges(pieces, JOIN_GAP_BANDS * band_px(shape))
-    for line in joined:
-        if len(line) < min_length:
-            continue
-        for run in supported_runs(line, field, floor, min_length):
-            raw.append(_smooth_polyline(run, RIDGE_SMOOTH_PX))
-
-    # Postprocess (centred complex, light smoothing, simplification, dedup),
-    # uncapped and without the loop-area floor: the ranking picks the budget,
-    # and a small closed ridge (a nostril) is a feature, not noise.
-    processed, areas = _postprocess_raw_contours(
-        raw, image, replace(config, max_contours=None, min_contour_area=0.0, min_contour_length=min_length)
-    )
-
+    post = replace(config, max_contours=None, min_contour_area=0.0, min_contour_length=min_length)
     mask = isolation.subject_mask
     member = mask if mask is not None and mask.any() else np.ones(shape, dtype=bool)
 
+    # Two scales, each judged in its own field against its own floor: the
+    # pixel-scale ridges (eyelids, teeth, nostrils) and the structure-scale
+    # ones (outline, hairline, brows, jaw, collar).  A stroke both scales
+    # find is kept once (the coverage pass below).
     ranked: list[tuple[float, NDArray[np.complex128], float]] = []
-    for c, a in zip(processed, areas):
-        rc = complex_to_rc(c, shape)
-        support = arc_support(rc, field)
-        if support < floor:
-            continue
-        length = float(np.abs(np.diff(c)).sum())
-        share = float(np.mean(_sample(member, rc)))
-        ranked.append((support * length * share, c, a))
+    for ridges, field in (
+        (ridge_map(image, isolation, config), fine),
+        (structure_ridge_map(image, isolation), coarse),
+    ):
+        floor = support_floor(isolation.silhouettes, field)
+        raw: list[NDArray[np.floating]] = []
+        pieces = link_ridges(ridges, min_points=2)
+        for line in join_ridges(pieces, JOIN_GAP_BANDS * band_px(shape)):
+            if len(line) < min_length:
+                continue
+            for run in supported_runs(line, field, floor, min_length):
+                raw.append(_smooth_polyline(run, RIDGE_SMOOTH_PX))
+
+        # Postprocess (centred complex, light smoothing, simplification,
+        # dedup), uncapped and without the loop-area floor: the ranking picks
+        # the budget, and a small closed ridge (a nostril) is a feature.
+        processed, areas = _postprocess_raw_contours(raw, image, post)
+        for c, a in zip(processed, areas):
+            rc = complex_to_rc(c, shape)
+            support = arc_support(rc, field) / max(floor, 1e-12)
+            if support < 1.0:
+                continue
+            length = float(np.abs(np.diff(c)).sum())
+            share = float(np.mean(_sample(member, rc)))
+            ranked.append((support * length * share, c, a))
     ranked.sort(key=lambda t: t[0], reverse=True)
 
     coverage = InkCoverage(band_px(shape))

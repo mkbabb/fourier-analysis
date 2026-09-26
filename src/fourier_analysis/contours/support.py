@@ -14,6 +14,12 @@ Contours here are raw marching-squares traces, ``(N, 2)`` arrays of
   scale.
 - :func:`subject_edge_field` — edge magnitude weighted by soft saliency, scaled
   to the subject.
+- :func:`structure_gradient` / :func:`structure_edge_field` — the same edge
+  seen at the *structure scale*: the CIELAB gradient after a Gaussian of
+  ``STRUCTURE_SCALE_BANDS`` band half-widths.  Texture (fur, hair strands,
+  engraving hatching, knit) is finer than that scale and averages away; the
+  boundaries between regions (a face's outline against hair, a hairline, a
+  brow, a jaw's shadow, a collar) survive it.
 - :func:`arc_support` — the median of a subject-normalised edge field along an
   arc: near 0 for an iso-intensity line across a smooth region, near 1 for a
   line that follows a real edge.
@@ -31,6 +37,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage as ndi
 
+from fourier_analysis.contours.image import LoadedImage
+
 # The bench bar's boundary tolerance: 1% of the image diagonal, at least 3 px.
 BAND_FRACTION = 0.01
 MIN_BAND_PX = 3.0
@@ -42,6 +50,11 @@ REDUNDANT_OVERLAP = 0.5
 FRAME_MARGIN_PX = 3.0
 # Edge fields are scaled by this subject-pixel percentile.
 SUBJECT_PERCENTILE = 95.0
+# The structure scale, in subject-band half-widths (see ``structure_gradient``).
+STRUCTURE_SCALE_BANDS = 0.5
+# CIELAB from the [0, 1]-scaled channels ``LoadedImage.lab`` holds: one unit
+# of every channel is then one unit of colour difference (Delta E 1976).
+_LAB_SCALE = (100.0, 256.0, 256.0)
 # A kept stroke's support is at least this fraction of the silhouette's median
 # support in the same field (see ``support_floor``).
 RELATIVE_SUPPORT = 0.6
@@ -148,6 +161,45 @@ def subject_edge_field(
     """Edge magnitude weighted by soft saliency, scaled to the subject's percentile."""
     weighted = np.asarray(edge, dtype=np.float64) * np.clip(saliency, 0.0, 1.0)
     return normalise_to_subject(weighted, mask)
+
+
+def structure_gradient(
+    image: LoadedImage,
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    """The structure-scale edge: ``(magnitude, d/drow, d/dcol)``.
+
+    Each CIELAB channel (the grey image when there is no colour) is smoothed
+    by a Gaussian of ``STRUCTURE_SCALE_BANDS`` band half-widths and
+    differentiated; every pixel takes the channel with the largest gradient,
+    with that channel's direction (for non-maximum suppression).
+    """
+    shape = image.grayscale.shape
+    sigma = STRUCTURE_SCALE_BANDS * band_px(shape)
+    if image.lab is not None:
+        channels = [image.lab[:, :, k] * _LAB_SCALE[k] for k in range(3)]
+    else:
+        channels = [np.asarray(image.grayscale, dtype=np.float64) * _LAB_SCALE[0]]
+    mag = np.zeros(shape)
+    gr = np.zeros(shape)
+    gc = np.zeros(shape)
+    for ch in channels:
+        smooth = ndi.gaussian_filter(ch, sigma)
+        dr, dc = ndi.sobel(smooth, axis=0), ndi.sobel(smooth, axis=1)
+        m = np.hypot(dr, dc)
+        stronger = m > mag
+        mag = np.where(stronger, m, mag)
+        gr = np.where(stronger, dr, gr)
+        gc = np.where(stronger, dc, gc)
+    return mag, gr, gc
+
+
+def structure_edge_field(
+    image: LoadedImage,
+    saliency: NDArray[np.floating],
+    mask: NDArray[np.bool_] | None,
+) -> NDArray[np.float64]:
+    """:func:`subject_edge_field` of the structure-scale gradient."""
+    return subject_edge_field(structure_gradient(image)[0], saliency, mask)
 
 
 def densify(rc: NDArray[np.floating], step: float = 1.0) -> NDArray[np.float64]:

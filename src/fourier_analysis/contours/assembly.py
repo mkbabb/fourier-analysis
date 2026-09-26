@@ -18,7 +18,12 @@ given the strokes already chosen::
   times its median *local contrast*, the edge over its own surround (the field
   Gaussian-averaged over ``SURROUND_BANDS`` band widths).  A defining line
   stands out from what is around it; a hatching or fur line sits in a field of
-  equal edges and scores near 1.
+  equal edges and scores near 1.  It is taken at both scales — the pixel
+  scale and the structure scale (``structure_edge_field``) — and the two
+  combined by their geometric mean: a defining line persists across scales,
+  texture (fur, hatching, knit, strands) is gone at the structure scale, and
+  a region boundary too soft for the pixel scale (a hairline, a jaw against
+  hair) is carried by the structure scale.
 - ``share``: the fraction of the stroke on the subject mask.
 - ``clean``: ``exp(-w / WIGGLE_SCALE)``, where ``w`` is the length the stroke
   loses *to jags* under a ``WIGGLE_SIGMA_PX`` arc-length Gaussian (the
@@ -34,8 +39,10 @@ given the strokes already chosen::
   nose, mouth) far from the silhouette is reachable; a lone far stroke is not.
 
 Selection is greedy: the best candidate is taken and the rest re-scored, until
-the best remaining gain falls below ``STOP_FRACTION`` of the first
-non-silhouette pick's gain.  ``max_contours`` is a ceiling, not a target.  The
+the best remaining gain falls below ``STOP_FRACTION`` of the gain of a
+typical defining stroke: the median of the first ``STOP_REFERENCE_PICKS``
+admitted gains (one extraordinarily long clean stroke, a lapel from shoulder
+to hem, must not set the bar every face feature is held to).  ``max_contours`` is a ceiling, not a target.  The
 recorded gain of each pick is the level the greedy admitted it at: the running
 minimum of the best gains (a pick that shortens another stroke's connector can
 raise that stroke's gain; it is admitted at the level of the pick that
@@ -59,12 +66,14 @@ from fourier_analysis.contours.support import (
     band_px,
     complex_to_rc,
     densify,
+    structure_edge_field,
     subject_edge_field,
 )
 
 # The greedy stops when the best remaining gain falls below this fraction of
-# the first non-silhouette pick's gain.
+# the median of the first STOP_REFERENCE_PICKS admitted gains.
 STOP_FRACTION = 0.05
+STOP_REFERENCE_PICKS = 3
 # Local contrast: an edge over its surround, averaged over this many band widths.
 SURROUND_BANDS = 4.0
 # The staircase measure: length lost under a Gaussian of this many px along
@@ -132,7 +141,6 @@ def select_strokes(
 
     alive = np.ones(n, dtype=bool)
     gains: list[float] = []
-    first: float | None = None
     while alive.any() and len(gains) < remaining:
         new_ink = np.bincount(owner, weights=step * ~covered, minlength=n)
         own = np.sqrt(new_ink * radius) * weight
@@ -140,9 +148,8 @@ def select_strokes(
         gain[~alive] = -np.inf
         best = int(np.argmax(gain))
         level = float(gain[best]) if not gains else min(gains[-1], float(gain[best]))
-        if first is None:
-            first = level
-        if level <= 0 or level < STOP_FRACTION * first:
+        reference = float(np.median((gains + [level])[:STOP_REFERENCE_PICKS]))
+        if level <= 0 or level < STOP_FRACTION * reference:
             break
         gains.append(level)
         chosen.append(zs[best])
@@ -170,15 +177,21 @@ def _stroke_weights(
 ) -> NDArray[np.float64]:
     """Each stroke's fixed weight: support x local contrast x share x clean."""
     shape = image.grayscale.shape
-    field = subject_edge_field(image.color_gradient, isolation.saliency_map, isolation.subject_mask)
-    surround = ndi.gaussian_filter(field, SURROUND_BANDS * radius)
-    contrast = field / np.maximum(surround, 1e-6)
     mask = isolation.subject_mask
+    scales = []
+    for field in (
+        subject_edge_field(image.color_gradient, isolation.saliency_map, mask),
+        structure_edge_field(image, isolation.saliency_map, mask),
+    ):
+        surround = ndi.gaussian_filter(field, SURROUND_BANDS * radius)
+        scales.append((field, field / np.maximum(surround, 1e-6)))
     member = mask if mask is not None and mask.any() else np.ones(shape, dtype=bool)
     weight = np.empty(len(zs))
     for i, z in enumerate(zs):
         rc = complex_to_rc(z, shape)
-        support = arc_support(rc, field) * arc_support(rc, contrast)
+        support = float(
+            np.sqrt(np.prod([arc_support(rc, f) * arc_support(rc, c) for f, c in scales]))
+        )
         share = float(np.mean(_sample(member, rc)))
         clean = float(np.exp(-stroke_wiggle(z) / WIGGLE_SCALE))
         weight[i] = support * share * clean

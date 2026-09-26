@@ -11,6 +11,7 @@ pytest.importorskip("onnxruntime")
 
 from fourier_analysis.contours.assembly import (  # noqa: E402
     STOP_FRACTION,
+    STOP_REFERENCE_PICKS,
     select_strokes,
     stroke_wiggle,
 )
@@ -45,7 +46,7 @@ def test_gains_are_positive_and_non_increasing(selected):
     assert gains.size > 0, name
     assert np.all(gains > 0), name
     assert np.all(np.diff(gains) <= 1e-9), (name, gains)
-    assert gains[-1] >= STOP_FRACTION * gains[0], name
+    assert gains[-1] >= STOP_FRACTION * np.median(gains[:STOP_REFERENCE_PICKS]), name
 
 
 def test_silhouettes_come_first_and_the_ceiling_holds(selected):
