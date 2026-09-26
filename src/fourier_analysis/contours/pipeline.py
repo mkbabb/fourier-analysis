@@ -1,23 +1,35 @@
-"""Stage 5: Orchestrator tying isolation, structure, features, and assembly together."""
+"""The AUTO pipeline: semantic part boundaries, walked as one stroke graph.
+
+Image -> subject mask -> part labels -> part boundaries -> minimum-retrace tour
+
+1. The subject mask (``isolation.subject_mask``: the saliency ensemble, grown
+   by hysteresis, alpha-intersected, significant components).
+2. Part labels (``parts.part_labels``): a face parser's 19 classes where the
+   subject has a face, colour parts elsewhere; off the mask is background.
+3. The boundaries between parts (``strokes.boundary_strokes``): one stroke per
+   shared boundary, meeting at junctions.
+4. The tour (``shortest_tour.build_contour_tour``): a Chinese-postman walk.
+
+``config.max_contours`` does not cut strokes here: dropping an edge of the
+stroke graph drops a part boundary (an eye, a lip line).  The number of parts
+is bounded instead (``parts.MAX_COLOUR_PARTS``; the parser's 19 classes).
+"""
 
 from __future__ import annotations
 
 import numpy as np
 from numpy.typing import NDArray
 
-from fourier_analysis.contours.assembly import select_strokes
-from fourier_analysis.contours.bridges import CHAIN_GAP_BANDS, chain_strokes, route_connectors
-from fourier_analysis.contours.features import extract_feature_contours
 from fourier_analysis.contours.geometry import _polygon_area
-from fourier_analysis.contours.image import LoadedImage, load_image_inputs
-from fourier_analysis.contours.isolation import SubjectIsolation, isolate_subject
+from fourier_analysis.contours.image import LoadedImage
+from fourier_analysis.contours.isolation import subject_mask
 from fourier_analysis.contours.models import (
     ContourConfig,
     ContourDiagnostics,
     ContourExtractionResult,
 )
-from fourier_analysis.contours.support import band_px
-from fourier_analysis.contours.structure import extract_structure_contours
+from fourier_analysis.contours.parts import part_labels
+from fourier_analysis.contours.strokes import boundary_strokes
 from fourier_analysis.shortest_tour import build_contour_tour
 
 
@@ -25,85 +37,44 @@ def extract_contours_pipeline(
     image: LoadedImage,
     config: ContourConfig,
 ) -> ContourExtractionResult:
-    """Run the deterministic 5-stage contour extraction pipeline.
-
-    Image -> Isolate Subject -> Structure + Feature candidates -> Select -> Tour
-    """
-    # Stage 1: Subject isolation.
-    isolation = isolate_subject(image, config)
-
-    # Stages 2-3: every edge-supported structure run and feature ridge is a
-    # candidate (each stage only drops what repeats the silhouette or itself).
-    structure = extract_structure_contours(image, isolation, None, config)
-    features = extract_feature_contours(image, isolation, [], None, config)
-
-    # Stage 4: greedy marginal-value selection.  The greedy order is the
-    # same with or without a ceiling (a ceiling truncates it), so the whole
-    # order is taken and the ceiling applied to what is drawn: pen strokes.
-    selection = select_strokes(isolation, structure + features, None, image)
-
-    if not selection.contours:
+    """Run the part-boundary pipeline (module docstring)."""
+    mask, _ = subject_mask(image, config)
+    if not mask.any():
+        return _empty_result(config)
+    parts = part_labels(image, mask)
+    contours = boundary_strokes(parts.labels, parts.drawn)
+    if not contours:
         return _empty_result(config)
 
-    # Stage 4b: strokes whose ends meet are chained into one pen stroke, and
-    # long joins follow the subject's edges instead of jumping.  The ceiling
-    # counts the contours drawn (chains, and routed joins that are their own
-    # stroke): the longest prefix of the greedy order that fits is kept.
-    gap = CHAIN_GAP_BANDS * band_px(image.grayscale.shape)
-    picks = selection.contours
-    ceiling = config.max_contours
-    kept = len(picks)
-    if ceiling is not None:
-        kept = min(kept, max(ceiling, selection.silhouette_count))
-        while kept < len(picks) and len(chain_strokes(picks[: kept + 1], gap)) <= ceiling:
-            kept += 1
-    contours = route_connectors(chain_strokes(picks[:kept], gap), isolation, image)
-    while ceiling is not None and len(contours) > ceiling and kept > selection.silhouette_count:
-        kept -= 1
-        contours = route_connectors(chain_strokes(picks[:kept], gap), isolation, image)
-    if ceiling is not None and len(contours) > ceiling:
-        contours = chain_strokes(picks[:kept], gap)
-
-    # Build tour.
     tour = build_contour_tour(contours, method=config.tour_method)
 
-    # Compute diagnostics.
     areas = [_polygon_area(c) for c in contours]
-    total_points = sum(len(c) for c in contours)
     total_area = sum(areas)
-    retained_area_fraction = min(1.0, total_area / image.image_area) if image.image_area > 0 else 0.0
-
     gap_lengths = np.array(tour.gap_lengths, dtype=np.float64)
-    max_jump = float(gap_lengths.max()) if gap_lengths.size else 0.0
-    mean_jump = float(gap_lengths.mean()) if gap_lengths.size else 0.0
-
-    notes: list[str] = []
-    if isolation.subject_mask is None:
-        notes.append("ML subject isolation coverage below threshold; mask disabled")
-    note = _edge_model_note(config)
-    if note:
-        notes.append(note)
-
+    notes = [
+        f"parts={parts.source}",
+        f"faces={len(parts.faces)}",
+        f"retrace_px={tour.retrace_length:.0f}",
+    ]
     diagnostics = ContourDiagnostics(
         requested_strategy="auto",
         selected_strategy="auto",
-        selected_candidate="pipeline",
+        selected_candidate=parts.source,
         alpha_mode="auto",
         used_alpha=False,
         contour_count=len(contours),
-        total_points=total_points,
-        retained_area_fraction=retained_area_fraction,
+        total_points=sum(len(c) for c in contours),
+        retained_area_fraction=min(1.0, total_area / image.image_area) if image.image_area > 0 else 0.0,
         secondary_area_fraction=(
             sum(areas[1:]) / total_area if total_area > 0 and len(areas) > 1 else 0.0
         ),
         primary_span_fraction=_primary_span_fraction(contours, image),
-        max_jump=max_jump,
-        mean_jump=mean_jump,
-        score=0.0,  # No scoring competition.
+        max_jump=float(gap_lengths.max()) if gap_lengths.size else 0.0,
+        mean_jump=float(gap_lengths.mean()) if gap_lengths.size else 0.0,
+        score=0.0,
         notes=tuple(notes),
-        candidates=(),  # No per-candidate diagnostics.
+        candidates=(),
     )
-
     return ContourExtractionResult(
         config=config,
         contours=contours,
@@ -112,29 +83,26 @@ def extract_contours_pipeline(
     )
 
 
-def _edge_model_note(config: ContourConfig) -> str | None:
-    """Say so when a learned edge model was asked for but Canny ridges ran."""
-    requested = config.feature.edge_model
-    if requested == "canny":
-        return None
-    from fourier_analysis.contours.ml import pidinet_available
-
-    if pidinet_available():
-        return None
-    return f"edge_model={requested}: no pinned PiDiNet weights cached; feature ridges used Canny"
-
-
 def _primary_span_fraction(
     contours: list[NDArray[np.complex128]],
     image: LoadedImage,
 ) -> float:
-    """Fraction of the image spanned by the largest contour (min of x/y spans)."""
-    if not contours:
+    """Fraction of the image spanned (min of the x/y spans) by the largest
+    connected figure of the stroke graph: strokes meet at junctions, so the
+    figure, not any one stroke between two junctions, is what spans the
+    subject."""
+    from fourier_analysis.shortest_tour import _StrokeGraph
+
+    g = _StrokeGraph.from_strokes(contours)
+    if not g.edges:
         return 0.0
+    comp = g.components()
+    h, w = image.grayscale.shape
     best = 0.0
-    for c in contours:
-        x_span = float(c.real.max() - c.real.min()) / max(1.0, image.grayscale.shape[1])
-        y_span = float(c.imag.max() - c.imag.min()) / max(1.0, image.grayscale.shape[0])
+    for c in set(comp.tolist()) - {-1}:
+        pts = np.concatenate([e.poly for e in g.edges if comp[e.u] == c])
+        x_span = float(pts.real.max() - pts.real.min()) / max(1.0, w)
+        y_span = float(pts.imag.max() - pts.imag.min()) / max(1.0, h)
         best = max(best, min(1.0, max(0.0, min(x_span, y_span))))
     return best
 

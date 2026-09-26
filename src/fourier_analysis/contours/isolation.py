@@ -145,25 +145,33 @@ def isolate_subject(
     4. Keep every significant component; trace its boundary, cut at the frame.
     5. Find the faces on it (``faces.face_region``).
     """
+    mask, saliency = subject_mask(image, config)
+    return SubjectIsolation(
+        subject_mask=mask,
+        saliency_map=saliency,
+        silhouettes=subject_silhouettes(mask, image, config),
+        silhouette_area=float(mask.sum()),
+        subject_band=subject_band(mask),
+        face_region=face_region(image.grayscale, mask),
+    )
+
+
+def subject_mask(
+    image: LoadedImage,
+    config: ContourConfig,
+) -> tuple[NDArray[np.bool_], NDArray[np.float64]]:
+    """The subject mask and the saliency map it was grown from (steps 1-4 of
+    ``isolate_subject``, without tracing)."""
     saliency = _predict_probability_map(image)
-    subject_mask = hysteresis_subject_mask(saliency, config.ml.threshold)
+    mask = hysteresis_subject_mask(saliency, config.ml.threshold)
 
     # Intersect with alpha if available and meaningful.
     if image.alpha is not None:
         alpha_mask = image.alpha > 0.5
         alpha_coverage = float(np.mean(alpha_mask))
         if 0.05 < alpha_coverage < 0.98:
-            combined = alpha_mask & subject_mask
+            combined = alpha_mask & mask
             if float(np.mean(combined)) > 0.05:
-                subject_mask = combined
+                mask = combined
 
-    subject_mask = significant_components(subject_mask)
-
-    return SubjectIsolation(
-        subject_mask=subject_mask,
-        saliency_map=saliency,
-        silhouettes=subject_silhouettes(subject_mask, image, config),
-        silhouette_area=float(subject_mask.sum()),
-        subject_band=subject_band(subject_mask),
-        face_region=face_region(image.grayscale, subject_mask),
-    )
+    return significant_components(mask), saliency
