@@ -53,6 +53,8 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
         if (route.name === "visualization") {
             const vizSlug = route.params.visualizationSlug as string;
             if (force || vizSlug !== store.visualizationSlug) {
+                // A new drawing: the reader's pause belonged to the last one.
+                anim.releaseHold();
                 await store.loadVisualization(vizSlug);
             }
             return;
@@ -66,6 +68,7 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
         // Skip if we already have this workspace loaded (uploadImage just set
         // it and pushed the route).
         if (force || imageSlug !== store.imageSlug) {
+            anim.releaseHold();
             await store.loadWorkspace(imageSlug);
         }
     }
@@ -154,6 +157,7 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
         ([epicData, basesData]) => {
             if (!epicData && !basesData) {
                 hadDataBefore = false;
+                anim.releaseHold();
                 return;
             }
             const reduced = prefersReducedMotion();
@@ -180,10 +184,17 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
                     anim.seek(1);
                     return;
                 }
+                // X.F.W14V repair (F.W14U R-1): the loader starts motion on
+                // its own, so it goes through `autoPlay`, which a reader's
+                // pause holds. The first arrival still rewinds (`reset`) only
+                // while the reader has not taken the transport.
+                if (anim.heldByReader) return;
                 anim.reset();
-                anim.play();
+                anim.autoPlay();
             } else if (!anim.playing && !reduced) {
-                anim.play();
+                // A later arrival (the bases after the epicycles, a recompute)
+                // never overrides the reader's pause.
+                anim.autoPlay();
             }
         },
         { immediate: true },

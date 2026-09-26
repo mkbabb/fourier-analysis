@@ -223,9 +223,39 @@ export const useAnimationStore = defineStore("animation", () => {
         else if (playing.value) startLoop();
     }
 
+    /**
+     * X.F.W14V repair (F.W14U R-1 / Check C2R-1): the reader's own pause.
+     *
+     * `playing === false` cannot tell a reader's pause from a clock that is
+     * merely stopped (`reset()` pauses too, and so does the reduced-motion
+     * park), so the loader's data watcher, which starts the clock when a
+     * drawing's data arrives, used to override a pause the reader had just
+     * made: `computeBases` landing after the reader paused the epicycles
+     * restarted the clock. The transport's `toggle` is the reader's channel;
+     * it records the hold here, and `autoPlay` (the app starting motion on
+     * its own) honours it. A new drawing releases it (`releaseHold`).
+     */
+    const heldByReader = ref(false);
+
     function toggle() {
-        if (playing.value) pause();
-        else play();
+        if (playing.value) {
+            pause();
+            heldByReader.value = true;
+        } else {
+            heldByReader.value = false;
+            play();
+        }
+    }
+
+    /** Start the clock on the app's own initiative, unless the reader paused it. */
+    function autoPlay() {
+        if (heldByReader.value) return;
+        play();
+    }
+
+    /** A new drawing: the reader's pause belonged to the one it replaced. */
+    function releaseHold() {
+        heldByReader.value = false;
     }
 
     function startScrub() {
@@ -282,5 +312,5 @@ export const useAnimationStore = defineStore("animation", () => {
         onScopeDispose(() => query.removeEventListener("change", onPreferenceChange));
     }
 
-    return { t, easedT, playing, speed, duration, easing, scrubbing, anyCanvasVisible, play, pause, toggle, seek, startScrub, endScrub, reset, setCanvasVisible };
+    return { t, easedT, playing, heldByReader, speed, duration, easing, scrubbing, anyCanvasVisible, play, pause, toggle, autoPlay, releaseHold, seek, startScrub, endScrub, reset, setCanvasVisible };
 });
