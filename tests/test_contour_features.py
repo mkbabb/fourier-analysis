@@ -13,6 +13,7 @@ pytest.importorskip("onnxruntime")
 
 from fourier_analysis.contours.extraction import extract_contours_result  # noqa: E402
 from fourier_analysis.contours.features import (  # noqa: E402
+    JOIN_GAP_BANDS,
     extract_feature_contours,
     link_ridges,
     ridge_map,
@@ -21,7 +22,7 @@ from fourier_analysis.contours.image import load_image_inputs  # noqa: E402
 from fourier_analysis.contours.isolation import isolate_subject  # noqa: E402
 from fourier_analysis.contours.ml import pidinet_available  # noqa: E402
 from fourier_analysis.contours.models import ContourConfig, FeatureConfig  # noqa: E402
-from fourier_analysis.contours.support import complex_to_rc, is_closed_trace  # noqa: E402
+from fourier_analysis.contours.support import band_px, complex_to_rc, is_closed_trace  # noqa: E402
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
 PUBLIC = ["portraits/daraksha.jpg", "portraits/cauchy.png", "animals/sponge-happy.JPG"]
@@ -83,8 +84,12 @@ def test_features_are_polylines_on_the_ridge_inside_the_dilated_mask(isolated):
         c = np.clip(np.rint(rc[:, 1]).astype(int), 0, shape[1] - 1)
         assert isolation.subject_band[r, c].all(), name
         # Within 1 px of the NMS ridge (the nearest-pixel rounding adds up to
-        # half a pixel on each axis).
-        assert off_ridge[r, c].max() <= 1.0 + np.sqrt(0.5), name
+        # half a pixel on each axis), except across a joined gap, whose points
+        # lie within half the gap of the ridge ends it joins.
+        tolerance = 1.0 + np.sqrt(0.5) + JOIN_GAP_BANDS * band_px(shape) / 2
+        assert off_ridge[r, c].max() <= tolerance, name
+        # ... and most of the stroke is on the ridge itself.
+        assert np.median(off_ridge[r, c]) <= 1.0 + np.sqrt(0.5), name
 
 
 def test_background_does_not_set_the_ridge_scale(isolated):

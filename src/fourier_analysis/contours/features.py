@@ -4,12 +4,19 @@ A feature is an edge, so it is extracted as a ridge, not as an iso-loop of a
 blurred edge density (which draws every edge twice, once on each side, and
 rings smooth patches with blobs):
 
-1. **Ridges.**  Non-maximum-suppressed edges inside the subject band: Canny on
-   the CLAHE grey with hysteresis thresholds taken from the *subject's* own
-   gradient percentiles, or the skeleton of a pinned learned edge map
-   (``edge_model``).  The background can neither enter nor set the scale.
+1. **Ridges.**  Non-maximum-suppressed edges inside the subject band, kept
+   by hysteresis on their *local contrast* (``ridge_contrast``: the gradient
+   over its own surround, thresholds at the subject's percentiles), or the
+   skeleton of a pinned learned edge map (``edge_model``).  The background
+   can neither enter nor set the scale, and neither can the subject's busiest
+   texture: an eyelid in smooth skin stands above its surround as a coat's
+   hatching does not.
 2. **Linking.**  Ridge pixels are walked into polylines: open where the ridge
-   ends or branches, closed where it returns to its start.
+   ends or branches, closed where it returns to its start.  Pieces whose ends
+   face each other across a gap under half the band are one edge the
+   gradient dipped along, and are joined (``join_ridges``).  A stroke is kept
+   from two band half-widths long (a small face's eyelid is shorter than the
+   configured trace minimum).
 3. **Support.**  Each polyline is split into the spans the saliency-weighted,
    subject-normalised edge field (``subject_edge_field``) supports at the
    relative floor (``support_floor``), as the structure stage is.
@@ -24,7 +31,7 @@ from dataclasses import replace
 import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage as ndi
-from skimage import feature, filters, morphology
+from skimage import filters, morphology
 
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.isolation import SubjectIsolation
@@ -38,6 +45,7 @@ from fourier_analysis.contours.support import (
     band_px,
     complex_to_rc,
     is_closed_trace,
+    normalise_to_subject,
     subject_edge_field,
     support_floor,
     supported_runs,
@@ -50,7 +58,18 @@ RIDGE_LOW_PERCENTILE = 60.0
 # Ridge polylines are smoothed along their length by a Gaussian of this many
 # px before postprocessing: it removes the pixel staircase and stays well
 # within a pixel of the ridge on any curve a feature can have.
-RIDGE_SMOOTH_PX = 1.5
+RIDGE_SMOOTH_PX = 3.0
+# Ridge pieces whose ends face each other across at most half the subject band
+# are one edge (see ``join_ridges``); the join may turn this much.
+JOIN_GAP_BANDS = 0.5
+# Ridge strength is local contrast: the magnitude over its Gaussian surround
+# of this many band widths, the surround floored at this fraction of the
+# subject scale (see ``ridge_contrast``).
+SURROUND_BANDS = 4.0
+RIDGE_CONTRAST_FLOOR = 0.1
+JOIN_MAX_TURN_DEG = 30.0
+# The shortest feature stroke, in subject-band half-widths.
+FEATURE_MIN_BANDS = 2.0
 
 _NEIGHBOURS = (
     (0, 1), (1, 0), (0, -1), (-1, 0),  # 4-neighbours first: no corner cutting
@@ -84,16 +103,57 @@ def ridge_map(
     source = image.detail_grayscale
     sigma = config.feature.density_sigma
     smoothed = filters.gaussian(source, sigma=sigma)
-    magnitude = np.hypot(ndi.sobel(smoothed, axis=0), ndi.sobel(smoothed, axis=1))
+    gr, gc = ndi.sobel(smoothed, axis=0), ndi.sobel(smoothed, axis=1)
+    magnitude = np.hypot(gr, gc)
     region = isolation.subject_mask if isolation.subject_mask is not None else band
-    pixels = magnitude[region] if region.any() else magnitude.ravel()
+    strength = ridge_contrast(magnitude, region, band_px(magnitude.shape))
+    pixels = strength[region] if region.any() else strength.ravel()
     low, high = np.percentile(pixels, [RIDGE_LOW_PERCENTILE, RIDGE_HIGH_PERCENTILE])
     if high <= 0:
         return np.zeros_like(band, dtype=bool)
-    return np.asarray(
-        feature.canny(source, sigma=sigma, low_threshold=low, high_threshold=high, mask=band),
-        dtype=bool,
-    )
+    peaks = _non_maximum(magnitude, gr, gc) & band
+    ridges = filters.apply_hysteresis_threshold(np.where(peaks, strength, 0.0), low, high)
+    return np.asarray(morphology.skeletonize(ridges), dtype=bool)
+
+
+def ridge_contrast(
+    magnitude: NDArray[np.floating],
+    region: NDArray[np.bool_],
+    radius: float,
+) -> NDArray[np.float64]:
+    """Gradient magnitude over its own surround: the local contrast of an edge.
+
+    The magnitude is scaled by its subject percentile (``normalise_to_subject``)
+    and divided by its Gaussian average over ``SURROUND_BANDS`` band widths,
+    floored at ``RIDGE_CONTRAST_FLOOR`` of the subject scale so a flat patch's
+    noise is not amplified.  An eye in smooth skin stands far above its
+    surround; a hatching or fur line in a field of equal lines does not, so
+    the subject's busiest texture cannot set the scale for its quiet features.
+    """
+    scaled = normalise_to_subject(magnitude, region)
+    surround = ndi.gaussian_filter(scaled, SURROUND_BANDS * radius)
+    return scaled / np.maximum(surround, RIDGE_CONTRAST_FLOOR)
+
+
+def _non_maximum(
+    magnitude: NDArray[np.floating],
+    gr: NDArray[np.floating],
+    gc: NDArray[np.floating],
+) -> NDArray[np.bool_]:
+    """Pixels at a local maximum of ``magnitude`` across the edge (the gradient
+    direction, quantised to 45 degrees): the one-pixel crest of every edge."""
+    angle = np.mod(np.rad2deg(np.arctan2(gr, gc)), 180.0)
+    sector = (np.floor((angle + 22.5) / 45.0).astype(int)) % 4
+    padded = np.pad(magnitude, 1, mode="edge")
+    h, w = magnitude.shape
+    # (drow, dcol) along the gradient for sectors 0, 45, 90, 135 degrees.
+    steps = ((0, 1), (1, 1), (1, 0), (1, -1))
+    keep = np.zeros((h, w), dtype=bool)
+    for k, (dr, dc) in enumerate(steps):
+        fwd = padded[1 + dr : 1 + dr + h, 1 + dc : 1 + dc + w]
+        bwd = padded[1 - dr : 1 - dr + h, 1 - dc : 1 - dc + w]
+        keep |= (sector == k) & (magnitude >= fwd) & (magnitude > bwd)
+    return keep & (magnitude > 0)
 
 
 def link_ridges(ridges: NDArray[np.bool_], min_points: int = 2) -> list[NDArray[np.float64]]:
@@ -144,6 +204,116 @@ def link_ridges(ridges: NDArray[np.bool_], min_points: int = 2) -> list[NDArray[
     return lines
 
 
+def _end_direction(rc: NDArray[np.float64], at_start: bool, span: int) -> NDArray[np.float64]:
+    """Unit vector pointing out of a polyline's end, from its last ``span`` px."""
+    pts = rc if not at_start else rc[::-1]
+    k = min(span, len(pts) - 1)
+    d = pts[-1] - pts[-1 - k]
+    n = float(np.hypot(*d))
+    return d / n if n > 1e-9 else np.zeros(2)
+
+
+def join_ridges(
+    lines: list[NDArray[np.float64]],
+    gap_px: float,
+    max_turn_deg: float = JOIN_MAX_TURN_DEG,
+) -> list[NDArray[np.float64]]:
+    """Join open polylines whose ends face each other across a small gap.
+
+    Canny breaks one edge into pieces wherever its gradient dips (a jaw under
+    soft light, a brow, a hairline).  Two open ends are joined when they lie
+    within ``gap_px`` of each other and the join continues both: each end's
+    outward direction is within ``max_turn_deg`` of the join, and the two
+    directions within ``max_turn_deg`` of opposite.  Pairs are taken nearest
+    (by gap plus a turn penalty) first; each end joins at most once; a chain
+    that returns to itself closes.  Closed polylines pass through unchanged.
+    """
+    if gap_px <= 0 or len(lines) < 2:
+        return list(lines)
+    closed = [is_closed_trace(ln) for ln in lines]
+    span = max(2, int(round(gap_px)))
+    ends: list[tuple[int, bool]] = []
+    pts: list[NDArray[np.float64]] = []
+    dirs: list[NDArray[np.float64]] = []
+    for i, ln in enumerate(lines):
+        if closed[i] or len(ln) < 2:
+            continue
+        for at_start in (True, False):
+            ends.append((i, at_start))
+            pts.append(ln[0] if at_start else ln[-1])
+            dirs.append(_end_direction(ln, at_start, span))
+    if len(ends) < 2:
+        return list(lines)
+    from scipy.spatial import cKDTree
+
+    P, D = np.asarray(pts), np.asarray(dirs)
+    # At 180 degrees any angle joins (a corner): no rounding may refuse one.
+    cos_turn = -np.inf if max_turn_deg >= 180.0 else float(np.cos(np.deg2rad(max_turn_deg)))
+    pairs = []
+    for a, b in cKDTree(P).query_pairs(gap_px):
+        if ends[a][0] == ends[b][0]:
+            continue
+        v = P[b] - P[a]
+        dist = float(np.hypot(*v))
+        if dist > 1e-9:
+            u = v / dist
+            if D[a] @ u < cos_turn or -(D[b] @ u) < cos_turn:
+                continue
+        if -(D[a] @ D[b]) < cos_turn:
+            continue
+        turn = 1.0 - float(-(D[a] @ D[b]))
+        pairs.append((dist + gap_px * turn, a, b))
+    pairs.sort()
+    partner: dict[int, int] = {}
+    for _, a, b in pairs:
+        if a in partner or b in partner:
+            continue
+        partner[a], partner[b] = b, a
+    if not partner:
+        return list(lines)
+
+    index = {e: k for k, e in enumerate(ends)}
+    used = [False] * len(lines)
+    out: list[NDArray[np.float64]] = []
+
+    def chain(first: int, entry_start: bool) -> tuple[list[NDArray[np.float64]], bool]:
+        """Walk from line ``first`` entered at its start (or end)."""
+        parts: list[NDArray[np.float64]] = []
+        i, at_start = first, entry_start
+        while True:
+            used[i] = True
+            ln = lines[i]
+            parts.append(ln if at_start else ln[::-1])
+            exit_end = index[(i, not at_start)]
+            nxt = partner.get(exit_end)
+            if nxt is None:
+                return parts, False
+            j, j_start = ends[nxt]
+            if used[j]:
+                return parts, j == first
+            i, at_start = j, j_start
+
+    for i, ln in enumerate(lines):
+        if used[i] or closed[i] or len(ln) < 2:
+            continue
+        # Start from a free end so the whole chain is walked.
+        if partner.get(index[(i, True)]) is None:
+            parts, _ = chain(i, True)
+        elif partner.get(index[(i, False)]) is None:
+            parts, _ = chain(i, False)
+        else:
+            continue  # inside a chain; reached from its free end or as a cycle
+        out.append(np.vstack(parts))
+    for i, ln in enumerate(lines):
+        if used[i] or closed[i] or len(ln) < 2:
+            continue
+        parts, cyc = chain(i, True)
+        merged = np.vstack(parts)
+        out.append(np.vstack([merged, merged[:1]]) if cyc else merged)
+    out.extend(ln for i, ln in enumerate(lines) if closed[i] or (len(ln) < 2 and not used[i]))
+    return out
+
+
 def _smooth_polyline(rc: NDArray[np.float64], sigma: float) -> NDArray[np.float64]:
     """Gaussian smoothing along a 1 px-spaced polyline (periodic when closed;
     an open stroke keeps its endpoints)."""
@@ -173,10 +343,17 @@ def extract_feature_contours(
     shape = image.grayscale.shape
     field = subject_edge_field(image.color_gradient, isolation.saliency_map, isolation.subject_mask)
     floor = support_floor(isolation.silhouettes, field)
-    min_length = config.min_contour_length
+    # A feature is a stroke once it is longer than the band is wide (twice the
+    # band's half-width): an eyelid of a small face is shorter than the
+    # configured trace minimum, which is sized for marching-squares loops.
+    min_length = min(config.min_contour_length, int(np.ceil(FEATURE_MIN_BANDS * band_px(shape))))
 
     raw: list[NDArray[np.floating]] = []
-    for line in link_ridges(ridge_map(image, isolation, config), min_points=min_length):
+    pieces = link_ridges(ridge_map(image, isolation, config), min_points=2)
+    joined = join_ridges(pieces, JOIN_GAP_BANDS * band_px(shape))
+    for line in joined:
+        if len(line) < min_length:
+            continue
         for run in supported_runs(line, field, floor, min_length):
             raw.append(_smooth_polyline(run, RIDGE_SMOOTH_PX))
 
@@ -184,7 +361,7 @@ def extract_feature_contours(
     # uncapped and without the loop-area floor: the ranking picks the budget,
     # and a small closed ridge (a nostril) is a feature, not noise.
     processed, areas = _postprocess_raw_contours(
-        raw, image, replace(config, max_contours=None, min_contour_area=0.0)
+        raw, image, replace(config, max_contours=None, min_contour_area=0.0, min_contour_length=min_length)
     )
 
     mask = isolation.subject_mask

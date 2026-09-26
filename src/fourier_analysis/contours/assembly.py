@@ -21,8 +21,10 @@ given the strokes already chosen::
   equal edges and scores near 1.
 - ``share``: the fraction of the stroke on the subject mask.
 - ``clean``: ``exp(-w / WIGGLE_SCALE)``, where ``w`` is the length the stroke
-  loses under a ``WIGGLE_SIGMA_PX`` arc-length Gaussian (the staircase / spur
-  measure the bench bar reads).  Jagged iso-texture scribble scores near 0.
+  loses *to jags* under a ``WIGGLE_SIGMA_PX`` arc-length Gaussian (the
+  staircase / spur measure the bench bar reads, less the share every pass
+  takes from curvature, see ``stroke_wiggle``).  Jagged iso-texture scribble
+  scores near 0; a small round eyelid or a short straight stroke does not.
 - ``connector``: the stroke's minimum point distance to the chosen set — the
   metric the tour's spanning tree (``shortest_tour``) joins it by — beyond
   ``r`` (a stroke touching drawn ink costs nothing).  A stroke opens its
@@ -221,19 +223,47 @@ def _pair_distances(
 
 
 def stroke_wiggle(z: NDArray[np.complex128], sigma: float = WIGGLE_SIGMA_PX) -> float:
-    """1 - (arc length after a ``sigma`` px arc-length Gaussian) / (raw arc
-    length): near 0 for a clean stroke, large for staircase, spurs or scribble."""
+    """The arc length a stroke loses to jaggedness under a ``sigma`` px
+    arc-length Gaussian: near 0 for a clean stroke, large for staircase,
+    spurs or scribble.
+
+    Smoothing shortens a curve for two reasons: jags (staircase, spurs,
+    scribble), which the first pass removes, and curvature, which every pass
+    shortens by about the same fraction (``sigma**2 / 2R**2`` for radius R).
+    The measure is the first pass's fractional loss less the second's, so a
+    small round feature (an eyelid, a lens) is not scored as jagged for being
+    round, and an open stroke's ends are point-reflected so it is not scored
+    as jagged for being short.
+    """
     p = _samples(z)
     if len(p) < 4:
         return 0.0
     closed = bool(np.allclose(p[0], p[-1]))
     q = p[:-1] if closed else p
-    sm = ndi.gaussian_filter1d(q, sigma, axis=0, mode="wrap" if closed else "nearest")
+    once = _smooth_stroke(q, sigma, closed)
+    twice = _smooth_stroke(once, sigma, closed)
+    lengths = [_stroke_length(x, closed) for x in (q, once, twice)]
+    if lengths[0] <= 0 or lengths[1] <= 0:
+        return 0.0
+    first = 1.0 - lengths[1] / lengths[0]
+    second = 1.0 - lengths[2] / lengths[1]
+    return max(0.0, first - max(0.0, second))
+
+
+def _smooth_stroke(q: NDArray[np.float64], sigma: float, closed: bool) -> NDArray[np.float64]:
+    """Gaussian along the stroke's samples: periodic when closed; an open
+    stroke's ends point-reflected (``x[-k] = 2 x[0] - x[k]``), so a straight
+    end stays put (edge padding would pull both ends in by about 0.4 sigma)."""
     if closed:
-        q, sm = np.vstack([q, q[:1]]), np.vstack([sm, sm[:1]])
-    raw = float(np.hypot(*np.diff(q, axis=0).T).sum())
-    kept = float(np.hypot(*np.diff(sm, axis=0).T).sum())
-    return max(0.0, 1.0 - kept / raw) if raw > 0 else 0.0
+        return ndi.gaussian_filter1d(q, sigma, axis=0, mode="wrap")
+    k = min(len(q) - 1, int(np.ceil(4 * sigma)))
+    padded = np.vstack([2 * q[0] - q[k:0:-1], q, 2 * q[-1] - q[-2 : -k - 2 : -1]])
+    return ndi.gaussian_filter1d(padded, sigma, axis=0, mode="nearest")[k : k + len(q)]
+
+
+def _stroke_length(q: NDArray[np.float64], closed: bool) -> float:
+    pts = np.vstack([q, q[:1]]) if closed else q
+    return float(np.hypot(*np.diff(pts, axis=0).T).sum())
 
 
 def _samples(z: NDArray[np.complex128]) -> NDArray[np.float64]:

@@ -5,7 +5,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from fourier_analysis.contours.assembly import assemble_contours
+from fourier_analysis.contours.assembly import select_strokes
+from fourier_analysis.contours.bridges import CHAIN_GAP_BANDS, chain_strokes, route_connectors
 from fourier_analysis.contours.features import extract_feature_contours
 from fourier_analysis.contours.geometry import _polygon_area
 from fourier_analysis.contours.image import LoadedImage, load_image_inputs
@@ -15,6 +16,7 @@ from fourier_analysis.contours.models import (
     ContourDiagnostics,
     ContourExtractionResult,
 )
+from fourier_analysis.contours.support import band_px
 from fourier_analysis.contours.structure import extract_structure_contours
 from fourier_analysis.shortest_tour import build_contour_tour
 
@@ -35,11 +37,32 @@ def extract_contours_pipeline(
     structure = extract_structure_contours(image, isolation, None, config)
     features = extract_feature_contours(image, isolation, [], None, config)
 
-    # Stage 4: greedy marginal-value selection; max_contours is a ceiling.
-    contours = assemble_contours(isolation, structure + features, config.max_contours, image)
+    # Stage 4: greedy marginal-value selection.  The greedy order is the
+    # same with or without a ceiling (a ceiling truncates it), so the whole
+    # order is taken and the ceiling applied to what is drawn: pen strokes.
+    selection = select_strokes(isolation, structure + features, None, image)
 
-    if not contours:
+    if not selection.contours:
         return _empty_result(config)
+
+    # Stage 4b: strokes whose ends meet are chained into one pen stroke, and
+    # long joins follow the subject's edges instead of jumping.  The ceiling
+    # counts the contours drawn (chains, and routed joins that are their own
+    # stroke): the longest prefix of the greedy order that fits is kept.
+    gap = CHAIN_GAP_BANDS * band_px(image.grayscale.shape)
+    picks = selection.contours
+    ceiling = config.max_contours
+    kept = len(picks)
+    if ceiling is not None:
+        kept = min(kept, max(ceiling, selection.silhouette_count))
+        while kept < len(picks) and len(chain_strokes(picks[: kept + 1], gap)) <= ceiling:
+            kept += 1
+    contours = route_connectors(chain_strokes(picks[:kept], gap), isolation, image)
+    while ceiling is not None and len(contours) > ceiling and kept > selection.silhouette_count:
+        kept -= 1
+        contours = route_connectors(chain_strokes(picks[:kept], gap), isolation, image)
+    if ceiling is not None and len(contours) > ceiling:
+        contours = chain_strokes(picks[:kept], gap)
 
     # Build tour.
     tour = build_contour_tour(contours, method=config.tour_method)
