@@ -263,6 +263,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "matplotlib" },
+    { name = "networkx" },
     { name = "numpy" },
     { name = "onnxruntime" },
     { name = "pillow" },
@@ -300,6 +301,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.8" },
     { name = "motor", marker = "extra == 'web'", specifier = ">=3.6" },
     { name = "mypy", marker = "extra == 'dev'" },
+    { name = "networkx", specifier = ">=3.2" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "onnxruntime", specifier = ">=1.17" },
     { name = "pillow", specifier = ">=10.1" },
