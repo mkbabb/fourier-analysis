@@ -180,12 +180,30 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
         await page.keyboard.press("Enter");
         await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeVisible();
 
+        const exportFrame = page.locator(".controls-dock-anchor [aria-label='Export frame']");
         async function exportWith(off: string[]): Promise<number> {
+            // X.F.W14V Repair 1 (C1R1-1, F.W14U R-1 homed): each export starts
+            // from the reader's pause. The loader honours it now, so a late
+            // data write can no longer restart the clock between exports.
+            await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeVisible();
             // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control.
-            // The dock expands under the pointer; let its morph settle first.
-            await page.locator(".controls-dock-anchor .glass-dock").hover();
+            // X.F.W14V Repair 1 (C1R1-1): the dock expands on pointer ENTRY, and it
+            // is anchored right, so a collapse shrinks it toward its persistent
+            // Edit control. Hovering the dock's centre while the previous
+            // export's collapse was still morphing put the pointer on the part
+            // that shrank away: the entry's expand timer was cancelled by the
+            // leave, and the pointer rested outside a collapsed dock. So the path
+            // leaves the dock, enters it again on the one control that stays put
+            // in both postures (the suite's `expandCanvasDock` idiom), and waits
+            // for the expanded state itself, not a timeout.
+            const dock = (await page.locator(".controls-dock-anchor .glass-dock").boundingBox())!;
+            await page.mouse.move(dock.x + dock.width / 2, dock.y + dock.height + 160);
+            await page.getByRole("button", { name: "Edit contour" }).first().hover();
+            await expect(exportFrame).toBeVisible();
+            // Let the expand morph settle (`.dock-layers` intercepts pointer
+            // events until it does).
             await page.waitForTimeout(800);
-            await page.locator(".controls-dock-anchor [aria-label='Export frame']").click();
+            await exportFrame.click();
             const dialog = page.getByRole("dialog", { name: "Export Frame" });
             // X.F.W14U.vdock (UIA-F-243): the dialog remembers its choices across
             // opens, so each export SETS every layer switch rather than toggling
