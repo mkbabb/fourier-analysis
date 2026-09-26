@@ -175,7 +175,7 @@ class ContourConfig:
     alpha_mode: AlphaMode | str = AlphaMode.AUTO
     """How to handle the image's alpha channel (if present)."""
 
-    tour_method: str = "mst"
+    tour_method: str = "postman"
     """Algorithm for ordering contours into a continuous path."""
 
     # ── Preprocessing ─────────────────────────────────────────────────
@@ -239,7 +239,7 @@ class ContourConfig:
         return ContourConfig(
             strategy=strategy,
             alpha_mode=alpha_mode,
-            tour_method=self.tour_method,
+            tour_method=self.tour_method if self.tour_method in ("postman",) else "postman",
             resize=resize,
             blur_sigma=max(0.0, float(self.blur_sigma)),
             contrast_enhance=bool(self.contrast_enhance),
@@ -295,7 +295,7 @@ class ContourConfig:
             blur_sigma=d.get("blur_sigma", 0.5),
             contrast_enhance=d.get("contrast_enhance", True),
             alpha_mode=d.get("alpha_mode", AlphaMode.AUTO),
-            tour_method=d.get("tour_method", "mst"),
+            tour_method=d.get("tour_method", "postman"),
             min_contour_length=d.get("min_contour_length", 40),
             min_contour_area=d.get("min_contour_area", 0.001),
             max_contours=d.get("max_contours", 24),

@@ -50,7 +50,7 @@ class TestContourML:
 
         result = extract_contours_result(img_path, ContourConfig(strategy="auto", resize=None))
         assert isinstance(result.contours, list)
-        assert result.diagnostics.selected_candidate == "pipeline"
+        assert result.diagnostics.selected_candidate in ("face-parsing", "colour-parts")
 
     def test_ml_masks_returns_multiple_thresholds(self, tmp_path: Path):
         """ml_masks should return multiple nested masks at different thresholds."""

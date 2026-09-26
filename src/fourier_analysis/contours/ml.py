@@ -133,6 +133,9 @@ def load_subject_sessions() -> None:
     bench, pays the load once)."""
     for spec in SUBJECT_MODELS:
         _get_session(spec)
+    from fourier_analysis.contours.parts import load_part_sessions
+
+    load_part_sessions()
 
 
 def _source_rgb(image: LoadedImage) -> Image.Image:
