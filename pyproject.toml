@@ -12,6 +12,9 @@ dependencies = [
     "scipy>=1.12",
     "onnxruntime>=1.17",
     "sympy>=1.13",
+    # Face landmarks + person parse (contours.landmarks).  1.0.x aborts on macOS
+    # (TensorsToDetectionsCalculator requires a Metal service even on the CPU delegate).
+    "mediapipe<1",
 ]
 
 [project.optional-dependencies]

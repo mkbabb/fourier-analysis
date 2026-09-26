@@ -74,11 +74,83 @@ BIREFNET_LITE = SubjectModelSpec(
 SUBJECT_MODELS: tuple[SubjectModelSpec, ...] = (U2NET, BIREFNET_LITE)
 """The subject ensemble: the saliency map is the mean of these models' maps."""
 
+
+@dataclass(frozen=True)
+class PinnedAsset:
+    """A sha-pinned model file (not an ONNX subject model) cached beside them.
+
+    Downloaded once into ``~/.cache/fourier-analysis/models`` and verified by
+    SHA-256 on every load (``ensure_asset``); the weights never enter git.
+    """
+
+    name: str
+    filename: str
+    url: str
+    sha256: str
+
+    @property
+    def path(self) -> Path:
+        return _CACHE_DIR / self.filename
+
+
+# MediaPipe BlazeFace (short range): the human-face detector that gates the
+# landmark stage.
+FACE_DETECTOR = PinnedAsset(
+    name="blaze-face-short-range",
+    filename="blaze_face_short_range.tflite",
+    url=(
+        "https://storage.googleapis.com/mediapipe-models/face_detector/"
+        "blaze_face_short_range/float16/1/blaze_face_short_range.tflite"
+    ),
+    sha256="b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f",
+)
+
+# MediaPipe Face Landmarker (FaceMesh v2, 478 points with irises).
+FACE_LANDMARKER = PinnedAsset(
+    name="face-landmarker",
+    filename="face_landmarker.task",
+    url=(
+        "https://storage.googleapis.com/mediapipe-models/face_landmarker/"
+        "face_landmarker/float16/1/face_landmarker.task"
+    ),
+    sha256="64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+)
+
+# MediaPipe multiclass selfie segmenter: background, hair, body skin, face
+# skin, clothes, other (accessories) -- a small person parser.
+PERSON_PARSER = PinnedAsset(
+    name="selfie-multiclass",
+    filename="selfie_multiclass_256x256.tflite",
+    url=(
+        "https://storage.googleapis.com/mediapipe-models/image_segmenter/"
+        "selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite"
+    ),
+    sha256="c6748b1253a99067ef71f7e26ca71096cd449baefa8f101900ea23016507e0e0",
+)
+
+# Informative Drawings (Chan, Durand & Isola, CVPR 2022), the "anime style"
+# line-art generator exported to ONNX; pinned to a HuggingFace revision.
+LINE_ART = PinnedAsset(
+    name="informative-drawings-line-art",
+    filename="informative-drawings-line-art.onnx",
+    url=(
+        "https://huggingface.co/rocca/informative-drawings-line-art-onnx/resolve/"
+        "d38eccbd448cdcd228fb81d708506e5e60b41ccb/model.onnx"
+    ),
+    sha256="1fef40b8f7126d827e30fbebccf95ae9b0b391795df926bf9366a821bad4f498",
+)
+
+
+def ensure_asset(asset: PinnedAsset) -> Path:
+    """The verified local path of a pinned model file (downloading it once)."""
+    return _download(asset)
+
+
 _session_lock = threading.Lock()
 _sessions: dict[str, Any] = {}
 
 
-def _download(spec: SubjectModelSpec) -> Path:
+def _download(spec: SubjectModelSpec | PinnedAsset) -> Path:
     path = spec.path
     if path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == spec.sha256:
         return path
@@ -133,6 +205,12 @@ def load_subject_sessions() -> None:
     bench, pays the load once)."""
     for spec in SUBJECT_MODELS:
         _get_session(spec)
+    # The drawing models (faces, person parse, line art) load here too.
+    from fourier_analysis.contours.landmarks import load_face_sessions
+    from fourier_analysis.contours.lineart import load_line_art_session
+
+    load_face_sessions()
+    load_line_art_session()
 
 
 def _source_rgb(image: LoadedImage) -> Image.Image:

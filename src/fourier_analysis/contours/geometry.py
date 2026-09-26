@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.interpolate import CubicSpline, interp1d
 
 from fourier_analysis.contours.image import LoadedImage
 
@@ -89,37 +88,92 @@ def _deduplicate_contours(
     return deduped
 
 
+# A vertex is a corner to keep when the path turns by more than this over one
+# output step either side of it (a dead end's reversal turns 180 degrees).
+CORNER_TURN_DEG = 50.0
+# At most this fraction of the output samples are pinned to corners.
+MAX_CORNER_FRACTION = 0.25
+
+
+def _corner_vertices(z: NDArray[np.complex128], arc: NDArray[np.float64], window: float,
+                     closed: bool) -> NDArray[np.int64]:
+    """Vertices where the path turns by more than ``CORNER_TURN_DEG`` over
+    ``window`` of arc either side, each the sharpest within that window."""
+    total = arc[-1]
+    if closed:
+        ext_arc = np.concatenate([arc[:-1] - total, arc, arc[1:] + total])
+        ext_z = np.concatenate([z[:-1], z, z[1:]])
+    else:
+        ext_arc, ext_z = arc, z
+    def at(t: NDArray[np.float64]) -> NDArray[np.complex128]:
+        t = t if closed else np.clip(t, 0.0, total)
+        return np.interp(t, ext_arc, ext_z.real) + 1j * np.interp(t, ext_arc, ext_z.imag)
+    def turning(w: float) -> NDArray[np.float64]:
+        before = z - at(arc - w)
+        after = at(arc + w) - z
+        ok = (np.abs(before) > 1e-9) & (np.abs(after) > 1e-9)
+        t = np.zeros(len(z))
+        t[ok] = np.abs(np.angle(after[ok] / before[ok]))
+        return t
+
+    turn = turning(window)
+    # Within a corner's window every vertex turns alike; the corner itself is
+    # where the turn is also sharpest up close.
+    sharp = turn + turning(window / 8.0)
+    cand = np.flatnonzero(turn > np.radians(CORNER_TURN_DEG))
+    keep: list[int] = []
+    for i in cand[np.argsort(-sharp[cand], kind="stable")]:
+        if all(abs(arc[i] - arc[j]) > window and (not closed or total - abs(arc[i] - arc[j]) > window)
+               for j in keep):
+            keep.append(int(i))
+    return np.array(sorted(keep), dtype=np.int64)
+
+
 def resample_arc_length(
     contour: NDArray[np.complex128],
     n_points: int,
 ) -> NDArray[np.complex128]:
-    """Resample a contour to uniform arc-length spacing."""
+    """Resample a path to ``n_points`` samples spaced evenly by arc length,
+    keeping its corners.
+
+    The path is read as the polyline it is (linear between vertices: the
+    stages upstream already smooth their strokes, so a spline here would only
+    overshoot at corners).  Its corners -- where it turns sharply within one
+    output step, above all a dead end the tour reverses at -- are pinned as
+    samples (at most ``MAX_CORNER_FRACTION`` of them, sharpest first), and the
+    remaining samples are spread evenly by arc length between them, so a
+    drawn corner or a stroke's tip is never cut by the sampling grid.  The
+    first sample is the path's first point; a closed path (first point
+    repeated last) is sampled around once without repeating it.
+    """
     if len(contour) < 2:
         return contour
-
-    diffs = np.abs(np.diff(contour))
-    arc = np.concatenate([[0.0], np.cumsum(diffs)])
-    total_length = arc[-1]
-    if total_length < 1e-12:
+    contour = np.asarray(contour, dtype=np.complex128)
+    keep = np.concatenate([[True], np.abs(np.diff(contour)) > 1e-12])
+    z = contour[keep]
+    if len(z) < 2:
         return contour[:n_points] if len(contour) >= n_points else contour
+    arc = np.concatenate([[0.0], np.cumsum(np.abs(np.diff(z)))])
+    total = float(arc[-1])
+    closed = bool(abs(z[0] - z[-1]) < 1e-9)
 
-    arc_norm = arc / total_length
-    # Remove duplicate arc-length positions (zero-length segments)
-    unique_mask = np.concatenate([[True], np.diff(arc_norm) > 0])
-    arc_norm = arc_norm[unique_mask]
-    contour_clean = contour[unique_mask]
-    if len(arc_norm) < 2:
-        return contour[:n_points] if len(contour) >= n_points else contour
-
-    t_uniform = np.linspace(0, 1, n_points, endpoint=False)
-    if len(arc_norm) >= 4 and contour_clean[0] == contour_clean[-1]:
-        # A closed path (a spliced tour) is periodic: a not-a-knot end
-        # condition would overshoot wherever the seam sits beside a long segment.
-        xy = np.column_stack([contour_clean.real, contour_clean.imag])
-        spline = CubicSpline(arc_norm, xy, bc_type="periodic")
-        out = spline(t_uniform)
-        return out[:, 0] + 1j * out[:, 1]
-
-    interp_re = interp1d(arc_norm, contour_clean.real, kind="cubic")
-    interp_im = interp1d(arc_norm, contour_clean.imag, kind="cubic")
-    return interp_re(t_uniform) + 1j * interp_im(t_uniform)
+    step = total / n_points
+    corners = _corner_vertices(z, arc, step, closed)
+    if len(corners) > MAX_CORNER_FRACTION * n_points:
+        corners = np.sort(corners[: int(MAX_CORNER_FRACTION * n_points)])
+    anchors = np.unique(np.concatenate([[0.0], arc[corners]]))
+    anchors = anchors[anchors < total - 1e-9]
+    spans = np.diff(np.append(anchors, total))
+    # Largest-remainder allocation, one sample at least per anchor.
+    ideal = spans / total * n_points
+    counts = np.maximum(1, np.floor(ideal).astype(np.int64))
+    short = n_points - int(counts.sum())
+    if short > 0:
+        counts[np.argsort(-(ideal - np.floor(ideal)), kind="stable")[:short]] += 1
+    while counts.sum() > n_points:  # more anchors than floor allows: trim the densest
+        i = int(np.argmax(counts - ideal))
+        counts[i] -= 1
+    t = np.concatenate([
+        a + span * np.arange(c) / c for a, span, c in zip(anchors, spans, counts) if c > 0
+    ])
+    return np.interp(t, arc, z.real) + 1j * np.interp(t, arc, z.imag)

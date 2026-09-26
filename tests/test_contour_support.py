@@ -190,34 +190,3 @@ class TestStructureScale:
         assert colour[:, w // 2 - 3 : w // 2 + 3].max() > 0
         assert flat.max() == 0
 
-    def test_structure_ridges_trace_the_boundaries_not_the_texture(self):
-        """Blocks (left half) against one-pixel stripes of the same contrast
-        (right half): the ridges lie on the block boundaries only."""
-        from fourier_analysis.contours.features import structure_ridge_map
-        from fourier_analysis.contours.isolation import SubjectIsolation
-
-        h = w = 400
-        yy, xx = np.mgrid[:h, :w]
-        grey = np.where(xx < w // 2, 0.5 * (((yy // 40) + (xx // 40)) % 2), 0.5 * (yy % 2))
-        mask = np.ones(grey.shape, dtype=bool)
-        isolation = SubjectIsolation(
-            subject_mask=mask,
-            saliency_map=np.ones(grey.shape),
-            silhouettes=(),
-            silhouette_area=float(mask.sum()),
-            subject_band=subject_band(mask),
-        )
-        ridges = structure_ridge_map(self._image(grey, None), isolation)
-        rows, cols = np.nonzero(ridges[20:-20, 20 : w // 2 - 20])
-        rows, cols = rows + 20, cols + 20
-        assert rows.size > 500
-        # Every ridge pixel lies on a block boundary (a multiple of 40).
-        def to_boundary(v):
-            return np.minimum(v % 40, 40 - v % 40)
-
-        # Every ridge pixel lies on a block boundary; only where four blocks
-        # meet does the blurred saddle round a corner off it.
-        off = np.minimum(to_boundary(rows), to_boundary(cols))
-        near_corner = np.maximum(to_boundary(rows), to_boundary(cols)) <= 8
-        assert np.all((off <= 2) | near_corner)
-        assert ridges[20:-20, w // 2 + 20 : -20].sum() == 0

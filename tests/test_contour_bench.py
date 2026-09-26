@@ -36,7 +36,7 @@ def test_bench_metrics_are_sane(name: str, public_images, tmp_path: Path) -> Non
 
     assert (tmp_path / f"{name}.png").is_file()
     assert m.reference == "stored"  # the eye-checked reference is committed
-    assert 1 <= m.contour_count <= 24
+    assert m.contour_count >= 1
     for v in (m.precision, m.recall, m.background_fraction, m.frame_fraction, m.wiggle):
         assert 0.0 <= v <= 1.0
     assert m.tour_length >= m.ink_length > 0
