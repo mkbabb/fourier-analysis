@@ -192,17 +192,28 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
             // Edit control. Hovering the dock's centre while the previous
             // export's collapse was still morphing put the pointer on the part
             // that shrank away: the entry's expand timer was cancelled by the
-            // leave, and the pointer rested outside a collapsed dock. So the path
-            // leaves the dock, enters it again on the one control that stays put
-            // in both postures (the suite's `expandCanvasDock` idiom), and waits
-            // for the expanded state itself, not a timeout.
-            const dock = (await page.locator(".controls-dock-anchor .glass-dock").boundingBox())!;
+            // leave, and the pointer rested outside a collapsed dock. Nor is an
+            // entry made while the previous export is still settling safe: the
+            // dialog hands focus back to Export frame, the dock holds itself
+            // open for that focus, and when the hold releases it collapses even
+            // under a resting pointer (the entry came before the release, so no
+            // later entry re-opens it). Export frame's own visibility is no
+            // witness either: mid-collapse the expanded layer is still painted.
+            // So the path leaves the dock and waits for it to come to rest
+            // collapsed, enters it again on the one control that stays put in
+            // both postures (the suite's `expandCanvasDock` idiom), and waits for
+            // the dock's expanded STATE and for its morph to settle (glass marks
+            // the root `data-morphing` while `.dock-layers` intercepts pointer
+            // events), in place of a fixed sleep.
+            const dockEl = page.locator(".controls-dock-anchor .glass-dock");
+            const dock = (await dockEl.boundingBox())!;
             await page.mouse.move(dock.x + dock.width / 2, dock.y + dock.height + 160);
+            await expect(dockEl).toHaveClass(/(^|\s)collapsed(\s|$)/);
+            await expect(dockEl).not.toHaveAttribute("data-morphing");
             await page.getByRole("button", { name: "Edit contour" }).first().hover();
+            await expect(dockEl).toHaveClass(/(^|\s)expanded(\s|$)/);
+            await expect(dockEl).not.toHaveAttribute("data-morphing");
             await expect(exportFrame).toBeVisible();
-            // Let the expand morph settle (`.dock-layers` intercepts pointer
-            // events until it does).
-            await page.waitForTimeout(800);
             await exportFrame.click();
             const dialog = page.getByRole("dialog", { name: "Export Frame" });
             // X.F.W14U.vdock (UIA-F-243): the dialog remembers its choices across
