@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 
 /**
@@ -177,17 +178,16 @@ test.describe("F.W14V.u1 — the canvas dock's controls (1440)", () => {
             await expect(page.getByRole("menu").getByRole("menuitem", { name: /export/i })).toHaveCount(0);
             await page.keyboard.press("Escape");
         }
-        await expandCanvasDock(page);
-        await page.locator(".controls-dock-anchor [aria-label='Export frame']").click();
+        // X.F.W14V Repair 2 (C2R1-1): every Export-frame entry opens from a
+        // settled dock (`fixtures/canvas-dock.ts`).
+        await clickCanvasDockExport(page);
         const exp = page.getByRole("dialog", { name: "Export Frame" });
         await expect(exp).toBeVisible();
         await page.keyboard.press("Escape");
         await expect(exp).toBeHidden();
         // In fullscreen the same dock's Export opens the same dialog.
         const fs = await openFullscreen(page);
-        await fs.locator(".controls-dock-anchor [aria-label='Edit contour']").hover();
-        await page.waitForTimeout(700);
-        await fs.locator(".controls-dock-anchor [aria-label='Export frame']").click();
+        await clickCanvasDockExport(page, fs);
         await expect(page.getByRole("dialog", { name: "Export Frame" })).toBeVisible();
         await frame(page, "u182-fs-export");
     });

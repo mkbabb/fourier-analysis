@@ -1,6 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
 import { ADMIN_TOKEN, ADMIN_USERS, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
+import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { seededViz, type SeededViz } from "./fixtures/seed";
 
 /**
@@ -180,41 +181,15 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
         await page.keyboard.press("Enter");
         await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeVisible();
 
-        const exportFrame = page.locator(".controls-dock-anchor [aria-label='Export frame']");
         async function exportWith(off: string[]): Promise<number> {
             // X.F.W14V Repair 1 (C1R1-1, F.W14U R-1 homed): each export starts
             // from the reader's pause. The loader honours it now, so a late
             // data write can no longer restart the clock between exports.
             await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeVisible();
-            // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control.
-            // X.F.W14V Repair 1 (C1R1-1): the dock expands on pointer ENTRY, and it
-            // is anchored right, so a collapse shrinks it toward its persistent
-            // Edit control. Hovering the dock's centre while the previous
-            // export's collapse was still morphing put the pointer on the part
-            // that shrank away: the entry's expand timer was cancelled by the
-            // leave, and the pointer rested outside a collapsed dock. Nor is an
-            // entry made while the previous export is still settling safe: the
-            // dialog hands focus back to Export frame, the dock holds itself
-            // open for that focus, and when the hold releases it collapses even
-            // under a resting pointer (the entry came before the release, so no
-            // later entry re-opens it). Export frame's own visibility is no
-            // witness either: mid-collapse the expanded layer is still painted.
-            // So the path leaves the dock and waits for it to come to rest
-            // collapsed, enters it again on the one control that stays put in
-            // both postures (the suite's `expandCanvasDock` idiom), and waits for
-            // the dock's expanded STATE and for its morph to settle (glass marks
-            // the root `data-morphing` while `.dock-layers` intercepts pointer
-            // events), in place of a fixed sleep.
-            const dockEl = page.locator(".controls-dock-anchor .glass-dock");
-            const dock = (await dockEl.boundingBox())!;
-            await page.mouse.move(dock.x + dock.width / 2, dock.y + dock.height + 160);
-            await expect(dockEl).toHaveClass(/(^|\s)collapsed(\s|$)/);
-            await expect(dockEl).not.toHaveAttribute("data-morphing");
-            await page.getByRole("button", { name: "Edit contour" }).first().hover();
-            await expect(dockEl).toHaveClass(/(^|\s)expanded(\s|$)/);
-            await expect(dockEl).not.toHaveAttribute("data-morphing");
-            await expect(exportFrame).toBeVisible();
-            await exportFrame.click();
+            // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control,
+            // opened from a settled dock (Repair 1 C1R1-1's path, one shared
+            // helper since Repair 2 C2R1-1: `fixtures/canvas-dock.ts`).
+            await clickCanvasDockExport(page);
             const dialog = page.getByRole("dialog", { name: "Export Frame" });
             // X.F.W14U.vdock (UIA-F-243): the dialog remembers its choices across
             // opens, so each export SETS every layer switch rather than toggling

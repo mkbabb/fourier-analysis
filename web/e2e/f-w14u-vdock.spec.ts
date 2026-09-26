@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 
 /**
@@ -253,9 +254,11 @@ test.describe("F.W14U.vdock — the export dialog (1440)", () => {
     test.setTimeout(120_000);
 
     async function openExport(page: Page) {
-        // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control.
-        await expandCanvasDock(page);
-        await page.locator(".controls-dock-anchor [aria-label='Export frame']").click();
+        // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control,
+        // opened from a settled dock (X.F.W14V Repair 2 C2R1-1: the second open
+        // follows a closed export dialog, whose focus hold releases into a
+        // collapse under the resting pointer; `fixtures/canvas-dock.ts`).
+        await clickCanvasDockExport(page);
         const dialog = page.getByRole("dialog", { name: "Export Frame" });
         await expect(dialog).toBeVisible();
         await page.waitForTimeout(300);
