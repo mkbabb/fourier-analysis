@@ -5,7 +5,7 @@ are chosen first.  Every other candidate — the edge-supported structure runs
 (CT-5) and feature ridges (CT-6) — competes on one scale, its *marginal gain*
 given the strokes already chosen::
 
-    gain = coverage x support x share x clean - connector
+    gain = coverage x support x share x face x clean - connector
 
 - ``coverage``: the new ink the stroke adds — its length lying farther than
   the subject band's half-width ``r`` from every chosen stroke — taken as the
@@ -25,6 +25,11 @@ given the strokes already chosen::
   a region boundary too soft for the pixel scale (a hairline, a jaw against
   hair) is carried by the structure scale.
 - ``share``: the fraction of the stroke on the subject mask.
+- ``face``: ``1 + FACE_GAIN x`` the fraction of the stroke in a face
+  (``SubjectIsolation.face_region``, see ``faces``).  A portrait is
+  recognised by its face: its eyes, nose, mouth and jaw are short and often
+  soft, and without this a coat's long lapels and stripes take every slot
+  under the ceiling.  A subject with no face is weighed as before.
 - ``clean``: ``exp(-w / WIGGLE_SCALE)``, where ``w`` is the length the stroke
   loses *to jags* under a ``WIGGLE_SIGMA_PX`` arc-length Gaussian (the
   staircase / spur measure the bench bar reads, less the share every pass
@@ -82,6 +87,8 @@ WIGGLE_SIGMA_PX = 4.0
 WIGGLE_SCALE = 0.05
 # Connector sharing looks this many band widths around each stroke.
 NEIGHBOUR_BANDS = 8.0
+# A stroke wholly in a face weighs 1 + FACE_GAIN times one outside it.
+FACE_GAIN = 2.0
 
 
 @dataclass(frozen=True)
@@ -175,7 +182,7 @@ def _stroke_weights(
     image: LoadedImage,
     radius: float,
 ) -> NDArray[np.float64]:
-    """Each stroke's fixed weight: support x local contrast x share x clean."""
+    """Each stroke's fixed weight: support x local contrast x share x face x clean."""
     shape = image.grayscale.shape
     mask = isolation.subject_mask
     scales = []
@@ -186,6 +193,7 @@ def _stroke_weights(
         surround = ndi.gaussian_filter(field, SURROUND_BANDS * radius)
         scales.append((field, field / np.maximum(surround, 1e-6)))
     member = mask if mask is not None and mask.any() else np.ones(shape, dtype=bool)
+    faces = isolation.face_region
     weight = np.empty(len(zs))
     for i, z in enumerate(zs):
         rc = complex_to_rc(z, shape)
@@ -194,7 +202,8 @@ def _stroke_weights(
         )
         share = float(np.mean(_sample(member, rc)))
         clean = float(np.exp(-stroke_wiggle(z) / WIGGLE_SCALE))
-        weight[i] = support * share * clean
+        face = 1.0 + FACE_GAIN * float(np.mean(_sample(faces, rc))) if faces is not None else 1.0
+        weight[i] = support * share * face * clean
     return weight
 
 

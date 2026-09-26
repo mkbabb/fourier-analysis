@@ -57,3 +57,19 @@ def test_private_outputs_are_confined() -> None:
         guard_private_path(Path(__file__).parent / "leak.png", private=True)
     guard_private_path(PRIVATE_ROOT / "evidence" / "x.png", private=True)
     guard_private_path(Path(__file__).parent / "ok.png", private=False)
+
+
+def test_wiggle_reads_jags_not_stroke_ends() -> None:
+    """A clean straight open stroke has no staircase: the edge-padded measure
+    charged it for its two ends (about 0.8 sigma of length); the
+    point-reflected one reads it as clean and still reads a staircase."""
+    import numpy as np
+
+    from bench.contours.harness import BAR, ink_wiggle
+
+    straight = np.linspace(0, 60, 61) + 0j
+    assert ink_wiggle([straight], reflect=False) > BAR["wiggle"][1]
+    assert ink_wiggle([straight]) < 1e-3
+    k = np.arange(80)
+    stair = 6.0 * ((k + 1) // 2) + 1j * 6.0 * (k // 2)  # 6 px steps along a diagonal
+    assert ink_wiggle([stair]) > BAR["wiggle"][1]

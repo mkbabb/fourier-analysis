@@ -82,3 +82,32 @@ def test_stroke_wiggle_separates_a_clean_curve_from_scribble():
     scribble = arc + 3 * (rng.standard_normal(400) + 1j * rng.standard_normal(400))
     assert stroke_wiggle(arc) < 0.02
     assert stroke_wiggle(scribble) > 5 * stroke_wiggle(arc) + 0.05
+
+
+def _face_ink(contours, region, shape) -> float:
+    from fourier_analysis.contours.support import _sample, complex_to_rc, densify
+
+    return float(sum(_sample(region, densify(complex_to_rc(c, shape))).sum() for c in contours))
+
+
+@pytest.mark.parametrize("rel", ["portraits/cauchy.png", "portraits/euler.jpg"])
+def test_a_portraits_face_is_drawn_before_its_coat(rel):
+    """Under the 24-stroke ceiling an engraved or painted bust's long coat
+    lapels and stripes out-rank its eyes, nose, mouth and jaw on length and
+    contrast; weighing strokes by their share of the face draws the face."""
+    from dataclasses import replace
+
+    config = ContourConfig().normalized()
+    image = load_image_inputs(ASSETS / rel, config)
+    isolation = isolate_subject(image, config)
+    assert isolation.face_region is not None, rel
+    candidates = extract_structure_contours(image, isolation, None, config) + (
+        extract_feature_contours(image, isolation, [], None, config)
+    )
+    with_face = select_strokes(isolation, candidates, 24, image)
+    blind = select_strokes(replace(isolation, face_region=None), candidates, 24, image)
+    shape = image.grayscale.shape
+    n = with_face.silhouette_count
+    ink = _face_ink(with_face.contours[n:], isolation.face_region, shape)
+    ink_blind = _face_ink(blind.contours[n:], isolation.face_region, shape)
+    assert ink >= 1.5 * ink_blind, (rel, ink, ink_blind)

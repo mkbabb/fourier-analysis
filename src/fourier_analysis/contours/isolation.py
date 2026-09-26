@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage as ndi
 
+from fourier_analysis.contours.faces import face_region
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.models import ContourConfig
 from fourier_analysis.contours.ml import _predict_probability_map
@@ -27,6 +28,8 @@ class SubjectIsolation:
     strokes where the frame crops the subject (the frame itself is never ink).
     ``silhouette_area`` is the mask's area in pixels; ``subject_band`` is the
     mask dilated by the bar's boundary tolerance (see ``support``).
+    ``face_region`` is where the subject's faces are (``faces.face_region``),
+    ``None`` when it has none.
     """
 
     subject_mask: NDArray[np.bool_] | None
@@ -34,6 +37,7 @@ class SubjectIsolation:
     silhouettes: tuple[NDArray[np.complex128], ...]
     silhouette_area: float
     subject_band: NDArray[np.bool_] | None = None
+    face_region: NDArray[np.bool_] | None = None
 
 
 # A mask component (or hole) is significant at this fraction of the largest
@@ -139,6 +143,7 @@ def isolate_subject(
        the mask, grown through ``saliency >= config.ml.threshold``.
     3. If alpha exists with 5-98% coverage, intersect with the mask.
     4. Keep every significant component; trace its boundary, cut at the frame.
+    5. Find the faces on it (``faces.face_region``).
     """
     saliency = _predict_probability_map(image)
     subject_mask = hysteresis_subject_mask(saliency, config.ml.threshold)
@@ -160,4 +165,5 @@ def isolate_subject(
         silhouettes=subject_silhouettes(subject_mask, image, config),
         silhouette_area=float(subject_mask.sum()),
         subject_band=subject_band(subject_mask),
+        face_region=face_region(image.grayscale, subject_mask),
     )

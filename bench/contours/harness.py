@@ -28,11 +28,15 @@ longest side is ``ContourSettings.resize``):
 - ``frame_fraction``: fraction of contour ink lying on the image frame (2 px).
 - ``wiggle``: 1 - smoothed/raw ink length at a 4 px arc-length Gaussian (ink
   resampled uniformly at 1 px, so the kernel is 4 px whatever the trace's point
-  density); the staircase/noise-spur measure.
+  density; open ends point-reflected, see ``ink_wiggle``); the
+  staircase/noise-spur measure.
 - ``epi_err_N`` for N in 50/100/200: mean |reconstruction - tour| over the
   resampled tour, as a percentage of the image diagonal (the API's epicycle
   route: resample to n_points, ``EpicycleChain.from_signal(n_harmonics=N)``).
-- ``runtime_s``: wall time of extraction + tour.
+- ``runtime_s``: wall time of extraction + tour.  The subject models' sessions
+  are opened once before the first image (``load_subject_sessions``), as a
+  long-lived server holds them: a model load is a per-process cost, not a
+  per-extraction one, and must not be charged to whichever image runs first.
 
 Reference masks: an ML subject model (ISNet general-use, deliberately stronger
 than the pipeline's own U2-Net-lite so the pipeline is not graded by itself)
@@ -326,6 +330,7 @@ class Metrics:
     wiggle: float
     epi_err: dict[str, float] = field(default_factory=dict)
     runtime_s: float = 0.0
+    wiggle_edge_padded: float = 0.0  # ink_wiggle(reflect=False), for comparison only
 
     @property
     def jump_fraction(self) -> float:
@@ -366,22 +371,37 @@ def bar_failures(m: Metrics) -> list[str]:
     return out
 
 
-def ink_wiggle(contours: list[NDArray[np.complex128]], sigma_px: float = 4.0) -> float:
+def ink_wiggle(
+    contours: list[NDArray[np.complex128]], sigma_px: float = 4.0, reflect: bool = True
+) -> float:
     """Staircase/spur measure: 1 - (length after a sigma_px arc-length Gaussian
     smoothing) / (raw length), pooled over all contours.  A clean stroke loses
-    little length when smoothed; jagged, spurred or staircase ink loses a lot."""
+    little length when smoothed; jagged, spurred or staircase ink loses a lot.
+
+    An open stroke's ends are point-reflected (``x[-k] = 2 x[0] - x[k]``), as
+    the selection's ``stroke_wiggle`` does: edge padding ("nearest") pulls
+    each end of even a perfectly straight stroke in by about 0.4 sigma, so a
+    clean straight 60 px stroke read as 5% jagged and the measure charged a
+    drawing for its number of stroke ends, not its jags.  ``reflect=False``
+    is the edge-padded measure (the bench's rounds 1-7), kept for comparison
+    (``Metrics.wiggle_edge_padded``)."""
     raw = smooth = 0.0
     for c in contours:
         d = densify(c)
         if len(d) < 8:
             continue
         closed = abs(d[0] - d[-1]) < 1e-6
-        mode = "wrap" if closed else "nearest"
-        sm = ndi.gaussian_filter1d(d.real, sigma_px, mode=mode) + 1j * ndi.gaussian_filter1d(
-            d.imag, sigma_px, mode=mode
-        )
-        raw += float(np.abs(np.diff(d)).sum())
-        smooth += float(np.abs(np.diff(sm)).sum())
+        q = np.column_stack([d.real, d.imag])
+        if closed:
+            sm = ndi.gaussian_filter1d(q, sigma_px, axis=0, mode="wrap")
+        elif reflect:
+            k = min(len(q) - 1, int(math.ceil(4 * sigma_px)))
+            padded = np.vstack([2 * q[0] - q[k:0:-1], q, 2 * q[-1] - q[-2 : -k - 2 : -1]])
+            sm = ndi.gaussian_filter1d(padded, sigma_px, axis=0, mode="nearest")[k : k + len(q)]
+        else:
+            sm = ndi.gaussian_filter1d(q, sigma_px, axis=0, mode="nearest")
+        raw += float(np.hypot(*np.diff(q, axis=0).T).sum())
+        smooth += float(np.hypot(*np.diff(sm, axis=0).T).sum())
     return float(1.0 - smooth / raw) if raw > 0 else 0.0
 
 
@@ -495,6 +515,7 @@ def compute_metrics(
         wiggle=wiggle,
         epi_err=epi,
         runtime_s=run.runtime_s,
+        wiggle_edge_padded=ink_wiggle(run.contours, reflect=False),
     )
 
 
@@ -613,6 +634,9 @@ def run_bench(
         images = [i for i in images if any(o in i.name for o in only)]
     if any(i.private for i in images):
         guard_private_path(out_dir, True)
+    from fourier_analysis.contours.ml import load_subject_sessions
+
+    load_subject_sessions()
     results: list[Metrics] = []
     for img in images:
         results.append(bench_image(img, out_dir if overlays else None))

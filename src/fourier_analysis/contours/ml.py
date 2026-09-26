@@ -127,6 +127,14 @@ def _get_session(spec: SubjectModelSpec):
         return session
 
 
+def load_subject_sessions() -> None:
+    """Open every subject model's inference session now rather than on the
+    first extraction (a long-lived process, such as the API server or the
+    bench, pays the load once)."""
+    for spec in SUBJECT_MODELS:
+        _get_session(spec)
+
+
 def _source_rgb(image: LoadedImage) -> Image.Image:
     """The colour image the models were trained on (alpha composited on white)."""
     if image.source_path is None:
