@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy import ndimage as ndi
 from skimage import measure
 
 from fourier_analysis.contours.geometry import _bbox_iou, _contour_bbox, _polygon_area
@@ -15,6 +16,7 @@ from fourier_analysis.contours.models import ContourConfig
 from fourier_analysis.contours.processing import _postprocess_raw_contours
 from fourier_analysis.contours.support import (
     REDUNDANT_OVERLAP,
+    STRUCTURE_SCALE_BANDS,
     InkCoverage,
     arc_support,
     band_px,
@@ -35,9 +37,12 @@ def extract_structure_contours(
 ) -> list[tuple[NDArray[np.complex128], float]]:
     """Extract the edge-supported spans of iso-intensity contours in the subject.
 
-    Candidates are the iso-lines of detail_grayscale (CLAHE grey) at 16
-    subject-quantile levels.  Each is clipped to the subject band (CT-4), then
-    split into the spans an edge supports: the subject-normalised colour
+    Candidates are the iso-lines of detail_grayscale (CLAHE grey), seen at the
+    structure scale (a Gaussian of ``STRUCTURE_SCALE_BANDS`` band half-widths,
+    the scale ``structure_gradient`` reads), at 16 subject-quantile levels.
+    Texture finer than that scale (fur, strands, hatching, knit) averages
+    away, so an iso-line along a furred boundary follows the boundary, not
+    every hair on it.  Each is clipped to the subject band (CT-4), then split into the spans an edge supports: the subject-normalised colour
     gradient along it, median-filtered, must reach ``support_floor`` — a
     fraction of the silhouette's own median support, so the bar is relative to
     the image.  An iso-line across smooth skin or cloth (an illumination band)
@@ -45,7 +50,10 @@ def extract_structure_contours(
     Returns up to *budget* runs (``None``: all of them) by size that do not
     repeat the silhouette or each other.
     """
-    source = image.detail_grayscale
+    source = ndi.gaussian_filter(
+        np.asarray(image.detail_grayscale, dtype=np.float64),
+        STRUCTURE_SCALE_BANDS * band_px(image.grayscale.shape),
+    )
     n_levels = 16
     percentiles = np.linspace(5, 95, n_levels)
 

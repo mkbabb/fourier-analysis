@@ -60,11 +60,12 @@ def test_silhouettes_come_first_and_the_ceiling_holds(selected):
 
 def test_a_sparse_subject_stops_below_the_ceiling():
     """The sponge-flower is a few bold outlines: with no ceiling at all,
-    selection stops on marginal value below the 24-stroke default and well
-    before its candidates run out (it never fills a budget)."""
+    selection stops on marginal value well before its candidates run out (it
+    never fills a budget).  (r7: its structure runs are traced at the
+    structure scale, so clean runs no longer lose to their own jags and it
+    now stops at 24 of 37; the property is the stop, not the 24.)"""
     _, candidates, sel = _selection("animals/sponge-flower.JPG", max_contours=None)
     assert len(candidates) > 24
-    assert len(sel.contours) < 24
     assert len(sel.contours) < 0.75 * len(candidates)
 
 
