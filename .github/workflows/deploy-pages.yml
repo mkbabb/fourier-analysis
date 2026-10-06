@@ -143,3 +143,17 @@ jobs:
           echo "  built SHA:       ${{ github.event.workflow_run.head_sha || github.sha }}"
           echo "  GH Actions run:  ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "  CF deployment:   ${{ steps.pages.outputs.cf_deployment_id }}"
+
+      # X §0eh hotfix (2026-10-06) — the post-deploy smoke. The SPA shipped for
+      # months with an empty API base and every check stayed green, because no
+      # step ever asked the live site whether it could reach its API. This one
+      # does, and fails the workflow unless (1) the bundle served at
+      # fourier.babb.dev carries the API base, (2) the API's /api/health answers
+      # JSON over strictly verified TLS with CORS for the site's origin, and
+      # (3) the API certificate is valid for more than 14 more days.
+      - name: Post-deploy smoke (bundle API base + API health over strict TLS)
+        env:
+          SMOKE_SITE: https://fourier.babb.dev
+          EXPECTED_API_BASE: https://api.fourier.babb.dev
+          SMOKE_CERT_MIN_DAYS: "14"
+        run: bash scripts/pages-smoke.sh
