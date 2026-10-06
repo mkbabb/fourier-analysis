@@ -49,6 +49,25 @@ PAGES_PROJECT="${PAGES_PROJECT:-fourier}"       # CF project NAME (verified live
 PAGES_BRANCH="${PAGES_BRANCH:-master}"
 BUILD_DIR="${BUILD_DIR:-web/dist}"              # vite default outDir under web/
 
+# X §0eh hotfix (2026-10-06) — the SPA's API base is a BUILD-TIME input.
+# `web/src/lib/api.ts` reads `import.meta.env.VITE_API_URL`; nothing in the
+# deploy path ever set it, so every production bundle shipped an EMPTY base and
+# every API call (uploads, contours, gallery, sessions) hit Cloudflare Pages —
+# whose `/*  /index.html  200` rewrite answered with the SPA shell. The API is
+# its own origin, so the base is set HERE, where the build runs, and asserted
+# against the built bundle (step 3) before anything is uploaded. A production
+# (master) deploy may not override it.
+PROD_API_BASE="https://api.fourier.babb.dev"
+if [ "$PAGES_BRANCH" = "master" ]; then
+    if [ -n "${VITE_API_URL:-}" ] && [ "$VITE_API_URL" != "$PROD_API_BASE" ]; then
+        err "VITE_API_URL='$VITE_API_URL' but a production deploy must build against $PROD_API_BASE."
+        exit 1
+    fi
+    VITE_API_URL="$PROD_API_BASE"
+fi
+: "${VITE_API_URL:?Set VITE_API_URL (the API origin the SPA calls) for a non-production branch}"
+export VITE_API_URL
+
 log() { printf '\033[0;32m[pages-deploy]\033[0m %s\n' "$1"; }
 err() { printf '\033[0;31m[pages-deploy]\033[0m %s\n' "$1" >&2; }
 
@@ -86,6 +105,12 @@ fi
 log "Building the SPA (npm run build in web/)..."
 npm --prefix web run build
 [ -d "$BUILD_DIR" ] || { err "build dir '$BUILD_DIR' not found after build"; exit 1; }
+# §0eh — refuse to ship a bundle that does not carry the API base.
+if ! grep -rqF "$VITE_API_URL" "$BUILD_DIR/assets" --include='*.js'; then
+    err "built bundle does not contain the API base '$VITE_API_URL' — refusing to deploy."
+    exit 1
+fi
+log "API base baked into the bundle: $VITE_API_URL"
 
 # ── 4. Sanitise the commit message (wrangler 4.x rejects non-printable bytes) ──
 raw_msg="$(git -C "$ROOT" log -1 --pretty=%B)"
