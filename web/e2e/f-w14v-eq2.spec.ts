@@ -17,7 +17,7 @@ import { expect, test, type Page } from "@playwright/test";
  * q2  Below lg (390×844), the Controls tab shows the aside's layers and no empty
  *     stage box; the Canvas tab shows the stage and hides the aside.
  *
- * Headed Chromium (`--project chromium --headed`) against the served app.
+ * Chromium (`--project chromium`, headless; value.js COHESION §0ei) against the served app.
  */
 
 const PHASE = process.env.FW14V_PHASE ?? "after";

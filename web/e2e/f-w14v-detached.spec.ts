@@ -22,7 +22,7 @@ import { seededViz } from "./fixtures/seed";
  *     label's row), clicking it resets without toggling the layer, and no reset
  *     stays in a layer body.
  *
- * Headed Chromium (`--project chromium --headed`) against the served app.
+ * Chromium (`--project chromium`, headless; value.js COHESION §0ei) against the served app.
  */
 
 const PHASE = process.env.FW14V_PHASE ?? "after";

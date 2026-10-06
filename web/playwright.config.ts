@@ -48,21 +48,36 @@ function excluded(...tags: RegExp[]): RegExp | undefined {
 }
 
 /**
- * X.F.W14.s (addendum (f), COHESION §0cm + §0be) — THE GPU INSTRUMENT RUNS HEADED.
+ * X.F.W14.s (addendum (f), COHESION §0cm) — THE GPU INSTRUMENT, IN THE BACKGROUND.
  *
  * `f-w14-dpr.spec.ts` (G-p, OA-44) reads canvas backing stores against the
- * device box the engine reports. Headless Chromium under `deviceScaleFactor` 2
- * reports a 1x `devicePixelContentBoxSize` and paints a 1x bitmap stretched 2x
- * (measured at F.W14 Repair 1, D-2), so a headless reading measures the
- * emulator, not the app. §0be's instrument rule is headed real-GPU Chromium;
- * the suite declares it here as configuration: the spec's tests carry the
- * `@gpu` tag, the `chromium-headed` project runs exactly those, and every
- * headless project excludes them. They are never skipped. Tag-scoped like the
- * `@coarse` cell below, and not by a project `testMatch`: G-F9-1
- * (`e2e/unit/unit-floor-population.vitest.ts`) reads Playwright's population
- * as `testDir` plus the default `testMatch`, and reddens if one is set.
+ * device box the engine reports, so it must run on the real GPU and never on
+ * the SwiftShader emulator. The `@gpu` tag scopes it; the `chrome-gpu` project
+ * runs exactly those, and every other project excludes them. They are never
+ * skipped. Tag-scoped like the `@coarse` cell below, and not by a project
+ * `testMatch`: G-F9-1 (`e2e/unit/unit-floor-population.vitest.ts`) reads
+ * Playwright's population as `testDir` plus the default `testMatch`, and
+ * reddens if one is set.
+ *
+ * value.js COHESION §0ei (owner law, 2026-10-06, supersedes §0be's headed
+ * rule): no automated browser opens a window. `chrome-gpu` is the installed
+ * Google Chrome (`channel: "chrome"`) in new headless mode (the full browser,
+ * not `chrome-headless-shell`) on ANGLE Metal. Measured 2026-10-06 on this
+ * Mac: `UNMASKED_RENDERER_WEBGL` = "ANGLE (Apple, ANGLE Metal Renderer: Apple
+ * M5 Max, Unspecified Version)"; `e2e/fixtures/gpu.ts` asserts that reading
+ * before every `@gpu` test, so the instrument fails loudly on an emulator.
+ *
+ * `--force-device-scale-factor=2` gives the headless screen the Retina
+ * display's scale. `devicePixelContentBoxSize` reports the screen's scale, not
+ * the emulated `deviceScaleFactor` (measured headed 2026-09-23; measured again
+ * headless 2026-10-06: without the flag it reports a 1x box at DPR 1, 2 and
+ * 2.5, with it a 2x box), so the flag reproduces the screen the headed
+ * instrument ran on rather than a 1x screen no Mac display has.
  */
 const GPU_INSTRUMENT = /@gpu/;
+
+/** Launch arguments for real Chrome on the macOS GPU (ANGLE Metal), headless. */
+const CHROME_GPU_ARGS = ["--use-angle=metal", "--force-device-scale-factor=2"];
 
 export default defineConfig({
     testDir: "./e2e",
@@ -112,8 +127,13 @@ export default defineConfig({
             grepInvert: excluded(/@coarse/, GPU_INSTRUMENT),
         },
         {
-            name: "chromium-headed",
-            use: { ...devices["Desktop Chrome"], headless: false },
+            name: "chrome-gpu",
+            use: {
+                ...devices["Desktop Chrome"],
+                channel: "chrome",
+                headless: true,
+                launchOptions: { args: CHROME_GPU_ARGS },
+            },
             grep: GPU_INSTRUMENT,
             grepInvert: excluded(/@coarse/),
         },

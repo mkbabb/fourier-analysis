@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { backingSize, type BoxSize } from "../src/components/shared/canvas/useCanvasSetup";
+import { expectHardwareGpu } from "./fixtures/gpu";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
@@ -222,6 +223,10 @@ async function openImage(page: Page): Promise<void> {
 for (const dpr of [1, 2]) {
     test.describe(`G-p at DPR ${dpr}`, { tag: "@gpu" }, () => {
         test.use({ deviceScaleFactor: dpr, viewport: { width: W, height: H } });
+        // §0ei: the instrument reads the hardware GPU or fails; never the emulator.
+        test.beforeAll(async ({ browser }) => {
+            await expectHardwareGpu(browser);
+        });
 
         for (const route of ["equation", "image"] as const) {
             test(`${route}: backing store = CSS × dpr at rest, resize, DPR change, zoom`, async ({ page }) => {
