@@ -750,7 +750,7 @@ watchDebounced(
     min-width: 160px;
     max-width: 320px;
     padding: 0.5rem 0.75rem;
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--foreground) 8%, transparent);
+    /* X-DS pass 1 · F1-11: the plate's one shadow is glass-floating's. */
 }
 
 .coeff-popover-inner :deep(.katex-display) {
@@ -808,8 +808,8 @@ watchDebounced(
     padding: 0.75rem;
     color: var(--popover-foreground);
     background: var(--popover);
-    border: 1.5px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    /* X-DS pass 1 · F1-11 — a hairline; the literal cast is deleted. */
+    border: 1px solid var(--border);
     animation: tooltip-in 0.15s var(--ease-out-expo);
     /* `M-US` — `user-select: none` is defensible for a one-line label and wrong
        for an explanatory paragraph: it made the tier description, which the

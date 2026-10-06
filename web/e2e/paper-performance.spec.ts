@@ -41,7 +41,7 @@ async function waitForPaperReady(page: Page) {
     // NOT pin the total — the paper grows (97 → 110 → …) and hardcoding the total
     // is the original drift sin. The `/pg 4 / <total>/` shape verifies the
     // windowed initial render lands on page 4 with a live total denominator.
-    await expect(page.locator(".overlay-page")).toHaveText(/pg\s*4\s*\/\s*\d+/i, {
+    await expect(page.locator(".page-readout")).toHaveText(/pg\s*4\s*\/\s*\d+/i, {
         timeout: 15_000,
     });
     await expect(page.locator("#introduction .section-heading")).toContainText("0.1.Introduction");
@@ -52,7 +52,7 @@ async function mountedSectionCount(page: Page): Promise<number> {
 }
 
 async function overlayText(page: Page): Promise<string> {
-    return page.locator(".overlay-page").innerText();
+    return page.locator(".page-readout").innerText();
 }
 
 async function scrollPaperTo(page: Page, top: number) {
@@ -151,7 +151,7 @@ test.describe("Paper performance", () => {
         await waitForPaperReady(page);
 
         // Growth-tolerant: page number 4 + a live total (not pinned to 97).
-        await expect(page.locator(".overlay-page")).toHaveText(/pg\s*4\s*\/\s*\d+/i);
+        await expect(page.locator(".page-readout")).toHaveText(/pg\s*4\s*\/\s*\d+/i);
         expect(await mountedSectionCount(page)).toBeLessThanOrEqual(MAX_MOUNTED_SECTIONS);
     });
 

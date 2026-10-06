@@ -149,19 +149,30 @@ test.describe("paper-desktop 1440", () => {
         expect(read.navBottom - read.headerBottom, JSON.stringify(read)).toBeLessThanOrEqual(14);
     });
 
-    test("UIA-F-234: the page chip and the Back control sit on a glass-quiet surface at a role radius", async ({ page }) => {
+    // X-DS pass 1 · F1-09 (owner ruling 2026-10-06, COHESION §0ej/§0ek: "every
+    // glyph has a home") supersedes UIA-F-234's chip half: the page readout was
+    // a glass-quiet chip pinned to the viewport corner, over the running text
+    // at 390. It is a caption line of the ToC host now, with no plate of its own.
+    test("X-DS F1-09: the page readout is homed in the ToC drawer, never over the article", async ({ page }) => {
         const scroller = await openPaper(page);
         await scroller.evaluate((el) => el.scrollTo({ top: 3000 }));
-        const read = await page.locator(".overlay-page").evaluate((el) => {
-            const probe = document.createElement("div");
-            probe.style.borderRadius = "var(--radius-control)";
-            document.body.appendChild(probe);
-            const control = getComputedStyle(probe).borderTopLeftRadius;
-            probe.remove();
-            return { quiet: el.classList.contains("glass-quiet"), radius: getComputedStyle(el).borderTopLeftRadius, control };
+        const readout = page.locator(".page-readout");
+        await expect(readout).toHaveCount(1);
+        await expect(readout).toHaveText(/pg\s*\d+\s*\/\s*\d+/i);
+        const read = await readout.evaluate((el) => {
+            const a = el.getBoundingClientRect();
+            const b = document.querySelector(".paper-article")!.getBoundingClientRect();
+            return {
+                inDrawer: !!el.closest(".paper-sidebar"),
+                plate: el.classList.contains("glass-quiet"),
+                shadow: getComputedStyle(el).boxShadow,
+                overArticle: !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom),
+            };
         });
-        expect(read.quiet, JSON.stringify(read)).toBe(true);
-        expect(read.radius, JSON.stringify(read)).toBe(read.control);
+        expect(read.inDrawer, JSON.stringify(read)).toBe(true);
+        expect(read.plate, JSON.stringify(read)).toBe(false);
+        expect(read.shadow, JSON.stringify(read)).toBe("none");
+        expect(read.overArticle, JSON.stringify(read)).toBe(false);
     });
 
     test("UIA-F-147 (consumer half): ToC rows ride Button's sm rung; no local radius or padding override", async ({ page }) => {
@@ -438,7 +449,7 @@ test.describe("paper-mobile 390", () => {
             .toBe(2);
         await openFloatingToc(page);
         const overlap = await page.evaluate(() => {
-            const chip = document.querySelector(".overlay-page");
+            const chip = document.querySelector(".page-readout");
             const list = document.querySelector(".floating-toc-dropdown");
             if (!chip || !list) return null;
             const a = chip.getBoundingClientRect();

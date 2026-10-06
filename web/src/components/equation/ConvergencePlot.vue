@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useMediaQuery } from "@vueuse/core";
 import type { FourierTermDTO } from "@/lib/equation/types";
-import { applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
+import { applyGoldenStroke } from "@/lib/golden-stroke";
 import { easeInOutSine } from "@mkbabb/value.js/easing";
 import { lerp } from "@mkbabb/value.js/math";
 import { renderLatex } from "@/lib/equation/render";
@@ -343,7 +343,7 @@ function draw() {
 
     // Sum curve (golden)
     ctx.save();
-    applyGoldenShimmer(ctx, { hovered: hoveredCurve.value === "sum", playing: playing.value, baseWidth: 5, hoverWidth: 7, hoverBlur: 14, playBlur: 8 });
+    applyGoldenStroke(ctx, { hovered: hoveredCurve.value === "sum", baseWidth: 5, hoverWidth: 7 });
     const sumPts: [number, number][] = [];
     ctx.beginPath();
     for (let i = 0; i < N_POINTS; i++) {
@@ -352,7 +352,6 @@ function draw() {
         i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
     }
     ctx.stroke();
-    clearShimmer(ctx);
     ctx.restore();
 
     // UIA-F-253 — a sweep held part-way shows where it stands: the harmonics
@@ -642,7 +641,7 @@ onUnmounted(() => {
     line-height: var(--type-leading-caption);
     padding: 0.375rem 0.75rem;
     color: var(--popover-foreground);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--foreground) 8%, transparent);
+    /* X-DS pass 1 · F1-11: the plate's one shadow is glass-floating's. */
     white-space: nowrap;
     z-index: var(--z-controls);
     /* A.W3.d — `tooltip-in` is canonical in glass-ui's animations.css; the

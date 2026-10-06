@@ -12,6 +12,7 @@ import PaperTocTree from "./PaperTocTree.vue";
 import type { PaperSectionData } from "@/lib/paperContent";
 import type { PaperSearchState } from "./search/usePaperSearch";
 import { injectPaperToc } from "./paperToc";
+import PaperPageReadout from "./PaperPageReadout.vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@mkbabb/glass-ui/popover";
 import { ChevronDown, ChevronUp, Search, X } from "@lucide/vue";
@@ -22,6 +23,8 @@ const props = defineProps<{
     search: PaperSearchState;
     /** The chapter the bar names. */
     currentSection?: PaperSectionData | null;
+    /** The page being read (X-DS pass 1 · F1-09: the readout's phone home). */
+    currentPage: number;
 }>();
 
 // The ONE ToC model, injected (COHESION §0o ESC-2 / §3 D9).
@@ -147,6 +150,7 @@ watch(
                         />
                     </PopoverContent>
                 </Popover>
+                <PaperPageReadout :current-page="currentPage" />
                 <Button
                     emphasis="quiet"
                     size="sm"

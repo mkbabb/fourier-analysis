@@ -59,7 +59,8 @@
 
         <!-- X.F.W14U.misc — UIA-F-117 ⊕ UIA-F-254: ONE readout row (the
              desktop and mobile copies were the same four readings twice). It
-             never wraps, and the phase chip reserves the measure of its
+             never re-flows (one line; two fixed rows at phone width, X-DS
+             F1-14), and the phase chip reserves the measure of its
              longest word ("settle-out"), so a reading that changes at animation
              rate cannot move the controls below it. -->
         <div class="demo-info">
@@ -215,6 +216,20 @@ defineEmits<{
     gap: var(--space-atom);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+}
+
+/* X-DS pass 1 · F1-14 — at phone width the four readings overflowed the
+   viewport on one line. They take two fixed rows (a 2 × 2 grid), so the row
+   still never re-flows as a reading changes and the controls below hold. */
+@media (max-width: 30rem) {
+    .demo-info {
+        display: grid;
+        grid-template-columns: repeat(2, auto);
+        justify-content: center;
+        justify-items: start;
+        column-gap: var(--space-body, 0.75rem);
+        row-gap: var(--space-atom);
+    }
 }
 
 .phase-chip {

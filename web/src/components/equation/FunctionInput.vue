@@ -38,8 +38,8 @@ const nHarmonics = defineModel<number>("nHarmonics", { default: 20 });
 const budget = defineModel<number>("budget", { default: 10 });
 const notation = defineModel<NotationMode>("notation", { default: "trig" });
 
-function toggleAuto() {
-    emit("update:autoHarmonics", !props.autoHarmonics);
+function onAuto(value: unknown) {
+    emit("update:autoHarmonics", Array.isArray(value) && value.includes("auto"));
 }
 
 function applyPreset(preset: PresetFunction) {
@@ -210,43 +210,48 @@ const activePreset = computed(() =>
     </ConfiguratorLayer>
     <ConfiguratorLayer label="Controls" sub="harmonics & display" :default-open="true">
         <div class="space-y-body py-1">
-            <div class="harmonics-row">
-                <SliderControl
-                    class="flex-1"
-                    label="Harmonics"
-                    subtitle="terms in the Fourier sum"
-                    :model-value="autoHarmonics && vizHarmonics ? vizHarmonics : nHarmonics"
-                    :min="1" :max="100" :step="1"
-                    color="var(--viz-fourier)"
-                    @update:model-value="(v: number) => { nHarmonics = v; emit('update:autoHarmonics', false); }"
-                />
-                <Tooltip side="bottom">
-                    <!-- `D·D-B2` — the Tooltip is a description, never a name. -->
-                    <Button
-                        emphasis="primary"
-                        size="md" icon-only
-                        aria-label="Auto-select harmonics by Parseval energy"
-                        :aria-pressed="autoHarmonics"
-                        :class="{ 'is-auto-active': autoHarmonics }"
-                        @click="toggleAuto"
-                    >
-                        <Wand2 class="h-4.5 w-4.5" />
-                    </Button>
-                    <template #content>
-                        <div class="auto-calc-tip">
-                            <p class="font-semibold mb-1">Auto (Parseval's theorem)</p>
-                            <p class="text-muted-foreground">
-                                Sets N to the minimum harmonics capturing
-                                ≥99.99% of total energy ‖f‖².
-                            </p>
-                            <p v-if="effectiveN" class="mt-1 fira-code">
-                                N<sub>eff</sub> = {{ effectiveN }}
-                                <span v-if="energyCaptured"> · {{ (energyCaptured * 100).toFixed(1) }}% energy</span>
-                            </p>
-                        </div>
-                    </template>
-                </Tooltip>
-            </div>
+            <!-- X-DS pass 1 · F1-07 — the Parseval control is a labelled "Auto"
+                 toggle in the Harmonics row, beside its field (glass's own
+                 pressed state); the icon-only circle that hung outside the
+                 row, and wrapped under the slider at 390, is gone. -->
+            <SliderControl
+                label="Harmonics"
+                subtitle="terms in the Fourier sum"
+                :model-value="autoHarmonics && vizHarmonics ? vizHarmonics : nHarmonics"
+                :min="1" :max="100" :step="1"
+                color="var(--viz-fourier)"
+                @update:model-value="(v: number) => { nHarmonics = v; emit('update:autoHarmonics', false); }"
+            >
+                <template #adornment>
+                    <Tooltip side="bottom">
+                        <!-- `D·D-B2` — the Tooltip is a description, never a name. -->
+                        <ToggleGroup
+                            type="multiple" size="sm"
+                            aria-label="Harmonics selection"
+                            :model-value="autoHarmonics ? ['auto'] : []"
+                            @update:model-value="onAuto"
+                        >
+                            <ToggleGroupItem value="auto" aria-label="Auto-select harmonics by Parseval energy">
+                                <Wand2 class="h-3.5 w-3.5" aria-hidden="true" />
+                                Auto
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                        <template #content>
+                            <div class="auto-calc-tip">
+                                <p class="font-semibold mb-1">Auto (Parseval's theorem)</p>
+                                <p class="text-muted-foreground">
+                                    Sets N to the minimum harmonics capturing
+                                    ≥99.99% of total energy ‖f‖².
+                                </p>
+                                <p v-if="effectiveN" class="mt-1 fira-code">
+                                    N<sub>eff</sub> = {{ effectiveN }}
+                                    <span v-if="energyCaptured"> · {{ (energyCaptured * 100).toFixed(1) }}% energy</span>
+                                </p>
+                            </div>
+                        </template>
+                    </Tooltip>
+                </template>
+            </SliderControl>
             <!-- UIA-F-35 (consumer) — the budget counts harmonics, DC as one. -->
             <SliderControl
                 label="Displayed harmonics"
@@ -284,23 +289,6 @@ const activePreset = computed(() =>
 .preset-item[data-state="on"] {
     background-color: color-mix(in srgb, var(--viz-fourier) 12%, transparent);
     color: color-mix(in oklab, var(--viz-fourier) 75%, var(--foreground));
-}
-/* UIA-F-206 — the Parseval button belongs to the Harmonics row: beside the
-   field while the row has room, wrapped below it (never out of the row) when
-   it has not. */
-.harmonics-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--space-atom) 0.5rem;
-}
-.harmonics-row > :first-child {
-    min-width: min(15rem, 100%);
-}
-.is-auto-active {
-    color: var(--viz-amber) !important;
-    border-color: color-mix(in srgb, var(--viz-amber) 40%, transparent) !important;
-    background: color-mix(in srgb, var(--viz-amber) 8%, transparent) !important;
 }
 .auto-calc-tip {
     max-width: 220px;

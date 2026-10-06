@@ -219,21 +219,10 @@ const TimelineReadout = () =>
 }
 
 /* ── Play control ── */
-/* X.F.W13.b — the hand-rolled `.play-btn` (its own glass recipe in literal
-   rgba, a 48x40 / 40x32 stadium, hover lift, press, focus outline) retires onto
-   `DockControl`, which owns the circle, the glass face, press and focus. The
-   rainbow the control wore while playing is KEPT, moved onto the producer's
-   own knob for a selected dock control (`--dock-control-active-bg`, read by
-   `[data-active]`), and its drift keeps its reduced-motion arm. */
-.play-control[data-active] {
-    --dock-control-active-bg: linear-gradient(135deg, hsl(0 75% 62% / 0.55), hsl(35 85% 58% / 0.5), hsl(55 80% 55% / 0.45), hsl(140 50% 50% / 0.45), hsl(210 65% 58% / 0.5), hsl(275 55% 58% / 0.5), hsl(330 65% 58% / 0.55));
-    background-size: 300% 300%;
-    animation: rainbow-drift 2.5s var(--ease-standard) infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-    .play-control[data-active] { animation: none; }
-}
-@keyframes rainbow-drift { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
+/* X-DS pass 1 · F1-01 — the seven-stop rainbow the control wore while playing,
+   and its infinite drift, are DELETED: a decorative gradient on a control and
+   idle motion on chrome. The playing state is `DockControl`'s own flat
+   selected fill (`[data-active]`), and the play/pause glyph carries it. */
 
 /* ── Collapsed summary ── */
 .mini-progress { width: 3rem; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }

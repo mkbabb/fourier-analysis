@@ -150,7 +150,7 @@ const renderCalloutText = computed(
                                 alt=""
                                 :width="figure(fig.filename).width"
                                 :height="figure(fig.filename).height"
-                                class="max-w-full rounded-lg shadow-sm"
+                                class="max-w-full rounded-lg"
                                 :class="
                                     DARK_INVERT_EXEMPT.has(fig.filename)
                                         ? 'paper-portrait'

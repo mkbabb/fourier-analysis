@@ -7,7 +7,7 @@ import { processInChunks } from "@/lib/scheduler";
 import { useAuthStore } from "@/stores/auth";
 import { ToastAction, toast } from "@mkbabb/glass-ui/toast";
 import router from "@/router";
-import { ERROR_TOAST } from "@/lib/toast-policy";
+import { errorToast } from "@/lib/toast-policy";
 import { saveDraft } from "@/lib/draftStorage";
 import { problemDetail, problemMessage } from "@/lib/api-problem";
 
@@ -137,7 +137,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
+            if (!api.isAbortError(e)) errorToast({ title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
         } finally {
             loadingMore.value = false;
         }
@@ -156,7 +156,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
+            if (!api.isAbortError(e)) errorToast({ title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
         } finally {
             if (run === listRun) loading.value = false;
         }
@@ -170,7 +170,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             toast({ title: "Admin mode activated", tone: "success" });
             await refreshAdminStats();
         } catch (e: any) {
-            toast({ ...ERROR_TOAST, title: "That admin token was not accepted — check it and try again.", description: problemDetail(e) });
+            errorToast({ title: "That admin token was not accepted — check it and try again.", description: problemDetail(e) });
         }
     }
 
@@ -246,7 +246,7 @@ export const useGalleryStore = defineStore("gallery", () => {
     async function setTier(slug: string, tier: GalleryTier): Promise<GalleryTier | null> {
         const token = useAuthStore().getAdminToken();
         if (!token) {
-            toast({ ...ERROR_TOAST, title: "Admin session has expired — re-enter admin mode." });
+            errorToast({ title: "Admin session has expired — re-enter admin mode." });
             return null;
         }
         try {
@@ -260,7 +260,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             return settled?.tier ?? tier;
         } catch (e: unknown) {
             if (!api.isAbortError(e)) {
-                toast({ ...ERROR_TOAST, title: "Failed to set tier", description: problemDetail(e) });
+                errorToast({ title: "Failed to set tier", description: problemDetail(e) });
             }
             return null;
         }
@@ -269,7 +269,7 @@ export const useGalleryStore = defineStore("gallery", () => {
     async function deleteEntry(slug: string) {
         const token = useAuthStore().getAdminToken();
         if (!token) {
-            toast({ ...ERROR_TOAST, title: "Admin session has expired — re-enter admin mode." });
+            errorToast({ title: "Admin session has expired — re-enter admin mode." });
             return;
         }
         try {
@@ -278,7 +278,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             toast({ title: "Entry deleted", tone: "success" });
         } catch (e: unknown) {
             if (!api.isAbortError(e)) {
-                toast({ ...ERROR_TOAST, title: "Failed to delete entry", description: problemDetail(e) });
+                errorToast({ title: "Failed to delete entry", description: problemDetail(e) });
             }
         }
     }
@@ -295,7 +295,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             if (idx !== -1) entries.value.splice(idx, 1);
             toast({ title: "Deleted", tone: "success" });
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "Failed to delete", description: problemDetail(e) });
+            if (!api.isAbortError(e)) errorToast({ title: "Failed to delete", description: problemDetail(e) });
         }
     }
 
@@ -306,7 +306,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             if (data.visibility === "public") entries.value.unshift(data);
             toast({ title: "Restored", tone: "success" });
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "Failed to restore", description: problemDetail(e) });
+            if (!api.isAbortError(e)) errorToast({ title: "Failed to restore", description: problemDetail(e) });
         }
     }
 
@@ -336,7 +336,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             await useAuthStore().ensureUser();
             applyLike(await api.setVisualizationLike(slug, !likedSlugs.value.has(slug)));
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast({ ...ERROR_TOAST, title: "Could not save the like", description: problemDetail(e) });
+            if (!api.isAbortError(e)) errorToast({ title: "Could not save the like", description: problemDetail(e) });
         }
     }
 
@@ -392,7 +392,7 @@ export const useGalleryStore = defineStore("gallery", () => {
                 action: viewAction(`/v/${slug}`),
             });
         } catch (e: any) {
-            toast({ ...ERROR_TOAST, title: "Publish failed", description: problemDetail(e) });
+            errorToast({ title: "Publish failed", description: problemDetail(e) });
             return false;
         }
         await resetAndFetch();
@@ -410,7 +410,7 @@ export const useGalleryStore = defineStore("gallery", () => {
      */
     async function publishDraft(draft: WorkspaceDraft): Promise<boolean> {
         if (!draft.contour) {
-            toast({ ...ERROR_TOAST, title: "This draft has no contour to publish yet" });
+            errorToast({ title: "This draft has no contour to publish yet" });
             return false;
         }
         try {
@@ -443,7 +443,7 @@ export const useGalleryStore = defineStore("gallery", () => {
                 action: viewAction(`/v/${data.slug}`),
             });
         } catch (e: any) {
-            toast({ ...ERROR_TOAST, title: "Publish failed", description: problemDetail(e) });
+            errorToast({ title: "Publish failed", description: problemDetail(e) });
             return false;
         }
         await resetAndFetch();

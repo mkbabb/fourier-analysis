@@ -43,14 +43,15 @@ const router = useRouter();
                 <CardDescription>{{ description }}</CardDescription>
             </CardHeader>
             <CardContent v-if="detail">
-                <p class="fira-code break-all text-muted-foreground">{{ detail }}</p>
+                <!-- X-DS pass 1 · F1-16: the diagnosis on the caption rung, under the description. -->
+                <p class="fira-code text-caption break-all text-muted-foreground">{{ detail }}</p>
             </CardContent>
             <CardFooter class="flex flex-wrap gap-2">
                 <!-- A host that owns state to clear on the way out (the
                      workspace store) supplies its own actions. -->
                 <slot name="actions">
-                    <Button emphasis="primary" @click="router.push('/visualize')">Upload a new image</Button>
-                    <Button emphasis="secondary" @click="router.push('/gallery')">Browse the gallery</Button>
+                    <Button emphasis="primary" size="md" @click="router.push('/visualize')">Upload a new image</Button>
+                    <Button emphasis="secondary" size="md" @click="router.push('/gallery')">Browse the gallery</Button>
                 </slot>
             </CardFooter>
         </Card>

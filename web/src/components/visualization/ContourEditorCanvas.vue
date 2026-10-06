@@ -502,19 +502,8 @@ defineExpose({
     }
 }
 
-.spline-path {
-    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--contour-stroke) 30%, transparent));
-    transition: filter 0.2s ease;
-}
-
-.editor-svg:hover .spline-path {
-    animation: golden-shimmer 1.2s ease-in-out infinite;
-}
-
-@keyframes golden-shimmer {
-    0%, 100% { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--contour-stroke) 30%, transparent)); }
-    50% { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--contour-stroke) 50%, transparent)); }
-}
+/* X-DS pass 1 · F1-02 — the spline's drop-shadow glow and the infinite
+   hover shimmer that pulsed it are DELETED. The path is a flat stroke. */
 
 .control-point.selected {
     fill: var(--contour-stroke);

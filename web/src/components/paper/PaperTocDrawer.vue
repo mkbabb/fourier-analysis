@@ -22,6 +22,7 @@
 // X.F.W3 repair 1 / `FR-TT-20` — THE ONE IMPORT IDENTITY: the tooltip barrel.
 import { Tooltip } from "@/components/ui/tooltip";
 import PaperSearch from "./PaperSearch.vue";
+import PaperPageReadout from "./PaperPageReadout.vue";
 import PaperTocTree from "./PaperTocTree.vue";
 import type { PaperSearchState } from "./search/usePaperSearch";
 import { injectPaperToc } from "./paperToc";
@@ -38,6 +39,8 @@ import { nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from "vu
 defineProps<{
     renderTitle: (title: string) => string;
     search: PaperSearchState;
+    /** The page being read (X-DS pass 1 · F1-09: the readout's desktop home). */
+    currentPage: number;
 }>();
 
 // The ONE ToC model, injected (COHESION §0o ESC-2 / §3 D9).
@@ -122,6 +125,24 @@ function toggleDrawer() {
                                     </Button>
                                 </CollapsibleTrigger>
                             </Tooltip>
+                            <!-- X-DS pass 1 · F1-06: while open, the drawer's
+                                 own toggle is one of the CONTENTS header's
+                                 controls, not a bare glyph in the gutter. -->
+                            <Tooltip v-if="drawerOpen" text="Hide contents" side="right">
+                                <Button
+                                    ref="drawerTab"
+                                    emphasis="quiet"
+                                    size="md" icon-only
+                                    type="button"
+                                    class="paper-toc-tab"
+                                    aria-label="Hide contents"
+                                    aria-expanded="true"
+                                    :aria-controls="drawerId"
+                                    @click="toggleDrawer"
+                                >
+                                    <PanelLeftClose class="sidebar-contents-icon" />
+                                </Button>
+                            </Tooltip>
                         </div>
                     </div>
                     <CollapsibleContent>
@@ -130,27 +151,31 @@ function toggleDrawer() {
                     </CollapsibleContent>
                 </Collapsible>
             </nav>
+            <!-- X-DS pass 1 · F1-09: the page readout, the drawer's foot. -->
+            <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="paper-toc-page" />
         </div>
-        <!-- The drawer tab: one control in both states, so focus never moves
-             off it. It rides the column's inline end — beside the ToC when
-             open, at the paper's edge when shut. -->
+        <!-- The rail is the gutter between the ToC and the paper. Shut, it
+             holds the drawer's labelled edge tab, flush against the paper's
+             inline-start edge, and the page readout under it. Focus follows
+             the toggle between its two seats (`toggleDrawer`). -->
         <div class="paper-toc-tab-rail">
-            <Tooltip :text="drawerOpen ? 'Hide contents' : 'Show contents'" side="right">
+            <template v-if="!drawerOpen">
                 <Button
                     ref="drawerTab"
                     emphasis="quiet"
-                    size="sm" icon-only
+                    size="sm"
                     type="button"
-                    class="paper-toc-tab"
-                    :aria-label="drawerOpen ? 'Hide contents' : 'Show contents'"
-                    :aria-expanded="drawerOpen"
+                    class="paper-toc-tab paper-toc-tab--edge"
+                    aria-label="Show contents"
+                    aria-expanded="false"
                     :aria-controls="drawerId"
                     @click="toggleDrawer"
                 >
-                    <PanelLeftClose v-if="drawerOpen" class="sidebar-contents-icon" />
-                    <PanelLeftOpen v-else class="sidebar-contents-icon" />
+                    <PanelLeftOpen class="sidebar-contents-icon" />
+                    Contents
                 </Button>
-            </Tooltip>
+                <PaperPageReadout :current-page="currentPage" class="paper-toc-page--edge" />
+            </template>
         </div>
     </aside>
 </template>
@@ -175,6 +200,8 @@ function toggleDrawer() {
     /* The tab rail is the gutter between the ToC and the paper. */
     --paper-toc-tab: var(--control-h-sm);
     --paper-toc-motion: var(--duration-slow) var(--ease-out-expo);
+    /* The page readout's line under the CONTENTS card. */
+    --paper-toc-page-h: 1.75rem;
     display: none;
 }
 
@@ -211,9 +238,30 @@ function toggleDrawer() {
         flex: none;
         width: var(--paper-toc-tab);
         display: flex;
-        justify-content: center;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
         padding-top: 0.625rem;
     }
+
+    /* X-DS pass 1 · F1-06 — the shut drawer's edge tab: the glass Button set
+       vertically (its inline axis runs down the rail), labelled, and flush
+       against the paper card. Layout only; the Button's face is glass's. */
+    .paper-toc-tab--edge,
+    .paper-toc-page--edge {
+        writing-mode: vertical-rl;
+    }
+
+    .paper-toc-page--edge {
+        align-self: center;
+    }
+}
+
+/* The readout under the CONTENTS card, on the card's own inline inset. */
+.paper-toc-page {
+    display: block;
+    width: var(--paper-toc-width);
+    padding: 0.375rem 1.25rem 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -226,7 +274,7 @@ function toggleDrawer() {
 .sidebar-nav {
     width: var(--paper-toc-width);
     max-height: calc(
-        var(--paper-scroll-viewport-height, 100dvh) - var(--sidebar-top-inset) - var(--sidebar-bottom-inset)
+        var(--paper-scroll-viewport-height, 100dvh) - var(--sidebar-top-inset) - var(--sidebar-bottom-inset) - var(--paper-toc-page-h)
     );
     overflow-y: auto;
     overscroll-behavior-y: contain;

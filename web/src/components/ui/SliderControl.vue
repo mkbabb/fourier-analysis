@@ -220,6 +220,9 @@ const fillFraction = computed(() => {
                 </NumberField>
                 <span v-if="unit" class="control-row-unit fira-code">{{ unit }}</span>
             </span>
+            <!-- X-DS pass 1 · F1-07: a control that belongs to this row (the
+                 Harmonics "Auto" toggle) sits in the row, after its field. -->
+            <slot name="adornment" />
         </div>
         <Slider
             v-model="sliderModel"

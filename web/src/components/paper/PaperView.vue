@@ -23,7 +23,6 @@ import { usePaperSearch } from "./search/usePaperSearch";
 import {
     paperSections,
     labelMap,
-    totalPages,
     pageMap,
     extractedMacros,
     type PaperSectionData,
@@ -405,6 +404,7 @@ onUnmounted(() => {
                 <PaperTocBar
                     v-if="!isDesktop"
                     :current-section="currentSection"
+                    :current-page="currentPage"
                     :render-title="renderTitle"
                     :search="search"
                 />
@@ -426,7 +426,7 @@ onUnmounted(() => {
                          the hidden instance's capture-phase outside-pointerdown
                          closed the search before a tapped result could navigate.
                          Each host now mounts only at its own breakpoint. -->
-                    <PaperTocDrawer v-if="isDesktop" :render-title="renderTitle" :search="search" />
+                    <PaperTocDrawer v-if="isDesktop" :current-page="currentPage" :render-title="renderTitle" :search="search" />
 
                     <!-- Main article -->
                     <!-- UIA-F-61: the reading surface is glass Card (opaque: the ToC
@@ -454,17 +454,9 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- Bottom overlay: page indicator (left) + back button (right) -->
+        <!-- Bottom overlay: the back button. X-DS pass 1 · F1-09: the page
+             readout left this overlay for the ToC hosts (`PaperPageReadout`). -->
         <div class="paper-bottom-overlay">
-            <!-- `D/M-8` + `★MF-8`: the product's only reading-location
-                 affordance was excluded three independent ways — 2.88:1 ink, no
-                 announcement, and `user-select: none` so it could not even be
-                 copied. `role="status"` announces the page politely as it
-                 changes; the ink is the strong rung; the text is selectable. -->
-            <div class="overlay-page glass-quiet fira-code" role="status" aria-live="polite">
-                pg {{ currentPage }}<span class="overlay-page-sep">/</span>{{ totalPages }}
-            </div>
-
             <Transition name="fade-scale">
                 <!-- `D/M-6`: name-from-content outranks `title`, so once the
                      badge rendered the sole history control announced itself as
@@ -625,7 +617,7 @@ onUnmounted(() => {
     z-index: var(--z-controls);
     pointer-events: none;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: flex-end;
     padding: 0.75rem 1rem;
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
@@ -664,27 +656,6 @@ onUnmounted(() => {
     justify-content: center;
     padding: 0 3px;
     line-height: 1;
-}
-
-.overlay-page {
-    pointer-events: auto;
-    @apply text-sm;
-    /* `D/M-8`: 2.88:1 at the authored 70% dilution, reproduced to three
-       decimals by both readers. `--muted-foreground-strong` — which the record
-       notes exists and is unused — measures 7.882:1 light / 10.295:1 dark, and
-       it is also the register declared for ink over a glass plate
-       (`--on-glass-muted-strong`), which is what `.glass-wash` makes this. */
-    color: var(--muted-foreground-strong);
-    /* UIA-F-234: on glass-quiet, at the control radius (the Back button's
-       pill beside it) through the quiet tier's own contextual radius. */
-    --radius-ctx: var(--radius-control);
-    padding: 0.25rem 0.75rem;
-    letter-spacing: 0.02em;
-}
-
-.overlay-page-sep {
-    opacity: 0.4;
-    margin: 0 1px;
 }
 
 /* ── Transition: slide-down ──────────────────────────────── */

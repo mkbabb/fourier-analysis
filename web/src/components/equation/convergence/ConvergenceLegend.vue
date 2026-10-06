@@ -91,9 +91,9 @@ const emit = defineEmits<{
     width: 10px;
     height: 10px;
 }
+/* X-DS pass 1 · F1-10 — the flat amber dot; its glow is deleted. */
 .legend-dot--golden {
     background: var(--viz-amber);
-    box-shadow: 0 0 4px color-mix(in srgb, var(--viz-amber) 40%, transparent);
 }
 .legend-dot--dashed {
     background: transparent;

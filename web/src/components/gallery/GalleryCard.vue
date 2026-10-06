@@ -208,9 +208,14 @@ const created = useTimeAgo(() => props.entry.created_at);
     --deferred-section-size: 17rem;
 }
 
+/* X-DS pass 1 · F1-13 — hover is a tone step, never a cast promotion: a
+   resting card does not rise to the floating shadow rung. */
 @media (hover: hover) {
     .gallery-card:hover {
-        --card-cast-rung: var(--glass-shadow-floating);
+        background-image: linear-gradient(
+            oklch(from var(--foreground) l c h / var(--fill-hover)),
+            oklch(from var(--foreground) l c h / var(--fill-hover))
+        );
     }
 }
 
@@ -372,11 +377,12 @@ const created = useTimeAgo(() => props.entry.created_at);
 }
 
 /* X.F.W14V.au4 — A2-FO-L3-4: the compact card (the phone's two-column grid,
-   about 171 px wide): the title and one meta line (the age; the slug steps
+   about 171 px wide; X-DS pass 1 · F1-08: keyed below 12rem of content box,
+   so the 14rem desktop track (~208 px inner) keeps its labelled chips): the title and one meta line (the age; the slug steps
    back, the title names the card), the basis chips as their glyphs (the name
    stays for a screen reader). The admin grid never takes this arm
    (GalleryInfiniteGrid.vue). */
-@container gallery-card (width < 13rem) {
+@container gallery-card (width < 12rem) {
     .card-slug {
         display: none;
     }

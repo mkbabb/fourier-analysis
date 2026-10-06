@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle, Checkbox, Skeleton } from "@mkbabb
 import { useOffsetPagination } from "@/composables/useOffsetPagination";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "@mkbabb/glass-ui/toast";
-import { ERROR_TOAST } from "@/lib/toast-policy";
+import { errorToast } from "@/lib/toast-policy";
 import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import * as api from "@/lib/api";
@@ -267,13 +267,13 @@ async function performBatch(action: BatchKind, slugs: string[]) {
         const n = result.affected;
         toast({ title: `${verb} ${n} ${n === 1 ? "user" : "users"}`, tone: "success" });
         if (result.errors?.length) {
-            for (const err of result.errors) toast({ ...ERROR_TOAST, title: err });
+            for (const err of result.errors) errorToast({ title: err });
         }
         clearSelection();
         await loadPage();
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast({ ...ERROR_TOAST, title: "Batch action failed", description: problemDetail(e) });
+            errorToast({ title: "Batch action failed", description: problemDetail(e) });
         }
     }
 }
@@ -289,7 +289,7 @@ async function handleSuspend(slug: string) {
         await loadPage();
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast({ ...ERROR_TOAST, title: "Failed to suspend", description: problemDetail(e) });
+            errorToast({ title: "Failed to suspend", description: problemDetail(e) });
         }
     } finally {
         busy.value = false;
@@ -307,7 +307,7 @@ async function handleUnsuspend(slug: string) {
         await loadPage();
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast({ ...ERROR_TOAST, title: "Failed to unsuspend", description: problemDetail(e) });
+            errorToast({ title: "Failed to unsuspend", description: problemDetail(e) });
         }
     } finally {
         busy.value = false;
@@ -323,7 +323,7 @@ async function performDelete(slug: string) {
         await loadPage();
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast({ ...ERROR_TOAST, title: "Failed to delete", description: problemDetail(e) });
+            errorToast({ title: "Failed to delete", description: problemDetail(e) });
         }
     }
 }
@@ -340,7 +340,7 @@ async function performPrune() {
         await loadPage(1);
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast({ ...ERROR_TOAST, title: "Failed to prune", description: problemDetail(e) });
+            errorToast({ title: "Failed to prune", description: problemDetail(e) });
         }
     }
 }

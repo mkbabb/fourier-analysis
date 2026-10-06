@@ -16,7 +16,7 @@ import { useClipboard } from "@mkbabb/glass-ui";
 import { useAuthStore } from "@/stores/auth";
 import { useGalleryStore } from "@/stores/gallery";
 import { toast } from "@mkbabb/glass-ui/toast";
-import { ERROR_TOAST } from "@/lib/toast-policy";
+import { errorToast } from "@/lib/toast-policy";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { User, LogIn, LogOut, Copy, Check, Dices, Shield } from "@lucide/vue";
 
@@ -152,7 +152,7 @@ async function handleLogout() {
     } catch {
         // UIA-F-256 (the logout limb): the store rethrows only a failure that
         // left the server session live; the account stays signed in and says so.
-        toast({ ...ERROR_TOAST, title: "Could not log out", description: "The session is still active. Try again." });
+        errorToast({ title: "Could not log out", description: "The session is still active. Try again." });
     } finally {
         loggingOut.value = false;
     }
@@ -167,9 +167,7 @@ async function copySlug() {
     if (!userSlug.value) return;
     const result = await copy(userSlug.value);
     if (!result.ok) {
-        toast({
-            ...ERROR_TOAST,
-            title: "Copying failed",
+        errorToast({ title: "Copying failed",
             description:
                 result.reason === "no-api"
                     ? "This browser will not grant clipboard access — select the slug and copy it manually."

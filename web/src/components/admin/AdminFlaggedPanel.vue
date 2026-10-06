@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle, Skeleton } from "@mkbabb/glass-ui"
 import { useAuthStore } from "@/stores/auth";
 import { useGalleryStore } from "@/stores/gallery";
 import { toast } from "@mkbabb/glass-ui/toast";
-import { ERROR_TOAST } from "@/lib/toast-policy";
+import { errorToast } from "@/lib/toast-policy";
 import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import * as api from "@/lib/api";
@@ -113,7 +113,7 @@ async function loadMore() {
         hasMore.value = result.has_more;
     } catch (e: unknown) {
         if (api.isAbortError(e) || ticket !== streamRun) return;
-        toast({ ...ERROR_TOAST, title: "Failed to load flagged entries", description: problemDetail(e) });
+        errorToast({ title: "Failed to load flagged entries", description: problemDetail(e) });
     } finally {
         if (ticket === streamRun) loadingMore.value = false;
     }
@@ -188,7 +188,7 @@ function confirmDelete() {
             toast({ title: "Entry deleted", tone: "success" });
         } catch (e: unknown) {
             if (!api.isAbortError(e)) {
-                toast({ ...ERROR_TOAST, title: "Failed to delete entry", description: problemDetail(e) });
+                errorToast({ title: "Failed to delete entry", description: problemDetail(e) });
             }
         } finally {
             busySlug.value = null;
@@ -215,7 +215,7 @@ async function handleDismiss(slug: string) {
         });
     } catch (e: unknown) {
         if (!api.isAbortError(e)) {
-            toast({ ...ERROR_TOAST, title: "Failed to dismiss", description: problemDetail(e) });
+            errorToast({ title: "Failed to dismiss", description: problemDetail(e) });
         }
     } finally {
         busySlug.value = null;

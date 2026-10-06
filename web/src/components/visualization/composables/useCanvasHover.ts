@@ -28,7 +28,7 @@ export interface LabelHitRegion {
 
 /**
  * Manages mouse tracking, epicycle hover scale animation (RAF),
- * shimmer RAF loop, label hit-region detection, and cursor management.
+ * label hit-region detection, and cursor management.
  */
 export function useCanvasHover(options: {
     baseScale: number;
@@ -47,7 +47,6 @@ export function useCanvasHover(options: {
 
     let hoveredBasis: string | null = null;
     let labelHitRegions: LabelHitRegion[] = [];
-    let shimmerRafId: number | null = null;
 
     function getMousePos(): [number, number] {
         return [mouseX, mouseY];
@@ -98,35 +97,9 @@ export function useCanvasHover(options: {
         hoverAnimFrame = requestAnimationFrame(updateHoverScale);
     }
 
-    // ── Shimmer loop ──
-
-    /**
-     * The shimmer is pure decoration — a per-frame repaint of a label that is
-     * already fully legible without it — so its reduced arm is the honest one:
-     * draw the hovered state once, and do not start a clock. There is no
-     * terminal frame to seed here because the terminal frame IS the static
-     * hovered label.
-     */
-    function startShimmer() {
-        if (shimmerRafId) return;
-        if (prefersReducedMotion()) {
-            onRedraw();
-            return;
-        }
-        function shimmerTick() {
-            if (!hoveredBasis) { shimmerRafId = null; return; }
-            onRedraw();
-            shimmerRafId = requestAnimationFrame(shimmerTick);
-        }
-        shimmerRafId = requestAnimationFrame(shimmerTick);
-    }
-
-    function stopShimmer() {
-        if (shimmerRafId) {
-            cancelAnimationFrame(shimmerRafId);
-            shimmerRafId = null;
-        }
-    }
+    // X-DS pass 1 · F1-05 — the shimmer loop is DELETED. A hovered label is a
+    // steady state (its own hue at full strength), so a hover change repaints
+    // once and starts no clock.
 
     // ── Mouse handlers ──
 
@@ -157,8 +130,7 @@ export function useCanvasHover(options: {
         if (newHovered !== hoveredBasis) {
             hoveredBasis = newHovered;
             if (el) el.style.cursor = hoveredBasis ? "pointer" : "";
-            if (hoveredBasis) startShimmer();
-            else { stopShimmer(); onRedraw(); }
+            onRedraw();
         }
     }
 
@@ -211,19 +183,17 @@ export function useCanvasHover(options: {
             if (pinnedBasis === tapped) {
                 pinnedBasis = null;
                 hoveredBasis = null;
-                stopShimmer();
                 onRedraw();
             } else {
                 pinnedBasis = tapped;
                 hoveredBasis = tapped;
-                startShimmer();
+                onRedraw();
             }
         } else {
             // Tap outside labels: clear pin
             if (pinnedBasis) {
                 pinnedBasis = null;
                 hoveredBasis = null;
-                stopShimmer();
                 onRedraw();
             }
         }
@@ -231,7 +201,6 @@ export function useCanvasHover(options: {
 
     function cleanup() {
         if (hoverAnimFrame) cancelAnimationFrame(hoverAnimFrame);
-        stopShimmer();
     }
 
     onUnmounted(cleanup);

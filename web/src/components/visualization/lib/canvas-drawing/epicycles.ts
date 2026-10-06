@@ -139,7 +139,6 @@ export function drawEpicycleCircles(
     fit: EpicycleFit | null,
     epicycleAlpha: number,
     lineWidths: { circle: number; arm: number },
-    colorOverride?: string | null,
 ): void {
     const { ctx } = surface;
     const { toScreen, scale } = view;
@@ -167,7 +166,7 @@ export function drawEpicycleCircles(
         const [ccx, ccy] = toScreen(visPositions[i][0], visPositions[i][1]);
         const [tx, ty] = toScreen(visPositions[i + 1][0], visPositions[i + 1][1]);
         const r = components[i].amplitude * scale;
-        const color = colorOverride ?? spectrumColor(i, nVis);
+        const color = spectrumColor(i, nVis);
 
         // DC-term suppression (W2.8): the chain is amplitude-sorted, so the
         // `index === 0` (frequency 0) component lands first and would render as
@@ -273,7 +272,13 @@ export function drawConnectingLine(
     ctx.globalAlpha = 1;
 }
 
-/** Draw the tip dot and glow at the trace position. */
+/**
+ * Draw the tip dot at the trace position.
+ *
+ * X-DS pass 1 · F1-03 — one flat dot in the Fourier identity hue. The pulsing
+ * halo (an idle `sin(t)` alpha), the white specular disc and the literal
+ * `#ff3b3b` outside the viz tokens are DELETED.
+ */
 export function drawTipDot(
     surface: CanvasSurface,
     view: ViewTransform,
@@ -281,25 +286,9 @@ export function drawTipDot(
     tipY: number,
 ): void {
     const { ctx } = surface;
-    const { toScreen } = view;
-    const [sx, sy] = toScreen(tipX, tipY);
-
-    // Pulsing glow
-    const glowAlpha = 0.2 + 0.1 * Math.sin(performance.now() / 300);
-    ctx.beginPath();
-    ctx.arc(sx, sy, 20, 0, Math.PI * 2);
-    ctx.fillStyle = withAlpha(VIZ_COLORS.fourier, glowAlpha);
-    ctx.fill();
-
-    // Solid dot
+    const [sx, sy] = view.toScreen(tipX, tipY);
     ctx.beginPath();
     ctx.arc(sx, sy, 9, 0, Math.PI * 2);
-    ctx.fillStyle = "#ff3b3b";
-    ctx.fill();
-
-    // White highlight
-    ctx.beginPath();
-    ctx.arc(sx, sy, 3, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.fillStyle = VIZ_COLORS.fourier;
     ctx.fill();
 }

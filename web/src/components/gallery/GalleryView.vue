@@ -6,7 +6,7 @@ import { useGalleryStore } from "@/stores/gallery";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "@mkbabb/glass-ui/toast";
-import { ERROR_TOAST } from "@/lib/toast-policy";
+import { errorToast } from "@/lib/toast-policy";
 import { useDestructiveConfirm } from "@/composables/useDestructiveConfirm";
 import { problemDetail } from "@/lib/api-problem";
 import * as api from "@/lib/api";
@@ -261,7 +261,7 @@ function askBatchGallery(action: GalleryBatchAction) {
 async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch" }>) {
     const token = auth.getAdminToken();
     if (!token) {
-        toast({ ...ERROR_TOAST, title: "Admin token missing" });
+        errorToast({ title: "Admin token missing" });
         return;
     }
     const result = await api.batchGallery(token, target.action, target.hashes);
@@ -274,7 +274,7 @@ async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch
     const n = result.affected;
     toast({ title: `${verb} ${n} ${n === 1 ? "entry" : "entries"}`, tone: "success" });
     if (result.errors?.length) {
-        for (const err of result.errors) toast({ ...ERROR_TOAST, title: err });
+        for (const err of result.errors) errorToast({ title: err });
     }
     clearGallerySelection();
     await gallery.resetAndFetch();
@@ -291,7 +291,7 @@ function performConfirmed() {
             if (target.kind === "single") await performSingleDelete(target.slug);
             else await performBatchGallery(target);
         } catch (e: unknown) {
-            toast({ ...ERROR_TOAST, title: "Action failed", description: problemDetail(e) });
+            errorToast({ title: "Action failed", description: problemDetail(e) });
         }
     });
 }

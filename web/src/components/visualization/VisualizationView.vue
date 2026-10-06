@@ -488,16 +488,21 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              secondary path to the gallery; a rejected file or a failed
                              upload is said here, where it was dropped (UIA-F-166 ⊕ F-167). -->
                         <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
-                            <h1 class="drop-target-title font-serif-math text-display-2 font-bold tracking-tight">Draw any outline in circles</h1>
-                            <p class="drop-target-lede text-body text-muted-foreground">
-                                Upload an image: its outline is traced and redrawn by a Fourier series, a chain of rotating circles.
-                            </p>
-                            <Button emphasis="primary" size="lg" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
-                                <Upload v-if="!store.uploading" />
-                                {{ primaryUploadLabel }}
-                            </Button>
-                            <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
-                            <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
+                            <!-- X-DS pass 1 · F1-17: the drop zone is drawn (the
+                                 origin's dashed hairline), so the prompt and its
+                                 action sit in the thing a file is dropped on. -->
+                            <div class="drop-zone">
+                                <h1 class="drop-target-title font-serif-math text-display-2 font-bold tracking-tight">Draw any outline in circles</h1>
+                                <p class="drop-target-lede text-body text-muted-foreground">
+                                    Upload an image: its outline is traced and redrawn by a Fourier series, a chain of rotating circles.
+                                </p>
+                                <Button emphasis="primary" size="lg" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
+                                    <Upload v-if="!store.uploading" />
+                                    {{ primaryUploadLabel }}
+                                </Button>
+                                <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
+                                <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
+                            </div>
                             <Button emphasis="quiet" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
                         </div>
                         <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
@@ -960,6 +965,22 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 }
 .drop-target > * {
     pointer-events: auto;
+}
+/* X-DS pass 1 · F1-17 — the origin's drop zone, revived on today's tokens: a
+   1px dashed hairline at the card radius around the prompt and its action.
+   No fill, no shadow. A dragged file inks the dash in the focus-ring hue. */
+.drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    max-inline-size: min(40rem, 100%);
+    padding: 2rem 1.5rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-card);
+}
+.drop-target[data-dragging] .drop-zone {
+    border-color: var(--focus-ring-color);
 }
 /* The dragenter signal: the glass focus-ring register on the target, so a
    dragged file reads which surface will take it. */

@@ -39,7 +39,7 @@ test.describe("F.W14.r — the desktop ToC (F.W13 `.a` residuals)", () => {
         await openPaper(page);
         const header = page.locator(".paper-sidebar .sidebar-header");
         const top = header.getByRole("button", { name: "Scroll to top" });
-        const disclosure = header.getByRole("button", { name: "Contents" });
+        const disclosure = header.getByRole("button", { name: "Contents", exact: true });
         await expect(top).toHaveCount(1);
         await expect(disclosure).toHaveCount(1);
         // The glass primitive, and a sibling of the disclosure — never its seat.

@@ -2,8 +2,7 @@ import { ref, watch, onMounted, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
-import { toast } from "@mkbabb/glass-ui/toast";
-import { ERROR_TOAST } from "@/lib/toast-policy";
+import { errorToast } from "@/lib/toast-policy";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { normalizeBasisKey } from "@/lib/basis";
 
@@ -205,7 +204,7 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
         () => store.error,
         (err) => {
             if (err && store.imageSlug) {
-                toast({ ...ERROR_TOAST, title: err });
+                errorToast({ title: err });
                 store.error = null;
             }
         },

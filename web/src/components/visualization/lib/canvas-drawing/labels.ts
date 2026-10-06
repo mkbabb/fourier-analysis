@@ -3,14 +3,14 @@ import { basisDisplay } from "../basis-display";
 import type { LabelHitRegion } from "../../composables/useCanvasHover";
 import { VIZ_COLORS } from "@/lib/colors";
 import { basisModeLabel, normalizeBasisKey } from "@/lib/basis";
-import { goldenShimmerAlpha, applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
 
 export interface LabelDrawResult {
     hitRegions: LabelHitRegion[];
 }
 
 /**
- * Draw basis name labels in the top-right corner with optional shimmer on hover.
+ * Draw basis name labels in the top-left corner; a hovered label is its own
+ * hue at full strength against dimmed siblings (X-DS pass 1 · F1-05).
  */
 export function drawBasisLabels(
     surface: CanvasSurface,
@@ -46,14 +46,9 @@ export function drawBasisLabels(
         const modeLabel = basisModeLabel(basisKey, cfg.label);
 
         const isHovered = hoveredBasis === basisKey;
-        const labelShimmer = isHovered ? goldenShimmerAlpha() : 0;
 
-        ctx.fillStyle = isHovered ? VIZ_COLORS.golden : cfg.color;
-        ctx.globalAlpha = isHovered ? labelShimmer : 0.9;
-        if (isHovered) {
-            // Use fill-based shimmer (not stroke), so apply shadow manually
-            applyGoldenShimmer(ctx, { hovered: true, baseWidth: 0, hoverWidth: 0, hoverBlur: 5 });
-        }
+        ctx.fillStyle = cfg.color;
+        ctx.globalAlpha = isHovered ? 1 : hoveredBasis ? 0.45 : 0.9;
 
         // Draw icon — fourier ℱ is slightly larger
         const isFourier = basisName === "fourier";
@@ -67,7 +62,7 @@ export function drawBasisLabels(
         ctx.font = "bold 16px 'Fira Code', monospace";
         ctx.fillText(` ${modeLabel}`, xBase + iconW, yOff);
 
-        clearShimmer(ctx);
+        ctx.globalAlpha = 1;
 
         // Store hit region — uniform row height for all bases
         const labelW = ctx.measureText(` ${modeLabel}`).width;

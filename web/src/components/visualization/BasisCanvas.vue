@@ -4,11 +4,6 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { fourierPositionsAt, evaluateFourier } from "@/lib/evaluators";
 import { VIZ_COLORS } from "@/lib/colors";
-import {
-    goldenShimmerAlpha,
-    goldenShimmerShadow,
-    clearShimmer,
-} from "@/lib/golden-shimmer";
 import { basisDisplay } from "./lib/basis-display";
 import type { BasisComponent } from "@/lib/types";
 import type { ViewTransform, EpicycleBbox } from "./lib/canvas-drawing";
@@ -165,7 +160,7 @@ function drawEpicycleFrame(
 ) {
     const hoveredBasis = hover.getHoveredBasis();
     const epicycleHovered = hoveredBasis === "fourier-epicycles";
-    const trailColor = epicycleHovered ? VIZ_COLORS.golden : VIZ_COLORS.fourier;
+    const trailColor = VIZ_COLORS.fourier;
 
     // Ghost path
     if (layers.ghost) {
@@ -206,13 +201,10 @@ function drawEpicycleFrame(
         }
     }
 
-    // Golden shimmer on epicycle circles when hovered
+    // X-DS pass 1 · F1-05 — a hovered chain keeps its spectrum hues and steps
+    // its stroke once; no gold re-ink, no time-based alpha.
     if (layers.epicycles) {
-        if (epicycleHovered) {
-            s.ctx.globalAlpha = goldenShimmerAlpha();
-        }
-        drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 4, arm: 3.5 }, epicycleHovered ? VIZ_COLORS.golden : undefined);
-        s.ctx.globalAlpha = 1;
+        drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 5, arm: 4.5 } : { circle: 4, arm: 3.5 });
     }
 
     // Update epicycle bounds for hover detection
@@ -307,16 +299,14 @@ function drawMultiBasesFrame(
         const cfg = basisDisplay[basisName];
         if (!cfg) continue;
 
+        // X-DS pass 1 · F1-05 — hover is a steady state: the curve in its own
+        // hue at full strength and one width step, against dimmed siblings.
+        // No glow, no gold re-ink, no time-based alpha.
         const isHovered = hoveredBasis === basisKey;
-        const shimmer = isHovered ? goldenShimmerAlpha() : 0;
         ctx.beginPath();
-        ctx.strokeStyle = isHovered ? VIZ_COLORS.golden : cfg.color;
+        ctx.strokeStyle = cfg.color;
         ctx.lineWidth = isHovered ? 4 : 3;
-        ctx.globalAlpha = isHovered ? shimmer : 0.85;
-        if (isHovered) {
-            ctx.shadowColor = goldenShimmerShadow(shimmer * 0.5);
-            ctx.shadowBlur = 10;
-        }
+        ctx.globalAlpha = isHovered ? 1 : hoveredBasis ? 0.4 : 0.85;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
 
@@ -367,7 +357,7 @@ function drawMultiBasesFrame(
             }
         }
         ctx.stroke();
-        clearShimmer(ctx);
+        ctx.globalAlpha = 1;
     }
 
     // Epicycle trail + tip + hover overlay when fourier-epicycles is active
@@ -379,7 +369,7 @@ function drawMultiBasesFrame(
         const tip = allPositions[allPositions.length - 1];
 
         const epicycleHovered = hoveredBasis === "fourier-epicycles";
-        const epicycleColor = epicycleHovered ? VIZ_COLORS.golden : VIZ_COLORS.fourier;
+        const epicycleColor = VIZ_COLORS.fourier;
 
         // Trail
         trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
@@ -410,7 +400,7 @@ function drawMultiBasesFrame(
         }
 
         if (layers.epicycles) {
-            drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 5, arm: 4.5 }, epicycleHovered ? epicycleColor : null);
+            drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 6, arm: 5.5 } : { circle: 5, arm: 4.5 });
         }
 
         if (fit) {

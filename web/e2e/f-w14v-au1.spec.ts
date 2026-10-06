@@ -291,7 +291,7 @@ test.describe("au1 L2-16 (844×390 /paper)", () => {
         expect.soft(p!.x, "ToC plate left vs the notch side").toBeGreaterThanOrEqual(L_INSETS.left);
         expect.soft(p!.r, "ToC plate right vs the notch side").toBeLessThanOrEqual(LANDSCAPE.width - L_INSETS.right);
         const over = await page.evaluate(() => {
-            const chip = document.querySelector(".overlay-page");
+            const chip = document.querySelector(".page-readout");
             const pl = document.querySelector(".floating-toc-dropdown");
             if (!chip || !pl) return "no chip";
             const a = chip.getBoundingClientRect(), b = pl.getBoundingClientRect();
