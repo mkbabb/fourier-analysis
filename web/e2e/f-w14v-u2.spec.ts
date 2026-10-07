@@ -91,7 +91,7 @@ test.describe("e85 · UIA-F-85 ⊕ F-241 — notation hues on the palette tokens
             const kept: Record<string, number> = { Trig: 6, Exp: 224, Polar: 286 };
             for (const [name, hue] of Object.entries(kept)) {
                 const item = group.getByRole("radio", { name: new RegExp(name) });
-                const ink = await item.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--pill-color").trim());
+                const ink = await item.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--chip-hue").trim());
                 expect(ink, `${name} ink is a palette token`).toMatch(/^var\(--(viz|section-color)-[a-z0-9-]+\)$/);
                 expect(hueDistance(await hueOf(item, ink), hue), `${name} keeps its hue`).toBeLessThan(30);
                 const glyph = item.locator(".notation-glyph");

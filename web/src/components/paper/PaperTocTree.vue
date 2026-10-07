@@ -178,10 +178,13 @@ function choose(node: PaperSectionData) {
     border-radius: var(--radius-lg);
 }
 /* X-DS pass 3 · DS-F3-C4: depth is indent and tone, not shrinking type.
-   Every row below the chapters sits on ONE caption rung in muted ink, on
-   glass Button's `xs` rung (the template), so the row is as tall as its type. */
+   Every row below the chapters sits on ONE rung (0.875rem, a step under the
+   chapters' fixed 1rem) in muted ink, on glass Button's `xs` rung (the
+   template), so the row is as tall as its type. The rung is fixed, like the
+   chapters', not glass's fluid caption: the drawer (desktop) and the phone
+   bar render one anatomy per depth (A2-FO-L1-1). */
 .toc-link:not([data-depth="0"]) {
-    font-size: var(--type-caption);
+    font-size: 0.875rem;
     color: var(--muted-foreground);
 }
 /* UIA-F-156: ONE active treatment at every rank, in the chapter's hue. The
