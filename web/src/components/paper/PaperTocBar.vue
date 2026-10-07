@@ -126,7 +126,7 @@ watch(
                          edge, inside the 21 px zone, at 844×390). -->
                     <PopoverContent
                         :id="dropdownId"
-                        class="floating-toc-dropdown scrollbar-thin w-[calc(100vw_-_1rem_-_env(safe-area-inset-left,0px)_-_env(safe-area-inset-right,0px))] max-h-[min(70dvh,32rem,calc(var(--reka-popover-content-available-height,70dvh)_-_env(safe-area-inset-bottom,0px)_-_0.5rem))] overflow-y-auto overscroll-contain"
+                        class="floating-toc-dropdown scrollbar-thin w-[calc(100vw_-_2*var(--page-gutter)_-_env(safe-area-inset-left,0px)_-_env(safe-area-inset-right,0px))] max-h-[min(70dvh,32rem,calc(var(--reka-popover-content-available-height,70dvh)_-_env(safe-area-inset-bottom,0px)_-_0.5rem))] overflow-y-auto overscroll-contain"
                         align="start"
                         :side-offset="6"
                         aria-label="Table of contents"
