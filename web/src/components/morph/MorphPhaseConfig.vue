@@ -6,7 +6,7 @@
     <!-- FMD-15's group rides an inner host: glass Card binds its own `role`
          (`option` when selectable, else none), so a role passed to it is
          dropped. -->
-    <Card class="config-card" :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }">
+    <Card surface="opaque" class="config-card" :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }">
     <div role="group" :aria-labelledby="titleId">
         <h3 class="config-card-title" :id="titleId" data-card-title>{{ title }}</h3>
         <p class="config-card-desc" data-card-subtitle>{{ description }}</p>

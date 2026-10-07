@@ -93,10 +93,12 @@ const created = useTimeAgo(() => props.entry.created_at);
          selection is the checked box and the selected fill.
          UIA-F-99 ⊕ UIA-F-187: the title leads and names the card; the slug and
          the age are a muted meta row. -->
+    <!-- X-DS DS-F-C1: a resting card is glass's opaque plate (warm --card,
+         no backdrop blur), as the paper article is. -->
     <Card
         as="article"
         size="sm"
-        shadow
+        surface="opaque"
         class="gallery-card deferred-section"
         :data-tier="entry.tier"
         :data-batch-selected="selected || undefined"
@@ -377,25 +379,17 @@ const created = useTimeAgo(() => props.entry.created_at);
 }
 
 /* X.F.W14V.au4 — A2-FO-L3-4: the compact card (the phone's two-column grid,
-   about 171 px wide; X-DS pass 1 · F1-08: keyed below 12rem of content box,
-   so the 14rem desktop track (~208 px inner) keeps its labelled chips): the title and one meta line (the age; the slug steps
-   back, the title names the card), the basis chips as their glyphs (the name
-   stays for a screen reader). The admin grid never takes this arm
-   (GalleryInfiniteGrid.vue). */
+   about 171 px wide; X-DS pass 1 · F1-08: keyed below 12rem of content box):
+   the title and one meta line (the age; the slug steps back, the title names
+   the card). X-DS DS-F-C10: the basis chips keep their word ("Epicycles"); a
+   bare glyph in a ringed chip read as a stamp. The admin grid never takes this
+   arm (GalleryInfiniteGrid.vue). */
 @container gallery-card (width < 12rem) {
     .card-slug {
         display: none;
     }
     .card-meta {
         justify-content: flex-start;
-    }
-    .basis-label {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
     }
 }
 </style>

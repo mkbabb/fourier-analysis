@@ -109,8 +109,8 @@ test.describe("G-b — F.W13 image-mode controls act (frame 3)", () => {
         await opensPicker(page, () => replace.click());
         await opensPicker(page, () => replace.press("Enter"));
 
-        // Decomposition — basis toggle, the two number fields + sliders, reset.
-        await openLayer(side, /^Decomposition/);
+        // Basis — basis toggle, the two number fields + sliders, reset.
+        await openLayer(side, /^Basis/);
         const chebyshev = side.getByRole("button", { name: /Chebyshev/ });
         const pressed = await chebyshev.getAttribute("aria-pressed");
         await chebyshev.click();

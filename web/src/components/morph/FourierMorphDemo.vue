@@ -15,7 +15,7 @@
              control never scrolls the thing it tunes away. UIA-F-254: Export
              and Reset sit under the stage they act on, at secondary weight. -->
         <div class="demo-layout">
-            <section class="stage-column" aria-label="Morph stage">
+            <section class="stage-column paper-grid" aria-label="Morph stage">
                 <MorphShapePreview
                     :current-path="morph.currentPath.value"
                     :phase="morph.phase.value"
@@ -234,7 +234,10 @@ function handleReset() {
 }
 
 /* Below 1024px the stage band sticks to the top of `<main>` on the page's own
-   ground, so the controls scroll beneath it. */
+   ground, so the controls scroll beneath it. X-DS DS-F-C6: that ground is the
+   paper grid, not a flat --background slab: the band repaints glass's
+   `.paper-grid` over the page tone, fixed to the viewport like the app's grid
+   layer (App.vue), so the lines run through it unbroken. */
 .stage-column {
     position: sticky;
     top: 0;
@@ -244,7 +247,8 @@ function handleReset() {
     align-items: center;
     gap: var(--space-atom);
     padding-block: var(--space-atom);
-    background: var(--background);
+    background-color: var(--background);
+    background-attachment: fixed;
 }
 
 .controls-column {
@@ -261,10 +265,18 @@ function handleReset() {
         align-items: start;
     }
 
+    /* X-DS DS-F-C6: the stage starts on the title's axis (one left edge); its
+       plate, readouts and actions share the plate's measure (26rem, the
+       MorphShapePreview bound), centred on one another. */
     .stage-column {
         top: var(--space-family);
         padding-block: 0;
+        align-items: start;
         background: none;
+    }
+
+    .stage-column > * {
+        width: min(100%, 26rem);
     }
 }
 

@@ -89,7 +89,7 @@ watch(
     <div class="floating-toc lg:hidden">
         <div class="floating-toc-anchor">
             <!-- Search mode: input replaces section title -->
-            <div v-if="searchActive" ref="searchBarRef" class="floating-toc-bar floating-toc-bar--search glass-resting">
+            <div v-if="searchActive" ref="searchBarRef" class="floating-toc-bar floating-toc-bar--search glass-resting glass-opaque">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" :boundary="searchBarRef" />
                 <Button emphasis="quiet" size="sm" icon-only type="button" class="floating-toc-search-close" @click="closeMobileSearch" aria-label="Close search">
                     <X class="floating-toc-icon" />
@@ -97,7 +97,7 @@ watch(
             </div>
             <!-- Normal mode: section title + search icon. `D/B-4`: the search
                  control is a real sibling `<Button>`, outside the trigger. -->
-            <div v-else class="floating-toc-bar floating-toc-bar--trigger glass-resting">
+            <div v-else class="floating-toc-bar floating-toc-bar--trigger glass-resting glass-opaque">
                 <Popover v-model:open="floatingTocOpen">
                     <PopoverTrigger as-child>
                         <Button

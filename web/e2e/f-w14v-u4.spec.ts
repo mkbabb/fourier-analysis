@@ -233,7 +233,7 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         const status = page.locator(".canvas-stage [role=status]").filter({ hasText: "Computing" });
         await expect(status).toBeVisible({ timeout: 30_000 });
-        const layer = page.locator("[data-slot=configurator-layer]").filter({ hasText: "Decomposition" }).first();
+        const layer = page.locator("[data-slot=configurator-layer]").filter({ has: page.locator("[data-slot=configurator-layer-trigger]", { hasText: /^Basis/ }) }).first();
         // Read once the sidebar's entrance (the glass panel spring) has settled,
         // while the stage still computes.
         await page.waitForTimeout(2500);
@@ -243,7 +243,7 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await expect(status).toBeHidden({ timeout: 60_000 });
         await page.waitForTimeout(800);
         const after = (await layer.boundingBox())!.y;
-        expect(Math.abs(after - during), "Decomposition does not jump when computing ends").toBeLessThanOrEqual(1);
+        expect(Math.abs(after - during), "Basis does not jump when computing ends").toBeLessThanOrEqual(1);
         await expect(layer.getByRole("button", { name: "Reset to defaults" }).first()).toBeVisible();
         const tops = await layer.locator("[role=radio], [role=group] button").evaluateAll((els) =>
             [...new Set(els.filter((e) => (e as HTMLElement).offsetParent).map((e) => Math.round(e.getBoundingClientRect().top)))],

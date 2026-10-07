@@ -87,7 +87,7 @@ function toggleDrawer() {
             <nav
                 :id="drawerId"
                 ref="sidebarNav"
-                class="sidebar-nav glass-quiet scrollbar-thin"
+                class="sidebar-nav glass-quiet glass-opaque scrollbar-thin"
                 :data-contents="contentsOpen ? 'open' : 'closed'"
                 aria-label="Table of contents"
                 :inert="!drawerOpen"
@@ -99,6 +99,10 @@ function toggleDrawer() {
                 <Collapsible v-model:open="contentsOpen">
                     <div class="sidebar-header">
                         <p class="sidebar-label font-serif-math">Contents</p>
+                        <!-- X-DS DS-F-C9: the page readout sits in the CONTENTS
+                             header row, inside the rail's plate (it hung under
+                             the rail as an unframed line on the grid). -->
+                        <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="sidebar-page" />
                         <!-- X.F.W14.r — r1: the scroll-to-top sits BESIDE the
                              disclosure on the same glass primitive. -->
                         <div class="sidebar-header-actions">
@@ -151,8 +155,6 @@ function toggleDrawer() {
                     </CollapsibleContent>
                 </Collapsible>
             </nav>
-            <!-- X-DS pass 1 · F1-09: the page readout, the drawer's foot. -->
-            <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="paper-toc-page" />
         </div>
         <!-- The rail is the gutter between the ToC and the paper. Shut, it
              holds the drawer's labelled edge tab, flush against the paper's
@@ -200,8 +202,6 @@ function toggleDrawer() {
     /* The tab rail is the gutter between the ToC and the paper. */
     --paper-toc-tab: var(--control-h-sm);
     --paper-toc-motion: var(--duration-slow) var(--ease-out-expo);
-    /* The page readout's line under the CONTENTS card. */
-    --paper-toc-page-h: 1.75rem;
     display: none;
 }
 
@@ -257,11 +257,15 @@ function toggleDrawer() {
     }
 }
 
-/* The readout under the CONTENTS card, on the card's own inline inset. */
-.paper-toc-page {
-    display: block;
-    width: var(--paper-toc-width);
-    padding: 0.375rem 1.25rem 0;
+/* The readout is the header's second line, under the CONTENTS label (the
+   17rem row has no room beside the label and the three glyphs). */
+.sidebar-header:has(.sidebar-page) {
+    flex-wrap: wrap;
+}
+
+.sidebar-page {
+    order: 1;
+    flex-basis: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -274,7 +278,7 @@ function toggleDrawer() {
 .sidebar-nav {
     width: var(--paper-toc-width);
     max-height: calc(
-        var(--paper-scroll-viewport-height, 100dvh) - var(--sidebar-top-inset) - var(--sidebar-bottom-inset) - var(--paper-toc-page-h)
+        var(--paper-scroll-viewport-height, 100dvh) - var(--sidebar-top-inset) - var(--sidebar-bottom-inset)
     );
     overflow-y: auto;
     overscroll-behavior-y: contain;

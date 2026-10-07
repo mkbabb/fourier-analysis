@@ -15,7 +15,6 @@ import { tierInfo } from "@/lib/equation/notation";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Badge } from "@mkbabb/glass-ui/badge";
-import { Card } from "@mkbabb/glass-ui/card";
 import { Progress } from "@mkbabb/glass-ui/progress";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
@@ -233,6 +232,8 @@ let lastDisplayKey = cachedRes ? displayKey(currentRequest()) : "";
  * `{"detail":[{loc,msg,type}]}` on a `typeof detail === "string"` test — that
  * file is unit `.f`'s and the row is declared to it, never written from here.
  */
+const COMPUTE_FAILED = "Computation failed";
+
 function failureMessage(e: unknown, fallback: string): string {
     return problemMessage(e, fallback);
 }
@@ -291,7 +292,7 @@ async function doCompute(force = false) {
     } catch (e) {
         if (!isAbortError(e) && gen === computeGeneration) {
             if (isInputRejection(e)) expressionError.value = failureMessage(e, "This expression cannot be computed");
-            else error.value = failureMessage(e, "Computation failed");
+            else error.value = failureMessage(e, COMPUTE_FAILED);
         }
     } finally {
         if (gen === computeGeneration) computing.value = false;
@@ -423,16 +424,17 @@ watchDebounced(
                 </div>
 
                 <!-- Error (no prior result): a transient failure keeps its retry. -->
+                <!-- X-DS DS-F-C5: a plain in-stage status (no Card plate on the
+                     stage card), and the message only when it says more than
+                     the title. -->
                 <div v-else-if="error && !result" class="eq-state">
-                    <Card class="eq-state-card">
-                        <div role="alert" class="text-center">
-                            <p class="text-small font-medium text-foreground mb-1">Computation failed</p>
-                            <p class="text-caption text-muted-foreground fira-code break-words">{{ error }}</p>
-                            <Button emphasis="secondary" size="sm" class="mt-3" @click="doCompute(true)">
-                                Try again
-                            </Button>
-                        </div>
-                    </Card>
+                    <div role="alert" class="eq-state-failure text-center">
+                        <p class="text-small font-medium text-foreground mb-1">{{ COMPUTE_FAILED }}</p>
+                        <p v-if="error !== COMPUTE_FAILED" class="text-caption text-muted-foreground fira-code break-words">{{ error }}</p>
+                        <Button emphasis="secondary" size="sm" class="mt-3" @click="doCompute(true)">
+                            Try again
+                        </Button>
+                    </div>
                 </div>
 
                 <!-- Results -->
@@ -643,11 +645,13 @@ watchDebounced(
 }
 
 /* ── Controls (the aside body) ── */
+/* X-DS DS-F-C4 (as on /v): no inset — the layer group's hairline is the
+   aside's own edge, not a second ring inside it. */
 .eq-panel-left-wrap {
     display: flex;
     flex-direction: column;
     width: 100%;
-    padding: 0.5rem;
+    padding: 0;
 }
 /* X.F.W14U.eq — UIA-F-114: the layers stack with no gap, so glass's
    adjacent-layer rule joins them into one group. */
@@ -721,7 +725,7 @@ watchDebounced(
 .eq-state-bar {
     width: 10rem;
 }
-.eq-state-card {
+.eq-state-failure {
     max-width: 28rem;
     padding: 1rem;
 }

@@ -167,6 +167,14 @@ export function drawEpicycleCircles(
         const [tx, ty] = toScreen(visPositions[i + 1][0], visPositions[i + 1][1]);
         const r = components[i].amplitude * scale;
         const color = spectrumColor(i, nVis);
+        // X-DS DS-F-C2 — the chain's tail is hundreds of circles a pixel or
+        // two across. At the full 4–5 px stroke each one paints a filled disc,
+        // and they pile into a saturated bloom at the tip. Strokes and dots
+        // scale with the circle's on-screen radius (full weight from ~10 px),
+        // over a 1 px floor; widths are on screen, divided back out of the fit
+        // scale as below (OA-44).
+        const rScreen = r * strokeScale;
+        const thin = Math.max(1, rScreen * 0.5);
 
         // DC-term suppression (W2.8): the chain is amplitude-sorted, so the
         // `index === 0` (frequency 0) component lands first and would render as
@@ -201,7 +209,7 @@ export function drawEpicycleCircles(
         ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
         ctx.strokeStyle = color;
         ctx.globalAlpha = 0.5 * epicycleAlpha;
-        ctx.lineWidth = circleWidth;
+        ctx.lineWidth = Math.min(circleWidth, thin / strokeScale);
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
         ctx.stroke();
@@ -213,23 +221,25 @@ export function drawEpicycleCircles(
         ctx.lineTo(tx, ty);
         ctx.strokeStyle = color;
         ctx.globalAlpha = 0.75 * epicycleAlpha;
-        ctx.lineWidth = armWidth;
+        ctx.lineWidth = Math.min(armWidth, thin / strokeScale);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.stroke();
         ctx.globalAlpha = 1;
 
-        // Center dot
+        // Centre and endpoint dots: scaled with the circle over a small
+        // floor (they were fixed 5.5 / 4.5 px), and none under ~3 px.
+        if (rScreen < 3) continue;
+
         ctx.beginPath();
-        ctx.arc(ccx, ccy, Math.max(r * 0.1, 5.5), 0, Math.PI * 2);
+        ctx.arc(ccx, ccy, Math.max(rScreen * 0.1, 1.5) / strokeScale, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.globalAlpha = 0.75 * epicycleAlpha;
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // Endpoint dot
         ctx.beginPath();
-        ctx.arc(tx, ty, Math.max(r * 0.08, 4.5), 0, Math.PI * 2);
+        ctx.arc(tx, ty, Math.max(rScreen * 0.08, 1.25) / strokeScale, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.globalAlpha = 0.6 * epicycleAlpha;
         ctx.fill();

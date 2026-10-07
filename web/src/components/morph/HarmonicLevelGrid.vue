@@ -3,7 +3,7 @@
          `.cartoon-card` stamp retires app-wide); the inset stays this card's
          family rhythm. The title rung is A2-FO-L1-12's, ESCALATED (ESC-au3-1:
          glass CardTitle's rung is off glass's own type scale). -->
-    <Card class="levels-card">
+    <Card surface="opaque" class="levels-card">
         <h3 class="card-title" data-card-title>Harmonic Levels</h3>
 
         <div class="levels-controls">

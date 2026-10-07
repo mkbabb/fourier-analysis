@@ -18,6 +18,7 @@
             <Surface
                 as="button"
                 type="button"
+                surface="opaque"
                 class="morph-button"
                 aria-label="Morph between the sun and moon shapes"
                 :aria-busy="disabled || undefined"
@@ -219,16 +220,22 @@ defineEmits<{
 }
 
 /* X-DS pass 1 · F1-14 — at phone width the four readings overflowed the
-   viewport on one line. They take two fixed rows (a 2 × 2 grid), so the row
-   still never re-flows as a reading changes and the controls below hold. */
+   viewport on one line. They take two fixed rows, so the row still never
+   re-flows as a reading changes and the controls below hold. X-DS DS-F-C7: the
+   state chip has the first row to itself and the three readings share the
+   second, so no reading floats alone beside the chip. */
 @media (max-width: 30rem) {
     .demo-info {
         display: grid;
-        grid-template-columns: repeat(2, auto);
+        grid-template-columns: repeat(3, auto);
         justify-content: center;
         justify-items: start;
         column-gap: var(--space-body, 0.75rem);
         row-gap: var(--space-atom);
+    }
+    .phase-chip {
+        grid-column: 1 / -1;
+        justify-self: center;
     }
 }
 

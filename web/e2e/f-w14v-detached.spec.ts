@@ -153,7 +153,7 @@ test.describe("db · O-68 — each layer's reset is inline in its header", () =>
     test("the reset sits on the header row, resets without toggling, and no body reset remains", async ({ page }) => {
         await openViz(page);
         const side = page.locator(".viz-panel-left-wrap");
-        // Open the Contour layer (Decomposition opens by default).
+        // Open the Contour layer (Basis opens by default).
         const contourTrigger = side.locator('[data-slot="configurator-layer-trigger"]', { hasText: "Contour" });
         await contourTrigger.click();
         await page.waitForTimeout(500);
@@ -174,7 +174,7 @@ test.describe("db · O-68 — each layer's reset is inline in its header", () =>
                 const resets = [...layer.querySelectorAll<HTMLElement>('button[aria-label="Reset to defaults"]')];
                 const t = trigger.getBoundingClientRect();
                 return {
-                    label: trigger.textContent!.trim().match(/^(Image|Decomposition|Contour|Coefficients)/)?.[1] ?? trigger.textContent!.trim(),
+                    label: trigger.textContent!.trim().match(/^(Image|Basis|Contour|Coefficients)/)?.[1] ?? trigger.textContent!.trim(),
                     resets: resets.map((b) => {
                         const r = b.getBoundingClientRect();
                         const cy = (r.top + r.bottom) / 2;
@@ -187,7 +187,7 @@ test.describe("db · O-68 — each layer's reset is inline in its header", () =>
             }),
         );
         const withReset = layers.filter((l) => l.resets.length);
-        expect(withReset.map((l) => l.label).sort(), "the layers that own a reset").toEqual(["Contour", "Decomposition"]);
+        expect(withReset.map((l) => l.label).sort(), "the layers that own a reset").toEqual(["Basis", "Contour"]);
         for (const l of withReset) {
             expect.soft(l.resets.length, `${l.label}: one reset`).toBe(1);
             expect.soft(l.resets.every((r) => r.inHeader), `${l.label}: the reset is in the header, not the body`).toBe(true);
@@ -195,7 +195,7 @@ test.describe("db · O-68 — each layer's reset is inline in its header", () =>
         }
 
         // Clicking it resets and does not toggle the layer.
-        for (const [name, field, want] of [["Decomposition", harmonics, "200"], ["Contour", blur, "0.5"]] as const) {
+        for (const [name, field, want] of [["Basis", harmonics, "200"], ["Contour", blur, "0.5"]] as const) {
             const layer = side.locator('[data-slot="configurator-layer"]', {
                 has: page.locator('[data-slot="configurator-layer-trigger"]', { hasText: name }),
             });

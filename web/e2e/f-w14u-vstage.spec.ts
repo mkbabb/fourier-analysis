@@ -382,11 +382,11 @@ for (const vp of WIDTHS) {
             await expect(adv).toHaveAttribute("data-emphasis", "quiet");
             await expect(adv).toHaveAttribute("aria-expanded", "true");
             await expect(side.locator(".advanced-divider")).toHaveCount(0);
-            // The Decomposition and Contour layers (this unit's; the spectrum
+            // The Basis and Contour layers (this unit's; the spectrum
             // rows' tooltips are CoefficientsSpectrum's, a residual).
             const unfocusable = await side.evaluate((root) =>
                 [...root.querySelectorAll('[data-slot="configurator-layer-trigger"]')]
-                    .filter((t) => /^(Decomposition|Contour)/.test(t.textContent?.trim() ?? ""))
+                    .filter((t) => /^(Basis|Contour)/.test(t.textContent?.trim() ?? ""))
                     .map((t) => t.closest('[data-slot="configurator-layer"]') ?? t.parentElement!)
                     .flatMap((layer) => [...layer.querySelectorAll("[data-grace-area-trigger]")])
                     .filter((el) => (el as HTMLElement).tabIndex < 0).length,

@@ -343,6 +343,12 @@ watch(() => store.uploading, (now, was) => {
  *  failed with nothing on screen. Both keep the Configurator chassis. */
 const stageLoading = computed(() => store.loading && !store.imageSlug);
 const stageError = computed(() => !!store.error && !store.imageSlug);
+/** X-DS DS-F-C5: the server's detail, unless it only restates the
+ * description (a not-found detail names the same slug the description does). */
+const stageErrorDetail = computed(() => {
+    const slug = String(route.params.visualizationSlug ?? route.params.imageSlug ?? "");
+    return store.error && slug && store.error.includes(slug) ? null : store.error;
+});
 /** UIA-F-73 ⊕ F-71: the first compute has nothing to draw yet; the stage says
  *  so in the DOM (one busy mark), not with a painted box. */
 const firstCompute = computed(() => store.computing && !store.epicycleData && !store.basesData);
@@ -451,7 +457,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                             :description="isSavedRoute
                                 ? `No saved visualization loaded from “${route.params.visualizationSlug}”.`
                                 : `No image loaded from “${route.params.imageSlug}”.`"
-                            :detail="store.error"
+                            :detail="stageErrorDetail"
                         >
                             <template #actions>
                                 <Button emphasis="primary" @click="store.reset(); router.push('/visualize')">
@@ -800,11 +806,13 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
    grouped-list read) and to move this stack's spacing off `gap` and onto the
    children the fusing does NOT claim. The layers touch, the shared hairline is
    the one between them, and the non-layer cards above keep their 12px. */
+/* X-DS DS-F-C4: no inset — the layer group's hairline is the aside's own
+   edge (glass fuses the layers), not a second ring 8 px inside it. */
 .viz-panel-left {
     display: flex;
     flex-direction: column;
     width: 100%;
-    padding: 0.5rem;
+    padding: 0;
     min-height: 0;
     flex: 1;
 }
