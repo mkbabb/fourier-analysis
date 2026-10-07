@@ -118,8 +118,9 @@ const tierTone = computed(() => TIER_TONE[(result.value?.tier ?? "spline") as ke
 /** UIA-F-202 — the result on screen answers an earlier request. */
 const stale = computed(() => !!result.value && (!!error.value || !!expressionError.value));
 /**
- * UIA-F-201 — one variable across the page: the plot and its legend speak the
- * variable the rendered series is written in.
+ * UIA-F-201 — one variable across the page: the plot, its legend and the
+ * Function layer's caption (X-DS DS-F3-C14) speak the variable the rendered
+ * series is written in.
  */
 const seriesVariable = computed(() => activeLatex.value.match(/f\s*\(\s*([a-z])\s*\)/)?.[1] ?? "x");
 
@@ -555,6 +556,7 @@ watchDebounced(
                         :auto-harmonics="autoHarmonics"
                         :viz-harmonics="vizHarmonics"
                         :expression-error="expressionError"
+                        :variable="seriesVariable"
                         @update:auto-harmonics="autoHarmonics = $event"
                         @compute="doCompute(true)"
                     />

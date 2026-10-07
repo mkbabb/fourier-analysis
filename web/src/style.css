@@ -195,6 +195,55 @@ html {
     font-size: 1.1em;
 }
 
+/* X-DS DS-F3-C2 — wide display math says that it scrolls. A display that
+   overflows its measure fades at the edge that still has ink beyond it: the
+   trailing edge at rest, both edges mid-scroll, the leading edge at the end.
+   The fade rides the box's own inline scroll timeline, so a display that fits
+   has no timeline, runs no animation and keeps no mask. The equation number
+   already sits outside this box (latex-paper's `.math-block__number` column). */
+@property --math-edge-start {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+}
+@property --math-edge-end {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+}
+@supports (animation-timeline: scroll()) {
+    .katex-display {
+        mask-image: linear-gradient(
+            to right,
+            transparent,
+            #000 var(--math-edge-start),
+            #000 calc(100% - var(--math-edge-end)),
+            transparent
+        );
+        animation: math-edge-cue linear both;
+        animation-timeline: scroll(self inline);
+    }
+}
+@keyframes math-edge-cue {
+    from { --math-edge-start: 0px; --math-edge-end: 2.5rem; }
+    10% { --math-edge-start: 2.5rem; }
+    90% { --math-edge-end: 2.5rem; }
+    to { --math-edge-start: 2.5rem; --math-edge-end: 0px; }
+}
+
+/* X-DS pass 3 · DS-F3-C7 — THE ONE hue-chooser tone. A pressed chooser item
+   (glass ToggleGroupItem, keyed on the `data-state` it ships) wears its own
+   hue: a 12% tint, and the hue carried a quarter toward `--foreground` for the
+   ink (AA on the tint in both arms, the c1 record). The basis, notation,
+   preset and Auto choosers each restated this rule; they set `--chip-hue`. */
+.hue-chip[data-state="on"] {
+    background-color: color-mix(in srgb, var(--chip-hue) 12%, transparent);
+    color: color-mix(in oklab, var(--chip-hue) 75%, var(--foreground));
+}
+.hue-chip[data-state="on"]:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--chip-hue) 16%, transparent);
+}
+
 .dark .katex {
     color: var(--foreground);
 }

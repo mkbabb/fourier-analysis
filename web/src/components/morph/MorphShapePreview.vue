@@ -65,7 +65,15 @@
              longest word ("settle-out"), so a reading that changes at animation
              rate cannot move the controls below it. -->
         <div class="demo-info">
-            <Chip :tone="phaseTone" size="sm" class="phase-chip font-mono">{{ phase }}</Chip>
+            <!-- X-DS pass 3 · DS-F3-C13: the phase is a reading, not an action.
+                 As a filled Chip it wore the Export button's plate, height and
+                 width; it is an inline Metric like its neighbours now, with
+                 its tone on the value's ink (the hue-chip ink recipe). -->
+            <Metric label="phase" size="sm" posture="inline" class="phase-reading">
+                <template #value>
+                    <span class="phase-value" :style="phaseTone ? { '--phase-tone': phaseTone } : undefined">{{ phase }}</span>
+                </template>
+            </Metric>
             <Metric label="n" :value="harmonicLevel" size="sm" posture="inline" />
             <Metric label="shape" :value="shapeName" size="sm" posture="inline" />
             <Metric label="total" :value="totalMs" unit="ms" size="sm" posture="inline" />
@@ -75,7 +83,6 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Chip } from "@mkbabb/glass-ui/chip";
 import { Surface } from "@mkbabb/glass-ui/surface";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
@@ -209,39 +216,36 @@ defineEmits<{
 
 /* ── Readouts (UIA-F-117) ───────────────────── */
 
-.demo-info {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-atom);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
 /* X-DS pass 1 · F1-14 — at phone width the four readings overflowed the
    viewport on one line. They take two fixed rows, so the row still never
    re-flows as a reading changes and the controls below hold. X-DS DS-F-C7: the
-   state chip has the first row to itself and the three readings share the
-   second, so no reading floats alone beside the chip. */
-@media (max-width: 30rem) {
-    .demo-info {
-        display: grid;
-        grid-template-columns: repeat(3, auto);
-        justify-content: center;
-        justify-items: start;
-        column-gap: var(--space-body, 0.75rem);
-        row-gap: var(--space-atom);
-    }
-    .phase-chip {
-        grid-column: 1 / -1;
-        justify-self: center;
-    }
+   state has the first row to itself and the three readings share the second,
+   so no reading floats alone beside it. X-DS pass 3 · DS-F3-C13: with the
+   phase a labelled reading too, the four no longer fit the 26rem measure on
+   one line at any width, so the two rows are the form everywhere. */
+.demo-info {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    justify-content: center;
+    justify-items: start;
+    align-items: center;
+    column-gap: var(--space-body, 0.75rem);
+    row-gap: var(--space-atom);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.phase-reading {
+    grid-column: 1 / -1;
+    justify-self: center;
 }
 
-.phase-chip {
-    min-inline-size: 11ch;
-    justify-content: center;
+/* The phase reading reserves the measure of its longest word ("settle-out"),
+   so the row never moves at animation rate. Its tone is ink only: the hue a
+   quarter toward `--foreground`, which clears AA on the page in both arms. */
+.phase-value {
+    display: inline-block;
+    min-inline-size: 10ch;
+    color: color-mix(in oklab, var(--phase-tone, var(--foreground)) 75%, var(--foreground));
 }
 
 /* X-DS pass 2 · DS-F2-C4: beside the controls the readouts start on the
@@ -249,7 +253,10 @@ defineEmits<{
 @media (min-width: 1024px) {
     .demo-info {
         align-self: flex-start;
-        justify-content: flex-start;
+        justify-content: start;
+    }
+    .phase-reading {
+        justify-self: start;
     }
 }
 

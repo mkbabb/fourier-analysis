@@ -28,13 +28,24 @@ const props = defineProps<{
 }>();
 
 const total = computed(() => new Set(props.components.map((c) => Math.abs(c.index))).size);
+/**
+ * X-DS pass 3 · DS-F3-C15: the list's ONE labelled count — harmonics (UIA-F-35's
+ * unit), with the index range the rows run over. The spectrum's unlabelled
+ * "12 / 41" and the "(41 total)" on Show more are deleted.
+ */
+const span = computed(() => {
+    if (!props.components.length) return "";
+    const ix = props.components.map((c) => c.index);
+    const fmt = (n: number) => (n < 0 ? `\u2212${-n}` : String(n));
+    return `, n = ${fmt(Math.min(...ix))}\u2026${fmt(Math.max(...ix))}`;
+});
 const truncated = computed(
     () => props.renderedTerms !== undefined && props.renderedTerms < total.value,
 );
 </script>
 
 <template>
-    <ConfiguratorLayer label="Coefficients" :sub="sub ?? `all ${total} harmonics`" :default-open="false">
+    <ConfiguratorLayer label="Coefficients" :sub="sub ?? `all ${total} harmonics${span}`" :default-open="false">
         <p v-if="truncated" class="reconcile-note">
             The expanded equation keeps the {{ renderedTerms }} strongest harmonics
             (DC counts as one); this list is the full set.

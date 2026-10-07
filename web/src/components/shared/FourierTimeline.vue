@@ -339,7 +339,7 @@ defineExpose({ scrubbing });
    The height leg lands on the producer's real token; `R-1`'s rule is
    *height via `size`/inline*, and no `size` step is 24px (sm 12 · md 20 · lg 28).
    `--timeline-track-height` is the composition's own knob, so a host that needs
-   a different track (the convergence dock takes 20px) sets ONE property on this
+   a different track sets ONE property on this
    component's root and the producer token is derived from it — rather than a
    host stylesheet reaching past this scope into a producer class.
 
@@ -348,8 +348,14 @@ defineExpose({ scrubbing });
    The deletion is producer-owned and rides the SS-6 relay; the consumer may not
    ship a cursor-less drag surface while it waits.
 */
+/* X-DS pass 3 · DS-F3-C5: the track is a thin rule, not a slab. A 20–24 px
+   band of the identity amber was the heaviest paint on the stage, louder than
+   the curve it indexes. The visual track is glass's unsized slider rule
+   (0.375rem); the hit area keeps glass's slider touch target (1.5rem) through
+   block padding, which reka's inline-axis pointer mapping never reads. */
 .timeline-slider {
-    --slider-track-height: var(--timeline-track-height, 24px);
+    --slider-track-height: var(--timeline-track-height, 0.375rem);
+    padding-block: calc((var(--slider-touch-target, 1.5rem) - var(--slider-track-height)) / 2);
     cursor: grab;
 }
 

@@ -39,12 +39,13 @@ import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
-import { ChevronDown, Compass } from "@lucide/vue";
+import { ChevronDown, Compass, ExternalLink } from "@lucide/vue";
 import { sectionNav } from "@/router/routes";
 import { GlassDock, DockTrigger, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
+import { Button } from "@mkbabb/glass-ui/button";
 
 const route = useRoute();
 const router = useRouter();
@@ -106,12 +107,20 @@ function onTabSelect(path: string) {
                         </div>
                     </div>
                     <Separator class="my-2" />
-                    <a
+                    <!-- X-DS pass 3 · DS-F3-C12: the card's one action reads as one:
+                         glass's text Button (its link ink) with an external-link glyph. -->
+                    <Button
+                        as="a"
+                        emphasis="text"
+                        size="sm"
                         href="https://github.com/mkbabb/fourier-analysis"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="about-link focus-ring text-small text-foreground hover:underline"
-                    >View the project on GitHub</a>
+                        class="about-link"
+                    >
+                        View the project on GitHub
+                        <ExternalLink class="size-3.5" aria-hidden="true" />
+                    </Button>
                 </PopoverContent>
             </Popover>
 
@@ -247,17 +256,11 @@ function onTabSelect(path: string) {
 
 /* ── About card ── */
 /* X.F.W14V.au1 — A2-FO-L2-17: the card's link was a bare inline anchor, a
-   21–24 px target on touch. It is a row whose block size is glass's touch
-   target on a coarse pointer (`--touch-target`, the same floor glass's
-   `[data-control-target]` controls take). */
+   21–24 px target on touch. X-DS pass 3 · DS-F3-C12: it is glass's text
+   Button now, which owns its touch floor; the link starts on the card's
+   text column. */
 .about-link {
-    display: flex;
-    align-items: center;
-}
-@media (pointer: coarse) {
-    .about-link {
-        min-block-size: var(--touch-target);
-    }
+    padding-inline: 0;
 }
 
 /* X.F.W14V.au1 — A2-FO-L2-4: short landscape (844×390) spent 72 of 390 px on

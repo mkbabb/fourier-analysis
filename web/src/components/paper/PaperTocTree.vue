@@ -96,7 +96,7 @@ function choose(node: PaperSectionData) {
                 <div class="toc-row">
                     <Button
                         emphasis="quiet"
-                        size="sm"
+                        :size="depth === 0 ? 'sm' : 'xs'"
                         type="button"
                         class="toc-link font-serif-math"
                         :data-depth="depth"
@@ -177,16 +177,22 @@ function choose(node: PaperSectionData) {
     line-height: 1.35;
     border-radius: var(--radius-lg);
 }
-.toc-link[data-depth="1"] {
-    font-size: 0.78rem;
+/* X-DS pass 3 · DS-F3-C4: depth is indent and tone, not shrinking type.
+   Every row below the chapters sits on ONE caption rung in muted ink, on
+   glass Button's `xs` rung (the template), so the row is as tall as its type. */
+.toc-link:not([data-depth="0"]) {
+    font-size: var(--type-caption);
+    color: var(--muted-foreground);
 }
-.toc-link[data-depth="2"] {
-    font-size: 0.72rem;
-}
-/* UIA-F-156: ONE active treatment at every rank, in the chapter's hue. */
+/* UIA-F-156: ONE active treatment at every rank, in the chapter's hue. The
+   plate is the ROW's (X-DS DS-F3-C4), so it runs the row's full width with
+   the disclosure chevron inside it. */
 .toc-link[aria-current] {
     color: var(--toc-accent);
     font-weight: 600;
+}
+.toc-row:has(> .toc-link[aria-current]) {
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--muted) 40%, transparent);
 }
 /* UIA-F-163: a tap latches no look-alike; hover paint only where it hovers. */

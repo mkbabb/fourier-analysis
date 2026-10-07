@@ -86,7 +86,7 @@ watch(
          on `.paper-scroll` are gone), and its tree is the one `PaperTocTree`
          (X.F.W14V.au5), every level reachable. UIA-F-162/F-236: a compact
          bar inset from the viewport edges, reporting chapter and section. -->
-    <div class="floating-toc lg:hidden">
+    <div class="floating-toc paper-grid lg:hidden">
         <div class="floating-toc-anchor">
             <!-- Search mode: input replaces section title -->
             <div v-if="searchActive" ref="searchBarRef" class="floating-toc-bar floating-toc-bar--search glass-resting glass-opaque">
@@ -109,7 +109,7 @@ watch(
                             <span class="floating-toc-section font-serif-math">
                                 <span class="floating-toc-crumb">
                                     <span v-if="currentSection?.number" class="floating-toc-number fira-code">{{ currentSection.number }}.</span>
-                                    <span v-if="currentSection" v-html="renderTitle(currentSection.title)" />
+                                    <span v-if="currentSection && !activeLeaf" v-html="renderTitle(currentSection.title)" />
                                 </span>
                                 <span v-if="activeLeaf" class="floating-toc-crumb floating-toc-crumb--leaf">
                                     <span v-if="activeLeaf.number" class="floating-toc-number fira-code">{{ activeLeaf.number }}.</span>
@@ -175,10 +175,17 @@ watch(
    chapter list); it is compact (the `sm` rung, `text-sm` title) and inset from
    the viewport edges, so the glass-resting corners never meet the screen's
    (UIA-F-236). */
+/* X-DS pass 3 · DS-F3-C11: the band is the page's own ground. Its gap above
+   the bar was transparent, so the paper slid through it between the dock and
+   the bar (a figure rule sliced by the bar). It repaints glass's `.paper-grid`
+   over the page tone, fixed to the viewport like the app's grid layer (the
+   morph stage band's recipe, DS-F-C6), so the lines run through unbroken. */
 .floating-toc {
     position: sticky;
     top: 0;
     z-index: var(--z-controls);
+    background-color: var(--background);
+    background-attachment: fixed;
     /* X-DS pass 2 · DS-F2-C6: the bar sits on the article's own gutter, so
        their edges line up (it was inset 8 px over a 16 px article). */
     padding: 0.5rem var(--page-gutter) 0;
@@ -223,9 +230,11 @@ watch(
     color: var(--foreground);
 }
 
-/* X-DS pass 2 · DS-F2-C6: the chapter crumb is capped only when a leaf crumb
-   follows it; alone, it takes the bar's measure ("0.1. Introdu…" cut at
-   ~110 px over ~120 px of empty bar). */
+/* X-DS pass 2 · DS-F2-C6: alone, the chapter crumb takes the bar's measure
+   ("0.1. Introdu…" cut at ~110 px over ~120 px of empty bar).
+   X-DS pass 3 · DS-F3-C3: the leaf wins. With a leaf after it, the chapter
+   collapses to its number (the template drops its title; the leaf's own
+   number already carries the chapter), and the leaf keeps the measure. */
 .floating-toc-crumb {
     flex: 0 1 auto;
     min-width: 0;
@@ -236,7 +245,6 @@ watch(
 
 .floating-toc-crumb:has(+ .floating-toc-crumb--leaf) {
     flex: none;
-    max-width: 55%;
 }
 
 /* UIA-F-236: the section being read, after its chapter. */

@@ -24,6 +24,8 @@ const props = defineProps<{
      * non-finite constant), shown under the field that caused it.
      */
     expressionError?: string | null;
+    /** UIA-F-201 ⊕ X-DS DS-F3-C14: the series' variable, the caption's too. */
+    variable?: string;
 }>();
 
 const emit = defineEmits<{
@@ -129,7 +131,7 @@ const activePreset = computed(() =>
          shadow into a hard rectangle) is deleted. Two roots, no wrapper: the
          layers must be adjacent siblings of the Coefficients layer for glass's
          stacked-group rule (`.configurator-layer + .configurator-layer`). -->
-    <ConfiguratorLayer label="Function" sub="f(x)" :default-open="true">
+    <ConfiguratorLayer label="Function" :sub="`f(${props.variable ?? 'x'})`" :default-open="true">
         <div class="space-y-body py-1">
             <!-- UIA-F-112 / F-113 — the field carries the server's typed 4xx: glass
                  `LabeledField`'s `invalid` + error slot (aria-invalid, the detail
@@ -209,7 +211,7 @@ const activePreset = computed(() =>
                             :aria-describedby="activePreset ? 'fn-preset-description' : undefined"
                             class="preset-group" :model-value="activePreset?.name" @update:model-value="onPreset">
                             <ToggleGroupItem v-for="preset in PRESETS" :key="preset.name" :value="preset.name"
-                                class="preset-item">{{ preset.name }}</ToggleGroupItem>
+                                class="hue-chip fourier-chip">{{ preset.name }}</ToggleGroupItem>
                         </ToggleGroup>
                         <p v-if="activePreset" id="fn-preset-description" class="text-caption text-muted-foreground">
                             {{ activePreset.description }}
@@ -242,7 +244,9 @@ const activePreset = computed(() =>
                             :model-value="autoHarmonics ? ['auto'] : []"
                             @update:model-value="onAuto"
                         >
-                            <ToggleGroupItem value="auto" aria-label="Auto-select harmonics by Parseval energy">
+                            <!-- X-DS pass 3 · DS-F3-C7: Auto takes the pane's one selected tone. -->
+                            <ToggleGroupItem value="auto" class="hue-chip fourier-chip"
+                                aria-label="Auto-select harmonics by Parseval energy">
                                 <Wand2 class="h-3.5 w-3.5" aria-hidden="true" />
                                 Auto
                             </ToggleGroupItem>
@@ -292,11 +296,10 @@ const activePreset = computed(() =>
 .preset-group {
     flex-wrap: wrap;
 }
-/* The pressed preset keeps the Fourier hue (addendum (g)): glass's own
-   `data-state`, retinted per instance as `BasisSelector`'s `.basis-chip`. */
-.preset-item[data-state="on"] {
-    background-color: color-mix(in srgb, var(--viz-fourier) 12%, transparent);
-    color: color-mix(in oklab, var(--viz-fourier) 75%, var(--foreground));
+/* The pressed preset and Auto keep the Fourier hue (addendum (g)) through the
+   app's one hue-chooser tone (`.hue-chip`, style.css; X-DS DS-F3-C7). */
+.fourier-chip {
+    --chip-hue: var(--viz-fourier);
 }
 .auto-calc-tip {
     max-width: 220px;

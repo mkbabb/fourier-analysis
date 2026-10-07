@@ -183,8 +183,8 @@ const hasActiveFilters = computed(
                                     v-for="b in basisOptions"
                                     :key="b.key"
                                     :value="b.key"
-                                    class="basis-chip"
-                                    :style="{ '--basis-hue': b.color }"
+                                    class="hue-chip"
+                                    :style="{ '--chip-hue': b.color }"
                                 >
                                     <span class="font-serif-math font-semibold" aria-hidden="true">{{ b.icon }}</span>
                                     {{ b.label }}
@@ -260,10 +260,6 @@ const hasActiveFilters = computed(
     gap: 0.5rem;
 }
 
-/* The pressed basis wears its own hue (addendum (g), the c1 recipe on glass's
-   published ToggleGroupItem via its class prop). */
-.basis-chip[data-state="on"] {
-    background-color: color-mix(in srgb, var(--basis-hue) 12%, transparent);
-    color: color-mix(in oklab, var(--basis-hue) 75%, var(--foreground));
-}
+/* The pressed basis wears its own hue through the app's one hue-chooser tone
+   (`.hue-chip`, style.css; X-DS DS-F3-C7). */
 </style>

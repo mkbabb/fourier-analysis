@@ -152,8 +152,8 @@ function resetDefaults() {
             <ToggleGroup type="single" size="sm" aria-label="Fourier mode"
                 :model-value="fourierMode" @update:model-value="setFourierMode">
                 <ToggleGroupItem v-for="m in FOURIER_MODES" :key="m.value" :value="m.value"
-                    :class="{ 'basis-chip': m.value !== 'off' }"
-                    :style="m.value !== 'off' ? { '--basis-hue': FOURIER_HUE } : undefined">
+                    :class="{ 'hue-chip': m.value !== 'off' }"
+                    :style="m.value !== 'off' ? { '--chip-hue': FOURIER_HUE } : undefined">
                     <span v-if="m.value !== 'off'" class="basis-icon basis-icon--fourier font-serif-math" aria-hidden="true">{{ basisDisplay.fourier.icon }}</span>
                     {{ m.label }}
                 </ToggleGroupItem>
@@ -162,7 +162,7 @@ function resetDefaults() {
             <ToggleGroup type="multiple" size="sm" aria-label="Polynomial bases"
                 :model-value="polynomialBases" @update:model-value="setPolynomialBases">
                 <ToggleGroupItem v-for="key in POLYNOMIAL_BASES" :key="key" :value="key"
-                    class="basis-chip" :style="{ '--basis-hue': basisDisplay[key].color }">
+                    class="hue-chip" :style="{ '--chip-hue': basisDisplay[key].color }">
                     <span class="basis-icon font-serif-math" aria-hidden="true">{{ basisDisplay[key].icon }}</span>
                     {{ basisDisplay[key].label }}
                 </ToggleGroupItem>
@@ -229,20 +229,9 @@ function resetDefaults() {
     margin-top: var(--space-atom);
 }
 
-/* X.F.W14U.c1 — addendum (g): the pressed basis chip carries its basis tint.
-   The item is glass's ToggleGroupItem as published; this is the per-instance
-   retint of its own pressed state through its `class` prop, keyed on the
-   `data-state` it ships (the `.basis-toggle` recipe of X.F.W14.g, OA-43, on the
-   new item). The ink is the hue carried a quarter toward `--foreground` in
-   OKLab, which keeps the hue and clears AA on the tint in both arms (measured in
-   the c1 record). "Off" is not a basis and keeps glass's neutral pressed state. */
-.basis-chip[data-state="on"] {
-    background-color: color-mix(in srgb, var(--basis-hue) 12%, transparent);
-    color: color-mix(in oklab, var(--basis-hue) 75%, var(--foreground));
-}
-.basis-chip[data-state="on"]:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--basis-hue) 16%, transparent);
-}
+/* X.F.W14U.c1 — addendum (g): the pressed basis chip carries its basis tint,
+   through the app's one hue-chooser tone (`.hue-chip`, style.css; X-DS DS-F3-C7).
+   "Off" is not a basis and keeps glass's neutral pressed state. */
 
 /* X.F.W13.b — the `.reset-icon-btn` block retires: it restated the glass Button's
    geometry (a 4px corner on the 40x40 icon-only square, measured) and faked the

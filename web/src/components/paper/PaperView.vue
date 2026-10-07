@@ -536,9 +536,9 @@ onUnmounted(() => {
     position: fixed;
     inset: 0;
     z-index: var(--z-overlay);
-    background:
-        radial-gradient(circle at center, color-mix(in srgb, var(--background) 92%, transparent), color-mix(in srgb, var(--background) 98%, transparent) 68%),
-        var(--background);
+    /* X-DS pass 3 · DS-F3-C16: the page tone alone; a 92→98% vignette over an
+       opaque ground could not show. */
+    background: var(--background);
     opacity: 0;
     pointer-events: none;
     /* A.W3.d — bezier→`--ease-out-expo`. */

@@ -99,12 +99,9 @@ const AmplitudeReadout = defineComponent({
 </script>
 
 <template>
+    <!-- X-DS pass 3 · DS-F3-C15: the unlabelled "12 / 41" readout is deleted;
+         the layer's subtitle is the list's one labelled count. -->
     <div class="pt-1">
-        <div class="flex items-center justify-end mb-2">
-            <span class="fira-code text-xs text-muted-foreground">
-                {{ topComponents.length }} / {{ totalComponents }}
-            </span>
-        </div>
 
         <div v-if="topComponents.length">
             <!-- X.F.W3 `.d` — `fr-CoefficientsSpectrum M-6`, THE FadingScroll
@@ -151,13 +148,17 @@ const AmplitudeReadout = defineComponent({
                             <span class="w-8 text-right fira-code text-muted-foreground tabular-nums">
                                 {{ comp.index >= 0 ? "+" : "" }}{{ comp.index }}
                             </span>
-                            <div class="flex-1 h-3 rounded-full bg-muted/50 overflow-hidden">
+                            <!-- X-DS pass 3 · DS-F3-C15: the bars grow from a square
+                                 baseline with near-square ends, so a short bar reads
+                                 as a bar and the smallest is a 1 px hairline on the
+                                 axis, not a rounded cap that reads as a stray glyph. -->
+                            <div class="flex-1 h-3 rounded-e-xs bg-muted/50 overflow-hidden">
                                 <div
-                                    class="h-full rounded-full transition-all duration-500 ease-out"
+                                    class="h-full rounded-e-xs transition-all duration-500 ease-out"
                                     :style="{
                                         width: `${(comp.amplitude / maxAmplitude) * 100}%`,
                                         backgroundColor: spectrumColor(i, topComponents.length),
-                                        minWidth: '2px',
+                                        minWidth: '1px',
                                     }"
                                 />
                             </div>
@@ -194,7 +195,7 @@ const AmplitudeReadout = defineComponent({
                     @click="expanded = !expanded"
                 >
                     <component :is="expanded ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
-                    {{ expanded ? "Show less" : `Show more (${totalComponents} total)` }}
+                    {{ expanded ? "Show less" : "Show more" }}
                 </Button>
             </Tooltip>
         </div>

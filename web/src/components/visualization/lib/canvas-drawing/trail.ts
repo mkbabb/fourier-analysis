@@ -4,6 +4,8 @@ import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import type { ViewTransform } from "./types";
 
 const TRAIL_RESOLUTION = 1200;
+/** The largest advance of t one played tick makes; a larger jump is a seek. */
+const MAX_TICK_STEP = 0.05;
 
 export class TrailManager {
     x: number[] = [];
@@ -38,7 +40,12 @@ export class TrailManager {
         this.lastT = -1;
     }
 
-    /** Update trail with the current tip position. Handles scrubbing + looping. */
+    /**
+     * Update trail with the current tip position. A played tick appends the
+     * tip; anything else (a scrub, a loop back, the first frame, a seek such as
+     * the reduced-motion terminal frame) rebuilds the trail as the whole path
+     * up to t, so a still frame carries the same curve a played one does.
+     */
     update(
         t: number,
         tipX: number,
@@ -46,7 +53,11 @@ export class TrailManager {
         scrubbing: boolean,
         components: BasisComponent[],
     ): void {
-        if (scrubbing || t < this.lastT - 0.01) {
+        const continuous =
+            this.lastT >= 0 &&
+            t >= this.lastT - 0.01 &&
+            t - this.lastT <= MAX_TICK_STEP;
+        if (scrubbing || !continuous) {
             this.x.length = 0;
             this.y.length = 0;
             if (this.preX && this.preY) {
@@ -67,7 +78,8 @@ export class TrailManager {
                     this.y.push(im);
                 }
             }
-        } else {
+        } else if (t !== this.lastT) {
+            // A redraw at the same t (a hover, a resize) adds no point.
             this.x.push(tipX);
             this.y.push(tipY);
         }

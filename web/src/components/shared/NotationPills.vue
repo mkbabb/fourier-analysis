@@ -30,7 +30,7 @@ function onChoose(v: unknown) {
     <ToggleGroup type="single" size="sm" aria-label="Notation" class="notation-group"
         :model-value="model" @update:model-value="onChoose">
         <ToggleGroupItem v-for="(opt, i) in NOTATION_OPTIONS" :key="opt.value" :value="opt.value"
-            class="notation-item" :style="{ '--pill-color': opt.color }">
+            class="hue-chip" :style="{ '--chip-hue': opt.color }">
             <span class="notation-glyph" aria-hidden="true" v-html="glyphs[i]" />
             {{ opt.label }}
         </ToggleGroupItem>
@@ -44,11 +44,6 @@ function onChoose(v: unknown) {
 .notation-glyph {
     line-height: 1;
 }
-/* The pressed item's per-instance tint through glass's own `data-state`, the
-   recipe of `BasisSelector`'s `.basis-chip`: the hue carried a quarter toward
-   `--foreground` for the ink. */
-.notation-item[data-state="on"] {
-    background-color: color-mix(in srgb, var(--pill-color) 12%, transparent);
-    color: color-mix(in oklab, var(--pill-color) 75%, var(--foreground));
-}
+/* The pressed item's tint is the app's one hue-chooser tone (`.hue-chip`,
+   style.css; X-DS DS-F3-C7). */
 </style>

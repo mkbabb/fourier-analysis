@@ -777,6 +777,17 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     border-block-start-width: 0;
 }
 
+/* X-DS pass 3 · DS-F3-C8 — the split form's aside card hugs its sections.
+   Stretched to the stage's row, the plate ran on as an empty slab under them
+   (122 px on the default view, ~390 px under the contour editor's one layer);
+   the ORIGIN cards hugged their content. It starts at the row's top, is as
+   tall as its sections, and at most the stage's height, past which glass's
+   own fading scroll (the aside's flex child) scrolls inside it. */
+.viz-workspace:not([data-form="sheet"]):not([data-form="rail"]) :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
+    align-self: start;
+    max-block-size: 100%;
+}
+
 /* ── Left panel (controls aside body) ── */
 .viz-panel-left-wrap {
     position: relative;

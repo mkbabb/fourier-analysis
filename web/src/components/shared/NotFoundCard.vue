@@ -37,7 +37,9 @@ const router = useRouter();
 
 <template>
     <div class="flex flex-1 items-center justify-center py-4 px-[var(--page-gutter)]">
-        <Card surface="opaque" class="w-full max-w-md" data-testid="not-found">
+        <!-- X-DS pass 3 · DS-F3-C6: glass's `md` card (the `--space-body` pad and
+             title rung), the gallery card's size; `sm` left the actions on the edge. -->
+        <Card surface="opaque" size="md" class="w-full max-w-md" data-testid="not-found">
             <CardHeader>
                 <CardTitle as="h1">{{ title }}</CardTitle>
                 <CardDescription>{{ description }}</CardDescription>

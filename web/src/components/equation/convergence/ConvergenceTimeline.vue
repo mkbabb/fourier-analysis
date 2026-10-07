@@ -141,16 +141,8 @@ const harmonicValueText = (): string =>
     padding: 0 0.125rem;
 }
 
-/*
-   The composition's track knob, set on ITS root — which is the element this
-   scope reaches, since a child component's root carries the parent's scope id.
-   `MPC-3`'s height leg gave this site 20px, and the producer's `md` step is
-   exactly that; the knob keeps the figure here rather than making the
-   composition's default a two-host compromise.
-*/
-.convergence-timeline {
-    --timeline-track-height: 20px;
-}
+/* X-DS pass 3 · DS-F3-C5: the 20px track knob is deleted; the composition's
+   own thin track (FourierTimeline) is this host's too. */
 
 /* ── Transitions ── */
 .icon-swap-enter-active,
