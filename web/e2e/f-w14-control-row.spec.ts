@@ -21,7 +21,9 @@ import { SAMPLE_IMAGE } from "./fixtures/sample";
  *  3. the track lies beneath that line;
  *  4. the thumb is visible (a box ≥ 4 px wide, opacity > 0);
  *  5. the track shows a fill (a painted range, or a gradient on the track);
- *  6. the row's height is the idiom's measured height ± 4 px.
+ *  6. the row's height is the idiom's measured height ± 4 px — one height for
+ *     the rows that carry a hint and one for those that do not (X-DS pass 2 ·
+ *     DS-F2-C3: the hint is its own caption line, whole, never ellipsised).
  * EquationPanel's "Terms" row (the /w stage overlay) is the same `SliderControl`
  * and is read by construction; the overlay did not open under the dock toggle in
  * this instrument (recorded in the F.W14.h receipt).
@@ -48,6 +50,7 @@ interface Row {
     beneath: boolean;
     thumb: boolean;
     fill: boolean;
+    hint: boolean;
     height: number;
 }
 
@@ -106,6 +109,7 @@ async function census(page: Page, where: string): Promise<Row[]> {
                 beneath,
                 thumb: thumbVisible,
                 fill: rangePaints || /gradient/.test(trackBg),
+                hint: !!row.querySelector("[data-row-sub]"),
                 height: Math.round(row.getBoundingClientRect().height * 10) / 10,
             });
         }
@@ -266,17 +270,21 @@ for (const vp of VIEWPORTS) {
             console.log(`[G-h ${PHASE} ${vp.width}] ${rows.length} rows`);
             for (const r of rows)
                 console.log(
-                    `  ${r.where.padEnd(15)} ${r.name.padEnd(34)} idiom=${+r.onIdiom} line=${+r.oneLine} beneath=${+r.beneath} thumb=${+r.thumb} fill=${+r.fill} h=${r.height}`,
+                    `  ${r.where.padEnd(15)} ${r.name.padEnd(34)} idiom=${+r.onIdiom} hint=${+r.hint} line=${+r.oneLine} beneath=${+r.beneath} thumb=${+r.thumb} fill=${+r.fill} h=${r.height}`,
                 );
             console.log(`  scales ${JSON.stringify(scales)}`);
 
             expect(rows.length).toBeGreaterThan(0);
             const off = rows.filter((r) => !(r.onIdiom && r.oneLine && r.beneath && r.thumb && r.fill));
             expect(off, "rows off the idiom").toEqual([]);
-            const hs = rows.map((r) => r.height).sort((a, b) => a - b);
-            const idiom = hs[Math.floor(hs.length / 2)];
-            const tall = rows.filter((r) => Math.abs(r.height - idiom) > 4);
-            expect(tall, `rows off the idiom height ${idiom}px ± 4`).toEqual([]);
+            for (const hint of [false, true]) {
+                const group = rows.filter((r) => r.hint === hint);
+                if (!group.length) continue;
+                const hs = group.map((r) => r.height).sort((a, b) => a - b);
+                const idiom = hs[Math.floor(hs.length / 2)];
+                const tall = group.filter((r) => Math.abs(r.height - idiom) > 4);
+                expect(tall, `rows (hint=${hint}) off the idiom height ${idiom}px ± 4`).toEqual([]);
+            }
             for (const [name, s] of Object.entries(scales)) {
                 expect(s.offType, `${name}: off the type scale`).toEqual([]);
                 expect(s.offSpace, `${name}: off the spacing scale`).toEqual([]);

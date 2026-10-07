@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
-import { useMediaQuery } from "@vueuse/core";
+import { useElementSize, useMediaQuery } from "@vueuse/core";
 import type { FourierTermDTO } from "@/lib/equation/types";
 import { applyGoldenStroke } from "@/lib/golden-stroke";
 import { easeInOutSine } from "@mkbabb/value.js/easing";
@@ -31,6 +31,11 @@ const v = computed(() => props.variable ?? "x");
 // ── Refs ──
 const canvasRef = ref<HTMLCanvasElement>();
 const containerRef = ref<HTMLDivElement>();
+/* X-DS pass 2 · DS-F2-C9: under ~30rem the legend leaves its desktop column
+   (a plate nested in the stage plate, a third of the plot at 390) and wraps
+   as one plate-less row under the curves. */
+const { width: containerWidth } = useElementSize(containerRef);
+const legendWrapped = computed(() => containerWidth.value > 0 && containerWidth.value < 480);
 
 const t = ref(0);
 const playing = ref(false);
@@ -563,7 +568,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div ref="containerRef" class="convergence-container">
+    <div ref="containerRef" class="convergence-container" :data-legend-wrapped="legendWrapped || undefined">
         <!-- `D-5` — the plot is the route's primary figure and announced as
              nothing at all: no role, no name, no text equivalent. `role="img"`
              plus a name that carries the READING (which curves, how many
@@ -595,6 +600,7 @@ onUnmounted(() => {
             :harmonics="trigHarmonics"
             :hovered-curve="hoveredCurve"
             :variable="v"
+            :wrapped="legendWrapped"
             @hover="onLegendEnter"
             @leave="onLegendLeave"
         />
@@ -627,6 +633,9 @@ onUnmounted(() => {
     position: relative;
     flex: 1 1 auto;
     min-width: 0;
+}
+.convergence-container[data-legend-wrapped] {
+    flex-direction: column;
 }
 
 /* ── Tooltip ── */

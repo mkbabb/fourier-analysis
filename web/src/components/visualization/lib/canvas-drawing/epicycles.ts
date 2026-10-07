@@ -175,6 +175,12 @@ export function drawEpicycleCircles(
         // scale as below (OA-44).
         const rScreen = r * strokeScale;
         const thin = Math.max(1, rScreen * 0.5);
+        // X-DS pass 2 · DS-F2-C19 — the 1 px floor still stacked dozens of
+        // 2–5 px circles into a translucent fuzz at the tip, and the large
+        // circles stroked 3–4 px. Circles under ~2 px on-screen radius are
+        // skipped (their arms still draw the chain), and the circle stroke's
+        // ceiling is half its given weight (2 px at rest, 2.5 px hovered).
+        const circleCeil = circleWidth / 2;
 
         // DC-term suppression (W2.8): the chain is amplitude-sorted, so the
         // `index === 0` (frequency 0) component lands first and would render as
@@ -205,15 +211,17 @@ export function drawEpicycleCircles(
         }
 
         // Circle
-        ctx.beginPath();
-        ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = color;
-        ctx.globalAlpha = 0.5 * epicycleAlpha;
-        ctx.lineWidth = Math.min(circleWidth, thin / strokeScale);
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+        if (rScreen >= 2) {
+            ctx.beginPath();
+            ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = 0.5 * epicycleAlpha;
+            ctx.lineWidth = Math.min(circleCeil, thin / strokeScale);
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
 
         // Arm
         ctx.beginPath();

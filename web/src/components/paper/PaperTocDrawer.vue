@@ -158,8 +158,10 @@ function toggleDrawer() {
         </div>
         <!-- The rail is the gutter between the ToC and the paper. Shut, it
              holds the drawer's labelled edge tab, flush against the paper's
-             inline-start edge, and the page readout under it. Focus follows
-             the toggle between its two seats (`toggleDrawer`). -->
+             inline-start edge. Focus follows the toggle between its two seats
+             (`toggleDrawer`). X-DS pass 2 · DS-F2-C7: the rotated page readout
+             that hung under the shut tab (a frameless glyph in the gutter) is
+             gone; the readout lives in the open drawer's header. -->
         <div class="paper-toc-tab-rail">
             <template v-if="!drawerOpen">
                 <Button
@@ -176,7 +178,6 @@ function toggleDrawer() {
                     <PanelLeftOpen class="sidebar-contents-icon" />
                     Contents
                 </Button>
-                <PaperPageReadout :current-page="currentPage" class="paper-toc-page--edge" />
             </template>
         </div>
     </aside>
@@ -246,14 +247,14 @@ function toggleDrawer() {
 
     /* X-DS pass 1 · F1-06 — the shut drawer's edge tab: the glass Button set
        vertically (its inline axis runs down the rail), labelled, and flush
-       against the paper card. Layout only; the Button's face is glass's. */
-    .paper-toc-tab--edge,
-    .paper-toc-page--edge {
+       against the paper card. Layout only; the Button's face is glass's.
+       X-DS pass 2 · DS-F2-C7: a hairline on its paper side, with that side's
+       corners squared, so the tab reads as attached to the paper. */
+    .paper-toc-tab--edge {
         writing-mode: vertical-rl;
-    }
-
-    .paper-toc-page--edge {
-        align-self: center;
+        border-right: 1px solid var(--border);
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
     }
 }
 

@@ -179,7 +179,9 @@ watch(
     position: sticky;
     top: 0;
     z-index: var(--z-controls);
-    padding: 0.5rem 0.5rem 0;
+    /* X-DS pass 2 · DS-F2-C6: the bar sits on the article's own gutter, so
+       their edges line up (it was inset 8 px over a 16 px article). */
+    padding: 0.5rem var(--page-gutter) 0;
 }
 /* X.F.W14V.au1 — A2-FO-L2-16: short landscape (844×390) spent 153 of 390 px on
    chrome, the floating band 81 of it. There the band is one title rung: the
@@ -221,12 +223,20 @@ watch(
     color: var(--foreground);
 }
 
+/* X-DS pass 2 · DS-F2-C6: the chapter crumb is capped only when a leaf crumb
+   follows it; alone, it takes the bar's measure ("0.1. Introdu…" cut at
+   ~110 px over ~120 px of empty bar). */
 .floating-toc-crumb {
-    flex: none;
-    max-width: 55%;
+    flex: 0 1 auto;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.floating-toc-crumb:has(+ .floating-toc-crumb--leaf) {
+    flex: none;
+    max-width: 55%;
 }
 
 /* UIA-F-236: the section being read, after its chapter. */

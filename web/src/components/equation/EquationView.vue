@@ -810,11 +810,9 @@ watchDebounced(
     z-index: var(--z-hovercard);
     width: 300px;
     padding: 0.75rem;
-    color: var(--popover-foreground);
-    background: var(--popover);
-    /* X-DS pass 1 · F1-11 — a hairline; the literal cast is deleted. */
-    border: 1px solid var(--border);
-    animation: tooltip-in 0.15s var(--ease-out-expo);
+    /* X-DS pass 2 · DS-F2-C12 (§0ek): the local plate (background, border,
+       ink) and the local `tooltip-in` entrance are deleted; the popover's
+       material and motion are glass PopoverContent's. */
     /* `M-US` — `user-select: none` is defensible for a one-line label and wrong
        for an explanatory paragraph: it made the tier description, which the
        record nominates as copy that should survive any redesign, uncopyable. */

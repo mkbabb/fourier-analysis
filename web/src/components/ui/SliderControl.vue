@@ -30,16 +30,21 @@
  *
  * ⊘ X.F.W14.h · OA-45 (owner frame `owner-2026-09-23-hierarchy.png`) — THE ONE
  * CONTROL-ROW IDIOM. Every labelled slider in the app is this component; no
- * page composes its own row. The row is two lines and only two:
+ * page composes its own row:
  *
- *   line 1 — the label (glass `Label`, `--type-small`), an optional mono token
- *            (`N`) or muted subtitle (ellipsised, never wrapping), and the value
- *            field (glass `NumberField`) at the line's end, with an optional unit;
+ *   line 1 — the label (glass `Label`, `--type-small`) and the value field
+ *            (glass `NumberField`) at the line's end, with an optional unit;
+ *   hint   — optional: the row's `subtitle`, whole, on its own caption line
+ *            under the label;
  *   line 2 — the producer's `Slider`, directly beneath, with a VISIBLE thumb and
  *            a track FILL.
  *
- * Rhythm is glass's spacing scale (`--space-atom` inside the row); the row never
- * grows a third line, so every row in the app measures one height.
+ * Rhythm is glass's spacing scale (`--space-atom` inside the row).
+ * X-DS pass 2 · DS-F2-C3 rules the orphan hunk P2-07 ADOPTED: there is ONE hint
+ * idiom. The hint shared line 1 with the field and was ellipsised mid-word
+ * ("terms in the Fo…"), and a second idiom (an inline mono `N` token) sat
+ * beside it; the token is retired into the hint, and no hint is truncated.
+ * Rows with a hint measure one height, rows without one another.
  *
  * The producer ships no slider that has both a visible thumb and a fill: the
  * `scrubber` variant's thumb is `width: 0; opacity: 0` by contract (its fill's
@@ -61,10 +66,8 @@ import { Label } from "@mkbabb/glass-ui/label";
 
 const props = defineProps<{
     label: string;
-    /** A muted descriptive secondary label, on the label's line (ellipsised). */
+    /** A muted hint, on its own caption line under the label (X-DS P2-07). */
     subtitle?: string;
-    /** A mono token or spec reference beside the label (`N`). */
-    token?: string;
     /** The value's unit, after the field (`ms`). */
     unit?: string;
     modelValue: number;
@@ -197,8 +200,6 @@ const fillFraction = computed(() => {
             <Label :for="fieldId" class="control-row-label" data-row-label :disabled="isDisabled">
                 {{ label }}
             </Label>
-            <span v-if="token" class="control-row-token fira-code" aria-hidden="true">{{ token }}</span>
-            <span v-if="subtitle" class="control-row-sub" data-row-sub :title="subtitle">{{ subtitle }}</span>
             <span class="control-row-value">
                 <NumberField
                     :model-value="isNumericDisplay ? modelValue : null"
@@ -224,6 +225,10 @@ const fillFraction = computed(() => {
                  Harmonics "Auto" toggle) sits in the row, after its field. -->
             <slot name="adornment" />
         </div>
+        <!-- X-DS pass 2 · DS-F2-C3 (P2-07 adopted): the hint is its own caption
+             line under the label, whole; a hint cut to "terms in the Fo…" was
+             ornament. -->
+        <span v-if="subtitle" class="control-row-sub" data-row-sub>{{ subtitle }}</span>
         <Slider
             v-model="sliderModel"
             variant="spectrum"
@@ -244,8 +249,7 @@ const fillFraction = computed(() => {
 /*
    X.F.W14.h — the idiom's geometry, on glass's scales only:
    · rhythm: `--space-atom` between the two lines and between the line's parts;
-   · type: the label on `--type-small`, the subtitle and unit on `--type-caption`,
-     the token on `--type-micro`;
+   · type: the label on `--type-small`, the hint and unit on `--type-caption`;
    · the field keeps the producer's `sm` rung; only its measure is ours.
 */
 .control-row {
@@ -271,19 +275,10 @@ const fillFraction = computed(() => {
     white-space: nowrap;
 }
 
-.control-row-token {
-    flex: none;
-    font-size: var(--type-micro);
-    color: var(--muted-foreground);
-}
-
 .control-row-sub {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    margin-top: calc(-1 * var(--space-atom) / 2);
     font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
     color: var(--muted-foreground);
 }
 

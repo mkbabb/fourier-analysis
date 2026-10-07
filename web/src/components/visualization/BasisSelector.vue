@@ -143,7 +143,12 @@ function resetDefaults() {
             </Tooltip>
         </template>
 
+        <!-- X-DS pass 2 · DS-F2-C15: two selection semantics (a one-of-three
+             Fourier mode; independent polynomial toggles) each get a caption
+             label on the aside's label size and start on its label column, so
+             "Off" reads as the first row's. The groups keep their names. -->
         <div class="basis-groups">
+            <span class="basis-group-label" aria-hidden="true">Fourier</span>
             <ToggleGroup type="single" size="sm" aria-label="Fourier mode"
                 :model-value="fourierMode" @update:model-value="setFourierMode">
                 <ToggleGroupItem v-for="m in FOURIER_MODES" :key="m.value" :value="m.value"
@@ -153,6 +158,7 @@ function resetDefaults() {
                     {{ m.label }}
                 </ToggleGroupItem>
             </ToggleGroup>
+            <span class="basis-group-label" aria-hidden="true">Polynomial</span>
             <ToggleGroup type="multiple" size="sm" aria-label="Polynomial bases"
                 :model-value="polynomialBases" @update:model-value="setPolynomialBases">
                 <ToggleGroupItem v-for="key in POLYNOMIAL_BASES" :key="key" :value="key"
@@ -165,7 +171,7 @@ function resetDefaults() {
 
         <SliderControl
             label="Harmonics"
-            token="N"
+            subtitle="N, the terms in each basis sum"
             :model-value="nHarmonics ?? 50"
             :min="1"
             :max="500"
@@ -203,13 +209,24 @@ function resetDefaults() {
     font-size: 1.75em;
     margin: -0.3em -0.05em;
 }
-/* X.F.W14U.vstage — the two choosers stack, each one row. */
+/* X.F.W14U.vstage — the two choosers stack, each one row. X-DS pass 2 ·
+   DS-F2-C15: each row is captioned and start-aligned, as every other row in
+   the aside; the caption wears the control-row label's rung. */
 .basis-groups {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: var(--space-atom);
     padding-bottom: 0.25rem;
+}
+.basis-group-label {
+    font-size: var(--type-small);
+    line-height: var(--type-leading-small);
+    font-weight: 500;
+    color: var(--foreground);
+}
+.basis-group-label:not(:first-child) {
+    margin-top: var(--space-atom);
 }
 
 /* X.F.W14U.c1 — addendum (g): the pressed basis chip carries its basis tint.

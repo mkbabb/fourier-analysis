@@ -58,6 +58,9 @@ const props = defineProps<{
     nHarmonics: number;
     /** Inbound only — the resample resolution the recompute is keyed on. */
     nPoints: number;
+    /** X-DS pass 2 · DS-F2-C20: open at mount (the contour editor, where this
+     *  is the aside's only layer); shut by default beside the other layers. */
+    defaultOpen?: boolean;
 }>();
 
 const store = useWorkspaceStore();
@@ -228,7 +231,7 @@ watch(
          affirms — so the correct act is to leave it untouched and say why, and
          `.d`'s spec order ("i-3's ruling is RECORDED, not executed") is
          satisfied by exactly that. No `open`/persistence prop is added. -->
-    <ConfiguratorLayer label="Contour" sub="edge extraction settings" :default-open="false">
+    <ConfiguratorLayer label="Contour" sub="edge extraction settings" :default-open="defaultOpen">
         <!-- X.F.W14U.a2 — O-68 CONFIGURATOR-HEADER-ACTIONS (glass 10.1.0,
              COHESION §0dd). The owner: "the refresh button should be inline in
              the section when expanded too". The layer-wide reset sits in the
@@ -371,9 +374,13 @@ watch(
 @reference "tailwindcss";
 /* Advanced section — the trigger is glass's Button (X.F.W14U.vstage, F-171);
    the host only seats it at the start of its row. */
+/* X-DS pass 2 · DS-F2-C18: the quiet Button's own inline pad is pulled out,
+   read from glass's Button recipe (`calc(var(--button-size) / 2 -
+   var(--space-residue))`), so "Advanced" sits on the layer's label column. */
 .advanced-trigger {
     align-self: flex-start;
     margin-top: 0.25rem;
+    margin-inline-start: calc(var(--space-residue) - var(--button-size) / 2);
 }
 
 /* B.W2.d retired the hand-rolled `adv-open` / `adv-close` keyframes in favour

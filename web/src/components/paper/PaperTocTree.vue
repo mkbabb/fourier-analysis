@@ -104,8 +104,10 @@ function choose(node: PaperSectionData) {
                         :aria-current="isCurrent(node.id) ? 'location' : undefined"
                         @click="choose(node)"
                     >
-                        <span v-if="node.number" class="toc-number fira-code">{{ node.number }}.</span>
-                        <span v-html="renderTitle(node.title)" />
+                        <span class="toc-label">
+                            <span v-if="node.number" class="toc-number fira-code">{{ node.number }}.</span>
+                            <span v-html="renderTitle(node.title)" />
+                        </span>
                     </Button>
                     <CollapsibleTrigger v-if="depth === 0 && hasChildren(node)" as-child>
                         <Button
@@ -193,9 +195,33 @@ function choose(node: PaperSectionData) {
         color: var(--foreground);
     }
 }
+/* X-DS pass 2 · DS-F2-C8: number and title are ONE child of glass Button's
+   centred row, set as a hanging indent: the number hangs on the title's first
+   line in a fixed measure, and the wrapped lines align in one column. (As two
+   flex children, the number centred between a wrapped title's lines and the
+   numbers zig-zagged down the rail.) */
+.toc-label {
+    --toc-hang: 1.5rem;
+    display: block;
+    padding-inline-start: var(--toc-hang);
+    text-indent: calc(-1 * var(--toc-hang));
+}
+.toc-link[data-depth="1"] .toc-label {
+    --toc-hang: 2.25rem;
+}
+.toc-link[data-depth="2"] .toc-label {
+    --toc-hang: 2.75rem;
+}
+.toc-label:not(:has(.toc-number)) {
+    padding-inline-start: 0;
+    text-indent: 0;
+}
 .toc-number {
+    display: inline-block;
+    min-inline-size: var(--toc-hang);
+    text-indent: 0;
     font-size: 0.72rem;
-    margin-right: 0.22rem;
+    padding-inline-end: 0.22rem;
     opacity: 0.5;
 }
 .toc-link[aria-current] .toc-number {

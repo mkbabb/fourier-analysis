@@ -154,29 +154,35 @@ const activePreset = computed(() =>
                 </template>
                 <template #error>{{ expressionError }}</template>
             </LabeledField>
-            <div class="flex items-center gap-2">
-                <label for="fn-domain-start" class="text-small font-medium text-foreground shrink-0">Domain</label>
-                <Input
-                    id="fn-domain-start"
-                    type="text"
-                    size="sm"
-                    aria-label="Domain start"
-                    :model-value="formatDomain(domainStart)"
-                    class="w-20 text-center fira-code"
-                    placeholder="0"
-                    @change="onDomainInput($event, (v) => domainStart = v)"
-                />
-                <span class="text-small text-muted-foreground">to</span>
-                <Input
-                    type="text"
-                    size="sm"
-                    aria-label="Domain end"
-                    :model-value="formatDomain(domainEnd)"
-                    class="w-20 text-center fira-code"
-                    placeholder="2π"
-                    @change="onDomainInput($event, (v) => domainEnd = v)"
-                />
-            </div>
+            <!-- X-DS pass 2 · DS-F2-C11: Domain and Presets wear glass's field
+                 label, as Expression does, so the layer has one label size (the
+                 hand-rolled `text-small` labels read ~13 px beside its ~17 px). -->
+            <LabeledField label="Domain">
+                <template #default="{ controlId }">
+                    <div class="flex items-center gap-2">
+                        <Input
+                            :id="controlId"
+                            type="text"
+                            size="sm"
+                            aria-label="Domain start"
+                            :model-value="formatDomain(domainStart)"
+                            class="w-20 text-center fira-code"
+                            placeholder="0"
+                            @change="onDomainInput($event, (v) => domainStart = v)"
+                        />
+                        <span class="text-small text-muted-foreground">to</span>
+                        <Input
+                            type="text"
+                            size="sm"
+                            aria-label="Domain end"
+                            :model-value="formatDomain(domainEnd)"
+                            class="w-20 text-center fira-code"
+                            placeholder="2π"
+                            @change="onDomainInput($event, (v) => domainEnd = v)"
+                        />
+                    </div>
+                </template>
+            </LabeledField>
             <!-- `D·D-m6` — Compute with an empty expression is disabled, not dead. -->
             <Button
                 emphasis="primary"
@@ -192,19 +198,24 @@ const activePreset = computed(() =>
                  (a radiogroup of radios), the chooser its neighbours use, not
                  Buttons carrying `aria-pressed`. -->
             <div class="border-t border-border/40 pt-3">
-                <p id="fn-presets-label" class="text-small font-medium text-foreground mb-atom">Presets</p>
                 <!-- The per-preset hover Tooltip is not layered on the radios (a
                      TooltipTrigger stamps its own `data-state` over the item's);
-                     the chosen preset's description is the group's caption. -->
-                <ToggleGroup type="single" size="sm" aria-labelledby="fn-presets-label"
-                    :aria-describedby="activePreset ? 'fn-preset-description' : undefined"
-                    class="preset-group" :model-value="activePreset?.name" @update:model-value="onPreset">
-                    <ToggleGroupItem v-for="preset in PRESETS" :key="preset.name" :value="preset.name"
-                        class="preset-item">{{ preset.name }}</ToggleGroupItem>
-                </ToggleGroup>
-                <p v-if="activePreset" id="fn-preset-description" class="preset-caption text-caption text-muted-foreground">
-                    {{ activePreset.description }}
-                </p>
+                     the chosen preset's description is the group's caption. The
+                     radiogroup is not a labelable element, so it is named through
+                     the field's `labelledBy` (glass's composite-control door). -->
+                <LabeledField label="Presets" :control-labelable="false">
+                    <template #default="{ labelledBy }">
+                        <ToggleGroup type="single" size="sm" :aria-labelledby="labelledBy"
+                            :aria-describedby="activePreset ? 'fn-preset-description' : undefined"
+                            class="preset-group" :model-value="activePreset?.name" @update:model-value="onPreset">
+                            <ToggleGroupItem v-for="preset in PRESETS" :key="preset.name" :value="preset.name"
+                                class="preset-item">{{ preset.name }}</ToggleGroupItem>
+                        </ToggleGroup>
+                        <p v-if="activePreset" id="fn-preset-description" class="text-caption text-muted-foreground">
+                            {{ activePreset.description }}
+                        </p>
+                    </template>
+                </LabeledField>
             </div>
         </div>
     </ConfiguratorLayer>
@@ -280,9 +291,6 @@ const activePreset = computed(() =>
 }
 .preset-group {
     flex-wrap: wrap;
-}
-.preset-caption {
-    margin-top: var(--space-atom);
 }
 /* The pressed preset keeps the Fourier hue (addendum (g)): glass's own
    `data-state`, retinted per instance as `BasisSelector`'s `.basis-chip`. */

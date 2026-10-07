@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, shallowRef, computed, watch, nextTick, useTemplateRef, provide } from "vue";
-import { watchDebounced, useMediaQuery, useEventListener } from "@vueuse/core";
+import { watchDebounced, useEventListener } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
 import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import { useRoute, useRouter } from "vue-router";
@@ -70,13 +70,11 @@ const dropMessage = computed(() =>
     dropRejection.value ?? (store.uploadError ? `The upload failed: ${store.uploadError}` : null),
 );
 
-/* UIA-F-237: "Drop or click" is wrong on touch; the primary action says what it
-   does on each pointer, and while uploading it says that (UIA-F-133). */
-const isCoarsePointer = useMediaQuery("(pointer: coarse)");
-const primaryUploadLabel = computed(() => {
-    if (store.uploading) return "Uploading…";
-    return isCoarsePointer.value ? "Tap to choose an image" : "Choose an image";
-});
+/* UIA-F-237: "Drop or click" is wrong on touch; the primary action names the
+   act, which is pointer-neutral, and while uploading it says that (UIA-F-133).
+   X-DS pass 2 · DS-F2-C13: one label at every width — "Tap to choose an
+   image" wrapped to two lines in its pill at 390, stranding the glyph. */
+const primaryUploadLabel = computed(() => (store.uploading ? "Uploading…" : "Choose an image"));
 
 // ── Active bases ──
 const activeBases = ref<string[]>(
@@ -601,7 +599,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                  reader could not tell from either end which child
                                  owned the two scalars. Nothing regresses: the
                                  writeback never worked. -->
-                            <ContourSettings v-if="hasImage" :n-harmonics="nHarmonics" :n-points="nPoints" />
+                            <!-- X-DS pass 2 · DS-F2-C20: the only layer here, so it
+                                 mounts open (collapsed, it left ~730 px of empty plate). -->
+                            <ContourSettings v-if="hasImage" default-open :n-harmonics="nHarmonics" :n-points="nPoints" />
                         </div>
                         <div v-else key="viz-panel" class="viz-panel-left">
                             <ImageUpload />

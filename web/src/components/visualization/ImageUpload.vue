@@ -42,105 +42,95 @@ function onImgError() {
 </script>
 
 <template>
-    <!-- X.F.W14V.au2 — A2-FO-L1-11: the drop target is the view's (the one
-         upload owner); this root is a plain wrapper for the heading and the
-         layer. -->
-    <div>
-        <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 10's INTERLOCK, honoured
-             literally: "adoption must CARRY the `<h3>` (ConfiguratorLayer
-             supplies no heading) or the route drops to ZERO headings."
-             ConfiguratorLayer's header is a `<button>` holding a `<span
-             class="configurator-section-label">` — verified in the producer's
-             own compiled template at the installed 8.0.0 pin — so adopting it
-             bare would delete the reachable `/w` tree's only heading (roster
-             14). The heading is carried here, beside the layer it names, and
-             visually hidden because the layer's trigger already paints the same
-             word: the outline survives, nothing is said twice on screen.
-
-             Roster 18 dies in the same motion: the decorative "— source input"
-             span used to sit INSIDE the `<h3>` and pollute its accessible name.
-             It is now the layer's `sub` prop — the exact label/sub pair the
-             producer exposes — and the heading carries the NAME alone. -->
+    <!-- X-DS pass 2 · DS-F2-C1: the layer IS the root. The plain wrapper
+         <div> kept it out of glass's sibling fusing (squared corners, one
+         shared hairline) and took the stack's 12 px non-layer margin, so the
+         Image layer stood apart from Basis as a second rounded box. Attrs
+         fall through to the layer. -->
+    <ConfiguratorLayer label="Image" sub="source input">
+        <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 10's INTERLOCK: the layer
+             supplies no heading (its header is a `<button>`), so the `<h3>` is
+             carried in the layer, visually hidden because the trigger already
+             paints the same word. Roster 18: the "source input" words are the
+             layer's `sub`, not inside the heading's name. (X.F.W14V.au2 —
+             A2-FO-L1-11: the drop target is the view's, the one upload owner.) -->
         <h3 class="sr-only">Image</h3>
-        <ConfiguratorLayer label="Image" sub="source input">
 
-            <!-- X.F.W14U.vstage — UIA-F-169 ⊕ F-239: the image took the aside's top
-                 third (a 200 px letterboxed preview above a full-width Replace
-                 button), and its rounded corner fell on letterbox space, not on
-                 the image. It is a compact row now: the thumbnail at the image's
-                 own aspect (its box IS the image, so the media radius rounds the
-                 picture) beside its Replace command. The drag-over signal is the
-                 row's ring; the "Drop to replace" plate is the stage's
-                 (VisualizationView, F-166). -->
-            <div v-if="hasPreview()" class="image-row" :data-dragging="isDragging || undefined">
-                <div v-if="imgError" class="image-missing text-muted-foreground">
-                    <ImageOff aria-hidden="true" />
-                    <p class="text-caption">Image unavailable</p>
-                </div>
-                <img
-                    v-else
-                    :src="preview || (store.imageSlug ? thumbnailUrl(store.imageSlug) : '')"
-                    alt="Uploaded image"
-                    class="image-thumb"
-                    @error="onImgError"
-                />
-                <Button emphasis="secondary" size="sm" @click="openPicker">
-                    <Upload />
-                    Replace image
-                </Button>
+        <!-- X.F.W14U.vstage — UIA-F-169 ⊕ F-239: the image took the aside's top
+             third (a 200 px letterboxed preview above a full-width Replace
+             button), and its rounded corner fell on letterbox space, not on
+             the image. It is a compact row now: the thumbnail at the image's
+             own aspect (its box IS the image, so the media radius rounds the
+             picture) beside its Replace command. The drag-over signal is the
+             row's ring; the "Drop to replace" plate is the stage's
+             (VisualizationView, F-166). -->
+        <div v-if="hasPreview()" class="image-row" :data-dragging="isDragging || undefined">
+            <div v-if="imgError" class="image-missing text-muted-foreground">
+                <ImageOff aria-hidden="true" />
+                <p class="text-caption">Image unavailable</p>
             </div>
+            <img
+                v-else
+                :src="preview || (store.imageSlug ? thumbnailUrl(store.imageSlug) : '')"
+                alt="Uploaded image"
+                class="image-thumb"
+                @error="onImgError"
+            />
+            <Button emphasis="secondary" size="sm" @click="openPicker">
+                <Upload />
+                Replace image
+            </Button>
+        </div>
 
-            <!-- X.F.W13.c — the source strip ("Drop or click to upload — PNG/JPG/SVG
-                 ≤ 10 MB") RETIRED (owner frame 4: "duplicative"). This layer renders
-                 only once an image exists (the sidebar arrives with it); with no
-                 image the main area's drop target is the one upload affordance. -->
+        <!-- X.F.W13.c — the source strip ("Drop or click to upload — PNG/JPG/SVG
+             ≤ 10 MB") RETIRED (owner frame 4: "duplicative"). This layer renders
+             only once an image exists (the sidebar arrives with it); with no
+             image the main area's drop target is the one upload affordance. -->
 
-            <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 4 (⊕ roster 24). 47 lines of
-                 hand-rolled indeterminate progress with ZERO a11y channel (`grep -c
-                 aria-` over this file returned 0: no role, no status, no sr-only)
-                 retire onto `./progress`, exported at the installed pin.
+        <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 4 (⊕ roster 24). 47 lines of
+             hand-rolled indeterminate progress with ZERO a11y channel (`grep -c
+             aria-` over this file returned 0: no role, no status, no sr-only)
+             retire onto `./progress`, exported at the installed pin.
 
-                 Roster 24 closes with it, and the routing is why: under
-                 `prefers-reduced-motion` the hand-rolled bar FROZE at its 100 %
-                 frame while the `<Transition>` still faded it in — opacity is
-                 allow-listed by the blanket clamp — so a motionless, nameless
-                 decorative gradient was the PRM+AT user's entire busy signal. The
-                 correct channel is NON-MOTION, not a new PRM carve: reka's
-                 `role="progressbar"` with an indeterminate value and a real name
-                 says "busy" without moving anything.
+             Roster 24 closes with it, and the routing is why: under
+             `prefers-reduced-motion` the hand-rolled bar FROZE at its 100 %
+             frame while the `<Transition>` still faded it in — opacity is
+             allow-listed by the blanket clamp — so a motionless, nameless
+             decorative gradient was the PRM+AT user's entire busy signal. The
+             correct channel is NON-MOTION, not a new PRM carve: reka's
+             `role="progressbar"` with an indeterminate value and a real name
+             says "busy" without moving anything.
 
-                 ▲ CENSUS DRIFT, MEASURED AT THE PIN AND RECORDED, NOT INHERITED:
-                 roster 4 names "variant `gradient`, `indeterminate`" — the 4.0.0
-                 spelling. At the adopted 8.0.0 bytes `ProgressVariant` is
-                 `"default" | "liquid"` and indeterminate is `:model-value="null"`
-                 ("`null` is INDETERMINATE — reka's own door, and the only one",
-                 the producer's own docblock). The cure is unchanged; its spelling
-                 is the pin's. -->
-            <Transition name="rainbow-fade">
-                <!-- X.F.W14.r — the sidebar now enters on drop (F.W13 `.c` r1),
-                     so the upload in flight is this layer's busy state too. -->
-                <!-- X.F.W14U.vstage — UIA-F-71 ⊕ F-238: computing is the stage's
-                     one busy mark (VisualizationView); this bar carried it too, and
-                     its unmount at the end of a compute jumped the Decomposition
-                     layer up ~33 px. The layer's bar is the upload's only. -->
-                <!-- X.F.W14V.u4 — UIA-F-71 ⊕ F-238: a REPLACE upload's mark (the
-                     image is already here). The first upload's one mark is the
-                     stage's drop-target button (glass's dot ring); a second bar
-                     here doubled it, and its unmount at the end of the first
-                     compute jumped the layers below. -->
-                <Progress
-                    v-if="store.uploading && replacing"
-                    :model-value="null"
-                    variant="liquid"
-                    size="sm"
-                    class="mt-2"
-                    aria-label="Uploading the image"
-                />
-            </Transition>
+             ▲ CENSUS DRIFT, MEASURED AT THE PIN AND RECORDED, NOT INHERITED:
+             roster 4 names "variant `gradient`, `indeterminate`" — the 4.0.0
+             spelling. At the adopted 8.0.0 bytes `ProgressVariant` is
+             `"default" | "liquid"` and indeterminate is `:model-value="null"`
+             ("`null` is INDETERMINATE — reka's own door, and the only one",
+             the producer's own docblock). The cure is unchanged; its spelling
+             is the pin's. -->
+        <Transition name="rainbow-fade">
+            <!-- X.F.W14.r — the sidebar now enters on drop (F.W13 `.c` r1),
+                 so the upload in flight is this layer's busy state too. -->
+            <!-- X.F.W14U.vstage — UIA-F-71 ⊕ F-238: computing is the stage's
+                 one busy mark (VisualizationView); this bar carried it too, and
+                 its unmount at the end of a compute jumped the Decomposition
+                 layer up ~33 px. The layer's bar is the upload's only. -->
+            <!-- X.F.W14V.u4 — UIA-F-71 ⊕ F-238: a REPLACE upload's mark (the
+                 image is already here). The first upload's one mark is the
+                 stage's drop-target button (glass's dot ring); a second bar
+                 here doubled it, and its unmount at the end of the first
+                 compute jumped the layers below. -->
+            <Progress
+                v-if="store.uploading && replacing"
+                :model-value="null"
+                variant="liquid"
+                size="sm"
+                class="mt-2"
+                aria-label="Uploading the image"
+            />
+        </Transition>
 
-        </ConfiguratorLayer>
-
-    </div>
+    </ConfiguratorLayer>
 </template>
 
 <style scoped>

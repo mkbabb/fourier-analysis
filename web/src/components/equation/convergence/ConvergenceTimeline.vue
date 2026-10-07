@@ -85,8 +85,10 @@ const harmonicValueText = (): string =>
             <!-- X.F.W14U.eq — UIA-F-253: the app's glyph set (lucide), not two
                  inline Font Awesome paths. -->
             <Transition name="icon-swap" mode="out-in">
-                <Pause v-if="playing" class="size-3.5" />
-                <Play v-else class="size-3.5" />
+                <!-- X-DS pass 2 · DS-F2-C10: the one glyph set (filled, size-4),
+                     as /v's playback control. -->
+                <Pause v-if="playing" class="size-4" fill="currentColor" />
+                <Play v-else class="size-4" fill="currentColor" />
             </Transition>
         </Button>
 

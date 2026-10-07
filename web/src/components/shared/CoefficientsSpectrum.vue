@@ -91,7 +91,7 @@ const AmplitudeReadout = defineComponent({
         return () =>
             h(
                 "span",
-                { class: "w-16 text-right fira-code text-muted-foreground tabular-nums" },
+                { class: "flex-none min-w-[6.5ch] text-right fira-code text-muted-foreground tabular-nums" },
                 props.format(current.value),
             );
     },
@@ -144,7 +144,10 @@ const AmplitudeReadout = defineComponent({
                         :key="`${comp.index}-${i}`"
                     >
                     <Tooltip side="bottom">
-                        <div class="coeff-row flex items-center gap-2 text-xs" tabindex="0">
+                        <!-- X-DS pass 2 · DS-F2-C2: the row is on the caption rung,
+                             below the layer's labels, and the readout column is
+                             sized in ch from its widest value ("103.19"), never clipped. -->
+                        <div class="coeff-row flex items-center gap-2 pe-1 text-caption" tabindex="0">
                             <span class="w-8 text-right fira-code text-muted-foreground tabular-nums">
                                 {{ comp.index >= 0 ? "+" : "" }}{{ comp.index }}
                             </span>

@@ -244,6 +244,15 @@ defineEmits<{
     justify-content: center;
 }
 
+/* X-DS pass 2 · DS-F2-C4: beside the controls the readouts start on the
+   plate's edge, as the actions under them do (one axis in the column). */
+@media (min-width: 1024px) {
+    .demo-info {
+        align-self: flex-start;
+        justify-content: flex-start;
+    }
+}
+
 /* `FMD-12` — the eight `.info-chip` rules are DELETED with the divs they
    painted: the mono face, the two type rungs, the two pads, the radius, the
    muted plate and the three phase re-tints are all `Metric`’s and `Chip`’s at

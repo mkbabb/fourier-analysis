@@ -7,6 +7,9 @@ defineProps<{
     hoveredCurve: string | null;
     /** UIA-F-201 — the series' variable (the equation's), one across the page. */
     variable?: string;
+    /** X-DS pass 2 · DS-F2-C9: a narrow plot — one wrapped row under the
+     *  curves, no plate (the hue dots and labels are kept). */
+    wrapped?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -26,7 +29,8 @@ const emit = defineEmits<{
         v-if="harmonics.length"
         axis="y"
         aria-label="Curve legend"
-        class="legend-overlay glass-wash"
+        class="legend-overlay"
+        :class="wrapped ? 'legend-overlay--wrapped' : 'glass-wash'"
     >
         <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'sum' }"
             @pointerenter="emit('hover', 'sum')" @pointerleave="emit('leave')">
@@ -38,7 +42,7 @@ const emit = defineEmits<{
             <span class="legend-dot legend-dot--dashed" />
             <span class="legend-label">f({{ variable ?? "x" }})</span>
         </div>
-        <div class="legend-divider" />
+        <div v-if="!wrapped" class="legend-divider" />
         <div
             v-for="(h, i) in harmonics" :key="h.k"
             class="legend-entry"
@@ -69,6 +73,18 @@ const emit = defineEmits<{
 }
 .legend-entry + .legend-entry {
     margin-top: 2px;
+}
+.legend-overlay--wrapped {
+    display: flex;
+    flex-wrap: wrap;
+    align-self: stretch;
+    min-width: 0;
+    max-height: 4.5rem;
+    padding: 0;
+    column-gap: 0.25rem;
+}
+.legend-overlay--wrapped .legend-entry + .legend-entry {
+    margin-top: 0;
 }
 
 .legend-entry {

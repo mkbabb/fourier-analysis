@@ -187,17 +187,13 @@ function handleReset() {
     max-width: 72rem;
     min-width: 0;
     margin: 0 auto;
-    padding: var(--space-body);
-    padding-bottom: var(--space-section);
+    /* X-DS pass 2 · DS-F2-C5: the side gutter is the app's `--page-gutter`
+       at every width (the page sat on an 8 px gutter at 390, where the dock,
+       /paper and /gallery hold 16 px). */
+    padding: var(--space-body) var(--page-gutter) var(--space-section);
     font-family: var(--font-serif);
     overflow-x: clip;
     box-sizing: border-box;
-}
-
-@media (min-width: 640px) {
-    .demo-page {
-        padding-inline: var(--space-family);
-    }
 }
 
 /* ── Header ─────────────────────────────────── */
@@ -261,13 +257,17 @@ function handleReset() {
 @media (min-width: 1024px) {
     .demo-layout {
         display: grid;
-        grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+        /* X-DS pass 2 · DS-F2-C4: the stage column is the plate's own
+           measure and the cards take the rest; an 11fr column around a 26rem
+           plate left ~200 px of dead grid before the cards. */
+        grid-template-columns: 26rem minmax(0, 1fr);
         align-items: start;
     }
 
     /* X-DS DS-F-C6: the stage starts on the title's axis (one left edge); its
        plate, readouts and actions share the plate's measure (26rem, the
-       MorphShapePreview bound), centred on one another. */
+       MorphShapePreview bound). DS-F2-C4: the readouts and the actions both
+       start on the plate's edge (one axis, as the title above). */
     .stage-column {
         top: var(--space-family);
         padding-block: 0;
@@ -284,5 +284,11 @@ function handleReset() {
     display: flex;
     gap: var(--space-atom);
     justify-content: center;
+}
+
+@media (min-width: 1024px) {
+    .stage-actions {
+        justify-content: flex-start;
+    }
 }
 </style>

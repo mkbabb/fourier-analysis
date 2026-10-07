@@ -97,7 +97,7 @@ const created = useTimeAgo(() => props.entry.created_at);
          no backdrop blur), as the paper article is. -->
     <Card
         as="article"
-        size="sm"
+        size="md"
         surface="opaque"
         class="gallery-card deferred-section"
         :data-tier="entry.tier"
@@ -150,7 +150,7 @@ const created = useTimeAgo(() => props.entry.created_at);
 
         <div class="card-stats">
             <span class="inline-flex items-center gap-1">
-                <Eye :size="14" aria-hidden="true" />
+                <Eye class="size-3.5" aria-hidden="true" />
                 <span class="tabular-nums">{{ entry.views }}</span>
                 <span class="sr-only">views</span>
             </span>
@@ -162,7 +162,10 @@ const created = useTimeAgo(() => props.entry.created_at);
                 aria-label="Like"
                 @click="emit('like', entry.slug)"
             >
-                <Heart :size="14" :fill="isLiked ? 'currentColor' : 'none'" aria-hidden="true" />
+                <!-- X-DS pass 2 · DS-F2-C17: the heart is pinned to the stat glyph
+                     size (a `size-*` class, which glass Button's coarse svg rule
+                     leaves alone); only the hit area keeps the coarse floor. -->
+                <Heart class="size-3.5" :fill="isLiked ? 'currentColor' : 'none'" aria-hidden="true" />
                 <span class="tabular-nums">{{ entry.likes }}</span>
             </Button>
             <!-- X.F.W14V.au4 — A2-FO-L1-10: the one tier readout. -->
@@ -191,7 +194,8 @@ const created = useTimeAgo(() => props.entry.created_at);
 @reference "tailwindcss";
 
 /* X.F.W14U.gallery — UIA-F-98 ⊕ UIA-F-247: the card's content is laid out in
-   glass Card's own measures (`--card-pad`, `--card-gap` at `size="sm"`); the
+   glass Card's own measures (`--card-pad`, `--card-gap`; X-DS pass 2 ·
+   DS-F2-C16: at `size="md"`, the 1rem pad of the ORIGIN cards, not sm's 8 px); the
    corner, rim and cast are Card's. The bespoke lift-and-scale hover, the
    cartoon offset stamp and the tier border/glow rules are deleted. Hover lifts
    the cast one rung — glass's own `--card-cast-rung`, to the floating rung its

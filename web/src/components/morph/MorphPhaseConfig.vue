@@ -40,8 +40,10 @@
              idiom (`ui/SliderControl.vue`): label, value field and unit on one
              line, the slider beneath with a visible thumb (so `MPC-8`'s boot
              state at the domain floor shows a position without relying on the
-             fill), the marks still the scale. FMD-14's `for`/`id` pairing is the
-             idiom's own; FMD-15's per-card slider name rides `aria-label`. -->
+             fill). FMD-14's `for`/`id` pairing is the idiom's own; FMD-15's
+             per-card slider name rides `aria-label`. X-DS pass 2 · DS-F2-C14:
+             the unlabelled duration marks are dropped (three grey dots that
+             gave no readable scale; the value field is the scale). -->
         <SliderControl
             class="config-field"
             label="Duration"
@@ -50,7 +52,6 @@
             :min="50"
             :max="800"
             :step="10"
-            :marks="DURATION_MARKS"
             :color="sliderColor ?? 'var(--accent-red)'"
             :aria-label="`${title} duration (ms)`"
             @update:model-value="emitDuration"
@@ -160,14 +161,6 @@ function emitDuration(raw: number) {
     const v = Math.max(50, Math.min(800, Math.round(raw || 50)));
     emit("update:duration", v);
 }
-
-/**
- * `MPC-8` — the decorative checkpoints, a doubling ladder across the domain.
- * They never snap the value (the producer's own contract); they give the
- * 89 % of the track that nothing normally reaches a legible SCALE instead of
- * an empty extent, and they put a checkpoint under the boot position.
- */
-const DURATION_MARKS = [50, 100, 200, 400, 800] as const;
 
 
 const presets = EASING_PRESETS;
