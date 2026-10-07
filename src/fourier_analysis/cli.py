@@ -310,19 +310,12 @@ def _cmd_bases(args: argparse.Namespace) -> int:
 
 
 def _cmd_download_models(args: argparse.Namespace) -> int:
-    """Pre-download all ONNX models."""
-    from fourier_analysis.contours.ml import ensure_model_downloaded, ensure_pidinet_downloaded
+    """Pre-download every pinned contour model."""
+    from fourier_analysis.contours.ml import ensure_model_downloaded
 
-    print("Downloading the subject models (U2-Net, BiRefNet-lite)...", end=" ", flush=True)
+    print("Downloading the contour models...", end=" ", flush=True)
     try:
         ensure_model_downloaded()
-        print("OK")
-    except Exception as e:
-        print(f"FAILED: {e}")
-
-    print("Downloading PiDiNet-tiny...", end=" ", flush=True)
-    try:
-        ensure_pidinet_downloaded()
         print("OK")
     except Exception as e:
         print(f"FAILED: {e}")

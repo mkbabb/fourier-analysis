@@ -506,35 +506,6 @@ class TestSimplifyAndOpenStrokes:
         assert area == 0.0
         assert np.abs(np.diff(z)).max() < 20  # no segment jumps across the arc
 
-    def test_frame_cropped_mask_gives_open_strokes_off_the_frame(self, tmp_path: Path):
-        from fourier_analysis.contours.image import load_image_inputs
-        from fourier_analysis.contours.isolation import subject_silhouettes
-
-        mask = np.zeros((240, 200), dtype=bool)
-        yy, xx = np.ogrid[:240, :200]
-        mask[((xx - 100) ** 2 + (yy - 60) ** 2 < 50**2) | ((yy > 100) & (np.abs(xx - 100) < 80))] = True
-        # ... plus a second, separate component clear of the frame.
-        mask[(xx - 30) ** 2 + (yy - 30) ** 2 < 15**2] = True
-        config = ContourConfig(resize=None, min_contour_area=0.0).normalized()
-        image = load_image_inputs(_save_image(mask * 255, tmp_path / "m.png"), config)
-        strokes = subject_silhouettes(mask, image, config)
-
-        closed = [s for s in strokes if abs(s[0] - s[-1]) <= 1e-9]
-        opened = [s for s in strokes if abs(s[0] - s[-1]) > 1e-9]
-        assert len(closed) == 1 and len(opened) == 1  # the island loop; the cropped body
-        rc = np.concatenate([np.column_stack([120 - s.imag, s.real + 100]) for s in strokes])
-        assert rc[:, 0].max() < 240 - 3  # nothing drawn along the bottom frame
-        # No chord: every segment's midpoint is on the mask's boundary.
-        from scipy import ndimage as ndi
-
-        edge = mask & ~ndi.binary_erosion(mask, border_value=1)
-        dist = ndi.distance_transform_edt(~edge)
-        for s in strokes:
-            mid = (s[:-1] + s[1:]) / 2
-            r = np.clip(np.rint(120 - mid.imag).astype(int), 0, 239)
-            c = np.clip(np.rint(mid.real + 100).astype(int), 0, 199)
-            assert dist[r, c].max() <= 2.0
-
 
 FRAME_TOUCHING = ("portraits/daraksha.jpg", "portraits/euler.jpg", "portraits/chef.png",
                   "animals/giraffe.webp", "animals/llama-1.webp",
@@ -543,30 +514,37 @@ FRAME_TOUCHING = ("portraits/daraksha.jpg", "portraits/euler.jpg", "portraits/ch
 
 @pytest.mark.parametrize("rel", FRAME_TOUCHING)
 def test_silhouette_traces_the_mask_boundary_and_never_the_frame(rel: str):
-    """CT-3 on the public set: every silhouette segment lies on the subject mask's
-    boundary (no chord through the body) and no silhouette ink is on the frame."""
+    """Every silhouette stroke of the drawing lies on the subject mask's
+    boundary (no chord through the body) and none of it runs along the frame."""
     from scipy import ndimage as ndi
 
+    from fourier_analysis.contours.drawing import draw_subject
     from fourier_analysis.contours.image import load_image_inputs
-    from fourier_analysis.contours.isolation import isolate_subject
-    from fourier_analysis.contours.support import band_px
+    from fourier_analysis.contours.strokes import SILHOUETTE, uniform
 
     path = Path(__file__).resolve().parents[1] / "assets" / rel
     config = ContourConfig().normalized()
-    image = load_image_inputs(path, config)
-    iso = isolate_subject(image, config)
-    mask = iso.subject_mask
+    drawing = draw_subject(load_image_inputs(path, config), config)
+    assert drawing is not None
+    mask = drawing.subject
     h, w = mask.shape
-    assert iso.silhouettes
+    silhouette = [e.pts for e in drawing.graph.edges if e.layer == SILHOUETTE]
+    assert silhouette
 
     boundary = mask & ~ndi.binary_erosion(mask, border_value=1)
     dist = ndi.distance_transform_edt(~boundary)
-    tol = band_px(mask.shape)
-    for s in iso.silhouettes:
-        mid = (s[:-1] + s[1:]) / 2
-        r = np.clip(np.rint(h / 2 - mid.imag).astype(int), 0, h - 1)
-        c = np.clip(np.rint(mid.real + w / 2).astype(int), 0, w - 1)
+    tol = max(3.0, 0.01 * float(np.hypot(h, w)))
+    on_frame = 0
+    total = 0
+    for pts in silhouette:
+        q = uniform(pts, 1.0)
+        r = np.clip(np.rint(q[:, 0]).astype(int), 0, h - 1)
+        c = np.clip(np.rint(q[:, 1]).astype(int), 0, w - 1)
         assert dist[r, c].max() <= tol, rel
-        rows, cols = h / 2 - s.imag, s.real + w / 2
-        assert rows.min() > 2 and cols.min() > 2, rel
-        assert rows.max() < h - 3 and cols.max() < w - 3, rel
+        frame = (q[:, 0] <= 2) | (q[:, 1] <= 2) | (q[:, 0] >= h - 3) | (q[:, 1] >= w - 3)
+        # A stroke may end on the frame (it meets it square-on, its last few
+        # samples inside the frame band): only the samples between are counted.
+        on_frame += int(frame[4:-4].sum())
+        total += len(q)
+    # None runs along the frame.
+    assert on_frame <= 0.005 * total, rel

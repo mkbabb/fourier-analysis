@@ -160,3 +160,46 @@ class TestBuildContourTour:
         tour = build_contour_tour([a, b])
         assert tour.gap_lengths == ()
         assert tour.path[0] == tour.path[-1]
+
+    def test_a_tree_is_walked_out_and_back_along_itself(self):
+        """A T (three strokes meeting at one junction) has four odd nodes and
+        no cycle: the minimum retrace doubles every stroke, exactly on its
+        ink, and the walk never jumps."""
+        stem = np.linspace(0, 100j, 40).astype(np.complex128)
+        left = np.linspace(100j, -60 + 100j, 30).astype(np.complex128)
+        right = np.linspace(100j, 60 + 100j, 30).astype(np.complex128)
+        tour = build_contour_tour([stem, left, right])
+        assert tour.gap_lengths == ()
+        assert tour.path[0] == tour.path[-1]
+        assert tour.retrace_length == pytest.approx(100.0 + 60.0 + 60.0)
+        ink = set(stem.tolist()) | set(left.tolist()) | set(right.tolist())
+        assert set(tour.path.tolist()) == ink
+        # Every segment of the path is a segment of a stroke (coincident retrace).
+        strokes = _undirected(
+            (a, b) for c in (stem, left, right) for a, b in zip(c[:-1], c[1:])
+        )
+        assert _undirected(zip(tour.path[:-1], tour.path[1:])) == strokes
+
+    def test_a_figure_eight_needs_no_retrace(self):
+        """Two loops through one node: every node is even, so each loop is
+        drawn exactly once."""
+        a = _circle(-10, 10, 48)  # passes through 0 at its seam
+        b = _circle(10, 10, 48, phase=np.pi)  # and so does this one
+        tour = build_contour_tour([a, b])
+        assert tour.gap_lengths == ()
+        assert tour.retrace_length == 0.0
+        drawn = float(np.abs(np.diff(a)).sum() + np.abs(np.diff(b)).sum())
+        assert float(np.abs(np.diff(tour.path)).sum()) == pytest.approx(drawn)
+
+    def test_connectors_are_bounded_by_the_components(self):
+        """Separate figures cost at most one connector each, crossed there and
+        back: no more than ``2 (components - 1)`` jumps, each no longer than
+        the spanning tree's longest edge."""
+        contours = [_circle(k * 60, 20, 48) for k in range(5)]
+        tour = build_contour_tour(contours)
+        assert tour.path[0] == tour.path[-1]
+        assert 0 < len(tour.gap_lengths) <= 2 * (len(contours) - 1)
+        assert max(tour.gap_lengths) <= _mst_max_edge(contours) + 1.0
+        path_pts = set(tour.path.tolist())
+        for c in contours:
+            assert set(c.tolist()) <= path_pts

@@ -50,7 +50,7 @@ class TestContourML:
 
         result = extract_contours_result(img_path, ContourConfig(strategy="auto", resize=None))
         assert isinstance(result.contours, list)
-        assert result.diagnostics.selected_candidate in ("face-parsing", "colour-parts")
+        assert result.diagnostics.selected_candidate in ("face-parsing", "silhouette")
 
     def test_ml_masks_returns_multiple_thresholds(self, tmp_path: Path):
         """ml_masks should return multiple nested masks at different thresholds."""
@@ -160,12 +160,42 @@ class TestHysteresis:
 
     def test_isolation_mask_is_never_none(self, tmp_path: Path):
         from fourier_analysis.contours.image import load_image_inputs
-        from fourier_analysis.contours.isolation import isolate_subject
+        from fourier_analysis.contours.isolation import subject_mask
 
         arr = np.full((128, 128), 20, dtype=np.uint8)
         arr[56:72, 56:72] = 230  # a small subject
         config = ContourConfig(resize=None).normalized()
         image = load_image_inputs(_save_image(arr, tmp_path / "small.png"), config)
-        iso = isolate_subject(image, config)
-        assert iso.subject_mask is not None
-        assert 0 < iso.subject_mask.mean() < 1
+        mask, saliency = subject_mask(image, config)
+        assert mask.shape == saliency.shape == (128, 128)
+        assert 0 < mask.mean() < 1
+
+
+class TestLeaningOn:
+    """``isolation.leaning_on``: a disputed region stays when it leans on the
+    agreed subject and goes when it hangs off it into the background."""
+
+    def test_hemmed_in_region_is_kept(self):
+        from fourier_analysis.contours.isolation import leaning_on
+
+        wide = np.zeros((100, 100), bool)
+        wide[20:80, 20:80] = True
+        core = wide.copy()
+        core[40:60, 40:79] = False  # a notch one model missed, open on one short side
+        assert np.array_equal(leaning_on(core, wide), wide)
+
+    def test_region_hanging_into_the_background_is_cut(self):
+        from fourier_analysis.contours.isolation import leaning_on
+
+        core = np.zeros((100, 140), bool)
+        core[20:80, 20:80] = True
+        wide = core.copy()
+        wide[45:55, 80:130] = True  # a long arm touching the subject at its end
+        assert np.array_equal(leaning_on(core, wide), core)
+
+    def test_agreement_is_returned_unchanged(self):
+        from fourier_analysis.contours.isolation import leaning_on
+
+        core = np.zeros((50, 50), bool)
+        core[10:40, 10:40] = True
+        assert np.array_equal(leaning_on(core, core.copy()), core)

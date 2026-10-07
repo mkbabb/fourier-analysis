@@ -16,17 +16,12 @@ larger side, centred on it, which is the framing its training faces have.  Its
 per-class probabilities are resampled onto the pipeline grid and the argmax
 taken, so part boundaries come out smooth and sub-pixel placed.
 
-**Everything else.**  A subject with no face (an animal, a cartoon, a robot) is
-split into colour parts: SLIC superpixels in CIELAB, merged weakest border
-first (a border is weak when both its colour step and its edge strength are
-small; ``_merge_parts``) until at most ``MAX_COLOUR_PARTS`` remain and every
-border is a real one.  The merged parts' cores then seed a watershed over the
-colour gradient, so each border settles on the image's strongest edge between
-its two parts, and a part thinner than ``THIN_FRACTION`` of the image diagonal
-(a cartoon's outline, an engraving's hatch) keeps no core: it is flooded from
-both sides and becomes the single border between its neighbours.  A face
-image's clothing (one parser class) is split into colour parts the same way,
-and each parsed eye into its iris and white (``irises``).
+**Everything else** has no parts here.  A subject with no face (an animal, a
+cartoon, a robot) is one part, so only its silhouette is drawn from labels;
+its interior lines, and those of the hair, clothes and body around a face,
+come from the learned line drawing (``contours.lines``, composed by
+``contours.drawing``).  Each parsed eye is split into its iris and white
+(``irises``: an anatomical disc clipped by the lids).
 
 The subject mask has the last word on the silhouette: off the mask is
 ``BACKGROUND``; on the mask where no parser speaks (outside every face crop, or
@@ -47,6 +42,7 @@ from scipy import ndimage as ndi
 
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.ml import SubjectModelSpec, _get_session, _source_rgb
+from fourier_analysis.contours.person import person_cut
 
 # ---------------------------------------------------------------------------
 # Label space
@@ -65,7 +61,8 @@ FEATURES = (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15)  # the small parts
 EYES = (4, 5)
 UNPARSED = N_FACE_CLASSES  # on the subject, no parser label
 IRIS = UNPARSED + 1  # the dark of an eye (not a parser class; see ``irises``)
-FIRST_COLOUR_PART = IRIS + 1
+FACE_CORE = (SKIN, *FEATURES, IRIS)
+"""The labels the face parser draws in full: no other line source inks them."""
 
 # ---------------------------------------------------------------------------
 # Models
@@ -88,8 +85,10 @@ FACE_PARSER = SubjectModelSpec(
     input_size=512,
 )
 
-FACE_MIN_SCORE = 0.8
-"""YuNet confidence for a face to be parsed (its own default is 0.9)."""
+FACE_MIN_SCORE = 0.9
+"""YuNet confidence for a face to be parsed: the detector's own published
+operating point.  Below it the detector also fires on animal faces (a dog at
+0.88), which the face parser and the person segmenter then both accept."""
 FACE_NMS_IOU = 0.3
 FACE_MIN_SIDE_PX = 24
 """Faces smaller than this (pipeline pixels) are too small to parse."""
@@ -102,13 +101,6 @@ FEATURE_MIN_SIDE = 0.03
 REGION_MIN_FRACTION = 0.002
 """Any other part below this fraction of the subject's area is absorbed."""
 
-MAX_COLOUR_PARTS = 16
-MIN_PART_DELTA_E = 14.0
-COLOUR_SUPERPIXELS = 240
-COLOUR_COMPACTNESS = 12.0
-THIN_FRACTION = 0.006
-EDGE_CONTRAST = 2.5
-MODAL_FRACTION = 0.0025
 
 
 @dataclass(frozen=True)
@@ -124,7 +116,17 @@ class PartLabels:
     labels: NDArray[np.int32]
     drawn: NDArray[np.bool_]  # (n_labels, n_labels): is the boundary a line
     faces: tuple[Face, ...]
-    source: str  # "face-parsing" or "colour-parts"
+    source: str  # "face-parsing" or "silhouette"
+
+    @property
+    def subject(self) -> NDArray[np.bool_]:
+        """The subject the labels were drawn on (cut to the person on a face)."""
+        return self.labels != BACKGROUND
+
+    @property
+    def face_core(self) -> NDArray[np.bool_]:
+        """Where the face parser owns the drawing (``FACE_CORE``)."""
+        return np.isin(self.labels, FACE_CORE)
 
 
 def load_part_sessions() -> None:
@@ -270,154 +272,6 @@ def confirms_face(labels: NDArray[np.int32], face: Face) -> bool:
     return skin >= 1 / 3 and has_nose and has_eye
 
 
-# ---------------------------------------------------------------------------
-# Colour parts
-# ---------------------------------------------------------------------------
-
-
-def colour_parts(
-    lab_norm: NDArray[np.float64],
-    gradient: NDArray[np.float64],
-    region: NDArray[np.bool_],
-    first_label: int,
-) -> NDArray[np.int32]:
-    """Split ``region`` into colour parts (module docstring); labels from
-    ``first_label`` on, 0 off the region.
-
-    Superpixels decide *which* parts there are; the image decides *where*
-    their borders run: each merged part's core (the part eroded by the thin
-    radius) seeds a watershed over the colour gradient, so borders settle on
-    the strongest edge between two parts, and a part too thin to keep a core
-    (a line) is flooded from both sides and becomes the border itself."""
-    from skimage.segmentation import slic, watershed
-
-    out = np.zeros(region.shape, np.int32)
-    if not region.any():
-        return out
-    lab = np.empty_like(lab_norm)
-    lab[..., 0] = lab_norm[..., 0] * 100.0
-    lab[..., 1:] = lab_norm[..., 1:] * 256.0 - 128.0
-    area = int(region.sum())
-    n_seg = max(8, min(COLOUR_SUPERPIXELS, area // 400))
-    seg = slic(
-        lab, n_segments=n_seg, compactness=COLOUR_COMPACTNESS, mask=region,
-        channel_axis=-1, convert2lab=False, start_label=1, enforce_connectivity=True,
-    ).astype(np.int32)
-    seg[~region] = 0
-    seg = _merge_parts(seg, lab, ndi.gaussian_filter(gradient, 1.0), region, REGION_MIN_FRACTION * area)
-
-    radius = max(1.0, THIN_FRACTION * float(np.hypot(*region.shape)))
-    border = np.zeros(region.shape, bool)
-    border[:, :-1] |= seg[:, :-1] != seg[:, 1:]
-    border[:, 1:] |= seg[:, :-1] != seg[:, 1:]
-    border[:-1, :] |= seg[:-1, :] != seg[1:, :]
-    border[1:, :] |= seg[:-1, :] != seg[1:, :]
-    core = region & (ndi.distance_transform_edt(~border) > radius)
-    markers = np.where(core, seg, 0)
-    if not markers.any():
-        markers = seg
-    grad = ndi.gaussian_filter(gradient, radius)  # borders follow structure, not texture
-    seg = watershed(grad, markers, mask=region).astype(np.int32)
-    seg = _modal(seg, region)
-    uniq = np.unique(seg[region])
-    uniq = uniq[uniq > 0]
-    remap = np.zeros(int(seg.max()) + 1, np.int32)
-    remap[uniq] = np.arange(first_label, first_label + len(uniq))
-    out[region] = remap[seg[region]]
-    return out
-
-
-def _merge_parts(
-    seg: NDArray[np.int32],
-    lab: NDArray[np.float64],
-    gradient: NDArray[np.float64],
-    region: NDArray[np.bool_],
-    min_area: float,
-) -> NDArray[np.int32]:
-    """Merge neighbouring regions, weakest border first, until at most
-    ``MAX_COLOUR_PARTS`` remain and every border is a real one.
-
-    A border's weakness is the geometric mean of two ratios: the colour step
-    across it (mean-colour delta E over ``MIN_PART_DELTA_E``) and its edge
-    strength (mean colour gradient along it over ``EDGE_CONTRAST`` times the
-    region's median gradient).  Fur or engraving texture has neither; a
-    robot's grey-on-grey panels differ little in colour but are cut by a
-    strong edge; a cartoon's parts have both.  A border is real once the mean
-    reaches one.  A region below ``min_area`` always merges first."""
-    n = int(seg.max()) + 1
-    count = np.bincount(seg.ravel(), minlength=n).astype(np.float64)
-    sums = np.stack([np.bincount(seg.ravel(), weights=lab[..., k].ravel(), minlength=n) for k in range(3)], 1)
-    g_ref = max(1e-9, float(np.median(gradient[region]))) * EDGE_CONTRAST
-    border: dict[tuple[int, int], list[float]] = {}
-    for (a, b), (ga, gb) in (
-        ((seg[:, :-1], seg[:, 1:]), (gradient[:, :-1], gradient[:, 1:])),
-        ((seg[:-1, :], seg[1:, :]), (gradient[:-1, :], gradient[1:, :])),
-    ):
-        m = (a != b) & (a > 0) & (b > 0)
-        if not m.any():
-            continue
-        lo, hi = np.minimum(a[m], b[m]).astype(np.int64), np.maximum(a[m], b[m]).astype(np.int64)
-        code = lo * n + hi
-        uniq, inv = np.unique(code, return_inverse=True)
-        gs = np.bincount(inv, weights=0.5 * (ga[m] + gb[m]))
-        cs = np.bincount(inv)
-        for c, gsum, cnt in zip(uniq.tolist(), gs.tolist(), cs.tolist()):
-            e = border.setdefault(divmod(c, n), [0.0, 0.0])
-            e[0] += gsum
-            e[1] += cnt
-    parent = np.arange(n)
-    alive = int(np.count_nonzero(count[1:]))
-    while alive > 1 and border:
-        keys = list(border)
-        pa = np.array(keys, dtype=np.int64)
-        val = np.array([border[k] for k in keys])
-        means = sums / np.maximum(count, 1)[:, None]
-        de = np.linalg.norm(means[pa[:, 0]] - means[pa[:, 1]], axis=1) / MIN_PART_DELTA_E
-        edge = val[:, 0] / np.maximum(val[:, 1], 1) / g_ref
-        cost = np.sqrt(de * edge)
-        small = np.minimum(count[pa[:, 0]], count[pa[:, 1]]) < min_area
-        k = int(np.argmin(np.where(small, cost - 1e6, cost)))
-        if not small[k] and alive <= MAX_COLOUR_PARTS and cost[k] >= 1.0:
-            break
-        a, b = int(pa[k, 0]), int(pa[k, 1])
-        count[a] += count[b]
-        sums[a] += sums[b]
-        count[b] = 0
-        sums[b] = 0
-        parent[b] = a
-        alive -= 1
-        for key in [x for x in border if b in x]:
-            gsum, cnt = border.pop(key)
-            other = key[0] if key[1] == b else key[1]
-            if other == a:
-                continue
-            e = border.setdefault((min(a, other), max(a, other)), [0.0, 0.0])
-            e[0] += gsum
-            e[1] += cnt
-    root = parent.copy()
-    for i in range(n):
-        r = i
-        while root[r] != r:
-            r = root[r]
-        root[i] = r
-    return root[seg].astype(np.int32)
-
-
-def _modal(seg: NDArray[np.int32], region: NDArray[np.bool_]) -> NDArray[np.int32]:
-    """A majority filter inside ``region`` (smooths staircase part borders)."""
-    from skimage.filters.rank import modal
-    from skimage.morphology import disk
-
-    if seg.max() >= 65535:
-        return seg
-    radius = max(2, round(MODAL_FRACTION * float(np.hypot(*seg.shape))))
-    m = modal(seg.astype(np.uint16), disk(radius), mask=region).astype(np.int32)
-    out = seg.copy()
-    ok = region & (m > 0)
-    out[ok] = m[ok]
-    return out
-
-
 def absorb_small(labels: NDArray[np.int32], min_area: dict[int, float], default: float) -> NDArray[np.int32]:
     """Components of a label below its minimum area take the nearest other label."""
     out = labels.copy()
@@ -464,6 +318,10 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
     parsed = face_part_labels([p for _, p in parses], shape, on_subject=True) if parses else None
 
     if parsed is not None:
+        # A confirmed face makes the subject a person: what the saliency kept
+        # beside them (a plant, a chair) is cut away (``contours.person``).
+        subject = person_cut(rgb, subject)
+        subject_area = float(subject.sum())
         labels = np.where(subject, np.where(parsed > BACKGROUND, parsed, UNPARSED), BACKGROUND)
         side = max(max(f.box[2], f.box[3]) for f in faces)
         feature_floor = (FEATURE_MIN_SIDE * side) ** 2
@@ -473,62 +331,71 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
             REGION_MIN_FRACTION * subject_area,
         )
         labels = irises(labels, image.lab)
-        # Clothing is one parser class; its own parts (a collar, a lapel, a
-        # braid lying on a sweater) are colour parts within it.
-        assert image.lab is not None
-        cloth = labels == CLOTH
-        sub = colour_parts(image.lab, image.color_gradient, cloth, FIRST_COLOUR_PART)
-        labels = np.where(cloth & (sub > 0), sub, labels)
-        n = max(FIRST_COLOUR_PART, int(labels.max()) + 1)
+        n = IRIS + 1
         drawn = ~np.eye(n, dtype=bool)
         drawn[UNPARSED, :] = False
         drawn[:, UNPARSED] = False
         drawn[BACKGROUND, UNPARSED] = drawn[UNPARSED, BACKGROUND] = True
         return PartLabels(_frame_band(labels), drawn, tuple(faces), "face-parsing")
 
-    assert image.lab is not None
-    labels = colour_parts(image.lab, image.color_gradient, subject, FIRST_COLOUR_PART)
-    n = int(labels.max()) + 1
-    drawn = ~np.eye(max(n, FIRST_COLOUR_PART), dtype=bool)
-    return PartLabels(_frame_band(labels), drawn, (), "colour-parts")
+    labels = np.where(subject, UNPARSED, BACKGROUND).astype(np.int32)
+    drawn = np.zeros((UNPARSED + 1, UNPARSED + 1), dtype=bool)
+    drawn[BACKGROUND, UNPARSED] = drawn[UNPARSED, BACKGROUND] = True
+    return PartLabels(_frame_band(labels), drawn, (), "silhouette")
 
 
 FRAME_BAND_PX = 3
-IRIS_MIN_FRACTION, IRIS_MAX_FRACTION = 0.12, 0.8
+IRIS_EYE_RATIO = 0.4
+"""The visible iris's diameter over the eye opening's width (about 12 mm over
+30 mm in an adult eye)."""
 IRIS_MIN_DELTA_L = 10.0
+"""The iris must be this much darker (CIELAB L) than the rest of the eye."""
 
 
 def irises(labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | None) -> NDArray[np.int32]:
-    """Split each parsed eye into its dark (iris and pupil) and the white.
+    """Split each parsed eye into its iris and the white.
 
     The parser's eye class is the whole opening between the lids; a drawing
-    also shows the iris.  Within each eye, the pixels darker than the eye's
-    Otsu threshold (their largest component) are the iris when they are a
-    plausible share of the eye and clearly darker than the rest of it."""
-    from skimage.filters import threshold_otsu
-
+    also shows the iris.  The iris is a disc ``IRIS_EYE_RATIO`` of the eye's
+    width across (its width read off the eye's principal axis), clipped by the
+    lids (the eye region), placed where it covers the most eye darker than
+    the eye's mean.  It is drawn only when it is clearly darker than the rest of the eye
+    (``IRIS_MIN_DELTA_L``): a closed eye or a lit one has no visible iris."""
     if lab_norm is None:
         return labels
     lum = lab_norm[..., 0] * 100.0
     out = labels.copy()
     comp, n = ndi.label(np.isin(labels, EYES))
-    for i in range(1, n + 1):
-        eye = comp == i
-        vals = lum[eye]
-        if vals.size < 16 or float(vals.max() - vals.min()) < IRIS_MIN_DELTA_L:
+    for i, sl in enumerate(ndi.find_objects(comp), start=1):
+        if sl is None:
             continue
-        dark = eye & (lum < threshold_otsu(vals))
-        parts, m = ndi.label(dark)
-        if m == 0:
+        rows, cols = sl
+        eye = comp[sl] == i
+        if eye.sum() < 16:
             continue
-        sizes = ndi.sum(dark, parts, index=np.arange(1, m + 1))
-        iris = ndi.binary_fill_holes(parts == int(np.argmax(sizes)) + 1) & eye
-        share = float(iris.sum()) / float(eye.sum())
-        if not IRIS_MIN_FRACTION <= share <= IRIS_MAX_FRACTION:
+        rr, cc = np.nonzero(eye)
+        cov = np.cov(np.vstack([rr, cc]).astype(np.float64))
+        width = 4.0 * float(np.sqrt(max(np.linalg.eigvalsh(cov)[-1], 0.0)))
+        radius = 0.5 * IRIS_EYE_RATIO * width
+        if radius < 1.5:
             continue
-        if float(lum[eye & ~iris].mean() - lum[iris].mean()) < IRIS_MIN_DELTA_L:
+        k = int(np.ceil(radius))
+        yy, xx = np.mgrid[-k : k + 1, -k : k + 1]
+        disc = (yy**2 + xx**2 <= radius**2).astype(np.float64)
+        # A matched filter: the disc goes where it covers the most eye darker
+        # than the eye's mean (a shadowed lid rim covers too little of it).
+        excess = np.where(eye, lum[sl][eye].mean() - lum[sl], 0.0)
+        score = ndi.convolve(excess, disc, mode="constant")
+        score[~eye] = -np.inf
+        cy, cx = np.unravel_index(int(np.argmax(score)), eye.shape)
+        gy, gx = np.mgrid[: eye.shape[0], : eye.shape[1]]
+        iris = eye & ((gy - cy) ** 2 + (gx - cx) ** 2 <= radius**2)
+        white = eye & ~iris
+        if not white.any():
             continue
-        out[iris] = IRIS
+        if float(lum[sl][white].mean() - lum[sl][iris].mean()) < IRIS_MIN_DELTA_L:
+            continue
+        out[sl][iris] = IRIS
     return out
 
 

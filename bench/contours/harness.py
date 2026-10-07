@@ -538,7 +538,7 @@ def render_overlay(
     img: BenchImage, run: PipelineRun, ref: NDArray[np.bool_], m: Metrics, out: Path
 ) -> Path:
     """Left: the tour over the dimmed image (jumps red, reference outline green).
-    Right: the epicycle reconstruction at N=100 on black."""
+    Right: the epicycle reconstructions at N=50, 100 and 200 on black."""
     guard_private_path(out, img.private)
     h, w = run.shape
     rgb = load_rgb(img.path, run.shape).astype(np.float32) * 0.35
@@ -568,26 +568,29 @@ def render_overlay(
         r0 = 3 * lw + 2
         d.ellipse((s[0] - r0, s[1] - r0, s[0] + r0, s[1] + r0), outline=(255, 255, 255), width=lw)
 
-    right = Image.new("RGB", (w, h), (0, 0, 0))
+    panels = [left]
     if len(run.tour) > 2:
         from fourier_analysis.epicycles import EpicycleChain
 
-        chain = EpicycleChain.from_signal(run.tour, n_harmonics=100)
-        trace = chain.evaluate(np.linspace(0, 1, 4000, endpoint=False))
-        dr = ImageDraw.Draw(right)
-        pts = _xy(to_pixels(np.append(trace, trace[0]), run.shape))
-        dr.line(pts, fill=EPI, width=lw + 1)
+        for n in EPI_NS:
+            panel = Image.new("RGB", (w, h), (0, 0, 0))
+            chain = EpicycleChain.from_signal(run.tour, n_harmonics=n)
+            trace = chain.evaluate(np.linspace(0, 1, 4000, endpoint=False))
+            dr = ImageDraw.Draw(panel)
+            dr.line(_xy(to_pixels(np.append(trace, trace[0]), run.shape)), fill=EPI, width=lw + 1)
+            dr.text((6, 3), f"N={n}  err {m.epi_err[str(n)]:.2f}%", fill=(235, 235, 235))
+            panels.append(panel)
 
     band_h = max(18, h // 40)
-    canvas = Image.new("RGB", (2 * w, h + band_h), (16, 16, 16))
-    canvas.paste(left, (0, band_h))
-    canvas.paste(right, (w, band_h))
+    canvas = Image.new("RGB", (len(panels) * w, h + band_h), (16, 16, 16))
+    for i, panel in enumerate(panels):
+        canvas.paste(panel, (i * w, band_h))
     text = (
         f"{m.name}  P={m.precision:.3f} R={m.recall:.3f} bg={m.background_fraction:.3f} "
         f"frame={m.frame_fraction:.3f} wig={m.wiggle:.3f} "
         f"n={m.contour_count} jumps={m.jump_count} ({m.jump_length:.0f}px, chords {m.chord_count}) "
         f"epi50/100/200={m.epi_err['50']:.2f}/{m.epi_err['100']:.2f}/{m.epi_err['200']:.2f}%  "
-        f"{m.runtime_s:.1f}s   right: N=100"
+        f"{m.runtime_s:.1f}s   right: N=" + "/".join(str(n) for n in EPI_NS)
     )
     ImageDraw.Draw(canvas).text((6, 3), text, fill=(235, 235, 235))
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -641,9 +644,17 @@ def run_bench(
     for img in images:
         results.append(bench_image(img, out_dir if overlays else None))
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "metrics.json").write_text(
-        json.dumps({"tag": tag, "images": [m.as_dict() for m in results]}, indent=2)
-    )
+    # A run over a subset (``only``) updates its rows of the tag's table and
+    # keeps the rest, so a set can be measured a few images at a time.
+    path = out_dir / "metrics.json"
+    rows = {m.name: m.as_dict() for m in results}
+    if only and path.is_file():
+        prior = json.loads(path.read_text())
+        if prior.get("tag") == tag:
+            rows = {r["name"]: r for r in prior["images"]} | rows
+    order = {i.name: k for k, i in enumerate(image_set(include_private=True))}
+    table = sorted(rows.values(), key=lambda r: order.get(r["name"], len(order)))
+    path.write_text(json.dumps({"tag": tag, "images": table}, indent=2))
     return results
 
 

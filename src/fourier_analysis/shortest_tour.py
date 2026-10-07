@@ -46,7 +46,9 @@ SNAP_PX = 0.75
 JUMP_PENALTY = 8.0
 """A straight jump (or a retrace of one) is charged this many times its
 length against a retrace along ink: a retrace lies on its stroke, a jump is a
-new line across the drawing."""
+new line across the drawing.  Measured on the bench at 3 and at 8: at 3 the
+walk trades retraces for jumps on most images (jump count up on 12 of 19,
+down on none); 8 keeps them on the ink."""
 
 ATTACH_SNAP_FRACTION = 0.25
 """A connector attaches at an existing node when one lies within this

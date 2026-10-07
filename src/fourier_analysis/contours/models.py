@@ -118,10 +118,11 @@ class MLConfig:
 
 @dataclass(frozen=True)
 class FeatureConfig:
-    """Parameters for the AUTO pipeline's edge-feature extraction stage.
+    """Parameters of the retired edge-feature stage.
 
-    Controls how the density field is built and how feature contours
-    are selected — only meaningful when strategy=AUTO.
+    The AUTO pipeline no longer reads them (``contours.pipeline`` draws from
+    part boundaries and a learned line drawing); they are kept so stored
+    settings and the API's contour schema still round-trip.
     """
 
     density_sigma: float = 2.0
@@ -133,10 +134,8 @@ class FeatureConfig:
     de-duplicated by the ink they repeat, not by centre spacing."""
 
     edge_model: str = "canny"
-    """Ridge backend for feature strokes: 'canny' (the default: no learned
-    edge weights are pinned, see ``ml._PIDINET_SHA256``), 'auto' or 'pidinet'
-    (the learned PiDiNet map when pinned weights are cached; otherwise Canny,
-    and the result's diagnostics carry a note saying so)."""
+    """Formerly the ridge backend for feature strokes ('canny', 'auto' or
+    'pidinet').  Unused by the pipeline; see the class docstring."""
 
     def normalized(self) -> FeatureConfig:
         edge_model = self.edge_model if self.edge_model in ("auto", "pidinet", "canny") else "canny"

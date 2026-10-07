@@ -11,7 +11,7 @@ uv run python -m bench.contours --out ~/.fourier-samples/evidence --tag baseline
 ```
 
 Output: `<out>/<tag>/<name>.png` (the tour over the dimmed image, jumps red,
-reference outline green; the N=100 epicycle trace on the right) and
+reference outline green; the N=50, N=100 and N=200 epicycle traces to the right) and
 `<out>/<tag>/metrics.json`. Flags: `--only NAME…`, `--no-private`,
 `--no-overlays`, `--write-references`.
 

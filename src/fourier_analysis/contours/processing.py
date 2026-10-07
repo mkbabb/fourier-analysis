@@ -8,11 +8,15 @@ from skimage import measure
 from fourier_analysis.contours.geometry import _polygon_area, _deduplicate_contours
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.models import ContourConfig
-from fourier_analysis.contours.support import is_closed_trace
 
 # Douglas-Peucker tolerance (px): no simplified point strays further than this
 # from the smoothed trace.
 SIMPLIFY_TOLERANCE_PX = 0.5
+
+
+def is_closed_trace(rc: NDArray[np.floating]) -> bool:
+    """Marching squares closed this trace (its first point repeats last)."""
+    return len(rc) > 2 and bool(np.array_equal(rc[0], rc[-1]))
 
 
 def _douglas_peucker(z: NDArray[np.complex128], tolerance: float) -> NDArray[np.bool_]:

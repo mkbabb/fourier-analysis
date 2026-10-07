@@ -13,6 +13,7 @@ dependencies = [
     "onnxruntime>=1.17",
     "sympy>=1.13",
     "networkx>=3.2",
+    "ai-edge-litert>=2.2",
 ]
 
 [project.optional-dependencies]

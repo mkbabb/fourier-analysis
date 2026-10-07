@@ -18,13 +18,6 @@ def _polygon_area(z: NDArray[np.complex128]) -> float:
     )
 
 
-def _compactness(z: NDArray[np.complex128], area: float) -> float:
-    perimeter = float(np.sum(np.abs(np.diff(z))))
-    if perimeter <= 1e-12:
-        return 0.0
-    return float(4 * np.pi * area / (perimeter**2))
-
-
 def _contour_bbox(contour: NDArray[np.complex128]) -> tuple[float, float, float, float]:
     return (
         float(contour.real.min()),

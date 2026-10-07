@@ -1,18 +1,16 @@
-"""The AUTO pipeline: semantic part boundaries, walked as one stroke graph.
+"""The AUTO pipeline: the subject's drawing, walked as one stroke graph.
 
-Image -> subject mask -> part labels -> part boundaries -> minimum-retrace tour
+Image -> subject mask -> silhouette + part boundaries + learned lines ->
+minimum-retrace tour
 
-1. The subject mask (``isolation.subject_mask``: the saliency ensemble, grown
-   by hysteresis, alpha-intersected, significant components).
-2. Part labels (``parts.part_labels``): a face parser's 19 classes where the
-   subject has a face, colour parts elsewhere; off the mask is background.
-3. The boundaries between parts (``strokes.boundary_strokes``): one stroke per
-   shared boundary, meeting at junctions.
-4. The tour (``shortest_tour.build_contour_tour``): a Chinese-postman walk.
+1. The drawing (``drawing.draw_subject``): the subject mask's silhouette, the
+   face parser's part boundaries, and the persistent learned line drawing,
+   composed in that priority order into one stroke graph.
+2. The tour (``shortest_tour.build_contour_tour``): a Chinese-postman walk.
 
 ``config.max_contours`` does not cut strokes here: dropping an edge of the
-stroke graph drops a part boundary (an eye, a lip line).  The number of parts
-is bounded instead (``parts.MAX_COLOUR_PARTS``; the parser's 19 classes).
+stroke graph drops a line (an eye, a lip line); the drawing is bounded by its
+ink budget instead (``drawing.INK_BUDGET_DIAGONALS``).
 """
 
 from __future__ import annotations
@@ -22,14 +20,12 @@ from numpy.typing import NDArray
 
 from fourier_analysis.contours.geometry import _polygon_area
 from fourier_analysis.contours.image import LoadedImage
-from fourier_analysis.contours.isolation import subject_mask
+from fourier_analysis.contours.drawing import draw_subject
 from fourier_analysis.contours.models import (
     ContourConfig,
     ContourDiagnostics,
     ContourExtractionResult,
 )
-from fourier_analysis.contours.parts import part_labels
-from fourier_analysis.contours.strokes import boundary_strokes
 from fourier_analysis.shortest_tour import build_contour_tour
 
 
@@ -37,13 +33,10 @@ def extract_contours_pipeline(
     image: LoadedImage,
     config: ContourConfig,
 ) -> ContourExtractionResult:
-    """Run the part-boundary pipeline (module docstring)."""
-    mask, _ = subject_mask(image, config)
-    if not mask.any():
-        return _empty_result(config)
-    parts = part_labels(image, mask)
-    contours = boundary_strokes(parts.labels, parts.drawn)
-    if not contours:
+    """Run the drawing pipeline (module docstring)."""
+    drawing = draw_subject(image, config)
+    contours = drawing.strokes if drawing is not None else []
+    if drawing is None or not contours:
         return _empty_result(config)
 
     tour = build_contour_tour(contours, method=config.tour_method)
@@ -52,14 +45,14 @@ def extract_contours_pipeline(
     total_area = sum(areas)
     gap_lengths = np.array(tour.gap_lengths, dtype=np.float64)
     notes = [
-        f"parts={parts.source}",
-        f"faces={len(parts.faces)}",
+        f"parts={drawing.source}",
+        f"faces={len(drawing.faces)}",
         f"retrace_px={tour.retrace_length:.0f}",
     ]
     diagnostics = ContourDiagnostics(
         requested_strategy="auto",
         selected_strategy="auto",
-        selected_candidate=parts.source,
+        selected_candidate=drawing.source,
         alpha_mode="auto",
         used_alpha=False,
         contour_count=len(contours),
