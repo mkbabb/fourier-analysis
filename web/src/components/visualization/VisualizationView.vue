@@ -986,7 +986,10 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding-inline: 1.5rem;
+    /* X-DS pass 10 · DS-F12-C4: the zone fills the stage's content box, inset
+       by the card pad's own measure (`--space-body`, glass Card's md pad; the
+       stage cell is not a Card, so `--card-pad` does not reach it). */
+    padding: var(--space-body);
     text-align: center;
     pointer-events: none;
     z-index: var(--z-controls);
@@ -1011,23 +1014,28 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     pointer-events: auto;
 }
 /* X-DS pass 1 · F1-17 — the origin's drop zone, revived on today's tokens: a
-   1px dashed hairline at the card radius around the prompt and its action.
-   No fill, no shadow. A dragged file inks the dash in the focus-ring hue. */
+   1px dashed hairline around the prompt and its action. No fill, no shadow. A
+   dragged file inks the dash in the focus-ring hue.
+   X-DS pass 10 · DS-F12-C4: one frame carries the empty state — the dashed
+   zone fills the stage (was a ~600×380 box floating in a ~1408×800 plate, a
+   frame inside a frame), the prompt centred in it; its corner is concentric
+   with the stage's (the card radius less the inset). */
 .drop-zone {
+    flex: 1;
+    align-self: stretch;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    max-inline-size: min(40rem, 100%);
     padding: 2rem 1.5rem;
     border: 1px dashed var(--border);
-    border-radius: var(--radius-card);
+    border-radius: calc(var(--radius-card) - var(--space-body));
 }
 /* X-DS pass 4 · DS-F4-C9: on a phone the prompt sits on the app's one gutter,
    not two stacked 1.5rem insets, so the balanced title takes two lines
    ("Draw any / outline in circles"), never "outline" alone on a line. */
 @media (width < 40rem) {
-    .drop-target,
     .drop-zone {
         padding-inline: var(--page-gutter);
     }

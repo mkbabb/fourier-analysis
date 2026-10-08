@@ -88,12 +88,14 @@ const storage = computed<{ value: string; unit: string }>(() => {
          radius inverted the concentric law. It is a glass Card, on the card
          radius (`--radius-card`), so no cell is rounder than its container.
          The cell radius derived from `--radius-ctx` less the inset is glass's
-         half (O-59). -->
+         half (O-59).
+         X-DS pass 10 · DS-F12-C3: the amber rim rides Card's 1px hairline (the
+         `border-[1.5px]` literal is gone); the colour stays (§0dm). -->
     <Card
         ref="root"
         as="section"
         size="sm"
-        class="admin-banner mx-[var(--page-gutter)] px-3 py-2.5 border-[1.5px]"
+        class="admin-banner mx-[var(--page-gutter)] px-3 py-2.5"
         aria-label="Admin mode banner"
         :aria-busy="loading || undefined"
     >

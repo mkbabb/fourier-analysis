@@ -106,8 +106,10 @@ const created = useTimeAgo(() => props.entry.created_at);
     >
         <!-- X.F.W14U.admin — UIA-F-191: glass Checkbox at its own size (the
              `h-4 w-4` literal is gone), seated in a label whose inset makes the
-             whole plate its hit target (≥ 24 px, WCAG 2.5.8). -->
-        <label v-if="adminMode" class="card-raised select-plate absolute top-1.5 left-1.5">
+             whole plate its hit target (≥ 24 px, WCAG 2.5.8).
+             X-DS pass 10 · DS-F12-C1: seated inside the thumbnail's corner
+             (`.overlay-plate`), not 6 px off the card's. -->
+        <label v-if="adminMode" class="card-raised overlay-plate overlay-plate--start">
             <Checkbox
                 :model-value="selected ?? false"
                 :aria-label="`Select ${name}`"
@@ -172,7 +174,10 @@ const created = useTimeAgo(() => props.entry.created_at);
             <TierMark :tier="entry.tier" class="ml-auto" />
         </div>
 
-        <div v-if="adminMode" class="card-raised absolute top-1.5 right-1.5 flex gap-1">
+        <!-- X-DS pass 10 · DS-F12-C1 ⊕ C2: the action row sits on the select
+             control's plate, inside the thumbnail's opposite corner, so the tier
+             group and the quiet Delete share one anchored backing. -->
+        <div v-if="adminMode" class="card-raised overlay-plate overlay-plate--end">
             <!-- X.F.W14V.au4 — A2-FO-L1-10: the one tier setter (the two
                  independent Crown/Bookmark toggles were a second spelling of
                  the modal's three-state group). -->
@@ -319,18 +324,35 @@ const created = useTimeAgo(() => props.entry.created_at);
    floor); the `h-7 w-7 rounded-full` literals and the local scale hover, which
    fought the size rung into 28×40 capsules, are deleted. */
 
-/* UIA-F-191: the select control's plate — a legibility backing over the
-   thumbnail and the checkbox's hit target in one (the label). */
-.select-plate {
+/* UIA-F-191: the admin overlays' plate — a legibility backing over the
+   thumbnail (and, on the label, the checkbox's hit target in one).
+   X-DS pass 10 · DS-F12-C1 ⊕ C2: one plate for both overlays (was the select
+   control's alone, leaving Delete a bare glyph on the photo), seated inside
+   the media's corners: the media starts at `--card-pad`, so the overlays sit
+   one `--space-atom` in from it on both axes (were `top-1.5` literals off the
+   card's box, hanging half over the thumbnail's edge). */
+.overlay-plate {
+    position: absolute;
+    top: calc(var(--card-pad) + var(--space-atom));
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: calc(var(--space-atom) / 2);
     min-width: 1.5rem;
     min-height: 1.5rem;
     padding: 0.25rem;
     border-radius: var(--radius-md);
     background: color-mix(in oklab, var(--background) 70%, transparent);
+}
+/* The checkbox brings glass's own 44 px hit square, so its plate takes no
+   extra pad: the two plates then share one height (the disc row's 36 + pad). */
+.overlay-plate--start {
+    inset-inline-start: calc(var(--card-pad) + var(--space-atom));
+    padding: 0;
     cursor: pointer;
+}
+.overlay-plate--end {
+    inset-inline-end: calc(var(--card-pad) + var(--space-atom));
 }
 
 /* A.W2.e — basis-tint colour projection over `<Badge variant="outline">`.
