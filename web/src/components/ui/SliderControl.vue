@@ -249,7 +249,9 @@ const fillFraction = computed(() => {
 /*
    X.F.W14.h — the idiom's geometry, on glass's scales only:
    · rhythm: `--space-atom` between the two lines and between the line's parts;
-   · type: the label on `--type-small`, the hint and unit on `--type-caption`;
+   · type: the label is glass `Label`'s own rung (`--control-label`, the one
+     LabeledField sets, so every label in a pane is one size; X-DS DS-F4-C1),
+     the hint and unit on `--type-caption`;
    · the field keeps the producer's `sm` rung; only its measure is ours.
 */
 .control-row {
@@ -268,10 +270,6 @@ const fillFraction = computed(() => {
 
 .control-row-label {
     flex: none;
-    font-size: var(--type-small);
-    line-height: var(--type-leading-small);
-    font-weight: 500;
-    color: var(--foreground);
     white-space: nowrap;
 }
 
@@ -314,7 +312,7 @@ const fillFraction = computed(() => {
     --glass-slider-track-background: linear-gradient(
         to right,
         color-mix(in oklab, var(--track-color, var(--glass-capsule-warm)) 55%, var(--muted-medium)) 0 var(--row-stop),
-        var(--muted-medium) var(--row-stop) 100%
+        var(--surface-tint-15) var(--row-stop) 100%
     ) center / 100% var(--row-rule) no-repeat;
 }
 
@@ -325,7 +323,11 @@ const fillFraction = computed(() => {
    (`--row-rule`, glass's own 0.375 rem track fallback, the PRE-DOCK ~6–8 px
    track), not the rung's 24 px slab: the label and field already state the
    value, so the bar under them is the quietest thing in the row. The thumb's
-   frame and cast stay glass's (O-87). */
+   frame and cast stay glass's (O-87). X-DS DS-F5-C1: the unfilled stop is
+   glass's hairline tint (`--surface-tint-15`, the foreground at 15%), not
+   `--muted-medium`, which in light is the card's own tone (~1.03:1), so the
+   rule has a visible extent in both themes, one geometry. The 24 px well's
+   lone top edge around it is glass's track-well inset (O-87, DS-F5-G2). */
 .control-row-track :deep(.slider-thumb) {
     background: var(--track-color, var(--glass-capsule-warm));
 }

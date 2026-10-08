@@ -145,8 +145,12 @@ defineEmits<{
         gap: var(--space-body);
     }
 
+    /* X-DS DS-F5-C5: the plate is bounded by the row, not only by the
+       viewport's height: 22svh, or what the content box leaves after the
+       gap and the readings' measure (9rem holds "total 2400 ms"). */
     .stage-row {
-        width: auto;
+        flex: none;
+        width: min(22svh, 100% - var(--space-body) - 9rem);
     }
 }
 
@@ -266,14 +270,25 @@ defineEmits<{
 }
 
 /* DS-F4R-C4: beside the plate in the phone band, the four readings are one
-   column, each on its own line, starting on one edge. */
+   column, each on its own line, starting on one edge. X-DS DS-F5-C5: the
+   column takes the rest of the row and no more (`flex: 1`, `min-width: 0`),
+   so plate and readings are bounded by the content box (the readings ran
+   ~6 px into the 16 px gutter), and its width no longer follows its words,
+   so nothing moves as the phase changes; the phase value's 10ch reservation
+   (the two-row form's guard) is dropped here, where no reading sits beside
+   it. */
 @media (max-width: 1023.98px) {
     .demo-info {
+        flex: 1 1 0;
+        min-width: 0;
         grid-template-columns: auto;
         justify-content: start;
     }
     .phase-reading {
         justify-self: start;
+    }
+    .phase-value {
+        min-inline-size: 0;
     }
 }
 

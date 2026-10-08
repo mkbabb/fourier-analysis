@@ -73,8 +73,12 @@ const emit = defineEmits<{
 .gallery-grid-host {
     container-type: inline-size;
 }
+/* X-DS DS-F5-C8: the track floor fits a four-word slug and its date
+   (16rem); at 14rem a 1408 px field made six tracks, so a short result set
+   left empty tracks and cut the slugs. auto-fill stays, so a long gallery
+   keeps its rhythm. */
 .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
 }
 @container (width < 30rem) {
     .gallery-grid:not([data-admin]) {

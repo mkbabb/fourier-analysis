@@ -15,7 +15,8 @@
              control never scrolls the thing it tunes away. UIA-F-254: Export
              and Reset sit under the stage they act on, at secondary weight. -->
         <div class="demo-layout">
-            <section class="stage-column paper-grid" aria-label="Morph stage">
+            <section class="stage-column paper-texture" aria-label="Morph stage">
+                <div class="band-grid paper-grid" aria-hidden="true" />
                 <MorphShapePreview
                     :current-path="morph.currentPath.value"
                     :phase="morph.phase.value"
@@ -231,19 +232,34 @@ function handleReset() {
 
 /* Below 1024px the stage band sticks to the top of `<main>` on the page's own
    ground, so the controls scroll beneath it. X-DS DS-F-C6: that ground is the
-   paper grid, not a flat --background slab: the band repaints glass's
-   `.paper-grid` over the page tone, fixed to the viewport like the app's grid
-   layer (App.vue), so the lines run through it unbroken. */
+   paper grid, not a flat --background slab. X-DS pass 4 · DS-F4-C2: the band
+   carries the shell's layers exactly (App.vue): the page tone with the
+   `.paper-texture` ground, and glass's `.paper-grid` as its own layer above
+   it, both fixed to the viewport, so band and page are one tone and the lines
+   run through unbroken. It spans the scroller's full inline size (out over
+   `.demo-page`'s gutter), so nothing scrolling under it shows beside it.
+   X-DS DS-F5-C4 (folds DS-F4-C2's hunk): it ends on one hairline, so content
+   scrolls under a rule, not under a cut. */
 .stage-column {
     position: sticky;
     top: 0;
     z-index: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: var(--space-atom);
-    padding-block: var(--space-atom);
+    margin-inline: calc(-1 * var(--page-gutter));
+    padding: var(--space-atom) var(--page-gutter);
     background-color: var(--background);
+    background-attachment: fixed;
+    border-block-end: 1px solid var(--border-soft);
+}
+
+.band-grid {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background-attachment: fixed;
 }
 
@@ -270,9 +286,15 @@ function handleReset() {
        start on the plate's edge (one axis, as the title above). */
     .stage-column {
         top: var(--space-family);
-        padding-block: 0;
+        margin-inline: 0;
+        padding: 0;
         align-items: start;
         background: none;
+        border-block-end: 0;
+    }
+
+    .band-grid {
+        display: none;
     }
 
     .stage-column > * {
@@ -290,20 +312,28 @@ function handleReset() {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    /* X-DS DS-F5-C3: three across, the peers' rows line up. A subtitle
+       that wraps (Settle Out's) pushed that card's Duration and Easing rows
+       ~19 px below its two peers'. Each subtitle holds two lines' room here,
+       so every card's title, subtitle, field, slider and select sit on one
+       baseline. (Shared subgrid rows were the first choice; glass Card's
+       `contain: paint` makes a card an independent formatting context, so it
+       cannot be a subgrid, and that containment is glass's.) */
+    .controls-column :deep([data-card-subtitle]) {
+        min-block-size: 2lh;
+    }
+
     .controls-column > :last-child {
         grid-column: 1 / -1;
     }
 }
 
+/* X-DS DS-F5-C5: the actions start on the plate's edge at every width; in
+   the phone band the plate now starts on the content box's edge (the row is
+   bounded by it), so centred actions sat off the plate's axis. */
 .stage-actions {
     display: flex;
     gap: var(--space-atom);
-    justify-content: center;
-}
-
-@media (min-width: 1024px) {
-    .stage-actions {
-        justify-content: flex-start;
-    }
+    justify-content: flex-start;
 }
 </style>

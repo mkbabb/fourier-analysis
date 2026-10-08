@@ -58,7 +58,10 @@
         />
 
         <div class="config-field">
-            <label class="config-label" :id="easingLabelId">Easing</label>
+            <!-- X-DS DS-F5-C2: glass `Label`, the rung the Duration row's
+                 label takes (SliderControl), so the card's two field labels
+                 are one size. -->
+            <Label :id="easingLabelId" class="config-label">Easing</Label>
             <Select :model-value="easing" @update:model-value="$emit('update:easing', String($event))">
                 <!--
                     The trigger names the selection ITSELF rather than through
@@ -123,6 +126,7 @@
 import { useId } from "vue";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
 import { Card } from "@mkbabb/glass-ui/card";
+import { Label } from "@mkbabb/glass-ui/label";
 import {
     Select,
     SelectTrigger,
@@ -171,8 +175,8 @@ const easingNames = EASING_PRESET_NAMES;
 /*
    X.F.W14.h · OA-45 — the card's hierarchy on glass's scales (the same idiom as
    every control card in the app): the title on `--type-heading` serif 500 (the producer's own section-header rung, glass `ConfiguratorLayer`), the
-   description on `--type-caption`, a field label on `--type-small` (the control
-   row's label rung); the inset and the rhythm on the spacing scale
+   description on `--type-caption`, a field label on glass `Label`'s rung (the
+   control row's label rung, DS-F5-C2); the inset and the rhythm on the spacing scale
    (`--space-family` / `--space-body` / `--space-atom`, each responsive at the
    producer). The `text-lg` / `text-sm` / `text-base` rungs retire: `text-sm`
    resolves to nothing under glass's theme bridge (`--text-sm: initial`), and
@@ -210,10 +214,6 @@ const easingNames = EASING_PRESET_NAMES;
 
 .config-label {
     display: block;
-    font-size: var(--type-small);
-    line-height: var(--type-leading-small);
-    font-weight: 500;
-    color: var(--foreground);
     margin-bottom: var(--space-atom);
 }
 </style>

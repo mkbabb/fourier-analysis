@@ -276,10 +276,13 @@ const activePreset = computed(() =>
                 color="var(--viz-fourier)"
                 @update:model-value="onDisplayTerms"
             />
-            <div>
-                <p class="text-small font-medium text-foreground mb-atom">Notation</p>
-                <NotationPills v-model="notation" />
-            </div>
+            <!-- X-DS DS-F4-C1: one label rung per pane — the Notation label is
+                 LabeledField's, like Domain and Presets beside it. -->
+            <LabeledField label="Notation" :control-labelable="false">
+                <template #default="{ labelledBy }">
+                    <NotationPills v-model="notation" :aria-labelledby="labelledBy" />
+                </template>
+            </LabeledField>
         </div>
     </ConfiguratorLayer>
 </template>
