@@ -14,7 +14,11 @@ glasses, ears, earring, nose, mouth, lips, neck, necklace, cloth, hair, hat).
 The parser sees a square crop ``FACE_CROP_SCALE`` times the detection's
 larger side, centred on it, which is the framing its training faces have.  Its
 per-class probabilities are resampled onto the pipeline grid and the argmax
-taken, so part boundaries come out smooth and sub-pixel placed.
+taken, so part boundaries come out smooth and sub-pixel placed.  The large
+materials (neck, cloth, hair) are then re-voted with the image's own colours
+(``material_revote``: a braid over a sweater is hair, though it lies where
+cloth usually is), and a band of any part thinner than a line's cell is
+drawn as the one line along its middle (``thin_to_line``).
 
 **Everything else** has no parts here.  A subject with no face (an animal, a
 cartoon, a robot) is one part, so only its silhouette is drawn from labels;
@@ -141,7 +145,7 @@ class PartLabels:
     source: str  # "face-parsing" or "silhouette"
     spined: tuple[int, ...] = ()  # labels drawn by their spine, not their outline
     missed: NDArray[np.bool_] | None = None  # an eye the detector sees and the parser does not
-    mouth_lines: tuple[NDArray[np.float64], ...] = ()  # (row, col) lines of mouths the parser missed
+    feature_lines: tuple[NDArray[np.float64], ...] = ()  # (row, col) lines of eyes and mouths the parser missed
 
     @property
     def subject(self) -> NDArray[np.bool_]:
@@ -156,6 +160,11 @@ class PartLabels:
     @property
     def nose(self) -> NDArray[np.bool_]:
         return self.labels == NOSE
+
+    @property
+    def eyes(self) -> NDArray[np.bool_]:
+        """The eyes and brows (``EYES``, ``IRIS``, ``BROWS``)."""
+        return np.isin(self.labels, (*EYES, IRIS, *BROWS))
 
     @property
     def face_core(self) -> NDArray[np.bool_]:
@@ -277,8 +286,20 @@ def face_part_labels(
     decides the silhouette), so background is not a choice and the argmax runs
     over the 18 part classes: a braid or a shoulder the parser half-dismissed
     as background takes its most likely part."""
+    return face_part_probs(parses, shape, on_subject)[0]
+
+
+def face_part_probs(
+    parses: list[tuple[NDArray[np.float32], tuple[int, int, int]]],
+    shape: tuple[int, int],
+    on_subject: bool = False,
+) -> tuple[NDArray[np.int32], NDArray[np.float32]]:
+    """``face_part_labels`` and, per pixel, the winning crop's class
+    probabilities (``(H, W, N_FACE_CLASSES)``, zero outside every crop; with
+    ``on_subject`` renormalised over the part classes, background zero)."""
     labels = np.zeros(shape, np.int32)
     conf = np.zeros(shape, np.float32)
+    probs_out = np.zeros((*shape, N_FACE_CLASSES), np.float32)
     for probs, (r0, c0, s) in parses:
         rs, cs = max(0, r0), max(0, c0)
         re, ce = min(shape[0], r0 + s), min(shape[1], c0 + s)
@@ -286,15 +307,16 @@ def face_part_labels(
             continue
         sub = probs[rs - r0 : re - r0, cs - c0 : ce - c0]
         if on_subject:
-            sub = sub[..., 1:] / np.maximum(1e-6, 1.0 - sub[..., :1])
-            lab = sub.argmax(axis=-1).astype(np.int32) + 1
-        else:
-            lab = sub.argmax(axis=-1).astype(np.int32)
+            sub = np.concatenate(
+                [np.zeros_like(sub[..., :1]), sub[..., 1:] / np.maximum(1e-6, 1.0 - sub[..., :1])], axis=-1
+            )
+        lab = sub.argmax(axis=-1).astype(np.int32)
         p = sub.max(axis=-1)
         win = p > conf[rs:re, cs:ce]
         labels[rs:re, cs:ce][win] = lab[win]
         conf[rs:re, cs:ce][win] = p[win]
-    return labels
+        probs_out[rs:re, cs:ce][win] = sub[win]
+    return labels, probs_out
 
 
 def confirms_face(labels: NDArray[np.int32], face: Face) -> bool:
@@ -353,14 +375,14 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
     parses = [(f, parse_face(rgb, f, shape)) for f in faces]
     parses = [(f, p) for f, p in parses if confirms_face(face_part_labels([p], shape), f)]
     faces = [f for f, _ in parses]
-    parsed = face_part_labels([p for _, p in parses], shape, on_subject=True) if parses else None
-
-    if parsed is not None:
+    if parses:
+        parsed, probs = face_part_probs([p for _, p in parses], shape, on_subject=True)
         # A confirmed face makes the subject a person: what the saliency kept
         # beside them (a plant, a chair) is cut away (``contours.person``).
         subject = person_cut(rgb, subject)
         subject_area = float(subject.sum())
         labels = np.where(subject, np.where(parsed > BACKGROUND, parsed, UNPARSED), BACKGROUND)
+        labels = material_revote(labels, probs, image.lab, REGION_MIN_FRACTION * subject_area)
         side = max(max(f.box[2], f.box[3]) for f in faces)
         feature_floor = (FEATURE_MIN_SIDE * side) ** 2
         labels = absorb_small(
@@ -369,7 +391,8 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
             REGION_MIN_FRACTION * subject_area,
         )
         diag = float(np.hypot(*shape))
-        labels = thin_to_line(labels, LIPS, THIN_FRACTION * diag)
+        for classes in (LIPS, *((k,) for k in MATERIALS)):
+            labels = thin_to_line(labels, classes, THIN_FRACTION * diag)
         labels = teeth(irises(labels, image.lab), image.lab, feature_floor)
         drawn = ~np.eye(N_LABELS, dtype=bool)
         drawn[UNPARSED, :] = False
@@ -381,13 +404,113 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
         marked[np.ix_(FORM, FORM)] = True
         marked &= ~np.eye(N_LABELS, dtype=bool)
         labels = _frame_band(labels)
-        missed, mouths = missed_features(labels, faces, image.lab)
-        return PartLabels(labels, drawn, marked, tuple(faces), "face-parsing", BROWS, missed, mouths)
+        missed, lines = missed_features(labels, faces, image.lab)
+        return PartLabels(labels, drawn, marked, tuple(faces), "face-parsing", BROWS, missed, lines)
 
     labels = np.where(subject, UNPARSED, BACKGROUND).astype(np.int32)
     drawn = np.zeros((UNPARSED + 1, UNPARSED + 1), dtype=bool)
     drawn[BACKGROUND, UNPARSED] = drawn[UNPARSED, BACKGROUND] = True
     return PartLabels(_frame_band(labels), drawn, np.zeros_like(drawn), (), "silhouette")
+
+
+MATERIALS = (NECK, CLOTH, HAIR)
+"""The parser's large material parts, told apart by their colour as well as
+their place (``material_revote``)."""
+MATERIAL_SEPARATION = 1.0
+"""Two materials' colour models are told apart when their Bhattacharyya
+distance is at least this (the Bayes error between them under ``exp(-1) / 2``,
+about 0.18): a black braid on a beige sweater, not a white cravat on a white
+neck in an engraving."""
+MATERIAL_CORE_PX = 3
+"""A material's colour is learned on its label eroded this far, off the
+boundaries the parser is least sure of."""
+MATERIAL_SIGMA_PX = 2.0
+"""The fused evidence is read over this neighbourhood (pixels), so a
+material's region is coherent, not pixel noise."""
+MATERIAL_MAX_SIGMAS = 5.0
+"""A colour this many standard deviations off a material's model is simply
+not that material: the likelihood is capped there, so one far colour (a
+beige pixel against a black model) does not outweigh its neighbours when the
+evidence is read over a neighbourhood."""
+MATERIAL_COLOUR_FLOOR = 4.0
+"""Added to each colour covariance's diagonal (CIELAB units squared): the
+colour noise of a flat region."""
+
+
+def material_revote(
+    labels: NDArray[np.int32],
+    probs: NDArray[np.float32],
+    lab_norm: NDArray[np.float64] | None,
+    min_area: float,
+) -> NDArray[np.int32]:
+    """Re-vote the parser's large materials (``MATERIALS``: neck, cloth, hair)
+    with the image's own colours.
+
+    The parser places a material by where it usually lies around a face: a
+    braid falling over a sweater lies where cloth usually is, and is labelled
+    cloth, though it is the black of the hair.  Here each material's colour is
+    modelled (a Gaussian in CIELAB, learned on the parser's own core of it,
+    ``MATERIAL_CORE_PX`` in from its edges), and each pixel's material is
+    the one with the most posterior evidence: the parser's probability (the
+    prior) times the colour's likelihood, read over ``MATERIAL_SIGMA_PX``.
+    A pixel moves only between two materials whose colours tell them apart
+    (``MATERIAL_SEPARATION``), and a moved region smaller than ``min_area``
+    (the part floor) goes back: it is a fleck or a rim of blended pixels,
+    not a misplaced part."""
+    if lab_norm is None:
+        return labels
+    lab = np.empty_like(lab_norm)
+    lab[..., 0] = lab_norm[..., 0] * 100.0
+    lab[..., 1:] = lab_norm[..., 1:] * 256.0 - 128.0
+    lab = ndi.gaussian_filter(lab, (1.0, 1.0, 0.0))
+    models: dict[int, tuple[NDArray[np.float64], NDArray[np.float64]]] = {}
+    for k in MATERIALS:
+        core = ndi.binary_erosion(labels == k, iterations=MATERIAL_CORE_PX)
+        if core.sum() < max(16.0, min_area):
+            continue
+        x = lab[core]
+        models[k] = (x.mean(axis=0), np.cov(x.T) + MATERIAL_COLOUR_FLOOR * np.eye(3))
+    ks = list(models)
+    if len(ks) < 2:
+        return labels
+    region = np.isin(labels, ks)
+    post = {}
+    for k in ks:
+        mu, cov = models[k]
+        d = lab - mu
+        m2 = np.minimum(np.einsum("...i,ij,...j->...", d, np.linalg.inv(cov), d), MATERIAL_MAX_SIGMAS**2)
+        ll = -0.5 * m2 - 0.5 * np.log(np.linalg.det(cov))
+        post[k] = ndi.gaussian_filter(np.where(region, ll + np.log(np.maximum(probs[..., k], 1e-6)), 0.0), MATERIAL_SIGMA_PX)
+    out = labels.copy()
+    for a in ks:
+        best = post[a].copy()
+        choice = np.full(labels.shape, a, np.int32)
+        for b in ks:
+            if b == a or _bhattacharyya(models[a], models[b]) < MATERIAL_SEPARATION:
+                continue
+            better = post[b] > best
+            best = np.where(better, post[b], best)
+            choice = np.where(better, b, choice)
+        moved = (labels == a) & (choice != a)
+        out[moved] = choice[moved]
+    moved = out != labels
+    if moved.any():
+        pieces, n = ndi.label(moved)
+        sizes = ndi.sum(moved, pieces, np.arange(1, n + 1))
+        back = np.isin(pieces, np.flatnonzero(sizes < min_area) + 1)
+        out[back] = labels[back]
+    return out
+
+
+def _bhattacharyya(
+    a: tuple[NDArray[np.float64], NDArray[np.float64]], b: tuple[NDArray[np.float64], NDArray[np.float64]]
+) -> float:
+    (m1, c1), (m2, c2) = a, b
+    c = 0.5 * (c1 + c2)
+    d = m1 - m2
+    return float(
+        d @ np.linalg.solve(c, d) / 8.0 + 0.5 * np.log(np.linalg.det(c) / np.sqrt(np.linalg.det(c1) * np.linalg.det(c2)))
+    )
 
 
 THIN_FRACTION = 0.015
@@ -400,6 +523,9 @@ doubled strand, not two lines."""
 EYE_ZONE_IOD = 0.25
 """An eye lies within this many inter-ocular distances of its landmark (an
 eye opening is about half the inter-ocular distance across)."""
+EYE_LINE_ZONE = (0.32, 0.16)
+"""A missed eye's lid line lies within an ellipse on its landmark, these many
+inter-ocular distances along and across the line of the eyes."""
 MOUTH_ZONE = (0.6, 0.35)
 """A mouth lies within an ellipse on its corners' midpoint, these many mouth
 widths along and across the line of the corners."""
@@ -409,55 +535,91 @@ def missed_features(
     labels: NDArray[np.int32], faces: list[Face], lab_norm: NDArray[np.float64] | None
 ) -> tuple[NDArray[np.bool_], tuple[NDArray[np.float64], ...]]:
     """The features the detector's landmarks place and the parser did not
-    label (a painted eye in shadow, a closed mouth in an engraving).
+    label (a painted eye in shadow, a closed mouth in an engraving), drawn
+    as an artist draws a feature in shadow: by its one dark line.
 
-    - An eye: the anatomical zone around its landmark (``EYE_ZONE_IOD``) when
-      no eye label lies in it.  There the learned line drawing speaks for it
-      (``drawing.form_lines``).
-    - A mouth: when no mouth, lip or teeth label lies in its zone
-      (``MOUTH_ZONE``), its line is drawn as an artist draws a closed mouth:
-      the dark valley between the lips, the least-luminance path from one
-      landmark corner to the other inside the zone.
+    - An eye, when no eye label lies within ``EYE_ZONE_IOD`` of its
+      landmark: its lid line, the dark valley of lashes and lid across the
+      eye from corner to corner (the corners ``EYE_ZONE_IOD`` either side of
+      the landmark along the line of the eyes: an eye opening is about half
+      the inter-ocular distance across), inside ``EYE_LINE_ZONE``.
+    - A mouth, when no mouth, lip or teeth label lies in its zone
+      (``MOUTH_ZONE``): the dark valley between the lips, from one landmark
+      corner to the other.
 
-    Returns the eye zones and the mouth lines (``(row, col)`` points)."""
-    from skimage.graph import route_through_array
+    The learned line drawing does not speak there: on the skin it draws a
+    socket's shading as a box, not the eye.
 
+    Returns the missed eyes' zones and the feature lines (``(row, col)``
+    points)."""
     h, w = labels.shape
     yy, xx = np.mgrid[:h, :w]
     eyes_out = np.zeros(labels.shape, bool)
-    mouths: list[NDArray[np.float64]] = []
+    lines: list[NDArray[np.float64]] = []
     for f in faces:
         if len(f.landmarks) < 5:
             continue
         eyes, mouth = np.asarray(f.landmarks[:2]), np.asarray(f.landmarks[3:5])
         iod = float(np.hypot(*(eyes[0] - eyes[1])))
-        for ex, ey in eyes:
-            zone = (xx - ex) ** 2 + (yy - ey) ** 2 <= (EYE_ZONE_IOD * iod) ** 2
-            if not np.isin(labels[zone], (*EYES, IRIS)).any():
-                eyes_out |= zone
+        if iod < 4.0:
+            continue
+        axis = (eyes[1] - eyes[0]) / iod
+        for e in eyes:
+            zone = (xx - e[0]) ** 2 + (yy - e[1]) ** 2 <= (EYE_ZONE_IOD * iod) ** 2
+            if np.isin(labels[zone], (*EYES, IRIS)).any():
+                continue
+            eyes_out |= zone
+            corners = (e - EYE_ZONE_IOD * iod * axis, e + EYE_ZONE_IOD * iod * axis)
+            line = _valley(lab_norm, _ellipse(xx, yy, e, axis, EYE_LINE_ZONE[0] * iod, EYE_LINE_ZONE[1] * iod), corners)
+            if line is not None:
+                lines.append(line)
         mw = float(np.hypot(*(mouth[0] - mouth[1])))
-        if mw < 4.0 or lab_norm is None:
+        if mw < 4.0:
             continue
         u = (mouth[1] - mouth[0]) / mw
-        dx, dy = xx - mouth.mean(axis=0)[0], yy - mouth.mean(axis=0)[1]
-        along, across = dx * u[0] + dy * u[1], -dx * u[1] + dy * u[0]
-        zone = (along / (MOUTH_ZONE[0] * mw)) ** 2 + (across / (MOUTH_ZONE[1] * mw)) ** 2 <= 1.0
+        zone = _ellipse(xx, yy, mouth.mean(axis=0), u, MOUTH_ZONE[0] * mw, MOUTH_ZONE[1] * mw)
         if np.isin(labels[zone], (MOUTH, *LIPS, TEETH)).any():
             continue
-        lum = lab_norm[..., 0]
-        lo, hi = np.percentile(lum[zone], (1, 99))
-        dark = np.clip((lum - lo) / max(hi - lo, 1e-6), 0.0, 1.0)
-        cost = np.where(zone, MOUTH_VALLEY_FLOOR + dark, np.inf)
-        ends = [(int(round(y)), int(round(x))) for x, y in mouth]
-        if not all(0 <= r < h and 0 <= c < w and zone[r, c] for r, c in ends):
-            continue
-        path, _ = route_through_array(cost, ends[0], ends[1], fully_connected=True, geometric=True)
-        mouths.append(np.asarray(path, dtype=np.float64))
-    return eyes_out & (labels != BACKGROUND), tuple(mouths)
+        line = _valley(lab_norm, zone, (mouth[0], mouth[1]))
+        if line is not None:
+            lines.append(line)
+    return eyes_out & (labels != BACKGROUND), tuple(lines)
+
+
+def _ellipse(
+    xx: NDArray[np.int_], yy: NDArray[np.int_], centre: NDArray[np.float64], u: NDArray[np.float64], a: float, b: float
+) -> NDArray[np.bool_]:
+    """The ellipse on ``centre`` with semi-axes ``a`` along the unit ``u``
+    (x, y) and ``b`` across it."""
+    dx, dy = xx - centre[0], yy - centre[1]
+    along, across = dx * u[0] + dy * u[1], -dx * u[1] + dy * u[0]
+    return (along / max(a, 1e-9)) ** 2 + (across / max(b, 1e-9)) ** 2 <= 1.0
+
+
+def _valley(
+    lab_norm: NDArray[np.float64] | None, zone: NDArray[np.bool_], ends: tuple[NDArray[np.float64], ...]
+) -> NDArray[np.float64] | None:
+    """The least-luminance path inside ``zone`` between two (x, y) ``ends``
+    (a step costs ``MOUTH_VALLEY_FLOOR`` plus its luminance, 0 to 1 over the
+    zone), as ``(row, col)`` points; ``None`` when an end lies off the zone."""
+    from skimage.graph import route_through_array
+
+    if lab_norm is None or not zone.any():
+        return None
+    h, w = zone.shape
+    lum = lab_norm[..., 0]
+    lo, hi = np.percentile(lum[zone], (1, 99))
+    dark = np.clip((lum - lo) / max(hi - lo, 1e-6), 0.0, 1.0)
+    cost = np.where(zone, MOUTH_VALLEY_FLOOR + dark, np.inf)
+    rc = [(int(round(y)), int(round(x))) for x, y in ends]
+    if not all(0 <= r < h and 0 <= c < w and zone[r, c] for r, c in rc):
+        return None
+    path, _ = route_through_array(cost, rc[0], rc[1], fully_connected=True, geometric=True)
+    return np.asarray(path, dtype=np.float64)
 
 
 MOUTH_VALLEY_FLOOR = 0.05
-"""A step's cost is this plus its luminance (0 to 1 over the mouth's zone):
+"""A step's cost is this plus its luminance (0 to 1 over the feature's zone):
 the darkest pixel costs this little, so the path keeps to the valley."""
 
 
@@ -466,17 +628,21 @@ SIDE_SHARE = 0.2
 
 
 def thin_to_line(labels: NDArray[np.int32], classes: tuple[int, ...], max_width: float) -> NDArray[np.int32]:
-    """A part of ``classes`` thinner than ``max_width`` is drawn as one line.
+    """Where a part of ``classes`` is thinner than ``max_width`` it is drawn
+    as one line.
 
-    An upper lip stretched by a broad smile is a sliver: drawn by its two
-    outlines it is a doubled strand.  A part's width is twice the median
-    distance from its skeleton to its edge.  A thinner part gives each of its
-    pixels to the nearest other part, so the parts on its two sides meet
-    along its medial line, and their boundary, drawn there, is the one
-    line.  Only a part between two other parts is (each holding
-    ``SIDE_SHARE`` of its rim): a closed mouth's thin lips lie on the skin
-    all round, their line is where they meet each other, and they keep
-    their labels."""
+    An upper lip stretched by a broad smile is a sliver, and so is the strip
+    of cloth the parser leaves along a braid's lit edge, or the band of hair
+    over a bald crown: drawn by its two outlines each is a doubled strand.
+    The part's width at each pixel is twice the distance from its nearest
+    skeleton point to the part's edge.  Each thin run of the part (a
+    connected piece of its pixels where it is thinner than ``max_width``)
+    gives its pixels to the nearest other part, so the parts on its two
+    sides meet along its medial line, and their boundary, drawn there, is
+    the one line.  Only a run between two other parts is (each holding
+    ``SIDE_SHARE`` of its rim off ``classes``): a closed mouth's thin lips lie on
+    the skin all round, their line is where they meet each other, and they
+    keep their labels."""
     from skimage.morphology import skeletonize
 
     thin = np.zeros(labels.shape, bool)
@@ -488,12 +654,19 @@ def thin_to_line(labels: NDArray[np.int32], classes: tuple[int, ...], max_width:
             sl = tuple(slice(max(0, a.start - 1), a.stop + 1) for a in sl)
             m = comp[sl] == i
             skel = skeletonize(m)
-            if not skel.any() or 2.0 * float(np.median(ndi.distance_transform_edt(m)[skel])) >= max_width:
+            if not skel.any():
                 continue
-            ring = labels[sl][ndi.binary_dilation(m) & ~m]
-            sides = np.bincount(ring[~np.isin(ring, classes)], minlength=1)
-            if np.count_nonzero(sides >= SIDE_SHARE * max(1, ring.size)) >= 2:
-                thin[sl] |= m
+            dt = ndi.distance_transform_edt(m)
+            _, (ri, ci) = ndi.distance_transform_edt(~skel, return_indices=True)
+            narrow = m & (2.0 * dt[ri, ci] < max_width)
+            runs, n_runs = ndi.label(narrow)
+            for j in range(1, n_runs + 1):
+                run = runs == j
+                ring = labels[sl][ndi.binary_dilation(run) & ~run]
+                ring = ring[~np.isin(ring, classes)]
+                sides = np.bincount(ring, minlength=1)
+                if np.count_nonzero(sides >= SIDE_SHARE * max(1, ring.size)) >= 2:
+                    thin[sl] |= run
     if not thin.any():
         return labels
     _, (ri, ci) = ndi.distance_transform_edt(thin, return_indices=True)

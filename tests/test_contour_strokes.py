@@ -640,10 +640,10 @@ def test_a_mouth_the_parser_missed_is_drawn_along_its_dark_valley():
     valley = 140 + 6 * np.sin((xx - 70) / 60 * np.pi)  # a curved dark line
     lab[..., 0] = np.where(np.abs(yy - valley) < 1.5, 0.2, 0.7)
     face = Face(0.95, (40.0, 40.0, 120.0, 140.0), ((70.0, 80.0), (130.0, 80.0), (100.0, 110.0), (70.0, 140.0), (130.0, 140.0)))
-    eyes, mouths = missed_features(labels, [face], lab)
+    eyes, lines = missed_features(labels, [face], lab)
     assert eyes.any()  # neither eye was parsed either
-    assert len(mouths) == 1
-    m = mouths[0]
+    assert len(lines) == 3  # each eye's lid line, then the mouth's
+    m = lines[-1]
     inner = (m[:, 1] > 75) & (m[:, 1] < 125)
     assert np.abs(m[inner, 0] - valley[m[inner, 0].astype(int), m[inner, 1].astype(int)]).max() < 2.0
 
@@ -665,3 +665,53 @@ def test_a_jump_the_tour_would_make_is_drawn_as_a_routed_stroke():
     conn = [e for e in out.edges if e.layer == CONNECT]
     assert len(conn) == 1 and {conn[0].u, conn[0].v} == {a, b}
     assert build_contour_tour(out.polylines((h, w))).gap_lengths == ()
+
+
+def test_an_eye_the_parser_missed_is_drawn_by_its_lid_line():
+    """A face whose parse has no eye: each eye is drawn as one line, the dark
+    valley of its lid across the eye from corner to corner, not as the box of
+    its shadowed socket."""
+    from fourier_analysis.contours.parts import SKIN, Face, missed_features
+
+    h, w = 200, 200
+    labels = np.full((h, w), SKIN, np.int32)
+    lab = np.full((h, w, 3), 0.7)
+    yy, xx = np.mgrid[:h, :w]
+    lid = 78 - 4 * np.sin((xx - 50) / 40 * np.pi)  # an arched dark lid over the left eye
+    lab[..., 0] = np.where((np.abs(yy - lid) < 1.5) & (xx < 100), 0.2, 0.7)
+    face = Face(0.95, (30.0, 40.0, 140.0, 140.0), ((70.0, 80.0), (130.0, 80.0), (100.0, 110.0), (75.0, 140.0), (125.0, 140.0)))
+    eyes, lines = missed_features(labels, [face], lab)
+    left = lines[0]
+    assert abs(left[0, 1] - 55.0) <= 1 and abs(left[-1, 1] - 85.0) <= 1  # corner to corner
+    inner = (left[:, 1] > 60) & (left[:, 1] < 80)
+    assert np.abs(left[inner, 0] - lid[left[inner, 0].astype(int), left[inner, 1].astype(int)]).max() < 2.0
+
+
+def test_a_braid_the_parser_calls_cloth_is_revoted_hair_by_its_colour():
+    """The parser places a black braid over a beige sweater where cloth
+    usually lies; the image's colours (each material's model learned on the
+    parser's own core of it) move it to the hair.  Materials whose colours
+    do not tell them apart (a white cravat on a white neck) are left as the
+    parser has them."""
+    from fourier_analysis.contours.parts import CLOTH, HAIR, NECK, N_FACE_CLASSES, material_revote
+
+    h, w = 160, 160
+    labels = np.full((h, w), CLOTH, np.int32)
+    labels[:60] = HAIR
+    lab = np.zeros((h, w, 3))
+    lab[..., 1:] = 0.5
+    lab[..., 0] = 0.75  # beige
+    lab[:60, :, 0] = 0.08  # black hair
+    lab[60:, 100:130, 0] = 0.08  # the braid falls over the sweater
+    probs = np.zeros((h, w, N_FACE_CLASSES), np.float32)
+    probs[..., CLOTH] = np.where(labels == CLOTH, 0.7, 0.2)
+    probs[..., HAIR] = 1.0 - probs[..., CLOTH]
+    out = material_revote(labels, probs, lab, min_area=100.0)
+    assert (out[70:150, 104:126] == HAIR).mean() > 0.95
+    assert (out[70:150, 10:90] == CLOTH).all()
+
+    flat = lab.copy()
+    flat[..., 0] = 0.75  # one colour: the parser's word stands
+    labels2 = labels.copy()
+    labels2[:60] = NECK
+    assert np.array_equal(material_revote(labels2, probs, flat, min_area=100.0), labels2)

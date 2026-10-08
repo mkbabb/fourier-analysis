@@ -136,10 +136,10 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
         base = base.merged(marked_runs(marked, lab, width, MIN_PART_FRACTION * diag, parts.nose))
     if parts.spined:
         base = base.merged(spine_graph(parts.labels, parts.spined))
-    if parts.mouth_lines:
-        base = base.merged(polyline_graph(parts.mouth_lines, max(1.5, width)))
+    if parts.feature_lines:
+        base = base.merged(polyline_graph(parts.feature_lines, max(1.5, width)))
     ink &= line_region(mask, parts.face_core, width)
-    ink = form_lines(ink, parts.form, parts.nose, width, parts.missed)
+    ink = form_lines(ink, parts.form, parts.nose, width, parts.missed, parts.eyes)
     earlier = rasterize(base, shape)
     if earlier.any():
         ink &= ndi.distance_transform_edt(~earlier) > SUPPRESS_FRACTION * diag
@@ -175,8 +175,9 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     graph = prune_to_budget(graph, INK_BUDGET_DIAGONALS * diag, salience, floor=floor)
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
     reach = mask & ~frame_band(shape, width)
-    graph = route_connectors(graph, strength, reach)
-    graph = route_jumps(graph, strength, reach)
+    path_strength = connector_strength(strength, parts.form)
+    graph = route_connectors(graph, path_strength, reach)
+    graph = route_jumps(graph, path_strength, reach)
     return Drawing(graph, mask, parts.source, parts.faces)
 
 
@@ -375,6 +376,17 @@ def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDAr
     return smooth_edges(out, CONNECT_SMOOTH_PX, layers=(CONNECT,))
 
 
+def connector_strength(strength: NDArray[np.float64], form: NDArray[np.bool_]) -> NDArray[np.float64]:
+    """The line strength a connector is led along.
+
+    On a face's skin the line model's faint strength is shading (a brow
+    ridge, a lid fold, a cheek's turn), not a line (``form_lines``): a
+    connector led along it draws a rule across the face, a brow run on into
+    its fellow or the face's edge.  There a connector is the shortest pen
+    step between the features it joins."""
+    return np.where(form, 0.0, strength) if form.any() else strength
+
+
 CONNECT_SMOOTH_PX = 2.0
 """A connector's pixel path is smoothed this much (arc length) so it reads
 as a pen stroke, not a grid walk."""
@@ -560,32 +572,37 @@ def form_lines(
     nose: NDArray[np.bool_],
     width: float,
     missed: NDArray[np.bool_] | None = None,
+    eyes: NDArray[np.bool_] | None = None,
 ) -> NDArray[np.bool_]:
-    """On the face's skin, the learned drawing speaks for the nose, and for
-    the features the parser missed.
+    """On the face's skin, the learned drawing speaks for the nose only.
 
     The parser draws every material part of a face (brows, lids, irises,
     lips, teeth) but not the nose, which is skin: its wings, its base and the
     creases that run from it into the cheeks are the drawing's.  Elsewhere on
     the skin the line model draws shading (an eye bag, a lid fold beside the
-    parser's lid, a dimple) that doubles the parser's features.  So on the
-    skin a piece of ink is kept only when it reaches the nose (grown by a line
-    width), or inside ``missed`` (``parts.missed_features``: an eye or a mouth
-    the detector places and the parser did not label, drawn by the line
-    model alone); off the skin (hair, clothes, a faceless subject) all of it
-    is."""
+    parser's lid, a dimple, a shadowed socket as a box) that doubles or
+    stands in for a feature.  So on the skin a piece of ink is kept only
+    when it reaches the nose (grown by a line width) and does not reach an
+    ``eyes`` part (an eye or a brow, grown alike: a line from the nose into
+    the eye is the socket's shade or a lid fold the parser's lid already
+    draws), and never inside ``missed`` (``parts.missed_features``: an eye
+    the parser did not label, drawn by its lid line instead); off the skin
+    (hair, clothes, a faceless subject) all of it is."""
     if not form.any():
         return ink
     on_form = ink & form
+    if missed is not None:
+        on_form &= ~missed
     keep = np.zeros_like(ink)
     if nose.any():
         pieces, n = ndi.label(on_form, structure=np.ones((3, 3)))
         if n:
             near_nose = ndi.binary_dilation(nose, iterations=max(1, int(round(width))))
             reach = np.unique(pieces[near_nose & on_form])
+            if eyes is not None and eyes.any():
+                near_eye = ndi.binary_dilation(eyes, iterations=max(1, int(round(width))))
+                reach = np.setdiff1d(reach, np.unique(pieces[near_eye & on_form]))
             keep = np.isin(pieces, reach[reach > 0])
-    if missed is not None:
-        keep |= on_form & missed
     return (ink & ~form) | keep
 
 
