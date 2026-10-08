@@ -5,7 +5,6 @@ import {
     DropdownMenuLabel,
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
-    DropdownMenuSeparator,
 } from "@mkbabb/glass-ui/menu";
 import {
     ANIMATION_EASINGS,
@@ -112,5 +111,4 @@ function selectEasing(value: unknown) {
             <span>{{ ANIMATION_EASINGS[name].label }}</span>
         </DropdownMenuRadioItem>
     </DropdownMenuRadioGroup>
-    <DropdownMenuSeparator />
 </template>

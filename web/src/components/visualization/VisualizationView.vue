@@ -754,7 +754,12 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
    stage would still paint its 1 px border and cast as a line under the
    tabs, and hold a detached gap above the sheet. The inactive stage takes
    no box at all, so the mobile sheet reads as before. */
-.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
+/* X-DS pass 4 · DS-F6-C1 — the mirror case: with the Canvas tab up the
+   detached aside is an empty card too, and kept its box as a 2 px strip
+   painting its border and cast as an orphan rule under the stage. The
+   inactive aside takes no box either (/equation's rule, same marker). */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)),
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-aside:has(.viz-panel-left-wrap.panel-inactive)) {
     display: none;
 }
 
