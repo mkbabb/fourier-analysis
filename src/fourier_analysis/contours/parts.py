@@ -745,14 +745,18 @@ def teeth(
     turned over) and each of its pieces is a feature, not a glint (``min_area``,
     the feature floor).  The luminance is first averaged over the mouth at
     half the feature floor's side, so the gaps between teeth close and the
-    teeth come out as one band, drawn by its edge, not tooth by tooth.  A
-    closed mouth, or one with no teeth showing, keeps its one label."""
+    teeth come out as one band, drawn by its edge, not tooth by tooth.  The
+    dark around the teeth then goes to the parts around it other than the
+    teeth (nearest first): a smile is drawn by its teeth and lips meeting,
+    not by the pockets of dark at its corners.  A closed mouth, or one with no teeth showing, keeps
+    its one label."""
     if lab_norm is None:
         return labels
     from skimage.filters import threshold_otsu
 
     lum = lab_norm[..., 0] * 100.0
     out = labels.copy()
+    gaps = np.zeros(labels.shape, bool)
     comp, n = ndi.label(labels == MOUTH)
     for i, sl in enumerate(ndi.find_objects(comp), start=1):
         if sl is None:
@@ -779,6 +783,16 @@ def teeth(
         if float(lum[sl][bright].mean() - lum[sl][dark].mean()) < IRIS_MIN_DELTA_L:
             continue
         out[sl][bright] = TEETH
+        gaps[sl] |= dark
+    if gaps.any():
+        # The dark around the teeth is not a part of its own: drawn by its
+        # outline it is a blot at each corner of the smile (a pocket between
+        # the lips and the teeth).  An artist draws the teeth's edge and the
+        # lips', meeting at the corners: each dark pixel takes its nearest
+        # part other than the teeth (whose edge is seen, and stays where it
+        # is), so the lips close over the dark onto the teeth.
+        _, (ri, ci) = ndi.distance_transform_edt(gaps | (out == TEETH), return_indices=True)
+        out[gaps] = out[ri[gaps], ci[gaps]]
     return out
 
 

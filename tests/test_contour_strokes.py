@@ -375,11 +375,12 @@ def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
         r = np.clip(np.rint(e.pts[:, 0]).astype(int), 0, nose.shape[0] - 1)
         c = np.clip(np.rint(e.pts[:, 1]).astype(int), 0, nose.shape[1] - 1)
         on_rim[r, c] = True
-    # The upper bridge is not drawn on either side (drawn, it runs up into
-    # the brow as a scowl); the lower bridge is drawn down one side into the
-    # wing (no balloon over the bridge).
+    # The bridge's root (its top fifth, between the brows) is not drawn on
+    # either side (drawn, it runs on into the brow as a scowl); the bridge is
+    # drawn down one side into the wing (no balloon over the bridge).
     rows, cols = np.nonzero(nose)
     row = np.arange(nose.shape[0])[:, None]
+    root = rows.min() + 0.2 * np.ptp(rows)
     mid = rows.min() + 0.5 * np.ptp(rows)
     drawn = ndi.binary_dilation(on_rim, iterations=2)
 
@@ -388,8 +389,10 @@ def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
         right = band & ~left
         return sorted([(drawn & left).sum() / max(1, left.sum()), (drawn & right).sum() / max(1, right.sum())])
 
-    upper = shares(rim & (row < mid - 2))
-    assert upper[1] < 0.2, upper
+    top = shares(rim & (row < root - 2))
+    assert top[1] < 0.2, top
+    bridge = shares(rim & (row >= root + 2) & (row < mid))
+    assert bridge[1] > 0.4 and bridge[0] < 0.2, bridge
     lower = shares(rim & (row >= mid) & (row < mid + 0.2 * np.ptp(rows)))
     assert lower[1] > 0.4, lower
 
@@ -415,10 +418,14 @@ def test_teeth_are_the_bright_band_of_an_open_mouth():
 
     assert ndi.label(t)[1] == 1  # one band, not tooth by tooth
     assert (t & band).sum() >= 0.8 * t.sum() and t.sum() >= 0.7 * band.sum()
+    # The dark around the teeth goes to the parts around it: no pocket of
+    # it is left to be drawn as a blot at the mouth's corners.
+    assert not (out == MOUTH).any()
 
     dark = lab.copy()
     dark[..., 0] = np.where(mouth, 0.15, 0.6)
-    assert not (teeth(labels, dark, min_area=36.0) == TEETH).any()
+    closed = teeth(labels, dark, min_area=36.0)
+    assert not (closed == TEETH).any() and (closed[mouth] == MOUTH).all()
 
 
 def test_marked_runs_keep_only_where_the_image_draws_a_line():
@@ -635,8 +642,8 @@ def _pear_nose() -> tuple[np.ndarray, np.ndarray]:
 def test_the_bridge_is_drawn_down_its_shadowed_side():
     """A nose's outline, its right side in shadow: above the wings the points
     returned are the right side's, running down the lower bridge into the
-    wing; the upper bridge is not drawn, though the image marks it there (it
-    would run up into the brow)."""
+    wing; the bridge's root is not drawn, though the image marks it there (it
+    would run on into the brow)."""
     from fourier_analysis.contours.drawing import BRIDGE_DRAWN_FRACTION, WING_FRACTION, bridge_side
 
     nose, q = _pear_nose()
@@ -646,7 +653,7 @@ def test_the_bridge_is_drawn_down_its_shadowed_side():
     assert upper.any() and (q[upper, 1] > 100).all()
     assert np.ptp(q[upper, 0]) > 15  # it runs down the nose
     top = 160 - BRIDGE_DRAWN_FRACTION * 120
-    assert not side[q[:, 0] < top - 2].any()  # not up the upper bridge, nor across the top
+    assert not side[q[:, 0] < top - 2].any()  # not up the bridge's root, nor across the top
 
 
 def test_the_wings_and_base_of_a_nose_are_drawn_whole():
@@ -781,18 +788,18 @@ def test_a_braid_the_parser_calls_cloth_is_revoted_hair_by_its_colour():
 
 
 def test_form_lines_leave_the_upper_bridge():
-    """Learned ink running down the upper half of the nose (the bridge's
-    shade, which runs up into the brows) is cut away; the wing's crease on
-    the lower half is kept."""
+    """Learned ink on the bridge's root (the top fifth of the nose, whose
+    shade runs up into the brows) is cut away; the wing's crease on the
+    lower half is kept."""
     from fourier_analysis.contours.drawing import form_lines
 
     nose, _ = _pear_nose()
     form = np.ones(nose.shape, bool)
     ink = np.zeros(nose.shape, bool)
-    ink[45:95, 108] = True  # down the upper bridge
+    ink[42:62, 108] = True  # down the bridge's root
     ink[150, 60:80] = True  # a crease from the wing
     out = form_lines(ink, form, nose, 2.0)
-    assert not out[45:90, 108].any() and out[150, 60:72].all()
+    assert not out[42:58, 108].any() and out[150, 60:72].all()
 
 
 def test_connectors_do_not_cross_the_glabella():
@@ -842,3 +849,63 @@ def test_the_dark_sliver_of_a_smile_is_one_line():
     out = thin_to_line(labels, (MOUTH,), 10.0)
     assert not (out[:, 25:95] == MOUTH).any()
     assert (out[38:42, 30:90] == LIPS[0]).all() or (out[42:44, 30:90] == TEETH).all()
+
+
+def test_faint_twigs_are_dropped_and_marked_ones_kept():
+    """Two learned lines hang off a loop: one over flat colour (a fold's
+    shading, ending nowhere) is dropped; one along a strong colour step (a
+    seam) is kept, and so is the loop."""
+    from fourier_analysis.contours.drawing import drop_faint_twigs
+
+    h, w = 120, 160
+    lab = np.zeros((h, w, 3))
+    lab[..., 0] = 50.0
+    lab[:, 120:, 0] = 90.0  # a strong step at column 120
+    g = StrokeGraph()
+    t = np.linspace(0, 2 * np.pi, 120)
+    loop = np.column_stack([60 + 20 * np.sin(t), 40 + 20 * np.cos(t)])
+    loop[-1] = loop[0]
+    a = g.add_node(loop[0])
+    g.edges.append(Edge(a, a, loop, SILHOUETTE))
+    start = loop[0]
+    b = g.add_node(np.array([100.0, 60.0]))
+    faint = np.column_stack([np.linspace(start[0], 100.0, 40), np.linspace(start[1], 60.0, 40)])
+    g.edges.append(Edge(a, b, faint, LINES))
+    c, d = g.add_node(np.array([10.0, 120.0])), g.add_node(np.array([110.0, 120.0]))
+    g.edges.append(Edge(c, d, np.column_stack([np.linspace(10.0, 110.0, 101), np.full(101, 120.0)]), LINES))
+    out = drop_faint_twigs(g, lab, 2.0)
+    kinds = sorted((e.layer, round(e.length)) for e in out.edges)
+    assert len(out.edges) == 2
+    assert any(e.layer == SILHOUETTE for e in out.edges)
+    assert any(e.layer == LINES and abs(e.pts[:, 1] - 120).max() < 1 for e in out.edges), kinds
+
+
+def test_a_brow_is_entered_at_its_tail_not_its_root():
+    """Two brows over two eyes: each brow's root (its half nearer the face's
+    midline) is barred, so a connector leaves a brow at its tail, carrying the
+    arch on to the temple, never at its root (a scowl, or a box round the
+    eye)."""
+    from fourier_analysis.contours.drawing import brow_roots, entry_points
+    from fourier_analysis.contours.parts import BROWS, SKIN, Face
+
+    h, w = 120, 200
+    labels = np.full((h, w), SKIN, np.int32)
+    labels[30:36, 30:90] = BROWS[0]  # the image-left brow
+    labels[30:36, 110:170] = BROWS[1]  # the image-right brow
+    face = Face(0.99, (20.0, 10.0, 160.0, 100.0), ((60.0, 50.0), (140.0, 50.0), (100.0, 70.0), (80.0, 90.0), (120.0, 90.0)))
+    roots = brow_roots(labels, (face,))
+    assert roots[33, 70:90].all() and not roots[33, 30:55].any()  # the left brow's inner half
+    assert roots[33, 110:130].all() and not roots[33, 145:170].any()  # the right brow's inner half
+
+    # A brow stroke (a feature piece) and the figure it hangs off: entered
+    # at its outer end only.
+    g = StrokeGraph()
+    big = np.column_stack([np.full(150, 100.0), np.linspace(20.0, 180.0, 150)])
+    u, v = g.add_node(big[0]), g.add_node(big[-1])
+    g.edges.append(Edge(u, v, big, SILHOUETTE))
+    brow = np.column_stack([np.full(61, 33.0), np.linspace(30.0, 90.0, 61)])
+    p, q = g.add_node(brow[0]), g.add_node(brow[-1])
+    g.edges.append(Edge(p, q, brow, PARTS))
+    entry = entry_points(g, g.components(), roots)
+    ok = brow[entry[1]]
+    assert ok.size and ok[:, 1].max() < 60  # only at the tail (column 30)

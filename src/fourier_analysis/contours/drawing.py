@@ -10,8 +10,8 @@ Layers, in priority order (``strokes.SILHOUETTE`` < ``PARTS`` < ``LINES``
    teeth.  Both come from one label map as crack chains
    (``strokes.boundary_graph``).  The nose is skin, so its outline is drawn
    only where the image marks it (``marked_runs``: the shadowed side of its
-   lower bridge, and its wings and base whole; never its upper bridge, which
-   would run up into a brow).
+   bridge, and its wings and base whole; never the bridge's root between the
+   brows, which would run on into a brow).
 3. **Learned lines** (``lines.line_maps``): the line drawing, where it
    persists across two scales, plus the fine drawing's long single lines
    the coarse one cannot resolve (``lone_lines``: a necklace, a whisker),
@@ -177,10 +177,12 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
 
     floor = MIN_PART_FRACTION * diag
     graph = prune_to_budget(graph, INK_BUDGET_DIAGONALS * diag, salience, floor=floor)
+    if parts.faces:
+        graph = drop_faint_twigs(graph, lab, width)
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
     reach = mask & ~frame_band(shape, width) & ~glabella(parts.nose)
     path_strength = connector_strength(strength, parts.form | parts.face_core)
-    graph = route_connectors(graph, path_strength, reach)
+    graph = route_connectors(graph, path_strength, reach, barred=brow_roots(parts.labels, parts.faces))
     graph = route_jumps(graph, path_strength, reach)
     return Drawing(graph, mask, parts.source, parts.faces)
 
@@ -197,6 +199,7 @@ def route_connectors(
     graph: StrokeGraph,
     strength: NDArray[np.float64],
     subject: NDArray[np.bool_],
+    barred: NDArray[np.bool_] | None = None,
 ) -> StrokeGraph:
     """Join the drawing's separate pieces along the lines of the image.
 
@@ -213,7 +216,9 @@ def route_connectors(
     the minimum spanning tree of those path costs (one geodesic front from
     all pieces at once; adjacent fronts of two pieces meet on their geodesic
     Voronoi boundary).  Each path is a ``CONNECT`` edge from ink to ink;
-    the tour walks it there and back, the return exactly on top."""
+    the tour walks it there and back, the return exactly on top.  No piece
+    is entered on a ``barred`` pixel (``brow_roots``) while it has another
+    entry."""
     from skimage.graph import MCP_Geometric
 
     parts = graph.components()
@@ -227,7 +232,7 @@ def route_connectors(
 
     # Seeds: every stroke point the pen may enter its piece at
     # (``entry_points``), tagged with its edge and point index.
-    entry = entry_points(graph, parts)
+    entry = entry_points(graph, parts, barred)
     seed_edge = np.full(shape, -1, dtype=np.int64)
     seed_index = np.full(shape, -1, dtype=np.int64)
     closed = np.zeros(shape, bool)  # a piece's stroke away from its entries
@@ -348,7 +353,9 @@ END_ENTRY_PX = 1.5
 """An open piece is entered at a free end, within this distance of it."""
 
 
-def entry_points(graph: StrokeGraph, parts: list[list[int]]) -> list[NDArray[np.bool_]]:
+def entry_points(
+    graph: StrokeGraph, parts: list[list[int]], barred: NDArray[np.bool_] | None = None
+) -> list[NDArray[np.bool_]]:
     """Per edge, the points at which a connector may join its piece.
 
     A pen joins a separate piece (a brow, an eye, a crease) where the piece
@@ -397,7 +404,59 @@ def entry_points(graph: StrokeGraph, parts: list[list[int]]) -> list[NDArray[np.
             if len(corners):
                 ok |= cKDTree(corners).query(q)[0] <= reach
             out[k] = ok
+        if barred is not None and barred.any():
+            h, w = barred.shape
+            off = []
+            for k in p:
+                q = graph.edges[k].pts
+                r = np.clip(np.round(q[:, 0]).astype(int), 0, h - 1)
+                c = np.clip(np.round(q[:, 1]).astype(int), 0, w - 1)
+                off.append(out[k] & ~barred[r, c])
+            if any(o.any() for o in off):
+                for k, o in zip(p, off):
+                    out[k] = o
     return out
+
+
+BROW_ROOT_PX = 2
+"""A brow's root is grown this far, so its stroke's end (a pixel or two off
+the label) lies on it."""
+
+
+def brow_roots(labels: NDArray[np.int32], faces: tuple[Face, ...]) -> NDArray[np.bool_]:
+    """The inner half of each brow: its pixels nearer the face's midline (the
+    perpendicular bisector of the two eyes' landmarks) than the brow's centre.
+
+    A pen leaves a brow at its tail, carrying the arch on to the temple; a
+    connector from its root runs down beside the nose (a scowl) or down to
+    the eye's inner corner (a box round the eye)."""
+    from fourier_analysis.contours.parts import BROWS
+
+    out = np.zeros(labels.shape, bool)
+    brows = np.isin(labels, BROWS)
+    if not brows.any() or not faces:
+        return out
+    comp, n = ndi.label(brows)
+    for k in range(1, n + 1):
+        pix = np.argwhere(comp == k).astype(np.float64)
+        centre = pix.mean(axis=0)
+        face = min(
+            (f for f in faces if len(f.landmarks) >= 2),
+            key=lambda f: float(np.hypot(*(np.mean(f.landmarks[:2], axis=0)[::-1] - centre))),
+            default=None,
+        )
+        if face is None:
+            continue
+        e0, e1 = (np.asarray(face.landmarks[i], np.float64)[::-1] for i in (0, 1))  # (row, col)
+        axis = e1 - e0
+        if float(np.hypot(*axis)) < 1.0:
+            continue
+        axis /= np.hypot(*axis)
+        mid = 0.5 * (e0 + e1)
+        d = np.abs((pix - mid) @ axis)
+        root = pix[d < abs(float((centre - mid) @ axis))].astype(int)
+        out[root[:, 0], root[:, 1]] = True
+    return ndi.binary_dilation(out, iterations=BROW_ROOT_PX) if out.any() else out
 
 
 def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDArray[np.bool_]) -> StrokeGraph:
@@ -611,11 +670,12 @@ def bridge_side(
 ) -> NDArray[np.bool_]:
     """The points of a stroke ``q`` (along the nose's outline) an artist
     draws: the side of the bridge, its wings and base (``wing_end``), and
-    the rest of its lower half where the image ``marked`` it; never its upper
-    half (``lower_nose``).  A stroke off the nose's rim keeps ``marked``.
+    the rest of it below the root where the image ``marked`` it; never the
+    bridge's root (``lower_nose``).  A stroke off the nose's rim keeps
+    ``marked``.
 
     The nose is skin, and its front is unmarked; its form is told by one side
-    of the lower bridge, down to the wing: the shadowed side, which the image
+    of the bridge, down to the wing: the shadowed side, which the image
     marks more (the larger mean ``prof``).  A side point lies
     on the nose's rim and runs along the nose's long axis (its tangent nearer
     the axis than across it: the top and the base run across); of the two
@@ -644,12 +704,12 @@ def bridge_side(
     return drawn | (marked & (lower | ~rim))
 
 
-BRIDGE_DRAWN_FRACTION = 0.5
+BRIDGE_DRAWN_FRACTION = 0.8
 """Of the nose's length, the share at its wide end along which the bridge's
-side is drawn: the lower bridge, where its side turns into the wing.  The
-upper bridge lies in the brow's shadow, where the parser's nose spreads onto
-the cheek; drawn there, the side runs up into the brow as one stroke (a
-scowl), and an artist leaves it out."""
+side is drawn: from the wing up to the level of the eyes' inner corners, the
+line by which a drawing tells a nose from a cheek.  Its root, the top fifth,
+lies between the brows: drawn there, the side runs on into a brow as one
+stroke (a scowl), and an artist leaves the gap."""
 
 
 GLABELLA_REACH = 0.6
@@ -659,12 +719,12 @@ between the brows."""
 
 def glabella(nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
     """The face's midline above the drawn nose: from the top of the nose's
-    wide half (``lower_nose``) up its axis, through the bridge and on between
+    drawn part (``lower_nose``) up its axis, through the bridge and on between
     the brows (``GLABELLA_REACH``), three pixels wide.
 
     The two sides of a face are joined through the nose, never straight
     across its bridge: a connector from brow to brow over the glabella is a
-    unibrow, and from a brow down the upper bridge a scowl.  A connector may
+    unibrow, and from a brow down the bridge's root a scowl.  A connector may
     cross this line only at the cost of leaving the subject."""
     out = np.zeros_like(nose)
     comp, n = ndi.label(nose)
@@ -684,7 +744,7 @@ def glabella(nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
             continue
         probe = WING_FRACTION * span
         wide_hi = np.ptp(b[a >= hi - probe]) >= np.ptp(b[a <= lo + probe])
-        # Walk up from the wide half's top to past the narrow end.
+        # Walk up from the drawn part's top to past the narrow end.
         start = hi - BRIDGE_DRAWN_FRACTION * span if wide_hi else lo + BRIDGE_DRAWN_FRACTION * span
         end = lo - GLABELLA_REACH * span if wide_hi else hi + GLABELLA_REACH * span
         t = np.linspace(start, end, int(abs(end - start)) * 2 + 2)
@@ -697,8 +757,8 @@ def glabella(nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
 
 
 def upper_nose(nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
-    """The pixels of each nose (a component of ``nose``) off its wide half
-    (``lower_nose``): the upper bridge."""
+    """The pixels of each nose (a component of ``nose``) off its drawn part
+    (``lower_nose``): the bridge's root, between the brows."""
     out = np.zeros_like(nose)
     comp, n = ndi.label(nose)
     for k in range(1, n + 1):
@@ -721,7 +781,7 @@ def lower_nose(
     axis: NDArray[np.float64],
     across: NDArray[np.float64],
 ) -> NDArray[np.bool_]:
-    """The points of ``q`` on the nose's wide half (``BRIDGE_DRAWN_FRACTION``
+    """The points of ``q`` on the nose's drawn part (``BRIDGE_DRAWN_FRACTION``
     of its length from the wings)."""
     return _wide_end(q, pix, centre, axis, across, BRIDGE_DRAWN_FRACTION)
 
@@ -827,7 +887,7 @@ def form_lines(
     the eye is the socket's shade or a lid fold the parser's lid already
     draws), and never inside ``missed`` (``parts.missed_features``: an eye
     the parser did not label, drawn by its lid line instead), nor on the
-    nose's upper half (``upper_nose``: the bridge's shade there runs up into
+    bridge's root (``upper_nose``: the bridge's shade there runs up into
     the brows); off the skin (hair, clothes, a faceless subject) all of it
     is."""
     if not form.any():
@@ -862,6 +922,36 @@ def drop_doubles(lines: StrokeGraph, earlier: NDArray[np.bool_], reach: float) -
         if near[r, c].mean() < DOUBLE_FRACTION:
             keep.append(k)
     return dissolve_degree_two(lines.subgraph(keep))
+
+
+def drop_faint_twigs(graph: StrokeGraph, lab: NDArray[np.float64], width: float) -> StrokeGraph:
+    """Drop the learned lines that end in the open and that the image barely
+    marks (``line_contrast`` under ``CONTRAST_DELTA_E``), to a fixed point.
+
+    Around a person (a confirmed face) the learned lines draw the hair and
+    the clothes, whose edges against each other and the skin the parser and
+    the silhouette already draw.  A line an artist draws there to a free end
+    (a seam running out, a necklace) is one the image marks; a faint stroke
+    that hangs off the drawing and stops nowhere is a fold's shading or a
+    strand's sheen, and reads as a spur.  A closed stroke, and a stroke
+    between two junctions, carries the drawing on and is kept.  On a faceless
+    subject the learned lines are its only interior and part of its edge
+    (grey fur on a grey cushion is as faint as a fold), so it is not applied
+    there."""
+    while True:
+        deg = graph.degree()
+        drop = {
+            k
+            for k, e in enumerate(graph.edges)
+            if e.layer == LINES
+            and e.u != e.v
+            and (deg[e.u] == 1 or deg[e.v] == 1)
+            and line_contrast(e.pts, lab, width) < CONTRAST_DELTA_E
+        }
+        if not drop:
+            return graph
+        keep = [k for k in range(len(graph.edges)) if k not in drop]
+        graph = dissolve_degree_two(compact(StrokeGraph(graph.nodes, [graph.edges[k] for k in keep])))
 
 
 def drop_line_flecks(graph: StrokeGraph, min_length: float) -> StrokeGraph:
