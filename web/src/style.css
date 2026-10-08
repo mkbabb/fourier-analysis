@@ -371,6 +371,14 @@ article.paper-article {
     initial-value: 12px;
 }
 
+/* X-DS pass 8 · DS-F10-C2: the stage's inline-start inset, the one edge the
+   legend and the epicycle inset share (BasisCanvas reads it resolved). */
+@property --stage-inset-inline {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 16px;
+}
+
 /* D.W4.d — light-mode `--viz-amber` darken (axe contrast carry).
    glass-ui ships light `--viz-amber` at `hsl(35 70% 42%)` ≈ 3.54:1 against
    `--background` — fails WCAG AA for normal text. The override darkens to

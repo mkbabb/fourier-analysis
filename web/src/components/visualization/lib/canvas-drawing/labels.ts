@@ -34,6 +34,9 @@ export function drawBasisLabels(
     levelText: string,
     hoveredBasis: string | null,
     top = 16,
+    /** X-DS pass 8 · DS-F10-C2: the stage's `--stage-inset-inline`, the edge
+     *  the epicycle inset shares. */
+    left = 16,
 ): LabelDrawResult {
     // X.F.W4 · G-F4-VUE-TSC-CLEAN — `width`/`height` were destructured and
     // never read here or in `drawEpicycleLabel`: both routines anchor to the
@@ -44,7 +47,7 @@ export function drawBasisLabels(
     const { ctx } = surface;
     const hitRegions: LabelHitRegion[] = [];
 
-    const xBase = 16;
+    const xBase = left;
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     // X.F.W14V.u4 — UIA-F-239: the legend's first row starts at `top`, the

@@ -67,13 +67,14 @@ export function computeEpicycleFit(
     /** X-DS pass 4 · DS-F4-C8: the stage's bottom reserve (the bottom dock's
      *  block), so the inset and its tether sit above the dock, not under it. */
     padBottom = 12,
+    /** X-DS pass 8 · DS-F10-C2: the stage's inline-start inset, the legend's
+     *  edge (`--stage-inset-inline`), not a private 12 px. */
+    padStart = 16,
 ): { fit: EpicycleFit; baseFitCenter: { cx: number; cy: number; baseFitScale: number } } | null {
     const { width, height } = surface;
     const bboxW = bbox.maxX - bbox.minX;
     const bboxH = bbox.maxY - bbox.minY;
     if (bboxW <= 0 || bboxH <= 0) return null;
-
-    const pad = 12;
 
     // Compute the base fit (at BASE_EPICYCLE_SCALE) — this determines the fixed center
     if (!baseFitCenter) {
@@ -83,7 +84,7 @@ export function computeEpicycleFit(
         const baseScaledW = bboxW * bfs;
         const baseScaledH = bboxH * bfs;
         baseFitCenter = {
-            cx: pad + baseScaledW / 2,
+            cx: padStart + baseScaledW / 2,
             cy: height - padBottom - baseScaledH / 2,
             baseFitScale: bfs,
         };
@@ -100,8 +101,11 @@ export function computeEpicycleFit(
             fitScale,
             bboxCX: (bbox.minX + bbox.maxX) / 2,
             bboxCY: (bbox.minY + bbox.maxY) / 2,
-            targetCX: baseFitCenter.cx,
-            targetCY: baseFitCenter.cy,
+            // DS-F10-C2: hover grows from the cached center, but never past the
+            // stage's insets: the grown chain keeps the legend's edge and the
+            // bottom reserve rather than crowding the frame.
+            targetCX: Math.max(baseFitCenter.cx, padStart + scaledW / 2),
+            targetCY: Math.min(baseFitCenter.cy, height - padBottom - scaledH / 2),
             scaledW,
             scaledH,
         },

@@ -237,7 +237,11 @@ function getPath(level: number): string {
     scrollbar-width: thin;
     /* UIA-F-210 ⊕ UIA-F-254: the fading edge, only on a side that hides tiles
        (no hard cut at the strip's end, and no feather where nothing continues). */
-    --strip-fade: var(--space-family);
+    /* X-DS pass 8 · DS-F10-C1: the fade spans half a tile (a ~98px tile, an
+       0.5rem gap), so a cut anywhere reads as a tile fading out, never as the
+       next tile's lone border at the card's edge. 1.25rem was shorter than a
+       gap plus any readable part of a tile. */
+    --strip-fade: 3rem;
     --strip-fade-start: 0px;
     --strip-fade-end: 0px;
     mask-image: linear-gradient(

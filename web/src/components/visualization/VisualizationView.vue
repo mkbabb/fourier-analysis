@@ -874,6 +874,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
    16 px and shares the toolbar row, as it does at 1440. */
 .canvas-stage {
     --legend-inset-top: 16px;
+    /* X-DS pass 8 · DS-F10-C2: the legend's and the epicycle inset's shared
+       inline-start edge. */
+    --stage-inset-inline: 16px;
     /* X-DS pass 4 · DS-F4-C8: the epicycle inset sits above the bottom dock's
        reserved block (`.controls-overlay`'s offset plus glass's `--dock-h`),
        with the inset's own 12 px over it. */

@@ -67,6 +67,9 @@ let legendTop = 16;
    stage's `--epicycle-inset-bottom` (registered like `--legend-inset-top`):
    the bottom dock's reserved block, so the chain's tip is never under it. */
 let epicycleBottom = 12;
+/* X-DS pass 8 · DS-F10-C2: the stage's inline-start inset (`--stage-inset-inline`),
+   one edge for the legend and the epicycle inset. */
+let insetInline = 16;
 function readLegendTop(): void {
     const el = containerRef.value;
     const cs = el ? getComputedStyle(el) : null;
@@ -74,6 +77,8 @@ function readLegendTop(): void {
     legendTop = Number.isFinite(px) ? px : 16;
     const pb = cs ? parseFloat(cs.getPropertyValue("--epicycle-inset-bottom")) : NaN;
     epicycleBottom = Number.isFinite(pb) ? pb : 12;
+    const pi = cs ? parseFloat(cs.getPropertyValue("--stage-inset-inline")) : NaN;
+    insetInline = Number.isFinite(pi) ? pi : 16;
 }
 
 const { surface, setupCanvas } = useCanvasSetup(canvasRef, (s) => {
@@ -202,7 +207,7 @@ function drawEpicycleFrame(
 
     let fit: EpicycleFit | null = null;
     if (isDesktop && nVis > 0) {
-        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom);
+        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom, insetInline);
         if (result) {
             fit = result.fit;
             baseFitCenter = result.baseFitCenter;
@@ -244,7 +249,7 @@ function drawEpicycleFrame(
         // (every ±k term of the series is its own circle, 2N + 1 of them), not
         // the Harmonics N beside it in the pane, so it says what it counts.
         const { hitRegions } = drawBasisLabels(
-            s, ["fourier-epicycles"], `${level} of ${components.length} circles`, hoveredBasis, legendTop,
+            s, ["fourier-epicycles"], `${level} of ${components.length} circles`, hoveredBasis, legendTop, insetInline,
         );
         hover.setLabelHitRegions(hitRegions);
     }
@@ -400,7 +405,7 @@ function drawMultiBasesFrame(
 
         let fit: EpicycleFit | null = null;
         if (isDesktop && nVis > 0) {
-            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom);
+            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom, insetInline);
             if (result) {
                 fit = result.fit;
                 baseFitCenter = result.baseFitCenter;
@@ -428,7 +433,7 @@ function drawMultiBasesFrame(
     if (layers.labels) {
         // The partial-sum level IS the Harmonics N (the levels run 1…N), so it
         // keeps the pane's own name for it.
-        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis, legendTop);
+        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis, legendTop, insetInline);
         hover.setLabelHitRegions(hitRegions);
     }
 }
