@@ -310,19 +310,22 @@ const fillFraction = computed(() => {
 .control-row-track {
     --row-thumb: calc(var(--slider-thumb-size, 1rem) * 0.75);
     --row-stop: calc(var(--row-thumb) / 2 + (100% - var(--row-thumb)) * var(--row-fill, 0));
+    --row-rule: 0.375rem;
     --glass-slider-track-background: linear-gradient(
         to right,
-        color-mix(in oklab, var(--track-color, var(--glass-capsule-warm)) 40%, var(--muted-medium)) 0 var(--row-stop),
+        color-mix(in oklab, var(--track-color, var(--glass-capsule-warm)) 55%, var(--muted-medium)) 0 var(--row-stop),
         var(--muted-medium) var(--row-stop) 100%
-    );
+    ) center / 100% var(--row-rule) no-repeat;
 }
 
 /* X-DS DS-F-C8 — glass's `md` rung, so the thumb is a legible mark at fine
    and coarse pointers (the `sm` thumb was a 6 × 12 px tick beside a 36–44 px
-   field); the filled span is a quiet rung of the identity hue (40% of it over
-   `--muted-medium`), and the hue at full strength is the thumb's alone, the
-   one mark that says where the value is. The thumb's frame and cast stay
-   glass's (O-87). */
+   field), and the hue at full strength is the thumb's alone, the one mark
+   that says where the value is. X-DS DS-F4R-C2: the track is a thin rule
+   (`--row-rule`, glass's own 0.375 rem track fallback, the PRE-DOCK ~6–8 px
+   track), not the rung's 24 px slab: the label and field already state the
+   value, so the bar under them is the quietest thing in the row. The thumb's
+   frame and cast stay glass's (O-87). */
 .control-row-track :deep(.slider-thumb) {
     background: var(--track-color, var(--glass-capsule-warm));
 }

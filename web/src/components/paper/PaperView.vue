@@ -15,7 +15,7 @@ import PaperTocBar from "./PaperTocBar.vue";
 import PaperTocDrawer from "./PaperTocDrawer.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
 import PaperSearchModal from "./search/PaperSearchModal.vue";
-import { PAPER_TOC_KEY, assertSectionRampFits, type PaperTocModel } from "./paperToc";
+import { PAPER_TOC_KEY, assertSectionRampFits, sectionColorVar, type PaperTocModel } from "./paperToc";
 import { useScrollNavigation } from "./useScrollNavigation";
 import { usePaperSearch } from "./search/usePaperSearch";
 // One specifier, one import — the type used to arrive on a second `import type`
@@ -235,6 +235,14 @@ watch(
 // transition is the producer's, and its PRM arm zeroes it) — `G-F4-PRM-CLOCK`
 // holds: under reduced motion the rim still reads the true position.
 const readingProgress = ref(0);
+// X-DS DS-F4R-C6: the rim is in the ONE hue of the chapter being read (the
+// ToC's `--toc-accent` for that chapter, through the rim's own `stops`), so it
+// ties to the rail and the readout, not glass's default rainbow, whose red
+// start read as a stray salmon mark at the page's edge. Its geometry is glass's.
+const progressRimStops = computed(() => {
+    const i = paperSections.findIndex((s) => s.id === activeRootId.value);
+    return [sectionColorVar(Math.max(0, i))];
+});
 let progressRaf = 0;
 function writeProgress() {
     progressRaf = 0;
@@ -393,7 +401,7 @@ onUnmounted(() => {
 
 <template>
     <div class="paper-root" :style="paperRootStyle">
-        <ScrollProgressRim :value="readingProgress" class="paper-progress-rim" />
+        <ScrollProgressRim :value="readingProgress" class="paper-progress-rim" :stops="progressRimStops" />
         <div ref="scrollContainer" class="paper-scroll">
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->

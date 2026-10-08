@@ -191,7 +191,7 @@ function getPath(level: number): string {
 <style scoped>
 /* X.F.W14.h · OA-45 — the card on the app's one card hierarchy (the same
    rungs as MorphPhaseConfig): inset `--space-family`, the title on
-   `--type-heading` serif 600 (glass `ConfiguratorLayer`'s section-header rung), the two control rows (`SliderControl`) spaced by
+   `--type-heading` serif 500 (glass `ConfiguratorLayer`'s section-header rung), the two control rows (`SliderControl`) spaced by
    `--space-body`. */
 .levels-card {
     padding: var(--space-family);
@@ -208,7 +208,8 @@ function getPath(level: number): string {
     font-family: var(--font-serif);
     font-size: var(--type-heading);
     line-height: var(--type-leading-heading);
-    font-weight: 600;
+    /* X-DS DS-F4R-C3: the card voice, under the page's display title. */
+    font-weight: 500;
     color: var(--foreground);
     margin-bottom: var(--space-body);
 }

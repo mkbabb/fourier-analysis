@@ -506,8 +506,11 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 </Button>
                                 <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
                                 <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
+                                <!-- X-DS DS-F4R-C7: the second path is a peer action
+                                     in the zone, on the page-action rung (md, as
+                                     NotFoundCard's), not a 13 px footnote outside it. -->
+                                <Button emphasis="quiet" size="md" @click="router.push('/gallery')">Browse the gallery</Button>
                             </div>
-                            <Button emphasis="quiet" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
                         </div>
                         <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
                              (the canvas no longer paints a dashed "drop here" box). -->

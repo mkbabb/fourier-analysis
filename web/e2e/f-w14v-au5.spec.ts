@@ -135,9 +135,13 @@ test.describe("A2-FO-L1-1 — one ToC tree", () => {
 });
 
 test.describe("A2-FO-L1-19 — one scroll restoration on /paper", () => {
-    // /morph is the generic route that outgrows <main> (1330 of 820 px at
-    // 1440×900, measured), so the generic limb has an offset to restore.
-    test.use({ viewport: DESKTOP });
+    // /morph is the generic route that outgrows <main>, so the generic limb
+    // has an offset to restore. X-DS DS-F4R-C3 laid the three phases
+    // side by side from 1280 px, so at 1440×900 /morph now FITS (every phase
+    // above the fold, the cure's aim); the instrument is re-aimed to a
+    // 1440×600 window, where it outgrows <main> again. The assertions are
+    // unchanged.
+    test.use({ viewport: { width: DESKTOP.width, height: 600 } });
 
     test("the shell writes no <main> offset on /paper; a generic route keeps its restore", async ({ page }) => {
         // Record every scrollTop write the shell makes on <main>, with the

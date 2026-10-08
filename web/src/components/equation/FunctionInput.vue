@@ -131,7 +131,7 @@ const activePreset = computed(() =>
          shadow into a hard rectangle) is deleted. Two roots, no wrapper: the
          layers must be adjacent siblings of the Coefficients layer for glass's
          stacked-group rule (`.configurator-layer + .configurator-layer`). -->
-    <ConfiguratorLayer label="Function" :sub="`f(${props.variable ?? 'x'})`" :default-open="true">
+    <ConfiguratorLayer label="Function" :sub="`f(${props.variable ?? 'x'})`" :default-open="true" class="fn-layer">
         <div class="space-y-body py-1">
             <!-- UIA-F-112 / F-113 — the field carries the server's typed 4xx: glass
                  `LabeledField`'s `invalid` + error slot (aria-invalid, the detail
@@ -300,6 +300,14 @@ const activePreset = computed(() =>
    app's one hue-chooser tone (`.hue-chip`, style.css; X-DS DS-F3-C7). */
 .fourier-chip {
     --chip-hue: var(--viz-fourier);
+}
+/* X-DS DS-F4R-C9: the caption names the function the formula, plot and
+   legend set as math, so it is set in the math face (italic serif), not the
+   layer caption's default mono: one object, one rendering on the screen. */
+.fn-layer :deep(.configurator-layer-heading > .font-mono) {
+    font-family: var(--font-serif-math);
+    font-style: italic;
+    font-size: var(--type-small);
 }
 .auto-calc-tip {
     max-width: 220px;

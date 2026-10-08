@@ -162,6 +162,25 @@ export function drawEpicycleCircles(
     const circleWidth = lineWidths.circle / strokeScale;
     const armWidth = lineWidths.arm / strokeScale;
 
+    // X-DS DS-F4R-C8 — the chain's tail: below ~6 px on-screen radius the
+    // circles, their dots and their full-weight arms piled into a lumpy
+    // rainbow blob at the tip that hid where the pen is. There the remaining
+    // arms are ONE thin polyline in the tail's hue (where the tail starts),
+    // with no circle and no dot; the hues are kept (identity), only the
+    // overdraw goes. A run is flushed if a larger circle interrupts it.
+    const TAIL_R = 6;
+    let tailOpen = false;
+    const flushTail = () => {
+        if (!tailOpen) return;
+        ctx.globalAlpha = 0.6 * epicycleAlpha;
+        ctx.lineWidth = 1 / strokeScale;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        tailOpen = false;
+    };
+
     for (let i = 0; i < nVis; i++) {
         const [ccx, ccy] = toScreen(visPositions[i][0], visPositions[i][1]);
         const [tx, ty] = toScreen(visPositions[i + 1][0], visPositions[i + 1][1]);
@@ -189,6 +208,7 @@ export function drawEpicycleCircles(
         // circle + arm we drop a small centre-marker at the offset; the arm
         // (which links to the next epicycle) still renders below.
         if (components[i].index === 0) {
+            flushTail();
             ctx.beginPath();
             ctx.arc(ccx, ccy, Math.max(5.5, lineWidths.circle * 1.5), 0, Math.PI * 2);
             ctx.fillStyle = color;
@@ -210,18 +230,29 @@ export function drawEpicycleCircles(
             continue;
         }
 
-        // Circle
-        if (rScreen >= 2) {
-            ctx.beginPath();
-            ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
-            ctx.strokeStyle = color;
-            ctx.globalAlpha = 0.5 * epicycleAlpha;
-            ctx.lineWidth = Math.min(circleCeil, thin / strokeScale);
-            ctx.lineJoin = "round";
-            ctx.lineCap = "round";
-            ctx.stroke();
-            ctx.globalAlpha = 1;
+        if (rScreen < TAIL_R) {
+            if (!tailOpen) {
+                ctx.beginPath();
+                ctx.moveTo(ccx, ccy);
+                ctx.strokeStyle = color;
+                tailOpen = true;
+            }
+            ctx.lineTo(tx, ty);
+            continue;
         }
+        flushTail();
+
+        // Circle (every circle here is at least TAIL_R on screen; DS-F2-C19's
+        // ~2 px skip is subsumed by the tail run above).
+        ctx.beginPath();
+        ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = 0.5 * epicycleAlpha;
+        ctx.lineWidth = Math.min(circleCeil, thin / strokeScale);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.stroke();
+        ctx.globalAlpha = 1;
 
         // Arm
         ctx.beginPath();
@@ -236,8 +267,7 @@ export function drawEpicycleCircles(
         ctx.globalAlpha = 1;
 
         // Centre and endpoint dots: scaled with the circle over a small
-        // floor (they were fixed 5.5 / 4.5 px), and none under ~3 px.
-        if (rScreen < 3) continue;
+        // floor (they were fixed 5.5 / 4.5 px); none in the tail run.
 
         ctx.beginPath();
         ctx.arc(ccx, ccy, Math.max(rScreen * 0.1, 1.5) / strokeScale, 0, Math.PI * 2);
@@ -253,6 +283,7 @@ export function drawEpicycleCircles(
         ctx.fill();
         ctx.globalAlpha = 1;
     }
+    flushTail();
 
     ctx.restore();
 }

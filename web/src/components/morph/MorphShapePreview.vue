@@ -133,12 +133,29 @@ defineEmits<{
     width: 100%;
 }
 
+/* X-DS DS-F4R-C4: below 1024px the stage is the sticky band over the
+   controls, and it took ~53% of a 390 × 844 phone (the plate at full measure
+   with two rows of readings under it). The readings now stand in one column
+   BESIDE the plate, and the plate's block size is capped (22svh, square), so
+   the band holds under ~40% of the viewport and the controls get the rest. */
+@media (max-width: 1023.98px) {
+    .demo-stage {
+        flex-direction: row;
+        justify-content: center;
+        gap: var(--space-body);
+    }
+
+    .stage-row {
+        width: auto;
+    }
+}
+
 /* X.F.W14U.misc — UIA-F-115: the stage is the page's dominant content. It was
-   a fixed 120/180px square; it now takes its column up to a bound — a third of
-   the viewport's height below 1024px (the sticky band stays under ~40vh with
-   its readouts), 26rem beside the controls. */
+   a fixed 120/180px square; it now takes its column up to a bound — 22svh
+   below 1024px (DS-F4R-C4: the band, readings beside the plate, stays under
+   ~40% of the viewport), 26rem beside the controls. */
 .morph-button {
-    width: min(100%, 30vh);
+    width: min(100%, 22svh);
     aspect-ratio: 1;
     cursor: pointer;
     padding: var(--space-body);
@@ -246,6 +263,18 @@ defineEmits<{
     display: inline-block;
     min-inline-size: 10ch;
     color: color-mix(in oklab, var(--phase-tone, var(--foreground)) 75%, var(--foreground));
+}
+
+/* DS-F4R-C4: beside the plate in the phone band, the four readings are one
+   column, each on its own line, starting on one edge. */
+@media (max-width: 1023.98px) {
+    .demo-info {
+        grid-template-columns: auto;
+        justify-content: start;
+    }
+    .phase-reading {
+        justify-self: start;
+    }
 }
 
 /* X-DS pass 2 · DS-F2-C4: beside the controls the readouts start on the

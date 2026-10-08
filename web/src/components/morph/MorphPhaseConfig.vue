@@ -170,7 +170,7 @@ const easingNames = EASING_PRESET_NAMES;
 <style scoped>
 /*
    X.F.W14.h · OA-45 — the card's hierarchy on glass's scales (the same idiom as
-   every control card in the app): the title on `--type-heading` serif 600 (the producer's own section-header rung, glass `ConfiguratorLayer`), the
+   every control card in the app): the title on `--type-heading` serif 500 (the producer's own section-header rung, glass `ConfiguratorLayer`), the
    description on `--type-caption`, a field label on `--type-small` (the control
    row's label rung); the inset and the rhythm on the spacing scale
    (`--space-family` / `--space-body` / `--space-atom`, each responsive at the
@@ -186,7 +186,9 @@ const easingNames = EASING_PRESET_NAMES;
     font-family: var(--font-serif);
     font-size: var(--type-heading);
     line-height: var(--type-leading-heading);
-    font-weight: 600;
+    /* X-DS DS-F4R-C3: the PRE-DOCK card voice, under the page's 400-weight
+       display title (a 600 card title outweighed "Fourier Morph"). */
+    font-weight: 500;
     color: var(--foreground);
     margin-bottom: var(--space-residue);
 }

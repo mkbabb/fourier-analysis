@@ -9,6 +9,22 @@ export interface LabelDrawResult {
 }
 
 /**
+ * X-DS DS-F4R-C5: the count under a legend is a CAPTION, not a second
+ * heading: regular weight, a step under the 16 px title, in the theme's
+ * `--muted-foreground` (it was a literal grey, the one canvas ink off the
+ * tokens, and bold at the title's size). The token is read from the canvas
+ * at draw time, so a theme switch re-inks it on the next frame.
+ */
+const CAPTION_FONT = "400 13px 'Fira Code', monospace";
+function setCaptionInk(ctx: CanvasRenderingContext2D): void {
+    // The grey stays only as the fallback a canvas keeps if the token's
+    // computed colour does not parse.
+    ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
+    const v = getComputedStyle(ctx.canvas).getPropertyValue("--muted-foreground").trim();
+    if (v) ctx.fillStyle = v;
+}
+
+/**
  * Draw basis name labels in the top-left corner; a hovered label is its own
  * hue at full strength against dimmed siblings (X-DS pass 1 · F1-05).
  */
@@ -72,10 +88,10 @@ export function drawBasisLabels(
         yOff += 26;
     }
 
-    // N count as another legend row
+    // N count: the legend's caption line, under the title rows (DS-F4R-C5).
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
-    ctx.font = "bold 16px 'Fira Code', monospace";
+    setCaptionInk(ctx);
+    ctx.font = CAPTION_FONT;
     ctx.textBaseline = "top";
     ctx.fillText(levelText, xBase, yOff - 4);
 
@@ -101,10 +117,10 @@ export function drawEpicycleLabel(
     ctx.font = "bold 16px 'Fira Code', monospace";
     ctx.fillText(" Epicycles", 16 + iconW, 16);
 
-    // t value tight below the label
+    // t value tight below the label, on the caption line (DS-F4R-C5)
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
-    ctx.font = "bold 16px 'Fira Code', monospace";
+    setCaptionInk(ctx);
+    ctx.font = CAPTION_FONT;
     ctx.textBaseline = "top";
     ctx.fillText(`t = ${tValue.toFixed(2)}`, 16, 40);
 }

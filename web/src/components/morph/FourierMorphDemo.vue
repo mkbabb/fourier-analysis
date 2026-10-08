@@ -280,6 +280,21 @@ function handleReset() {
     }
 }
 
+/* X-DS DS-F4R-C3: where the controls column has the measure for it (from
+   1280 px it is ~43 rem, the page's 72 rem cap less the stage), the three
+   phases sit side by side as PRE-DOCK set them, one row of peers, and the
+   levels card spans the row beneath, so every phase is above the fold. */
+@media (min-width: 1280px) {
+    .controls-column {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .controls-column > :last-child {
+        grid-column: 1 / -1;
+    }
+}
+
 .stage-actions {
     display: flex;
     gap: var(--space-atom);

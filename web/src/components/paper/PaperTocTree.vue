@@ -14,7 +14,8 @@
  *   - one reach: an expanded chapter shows every level below it;
  *   - one active treatment: `aria-current` in the chapter's hue
  *     (`--toc-accent`, set on the chapter's `<li>`); a chapter is current while
- *     the reader is anywhere on its chain (`isInActiveChain`).
+ *     the reader is anywhere on its chain (`isInActiveChain`), but only the
+ *     LEAF being read (`data-leaf`) carries the plate (X-DS DS-F4R-C1).
  *
  * A2-FO-L1-2 (consumer half): glass ships the ToC behaviour but no ToC view at
  * 10.1.0; this file is the one seam its TocTree replaces at the landing
@@ -102,6 +103,7 @@ function choose(node: PaperSectionData) {
                         :data-depth="depth"
                         :data-toc-id="node.id"
                         :aria-current="isCurrent(node.id) ? 'location' : undefined"
+                        :data-leaf="isActive(node.id) || undefined"
                         @click="choose(node)"
                     >
                         <span class="toc-label">
@@ -189,12 +191,14 @@ function choose(node: PaperSectionData) {
 }
 /* UIA-F-156: ONE active treatment at every rank, in the chapter's hue. The
    plate is the ROW's (X-DS DS-F3-C4), so it runs the row's full width with
-   the disclosure chevron inside it. */
+   the disclosure chevron inside it. X-DS DS-F4R-C1: the plate is the LEAF's
+   alone; a chapter on the active chain keeps the hue ink only, so one row
+   reads as selected, not two. */
 .toc-link[aria-current] {
     color: var(--toc-accent);
     font-weight: 600;
 }
-.toc-row:has(> .toc-link[aria-current]) {
+.toc-row:has(> .toc-link[data-leaf]) {
     border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--muted) 40%, transparent);
 }
