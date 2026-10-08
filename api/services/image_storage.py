@@ -22,6 +22,8 @@ from typing import Any, cast
 from PIL import Image, ImageOps
 from pymongo.errors import DuplicateKeyError
 
+from fourier_analysis.contours.version import PIPELINE_VERSION
+
 from api.config import settings
 from api.lib.crud.slugs import slug_with_retry
 from api.models.assets import ImageAsset
@@ -285,10 +287,12 @@ def image_tempfile(asset: ImageAsset) -> "tempfile._TemporaryFileWrapper[bytes]"
 
 
 def extraction_cache_key(image_sha256: str, settings: Any) -> str:
-    """Deterministic key from image identity + extraction parameters."""
+    """Deterministic key from image identity, extraction parameters and the
+    pipeline that extracts (so a pipeline change never serves a stale tour)."""
     payload = json.dumps(
         {
             "_v": 3,
+            "pipeline": PIPELINE_VERSION,
             "image_sha256": image_sha256,
             "strategy": settings.strategy,
             "resize": settings.resize,
