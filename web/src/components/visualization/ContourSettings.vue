@@ -265,7 +265,7 @@ watch(
                     <SelectItem v-for="(desc, key) in strategyDescriptions" :key="key" :value="key">
                         <div>
                             <div class="font-medium">{{ strategyLabels[key] }}</div>
-                            <div class="text-xs text-muted-foreground max-w-[280px]">{{ desc }}</div>
+                            <div class="text-caption text-muted-foreground max-w-[280px]">{{ desc }}</div>
                         </div>
                     </SelectItem>
                 </SelectContent>

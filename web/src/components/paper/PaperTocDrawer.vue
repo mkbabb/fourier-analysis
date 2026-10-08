@@ -330,7 +330,7 @@ function toggleDrawer() {
 }
 
 .sidebar-label {
-    @apply text-sm;
+    font-size: var(--type-caption);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;

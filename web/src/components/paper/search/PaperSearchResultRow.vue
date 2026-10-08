@@ -79,7 +79,7 @@ defineProps<{
 .paper-search-label {
     flex: 1;
     min-width: 0;
-    @apply text-sm;
+    font-size: var(--type-small);
     color: var(--foreground);
     /* X.F.W14V.r4 — A2-FO-X-7 x UIA-F-59, §0dy (no ellipsis): the full title,
        wrapped, never cut — the balanced last line of `pretty`, and a long

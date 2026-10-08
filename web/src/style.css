@@ -255,7 +255,7 @@ article.paper-article .theorem-block::before {
     content: none;
 }
 article.paper-article :is(.theorem-block--theorem, .theorem-block--proposition, .theorem-block--corollary) {
-    --theorem-hue: var(--primary);
+    --theorem-hue: var(--theorem-accent);
 }
 article.paper-article :is(.theorem-block--definition, .theorem-block--example) {
     --theorem-hue: var(--accent-pink);
@@ -277,6 +277,30 @@ article.paper-article .section-header--sub {
 }
 article.paper-article .section-divider {
     background: color-mix(in srgb, var(--_section-color, var(--section-heading)) 25%, transparent);
+}
+/* DS-F8-C3: an equation number is upright mono, inside a theorem's italic too
+   (Fira Code has no italic; the slant was synthetic). */
+article.paper-article .math-block__number {
+    font-style: normal;
+}
+/* DS-F8-C5: below the narrow measure the number drops under its display, so
+   the equation takes the column's whole width. */
+@media (max-width: 40rem) {
+    article.paper-article .math-block {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    article.paper-article .math-block__number {
+        justify-self: end;
+    }
+}
+
+/* X-DS pass 6 · DS-F8-C1 — the theorem family's accent, kept OUTSIDE the
+   bridge (it is fourier's binding of latex-paper 0.3.0's `--theorem-accent`):
+   the violet section rung, a hue in BOTH arms. `--primary` is glass's ink in
+   light and the violet only in dark, so the rule read as an ink bar in one
+   theme and an accent in the other. */
+article.paper-article {
+    --theorem-accent: var(--section-color-7);
 }
 
 /* X-DS pass 3 · DS-F3-C7 — THE ONE hue-chooser tone. A pressed chooser item

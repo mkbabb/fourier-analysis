@@ -110,7 +110,7 @@ function focusTitle(e: Event) {
             @open-auto-focus="focusTitle"
         >
             <DialogHeader>
-                <DialogTitle class="font-serif-math text-xl" tabindex="-1" data-initial-focus>
+                <DialogTitle class="font-serif-math" tabindex="-1" data-initial-focus>
                     {{ name }}
                 </DialogTitle>
                 <DialogDescription class="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -131,7 +131,7 @@ function focusTitle(e: Event) {
             <!-- Stats. GCM-36: the like control's name is fixed ("Like"), the
                  state rides `aria-pressed`, the count is its description. -->
             <div class="flex items-center gap-4">
-                <span class="inline-flex items-center gap-[0.3rem] text-sm text-muted-foreground">
+                <span class="inline-flex items-center gap-[0.3rem] modal-stat text-muted-foreground">
                     <Eye :size="16" aria-hidden="true" />
                     <span class="tabular-nums">{{ entry.views }}</span>
                     <span>views</span>
@@ -155,7 +155,7 @@ function focusTitle(e: Event) {
 
             <section class="modal-section" aria-labelledby="modal-decomposition">
                 <h3 id="modal-decomposition" class="modal-section-title font-serif-math">Decomposition</h3>
-                <p v-if="!basisLabels.length" class="text-sm text-muted-foreground">
+                <p v-if="!basisLabels.length" class="text-small text-muted-foreground">
                     No basis functions recorded for this visualization.
                 </p>
                 <div v-else class="flex flex-wrap gap-1">
@@ -176,7 +176,7 @@ function focusTitle(e: Event) {
             <section class="modal-section" aria-labelledby="modal-parameters">
                 <h3 id="modal-parameters" class="modal-section-title font-serif-math">Parameters</h3>
                 <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted-foreground">Harmonics</span>
+                    <span class="text-small text-muted-foreground">Harmonics</span>
                     <span class="text-base font-semibold tabular-nums" :style="{ color: VIZ_COLORS.fourier }">
                         N={{ entry.n_harmonics }}
                     </span>
@@ -225,8 +225,12 @@ function focusTitle(e: Event) {
     flex-direction: column;
     gap: 0.5rem;
 }
+/* X-DS pass 6 · DS-F8-C2: one type ladder in the dialog. The title takes glass's
+   dialog-title step (it outranks the body-step description); a section heading
+   and its field labels share glass's `small` step, the heading carried by its
+   weight; the views readout takes the step of the like control beside it. */
 .modal-section-title {
-    font-size: 0.875rem;
+    font-size: var(--type-small);
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--foreground);
@@ -245,6 +249,10 @@ function focusTitle(e: Event) {
    literal is deleted. Unlayered, it beat glass Button's coarse-pointer floor
    (`[data-control-target]` → `--touch-target`), so on touch the Like measured
    82.5×34. The target is glass's again: 24 px on a fine pointer, 44 on touch. */
+.modal-stat {
+    font-size: var(--control-text-sm);
+}
+
 .like-btn {
     padding: 0.25rem 0.375rem;
     margin-inline-start: -0.375rem;

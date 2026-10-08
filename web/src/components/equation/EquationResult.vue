@@ -151,6 +151,10 @@ async function copyLatex() {
     padding: 0.5rem 1rem 1rem;
     min-height: 4.5rem;
     scrollbar-width: thin;
+    /* X-DS pass 6 · DS-F8-C5: the edge fade (glass FadingScroll's own knob,
+       shown only while ink lies past that edge) is 2rem, so it reads as "more
+       to the right" rather than as a crop on a dangling operator. */
+    --fade-scroll-width: 2rem;
 }
 
 .eq-scroll-region[data-dense] {

@@ -108,13 +108,16 @@ watch(
                             class="floating-toc-title-btn"
                         >
                             <span class="floating-toc-section font-serif-math">
-                                <span class="floating-toc-crumb">
-                                    <span v-if="currentSection?.number" class="floating-toc-number fira-code">{{ currentSection.number }}.</span>
-                                    <span v-if="currentSection && !activeLeaf" v-html="renderTitle(currentSection.title)" />
-                                </span>
-                                <span v-if="activeLeaf" class="floating-toc-crumb floating-toc-crumb--leaf">
+                                <!-- X-DS pass 6 · DS-F8-C4: one crumb. The leaf's own
+                                     number names its chapter ("1.2."), so with a leaf
+                                     active the bar shows it alone; else the chapter. -->
+                                <span v-if="activeLeaf" class="floating-toc-crumb">
                                     <span v-if="activeLeaf.number" class="floating-toc-number fira-code">{{ activeLeaf.number }}.</span>
                                     <span v-html="renderTitle(activeLeaf.title)" />
+                                </span>
+                                <span v-else-if="currentSection" class="floating-toc-crumb">
+                                    <span v-if="currentSection.number" class="floating-toc-number fira-code">{{ currentSection.number }}.</span>
+                                    <span v-html="renderTitle(currentSection.title)" />
                                 </span>
                             </span>
                             <ChevronDown class="floating-toc-chevron" />
@@ -173,7 +176,7 @@ watch(
 /* ── the bar (below lg) ─────────────────────────────────────────────────────
    X.F.W14U.paper — UIA-F-162: the bar is in flow at the top of the paper and
    sticks there (content first: the first screen is the paper, not a centred
-   chapter list); it is compact (the `sm` rung, `text-sm` title) and inset from
+   chapter list); it is compact (the `sm` rung, `text-small` title) and inset from
    the viewport edges, so the glass-resting corners never meet the screen's
    (UIA-F-236). */
 /* X-DS pass 3 · DS-F3-C11: the band is the page's own ground. Its gap above
@@ -238,37 +241,19 @@ watch(
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    @apply text-sm;
+    font-size: var(--type-small);
     color: var(--foreground);
 }
 
-/* X-DS pass 2 · DS-F2-C6: alone, the chapter crumb takes the bar's measure
-   ("0.1. Introdu…" cut at ~110 px over ~120 px of empty bar).
-   X-DS pass 3 · DS-F3-C3: the leaf wins. With a leaf after it, the chapter
-   collapses to its number (the template drops its title; the leaf's own
-   number already carries the chapter), and the leaf keeps the measure. */
+/* X-DS pass 2 · DS-F2-C6: the crumb takes the bar's measure.
+   X-DS pass 6 · DS-F8-C4: one crumb, the section being read (its number names
+   the chapter), so the chapter numeral and the '›' between them are gone. */
 .floating-toc-crumb {
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.floating-toc-crumb:has(+ .floating-toc-crumb--leaf) {
-    flex: none;
-}
-
-/* UIA-F-236: the section being read, after its chapter. */
-.floating-toc-crumb--leaf {
-    flex: 1 1 0;
-    max-width: none;
-    color: var(--muted-foreground);
-}
-
-.floating-toc-crumb--leaf::before {
-    content: "›";
-    margin-inline-end: 0.375rem;
 }
 
 /* UIA-F-236: the numerals' own size (a `text-xs` that lost to the row's type

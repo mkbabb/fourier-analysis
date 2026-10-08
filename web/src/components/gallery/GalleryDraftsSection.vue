@@ -99,7 +99,7 @@ function markBroken(slug: string) {
                     <span
                         v-if="!draft.contour"
                         :id="`draft-reason-${draft.imageSlug}`"
-                        class="text-xs text-muted-foreground"
+                        class="text-caption text-muted-foreground"
                     >Open it to trace a contour first.</span>
                 </div>
             </Card>

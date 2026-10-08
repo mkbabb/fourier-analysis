@@ -657,7 +657,7 @@ onUnmounted(() => {
     border-radius: var(--radius-badge);
     background: var(--primary);
     color: var(--primary-foreground);
-    @apply text-sm;
+    font-size: var(--type-micro);
     font-weight: 700;
     display: flex;
     align-items: center;

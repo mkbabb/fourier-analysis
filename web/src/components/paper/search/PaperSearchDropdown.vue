@@ -265,7 +265,7 @@ defineExpose({ resultsRef });
 .paper-search-empty {
     margin: 0;
     padding: 0.5rem;
-    @apply text-sm;
+    font-size: var(--type-small);
     color: var(--muted-foreground);
 }
 

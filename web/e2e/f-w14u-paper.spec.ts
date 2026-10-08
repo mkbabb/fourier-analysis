@@ -441,12 +441,14 @@ test.describe("paper-mobile 390", () => {
         if ((await disc.getAttribute("aria-expanded")) !== "true") await disc.click();
         await page.locator('.floating-toc-dropdown .toc-link[data-depth="1"]').nth(1).click();
         await expect(page.locator('.floating-toc-dropdown .toc-link[data-depth="0"]')).toHaveCount(0);
+        // X-DS pass 6 · DS-F8-C4: one crumb, the section, whose number
+        // ("1.2.") names its chapter — the chapter is still reported.
         await expect
-            .poll(() => page.locator(".floating-toc-bar .floating-toc-crumb").count(), {
+            .poll(() => page.locator(".floating-toc-bar .floating-toc-crumb .floating-toc-number").allTextContents(), {
                 message: "the bar reports only the chapter",
                 timeout: 10_000,
             })
-            .toBe(2);
+            .toEqual([expect.stringMatching(/^\d+\.\d+(\.\d+)*\.$/)]);
         await openFloatingToc(page);
         const overlap = await page.evaluate(() => {
             const chip = document.querySelector(".page-readout");

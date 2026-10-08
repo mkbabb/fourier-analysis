@@ -486,7 +486,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
             >
                 <Layers class="h-12 w-12 opacity-30" aria-hidden="true" />
                 <p class="text-base font-medium">No drafts yet.</p>
-                <p class="text-sm">Upload an image in the Visualizer to create a draft.</p>
+                <p class="text-small">Upload an image in the Visualizer to create a draft.</p>
                 <!-- UIA-F-189: the empty Drafts state carries its action. -->
                 <Button emphasis="secondary" @click="router.push('/visualize')">
                     Open the Visualizer →

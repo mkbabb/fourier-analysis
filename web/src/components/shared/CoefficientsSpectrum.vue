@@ -191,7 +191,7 @@ const AmplitudeReadout = defineComponent({
                 <Button
                     emphasis="quiet"
                     size="sm"
-                    class="mt-2 w-full gap-1 text-xs text-muted-foreground"
+                    class="mt-2 w-full gap-1 text-muted-foreground"
                     @click="expanded = !expanded"
                 >
                     <component :is="expanded ? ChevronUp : ChevronDown" class="h-3.5 w-3.5" />
@@ -200,7 +200,7 @@ const AmplitudeReadout = defineComponent({
             </Tooltip>
         </div>
 
-        <p v-else class="text-xs text-muted-foreground py-3 text-center">
+        <p v-else class="text-caption text-muted-foreground py-3 text-center">
             {{ emptyText }}
         </p>
     </div>
