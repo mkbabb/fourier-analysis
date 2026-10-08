@@ -258,7 +258,6 @@ function focusTitle(e: Event) {
     margin-inline-start: -0.375rem;
     background: transparent;
     gap: 0.3rem;
-    font-size: 0.875rem;
     color: var(--muted-foreground);
 }
 .like-btn:hover,
