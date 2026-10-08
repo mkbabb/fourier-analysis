@@ -646,7 +646,7 @@ onUnmounted(() => {
 .curve-tooltip {
     @apply absolute pointer-events-none;
     border-radius: var(--radius-panel);
-    font-family: "Fira Code", monospace;
+    font-family: var(--font-mono);
     font-size: var(--type-caption);
     line-height: var(--type-leading-caption);
     padding: 0.375rem 0.75rem;

@@ -72,8 +72,9 @@ async function copyLatex() {
             <slot name="leading" />
             <div class="eq-result-actions">
                 <slot name="actions" />
+                <!-- X-DS pass 9 · DS-F11-C1: Copy is a quiet utility beside Info. -->
                 <Button
-                    emphasis="primary"
+                    emphasis="quiet"
                     size="md" icon-only
                     aria-label="Copy LaTeX"
                     title="Copy LaTeX"

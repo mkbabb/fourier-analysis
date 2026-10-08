@@ -89,7 +89,7 @@ const value = computed({
 }
 
 .eq-toggle-icon--mono {
-    font-family: "Fira Code", monospace;
+    font-family: var(--font-mono);
     font-size: var(--type-caption);
     font-style: normal;
     letter-spacing: -0.5px;

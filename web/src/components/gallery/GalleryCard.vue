@@ -177,10 +177,12 @@ const created = useTimeAgo(() => props.entry.created_at);
                  independent Crown/Bookmark toggles were a second spelling of
                  the modal's three-state group). -->
             <TierControl compact :tier="entry.tier" @set="(t) => emit('set-tier', entry.slug, t)" />
+            <!-- X-DS pass 9 · DS-F11-C3: the danger is carried by the tone's hue,
+                 not a lit capsule; the confirm dialog stays the loud surface. -->
             <Button
-                emphasis="primary"
+                emphasis="quiet"
+                tone="destructive"
                 size="sm" icon-only
-                class="text-delete"
                 title="Delete"
                 @click="emit('delete', entry.slug)"
             >

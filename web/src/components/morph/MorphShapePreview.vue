@@ -198,7 +198,7 @@ defineEmits<{
    latching the state after a tap. */
 /* X.F.W14V.au3 — A2-FO-L1-13: the cartoon stamp this block composed is retired
    with `.cartoon-card`; the plate and its elevation are glass Surface's, so the
-   hover keeps only the app's state vocabulary below (border mix + scale). */
+   hover keeps only the app's state vocabulary below (the border tone step). */
 /* X.F.W3 `.d` — `fr-MorphShapePreview FR-MSP-11`: ONE RING VOCABULARY, chosen
    at the re-basing, which is what the row demands (“the re-basing chooses ONE
    ring vocabulary across both files or the row is not discharged”).
@@ -209,11 +209,14 @@ defineEmits<{
    `0 0 0 2px` 15 %-mix ring. One pixel of ring apart, on screen simultaneously:
    “the pointer is here” and “this is the current level” wearing one costume.
    The grid itself already distinguishes the two — its `:hover` is a 50 %
-   border-mix plus `scale(1.04)`, no ring — which proves the vocabulary existed
-   and was simply never reconciled across components.
+   border-mix, no ring — which proves the vocabulary existed and was simply
+   never reconciled across components.
 
-   THE CHOICE: A FLAT ACCENT RING MEANS SELECTED. Hover is a border-mix plus a
-   scale. This control is not selectable, so it takes the hover vocabulary and
+   THE CHOICE: A FLAT ACCENT RING MEANS SELECTED. Hover is the border tone
+   step alone, as on the harmonic tiles (X-DS pass 9 · DS-F11-C2: the plate's
+   `scale(1.02)` hover swell is deleted, as DS-F9-C1 deleted the tiles'
+   `scale(1.04)`); `:active` keeps the `scale(0.98)` press, as the tiles do.
+   This control is not selectable, so it takes the hover vocabulary and
    surrenders the ring. `HarmonicLevelGrid.vue` needs no edit under this choice
    — it is already the vocabulary’s exemplar — which is why the row discharges
    from one file without a bounds expansion.
@@ -223,7 +226,6 @@ defineEmits<{
 @media (hover: hover) {
     .morph-button:hover:not(:disabled) {
         border-color: color-mix(in srgb, var(--accent-red) 50%, transparent);
-        transform: scale(1.02);
     }
 }
 

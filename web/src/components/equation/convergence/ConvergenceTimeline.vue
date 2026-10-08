@@ -74,8 +74,9 @@ const harmonicValueText = (): string =>
         <!-- `D·D-3` / `C·C-2` (SP-7) — the play control was named by nothing at
              all: an icon-only Button over two inline SVGs. The label carries the
              ACTION, and `aria-pressed` already carried the state. -->
+        <!-- X-DS pass 9 · DS-F11-C1: secondary, so Compute is the one primary. -->
         <Button
-            emphasis="primary"
+            emphasis="secondary"
             size="md" icon-only
             class="play-btn"
             :aria-label="playing ? 'Pause the convergence sweep' : 'Play the convergence sweep'"
@@ -117,7 +118,7 @@ const harmonicValueText = (): string =>
 }
 
 .timeline-count {
-    font-family: "Fira Code", monospace;
+    font-family: var(--font-mono);
     font-size: var(--type-caption);
     color: var(--muted-foreground);
     width: 3.5rem;

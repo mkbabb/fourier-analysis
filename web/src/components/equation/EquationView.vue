@@ -460,7 +460,9 @@ watchDebounced(
                                      arm; `D·D-B2` names the icon-only trigger. -->
                                 <Popover v-if="tier" trigger="hover" :open-delay="200" :close-delay="150">
                                     <PopoverTrigger as-child>
-                                        <Button emphasis="primary" size="md" icon-only
+                                        <!-- X-DS pass 9 · DS-F11-C1: a quiet utility, the rung of
+                                             the Configurator's Reset; Compute is the route's one primary. -->
+                                        <Button emphasis="quiet" size="md" icon-only
                                                 aria-label="About this approximation">
                                             <Info class="size-[18px]" />
                                         </Button>

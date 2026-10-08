@@ -127,7 +127,7 @@ const emit = defineEmits<{
 
 .legend-label {
     @apply select-none;
-    font-family: "Fira Code", monospace;
+    font-family: var(--font-mono);
     color: var(--muted-foreground);
     font-size: var(--type-caption);
     line-height: var(--type-leading-caption);
