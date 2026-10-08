@@ -394,6 +394,9 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
         for classes in (LIPS, *((k,) for k in MATERIALS)):
             labels = thin_to_line(labels, classes, THIN_FRACTION * diag)
         labels = teeth(irises(labels, image.lab), image.lab, feature_floor)
+        # The dark of a smile between a lip and the teeth is a sliver (the
+        # gum line): one line, where the lip meets the teeth.
+        labels = thin_to_line(labels, (MOUTH,), THIN_FRACTION * diag)
         drawn = ~np.eye(N_LABELS, dtype=bool)
         drawn[UNPARSED, :] = False
         drawn[:, UNPARSED] = False

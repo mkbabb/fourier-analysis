@@ -352,8 +352,8 @@ def test_daraksha_drawing_has_the_centre_part(daraksha):
 def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
     """The drawing is one connected figure (its pieces joined by routed
     connectors on the subject, so the tour needs no jump); the open mouth is
-    split into teeth; the nose is drawn by part of its outline (its bridge
-    down the shadowed side, and its base), not as a closed balloon."""
+    split into teeth; the nose is drawn by part of its outline (its lower
+    bridge down the shadowed side, and its base), not as a closed balloon."""
     from fourier_analysis.contours.parts import NOSE, TEETH
 
     parts, drawing = daraksha
@@ -375,16 +375,23 @@ def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
         r = np.clip(np.rint(e.pts[:, 0]).astype(int), 0, nose.shape[0] - 1)
         c = np.clip(np.rint(e.pts[:, 1]).astype(int), 0, nose.shape[1] - 1)
         on_rim[r, c] = True
-    # The bridge is drawn down one side of the nose only: of its rim's upper
-    # half, one side (left or right of the nose's centre) is drawn along most
-    # of its length and the other hardly at all (no balloon over the bridge).
+    # The upper bridge is not drawn on either side (drawn, it runs up into
+    # the brow as a scowl); the lower bridge is drawn down one side into the
+    # wing (no balloon over the bridge).
     rows, cols = np.nonzero(nose)
-    upper = rim & (np.arange(nose.shape[0])[:, None] < rows.min() + 0.5 * np.ptp(rows))
-    left = upper & (np.arange(nose.shape[1])[None, :] < cols.mean())
-    right = upper & ~left
+    row = np.arange(nose.shape[0])[:, None]
+    mid = rows.min() + 0.5 * np.ptp(rows)
     drawn = ndi.binary_dilation(on_rim, iterations=2)
-    shares = sorted([(drawn & left).sum() / left.sum(), (drawn & right).sum() / right.sum()])
-    assert shares[1] > 0.4 and shares[0] < 0.2, shares
+
+    def shares(band):
+        left = band & (np.arange(nose.shape[1])[None, :] < cols.mean())
+        right = band & ~left
+        return sorted([(drawn & left).sum() / max(1, left.sum()), (drawn & right).sum() / max(1, right.sum())])
+
+    upper = shares(rim & (row < mid - 2))
+    assert upper[1] < 0.2, upper
+    lower = shares(rim & (row >= mid) & (row < mid + 0.2 * np.ptp(rows)))
+    assert lower[1] > 0.4, lower
 
 
 def test_teeth_are_the_bright_band_of_an_open_mouth():
@@ -627,16 +634,19 @@ def _pear_nose() -> tuple[np.ndarray, np.ndarray]:
 
 def test_the_bridge_is_drawn_down_its_shadowed_side():
     """A nose's outline, its right side in shadow: above the wings the points
-    returned are the right side's, running down the nose, not its top."""
-    from fourier_analysis.contours.drawing import WING_FRACTION, bridge_side
+    returned are the right side's, running down the lower bridge into the
+    wing; the upper bridge is not drawn, though the image marks it there (it
+    would run up into the brow)."""
+    from fourier_analysis.contours.drawing import BRIDGE_DRAWN_FRACTION, WING_FRACTION, bridge_side
 
     nose, q = _pear_nose()
     prof = np.where(q[:, 1] > 100, 30.0, 5.0)  # the right side marked more
-    side = bridge_side(q, prof, nose)
+    side = bridge_side(q, prof, nose, prof >= 20.0)
     upper = side & (q[:, 0] < 160 - WING_FRACTION * 120 - 2)
     assert upper.any() and (q[upper, 1] > 100).all()
-    assert np.ptp(q[upper, 0]) > 40  # it runs down the nose
-    assert not side[(q[:, 0] < 42) & (q[:, 1] < 100)].any()  # not across the top
+    assert np.ptp(q[upper, 0]) > 15  # it runs down the nose
+    top = 160 - BRIDGE_DRAWN_FRACTION * 120
+    assert not side[q[:, 0] < top - 2].any()  # not up the upper bridge, nor across the top
 
 
 def test_the_wings_and_base_of_a_nose_are_drawn_whole():
@@ -647,11 +657,11 @@ def test_the_wings_and_base_of_a_nose_are_drawn_whole():
 
     nose, q = _pear_nose()
     prof = np.where(q[:, 1] > 100, 30.0, 5.0)
-    side = bridge_side(q, prof, nose)
+    side = bridge_side(q, prof, nose, np.zeros(len(q), bool))
     base = q[:, 0] > 150
     assert side[base].all()
     assert side[base & (q[:, 1] < 85)].any() and side[base & (q[:, 1] > 115)].any()
-    flipped = bridge_side(np.column_stack([199 - q[:, 0], q[:, 1]]), prof, nose[::-1])
+    flipped = bridge_side(np.column_stack([199 - q[:, 0], q[:, 1]]), prof, nose[::-1], np.zeros(len(q), bool))
     assert flipped[base].all()  # row 199 - r: the wide end is now at the top
 
 
@@ -768,3 +778,67 @@ def test_a_braid_the_parser_calls_cloth_is_revoted_hair_by_its_colour():
     labels2 = labels.copy()
     labels2[:60] = NECK
     assert np.array_equal(material_revote(labels2, probs, flat, min_area=100.0), labels2)
+
+
+def test_form_lines_leave_the_upper_bridge():
+    """Learned ink running down the upper half of the nose (the bridge's
+    shade, which runs up into the brows) is cut away; the wing's crease on
+    the lower half is kept."""
+    from fourier_analysis.contours.drawing import form_lines
+
+    nose, _ = _pear_nose()
+    form = np.ones(nose.shape, bool)
+    ink = np.zeros(nose.shape, bool)
+    ink[45:95, 108] = True  # down the upper bridge
+    ink[150, 60:80] = True  # a crease from the wing
+    out = form_lines(ink, form, nose, 2.0)
+    assert not out[45:90, 108].any() and out[150, 60:72].all()
+
+
+def test_connectors_do_not_cross_the_glabella():
+    """Two brows either side of a nose: the connector between them does not
+    run straight across the glabella (a unibrow) while a path round through
+    the nose's lower half exists."""
+    from fourier_analysis.contours.drawing import glabella
+
+    nose, _ = _pear_nose()
+    g = glabella(nose)
+    # The midline runs from the top of the nose's wide half up past its top.
+    rows = np.flatnonzero(g.any(axis=1))
+    assert rows.min() < 40 - 30 and rows.max() <= 100 + 2
+    assert g[20, 98:103].any() and not g[150].any()
+
+
+def test_a_connector_over_even_cost_is_a_straight_stroke():
+    """An 8-connected geodesic over even cost is a staircase of straight and
+    diagonal runs; pulled taut it is the straight segment, and over a costly
+    block it still bends round it."""
+    from skimage.graph import route_through_array
+
+    from fourier_analysis.contours.drawing import pull_string
+
+    cost = np.ones((60, 100))
+    path, _ = route_through_array(cost, (10, 5), (40, 95), fully_connected=True, geometric=True)
+    taut = pull_string(np.asarray(path, float), cost)
+    t = (taut[:, 1] - 5) / 90
+    assert np.abs(taut[:, 0] - (10 + 30 * t)).max() < 1.0
+    cost[:, 50] = 100.0
+    cost[55:, 50] = 1.0  # a gate at the bottom
+    path, _ = route_through_array(cost, (10, 5), (10, 95), fully_connected=True, geometric=True)
+    taut = pull_string(np.asarray(path, float), cost)
+    at = taut[np.argmin(np.abs(taut[:, 1] - 50))]
+    assert at[0] >= 54
+
+
+def test_the_dark_sliver_of_a_smile_is_one_line():
+    """An open mouth whose dark shows only as a thin sliver between the upper
+    lip and the teeth: the lip meets the teeth along one line."""
+    from fourier_analysis.contours.parts import LIPS, MOUTH, SKIN, TEETH, thin_to_line
+
+    labels = np.full((80, 120), SKIN, np.int32)
+    labels[30:40, 20:100] = LIPS[0]
+    labels[40:44, 20:100] = MOUTH  # the gum line
+    labels[44:60, 20:100] = TEETH
+    out = thin_to_line(labels, (MOUTH,), 10.0)
+    assert not (out[:, 25:95] == MOUTH).any()
+    assert (out[38:42, 30:90] == LIPS[0]).all() or (out[42:44, 30:90] == TEETH).all()
