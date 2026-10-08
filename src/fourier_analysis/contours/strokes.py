@@ -236,6 +236,78 @@ def boundary_graph(
     return compact(graph)
 
 
+def spine_graph(
+    labels: NDArray[np.integer], classes: tuple[int, ...], layer: int = PARTS
+) -> StrokeGraph:
+    """Each component of ``classes`` drawn by its spine: the longest path of
+    its skeleton (the skeleton's geodesic diameter), carried on along its end
+    directions to the part's own tips, and smoothed over the part's width so
+    the skeleton's pixel steps and corner twigs do not show."""
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import dijkstra
+    from skimage.morphology import skeletonize
+
+    graph = StrokeGraph()
+    for k in classes:
+        comp, _ = ndi.label(labels == k)
+        for i, sl in enumerate(ndi.find_objects(comp), start=1):
+            if sl is None:
+                continue
+            m = comp[sl] == i
+            px = np.argwhere(skeletonize(m))
+            if len(px) < 3:
+                continue
+            a, b = cKDTree(px).query_pairs(1.5, output_type="ndarray").T
+            wts = np.hypot(*(px[a] - px[b]).T)
+            adj = coo_matrix((np.r_[wts, wts], (np.r_[a, b], np.r_[b, a])), shape=(len(px), len(px))).tocsr()
+            d0 = dijkstra(adj, indices=0)
+            start = int(np.argmax(np.where(np.isfinite(d0), d0, -1)))
+            d1, pred = dijkstra(adj, indices=start, return_predecessors=True)
+            end = int(np.argmax(np.where(np.isfinite(d1), d1, -1)))
+            path = [end]
+            while path[-1] != start and pred[path[-1]] >= 0:
+                path.append(int(pred[path[-1]]))
+            p = px[path].astype(np.float64)
+            if len(p) < 3:
+                continue
+            width = float(m.sum()) / max(1.0, d1[end])
+            p = np.vstack([_to_tip(p[::-1], m, width)[::-1], p[1:-1], _to_tip(p, m, width)])
+            q = uniform(p, 1.0)
+            if len(q) >= 5:
+                sig = max(MIN_SMOOTH_PX, 0.5 * width)
+                kk = min(len(q) - 1, int(np.ceil(3 * sig)))
+                padded = np.vstack([2 * q[0] - q[kk:0:-1], q, 2 * q[-1] - q[-2 : -kk - 2 : -1]])
+                q = ndi.gaussian_filter1d(padded, sig, axis=0, mode="nearest")[kk : kk + len(q)]
+            q = q + np.array([sl[0].start, sl[1].start], dtype=np.float64)
+            u, v = graph.add_node(q[0]), graph.add_node(q[-1])
+            graph.edges.append(Edge(u, v, q, layer))
+    return graph
+
+
+def _to_tip(p: NDArray[np.float64], m: NDArray[np.bool_], width: float) -> NDArray[np.float64]:
+    """The spine ``p`` carried on from its last point along its direction
+    there (read over a part's width) until it leaves the part ``m``: a
+    skeleton stops half a width short of a tapering tip.  Returns the points
+    from ``p[-1]`` to the tip."""
+    s = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(p, axis=0).T))])
+    back = int(np.searchsorted(s, s[-1] - max(2.0, width)))
+    d = p[-1] - p[min(back, len(p) - 2)]
+    n = float(np.hypot(*d))
+    out = [p[-1]]
+    if n < 1e-9:
+        return np.asarray(out)
+    d /= n
+    h, w = m.shape
+    x = p[-1].copy()
+    for _ in range(int(np.ceil(2 * width)) + 2):
+        x = x + d
+        r, c = int(round(x[0])), int(round(x[1]))
+        if not (0 <= r < h and 0 <= c < w and m[r, c]):
+            break
+        out.append(x.copy())
+    return np.asarray(out)
+
+
 class _Chain:
     __slots__ = ("u", "v", "pts", "free")
 

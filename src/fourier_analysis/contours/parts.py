@@ -62,6 +62,11 @@ N_FACE_CLASSES = len(FACE_CLASSES)
 SKIN, NOSE, NECK, CLOTH, HAIR, HAT = 1, 10, 14, 16, 17, 18
 FEATURES = (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15)  # the small parts
 EYES = (4, 5)
+BROWS = (2, 3)
+"""A brow is a band of hair on the skin: drawn by its spine, one stroke along
+its length (``PartLabels.spined``), never by its outline (a closed box whose
+end runs into the hairline)."""
+LIPS = (12, 13)
 MOUTH = 11
 UNPARSED = N_FACE_CLASSES  # on the subject, no parser label
 IRIS = UNPARSED + 1  # the dark of an eye (not a parser class; see ``irises``)
@@ -120,6 +125,9 @@ REGION_MIN_FRACTION = 0.002
 class Face:
     score: float
     box: tuple[float, float, float, float]  # x, y, w, h in pipeline pixels
+    landmarks: tuple[tuple[float, float], ...] = ()
+    """YuNet's five points (x, y pipeline pixels): the two eye centres, the
+    nose tip and the two mouth corners."""
 
 
 @dataclass(frozen=True)
@@ -131,6 +139,9 @@ class PartLabels:
     marked: NDArray[np.bool_]  # (n_labels, n_labels): a line only where the image marks it
     faces: tuple[Face, ...]
     source: str  # "face-parsing" or "silhouette"
+    spined: tuple[int, ...] = ()  # labels drawn by their spine, not their outline
+    missed: NDArray[np.bool_] | None = None  # an eye the detector sees and the parser does not
+    mouth_lines: tuple[NDArray[np.float64], ...] = ()  # (row, col) lines of mouths the parser missed
 
     @property
     def subject(self) -> NDArray[np.bool_]:
@@ -177,7 +188,7 @@ def detect_faces(rgb: Image.Image, shape: tuple[int, int]) -> list[Face]:
     out = dict(zip(names, session.run(None, {session.get_inputs()[0].name: canvas.transpose(2, 0, 1)[None]})))
 
     to_pipe = shape[1] / w  # source px -> pipeline px
-    cands: list[tuple[float, float, float, float, float]] = []
+    cands: list[tuple[float, float, float, float, float, tuple[tuple[float, float], ...]]] = []
     for stride in (8, 16, 32):
         n = size // stride
         cls = out[f"cls_{stride}"][0, :, 0]
@@ -189,14 +200,18 @@ def detect_faces(rgb: Image.Image, shape: tuple[int, int]) -> list[Face]:
             cx, cy = (c + b[0]) * stride, (r + b[1]) * stride
             bw, bh = np.exp(b[2]) * stride, np.exp(b[3]) * stride
             k = to_pipe / s
-            cands.append((float(score[i]), (cx - bw / 2) * k, (cy - bh / 2) * k, bw * k, bh * k))
-    cands.sort(reverse=True)
+            kp = out[f"kps_{stride}"][0, i]
+            marks = tuple(
+                (float((c + kp[2 * j]) * stride * k), float((r + kp[2 * j + 1]) * stride * k)) for j in range(5)
+            )
+            cands.append((float(score[i]), (cx - bw / 2) * k, (cy - bh / 2) * k, bw * k, bh * k, marks))
+    cands.sort(key=lambda t: t[0], reverse=True)
     kept: list[Face] = []
-    for sc, x, y, bw, bh in cands:
+    for sc, x, y, bw, bh, marks in cands:
         if max(bw, bh) < FACE_MIN_SIDE_PX:
             continue
         if all(_iou((x, y, bw, bh), f.box) < FACE_NMS_IOU for f in kept):
-            kept.append(Face(sc, (x, y, bw, bh)))
+            kept.append(Face(sc, (x, y, bw, bh), marks))
         if len(kept) == MAX_FACES:
             break
     return kept
@@ -353,21 +368,138 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
             {k: feature_floor for k in FEATURES},
             REGION_MIN_FRACTION * subject_area,
         )
+        diag = float(np.hypot(*shape))
+        labels = thin_to_line(labels, LIPS, THIN_FRACTION * diag)
         labels = teeth(irises(labels, image.lab), image.lab, feature_floor)
         drawn = ~np.eye(N_LABELS, dtype=bool)
         drawn[UNPARSED, :] = False
         drawn[:, UNPARSED] = False
         drawn[BACKGROUND, UNPARSED] = drawn[UNPARSED, BACKGROUND] = True
         drawn[np.ix_(FORM, FORM)] = False
+        drawn[BROWS, :] = drawn[:, BROWS] = False
         marked = np.zeros_like(drawn)
         marked[np.ix_(FORM, FORM)] = True
         marked &= ~np.eye(N_LABELS, dtype=bool)
-        return PartLabels(_frame_band(labels), drawn, marked, tuple(faces), "face-parsing")
+        labels = _frame_band(labels)
+        missed, mouths = missed_features(labels, faces, image.lab)
+        return PartLabels(labels, drawn, marked, tuple(faces), "face-parsing", BROWS, missed, mouths)
 
     labels = np.where(subject, UNPARSED, BACKGROUND).astype(np.int32)
     drawn = np.zeros((UNPARSED + 1, UNPARSED + 1), dtype=bool)
     drawn[BACKGROUND, UNPARSED] = drawn[UNPARSED, BACKGROUND] = True
     return PartLabels(_frame_band(labels), drawn, np.zeros_like(drawn), (), "silhouette")
+
+
+THIN_FRACTION = 0.015
+"""A part band narrower than this (of the diagonal) is one line: its two
+outlines run within one cell of the drawing's stroke-density scale
+(``drawing.DENSITY_FRACTION``), where strokes side by side read as one
+doubled strand, not two lines."""
+
+
+EYE_ZONE_IOD = 0.25
+"""An eye lies within this many inter-ocular distances of its landmark (an
+eye opening is about half the inter-ocular distance across)."""
+MOUTH_ZONE = (0.6, 0.35)
+"""A mouth lies within an ellipse on its corners' midpoint, these many mouth
+widths along and across the line of the corners."""
+
+
+def missed_features(
+    labels: NDArray[np.int32], faces: list[Face], lab_norm: NDArray[np.float64] | None
+) -> tuple[NDArray[np.bool_], tuple[NDArray[np.float64], ...]]:
+    """The features the detector's landmarks place and the parser did not
+    label (a painted eye in shadow, a closed mouth in an engraving).
+
+    - An eye: the anatomical zone around its landmark (``EYE_ZONE_IOD``) when
+      no eye label lies in it.  There the learned line drawing speaks for it
+      (``drawing.form_lines``).
+    - A mouth: when no mouth, lip or teeth label lies in its zone
+      (``MOUTH_ZONE``), its line is drawn as an artist draws a closed mouth:
+      the dark valley between the lips, the least-luminance path from one
+      landmark corner to the other inside the zone.
+
+    Returns the eye zones and the mouth lines (``(row, col)`` points)."""
+    from skimage.graph import route_through_array
+
+    h, w = labels.shape
+    yy, xx = np.mgrid[:h, :w]
+    eyes_out = np.zeros(labels.shape, bool)
+    mouths: list[NDArray[np.float64]] = []
+    for f in faces:
+        if len(f.landmarks) < 5:
+            continue
+        eyes, mouth = np.asarray(f.landmarks[:2]), np.asarray(f.landmarks[3:5])
+        iod = float(np.hypot(*(eyes[0] - eyes[1])))
+        for ex, ey in eyes:
+            zone = (xx - ex) ** 2 + (yy - ey) ** 2 <= (EYE_ZONE_IOD * iod) ** 2
+            if not np.isin(labels[zone], (*EYES, IRIS)).any():
+                eyes_out |= zone
+        mw = float(np.hypot(*(mouth[0] - mouth[1])))
+        if mw < 4.0 or lab_norm is None:
+            continue
+        u = (mouth[1] - mouth[0]) / mw
+        dx, dy = xx - mouth.mean(axis=0)[0], yy - mouth.mean(axis=0)[1]
+        along, across = dx * u[0] + dy * u[1], -dx * u[1] + dy * u[0]
+        zone = (along / (MOUTH_ZONE[0] * mw)) ** 2 + (across / (MOUTH_ZONE[1] * mw)) ** 2 <= 1.0
+        if np.isin(labels[zone], (MOUTH, *LIPS, TEETH)).any():
+            continue
+        lum = lab_norm[..., 0]
+        lo, hi = np.percentile(lum[zone], (1, 99))
+        dark = np.clip((lum - lo) / max(hi - lo, 1e-6), 0.0, 1.0)
+        cost = np.where(zone, MOUTH_VALLEY_FLOOR + dark, np.inf)
+        ends = [(int(round(y)), int(round(x))) for x, y in mouth]
+        if not all(0 <= r < h and 0 <= c < w and zone[r, c] for r, c in ends):
+            continue
+        path, _ = route_through_array(cost, ends[0], ends[1], fully_connected=True, geometric=True)
+        mouths.append(np.asarray(path, dtype=np.float64))
+    return eyes_out & (labels != BACKGROUND), tuple(mouths)
+
+
+MOUTH_VALLEY_FLOOR = 0.05
+"""A step's cost is this plus its luminance (0 to 1 over the mouth's zone):
+the darkest pixel costs this little, so the path keeps to the valley."""
+
+
+SIDE_SHARE = 0.2
+"""A part lies between two others when each holds this share of its rim."""
+
+
+def thin_to_line(labels: NDArray[np.int32], classes: tuple[int, ...], max_width: float) -> NDArray[np.int32]:
+    """A part of ``classes`` thinner than ``max_width`` is drawn as one line.
+
+    An upper lip stretched by a broad smile is a sliver: drawn by its two
+    outlines it is a doubled strand.  A part's width is twice the median
+    distance from its skeleton to its edge.  A thinner part gives each of its
+    pixels to the nearest other part, so the parts on its two sides meet
+    along its medial line, and their boundary, drawn there, is the one
+    line.  Only a part between two other parts is (each holding
+    ``SIDE_SHARE`` of its rim): a closed mouth's thin lips lie on the skin
+    all round, their line is where they meet each other, and they keep
+    their labels."""
+    from skimage.morphology import skeletonize
+
+    thin = np.zeros(labels.shape, bool)
+    for k in classes:
+        comp, n = ndi.label(labels == k)
+        for i, sl in enumerate(ndi.find_objects(comp), start=1):
+            if sl is None:
+                continue
+            sl = tuple(slice(max(0, a.start - 1), a.stop + 1) for a in sl)
+            m = comp[sl] == i
+            skel = skeletonize(m)
+            if not skel.any() or 2.0 * float(np.median(ndi.distance_transform_edt(m)[skel])) >= max_width:
+                continue
+            ring = labels[sl][ndi.binary_dilation(m) & ~m]
+            sides = np.bincount(ring[~np.isin(ring, classes)], minlength=1)
+            if np.count_nonzero(sides >= SIDE_SHARE * max(1, ring.size)) >= 2:
+                thin[sl] |= m
+    if not thin.any():
+        return labels
+    _, (ri, ci) = ndi.distance_transform_edt(thin, return_indices=True)
+    out = labels.copy()
+    out[thin] = labels[ri[thin], ci[thin]]
+    return out
 
 
 FRAME_BAND_PX = 3

@@ -53,6 +53,7 @@ from fourier_analysis.contours.strokes import (
     CONNECT,
     FILL_COMPACTNESS,
     LINES,
+    PARTS,
     Edge,
     StrokeGraph,
     boundary_graph,
@@ -64,6 +65,7 @@ from fourier_analysis.contours.strokes import (
     prune_to_budget,
     rasterize,
     smooth_edges,
+    spine_graph,
     split_edges,
     uniform,
     vectorise,
@@ -131,9 +133,13 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     base = boundary_graph(parts.labels, parts.drawn)
     if parts.marked.any():
         marked = boundary_graph(parts.labels, parts.marked)
-        base = base.merged(marked_runs(marked, lab, width, MIN_PART_FRACTION * diag))
+        base = base.merged(marked_runs(marked, lab, width, MIN_PART_FRACTION * diag, parts.nose))
+    if parts.spined:
+        base = base.merged(spine_graph(parts.labels, parts.spined))
+    if parts.mouth_lines:
+        base = base.merged(polyline_graph(parts.mouth_lines, max(1.5, width)))
     ink &= line_region(mask, parts.face_core, width)
-    ink = form_lines(ink, parts.form, parts.nose, width)
+    ink = form_lines(ink, parts.form, parts.nose, width, parts.missed)
     earlier = rasterize(base, shape)
     if earlier.any():
         ink &= ndi.distance_transform_edt(~earlier) > SUPPRESS_FRACTION * diag
@@ -168,7 +174,9 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     floor = MIN_PART_FRACTION * diag
     graph = prune_to_budget(graph, INK_BUDGET_DIAGONALS * diag, salience, floor=floor)
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
-    graph = route_connectors(graph, strength, mask & ~frame_band(shape, width))
+    reach = mask & ~frame_band(shape, width)
+    graph = route_connectors(graph, strength, reach)
+    graph = route_jumps(graph, strength, reach)
     return Drawing(graph, mask, parts.source, parts.faces)
 
 
@@ -181,7 +189,9 @@ OFF_SUBJECT_COST = 10.0
 
 
 def route_connectors(
-    graph: StrokeGraph, strength: NDArray[np.float64], subject: NDArray[np.bool_]
+    graph: StrokeGraph,
+    strength: NDArray[np.float64],
+    subject: NDArray[np.bool_],
 ) -> StrokeGraph:
     """Join the drawing's separate pieces along the lines of the image.
 
@@ -317,6 +327,54 @@ def route_connectors(
     return dissolve_degree_two(out)
 
 
+def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDArray[np.bool_]) -> StrokeGraph:
+    """Draw the tour's pen jumps as routed strokes.
+
+    The tour (``shortest_tour``) pairs the drawing's odd nodes, and where a
+    pair's retrace along the ink would be far longer than the gap it jumps
+    straight across: a chord over the subject that no image line has.  Here
+    each pair the tour would jump is joined instead by the cheapest pen path
+    over the image (the cost of ``route_connectors``), added to the drawing as
+    a ``CONNECT`` stroke between the two nodes.  Both nodes are then even,
+    so the tour walks the stroke once in place of the jump."""
+    from skimage.graph import route_through_array
+
+    from fourier_analysis.shortest_tour import _StrokeGraph
+
+    if not graph.edges:
+        return graph
+    shape = subject.shape
+    h, w = shape
+    cy, cx = h / 2, w / 2
+    tour = _StrokeGraph.from_strokes(graph.polylines(shape))
+    tour.connect_components()
+    n_edges = len(tour.edges)
+    tour.make_eulerian()
+    jumps = [e for e in tour.edges[n_edges:] if e.jump and len(e.poly) == 2]
+    if not jumps:
+        return graph
+    nodes = np.asarray(graph.nodes)
+    tree = cKDTree(nodes)
+    cost = 1.0 / (CONNECT_FLOOR + np.clip(strength, 0.0, 1.0))
+    cost = np.where(subject, cost, OFF_SUBJECT_COST / CONNECT_FLOOR)
+    out = StrokeGraph(list(graph.nodes), list(graph.edges))
+    for e in jumps:
+        ends = []
+        for z in (e.poly[0], e.poly[-1]):
+            d, k = tree.query([cy - z.imag, z.real + cx])
+            ends.append(int(k) if d <= 1.0 else -1)
+        if min(ends) < 0 or ends[0] == ends[1]:
+            continue
+        a, b = (tuple(np.clip(np.round(nodes[k]).astype(int), 0, [h - 1, w - 1])) for k in ends)
+        path, _ = route_through_array(cost, a, b, fully_connected=True, geometric=True)
+        pts = np.asarray(path, dtype=np.float64)
+        if len(pts) < 2:
+            continue
+        pts[0], pts[-1] = nodes[ends[0]], nodes[ends[1]]
+        out.edges.append(Edge(ends[0], ends[1], pts, CONNECT))
+    return smooth_edges(out, CONNECT_SMOOTH_PX, layers=(CONNECT,))
+
+
 CONNECT_SMOOTH_PX = 2.0
 """A connector's pixel path is smoothed this much (arc length) so it reads
 as a pen stroke, not a grid walk."""
@@ -379,10 +437,18 @@ def frame_band(shape: tuple[int, int], width: float) -> NDArray[np.bool_]:
     return band
 
 
-def marked_runs(graph: StrokeGraph, lab: NDArray[np.float64], width: float, min_length: float) -> StrokeGraph:
+def marked_runs(
+    graph: StrokeGraph,
+    lab: NDArray[np.float64],
+    width: float,
+    min_length: float,
+    nose: NDArray[np.bool_] | None = None,
+) -> StrokeGraph:
     """The runs of each stroke along which the image marks a line
     (``contrast_profile`` at least ``CONTRAST_DELTA_E``, read over a line
-    width of arc), at least ``min_length`` long; the rest is cut away."""
+    width of arc), at least ``min_length`` long; the rest is cut away.  On
+    the ``nose``'s outline the bridge is drawn whole on its shadowed side
+    (``bridge_side``)."""
     out = StrokeGraph(list(graph.nodes), [])
     for e in graph.edges:
         q = uniform(e.pts, 1.0)
@@ -390,6 +456,8 @@ def marked_runs(graph: StrokeGraph, lab: NDArray[np.float64], width: float, min_
             continue
         prof = ndi.gaussian_filter1d(contrast_profile(q, lab, width), max(1.0, width))
         on = prof >= CONTRAST_DELTA_E
+        if nose is not None and nose.any():
+            on |= bridge_side(q, prof, nose)
         if not on.any():
             continue
         edges = np.flatnonzero(np.diff(np.concatenate([[0], on.astype(np.int8), [0]])))
@@ -404,6 +472,50 @@ def marked_runs(graph: StrokeGraph, lab: NDArray[np.float64], width: float, min_
             seg[0], seg[-1] = out.nodes[u], out.nodes[v]
             out.edges.append(Edge(u, v, seg, e.layer))
     return compact(out) if out.edges else StrokeGraph()
+
+
+def polyline_graph(lines: tuple[NDArray[np.float64], ...], sigma: float) -> StrokeGraph:
+    """Pixel paths as ``PARTS`` strokes, smoothed by ``sigma`` (ends kept)."""
+    g = StrokeGraph()
+    for p in lines:
+        if len(p) < 2:
+            continue
+        u, v = g.add_node(p[0]), g.add_node(p[-1])
+        g.edges.append(Edge(u, v, p.copy(), PARTS))
+    return smooth_edges(g, sigma, layers=(PARTS,))
+
+
+def bridge_side(q: NDArray[np.float64], prof: NDArray[np.float64], nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
+    """The points of a stroke ``q`` (along the nose's outline) on the side of
+    the bridge an artist draws.
+
+    The nose is skin, and its front is unmarked; its form is told by one side
+    of the bridge, from between the eyes down to the wing: the shadowed side,
+    which the image marks more (the larger mean ``prof``).  A side point lies
+    on the nose's rim and runs along the nose's long axis (its tangent nearer
+    the axis than across it: the top and the base run across); of the two
+    sides' points, those of the more marked side are returned."""
+    h, w = nose.shape
+    r = np.clip(np.round(q[:, 0]).astype(int), 0, h - 1)
+    c = np.clip(np.round(q[:, 1]).astype(int), 0, w - 1)
+    rim = ndi.binary_dilation(nose, iterations=2)[r, c] & ~ndi.binary_erosion(nose, iterations=2)[r, c]
+    none = np.zeros(len(q), bool)
+    if rim.mean() < 0.5:
+        return none
+    comp, _ = ndi.label(nose)
+    k = np.bincount(comp[r, c][rim]).argmax() if (comp[r, c][rim] > 0).any() else 0
+    pix = np.argwhere(comp == k) if k else np.argwhere(nose)
+    centre = pix.mean(axis=0)
+    evals, evecs = np.linalg.eigh(np.cov((pix - centre).T))
+    axis = evecs[:, -1]
+    across = np.array([-axis[1], axis[0]])
+    t = np.gradient(q, axis=0)
+    t /= np.maximum(np.hypot(t[:, 0], t[:, 1]), 1e-9)[:, None]
+    along = rim & (np.abs(t @ axis) >= 0.5)
+    s = (q - centre) @ across
+    sides = [along & (s < 0), along & (s > 0)]
+    marks = [float(prof[m].mean()) if m.any() else -np.inf for m in sides]
+    return sides[int(np.argmax(marks))]
 
 
 LONE_LINE_WIDTHS = 1.5
@@ -443,9 +555,14 @@ def lone_lines(
 
 
 def form_lines(
-    ink: NDArray[np.bool_], form: NDArray[np.bool_], nose: NDArray[np.bool_], width: float
+    ink: NDArray[np.bool_],
+    form: NDArray[np.bool_],
+    nose: NDArray[np.bool_],
+    width: float,
+    missed: NDArray[np.bool_] | None = None,
 ) -> NDArray[np.bool_]:
-    """On the face's skin, the learned drawing speaks for the nose only.
+    """On the face's skin, the learned drawing speaks for the nose, and for
+    the features the parser missed.
 
     The parser draws every material part of a face (brows, lids, irises,
     lips, teeth) but not the nose, which is skin: its wings, its base and the
@@ -453,16 +570,22 @@ def form_lines(
     the skin the line model draws shading (an eye bag, a lid fold beside the
     parser's lid, a dimple) that doubles the parser's features.  So on the
     skin a piece of ink is kept only when it reaches the nose (grown by a line
-    width); off the skin (hair, clothes, a faceless subject) all of it is."""
-    if not form.any() or not nose.any():
-        return ink & ~form if form.any() else ink
-    on_form = ink & form
-    pieces, n = ndi.label(on_form, structure=np.ones((3, 3)))
-    if n == 0:
+    width), or inside ``missed`` (``parts.missed_features``: an eye or a mouth
+    the detector places and the parser did not label, drawn by the line
+    model alone); off the skin (hair, clothes, a faceless subject) all of it
+    is."""
+    if not form.any():
         return ink
-    near_nose = ndi.binary_dilation(nose, iterations=max(1, int(round(width))))
-    reach = np.unique(pieces[near_nose & on_form])
-    keep = np.isin(pieces, reach[reach > 0])
+    on_form = ink & form
+    keep = np.zeros_like(ink)
+    if nose.any():
+        pieces, n = ndi.label(on_form, structure=np.ones((3, 3)))
+        if n:
+            near_nose = ndi.binary_dilation(nose, iterations=max(1, int(round(width))))
+            reach = np.unique(pieces[near_nose & on_form])
+            keep = np.isin(pieces, reach[reach > 0])
+    if missed is not None:
+        keep |= on_form & missed
     return (ink & ~form) | keep
 
 

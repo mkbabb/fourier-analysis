@@ -301,7 +301,9 @@ def daraksha():
 
 def test_daraksha_has_her_named_face_parts(daraksha):
     """The primary sample: one confirmed face with skin, both brows, both
-    eyes, the nose, both lips and the hair, and an iris in each eye."""
+    eyes, the nose, the lower lip and the hair, and an iris in each eye (her
+    upper lip, a sliver in her smile, is drawn as one line: see
+    ``test_daraksha_brows_are_strokes_and_the_thin_upper_lip_one_line``)."""
     from scipy import ndimage as ndi
 
     from fourier_analysis.contours.parts import EYES, FACE_CLASSES, HAIR, IRIS, NOSE, SKIN
@@ -311,7 +313,7 @@ def test_daraksha_has_her_named_face_parts(daraksha):
     assert len(parts.faces) == 1
     present = set(np.unique(parts.labels).tolist())
     name = {n: i for i, n in enumerate(FACE_CLASSES)}
-    wanted = {SKIN, NOSE, HAIR, IRIS, name["l_brow"], name["r_brow"], name["u_lip"], name["l_lip"], *EYES}
+    wanted = {SKIN, NOSE, HAIR, IRIS, name["l_brow"], name["r_brow"], name["l_lip"], *EYES}
     assert wanted <= present, {FACE_CLASSES[i] if i < len(FACE_CLASSES) else i for i in wanted - present}
     irises, n_irises = ndi.label(parts.labels == IRIS)
     assert n_irises == 2
@@ -350,8 +352,8 @@ def test_daraksha_drawing_has_the_centre_part(daraksha):
 def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
     """The drawing is one connected figure (its pieces joined by routed
     connectors on the subject, so the tour needs no jump); the open mouth is
-    split into teeth; the nose is drawn by part of its outline (its shadowed
-    side and base), not as a closed balloon over the bridge."""
+    split into teeth; the nose is drawn by part of its outline (its bridge
+    down the shadowed side, and its base), not as a closed balloon."""
     from fourier_analysis.contours.parts import NOSE, TEETH
 
     parts, drawing = daraksha
@@ -373,9 +375,16 @@ def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
         r = np.clip(np.rint(e.pts[:, 0]).astype(int), 0, nose.shape[0] - 1)
         c = np.clip(np.rint(e.pts[:, 1]).astype(int), 0, nose.shape[1] - 1)
         on_rim[r, c] = True
-    rows = np.nonzero(nose)[0]
-    top = rim & (np.arange(nose.shape[0])[:, None] < rows.min() + 0.25 * np.ptp(rows))
-    assert (ndi.binary_dilation(on_rim, iterations=2) & top).sum() < 0.2 * top.sum()  # no balloon over the bridge
+    # The bridge is drawn down one side of the nose only: of its rim's upper
+    # half, one side (left or right of the nose's centre) is drawn along most
+    # of its length and the other hardly at all (no balloon over the bridge).
+    rows, cols = np.nonzero(nose)
+    upper = rim & (np.arange(nose.shape[0])[:, None] < rows.min() + 0.5 * np.ptp(rows))
+    left = upper & (np.arange(nose.shape[1])[None, :] < cols.mean())
+    right = upper & ~left
+    drawn = ndi.binary_dilation(on_rim, iterations=2)
+    shares = sorted([(drawn & left).sum() / left.sum(), (drawn & right).sum() / right.sum()])
+    assert shares[1] > 0.4 and shares[0] < 0.2, shares
 
 
 def test_teeth_are_the_bright_band_of_an_open_mouth():
@@ -529,3 +538,130 @@ def test_portrait_parts_come_from_the_face_parser():
     assert len(parts.faces) == 1
     present = set(np.unique(parts.labels).tolist())
     assert NOSE in present and present & set(EYES)
+
+
+def test_daraksha_brows_are_strokes_and_the_thin_upper_lip_one_line(daraksha):
+    """Each brow is drawn by one open stroke along it (its spine), not by its
+    outline; the upper lip, a sliver in her smile, is one line (its parts on
+    either side meet along its middle), while the full lower lip stays."""
+    from scipy import ndimage as ndi
+
+    from fourier_analysis.contours.parts import BROWS, FACE_CLASSES
+
+    parts, drawing = daraksha
+    name = {n: i for i, n in enumerate(FACE_CLASSES)}
+    present = set(np.unique(parts.labels).tolist())
+    assert name["u_lip"] not in present and name["l_lip"] in present
+    assert parts.spined == BROWS
+    for k in BROWS:
+        brow = parts.labels == k
+        on = [
+            e for e in drawing.graph.edges
+            if e.layer == PARTS and brow[
+                np.clip(np.rint(e.pts[:, 0]).astype(int), 0, brow.shape[0] - 1),
+                np.clip(np.rint(e.pts[:, 1]).astype(int), 0, brow.shape[1] - 1),
+            ].mean() > 0.8
+        ]
+        # One open stroke (split only where other strokes join it), along
+        # the brow's length; its outline is not drawn.
+        assert on and all(e.u != e.v for e in on)
+        cols = np.nonzero(brow)[1]
+        assert np.ptp(np.vstack([e.pts for e in on])[:, 1]) > 0.7 * np.ptp(cols)
+        rim = brow & ~ndi.binary_erosion(brow, iterations=2)
+        inked = np.zeros(brow.shape, bool)
+        for e in drawing.graph.edges:
+            inked[
+                np.clip(np.rint(e.pts[:, 0]).astype(int), 0, brow.shape[0] - 1),
+                np.clip(np.rint(e.pts[:, 1]).astype(int), 0, brow.shape[1] - 1),
+            ] = True
+        assert (rim & ndi.binary_dilation(inked)).sum() < 0.3 * rim.sum()
+
+
+def test_spine_graph_draws_a_band_by_its_middle():
+    """A curved band: one open stroke along its middle, end to end."""
+    from fourier_analysis.contours.strokes import spine_graph
+
+    yy, xx = np.mgrid[:120, :200]
+    r = np.hypot(yy - 200.0, xx - 100.0)
+    band = (np.abs(r - 150.0) < 6) & (np.abs(xx - 100) < 70)
+    labels = band.astype(np.int32) * 2
+    g = spine_graph(labels, (2,))
+    assert len(g.edges) == 1
+    p = g.edges[0].pts
+    rp = np.hypot(p[:, 0] - 200.0, p[:, 1] - 100.0)
+    assert np.abs(rp - 150.0).max() < 6.0  # inside the band
+    assert np.abs(rp - 150.0)[len(p) // 4 : -len(p) // 4].max() < 1.5  # on its middle
+    assert p[:, 1].min() < 35 and p[:, 1].max() > 165
+
+
+def test_a_thin_part_between_two_parts_becomes_their_boundary():
+    """A sliver of upper lip between the skin and the mouth goes to them both,
+    so they meet along its middle; a thin closed mouth on the skin (lips on
+    the skin all round) keeps its lips."""
+    from fourier_analysis.contours.parts import LIPS, MOUTH, SKIN, thin_to_line
+
+    labels = np.full((80, 120), SKIN, np.int32)
+    labels[40:46, 20:100] = LIPS[0]  # 6 px of upper lip ...
+    labels[46:70, 20:100] = MOUTH  # ... over an open mouth
+    out = thin_to_line(labels, LIPS, 10.0)
+    assert not (out == LIPS[0]).any()
+    assert (out[40:43, 30:90] == SKIN).all() and (out[43:46, 30:90] == MOUTH).all()
+
+    closed = np.full((80, 120), SKIN, np.int32)
+    closed[40:44, 20:100] = LIPS[0]
+    closed[44:48, 20:100] = LIPS[1]
+    assert np.array_equal(thin_to_line(closed, LIPS, 10.0), closed)
+
+
+def test_the_bridge_is_drawn_down_its_shadowed_side():
+    """A nose's outline, its right side in shadow: the bridge points returned
+    are the right side's, running down the nose, not its top or base."""
+    from fourier_analysis.contours.drawing import bridge_side
+
+    yy, xx = np.mgrid[:200, :200]
+    nose = ((yy - 100) / 60.0) ** 2 + ((xx - 100) / 25.0) ** 2 <= 1.0
+    t = np.linspace(0, 2 * np.pi, 400, endpoint=False)
+    q = np.column_stack([100 + 60 * np.sin(t), 100 + 25 * np.cos(t)])
+    prof = np.where(q[:, 1] > 100, 30.0, 5.0)  # the right side marked more
+    side = bridge_side(q, prof, nose)
+    assert side.any() and (q[side, 1] > 100).all()
+    assert np.ptp(q[side, 0]) > 60  # it runs down the nose
+
+
+def test_a_mouth_the_parser_missed_is_drawn_along_its_dark_valley():
+    """A face whose parse has no mouth: the mouth line runs from one landmark
+    corner to the other along the darkest valley between the lips."""
+    from fourier_analysis.contours.parts import SKIN, Face, missed_features
+
+    h, w = 200, 200
+    labels = np.full((h, w), SKIN, np.int32)
+    lab = np.full((h, w, 3), 0.7)
+    yy, xx = np.mgrid[:h, :w]
+    valley = 140 + 6 * np.sin((xx - 70) / 60 * np.pi)  # a curved dark line
+    lab[..., 0] = np.where(np.abs(yy - valley) < 1.5, 0.2, 0.7)
+    face = Face(0.95, (40.0, 40.0, 120.0, 140.0), ((70.0, 80.0), (130.0, 80.0), (100.0, 110.0), (70.0, 140.0), (130.0, 140.0)))
+    eyes, mouths = missed_features(labels, [face], lab)
+    assert eyes.any()  # neither eye was parsed either
+    assert len(mouths) == 1
+    m = mouths[0]
+    inner = (m[:, 1] > 75) & (m[:, 1] < 125)
+    assert np.abs(m[inner, 0] - valley[m[inner, 0].astype(int), m[inner, 1].astype(int)]).max() < 2.0
+
+
+def test_a_jump_the_tour_would_make_is_drawn_as_a_routed_stroke():
+    """A long open U whose two ends lie close: the tour would jump the gap
+    rather than retrace the whole U.  ``route_jumps`` joins the two ends with
+    a ``CONNECT`` stroke along the image, so the tour walks it with no jump."""
+    from fourier_analysis.contours.drawing import route_jumps
+
+    h, w = 200, 200
+    t = np.linspace(0.0, np.pi * 1.9, 600)
+    pts = np.column_stack([100 + 80 * np.sin(t), 100 + 80 * np.cos(t)])
+    g = StrokeGraph()
+    a, b = g.add_node(pts[0]), g.add_node(pts[-1])
+    g.edges.append(Edge(a, b, pts, LINES))
+    assert build_contour_tour(g.polylines((h, w))).gap_lengths != ()
+    out = route_jumps(g, np.zeros((h, w)), np.ones((h, w), bool))
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    assert len(conn) == 1 and {conn[0].u, conn[0].v} == {a, b}
+    assert build_contour_tour(out.polylines((h, w))).gap_lengths == ()
