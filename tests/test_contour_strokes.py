@@ -16,6 +16,7 @@ from fourier_analysis.contours.strokes import (
     Edge,
     StrokeGraph,
     boundary_graph,
+    merge_twins,
     prune_to_budget,
     smooth_edges,
 )
@@ -208,6 +209,34 @@ def test_a_line_that_doubles_earlier_ink_gives_way():
     kept = drop_doubles(lines, earlier, reach=6.0)
     assert len(kept.edges) == 1
     assert abs(kept.edges[0].pts[0, 1] - 150.0) < 1e-9
+
+
+def _arc(bow: float, n: int = 101) -> np.ndarray:
+    """A stroke from (0, 0) to (100, 0), bowed sideways by ``bow`` at its middle."""
+    t = np.linspace(0.0, 1.0, n)
+    return np.column_stack([100.0 * t, bow * np.sin(np.pi * t)])
+
+
+def test_a_doubled_strand_merges_to_one_line():
+    """Two strokes joining the same two nodes within a line width or so of
+    each other are one line drawn twice: one goes.  Two strokes as far apart
+    as an eye's lids are two lines and both stay."""
+    ends = [np.array([0.0, 0.0]), np.array([100.0, 0.0])]
+    twin = StrokeGraph([e.copy() for e in ends], [Edge(0, 1, _arc(0.0), LINES), Edge(0, 1, _arc(2.5), LINES)])
+    assert len(merge_twins(twin, width=2.0).edges) == 1
+    lids = StrokeGraph([e.copy() for e in ends], [Edge(0, 1, _arc(-15.0), LINES), Edge(0, 1, _arc(15.0), LINES)])
+    assert len(merge_twins(lids, width=2.0).edges) == 2
+
+
+def test_a_compact_closed_stroke_is_a_shape_and_a_sliver_is_not():
+    from fourier_analysis.contours.drawing import is_shape
+
+    t = np.linspace(0.0, 2.0 * np.pi, 121)
+    ring = np.column_stack([10.0 * np.cos(t), 10.0 * np.sin(t)])
+    sliver = np.column_stack([60.0 * np.cos(t), 2.0 * np.sin(t)])
+    assert is_shape(Edge(0, 0, ring, LINES))
+    assert not is_shape(Edge(0, 0, sliver, LINES))
+    assert not is_shape(Edge(0, 1, ring[:60], LINES))  # an open stroke is never a shape
 
 
 def test_a_stroke_is_not_counted_as_its_own_neighbour():

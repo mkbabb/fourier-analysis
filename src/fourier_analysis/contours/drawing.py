@@ -40,6 +40,7 @@ from fourier_analysis.contours.lines import persistent_lines, soft_alpha
 from fourier_analysis.contours.models import ContourConfig
 from fourier_analysis.contours.parts import Face, part_labels
 from fourier_analysis.contours.strokes import (
+    FILL_COMPACTNESS,
     LINES,
     Edge,
     StrokeGraph,
@@ -129,6 +130,7 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     # Keyed by the stroke's point array, which the entry keeps alive so its
     # id is never reused by a later stroke.
     cache: dict[int, tuple[NDArray[np.float64], float]] = {}
+    shapes = shape_strokes(graph)
 
     def salience(e: Edge) -> float:
         if e.layer != LINES:
@@ -139,12 +141,48 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
             others = max(0.0, float(density[r, c].mean()) - self_density(e.pts, sigma))
             marked = min(1.0, line_contrast(e.pts, lab, width) / CONTRAST_DELTA_E)
             weight = straightness(e.pts, WIGGLE_WIDTHS * width) ** 2 / (1.0 + others * (1.0 - marked))
-            hit = cache[id(e.pts)] = (e.pts, e.length * weight)
+            value = e.length * weight
+            if shapes.get(id(e.pts)) is e.pts or is_shape(e):
+                value = max(value, floor)
+            hit = cache[id(e.pts)] = (e.pts, value)
         return hit[1]
 
-    graph = prune_to_budget(graph, INK_BUDGET_DIAGONALS * diag, salience, floor=MIN_PART_FRACTION * diag)
+    floor = MIN_PART_FRACTION * diag
+    graph = prune_to_budget(graph, INK_BUDGET_DIAGONALS * diag, salience, floor=floor)
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
     return Drawing(graph, mask, parts.source, parts.faces)
+
+
+def shape_strokes(graph: StrokeGraph) -> dict[int, NDArray[np.float64]]:
+    """The point arrays (keyed by ``id``, held so the id is not reused) of the line strokes that close a shape in
+    pairs: two strokes joining the same two nodes (an eye's upper and lower
+    lid, meeting at its corners) whose loop is as compact as a drawn object
+    (``is_shape``).  A self-loop is judged on its own by ``is_shape``."""
+    pairs: dict[tuple[int, int], list[Edge]] = {}
+    for e in graph.edges:
+        if e.layer == LINES and e.u != e.v:
+            pairs.setdefault((min(e.u, e.v), max(e.u, e.v)), []).append(e)
+    out: dict[int, NDArray[np.float64]] = {}
+    for es in pairs.values():
+        for i, a in enumerate(es):
+            for b in es[i + 1 :]:
+                tail = b.pts[::-1] if b.u == a.u else b.pts
+                loop = Edge(a.u, a.u, np.vstack([a.pts, tail[1:]]), LINES)
+                if is_shape(loop):
+                    out[id(a.pts)], out[id(b.pts)] = a.pts, b.pts
+    return out
+
+
+def is_shape(e: Edge) -> bool:
+    """A closed stroke as compact as a drawn object (``4 pi A / P^2`` at least
+    ``strokes.FILL_COMPACTNESS``: an eye, a pupil, a nostril, a button) is an
+    outline, not texture: texture leaves open twigs and lace.  However short,
+    it is worth the pruning floor; only the ink budget can take it."""
+    if e.u != e.v or len(e.pts) < 4:
+        return False
+    p = e.pts
+    area = 0.5 * abs(float(np.dot(p[:-1, 0], p[1:, 1]) - np.dot(p[1:, 0], p[:-1, 1])))
+    return 4.0 * np.pi * area / max(e.length, 1e-9) ** 2 >= FILL_COMPACTNESS
 
 
 def line_region(mask: NDArray[np.bool_], face_core: NDArray[np.bool_], width: float) -> NDArray[np.bool_]:
@@ -177,8 +215,9 @@ def drop_line_flecks(graph: StrokeGraph, min_length: float) -> StrokeGraph:
     """Drop a component made only of learned lines that is shorter than
     ``min_length``, or shorter than its distance to the rest of the drawing
     (the pen would jump further to it than it draws there).  An isolated
-    feature that draws more than its gap (a pupil in a face, an eye on a
-    flank) is kept: it is worth its two connectors."""
+    feature that draws more than its gap (a pupil in an eye, an eye on a
+    flank) is kept, however short when it is a closed shape (``is_shape``):
+    it is worth its two connectors."""
     while True:
         parts = graph.components()
         if len(parts) <= 1:
@@ -192,7 +231,8 @@ def drop_line_flecks(graph: StrokeGraph, min_length: float) -> StrokeGraph:
             if not only_lines[i]:
                 continue
             gap = min(float(trees[j].query(pts[i])[0].min()) for j in range(len(parts)) if j != i)
-            if (lengths[i] < min_length or lengths[i] < gap) and lengths[i] < worst_len:
+            short = lengths[i] < min_length and not all(is_shape(graph.edges[k]) for k in p)
+            if (short or lengths[i] < gap) and lengths[i] < worst_len:
                 worst, worst_len = i, lengths[i]
         if worst < 0:
             return graph

@@ -705,16 +705,52 @@ def vectorise(ink: NDArray[np.bool_], width: float, *, bridge: float) -> StrokeG
     docstring).
 
     A drawing model inks a narrow groove or band (a lattice seam, a stitched
-    edge) as its two edges, a line width or two apart; drawn as they are, they
-    read as a doubled strand.  Closing the ink by one line width merges such a
-    pair into one band, whose skeleton is the single line between them."""
+    edge) as its two edges, about a line width apart; drawn as they are, they
+    read as a doubled strand.  Closing the ink by half a line width merges
+    such a pair into one band, whose skeleton is the single line between them,
+    while lines further apart (an eye's lid and its pupil, two teeth) stay
+    separate.  Where the pair is merged only in places, the skeleton is left
+    with small bubbles, which ``merge_twins`` collapses."""
     from skimage.morphology import disk, skeletonize
 
     b = binarise(ink, width)
-    b = ndi.binary_closing(b, structure=disk(max(1, int(round(width)))), border_value=0) | b
+    b = ndi.binary_closing(b, structure=disk(max(1, int(round(width / 2)))), border_value=0) | b
     g = dissolve_degree_two(trace_graph(np.asarray(skeletonize(b), dtype=bool)))
+    g = merge_twins(g, width)
     g = prune_spurs(g, 2.5 * width)
     return bridge_gaps(g, bridge)
+
+
+def merge_twins(graph: StrokeGraph, width: float) -> StrokeGraph:
+    """Collapse the bubbles of a doubled strand, to a fixed point: of two
+    strokes joining the same two nodes and never more than ``1.5 width`` apart
+    (one line drawn twice), the longer goes; a loop on one node enclosing less
+    than a line's own width (``pi width^2``) goes."""
+    while True:
+        pairs: dict[tuple[int, int], list[int]] = {}
+        drop: set[int] = set()
+        for k, e in enumerate(graph.edges):
+            if e.u == e.v:
+                if len(e.pts) > 2 and abs(_shoelace(e.pts)) < np.pi * width**2:
+                    drop.add(k)
+                continue
+            pairs.setdefault((min(e.u, e.v), max(e.u, e.v)), []).append(k)
+        for ks in pairs.values():
+            if len(ks) < 2:
+                continue
+            ks = sorted(ks, key=lambda k: graph.edges[k].length)
+            short = graph.edges[ks[0]].pts
+            tree = cKDTree(uniform(short, 0.5))
+            for k in ks[1:]:
+                if tree.query(uniform(graph.edges[k].pts, 1.0))[0].max() <= 1.5 * width:
+                    drop.add(k)
+        if not drop:
+            return graph
+        graph = dissolve_degree_two(compact(StrokeGraph(graph.nodes, [e for k, e in enumerate(graph.edges) if k not in drop])))
+
+
+def _shoelace(p: NDArray[np.float64]) -> float:
+    return 0.5 * float(np.dot(p[:-1, 0], p[1:, 1]) - np.dot(p[1:, 0], p[:-1, 1]))
 
 
 # ---------------------------------------------------------------------------
