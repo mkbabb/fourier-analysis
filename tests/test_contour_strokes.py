@@ -613,19 +613,72 @@ def test_a_thin_part_between_two_parts_becomes_their_boundary():
     assert np.array_equal(thin_to_line(closed, LIPS, 10.0), closed)
 
 
-def test_the_bridge_is_drawn_down_its_shadowed_side():
-    """A nose's outline, its right side in shadow: the bridge points returned
-    are the right side's, running down the nose, not its top or base."""
-    from fourier_analysis.contours.drawing import bridge_side
+def _pear_nose() -> tuple[np.ndarray, np.ndarray]:
+    """A nose mask narrow at the top (the bridge) and flaring at the bottom
+    (the wings), and its outline as (row, col) points."""
+    from skimage.measure import find_contours
 
     yy, xx = np.mgrid[:200, :200]
-    nose = ((yy - 100) / 60.0) ** 2 + ((xx - 100) / 25.0) ** 2 <= 1.0
-    t = np.linspace(0, 2 * np.pi, 400, endpoint=False)
-    q = np.column_stack([100 + 60 * np.sin(t), 100 + 25 * np.cos(t)])
+    # Half-width 10 at the top (row 40), 35 at the base (row 160).
+    nose = (np.abs(xx - 100) <= 10 + 25 * (yy - 40) / 120) & (np.abs(yy - 100) <= 60)
+    q = max(find_contours(nose.astype(float), 0.5), key=len)
+    return nose, q
+
+
+def test_the_bridge_is_drawn_down_its_shadowed_side():
+    """A nose's outline, its right side in shadow: above the wings the points
+    returned are the right side's, running down the nose, not its top."""
+    from fourier_analysis.contours.drawing import WING_FRACTION, bridge_side
+
+    nose, q = _pear_nose()
     prof = np.where(q[:, 1] > 100, 30.0, 5.0)  # the right side marked more
     side = bridge_side(q, prof, nose)
-    assert side.any() and (q[side, 1] > 100).all()
-    assert np.ptp(q[side, 0]) > 60  # it runs down the nose
+    upper = side & (q[:, 0] < 160 - WING_FRACTION * 120 - 2)
+    assert upper.any() and (q[upper, 1] > 100).all()
+    assert np.ptp(q[upper, 0]) > 40  # it runs down the nose
+    assert not side[(q[:, 0] < 42) & (q[:, 1] < 100)].any()  # not across the top
+
+
+def test_the_wings_and_base_of_a_nose_are_drawn_whole():
+    """The wide end of the nose (its wings and base) is drawn on both sides
+    however the light falls; which end is the wide one is read from the
+    nose's own shape, so a nose upside down is drawn alike."""
+    from fourier_analysis.contours.drawing import bridge_side
+
+    nose, q = _pear_nose()
+    prof = np.where(q[:, 1] > 100, 30.0, 5.0)
+    side = bridge_side(q, prof, nose)
+    base = q[:, 0] > 150
+    assert side[base].all()
+    assert side[base & (q[:, 1] < 85)].any() and side[base & (q[:, 1] > 115)].any()
+    flipped = bridge_side(np.column_stack([199 - q[:, 0], q[:, 1]]), prof, nose[::-1])
+    assert flipped[base].all()  # row 199 - r: the wide end is now at the top
+
+
+def test_a_separate_piece_is_joined_at_its_end_not_its_middle():
+    """A brow-like stroke above a figure whose nearest point lies under the
+    stroke's middle: the connector leaves the stroke at an end (the stroke
+    carries on into it), never as a spur from its middle."""
+    from fourier_analysis.contours.drawing import ENTRY_FRACTION, route_connectors
+
+    h, w = 120, 200
+    g = StrokeGraph()
+    # The figure: a long V whose apex sits 6 px under the brow's middle.
+    v = np.vstack([np.column_stack([np.linspace(100, 36, 91), np.linspace(10, 100, 91)]),
+                   np.column_stack([np.linspace(36, 100, 91), np.linspace(100, 190, 91)])[1:]])
+    a, b = g.add_node(v[0]), g.add_node(v[-1])
+    g.edges.append(Edge(a, b, v, PARTS))
+    brow = np.column_stack([np.full(81, 30.0), np.arange(60.0, 141.0)])
+    a, b = g.add_node(brow[0]), g.add_node(brow[-1])
+    g.edges.append(Edge(a, b, brow, PARTS))
+    out = route_connectors(g, np.zeros((h, w)), np.ones((h, w), bool))
+    assert len(out.components()) == 1
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    assert len(conn) == 1
+    ends = conn[0].pts[[0, -1]]
+    on_brow = ends[np.argmin(np.abs(ends[:, 0] - 30.0))]
+    reach = max(2.0, ENTRY_FRACTION * 80) + 1.0
+    assert min(abs(on_brow[1] - 60.0), abs(on_brow[1] - 140.0)) <= reach
 
 
 def test_a_mouth_the_parser_missed_is_drawn_along_its_dark_valley():

@@ -9,8 +9,8 @@ Layers, in priority order (``strokes.SILHOUETTE`` < ``PARTS`` < ``LINES``
    (``parts``): the jaw, the brows, the lids and irises, the lips and the
    teeth.  Both come from one label map as crack chains
    (``strokes.boundary_graph``).  The nose is skin, so its outline is drawn
-   only where the image marks it (``marked_runs``: its shadowed side and its
-   base, not the front of the bridge).
+   only where the image marks it (``marked_runs``: its shadowed side, and
+   its wings and base whole, not the front of the bridge).
 3. **Learned lines** (``lines.line_maps``): the line drawing, where it
    persists across two scales, plus the fine drawing's long single lines
    the coarse one cannot resolve (``lone_lines``: a necklace, a whisker),
@@ -19,8 +19,9 @@ Layers, in priority order (``strokes.SILHOUETTE`` < ``PARTS`` < ``LINES``
    creases from it).  It is what draws a faceless subject's interior and the
    hair and clothes around a face.
 4. **Connectors** (``route_connectors``): the drawing's separate pieces
-   joined by the cheapest pen paths along the image's lines, so the tour
-   walks one figure and never jumps between pieces.
+   joined by the cheapest pen paths along the image's lines, each leaving
+   a piece at an end or a corner (``entry_points``), so the tour walks one
+   figure and never jumps between pieces.
 
 A later layer's ink within ``SUPPRESS_FRACTION`` of the diagonal (half the
 bench's boundary tolerance) of earlier ink repeats it and is dropped before
@@ -221,19 +222,28 @@ def route_connectors(
     for ci, p in enumerate(parts):
         comp_of_edge[p] = ci
 
-    # Seeds: every stroke point, tagged with its edge and point index.
+    # Seeds: every stroke point the pen may enter its piece at
+    # (``entry_points``), tagged with its edge and point index.
+    entry = entry_points(graph, parts)
     seed_edge = np.full(shape, -1, dtype=np.int64)
     seed_index = np.full(shape, -1, dtype=np.int64)
+    closed = np.zeros(shape, bool)  # a piece's stroke away from its entries
     for k, e in enumerate(graph.edges):
         r = np.clip(np.round(e.pts[:, 0]).astype(int), 0, h - 1)
         c = np.clip(np.round(e.pts[:, 1]).astype(int), 0, w - 1)
-        free = seed_edge[r, c] < 0
+        free = (seed_edge[r, c] < 0) & entry[k]
         seed_edge[r[free], c[free]] = k
         seed_index[r[free], c[free]] = np.flatnonzero(free)
+        closed[r[~entry[k]], c[~entry[k]]] = True
     seeds = np.argwhere(seed_edge >= 0)
 
     cost = 1.0 / (CONNECT_FLOOR + np.clip(strength, 0.0, 1.0))
     cost = np.where(subject, cost, OFF_SUBJECT_COST / CONNECT_FLOOR)
+    # A connector does not run along a piece to reach its entry (it would
+    # leave the piece from the middle after all), nor slip across its stroke.
+    if closed.any():
+        closed = ndi.binary_dilation(closed) & ~ndi.binary_dilation(seed_edge >= 0)
+        cost = np.where(closed, OFF_SUBJECT_COST / CONNECT_FLOOR, cost)
     mcp = MCP_Geometric(cost)
     total, tb = mcp.find_costs([tuple(s) for s in seeds])
     offsets = np.asarray(mcp.offsets)
@@ -326,6 +336,51 @@ def route_connectors(
         out.edges.append(Edge(u, v, pts, CONNECT))
     out = smooth_edges(out, CONNECT_SMOOTH_PX, layers=(CONNECT,))
     return dissolve_degree_two(out)
+
+
+ENTRY_FRACTION = 0.15
+"""A piece is entered within this fraction of its length (along its long
+axis) of an end or a corner."""
+
+
+def entry_points(graph: StrokeGraph, parts: list[list[int]]) -> list[NDArray[np.bool_]]:
+    """Per edge, the points at which a connector may join its piece.
+
+    A pen joins a separate piece (a brow, an eye, a crease) where the piece
+    can be read as carrying the line on: at a free end of a stroke (it
+    continues into the connector) and at the two extremes of the piece's
+    long axis (the ends of a brow, an eye's corners, where its lids meet and
+    a crease runs out).  A connector dropped onto the middle of a brow, or
+    onto a lid over the iris, is a spur across the face.  This holds for the
+    parsed features (a piece with a ``PARTS`` stroke); the largest piece (the
+    figure the others hang on) and the line drawing's own fragments (fur,
+    folds: texture, where the shortest join is the least ink) are joined
+    anywhere.  A feature is entered within ``ENTRY_FRACTION`` of its
+    long-axis extent of an end or an extreme."""
+    out = [np.ones(len(e.pts), bool) for e in graph.edges]
+    if len(parts) <= 1:
+        return out
+    lengths = [sum(graph.edges[k].length for k in p) for p in parts]
+    main = int(np.argmax(lengths))
+    deg = graph.degree()
+    for i, p in enumerate(parts):
+        if i == main or all(graph.edges[k].layer != PARTS for k in p):
+            continue
+        pts = np.vstack([graph.edges[k].pts for k in p])
+        centre = pts.mean(axis=0)
+        if len(pts) < 3:
+            continue
+        evals, evecs = np.linalg.eigh(np.cov((pts - centre).T))
+        axis = evecs[:, -1]
+        s = (pts - centre) @ axis
+        extent = float(s.max() - s.min())
+        reach = max(2.0, ENTRY_FRACTION * extent)
+        ends = [graph.nodes[n] for k in p for n in (graph.edges[k].u, graph.edges[k].v) if deg[n] == 1]
+        anchors = np.vstack([pts[int(np.argmin(s))], pts[int(np.argmax(s))], *ends])
+        tree = cKDTree(anchors)
+        for k in p:
+            out[k] = tree.query(graph.edges[k].pts)[0] <= reach
+    return out
 
 
 def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDArray[np.bool_]) -> StrokeGraph:
@@ -499,7 +554,7 @@ def polyline_graph(lines: tuple[NDArray[np.float64], ...], sigma: float) -> Stro
 
 def bridge_side(q: NDArray[np.float64], prof: NDArray[np.float64], nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
     """The points of a stroke ``q`` (along the nose's outline) on the side of
-    the bridge an artist draws.
+    the bridge an artist draws, and on its wings and base (``wing_end``).
 
     The nose is skin, and its front is unmarked; its form is told by one side
     of the bridge, from between the eyes down to the wing: the shadowed side,
@@ -527,7 +582,36 @@ def bridge_side(q: NDArray[np.float64], prof: NDArray[np.float64], nose: NDArray
     s = (q - centre) @ across
     sides = [along & (s < 0), along & (s > 0)]
     marks = [float(prof[m].mean()) if m.any() else -np.inf for m in sides]
-    return sides[int(np.argmax(marks))]
+    return sides[int(np.argmax(marks))] | (rim & wing_end(q, pix, centre, axis, across))
+
+
+WING_FRACTION = 0.3
+"""The wings and base of a nose: this fraction of its length at its wide end."""
+
+
+def wing_end(
+    q: NDArray[np.float64],
+    pix: NDArray[np.int_],
+    centre: NDArray[np.float64],
+    axis: NDArray[np.float64],
+    across: NDArray[np.float64],
+) -> NDArray[np.bool_]:
+    """The points of ``q`` on the nose's wide end (``WING_FRACTION`` of its
+    length): its wings and base, which an artist draws whole whatever the
+    light (the bridge is narrow, the wings flare), read from the nose's own
+    shape, so the face's orientation does not matter."""
+    a = (pix - centre) @ axis
+    b = (pix - centre) @ across
+    lo, hi = float(a.min()), float(a.max())
+    span = hi - lo
+    if span <= 1e-9:
+        return np.zeros(len(q), bool)
+    cut = WING_FRACTION * span
+    top, bottom = a <= lo + cut, a >= hi - cut
+    width_top = float(np.ptp(b[top])) if top.any() else 0.0
+    width_bottom = float(np.ptp(b[bottom])) if bottom.any() else 0.0
+    s = (q - centre) @ axis
+    return s >= hi - cut if width_bottom >= width_top else s <= lo + cut
 
 
 LONE_LINE_WIDTHS = 1.5
