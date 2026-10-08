@@ -714,8 +714,10 @@ def bridge_gaps(
     max_gap: float,
     from_layers: tuple[int, ...] = (LINES,),
     max_angle_deg: float = 40.0,
+    only: set[int] | None = None,
 ) -> StrokeGraph:
-    """Join each free end of a ``from_layers`` stroke to the ink it points at.
+    """Join each free end of a ``from_layers`` stroke (of the edges ``only``,
+    by index, when given) to the ink it points at.
 
     The target is the nearest ink point on another edge within ``max_gap``,
     inside a cone of ``max_angle_deg`` about the end's outgoing direction
@@ -736,7 +738,7 @@ def bridge_gaps(
     links: list[tuple[int, int, int, int]] = []  # (end node, target edge, target index, layer)
     done: set[frozenset[int]] = set()
     for k, e in enumerate(graph.edges):
-        if e.layer not in from_layers:
+        if e.layer not in from_layers or (only is not None and k not in only):
             continue
         for end, seq in ((e.u, e.pts), (e.v, e.pts[::-1])):
             if deg[end] != 1 or len(seq) < 2:

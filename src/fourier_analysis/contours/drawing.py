@@ -52,7 +52,7 @@ from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.isolation import subject_mask
 from fourier_analysis.contours.lines import line_maps, soft_alpha
 from fourier_analysis.contours.models import ContourConfig
-from fourier_analysis.contours.parts import Face, part_labels
+from fourier_analysis.contours.parts import HAIR, Face, part_labels
 from fourier_analysis.contours.strokes import (
     CONNECT,
     FILL_COMPACTNESS,
@@ -142,6 +142,12 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
         base = base.merged(spine_graph(parts.labels, parts.spined, lum=lab[..., 0]))
     if parts.feature_lines:
         base = base.merged(polyline_graph(parts.feature_lines, max(1.5, width)))
+    if parts.teeth_lines:
+        # The parting runs from the teeth's outline to their outline: its
+        # ends are joined to it, a pixel off at the label's crack.
+        n0 = len(base.edges)
+        base = base.merged(polyline_graph(parts.teeth_lines, max(1.5, width)))
+        base = bridge_gaps(base, BRIDGE_WIDTHS * width, from_layers=(PARTS,), only=set(range(n0, len(base.edges))))
     ink &= line_region(mask, parts.face_core, width)
     ink = form_lines(ink, parts.form, parts.nose, width, parts.missed, parts.eyes)
     earlier = rasterize(base, shape)
@@ -180,11 +186,84 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     if parts.faces:
         graph = drop_faint_twigs(graph, lab, width)
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
+    if parts.faces:
+        graph = run_seams_on(graph, parts.labels == HAIR, width)
     reach = mask & ~frame_band(shape, width) & ~glabella(parts.nose)
     path_strength = connector_strength(strength, parts.form | parts.face_core)
     graph = route_connectors(graph, path_strength, reach, barred=brow_roots(parts.labels, parts.faces))
     graph = route_jumps(graph, path_strength, reach)
     return Drawing(graph, mask, parts.source, parts.faces)
+
+
+SEAM_LOOK_WIDTHS = 4.0
+"""A seam's end direction is read over this many line widths of it."""
+
+
+def run_seams_on(graph: StrokeGraph, hair: NDArray[np.bool_], width: float) -> StrokeGraph:
+    """Carry a line that stops inside the hair on to the hair's edge.
+
+    A line inside one material divides it (a hair's parting, a braid's
+    strand), and runs from edge to edge of it: the line model loses it where
+    it fades between dark and dark (the parting under the crown's hair),
+    leaving a stub that stops in the open.  Each free end of a ``LINES``
+    stroke lying in the ``hair`` is carried on straight along its end
+    direction (``SEAM_LOOK_WIDTHS``) while the way stays in the hair, to the
+    first ink (another line, or the hair's own outline where it leaves the
+    hair), and joined there (``bridge_gaps``).  It is carried no further than
+    the stroke's own length: a line that would have to be drawn longer than
+    the image shows it is a strand, not a seam, and stays as it is."""
+    if not hair.any() or not graph.edges:
+        return graph
+    h, w = hair.shape
+    deg = graph.degree()
+    ink = rasterize(graph, hair.shape)
+    reach = max(1.5, width)
+    changed: set[int] = set()
+    edges = list(graph.edges)
+    nodes = [n.copy() for n in graph.nodes]
+    for k, e in enumerate(edges):
+        if e.layer != LINES or e.u == e.v:
+            continue
+        for at_v in (False, True):
+            end = e.v if at_v else e.u
+            if deg[end] != 1:
+                continue
+            seq = e.pts[::-1] if at_v else e.pts
+            r0, c0 = (int(round(x)) for x in seq[0])
+            if not (0 <= r0 < h and 0 <= c0 < w and hair[r0, c0]):
+                continue
+            s = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(seq, axis=0).T))])
+            look = int(min(len(seq) - 1, max(1, np.searchsorted(s, SEAM_LOOK_WIDTHS * width))))
+            d = seq[0] - seq[look]
+            norm = float(np.hypot(*d))
+            if norm < 1e-9:
+                continue
+            d /= norm
+            own = ndi.binary_dilation(rasterize(StrokeGraph(graph.nodes, [e]), hair.shape), iterations=int(np.ceil(reach)))
+            other = ink & ~own
+            far = ndi.distance_transform_edt(~other) if other.any() else None
+            x = seq[0].copy()
+            run = [x.copy()]
+            hit = False
+            for _ in range(int(np.ceil(s[-1]))):
+                x = x + d
+                r, c = int(round(x[0])), int(round(x[1]))
+                if not (0 <= r < h and 0 <= c < w):
+                    break
+                run.append(x.copy())
+                if not hair[r, c] or (far is not None and far[r, c] <= reach):
+                    hit = True
+                    break
+            if not hit or len(run) < 2:
+                continue
+            ext = np.asarray(run[1:])
+            nodes[end] = ext[-1].copy()
+            pts = np.vstack([ext[::-1], seq])
+            edges[k] = e = Edge(e.u, e.v, pts[::-1] if at_v else pts, e.layer)
+            changed.add(k)
+    if not changed:
+        return graph
+    return bridge_gaps(StrokeGraph(nodes, edges), BRIDGE_WIDTHS * width, only=changed)
 
 
 CONNECT_FLOOR = 0.1

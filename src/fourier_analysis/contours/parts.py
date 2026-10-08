@@ -146,6 +146,7 @@ class PartLabels:
     spined: tuple[int, ...] = ()  # labels drawn by their spine, not their outline
     missed: NDArray[np.bool_] | None = None  # an eye the detector sees and the parser does not
     feature_lines: tuple[NDArray[np.float64], ...] = ()  # (row, col) lines of eyes and mouths the parser missed
+    teeth_lines: tuple[NDArray[np.float64], ...] = ()  # (row, col) lines where the upper teeth meet the lower (``teeth_parting``)
 
     @property
     def subject(self) -> NDArray[np.bool_]:
@@ -408,7 +409,8 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
         marked &= ~np.eye(N_LABELS, dtype=bool)
         labels = _frame_band(labels)
         missed, lines = missed_features(labels, faces, image.lab)
-        return PartLabels(labels, drawn, marked, tuple(faces), "face-parsing", BROWS, missed, lines)
+        parting = teeth_parting(labels, image.lab)
+        return PartLabels(labels, drawn, marked, tuple(faces), "face-parsing", BROWS, missed, lines, parting)
 
     labels = np.where(subject, UNPARSED, BACKGROUND).astype(np.int32)
     drawn = np.zeros((UNPARSED + 1, UNPARSED + 1), dtype=bool)
@@ -794,6 +796,97 @@ def teeth(
         _, (ri, ci) = ndi.distance_transform_edt(gaps | (out == TEETH), return_indices=True)
         out[gaps] = out[ri[gaps], ci[gaps]]
     return out
+
+
+L_LIP = 13
+
+
+def teeth_parting(labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | None) -> tuple[NDArray[np.float64], ...]:
+    """The line where the upper teeth meet the lower, one per open mouth.
+
+    ``teeth`` draws a smile's teeth as one band (it averages the gaps
+    between teeth away), and its outline is a closed loop: a drawing also
+    parts the two rows.  The upper row is the band's brightest piece (its
+    luminance, lightly smoothed, split at Otsu's level); the lower row and
+    the shadow under the upper teeth are darker.  The parting is the bright
+    piece's edge against that dark which faces the lower lip (each edge
+    pixel's nearest part off the teeth is the lower lip, not the skin or the
+    upper lip over the gums), carried on along the band's long axis to the
+    band's own outline at both ends.  It is drawn only where the rows differ
+    clearly (``IRIS_MIN_DELTA_L``) and the edge spans ``PARTING_SPAN`` of the
+    band's length: a single row of teeth is drawn by its outline alone.
+    Returns ``(row, col)`` points."""
+    if lab_norm is None or not (labels == TEETH).any():
+        return ()
+    from skimage.filters import threshold_otsu
+
+    lum = lab_norm[..., 0] * 100.0
+    out: list[NDArray[np.float64]] = []
+    off_teeth = labels != TEETH
+    _, (ri, ci) = ndi.distance_transform_edt(~off_teeth, return_indices=True)
+    nearest = labels[ri, ci]
+    comp, n = ndi.label(~off_teeth)
+    for i in range(1, n + 1):
+        band = comp == i
+        if band.sum() < 16:
+            continue
+        sm = ndi.gaussian_filter(np.where(band, lum, 0.0), 1.0) / np.maximum(
+            ndi.gaussian_filter(band.astype(np.float64), 1.0), 1e-6
+        )
+        if np.ptp(sm[band]) < IRIS_MIN_DELTA_L:
+            continue
+        bright = band & (sm > threshold_otsu(sm[band]))
+        pieces, m = ndi.label(bright)
+        if m == 0:
+            continue
+        bright = pieces == 1 + int(np.argmax(ndi.sum(bright, pieces, np.arange(1, m + 1))))
+        dark = band & ~bright
+        if not dark.any() or float(lum[bright].mean() - lum[dark].mean()) < IRIS_MIN_DELTA_L:
+            continue
+        edge = bright & ndi.binary_dilation(dark) & (nearest == L_LIP)
+        if edge.sum() < 3:
+            continue
+        pix = np.argwhere(band).astype(np.float64)
+        centre = pix.mean(axis=0)
+        axis = np.linalg.eigh(np.cov((pix - centre).T))[1][:, -1]
+        across = np.array([-axis[1], axis[0]])
+        e = np.argwhere(edge).astype(np.float64)
+        s, t = (e - centre) @ axis, (e - centre) @ across
+        span = float(np.ptp((pix - centre) @ axis))
+        if np.ptp(s) < PARTING_SPAN * span:
+            continue
+        # One point per pixel of the long axis: the edge's median offset there.
+        bins = np.round(s).astype(int)
+        keys = np.unique(bins)
+        mid = np.array([np.median(t[bins == k]) for k in keys])
+        mid = ndi.gaussian_filter1d(mid, 2.0, mode="nearest")
+        line = centre + keys[:, None] * axis + mid[:, None] * across
+        line = np.vstack([_run_out(line[::-1], band)[::-1], line[1:-1], _run_out(line, band)])
+        out.append(line)
+    return tuple(out)
+
+
+PARTING_SPAN = 0.5
+"""The teeth's parting must run along this share of the band's length."""
+
+
+def _run_out(p: NDArray[np.float64], region: NDArray[np.bool_]) -> NDArray[np.float64]:
+    """The points from ``p[-1]`` on along its end direction to the edge of
+    ``region`` (the last point inside it)."""
+    d = p[-1] - p[max(0, len(p) - 4)]
+    n = float(np.hypot(*d))
+    out = [p[-1]]
+    if n < 1e-9:
+        return np.asarray(out)
+    d /= n
+    h, w = region.shape
+    x = p[-1].copy()
+    while True:
+        x = x + d
+        r, c = int(round(x[0])), int(round(x[1]))
+        if not (0 <= r < h and 0 <= c < w and region[r, c]):
+            return np.asarray(out)
+        out.append(x.copy())
 
 
 def _frame_band(labels: NDArray[np.int32]) -> NDArray[np.int32]:

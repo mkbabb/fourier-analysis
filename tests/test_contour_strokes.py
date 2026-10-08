@@ -980,3 +980,54 @@ def test_a_feature_hangs_on_a_neighbouring_feature_before_the_outline():
     conn = [e for e in out.edges if e.layer == CONNECT]
     eye_links = [c for c in conn if np.abs(c.pts[:, 0] - (50.0 + gap)).min() < 2]
     assert eye_links and all(c.pts[:, 1].min() > 30 for c in eye_links), [c.pts[:, 1].min() for c in eye_links]
+
+
+def test_the_upper_teeth_are_parted_from_the_lower_toward_the_lower_lip():
+    """A smile's teeth band: a bright upper row over a darker lower row, the
+    lower lip under it and skin above.  The parting runs between the rows,
+    from the band's outline to its outline; a band of one row has none."""
+    from fourier_analysis.contours.parts import L_LIP, SKIN, TEETH, teeth_parting
+
+    h, w = 80, 200
+    yy, xx = np.mgrid[:h, :w]
+    band = (np.abs(yy - 40) <= 12) & (np.abs(xx - 100) <= 70)
+    labels = np.where(band, TEETH, np.where(yy > 40, L_LIP, SKIN)).astype(np.int32)
+    lab = np.full((h, w, 3), 0.5)
+    lab[..., 0] = np.where(band & (yy < 44), 0.85, np.where(band, 0.45, 0.3))
+    lines = teeth_parting(labels, lab)
+    assert len(lines) == 1
+    line = lines[0]
+    assert np.all(np.abs(line[:, 0] - 43.5) <= 1.5), line[:, 0]
+    assert line[:, 1].min() <= 31 and line[:, 1].max() >= 169
+
+    one_row = lab.copy()
+    one_row[..., 0] = np.where(band, 0.85, 0.3)
+    assert teeth_parting(labels, one_row) == ()
+
+
+def test_a_seam_that_stops_in_the_hair_runs_on_to_the_hairs_edge():
+    """A parting the line model loses under the crown: a line from the
+    hairline up into the hair, stopping short of the hair's outline, is
+    carried on to it and joined there; a strand longer to finish than it is
+    drawn stays as it is."""
+    from fourier_analysis.contours.drawing import run_seams_on
+
+    h, w = 200, 200
+    hair = np.zeros((h, w), bool)
+    hair[20:120, 20:180] = True
+    g = StrokeGraph()
+    top = g.add_node(np.array([20.0, 20.0]))
+    right = g.add_node(np.array([20.0, 180.0]))
+    g.edges.append(Edge(top, right, np.column_stack([np.full(161, 20.0), np.linspace(20, 180, 161)]), SILHOUETTE))
+    a, b = g.add_node(np.array([119.0, 100.0])), g.add_node(np.array([60.0, 100.0]))
+    g.edges.append(Edge(a, b, np.column_stack([np.linspace(119, 60, 60), np.full(60, 100.0)]), LINES))
+    out = run_seams_on(g, hair, 2.0)
+    assert out.degree().max() >= 3  # the seam meets the outline at a junction
+    seam = [e for e in out.edges if e.layer == LINES]
+    rows = np.concatenate([e.pts[:, 0] for e in seam])
+    assert rows.min() <= 22.0
+
+    short = StrokeGraph(g.nodes, [g.edges[0], Edge(a, b, np.column_stack([np.linspace(119, 100, 20), np.full(20, 100.0)]), LINES)])
+    short.nodes[b] = np.array([100.0, 100.0])
+    kept = run_seams_on(short, hair, 2.0)
+    assert min(e.pts[:, 0].min() for e in kept.edges if e.layer == LINES) >= 99.0
