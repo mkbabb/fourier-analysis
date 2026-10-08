@@ -220,6 +220,8 @@ function handleReset() {
     font-size: var(--type-body);
     line-height: var(--type-leading-body);
     max-width: 36rem;
+    /* X-DS pass 11 · DS-F13-C3: no orphan last word at 390 (as the /w lede). */
+    text-wrap: pretty;
 }
 
 /* ── Layout (UIA-F-115) ─────────────────────── */

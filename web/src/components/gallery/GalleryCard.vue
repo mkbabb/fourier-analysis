@@ -191,7 +191,10 @@ const created = useTimeAgo(() => props.entry.created_at);
                 title="Delete"
                 @click="emit('delete', entry.slug)"
             >
-                <Trash2 :size="14" />
+                <!-- X-DS pass 11 · DS-F13-C2: the glyph on TierControl's 14 px
+                     (a `size-*` class, which glass Button's svg rule leaves alone;
+                     the `:size` prop was overridden to 16). -->
+                <Trash2 class="size-3.5" aria-hidden="true" />
             </Button>
         </div>
     </Card>
@@ -330,14 +333,17 @@ const created = useTimeAgo(() => props.entry.created_at);
    control's alone, leaving Delete a bare glyph on the photo), seated inside
    the media's corners: the media starts at `--card-pad`, so the overlays sit
    one `--space-atom` in from it on both axes (were `top-1.5` literals off the
-   card's box, hanging half over the thumbnail's edge). */
+   card's box, hanging half over the thumbnail's edge).
+   X-DS pass 11 · DS-F13-C2: the plate's gap is one `--space-atom`, the same
+   step glass ToggleGroup puts between the tier discs (8 px, 4 px at 390), so
+   Delete reads as the row's fourth member (was half an atom). */
 .overlay-plate {
     position: absolute;
     top: calc(var(--card-pad) + var(--space-atom));
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: calc(var(--space-atom) / 2);
+    gap: var(--space-atom);
     min-width: 1.5rem;
     min-height: 1.5rem;
     padding: 0.25rem;
@@ -374,6 +380,9 @@ const created = useTimeAgo(() => props.entry.created_at);
     margin-inline-start: -0.375rem;
     gap: 0.25rem;
     font-size: 0.8125rem;
+    /* X-DS pass 11 · DS-F13-C1: the row's metric, not glass Button's tight
+       1.1, so the like count sits on the same line as the view count. */
+    line-height: inherit;
     color: var(--muted-foreground);
 }
 /* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).
