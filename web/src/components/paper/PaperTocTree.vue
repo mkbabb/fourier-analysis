@@ -178,6 +178,11 @@ function choose(node: PaperSectionData) {
     @apply text-base;
     line-height: 1.35;
     border-radius: var(--radius-lg);
+    /* X-DS pass 4 · DS-F4-C3: a constant breath above and below the label,
+       so a wrapped title keeps the air a one-line row has (the air came only
+       from glass Button's block floor, which a two-line row outgrows). The
+       floor stays. */
+    padding-block: calc(var(--space-atom) / 2);
 }
 /* X-DS pass 3 · DS-F3-C4: depth is indent and tone, not shrinking type.
    Every row below the chapters sits on ONE rung (0.875rem, a step under the
@@ -191,12 +196,13 @@ function choose(node: PaperSectionData) {
 }
 /* UIA-F-156: ONE active treatment at every rank, in the chapter's hue. The
    plate is the ROW's (X-DS DS-F3-C4), so it runs the row's full width with
-   the disclosure chevron inside it. X-DS DS-F4R-C1: the plate is the LEAF's
-   alone; a chapter on the active chain keeps the hue ink only, so one row
-   reads as selected, not two. */
+   the disclosure chevron inside it. X-DS pass 4 · DS-F4-C4: hue and plate
+   only, no weight step: a bolder label re-wrapped the rail every time
+   reading crossed a chapter. X-DS DS-F4R-C1: the plate is the LEAF's alone;
+   a chapter on the active chain keeps the hue ink only, so one row reads as
+   selected, not two. */
 .toc-link[aria-current] {
     color: var(--toc-accent);
-    font-weight: 600;
 }
 .toc-row:has(> .toc-link[data-leaf]) {
     border-radius: var(--radius-lg);

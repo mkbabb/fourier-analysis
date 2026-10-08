@@ -206,6 +206,15 @@ function toggleDrawer() {
     display: none;
 }
 
+/* X-DS pass 4 · DS-F4-C3: where the page has the room, the rail is wide
+   enough that most chapter titles hold one line (9 of 14 wrapped at 17rem
+   while the paper plate left ~180 px of empty grid each side at 1440). */
+@media (min-width: 1280px) {
+    .paper-sidebar {
+        --paper-toc-width: 19.5rem;
+    }
+}
+
 @media (min-width: 1024px) {
     .paper-sidebar {
         display: flex;

@@ -59,13 +59,21 @@ const trail = new TrailManager();
  * stage's `--legend-inset-top` (registered as a <length> in style.css, so the
  * computed value is resolved px). Below `sm` the expanded canvas dock spans
  * the stage and the stage sets the inset under it; elsewhere it is 16 px.
- * Read on every (re)size, the one moment the stage's width class can change.
+ * Read on every (re)size, the one moment the stage's width class can change,
+ * and when the stage's dock expands or collapses (X-DS DS-F7-C6, `readInsets`).
  */
 let legendTop = 16;
+/* X-DS pass 4 · DS-F4-C8: the epicycle inset's bottom pad, read from the
+   stage's `--epicycle-inset-bottom` (registered like `--legend-inset-top`):
+   the bottom dock's reserved block, so the chain's tip is never under it. */
+let epicycleBottom = 12;
 function readLegendTop(): void {
     const el = containerRef.value;
-    const px = el ? parseFloat(getComputedStyle(el).getPropertyValue("--legend-inset-top")) : NaN;
+    const cs = el ? getComputedStyle(el) : null;
+    const px = cs ? parseFloat(cs.getPropertyValue("--legend-inset-top")) : NaN;
     legendTop = Number.isFinite(px) ? px : 16;
+    const pb = cs ? parseFloat(cs.getPropertyValue("--epicycle-inset-bottom")) : NaN;
+    epicycleBottom = Number.isFinite(pb) ? pb : 12;
 }
 
 const { surface, setupCanvas } = useCanvasSetup(canvasRef, (s) => {
@@ -194,7 +202,7 @@ function drawEpicycleFrame(
 
     let fit: EpicycleFit | null = null;
     if (isDesktop && nVis > 0) {
-        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter);
+        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom);
         if (result) {
             fit = result.fit;
             baseFitCenter = result.baseFitCenter;
@@ -392,7 +400,7 @@ function drawMultiBasesFrame(
 
         let fit: EpicycleFit | null = null;
         if (isDesktop && nVis > 0) {
-            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter);
+            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom);
             if (result) {
                 fit = result.fit;
                 baseFitCenter = result.baseFitCenter;
@@ -587,7 +595,15 @@ function exportFrame(options: Record<string, boolean> = {}) {
     document.body.removeChild(a);
 }
 
-defineExpose({ anim, exportFrame, drawImageOverlay });
+/** Re-read the stage's insets and repaint (the dock expanded or collapsed). */
+function readInsets(): void {
+    readLegendTop();
+    if (!surface.value) return;
+    if (store.epicycleData) drawFrame();
+    else drawPlaceholderFrame(surface.value);
+}
+
+defineExpose({ anim, exportFrame, drawImageOverlay, readInsets });
 </script>
 
 <template>

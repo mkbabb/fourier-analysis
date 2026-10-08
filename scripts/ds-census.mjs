@@ -2,7 +2,8 @@
 // scripts/ds-census.mjs — X-DS LIGHTING CENSUS (value.js docs/tranches/X/waves/X-DS.md, COHESION §0ej).
 //
 // Counts the lighting the X-DS canon forbids on chrome, in two halves, and prints JSON:
-//   static   — the app's own CSS and Vue <style> blocks (web/src/**) plus Tailwind lighting
+//   static   — the app's own CSS and Vue <style> blocks (web/src/**), the latex-paper theme
+//              it imports (web/node_modules/@mkbabb/latex-paper/src/vue/theme.css), plus Tailwind lighting
 //              utilities in Vue templates: box-shadow layers, inset (highlight) layers,
 //              text-shadow, filter drop-shadow / blur, backdrop blur, decorative gradients,
 //              @keyframes run `infinite`.
@@ -66,7 +67,12 @@ function staticCensus() {
     };
     const sites = [];
     const hit = (file, line, kind, text) => sites.push({ file: relative(ROOT, file), line, kind, text: text.trim().slice(0, 160) });
-    for (const file of walk(SRC)) {
+    // X-DS DS-F7-C1: the latex-paper theme /paper imports (PaperView.vue) is
+    // scanned with the app's own CSS; the census missed its rules before.
+    const theme = join(SRC, "..", "node_modules", "@mkbabb", "latex-paper", "src", "vue", "theme.css");
+    let themeFiles = [];
+    try { if (statSync(theme).isFile()) themeFiles = [theme]; } catch {}
+    for (const file of [...walk(SRC), ...themeFiles]) {
         const raw = readFileSync(file, "utf8");
         let css = raw, tpl = "";
         if (file.endsWith(".vue")) {

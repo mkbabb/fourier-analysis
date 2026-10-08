@@ -10,6 +10,9 @@ defineProps<{
     /** X-DS pass 2 · DS-F2-C9: a narrow plot — one wrapped row under the
      *  curves, no plate (the hue dots and labels are kept). */
     wrapped?: boolean;
+    /** X-DS pass 4 · DS-F4-C7: how many harmonics the plot has drawn so far
+     *  (the timeline's N); entries past it are named but not yet on screen. */
+    drawn?: number;
 }>();
 
 const emit = defineEmits<{
@@ -30,7 +33,7 @@ const emit = defineEmits<{
         axis="y"
         aria-label="Curve legend"
         class="legend-overlay"
-        :class="wrapped ? 'legend-overlay--wrapped' : 'glass-wash'"
+        :class="wrapped ? 'legend-overlay--wrapped' : 'legend-overlay--column'"
     >
         <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'sum' }"
             @pointerenter="emit('hover', 'sum')" @pointerleave="emit('leave')">
@@ -46,11 +49,11 @@ const emit = defineEmits<{
         <div
             v-for="(h, i) in harmonics" :key="h.k"
             class="legend-entry"
-            :class="{ 'is-hovered': hoveredCurve === `h-${i}` }"
+            :class="{ 'is-hovered': hoveredCurve === `h-${i}`, 'is-undrawn': drawn != null && i >= drawn }"
             @pointerenter="emit('hover', `h-${i}`)"
             @pointerleave="emit('leave')"
         >
-            <span class="legend-dot" :style="{ background: spectrumColor(i, harmonics.length) }" />
+            <span class="legend-dot legend-dot--harmonic" :style="{ '--legend-hue': spectrumColor(i, harmonics.length) }" />
             <span class="legend-label">n={{ h.k }}</span>
         </div>
     </FadingScroll>
@@ -73,6 +76,12 @@ const emit = defineEmits<{
 }
 .legend-entry + .legend-entry {
     margin-top: 2px;
+}
+/* X-DS pass 4 · DS-F4-C7: beside the plot the legend is plate-less too (the
+   DS-F2-C9 wrapped legend's idiom), set off from the curves by one hairline
+   rule, not a glass plate inside the plot's plate. */
+.legend-overlay--column {
+    border-inline-start: 1px solid var(--border);
 }
 .legend-overlay--wrapped {
     display: flex;
@@ -122,6 +131,18 @@ const emit = defineEmits<{
     color: var(--muted-foreground);
     font-size: var(--type-caption);
     line-height: var(--type-leading-caption);
+}
+/* DS-F4-C7: a drawn harmonic is named in full ink; one the sweep has not
+   reached yet keeps the muted ink and a hollow dot (its hue as a ring). */
+.legend-entry:not(.is-undrawn) .legend-label {
+    color: var(--foreground);
+}
+.legend-dot--harmonic {
+    background: var(--legend-hue);
+}
+.legend-entry.is-undrawn .legend-dot--harmonic {
+    background: transparent;
+    border: 1.5px solid var(--legend-hue);
 }
 .legend-label--golden {
     color: var(--viz-amber);

@@ -64,6 +64,9 @@ export function computeEpicycleFit(
     surface: CanvasSurface,
     currentScale: number,
     baseFitCenter: { cx: number; cy: number; baseFitScale: number } | null,
+    /** X-DS pass 4 · DS-F4-C8: the stage's bottom reserve (the bottom dock's
+     *  block), so the inset and its tether sit above the dock, not under it. */
+    padBottom = 12,
 ): { fit: EpicycleFit; baseFitCenter: { cx: number; cy: number; baseFitScale: number } } | null {
     const { width, height } = surface;
     const bboxW = bbox.maxX - bbox.minX;
@@ -81,7 +84,7 @@ export function computeEpicycleFit(
         const baseScaledH = bboxH * bfs;
         baseFitCenter = {
             cx: pad + baseScaledW / 2,
-            cy: height - pad - baseScaledH / 2,
+            cy: height - padBottom - baseScaledH / 2,
             baseFitScale: bfs,
         };
     }

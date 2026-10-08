@@ -127,6 +127,12 @@ const stageInTakeover = computed(() => showFullscreen.value && fsHost.value !== 
 // converts its out-of-band `defineExpose(dockExpanded)` to a typed emit); the
 // parent owns the `dockExpanded` ref and listens via `v-model:expanded`.
 const dockExpanded = ref(false);
+// X-DS pass 5 · DS-F7-C6: the stage's legend inset follows the dock's state
+// (`[data-dock-expanded]`); the canvas re-reads it once the attribute lands.
+watch(dockExpanded, async () => {
+    await nextTick();
+    canvasComponent.value?.readInsets();
+});
 const editorState = ref({ canUndo: false, canRedo: false, canDelete: false, pointCount: 0 });
 const editorRef = ref<InstanceType<typeof ContourEditorCanvas> | null>(null);
 const editorSaved = ref(false);
@@ -474,6 +480,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                          an edit, a view toggle or an Export there is this stage's. -->
                     <Teleport v-else :to="fsHost" :disabled="!stageInTakeover">
                     <div class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
+                        :data-dock-expanded="dockExpanded || undefined"
                         :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && tabbed }">
                         <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
@@ -861,12 +868,19 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 /* X.F.W14V.u4 — UIA-F-239: the legend's first row (BasisCanvas reads this).
    Below `sm` the expanded canvas dock (anchored 0.5rem in, glass's `--dock-h`
    tall) spans the stage's width, so the legend starts under it; wider, the
-   dock sits right of the legend and the legend keeps its 16 px. */
+   dock sits right of the legend and the legend keeps its 16 px.
+   X-DS pass 5 · DS-F7-C6: keyed on the dock's state, not the width alone. A
+   collapsed dock is two buttons at the top right, so the legend keeps its
+   16 px and shares the toolbar row, as it does at 1440. */
 .canvas-stage {
     --legend-inset-top: 16px;
+    /* X-DS pass 4 · DS-F4-C8: the epicycle inset sits above the bottom dock's
+       reserved block (`.controls-overlay`'s offset plus glass's `--dock-h`),
+       with the inset's own 12 px over it. */
+    --epicycle-inset-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px) + var(--dock-h) + 12px);
 }
 @media (width < 40rem) {
-    .canvas-stage {
+    .canvas-stage[data-dock-expanded] {
         --legend-inset-top: calc(0.5rem + var(--dock-h) + 1rem);
     }
 }
@@ -1005,6 +1019,15 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     padding: 2rem 1.5rem;
     border: 1px dashed var(--border);
     border-radius: var(--radius-card);
+}
+/* X-DS pass 4 · DS-F4-C9: on a phone the prompt sits on the app's one gutter,
+   not two stacked 1.5rem insets, so the balanced title takes two lines
+   ("Draw any / outline in circles"), never "outline" alone on a line. */
+@media (width < 40rem) {
+    .drop-target,
+    .drop-zone {
+        padding-inline: var(--page-gutter);
+    }
 }
 .drop-target[data-dragging] .drop-zone {
     border-color: var(--focus-ring-color);

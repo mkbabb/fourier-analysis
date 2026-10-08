@@ -86,7 +86,8 @@ watch(
          on `.paper-scroll` are gone), and its tree is the one `PaperTocTree`
          (X.F.W14V.au5), every level reachable. UIA-F-162/F-236: a compact
          bar inset from the viewport edges, reporting chapter and section. -->
-    <div class="floating-toc paper-grid lg:hidden">
+    <div class="floating-toc paper-texture lg:hidden">
+        <div class="floating-toc-grid paper-grid" aria-hidden="true" />
         <div class="floating-toc-anchor">
             <!-- Search mode: input replaces section title -->
             <div v-if="searchActive" ref="searchBarRef" class="floating-toc-bar floating-toc-bar--search glass-resting glass-opaque">
@@ -179,7 +180,10 @@ watch(
    the bar was transparent, so the paper slid through it between the dock and
    the bar (a figure rule sliced by the bar). It repaints glass's `.paper-grid`
    over the page tone, fixed to the viewport like the app's grid layer (the
-   morph stage band's recipe, DS-F-C6), so the lines run through unbroken. */
+   morph stage band's recipe, DS-F-C6), so the lines run through unbroken.
+   X-DS pass 4 · DS-F4-C2: the band carries all of the shell's layers (App.vue):
+   the page tone with the `.paper-texture` ground, and the grid as its own
+   layer above it, both fixed, so the band is the page's tone, not a slab. */
 .floating-toc {
     position: sticky;
     top: 0;
@@ -189,6 +193,14 @@ watch(
     /* X-DS pass 2 · DS-F2-C6: the bar sits on the article's own gutter, so
        their edges line up (it was inset 8 px over a 16 px article). */
     padding: 0.5rem var(--page-gutter) 0;
+}
+
+.floating-toc-grid {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-attachment: fixed;
 }
 /* X.F.W14V.au1 — A2-FO-L2-16: short landscape (844×390) spent 153 of 390 px on
    chrome, the floating band 81 of it. There the band is one title rung: the

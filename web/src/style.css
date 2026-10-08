@@ -231,6 +231,54 @@ html {
     to { --math-edge-start: 2.5rem; --math-edge-end: 0px; }
 }
 
+/* X-DS pass 5 · DS-F7-C1..C5 — THE latex-paper 0.2.1 BRIDGE. The served theme
+   writes `hsl(var(--token))` over bare `H S% L%` triples; glass ships full
+   colours, so every such value is invalid here (rules fall back to ink, the
+   sticky headers go transparent). The root is cured in latex-paper `5166529`
+   (a 0.3.0 changeset: full-colour reads, no equation hover rule, 2.5rem over
+   a sub-heading; the flat theorem block, straight rule and flat divider were
+   already on its master).
+   Publishing it is an owner act; until the repin these few rules restate the
+   root's result. DELETE THIS BLOCK AT THE 0.3.0 REPIN. `article.` lifts each
+   rule one element over the theme's, which loads after this sheet. */
+article.paper-article .math-block {
+    border-left: 0;
+}
+article.paper-article .theorem-block,
+article.paper-article .theorem-block:hover {
+    border-radius: 0 0.5rem 0.5rem 0;
+    box-shadow: none;
+    transform: none;
+    transition: none;
+}
+article.paper-article .theorem-block::before {
+    content: none;
+}
+article.paper-article :is(.theorem-block--theorem, .theorem-block--proposition, .theorem-block--corollary) {
+    --theorem-hue: var(--primary);
+}
+article.paper-article :is(.theorem-block--definition, .theorem-block--example) {
+    --theorem-hue: var(--accent-pink);
+}
+article.paper-article :is(.theorem-block--lemma, .theorem-block--aside) {
+    --theorem-hue: var(--muted-foreground);
+}
+article.paper-article .theorem-block {
+    border-left-color: var(--theorem-hue);
+}
+article.paper-article .theorem-block .theorem-label {
+    color: var(--theorem-hue);
+}
+article.paper-article :is(.section-header--chapter, .section-header--sub) {
+    background: var(--card);
+}
+article.paper-article .section-header--sub {
+    margin-top: 2.5rem;
+}
+article.paper-article .section-divider {
+    background: color-mix(in srgb, var(--_section-color, var(--section-heading)) 25%, transparent);
+}
+
 /* X-DS pass 3 · DS-F3-C7 — THE ONE hue-chooser tone. A pressed chooser item
    (glass ToggleGroupItem, keyed on the `data-state` it ships) wears its own
    hue: a 12% tint, and the hue carried a quarter toward `--foreground` for the
@@ -280,6 +328,14 @@ html {
     syntax: "<length>";
     inherits: true;
     initial-value: 16px;
+}
+
+/* X-DS pass 4 · DS-F4-C8: the epicycle inset's bottom pad (BasisCanvas reads
+   it resolved, so it is registered too). Set on `.canvas-stage`. */
+@property --epicycle-inset-bottom {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 12px;
 }
 
 /* D.W4.d — light-mode `--viz-amber` darken (axe contrast carry).

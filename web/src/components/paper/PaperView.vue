@@ -440,7 +440,7 @@ onUnmounted(() => {
                     <!-- UIA-F-61: the reading surface is glass Card (opaque: the ToC
                          drawer slides UNDER it, X.F.W14U.t), not a hand-rolled
                          cartoon card casting against the rail's shadow. -->
-                    <Card as="article" surface="opaque" shadow class="paper-article leading-relaxed">
+                    <Card as="article" surface="opaque" class="paper-article leading-relaxed">
                         <header class="mb-10 lg:mb-20 text-center">
                             <h1
                                 class="font-serif-math text-display-2 font-bold tracking-tight leading-display"

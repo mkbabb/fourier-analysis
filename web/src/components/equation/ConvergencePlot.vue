@@ -601,6 +601,7 @@ onUnmounted(() => {
             :hovered-curve="hoveredCurve"
             :variable="v"
             :wrapped="legendWrapped"
+            :drawn="activeCount"
             @hover="onLegendEnter"
             @leave="onLegendLeave"
         />

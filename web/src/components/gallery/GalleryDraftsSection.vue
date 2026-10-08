@@ -60,7 +60,7 @@ function markBroken(slug: string) {
 <template>
     <ul class="drafts-grid px-[var(--page-gutter)]" aria-label="Drafts">
         <li v-for="draft in sortedDrafts" :key="draft.imageSlug">
-            <Card as="article" size="sm" shadow class="draft-card">
+            <Card as="article" size="sm" class="draft-card">
                 <RouterLink :to="`/w/${draft.imageSlug}`" class="draft-open">
                     <span class="draft-media">
                         <img
@@ -125,8 +125,13 @@ function markBroken(slug: string) {
     padding: var(--card-pad);
 }
 @media (hover: hover) {
+    /* X-DS pass 2 · P2-01: a resting card has no cast to promote; hover is a
+       tone step, as on the gallery card. */
     .draft-card:hover {
-        --card-cast-rung: var(--glass-shadow-floating);
+        background-image: linear-gradient(
+            oklch(from var(--foreground) l c h / var(--fill-hover)),
+            oklch(from var(--foreground) l c h / var(--fill-hover))
+        );
     }
 }
 

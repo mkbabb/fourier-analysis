@@ -522,8 +522,10 @@ test.describe("g248 UIA-F-248 — a draft card's hover is visible", () => {
         const row = page.locator("article.card, .draft-item").filter({ hasText: "img-draft-one" }).first();
         await expect(row).toBeVisible();
         await page.mouse.move(2, 2);
-        // The row's elevation moves on hover (a 2 % tint was the invisible "hover").
-        const paint = () => row.evaluate((el) => getComputedStyle(el).boxShadow);
+        // The row's paint moves on hover (a 2 % tint was the invisible "hover").
+        // X-DS P2-01: a resting card has no cast to promote, so the hover is a
+        // tone step (the gallery card's), read with the cast.
+        const paint = () => row.evaluate((el) => { const cs = getComputedStyle(el); return `${cs.boxShadow} | ${cs.backgroundImage}`; });
         const rest = await paint();
         await row.hover();
         await page.waitForTimeout(500);

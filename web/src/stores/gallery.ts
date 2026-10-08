@@ -86,6 +86,8 @@ export const useGalleryStore = defineStore("gallery", () => {
     const nextCursor = ref<string | null>(null);
     const hasMore = ref(true);
     const loadingMore = ref(false);
+    /** X-DS pass 2 · P2-18: the first page failed; the view says so, not "empty". */
+    const loadError = ref(false);
 
     // ETag cache keyed by visualization slug — captured on load, replayed as
     // `If-Match` on the next PATCH/DELETE (CRUD-CONTRACT §0 SOTA-2).
@@ -148,6 +150,7 @@ export const useGalleryStore = defineStore("gallery", () => {
         nextCursor.value = null;
         hasMore.value = true;
         loading.value = true;
+        loadError.value = false;
         const run = ++listRun;
         try {
             const result = await api.listVisualizations(listQuery());
@@ -156,7 +159,9 @@ export const useGalleryStore = defineStore("gallery", () => {
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) errorToast({ title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
+            if (api.isAbortError(e)) return;
+            if (run === listRun) loadError.value = true;
+            errorToast({ title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
         } finally {
             if (run === listRun) loading.value = false;
         }
@@ -465,6 +470,7 @@ export const useGalleryStore = defineStore("gallery", () => {
         nextCursor,
         hasMore,
         loadingMore,
+        loadError,
         fetchNextPage,
         resetAndFetch,
         activateAdmin,

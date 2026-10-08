@@ -394,7 +394,12 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 v-if="!gallery.entries.length && !gallery.loading"
                 class="flex flex-col items-center justify-center flex-1 gap-4 text-muted-foreground py-6"
             >
-                <div v-if="isFiltered" class="flex flex-col items-center gap-3" role="status">
+                <!-- X-DS pass 2 · P2-18: a failed load is not an empty gallery. -->
+                <div v-if="gallery.loadError" class="flex flex-col items-center gap-3" role="alert">
+                    <p class="text-base font-medium text-foreground">The gallery could not be loaded.</p>
+                    <Button emphasis="secondary" @click="gallery.resetAndFetch()">Retry</Button>
+                </div>
+                <div v-else-if="isFiltered" class="flex flex-col items-center gap-3" role="status">
                     <Layers class="h-12 w-12 opacity-30" aria-hidden="true" />
                     <p class="text-base font-medium">
                         <template v-if="gallery.searchQuery.trim()">No visualizations match “{{ gallery.searchQuery.trim() }}”.</template>

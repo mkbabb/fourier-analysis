@@ -221,7 +221,10 @@ async function copySlug() {
             </DockTrigger>
             <PopoverContent align="end" class="login-popover">
                 <form class="flex flex-col gap-2" novalidate @submit.prevent="handleLogin">
-                    <label class="sr-only" for="user-slug-input">
+                    <!-- X-DS pass 4 · DS-F4-C6: the field's label is on screen, a
+                         caption line (the P2-07 hint idiom), not screen-reader
+                         only behind a placeholder. -->
+                    <label class="text-caption text-muted-foreground" for="user-slug-input">
                         Your slug — four lowercase words joined by hyphens
                     </label>
                     <Input
@@ -248,6 +251,8 @@ async function copySlug() {
                     <p v-if="serverMessage" id="user-slug-error" role="alert" class="login-error text-small text-destructive">
                         {{ serverMessage }}
                     </p>
+                    <!-- DS-F4-C6: each action names itself (the glyph sits inside
+                         its label); the accessible names keep the visible words. -->
                     <div class="flex items-center justify-end gap-2">
                         <Button
                             type="button"
@@ -258,6 +263,7 @@ async function copySlug() {
                             @click="handleGenerate"
                         >
                             <Dices aria-hidden="true" />
+                            New slug
                         </Button>
                         <Button
                             type="submit"
@@ -268,6 +274,7 @@ async function copySlug() {
                             :loading="loggingIn"
                         >
                             <LogIn aria-hidden="true" />
+                            Log in
                         </Button>
                     </div>
                 </form>
