@@ -139,7 +139,7 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
         marked = boundary_graph(parts.labels, parts.marked)
         base = base.merged(marked_runs(marked, lab, width, MIN_PART_FRACTION * diag, parts.nose))
     if parts.spined:
-        base = base.merged(spine_graph(parts.labels, parts.spined))
+        base = base.merged(spine_graph(parts.labels, parts.spined, lum=lab[..., 0]))
     if parts.feature_lines:
         base = base.merged(polyline_graph(parts.feature_lines, max(1.5, width)))
     ink &= line_region(mask, parts.face_core, width)
@@ -191,6 +191,16 @@ CONNECT_FLOOR = 0.1
 """A connector's cost per pixel is ``1 / (CONNECT_FLOOR + line strength)``:
 along a line the drawing model sees (faint or not) a pen step costs up to
 ``1 / CONNECT_FLOOR`` times less than across blank paper."""
+OUTLINE_LINK_FACTOR = 1.5
+"""A link between a parsed feature (an eye, a brow, the nose, the mouth) and
+the figure (the face's outline, the largest piece) is weighed at this many
+times its cost.  From the outline a connector runs in across the open cheek,
+a crease that is not there (a tail on an eye's corner, a mouth corner tied to
+the jaw, the cheek cut into panels); between two features it stays in their
+own neighbourhood and reads as the form between them (a socket from eye to
+brow, the fold from the nose to the mouth's corner).  So the features hang
+together, and the face is tied to its outline where a feature lies nearest
+it."""
 OFF_SUBJECT_COST = 10.0
 """Off the subject a connector step costs this many times the blank-paper cost."""
 
@@ -215,7 +225,8 @@ def route_connectors(
     pen stroke on the subject where there is none.  The pieces are joined by
     the minimum spanning tree of those path costs (one geodesic front from
     all pieces at once; adjacent fronts of two pieces meet on their geodesic
-    Voronoi boundary).  Each path is a ``CONNECT`` edge from ink to ink;
+    Voronoi boundary), a feature's link to the outline weighed up
+    (``OUTLINE_LINK_FACTOR``).  Each path is a ``CONNECT`` edge from ink to ink;
     the tour walks it there and back, the return exactly on top.  No piece
     is entered on a ``barred`` pixel (``brow_roots``) while it has another
     entry."""
@@ -308,8 +319,19 @@ def route_connectors(
             x = parent[x]
         return x
 
+    # A parsed feature is joined to a neighbouring feature before the
+    # figure's outline (``OUTLINE_LINK_FACTOR``).
+    lengths = [sum(graph.edges[k].length for k in p) for p in parts]
+    main = int(np.argmax(lengths))
+    feature = [any(graph.edges[k].layer == PARTS for k in p) for p in parts]
+
+    def weighed(kv: tuple[tuple[int, int], tuple[float, int, int]]) -> float:
+        (i, j), (val, _, _) = kv
+        to_outline = main in (i, j) and feature[i] and feature[j]
+        return val * (OUTLINE_LINK_FACTOR if to_outline else 1.0)
+
     chosen = []
-    for key, (val, a, b) in sorted(best.items(), key=lambda kv: kv[1][0]):
+    for key, (val, a, b) in sorted(best.items(), key=weighed):
         ra, rb = find(key[0]), find(key[1])
         if ra != rb:
             parent[ra] = rb
@@ -934,7 +956,9 @@ def drop_faint_twigs(graph: StrokeGraph, lab: NDArray[np.float64], width: float)
     (a seam running out, a necklace) is one the image marks; a faint stroke
     that hangs off the drawing and stops nowhere is a fold's shading or a
     strand's sheen, and reads as a spur.  A closed stroke, and a stroke
-    between two junctions, carries the drawing on and is kept.  On a faceless
+    between two junctions, carries the drawing on and is kept; so is a stroke
+    free at both ends, which hangs off nothing: a line of its own (a fine
+    chain on the skin, which the image marks over a pixel or two only).  On a faceless
     subject the learned lines are its only interior and part of its edge
     (grey fur on a grey cushion is as faint as a fold), so it is not applied
     there."""
@@ -945,7 +969,7 @@ def drop_faint_twigs(graph: StrokeGraph, lab: NDArray[np.float64], width: float)
             for k, e in enumerate(graph.edges)
             if e.layer == LINES
             and e.u != e.v
-            and (deg[e.u] == 1 or deg[e.v] == 1)
+            and (deg[e.u] == 1) != (deg[e.v] == 1)
             and line_contrast(e.pts, lab, width) < CONTRAST_DELTA_E
         }
         if not drop:

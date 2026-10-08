@@ -236,13 +236,27 @@ def boundary_graph(
     return compact(graph)
 
 
+SPINE_VALLEY_FLOOR = 0.25
+"""A spine's step costs this plus its darkness rank (0 darkest to 1 lightest
+over the part): the path keeps to the band's dark core while a pixel's noise
+cannot pull it off its course."""
+
+
 def spine_graph(
-    labels: NDArray[np.integer], classes: tuple[int, ...], layer: int = PARTS
+    labels: NDArray[np.integer],
+    classes: tuple[int, ...],
+    layer: int = PARTS,
+    lum: NDArray[np.float64] | None = None,
 ) -> StrokeGraph:
     """Each component of ``classes`` drawn by its spine: the longest path of
     its skeleton (the skeleton's geodesic diameter), carried on along its end
     directions to the part's own tips, and smoothed over the part's width so
-    the skeleton's pixel steps and corner twigs do not show."""
+    the skeleton's pixel steps and corner twigs do not show.
+
+    With the image's luminance ``lum``, the spine between its two tips runs
+    along the band's dark core (``_dark_core``), not the label's medial axis:
+    a brow is a band of hair, and its arch is where the hair is, while the
+    parser's label around it is a rounded blob whose medial axis is straight."""
     from scipy.sparse import coo_matrix
     from scipy.sparse.csgraph import dijkstra
     from skimage.morphology import skeletonize
@@ -272,6 +286,8 @@ def spine_graph(
                 continue
             width = float(m.sum()) / max(1.0, d1[end])
             p = np.vstack([_to_tip(p[::-1], m, width)[::-1], p[1:-1], _to_tip(p, m, width)])
+            if lum is not None:
+                p = _dark_core(p, m, lum[sl])
             q = uniform(p, 1.0)
             if len(q) >= 5:
                 sig = max(MIN_SMOOTH_PX, 0.5 * width)
@@ -282,6 +298,26 @@ def spine_graph(
             u, v = graph.add_node(q[0]), graph.add_node(q[-1])
             graph.edges.append(Edge(u, v, q, layer))
     return graph
+
+
+def _dark_core(p: NDArray[np.float64], m: NDArray[np.bool_], lum: NDArray[np.float64]) -> NDArray[np.float64]:
+    """The cheapest path inside the part ``m`` between the spine ``p``'s two
+    ends, a step costing ``SPINE_VALLEY_FLOOR`` plus the pixel's darkness
+    rank over the part; ``p`` itself when an end is off the part."""
+    from skimage.graph import route_through_array
+
+    a, b = (tuple(int(v) for v in np.round(x)) for x in (p[0], p[-1]))
+    h, w = m.shape
+    if not all(0 <= r < h and 0 <= c < w and m[r, c] for r, c in (a, b)) or a == b:
+        return p
+    vals = lum[m]
+    rank = np.zeros(m.shape)
+    rank[m] = np.argsort(np.argsort(vals)) / max(1, len(vals) - 1)
+    cost = np.where(m, SPINE_VALLEY_FLOOR + rank, np.inf)
+    path, _ = route_through_array(cost, a, b, fully_connected=True, geometric=True)
+    q = np.asarray(path, dtype=np.float64)
+    q[0], q[-1] = p[0], p[-1]
+    return q
 
 
 def _to_tip(p: NDArray[np.float64], m: NDArray[np.bool_], width: float) -> NDArray[np.float64]:

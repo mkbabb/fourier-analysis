@@ -909,3 +909,74 @@ def test_a_brow_is_entered_at_its_tail_not_its_root():
     entry = entry_points(g, g.components(), roots)
     ok = brow[entry[1]]
     assert ok.size and ok[:, 1].max() < 60  # only at the tail (column 30)
+
+
+def test_a_faint_lone_line_is_kept_where_a_faint_twig_is_dropped():
+    """A faint learned line with both ends free is a line of its own (a fine
+    necklace on the skin), not a spur hanging off the drawing: it is kept,
+    while the same faint line hanging off the figure is dropped."""
+    from fourier_analysis.contours.drawing import drop_faint_twigs
+
+    h, w = 120, 160
+    lab = np.zeros((h, w, 3))
+    lab[..., 0] = 50.0
+    g = StrokeGraph()
+    t = np.linspace(0, 2 * np.pi, 120)
+    loop = np.column_stack([60 + 20 * np.sin(t), 40 + 20 * np.cos(t)])
+    loop[-1] = loop[0]
+    a = g.add_node(loop[0])
+    g.edges.append(Edge(a, a, loop, SILHOUETTE))
+    b = g.add_node(np.array([100.0, 60.0]))
+    twig = np.column_stack([np.linspace(loop[0, 0], 100.0, 40), np.linspace(loop[0, 1], 60.0, 40)])
+    g.edges.append(Edge(a, b, twig, LINES))
+    c, d = g.add_node(np.array([10.0, 120.0])), g.add_node(np.array([110.0, 120.0]))
+    g.edges.append(Edge(c, d, np.column_stack([np.linspace(10.0, 110.0, 101), np.full(101, 120.0)]), LINES))
+    out = drop_faint_twigs(g, lab, 2.0)
+    lines = [e for e in out.edges if e.layer == LINES]
+    assert len(lines) == 1 and abs(lines[0].pts[:, 1] - 120).max() < 1
+
+
+def test_a_brow_spine_follows_its_dark_core_not_the_label_axis():
+    """A brow label is a straight blob; the hair in it arches.  With the
+    luminance given, the spine runs along the arch, from tip to tip."""
+    from fourier_analysis.contours.strokes import spine_graph
+
+    h, w = 80, 200
+    yy, xx = np.mgrid[:h, :w]
+    blob = ((yy - 40) / 14.0) ** 2 + ((xx - 100) / 80.0) ** 2 <= 1.0
+    labels = blob.astype(np.int32) * 2
+    arch = 46.0 - 10.0 * (1.0 - ((xx - 100) / 80.0) ** 2)  # row of the hair: 36 mid, 46 at the tips
+    lum = np.where(np.abs(yy - arch) <= 1.5, 20.0, 70.0)
+    straight = spine_graph(labels, (2,)).edges[0].pts
+    arched = spine_graph(labels, (2,), lum=lum).edges[0].pts
+    mid = np.abs(arched[:, 1] - 100) < 10
+    assert np.abs(arched[mid, 0] - 36.0).max() < 2.0
+    assert np.abs(straight[np.abs(straight[:, 1] - 100) < 10, 0] - 40.0).max() < 2.0
+    assert arched[:, 1].min() < 35 and arched[:, 1].max() > 165
+
+
+def test_a_feature_hangs_on_a_neighbouring_feature_before_the_outline():
+    """An eye a little nearer the face's outline than its brow is joined to
+    the brow (a socket line), not to the outline (a tail across the cheek),
+    while the cost of that link is within ``OUTLINE_LINK_FACTOR``."""
+    from fourier_analysis.contours.drawing import OUTLINE_LINK_FACTOR, route_connectors
+
+    h, w = 160, 200
+    g = StrokeGraph()
+    # The outline: a long vertical stroke at column 20.
+    a, b = g.add_node(np.array([5.0, 20.0])), g.add_node(np.array([155.0, 20.0]))
+    g.edges.append(Edge(a, b, np.column_stack([np.arange(5.0, 156.0), np.full(151, 20.0)]), PARTS))
+    # The brow, its tail 30 px from the outline, at row 50.
+    c, d = g.add_node(np.array([50.0, 50.0])), g.add_node(np.array([50.0, 110.0]))
+    g.edges.append(Edge(c, d, np.column_stack([np.full(61, 50.0), np.arange(50.0, 111.0)]), PARTS))
+    # The eye: from column 60 to 110 at row 50 + gap.  Its outer corner lies
+    # 40 px from the outline and about 45 px from the brow's tail.
+    gap = 44.0
+    e, f = g.add_node(np.array([50.0 + gap, 60.0])), g.add_node(np.array([50.0 + gap, 110.0]))
+    g.edges.append(Edge(e, f, np.column_stack([np.full(51, 50.0 + gap), np.arange(60.0, 111.0)]), PARTS))
+    assert gap < 40.0 * OUTLINE_LINK_FACTOR
+    out = route_connectors(g, np.zeros((h, w)), np.ones((h, w), bool))
+    assert len(out.components()) == 1
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    eye_links = [c for c in conn if np.abs(c.pts[:, 0] - (50.0 + gap)).min() < 2]
+    assert eye_links and all(c.pts[:, 1].min() > 30 for c in eye_links), [c.pts[:, 1].min() for c in eye_links]
