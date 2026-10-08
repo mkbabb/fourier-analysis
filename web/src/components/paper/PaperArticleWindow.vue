@@ -211,7 +211,7 @@ const renderCalloutText = computed(
                             <Button
                                 as-child
                                 emphasis="primary"
-                                size="lg"
+                                size="md"
                                 class="callout-btn"
                             >
                                 <router-link :to="callout.link">

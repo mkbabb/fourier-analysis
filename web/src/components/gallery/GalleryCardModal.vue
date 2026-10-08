@@ -192,7 +192,7 @@ function focusTitle(e: Event) {
                 <!-- UIA-F-96: opens the saved visualization (`/v/<slug>`), its
                      own settings, not the image's working draft. GCM-35: the
                      script F is ornament. -->
-                <Button emphasis="primary" size="lg" class="gap-1.5" @click="emit('open-visualizer', entry.slug)">
+                <Button emphasis="primary" size="md" class="gap-1.5" @click="emit('open-visualizer', entry.slug)">
                     <span class="font-serif-math" aria-hidden="true">&Fscr;</span>
                     <span>Open Visualizer</span>
                     <ArrowRight class="h-4 w-4" aria-hidden="true" />

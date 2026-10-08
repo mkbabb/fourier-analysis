@@ -141,21 +141,10 @@ defineExpose({ focus });
     --search-field-end: calc(var(--control-h-xs) + 0.5rem);
 }
 
-/* `PV ★MF-5` / `SP-14`: 0.78rem is ~12.5px, and iOS Safari zooms any input
-   under 16px on focus. The substrate's `.ios` guard never fires here —
-   fourier sets no `.ios` class anywhere — so the floor is declared at the
-   control, where no class bookkeeping can lose it. Desktop keeps the small
-   register through the `lg` arm below. (`:deep`: the field is SearchField's
-   element; this host keeps the register.) */
-.paper-search-input-wrap :deep(.search-field-input) {
-    font-size: max(1rem, 0.78rem);
-}
-
-@media (min-width: 1024px) and (pointer: fine) {
-    .paper-search-input-wrap :deep(.search-field-input) {
-        font-size: 0.78rem;
-    }
-}
+/* X-DS pass 7 · DS-F9-C4 — the field takes glass Input's own step, as
+   /gallery's SearchField does. The local 0.78rem fine-pointer arm (and the
+   16px iOS floor that only existed to undo it) are deleted: the step already
+   sits at the floor, and box and type move together on glass's size rung. */
 
 .paper-search-action-btn {
     display: flex;

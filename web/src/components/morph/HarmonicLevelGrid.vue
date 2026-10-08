@@ -43,7 +43,7 @@
             <Button
                 v-for="level in levels"
                 :key="level"
-                emphasis="secondary"
+                emphasis="quiet"
                 class="grid-cell"
                 :class="{
                     active: level === activeLevel,
@@ -286,6 +286,10 @@ function getPath(level: number): string {
    recipe. At 8.0.0 the paint is `outline: var(--focus-ring-width) solid …;
    outline-offset: 2px` — a DIFFERENT property, so a `box-shadow` state cannot
    replace it and the ring survives both states. */
+/* X-DS pass 7 · DS-F9-C1 — the tile is `emphasis="quiet"`: its own 1.5px
+   border and `--card` fill define it, so it takes no capsule cast or bevel
+   (the strip's block-axis clip cut seven casts into one hard band). Hover is
+   the border tone step alone; the scale(1.04) lift carried no state. */
 @layer glass-overrides {
     .grid-cell {
         flex-direction: column;
@@ -312,7 +316,6 @@ function getPath(level: number): string {
     @media (hover: hover) {
         .grid-cell:hover {
             border-color: color-mix(in srgb, var(--accent-red) 50%, transparent);
-            transform: scale(1.04);
         }
     }
 
