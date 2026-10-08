@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from fourier_analysis.contours.strokes import (
+    CONNECT,
     LINES,
     PARTS,
     SILHOUETTE,
@@ -322,7 +323,8 @@ def test_daraksha_has_her_named_face_parts(daraksha):
 def test_daraksha_drawing_has_the_centre_part(daraksha):
     """The learned line layer draws the hair's centre part: a line in the
     hair, above the face, within the middle third of the face box, running
-    more down than across.  The face itself is drawn by the parser alone."""
+    more down than across.  The face's material parts (brows, lids, lips) are
+    drawn by the parser alone."""
     from fourier_analysis.contours.parts import HAIR
 
     parts, drawing = daraksha
@@ -335,13 +337,131 @@ def test_daraksha_drawing_has_the_centre_part(daraksha):
     for pts in lines:
         r = np.clip(np.rint(pts[:, 0]).astype(int), 0, hair.shape[0] - 1)
         c = np.clip(np.rint(pts[:, 1]).astype(int), 0, hair.shape[1] - 1)
-        assert parts.face_core[r, c].mean() < 0.2  # no learned line on the face
+        assert parts.face_core[r, c].mean() < 0.2  # no learned line on a face part
         rows, cols = np.ptp(pts[:, 0]), np.ptp(pts[:, 1])
         in_middle = abs(pts[:, 1].mean() - (x + w / 2)) < w / 6
         if hair[r, c].mean() > 0.7 and pts[:, 0].mean() < y + h / 4 and in_middle and rows > cols and rows > 0.05 * h:
             found = True
     assert found
-    assert {e.layer for e in drawing.graph.edges} == {SILHOUETTE, PARTS, LINES}
+    assert {e.layer for e in drawing.graph.edges} <= {SILHOUETTE, PARTS, LINES, CONNECT}
+    assert {SILHOUETTE, PARTS, LINES} <= {e.layer for e in drawing.graph.edges}
+
+
+def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
+    """The drawing is one connected figure (its pieces joined by routed
+    connectors on the subject, so the tour needs no jump); the open mouth is
+    split into teeth; the nose is drawn by part of its outline (its shadowed
+    side and base), not as a closed balloon over the bridge."""
+    from fourier_analysis.contours.parts import NOSE, TEETH
+
+    parts, drawing = daraksha
+    assert len(drawing.graph.components()) == 1
+    assert (parts.labels == TEETH).any()
+    for e in drawing.graph.edges:
+        if e.layer == CONNECT:
+            r = np.clip(np.rint(e.pts[:, 0]).astype(int), 0, parts.labels.shape[0] - 1)
+            c = np.clip(np.rint(e.pts[:, 1]).astype(int), 0, parts.labels.shape[1] - 1)
+            assert parts.subject[r, c].mean() > 0.9
+    tour = build_contour_tour(drawing.strokes)
+    assert tour.gap_lengths == ()
+    nose = parts.labels == NOSE
+    from scipy import ndimage as ndi
+
+    rim = ndi.binary_dilation(nose, iterations=2) & ~ndi.binary_erosion(nose, iterations=2)
+    on_rim = np.zeros(nose.shape, bool)
+    for e in drawing.graph.edges:
+        r = np.clip(np.rint(e.pts[:, 0]).astype(int), 0, nose.shape[0] - 1)
+        c = np.clip(np.rint(e.pts[:, 1]).astype(int), 0, nose.shape[1] - 1)
+        on_rim[r, c] = True
+    rows = np.nonzero(nose)[0]
+    top = rim & (np.arange(nose.shape[0])[:, None] < rows.min() + 0.25 * np.ptp(rows))
+    assert (ndi.binary_dilation(on_rim, iterations=2) & top).sum() < 0.2 * top.sum()  # no balloon over the bridge
+
+
+def test_teeth_are_the_bright_band_of_an_open_mouth():
+    """A synthetic open mouth: a bright band of teeth (with dark gaps between
+    the teeth) over a dark interior.  The teeth come out as one band, inside
+    the mouth; a uniformly dark mouth has none."""
+    from fourier_analysis.contours.parts import MOUTH, SKIN, TEETH, teeth
+
+    h, w = 80, 200
+    yy, xx = np.mgrid[:h, :w]
+    mouth = ((xx - 100) / 80.0) ** 2 + ((yy - 40) / 25.0) ** 2 <= 1.0
+    labels = np.where(mouth, MOUTH, SKIN).astype(np.int32)
+    lab = np.full((h, w, 3), 0.5)
+    band = mouth & (yy < 40)
+    lab[..., 0] = np.where(band, 0.9, 0.15)
+    lab[..., 0][band & (xx % 16 == 0)] = 0.2  # the gaps between teeth
+    out = teeth(labels, lab, min_area=36.0)
+    t = out == TEETH
+    assert t.any() and not (t & ~mouth).any()
+    from scipy import ndimage as ndi
+
+    assert ndi.label(t)[1] == 1  # one band, not tooth by tooth
+    assert (t & band).sum() >= 0.8 * t.sum() and t.sum() >= 0.7 * band.sum()
+
+    dark = lab.copy()
+    dark[..., 0] = np.where(mouth, 0.15, 0.6)
+    assert not (teeth(labels, dark, min_area=36.0) == TEETH).any()
+
+
+def test_marked_runs_keep_only_where_the_image_draws_a_line():
+    """A stroke half along a strong colour step and half across flat colour:
+    only the half the image marks is kept, with its end on the old node."""
+    from fourier_analysis.contours.drawing import CONTRAST_DELTA_E, marked_runs
+
+    h, w = 60, 200
+    lab = np.zeros((h, w, 3))
+    lab[..., 0] = 50.0
+    lab[:30, :100, 0] = 50.0 + 2 * CONTRAST_DELTA_E  # an edge along row 30, left half only
+    g = StrokeGraph()
+    a, b = g.add_node(np.array([30.0, 10.0])), g.add_node(np.array([30.0, 190.0]))
+    g.edges.append(Edge(a, b, np.column_stack([np.full(181, 30.0), np.arange(10.0, 191.0)]), PARTS))
+    out = marked_runs(g, lab, 2.0, 20.0)
+    assert len(out.edges) == 1
+    pts = out.edges[0].pts
+    assert pts[:, 1].min() <= 11 and 85 <= pts[:, 1].max() <= 110
+
+
+def test_form_lines_on_the_skin_must_reach_the_nose():
+    """On the face's skin, learned ink is kept only where it reaches the nose
+    (a nostril wing, a crease from it); an eye bag elsewhere goes; ink off
+    the skin is untouched."""
+    from fourier_analysis.contours.drawing import form_lines
+
+    h, w = 100, 100
+    form = np.zeros((h, w), bool)
+    form[10:90, 10:90] = True
+    nose = np.zeros((h, w), bool)
+    nose[40:60, 45:55] = True
+    ink = np.zeros((h, w), bool)
+    ink[60, 30:52] = True  # a crease reaching the nose
+    ink[25, 20:40] = True  # an eye bag
+    ink[95, 10:90] = True  # off the face
+    out = form_lines(ink, form, nose, 2.0)
+    assert out[60, 30:52].all() and not out[25, 20:40].any() and out[95, 10:90].all()
+
+
+def test_connectors_follow_the_lines_of_the_image():
+    """Two separate strokes, and a faint image line that runs from one to the
+    other by a detour: the routed connector follows the line, not the straight
+    gap, and the drawing becomes one figure."""
+    from fourier_analysis.contours.drawing import route_connectors
+
+    h, w = 120, 120
+    g = StrokeGraph()
+    for r in (20.0, 100.0):
+        a, b = g.add_node(np.array([r, 20.0])), g.add_node(np.array([r, 60.0]))
+        g.edges.append(Edge(a, b, np.column_stack([np.full(41, r), np.arange(20.0, 61.0)]), LINES))
+    strength = np.zeros((h, w))
+    strength[20:101, 90] = 0.45  # a faint line on the right ...
+    strength[20, 60:91] = 0.45
+    strength[100, 60:91] = 0.45  # ... joined to both strokes' right ends
+    out = route_connectors(g, strength, np.ones((h, w), bool))
+    assert len(out.components()) == 1
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    assert len(conn) == 1
+    assert np.abs(conn[0].pts[:, 1] - 90).min() < 3 and conn[0].pts[:, 1].max() > 85
 
 
 @pytest.mark.parametrize("rel", ["animals/golden-retriever.webp", "animals/sponge-happy.JPG"])

@@ -1,16 +1,26 @@
 """The drawing: every line source composed into one stroke graph.
 
-Layers, in priority order (``strokes.SILHOUETTE`` < ``PARTS`` < ``LINES``):
+Layers, in priority order (``strokes.SILHOUETTE`` < ``PARTS`` < ``LINES``
+< ``CONNECT``):
 
 1. **The silhouette**: the subject mask's edge (``isolation.subject_mask``),
    cut to the person where a face is confirmed (``contours.person``).
-2. **Part boundaries**: where the face parser's parts meet (``parts``): the
-   jaw, the brows, the lids and irises, the nose, the lips.  Both come from
-   one label map as crack chains (``strokes.boundary_graph``).
-3. **Learned lines** (``lines.persistent_lines``): the line drawing, where
-   it persists across two scales, under the subject and off the face core
-   (the parser draws the face in full).  It is what draws a faceless
-   subject's interior and the hair and clothes around a face.
+2. **Part boundaries**: where the face parser's material parts meet
+   (``parts``): the jaw, the brows, the lids and irises, the lips and the
+   teeth.  Both come from one label map as crack chains
+   (``strokes.boundary_graph``).  The nose is skin, so its outline is drawn
+   only where the image marks it (``marked_runs``: its shadowed side and its
+   base, not the front of the bridge).
+3. **Learned lines** (``lines.line_maps``): the line drawing, where it
+   persists across two scales, plus the fine drawing's long single lines
+   the coarse one cannot resolve (``lone_lines``: a necklace, a whisker),
+   under the subject and off the face's material parts.  On the skin it
+   speaks for the nose only (``form_lines``: its wings, nostrils and the
+   creases from it).  It is what draws a faceless subject's interior and the
+   hair and clothes around a face.
+4. **Connectors** (``route_connectors``): the drawing's separate pieces
+   joined by the cheapest pen paths along the image's lines, so the tour
+   walks one figure and never jumps between pieces.
 
 A later layer's ink within ``SUPPRESS_FRACTION`` of the diagonal (half the
 bench's boundary tolerance) of earlier ink repeats it and is dropped before
@@ -36,10 +46,11 @@ from scipy.spatial import cKDTree
 
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.isolation import subject_mask
-from fourier_analysis.contours.lines import persistent_lines, soft_alpha
+from fourier_analysis.contours.lines import line_maps, soft_alpha
 from fourier_analysis.contours.models import ContourConfig
 from fourier_analysis.contours.parts import Face, part_labels
 from fourier_analysis.contours.strokes import (
+    CONNECT,
     FILL_COMPACTNESS,
     LINES,
     Edge,
@@ -53,6 +64,7 @@ from fourier_analysis.contours.strokes import (
     prune_to_budget,
     rasterize,
     smooth_edges,
+    split_edges,
     uniform,
     vectorise,
 )
@@ -81,6 +93,7 @@ CONTRAST_DELTA_E = 20.0
 paper, a seam, an eye against fleece) stands out of any mesh around it; the
 crease of a fur or hatching texture marks far less."""
 FRAME_PX = 3
+FRAME_WIDTHS = 2.0
 
 
 @dataclass(frozen=True)
@@ -108,13 +121,19 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
         return None
     parts = part_labels(image, mask)
     mask = parts.subject
-    base = boundary_graph(parts.labels, parts.drawn)
     diag = float(np.hypot(*shape))
+    lab = cielab(image)
 
-    strength = persistent_lines(image, soft_alpha(saliency, mask))
+    fine, strength = line_maps(image, soft_alpha(saliency, mask))
     ink = strength >= INK_LEVEL
     width = line_width(ink)
+    ink |= lone_lines(fine >= INK_LEVEL, ink, width, MIN_PART_FRACTION * diag)
+    base = boundary_graph(parts.labels, parts.drawn)
+    if parts.marked.any():
+        marked = boundary_graph(parts.labels, parts.marked)
+        base = base.merged(marked_runs(marked, lab, width, MIN_PART_FRACTION * diag))
     ink &= line_region(mask, parts.face_core, width)
+    ink = form_lines(ink, parts.form, parts.nose, width)
     earlier = rasterize(base, shape)
     if earlier.any():
         ink &= ndi.distance_transform_edt(~earlier) > SUPPRESS_FRACTION * diag
@@ -125,7 +144,6 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     graph = smooth_edges(graph, max(1.5, width))
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
     sigma = DENSITY_FRACTION * diag
-    lab = cielab(image)
     density = stroke_density(graph, shape, sigma)
     # Keyed by the stroke's point array, which the entry keeps alive so its
     # id is never reused by a later stroke.
@@ -150,7 +168,158 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     floor = MIN_PART_FRACTION * diag
     graph = prune_to_budget(graph, INK_BUDGET_DIAGONALS * diag, salience, floor=floor)
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
+    graph = route_connectors(graph, strength, mask & ~frame_band(shape, width))
     return Drawing(graph, mask, parts.source, parts.faces)
+
+
+CONNECT_FLOOR = 0.1
+"""A connector's cost per pixel is ``1 / (CONNECT_FLOOR + line strength)``:
+along a line the drawing model sees (faint or not) a pen step costs up to
+``1 / CONNECT_FLOOR`` times less than across blank paper."""
+OFF_SUBJECT_COST = 10.0
+"""Off the subject a connector step costs this many times the blank-paper cost."""
+
+
+def route_connectors(
+    graph: StrokeGraph, strength: NDArray[np.float64], subject: NDArray[np.bool_]
+) -> StrokeGraph:
+    """Join the drawing's separate pieces along the lines of the image.
+
+    The tour must reach every piece (an eye, a brow, the nose), and a straight
+    connector between two pieces is a line the image does not have: a crease
+    across a cheek.  Here each pair of pieces is joined by the cheapest pen
+    path over the image, a step costing ``1 / (CONNECT_FLOOR + s)`` where
+    ``s`` is the line drawing's strength (the faint lines below the ink
+    level included), and ``OFF_SUBJECT_COST`` times blank paper off the
+    subject (``subject`` is where a connector may run: the subject off the
+    frame band).  So a connector follows a line the image has (a lid fold, a
+    cheek crease, a garment seam) where there is one, and is the shortest
+    pen stroke on the subject where there is none.  The pieces are joined by
+    the minimum spanning tree of those path costs (one geodesic front from
+    all pieces at once; adjacent fronts of two pieces meet on their geodesic
+    Voronoi boundary).  Each path is a ``CONNECT`` edge from ink to ink;
+    the tour walks it there and back, the return exactly on top."""
+    from skimage.graph import MCP_Geometric
+
+    parts = graph.components()
+    if len(parts) <= 1:
+        return graph
+    shape = subject.shape
+    h, w = shape
+    comp_of_edge = np.empty(len(graph.edges), dtype=np.int64)
+    for ci, p in enumerate(parts):
+        comp_of_edge[p] = ci
+
+    # Seeds: every stroke point, tagged with its edge and point index.
+    seed_edge = np.full(shape, -1, dtype=np.int64)
+    seed_index = np.full(shape, -1, dtype=np.int64)
+    for k, e in enumerate(graph.edges):
+        r = np.clip(np.round(e.pts[:, 0]).astype(int), 0, h - 1)
+        c = np.clip(np.round(e.pts[:, 1]).astype(int), 0, w - 1)
+        free = seed_edge[r, c] < 0
+        seed_edge[r[free], c[free]] = k
+        seed_index[r[free], c[free]] = np.flatnonzero(free)
+    seeds = np.argwhere(seed_edge >= 0)
+
+    cost = 1.0 / (CONNECT_FLOOR + np.clip(strength, 0.0, 1.0))
+    cost = np.where(subject, cost, OFF_SUBJECT_COST / CONNECT_FLOOR)
+    mcp = MCP_Geometric(cost)
+    total, tb = mcp.find_costs([tuple(s) for s in seeds])
+    offsets = np.asarray(mcp.offsets)
+
+    # Each pixel's predecessor (flat index), and by pointer doubling its seed.
+    flat = np.arange(h * w)
+    tbf = tb.ravel()
+    rr, cc = np.divmod(flat, w)
+    step = offsets[np.clip(tbf, 0, len(offsets) - 1)]
+    pred = (rr - step[:, 0]) * w + (cc - step[:, 1])
+    pred = np.where(tbf < 0, flat, pred)
+    root = pred.copy()
+    for _ in range(64):
+        nxt = root[root]
+        if np.array_equal(nxt, root):
+            break
+        root = nxt
+    owner_edge = seed_edge.ravel()[root]
+    reached = owner_edge >= 0
+    owner = np.where(reached, comp_of_edge[np.clip(owner_edge, 0, None)], -1).reshape(shape)
+    tot = total.ravel()
+
+    # Where two pieces' fronts touch: the cheapest crossing per pair.
+    best: dict[tuple[int, int], tuple[float, int, int]] = {}
+    o = owner.ravel()
+    grid = flat.reshape(shape)
+    cands = []
+    for dr, dc in ((0, 1), (1, 0), (1, 1), (1, -1)):
+        a = grid[: h - dr, max(0, -dc) : w - max(0, dc)].ravel()
+        b = a + dr * w + dc
+        m = (o[a] != o[b]) & (o[a] >= 0) & (o[b] >= 0)
+        a, b = a[m], b[m]
+        link = np.hypot(dr, dc) * 0.5 * (cost.ravel()[a] + cost.ravel()[b])
+        cands.append((tot[a] + tot[b] + link, a, b))
+    val = np.concatenate([c[0] for c in cands])
+    a_all = np.concatenate([c[1] for c in cands])
+    b_all = np.concatenate([c[2] for c in cands])
+    lo = np.minimum(o[a_all], o[b_all])
+    hi = np.maximum(o[a_all], o[b_all])
+    order = np.lexsort((val, hi, lo))
+    key = lo[order] * len(parts) + hi[order]
+    first = order[np.concatenate([[True], key[1:] != key[:-1]])] if key.size else order
+    for i in first:
+        best[(int(lo[i]), int(hi[i]))] = (float(val[i]), int(a_all[i]), int(b_all[i]))
+    if not best:
+        return graph
+
+    # Minimum spanning tree over the pieces (Kruskal).
+    parent = list(range(len(parts)))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    chosen = []
+    for key, (val, a, b) in sorted(best.items(), key=lambda kv: kv[1][0]):
+        ra, rb = find(key[0]), find(key[1])
+        if ra != rb:
+            parent[ra] = rb
+            chosen.append((a, b))
+
+    def trace(x: int) -> list[int]:
+        path = [x]
+        while pred[x] != x:
+            x = int(pred[x])
+            path.append(x)
+        return path
+
+    links = []
+    for a, b in chosen:
+        pa, pb = trace(a), trace(b)
+        path = pa[::-1] + pb  # seed of a ... a, b ... seed of b
+        ends = []
+        for f in (path[0], path[-1]):
+            ends.append((int(seed_edge.ravel()[f]), int(seed_index.ravel()[f])))
+        pts = np.column_stack(np.divmod(np.asarray(path), w)).astype(np.float64)
+        links.append((ends[0], ends[1], pts))
+
+    cuts: dict[int, set[int]] = {}
+    for (ka, ia), (kb, ib), _ in links:
+        cuts.setdefault(ka, set()).add(ia)
+        cuts.setdefault(kb, set()).add(ib)
+    out, node_at = split_edges(graph, cuts)
+    for (ka, ia), (kb, ib), pts in links:
+        u, v = node_at[(ka, ia)], node_at[(kb, ib)]
+        pts = pts.copy()
+        pts[0], pts[-1] = out.nodes[u], out.nodes[v]
+        out.edges.append(Edge(u, v, pts, CONNECT))
+    out = smooth_edges(out, CONNECT_SMOOTH_PX, layers=(CONNECT,))
+    return dissolve_degree_two(out)
+
+
+CONNECT_SMOOTH_PX = 2.0
+"""A connector's pixel path is smoothed this much (arc length) so it reads
+as a pen stroke, not a grid walk."""
 
 
 def shape_strokes(graph: StrokeGraph) -> dict[int, NDArray[np.float64]]:
@@ -188,13 +357,113 @@ def is_shape(e: Edge) -> bool:
 def line_region(mask: NDArray[np.bool_], face_core: NDArray[np.bool_], width: float) -> NDArray[np.bool_]:
     """Where learned lines may be drawn: on the subject (grown by
     ``SUBJECT_MARGIN_WIDTHS``: the outline sits on the mask's edge), off the
-    face core the parser draws, off the frame."""
+    face core the parser draws, off the frame (``FRAME_WIDTHS`` line widths
+    of it)."""
     region = ndi.distance_transform_edt(~mask) <= SUBJECT_MARGIN_WIDTHS * width
     if face_core.any():
         region &= ~ndi.binary_dilation(face_core, iterations=max(1, int(round(width))))
-    region[:FRAME_PX] = region[-FRAME_PX:] = False
-    region[:, :FRAME_PX] = region[:, -FRAME_PX:] = False
-    return region
+    # The model draws the frame itself where the image meets its paper
+    # padding (dark hair against white): a line one line width wide, lying
+    # along the frame.  Two line widths in from it nothing is drawn.
+    return region & ~frame_band(mask.shape, width)
+
+
+def frame_band(shape: tuple[int, int], width: float) -> NDArray[np.bool_]:
+    """The ``FRAME_WIDTHS`` line widths along the image frame (at least
+    ``FRAME_PX``), where the line model's ink is the frame's, not the
+    subject's."""
+    f = max(FRAME_PX, int(np.ceil(FRAME_WIDTHS * width)))
+    band = np.zeros(shape, dtype=bool)
+    band[:f] = band[-f:] = True
+    band[:, :f] = band[:, -f:] = True
+    return band
+
+
+def marked_runs(graph: StrokeGraph, lab: NDArray[np.float64], width: float, min_length: float) -> StrokeGraph:
+    """The runs of each stroke along which the image marks a line
+    (``contrast_profile`` at least ``CONTRAST_DELTA_E``, read over a line
+    width of arc), at least ``min_length`` long; the rest is cut away."""
+    out = StrokeGraph(list(graph.nodes), [])
+    for e in graph.edges:
+        q = uniform(e.pts, 1.0)
+        if len(q) < 3:
+            continue
+        prof = ndi.gaussian_filter1d(contrast_profile(q, lab, width), max(1.0, width))
+        on = prof >= CONTRAST_DELTA_E
+        if not on.any():
+            continue
+        edges = np.flatnonzero(np.diff(np.concatenate([[0], on.astype(np.int8), [0]])))
+        for a, b in zip(edges[::2], edges[1::2]):
+            seg = q[a:b]
+            if len(seg) < 2 or edge_length(seg) < min_length:
+                continue
+            seg = seg.copy()
+            closed = e.u == e.v and a == 0 and b == len(q)
+            u = e.u if a == 0 else out.add_node(seg[0])
+            v = u if closed else (e.v if b == len(q) else out.add_node(seg[-1]))
+            seg[0], seg[-1] = out.nodes[u], out.nodes[v]
+            out.edges.append(Edge(u, v, seg, e.layer))
+    return compact(out) if out.edges else StrokeGraph()
+
+
+LONE_LINE_WIDTHS = 1.5
+"""A fine-scale piece of ink no wider than this many line widths, on average
+over its length, is a single drawn line (not a blot or a mesh)."""
+
+
+def lone_lines(
+    fine_ink: NDArray[np.bool_], ink: NDArray[np.bool_], width: float, min_length: float
+) -> NDArray[np.bool_]:
+    """The fine drawing's long single lines that the coarse drawing cannot
+    resolve: a necklace chain, a whisker, a hair-thin seam.
+
+    Persistence across scales (``lines.persistent_lines``) drops texture
+    because it is finer than the coarse drawing; it drops a thin line for the
+    same reason.  A thin line differs from texture in being one long,
+    unbranched stroke: a piece of the fine ink (not touching the persistent
+    ink, which already speaks there) whose skeleton is at least
+    ``min_length`` long, with no more ends than a line has (two, or none on a
+    loop), and whose area is that of one line of the drawing's width
+    (``LONE_LINE_WIDTHS``).  Texture is a mesh of short, branching pieces."""
+    from skimage.morphology import skeletonize
+
+    cand = fine_ink & ~ndi.binary_dilation(ink, iterations=max(1, int(round(width))))
+    pieces, n = ndi.label(cand, structure=np.ones((3, 3)))
+    if n == 0:
+        return np.zeros_like(ink)
+    skel = skeletonize(cand)
+    nbrs = ndi.convolve(skel.astype(np.int32), np.ones((3, 3), np.int32), mode="constant") - 1
+    ends = skel & (nbrs == 1)
+    idx = np.arange(1, n + 1)
+    length = ndi.sum(skel, pieces, idx)
+    n_ends = ndi.sum(ends, pieces, idx)
+    area = ndi.sum(cand, pieces, idx)
+    ok = (length >= min_length) & (n_ends <= 2) & (area <= LONE_LINE_WIDTHS * width * np.maximum(length, 1.0))
+    return np.isin(pieces, idx[ok])
+
+
+def form_lines(
+    ink: NDArray[np.bool_], form: NDArray[np.bool_], nose: NDArray[np.bool_], width: float
+) -> NDArray[np.bool_]:
+    """On the face's skin, the learned drawing speaks for the nose only.
+
+    The parser draws every material part of a face (brows, lids, irises,
+    lips, teeth) but not the nose, which is skin: its wings, its base and the
+    creases that run from it into the cheeks are the drawing's.  Elsewhere on
+    the skin the line model draws shading (an eye bag, a lid fold beside the
+    parser's lid, a dimple) that doubles the parser's features.  So on the
+    skin a piece of ink is kept only when it reaches the nose (grown by a line
+    width); off the skin (hair, clothes, a faceless subject) all of it is."""
+    if not form.any() or not nose.any():
+        return ink & ~form if form.any() else ink
+    on_form = ink & form
+    pieces, n = ndi.label(on_form, structure=np.ones((3, 3)))
+    if n == 0:
+        return ink
+    near_nose = ndi.binary_dilation(nose, iterations=max(1, int(round(width))))
+    reach = np.unique(pieces[near_nose & on_form])
+    keep = np.isin(pieces, reach[reach > 0])
+    return (ink & ~form) | keep
 
 
 def drop_doubles(lines: StrokeGraph, earlier: NDArray[np.bool_], reach: float) -> StrokeGraph:
@@ -260,14 +529,19 @@ def cielab(image: LoadedImage) -> NDArray[np.float64]:
 
 
 def line_contrast(p: NDArray[np.float64], lab: NDArray[np.float64], width: float) -> float:
-    """How strongly the image marks a stroke: the median, along it, of the
-    larger of the colour step across it (an edge) and the colour difference
-    between the stroke and its two sides (a line), each read a few line widths
-    out and at the best placement within a line width (a vectorised line sits
-    a pixel or two off the image's own)."""
+    """How strongly the image marks a stroke: the median of
+    ``contrast_profile`` along it."""
     q = uniform(p, 2.0)
     if len(q) < 2:
         return 0.0
+    return float(np.median(contrast_profile(q, lab, width)))
+
+
+def contrast_profile(q: NDArray[np.float64], lab: NDArray[np.float64], width: float) -> NDArray[np.float64]:
+    """At each point of a stroke, the larger of the colour step across it (an
+    edge) and the colour difference between the stroke and its two sides (a
+    line), each read a few line widths out and at the best placement within
+    a line width (a vectorised line sits a pixel or two off the image's own)."""
     t = np.gradient(q, axis=0)
     t /= np.maximum(np.hypot(t[:, 0], t[:, 1]), 1e-9)[:, None]
     n = np.column_stack([-t[:, 1], t[:, 0]])
@@ -286,7 +560,7 @@ def line_contrast(p: NDArray[np.float64], lab: NDArray[np.float64], width: float
         edge = np.linalg.norm(left - right, axis=1)
         line = np.linalg.norm(mid - 0.5 * (left + right), axis=1)
         best = np.maximum(best, np.maximum(edge, line))
-    return float(np.median(best))
+    return best
 
 
 def self_density(p: NDArray[np.float64], sigma: float) -> float:

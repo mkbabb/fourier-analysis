@@ -21,7 +21,10 @@ cartoon, a robot) is one part, so only its silhouette is drawn from labels;
 its interior lines, and those of the hair, clothes and body around a face,
 come from the learned line drawing (``contours.lines``, composed by
 ``contours.drawing``).  Each parsed eye is split into its iris and white
-(``irises``: an anatomical disc clipped by the lids).
+(``irises``: an anatomical disc clipped by the lids), and each open mouth
+into its teeth and the dark around them (``teeth``).  The nose and the skin
+are one material (``FORM``): their shared outline is a line only where the
+image marks it (``PartLabels.marked``).
 
 The subject mask has the last word on the silhouette: off the mask is
 ``BACKGROUND``; on the mask where no parser speaks (outside every face crop, or
@@ -59,10 +62,20 @@ N_FACE_CLASSES = len(FACE_CLASSES)
 SKIN, NOSE, NECK, CLOTH, HAIR, HAT = 1, 10, 14, 16, 17, 18
 FEATURES = (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15)  # the small parts
 EYES = (4, 5)
+MOUTH = 11
 UNPARSED = N_FACE_CLASSES  # on the subject, no parser label
 IRIS = UNPARSED + 1  # the dark of an eye (not a parser class; see ``irises``)
-FACE_CORE = (SKIN, *FEATURES, IRIS)
-"""The labels the face parser draws in full: no other line source inks them."""
+TEETH = IRIS + 1  # the bright of an open mouth (not a parser class; see ``teeth``)
+N_LABELS = TEETH + 1
+FORM = (SKIN, NOSE)
+"""Parts of one material whose shared boundary is a line only where the
+image marks it: the nose is skin, and its parser outline runs over the front
+of the bridge where nothing is drawn, while its shadowed side and its base
+are drawn.  Their form inside (the nose's wings and nostrils, the creases
+from it into the cheeks) is the learned line drawing's."""
+FACE_CORE = (*(k for k in FEATURES if k != NOSE), IRIS, TEETH)
+"""The labels the face parser draws in full (a material against the skin:
+brows, eyes, lips, the mouth): no other line source inks them."""
 
 # ---------------------------------------------------------------------------
 # Models
@@ -115,6 +128,7 @@ class PartLabels:
 
     labels: NDArray[np.int32]
     drawn: NDArray[np.bool_]  # (n_labels, n_labels): is the boundary a line
+    marked: NDArray[np.bool_]  # (n_labels, n_labels): a line only where the image marks it
     faces: tuple[Face, ...]
     source: str  # "face-parsing" or "silhouette"
 
@@ -122,6 +136,15 @@ class PartLabels:
     def subject(self) -> NDArray[np.bool_]:
         """The subject the labels were drawn on (cut to the person on a face)."""
         return self.labels != BACKGROUND
+
+    @property
+    def form(self) -> NDArray[np.bool_]:
+        """The face's skin and nose (``FORM``): one surface, drawn by its form."""
+        return np.isin(self.labels, FORM)
+
+    @property
+    def nose(self) -> NDArray[np.bool_]:
+        return self.labels == NOSE
 
     @property
     def face_core(self) -> NDArray[np.bool_]:
@@ -330,18 +353,21 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
             {k: feature_floor for k in FEATURES},
             REGION_MIN_FRACTION * subject_area,
         )
-        labels = irises(labels, image.lab)
-        n = IRIS + 1
-        drawn = ~np.eye(n, dtype=bool)
+        labels = teeth(irises(labels, image.lab), image.lab, feature_floor)
+        drawn = ~np.eye(N_LABELS, dtype=bool)
         drawn[UNPARSED, :] = False
         drawn[:, UNPARSED] = False
         drawn[BACKGROUND, UNPARSED] = drawn[UNPARSED, BACKGROUND] = True
-        return PartLabels(_frame_band(labels), drawn, tuple(faces), "face-parsing")
+        drawn[np.ix_(FORM, FORM)] = False
+        marked = np.zeros_like(drawn)
+        marked[np.ix_(FORM, FORM)] = True
+        marked &= ~np.eye(N_LABELS, dtype=bool)
+        return PartLabels(_frame_band(labels), drawn, marked, tuple(faces), "face-parsing")
 
     labels = np.where(subject, UNPARSED, BACKGROUND).astype(np.int32)
     drawn = np.zeros((UNPARSED + 1, UNPARSED + 1), dtype=bool)
     drawn[BACKGROUND, UNPARSED] = drawn[UNPARSED, BACKGROUND] = True
-    return PartLabels(_frame_band(labels), drawn, (), "silhouette")
+    return PartLabels(_frame_band(labels), drawn, np.zeros_like(drawn), (), "silhouette")
 
 
 FRAME_BAND_PX = 3
@@ -396,6 +422,55 @@ def irises(labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | None) -> N
         if float(lum[sl][white].mean() - lum[sl][iris].mean()) < IRIS_MIN_DELTA_L:
             continue
         out[sl][iris] = IRIS
+    return out
+
+
+def teeth(
+    labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | None, min_area: float
+) -> NDArray[np.int32]:
+    """Split each parsed open mouth into its teeth and the dark around them.
+
+    The parser's mouth class is everything between the lips; a drawing shows
+    the teeth's edge against the dark of the mouth.  The mouth's luminance is
+    split in two at Otsu's level; the bright class is the teeth when it is
+    clearly brighter than the rest (``IRIS_MIN_DELTA_L``, the iris's test
+    turned over) and each of its pieces is a feature, not a glint (``min_area``,
+    the feature floor).  The luminance is first averaged over the mouth at
+    half the feature floor's side, so the gaps between teeth close and the
+    teeth come out as one band, drawn by its edge, not tooth by tooth.  A
+    closed mouth, or one with no teeth showing, keeps its one label."""
+    if lab_norm is None:
+        return labels
+    from skimage.filters import threshold_otsu
+
+    lum = lab_norm[..., 0] * 100.0
+    out = labels.copy()
+    comp, n = ndi.label(labels == MOUTH)
+    for i, sl in enumerate(ndi.find_objects(comp), start=1):
+        if sl is None:
+            continue
+        mouth = comp[sl] == i
+        if mouth.sum() < max(16.0, 2.0 * min_area):
+            continue
+        sigma = 0.5 * float(np.sqrt(min_area))
+        weight = ndi.gaussian_filter(mouth.astype(np.float64), sigma)
+        smooth = ndi.gaussian_filter(np.where(mouth, lum[sl], 0.0), sigma) / np.maximum(weight, 1e-6)
+        values = smooth[mouth]
+        if np.ptp(values) < IRIS_MIN_DELTA_L:
+            continue
+        bright = mouth & (smooth > threshold_otsu(values))
+        bright = ndi.binary_opening(bright) & mouth
+        pieces, m = ndi.label(bright)
+        if m == 0:
+            continue
+        sizes = ndi.sum(bright, pieces, index=np.arange(1, m + 1))
+        bright = np.isin(pieces, np.flatnonzero(sizes >= min_area) + 1)
+        dark = mouth & ~bright
+        if not bright.any() or not dark.any():
+            continue
+        if float(lum[sl][bright].mean() - lum[sl][dark].mean()) < IRIS_MIN_DELTA_L:
+            continue
+        out[sl][bright] = TEETH
     return out
 
 

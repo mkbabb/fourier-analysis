@@ -141,9 +141,17 @@ def persistent_lines(
 ) -> NDArray[np.float64]:
     """Line strength where the line persists across scales (module docstring):
     ``min(fine, maxfilter(coarse))``, the filter one coarse input pixel wide."""
+    return line_maps(image, alpha)[1]
+
+
+def line_maps(
+    image: LoadedImage,
+    alpha: NDArray[np.float64] | None = None,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """``(fine, persistent)``: the fine drawing and its persistent part."""
     fine = line_drawing(image, alpha, 1.0)
     coarse = line_drawing(image, alpha, COARSE_SCALE)
     h, w = image.grayscale.shape
     reach = max(h, w) / (LINE_MODEL.input_size * COARSE_SCALE)
     size = max(1, 2 * round(reach) + 1)
-    return np.minimum(fine, ndi.maximum_filter(coarse, size=size))
+    return fine, np.minimum(fine, ndi.maximum_filter(coarse, size=size))

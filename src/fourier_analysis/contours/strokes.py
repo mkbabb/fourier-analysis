@@ -5,8 +5,9 @@ nodes, and every stroke starts and ends exactly on its nodes' positions, so
 Coordinates are pixel ``(row, col)`` (pixel centres at integers) until
 ``StrokeGraph.polylines`` converts to the pipeline's centred complex plane
 (x right, y up).  Every edge carries the *layer* it came from
-(``SILHOUETTE`` < ``PARTS`` < ``LINES``, the priority order of
-``contours.drawing``); edges of different layers are never merged into one.
+(``SILHOUETTE`` < ``PARTS`` < ``LINES`` < ``CONNECT``, the priority order
+of ``contours.drawing``); edges of different layers are never merged into
+one.
 
 Two ways in:
 
@@ -40,7 +41,7 @@ from numpy.typing import NDArray
 from scipy import ndimage as ndi
 from scipy.spatial import cKDTree
 
-SILHOUETTE, PARTS, LINES = 0, 1, 2
+SILHOUETTE, PARTS, LINES, CONNECT = 0, 1, 2, 3
 
 CONTRACT_PX = 3.0
 SPUR_FRACTION = 0.012

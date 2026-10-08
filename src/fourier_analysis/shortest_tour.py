@@ -43,12 +43,16 @@ TOUR_METHODS = ("postman",)
 SNAP_PX = 0.75
 """Stroke end points closer than this are one graph node."""
 
-JUMP_PENALTY = 8.0
+JUMP_PENALTY = 16.0
 """A straight jump (or a retrace of one) is charged this many times its
-length against a retrace along ink: a retrace lies on its stroke, a jump is a
-new line across the drawing.  Measured on the bench at 3 and at 8: at 3 the
-walk trades retraces for jumps on most images (jump count up on 12 of 19,
-down on none); 8 keeps them on the ink."""
+length against a retrace along ink: a retrace lies on its stroke and is not
+seen, a jump is a new line across the drawing.  Measured on the bench (F.CT
+ct2-r1): at 8 the walk drew about two jumps per image where a retrace was
+available; at 16 one or none; at 24 none, but the longer tour (up to 20 %)
+pushes the epicycle error over its bar at N = 100 and 200 on the busiest
+drawings.  The drawing joins its pieces itself
+(``contours.drawing.route_connectors``), so what is left here is only the
+pairing of stroke ends."""
 
 ATTACH_SNAP_FRACTION = 0.25
 """A connector attaches at an existing node when one lies within this
