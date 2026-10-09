@@ -245,16 +245,24 @@ function getPath(level: number): string {
     --strip-fade: 3rem;
     --strip-fade-start: 0px;
     --strip-fade-end: 0px;
-    /* X-DS pass 12 · DS-F14-C3: a fading side reaches alpha 0 a twelfth of the
-       fade (4px at 3rem) before the strip's edge, so a tile rim caught in the
-       last few px is gone, not a faint arc. A side with no fade is unchanged. */
+    /* X-DS pass 12 · DS-F14-C3: a fading side reaches alpha 0 before the
+       strip's edge, so a tile rim caught in the last few px is gone, not a
+       faint arc. A side with no fade is unchanged.
+       X-DS pass 4 · DS-F4-C3: the alpha-0 band is a whole gap (0.5rem), not a
+       twelfth of the fade (4px): a rim landing anywhere in the last gap's
+       width is cut, never left as a lone hairline beside the last tile. */
+    --strip-clear-start: min(var(--strip-fade-start), 0.5rem);
+    --strip-clear-end: min(var(--strip-fade-end), 0.5rem);
     mask-image: linear-gradient(
         to right,
-        transparent calc(var(--strip-fade-start) / 12),
+        transparent var(--strip-clear-start),
         #000 var(--strip-fade-start),
         #000 calc(100% - var(--strip-fade-end)),
-        transparent calc(100% - var(--strip-fade-end) / 12)
+        transparent calc(100% - var(--strip-clear-end))
     );
+    /* X-DS pass 4 · DS-F4-C3: a scrolled strip rests with a tile's start on
+       its leading edge, so the cut lands at a tile boundary, not mid-rim. */
+    scroll-snap-type: x mandatory;
 }
 
 .grid[data-more-start] {
@@ -302,6 +310,7 @@ function getPath(level: number): string {
     .grid-cell {
         flex-direction: column;
         flex-shrink: 0;
+        scroll-snap-align: start;
         /* SP-3 · HLG-37 — the control boundary, raised to the 1.4.11 floor.
            `--foreground` at 12% over `--card` measured 1.275 L / 1.395 D: the
            cell's entire boundary vocabulary was sub-3:1 in BOTH arms, which is

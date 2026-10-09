@@ -186,9 +186,13 @@ export function drawEpicycleCircles(
     }
     const TAIL_R = Math.max(12, 0.04 * rMax * scale * strokeScale);
     let tailOpen = false;
+    // X-DS pass 4 · DS-F4-C5 — the tail drew at 0.6, above the circles' own
+    // 0.5, so its hundreds of folded sub-cut vectors read as a bright knot at
+    // the tip. It is the quietest stroke in the chain now (below the circles),
+    // one thin thread in its hue (§0dm), the pen's lead-in rather than noise.
     const flushTail = () => {
         if (!tailOpen) return;
-        ctx.globalAlpha = 0.6 * epicycleAlpha;
+        ctx.globalAlpha = 0.35 * epicycleAlpha;
         ctx.lineWidth = 1 / strokeScale;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";

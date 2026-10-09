@@ -54,7 +54,9 @@ const router = useRouter();
                      workspace store) supplies its own actions. -->
                 <slot name="actions">
                     <Button emphasis="primary" size="md" @click="router.push('/visualize')"><Upload />Upload a new image</Button>
-                    <Button emphasis="secondary" size="md" @click="router.push('/gallery')">Browse the gallery</Button>
+                    <!-- X-DS pass 4 · DS-F4-C2: one grammar for "go back", as on the load
+                         error and the empty stage: one primary and one quiet link. -->
+                    <Button emphasis="text" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
                 </slot>
             </CardFooter>
         </Card>

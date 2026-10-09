@@ -30,7 +30,11 @@ const emit = defineEmits<{
 <template>
     <div class="gallery-grid-host flex flex-col gap-2 px-[var(--page-gutter)]">
         <InfiniteScroll :has-more="hasMore" :is-loading="loading" @load-more="emit('load-more')">
-            <div class="gallery-grid grid gap-3" :data-admin="adminMode || undefined">
+            <div
+                class="gallery-grid grid gap-3"
+                :data-admin="adminMode || undefined"
+                :style="{ '--gallery-count': entries.length }"
+            >
                 <GalleryCard
                     v-for="entry in entries"
                     :key="entry.slug"
@@ -75,10 +79,16 @@ const emit = defineEmits<{
 }
 /* X-DS DS-F5-C8: the track floor fits a four-word slug and its date
    (16rem); at 14rem a 1408 px field made six tracks, so a short result set
-   left empty tracks and cut the slugs. auto-fill stays, so a long gallery
-   keeps its rhythm. */
+   left empty tracks and cut the slugs.
+   X-DS pass 4 · DS-F4-C4: auto-fit, so a short set collapses its empty
+   tracks and the cards run to the gutter the toolbar runs to (auto-fill left
+   a dead third of the row under the search). A long gallery is unchanged:
+   the two are the same once the items fill the row. The grid's measure is
+   capped at 24rem a card for the set it holds, so one or two results stay
+   card-sized instead of stretching across the row. */
 .gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    max-inline-size: calc(var(--gallery-count) * 24rem + (var(--gallery-count) - 1) * 0.75rem);
 }
 @container (width < 30rem) {
     .gallery-grid:not([data-admin]) {
