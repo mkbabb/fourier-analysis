@@ -409,6 +409,16 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      # The host's TLS layout (measured on the host 2026-10-09: ssl/mongo.pem
+      # owned by 999:999, mode 0400 — mongod's uid in mongo:8.0). The script
+      # writes the server PEM 0600 as the runner user, which mongod in the
+      # container cannot read through the bind-mount; hand it to mongod's uid
+      # exactly as the host does.
+      - name: Mongo TLS material, owned as on the host
+        run: |
+          bash scripts/gen-mongo-certs.sh >/dev/null
+          sudo chown 999:999 ssl/mongo.pem
+          sudo chmod 0400 ssl/mongo.pem
       - name: Boot docker-compose.prod.yml and probe the deploy gate
         run: bash scripts/prod-compose-smoke.sh
       # The deploy hook's own switch functions (sourced, not copied): a good
