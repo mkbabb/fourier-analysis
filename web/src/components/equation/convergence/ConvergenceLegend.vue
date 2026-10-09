@@ -126,7 +126,9 @@ const emit = defineEmits<{
 }
 .legend-dot--dashed {
     background: transparent;
-    border: 2px dashed rgba(180, 180, 180, 0.6);
+    /* X-DS fourier pass 6 · DS-F6-C2: the key is inked as its curve is drawn
+       (ConvergencePlot strokes f in the canvas's `--muted-foreground`). */
+    border: 2px dashed var(--muted-foreground);
 }
 
 .legend-label {

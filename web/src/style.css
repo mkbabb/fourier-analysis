@@ -433,6 +433,16 @@ article.paper-article {
     --configurator-section-weight: 500;
 }
 
+/* X-DS fourier pass 6 · DS-F6-C1 — a resting card's hover is one lightness
+   step toward the page's far end: darker on the cream, lighter on the dark
+   arm (GalleryCard reads it in its own hue). */
+:root {
+    --card-hover-step: -0.02;
+}
+.dark {
+    --card-hover-step: 0.02;
+}
+
 :root {
     --viz-amber: hsl(35 76% 35%);
     --section-color-5: hsl(35 76% 35%);

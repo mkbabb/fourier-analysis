@@ -228,13 +228,14 @@ const created = useTimeAgo(() => props.entry.created_at);
    resting card does not rise to the floating shadow rung.
    X-DS fourier pass 5 · DS-F5-C4: the step is taken in the card's own hue
    (lightness only, toward the page's far end in each arm). A --foreground
-   veil over the cream lowered its chroma too and greyed it to oatmeal. */
+   veil over the cream lowered its chroma too and greyed it to oatmeal.
+   X-DS fourier pass 6 · DS-F6-C1: the arm is the token `--card-hover-step`
+   (style.css: −0.02 light, +0.02 dark), read by this one rule. The former
+   `:global(.dark) .gallery-card:hover` compiled to a bare `.dark {…}` that
+   repainted <html> and left the dark card stepping darker. */
 @media (hover: hover) {
     .gallery-card:hover {
-        background-color: oklch(from var(--card) calc(l - 0.02) c h);
-    }
-    :global(.dark) .gallery-card:hover {
-        background-color: oklch(from var(--card) calc(l + 0.02) c h);
+        background-color: oklch(from var(--card) calc(l + var(--card-hover-step)) c h);
     }
 }
 
