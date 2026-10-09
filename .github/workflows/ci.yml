@@ -399,6 +399,8 @@ jobs:
   # with the baked models, read-only nginx) and ask the deploy gate's two
   # questions through the edge (liveness /api/health 200 json · readiness
   # / 404). One script, run here and locally: scripts/prod-compose-smoke.sh.
+  # Then the deploy's switch itself is exercised on that stack
+  # (scripts/deploy-switch-smoke.sh): a failed deploy never takes the old down.
   # It gates inv-27 below, so the deploy hook's covering-green query (inv-28)
   # never ships a SHA whose production stack does not boot.
   prod-compose:
@@ -409,6 +411,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Boot docker-compose.prod.yml and probe the deploy gate
         run: bash scripts/prod-compose-smoke.sh
+      # The deploy hook's own switch functions (sourced, not copied): a good
+      # switch, a never-healthy backend refused with the serving one untouched,
+      # and an edge reload — each with 0 failed requests through the edge.
+      - name: Health-gated switch (deploy-hook.sh switch_service · edge_apply)
+        run: SKIP_BUILD=1 PROJECT=fourier-prod-smoke bash scripts/deploy-switch-smoke.sh
 
   # ── X·F F.W9 `.c` — inv-27, THE EVIDENCE FLOOR ─────────────────────────────
   #

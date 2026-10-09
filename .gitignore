@@ -49,6 +49,9 @@ uploads/
 # Environment
 .env
 
+# Deploy-time edge upstream pins (scripts/deploy-hook.sh; host state, not source)
+.deploy/
+
 # Scripts (private/local only — tracked scripts use negation)
 scripts/*
 !scripts/dev.sh
@@ -61,6 +64,7 @@ scripts/*
 !scripts/cors-probe.sh
 !scripts/cors-probe.mjs
 !scripts/prod-compose-smoke.sh
+!scripts/deploy-switch-smoke.sh
 !scripts/dns-cf-sync.sh
 !scripts/gen-mongo-certs.sh
 !scripts/conformance/

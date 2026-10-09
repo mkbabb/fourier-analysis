@@ -66,12 +66,13 @@ set -euo pipefail
 readonly REPO_DIR="/var/www/fourier-analysis"
 readonly COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.prod.yml)
 
-# G.W7 (T3) — set when the pulled diff touched nginx/, so the bring-up
-# force-recreates nginx (see build_and_up). The nginx config is a single-file
-# bind-mount (:ro); `git reset` replaces it via atomic rename (new inode) but
-# the running container keeps the old inode, and `up -d` won't recreate a service
-# whose compose def is unchanged — so a config-only change is silently NOT
-# applied (found live at G.W3). force-recreate re-binds it.
+# G.W7 (T3) — set when the pulled diff touched nginx/, so the switch applies
+# the new edge config. G.W7 found a config-only change silently NOT applied: the
+# config was a single-file bind-mount whose inode `git reset` replaces, and the
+# cure then was a force-recreate of nginx (an edge outage per config change).
+# F.REL .h: nginx/ is now a DIRECTORY bind-mount, so the live edge sees the
+# reset's bytes by name, and edge_apply validates them (`nginx -t`) and loads
+# them with a graceful `nginx -s reload` — no recreate.
 NGINX_CFG_CHANGED=0
 
 # The health-gate port is sourced from ${HTTP_PORT:-8100} — the SAME default the
@@ -381,48 +382,257 @@ assert_clean_tree() {
     fi
 }
 
-# ── Build + bring up the stack ───────────────────────────────────────────────
-# NO `build … || build …` fallback (the live-dispatcher defect that defeats
-# set -e: the `||` makes the compound succeed on a failed primary build, so
-# control falls through to `up -d` with a half-built image set). set -euo
-# pipefail therefore aborts the whole script on a partial build, leaving the
-# running stack untouched.
-build_and_up() {
-    log "building (build --parallel)…"
-    "${COMPOSE[@]}" build --parallel
-    # M.W2's container half: the overlay's `depends_on: condition:
-    # service_healthy` makes the bring-up BLOCK on each dependency's HEALTHCHECK
-    # rather than on "container started", so the ordering is on READINESS.
-    # `--wait` makes compose report that ordering as its own exit status instead
-    # of returning the moment the last container is created — and a service that
-    # goes `unhealthy` ends the wait non-zero rather than hanging, because every
-    # healthcheck in this stack is `retries`-bounded.
-    #
-    # That non-zero is returned to the CALLER, never allowed to abort the script:
-    # an aborting bring-up would skip the rollback and the watched-channel alert,
-    # which is precisely the silence M.W4 exists to kill. A failed BUILD is a
-    # different case and keeps the abort (see above) — nothing has been brought
-    # up yet, so the running stack is untouched and there is nothing to roll back.
-    log "bringing up (up -d --wait — blocks on each service's HEALTHCHECK)…"
-    if ! "${COMPOSE[@]}" up -d --wait; then
-        log "bring-up FAILED — a service never reached a healthy state (compose --wait)"
+# ── F.REL .h — the health-gated switch: start new · health-check · switch ────
+# Before F.REL .h this section was `build` then `up -d --wait` over the whole
+# stack: compose RECREATED the serving containers in place (stop old → start
+# new), so the old API was down from the first recreate until the health gate
+# answered, and a new stack that never became healthy (every master push from
+# H.W4 to F.REL — the nginx cap floor crash-looped) meant ~3 minutes of outage
+# and a second full recreate to roll back (webhook log 2026-10-06 16:45:28 →
+# 16:48:44Z). The switch now never stops a serving container until its
+# replacement is healthy, and never routes a request to one that is not:
+#
+#   1. BUILD the target's images while the old containers keep serving. A failed
+#      build touches nothing that serves.
+#   2. For each upstream (backend, frontend):
+#      a. PIN the edge to the serving container by name (.deploy/edge/<svc>.conf
+#         → `set $<svc>_upstream <container>:<port>;`, included by
+#         nginx/fourier.conf), so a container that joins the compose service's
+#         DNS name takes no traffic;
+#      b. START the new container BESIDE it (`up --no-deps --no-recreate
+#         --scale <svc>=2n`) and WAIT for its own HEALTHCHECK (api/Dockerfile,
+#         web/Dockerfile) to read `healthy`;
+#      c. SWAP the pin to the new container (`nginx -t`, then a graceful
+#         `nginx -s reload`: old workers finish their requests on the old pin);
+#      d. RETIRE the old container (graceful `docker stop`).
+#      A new container that never becomes healthy is REMOVED; the pin never
+#      moved and the old container never stopped, so a failed deploy never
+#      takes the serving site down and never routes a request to the new one.
+#   3. The EDGE (nginx) is never recreated for a config change: nginx/ is a
+#      directory bind-mount, so the reset lands the new config in place and the
+#      switch validates it in the live edge (`nginx -t`) before a graceful
+#      reload. A config that fails `nginx -t` is never loaded.
+#   4. Mongo is never restarted by a deploy (`--no-recreate`): it is the one
+#      stateful service, and a change to its definition is an operator act.
+#
+# The stack-level health gate (liveness + readiness through the edge) then
+# judges the switched stack; a red gate switches BACK the same way.
+readonly SWITCH_SERVICES=(backend frontend)
+# The port each upstream listens on inside the network (nginx/fourier.conf).
+switch_port() { case "$1" in backend) printf 8000 ;; frontend) printf 80 ;; esac; }
+# The edge's pin directory, relative to the repo (bind-mounted :ro into nginx at
+# /etc/nginx/fourier-upstreams by docker-compose.prod.yml; gitignored).
+readonly EDGE_PIN_DIR=".deploy/edge"
+# Bounded wait for a new container's HEALTHCHECK. The backend's is
+# start-period 30 s + 5 × 10 s retries, so `unhealthy` is reached by ~80 s; the
+# bound only catches a container stuck `starting`, never a slow-but-healthy one.
+readonly SWITCH_WAIT="${FOURIER_SWITCH_WAIT:-240}"
+# Graceful stop for the retired container (SIGTERM, then SIGKILL after this).
+readonly DRAIN_SECONDS="${FOURIER_DRAIN_SECONDS:-30}"
+
+# Services switched in this run, in order — the rollback switches these back.
+SWITCHED=()
+
+service_ids() {
+    "${COMPOSE[@]}" ps -q "$1" 2>/dev/null | sort
+}
+
+container_state() {
+    docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+        "$1" 2>/dev/null || printf 'gone'
+}
+
+container_name() {
+    docker inspect -f '{{.Name}}' "$1" | sed 's|^/||'
+}
+
+# wait_healthy ID… — 0 once every container reads `healthy`; 1 the moment one
+# reads `unhealthy`/`exited`/`dead`/`gone`, or when SWITCH_WAIT elapses.
+wait_healthy() {
+    local deadline=$((SECONDS + SWITCH_WAIT)) id state all
+    while ((SECONDS < deadline)); do
+        all=0
+        for id in "$@"; do
+            state="$(container_state "${id}")"
+            case "${state}" in
+                healthy) ;;
+                unhealthy | exited | dead | gone)
+                    log "container ${id:0:12} is ${state}"
+                    return 1
+                    ;;
+                *) all=1 ;;
+            esac
+        done
+        ((all == 0)) && return 0
+        sleep 2
+    done
+    log "timed out after ${SWITCH_WAIT}s waiting for $(printf '%.12s ' "$@")to become healthy"
+    return 1
+}
+
+# edge_workers [PID…] — the edge's nginx worker PIDs (with PIDs: only those of
+# them still alive). Read from /proc inside the edge container.
+edge_workers() {
+    # shellcheck disable=SC2016 # expanded by the container's sh, not here
+    "${COMPOSE[@]}" exec -T nginx sh -c '
+        if [ $# -gt 0 ]; then
+            for p in "$@"; do [ -e "/proc/$p" ] && echo "$p"; done
+        else
+            for d in /proc/[0-9]*; do
+                case "$(tr "\0" " " <"$d/cmdline" 2>/dev/null)" in
+                    "nginx: worker process"*) echo "${d#/proc/}" ;;
+                esac
+            done
+        fi' sh "$@"
+}
+
+# The longest an old edge worker may still be finishing a request after a
+# reload: the edge's longest proxy_read_timeout (120 s, nginx/fourier.conf)
+# plus margin.
+readonly EDGE_DRAIN_SECONDS="${FOURIER_EDGE_DRAIN_SECONDS:-150}"
+
+# edge_reload — validate the edge's whole config (nginx/ + the pins) in the live
+# edge, load it gracefully, and return only once every pre-reload worker has
+# exited: `nginx -s reload` only SIGNALS the master, and until the old workers
+# are gone they keep routing by the old config — retiring an upstream before
+# then hands their requests a stopping container (measured: one 502 per
+# switch). A config `nginx -t` rejects is never loaded.
+edge_reload() {
+    if [[ -z "$(service_ids nginx)" ]]; then
+        # No edge yet (a first bring-up): edge_apply starts it on these pins.
+        return 0
+    fi
+    if ! "${COMPOSE[@]}" exec -T nginx nginx -t -q; then
+        log "edge: nginx -t REJECTED the config; it was not loaded"
         return 1
     fi
-    # G.W7 (T3): a config-only nginx change is invisible to `up -d` (unchanged
-    # service def + stale single-file bind-mount inode). When the pulled diff
-    # touched nginx/, force-recreate nginx so it re-binds to the current config.
-    # Runs on BOTH the forward bring-up and the rollback bring-up (NGINX_CFG_CHANGED
-    # is true for either direction across the same nginx/ delta). The subsequent
-    # health gate then validates the new nginx config (the readiness probe goes
-    # through nginx), so a broken config trips the rollback like any other bad
-    # bring-up.
-    if [[ "${NGINX_CFG_CHANGED}" == "1" ]]; then
-        log "nginx/ changed in this deploy — force-recreating nginx to re-bind the bind-mounted config"
-        if ! "${COMPOSE[@]}" up -d --wait --force-recreate nginx; then
-            log "nginx force-recreate FAILED — the new config did not come up healthy"
-            return 1
+    local before alive deadline
+    before="$(edge_workers | tr '\n' ' ')"
+    "${COMPOSE[@]}" exec -T nginx nginx -s reload
+    deadline=$((SECONDS + EDGE_DRAIN_SECONDS))
+    # shellcheck disable=SC2086 # PIDs, space-separated
+    while [[ -n "${before// /}" ]] && alive="$(edge_workers ${before})" && [[ -n "${alive}" ]]; do
+        if ((SECONDS >= deadline)); then
+            notify warning "edge: ${EDGE_DRAIN_SECONDS}s after reload, old worker(s) $(printf '%s' "${alive}" | tr '\n' ' ')still hold a request; proceeding"
+            break
         fi
+        sleep 0.5
+    done
+}
+
+# edge_pin SVC CONTAINER — route the edge's SVC traffic to CONTAINER only. On a
+# rejected config the previous pin is restored, so the file never disagrees
+# with what the edge has loaded.
+edge_pin() {
+    local svc="$1" target="$2" file prev=""
+    file="${EDGE_PIN_DIR}/${svc}.conf"
+    mkdir -p "${EDGE_PIN_DIR}"
+    [[ -f "${file}" ]] && prev="$(cat "${file}")"
+    printf 'set $%s_upstream %s:%s;\n' "${svc}" "${target}" "$(switch_port "${svc}")" >"${file}.tmp"
+    mv -f "${file}.tmp" "${file}"
+    if ! edge_reload; then
+        if [[ -n "${prev}" ]]; then printf '%s\n' "${prev}" >"${file}"; else rm -f "${file}"; fi
+        return 1
     fi
+    log "edge: ${svc} pinned to ${target}"
+}
+
+# switch_service SVC — pin the edge to the serving SVC, start the new one beside
+# it, health-check it, move the pin, retire the old. Returns 1 (with the pin and
+# the serving SVC untouched) when the new container does not become healthy.
+switch_service() {
+    local svc="$1" old new id n target
+    old="$(service_ids "${svc}")"
+    n="$(printf '%s' "${old}" | grep -c . || true)"
+    if ((n > 1)); then
+        log "switch ${svc}: ${n} containers already serve — refusing to guess which one the edge should keep"
+        return 1
+    fi
+    if ((n == 1)); then
+        edge_pin "${svc}" "$(container_name "${old}")" || return 1
+    fi
+    target=$((n + 1))
+    log "switch ${svc}: starting 1 new beside ${n} serving (the edge stays on the serving one)"
+    if ! "${COMPOSE[@]}" up -d --no-deps --no-recreate --scale "${svc}=${target}" "${svc}"; then
+        log "switch ${svc}: compose could not start the new container"
+        new="$(comm -13 <(printf '%s\n' "${old}") <(service_ids "${svc}"))"
+        # shellcheck disable=SC2086 # ids are hex, one per line
+        [[ -n "${new}" ]] && docker rm -f ${new} >/dev/null 2>&1
+        return 1
+    fi
+    new="$(comm -13 <(printf '%s\n' "${old}") <(service_ids "${svc}"))"
+    if [[ -z "${new}" || "$(printf '%s\n' "${new}" | grep -c .)" -ne 1 ]]; then
+        log "switch ${svc}: expected exactly one new container, found: ${new:-none}"
+        return 1
+    fi
+    if ! wait_healthy "${new}"; then
+        log "switch ${svc}: the new container never became healthy — removing it; the edge never left the serving ${svc}"
+        docker logs --tail 20 "${new}" 2>&1 | sed 's/^/    /' || true
+        docker rm -f "${new}" >/dev/null 2>&1 || true
+        return 1
+    fi
+    if ! edge_pin "${svc}" "$(container_name "${new}")"; then
+        log "switch ${svc}: the edge refused the new pin — removing the new container"
+        docker rm -f "${new}" >/dev/null 2>&1 || true
+        return 1
+    fi
+    for id in ${old}; do
+        log "switch ${svc}: retiring ${id:0:12} (graceful stop, ≤ ${DRAIN_SECONDS}s)"
+        docker stop -t "${DRAIN_SECONDS}" "${id}" >/dev/null
+        docker rm "${id}" >/dev/null
+    done
+    log "switch ${svc}: serving ${new:0:12} (healthy)"
+}
+
+# edge_apply — bring the edge to the checked-out definition: `up --no-deps` is
+# a no-op when the nginx service definition is unchanged (a changed definition
+# — image, mounts, caps — is the one case that recreates the edge); a config
+# change under nginx/ is validated in the live edge and reloaded gracefully.
+edge_apply() {
+    mkdir -p "${EDGE_PIN_DIR}"
+    if ! "${COMPOSE[@]}" up -d --no-deps --wait nginx; then
+        log "edge: nginx did not come up healthy"
+        return 1
+    fi
+    if [[ "${NGINX_CFG_CHANGED}" == "1" ]]; then
+        log "edge: nginx/ changed — validating the new config in the live edge before reload"
+        edge_reload || return 1
+        log "edge: config reloaded gracefully"
+    fi
+}
+
+# switch_stack — build, then switch every upstream and the edge. Returns 1 at
+# the first step that fails; everything not yet switched is still the old one.
+switch_stack() {
+    SWITCHED=()
+    mkdir -p "${EDGE_PIN_DIR}"
+    log "building (build --parallel) — the serving stack is untouched…"
+    if ! "${COMPOSE[@]}" build --parallel; then
+        log "build FAILED — nothing was started or stopped"
+        return 1
+    fi
+    "${COMPOSE[@]}" up -d --no-recreate --wait mongo
+    local svc
+    for svc in "${SWITCH_SERVICES[@]}"; do
+        switch_service "${svc}" || return 1
+        SWITCHED+=("${svc}")
+    done
+    edge_apply
+}
+
+# switch_back — the rollback, by the same health-gated switch: rebuild the
+# checked-out (previous) images so the tags match what serves, then switch
+# back exactly the upstreams this run switched, then the edge. Upstreams the
+# failed run never switched were never stopped, so they are not touched.
+switch_back() {
+    local svc
+    log "building the rollback target's images…"
+    "${COMPOSE[@]}" build --parallel || return 1
+    "${COMPOSE[@]}" up -d --no-recreate --wait mongo
+    for svc in ${SWITCHED[@]+"${SWITCHED[@]}"}; do
+        switch_service "${svc}" || return 1
+    done
+    edge_apply
 }
 
 # ── The deploy body (runs under the flock) ───────────────────────────────────
@@ -465,7 +675,7 @@ deploy() {
     # governs both the forward and any rollback bring-up.
     if git diff --name-only "${prev}" "${new}" | grep -q '^nginx/'; then
         NGINX_CFG_CHANGED=1
-        log "nginx/ changed in ${prev}..${new} — nginx will be force-recreated on bring-up"
+        log "nginx/ changed in ${prev}..${new} — the switch validates and reloads the edge config"
     fi
 
     # 4. Build + up, then 5. the REAL health gate. Either one failing is the
@@ -473,10 +683,10 @@ deploy() {
     #    went healthy is a distinct fact from a stack that came up and then
     #    served the wrong contract.
     local gate_ok=1
-    if build_and_up; then
+    if switch_stack; then
         if health_gate; then gate_ok=0; fi
     else
-        GATE_FAILURE="bring-up (compose --wait: a service never became healthy)"
+        GATE_FAILURE="switch (build, a new container's HEALTHCHECK, or the edge config)"
     fi
 
     if [[ ${gate_ok} -eq 0 ]]; then
@@ -520,10 +730,10 @@ deploy() {
     notify err "ROLLBACK — the ${failed_probe} probe failed for ${new} (CI run ${CI_RUN_ID}); reverting to ${prev}."
     git reset --hard "${prev}"
     local restored=1
-    if build_and_up; then
+    if switch_back; then
         if health_gate; then restored=0; fi
     else
-        GATE_FAILURE="bring-up (compose --wait: a service never became healthy)"
+        GATE_FAILURE="switch-back (build, a container's HEALTHCHECK, or the edge config)"
     fi
     if [[ ${restored} -eq 0 ]]; then
         write_record "ROLLED_BACK" "${prev}" "${new}" "${CI_RUN_ID}" \
@@ -549,4 +759,8 @@ main() {
     deploy
 }
 
-main "$@"
+# Run only when executed (the webhook arm); sourcing it loads the functions
+# for scripts/deploy-switch-smoke.sh, the switch's falsifier.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

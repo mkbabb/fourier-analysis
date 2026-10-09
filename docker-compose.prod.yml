@@ -183,8 +183,18 @@ services:
   nginx:
     image: nginx:alpine
     ports: ["127.0.0.1:${HTTP_PORT:-8100}:80"]
+    # F.REL .h — the DIRECTORY, not the file: a deploy's `git reset` replaces
+    # nginx/fourier.conf by rename, which a single-file bind-mount never sees
+    # (G.W7), so a config change used to need an edge recreate. Mounted by
+    # directory, the live edge reads the new bytes by name and the deploy hook
+    # loads them with `nginx -t` + a graceful `nginx -s reload` (edge_apply).
+    # .deploy/edge holds the deploy hook's upstream pins (one
+    # `set $<svc>_upstream <container>:<port>;` per switched service, read by
+    # the `include` in nginx/fourier.conf); gitignored host state, created by
+    # the hook before any compose act.
     volumes:
-      - ./nginx/fourier.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx:/etc/nginx/conf.d:ro
+      - ./.deploy/edge:/etc/nginx/fourier-upstreams:ro
     # X·F F.W9 (M.W2) — readiness ordering, not start ordering. The bare
     # `[backend, frontend]` form waits only for "container created", so the
     # gateway routinely came up before either upstream could answer and the

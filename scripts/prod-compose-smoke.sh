@@ -50,6 +50,7 @@ teardown() {
     return
   fi
   "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+  rm -f .deploy/edge/*.conf
 }
 trap teardown EXIT
 
@@ -57,6 +58,11 @@ if [[ ! -s ssl/mongo.pem || ! -s ssl/mongo-ca.pem ]]; then
   say "no ./ssl TLS material — generating it (scripts/gen-mongo-certs.sh)"
   bash scripts/gen-mongo-certs.sh >/dev/null
 fi
+# The edge's upstream-pin dir (the deploy hook writes it; nginx mounts it :ro).
+# Created here so the daemon never creates it root-owned, and emptied: a fresh
+# stack has no pins (a stale one would name a container that does not exist).
+mkdir -p .deploy/edge
+rm -f .deploy/edge/*.conf
 # The prod overlay declares image_blobs external (the host's long-lived volume).
 docker volume inspect image_blobs >/dev/null 2>&1 || docker volume create image_blobs >/dev/null
 
