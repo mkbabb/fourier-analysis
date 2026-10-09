@@ -79,6 +79,52 @@ const GPU_INSTRUMENT = /@gpu/;
 /** Launch arguments for real Chrome on the macOS GPU (ANGLE Metal), headless. */
 const CHROME_GPU_ARGS = ["--use-angle=metal", "--force-device-scale-factor=2"];
 
+/**
+ * F.REL `.g` (value.js `docs/tranches/X/fourier/waves/F-REL.md` §Units `.g`) —
+ * THE NAMED HONEST-RED SET, declared here and nowhere else.
+ *
+ * Each row is a falsifier whose cure is glass's to ship (F.W14U/F.W14V carried
+ * them as ADOPT-AT-LANDING: the consumer half is measured clean, the producer
+ * half is asked for by its O-row, and no consumer override is lawful). They are
+ * RED by design until glass lands, so they do not gate the `chromium` /
+ * `mobile-chromium` cells — and they are NOT skipped either: the `honest-red`
+ * project runs exactly this set, and CI's e2e job runs it after the gating
+ * cells through `e2e/honest-red-reporter.ts`, which FAILS the run if any row
+ * has turned green (the producer landed: adopt it and delete its row here), if
+ * a row matches no test (a renamed falsifier must not fall out of the set
+ * silently), or if a row's test fails without its `token` in the failure (RED
+ * for some other reason is a defect, not this row). A row leaves this table
+ * only by adoption.
+ */
+export const HONEST_RED: readonly { row: string; spec: string; title: RegExp; token: string }[] = [
+    {
+        row: "L1-12 — glass puts `.card-title` on `--type-heading` (O-74b, glass 10.2.0)",
+        spec: "f-w14v-au3.spec.ts",
+        title: /L1-12 · every \/morph card title is glass's CardTitle on one rung/,
+        token: "is a glass CardTitle in a glass Card",
+    },
+    {
+        row: "MAGNET-STATE-HIDDEN — the DockTrigger state mark (O-76 addendum 2026-09-25)",
+        spec: "f-w14v-c3.spec.ts",
+        title: /c3m — the More-tools trigger shows the magnet's state/,
+        token: "MAGNET-STATE-HIDDEN",
+    },
+    {
+        row: "MENU-ICON-GAP — the DropdownMenuItem icon gap (O-76 addendum 2026-09-25)",
+        spec: "f-w14v-c3.spec.ts",
+        title: /c3g — Smooth, Simplify and Reset keep glass's menu icon gap/,
+        token: "MENU-ICON-GAP",
+    },
+    {
+        row: "DOCK-SUMMARY-SQUARE — the collapsed summary is content-sized (O-84, folding into O-65)",
+        spec: "f-w14v-pd.spec.ts",
+        title: /F\.W14V\.pd — the playback dock is one glass surface \([^)]*\) collapsed: every element inside the plate/,
+        token: "DOCK-SUMMARY-SQUARE",
+    },
+];
+
+const HONEST_RED_GREP = new RegExp(HONEST_RED.map((r) => r.title.source).join("|"));
+
 export default defineConfig({
     testDir: "./e2e",
     // X.F.W14.s — the suite seeds the records it assumes through the public
@@ -124,7 +170,7 @@ export default defineConfig({
             // fine, so running them here would report a correct fine-pointer
             // tree as broken. When PLAYWRIGHT_PROD=1 the destructive specs are
             // excluded here too — see `excluded()` above.
-            grepInvert: excluded(/@coarse/, GPU_INSTRUMENT),
+            grepInvert: excluded(/@coarse/, GPU_INSTRUMENT, HONEST_RED_GREP),
         },
         {
             name: "chrome-gpu",
@@ -135,7 +181,7 @@ export default defineConfig({
                 launchOptions: { args: CHROME_GPU_ARGS },
             },
             grep: GPU_INSTRUMENT,
-            grepInvert: excluded(/@coarse/),
+            grepInvert: excluded(/@coarse/, HONEST_RED_GREP),
         },
         /**
          * X·F F.W9 `.b` — `G-F9-13`, THE COARSE-POINTER CELL.
@@ -174,7 +220,15 @@ export default defineConfig({
             name: "mobile-chromium",
             use: { ...devices["Pixel 7"] },
             grep: /@coarse/,
-            grepInvert: excluded(GPU_INSTRUMENT),
+            grepInvert: excluded(GPU_INSTRUMENT, HONEST_RED_GREP),
+        },
+        // F.REL `.g` — the named honest-RED set (`HONEST_RED` above), run on its own and
+        // asserted still-RED by CI. Never a gate, never a skip.
+        {
+            name: "honest-red",
+            use: { ...devices["Desktop Chrome"] },
+            grep: HONEST_RED_GREP,
+            grepInvert: excluded(/@coarse/, GPU_INSTRUMENT),
         },
     ],
 });

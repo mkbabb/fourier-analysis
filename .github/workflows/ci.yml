@@ -375,6 +375,17 @@ jobs:
         # ⊘ `mobile-chromium` is Chromium under `Pixel 7` emulation. It
         # discharges NO Safari cell (`X-W11 G8`).
         run: npx playwright test --project=chromium --project=mobile-chromium --reporter=list
+      # F.REL `.g` — the named honest-RED set (`HONEST_RED` in web/playwright.config.ts:
+      # glass ADOPT-AT-LANDING rows, excluded from the two gating cells above). Run,
+      # never skipped: `e2e/honest-red-reporter.ts` passes only when every row is still
+      # RED on its own token, and fails the job the day a row turns green (adopt it) or
+      # stops matching a test.
+      - name: Honest-RED set (glass ADOPT-AT-LANDING rows) — still RED as declared
+        if: ${{ !cancelled() }}
+        working-directory: web
+        env:
+          BASE_URL: "http://localhost:3000"
+        run: npx playwright test --project=honest-red --reporter=list,./e2e/honest-red-reporter.ts
       - name: Tear down (always)
         if: always()
         run: |
