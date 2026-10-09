@@ -205,7 +205,9 @@ function handleReset() {
 
 /* X.F.W14.h · OA-45 — the page title and lede on glass's type scale
    (`--type-display-1`, fluid; `--type-body` for the lede). Below them every
-   card title sits on `--type-heading` (MorphPhaseConfig, HarmonicLevelGrid). */
+   card title sits on `--type-subheading` (MorphPhaseConfig, HarmonicLevelGrid;
+   X-DS pass 14 · DS-F16-C1: display-1's floor is `--type-heading`, so a card
+   title on that rung matched the page title at narrow widths). */
 .demo-title {
     font-family: var(--font-serif);
     font-size: var(--type-display-1);

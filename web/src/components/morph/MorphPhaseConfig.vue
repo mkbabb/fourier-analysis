@@ -188,7 +188,11 @@ const easingNames = EASING_PRESET_NAMES;
 
 .config-card-title {
     font-family: var(--font-serif);
-    font-size: var(--type-heading);
+    /* X-DS pass 14 · DS-F16-C1: one rung under the page title at every
+       width. On --type-heading it met display-1's floor (1.618rem) at narrow
+       widths, so the 500 card title outranked the 400 page title; the
+       subheading rung is also the PRE-DOCK compact card voice. */
+    font-size: var(--type-subheading);
     line-height: var(--type-leading-heading);
     /* X-DS DS-F4R-C3: the PRE-DOCK card voice, under the page's 400-weight
        display title (a 600 card title outweighed "Fourier Morph"). */

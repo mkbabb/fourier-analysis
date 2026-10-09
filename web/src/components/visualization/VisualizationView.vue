@@ -465,7 +465,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                          Card for the catch-all route only, where it sits on the page
                          ground; here it was a resting plate inside a resting plate. -->
                     <div v-else-if="stageError" class="stage-state stage-error" data-testid="not-found">
-                        <h1 class="stage-error-title font-serif-math text-display-2 font-bold tracking-tight">
+                        <h1 class="stage-error-title font-serif-math">
                             {{ isSavedRoute ? "Could not open this visualization" : "Could not load this workspace" }}
                         </h1>
                         <!-- X-DS pass 13 · DS-F15-C4: the quoted slug is one token; its
@@ -518,11 +518,11 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                  origin's dashed hairline), so the prompt and its
                                  action sit in the thing a file is dropped on. -->
                             <div class="drop-zone">
-                                <h1 class="drop-target-title font-serif-math text-display-2 font-bold tracking-tight">Draw any outline in circles</h1>
+                                <h1 class="drop-target-title font-serif-math">Draw any outline in circles</h1>
                                 <p class="drop-target-lede text-body text-muted-foreground">
                                     Upload an image: its outline is traced and redrawn by a Fourier series, a chain of rotating circles.
                                 </p>
-                                <Button emphasis="primary" size="lg" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
+                                <Button emphasis="primary" size="md" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
                                     <Upload v-if="!store.uploading" />
                                     {{ primaryUploadLabel }}
                                 </Button>
@@ -1010,10 +1010,17 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     z-index: var(--z-controls);
 }
 /* X.F.W14U.vstage — the empty state's hierarchy (UIA-F-69): the title, then the
-   lede one step down, then the action; the gallery path sits apart below. */
-.drop-target-title {
+   lede one step down, then the action; the gallery path sits apart below.
+   X-DS pass 14 · DS-F16-C2: the route's h1 is on ONE rung app-wide — the
+   /morph title's (display-1 at 400). Both stage messages (empty and load
+   error) were on display-2 at 700, louder than any route's title. */
+.drop-target-title,
+.stage-error-title {
     margin: 0;
     max-inline-size: 18ch;
+    font-size: var(--type-display-1);
+    line-height: var(--type-leading-display);
+    font-weight: 400;
     text-wrap: balance;
 }
 .drop-target-lede {
@@ -1097,25 +1104,23 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 }
 /* X-DS pass 12 · DS-F14-C1 — the load error on the stage's own frame: the
    empty stage's title and lede measures, the diagnosis under them, and one
-   centred action row on the same gap. */
+   centred action group (a column since pass 14). */
 .stage-error {
     text-align: center;
-}
-.stage-error-title {
-    margin: 0;
-    max-inline-size: 18ch;
-    text-wrap: balance;
 }
 .stage-error-lede {
     margin: 0;
     max-inline-size: 52ch;
     text-wrap: pretty;
 }
+/* X-DS pass 14 · DS-F16-C5: one action grammar for the stage's two states —
+   the drop zone's centred column (primary, then the quiet action beneath on
+   the zone's gap), both primaries on the page-action rung (md). */
 .stage-error-actions {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
 }
 .stage-busy-bar {
     inline-size: min(12rem, 60%);

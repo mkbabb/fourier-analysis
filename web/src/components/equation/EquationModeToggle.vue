@@ -64,34 +64,32 @@ const value = computed({
         class="eq-toggle"
     >
         <template #option="{ option }">
-            <span
-                class="eq-toggle-icon"
-                :class="{ 'eq-toggle-icon--mono': option.value === 'expanded' }"
-                aria-hidden="true"
-            >{{ option.value === "sigma" ? "Σ" : "a + b" }}</span>
+            <!-- X-DS pass 14 · DS-F16-C4: both glyphs in the math register the
+                 aside and the KaTeX title use: Σ upright, the operands in math
+                 italic with an upright +, as KaTeX sets "a + b". -->
+            <span class="eq-toggle-icon" aria-hidden="true">
+                <template v-if="option.value === 'sigma'">Σ</template>
+                <template v-else><i>a</i> + <i>b</i></template>
+            </span>
             <span class="sr-only">{{ option.label }}</span>
         </template>
     </SegmentedTabs>
 </template>
 
 <style scoped>
-/* The two glyph treatments are the only thing this file ever had that the
-   primitive does not: a Computer Modern italic sigma and a Fira Code operand
-   pair. Everything else — the track, the indicator, the active paint, the
-   hover, the focus ring, the clipping frame that broke it — retires with the
-   hand-roll. */
-/* X.F.W14U.eq — UIA-F-206: both glyphs on glass's named rungs (the operand
-   pair was an 11 px literal under the caption rung). */
+/* The one glyph treatment this file has that the primitive does not: the
+   math register. Everything else — the track, the indicator, the active
+   paint, the hover, the focus ring — is glass SegmentedTabs'.
+   X.F.W14U.eq — UIA-F-206: on glass's named rung.
+   X-DS pass 14 · DS-F16-C4: on the app's math font token (was a literal
+   family stack, and a Fira Code operand pair beside a CM sigma). */
 .eq-toggle-icon {
     font-size: var(--type-small);
-    font-family: "Computer Modern Serif", Georgia, serif;
-    font-style: italic;
+    font-family: var(--font-serif-math);
+    font-style: normal;
 }
 
-.eq-toggle-icon--mono {
-    font-family: var(--font-mono);
-    font-size: var(--type-caption);
-    font-style: normal;
-    letter-spacing: -0.5px;
+.eq-toggle-icon i {
+    font-style: italic;
 }
 </style>

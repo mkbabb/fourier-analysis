@@ -206,7 +206,8 @@ function getPath(level: number): string {
 
 .card-title {
     font-family: var(--font-serif);
-    font-size: var(--type-heading);
+    /* X-DS pass 14 · DS-F16-C1: the phase cards' rung (MorphPhaseConfig). */
+    font-size: var(--type-subheading);
     line-height: var(--type-leading-heading);
     /* X-DS DS-F4R-C3: the card voice, under the page's display title. */
     font-weight: 500;
