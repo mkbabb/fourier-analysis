@@ -362,6 +362,21 @@ jobs:
             sleep 1
           done
           echo "Vite failed to start"; cat /tmp/vite.log; exit 1
+      # F.REL `.w` (value.js COHESION §0ew ESC-FREL-g-2) — the gate below excludes
+      # EXACTLY the rows of `web/e2e/producer-held.json` (playwright.config.ts reads
+      # that file and nothing else for the set), and this step prints them on every
+      # run, to the log and to the job summary: test id, O-id, expiry. Every other
+      # e2e failure blocks the deploy.
+      - name: Producer-held manifest (excluded from the gate below)
+        working-directory: web
+        run: |
+          node -e '
+            const m = JSON.parse(require("fs").readFileSync("e2e/producer-held.json", "utf8"));
+            const lines = m.rows.map((r) => `| ${r.test} | ${r.o} | ${r.expiry} |`);
+            const out = [`Producer-held e2e rows excluded from the gate: ${m.rows.length}`, "", "| test | O-id | expiry |", "|---|---|---|", ...lines].join("\n");
+            console.log(out);
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## e2e — producer-held manifest\n\n${out}\n`);
+          '
       - name: Run Playwright e2e
         working-directory: web
         env:
@@ -375,12 +390,12 @@ jobs:
         # ⊘ `mobile-chromium` is Chromium under `Pixel 7` emulation. It
         # discharges NO Safari cell (`X-W11 G8`).
         run: npx playwright test --project=chromium --project=mobile-chromium --reporter=list
-      # F.REL `.g` — the named honest-RED set (`HONEST_RED` in web/playwright.config.ts:
-      # glass ADOPT-AT-LANDING rows, excluded from the two gating cells above). Run,
-      # never skipped: `e2e/honest-red-reporter.ts` passes only when every row is still
-      # RED on its own token, and fails the job the day a row turns green (adopt it) or
-      # stops matching a test.
-      - name: Honest-RED set (glass ADOPT-AT-LANDING rows) — still RED as declared
+      # F.REL `.g`/`.w` — the producer-held set (`web/e2e/producer-held.json`, read by
+      # web/playwright.config.ts: glass ADOPT-AT-LANDING rows, excluded from the two
+      # gating cells above). Run, never skipped: `e2e/honest-red-reporter.ts` passes only
+      # when every row is still RED on its own token, and fails the job the day a row
+      # turns green (adopt it) or stops matching a test.
+      - name: Producer-held set (glass ADOPT-AT-LANDING rows) — still RED as declared
         if: ${{ !cancelled() }}
         working-directory: web
         env:

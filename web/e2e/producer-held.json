@@ -1,0 +1,78 @@
+{
+    "servedModel": "SERVED MODEL: claude-opus-5-5",
+    "about": "F.REL .w (value.js COHESION §0ew ESC-FREL-g-2; F-REL.md addendum (a) .w): THE ONE committed manifest of producer-held e2e failures. Each row is a test whose cure is glass-ui's to ship, relayed by its O-id. playwright.config.ts reads this file and nothing else for the set: the gating cells (chromium, mobile-chromium) exclude exactly these rows, the honest-red project runs exactly these rows, and e2e/honest-red-reporter.ts fails the run if a row passes (glass landed: adopt it and delete the row), matches no test, is skipped, or fails without its token. CI prints this file on every run. Every other e2e failure blocks. A row leaves only by adoption, and expires at its stated repin.",
+    "rows": [
+        {
+            "test": "f-w14v-au3.spec.ts › X.F.W14V.au3 — equation and morph (1440) › L1-12 · every /morph card title is glass's CardTitle on one rung",
+            "spec": "f-w14v-au3.spec.ts",
+            "title": "L1-12 · every \\/morph card title is glass's CardTitle on one rung",
+            "token": "is a glass CardTitle in a glass Card",
+            "o": "O-74b",
+            "row": "L1-12 — glass puts `.card-title` on a named rung (`--type-title`, I-66)",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "test": "f-w14v-c3.spec.ts › X.F.W14V.c3 — the editor dock's leftovers › c3m — the More-tools trigger shows the magnet's state (on: a mark in its hue; off: none)",
+            "spec": "f-w14v-c3.spec.ts",
+            "title": "c3m — the More-tools trigger shows the magnet's state",
+            "token": "MAGNET-STATE-HIDDEN",
+            "o": "O-76",
+            "row": "MAGNET-STATE-HIDDEN — the DockTrigger state mark (O-76 addendum 2026-09-25)",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "test": "f-w14v-c3.spec.ts › X.F.W14V.c3 — the editor dock's leftovers › c3g — Smooth, Simplify and Reset keep glass's menu icon gap",
+            "spec": "f-w14v-c3.spec.ts",
+            "title": "c3g — Smooth, Simplify and Reset keep glass's menu icon gap",
+            "token": "MENU-ICON-GAP",
+            "o": "O-76",
+            "row": "MENU-ICON-GAP — the DropdownMenuItem icon gap (O-76 addendum 2026-09-25)",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "test": "f-w14v-pd.spec.ts › F.W14V.pd — the playback dock is one glass surface (1440 light | 1440 dark | 1024 light | 1024 dark | 390 light | 390 dark) › collapsed: every element inside the plate",
+            "spec": "f-w14v-pd.spec.ts",
+            "title": "F\\.W14V\\.pd — the playback dock is one glass surface \\([^)]*\\) collapsed: every element inside the plate",
+            "token": "DOCK-SUMMARY-SQUARE",
+            "o": "O-84",
+            "row": "DOCK-SUMMARY-SQUARE — the collapsed summary is content-sized (O-84/O-84a/O-84b, folded into O-88)",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "test": "gallery-admin-a11y.spec.ts › X·F F.W4 — admin-mode a11y (G-F4-ADMIN-AXE) › admin banner: the stat cells are graded for the first time",
+            "spec": "gallery-admin-a11y.spec.ts",
+            "title": "G-F4-ADMIN-AXE\\) admin banner: the stat cells are graded for the first time",
+            "token": "[serious] aria-hidden-focus",
+            "o": "O-90",
+            "row": "TOAST-FOCUS-PROXY — glass Toaster (reka ToastViewport) renders aria-hidden focus proxies with tabindex=0 while a toast is up (re-asks O-32 §3.1 / E-F9b-2)",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "test": "gallery-admin-a11y.spec.ts › X·F F.W4 — admin-mode a11y (G-F4-ADMIN-AXE) › admin users panel",
+            "spec": "gallery-admin-a11y.spec.ts",
+            "title": "G-F4-ADMIN-AXE\\) admin users panel",
+            "token": "[serious] aria-hidden-focus",
+            "o": "O-90",
+            "row": "TOAST-FOCUS-PROXY — glass Toaster (reka ToastViewport) renders aria-hidden focus proxies with tabindex=0 while a toast is up (re-asks O-32 §3.1 / E-F9b-2)",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "test": "gallery-admin-a11y.spec.ts › X·F F.W4 — admin-mode a11y (G-F4-ADMIN-AXE) › admin flagged panel",
+            "spec": "gallery-admin-a11y.spec.ts",
+            "title": "G-F4-ADMIN-AXE\\) admin flagged panel",
+            "token": "[serious] aria-hidden-focus",
+            "o": "O-90",
+            "row": "TOAST-FOCUS-PROXY — glass Toaster (reka ToastViewport) renders aria-hidden focus proxies with tabindex=0 while a toast is up (re-asks O-32 §3.1 / E-F9b-2)",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "test": "gallery-admin-a11y.spec.ts › X·F F.W4 — admin-mode a11y (G-F4-ADMIN-AXE) › admin audit log panel",
+            "spec": "gallery-admin-a11y.spec.ts",
+            "title": "G-F4-ADMIN-AXE\\) admin audit log panel",
+            "token": "[serious] aria-hidden-focus",
+            "o": "O-90",
+            "row": "TOAST-FOCUS-PROXY — glass Toaster (reka ToastViewport) renders aria-hidden focus proxies with tabindex=0 while a toast is up (re-asks O-32 §3.1 / E-F9b-2)",
+            "expiry": "at glass 10.2.0 repin"
+        }
+    ]
+}

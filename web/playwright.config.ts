@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
@@ -81,47 +82,51 @@ const CHROME_GPU_ARGS = ["--use-angle=metal", "--force-device-scale-factor=2"];
 
 /**
  * F.REL `.g` (value.js `docs/tranches/X/fourier/waves/F-REL.md` §Units `.g`) —
- * THE NAMED HONEST-RED SET, declared here and nowhere else.
+ * THE NAMED HONEST-RED SET; F.REL `.w` (COHESION §0ew ESC-FREL-g-2, addendum
+ * (a) `.w`) — declared in ONE committed manifest, `e2e/producer-held.json`, and
+ * read from it here and nowhere else.
  *
- * Each row is a falsifier whose cure is glass's to ship (F.W14U/F.W14V carried
- * them as ADOPT-AT-LANDING: the consumer half is measured clean, the producer
- * half is asked for by its O-row, and no consumer override is lawful). They are
- * RED by design until glass lands, so they do not gate the `chromium` /
- * `mobile-chromium` cells — and they are NOT skipped either: the `honest-red`
- * project runs exactly this set, and CI's e2e job runs it after the gating
- * cells through `e2e/honest-red-reporter.ts`, which FAILS the run if any row
- * has turned green (the producer landed: adopt it and delete its row here), if
- * a row matches no test (a renamed falsifier must not fall out of the set
- * silently), or if a row's test fails without its `token` in the failure (RED
- * for some other reason is a defect, not this row). A row leaves this table
- * only by adoption.
+ * Each row is a falsifier whose cure is glass's to ship: the consumer half is
+ * measured clean, the producer half is asked for by its O-row, and no consumer
+ * override is lawful. Each carries its test id, its O-id and its expiry ("at
+ * glass 10.2.0 repin"). They are RED by design until glass lands, so they do
+ * not gate the `chromium` / `mobile-chromium` cells — and they are NOT skipped
+ * either: the `honest-red` project runs exactly this set, and CI's e2e job
+ * runs it after the gating cells through `e2e/honest-red-reporter.ts`, which
+ * FAILS the run if any row has turned green (the producer landed: adopt it and
+ * delete its row), if a row matches no test (a renamed falsifier must not fall
+ * out of the set silently), or if a row's test fails without its `token` in
+ * the failure (RED for some other reason is a defect, not this row). CI prints
+ * the manifest on every run. A row leaves the manifest only by adoption.
  */
-export const HONEST_RED: readonly { row: string; spec: string; title: RegExp; token: string }[] = [
-    {
-        row: "L1-12 — glass puts `.card-title` on `--type-heading` (O-74b, glass 10.2.0)",
-        spec: "f-w14v-au3.spec.ts",
-        title: /L1-12 · every \/morph card title is glass's CardTitle on one rung/,
-        token: "is a glass CardTitle in a glass Card",
-    },
-    {
-        row: "MAGNET-STATE-HIDDEN — the DockTrigger state mark (O-76 addendum 2026-09-25)",
-        spec: "f-w14v-c3.spec.ts",
-        title: /c3m — the More-tools trigger shows the magnet's state/,
-        token: "MAGNET-STATE-HIDDEN",
-    },
-    {
-        row: "MENU-ICON-GAP — the DropdownMenuItem icon gap (O-76 addendum 2026-09-25)",
-        spec: "f-w14v-c3.spec.ts",
-        title: /c3g — Smooth, Simplify and Reset keep glass's menu icon gap/,
-        token: "MENU-ICON-GAP",
-    },
-    {
-        row: "DOCK-SUMMARY-SQUARE — the collapsed summary is content-sized (O-84, folding into O-65)",
-        spec: "f-w14v-pd.spec.ts",
-        title: /F\.W14V\.pd — the playback dock is one glass surface \([^)]*\) collapsed: every element inside the plate/,
-        token: "DOCK-SUMMARY-SQUARE",
-    },
-];
+interface ProducerHeldRow {
+    test: string;
+    spec: string;
+    title: string;
+    token: string;
+    o: string;
+    row: string;
+    expiry: string;
+}
+
+const PRODUCER_HELD: readonly ProducerHeldRow[] = (
+    JSON.parse(readFileSync(new URL("./e2e/producer-held.json", import.meta.url), "utf8")) as {
+        rows: ProducerHeldRow[];
+    }
+).rows;
+
+// A row that cannot say what it holds, who owes it or when it ends is not a
+// hold: the config refuses to load rather than exclude it.
+for (const r of PRODUCER_HELD) {
+    const missing = (["test", "spec", "title", "token", "o", "row", "expiry"] as const).filter((k) => !r[k]?.trim());
+    if (missing.length || !/^O-\d+[a-z]?$/.test(r.o)) {
+        throw new Error(`e2e/producer-held.json: malformed row ${JSON.stringify(r.test)} (missing ${missing.join(", ") || "a valid O-id"})`);
+    }
+}
+
+export const HONEST_RED: readonly { row: string; spec: string; title: RegExp; token: string }[] = PRODUCER_HELD.map(
+    (r) => ({ row: `${r.row} [${r.o}; expires ${r.expiry}]`, spec: r.spec, title: new RegExp(r.title), token: r.token }),
+);
 
 const HONEST_RED_GREP = new RegExp(HONEST_RED.map((r) => r.title.source).join("|"));
 
@@ -222,8 +227,8 @@ export default defineConfig({
             grep: /@coarse/,
             grepInvert: excluded(GPU_INSTRUMENT, HONEST_RED_GREP),
         },
-        // F.REL `.g` — the named honest-RED set (`HONEST_RED` above), run on its own and
-        // asserted still-RED by CI. Never a gate, never a skip.
+        // F.REL `.g`/`.w` — the producer-held set (`e2e/producer-held.json`, read
+        // above), run on its own and asserted still-RED by CI. Never a gate, never a skip.
         {
             name: "honest-red",
             use: { ...devices["Desktop Chrome"] },
