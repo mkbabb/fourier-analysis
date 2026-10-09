@@ -6,8 +6,10 @@ import { fourierPositionsAt, evaluateFourier } from "@/lib/evaluators";
 import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
 import type { BasisComponent } from "@/lib/types";
-import type { ViewTransform, EpicycleBbox } from "./lib/canvas-drawing";
 import {
+    type ViewTransform,
+    type EpicycleBbox,
+    type EpicycleFit,
     drawGrid,
     drawGhostPath,
     drawPlaceholder,
@@ -23,7 +25,6 @@ import {
     isMouseInEpicycleBounds,
     epicycleAlphaFromScale,
 } from "./lib/canvas-drawing";
-import type { EpicycleFit } from "./lib/canvas-drawing";
 import { useCanvasSetup, type CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";

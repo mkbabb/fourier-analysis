@@ -35,8 +35,8 @@ import {
     Tooltip as GlassTooltip,
     TooltipTrigger,
     TooltipContent,
+    type TooltipContentProps,
 } from "@mkbabb/glass-ui/tooltip";
-import type { TooltipContentProps } from "@mkbabb/glass-ui/tooltip";
 
 /**
  * The placement vocabulary, taken FROM the producer's published content props
