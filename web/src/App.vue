@@ -171,5 +171,11 @@ onScopeDispose(() => {
             </main>
         </div>
     </TooltipProvider>
-    <Toaster />
+    <!-- F.REL .w (COHESION §0ew, ESC-FREL-g-2; F.W14V.p p3): notifications seat
+         at the edge opposite the controls. The Configurator's aside is the
+         right-hand column at every ≥ lg width and runs to the shell's foot (to
+         y 756 of 768 at 1024, 732 of 800 at 1280), so glass's default
+         bottom-right corner lands the toast on the controls pane. Below sm the
+         Toaster spans the top edge whatever the position. -->
+    <Toaster position="bottom-left" />
 </template>
