@@ -325,10 +325,6 @@ article.paper-article {
     background-color: color-mix(in srgb, var(--chip-hue) 16%, transparent);
 }
 
-.dark .katex {
-    color: var(--foreground);
-}
-
 /* Tab-panel entry animation — local carry pending glass-ui's Tabs
    primitive shipping this on its own. Selector targets the data-attribute
    the upstream UnderlineTabs primitive sets; cite `EquationView`,

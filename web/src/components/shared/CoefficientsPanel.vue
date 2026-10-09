@@ -13,15 +13,16 @@ import type { BasisComponent } from "@/lib/types";
  * subtitle, their empty text and the "rendered N of M" note; those are props.
  *
  * `FR-EQC-12` / D3 (/equation): the subtitle names the list's size rather than
- * promising a spectrum graph the route declines, so it defaults to the harmonic
- * count; /visualize passes its own. `FR-EQC-1` ⊕ UIA-F-35 / F-201: when the
+ * promising a spectrum graph the route declines.
+ * X-DS F2R · DS-F2R-C2 — ONE caption rule across the Configurator: a layer
+ * carries a caption only when it says something its rows do not (Function's
+ * `f(t)`, this count). /visualize's own "Fourier spectrum" restated the label
+ * and is gone (the prop with it), and an empty list has no count to state. `FR-EQC-1` ⊕ UIA-F-35 / F-201: when the
  * rendered formula keeps fewer harmonics than the list shows, the note says
  * so with the two real numbers, counted in one unit (harmonics, DC as one).
  */
 const props = defineProps<{
     components: BasisComponent[];
-    /** The layer's subtitle; the harmonic count when absent. */
-    sub?: string;
     /** The harmonic count the rendered formula keeps (`budget`, DC as one). */
     renderedTerms?: number;
     emptyText?: string;
@@ -45,7 +46,7 @@ const truncated = computed(
 </script>
 
 <template>
-    <ConfiguratorLayer label="Coefficients" :sub="sub ?? `all ${total} harmonics${span}`" :default-open="false">
+    <ConfiguratorLayer label="Coefficients" :sub="total ? `all ${total} harmonics${span}` : undefined" :default-open="false">
         <p v-if="truncated" class="reconcile-note">
             The expanded equation keeps the {{ renderedTerms }} strongest harmonics
             (DC counts as one); this list is the full set.

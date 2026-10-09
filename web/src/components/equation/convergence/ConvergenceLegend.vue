@@ -79,8 +79,12 @@ const emit = defineEmits<{
 }
 /* X-DS pass 4 · DS-F4-C7: beside the plot the legend is plate-less too (the
    DS-F2-C9 wrapped legend's idiom), set off from the curves by one hairline
-   rule, not a glass plate inside the plot's plate. */
+   rule, not a glass plate inside the plot's plate.
+   X-DS F2R · DS-F2R-C5: the column stretches to the plot's height, so the
+   rule runs the plot's full side instead of stopping in mid-air at the
+   legend's own content height. */
 .legend-overlay--column {
+    align-self: stretch;
     border-inline-start: 1px solid var(--border);
 }
 .legend-overlay--wrapped {

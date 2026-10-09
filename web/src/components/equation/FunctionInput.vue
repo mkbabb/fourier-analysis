@@ -221,7 +221,7 @@ const activePreset = computed(() =>
             </div>
         </div>
     </ConfiguratorLayer>
-    <ConfiguratorLayer label="Controls" sub="harmonics & display" :default-open="true">
+    <ConfiguratorLayer label="Controls" :default-open="true">
         <div class="space-y-body py-1">
             <!-- X-DS pass 1 · F1-07 — the Parseval control is a labelled "Auto"
                  toggle in the Harmonics row, beside its field (glass's own
@@ -296,8 +296,16 @@ const activePreset = computed(() =>
     background: color-mix(in srgb, var(--viz-fourier) 8%, transparent);
     color: var(--viz-fourier);
 }
+/* X-DS F2R · DS-F2R-C6: the presets set as columns, not a wrapping run. A
+   wrapped run left `x²` alone on a third row at 390 (3/4/1), and no gap step
+   recovers the ~56 px it lacked. As auto-filled tracks (each at least 5rem
+   and at least a quarter of the row, so never more than four columns; at most
+   its widest chip) the eight chips balance at every width: 4/4 where four fit,
+   3/3/2 on a phone, on the group's own gap. */
 .preset-group {
-    flex-wrap: wrap;
+    display: grid;
+    inline-size: 100%;
+    grid-template-columns: repeat(auto-fill, minmax(max(5rem, 22%), max-content));
 }
 /* The pressed preset and Auto keep the Fourier hue (addendum (g)) through the
    app's one hue-chooser tone (`.hue-chip`, style.css; X-DS DS-F3-C7). */

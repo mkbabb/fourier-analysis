@@ -483,7 +483,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                             </Button>
                             <!-- X-DS pass 13 · DS-F15-C3: the quiet rung, as on the empty
                                  stage: one primary, one quiet action, one cast stack. -->
-                            <Button emphasis="quiet" size="md" @click="store.reset(); router.push('/gallery')">
+                            <Button emphasis="text" size="sm" @click="store.reset(); router.push('/gallery')">
                                 Browse the gallery
                             </Button>
                         </div>
@@ -528,10 +528,13 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 </Button>
                                 <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
                                 <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
-                                <!-- X-DS DS-F4R-C7: the second path is a peer action
-                                     in the zone, on the page-action rung (md, as
-                                     NotFoundCard's), not a 13 px footnote outside it. -->
-                                <Button emphasis="quiet" size="md" @click="router.push('/gallery')">Browse the gallery</Button>
+                                <!-- X-DS DS-F4R-C7: the second path is an action in the
+                                     zone, not a footnote outside it. X-DS F2R · DS-F2R-C4:
+                                     it is glass's link rung (`text`, accent ink) at `sm`,
+                                     so it reads as a command, not a second caption, at one
+                                     size at every width; the format caption sits between
+                                     it and the primary. -->
+                                <Button emphasis="text" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
                             </div>
                         </div>
                         <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
@@ -651,7 +654,6 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 <CoefficientsPanel
                                     v-if="store.epicycleData || store.computing"
                                     :components="store.epicycleData?.components ?? []"
-                                    sub="Fourier spectrum"
                                     empty-text="Compute epicycles to see coefficients"
                                 />
                             </Transition>
@@ -1001,10 +1003,11 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    /* X-DS pass 10 · DS-F12-C4: the zone fills the stage's content box, inset
-       by the card pad's own measure (`--space-body`, glass Card's md pad; the
-       stage cell is not a Card, so `--card-pad` does not reach it). */
-    padding: var(--space-body);
+    /* X-DS pass 10 · DS-F12-C4: the zone fills the stage's content box.
+       X-DS F2R · DS-F2R-C3: inset by the residue step, not the card pad, so
+       the dashed edge hugs the plate's own edge (one frame, not a frame drawn
+       12 px inside a frame) and a phone keeps its gutter. */
+    padding: var(--space-residue);
     text-align: center;
     pointer-events: none;
     z-index: var(--z-controls);
@@ -1060,7 +1063,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     gap: 0.5rem;
     padding: 2rem 1.5rem;
     border: 1px dashed var(--border);
-    border-radius: calc(var(--radius-card) - var(--space-body));
+    border-radius: calc(var(--radius-card) - var(--space-residue));
 }
 /* X-DS pass 4 · DS-F4-C9: on a phone the prompt sits on the app's one gutter,
    not two stacked 1.5rem insets, so the balanced title takes two lines
@@ -1122,8 +1125,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     text-wrap: pretty;
 }
 /* X-DS pass 14 · DS-F16-C5: one action grammar for the stage's two states —
-   the drop zone's centred column (primary, then the quiet action beneath on
-   the zone's gap), both primaries on the page-action rung (md). */
+   the drop zone's centred column (primary, then the second path beneath on
+   the zone's gap), both primaries on the page-action rung (md), both second
+   paths on glass's link rung at sm (F2R · DS-F2R-C4). */
 .stage-error-actions {
     display: flex;
     flex-direction: column;

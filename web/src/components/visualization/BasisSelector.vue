@@ -122,7 +122,7 @@ function resetDefaults() {
 </script>
 
 <template>
-    <ConfiguratorLayer label="Basis" sub="resolution" :default-open="true">
+    <ConfiguratorLayer label="Basis" :default-open="true">
         <!-- X.F.W14U.a2 — O-68 CONFIGURATOR-HEADER-ACTIONS (glass 10.1.0,
              COHESION §0dd). The owner: "the refresh button should be inline in
              the section when expanded too". The layer-wide reset sits in the
