@@ -20,10 +20,15 @@
 #                       Mongo service container provided here too so the
 #                       backend can boot cleanly.
 #
-#   4. inv-27-evidence — X·F F.W9 `.c`, `G-F9-17`. Mints ONE durable, citable
+#   4. prod-compose   — X·F F.REL `.h`. Builds the production images and boots
+#                       docker-compose.prod.yml under its full hardening; the
+#                       deploy gate's liveness + readiness probes must answer
+#                       (scripts/prod-compose-smoke.sh).
+#
+#   5. inv-27-evidence — X·F F.W9 `.c`, `G-F9-17`. Mints ONE durable, citable
 #                       record — run id, run attempt, covering commit SHA, and
 #                       every gating job's own conclusion — and mints it ONLY
-#                       for a run in which all three concluded `success`. It
+#                       for a run in which all four concluded `success`. It
 #                       is what makes *"cite a covering green run id"* an act
 #                       a later seat can perform instead of assert.
 #
@@ -383,6 +388,28 @@ jobs:
           path: web/playwright-report/
           retention-days: 7
 
+  # ── X·F F.REL `.h` — the production stack boots healthy ────────────────────
+  #
+  # From H.W4 (2026-06) to F.REL .h every master push failed the host's deploy
+  # health gate and rolled back: the hardened nginx containers (edge + SPA)
+  # crash-looped at boot on a missing capability, and nothing off the host ever
+  # booted docker-compose.prod.yml to see it. This job does exactly what the
+  # host does — build the production images, bring the two-file compose overlay
+  # up under its full hardening (mongo verified-TLS + auth, read-only backend
+  # with the baked models, read-only nginx) and ask the deploy gate's two
+  # questions through the edge (liveness /api/health 200 json · readiness
+  # / 404). One script, run here and locally: scripts/prod-compose-smoke.sh.
+  # It gates inv-27 below, so the deploy hook's covering-green query (inv-28)
+  # never ships a SHA whose production stack does not boot.
+  prod-compose:
+    name: production compose boot + health
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Boot docker-compose.prod.yml and probe the deploy gate
+        run: bash scripts/prod-compose-smoke.sh
+
   # ── X·F F.W9 `.c` — inv-27, THE EVIDENCE FLOOR ─────────────────────────────
   #
   # `F-W9.md` §2.7 states the wave's evidence law in one line: *"no gate closes
@@ -400,7 +427,7 @@ jobs:
   # serialises the oracle; it never becomes one.
   #
   # FAIL-CLOSED, TWICE. First by `needs:` — GitHub will not start this job
-  # unless all three gating jobs concluded `success`, so a red run mints no
+  # unless all four gating jobs concluded `success`, so a red run mints no
   # record at all. Second by the assertion step below, which re-reads the three
   # results and exits non-zero on anything but `success`. The second check is
   # redundant TODAY and is here on purpose: the day someone adds `if: always()`
@@ -415,17 +442,18 @@ jobs:
   inv-27-evidence:
     name: inv-27 evidence (covering run id + SHA)
     runs-on: ubuntu-latest
-    needs: [api-tests, web-build, e2e-tests]
+    needs: [api-tests, web-build, e2e-tests, prod-compose]
     steps:
       - name: Assert the run is covering-green (fail-closed)
         env:
           API_RESULT: ${{ needs.api-tests.result }}
           WEB_RESULT: ${{ needs.web-build.result }}
           E2E_RESULT: ${{ needs.e2e-tests.result }}
+          PROD_RESULT: ${{ needs.prod-compose.result }}
         run: |
           set -eu
           not_green=0
-          for pair in "api-tests:${API_RESULT}" "web-build:${WEB_RESULT}" "e2e-tests:${E2E_RESULT}"; do
+          for pair in "api-tests:${API_RESULT}" "web-build:${WEB_RESULT}" "e2e-tests:${E2E_RESULT}" "prod-compose:${PROD_RESULT}"; do
             job="${pair%%:*}"
             result="${pair#*:}"
             printf '%-12s = %s\n' "$job" "$result"
@@ -435,12 +463,13 @@ jobs:
             echo "inv-27: this run is NOT covering-green — no evidence record is minted." >&2
             exit 1
           fi
-          echo "inv-27: all three gating jobs concluded success."
+          echo "inv-27: all four gating jobs concluded success."
       - name: Emit the inv-27 evidence record
         env:
           API_RESULT: ${{ needs.api-tests.result }}
           WEB_RESULT: ${{ needs.web-build.result }}
           E2E_RESULT: ${{ needs.e2e-tests.result }}
+          PROD_RESULT: ${{ needs.prod-compose.result }}
           GH_REPO: ${{ github.repository }}
           GH_WORKFLOW: ${{ github.workflow }}
           GH_RUN_ID: ${{ github.run_id }}
@@ -472,7 +501,8 @@ jobs:
             "gating_jobs": {
               "api-tests": "${API_RESULT}",
               "web-build": "${WEB_RESULT}",
-              "e2e-tests": "${E2E_RESULT}"
+              "e2e-tests": "${E2E_RESULT}",
+              "prod-compose": "${PROD_RESULT}"
             }
           }
           JSON
@@ -489,6 +519,7 @@ jobs:
             echo "| api-tests | ${API_RESULT} |"
             echo "| web-build | ${WEB_RESULT} |"
             echo "| e2e-tests | ${E2E_RESULT} |"
+            echo "| prod-compose | ${PROD_RESULT} |"
             echo
             echo "Cite as: **run \`${GH_RUN_ID}\` @ \`${GH_SHA}\`** — ${run_url}"
           } >> "$GITHUB_STEP_SUMMARY"

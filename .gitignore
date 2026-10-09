@@ -60,6 +60,7 @@ scripts/*
 !scripts/model-smoke.sh
 !scripts/cors-probe.sh
 !scripts/cors-probe.mjs
+!scripts/prod-compose-smoke.sh
 !scripts/dns-cf-sync.sh
 !scripts/gen-mongo-certs.sh
 !scripts/conformance/

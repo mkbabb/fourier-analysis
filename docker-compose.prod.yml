@@ -59,9 +59,16 @@ services:
     #   /var/cache/nginx — proxy/fastcgi/client_body/scgi/uwsgi temp dirs.
     #   /var/run         — the master writes /var/run/nginx.pid here.
     #   /tmp             — scratch.
-    # All Linux caps are dropped, then NET_BIND_SERVICE is added back (the master
-    # binds the privileged :80). tmpfs is noexec,nosuid,size-capped per the
-    # mkbabb/deploy docker-compose.hardening.yml canonical recipe.
+    # All Linux caps are dropped, then the four the stock nginx master needs are
+    # added back: NET_BIND_SERVICE (it binds the privileged :80), CHOWN (at start
+    # it chowns its /var/cache/nginx temp dirs to the `nginx` worker user) and
+    # SETUID + SETGID (it drops its workers to that user). F.REL .h measured the
+    # H.W4 floor with NET_BIND_SERVICE alone: the master exits at boot with
+    # `[emerg] chown("/var/cache/nginx/client_temp", 101) failed (1: Operation
+    # not permitted)` and restarts forever, so every deploy since H.W4 failed the
+    # host health gate and rolled back (the webhook log of 2026-10-06 16:45Z;
+    # scripts/prod-compose-smoke.sh reproduces it and is the CI gate). tmpfs is
+    # noexec,nosuid,size-capped per the mkbabb/deploy hardening recipe.
     read_only: true
     tmpfs:
       - /var/cache/nginx:noexec,nosuid,size=16m
@@ -71,6 +78,9 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -207,9 +217,10 @@ services:
     # Same nginx:alpine writable-path recipe as the frontend above: an immutable
     # root FS with tmpfs for the three paths a stock nginx-alpine writes
     # (/var/cache/nginx temp dirs, /var/run/nginx.pid, /tmp scratch). The mounted
-    # fourier.conf is :ro and the master binds/proxies :80 — drop ALL caps, add
-    # back only NET_BIND_SERVICE. tmpfs noexec,nosuid,size-capped per the
-    # mkbabb/deploy docker-compose.hardening.yml canonical recipe.
+    # config is :ro and the master binds/proxies :80 — drop ALL caps, add back
+    # the same four as the frontend (NET_BIND_SERVICE · CHOWN · SETUID · SETGID;
+    # F.REL .h: NET_BIND_SERVICE alone crash-loops the master at its temp-dir
+    # chown). tmpfs noexec,nosuid,size-capped per the mkbabb/deploy recipe.
     read_only: true
     tmpfs:
       - /var/cache/nginx:noexec,nosuid,size=16m
@@ -219,6 +230,9 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
     security_opt:
       - no-new-privileges:true
     deploy:
