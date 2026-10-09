@@ -6,16 +6,14 @@ import asyncio
 import json
 import logging
 import os
-import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-logger = logging.getLogger(__name__)
-
 from api.config import settings
+from api.lib.crud.errors import internal_error
 from api.routers import contours, equations, images, sessions, visualizations
 from api.routers.admin import admin_router
 from api.routers.gallery import gallery_router
@@ -23,6 +21,8 @@ from api.services.computation import shutdown_process_pool
 from api.services.database import close_db, connect_db
 from api.services.janitor import run_janitor
 from api.services.rate_limiter import RateLimitHeaderMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -53,6 +53,46 @@ app = FastAPI(
     version="0.2.0",
     lifespan=lifespan,
 )
+
+class UnhandledErrorProblem:
+    """The API's one boundary for an unhandled exception: log it and answer the
+    typed ``urn:contract:internal-error`` problem.
+
+    Starlette routes an ``Exception`` handler to ``ServerErrorMiddleware``, the
+    OUTERMOST layer, so its 500 never passes through ``CORSMiddleware``: the
+    browser sees a response without ``Access-Control-Allow-Origin`` and reports
+    a server fault as a CORS failure.  This pure-ASGI layer is registered
+    BEFORE the CORS middleware (``add_middleware`` prepends, so it sits INSIDE
+    CORS), and the problem it answers carries the CORS headers like every other
+    response.  An exception after the response has started cannot be answered
+    again; it propagates to the server's own error layer unchanged.
+    """
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        started = False
+
+        async def send_tracking(message) -> None:
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_tracking)
+        except Exception:
+            logger.exception("Unhandled exception on %s %s", scope["method"], scope["path"])
+            if started:
+                raise
+            await internal_error(instance=scope["path"])(scope, receive, send)
+
+
+app.add_middleware(UnhandledErrorProblem)
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(
@@ -111,17 +151,6 @@ app.include_router(sessions.router)
 app.include_router(visualizations.router)
 app.include_router(gallery_router)
 app.include_router(admin_router)
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.error(
-        "Unhandled exception on %s %s:\n%s",
-        request.method,
-        request.url.path,
-        traceback.format_exc(),
-    )
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 @app.get("/api/health")

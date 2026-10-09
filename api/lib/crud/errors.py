@@ -71,6 +71,7 @@ admin_forbidden = partial(problem, "urn:contract:admin-forbidden", 403, "Admin t
 flag_self = partial(problem, "urn:contract:flag-self", 400, "Cannot flag own resource")
 flag_duplicate = partial(problem, "urn:contract:flag-duplicate", 409, "Already flagged")
 slug_pool_exhausted = partial(problem, "urn:contract:slug-exhausted", 503, "Slug-mint retry exhausted")
+internal_error = partial(problem, "urn:contract:internal-error", 500, "Internal server error")
 # fmt: on
 
 
