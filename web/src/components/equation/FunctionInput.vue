@@ -131,7 +131,7 @@ const activePreset = computed(() =>
          shadow into a hard rectangle) is deleted. Two roots, no wrapper: the
          layers must be adjacent siblings of the Coefficients layer for glass's
          stacked-group rule (`.configurator-layer + .configurator-layer`). -->
-    <ConfiguratorLayer label="Function" :sub="`f(${props.variable ?? 'x'})`" :default-open="true" class="fn-layer">
+    <ConfiguratorLayer label="Function" :sub="`f(${props.variable ?? 't'})`" :default-open="true" class="fn-layer">
         <div class="space-y-body py-1">
             <!-- UIA-F-112 / F-113 — the field carries the server's typed 4xx: glass
                  `LabeledField`'s `invalid` + error slot (aria-invalid, the detail

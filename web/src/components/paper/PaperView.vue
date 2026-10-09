@@ -497,39 +497,11 @@ onUnmounted(() => {
     flex-direction: column;
 }
 
-/* Subtle top/bottom edge fade when content is clipped */
-.paper-root::before,
-.paper-root::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 2rem;
-    z-index: var(--z-content);
-    pointer-events: none;
-}
-
-.paper-root::before {
-    top: 0;
-    background: linear-gradient(
-        to bottom,
-        color-mix(in srgb, var(--background) 55%, transparent),
-        transparent 70%
-    );
-    /* `D/m-13`: the gradient's own stop already fades to transparent at 70%;
-       the mask ramped the same 2rem a second time, so the fade was applied
-       twice and read as nothing. One attenuation, the gradient's. */
-}
-
-.paper-root::after {
-    bottom: 0;
-    background: linear-gradient(
-        to top,
-        color-mix(in srgb, var(--background) 55%, transparent),
-        transparent 70%
-    );
-
-}
+/* X-DS fourier pass 7 · DS-F7-C3: the top and bottom edge fades are deleted.
+   They hung on the full-bleed root, so at the foot they ruled a pale band
+   across the page grid either side of the article and half-washed its last
+   line. The article is an opaque card on the page and needs no fade (ORIGIN
+   had none). */
 
 .paper-scroll {
     flex: 1;

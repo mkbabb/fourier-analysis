@@ -38,9 +38,10 @@ export interface ScrollNavigationOptions {
  * `PAW-44` decision (`D4`), which `DECISIONS-F.W4.md` rules
  * DEFERRED-WITH-DEFAULT — *"carry the stack as INERT-BY-MEASUREMENT … author
  * PAW-47's clearance constant ONCE, against the inert geometry"*. Against the
- * inert geometry the only thing to clear is the scrim: `.paper-root::before` is
- * `height: 2rem` (32px). The constant clears it with a small margin, and the
- * mobile bar's measured height is added when that bar is actually painted.
+ * inert geometry the only thing to clear was the 2rem (32px) top scrim. X-DS
+ * fourier pass 7 (DS-F7-C3) deleted that scrim; the constant stays as the
+ * landing's reading margin, so a destination does not sit flush on the edge.
+ * The mobile bar's measured height is added when that bar is actually painted.
  *
  * ⊘ If `PAW-44` is ever decided RESTORE, this constant is the single place the
  * sticky stack's height has to be accounted for — which is what LAW-4 is for.

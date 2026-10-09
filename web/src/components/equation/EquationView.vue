@@ -19,7 +19,7 @@ import { Progress } from "@mkbabb/glass-ui/progress";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
-import { Info } from "@lucide/vue";
+import { Info, RotateCcw } from "@lucide/vue";
 
 import FunctionInput from "./FunctionInput.vue";
 import EquationResult from "./EquationResult.vue";
@@ -120,9 +120,11 @@ const stale = computed(() => !!result.value && (!!error.value || !!expressionErr
 /**
  * UIA-F-201 — one variable across the page: the plot, its legend and the
  * Function layer's caption (X-DS DS-F3-C14) speak the variable the rendered
- * series is written in.
+ * series is written in. X-DS fourier pass 7 · DS-F7-C1: with no result yet
+ * the fallback is the engine's own variable, `t` (it was "x", so the caption
+ * read f(x) until the first response and f(t) after it).
  */
-const seriesVariable = computed(() => activeLatex.value.match(/f\s*\(\s*([a-z])\s*\)/)?.[1] ?? "x");
+const seriesVariable = computed(() => activeLatex.value.match(/f\s*\(\s*([a-z])\s*\)/)?.[1] ?? "t");
 
 const coefficients = computed(() => result.value?.coefficients ?? []);
 
@@ -432,8 +434,10 @@ watchDebounced(
                     <div role="alert" class="eq-state-failure text-center">
                         <p class="text-small font-medium text-foreground mb-1">{{ COMPUTE_FAILED }}</p>
                         <p v-if="error !== COMPUTE_FAILED" class="text-mono-small text-muted-foreground break-words">{{ error }}</p>
+                        <!-- X-DS fourier pass 7 · DS-F7-C2: the one recovery
+                             grammar (a leading glyph, as Upload's actions wear). -->
                         <Button emphasis="secondary" size="sm" class="mt-3" @click="doCompute(true)">
-                            Try again
+                            <RotateCcw aria-hidden="true" />Try again
                         </Button>
                     </div>
                 </div>
