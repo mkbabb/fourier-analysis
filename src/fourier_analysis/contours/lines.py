@@ -9,7 +9,7 @@ and body around a face.
 
 The weights are the authors' ``contour_style`` generator exported to ONNX at a
 fixed 768-pixel square input (MIT, ``x-Liola-x/informative-drawings-onnx``),
-sha-pinned and cached under ``~/.cache/fourier-analysis/models/`` like the
+sha-pinned and stored in ``ml.model_dir()`` like the
 subject models (``ml._download``); they are never committed.
 
 Preprocessing, as the subject is to be drawn:

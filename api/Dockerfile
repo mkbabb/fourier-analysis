@@ -17,6 +17,18 @@ CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "800
 
 FROM deps AS production
 RUN adduser --disabled-password app
+# X·F F.REL .m — the contour models are BAKED, not fetched. The container runs
+# with a read-only root FS (docker-compose.prod.yml), so a first-use download
+# into $HOME (the development default) can never succeed there. Every pinned
+# model is downloaded and sha256-verified at build time by the runtime's own
+# loader (`ensure_model_downloaded`: the URLs and sha256s come from the
+# SubjectModelSpecs, the one source) into FOURIER_MODEL_DIR, which the same
+# loader reads at runtime. A digest mismatch raises and fails the build. The
+# layer sits before `COPY . .` so only a change under src/ re-downloads.
+ENV FOURIER_MODEL_DIR=/opt/fourier-models
+RUN uv run --no-sync python -c \
+        "from fourier_analysis.contours.ml import ensure_model_downloaded; ensure_model_downloaded()" \
+    && chmod -R a=rX "$FOURIER_MODEL_DIR"
 COPY . .
 RUN chown -R app:app /app/.venv
 # C2 (C.W5): pre-create the blob-backend mount point owned by the unprivileged

@@ -1,10 +1,11 @@
 """Subject saliency (a U2-Net + BiRefNet-lite ensemble) via ONNX, and the
-sha-pinned model cache every contour model shares."""
+sha-pinned model store every contour model shares (``model_dir``)."""
 
 from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import threading
 import urllib.request
 from dataclasses import dataclass
@@ -27,7 +28,20 @@ logger = logging.getLogger(__name__)
 _IMAGENET_MEAN = (0.485, 0.456, 0.406)
 _IMAGENET_STD = (0.229, 0.224, 0.225)
 
-_CACHE_DIR = Path.home() / ".cache" / "fourier-analysis" / "models"
+MODEL_DIR_ENV = "FOURIER_MODEL_DIR"
+"""The environment variable naming the directory the pinned model weights live
+in.  The production image bakes every model there at build time (the
+model layer of ``api/Dockerfile``'s production stage), so a read-only container never
+writes; unset, the weights are fetched on first use into the user cache."""
+
+
+def model_dir() -> Path:
+    """Where the pinned model weights are read from (and, if missing, written
+    to): ``$FOURIER_MODEL_DIR``, else ``~/.cache/fourier-analysis/models``."""
+    configured = os.environ.get(MODEL_DIR_ENV)
+    if configured:
+        return Path(configured)
+    return Path.home() / ".cache" / "fourier-analysis" / "models"
 
 
 @dataclass(frozen=True)
@@ -52,7 +66,7 @@ class SubjectModelSpec:
 
     @property
     def path(self) -> Path:
-        return _CACHE_DIR / f"{self.name}{self.suffix}"
+        return model_dir() / f"{self.name}{self.suffix}"
 
 
 U2NET = SubjectModelSpec(

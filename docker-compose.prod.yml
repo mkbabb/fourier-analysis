@@ -22,6 +22,9 @@ services:
     # where UV_CACHE_DIR lives; /data/blobs is a rw volume, .venv is read-only),
     # all Linux caps dropped (a Python/uvicorn app on :8000 needs none), and
     # no-new-privileges to block setuid escalation.
+    # F.REL .m: the contour models are baked into the image at FOURIER_MODEL_DIR
+    # (api/Dockerfile), so extraction never writes; scripts/model-smoke.sh
+    # extracts under exactly this hardening, with no network.
     read_only: true
     tmpfs:
       - /tmp

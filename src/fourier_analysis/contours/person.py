@@ -20,7 +20,7 @@ What survives is reduced to its significant components
 (``isolation.significant_components``).
 
 The weights are Google's ``selfie_multiclass_256x256`` (Apache-2.0), sha-pinned
-and cached under ``~/.cache/fourier-analysis/models/`` like the other models
+and stored in ``ml.model_dir()`` like the other models
 (``ml._download``), never committed.  They run on LiteRT (``ai-edge-litert``).
 """
 
