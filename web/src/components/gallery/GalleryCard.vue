@@ -298,7 +298,7 @@ const created = useTimeAgo(() => props.entry.created_at);
 
 .card-title {
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.3;
     color: var(--foreground);
     overflow: hidden;

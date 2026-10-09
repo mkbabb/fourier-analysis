@@ -47,7 +47,7 @@ function onImgError() {
          shared hairline) and took the stack's 12 px non-layer margin, so the
          Image layer stood apart from Basis as a second rounded box. Attrs
          fall through to the layer. -->
-    <ConfiguratorLayer label="Image" sub="source input">
+    <ConfiguratorLayer label="Image">
         <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 10's INTERLOCK: the layer
              supplies no heading (its header is a `<button>`), so the `<h3>` is
              carried in the layer, visually hidden because the trigger already

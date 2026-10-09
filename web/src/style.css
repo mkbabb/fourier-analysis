@@ -426,6 +426,17 @@ article.paper-article {
     --page-gutter: 1rem;
 }
 
+/* X-DS pass 15 · DS-F17-C1 — the Configurator aside's section label on the
+   app's card-title rung (subheading at 500, the /morph card titles' since
+   DS-F16-C1). glass's default (`--type-heading` at 600) renders Computer
+   Modern, which has no semibold, as CMU Bold Extended: the heaviest and widest
+   type on /v, /w and /equation, level with the route h1 at 390. These are
+   glass's own token slots, rebound here as the app's other type slots are. */
+:root {
+    --configurator-section-size: var(--type-subheading);
+    --configurator-section-weight: 500;
+}
+
 :root {
     --viz-amber: hsl(35 76% 35%);
     --section-color-5: hsl(35 76% 35%);

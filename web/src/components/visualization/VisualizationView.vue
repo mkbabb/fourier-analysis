@@ -1023,6 +1023,14 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     font-weight: 400;
     text-wrap: balance;
 }
+/* X-DS pass 15 · DS-F17-C2: the empty-stage title takes its own measure. The
+   shared 18ch cap balanced "Draw any outline in circles" short-first ("Draw
+   any" over a long second line) and forced two lines on a stage wide enough
+   for one. Uncapped, it sets on one line at desktop and balance breaks it
+   evenly at phone width. The load-error title keeps the 18ch cap. */
+.drop-target-title {
+    max-inline-size: none;
+}
 .drop-target-lede {
     margin: 0 0 0.75rem;
     max-inline-size: 52ch;

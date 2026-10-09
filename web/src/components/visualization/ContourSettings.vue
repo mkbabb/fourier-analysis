@@ -231,7 +231,7 @@ watch(
          affirms — so the correct act is to leave it untouched and say why, and
          `.d`'s spec order ("i-3's ruling is RECORDED, not executed") is
          satisfied by exactly that. No `open`/persistence prop is added. -->
-    <ConfiguratorLayer label="Contour" sub="edge extraction settings" :default-open="defaultOpen">
+    <ConfiguratorLayer label="Contour" :default-open="defaultOpen">
         <!-- X.F.W14U.a2 — O-68 CONFIGURATOR-HEADER-ACTIONS (glass 10.1.0,
              COHESION §0dd). The owner: "the refresh button should be inline in
              the section when expanded too". The layer-wide reset sits in the
