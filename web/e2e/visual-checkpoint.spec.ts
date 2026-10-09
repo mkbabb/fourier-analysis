@@ -92,7 +92,7 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         await stubGallery(page);
         await page.goto("/gallery");
 
-        const card = page.getByRole("button", { name: `Open ${ENTRY.image_slug}` });
+        const card = page.getByRole("button", { name: `Open ${ENTRY.title}` });
         await expect(card).toBeVisible({ timeout: 30_000 });
         await freeze(page);
 
@@ -112,7 +112,7 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         await stubGallery(page);
         await page.goto("/gallery");
 
-        const card = page.getByRole("button", { name: `Open ${ENTRY.image_slug}` });
+        const card = page.getByRole("button", { name: `Open ${ENTRY.title}` });
         await expect(card).toBeVisible({ timeout: 30_000 });
         await freeze(page);
         await card.hover();
@@ -130,13 +130,13 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         await stubGallery(page);
         await page.goto("/gallery");
 
-        const card = page.getByRole("button", { name: `Open ${ENTRY.image_slug}` });
+        const card = page.getByRole("button", { name: `Open ${ENTRY.title}` });
         await expect(card).toBeVisible({ timeout: 30_000 });
         await card.click();
 
         const modal = page.getByRole("dialog");
         await expect(modal).toBeVisible({ timeout: 10_000 });
-        await expect(modal).toHaveAccessibleName(ENTRY.image_slug);
+        await expect(modal).toHaveAccessibleName(ENTRY.title);
         await freeze(page);
 
         await expect(modal).toHaveScreenshot("checkpoint-card-modal.png", SHOT);
