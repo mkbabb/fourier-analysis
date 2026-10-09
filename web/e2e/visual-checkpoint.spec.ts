@@ -181,7 +181,7 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         // is taken of the settled panel. No threshold moves.
         const compute = page.waitForResponse(
             (r) =>
-                /\/api\/equations\/compute$/.test(new URL(r.url()).pathname) &&
+                new URL(r.url()).pathname.endsWith("/api/equations/compute") &&
                 r.request().method() === "POST",
             { timeout: 60_000 },
         );

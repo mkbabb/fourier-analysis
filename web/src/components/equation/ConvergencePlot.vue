@@ -321,7 +321,8 @@ function draw() {
     for (let i = 0; i < oxClosed.length; i++) {
         const pt = toScreen(oxClosed[i], oyClosed[i]);
         origPts.push(pt);
-        i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
+        if (i === 0) ctx.moveTo(pt[0], pt[1]);
+        else ctx.lineTo(pt[0], pt[1]);
     }
     ctx.stroke();
     ctx.setLineDash([]);
@@ -340,7 +341,8 @@ function draw() {
         for (let i = 0; i < end; i++) {
             const pt = toScreen(xGrid[i], curves[hi][i]);
             pts.push(pt);
-            i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
+            if (i === 0) ctx.moveTo(pt[0], pt[1]);
+            else ctx.lineTo(pt[0], pt[1]);
         }
         ctx.stroke();
         harmPts.push({ key: `h-${hi}`, points: pts });
@@ -354,7 +356,8 @@ function draw() {
     for (let i = 0; i < N_POINTS; i++) {
         const pt = toScreen(xGrid[i], sumY[i]);
         sumPts.push(pt);
-        i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
+        if (i === 0) ctx.moveTo(pt[0], pt[1]);
+        else ctx.lineTo(pt[0], pt[1]);
     }
     ctx.stroke();
     ctx.restore();

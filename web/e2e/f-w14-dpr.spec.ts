@@ -175,7 +175,7 @@ async function strokeEdge(page: Page, png: Buffer, cssWidth: number): Promise<{ 
                 return out;
             };
             const runs = [...scan(false), ...scan(true)];
-            const median = [...runs.map((r) => r.ink)].sort((a, b) => a - b)[Math.floor(runs.length / 2)] ?? 0;
+            const median = runs.map((r) => r.ink).sort((a, b) => a - b)[Math.floor(runs.length / 2)] ?? 0;
             const all = runs
                 .filter((r) => r.ink <= 2 * median)
                 .map((r) => {

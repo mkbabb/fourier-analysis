@@ -186,7 +186,7 @@ async function coreFetch<T>(
 
     // Auth headers (session + optional admin Bearer).
     const headers: Record<string, string> = {
-        ...((options?.headers as Record<string, string>) ?? {}),
+        ...(options?.headers as Record<string, string> | undefined),
     };
     if (auth === "admin") {
         if (!options?.adminToken) {

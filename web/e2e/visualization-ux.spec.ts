@@ -225,7 +225,7 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         const compute = page.waitForResponse(
             (r) =>
                 r.request().method() === "POST" &&
-                /\/api\/equations\/compute$/.test(new URL(r.url()).pathname),
+                new URL(r.url()).pathname.endsWith("/api/equations/compute"),
             { timeout: 60_000 },
         );
         await page.goto("/equation");

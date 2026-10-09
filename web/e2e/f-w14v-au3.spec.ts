@@ -72,7 +72,7 @@ function coefficientsOwner(page: Page): Promise<string | null> {
         let inst = (layer as unknown as { __vueParentComponent?: Inst }).__vueParentComponent ?? null;
         while (inst) {
             const file = inst.type.__file ?? "";
-            if (/CoefficientsPanel\.vue$/.test(file)) return file.replace(/^.*\/src\//, "src/");
+            if (file.endsWith("CoefficientsPanel.vue")) return file.replace(/^.*\/src\//, "src/");
             inst = inst.parent;
         }
         return null;

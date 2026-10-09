@@ -41,11 +41,7 @@ export interface FourierShape {
  * cannot see because the export IS the reference.
  */
 function xyToPoints(xy: { x: number[]; y: number[] }): [number, number][] {
-    const points: [number, number][] = new Array(xy.x.length);
-    for (let i = 0; i < xy.x.length; i++) {
-        points[i] = [xy.x[i], xy.y[i]];
-    }
-    return points;
+    return xy.x.map((x, i): [number, number] => [x, xy.y[i]]);
 }
 
 /**
@@ -175,13 +171,8 @@ export function lerpPoints(
         );
     }
 
-    const n = a.length;
-    const out: [number, number][] = new Array(n);
     const t1 = 1 - t;
-    for (let i = 0; i < n; i++) {
-        out[i] = [a[i][0] * t1 + b[i][0] * t, a[i][1] * t1 + b[i][1] * t];
-    }
-    return out;
+    return a.map(([ax, ay], i): [number, number] => [ax * t1 + b[i][0] * t, ay * t1 + b[i][1] * t]);
 }
 
 /**

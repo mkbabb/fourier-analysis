@@ -417,7 +417,7 @@ for (const vp of WIDTHS) {
                     ctx.fillRect(0, 0, 1, 1);
                     ctx.fillStyle = used;
                     ctx.fillRect(0, 0, 1, 1);
-                    return [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+                    return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3));
                 };
                 const destructive = rgb("var(--destructive)");
                 const sliders = [...root.querySelectorAll<HTMLElement>('[style*="--row-fill"]')].map((el) => {
