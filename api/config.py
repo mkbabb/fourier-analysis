@@ -48,6 +48,23 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+# CORS — the one source of truth for what a browser client may send and read
+# across origins (F.REL .c). Every verb and request header the web client's
+# ``web/src/lib/api.ts`` sends, and every response header the client reads
+# (``res.headers.get``), is listed here; ``api/tests/test_cors.py`` reads the
+# client's bytes and fails on any drift in either direction, so a new client
+# header cannot ship without its preflight allowance (the 2026-10-06 production
+# gap: PATCH / If-Match / Idempotency-Key refused at preflight, ETag unreadable).
+CORS_ALLOW_METHODS: tuple[str, ...] = ("GET", "POST", "PUT", "PATCH", "DELETE")
+CORS_ALLOW_HEADERS: tuple[str, ...] = (
+    "Authorization",
+    "Content-Type",
+    "Idempotency-Key",
+    "If-Match",
+    "X-Session-Token",
+)
+CORS_EXPOSE_HEADERS: tuple[str, ...] = ("ETag", "RateLimit-Reset")
+
 
 def get_settings() -> Settings:
     return settings

@@ -12,7 +12,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.config import settings
+from api.config import (
+    CORS_ALLOW_HEADERS,
+    CORS_ALLOW_METHODS,
+    CORS_EXPOSE_HEADERS,
+    settings,
+)
 from api.lib.crud.errors import internal_error
 from api.routers import contours, equations, images, sessions, visualizations
 from api.routers.admin import admin_router
@@ -99,8 +104,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Session-Token"],
+    allow_methods=list(CORS_ALLOW_METHODS),
+    allow_headers=list(CORS_ALLOW_HEADERS),
+    expose_headers=list(CORS_EXPOSE_HEADERS),
 )
 
 # RFC 9239 RateLimit-* headers on every response (Invariant 24 / CRUD-CONTRACT

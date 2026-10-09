@@ -58,6 +58,8 @@ scripts/*
 !scripts/pages-deploy.sh
 !scripts/pages-smoke.sh
 !scripts/model-smoke.sh
+!scripts/cors-probe.sh
+!scripts/cors-probe.mjs
 !scripts/dns-cf-sync.sh
 !scripts/gen-mongo-certs.sh
 !scripts/conformance/
