@@ -75,7 +75,13 @@
                 </template>
             </Metric>
             <Metric label="n" :value="harmonicLevel" size="sm" posture="inline" />
-            <Metric label="shape" :value="shapeName" size="sm" posture="inline" />
+            <!-- X-DS pass 12 · DS-F14-C2: the shape reading reserves its longest
+                 word, as the phase does, so "total" holds when Sun turns Moon. -->
+            <Metric label="shape" size="sm" posture="inline">
+                <template #value>
+                    <span class="shape-value">{{ shapeName }}</span>
+                </template>
+            </Metric>
             <Metric label="total" :value="totalMs" unit="ms" size="sm" posture="inline" />
         </div>
     </div>
@@ -270,6 +276,11 @@ defineEmits<{
     min-inline-size: 10ch;
     color: color-mix(in oklab, var(--phase-tone, var(--foreground)) 75%, var(--foreground));
 }
+/* X-DS pass 12 · DS-F14-C2: the shape value's guard, its longest word ("Moon"). */
+.shape-value {
+    display: inline-block;
+    min-inline-size: 4.5ch;
+}
 
 /* DS-F4R-C4: beside the plate in the phone band, the four readings are one
    column, each on its own line, starting on one edge. X-DS DS-F5-C5: the
@@ -289,7 +300,8 @@ defineEmits<{
     .phase-reading {
         justify-self: start;
     }
-    .phase-value {
+    .phase-value,
+    .shape-value {
         min-inline-size: 0;
     }
 }

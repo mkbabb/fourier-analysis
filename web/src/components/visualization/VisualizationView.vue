@@ -14,7 +14,6 @@ import { useGalleryStore } from "@/stores/gallery";
 import { isOwnerRequired } from "@/lib/api-problem";
 import { useAuthStore } from "@/stores/auth";
 import ImageUpload from "./ImageUpload.vue";
-import NotFoundCard from "@/components/shared/NotFoundCard.vue";
 import ContourSettings from "./ContourSettings.vue";
 import BasisCanvas from "./BasisCanvas.vue";
 import BasisSelector from "./BasisSelector.vue";
@@ -455,23 +454,30 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                     <!-- Error (no workspace). X.F.W14.u — UIA-F-4: route-aware copy
                          naming the slug that failed; UIA-F-49: the button's own label
                          carries the meaning. Inside the stage (UIA-F-70). -->
-                    <div v-else-if="stageError" class="stage-state">
-                        <NotFoundCard
-                            :title="isSavedRoute ? 'Could not open this visualization' : 'Could not load this workspace'"
-                            :description="isSavedRoute
+                    <!-- X-DS pass 12 · DS-F14-C1: the stage is the one frame. The
+                         message is composed on it directly, on the empty stage's
+                         type roles (the route's h1, the body lede, the caption
+                         diagnosis, one centred action row). NotFoundCard keeps its
+                         Card for the catch-all route only, where it sits on the page
+                         ground; here it was a resting plate inside a resting plate. -->
+                    <div v-else-if="stageError" class="stage-state stage-error" data-testid="not-found">
+                        <h1 class="stage-error-title font-serif-math text-display-2 font-bold tracking-tight">
+                            {{ isSavedRoute ? "Could not open this visualization" : "Could not load this workspace" }}
+                        </h1>
+                        <p class="stage-error-lede text-body text-muted-foreground">
+                            {{ isSavedRoute
                                 ? `No saved visualization loaded from “${route.params.visualizationSlug}”.`
-                                : `No image loaded from “${route.params.imageSlug}”.`"
-                            :detail="stageErrorDetail"
-                        >
-                            <template #actions>
-                                <Button emphasis="primary" @click="store.reset(); router.push('/visualize')">
-                                    Upload a new image
-                                </Button>
-                                <Button emphasis="secondary" @click="store.reset(); router.push('/gallery')">
-                                    Browse the gallery
-                                </Button>
-                            </template>
-                        </NotFoundCard>
+                                : `No image loaded from “${route.params.imageSlug}”.` }}
+                        </p>
+                        <p v-if="stageErrorDetail" class="stage-error-lede fira-code text-caption break-all text-muted-foreground">{{ stageErrorDetail }}</p>
+                        <div class="stage-error-actions">
+                            <Button emphasis="primary" size="md" @click="store.reset(); router.push('/visualize')">
+                                Upload a new image
+                            </Button>
+                            <Button emphasis="secondary" size="md" @click="store.reset(); router.push('/gallery')">
+                                Browse the gallery
+                            </Button>
+                        </div>
                     </div>
                     <!-- X.F.W14V.u1 — UIA-F-14 ⊕ F-93 ⊕ F-182 ⊕ F-244: this stage (the
                          canvas, the editor with its ref and listeners, both docks,
@@ -1079,6 +1085,28 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     height: auto;
     z-index: var(--z-controls);
     pointer-events: none;
+}
+/* X-DS pass 12 · DS-F14-C1 — the load error on the stage's own frame: the
+   empty stage's title and lede measures, the diagnosis under them, and one
+   centred action row on the same gap. */
+.stage-error {
+    text-align: center;
+}
+.stage-error-title {
+    margin: 0;
+    max-inline-size: 18ch;
+    text-wrap: balance;
+}
+.stage-error-lede {
+    margin: 0;
+    max-inline-size: 52ch;
+    text-wrap: pretty;
+}
+.stage-error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
 }
 .stage-busy-bar {
     inline-size: min(12rem, 60%);

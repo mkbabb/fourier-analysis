@@ -244,12 +244,15 @@ function getPath(level: number): string {
     --strip-fade: 3rem;
     --strip-fade-start: 0px;
     --strip-fade-end: 0px;
+    /* X-DS pass 12 · DS-F14-C3: a fading side reaches alpha 0 a twelfth of the
+       fade (4px at 3rem) before the strip's edge, so a tile rim caught in the
+       last few px is gone, not a faint arc. A side with no fade is unchanged. */
     mask-image: linear-gradient(
         to right,
-        transparent,
+        transparent calc(var(--strip-fade-start) / 12),
         #000 var(--strip-fade-start),
         #000 calc(100% - var(--strip-fade-end)),
-        transparent
+        transparent calc(100% - var(--strip-fade-end) / 12)
     );
 }
 
