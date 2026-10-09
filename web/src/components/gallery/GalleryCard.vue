@@ -225,13 +225,16 @@ const created = useTimeAgo(() => props.entry.created_at);
 }
 
 /* X-DS pass 1 · F1-13 — hover is a tone step, never a cast promotion: a
-   resting card does not rise to the floating shadow rung. */
+   resting card does not rise to the floating shadow rung.
+   X-DS fourier pass 5 · DS-F5-C4: the step is taken in the card's own hue
+   (lightness only, toward the page's far end in each arm). A --foreground
+   veil over the cream lowered its chroma too and greyed it to oatmeal. */
 @media (hover: hover) {
     .gallery-card:hover {
-        background-image: linear-gradient(
-            oklch(from var(--foreground) l c h / var(--fill-hover)),
-            oklch(from var(--foreground) l c h / var(--fill-hover))
-        );
+        background-color: oklch(from var(--card) calc(l - 0.02) c h);
+    }
+    :global(.dark) .gallery-card:hover {
+        background-color: oklch(from var(--card) calc(l + 0.02) c h);
     }
 }
 

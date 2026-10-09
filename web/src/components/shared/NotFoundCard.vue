@@ -49,7 +49,9 @@ const router = useRouter();
                 <!-- X-DS pass 1 · F1-16: the diagnosis on the caption rung, under the description. -->
                 <p class="text-mono-small break-all text-muted-foreground">{{ detail }}</p>
             </CardContent>
-            <CardFooter class="flex flex-wrap gap-2">
+            <!-- X-DS fourier pass 5 · DS-F5-C5: the quiet link's glyph edge is
+                 the column's when it wraps to its own line (see the style). -->
+            <CardFooter class="not-found-actions flex flex-wrap gap-2">
                 <!-- A host that owns state to clear on the way out (the
                      workspace store) supplies its own actions. -->
                 <slot name="actions">
@@ -62,3 +64,20 @@ const router = useRouter();
         </Card>
     </div>
 </template>
+
+<style scoped>
+/* X-DS fourier pass 5 · DS-F5-C5: glass's text-emphasis Button keeps its
+   `--space-residue` pad and 1px edge, so wrapped onto its own line at 390
+   "Browse the gallery" started ~5 px right of the title and body. The link
+   pulls back by exactly that inset, and the row's column gap grows by the
+   same amount, so beside the primary the spacing is unchanged and, wrapped,
+   the glyph sits on the card's text column. Layout only; glass's skin is
+   untouched. */
+.not-found-actions {
+    --text-link-inset: calc(var(--space-residue) + 1px);
+    column-gap: calc(0.5rem + var(--text-link-inset));
+}
+.not-found-actions > [data-emphasis="text"] {
+    margin-inline-start: calc(-1 * var(--text-link-inset));
+}
+</style>

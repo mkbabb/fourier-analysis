@@ -155,20 +155,23 @@ defineEmits<{
     }
 
     /* X-DS DS-F5-C5: the plate is bounded by the row, not only by the
-       viewport's height: 22svh, or what the content box leaves after the
-       gap and the readings' measure (9rem holds "total 2400 ms"). */
+       viewport's height (9rem holds "total 2400 ms" beside it).
+       X-DS fourier pass 5 · DS-F5-C1: the pinned band is a strip, not a
+       third of the phone: a 7.5rem plate (120 px, the m115 floor), and the
+       four readings stand in its height, so the band is the plate plus its
+       padding and hairline (~137 px, under 20% of an 844 px viewport). */
     .stage-row {
         flex: none;
-        width: min(22svh, 100% - var(--space-body) - 9rem);
+        width: min(7.5rem, 100% - var(--space-body) - 9rem);
     }
 }
 
 /* X.F.W14U.misc — UIA-F-115: the stage is the page's dominant content. It was
-   a fixed 120/180px square; it now takes its column up to a bound — 22svh
-   below 1024px (DS-F4R-C4: the band, readings beside the plate, stays under
-   ~40% of the viewport), 26rem beside the controls. */
+   a fixed 120/180px square; it now takes its column up to a bound — the
+   phone band's 7.5rem row below 1024px (DS-F5-C1), 26rem beside the
+   controls. */
 .morph-button {
-    width: min(100%, 22svh);
+    width: 100%;
     aspect-ratio: 1;
     cursor: pointer;
     padding: var(--space-body);

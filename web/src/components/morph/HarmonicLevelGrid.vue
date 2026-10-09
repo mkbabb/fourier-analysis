@@ -311,6 +311,15 @@ function getPath(level: number): string {
         flex-direction: column;
         flex-shrink: 0;
         scroll-snap-align: start;
+        /* DS-F5-C3: the label clears the tile's foot by a block pad (the
+           recipe's block padding is 0, so "n=1" sat ~1 px off the border),
+           and the tile is never wider than tall: on the coarse ramp the
+           recipe's wider inline pad made a 118 x 94 capsule at 390. The
+           automatic minimum (in place of the recipe's control-height floor)
+           lets the content hold the tile open where it is the taller side. */
+        padding-block: var(--space-atom);
+        aspect-ratio: 1;
+        min-block-size: auto;
         /* SP-3 · HLG-37 — the control boundary, raised to the 1.4.11 floor.
            `--foreground` at 12% over `--card` measured 1.275 L / 1.395 D: the
            cell's entire boundary vocabulary was sub-3:1 in BOTH arms, which is
@@ -360,17 +369,14 @@ function getPath(level: number): string {
     }
 }
 
+/* X-DS fourier pass 5 · DS-F5-C3: one tile form at every width. The 48 px
+   phone thumbnail sat in a button whose inline size does not shrink, so the
+   tile fell to ~1.5:1 and the coarse radius rounded it into a pill; the
+   64 px shape keeps the 1440 tile's near-square at 390 too. */
 .grid-svg {
-    width: 48px;
-    height: 48px;
+    width: 64px;
+    height: 64px;
     overflow: visible;
-}
-
-@media (min-width: 640px) {
-    .grid-svg {
-        width: 64px;
-        height: 64px;
-    }
 }
 
 /* X.F.W14U.misc — UIA-F-57 (the morph remainder, `.shell` R-1): `text-sm` is

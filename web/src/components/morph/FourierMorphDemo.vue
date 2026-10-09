@@ -15,17 +15,24 @@
              control never scrolls the thing it tunes away. UIA-F-254: Export
              and Reset sit under the stage they act on, at secondary weight. -->
         <div class="demo-layout">
-            <section class="stage-column paper-texture" aria-label="Morph stage">
-                <div class="band-grid paper-grid" aria-hidden="true" />
-                <MorphShapePreview
-                    :current-path="morph.currentPath.value"
-                    :phase="morph.phase.value"
-                    :harmonic-level="Math.round(morph.harmonicLevel.value)"
-                    :shape-name="currentShapeName"
-                    :total-ms="morphConfig.totalMs.value"
-                    :disabled="isAnimating"
-                    @toggle="handleToggle"
-                />
+            <!-- X-DS fourier pass 5 · DS-F5-C1: below 1024px only the plate and
+                 its readings pin (`.stage-column`); Export and Reset are one-off
+                 actions and scroll with the page (`.stage-rail` is
+                 `display: contents` there). Beside the controls the rail is the
+                 sticky column, actions under the plate as before. -->
+            <div class="stage-rail">
+                <section class="stage-column paper-texture" aria-label="Morph stage">
+                    <div class="band-grid paper-grid" aria-hidden="true" />
+                    <MorphShapePreview
+                        :current-path="morph.currentPath.value"
+                        :phase="morph.phase.value"
+                        :harmonic-level="Math.round(morph.harmonicLevel.value)"
+                        :shape-name="currentShapeName"
+                        :total-ms="morphConfig.totalMs.value"
+                        :disabled="isAnimating"
+                        @toggle="handleToggle"
+                    />
+                </section>
                 <div class="stage-actions">
                     <Button emphasis="secondary" size="sm" @click="morphConfig.copyToClipboard()">
                         <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" />
@@ -36,7 +43,7 @@
                         Reset
                     </Button>
                 </div>
-            </section>
+            </div>
 
             <div class="controls-column">
                 <MorphPhaseConfig
@@ -259,6 +266,13 @@ function handleReset() {
     border-block-end: 1px solid var(--border-soft);
 }
 
+/* X-DS fourier pass 5 · DS-F5-C1: the rail is no box below 1024px, so the
+   band (plate and readings) is the only sticky thing and Export/Reset are an
+   ordinary flex item of `.demo-layout` that scrolls with the controls. */
+.stage-rail {
+    display: contents;
+}
+
 .band-grid {
     position: absolute;
     inset: 0;
@@ -288,8 +302,20 @@ function handleReset() {
        plate, readouts and actions share the plate's measure (26rem, the
        MorphShapePreview bound). DS-F2-C4: the readouts and the actions both
        start on the plate's edge (one axis, as the title above). */
-    .stage-column {
+    /* DS-F5-C1: beside the controls the rail is the sticky column (plate,
+       readings, then the actions under them, UIA-F-254); the band itself is
+       an ordinary block here. */
+    .stage-rail {
+        position: sticky;
         top: var(--space-family);
+        display: flex;
+        flex-direction: column;
+        align-items: start;
+        gap: var(--space-atom);
+    }
+
+    .stage-column {
+        position: static;
         margin-inline: 0;
         padding: 0;
         align-items: start;
@@ -301,6 +327,7 @@ function handleReset() {
         display: none;
     }
 
+    .stage-rail > *,
     .stage-column > * {
         width: min(100%, 26rem);
     }
