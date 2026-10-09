@@ -46,7 +46,7 @@ const router = useRouter();
             </CardHeader>
             <CardContent v-if="detail">
                 <!-- X-DS pass 1 · F1-16: the diagnosis on the caption rung, under the description. -->
-                <p class="fira-code text-caption break-all text-muted-foreground">{{ detail }}</p>
+                <p class="text-mono-small break-all text-muted-foreground">{{ detail }}</p>
             </CardContent>
             <CardFooter class="flex flex-wrap gap-2">
                 <!-- A host that owns state to clear on the way out (the

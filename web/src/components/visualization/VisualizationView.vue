@@ -347,10 +347,14 @@ watch(() => store.uploading, (now, was) => {
 const stageLoading = computed(() => store.loading && !store.imageSlug);
 const stageError = computed(() => !!store.error && !store.imageSlug);
 /** X-DS DS-F-C5: the server's detail, unless it only restates the
- * description (a not-found detail names the same slug the description does). */
+ * description (a not-found detail names the same slug the description does).
+ * X-DS pass 13 · DS-F15-C5: a bare not-found title ("Image not found") restates
+ * it too, so the diagnosis line is left to a real server diagnosis. */
 const stageErrorDetail = computed(() => {
     const slug = String(route.params.visualizationSlug ?? route.params.imageSlug ?? "");
-    return store.error && slug && store.error.includes(slug) ? null : store.error;
+    const error = store.error;
+    if (!error || (slug && error.includes(slug)) || /\bnot found\.?$/i.test(error.trim())) return null;
+    return error;
 });
 /** UIA-F-73 ⊕ F-71: the first compute has nothing to draw yet; the stage says
  *  so in the DOM (one busy mark), not with a painted box. */
@@ -464,17 +468,22 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <h1 class="stage-error-title font-serif-math text-display-2 font-bold tracking-tight">
                             {{ isSavedRoute ? "Could not open this visualization" : "Could not load this workspace" }}
                         </h1>
+                        <!-- X-DS pass 13 · DS-F15-C4: the quoted slug is one token; its
+                             hyphens are not break points, so the line breaks before it. -->
                         <p class="stage-error-lede text-body text-muted-foreground">
-                            {{ isSavedRoute
-                                ? `No saved visualization loaded from “${route.params.visualizationSlug}”.`
-                                : `No image loaded from “${route.params.imageSlug}”.` }}
+                            {{ isSavedRoute ? "No saved visualization loaded from" : "No image loaded from" }}
+                            <span class="whitespace-nowrap">“{{ isSavedRoute ? route.params.visualizationSlug : route.params.imageSlug }}”.</span>
                         </p>
-                        <p v-if="stageErrorDetail" class="stage-error-lede fira-code text-caption break-all text-muted-foreground">{{ stageErrorDetail }}</p>
+                        <!-- X-DS pass 13 · DS-F15-C2: glass's own mono rung (fira-code lost
+                             to text-caption's font-family in the utility order). -->
+                        <p v-if="stageErrorDetail" class="stage-error-lede text-mono-small break-all text-muted-foreground">{{ stageErrorDetail }}</p>
                         <div class="stage-error-actions">
                             <Button emphasis="primary" size="md" @click="store.reset(); router.push('/visualize')">
                                 Upload a new image
                             </Button>
-                            <Button emphasis="secondary" size="md" @click="store.reset(); router.push('/gallery')">
+                            <!-- X-DS pass 13 · DS-F15-C3: the quiet rung, as on the empty
+                                 stage: one primary, one quiet action, one cast stack. -->
+                            <Button emphasis="quiet" size="md" @click="store.reset(); router.push('/gallery')">
                                 Browse the gallery
                             </Button>
                         </div>

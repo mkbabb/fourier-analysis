@@ -102,7 +102,7 @@ function onTabSelect(path: string) {
                             class="about-avatar"
                         />
                         <div class="flex-1 min-w-0">
-                            <p class="fira-code text-small text-foreground">@mbabb</p>
+                            <p class="text-mono-small text-foreground">@mbabb</p>
                             <p class="text-caption text-muted-foreground">Orthogonal decomposition, drawn with epicycles.</p>
                         </div>
                     </div>

@@ -69,15 +69,18 @@
                  As a filled Chip it wore the Export button's plate, height and
                  width; it is an inline Metric like its neighbours now, with
                  its tone on the value's ink (the hue-chip ink recipe). -->
-            <Metric label="phase" size="sm" posture="inline" class="phase-reading">
+            <Metric label="phase" :value="phase" size="sm" posture="inline" class="phase-reading">
                 <template #value>
                     <span class="phase-value" :style="phaseTone ? { '--phase-tone': phaseTone } : undefined">{{ phase }}</span>
                 </template>
             </Metric>
             <Metric label="n" :value="harmonicLevel" size="sm" posture="inline" />
             <!-- X-DS pass 12 · DS-F14-C2: the shape reading reserves its longest
-                 word, as the phase does, so "total" holds when Sun turns Moon. -->
-            <Metric label="shape" size="sm" posture="inline">
+                 word, as the phase does, so "total" holds when Sun turns Moon.
+                 X-DS pass 13 · DS-F15-C1: both slot-form readings pass their
+                 :value too, so glass Metric does not mark them data-empty (and
+                 mute the value to the label's ink). -->
+            <Metric label="shape" :value="shapeName" size="sm" posture="inline">
                 <template #value>
                     <span class="shape-value">{{ shapeName }}</span>
                 </template>

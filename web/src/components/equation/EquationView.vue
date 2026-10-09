@@ -431,7 +431,7 @@ watchDebounced(
                 <div v-else-if="error && !result" class="eq-state">
                     <div role="alert" class="eq-state-failure text-center">
                         <p class="text-small font-medium text-foreground mb-1">{{ COMPUTE_FAILED }}</p>
-                        <p v-if="error !== COMPUTE_FAILED" class="text-caption text-muted-foreground fira-code break-words">{{ error }}</p>
+                        <p v-if="error !== COMPUTE_FAILED" class="text-mono-small text-muted-foreground break-words">{{ error }}</p>
                         <Button emphasis="secondary" size="sm" class="mt-3" @click="doCompute(true)">
                             Try again
                         </Button>
@@ -507,7 +507,7 @@ watchDebounced(
                             </div>
                             <div v-else-if="error" class="eq-status glass-floating glass-opaque" role="alert">
                                 <span class="text-caption font-medium text-foreground shrink-0">Not updated</span>
-                                <span class="text-caption text-muted-foreground fira-code break-words min-w-0" :title="error">{{ error }}</span>
+                                <span class="text-mono-small text-muted-foreground break-words min-w-0" :title="error">{{ error }}</span>
                                 <Button emphasis="quiet" size="sm" class="shrink-0" @click="doCompute(true)">Retry</Button>
                             </div>
                             <div v-else-if="expressionError" class="eq-status glass-floating glass-opaque" role="status">
