@@ -34,11 +34,19 @@ const total = computed(() => new Set(props.components.map((c) => Math.abs(c.inde
  * unit), with the index range the rows run over. The spectrum's unlabelled
  * "12 / 41" and the "(41 total)" on Show more are deleted.
  */
+/*
+ * X-DS F3 · DS-F3-C2: at 390 the long caption ("all 201 harmonics, n =
+ * −200…200") out-ran the row, so the label truncated before it and glass's
+ * truncation doubled the literal "…". The caption is one short token: the
+ * count in its unit, then the span as ±N (or "a to b" when it is not
+ * symmetric). No literal ellipsis.
+ */
 const span = computed(() => {
     if (!props.components.length) return "";
     const ix = props.components.map((c) => c.index);
+    const lo = Math.min(...ix), hi = Math.max(...ix);
     const fmt = (n: number) => (n < 0 ? `\u2212${-n}` : String(n));
-    return `, n = ${fmt(Math.min(...ix))}\u2026${fmt(Math.max(...ix))}`;
+    return lo === -hi ? ` \u00b7 n = \u00b1${hi}` : ` \u00b7 n = ${fmt(lo)} to ${fmt(hi)}`;
 });
 const truncated = computed(
     () => props.renderedTerms !== undefined && props.renderedTerms < total.value,
@@ -46,7 +54,7 @@ const truncated = computed(
 </script>
 
 <template>
-    <ConfiguratorLayer label="Coefficients" :sub="total ? `all ${total} harmonics${span}` : undefined" :default-open="false">
+    <ConfiguratorLayer label="Coefficients" :sub="total ? `${total} harmonics${span}` : undefined" :default-open="false">
         <p v-if="truncated" class="reconcile-note">
             The expanded equation keeps the {{ renderedTerms }} strongest harmonics
             (DC counts as one); this list is the full set.

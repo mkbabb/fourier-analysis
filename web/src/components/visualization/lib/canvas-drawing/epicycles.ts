@@ -175,7 +175,16 @@ export function drawEpicycleCircles(
     // arms are ONE thin polyline in the tail's hue (where the tail starts),
     // with no circle and no dot; the hues are kept (identity), only the
     // overdraw goes. A run is flushed if a larger circle interrupts it.
-    const TAIL_R = 6;
+    // X-DS F3 · DS-F3-C1 — a fixed 6 px cut left dozens of 6–15 px circles,
+    // each with two dots, stacked in a ~40 px fuzz at the tip. The cut is
+    // relative to the chain: under max(12 px, 4 % of its largest on-screen
+    // radius) a link is tail. Every drawn circle is then >= 12 px, so no dot
+    // is ever drawn on a circle under ~10 px.
+    let rMax = 0;
+    for (let i = 0; i < nVis; i++) {
+        if (components[i].index !== 0) rMax = Math.max(rMax, components[i].amplitude);
+    }
+    const TAIL_R = Math.max(12, 0.04 * rMax * scale * strokeScale);
     let tailOpen = false;
     const flushTail = () => {
         if (!tailOpen) return;
@@ -249,7 +258,7 @@ export function drawEpicycleCircles(
         }
         flushTail();
 
-        // Circle (every circle here is at least TAIL_R on screen; DS-F2-C19's
+        // Circle (every circle here is at least TAIL_R (>= 12 px) on screen; DS-F2-C19's
         // ~2 px skip is subsumed by the tail run above).
         ctx.beginPath();
         ctx.arc(ccx, ccy, r, 0, Math.PI * 2);

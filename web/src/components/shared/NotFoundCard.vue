@@ -8,6 +8,7 @@
  * buttons (never a tooltip carrying the meaning, FR-TT-2).
  */
 import { useRouter } from "vue-router";
+import { Upload } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
     Card,
@@ -52,7 +53,7 @@ const router = useRouter();
                 <!-- A host that owns state to clear on the way out (the
                      workspace store) supplies its own actions. -->
                 <slot name="actions">
-                    <Button emphasis="primary" size="md" @click="router.push('/visualize')">Upload a new image</Button>
+                    <Button emphasis="primary" size="md" @click="router.push('/visualize')"><Upload />Upload a new image</Button>
                     <Button emphasis="secondary" size="md" @click="router.push('/gallery')">Browse the gallery</Button>
                 </slot>
             </CardFooter>

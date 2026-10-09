@@ -291,11 +291,6 @@ const activePreset = computed(() =>
 .compute-btn {
     width: 100%;
 }
-.compute-btn:hover {
-    border-color: color-mix(in srgb, var(--viz-fourier) 50%, transparent);
-    background: color-mix(in srgb, var(--viz-fourier) 8%, transparent);
-    color: var(--viz-fourier);
-}
 /* X-DS F2R · DS-F2R-C6: the presets set as columns, not a wrapping run. A
    wrapped run left `x²` alone on a third row at 390 (3/4/1), and no gap step
    recovers the ~56 px it lacked. As auto-filled tracks (each at least 5rem

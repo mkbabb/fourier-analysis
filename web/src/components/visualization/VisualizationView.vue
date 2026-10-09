@@ -478,7 +478,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              to text-caption's font-family in the utility order). -->
                         <p v-if="stageErrorDetail" class="stage-error-lede text-mono-small break-all text-muted-foreground">{{ stageErrorDetail }}</p>
                         <div class="stage-error-actions">
+                            <!-- X-DS F3 · DS-F3-C4: the same action, the same glyph as the empty stage's primary. -->
                             <Button emphasis="primary" size="md" @click="store.reset(); router.push('/visualize')">
+                                <Upload />
                                 Upload a new image
                             </Button>
                             <!-- X-DS pass 13 · DS-F15-C3: the quiet rung, as on the empty
