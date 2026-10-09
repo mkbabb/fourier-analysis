@@ -190,8 +190,10 @@ services:
     # loads them with `nginx -t` + a graceful `nginx -s reload` (edge_apply).
     # .deploy/edge holds the deploy hook's upstream pins (one
     # `set $<svc>_upstream <container>:<port>;` per switched service, read by
-    # the `include` in nginx/fourier.conf); gitignored host state, created by
-    # the hook before any compose act.
+    # the `include` in nginx/fourier.conf). The pins are gitignored host state;
+    # the directory is tracked (.deploy/edge/README.md) so the checkout, not
+    # the daemon, creates it — a daemon-created bind source is root-owned and
+    # the hook runs as the deploy user.
     volumes:
       - ./nginx:/etc/nginx/conf.d:ro
       - ./.deploy/edge:/etc/nginx/fourier-upstreams:ro

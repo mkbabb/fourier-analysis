@@ -49,8 +49,10 @@ uploads/
 # Environment
 .env
 
-# Deploy-time edge upstream pins (scripts/deploy-hook.sh; host state, not source)
-.deploy/
+# Deploy-time edge upstream pins (scripts/deploy-hook.sh; host state, not source).
+# The directory itself is tracked (.deploy/edge/README.md) so a checkout creates
+# it as the deploy user before compose bind-mounts it.
+.deploy/edge/*.conf
 
 # Scripts (private/local only — tracked scripts use negation)
 scripts/*
