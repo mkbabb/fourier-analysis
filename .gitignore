@@ -65,6 +65,7 @@ scripts/*
 !scripts/model-smoke.sh
 !scripts/cors-probe.sh
 !scripts/cors-probe.mjs
+!scripts/prod-verify.mjs
 !scripts/prod-compose-smoke.sh
 !scripts/deploy-switch-smoke.sh
 !scripts/dns-cf-sync.sh
