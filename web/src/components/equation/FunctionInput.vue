@@ -221,7 +221,9 @@ const activePreset = computed(() =>
             </div>
         </div>
     </ConfiguratorLayer>
-    <ConfiguratorLayer label="Controls" :default-open="true">
+    <!-- X-DS F4R · DS-F4R-C2: named for what it holds (the series' term counts
+         and notation). It was "Controls", the name of the 390 tab it sits in. -->
+    <ConfiguratorLayer label="Series" :default-open="true">
         <div class="space-y-body py-1">
             <!-- X-DS pass 1 · F1-07 — the Parseval control is a labelled "Auto"
                  toggle in the Harmonics row, beside its field (glass's own

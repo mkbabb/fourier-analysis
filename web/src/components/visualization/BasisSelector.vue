@@ -171,7 +171,7 @@ function resetDefaults() {
 
         <SliderControl
             label="Harmonics"
-            subtitle="N, the terms in each basis sum"
+            subtitle="N; the Fourier sum runs −N to N"
             :model-value="nHarmonics ?? 50"
             :min="1"
             :max="500"
@@ -181,6 +181,7 @@ function resetDefaults() {
         />
         <SliderControl
             label="Sample Points"
+            subtitle="points traced on the outline"
             :model-value="nPoints ?? 1024"
             :min="128"
             :max="4096"

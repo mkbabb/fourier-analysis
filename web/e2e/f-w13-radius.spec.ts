@@ -123,7 +123,7 @@ test.describe("G-a — F.W13 radius register (frames 1, 2, 5)", () => {
         const layers = controls.locator(".configurator-layer");
         await expect(layers).toHaveCount(3, { timeout: 30_000 });
         await expect(layers.first(), "Function layer").toContainText("Function", { timeout: 30_000 });
-        await expect(layers.nth(1), "Controls layer").toContainText("Controls", { timeout: 30_000 });
+        await expect(layers.nth(1), "Series layer (was \"Controls\"; X-DS DS-F4R-C2)").toContainText("Series", { timeout: 30_000 });
         await expect(layers.last(), "Coefficients layer").toContainText("Coefficients", { timeout: 30_000 });
         const stackTop = await layers.first().evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius));
         const stackBottom = await layers.last().evaluate((el) => parseFloat(getComputedStyle(el).borderBottomLeftRadius));
