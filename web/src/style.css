@@ -302,6 +302,13 @@ article.paper-article .math-block__number {
 article.paper-article .section-body ol.paper-list { list-style: decimal; }
 article.paper-article .section-body ul.paper-list { list-style: disc; }
 article.paper-article .section-body .paper-list li::marker { color: var(--muted-foreground); }
+/* X-DS F3R · DS-F3R-C3: a bracketed reference key is one token. The article's
+   `hyphens: auto` broke it mid-name ("[Fouri-" / "er, 1878]"); prose keeps
+   auto-hyphenation. */
+article.paper-article .paper-cite {
+    hyphens: manual;
+    white-space: nowrap;
+}
 
 /* X-DS pass 6 · DS-F8-C1 — the theorem family's accent, kept OUTSIDE the
    bridge (it is fourier's binding of latex-paper 0.3.0's `--theorem-accent`):

@@ -219,8 +219,12 @@ function resetDefaults() {
     gap: var(--space-atom);
     padding-bottom: 0.25rem;
 }
+/* X-DS F3R · DS-F3R-C1: the caption rides glass Label's own size token
+   (`--control-label`, the rung `.control-row-label` wears), so the heading and
+   the rows beside it move on one ramp. `--type-small` shrank at 390 while the
+   row labels grew on the coarse-pointer ramp, and the hierarchy inverted. */
 .basis-group-label {
-    font-size: var(--type-small);
+    font-size: var(--control-label);
     line-height: var(--type-leading-small);
     font-weight: 500;
     color: var(--foreground);

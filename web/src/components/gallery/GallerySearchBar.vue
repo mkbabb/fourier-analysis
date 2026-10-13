@@ -115,7 +115,7 @@ const hasActiveFilters = computed(
                 >
                     <X :size="14" aria-hidden="true" />
                 </Button>
-                <Separator orientation="vertical" decorative class="h-5 shrink-0" />
+                <Separator orientation="vertical" decorative class="search-rule" />
                 <!-- X.F.W14U.gallery — UIA-F-97: the filter drawer is glass
                      Popover (modal): Escape and an outside press dismiss it,
                      focus returns to this trigger, and the outside press is
@@ -232,6 +232,15 @@ const hasActiveFilters = computed(
        rungs (`--control-h-xs`, the producer's token, floored on coarse
        pointers) plus the separator. */
     --search-field-end: calc(2 * var(--control-h-xs) + 1.25rem);
+}
+/* X-DS F3R · DS-F3R-C2: the rule between Clear and Filter is centred on the
+   actions' cross axis and sized from the rung its neighbours wear
+   (`--control-h-xs` less the glyph inset), so it grows with the field on
+   coarse pointers. A fixed `h-5` under glass's `align-self: stretch` hung
+   from the top rim: 4px off centre at 1440 and 12px at 390. */
+.search-pill .search-rule[data-orientation="vertical"] {
+    align-self: center;
+    block-size: calc(var(--control-h-xs) - 0.5rem);
 }
 
 /* FR-GSB-30 ⊕ FR-GSB-12 — ONE placeholder authority, and it is now the

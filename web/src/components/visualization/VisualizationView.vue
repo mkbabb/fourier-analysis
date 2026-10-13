@@ -1064,7 +1064,11 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     justify-content: center;
     gap: 0.5rem;
     padding: 2rem 1.5rem;
-    border: 1px dashed var(--border);
+    /* X-DS F3R · DS-F3R-C5: the dashed rim is the drop signal, so it is inked
+       only while a file is dragged over. At rest it sat 5px inside the stage's
+       own hairline and read as a doubled border round an empty plate; the
+       stage's rim is the one frame. The transparent edge holds the layout. */
+    border: 1px dashed transparent;
     border-radius: calc(var(--radius-card) - var(--space-residue));
 }
 /* X-DS pass 4 · DS-F4-C9: on a phone the prompt sits on the app's one gutter,
