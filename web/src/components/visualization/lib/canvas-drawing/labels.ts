@@ -25,6 +25,17 @@ function setCaptionInk(ctx: CanvasRenderingContext2D): void {
 }
 
 /**
+ * X-DS DS-F3C-C2: a legend's TITLE is the basis name, so it is set in the
+ * text face its chooser chip resolves to (`--font-text`, read from the canvas
+ * at draw time like the caption ink); mono stays on the count caption only.
+ */
+const TEXT_FACE_FALLBACK = "'Computer Modern Serif', Georgia, serif";
+function titleFont(ctx: CanvasRenderingContext2D): string {
+    const face = getComputedStyle(ctx.canvas).getPropertyValue("--font-text").trim();
+    return `bold 16px ${face || TEXT_FACE_FALLBACK}`;
+}
+
+/**
  * Draw basis name labels in the top-left corner; a hovered label is its own
  * hue at full strength against dimmed siblings (X-DS pass 1 · F1-05).
  */
@@ -77,8 +88,8 @@ export function drawBasisLabels(
         const iconW = ctx.measureText(cfg.icon).width;
         ctx.fillText(cfg.icon, xBase, yOff - iconYAdj);
 
-        // Draw mode label
-        ctx.font = "bold 16px 'Fira Code', monospace";
+        // Draw mode label, in the text face (DS-F3C-C2)
+        ctx.font = titleFont(ctx);
         ctx.fillText(` ${modeLabel}`, xBase + iconW, yOff);
 
         ctx.globalAlpha = 1;
@@ -117,7 +128,7 @@ export function drawEpicycleLabel(
     ctx.font = "bold 44px 'Computer Modern Serif', Georgia, serif";
     const iconW = ctx.measureText("\u2131").width;
     ctx.fillText("\u2131", 16, 2);
-    ctx.font = "bold 16px 'Fira Code', monospace";
+    ctx.font = titleFont(ctx);
     ctx.fillText(" Epicycles", 16 + iconW, 16);
 
     // t value tight below the label, on the caption line (DS-F4R-C5)
