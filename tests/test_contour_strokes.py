@@ -372,14 +372,19 @@ def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
 
     rim = ndi.binary_dilation(nose, iterations=2) & ~ndi.binary_erosion(nose, iterations=2)
     on_rim = np.zeros(nose.shape, bool)
+    outline = np.zeros(nose.shape, bool)
     for e in drawing.graph.edges:
         r = np.clip(np.rint(e.pts[:, 0]).astype(int), 0, nose.shape[0] - 1)
         c = np.clip(np.rint(e.pts[:, 1]).astype(int), 0, nose.shape[1] - 1)
         on_rim[r, c] = True
-    # The bridge's root (its top fifth, between the brows) is not drawn on
-    # either side (drawn, it runs on into the brow as a scowl); below it the
-    # bridge is drawn down both sides into the wings (one side only reads as
-    # a profile, a boot, not a nose seen from the front).
+        if e.layer != CONNECT:
+            outline[r, c] = True
+    # The nose's outline does not run over the bridge's root (its top fifth,
+    # between the brows: drawn, it closes the nose into a balloon and runs
+    # on into the brows as a scowl).  A brow's connector may come down one
+    # side of it (the brow-to-nose line, F.CT3 r3), never across its top;
+    # below it the bridge is drawn down both sides into the wings (one side
+    # only reads as a profile, a boot, not a nose seen from the front).
     rows, cols = np.nonzero(nose)
     row = np.arange(nose.shape[0])[:, None]
     root = rows.min() + 0.2 * np.ptp(rows)
@@ -391,8 +396,13 @@ def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
         right = band & ~left
         return sorted([(drawn & left).sum() / max(1, left.sum()), (drawn & right).sum() / max(1, right.sum())])
 
-    top = shares(rim & (row < root - 2))
+    top_band = rim & (row < root - 2)
+    drawn_outline = ndi.binary_dilation(outline, iterations=2)
+    left_half = np.arange(nose.shape[1])[None, :] < cols.mean()
+    top = sorted([(drawn_outline & top_band & side).sum() / max(1, (top_band & side).sum()) for side in (left_half, ~left_half)])
     assert top[1] < 0.2, top
+    top_all = shares(top_band)
+    assert top_all[0] < 0.2, top_all  # never both sides of the root: no line across it
     bridge = shares(rim & (row >= root + 2) & (row < mid))
     assert bridge[0] > 0.4, bridge
     lower = shares(rim & (row >= mid) & (row < mid + 0.2 * np.ptp(rows)))
@@ -1177,3 +1187,92 @@ def test_a_seam_that_stops_in_the_hair_runs_on_to_the_hairs_edge():
     short.nodes[b] = np.array([100.0, 100.0])
     kept = run_seams_on(short, hair, 2.0)
     assert min(e.pts[:, 0].min() for e in kept.edges if e.layer == LINES) >= 99.0
+
+
+def test_a_thin_part_against_the_frame_goes_to_the_part_beside_it():
+    """A strip of cloth thinner than a line between the hair and the frame
+    (a braid's lit frizz, voted cloth, where the braid runs out of the
+    picture) is a boundary along the frame: it goes to the hair.  A strip as
+    thin in the open, with the hair on one side only, keeps its label."""
+    from fourier_analysis.contours.parts import CLOTH, HAIR, thin_to_line
+
+    labels = np.full((120, 80), HAIR, np.int32)
+    labels[20:100, 72:] = CLOTH  # 8 px against the right frame
+    out = thin_to_line(labels, (CLOTH,), 19.0)
+    assert not (out == CLOTH).any()
+
+    inside = np.full((120, 80), HAIR, np.int32)
+    inside[20:100, 40:48] = CLOTH  # as thin, hair all round
+    assert np.array_equal(thin_to_line(inside, (CLOTH,), 19.0), inside)
+
+
+def _brow_eye_nose(h: int = 200, w: int = 200) -> tuple[StrokeGraph, np.ndarray]:
+    """A brow (row 60), its eye under it (row 90) and a nose stroke whose top
+    lies below the brow's root, a little further from it than the eye is;
+    with their feature kinds."""
+    from fourier_analysis.contours.drawing import BROW_KIND, EYE_KIND
+
+    g = StrokeGraph()
+
+    def stroke(r0: float, c0: float, r1: float, c1: float, n: int = 60) -> None:
+        a, b = g.add_node(np.array([r0, c0])), g.add_node(np.array([r1, c1]))
+        g.edges.append(Edge(a, b, np.column_stack([np.linspace(r0, r1, n), np.linspace(c0, c1, n)]), PARTS))
+
+    stroke(60.0, 40.0, 60.0, 100.0)  # the brow: tail at col 40, root at col 100
+    stroke(90.0, 50.0, 90.0, 96.0)  # the eye's lid line: inner corner at col 96
+    stroke(100.0, 112.0, 170.0, 112.0)  # the nose's side, its top at row 100
+    a, b = g.add_node(np.array([5.0, 190.0])), g.add_node(np.array([195.0, 190.0]))
+    g.edges.append(Edge(a, b, np.column_stack([np.arange(5.0, 196.0), np.full(191, 190.0)]), SILHOUETTE))  # the figure
+    kinds = np.zeros((h, w), np.int8)
+    kinds[55:66, 35:106] = BROW_KIND
+    kinds[85:96, 45:102] = EYE_KIND
+    return g, kinds
+
+
+def test_a_brow_joins_the_nose_before_its_eye():
+    """Without kinds the brow's root is joined to the eye's inner corner (the
+    cheaper join); with them the brow runs down to the nose's top, and the
+    eye joins the nose too: no line across the lid."""
+    from fourier_analysis.contours.drawing import route_connectors
+
+    g, kinds = _brow_eye_nose()
+    blank, everywhere = np.zeros(kinds.shape), np.ones(kinds.shape, bool)
+
+    def joins_brow_to_eye(out: StrokeGraph) -> bool:
+        for e in out.edges:
+            if e.layer != CONNECT:
+                continue
+            ends = {tuple(np.round(e.pts[0])), tuple(np.round(e.pts[-1]))}
+            if any(r == 60.0 for r, _ in ends) and any(r == 90.0 for r, _ in ends):
+                return True
+        return False
+
+    plain = route_connectors(g, blank, everywhere)
+    assert len(plain.components()) == 1 and joins_brow_to_eye(plain)
+    out = route_connectors(g, blank, everywhere, kinds=kinds)
+    assert len(out.components()) == 1 and not joins_brow_to_eye(out)
+
+
+def test_two_connectors_that_run_together_are_one_trunk():
+    """Two connectors leaving one node along the same way are drawn once to
+    where they part, then branch; a pair that part at once stay as they are."""
+    from fourier_analysis.contours.drawing import merge_forks
+
+    g = StrokeGraph()
+    n = g.add_node(np.array([100.0, 50.0]))
+    a, b = g.add_node(np.array([20.0, 30.0])), g.add_node(np.array([20.0, 70.0]))
+    trunk = np.column_stack([np.linspace(100.0, 50.0, 51), np.full(51, 50.0)])
+    for end, c in ((a, 30.0), (b, 70.0)):
+        branch = np.column_stack([np.linspace(50.0, 20.0, 31), np.linspace(50.0, c, 31)])
+        g.edges.append(Edge(n, end, np.vstack([trunk, branch[1:]]), CONNECT))
+    out = merge_forks(g, 4.0)
+    assert len(out.edges) == 3 and len(out.components()) == 1
+    lengths = sorted(e.length for e in out.edges)
+    assert abs(sum(lengths) - (50.0 + 2 * np.hypot(30.0, 20.0))) < 8.0
+
+    apart = StrokeGraph()
+    n = apart.add_node(np.array([100.0, 100.0]))
+    for c in (40.0, 160.0):
+        m = apart.add_node(np.array([20.0, c]))
+        apart.edges.append(Edge(n, m, np.column_stack([np.linspace(100.0, 20.0, 81), np.linspace(100.0, c, 81)]), CONNECT))
+    assert len(merge_forks(apart, 4.0).edges) == 2

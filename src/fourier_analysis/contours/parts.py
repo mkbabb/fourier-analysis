@@ -656,16 +656,32 @@ def thin_to_line(labels: NDArray[np.int32], classes: tuple[int, ...], max_width:
     the one line.  Only a run between two other parts is (each holding
     ``SIDE_SHARE`` of its rim off ``classes``): a closed mouth's thin lips lie on
     the skin all round, their line is where they meet each other, and they
-    keep their labels."""
+    keep their labels.
+
+    The frame is a side too: a run that is thin between another part and the
+    frame (the lit frizz at a braid's edge, voted cloth, where the braid runs
+    out of the picture) is a boundary running along the frame within a line's
+    width of it, which ``_frame_band`` keeps from ever being drawn; drawn, it
+    hooks in and out of the frame.  Its pixels go to the part beside it."""
     from skimage.morphology import skeletonize
 
+    H, W = labels.shape
     thin = np.zeros(labels.shape, bool)
     for k in classes:
         comp, n = ndi.label(labels == k)
         for i, sl in enumerate(ndi.find_objects(comp), start=1):
             if sl is None:
                 continue
-            sl = tuple(slice(max(0, a.start - 1), a.stop + 1) for a in sl)
+            sl = tuple(slice(max(0, a.start - 1), min(a.stop + 1, size)) for a, size in zip(sl, (H, W)))
+            border = np.zeros((sl[0].stop - sl[0].start, sl[1].stop - sl[1].start), bool)
+            if sl[0].start == 0:
+                border[0, :] = True
+            if sl[0].stop == H:
+                border[-1, :] = True
+            if sl[1].start == 0:
+                border[:, 0] = True
+            if sl[1].stop == W:
+                border[:, -1] = True
             m = comp[sl] == i
             skel = skeletonize(m)
             if not skel.any():
@@ -678,8 +694,11 @@ def thin_to_line(labels: NDArray[np.int32], classes: tuple[int, ...], max_width:
                 run = runs == j
                 ring = labels[sl][ndi.binary_dilation(run) & ~run]
                 ring = ring[~np.isin(ring, classes)]
+                frame = int(np.count_nonzero(run & border))
+                total = max(1, ring.size + frame)
                 sides = np.bincount(ring, minlength=1)
-                if np.count_nonzero(sides >= SIDE_SHARE * max(1, ring.size)) >= 2:
+                n_sides = np.count_nonzero(sides >= SIDE_SHARE * total) + int(frame >= SIDE_SHARE * total)
+                if n_sides >= 2:
                     thin[sl] |= run
     if not thin.any():
         return labels
