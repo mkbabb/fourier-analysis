@@ -49,12 +49,15 @@
                 :disabled="disabled"
                 @click="onSelect(level)"
             >
+                <!-- X-DS fourier pass 14 · DS-F14X-P1: the stage plate's
+                     mechanism; the line is 1.5 css px at every tile size. -->
                 <svg viewBox="0 0 200 200" class="grid-svg">
                     <path
                         :d="getPath(level)"
                         fill="none"
                         stroke="var(--accent-red)"
-                        stroke-width="4"
+                        stroke-width="1.5"
+                        vector-effect="non-scaling-stroke"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                     />

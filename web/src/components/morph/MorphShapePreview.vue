@@ -25,9 +25,12 @@
                 @click="$emit('toggle')"
                 :disabled="disabled"
             >
+                <!-- X-DS fourier pass 14 · DS-F14X-P1: the line is held in
+                     SCREEN space (non-scaling-stroke, below), so this width is
+                     css px: PRE-DOCK's rendered ~3 px at every plate size. -->
                 <FourierMorphSvg
                     :path="currentPath"
-                    :stroke-width="4.5"
+                    :stroke-width="3"
                     view-box="0 0 200 200"
                 />
             </Surface>
@@ -193,6 +196,15 @@ defineEmits<{
     height: 100%;
 }
 
+/* X-DS fourier pass 14 · DS-F14X-P1: UIA-F-115 grew the plate from 180px to
+   26rem but the stroke stayed 4.5 user units, so the line scaled with the box
+   (~7.9 px at 1440 against the levels tiles' hairline). The line weight is
+   held in screen space instead, one line-drawn weight at 7.5rem and at 26rem.
+   Hue and morph motion are unchanged (§0dm). */
+.morph-button :deep(path) {
+    vector-effect: non-scaling-stroke;
+}
+
 /* X.F.W4 / SP-6 · FMD-N3 (⊕ FMD-27) — the shadow COMPOSES, it does not replace.
    `box-shadow` is a single property: the halo alone DELETED `cartoon-surface`'s
    signature offset stamp for the whole hover, on the route's primary control.
@@ -217,8 +229,10 @@ defineEmits<{
 
    THE COLLISION, measured at both files: this control’s HOVER was
    `--accent-red` + a flat `0 0 0 3px` 15 %-mix ring; `HarmonicLevelGrid`’s
-   `.grid-cell.active` — its SELECTED state — is `--accent-red` + a flat
-   `0 0 0 2px` 15 %-mix ring. One pixel of ring apart, on screen simultaneously:
+   `.grid-cell.active` — its SELECTED state — was `--accent-red` + a flat
+   `0 0 0 2px` 15 %-mix ring (since X-DS pass 13 · DS-F13X-T1 it is one solid
+   accent pixel, `0 0 0 1px var(--accent-red)`). One pixel of ring apart, on
+   screen simultaneously:
    “the pointer is here” and “this is the current level” wearing one costume.
    The grid itself already distinguishes the two — its `:hover` is a 50 %
    border-mix, no ring — which proves the vocabulary existed and was simply
@@ -229,9 +243,10 @@ defineEmits<{
    `scale(1.02)` hover swell is deleted, as DS-F9-C1 deleted the tiles'
    `scale(1.04)`); `:active` keeps the `scale(0.98)` press, as the tiles do.
    This control is not selectable, so it takes the hover vocabulary and
-   surrenders the ring. `HarmonicLevelGrid.vue` needs no edit under this choice
-   — it is already the vocabulary’s exemplar — which is why the row discharges
-   from one file without a bounds expansion.
+   surrenders the ring. `HarmonicLevelGrid.vue` needed no edit under this choice
+   — it was already the vocabulary’s exemplar — which is why the row discharged
+   from one file without a bounds expansion. (Its ring is now the 1px solid
+   accent edge of DS-F13X-T1; the vocabulary, a flat ring = selected, holds.)
 
    ⊘ `FMD-N3`’s md→lg stamp growth is NOT part of the collision and stays: it
    is elevation, not state. */
