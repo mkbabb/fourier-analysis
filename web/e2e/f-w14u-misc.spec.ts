@@ -221,6 +221,36 @@ test.describe("m210 UIA-F-210 — a preview tile previews; it never rewrites the
     });
 });
 
+for (const vp of [DESKTOP, { width: 1024, height: 900 }]) {
+    test.describe(`m210f X-DS DS-F8X-C1 — at a fine pointer the levels show the whole range (${vp.width})`, () => {
+        test.use({ viewport: vp });
+        test("every tile, the bound High tile among them, is in view; no fading edge", async ({ page }) => {
+            await openMorph(page);
+            const fine = await page.evaluate(() => matchMedia("(pointer: fine)").matches);
+            test.skip(!fine, "the fine-pointer tier only; a coarse pointer keeps the strip (m210)");
+            const high = await page.getByRole("spinbutton", { name: "High" }).inputValue();
+            const read = await page.locator(".levels-card .grid").evaluate((strip, h) => {
+                const s = strip.getBoundingClientRect();
+                const inside = (t: Element) => {
+                    const r = t.getBoundingClientRect();
+                    return r.left >= s.left - 1 && r.right <= s.right + 1 && r.top >= s.top - 1 && r.bottom <= s.bottom + 1;
+                };
+                const kids = [...strip.children];
+                const bound = kids.find((t) => t.textContent!.trim() === `n=${h}`);
+                return {
+                    whole: kids.filter(inside).length,
+                    total: kids.length,
+                    highInView: !!bound && inside(bound),
+                    mask: getComputedStyle(strip).maskImage,
+                };
+            }, high);
+            expect(read.highInView, `the bound High tile (n=${high}) is in view`).toBe(true);
+            expect(read.whole, "every level tile is whole").toBe(read.total);
+            expect(read.mask, "no fading edge where nothing continues").toBe("none");
+        });
+    });
+}
+
 test.describe("m254 UIA-F-254 — /morph's micro-issues", () => {
     test.use({ viewport: DESKTOP });
     test("no nested scroller · Export is secondary by the stage · bound tiles not in a basis hue", async ({ page }) => {

@@ -515,10 +515,14 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              action (primary emphasis, copy per pointer), the format line, a
                              secondary path to the gallery; a rejected file or a failed
                              upload is said here, where it was dropped (UIA-F-166 ⊕ F-167). -->
-                        <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
-                            <!-- X-DS pass 1 · F1-17: the drop zone is drawn (the
-                                 origin's dashed hairline), so the prompt and its
-                                 action sit in the thing a file is dropped on. -->
+                        <!-- X-DS pass 8 · DS-F8X-C2: the empty stage shows the app's
+                             paper grid (glass's `.paper-grid`, identity), as the
+                             origin's empty canvas did, so it reads as a drawing
+                             surface awaiting its outline, not a blank plate. -->
+                        <div v-if="!hasImage && !hasData" class="drop-target paper-grid" :data-dragging="globalDragging || undefined">
+                            <!-- X-DS DS-F4R-C1: the zone draws no frame of its own.
+                                 The stage's hairline is the frame, and the stage's
+                                 ring is the one drop signal. -->
                             <div class="drop-zone">
                                 <h1 class="drop-target-title font-serif-math">Draw any outline in circles</h1>
                                 <p class="drop-target-lede text-body text-muted-foreground">
@@ -1013,6 +1017,10 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     padding: var(--space-residue);
     text-align: center;
     pointer-events: none;
+    /* X-DS pass 8 · DS-F8X-C2: the grid is pinned to the viewport, so its
+       lines register with the page ground's grid round the plate (the
+       `.band-grid` idiom on /morph). */
+    background-attachment: fixed;
     z-index: var(--z-controls);
 }
 /* X.F.W14U.vstage — the empty state's hierarchy (UIA-F-69): the title, then the
