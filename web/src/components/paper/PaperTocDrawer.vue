@@ -84,10 +84,14 @@ function toggleDrawer() {
 <template>
     <aside class="paper-sidebar" :data-state="drawerOpen ? 'open' : 'closed'">
         <div class="paper-toc-drawer">
+            <!-- X-DS pass 7 · DS-F7X-C1: the rail is glass's OPAQUE surface
+                 (`data-surface="opaque"`), on its `glass-quiet` rung; the
+                 `.glass-opaque` class kept the rung's blur (DS-F7X-G1, O-87). -->
             <nav
                 :id="drawerId"
                 ref="sidebarNav"
-                class="sidebar-nav glass-quiet glass-opaque scrollbar-thin"
+                class="sidebar-nav glass-quiet scrollbar-thin"
+                data-surface="opaque"
                 :data-contents="contentsOpen ? 'open' : 'closed'"
                 aria-label="Table of contents"
                 :inert="!drawerOpen"

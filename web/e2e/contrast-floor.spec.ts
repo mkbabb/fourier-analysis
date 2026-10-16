@@ -6,6 +6,31 @@ import {
 } from "./contrast-pairs";
 import { FLOOR, fmtRatio, gradeAgainstFloor } from "../scripts/contrast";
 import { ARMS, openArm, resolveStack, type Arm } from "./resolve-stack";
+import { readFileSync } from "node:fs";
+
+/**
+ * F.REL `.w2` (value.js COHESION §0fk.1) — the PAIR-LEVEL hold. A contrast test
+ * arm mixes consumer, producer and ruled-residual pairs, so holding the TEST by
+ * id would hide every consumer regression behind the producer's rows. The hold
+ * is by pair id instead: `producer-held.json` `pairs` names each held pair, the
+ * arm reports it as held (never as a pass), and it still fails on any other
+ * pair. A held pair that reads passing, or a held id that names no registry
+ * pair, fails the arm too, so a hold cannot outlive its cause.
+ */
+interface HeldPair {
+    pair: string;
+    held: "producer" | "ruled-residual";
+    o: string | null;
+    row: string;
+    expiry: string;
+}
+const HELD_PAIRS = new Map(
+    (
+        JSON.parse(readFileSync(new URL("./producer-held.json", import.meta.url), "utf8")) as {
+            pairs: HeldPair[];
+        }
+    ).pairs.map((h) => [h.pair, h]),
+);
 
 /**
  * X·F F.W4 `.g` — `G-F4-CONTRAST-FLOOR`.
@@ -84,6 +109,12 @@ test.describe("X·F F.W4 — contrast floor (G-F4-CONTRAST-FLOOR)", () => {
 
             const failures: string[] = [];
             const readings: string[] = [];
+            const held: string[] = [];
+            for (const id of HELD_PAIRS.keys()) {
+                if (!CONTRAST_PAIRS.some((p) => p.id === id)) {
+                    failures.push(`  ✗ ${id} [${arm}] — held in producer-held.json but names no registry pair`);
+                }
+            }
 
             for (const pair of CONTRAST_PAIRS) {
                 let verdict;
@@ -103,7 +134,12 @@ test.describe("X·F F.W4 — contrast floor (G-F4-CONTRAST-FLOOR)", () => {
                     describeDrift(pair, arm, verdict.ratio);
                 readings.push(line);
 
-                if (!verdict.passes) {
+                const hold = HELD_PAIRS.get(pair.id);
+                if (hold && !verdict.passes) {
+                    held.push(`  ⊘ ${line} — HELD (${hold.held}${hold.o ? ` ${hold.o}` : ""}, ${hold.expiry}): ${hold.row}`);
+                } else if (hold && pair.banked[arm] !== undefined) {
+                    failures.push(`  ✗ ${line} — held in producer-held.json but PASSES in its banked arm: lift the hold`);
+                } else if (!verdict.passes) {
                     failures.push(`  ✗ ${line} — ${pair.what} · owner ${pair.owner}`);
                 }
             }
@@ -111,9 +147,13 @@ test.describe("X·F F.W4 — contrast floor (G-F4-CONTRAST-FLOOR)", () => {
             // The full table is attached whether the arm passes or fails: a gate
             // that only speaks when it fails leaves the passing rows unproven.
             await test.info().attach(`contrast-${arm}.txt`, {
-                body: readings.join("\n"),
+                body: [...readings, "", "held by pair id (producer-held.json `pairs`):", ...held].join("\n"),
                 contentType: "text/plain",
             });
+
+            if (held.length) {
+                test.info().annotations.push({ type: "producer-held", description: held.join("\n") });
+            }
 
             expect(
                 failures,

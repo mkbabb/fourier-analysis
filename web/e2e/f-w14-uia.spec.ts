@@ -460,6 +460,15 @@ test.describe("UIA-F-42 — at 390 every audit field is legible (cured by .t's D
         // X.F.W14V.au4 (A2-FO-L2-11): at 390 the ledger is DataTable's
         // card-per-row projection; a card's fields are its title and its `dd`s.
         const rows = table.locator("tbody > tr, .data-table-card");
+        // F.REL `.w2` (R-10, COHESION §0fk.5) — the read waits for the
+        // projection it measures. glass DataTable's container width starts at
+        // 0, so its first frame is the TABLE projection (and, while `status` is
+        // `loading`, its skeleton rows); the card projection replaces it only
+        // after the ResizeObserver's first callback with data in. `rows.first()`
+        // was satisfied by that transient table, and the read raced the swap
+        // (CI 38868934803: ✘ then ✓ on retry #1). The settled 390 form is a card
+        // carrying its action Badge.
+        await expect(table.locator('.data-table-card [data-slot="badge"]').first()).toBeVisible();
         await expect(rows.first()).toBeVisible();
         const cells = await rows.evaluateAll((trs) =>
             trs.flatMap((tr) =>

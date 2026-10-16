@@ -18,12 +18,14 @@ import { SAMPLE_IMAGE } from "./fixtures/sample";
  * `role="slider"` thumb in it, and for each one measures:
  *  1. it sits inside a `[data-control-row]` (the idiom, not a per-page shape);
  *  2. its label and its value field share one line (vertical overlap);
- *  3. the track lies beneath that line;
+ *  3. the track lies beneath that line, or ON it after the field (X-DS pass 7 ·
+ *     DS-F7X-C2: a row without a hint, at a fine pointer from 1024 px, lays
+ *     label, field and track on one line, the PRE-DOCK density);
  *  4. the thumb is visible (a box ≥ 4 px wide, opacity > 0);
  *  5. the track shows a fill (a painted range, or a gradient on the track);
- *  6. the row's height is the idiom's measured height ± 4 px — one height for
- *     the rows that carry a hint and one for those that do not (X-DS pass 2 ·
- *     DS-F2-C3: the hint is its own caption line, whole, never ellipsised).
+ *  6. the row's height is the idiom's measured height ± 4 px, per row kind:
+ *     hint or not (X-DS pass 2 · DS-F2-C3: the hint is its own caption line,
+ *     whole, never ellipsised) × one line or stacked (DS-F7X-C2).
  * EquationPanel's "Terms" row (the /w stage overlay) is the same `SliderControl`
  * and is read by construction; the overlay did not open under the dock toggle in
  * this instrument (recorded in the F.W14.h receipt).
@@ -48,6 +50,7 @@ interface Row {
     onIdiom: boolean;
     oneLine: boolean;
     beneath: boolean;
+    inline: boolean;
     thumb: boolean;
     fill: boolean;
     hint: boolean;
@@ -91,6 +94,9 @@ async function census(page: Page, where: string): Promise<Row[]> {
             const oneLine = !!lr && !!vr && vr.top < lr.bottom && lr.top < vr.bottom;
             const lineBottom = Math.max(lr?.bottom ?? 0, vr?.bottom ?? 0);
             const beneath = !!lr && tr.top >= lineBottom - 1;
+            // DS-F7X-C2: the track on the line, after the label and the field.
+            const inline =
+                !!lr && !!vr && tr.top < lineBottom && tr.bottom > Math.min(lr.top, vr.top) && tr.left >= vr.right - 1;
             const th = thumb.getBoundingClientRect();
             const thumbCs = getComputedStyle(thumb);
             const thumbVisible = th.width >= 4 && Number(thumbCs.opacity) > 0;
@@ -107,6 +113,7 @@ async function census(page: Page, where: string): Promise<Row[]> {
                 onIdiom: !!idiom,
                 oneLine,
                 beneath,
+                inline,
                 thumb: thumbVisible,
                 fill: rangePaints || /gradient/.test(trackBg),
                 hint: !!row.querySelector("[data-row-sub]"),
@@ -270,21 +277,24 @@ for (const vp of VIEWPORTS) {
             console.log(`[G-h ${PHASE} ${vp.width}] ${rows.length} rows`);
             for (const r of rows)
                 console.log(
-                    `  ${r.where.padEnd(15)} ${r.name.padEnd(34)} idiom=${+r.onIdiom} hint=${+r.hint} line=${+r.oneLine} beneath=${+r.beneath} thumb=${+r.thumb} fill=${+r.fill} h=${r.height}`,
+                    `  ${r.where.padEnd(15)} ${r.name.padEnd(34)} idiom=${+r.onIdiom} hint=${+r.hint} line=${+r.oneLine} beneath=${+r.beneath} inline=${+r.inline} thumb=${+r.thumb} fill=${+r.fill} h=${r.height}`,
                 );
             console.log(`  scales ${JSON.stringify(scales)}`);
 
             expect(rows.length).toBeGreaterThan(0);
-            const off = rows.filter((r) => !(r.onIdiom && r.oneLine && r.beneath && r.thumb && r.fill));
+            const off = rows.filter((r) => !(r.onIdiom && r.oneLine && (r.beneath || r.inline) && r.thumb && r.fill));
             expect(off, "rows off the idiom").toEqual([]);
-            for (const hint of [false, true]) {
-                const group = rows.filter((r) => r.hint === hint);
-                if (!group.length) continue;
-                const hs = group.map((r) => r.height).sort((a, b) => a - b);
-                const idiom = hs[Math.floor(hs.length / 2)];
-                const tall = group.filter((r) => Math.abs(r.height - idiom) > 4);
-                expect(tall, `rows (hint=${hint}) off the idiom height ${idiom}px ± 4`).toEqual([]);
-            }
+            // DS-F7X-C2: a hint row never goes onto one line.
+            expect(rows.filter((r) => r.hint && r.inline), "hint rows on one line").toEqual([]);
+            for (const hint of [false, true])
+                for (const inline of [false, true]) {
+                    const group = rows.filter((r) => r.hint === hint && r.inline === inline);
+                    if (!group.length) continue;
+                    const hs = group.map((r) => r.height).sort((a, b) => a - b);
+                    const idiom = hs[Math.floor(hs.length / 2)];
+                    const tall = group.filter((r) => Math.abs(r.height - idiom) > 4);
+                    expect(tall, `rows (hint=${hint}, inline=${inline}) off the idiom height ${idiom}px ± 4`).toEqual([]);
+                }
             for (const [name, s] of Object.entries(scales)) {
                 expect(s.offType, `${name}: off the type scale`).toEqual([]);
                 expect(s.offSpace, `${name}: off the spacing scale`).toEqual([]);
