@@ -26,6 +26,13 @@ const props = defineProps<{
     /** The harmonic count the rendered formula keeps (`budget`, DC as one). */
     renderedTerms?: number;
     emptyText?: string;
+    /**
+     * X-DS F4R · DS-F4R-C3: what the header counts. `harmonics` (the default,
+     * /equation's unit: distinct |n|, DC as one) or `terms` (every signed n,
+     * 2N + 1 of them) on /v, where the stage legend counts the same 2N + 1 as
+     * circles. /v read "201 harmonics" beside "401 circles" for one series.
+     */
+    unit?: "harmonics" | "terms";
 }>();
 
 const total = computed(() => new Set(props.components.map((c) => Math.abs(c.index))).size);
@@ -48,13 +55,16 @@ const span = computed(() => {
     const fmt = (n: number) => (n < 0 ? `\u2212${-n}` : String(n));
     return lo === -hi ? ` \u00b7 n = \u00b1${hi}` : ` \u00b7 n = ${fmt(lo)} to ${fmt(hi)}`;
 });
+const count = computed(() =>
+    props.unit === "terms" ? `${props.components.length} terms` : `${total.value} harmonics`,
+);
 const truncated = computed(
     () => props.renderedTerms !== undefined && props.renderedTerms < total.value,
 );
 </script>
 
 <template>
-    <ConfiguratorLayer label="Coefficients" :sub="total ? `${total} harmonics${span}` : undefined" :default-open="false">
+    <ConfiguratorLayer label="Coefficients" :sub="total ? `${count}${span}` : undefined" :default-open="false">
         <p v-if="truncated" class="reconcile-note">
             The expanded equation keeps the {{ renderedTerms }} strongest harmonics
             (DC counts as one); this list is the full set.

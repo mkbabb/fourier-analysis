@@ -42,7 +42,9 @@ const router = useRouter();
              title rung), the gallery card's size; `sm` left the actions on the edge. -->
         <Card surface="opaque" size="md" class="w-full max-w-md" data-testid="not-found">
             <CardHeader>
-                <CardTitle as="h1">{{ title }}</CardTitle>
+                <!-- X-DS F4R · DS-F4R-C5: this h1 is the route's title, so it sets
+                     on the route rung (see the style), not glass's card-title rung. -->
+                <CardTitle as="h1" class="not-found-title">{{ title }}</CardTitle>
                 <CardDescription>{{ description }}</CardDescription>
             </CardHeader>
             <CardContent v-if="detail">
@@ -66,6 +68,15 @@ const router = useRouter();
 </template>
 
 <style scoped>
+/* X-DS F4R · DS-F4R-C5: the route's h1 is on ONE rung app-wide (display-1 at
+   400; DS-F16-C2, as /morph's title and the stage messages). On the card-title
+   rung at 600 it was the only bold title in the app. */
+.not-found-title {
+    font-size: var(--type-display-1);
+    line-height: var(--type-leading-display);
+    font-weight: 400;
+    text-wrap: balance;
+}
 /* X-DS fourier pass 5 · DS-F5-C5: glass's text-emphasis Button keeps its
    `--space-residue` pad and 1px edge, so wrapped onto its own line at 390
    "Browse the gallery" started ~5 px right of the title and body. The link

@@ -124,11 +124,18 @@ const emit = defineEmits<{
 .legend-dot--golden {
     background: var(--viz-amber);
 }
+/* X-DS F4C · DS-F4C-C2: f is a dashed line on the plot, so its key is a short
+   dashed line, not a dashed ring (which read as a spinner). The entry centres
+   its items, so the 2px rule sits on the row's dot axis; it overhangs the
+   10px dot column by 2px each side, so the labels stay on one edge.
+   X-DS fourier pass 6 · DS-F6-C2: the key is inked as its curve is drawn
+   (ConvergencePlot strokes f in the canvas's `--muted-foreground`). */
 .legend-dot--dashed {
-    background: transparent;
-    /* X-DS fourier pass 6 · DS-F6-C2: the key is inked as its curve is drawn
-       (ConvergencePlot strokes f in the canvas's `--muted-foreground`). */
-    border: 2px dashed var(--muted-foreground);
+    width: 14px;
+    height: 0;
+    margin-inline: -2px;
+    border-radius: 0;
+    border-top: 2px dashed var(--muted-foreground);
 }
 
 .legend-label {

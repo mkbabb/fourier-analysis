@@ -63,6 +63,7 @@ scripts/*
 !scripts/pages-deploy.sh
 !scripts/pages-smoke.sh
 !scripts/model-smoke.sh
+!scripts/export-birefnet-lite.py
 !scripts/cors-probe.sh
 !scripts/cors-probe.mjs
 !scripts/prod-verify.mjs
@@ -91,6 +92,7 @@ mongo_data/
 *.png
 !assets/**/*.png
 !docs/**/*.png
+!tests/fixtures/*.png
 
 # Playwright
 web/test-results/

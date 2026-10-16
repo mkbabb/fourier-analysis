@@ -207,9 +207,8 @@ const created = useTimeAgo(() => props.entry.created_at);
    glass Card's own measures (`--card-pad`, `--card-gap`; X-DS pass 2 ·
    DS-F2-C16: at `size="md"`, the 1rem pad of the ORIGIN cards, not sm's 8 px); the
    corner, rim and cast are Card's. The bespoke lift-and-scale hover, the
-   cartoon offset stamp and the tier border/glow rules are deleted. Hover lifts
-   the cast one rung — glass's own `--card-cast-rung`, to the floating rung its
-   `:has(:focus-visible)` arm uses — never a transform. */
+   cartoon offset stamp and the tier border/glow rules are deleted. Hover is
+   the tone step below (F1-13), never a cast promotion or a transform. */
 .gallery-card {
     /* X.F.W14V.au4 — A2-FO-L3-4: the card reads its own width (the compact
        arm below). */

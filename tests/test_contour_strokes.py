@@ -508,9 +508,12 @@ def test_no_face_is_found_on_an_animal_or_a_cartoon(rel: str):
 
 
 def test_person_cut_removes_what_stands_beside_the_sitter():
-    """``human.png``: the saliency keeps a plant leaf against the sitter's
-    cheek; with a confirmed face the subject is cut to the person, so the
-    leaf goes and the sitter stays whole."""
+    """``human.png``: a plant leaf stands against the sitter's cheek; with a
+    confirmed face the subject is cut to the person, so the leaf goes and the
+    sitter stays whole.  Whether a saliency model keeps the leaf is a property
+    of that model, so the leaf is united into the mask from a fixture: the
+    region the 1024-px BiRefNet-lite kept (``fixtures/human-leaf.md``)."""
+    from PIL import Image
     from scipy import ndimage as ndi
 
     from fourier_analysis.contours.image import load_image_inputs
@@ -523,6 +526,8 @@ def test_person_cut_removes_what_stands_beside_the_sitter():
     config = ContourConfig().normalized()
     image = load_image_inputs(ASSETS / "portraits" / "human.png", config)
     mask, _ = subject_mask(image, config)
+    leaf = Image.open(Path(__file__).parent / "fixtures" / "human-leaf.png")
+    mask = mask | np.asarray(leaf).astype(bool)
     parts = part_labels(image, mask)
     subject = parts.subject
     assert parts.source == "face-parsing"

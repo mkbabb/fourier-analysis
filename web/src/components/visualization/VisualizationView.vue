@@ -657,6 +657,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                     v-if="store.epicycleData || store.computing"
                                     :components="store.epicycleData?.components ?? []"
                                     empty-text="Compute epicycles to see coefficients"
+                                    unit="terms"
                                 />
                             </Transition>
                         </div>
@@ -1048,13 +1049,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 .drop-target > * {
     pointer-events: auto;
 }
-/* X-DS pass 1 · F1-17 — the origin's drop zone, revived on today's tokens: a
-   1px dashed hairline around the prompt and its action. No fill, no shadow. A
-   dragged file inks the dash in the focus-ring hue.
-   X-DS pass 10 · DS-F12-C4: one frame carries the empty state — the dashed
-   zone fills the stage (was a ~600×380 box floating in a ~1408×800 plate, a
-   frame inside a frame), the prompt centred in it; its corner is concentric
-   with the stage's (the card radius less the inset). */
+/* The empty stage's prompt and its action, centred in the stage. It draws no
+   frame of its own (X-DS F4R · DS-F4R-C1): the stage's hairline is the frame
+   at rest and the stage's ring (below) is the one drop signal. */
 .drop-zone {
     flex: 1;
     align-self: stretch;
@@ -1064,8 +1061,6 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     justify-content: center;
     gap: 0.5rem;
     padding: 2rem 1.5rem;
-    border: 1px dashed var(--border);
-    border-radius: calc(var(--radius-card) - var(--space-residue));
 }
 /* X-DS pass 4 · DS-F4-C9: on a phone the prompt sits on the app's one gutter,
    not two stacked 1.5rem insets, so the balanced title takes two lines
@@ -1075,17 +1070,13 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
         padding-inline: var(--page-gutter);
     }
 }
-.drop-target[data-dragging] .drop-zone {
-    border-color: var(--focus-ring-color);
-}
-/* The dragenter signal: the glass focus-ring register on the target, so a
-   dragged file reads which surface will take it. */
-.drop-target[data-dragging] .drop-target-button {
-    box-shadow: 0 0 0 2px var(--focus-ring-color);
-}
-/* UIA-F-166 — the whole stage signals a file dragged over it (was the button
-   only); inset, so the Configurator's rounded stage cell draws it on its own
-   rim. With an image, a drop here replaces it. */
+/* UIA-F-166 — the whole stage signals a file dragged over it; inset, so the
+   Configurator's rounded stage cell draws it on its own rim. With an image, a
+   drop here replaces it.
+   X-DS F4R · DS-F4R-C1: this ring is the ONE drop signal, on the empty and
+   the loaded stage alike. The dashed rim 5px inside it and the ring round the
+   Choose button fired on the same drag and drew three frames at once; both
+   are deleted. */
 .canvas-stage[data-dragging]::after {
     content: "";
     position: absolute;

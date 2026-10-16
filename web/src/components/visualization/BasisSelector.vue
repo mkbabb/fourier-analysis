@@ -171,7 +171,7 @@ function resetDefaults() {
 
         <SliderControl
             label="Harmonics"
-            subtitle="N, the terms in each basis sum"
+            subtitle="N; the Fourier sum runs −N to N"
             :model-value="nHarmonics ?? 50"
             :min="1"
             :max="500"
@@ -181,6 +181,7 @@ function resetDefaults() {
         />
         <SliderControl
             label="Sample Points"
+            subtitle="points traced on the outline"
             :model-value="nPoints ?? 1024"
             :min="128"
             :max="4096"
@@ -219,14 +220,21 @@ function resetDefaults() {
     gap: var(--space-atom);
     padding-bottom: 0.25rem;
 }
+/* X-DS F3R · DS-F3R-C1: the caption rides glass Label's own size token
+   (`--control-label`, the rung `.control-row-label` wears), so the heading and
+   the rows beside it move on one ramp. `--type-small` shrank at 390 while the
+   row labels grew on the coarse-pointer ramp, and the hierarchy inverted. */
 .basis-group-label {
-    font-size: var(--type-small);
+    font-size: var(--control-label);
     line-height: var(--type-leading-small);
     font-weight: 500;
     color: var(--foreground);
 }
+/* X-DS F4C · DS-F4C-C1: the step before a group is a full body step, so the
+   caption sits with the chips below it (an atom to its own row) and never
+   floats midway once the coarse chip floor grows at 390. */
 .basis-group-label:not(:first-child) {
-    margin-top: var(--space-atom);
+    margin-top: var(--space-body);
 }
 
 /* X.F.W14U.c1 — addendum (g): the pressed basis chip carries its basis tint,

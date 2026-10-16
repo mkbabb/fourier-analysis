@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
+import { GlassDock, DockControl } from "@mkbabb/glass-ui/dock";
 import { FadingScroll } from "@mkbabb/glass-ui/fading-scroll";
 import { useClipboard } from "@mkbabb/glass-ui";
 import { Check, Copy } from "@lucide/vue";
@@ -70,9 +71,26 @@ async function copyLatex() {
              padding the equation kept to dodge them, are gone. -->
         <div class="eq-result-header">
             <slot name="leading" />
-            <div class="eq-result-actions">
+            <!-- X-DS F4R · DS-F4R-C4: on the stage the tools sit in the home
+                 /v's stage tools use, a glass dock at the stage's top-right
+                 (never collapsing: two tools need no summary face), so no
+                 glyph hangs unframed in the corner. The host's actions are
+                 DockControls beside Copy. -->
+            <div v-if="!dense" class="eq-result-actions">
+            <GlassDock fit-content :collapse="false">
                 <slot name="actions" />
-                <!-- X-DS pass 9 · DS-F11-C1: Copy is a quiet utility beside Info. -->
+                <DockControl aria-label="Copy LaTeX" title="Copy LaTeX" :disabled="!latex" @click="copyLatex">
+                    <Transition name="icon-swap" mode="out-in">
+                        <Check v-if="status === 'success'" class="copy-ok" />
+                        <Copy v-else />
+                    </Transition>
+                </DockControl>
+            </GlassDock>
+            </div>
+            <!-- The dense plate (/visualize's floating equation panel) is
+                 itself the frame: Copy stays a quiet utility on it
+                 (X-DS pass 9 · DS-F11-C1). -->
+            <div v-else class="eq-result-actions">
                 <Button
                     emphasis="quiet"
                     size="md" icon-only
@@ -124,6 +142,8 @@ async function copyLatex() {
     padding: 0.5rem 0.5rem 0;
 }
 
+/* The seat: the row's trailing end, 0.5rem in from the stage's top-right as
+   /v's `.controls-dock-anchor` is. On the stage it holds the tools' dock. */
 .eq-result-actions {
     display: flex;
     align-items: center;

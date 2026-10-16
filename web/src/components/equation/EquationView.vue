@@ -14,6 +14,7 @@ import type { BasisComponent } from "@/lib/types";
 import { tierInfo } from "@/lib/equation/notation";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { Button } from "@mkbabb/glass-ui/button";
+import { DockControl } from "@mkbabb/glass-ui/dock";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Progress } from "@mkbabb/glass-ui/progress";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
@@ -464,12 +465,11 @@ watchDebounced(
                                      arm; `D·D-B2` names the icon-only trigger. -->
                                 <Popover v-if="tier" trigger="hover" :open-delay="200" :close-delay="150">
                                     <PopoverTrigger as-child>
-                                        <!-- X-DS pass 9 · DS-F11-C1: a quiet utility, the rung of
-                                             the Configurator's Reset; Compute is the route's one primary. -->
-                                        <Button emphasis="quiet" size="md" icon-only
-                                                aria-label="About this approximation">
-                                            <Info class="size-[18px]" />
-                                        </Button>
+                                        <!-- X-DS F4R · DS-F4R-C4: a control of the stage-tools
+                                             dock (EquationResult's), on the dock's own glyph rung. -->
+                                        <DockControl aria-label="About this approximation">
+                                            <Info />
+                                        </DockControl>
                                     </PopoverTrigger>
                                     <PopoverContent class="info-hovercard" side="bottom" :side-offset="6" align="end"
                                         aria-label="About this approximation">

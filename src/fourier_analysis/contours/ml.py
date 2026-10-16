@@ -1,5 +1,6 @@
-"""Subject saliency (a U2-Net + BiRefNet-lite ensemble) via ONNX, and the
-sha-pinned model store every contour model shares (``model_dir``)."""
+"""Subject saliency (a U2-Net + BiRefNet-lite ensemble) via ONNX, the
+sha-pinned model store every contour model shares (``model_dir``), and the one
+way every contour model's ONNX session is opened (``_open_session``)."""
 
 from __future__ import annotations
 
@@ -77,15 +78,23 @@ U2NET = SubjectModelSpec(
 )
 
 BIREFNET_LITE = SubjectModelSpec(
-    name="birefnet-general-lite",
+    name="birefnet-lite-512",
     url=(
-        "https://github.com/danielgatis/rembg/releases/download/v0.0.0/"
-        "BiRefNet-general-bb_swin_v1_tiny-epoch_232.onnx"
+        "https://github.com/mkbabb/fourier-analysis/releases/download/models-2026-10/"
+        "birefnet-lite-512.onnx"
     ),
-    sha256="5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333",
-    input_size=1024,
+    sha256="6dd4c52c5acbf6264ace555acc4b61342c3fa0ed3e13f5a80935b74ae6241793",
+    input_size=512,
     activation="sigmoid",
 )
+"""BiRefNet-lite (Swin-T), our own export at a bounded input.
+
+Every published BiRefNet-lite ONNX is static at 1024x1024, where one inference
+peaks at about 5.5 GB: past the API's ``memory: 2G``.  This one is exported by
+``scripts/export-birefnet-lite.py`` from the official weights
+(``ZhengPeng7/BiRefNet_lite`` at revision ``aa62cd87``, MIT;
+``model.safetensors`` sha256 ``4417d897...d0815``) and published as a release
+asset of this repository (F.REL ``.mem2``, COHESION §0ey)."""
 
 SUBJECT_MODELS: tuple[SubjectModelSpec, ...] = (U2NET, BIREFNET_LITE)
 """The subject ensemble: the saliency map is the mean of these models' maps."""
@@ -123,8 +132,34 @@ def ensure_model_downloaded() -> list[Path]:
     return [_download(spec) for spec in specs]
 
 
+def _session_options(ort: Any) -> Any:
+    """Every contour model's session releases a run's activations when the
+    run ends: no CPU memory arena and no memory pattern, which would otherwise
+    hold each run's peak resident for as long as the session lives (the API
+    serves under ``memory: 2G``; F.REL ``.mem``)."""
+    options = ort.SessionOptions()
+    options.enable_cpu_mem_arena = False
+    options.enable_mem_pattern = False
+    return options
+
+
+def _open_session(spec: SubjectModelSpec):
+    """A new ONNX inference session on ``spec``'s weights (``_session_options``)."""
+    try:
+        import onnxruntime as ort
+    except ImportError as exc:
+        raise ImportError(
+            "onnxruntime is required for ML contour extraction. "
+            "Install with: pip install onnxruntime"
+        ) from exc
+
+    return ort.InferenceSession(
+        str(_download(spec)), _session_options(ort), providers=["CPUExecutionProvider"]
+    )
+
+
 def _get_session(spec: SubjectModelSpec):
-    """Lazy per-model ONNX inference session."""
+    """Lazy per-model ONNX inference session, held for the life of the process."""
     session = _sessions.get(spec.name)
     if session is not None:
         return session
@@ -132,27 +167,18 @@ def _get_session(spec: SubjectModelSpec):
         session = _sessions.get(spec.name)
         if session is not None:
             return session
-        try:
-            import onnxruntime as ort
-        except ImportError as exc:
-            raise ImportError(
-                "onnxruntime is required for ML contour extraction. "
-                "Install with: pip install onnxruntime"
-            ) from exc
-
-        session = ort.InferenceSession(
-            str(_download(spec)), providers=["CPUExecutionProvider"]
-        )
+        session = _open_session(spec)
         _sessions[spec.name] = session
         return session
 
 
 def load_subject_sessions() -> None:
-    """Open every subject model's inference session now rather than on the
-    first extraction (a long-lived process, such as the API server or the
-    bench, pays the load once)."""
+    """Fetch the subject models' weights and open every held session now
+    rather than on the first extraction (a long-lived process, such as the
+    API server or the bench, pays those loads once).  The subject models' own
+    sessions are not held: ``_predict_one``."""
     for spec in SUBJECT_MODELS:
-        _get_session(spec)
+        _download(spec)
     from fourier_analysis.contours.lines import load_line_session
     from fourier_analysis.contours.parts import load_part_sessions
     from fourier_analysis.contours.person import load_person_session
@@ -193,9 +219,16 @@ def model_output(spec: SubjectModelSpec, raw: NDArray[np.floating]) -> NDArray[n
 
 
 def _predict_one(spec: SubjectModelSpec, rgb: Image.Image, shape: tuple[int, int]) -> NDArray[np.float64]:
-    session = _get_session(spec)
+    """One subject model's map, its session opened for this run and released
+    after it.  The ensemble's members are the pipeline's heaviest weights and
+    each runs once per extraction; held open beside the line model's run they
+    put a default extraction past the 1.6 GB it is allowed under the API's
+    ``memory: 2G`` (F.REL ``.mem``, COHESION §0ew: the members run in turn,
+    each session released)."""
+    session = _open_session(spec)
     x = model_input(spec, rgb)
     raw = session.run(None, {session.get_inputs()[0].name: x})[0]
+    del session
     prob = model_output(spec, raw)
     h, w = shape
     resized = Image.fromarray(prob.astype(np.float32), mode="F").resize(

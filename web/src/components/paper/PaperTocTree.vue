@@ -165,6 +165,8 @@ function choose(node: PaperSectionData) {
     display: flex;
     align-items: center;
     gap: 0.125rem;
+    border-radius: var(--radius-lg);
+    transition: background-color var(--engage-control-engage-release) var(--ease-standard);
 }
 .toc-row > :first-child {
     flex: 1;
@@ -200,18 +202,27 @@ function choose(node: PaperSectionData) {
    only, no weight step: a bolder label re-wrapped the rail every time
    reading crossed a chapter. X-DS DS-F4R-C1: the plate is the LEAF's alone;
    a chapter on the active chain keeps the hue ink only, so one row reads as
-   selected, not two. */
+   selected, not two. X-DS pass 5 · DS-F5X-C1: the selected and hover
+   plates are glass's state fills on ONE shape, the row's (chevron inside):
+   selected on `--fill-selected` (0.12) sits above hover's `--fill-hover`
+   (0.05), so a hovered row never reads more selected than the selected one.
+   The link's own Button hover fill is quieted; the row carries it. */
 .toc-link[aria-current] {
     color: var(--toc-accent);
 }
 .toc-row:has(> .toc-link[data-leaf]) {
-    border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--muted) 40%, transparent);
+    background: color-mix(in oklab, var(--foreground) calc(var(--fill-selected) * 100%), transparent);
 }
 /* UIA-F-163: a tap latches no look-alike; hover paint only where it hovers. */
 @media (hover: hover) {
+    .toc-link:hover {
+        background: transparent;
+    }
     .toc-link:not([aria-current]):hover {
         color: var(--foreground);
+    }
+    .toc-row:has(> .toc-link:not([aria-current]):hover) {
+        background: color-mix(in oklab, var(--foreground) calc(var(--fill-hover) * 100%), transparent);
     }
 }
 /* X-DS pass 2 · DS-F2-C8: number and title are ONE child of glass Button's
