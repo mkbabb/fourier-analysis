@@ -186,6 +186,7 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
 
     floor = MIN_PART_FRACTION * diag
     graph = prune_to_budget(graph, INK_BUDGET_DIAGONALS * diag, salience, floor=floor)
+    graph = drop_texture_lines(graph, lab, sigma)
     if parts.faces:
         graph = drop_faint_twigs(graph, lab, width)
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
@@ -196,7 +197,7 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     wall = glabella(parts.nose, zones > 0)
     path_strength = connector_strength(strength, parts.form | parts.face_core, parts.nose)
     graph = route_connectors(
-        graph, path_strength, reach, barred=brow_roots(parts.labels, parts.faces), wall=wall, faces=zones
+        graph, path_strength, reach, wall=wall, faces=zones
     )
     graph = route_jumps(graph, path_strength, reach, wall=wall)
     return Drawing(graph, mask, parts.source, parts.faces)
@@ -288,7 +289,6 @@ def route_connectors(
     graph: StrokeGraph,
     strength: NDArray[np.float64],
     subject: NDArray[np.bool_],
-    barred: NDArray[np.bool_] | None = None,
     wall: NDArray[np.bool_] | None = None,
     faces: NDArray[np.int32] | None = None,
 ) -> StrokeGraph:
@@ -307,9 +307,8 @@ def route_connectors(
     the minimum spanning tree of those path costs (one geodesic front from
     all pieces at once; adjacent fronts of two pieces meet on their geodesic
     Voronoi boundary).  Each path is a ``CONNECT`` edge from ink to ink;
-    the tour walks it there and back, the return exactly on top.  No piece
-    is entered on a ``barred`` pixel (``brow_roots``) while it has another
-    entry, and no path crosses the ``wall`` (``glabella``).
+    the tour walks it there and back, the return exactly on top.  No path
+    crosses the ``wall`` (``glabella``).
 
     A face's features (an eye, a brow, the nose, the mouth, a crease beside
     them: every piece but the figure, the largest, that lies in the face)
@@ -338,7 +337,7 @@ def route_connectors(
 
     # Seeds: every stroke point the pen may enter its piece at
     # (``entry_points``), tagged with its edge and point index.
-    entry = entry_points(graph, parts, barred)
+    entry = entry_points(graph, parts)
     seed_edge = np.full(shape, -1, dtype=np.int64)
     seed_index = np.full(shape, -1, dtype=np.int64)
     closed = np.zeros(shape, bool)  # a piece's stroke away from its entries
@@ -489,9 +488,7 @@ END_ENTRY_PX = 1.5
 """An open piece is entered at a free end, within this distance of it."""
 
 
-def entry_points(
-    graph: StrokeGraph, parts: list[list[int]], barred: NDArray[np.bool_] | None = None
-) -> list[NDArray[np.bool_]]:
+def entry_points(graph: StrokeGraph, parts: list[list[int]]) -> list[NDArray[np.bool_]]:
     """Per edge, the points at which a connector may join its piece.
 
     A pen joins a separate piece (a brow, an eye, a crease) where the piece
@@ -505,7 +502,13 @@ def entry_points(
     figure the others hang on) and the line drawing's own fragments (fur,
     folds: texture, where the shortest join is the least ink) are joined
     anywhere.  A feature is entered within ``ENTRY_FRACTION`` of its
-    long-axis extent of an extreme that is not already a free end's."""
+    long-axis extent of an extreme that is not already a free end's.
+
+    A brow is entered at either end, and the cheaper wins: on a face that is
+    its root, nearest the eye's inner corner, so the brow's line runs down
+    beside the bridge (the brow-to-nose line of a drawn face) and its tail
+    stays free.  A brow tied by its tail to the eye's outer corner closes a
+    wedge over the eye, a socket drawn as a triangle."""
     out = [np.ones(len(e.pts), bool) for e in graph.edges]
     if len(parts) <= 1:
         return out
@@ -540,59 +543,7 @@ def entry_points(
             if len(corners):
                 ok |= cKDTree(corners).query(q)[0] <= reach
             out[k] = ok
-        if barred is not None and barred.any():
-            h, w = barred.shape
-            off = []
-            for k in p:
-                q = graph.edges[k].pts
-                r = np.clip(np.round(q[:, 0]).astype(int), 0, h - 1)
-                c = np.clip(np.round(q[:, 1]).astype(int), 0, w - 1)
-                off.append(out[k] & ~barred[r, c])
-            if any(o.any() for o in off):
-                for k, o in zip(p, off):
-                    out[k] = o
     return out
-
-
-BROW_ROOT_PX = 2
-"""A brow's root is grown this far, so its stroke's end (a pixel or two off
-the label) lies on it."""
-
-
-def brow_roots(labels: NDArray[np.int32], faces: tuple[Face, ...]) -> NDArray[np.bool_]:
-    """The inner half of each brow: its pixels nearer the face's midline (the
-    perpendicular bisector of the two eyes' landmarks) than the brow's centre.
-
-    A pen leaves a brow at its tail, carrying the arch on to the temple; a
-    connector from its root runs down beside the nose (a scowl) or down to
-    the eye's inner corner (a box round the eye)."""
-    from fourier_analysis.contours.parts import BROWS
-
-    out = np.zeros(labels.shape, bool)
-    brows = np.isin(labels, BROWS)
-    if not brows.any() or not faces:
-        return out
-    comp, n = ndi.label(brows)
-    for k in range(1, n + 1):
-        pix = np.argwhere(comp == k).astype(np.float64)
-        centre = pix.mean(axis=0)
-        face = min(
-            (f for f in faces if len(f.landmarks) >= 2),
-            key=lambda f: float(np.hypot(*(np.mean(f.landmarks[:2], axis=0)[::-1] - centre))),
-            default=None,
-        )
-        if face is None:
-            continue
-        e0, e1 = (np.asarray(face.landmarks[i], np.float64)[::-1] for i in (0, 1))  # (row, col)
-        axis = e1 - e0
-        if float(np.hypot(*axis)) < 1.0:
-            continue
-        axis /= np.hypot(*axis)
-        mid = 0.5 * (e0 + e1)
-        d = np.abs((pix - mid) @ axis)
-        root = pix[d < abs(float((centre - mid) @ axis))].astype(int)
-        out[root[:, 0], root[:, 1]] = True
-    return ndi.binary_dilation(out, iterations=BROW_ROOT_PX) if out.any() else out
 
 
 def route_jumps(
@@ -1164,6 +1115,52 @@ def drop_faint_twigs(graph: StrokeGraph, lab: NDArray[np.float64], width: float)
         graph = dissolve_degree_two(compact(StrokeGraph(graph.nodes, [graph.edges[k] for k in keep])))
 
 
+TEXTURE_STRAIGHTNESS = 0.8
+"""A line keeping less than this of its length under a Gaussian of the
+texture's cell (``DENSITY_FRACTION`` of the diagonal) turns back on itself
+at that scale: the lace a texture's tone makes, not a line going somewhere."""
+TEXTURE_READ_PX = 2.0
+"""A texture line's contrast is read this close to it (as if it were a line
+this wide): a soft step of tone (light fur to dark) is small over a few
+pixels, where an edge or a drawn line is whole."""
+
+
+def drop_texture_lines(graph: StrokeGraph, lab: NDArray[np.float64], cell: float) -> StrokeGraph:
+    """Drop the learned lines that are a texture's tone, not lines, to a
+    fixed point.
+
+    Over fur, fleece or a coat's shading the line model draws the edges of
+    the tone's blotches: strokes the image barely marks close up
+    (``line_contrast`` read at ``TEXTURE_READ_PX``, under
+    ``CONTRAST_DELTA_E``: a soft step from light fur to dark, not an edge or
+    a drawn line) that meander at the texture's own scale
+    (``straightness`` over the ``cell`` under ``TEXTURE_STRAIGHTNESS``).
+    Drawn, they are a maze over the subject.  A line the image marks is kept
+    however it winds (a giraffe's patch, a cable's coil, a lid), and so is a
+    faint one that goes somewhere (a parting, a chain, a leg behind a leg),
+    and a compact closed stroke (``is_shape``: an eye, a nostril).  What a
+    dropped stroke leaves hanging is judged again, so a maze goes whole."""
+    cache: dict[int, tuple[NDArray[np.float64], bool]] = {}
+
+    def texture(e: Edge) -> bool:
+        hit = cache.get(id(e.pts))
+        if hit is None or hit[0] is not e.pts:
+            value = (
+                not is_shape(e)
+                and straightness(e.pts, cell, reflect=True) < TEXTURE_STRAIGHTNESS
+                and line_contrast(e.pts, lab, TEXTURE_READ_PX) < CONTRAST_DELTA_E
+            )
+            hit = cache[id(e.pts)] = (e.pts, value)
+        return hit[1]
+
+    while True:
+        drop = {k for k, e in enumerate(graph.edges) if e.layer == LINES and texture(e)}
+        if not drop:
+            return graph
+        keep = [k for k in range(len(graph.edges)) if k not in drop]
+        graph = dissolve_degree_two(compact(StrokeGraph(graph.nodes, [graph.edges[k] for k in keep])))
+
+
 def drop_line_flecks(graph: StrokeGraph, min_length: float) -> StrokeGraph:
     """Drop a component made only of learned lines that is shorter than
     ``min_length``, or shorter than its distance to the rest of the drawing
@@ -1260,10 +1257,13 @@ def self_density(p: NDArray[np.float64], sigma: float) -> float:
     return float(own.mean())
 
 
-def straightness(p: NDArray[np.float64], sigma: float) -> float:
+def straightness(p: NDArray[np.float64], sigma: float, reflect: bool = False) -> float:
     """Length after an arc-length Gaussian of ``sigma`` over length before:
     near 1 for a line that means to go somewhere, well below it for the lace
-    a texture's edge makes."""
+    a texture's edge makes.  With ``reflect`` an open stroke's ends are
+    point-reflected before smoothing, so a short straight stroke is not read
+    as bent by the Gaussian drawing its ends in (as the bench's wiggle
+    reads ink)."""
     s = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(p, axis=0).T))])
     if s[-1] <= 1e-9:
         return 1.0
@@ -1273,7 +1273,12 @@ def straightness(p: NDArray[np.float64], sigma: float) -> float:
         return 1.0
     raw = float(np.hypot(*np.diff(q, axis=0).T).sum())
     closed = bool(np.allclose(q[0], q[-1]))
-    sm = ndi.gaussian_filter1d(q, sigma / 0.5, axis=0, mode="wrap" if closed else "nearest")
+    if reflect and not closed:
+        k = min(len(q) - 1, int(np.ceil(3 * sigma / 0.5)))
+        padded = np.vstack([2 * q[0] - q[k:0:-1], q, 2 * q[-1] - q[-2 : -k - 2 : -1]])
+        sm = ndi.gaussian_filter1d(padded, sigma / 0.5, axis=0, mode="nearest")[k : k + len(q)]
+    else:
+        sm = ndi.gaussian_filter1d(q, sigma / 0.5, axis=0, mode="wrap" if closed else "nearest")
     return min(1.0, float(np.hypot(*np.diff(sm, axis=0).T).sum()) / max(raw, 1e-9))
 
 

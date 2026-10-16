@@ -966,25 +966,12 @@ def test_faint_twigs_are_dropped_and_marked_ones_kept():
     assert any(e.layer == LINES and abs(e.pts[:, 1] - 120).max() < 1 for e in out.edges), kinds
 
 
-def test_a_brow_is_entered_at_its_tail_not_its_root():
-    """Two brows over two eyes: each brow's root (its half nearer the face's
-    midline) is barred, so a connector leaves a brow at its tail, carrying the
-    arch on to the temple, never at its root (a scowl, or a box round the
-    eye)."""
-    from fourier_analysis.contours.drawing import brow_roots, entry_points
-    from fourier_analysis.contours.parts import BROWS, SKIN, Face
+def test_a_brow_is_entered_at_either_end_never_its_middle():
+    """A brow stroke (a feature piece) hanging off the figure: a connector may
+    join it at either of its ends (the cheaper wins: its root, by the eye's
+    inner corner, carries it on down the bridge), never along its arch."""
+    from fourier_analysis.contours.drawing import entry_points
 
-    h, w = 120, 200
-    labels = np.full((h, w), SKIN, np.int32)
-    labels[30:36, 30:90] = BROWS[0]  # the image-left brow
-    labels[30:36, 110:170] = BROWS[1]  # the image-right brow
-    face = Face(0.99, (20.0, 10.0, 160.0, 100.0), ((60.0, 50.0), (140.0, 50.0), (100.0, 70.0), (80.0, 90.0), (120.0, 90.0)))
-    roots = brow_roots(labels, (face,))
-    assert roots[33, 70:90].all() and not roots[33, 30:55].any()  # the left brow's inner half
-    assert roots[33, 110:130].all() and not roots[33, 145:170].any()  # the right brow's inner half
-
-    # A brow stroke (a feature piece) and the figure it hangs off: entered
-    # at its outer end only.
     g = StrokeGraph()
     big = np.column_stack([np.full(150, 100.0), np.linspace(20.0, 180.0, 150)])
     u, v = g.add_node(big[0]), g.add_node(big[-1])
@@ -992,9 +979,41 @@ def test_a_brow_is_entered_at_its_tail_not_its_root():
     brow = np.column_stack([np.full(61, 33.0), np.linspace(30.0, 90.0, 61)])
     p, q = g.add_node(brow[0]), g.add_node(brow[-1])
     g.edges.append(Edge(p, q, brow, PARTS))
-    entry = entry_points(g, g.components(), roots)
+    entry = entry_points(g, g.components())
     ok = brow[entry[1]]
-    assert ok.size and ok[:, 1].max() < 60  # only at the tail (column 30)
+    assert ok[:, 1].min() < 32 and ok[:, 1].max() > 88  # both ends
+    assert not ((ok[:, 1] > 40) & (ok[:, 1] < 80)).any()  # never the arch
+
+
+def test_texture_lines_go_where_a_marked_or_purposeful_line_stays():
+    """Over a soft tone (light fur shading to dark) a learned line that
+    meanders at the texture's cell is the tone's lace and goes; the same
+    meander drawn in the image (a coil, a patch's edge) stays, and so does a
+    faint line that runs straight (a parting)."""
+    from scipy import ndimage as ndi
+
+    from fourier_analysis.contours.drawing import drop_texture_lines
+
+    h, w = 200, 300
+    yy, xx = np.mgrid[:h, :w].astype(np.float64)
+    lab = np.zeros((h, w, 3))
+    lab[..., 0] = 50.0 + 15.0 * np.tanh((yy - 60.0) / 20.0)  # a soft tone step about row 60
+    g = StrokeGraph()
+    t = np.linspace(20.0, 280.0, 400)
+    drawn = np.zeros((h, w), bool)
+    drawn[np.round(150.0 + 12.0 * np.sin(t / 6.0)).astype(int), np.round(t).astype(int)] = True
+    lab[ndi.binary_dilation(drawn), 0] = 10.0  # the meander inked in the image
+
+    def add(pts):
+        a, b = g.add_node(pts[0]), g.add_node(pts[-1])
+        g.edges.append(Edge(a, b, pts, LINES))
+
+    add(np.column_stack([60.0 + 12.0 * np.sin(t / 6.0), t]))  # lace over the soft step
+    add(np.column_stack([150.0 + 12.0 * np.sin(t / 6.0), t]))  # the same meander, inked
+    add(np.column_stack([np.full(400, 100.0), t]))  # a faint straight line
+    out = drop_texture_lines(g, lab, 20.0)
+    rows = sorted(round(float(np.median(e.pts[:, 0]))) for e in out.edges)
+    assert rows == [100, 150], rows
 
 
 def test_a_faint_lone_line_is_kept_where_a_faint_twig_is_dropped():
