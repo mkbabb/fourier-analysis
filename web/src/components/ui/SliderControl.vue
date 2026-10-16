@@ -46,6 +46,13 @@
  * beside it; the token is retired into the hint, and no hint is truncated.
  * Rows with a hint measure one height, rows without one another.
  *
+ * X-DS pass 7 · DS-F7X-C2 — the PRE-DOCK density, revived (576e40a's morph
+ * rows: label, field, track on one ~38 px line). At a fine pointer from 1024 px
+ * up, a row WITHOUT a hint (`data-row-kind="plain"`: Low, High, Duration)
+ * lays line 1 and the track on one line, the track taking the rest. A hint row
+ * keeps P2-07's caption line, and the coarse and phone ramps keep the stack.
+ * Where the row is too narrow for a usable track it wraps back to the stack.
+ *
  * The producer ships no slider that has both a visible thumb and a fill: the
  * `scrubber` variant's thumb is `width: 0; opacity: 0` by contract (its fill's
  * leading edge is the handle — the "thick bar with no visible thumb" of the
@@ -195,7 +202,7 @@ const fillFraction = computed(() => {
 </script>
 
 <template>
-    <div class="control-row" data-control-row v-bind="chassisAttrs">
+    <div class="control-row" data-control-row :data-row-kind="subtitle ? 'hint' : 'plain'" v-bind="chassisAttrs">
         <div class="control-row-line">
             <Label :for="fieldId" class="control-row-label" data-row-label :disabled="isDisabled">
                 {{ label }}
@@ -328,6 +335,37 @@ const fillFraction = computed(() => {
    `--muted-medium`, which in light is the card's own tone (~1.03:1), so the
    rule has a visible extent in both themes, one geometry. The 24 px well's
    lone top edge around it is glass's track-well inset (O-87, DS-F5-G2). */
+/* X-DS pass 7 · DS-F7X-C2 — the plain row on one line (see the docblock). The
+   order is the DOM's and PRE-DOCK's: label, field, track. The track has a floor
+   (`--row-track-min`); a row too narrow for it wraps, and then line 1 takes
+   the whole width (field at its end) and the track its own line: today's
+   stack, with no second rule. On one line the track takes the free space
+   (grow 999 : 1). */
+@media (min-width: 1024px) and (pointer: fine) {
+    .control-row[data-row-kind="plain"] {
+        --row-track-min: 8rem;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: var(--space-body);
+    }
+
+    .control-row[data-row-kind="plain"] > .control-row-line {
+        flex: 1 0 auto;
+    }
+
+    /* PRE-DOCK's label column (576e40a `.level-label`, 2.5 rem): short labels
+       stacked in one card (Low, High) start their fields and tracks on one x. */
+    .control-row[data-row-kind="plain"] .control-row-label {
+        min-width: 2.5rem;
+    }
+
+    .control-row[data-row-kind="plain"] > .control-row-track {
+        flex: 999 1 var(--row-track-min);
+        min-width: var(--row-track-min);
+    }
+}
+
 .control-row-track :deep(.slider-thumb) {
     background: var(--track-color, var(--glass-capsule-warm));
 }
