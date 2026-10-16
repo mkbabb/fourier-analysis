@@ -37,6 +37,9 @@ const row = (name, ok, detail) => {
 };
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
+let token = null;
+const created = []; // visualization slugs the probe must delete
+const deleted = new Set();
 try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const consoleErrors = [];
@@ -46,7 +49,6 @@ try {
     // One cross-origin call from the SPA's origin. Returns status, ETag (only
     // readable when the API exposes it) and the parsed body. The session token is
     // held here, not in the page, because the probe navigates the page.
-    let token = null;
     const call = (path, init = {}) =>
         page.evaluate(
             async ({ api, path, init, token }) => {
@@ -92,7 +94,6 @@ try {
     // ---- upload + upright + extract + preview, per image -------------------------
     // Only the first image (a repo asset) is published, remixed and shown in the
     // gallery: the later images may be private samples and stay private (draft).
-    const created = []; // visualization slugs the probe must delete
     let primary = null;
     for (const [i, imagePath] of images.entries()) {
         const name = basename(imagePath);
@@ -169,7 +170,13 @@ try {
     // ---- publish · remix · diff ----------------------------------------------------
     let child = null;
     if (primary) {
-        const pub = await call(`/api/visualizations/${primary}/publish`, { method: "POST" });
+        // publish is ETag-guarded like PATCH/DELETE (428 without If-Match): the
+        // validator is the one the browser reads on GET, as the SPA's store does.
+        const before = await call(`/api/visualizations/${primary}`);
+        const pub = await call(`/api/visualizations/${primary}/publish`, {
+            method: "POST",
+            headers: before.etag ? { "If-Match": before.etag } : {},
+        });
         row("publish", pub.status === 200 && pub.json?.visibility === "public", { status: pub.status, visibility: pub.json?.visibility, text: pub.json ? undefined : pub.text });
 
         const rmx = await call(`/api/visualizations/${primary}/remix`, {
@@ -213,11 +220,28 @@ try {
             headers: fresh.etag ? { "If-Match": fresh.etag } : {},
         });
         row(`delete ${vslug}`, del.status === 204, { status: del.status, text: del.status === 204 ? undefined : del.text });
+        if (del.status === 204) deleted.add(vslug);
     }
 
     const cors = consoleErrors.filter((e) => /CORS|Access-Control/i.test(e));
     row("no CORS console errors", cors.length === 0, { cors: cors.slice(0, 5) });
 } finally {
+    // Cleanup, never a graded row: a row the delete row could not remove is
+    // removed here by its owner session (If-Match: *, Retry-After honoured), so
+    // a RED run leaves nothing behind in production.
+    for (const vslug of created.filter((s) => !deleted.has(s))) {
+        for (let attempt = 0; attempt < 4; attempt++) {
+            const r = await fetch(`${api}/api/visualizations/${vslug}`, {
+                method: "DELETE",
+                headers: { "X-Session-Token": token ?? "", "If-Match": "*" },
+            }).catch((e) => ({ status: 0, headers: new Headers(), e }));
+            if (r.status !== 429) {
+                console.log(`      (cleanup ${vslug}: ${r.status})`);
+                break;
+            }
+            await new Promise((ok) => setTimeout(ok, 1000 * Number(r.headers.get("Retry-After") ?? 5)));
+        }
+    }
     await browser.close();
 }
 writeFileSync(join(outDir, "rows.json"), `${JSON.stringify({ spa, api, at: new Date().toISOString(), rows }, null, 2)}\n`);
