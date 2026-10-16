@@ -199,15 +199,11 @@ test.describe("m209 UIA-F-209 — the number fields keep a field's measure at 39
 
 test.describe("m210 UIA-F-210 — a preview tile previews; it never rewrites the range", () => {
     test.use({ viewport: PHONE });
-    test("Low and High hold, the chosen tile is in view, the strip fades where it continues", async ({ page }) => {
+    test("Low and High hold, and the chosen tile is in view", async ({ page }) => {
         await openMorph(page);
         const low = page.getByRole("spinbutton", { name: "Low" });
         const high = page.getByRole("spinbutton", { name: "High" });
         const before = [await low.inputValue(), await high.inputValue()];
-        const strip = page.locator(".levels-card .grid");
-        // A strip that continues past its right edge says so.
-        const mask = () => strip.evaluate((e) => getComputedStyle(e).maskImage || getComputedStyle(e).webkitMaskImage);
-        expect(await mask(), "fading edge while the strip continues").toMatch(/gradient/);
         const target = tiles(page).nth(2);
         await target.click();
         await page.waitForTimeout(600);
@@ -217,35 +213,47 @@ test.describe("m210 UIA-F-210 — a preview tile previews; it never rewrites the
             const r = t.getBoundingClientRect();
             return r.left >= s.left - 1 && r.right <= s.right + 1;
         });
-        expect(inView, "the chosen tile is inside the strip's view").toBe(true);
+        expect(inView, "the chosen tile is inside the grid's view").toBe(true);
     });
 });
 
-for (const vp of [DESKTOP, { width: 1024, height: 900 }]) {
-    test.describe(`m210f X-DS DS-F8X-C1 — at a fine pointer the levels show the whole range (${vp.width})`, () => {
+/* X-DS DS-F8X-C1 → DS-F9X-C2 ⊕ C3: the levels show the whole range they name
+   at every width and pointer, in two even rows (the column count follows the
+   level count, not the width), with no scroller and so no fading edge. */
+for (const vp of [DESKTOP, { width: 1024, height: 900 }, PHONE]) {
+    test.describe(`m210f X-DS DS-F9X-C2/C3 — the levels show the whole range in two even rows (${vp.width})`, () => {
         test.use({ viewport: vp });
-        test("every tile, the bound High tile among them, is in view; no fading edge", async ({ page }) => {
+        test("every tile, both bound tiles among them, is in view; two equal rows; no fading edge", async ({ page }) => {
             await openMorph(page);
-            const fine = await page.evaluate(() => matchMedia("(pointer: fine)").matches);
-            test.skip(!fine, "the fine-pointer tier only; a coarse pointer keeps the strip (m210)");
-            const high = await page.getByRole("spinbutton", { name: "High" }).inputValue();
-            const read = await page.locator(".levels-card .grid").evaluate((strip, h) => {
+            const bounds = [
+                await page.getByRole("spinbutton", { name: "Low" }).inputValue(),
+                await page.getByRole("spinbutton", { name: "High" }).inputValue(),
+            ];
+            const read = await page.locator(".levels-card .grid").evaluate((strip, bs) => {
                 const s = strip.getBoundingClientRect();
                 const inside = (t: Element) => {
                     const r = t.getBoundingClientRect();
                     return r.left >= s.left - 1 && r.right <= s.right + 1 && r.top >= s.top - 1 && r.bottom <= s.bottom + 1;
                 };
                 const kids = [...strip.children];
-                const bound = kids.find((t) => t.textContent!.trim() === `n=${h}`);
+                const tops = kids.map((t) => Math.round(t.getBoundingClientRect().top));
+                const rows = [...new Set(tops)].map((y) => tops.filter((v) => v === y).length);
                 return {
                     whole: kids.filter(inside).length,
                     total: kids.length,
-                    highInView: !!bound && inside(bound),
+                    boundsInView: bs.map((b) => {
+                        const t = kids.find((k) => k.textContent!.trim() === `n=${b}`);
+                        return !!t && inside(t);
+                    }),
+                    rows,
                     mask: getComputedStyle(strip).maskImage,
                 };
-            }, high);
-            expect(read.highInView, `the bound High tile (n=${high}) is in view`).toBe(true);
+            }, bounds);
+            expect(read.boundsInView, `the bound tiles (n=${bounds.join(", n=")}) are in view`).toEqual([true, true]);
             expect(read.whole, "every level tile is whole").toBe(read.total);
+            expect(read.rows.length, `two rows (${read.rows.join(" + ")})`).toBe(2);
+            expect(read.rows[0] - read.rows[1], `even rows (${read.rows.join(" + ")})`).toBeLessThanOrEqual(1);
+            expect(read.rows[0], "the first row is never the shorter").toBeGreaterThanOrEqual(read.rows[1]);
             expect(read.mask, "no fading edge where nothing continues").toBe("none");
         });
     });
