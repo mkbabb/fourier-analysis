@@ -51,6 +51,12 @@ USER app
 # single source of truth. No Redis / no shared store needed: compute_cache and
 # idempotency are Mongo-backed; nginx is the per-client edge governor.
 ENV WORKERS=1
+# X·F F.REL .mem2 — ONE malloc arena. glibc gives each thread its own arena, and
+# an arena keeps its high-water mark: contour extractions landing on different
+# executor threads each left 200-460 MB behind, and the fourth was OOM-killed
+# under the backend's 2G cap. With one arena the same run plateaus near 1.43 GB
+# (scripts/model-smoke.sh extracts each portrait on a fresh thread to hold it).
+ENV MALLOC_ARENA_MAX=1
 # G.β.2: NO uvicorn --proxy-headers. nginx `real_ip` is the SOLE client-IP
 # rewriter (one trust boundary, not two): it resolves the real client through the
 # Apache→nginx XFF chain and stamps X-Real-IP, which get_client_ip reads. A second
