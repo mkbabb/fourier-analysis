@@ -363,6 +363,36 @@ class TestResampleArcLength:
         dists = np.abs(np.diff(resampled))
         np.testing.assert_allclose(dists, np.mean(dists), rtol=0.05)
 
+    def test_samples_lie_closer_where_the_path_turns(self):
+        """A long straight run with a small loop on it: the loop is a
+        twentieth of the length and takes far more than a twentieth of the
+        samples; with ``detail=0`` it takes its share by length."""
+        t = np.linspace(0.0, 2.0 * np.pi, 200)
+        loop = 950.0 + 8.0 * (1.0 - np.exp(1j * t)) * 1j  # a circle of radius 8 on the run's end
+        path = np.concatenate([np.linspace(0.0, 950.0, 400), loop[1:], np.linspace(950.0, 0.0, 400)[1:]])
+        on_loop = lambda z: int(np.sum(z.imag > 0.5))  # noqa: E731  (the run lies on the real axis)
+        even = resample_arc_length(path, 512, detail=0.0)
+        fine = resample_arc_length(path, 512)
+        assert len(even) == len(fine) == 512
+        share = 2.0 * np.pi * 8.0 / (1900.0 + 2.0 * np.pi * 8.0)
+        assert on_loop(even) <= 1.5 * share * 512
+        assert on_loop(fine) >= 3.0 * share * 512
+        # Every sample still lies on the path.
+        dense = resample_arc_length(path, 20000, detail=0.0)
+        gap = np.abs(fine[:, None] - dense[None, :]).min(axis=1)
+        assert gap.max() < 0.2
+
+    def test_a_dead_end_is_approached_slowly(self):
+        """A stroke walked out and back: the samples crowd toward the turn at
+        its end, so the pen slows there, and the tip itself is sampled."""
+        out = np.linspace(0.0, 400.0, 300)
+        path = np.concatenate([out, out[::-1][1:]]) + 0j
+        z = resample_arc_length(path, 256)
+        near_tip = np.sum(z.real > 380.0)
+        assert near_tip > 1.5 * 256 * (40.0 / 800.0)
+        assert np.isclose(z.real.max(), 400.0)
+        assert np.abs(z.imag).max() < 1e-9
+
     def test_output_length(self):
         """Output should have exactly n_points points."""
         contour = np.array([0, 1, 1 + 1j, 1j], dtype=np.complex128)

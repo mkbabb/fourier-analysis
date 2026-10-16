@@ -301,9 +301,9 @@ def daraksha():
 
 def test_daraksha_has_her_named_face_parts(daraksha):
     """The primary sample: one confirmed face with skin, both brows, both
-    eyes, the nose, the lower lip and the hair, and an iris in each eye (her
-    upper lip, a sliver in her smile, is drawn as one line: see
-    ``test_daraksha_brows_are_strokes_and_the_thin_upper_lip_one_line``)."""
+    eyes, the nose, both lips and the hair, and an iris in each eye (her
+    upper lip, thin in her smile, is drawn by both its edges: see
+    ``test_daraksha_brows_are_strokes_and_the_upper_lip_is_drawn``)."""
     from scipy import ndimage as ndi
 
     from fourier_analysis.contours.parts import EYES, FACE_CLASSES, HAIR, IRIS, NOSE, SKIN
@@ -313,7 +313,7 @@ def test_daraksha_has_her_named_face_parts(daraksha):
     assert len(parts.faces) == 1
     present = set(np.unique(parts.labels).tolist())
     name = {n: i for i, n in enumerate(FACE_CLASSES)}
-    wanted = {SKIN, NOSE, HAIR, IRIS, name["l_brow"], name["r_brow"], name["l_lip"], *EYES}
+    wanted = {SKIN, NOSE, HAIR, IRIS, name["l_brow"], name["r_brow"], name["u_lip"], name["l_lip"], *EYES}
     assert wanted <= present, {FACE_CLASSES[i] if i < len(FACE_CLASSES) else i for i in wanted - present}
     irises, n_irises = ndi.label(parts.labels == IRIS)
     assert n_irises == 2
@@ -352,8 +352,9 @@ def test_daraksha_drawing_has_the_centre_part(daraksha):
 def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
     """The drawing is one connected figure (its pieces joined by routed
     connectors on the subject, so the tour needs no jump); the open mouth is
-    split into teeth; the nose is drawn by part of its outline (its lower
-    bridge down the shadowed side, and its base), not as a closed balloon."""
+    split into teeth; the nose is drawn by part of its outline (its bridge
+    down both sides from the eyes' inner corners, and its base), never over
+    the bridge's root between the brows, so it is no closed balloon."""
     from fourier_analysis.contours.parts import NOSE, TEETH
 
     parts, drawing = daraksha
@@ -376,8 +377,9 @@ def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
         c = np.clip(np.rint(e.pts[:, 1]).astype(int), 0, nose.shape[1] - 1)
         on_rim[r, c] = True
     # The bridge's root (its top fifth, between the brows) is not drawn on
-    # either side (drawn, it runs on into the brow as a scowl); the bridge is
-    # drawn down one side into the wing (no balloon over the bridge).
+    # either side (drawn, it runs on into the brow as a scowl); below it the
+    # bridge is drawn down both sides into the wings (one side only reads as
+    # a profile, a boot, not a nose seen from the front).
     rows, cols = np.nonzero(nose)
     row = np.arange(nose.shape[0])[:, None]
     root = rows.min() + 0.2 * np.ptp(rows)
@@ -392,7 +394,7 @@ def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
     top = shares(rim & (row < root - 2))
     assert top[1] < 0.2, top
     bridge = shares(rim & (row >= root + 2) & (row < mid))
-    assert bridge[1] > 0.4 and bridge[0] < 0.2, bridge
+    assert bridge[0] > 0.4, bridge
     lower = shares(rim & (row >= mid) & (row < mid + 0.2 * np.ptp(rows)))
     assert lower[1] > 0.4, lower
 
@@ -559,10 +561,11 @@ def test_portrait_parts_come_from_the_face_parser():
     assert NOSE in present and present & set(EYES)
 
 
-def test_daraksha_brows_are_strokes_and_the_thin_upper_lip_one_line(daraksha):
+def test_daraksha_brows_are_strokes_and_the_upper_lip_is_drawn(daraksha):
     """Each brow is drawn by one open stroke along it (its spine), not by its
-    outline; the upper lip, a sliver in her smile, is one line (its parts on
-    either side meet along its middle), while the full lower lip stays."""
+    outline; the upper lip, thin in her smile, keeps its label, so it is
+    drawn apart from the teeth (its border on the skin above, its edge on
+    the teeth below), as the full lower lip is."""
     from scipy import ndimage as ndi
 
     from fourier_analysis.contours.parts import BROWS, FACE_CLASSES
@@ -570,7 +573,13 @@ def test_daraksha_brows_are_strokes_and_the_thin_upper_lip_one_line(daraksha):
     parts, drawing = daraksha
     name = {n: i for i, n in enumerate(FACE_CLASSES)}
     present = set(np.unique(parts.labels).tolist())
-    assert name["u_lip"] not in present and name["l_lip"] in present
+    assert name["u_lip"] in present and name["l_lip"] in present
+    from fourier_analysis.contours.parts import SKIN, TEETH
+
+    upper = parts.labels == name["u_lip"]
+    ring = ndi.binary_dilation(upper) & ~upper
+    # Between the skin and the teeth: both of its edges are part boundaries.
+    assert (parts.labels[ring] == SKIN).any() and (parts.labels[ring] == TEETH).any()
     assert parts.spined == BROWS
     for k in BROWS:
         brow = parts.labels == k
@@ -808,17 +817,89 @@ def test_form_lines_leave_the_upper_bridge():
 
 
 def test_connectors_do_not_cross_the_glabella():
-    """Two brows either side of a nose: the connector between them does not
-    run straight across the glabella (a unibrow) while a path round through
-    the nose's lower half exists."""
-    from fourier_analysis.contours.drawing import glabella
+    """The face's midline runs from the nose's base up its axis and on past
+    its top between the brows, and with the face given on up the forehead to
+    the face's edge: a connector crosses it nowhere (a unibrow over the
+    glabella, a pair of spectacles across the bridge)."""
+    from fourier_analysis.contours.drawing import glabella, route_connectors
 
     nose, _ = _pear_nose()
     g = glabella(nose)
-    # The midline runs from the top of the nose's wide half up past its top.
     rows = np.flatnonzero(g.any(axis=1))
-    assert rows.min() < 40 - 30 and rows.max() <= 100 + 2
-    assert g[20, 98:103].any() and not g[150].any()
+    assert rows.min() < 40 - 30 and 150 <= rows.max() <= 160 + 2
+    assert g[20, 98:103].any() and g[150, 98:103].any() and not g[170].any()
+    face = np.zeros_like(nose)
+    face[2:190, 20:180] = True
+    assert np.flatnonzero(glabella(nose, face).any(axis=1)).min() <= 3
+
+    # Two eyes either side of the bridge and the nose's base below: each eye
+    # is joined down its own side, never eye to eye across the wall.
+    graph = StrokeGraph()
+    for c0, c1 in ((50.0, 80.0), (120.0, 150.0)):
+        a, b = graph.add_node(np.array([70.0, c0])), graph.add_node(np.array([70.0, c1]))
+        graph.edges.append(Edge(a, b, np.column_stack([np.full(31, 70.0), np.arange(c0, c1 + 1)]), PARTS))
+    a, b = graph.add_node(np.array([165.0, 60.0])), graph.add_node(np.array([165.0, 140.0]))
+    graph.edges.append(Edge(a, b, np.column_stack([np.full(81, 165.0), np.arange(60.0, 141.0)]), PARTS))
+    wall = glabella(nose, face)
+    out = route_connectors(graph, np.zeros(nose.shape), np.ones(nose.shape, bool), wall=wall)
+    assert len(out.components()) == 1
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    assert len(conn) == 2
+    for e in conn:
+        r = np.round(e.pts[:, 0]).astype(int)
+        c = np.round(e.pts[:, 1]).astype(int)
+        assert not wall[r, c].any()
+        assert np.ptp(e.pts[:, 0]) > 60  # down to the base, not across to the other eye
+
+
+def test_a_connector_from_an_eye_runs_down_the_side_of_the_nose():
+    """The nose drawn by its base only, an eye beside its bridge: the
+    connector between them runs down the nose's side to the wing, drawing
+    the side, not a chord across the cheek from the eye's corner to the
+    wing."""
+    from fourier_analysis.contours.drawing import connector_strength, nose_sides, route_connectors
+
+    nose, _ = _pear_nose()
+    sides = nose_sides(nose)
+    assert sides[120, 71:76].any()  # the side, below the root (its edge at col 73.3)
+    assert not sides[41].any()  # not the root, between the brows
+    graph = StrokeGraph()
+    a, b = graph.add_node(np.array([160.0, 65.0])), graph.add_node(np.array([160.0, 135.0]))
+    graph.edges.append(Edge(a, b, np.column_stack([np.full(71, 160.0), np.arange(65.0, 136.0)]), PARTS))
+    a, b = graph.add_node(np.array([60.0, 35.0])), graph.add_node(np.array([60.0, 65.0]))
+    graph.edges.append(Edge(a, b, np.column_stack([np.full(31, 60.0), np.arange(35.0, 66.0)]), PARTS))
+    strength = connector_strength(np.zeros(nose.shape), np.ones(nose.shape, bool), nose)
+    out = route_connectors(graph, strength, np.ones(nose.shape, bool))
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    assert len(out.components()) == 1 and len(conn) == 1
+    pts = conn[0].pts
+    mid = pts[(pts[:, 0] > 90) & (pts[:, 0] < 150)]
+    edge = 100 - (10 + 25 * (mid[:, 0] - 40) / 120)  # the nose's left side
+    assert len(mid) and np.abs(mid[:, 1] - edge).max() <= 3.0
+
+
+def test_a_routed_jump_goes_round_the_glabella():
+    """Two pieces the tour would jump between, either side of the face's
+    midline: the jump's routed stroke goes round the wall's end, never over
+    it (a bar between the brows)."""
+    from fourier_analysis.contours.drawing import route_jumps
+
+    shape = (200, 200)
+    graph = StrokeGraph()
+    for c0 in (20.0, 120.0):
+        a, b = graph.add_node(np.array([50.0, c0])), graph.add_node(np.array([50.0, c0 + 60.0]))
+        graph.edges.append(Edge(a, b, np.column_stack([np.full(61, 50.0), np.arange(c0, c0 + 61.0)]), PARTS))
+    wall = np.zeros(shape, bool)
+    wall[:150, 99:102] = True
+    out = route_jumps(graph, np.zeros(shape), np.ones(shape, bool), wall=wall)
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    assert conn
+    for e in conn:
+        r = np.round(e.pts[:, 0]).astype(int)
+        c = np.round(e.pts[:, 1]).astype(int)
+        # Round the wall's end (the smoothed path cuts its corner by a pixel).
+        assert not wall[r, c][r < 145].any()
+        assert r.max() >= 145
 
 
 def test_a_connector_over_even_cost_is_a_straight_stroke():
@@ -962,9 +1043,10 @@ def test_a_brow_spine_follows_its_dark_core_not_the_label_axis():
 
 def test_a_feature_hangs_on_a_neighbouring_feature_before_the_outline():
     """An eye a little nearer the face's outline than its brow is joined to
-    the brow (a socket line), not to the outline (a tail across the cheek),
-    while the cost of that link is within ``OUTLINE_LINK_FACTOR``."""
-    from fourier_analysis.contours.drawing import OUTLINE_LINK_FACTOR, route_connectors
+    the brow (a socket line), not to the outline (a tail across the cheek):
+    a face's features are joined to each other first, and hang on the
+    figure by one connector."""
+    from fourier_analysis.contours.drawing import route_connectors
 
     h, w = 160, 200
     g = StrokeGraph()
@@ -979,12 +1061,52 @@ def test_a_feature_hangs_on_a_neighbouring_feature_before_the_outline():
     gap = 44.0
     e, f = g.add_node(np.array([50.0 + gap, 60.0])), g.add_node(np.array([50.0 + gap, 110.0]))
     g.edges.append(Edge(e, f, np.column_stack([np.full(51, 50.0 + gap), np.arange(60.0, 111.0)]), PARTS))
-    assert gap < 40.0 * OUTLINE_LINK_FACTOR
     out = route_connectors(g, np.zeros((h, w)), np.ones((h, w), bool))
     assert len(out.components()) == 1
     conn = [e for e in out.edges if e.layer == CONNECT]
     eye_links = [c for c in conn if np.abs(c.pts[:, 0] - (50.0 + gap)).min() < 2]
     assert eye_links and all(c.pts[:, 1].min() > 30 for c in eye_links), [c.pts[:, 1].min() for c in eye_links]
+    # One connector ties the features to the outline (the brow's tail).
+    assert sum(c.pts[:, 1].min() < 22 for c in conn) == 1
+
+
+def test_only_a_path_across_the_face_joins_its_features_first():
+    """Two features of one face whose cheapest join leaves the face's skin
+    (round through the hair) are not joined first: each goes to the figure
+    beside it, as costs alone decide.  With the skin between them, they are
+    joined to each other and tied to the figure once."""
+    from fourier_analysis.contours.drawing import Face, face_zones, route_connectors
+
+    h, w = 120, 240
+    g = StrokeGraph()
+    for r in (10.0, 110.0):  # the figure: two long strokes, joined at the left
+        a, b = g.add_node(np.array([r, 10.0])), g.add_node(np.array([r, 230.0]))
+        g.edges.append(Edge(a, b, np.column_stack([np.full(221, r), np.arange(10.0, 231.0)]), SILHOUETTE))
+    a, b = g.add_node(np.array([10.0, 10.0])), g.add_node(np.array([110.0, 10.0]))
+    g.edges.append(Edge(a, b, np.column_stack([np.arange(10.0, 111.0), np.full(101, 10.0)]), SILHOUETTE))
+    # The third stroke shares the other two's left ends: one piece.
+    g.edges[2] = Edge(g.edges[0].u, g.edges[1].u, g.edges[2].pts, SILHOUETTE)
+    for c0 in (60.0, 150.0):  # two features, 60 px apart, 30 px from the figure
+        a, b = g.add_node(np.array([40.0, c0])), g.add_node(np.array([40.0, c0 + 30.0]))
+        g.edges.append(Edge(a, b, np.column_stack([np.full(31, 40.0), np.arange(c0, c0 + 31.0)]), PARTS))
+    g = g.subgraph(range(len(g.edges)))
+    face = (Face(1.0, (40.0, 20.0, 160.0, 80.0)),)
+    blank, everywhere = np.zeros((h, w)), np.ones((h, w), bool)
+
+    skin = np.zeros((h, w), bool)
+    skin[25:100, 50:190] = True
+    out = route_connectors(g, blank, everywhere, faces=face_zones(skin, face))
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    assert len(out.components()) == 1 and len(conn) == 2
+    assert sum(np.ptp(e.pts[:, 1]) > 50 for e in conn) == 1  # feature to feature
+    assert sum(e.pts[:, 0].min() < 12 for e in conn) == 1  # one tie to the figure
+
+    hair = skin.copy()
+    hair[:, 100:140] = False  # no skin between the two features
+    out = route_connectors(g, blank, everywhere, faces=face_zones(hair, face))
+    conn = [e for e in out.edges if e.layer == CONNECT]
+    assert len(out.components()) == 1 and len(conn) == 2
+    assert all(e.pts[:, 0].min() < 12 for e in conn)  # each to the figure beside it
 
 
 def test_the_upper_teeth_are_parted_from_the_lower_toward_the_lower_lip():

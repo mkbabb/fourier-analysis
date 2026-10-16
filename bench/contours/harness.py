@@ -30,8 +30,9 @@ longest side is ``ContourSettings.resize``):
   resampled uniformly at 1 px, so the kernel is 4 px whatever the trace's point
   density; open ends point-reflected, see ``ink_wiggle``); the
   staircase/noise-spur measure.
-- ``epi_err_N`` for N in 50/100/200: mean |reconstruction - tour| over the
-  resampled tour, as a percentage of the image diagonal (the API's epicycle
+- ``epi_err_N`` for N in 50/100/200: mean |reconstruction - tour| along the
+  resampled tour's length (each sample weighed by the length it stands for,
+  ``sample_lengths``), as a percentage of the image diagonal (the API's epicycle
   route: resample to n_points, ``EpicycleChain.from_signal(n_harmonics=N)``).
 - ``runtime_s``: wall time of extraction + tour.  The subject models' sessions
   are opened once before the first image (``load_subject_sessions``), as a
@@ -405,14 +406,30 @@ def ink_wiggle(
     return float(1.0 - smooth / raw) if raw > 0 else 0.0
 
 
+def sample_lengths(tour: NDArray[np.complex128]) -> NDArray[np.float64]:
+    """The length of the closed tour each sample stands for: half the distance
+    to each of its neighbours."""
+    step = np.abs(np.roll(tour, -1) - tour)
+    return 0.5 * (step + np.roll(step, 1))
+
+
 def epicycle_error(tour: NDArray[np.complex128], n: int, diagonal: float) -> float:
-    """Mean |chain - tour| over the tour samples, % of the image diagonal."""
+    """Mean |chain - tour| along the tour's length, % of the image diagonal.
+
+    Each sample is weighed by the length of tour it stands for (half the
+    distance to each neighbour, the tour closed), so the mean is over the
+    drawing, not over the sampling: ``resample_arc_length`` puts more samples
+    where the path turns, and an unweighted mean would count an eye many
+    times and a jaw once."""
     from fourier_analysis.epicycles import EpicycleChain
 
     chain = EpicycleChain.from_signal(tour, n_harmonics=n)
     ts = np.arange(len(tour)) / len(tour)
     trace = chain.evaluate(ts)
-    return float(np.mean(np.abs(trace - tour)) / diagonal * 100.0)
+    weight = sample_lengths(tour)
+    if float(weight.sum()) <= 0.0:
+        return float(np.mean(np.abs(trace - tour)) / diagonal * 100.0)
+    return float(np.average(np.abs(trace - tour), weights=weight) / diagonal * 100.0)
 
 
 def find_chords(
@@ -474,13 +491,17 @@ def compute_metrics(
     ink_length = float(sum(np.abs(np.diff(c)).sum() for c in run.ordered))
     gaps = np.asarray(run.gaps, dtype=np.float64)
     tour_length = ink_length + float(gaps.sum())
+    # The step of the tour sampled evenly: ``tour_length / n_points``.  (The
+    # API's samples lie closer where the path turns, so their median is a
+    # feature's step, not the tour's.)
     steps = np.abs(np.diff(np.append(run.tour, run.tour[0])))
-    median_step = float(np.median(steps))
+    median_step = float(steps.sum() / len(steps))
     jumps = gaps[gaps > JUMP_K * median_step]
     chords = find_chords(img, run, ref, JUMP_K * median_step)
 
     tour_rc = to_pixels(run.tour, run.shape)
-    background = float(1.0 - inside(band, tour_rc).mean())
+    weight = sample_lengths(run.tour)
+    background = float(1.0 - np.average(inside(band, tour_rc), weights=weight)) if weight.sum() > 0 else 0.0
 
     # Ink hugging the image frame (a frame-rectangle artefact, not the subject).
     edge = 2.0

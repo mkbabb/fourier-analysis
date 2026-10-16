@@ -199,3 +199,26 @@ class TestLeaningOn:
         core = np.zeros((50, 50), bool)
         core[10:40, 10:40] = True
         assert np.array_equal(leaning_on(core, core.copy()), core)
+
+
+def test_a_detached_piece_both_models_are_sure_of_is_the_subjects():
+    """A cartoon sun's ray that does not touch its body: hysteresis grows the
+    subject from one seed and leaves it out, though both models are sure of
+    it.  ``confident_pieces`` gives it back; a fleck under the part floor and
+    a piece the models are unsure of stay out, and nothing touching the mask
+    is added twice."""
+    import numpy as np
+
+    from fourier_analysis.contours.isolation import confident_pieces
+
+    agreed = np.zeros((200, 200))
+    mask = np.zeros((200, 200), bool)
+    mask[40:140, 40:140] = True
+    agreed[40:140, 40:140] = 0.99
+    agreed[150:170, 150:175] = 0.97  # the detached ray (500 px, 5 % of the body)
+    agreed[10:12, 180:182] = 0.99  # a fleck (4 px, under the part floor)
+    agreed[160:190, 20:60] = 0.4  # a piece the models dispute
+    out = confident_pieces(agreed, mask)
+    assert out[150:170, 150:175].all()
+    assert not out[10:12, 180:182].any() and not out[160:190, 20:60].any()
+    assert not (out & mask).any()
