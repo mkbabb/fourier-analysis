@@ -74,5 +74,36 @@
             "row": "TOAST-FOCUS-PROXY — glass Toaster (reka ToastViewport) renders aria-hidden focus proxies with tabindex=0 while a toast is up (re-asks O-32 §3.1 / E-F9b-2)",
             "expiry": "at glass 10.2.0 repin"
         }
+    ],
+    "pairsAbout": "F.REL .w2 (value.js COHESION §0fk.1, 2026-10-16): the PAIR-LEVEL hold. contrast-floor.spec.ts reads `pairs` (and only it) and reports each named pair as held, not failed, so the contrast test arm still fails on any consumer pair; no contrast test id is ever held in `rows`. `held: producer` rows are glass registers relayed by their O-id (ADOPT-AT-LANDING); `held: ruled-residual` rows are RED-with-cause by a standing ruling. A held pair that reads PASSING fails the arm (lift its hold), and a held id that names no registry pair fails it too.",
+    "pairs": [
+        {
+            "pair": "GAB-1[--tier-featured value]",
+            "held": "producer",
+            "o": "O-97",
+            "row": "GAB-1 tier register: glass `--tier-featured` light rung under 4.5:1 on the admin plate",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "pair": "GAB-1[--tier-saved value]",
+            "held": "producer",
+            "o": "O-97",
+            "row": "GAB-1 tier register: glass `--tier-saved` light rung under 4.5:1 on the admin plate",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "pair": "HLG-37[grid-cell-fill]",
+            "held": "producer",
+            "o": "O-97",
+            "row": "HLG-37 `[grid-cell-fill]`: glass `--card` equals `--background` in luminance (1.000:1), a palette re-mint",
+            "expiry": "at glass 10.2.0 repin"
+        },
+        {
+            "pair": "GAB-1[plate/page]",
+            "held": "ruled-residual",
+            "o": null,
+            "row": "GAB-1 wash plate: a 10% `--viz-amber` wash cannot reach 3:1 and stay a wash; the register is carried by the border and the mark (F.REL `.d` standing ruling; COHESION §0fk.1)",
+            "expiry": "standing ruling"
+        }
     ]
 }

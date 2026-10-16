@@ -72,17 +72,41 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // (`#f8f6f3` on `#fbfaf8`) / 1.084:1 dark"*. The `.info-chip` plate
     // (`MorphShapePreview.vue:153`) is the affordance itself, so the pair is
     // plate-vs-page and the floor is 1.4.11's.
+    // F.REL `.w2` (2026-10-16, COHESION §0fk.1) — RE-POINTED to today's paint.
+    // The `.info-chip` plate is DELETED (X.F.W3 `.d` FMD-12; X-DS DS-F3-C13):
+    // the readout is four glass `Metric`s, `posture="inline"`, with NO plate
+    // (glass `metric/styles.css`: `.metric` ink `--foreground`, `.metric__label`
+    // and `.metric__unit` ink `--muted-foreground`), on `.stage-column`'s
+    // `background-color: var(--background)` (`FourierMorphDemo.vue`). The
+    // readout's affordance is now its weakest ink, the label; the floor is kept.
+    // The phase tone (`.phase-value`, `MorphShapePreview.vue`) is the one
+    // consumer ink in the row, graded in both of its hues.
     {
         id: "FR-MSP-7",
-        what: ".info-chip plate against the page it sits on",
-        stack: [
-            "var(--background)",
-            "color-mix(in srgb, var(--muted) 60%, transparent)",
-        ],
+        what: "the readout's Metric label ink against the page it sits on",
+        stack: ["var(--background)", "var(--muted-foreground)"],
         kind: "non-text",
         banked: { light: 1.038, dark: 1.084 },
         owner: ".a",
     },
+    ...(
+        [
+            ["settle", "var(--accent-red)"],
+            ["morph", "var(--accent-pink)"],
+        ] as const
+    ).map(
+        ([phase, tone]): ContrastPair => ({
+            id: `FR-MSP-7[phase-value ${phase}]`,
+            what: `the ${phase} phase reading's toned ink (the hue a quarter toward --foreground)`,
+            stack: [
+                "var(--background)",
+                `color-mix(in oklab, ${tone} 75%, var(--foreground))`,
+            ],
+            kind: "text",
+            banked: {},
+            owner: ".a",
+        }),
+    ),
 
     // ── fr-HarmonicLevelGrid HLG-37 ──
     // *"`.grid-cell` border 1.275 L / 1.398 D, … with 1.000:1 fill
@@ -173,47 +197,31 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // placeholder 1.73–1.76:1"*. `UserSlugBar.vue:135` — `border-foreground/12`,
     // `focus:border-foreground/30`, `placeholder:text-muted-foreground/40`, all
     // on `bg-card`.
-    {
-        id: "FR-USB-5[resting-border]",
-        what: "credential field resting border against its fill",
-        stack: ["var(--card)", "color-mix(in srgb, var(--foreground) 12%, transparent)"],
-        kind: "non-text",
-        banked: { light: 1.28 },
-        owner: ".d",
-    },
-    {
-        id: "FR-USB-5[focused-border]",
-        what: "credential field focused border — the only focus affordance",
-        stack: ["var(--card)", "color-mix(in srgb, var(--foreground) 30%, transparent)"],
-        kind: "non-text",
-        banked: { light: 1.93 },
-        owner: ".d",
-    },
-    {
-        id: "FR-USB-5[placeholder]",
-        what: "placeholder ink — the only visible statement of the slug format",
-        stack: [
-            "var(--card)",
-            "color-mix(in srgb, var(--muted-foreground) 40%, transparent)",
-        ],
-        kind: "text",
-        banked: { light: 1.73 },
-        owner: ".d",
-    },
+    // F.REL `.w2` (2026-10-16, COHESION §0fk.1 · the R-e-2 precedent) —
+    // `FR-USB-5` ×3 RETIRED. The field is glass-ui's `<Input>` now
+    // (`auth/UserSlugBar.vue`: `import { Input } from "@mkbabb/glass-ui/input"`,
+    // its only class `w-full fira-code`), so the resting border, the focus
+    // border and the placeholder are the producer's `field-control` paint, with
+    // no consumer expression left to grade. A row for a paint nothing renders
+    // could only pass on a stack the page never shows. The producer reading of
+    // the three rides the BK relay `valuejs-outbound-2026-10-16-frel-w2-bk-relay.md`.
 
     // ── fr-PaperSearchModal PSM-4 ──
     // *"`--muted-foreground` diluted to 45%/50%/40% via `color-mix(…,
     // transparent)` composites to 1.88:1 (hint, light) / 2.39:1 (dark) / 2.04:1
     // (empty) / 1.74:1 (placeholder)"*. The modal plate is
     // `PaperSearch.vue:53` `background: var(--background)`.
+    // F.REL `.w2` (2026-10-16, COHESION §0fk.1) — RE-POINTED to today's paint.
+    // The three dilutions are gone: the modal's own chrome ink is ONE rung,
+    // `paper/search/PaperSearchModal.vue` `.search-palette-hint { color:
+    // var(--muted-foreground-strong) }` ("`PSM-4`: the strong rung"), and the
+    // empty state and the field are the producer's `DialogContent`/`Command*`.
+    // The three ids are kept for life (anti-rename) and each grades that rung.
     ...([40, 45, 50] as const).map(
         (pct): ContrastPair => ({
             id: `PSM-4[muted-foreground@${pct}%]`,
-            what: `modal chrome ink at the authored ${pct}% dilution`,
-            stack: [
-                "var(--background)",
-                `color-mix(in srgb, var(--muted-foreground) ${pct}%, transparent)`,
-            ],
+            what: `modal chrome ink (authored at ${pct}%; today the strong muted rung)`,
+            stack: ["var(--background)", "var(--muted-foreground-strong)"],
             kind: "text",
             banked: pct === 45 ? { light: 1.88, dark: 2.39 } : {},
             owner: ".e",
@@ -226,10 +234,13 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // instance is `.b`'s, the token rung is the producer's and rides the SS-6
     // glass relay. §4's parenthetical — *"(`--success` itself 2.175)"* — is a
     // SECOND pair, not a footnote to the first.
+    // F.REL `.w2` (2026-10-16, COHESION §0fk.1) — `[instance]` RE-POINTED:
+    // `equation/EquationResult.vue` `.copy-ok { color: var(--section-color-4) }`
+    // (the app's meaning-bearing ramp; `green-500` is gone).
     {
         id: "FR-EQR-7[instance]",
-        what: "the success glyph (green-500) on the result card",
-        stack: ["var(--card)", "rgb(34 197 94)"],
+        what: "the copied Check glyph (--section-color-4) on the result card",
+        stack: ["var(--card)", "var(--section-color-4)"],
         kind: "non-text",
         banked: { light: 2.101 },
         owner: ".b",
@@ -249,10 +260,18 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // floor"*. The banner is `border-amber-500/30` over `bg-amber-500/[0.04]`
     // over the page (`GalleryAdminBanner.vue:25-27`); the two tier numerals are
     // the stat values.
+    // F.REL `.w2` (2026-10-16, COHESION §0fk.1) — plate and border RE-POINTED
+    // to `gallery/GalleryAdminBanner.vue` `.admin-banner { border-color:
+    // var(--viz-amber); background: color-mix(in srgb, var(--viz-amber) 10%,
+    // transparent) }`. The wash plate is RED-with-cause (`.d`'s standing ruling:
+    // a 10% wash cannot reach 3:1 and stay a wash; the register is carried by
+    // the border and the mark) and is held BY PAIR ID in `producer-held.json`
+    // `pairs`. The two tier numerals are producer registers, held by pair id too
+    // and relayed (BK, ADOPT-AT-LANDING); their plate is the same wash.
     {
         id: "GAB-1[plate/page]",
         what: "the admin plate against the page — is there an admin register at all",
-        stack: ["var(--background)", "rgb(245 158 11 / 0.04)"],
+        stack: ["var(--background)", "color-mix(in srgb, var(--viz-amber) 10%, transparent)"],
         kind: "non-text",
         banked: { light: 1.03 },
         owner: ".d",
@@ -260,7 +279,7 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     {
         id: "GAB-1[border]",
         what: "the admin plate's 1.5px border against the page",
-        stack: ["var(--background)", "rgb(245 158 11 / 0.3)"],
+        stack: ["var(--background)", "var(--viz-amber)"],
         kind: "non-text",
         banked: { light: [1.25, 1.27] },
         owner: ".d",
@@ -270,7 +289,7 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
         what: "the featured numeral — the colour chosen to distinguish the tier",
         stack: [
             "var(--background)",
-            "rgb(245 158 11 / 0.04)",
+            "color-mix(in srgb, var(--viz-amber) 10%, transparent)",
             "var(--tier-featured)",
         ],
         kind: "text",
@@ -280,7 +299,11 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     {
         id: "GAB-1[--tier-saved value]",
         what: "the saved numeral on the same plate",
-        stack: ["var(--background)", "rgb(245 158 11 / 0.04)", "var(--tier-saved)"],
+        stack: [
+            "var(--background)",
+            "color-mix(in srgb, var(--viz-amber) 10%, transparent)",
+            "var(--tier-saved)",
+        ],
         kind: "text",
         banked: { light: 2.58 },
         owner: ".d",
@@ -293,80 +316,147 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // `-300` ink on its own `/10` plate. The violet `batch` arm has no home in
     // the producer's five TONES and rides the relay ask; it is graded here all
     // the same, because an ink with nowhere to go is still an ink that fails.
+    // F.REL `.w2` (2026-10-16, COHESION §0fk.1) — RE-POINTED to the glass
+    // `Badge` tones. `admin/AdminAuditLog.vue` `AuditActionCell` renders each
+    // action as `<Badge>`: a destructive verb is `variant="secondary"
+    // tone="destructive"` (glass `badge`: `bg-destructive
+    // text-destructive-foreground`), every other action `variant="outline"
+    // tone="neutral"` (`badge-atom--outline text-foreground`, no fill: the ink
+    // sits on the row's `--card`). The five ids are kept for life; each grades
+    // the Badge its fixture action renders today (`actionTone` by verb).
     ...(
         [
-            ["delete", "rgb(252 165 165)", "rgb(239 68 68 / 0.1)"],
-            ["set_user_status", "rgb(252 211 77)", "rgb(245 158 11 / 0.1)"],
-            ["set_tier/dismiss", "rgb(110 231 183)", "rgb(16 185 129 / 0.1)"],
-            ["batch", "rgb(196 181 253)", "rgb(139 92 246 / 0.1)"],
-            ["default", "rgb(203 213 225)", "rgb(100 116 139 / 0.1)"],
+            ["delete", ["var(--destructive)", "var(--destructive-foreground)"]],
+            ["set_user_status", ["var(--foreground)"]],
+            ["set_tier/dismiss", ["var(--foreground)"]],
+            ["batch", ["var(--foreground)"]],
+            ["default", ["var(--foreground)"]],
         ] as const
     ).map(
-        ([tone, ink, plate]): ContrastPair => ({
+        ([tone, paint]): ContrastPair => ({
             id: `AA-3[${tone}]`,
-            what: `the ${tone} actionTone ink — the action string itself`,
-            stack: ["var(--card)", plate, ink],
+            what: `the ${tone} action's glass Badge ink — the action string itself`,
+            stack: ["var(--card)", ...paint],
             kind: "text",
             banked: { light: [1.36, 1.81] },
             owner: ".d",
         }),
     ),
+    // ── F.REL `.w2` (2026-10-16, COHESION §0fk.1) — THE SIX AWAITING PAIRS,
+    // AUTHORED. Each stack is read from the code that paints it today, never
+    // from a screenshot; each keeps the floor §4 booked it against.
+
+    // fr-ConvergencePlot `FR-CP-D1` — the canvas axes. `equation/ConvergencePlot.vue`
+    // reads `ink = getComputedStyle(canvas).color` off a canvas classed
+    // `text-muted-foreground`; `lib/equation/grid.ts` strokes the axes in that
+    // ink at `globalAlpha = AXIS_ALPHA` (0.8). The plot composites over the
+    // stage card, `--card` (the registry's adopted plate correction).
+    {
+        id: "FR-CP-D1",
+        what: "ConvergencePlot axes: --muted-foreground at the canvas's AXIS_ALPHA 0.8",
+        stack: ["var(--card)", "color-mix(in srgb, var(--muted-foreground) 80%, transparent)"],
+        kind: "non-text",
+        banked: { light: 1.19, dark: 1.38 },
+        owner: ".b",
+    },
+    // fr-EditorControlsDock `ECD D-5` — the `.dock-badge` is glass `Metric`
+    // `.dock-count` now (`visualization/EditorControlsDock.vue` `#persistent`,
+    // UIA-F-242): value `--foreground`, unit "pts" `--muted-foreground`, the
+    // weaker ink graded. `D-6` — the saved Check: `.is-save.saved { color:
+    // var(--success) }` on `.is-save`'s plate `color-mix(in srgb,
+    // var(--foreground) 6%, transparent)`. Both over the page, the registry's
+    // recorded bound (the autoLuminance premise is dead; the glass composite is
+    // SS-13's).
+    {
+        id: "ECD D-5",
+        what: "the dock's point-count Metric unit ink against the page",
+        stack: ["var(--background)", "var(--muted-foreground)"],
+        kind: "text",
+        banked: { light: 3.32 },
+        owner: ".c",
+    },
+    {
+        id: "ECD D-6",
+        what: "the saved Check glyph on the Save control's own plate",
+        stack: [
+            "var(--background)",
+            "color-mix(in srgb, var(--foreground) 6%, transparent)",
+            "var(--success)",
+        ],
+        kind: "non-text",
+        banked: { light: 1.97 },
+        owner: ".c",
+    },
+    // fr-EquationView `EV D·D-B3` — the tier pill is glass `<Badge
+    // :tone="tierTone">` (`equation/EquationView.vue`, UIA-F-253; `TIER_TONE`
+    // symbolic→success · identified→warning · spline→info; glass `badge`:
+    // `bg-<tone> text-<tone>-foreground`), and the energy reading is glass
+    // `Metric` (unit "% energy", `--muted-foreground`), both on `PopoverContent`.
+    ...(
+        [
+            ["symbolic", "success"],
+            ["identified", "warning"],
+            ["spline", "info"],
+        ] as const
+    ).map(
+        ([tier, tone]): ContrastPair => ({
+            id: `EV D·D-B3[tier ${tier}]`,
+            what: `the ${tier} tier Badge (${tone} tone) label`,
+            stack: ["var(--popover)", `var(--${tone})`, `var(--${tone}-foreground)`],
+            kind: "text",
+            banked: tier === "identified" ? { light: 2.02 } : tier === "spline" ? { light: 3.57 } : {},
+            owner: ".b",
+        }),
+    ),
+    {
+        id: "EV D·D-B3[energy]",
+        what: "the energy Metric's unit ink on the popover",
+        stack: ["var(--popover)", "var(--muted-foreground)"],
+        kind: "text",
+        banked: {},
+        owner: ".b",
+    },
+    // fr-PaperSidebar `PS D-B2` — the "Contents" label, `paper/PaperTocDrawer.vue`
+    // `.sidebar-label { color: var(--muted-foreground) }` (full strength; was
+    // the 60% dilution) over the drawer's `--card`.
+    {
+        id: "PS D-B2",
+        what: "the ToC drawer's Contents label on its card",
+        stack: ["var(--card)", "var(--muted-foreground)"],
+        kind: "text",
+        banked: { light: 2.39, dark: 3.0 },
+        owner: ".e",
+    },
+    // fr-PaperView `PV D/M-8` — the page readout, `paper/PaperPageReadout.vue`
+    // `.page-readout { color: var(--muted-foreground-strong) }`, no plate of its
+    // own. Both of its hosts are glass's opaque surface (`data-surface="opaque"`:
+    // solid `--card`; X-DS DS-F7X-C1, `5fbe1cf`): the desktop rail in
+    // `PaperTocDrawer.vue` and the phone `.floating-toc-bar--trigger` in
+    // `PaperTocBar.vue`. One plate, so one row.
+    {
+        id: "PV D/M-8",
+        what: "the page readout on the ToC hosts' opaque --card",
+        stack: ["var(--card)", "var(--muted-foreground-strong)"],
+        kind: "text",
+        banked: { light: 2.88 },
+        owner: ".e",
+    },
 ];
 
 /**
- * §4 names further pairs whose ink is painted, not declared — `FR-CP-D1`'s
- * canvas axes (1.19 L / 1.38 D), `DMT M-2` (2.51), `ECD D-5`/`D-6` (3.32 /
- * 1.97), `EV D·D-B3` (2.02–3.57), `PS D-B2` (2.39 / 3.00), `PV D/M-8` (2.88).
- * Each is measurable only from the element that paints it, which is the
- * element its owning unit is about to change; expressing them as static
- * expressions at THIS seat would be a guess wearing a measurement's clothes.
+ * §4 names further pairs whose ink is painted, not declared. Each was declared
+ * here at F.W4 and the harness FAILED on every one until its stack was
+ * authored: an un-re-derived pair is an open hole in the gate, not a pass.
  *
- * They are declared here rather than dropped, and the harness FAILS on every
- * one of them — an un-re-derived pair is an open hole in the gate, not a pass.
- * The owning unit supplies the expression stack in the same commit as its cure,
- * moving the row into `CONTRAST_PAIRS` above. ⊘ No skip, no allowlist, no
- * `fixme`: the roster below IS the RED, and it closes by being emptied.
+ * F.REL `.w2` (2026-10-16, COHESION §0fk.1) authored the six (`FR-CP-D1`,
+ * `ECD D-5`/`D-6`, `EV D·D-B3`, `PS D-B2`, `PV D/M-8`) into `CONTRAST_PAIRS`
+ * above, read from the code that paints each. The roster is EMPTY, which is how
+ * it closes. ⊘ It stays exported and asserted: a pair named later without a
+ * stack enters here and turns the gate RED again.
  */
 export const PAIRS_AWAITING_THEIR_OWNER: Array<{
     id: string;
     what: string;
     banked: string;
     owner: string;
-}> = [
-    {
-        id: "FR-CP-D1",
-        what: "ConvergencePlot axes — painted to canvas, read from the 2D context",
-        banked: "1.19 light / 1.38 dark",
-        owner: ".b",
-    },
-    {
-        id: "ECD D-5",
-        what: "EditorControlsDock",
-        banked: "3.32",
-        owner: ".c",
-    },
-    {
-        id: "ECD D-6",
-        what: "EditorControlsDock",
-        banked: "1.97",
-        owner: ".c",
-    },
-    {
-        id: "EV D·D-B3",
-        what: "EquationView",
-        banked: "2.02–3.57",
-        owner: ".b",
-    },
-    {
-        id: "PS D-B2",
-        what: "PaperSidebar label — axe grades it CLEAN, which is why this gate exists",
-        banked: "2.39 / 3.00",
-        owner: ".e",
-    },
-    {
-        id: "PV D/M-8",
-        what: "PaperView",
-        banked: "2.88",
-        owner: ".e",
-    },
-];
+}> = [];
