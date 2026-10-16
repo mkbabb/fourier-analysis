@@ -120,4 +120,4 @@ if [[ "${1:-}" == "--no-tests" ]]; then
 fi
 
 cd "$ROOT/web"
-BASE_URL="$BASE_URL" npx playwright test --project=chromium --workers="${PW_WORKERS:-1}" "${@}"
+BASE_URL="$BASE_URL" npx playwright test --project=chromium "${@}"
