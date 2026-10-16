@@ -456,7 +456,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                          indeterminate Progress; the retired transparent-topped ring is
                          gone), announced as a status. -->
                     <div v-if="stageLoading" class="stage-state" role="status">
-                        <Progress :model-value="null" variant="liquid" size="sm" class="stage-busy-bar"
+                        <Progress :model-value="null" size="sm" class="stage-busy-bar"
                             :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'" />
                         <p class="text-caption text-muted-foreground">{{ isSavedRoute ? "Loading the visualization…" : "Loading the workspace…" }}</p>
                     </div>
@@ -555,7 +555,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
                              (the canvas no longer paints a dashed "drop here" box). -->
                         <div v-if="firstCompute" class="stage-state stage-state--over" role="status">
-                            <Progress :model-value="null" variant="liquid" size="sm" class="stage-busy-bar"
+                            <Progress :model-value="null" size="sm" class="stage-busy-bar"
                                 aria-label="Computing the Fourier decomposition" />
                             <p class="text-caption text-muted-foreground">Computing the Fourier decomposition…</p>
                         </div>

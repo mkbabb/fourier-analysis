@@ -250,7 +250,9 @@ function handleReset() {
    run through unbroken. It spans the scroller's full inline size (out over
    `.demo-page`'s gutter), so nothing scrolling under it shows beside it.
    X-DS DS-F5-C4 (folds DS-F4-C2's hunk): it ends on one hairline, so content
-   scrolls under a rule, not under a cut. */
+   scrolls under a rule, not under a cut. X-DS pass 15 · DS-F15X-T1: the rule
+   is --border, not --border-soft, which all but vanished on the dark paper
+   ground at 1px, so the rule reads in both themes. */
 .stage-column {
     position: sticky;
     top: 0;
@@ -263,7 +265,7 @@ function handleReset() {
     padding: var(--space-atom) var(--page-gutter);
     background-color: var(--background);
     background-attachment: fixed;
-    border-block-end: 1px solid var(--border-soft);
+    border-block-end: 1px solid var(--border);
 }
 
 /* X-DS fourier pass 5 · DS-F5-C1: the rail is no box below 1024px, so the

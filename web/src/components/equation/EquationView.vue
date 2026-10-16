@@ -423,7 +423,7 @@ watchDebounced(
                      carried sites: glass's indeterminate Progress, not a
                      transparent-topped ring. -->
                 <div v-if="computing && !result" class="eq-state" role="status">
-                    <Progress :model-value="null" variant="liquid" size="sm" class="eq-state-bar" aria-label="Computing the series" />
+                    <Progress :model-value="null" size="sm" class="eq-state-bar" aria-label="Computing the series" />
                     <p class="text-caption text-muted-foreground">Computing…</p>
                 </div>
 
@@ -505,7 +505,7 @@ watchDebounced(
 
                         <Transition name="status-fade" mode="out-in">
                             <div v-if="loading" class="eq-status glass-floating glass-opaque" role="status">
-                                <Progress :model-value="null" variant="liquid" size="sm" class="eq-status-bar"
+                                <Progress :model-value="null" size="sm" class="eq-status-bar"
                                     :aria-label="computing ? 'Recomputing the series' : 'Re-rendering the series'" />
                                 <span class="text-caption text-muted-foreground">{{ computing ? "Recomputing…" : "Re-rendering…" }}</span>
                             </div>

@@ -123,7 +123,6 @@ function onImgError() {
             <Progress
                 v-if="store.uploading && replacing"
                 :model-value="null"
-                variant="liquid"
                 size="sm"
                 class="mt-2"
                 aria-label="Uploading the image"
