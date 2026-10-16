@@ -284,11 +284,18 @@ jobs:
   e2e-tests:
     name: e2e (Playwright, COMPUTE_RATE_LIMIT=1000)
     runs-on: ubuntu-latest
+    # X·F F.REL `.vb2` (value.js COHESION §0fk.2 (b)): the job runs IN the
+    # renderer the visual goldens are minted and read on, so one renderer of
+    # record serves both the local `*-linux.png` mint and this gate (CI never
+    # mints goldens). The tag is the `@playwright/test` version in
+    # web/package-lock.json; the image bakes that version's browsers, so a bump
+    # there moves this tag in the same commit. Inside a job container the
+    # service is reached by its name, not by a host port mapping.
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.0-noble
     services:
       mongo:
         image: mongo:8.0
-        ports:
-          - 27017:27017
         options: >-
           --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' || mongo --quiet --eval 'db.runCommand({ping:1}).ok'"
           --health-interval 10s
@@ -313,12 +320,14 @@ jobs:
       - name: Install web deps
         working-directory: web
         run: npm ci
-      - name: Install Playwright browsers
+      # The browsers and their system deps are baked into the container image;
+      # this step proves the package and the image agree instead of installing.
+      - name: Playwright matches the container image
         working-directory: web
-        run: npx playwright install --with-deps chromium
+        run: test "$(npx playwright --version)" = "Version 1.61.0"
       - name: Launch backend (COMPUTE_RATE_LIMIT harness)
         env:
-          MONGO_URI: mongodb://localhost:27017/fourier
+          MONGO_URI: mongodb://mongo:27017/fourier
           # D.W6 — the e2e env raises compute_rate_limit via env var so the
           # 49-spec contour-extraction suite doesn't 429-cascade. The prod
           # api/config.py:23 default stays at 5; the override is env-only.
@@ -389,7 +398,12 @@ jobs:
         #
         # ⊘ `mobile-chromium` is Chromium under `Pixel 7` emulation. It
         # discharges NO Safari cell (`X-W11 G8`).
-        run: npx playwright test --project=chromium --project=mobile-chromium --reporter=list
+        #
+        # F.REL `.vb2` (§0fk.2 (c)): `list` alone wrote no `playwright-report/`,
+        # so the upload below had nothing to carry and a CI RED came without
+        # its frames. `html` writes the report (actual/expected/diff PNGs and
+        # traces); `PLAYWRIGHT_HTML_OPEN=never` keeps it from serving it.
+        run: PLAYWRIGHT_HTML_OPEN=never npx playwright test --project=chromium --project=mobile-chromium --reporter=list,html
       # F.REL `.g`/`.w` — the producer-held set (`web/e2e/producer-held.json`, read by
       # web/playwright.config.ts: glass ADOPT-AT-LANDING rows, excluded from the two
       # gating cells above). Run, never skipped: `e2e/honest-red-reporter.ts` passes only

@@ -135,11 +135,37 @@ function json(body: unknown) {
     return { status: 200, contentType: "application/json", body: JSON.stringify(body) };
 }
 
-/** Serve the gallery list and its thumbnails deterministically. */
+/** The one-entity read, `GET /api/visualizations/{slug}`, and nothing below it. */
+const DETAIL_PATH = /^\/api\/visualizations\/([^/]+)$/;
+
+/**
+ * Serve the gallery list, its detail reads and its thumbnails deterministically.
+ *
+ * X·F F.REL `.vb2` (COHESION §0fk.2 (a)): opening a card fires the store's
+ * `recordView` (`stores/gallery.ts`), a `GET /api/visualizations/{slug}` whose
+ * `views` replaces the card's. Answering that read with the LIST shape made
+ * `data.views` `undefined`, so the modal's count blanked whenever the read
+ * landed before a capture and read `12` whenever it landed after — a race the
+ * visual checkpoint's item 5 photographed. The detail read now answers with the
+ * entity itself, as `api/routers/visualizations.py` does (the document as read,
+ * before its `$inc`), so the count is the same on either side of the read.
+ */
 export async function stubGallery(page: Page, items: unknown[] = [ENTRY]): Promise<void> {
-    await page.route("**/api/visualizations**", (route) =>
-        route.fulfill(json({ items, next_cursor: null, has_more: false })),
-    );
+    await page.route("**/api/visualizations**", (route) => {
+        const detail = DETAIL_PATH.exec(new URL(route.request().url()).pathname);
+        if (detail && route.request().method() === "GET") {
+            const slug = decodeURIComponent(detail[1]);
+            const entry = items.find((item) => (item as { slug?: string }).slug === slug);
+            return entry
+                ? route.fulfill(json(entry))
+                : route.fulfill({
+                      status: 404,
+                      contentType: "application/problem+json",
+                      body: JSON.stringify({ status: 404, title: "Not Found", detail: `no visualization '${slug}'` }),
+                  });
+        }
+        return route.fulfill(json({ items, next_cursor: null, has_more: false }));
+    });
     await page.route("**/api/images/**", (route) =>
         route.fulfill({ status: 200, contentType: "image/png", body: PIXEL_PNG }),
     );

@@ -279,6 +279,22 @@ function getPath(level: number): string {
     }
 }
 
+/* X-DS fourier pass 8 · DS-F8X-C1: on a fine pointer with the room for it,
+   the card shows the whole range it names. The phone strip carried up to
+   1440 hid the bound High tile (and 18/25/35) past the right edge, with only
+   the end fade to say so; here the levels wrap into a grid, every tile is in
+   view, and there is no scroller, so no fade. Coarse pointers and phones keep
+   the strip and its fade. */
+@media (min-width: 1024px) and (pointer: fine) {
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+        overflow: visible;
+        mask-image: none;
+        scroll-snap-type: none;
+    }
+}
+
 /* X.F.W4 / SP-6 · FMD-13 — the `.grid-cell` re-skin is DELETED down to the
    divergence the producer ships no variant for.
 
