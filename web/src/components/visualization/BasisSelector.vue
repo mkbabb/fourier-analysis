@@ -230,8 +230,11 @@ function resetDefaults() {
     font-weight: 500;
     color: var(--foreground);
 }
+/* X-DS F4C · DS-F4C-C1: the step before a group is a full body step, so the
+   caption sits with the chips below it (an atom to its own row) and never
+   floats midway once the coarse chip floor grows at 390. */
 .basis-group-label:not(:first-child) {
-    margin-top: var(--space-atom);
+    margin-top: var(--space-body);
 }
 
 /* X.F.W14U.c1 — addendum (g): the pressed basis chip carries its basis tint,
