@@ -16,8 +16,17 @@ export function unzipPoints(points: Point2D[]): { x: number[]; y: number[] } {
     };
 }
 
-/** Generate SVG path `d` attribute for a closed Catmull-Rom spline */
-export function closedSplinePath(points: Point2D[], tension = 0.5): string {
+/**
+ * Generate SVG path `d` attribute for a closed Catmull-Rom spline.
+ *
+ * X.F.W4 · `fr-ContourPreview` CP-36 — the `tension` parameter is deleted, not
+ * defaulted. It was accepted, typed and never read: the control-point factor
+ * below is the hard-coded `1/6` of the uniform Catmull-Rom form, so passing a
+ * tension did nothing at any of the callsites. A knob that cannot turn is a lie
+ * about the API, and it was also the `noUnusedLocals` violation at
+ * `contourEditing.ts(20,53)` (G-F4-VUE-TSC-CLEAN). No callsite passed one.
+ */
+export function closedSplinePath(points: Point2D[]): string {
     const n = points.length;
     if (n < 2) return "";
     if (n === 2)
@@ -219,4 +228,92 @@ export function smoothClosedPoints(
     const dx = cx0 - cx1;
     const dy = cy0 - cy1;
     return pts.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+}
+
+/** The bounding box of a point set, with a per-axis pad already applied. */
+export interface ContourBounds {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+    /** Extent along X, floored at 1 so a degenerate axis stays renderable. */
+    width: number;
+    /** Extent along Y, floored at 1 so a degenerate axis stays renderable. */
+    height: number;
+    /** Pad applied to the X axis (`width * margin`). */
+    padX: number;
+    /** Pad applied to the Y axis (`height * margin`). */
+    padY: number;
+    /** `min-pad  -(max+pad)  extent+2·pad` — the Y-flipped SVG viewBox string. */
+    viewBox: string;
+}
+
+/**
+ * X.F.W4 · `fr-ContourPreview` row 40 — THE single cure of the framing cluster.
+ *
+ * Three surfaces computed a contour's bounding box independently, and two of
+ * them did it with *byte-identical* code two hundred lines apart: at this
+ * wave's open, `md5` of `ContourPreview.vue:19-25` and of
+ * `ContourEditorCanvas.vue:60-66` were both `b9bf953f46449d13d580f251f7f57ba8`
+ * (row 33 — a whitespace-identical clone, which is why the extraction is an
+ * adoption rather than an invention). Each copy then diverged in what it did
+ * with the box, and every divergence is a booked defect this function ends:
+ *
+ *   • row 7 (MAJOR) — the preview spent an **X-derived pad on BOTH axes**, so
+ *     on tall contours the vertical gutter collapsed and past h ≳ 15.8·w the
+ *     extreme vertices clipped against the SVG root's default `overflow:
+ *     hidden`. The pad is per-axis here, which is what the editor already did.
+ *   • row 17 (MINOR) — no degenerate-extent guard: a zero X extent emits a
+ *     viewBox of width 0, and the spec says a zero-width viewBox DISABLES
+ *     rendering of the element. Two of the three siblings already carried the
+ *     `|| 1` floor; now all of them do, on both axes.
+ *   • row 28-client (MINOR) — one non-finite coordinate blanked the preview in
+ *     silence, because an invalid viewBox is simply ignored by UAs. Non-finite
+ *     input is screened here and reported through the return value, so a caller
+ *     can render an honest empty state instead of an invisible one. (The write
+ *     path that admits such a point is the boundary-validation half and is
+ *     F.W5–W8's; this is the client screen the row names.)
+ *
+ * The margin stays the caller's: the preview's authored framing is 0.1 and the
+ * editor's is 0.15, and unifying them would be a design change no row asked
+ * for.
+ *
+ * Returns `null` when the point set cannot produce a renderable box — fewer
+ * than two points, or any non-finite coordinate.
+ */
+export function contourBounds(
+    points: readonly Point2D[] | undefined,
+    margin: number,
+): ContourBounds | null {
+    if (!points || points.length < 2) return null;
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const p of points) {
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+    }
+
+    const width = maxX - minX || 1;
+    const height = maxY - minY || 1;
+    const padX = width * margin;
+    const padY = height * margin;
+
+    return {
+        minX,
+        maxX,
+        minY,
+        maxY,
+        width,
+        height,
+        padX,
+        padY,
+        // Y is flipped because every consumer draws inside a `scale(1,-1)`.
+        viewBox: `${minX - padX} ${-(maxY + padY)} ${width + padX * 2} ${height + padY * 2}`,
+    };
 }

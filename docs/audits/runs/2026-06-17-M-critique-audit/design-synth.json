@@ -1,0 +1,438 @@
+{
+ "headline": "Tranche M HARDENED: all 8 live critiques root-class-resolved \u2014 5 fourier-owned (\u03b2/\u03b3: cartoon-card shim DELETE, asideSide=left, SegmentedTabs pill default, accent-tone idle fill, radius-token sweep) sequenced into M.W5/W7/W8, and 3 glass-ui-owned (\u03b1: overlay-band darken, rounded glass focus-ring, selectable-chip register) booked to glass-ui BB W-CROSSREPO-ASKS; the M.W1 bump+migration STANDS but is corrected at root (no !important, no shim, no re-skin).",
+ "critique_resolution": [
+  {
+   "critique": "#1 Surfaces not glassy (cartoon-stamp cards, opaque fill + offset shadow) \u2014 crop 01, live-workspace/paper",
+   "root_class": "gamma",
+   "owner": "fourier",
+   "fix": "DELETE the `.cartoon-card` @utility shim from style.css (a resurrection of a class glass-ui retired at C.W5; ~25 sites confirmed) and migrate every site onto the shipped 5-tier glass ladder: in-flow instrument panels -> glass-wash/glass-resting, lifted/anchored chrome (sticky toolbars, error/recompute banners, modals) -> glass-floating, text-plates over content -> veil-surface. The ladder owns the material (border/blur/rim/shadow) so net code DECREASES; no !important, no per-site recipe. The paper ARTICLE sheet stays a deliberate cartoon accent (one register, M proportion); the paper SIDEBAR migrates to glass-resting (B6H-04 resolves the deferred B6-08 question against the stamp).",
+   "wave": "M.W5"
+  },
+  {
+   "critique": "#2 Borders not properly rounded (near-square corners; raw/literal radii)",
+   "root_class": "gamma",
+   "owner": "fourier",
+   "fix": "Container-owns-rounding doctrine (P5 stays KILLED-AS-PHANTOM \u2014 never re-book inner-section rounding): the OUTER container rounds via the shipped semantic --radius-{card,panel,input,control,pill} alias family + overflow-hidden to clip children; inner sections/rows stay square by design. Sweep every raw literal (0.75rem, 0.25rem, 3px, calc(var(--radius)-2px/-4px)) and Tailwind rounded-* literal onto the alias scale. Large glass shells inherit glass-ui's @supports squircle for free (PE floor, inv-29). One radius authority, no magic numbers.",
+   "wave": "M.W5"
+  },
+  {
+   "critique": "#3 No tabs on DESKTOP for the visualizer (mobile-only Controls|Canvas bar leaking @1440)",
+   "root_class": "gamma",
+   "owner": "fourier",
+   "fix": "DELETE the mobile-tab state machine outright (the SegmentedTabs Controls|Canvas bar + the mobileView ref + the panel-inactive bindings + the :deep(.configurator-stage) mobile flex patch + the now-orphaned isDesktop useMediaQuery) in VisualizationView + EquationView \u2014 the Configurator chassis already collapses single-column below lg and is two-column at lg+, making the parallel switcher redundant scaffolding (net code DECREASES, inv-3). FIRST reproduce the exact viewport that triggered the @1440 leak to rule out a Tailwind-v4/vite-8 `lg:hidden` emission regression (run vue-tsc 3 + a built-CSS smoke at M.W1 close before W8 reasons about layout); if the utility genuinely fails to compile, that is a separate gamma bump-residue fix at source (never a JS v-if workaround over a working media query).",
+   "wave": "M.W8"
+  },
+  {
+   "critique": "#4 ALL controls on the LEFT (DEC-2, emphatic) \u2014 controls pinned RIGHT over a dead dot-grid",
+   "root_class": "beta",
+   "owner": "fourier",
+   "fix": "Pass `aside-side=\"left\"` to the Configurator (shipped at glass-ui 4.0; pure grid-column placement + border-side swap, DOM/tab order unchanged, no a11y regression) and DELETE the four hand-rolled grid-template-columns overrides + the :deep(.configurator-stage) patch that fight the chassis at root (the overrides re-define the template, which DEFEATS asideSide \u2014 the deeper cause). Express the aside width band via the chassis `:aside-width=\"['360px','440px']\"` / --configurator-aside-{min,max}. Apply UNIFORMLY: workspace + equation (.eq-grid) + morph (.config-grid, but morph stays single-column stage-above-controls \u2014 per-route discrimination, not mechanical uniformity) all migrate onto ONE Configurator instrument with controls-LEFT.",
+   "wave": "M.W8"
+  },
+  {
+   "critique": "#5 Dropdown/glass elements oddly DARKENED (flat opaque grey, not translucent) \u2014 crop 08",
+   "root_class": "alpha",
+   "owner": "glass-ui",
+   "fix": "ROOT-CAUSED in source: ladder.css:200-204 darkens the overlay band (.glass-floating/.glass-overlay \u2014 every DropdownMenu/Select/Popover content) UNCONDITIONALLY toward warm-ink at --glass-tint-strength-aa, while the CONTENT tiers (ladder.css:216-219, the BA.W-DARK-MATERIAL R9-1 gray-slab fix) self-engage only the sub-perceptual --glass-tint-strength-floor and gate the full AA darken behind the @container style(--glass-backdrop:light) bright signal. The overlay band was DELIBERATELY left on the unconditional darken (it 'floats over an unknown surface'). Over fourier's substrate this composites to the flat grey slab. FIX is symmetry: extend the same bright-signal gating to the overlay band (floor unconditionally; full AA only under a declared/sampled light backdrop). Book to glass-ui BB W-CROSSREPO-ASKS (inv-16). fourier declares --glass-backdrop where it wants the intentional darken; NO !important, NO per-surface --glass-tint-strength:0% binary (which kills the legibility lift). The highlighted-menu-row over-darken compounds this and resolves with the same fix.",
+   "wave": "M.W5 (consume the BB fix); book at M.W0"
+  },
+  {
+   "critique": "#6 Button options NOT VISIBLE when not hovered (preset/notation/basis pills bare text at idle) \u2014 crop 09",
+   "root_class": "beta",
+   "owner": "fourier",
+   "fix": "The `outline` variant idle-paints bg-background (matches the page/card) + a sub-threshold border, and `ghost` is transparent by design \u2014 so a chip group reads as bare text until hover. Adopt the M.W7 accent-tone recipe: a contrast-floored 3-channel tonal accent (--accent-fill at a low IDLE band ~6-8% + --accent-edge + --accent-ink, contrast-floored via value.js safeAccentColor) from ONE --tone keyed to the per-route --route-accent, so EVERY option paints a calm resting chip (proportion-governed) and the active one deepens one rung. This DELETES the ~57 hand-rolled color-mix recipes AND the three forbidden !important sites (FunctionInput .is-auto-active triple, the EquationResult coeff-hover). For the dock: adopt glass-ui 4.0's already-shipped --dock-active-* token cohort so the 7 hand-rolled is-active classes (today NO backing paint) finally render; book the DockIconButton `active?` prop sugar (aria-pressed + default register) to BB. accent-tone itself is also a BB ask (born in glass-ui; value.js/speedtest want it) \u2014 fourier composes the interim locally and consumes-and-deletes on ship.",
+   "wave": "M.W7"
+  },
+  {
+   "critique": "#7 Tabs should be GLASS (rendering underline, not the glass pill) \u2014 crop 10",
+   "root_class": "gamma",
+   "owner": "fourier",
+   "fix": "The M.W1 migration pinned variant=\"underline\" at all 3 SegmentedTabs sites (VisualizationView, GalleryView, EquationView) to preserve the retired UnderlineTabs ink-rule \u2014 a verbatim port of the thing being deleted. The user reverses it. DROP the variant prop (the glass PILL is the 4.0 DEFAULT and IS the glass material \u2014 the --glass-bg-quiet track + the gliding/squishing --glass-bg-floating indicator). Pure prop DELETION, zero added CSS. Retire the underline material from fourier's surface entirely. FOLD the two hand-rolled glass-pill mimics (NotationPills, EquationModeToggle \u2014 bare buttons + color-mix) onto the SAME SegmentedTabs pill engine, which also discharges #6's idle-paint at the recipe level. Mobile Controls|Canvas pills flip to glass too but stay inside lg:hidden (orthogonal to #3).",
+   "wave": "M.W8"
+  },
+  {
+   "critique": "#8 Search screen OFFSET + SQUARE (raw focus ring beyond the rounded field) \u2014 crop 11",
+   "root_class": "alpha",
+   "owner": "glass-ui",
+   "fix": "Confirmed: glass-ui 4.0 ships NO Input/SearchField primitive and NO rounded glass focus-ring recipe \u2014 only the Tailwind utilities (focus-visible:outline-2/outline-offset-2/outline-ring) which paint a SQUARE outline pushed OUTSIDE the rounded field (outline does not follow border-radius; offset:2px sits beyond it). fourier hand-rolled a raw <input> + a :focus-within border-color shift, so the UA default square ring leaks. Book to glass-ui BB W-CROSSREPO-ASKS: a rounded GLASS focus-ring recipe (radius-following box-shadow ring via border-radius:inherit, brand-tinted) shipped on the Input/field primitives so every consumer inherits it. fourier's no-legacy INTERIM (a recipe, NOT an override): compose a tokenized :focus-visible ring on the wrap via box-shadow + border-radius:inherit (the existing style.css:136 conformant pattern), kill-date = the primitive ships. Also fix the floating-search-variant border-radius:0 (let the outer container clip, don't hard-zero the inner field).",
+   "wave": "M.W5 (interim + consume); book at M.W0"
+  }
+ ],
+ "coverage_matrix": [
+  {
+   "request": "Resolve each of the 8 user critiques to root_class + owner + idiomatic fix + wave",
+   "addressed": "yes",
+   "where": "critique_resolution (all 8 rows) + proposed_waves M.W0/W5/W7/W8"
+  },
+  {
+   "request": "Separate glass-ui-owned (alpha -> BB W-CROSSREPO-ASKS) from fourier-owned (beta/gamma)",
+   "addressed": "yes",
+   "where": "glassui_asks (4 alpha asks) vs critique_resolution owner field; #5/#8 alpha-to-glass-ui, #1/#2/#3/#4/#6/#7 fourier"
+  },
+  {
+   "request": "Per-pane findings (B1 paper, B2 workspace, B3 gallery, B4 equation, B5/B7 morph, B6 paper-reader)",
+   "addressed": "yes",
+   "where": "proposed_waves rolls_up cites every B-pane finding id; chronic_fold + new_invariants carry the systemic ones"
+  },
+  {
+   "request": "Design-language: glass-depth / rounding / controls-left / glass-tabs / idle-buttons / typography / colour-pops / motion",
+   "addressed": "yes",
+   "where": "proposed_waves M.W5 (glass+rounding), M.W6 (typography), M.W7 (colour-pops+idle), M.W8 (controls-left+tabs), M.W9 (motion)"
+  },
+  {
+   "request": "glass-ui asks (alpha) booked, never fourier writes glass-ui",
+   "addressed": "yes",
+   "where": "glassui_asks (overlay-band darken, rounded focus-ring, accent-tone/selectable-chip, DockIconButton active); inv-16 affirmed in new_invariants"
+  },
+  {
+   "request": "Animation half (keyframes 4.3 leverage + value.js 0.13 colour-motion + the convergence-reveal signature + rAF retirement)",
+   "addressed": "yes",
+   "where": "proposed_waves M.W9; chronic_fold (dual rAF clock, spectrumColor copies); risks (keyframes 4.3 vs 4.2 doc drift, one-barrel premise)"
+  },
+  {
+   "request": "Dedupe + sequence waves; fold chronics to terminal verdicts; propose invariants; surface risks",
+   "addressed": "yes",
+   "where": "proposed_waves (sequenced w/ depends_on), chronic_fold, new_invariants, risks"
+  },
+  {
+   "request": "No-legacy / idiomatic / proportion-governed; no !important, no shim, no dead class",
+   "addressed": "yes",
+   "where": "critique_resolution fixes all DELETE-at-root; the 3 !important sites + the cartoon-card shim named for excision; inv affirms"
+  }
+ ],
+ "proposed_waves": [
+  {
+   "id": "M.W0",
+   "title": "Bump-truth re-pin + glass-ui asks booked + close-gate setup",
+   "goal": "Correct the API-truth drift the bump moved underneath the plan and book the alpha asks BEFORE any execution. (1) Re-pin keyframes 4.2->4.3 across M-motion-architecture.md + M.md; re-verify every cited light-tier primitive against the 4.3 keyframes.d.ts. (2) Rewrite the 'light barrel vs heavy loadAnimationEngine import path' framing \u2014 at 4.3 there is ONE flat barrel; the light/heavy boundary is tree-shaking (which symbols you import), not an import path. (3) STRIKE the value.js mixColorsN interim + its kill-date \u2014 sampleColorRamp shipped at 0.13.0. (4) Book the 4 alpha asks to glass-ui BB W-CROSSREPO-ASKS (overlay-band gating, rounded focus-ring, accent-tone/selectable-chip, DockIconButton active). (5) Run vue-tsc 3 + a built-CSS smoke to disambiguate the @1440 lg:hidden leak (genuine Tailwind-v4 regression vs sub-1024 capture).",
+   "depends_on": "M.W1 (bump+migration, EXECUTED)",
+   "rolls_up": [
+    "E6-01",
+    "E6-02",
+    "E4-01",
+    "E3-09",
+    "B2-04",
+    "C3-open-q",
+    "E6-13"
+   ]
+  },
+  {
+   "id": "M.W5",
+   "title": "Glass depth ladder + rounding system + focus-ring + incongruence sweep (critiques #1, #2, #5, #8)",
+   "goal": "DELETE the .cartoon-card @utility shim and migrate ~25 sites onto the 5-tier glass ladder (in-flow -> glass-wash/glass-resting, lifted chrome -> glass-floating, text-plates -> veil-surface); the paper article stays the one deliberate cartoon accent, the sidebar goes glass-resting. Adopt the container-owns-rounding doctrine: every surface radius onto the --radius-{card,panel,input,control,pill} alias scale (P5 stays killed). Compose the no-legacy interim rounded glass focus-ring on the search wrap (box-shadow + border-radius:inherit; kill-date = the BB primitive). Consume the BB overlay-band gating fix for the darkened dropdowns (interim: declare the calm-light register, NOT !important). Consume W-ON-GLASS-FG so muted text doesn't whisper-collapse on the newly-translucent surfaces. Sweep: excise the 3 !important sites, raw rgba shadows -> --shadow-*, the dead glass-elevated/glass-subtle strings, the per-card hand-rolled glass recipes (the rung owns the material). Wire useSpecularTracking on BAND-1-over-canvas (or consume the BB W-LIQUIDHOVER auto-arm).",
+   "depends_on": "M.W0",
+   "rolls_up": [
+    "B1-PAPER-01",
+    "B1-PAPER-02",
+    "B1-PAPER-03",
+    "B1-PAPER-04",
+    "B1-PAPER-08",
+    "B1-PAPER-09",
+    "B2-02",
+    "B2-07",
+    "B2-08",
+    "B3-02",
+    "B3-03",
+    "B3-04",
+    "B3-05",
+    "B3-10",
+    "B4-03",
+    "B4-09",
+    "B4-10",
+    "B5-M-03",
+    "B6H-01",
+    "B6H-02",
+    "B6H-03",
+    "B6H-04",
+    "B7-01",
+    "B7-02",
+    "B7-13",
+    "C1-01",
+    "C1-02",
+    "C1-03",
+    "C1-04",
+    "C1-05",
+    "C1-06",
+    "C1-07",
+    "C1-08",
+    "C1-09",
+    "C2-R1",
+    "C2-R2",
+    "C2-R3",
+    "C2-R4",
+    "C2-R5",
+    "D1-01",
+    "D1-06",
+    "D1-07",
+    "D1-08",
+    "D1-09",
+    "D1-15",
+    "D2-A1",
+    "D2-A2",
+    "D3-01",
+    "D3-03",
+    "D3-05",
+    "D4-01",
+    "D4-04",
+    "D4-05",
+    "D4-09"
+   ]
+  },
+  {
+   "id": "M.W6",
+   "title": "Audacious typography \u2014 \u03c6-display ladder + Fraunces display voice + KaTeX hero + \u2131-clash fix",
+   "goal": "Activate the dead Fraunces as the display voice (--font-stack-display: Fraunces, Computer Modern Serif, serif) at the consumer boundary, fixing the app-wide \u2131-sans-clash (4 sites: logo, paper hero, callout, gallery modal) since the ornament inherits the serif display axis; reconcile the two \u2131 sizes onto one --fourier-f-size. Promote the paper hero + gallery + equation heads onto the shipped \u03c6-display ladder (text-display-2/3, retiring the raw text-4xl literals + the hardcoded <br/> for text-wrap:balance); gallery + equation GAIN an h1 (3/5 routes are voiceless today). Make display KaTeX a first-class ladder member (.katex-display -> --type-title). Route canvas-drawn font literals through the resolved tokens so they track the rebrand. Book useCharStagger/SplitChars (a11y-name-preserving) for the ONE PRM-gated hero char-stagger.",
+   "depends_on": "M.W0",
+   "rolls_up": [
+    "B1-PAPER-05",
+    "B1-PAPER-06",
+    "B4-06",
+    "B6H-05",
+    "B6H-09",
+    "C6-T1",
+    "C6-T2",
+    "C6-T3",
+    "C6-T4",
+    "C6-T5",
+    "C6-T6",
+    "C6-T7",
+    "C6-T8"
+   ]
+  },
+  {
+   "id": "M.W7",
+   "title": "Colour pops from ONE source \u2014 accent-tone idle fill + per-route --route-accent + the OKLCH icon ramp (critique #6)",
+   "goal": "Author the icon ramp via value.js 0.13 sampleColorRamp (OKLCH, the favicon's six brand stops) computed once at boot; collapse the 4 duplicate sRGB-HSL spectrumColor copies into one harmonicColor, delete the STATIC.rainbow Tailwind-400 twin + the 118-line bespoke colour parser (value.js Color is the authority). Wire per-route --route-accent (router meta -> ramp stop), replacing the flat --viz-amber nav. Adopt the accent-tone recipe (contrast-floored via safeAccentColor) as the idle-painted chip skin for the preset/notation/basis pills (critique #6) \u2014 every option paints a resting chip, the active deepens \u2014 deleting the ~57 hand-rolled color-mix sites + the 3 !important sites + the --viz-amber D.W4 override (kill-date = now). Set the dock --dock-active-* cohort so the is-active classes paint. EpicycleSpinner replaces 8 generic spinners (shares the ambient-trace primitive with W9). MORE pops within the proportion ceiling (\u22648% chrome mix, one focal pop per pane).",
+   "depends_on": "M.W5",
+   "rolls_up": [
+    "B2-05",
+    "B3-06",
+    "B3-09",
+    "B4-01",
+    "B4-02",
+    "B7-04",
+    "B7-09",
+    "B7-10",
+    "C5-01",
+    "C5-02",
+    "C5-03",
+    "C5-04",
+    "C5-05",
+    "C7-R1",
+    "C7-R2",
+    "C7-R3",
+    "C7-R4",
+    "C7-R5",
+    "C7-R6",
+    "C7-R7",
+    "C7-R8",
+    "C7-R9",
+    "E4-02",
+    "E4-03",
+    "E4-04",
+    "E4-05",
+    "B6H-07"
+   ]
+  },
+  {
+   "id": "M.W8",
+   "title": "Controls-LEFT authoring rail + glass tabs + per-pane composition (critiques #3, #4, #7)",
+   "goal": "Pass aside-side=left to the Configurator at every pane (workspace/equation; morph stays single-column) and DELETE the hand-rolled grid-template-columns overrides + the mobile-tab state machine + the :deep stage patch + the orphaned isDesktop refs (critiques #3, #4). Migrate .eq-grid + .config-grid onto Configurator + ConfiguratorLayer + ConfiguratorRow with :dividers (retire CollapsibleSection -> section-label, the bespoke btn-export/btn-reset -> Button variants, the loose card stacks). Drop variant=underline at all 3 SegmentedTabs sites -> the glass pill DEFAULT (critique #7) and fold NotationPills + EquationModeToggle onto the same pill engine. Build the compose-the-void stage hero (workspace dropzone), the gallery card 3-tier rung hierarchy, the equation legend de-occlusion, the BasisSelector value-row fix, the morph phase pipeline framing. Adopt inert on mobile-inactive panels; adopt useTextHighlight (CSS Custom Highlight) for the paper search.",
+   "depends_on": "M.W5",
+   "rolls_up": [
+    "B2-01",
+    "B2-03",
+    "B2-06",
+    "B2-09",
+    "B2-10",
+    "B3-01",
+    "B3-07",
+    "B4-04",
+    "B4-05",
+    "B4-07",
+    "B4-08",
+    "B5-M-01",
+    "B5-M-02",
+    "B7-03",
+    "B7-05",
+    "B7-06",
+    "B7-07",
+    "B7-08",
+    "C3-01",
+    "C3-02",
+    "C3-03",
+    "C3-04",
+    "C3-05",
+    "C3-06",
+    "C3-07",
+    "C4-01",
+    "C4-02",
+    "C4-03",
+    "C4-04",
+    "C4-05",
+    "D1-02",
+    "D1-03",
+    "D1-04",
+    "D1-05",
+    "D1-10",
+    "D1-13",
+    "D1-14",
+    "D2-A3",
+    "D3-02",
+    "D3-04",
+    "D4-02",
+    "D4-03",
+    "B6H-08"
+   ]
+  },
+  {
+   "id": "M.W9",
+   "title": "Motion CORE \u2014 useFourierPlayhead, rAF retirement, the convergence-reveal signature, keyframes 4.3 + value.js colour-motion",
+   "goal": "Extract ONE useFourierPlayhead over keyframes 4.3 RAFPlayback (with a clockMs phase accessor for the shimmer oscillators), collapsing the dual ping-pong clocks (animation.ts + the verbatim ConvergencePlot copy), the two useCanvasHover loops (-> SpringProgress + a clock-phase shimmer read, the paused+hovered case named), the useCurveTransition lerp (-> NumericAnimation), and transposing useFourierMorph off the heavy Animation engine onto NumericAnimation + Sequence (light, zero loadAnimationEngine). Add warmEngine() at boot for any residual heavy need. Build the convergence-reveal signature (series-settle + amplitude-rank stagger + arc-length draw-on via value.js PathGeometry \u2014 light, NO heavy DrawSVG) with a stable-id once-latch (shared with the \u00a75.2 scroll-reveal latch) so it never replays on remount; EXTEND it to the empty/idle/error states (ambient epicycle heartbeat \u2014 the brand signature lives where the first visitor lands). Fix the ConvergencePlot per-frame resize (wire the already-declared dead ResizeObserver). Close the 3 PRM gaps; unify easing onto resolveEasing while keeping lib/easings.ts as the user-facing catalog; name the SvgFilters one-shot rAF EXEMPT. Govern the #6/#7 control-state micro-motion under the Layer-1 PRM contract.",
+   "depends_on": "M.W5",
+   "rolls_up": [
+    "B1-PAPER-07",
+    "B5-M-08",
+    "B7-11",
+    "E1-H1",
+    "E1-H2",
+    "E1-H3",
+    "E1-H4",
+    "E1-H5",
+    "E1-H6",
+    "E1-H7",
+    "E1-H8",
+    "E3-01",
+    "E3-02",
+    "E3-03",
+    "E3-04",
+    "E3-05",
+    "E3-06",
+    "E3-07",
+    "E3-08",
+    "E3-10",
+    "E3-13",
+    "E3-14",
+    "E5-01",
+    "E5-02",
+    "E5-03",
+    "E5-04",
+    "E5-07",
+    "E5-08",
+    "E5-10",
+    "E5-13",
+    "E5-15",
+    "E6-03",
+    "E6-04",
+    "E6-05",
+    "E6-06",
+    "E6-07",
+    "E6-08",
+    "E6-09",
+    "E6-10",
+    "E6-11",
+    "E6-12",
+    "B6H-06",
+    "B6H-10"
+   ]
+  },
+  {
+   "id": "M.W10",
+   "title": "Scroll heroes + J inv-15 publish/provenance wiring + diff viewer",
+   "goal": "Adopt [data-scroll-reveal] (header-only, reading-primacy) + View-Transitions on gallery cards (the smaller router-VT retirement re-scoped per E6-04). Wire J's binary inv-15 close-gate through the gallery pane: re-point publish off PATCH{visibility} onto idempotent POST /:slug/{publish,unpublish}, surface a publish-state toggle + a provenance breadcrumb on cards, a Remix action, and the AtomDiff viewer at /v/:slug (consuming the booked glass-ui AtomDiff primitive + the canonical /diff atomdiff shape).",
+   "depends_on": "M.W8",
+   "rolls_up": [
+    "B3-08",
+    "D1-11",
+    "D1-12"
+   ]
+  }
+ ],
+ "new_invariants": [
+  {
+   "id": "inv-M1",
+   "statement": "GLASS-FIDELITY & SURFACE-LEDGER: every fourier surface declares its band on the shipped 5-tier ladder (BAND-0 bare-math substrate / BAND-1 in-flow instrument glass-wash|glass-resting / BAND-2 lifted chrome glass-floating|glass-overlay / text-plate veil-surface orthogonal). The rung OWNS the material \u2014 no surface composes a rung AND a hand-rolled border/blur/box-shadow/color-mix. The cartoon register is an itemised ledger of named deliberate accents (the paper article sheet), never a default; the .cartoon-card shim is permanently retired. Each region declares --glass-backdrop by its backplate luminance (light on the bright canvas, dark on the workspace shell)."
+  },
+  {
+   "id": "inv-M2",
+   "statement": "RADIUS & FOCUS SINGLE-SOURCE (container-owns-rounding): outer containers round via the semantic --radius-{card,panel,input,control,pill} alias scale + overflow-hidden to clip children; inner sections/rows stay square by design; no raw px/rem/calc radius literal survives. P5 inner-section rounding stays KILLED-AS-PHANTOM (never re-book). Field focus is a rounded glass ring that follows the corner (border-radius:inherit), never a raw UA outline; until the glass-ui primitive ships, the fourier interim is a box-shadow recipe with an explicit kill-date \u2014 never an !important."
+  },
+  {
+   "id": "inv-M3",
+   "statement": "ONE-SOURCE COLOUR & TONAL-ACCENT: all accents derive from the value.js OKLCH icon ramp (the favicon's six stops) via sampleColorRamp; every tonal pop (idle/hover/active chip, badge, swatch, harmonic colour) reads the accent-tone recipe (--accent-fill/-edge/-ink) from ONE --tone, contrast-floored via value.js safeAccentColor. No hand-rolled color-mix recipe, no sRGB-HSL spectrumColor copy, no Tailwind-hue literal, no per-colour !important contrast patch survives. Pops are proportion-governed: every interactive control paints a visible IDLE affordance; at most one focal pop per pane (\u22648% chrome mix)."
+  },
+  {
+   "id": "inv-M4",
+   "statement": "ONE MOTION CLOCK & SIGNATURE-EVERYWHERE: the application runs ONE useFourierPlayhead (keyframes 4.3 light tier \u2014 zero loadAnimationEngine on the canvas/UI path; the heavy engine tree-shakes out, proven by a bundle assertion). Zero autonomous animation rAF call-sites remain (layout-sync measure loops are EXEMPT + doc-marked). The convergence-reveal signature is PRM-gated, once-latched by stable visualization id (no remount replay), and present in the empty/idle/error states \u2014 the first encounter shows the brand motion. All control-state transitions inherit the Layer-1 PRM contract, never a per-component non-gated re-carve."
+  }
+ ],
+ "chronic_fold": [
+  {
+   "item": ".cartoon-card @utility shim (resurrected at D.W4 a class glass-ui retired at C.W5; carried 7 tranches; ~25 sites; THE not-glassy root of critique #1)",
+   "verdict": "KILL-AT-ROOT: delete the @utility from style.css and migrate all sites onto the glass ladder. Add a build-time staleness lint (PostCSS warning on retired tier-name strings after any major glass-ui bump) so the next major cannot silently re-render zero glass.",
+   "wave": "M.W5"
+  },
+  {
+   "item": "The ~57x re-derived color-mix tonal-accent recipe + the 3 !important sites (FunctionInput .is-auto-active triple, EquationResult coeff-hover) + the --viz-amber D.W4 light-mode contrast patch",
+   "verdict": "KILL: collapse onto the accent-tone recipe (one --tone, contrast-floored by value.js safeAccentColor). The 3 !important sites delete because active/hover live in one token ladder, not competing scoped rules. The --viz-amber override kill-date is M.W7 (the systematic floor makes it redundant) \u2014 not a perpetual book.",
+   "wave": "M.W7"
+  },
+  {
+   "item": "Four sRGB-HSL spectrumColor copies + STATIC.rainbow Tailwind-400 twin + the 118-line bespoke colour parser; the icon-rainbow lives in one chart legend",
+   "verdict": "KILL: one harmonicColor backed by value.js sampleColorRamp OKLCH ramp; delete the twin + the parser (value.js Color is the authority). mixColorsN interim STRUCK \u2014 sampleColorRamp shipped at 0.13.0.",
+   "wave": "M.W7"
+  },
+  {
+   "item": "Dual ping-pong rAF clock (animation.ts + the verbatim ConvergencePlot copy) + 6 hand-rolled rAF loops; ConvergencePlot per-frame resize (with a dead-declared ResizeObserver) + ungated off-screen auto-play",
+   "verdict": "KILL: ONE useFourierPlayhead over keyframes 4.3 RAFPlayback; the store becomes a pure state atom; wire the dead ResizeObserver to lift the resize off the hot path; the off-screen IntersectionObserver gate is shared. Zero animation rAF remains; measure loops doc-marked EXEMPT.",
+   "wave": "M.W9"
+  },
+  {
+   "item": "SegmentedTabs variant=underline pinned at 3 sites (M.W1 verbatim port of the retired UnderlineTabs; critique #7)",
+   "verdict": "REVERSE: drop the prop -> the glass pill DEFAULT. The M plan had NO wave owning the reversal (recorded the port as final) \u2014 add it to M.W8 and note in M-bump-migration.md that the W1 underline was a transitional faithful-migration step, deliberately superseded.",
+   "wave": "M.W8"
+  },
+  {
+   "item": "glass-ui-P5 inner-section rounding (the container-owns-rounding 'misdiagnosis')",
+   "verdict": "STAYS KILLED-AS-PHANTOM: container owns the rounding by design; never re-book. Codified as inv-M2.",
+   "wave": "n/a"
+  },
+  {
+   "item": "keyframes-doc API drift: plan cites 4.2 + a 'light barrel vs heavy import-path' premise that is false at 4.3 (one flat barrel; light/heavy is tree-shaking)",
+   "verdict": "CORRECT-AT-ROOT at M.W0: re-pin 4.2->4.3, rewrite the barrel framing, re-verify every cited primitive against the 4.3 d.ts, add a bundle-budget assertion that proves the heavy engine tree-shook out.",
+   "wave": "M.W0"
+  }
+ ],
+ "glassui_asks": [
+  {
+   "name": "overlay-band-bright-signal-gating (the darkened dropdown, critique #5)",
+   "what": "In glass/ladder.css extend the @container style(--glass-backdrop:light) bright-signal gating already shipped on the CONTENT tiers (lines 216-219) to the OVERLAY band (.glass-floating/.glass-overlay, lines 200-204): carry only --glass-tint-strength-floor unconditionally, engage the full --glass-tint-strength-aa darken ONLY under a declared/sampled light backdrop. Same inheriting oklab axis, zero new compositing seam \u2014 a one-block transposition. Also retires the compounding highlighted-menu-row over-darken.",
+   "why": "The overlay band (every DropdownMenu/Select/Popover content) self-darkens UNCONDITIONALLY toward warm-ink while the content tiers already gate behind the bright signal \u2014 over fourier's substrate this composites to the flat opaque-grey slab the user circled (crop 08). It is the single most-visible glass surface and the one critique a consumer CANNOT fix cleanly: an override needs !important to beat the library :where() tint (inv-16-forbidden), and the per-surface --glass-tint-strength:0% escape is a binary that throws away the legibility lift. The fix is a calibration of the library's own adaptive-glass seam and generalises to every light-substrate consumer. Must be backdrop-DETECTING (not a blanket revert) so dark-substrate siblings keep the lift."
+  },
+  {
+   "name": "rounded glass focus-ring primitive + Input/SearchField (critique #8)",
+   "what": "glass-ui 4.0 ships NO Input/field/search component and NO rounded glass focus-ring \u2014 only the Tailwind utilities focus-visible:outline-2/outline-offset-2/outline-ring (a SQUARE outline offset OUTSIDE a rounded field). Ship (a) a real Input/SearchField primitive consuming --radius-input, and (b) a radius-following glass focus-ring recipe (box-shadow ring or outline+border-radius:inherit, brand-tinted via --ring, :focus-visible-gated) as the canonical field-focus affordance \u2014 promoted as a standalone composable .focus-ring utility so any bespoke input/button composes it.",
+   "why": "The square/offset search ring (crop 11) roots in glass-ui's absence of a field primitive and rounded ring \u2014 fourier hand-rolled a raw <input> because none exists, and the UA default leaks. inv-16: the ring belongs in glass-ui, not a fourier outline-patch. One recipe fixes every consumer's field at source and lets fourier delete its hand-rolled search wrap. fourier rides a box-shadow+border-radius:inherit interim with a kill-date = the primitive ships."
+  },
+  {
+   "name": "accent-tone / SelectableChip \u2014 the contrast-floored tonal idle-fill register (critique #6)",
+   "what": "A library recipe (a .accent-tone utility and/or a button variant=chip + a SelectableChip) minting --accent-fill (a low IDLE band ~6-8% AND a deeper active band), --accent-edge, --accent-ink (contrast-floored for light+dark) from ONE --tone, reusing value.js mixing + safeAccentColor flooring and IconChip's oklch-aware section mixing. Three first-class states: idle (always-visible translucent plate, never bare text), hover (one rung up), selected (aria-pressed/aria-selected -> floating tier), with a --chip-accent-source knob for the icon/section-derived pop.",
+   "why": "A preset/curve picker is a selectable chip group; glass-ui offers no such register, so fourier mis-picks the idle-less outline variant -> bare-text idle (crop 09) and re-derives the color-mix recipe ~57x (forcing a triple !important where the duplicated specificity collapsed). It IS the colour-pop system; value.js palette chips + speedtest tone badges want the identical recipe. fourier composes the interim locally and consumes-and-deletes on ship."
+  },
+  {
+   "name": "DockIconButton active-register prop (scoped-down) + W-LIQUIDHOVER / W-ON-GLASS-FG consume-contracts",
+   "what": "(1) An active?:boolean prop on DockIconButton that stamps aria-pressed+data-active AND ships a DEFAULT visible selected register \u2014 glass-ui 4.0 already keys .dock-icon-button:is(.is-active,[aria-pressed=true]) off the --dock-active-* cohort, so this is the ERGONOMIC sugar + sane default, not the whole mechanism (re-verify at BB; STRIKE if the prop+default already ship). (2) Affirm the consume-contracts already in BB: W-ON-GLASS-FG (a muted-foreground whose contrast target is the composited glass fill, so newly-translucent surfaces don't whisper-collapse) and W-LIQUIDHOVER (the tier-root specular auto-arm that removes per-consumer useSpecularTracking wires). Plus the convergence-reveal motion preset, useCharStagger/SplitChars (a11y-name-preserving), the [data-scroll-reveal=once] cross-remount latch, and the AtomDiff viewer primitive.",
+   "why": "fourier hand-rolls is-active at 7 dock sites where the class has NO backing paint (one site no rule at all) and is a11y-silent \u2014 a toggled-on control reads identical to idle (critique #6 in the dock). W-ON-GLASS-FG sequences the M.W5 glass migration so the legibility floor (inv-29) never regresses. W-LIQUIDHOVER + the motion/diff primitives let fourier consume-and-delete its interims at the glass-ui 4.1.0 cut. All inv-16: fourier consumes, books, never writes glass-ui."
+  }
+ ],
+ "risks": [
+  "The 3 alpha asks gate at the glass-ui 4.1.0 (BB) cut. fourier's no-legacy INTERIMS (focus-ring box-shadow recipe; the calm-light overlay declaration; the locally-composed accent-tone) must each carry an explicit kill-date = the ship, or they become the next chronic. The interim overlay dial-down must be verified over the DARK theme too (the band's dark arm re-tunes strength to a luminous-dark LIFT) before shipping \u2014 confirm it doesn't collapse the dark-theme plate; the durable fix is the BB ask, the interim has a kill-date.",
+  "The @1440 lg:hidden leak (critique #3) is ambiguous: a genuine Tailwind-v4/vite-8 utility-emission regression vs a sub-1024 capture. M.W0 MUST run vue-tsc 3 + a built-CSS smoke to disambiguate BEFORE W8 reasons about desktop layout \u2014 the proposed DELETE of the mobile-tab machine makes it moot only if the desktop intent is truly 'no tabs'; if a mobile swap is still wanted it must be ONE chassis-internal affordance, not the parallel mobileView ref.",
+  "Fraunces as --font-display is an app-wide override that also re-points every other --font-display consumer (glass-ui components may assume a geometric SANS display face). The booked --font-display-serif distinct-slot is the cleaner contract \u2014 confirm at M.W6 that overriding --font-stack-display for a SERIF brand does not regress glass-ui surfaces. This is the one typography alpha (book to BB if a slot is needed).",
+  "keyframes-doc drift (4.2 cited, 4.3 installed) + the false 'light-barrel-vs-heavy-import-path' premise: a reader authoring against the doc would import a non-existent barrel/version. M.W0 re-pin + re-verify is a HARD precondition for W9; the heavy-engine-tree-shakes-out claim must be PROVEN by a bundle-budget assertion at M.W11, not assumed.",
+  "The convergence-reveal once-latch must key by stable visualization id (not a mount event) or the signature flickers on every off-screen return through fourier's virtualized/dual-mounting canvases + the paper teleporting section window \u2014 the exact defect \u00a75.2's scroll-latch was written to prevent, un-applied to \u00a74. The ambient empty-state heartbeat must be gated to at-most-one-visible + share the scene playhead, or two visible empty panes mean two perpetual clocks (violating the one-clock floor).",
+  "Proportion governance for 'MORE pops': the directive wants more colour yet audacious-not-gaudy. Without an explicit per-surface pop budget (recommend \u22641 route-accent + \u22641 artifact-chroma per viewport, \u22648% chrome mix) 'more' regresses to gaudy. Codify the budget in M-design-language.md \u00a76 alongside the accent-tone adoption; the convergence-reveal's per-harmonic hue cascade must keep saturation bounded so the converging trace does not read as many simultaneous pops.",
+  "Wave coupling: M.W7 (accent-tone) feeds M.W8 (the pill/chip idle paint) \u2014 if W7 slips, the NotationPills/preset fold should still proceed with the pill's default glass indicator and the per-option tint deferred. M.W5's glass migration must sequence AFTER/with the BB W-ON-GLASS-FG ship so muted text on the now-translucent surfaces doesn't regress below AA. J's M.W10 inv-15 wiring is the binary close-gate \u2014 M stays open until it lands."
+ ],
+ "prose": "My half (per-pane B1-B7, design-language C1-C7, glass-ui asks D1-D4, animation E1-E6) converges hard on the same diagnosis, which is the strongest signal in the run: the M plan is RIGHT and the M.W1 bump+migration STANDS \u2014 the work is to CORRECT it at root, not re-derive it. Six of the eight critiques are fourier-owned (\u03b2 adoption gaps + \u03b3 bump residue) and only two are genuinely glass-ui-owned (\u03b1). The two \u03b1 findings are both confirmed in source: critique #5's darkened dropdown is the overlay-band UNCONDITIONAL darken at ladder.css:200-204 (an asymmetry vs the content tiers' bright-signal gating at :216-219 \u2014 the R9-1 gray-slab fix that was deliberately NOT extended to the overlay band), and critique #8's square/offset ring is glass-ui shipping NO field primitive and NO rounded focus-ring recipe (only Tailwind outline utilities that square the corner and offset past it). Both book to glass-ui BB W-CROSSREPO-ASKS under inv-16 with no-legacy interims carrying kill-dates \u2014 never a fourier !important.\\n\\nThe fourier-owned waves are predominantly SUBTRACTIVE, which is the no-legacy gestalt the user demands: M.W5 DELETES the .cartoon-card shim (the deepest chronic, 7 tranches, the literal not-glassy root) onto the shipped ladder and unifies rounding onto the --radius-* alias scale (container-owns-rounding, P5 stays killed); M.W7 DELETES the ~57 hand-rolled color-mix recipes + the 3 forbidden !important sites + the four duplicate spectrumColor copies + the STATIC.rainbow twin + the 118-line parser onto ONE accent-tone recipe over the value.js OKLCH icon ramp (sampleColorRamp shipped at 0.13.0, dissolving the mixColorsN interim); M.W8 DELETES the four grid-template-columns overrides + the mobile-tab state machine + the underline prop onto the Configurator asideSide=left chassis + the glass pill default. Net code DECREASES at nearly every site. M.W9 collapses the dual rAF clocks + six hand-rolled loops onto ONE useFourierPlayhead and extends the convergence-reveal signature into the empty/idle/error states \u2014 the brand motion was invisible at the exact moment of first encounter (every live capture shows an empty/error surface), which is the single biggest motion gap the live evidence exposed.\\n\\nThe load-bearing sequencing corrections the audit adds: M.W0 must re-pin keyframes 4.2->4.3 and kill the false 'light-barrel-vs-heavy-import-path' premise (one flat barrel at 4.3) before W9 authors against it, and must disambiguate the @1440 lg:hidden leak with vue-tsc 3 + a built-CSS smoke before W8 reasons about layout. The four new invariants (glass-fidelity/surface-ledger, radius-&-focus single-source, one-source-colour-&-tonal-accent, one-motion-clock-&-signature-everywhere) freeze the gestalt so the next major bump cannot silently regress it \u2014 paired with a build-time staleness lint on retired tier-name strings (the mechanism by which .cartoon-card and glass-elevated silently rendered zero glass)."
+}

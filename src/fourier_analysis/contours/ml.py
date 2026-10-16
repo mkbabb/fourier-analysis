@@ -1,12 +1,17 @@
-"""Salient object detection (U2-Net-lite) and edge detection (PiDiNet) via ONNX."""
+"""Subject saliency (a U2-Net + BiRefNet-lite ensemble) via ONNX, the
+sha-pinned model store every contour model shares (``model_dir``), and the one
+way every contour model's ONNX session is opened (``_open_session``)."""
 
 from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import threading
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,106 +23,237 @@ from fourier_analysis.contours.models import ContourConfig
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# U2-Net-lite (saliency / subject isolation)
+# Subject saliency models
 # ---------------------------------------------------------------------------
 
-_MODEL_URL = (
-    "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx"
-)
-_MODEL_SHA256 = "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8"
-_MODEL_INPUT_SIZE = 320
+_IMAGENET_MEAN = (0.485, 0.456, 0.406)
+_IMAGENET_STD = (0.229, 0.224, 0.225)
 
-_CACHE_DIR = Path.home() / ".cache" / "fourier-analysis" / "models"
+MODEL_DIR_ENV = "FOURIER_MODEL_DIR"
+"""The environment variable naming the directory the pinned model weights live
+in.  The production image bakes every model there at build time (the
+model layer of ``api/Dockerfile``'s production stage), so a read-only container never
+writes; unset, the weights are fetched on first use into the user cache."""
+
+
+def model_dir() -> Path:
+    """Where the pinned model weights are read from (and, if missing, written
+    to): ``$FOURIER_MODEL_DIR``, else ``~/.cache/fourier-analysis/models``."""
+    configured = os.environ.get(MODEL_DIR_ENV)
+    if configured:
+        return Path(configured)
+    return Path.home() / ".cache" / "fourier-analysis" / "models"
+
+
+@dataclass(frozen=True)
+class SubjectModelSpec:
+    """A sha-pinned ONNX subject model and the preprocessing it was trained with.
+
+    ``_predict_probability_map`` applies exactly this spec: RGB scaled by its
+    maximum, ImageNet mean/std normalisation, resampled with ``resample`` to a
+    square ``input_size``; the primary output passed through ``activation``
+    and min-max rescaled to [0, 1].
+    """
+
+    name: str
+    url: str
+    sha256: str
+    input_size: int
+    mean: tuple[float, float, float] = _IMAGENET_MEAN
+    std: tuple[float, float, float] = _IMAGENET_STD
+    resample: Image.Resampling = Image.Resampling.LANCZOS
+    activation: Literal["none", "sigmoid"] = "none"
+    suffix: str = ".onnx"
+
+    @property
+    def path(self) -> Path:
+        return model_dir() / f"{self.name}{self.suffix}"
+
+
+U2NET = SubjectModelSpec(
+    name="u2net",
+    url="https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx",
+    sha256="8d10d2f3bb75ae3b6d527c77944fc5e7dcd94b29809d47a739a7a728a912b491",
+    input_size=320,
+)
+
+BIREFNET_LITE = SubjectModelSpec(
+    name="birefnet-lite-512",
+    url=(
+        "https://github.com/mkbabb/fourier-analysis/releases/download/models-2026-10/"
+        "birefnet-lite-512.onnx"
+    ),
+    sha256="6dd4c52c5acbf6264ace555acc4b61342c3fa0ed3e13f5a80935b74ae6241793",
+    input_size=512,
+    activation="sigmoid",
+)
+"""BiRefNet-lite (Swin-T), our own export at a bounded input.
+
+Every published BiRefNet-lite ONNX is static at 1024x1024, where one inference
+peaks at about 5.5 GB: past the API's ``memory: 2G``.  This one is exported by
+``scripts/export-birefnet-lite.py`` from the official weights
+(``ZhengPeng7/BiRefNet_lite`` at revision ``aa62cd87``, MIT;
+``model.safetensors`` sha256 ``4417d897...d0815``) and published as a release
+asset of this repository (F.REL ``.mem2``, COHESION §0ey)."""
+
+SUBJECT_MODELS: tuple[SubjectModelSpec, ...] = (U2NET, BIREFNET_LITE)
+"""The subject ensemble: the saliency map is the mean of these models' maps."""
 
 _session_lock = threading.Lock()
-_session = None
+_sessions: dict[str, Any] = {}
 
 
-def _model_path() -> Path:
-    return _CACHE_DIR / "u2netp.onnx"
-
-
-def ensure_model_downloaded() -> Path:
-    """Download the U2-Net-lite ONNX weights if not already cached.
-
-    Returns the path to the cached model file.
-    """
-    path = _model_path()
-    if path.exists():
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        if digest == _MODEL_SHA256:
-            return path
+def _download(spec: SubjectModelSpec) -> Path:
+    path = spec.path
+    if path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == spec.sha256:
+        return path
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    urllib.request.urlretrieve(_MODEL_URL, tmp)  # noqa: S310
+    urllib.request.urlretrieve(spec.url, tmp)  # noqa: S310
     digest = hashlib.sha256(tmp.read_bytes()).hexdigest()
-    if digest != _MODEL_SHA256:
+    if digest != spec.sha256:
         tmp.unlink(missing_ok=True)
         raise RuntimeError(
-            f"SHA-256 mismatch for u2netp.onnx: expected {_MODEL_SHA256}, got {digest}"
+            f"SHA-256 mismatch for {spec.path.name}: expected {spec.sha256}, got {digest}"
         )
     tmp.rename(path)
     return path
 
 
-def _get_session():
-    """Lazy singleton ONNX inference session."""
-    global _session
-    if _session is not None:
-        return _session
-    with _session_lock:
-        if _session is not None:
-            return _session
-        try:
-            import onnxruntime as ort
-        except ImportError as exc:
-            raise ImportError(
-                "onnxruntime is required for ML contour extraction. "
-                "Install with: pip install onnxruntime"
-            ) from exc
+def ensure_model_downloaded() -> list[Path]:
+    """Download every pinned contour model's weights if not already cached:
+    the subject ensemble, the face detector and parser, the person segmenter
+    and the line-drawing generator.  Returns the cached files' paths."""
+    from fourier_analysis.contours.lines import LINE_MODEL
+    from fourier_analysis.contours.parts import FACE_DETECTOR, FACE_PARSER
+    from fourier_analysis.contours.person import PERSON_PARSER
 
-        model = ensure_model_downloaded()
-        _session = ort.InferenceSession(
-            str(model), providers=["CPUExecutionProvider"]
-        )
-        return _session
+    specs = (*SUBJECT_MODELS, FACE_DETECTOR, FACE_PARSER, PERSON_PARSER, LINE_MODEL)
+    return [_download(spec) for spec in specs]
+
+
+def _session_options(ort: Any) -> Any:
+    """Every contour model's session releases a run's activations when the
+    run ends: no CPU memory arena and no memory pattern, which would otherwise
+    hold each run's peak resident for as long as the session lives (the API
+    serves under ``memory: 2G``; F.REL ``.mem``)."""
+    options = ort.SessionOptions()
+    options.enable_cpu_mem_arena = False
+    options.enable_mem_pattern = False
+    return options
+
+
+def _open_session(spec: SubjectModelSpec):
+    """A new ONNX inference session on ``spec``'s weights (``_session_options``)."""
+    try:
+        import onnxruntime as ort
+    except ImportError as exc:
+        raise ImportError(
+            "onnxruntime is required for ML contour extraction. "
+            "Install with: pip install onnxruntime"
+        ) from exc
+
+    return ort.InferenceSession(
+        str(_download(spec)), _session_options(ort), providers=["CPUExecutionProvider"]
+    )
+
+
+def _get_session(spec: SubjectModelSpec):
+    """Lazy per-model ONNX inference session, held for the life of the process."""
+    session = _sessions.get(spec.name)
+    if session is not None:
+        return session
+    with _session_lock:
+        session = _sessions.get(spec.name)
+        if session is not None:
+            return session
+        session = _open_session(spec)
+        _sessions[spec.name] = session
+        return session
+
+
+def load_subject_sessions() -> None:
+    """Fetch the subject models' weights and open every held session now
+    rather than on the first extraction (a long-lived process, such as the
+    API server or the bench, pays those loads once).  The subject models' own
+    sessions are not held: ``_predict_one``."""
+    for spec in SUBJECT_MODELS:
+        _download(spec)
+    from fourier_analysis.contours.lines import load_line_session
+    from fourier_analysis.contours.parts import load_part_sessions
+    from fourier_analysis.contours.person import load_person_session
+
+    load_part_sessions()
+    load_person_session()
+    load_line_session()
+
+
+def _source_rgb(image: LoadedImage) -> Image.Image:
+    """The colour image the models were trained on (alpha composited on white)."""
+    if image.source_path is None:
+        return Image.fromarray((image.grayscale * 255).astype(np.uint8)).convert("RGB")
+    pil = ImageOps.exif_transpose(Image.open(image.source_path))
+    if pil.mode in ("RGBA", "LA", "PA", "P"):
+        rgba = pil.convert("RGBA")
+        white = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+        pil = Image.alpha_composite(white, rgba)
+    return pil.convert("RGB")
+
+
+def model_input(spec: SubjectModelSpec, rgb: Image.Image) -> NDArray[np.float32]:
+    """The NCHW input tensor ``spec`` prescribes for an RGB image."""
+    size = spec.input_size
+    x = np.asarray(rgb.resize((size, size), spec.resample), dtype=np.float32) / 255.0
+    x = x / max(float(x.max()), 1e-6)
+    x = (x - np.asarray(spec.mean, np.float32)) / np.asarray(spec.std, np.float32)
+    return x.transpose(2, 0, 1)[np.newaxis].astype(np.float32)
+
+
+def model_output(spec: SubjectModelSpec, raw: NDArray[np.floating]) -> NDArray[np.float64]:
+    """The primary output map, activated and min-max rescaled to [0, 1]."""
+    out = np.asarray(raw, dtype=np.float64).squeeze()
+    if spec.activation == "sigmoid":
+        out = 1.0 / (1.0 + np.exp(-out))
+    lo, hi = float(out.min()), float(out.max())
+    return (out - lo) / (hi - lo) if hi - lo > 1e-9 else np.zeros_like(out)
+
+
+def _predict_one(spec: SubjectModelSpec, rgb: Image.Image, shape: tuple[int, int]) -> NDArray[np.float64]:
+    """One subject model's map, its session opened for this run and released
+    after it.  The ensemble's members are the pipeline's heaviest weights and
+    each runs once per extraction; held open beside the line model's run they
+    put a default extraction past the 1.6 GB it is allowed under the API's
+    ``memory: 2G`` (F.REL ``.mem``, COHESION §0ew: the members run in turn,
+    each session released)."""
+    session = _open_session(spec)
+    x = model_input(spec, rgb)
+    raw = session.run(None, {session.get_inputs()[0].name: x})[0]
+    del session
+    prob = model_output(spec, raw)
+    h, w = shape
+    resized = Image.fromarray(prob.astype(np.float32), mode="F").resize(
+        (w, h), Image.Resampling.BILINEAR
+    )
+    return np.clip(np.asarray(resized, dtype=np.float64), 0.0, 1.0)
+
+
+def subject_maps(image: LoadedImage) -> list[NDArray[np.float64]]:
+    """Each subject model's [0, 1] probability map at the input resolution."""
+    rgb = _source_rgb(image)
+    shape = image.grayscale.shape
+    return [_predict_one(spec, rgb, shape) for spec in SUBJECT_MODELS]
 
 
 def _predict_probability_map(image: LoadedImage) -> NDArray[np.float64]:
-    """Run U2-Net-lite and return a [0, 1] probability map at the input resolution."""
-    session = _get_session()
-    h, w = image.grayscale.shape
-
-    # Load original RGB from source path — U²-Net was trained on color images.
-    if image.source_path is not None:
-        pil = ImageOps.exif_transpose(Image.open(image.source_path)).convert("RGB")
-    else:
-        # Fallback: grayscale → 3-channel (already transposed by load_image_inputs)
-        pil = Image.fromarray((image.grayscale * 255).astype(np.uint8)).convert("RGB")
-
-    pil = pil.resize((_MODEL_INPUT_SIZE, _MODEL_INPUT_SIZE), Image.Resampling.BILINEAR)
-    blob = np.array(pil, dtype=np.float32) / 255.0
-    # HWC -> NCHW
-    blob = blob.transpose(2, 0, 1)[np.newaxis, ...]
-
-    input_name = session.get_inputs()[0].name
-    outputs = session.run(None, {input_name: blob})
-    # First output is the primary saliency map: (1, 1, 320, 320).
-    # U²-Net outputs are already sigmoided — do NOT apply sigmoid again.
-    prob = outputs[0].squeeze().astype(np.float64)
-    prob = np.clip(prob, 0.0, 1.0)
-
-    # Resize back to original (post-config-resize) resolution.
-    prob_pil = Image.fromarray((prob * 255).astype(np.uint8))
-    prob_pil = prob_pil.resize((w, h), Image.Resampling.BILINEAR)
-    return np.array(prob_pil, dtype=np.float64) / 255.0
+    """The subject ensemble's [0, 1] probability map: the models' mean."""
+    return np.mean(subject_maps(image), axis=0)
 
 
 def ml_masks(
     image: LoadedImage,
     config: ContourConfig,
 ) -> tuple[NDArray[np.bool_], ...]:
-    """Salient object masks via U2-Net-lite.
+    """Salient object masks via the subject ensemble.
 
     Generates nested iso-probability contours at multiple thresholds
     to capture both the overall silhouette and interior detail.
@@ -151,111 +287,3 @@ def ml_masks(
         prev_count = count
 
     return tuple(masks) if masks else (prob >= config.ml.threshold,)
-
-
-# ---------------------------------------------------------------------------
-# PiDiNet-tiny (learned edge detection)
-# ---------------------------------------------------------------------------
-
-_PIDINET_MODEL_URL = (
-    "https://github.com/mkbabb/fourier-analysis/releases/download/v0.1.0/pidinet-tiny.onnx"
-)
-_PIDINET_SHA256 = ""  # Populated after first export; empty disables hash check.
-_PIDINET_INPUT_SIZE = 512
-
-_pidinet_session_lock = threading.Lock()
-_pidinet_session = None
-
-
-def _pidinet_model_path() -> Path:
-    return _CACHE_DIR / "pidinet-tiny.onnx"
-
-
-def ensure_pidinet_downloaded() -> Path:
-    """Download the PiDiNet-tiny ONNX weights if not already cached."""
-    path = _pidinet_model_path()
-    if path.exists():
-        if _PIDINET_SHA256:
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            if digest == _PIDINET_SHA256:
-                return path
-        else:
-            return path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    urllib.request.urlretrieve(_PIDINET_MODEL_URL, tmp)  # noqa: S310
-    if _PIDINET_SHA256:
-        digest = hashlib.sha256(tmp.read_bytes()).hexdigest()
-        if digest != _PIDINET_SHA256:
-            tmp.unlink(missing_ok=True)
-            raise RuntimeError(
-                f"SHA-256 mismatch for pidinet-tiny.onnx: "
-                f"expected {_PIDINET_SHA256}, got {digest}"
-            )
-    tmp.rename(path)
-    return path
-
-
-def pidinet_available() -> bool:
-    """Check whether the PiDiNet ONNX model is cached (does not download)."""
-    return _pidinet_model_path().exists()
-
-
-def _get_pidinet_session():
-    """Lazy singleton ONNX inference session for PiDiNet."""
-    global _pidinet_session
-    if _pidinet_session is not None:
-        return _pidinet_session
-    with _pidinet_session_lock:
-        if _pidinet_session is not None:
-            return _pidinet_session
-        try:
-            import onnxruntime as ort
-        except ImportError:
-            return None
-
-        model_path = _pidinet_model_path()
-        if not model_path.exists():
-            return None
-
-        _pidinet_session = ort.InferenceSession(
-            str(model_path), providers=["CPUExecutionProvider"]
-        )
-        return _pidinet_session
-
-
-def predict_edge_map(image: LoadedImage) -> NDArray[np.float64] | None:
-    """Run PiDiNet-tiny and return a [0,1] edge probability map at input resolution.
-
-    Returns None if the model is not available or inference fails.
-    """
-    session = _get_pidinet_session()
-    if session is None:
-        return None
-
-    try:
-        h, w = image.grayscale.shape
-
-        if image.source_path is not None:
-            pil = ImageOps.exif_transpose(Image.open(image.source_path)).convert("RGB")
-        else:
-            pil = Image.fromarray(
-                (image.grayscale * 255).astype(np.uint8)
-            ).convert("RGB")
-
-        pil = pil.resize((_PIDINET_INPUT_SIZE, _PIDINET_INPUT_SIZE), Image.Resampling.BILINEAR)
-        blob = np.array(pil, dtype=np.float32) / 255.0
-        blob = blob.transpose(2, 0, 1)[np.newaxis, ...]
-
-        input_name = session.get_inputs()[0].name
-        outputs = session.run(None, {input_name: blob})
-        edge_map = outputs[0].squeeze().astype(np.float64)
-        edge_map = np.clip(edge_map, 0.0, 1.0)
-
-        # Resize back to input resolution.
-        edge_pil = Image.fromarray((edge_map * 255).astype(np.uint8))
-        edge_pil = edge_pil.resize((w, h), Image.Resampling.BILINEAR)
-        return np.array(edge_pil, dtype=np.float64) / 255.0
-    except Exception:
-        logger.debug("PiDiNet inference failed, falling back to Canny", exc_info=True)
-        return None

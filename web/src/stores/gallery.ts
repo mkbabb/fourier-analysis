@@ -1,11 +1,15 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
-import type { GalleryTier, AdminStats, WorkspaceDraft } from "@/lib/types";
+import { h, ref, toRaw } from "vue";
+import type { GalleryTier, GalleryTierFilter, GallerySort, AdminStats, WorkspaceDraft } from "@/lib/types";
 import type { Visibility, Visualization } from "@/lib/api";
 import * as api from "@/lib/api";
 import { processInChunks } from "@/lib/scheduler";
 import { useAuthStore } from "@/stores/auth";
-import { useToast } from "@/composables/useToast";
+import { ToastAction, toast } from "@mkbabb/glass-ui/toast";
+import router from "@/router";
+import { errorToast } from "@/lib/toast-policy";
+import { saveDraft } from "@/lib/draftStorage";
+import { problemDetail, problemMessage } from "@/lib/api-problem";
 
 // B.W4 — the gallery store re-points onto the converged `visualization`
 // entity (CRUD-CONTRACT §1). Identity is the 4-word `slug`; the public gallery
@@ -23,27 +27,67 @@ function entrySlug(e: Visualization): string {
     return e.slug;
 }
 
+/** UIA-F-248 ⊕ UIA-F-183: a published piece's toast offers the piece (glass `ToastAction`; its `altText` is the label). */
+function viewAction(to: string) {
+    return h(ToastAction, { altText: "View", onClick: () => router.push(to) }, () => "View");
+}
+
 export const useGalleryStore = defineStore("gallery", () => {
-    const { toast } = useToast();
 
     // State
     const entries = ref<Visualization[]>([]);
     const loading = ref(false);
-    const sort = ref<"newest" | "views" | "likes">("newest");
-    const tierFilter = ref<"all" | "featured" | "saved" | "normal">("all");
+    const sort = ref<GallerySort>("newest");
+    const tierFilter = ref<GalleryTierFilter>("all");
     // The 3-state visibility filter (CRUD-CONTRACT §4). Default `public` is the
     // anonymous gallery view; `me` lists the caller's own rows in all states.
     const visibilityFilter = ref<Visibility | "public" | "me">("public");
     const searchQuery = ref("");
+    /** One `active_bases` key (`lib/basis.ts` `BasisKey`), or "" for any. */
     const basisFilter = ref("");
+    /**
+     * UIA-F-46: the slugs the session user likes, as the server last answered
+     * (`PUT`/`GET /api/visualizations/{slug}/like`). The heart's `aria-pressed`
+     * reads this one set on the card and in the modal.
+     */
+    const likedSlugs = ref(new Set<string>());
     const adminMode = ref(false);
     const adminStats = ref<AdminStats | null>(null);
     const adminStatsLoading = ref(false);
+    /**
+     * X·F F.W4 `.d` — GAB-3: the store stops swallowing.
+     *
+     * `refreshAdminStats`'s `catch { // ignore }` was the only silent action in
+     * the admin store (`activateAdmin` toasts). Loading, failed and
+     * loaded-but-never-arrived therefore rendered identically as NOTHING, and
+     * the failure image was an amber box reading "Admin Mode" with the whole
+     * downstream admin surface still enabled against a dead credential.
+     *
+     * ⊘ The leaf arm is INLINE, not a toast (the spine's own ⊘ and GAB-3's
+     * wording): the toast adapter is F.W1's and `.f`'s.
+     */
+    const adminStatsError = ref<string | null>(null);
+
+    /**
+     * GAB-20: the stats request shares an abort key with ITSELF. `adminFetch`
+     * keys the registry on the path and `/api/admin/stats` is constant, so a
+     * second refresh aborts the first — and the loser's `finally` cleared the
+     * `adminStatsLoading` flag the WINNER owned, so `loading` read false
+     * mid-flight and the grid remounted on stale data. GAB-21: `deactivateAdmin`
+     * neither aborted nor guarded an in-flight stats request, so an
+     * already-dispatched `getAdminStats` re-seeded `adminStats` AFTER an explicit
+     * logout — the Logout control sits outside the gate that would have hidden
+     * the result. One generation token answers both.
+     */
+    const ADMIN_STATS_KEY = "/api/admin/stats";
+    let statsRun = 0;
 
     // Cursor pagination state — the only paginated path through the gallery.
     const nextCursor = ref<string | null>(null);
     const hasMore = ref(true);
     const loadingMore = ref(false);
+    /** X-DS pass 2 · P2-18: the first page failed; the view says so, not "empty". */
+    const loadError = ref(false);
 
     // ETag cache keyed by visualization slug — captured on load, replayed as
     // `If-Match` on the next PATCH/DELETE (CRUD-CONTRACT §0 SOTA-2).
@@ -55,18 +99,38 @@ export const useGalleryStore = defineStore("gallery", () => {
         return visibilityFilter.value === "me" ? "me" : undefined;
     }
 
+    /**
+     * X.F.W14U.gallery — UIA-F-39 (BROKEN, consumer half): the query every
+     * listing sends. Search, tier and basis used to stop at the store — the
+     * watchers refetched with `sort` and `owner` alone, so no control narrowed
+     * anything. The first page and every later page send the same filters.
+     */
+    function listQuery() {
+        return {
+            limit: 20,
+            sort: sort.value,
+            owner: ownerParam(),
+            q: searchQuery.value.trim() || undefined,
+            tier: tierFilter.value,
+            basis: basisFilter.value || undefined,
+        };
+    }
+
+    /** The newest listing wins: an older response never lands after it. */
+    let listRun = 0;
+
     // Actions
 
     async function fetchNextPage() {
         if (!hasMore.value || loadingMore.value) return;
         loadingMore.value = true;
         try {
+            const run = listRun;
             const result = await api.listVisualizations({
-                limit: 20,
-                sort: sort.value,
+                ...listQuery(),
                 cursor: nextCursor.value || undefined,
-                owner: ownerParam(),
             });
+            if (run !== listRun) return;
             // J.W3 — accumulate the page in main-thread-yielding chunks so a
             // long infinite-scroll never monopolises the thread (the gallery is
             // the named consumer of the scheduler.yield floor; inv-15/inv-29).
@@ -75,7 +139,7 @@ export const useGalleryStore = defineStore("gallery", () => {
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
+            if (!api.isAbortError(e)) errorToast({ title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
         } finally {
             loadingMore.value = false;
         }
@@ -86,19 +150,20 @@ export const useGalleryStore = defineStore("gallery", () => {
         nextCursor.value = null;
         hasMore.value = true;
         loading.value = true;
+        loadError.value = false;
+        const run = ++listRun;
         try {
-            const result = await api.listVisualizations({
-                limit: 20,
-                sort: sort.value,
-                owner: ownerParam(),
-            });
+            const result = await api.listVisualizations(listQuery());
+            if (run !== listRun) return;
             entries.value = result.items.filter((v) => v.deleted_at == null);
             nextCursor.value = result.next_cursor;
             hasMore.value = result.has_more;
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(e.message ?? "Failed to load gallery", "error");
+            if (api.isAbortError(e)) return;
+            if (run === listRun) loadError.value = true;
+            errorToast({ title: "The gallery could not be loaded — try again.", description: problemDetail(e) });
         } finally {
-            loading.value = false;
+            if (run === listRun) loading.value = false;
         }
     }
 
@@ -107,55 +172,119 @@ export const useGalleryStore = defineStore("gallery", () => {
             await api.verifyAdmin(token);
             useAuthStore().adminLogin(token);
             adminMode.value = true;
-            toast("Admin mode activated", "success");
+            toast({ title: "Admin mode activated", tone: "success" });
             await refreshAdminStats();
         } catch (e: any) {
-            toast(e.message ?? "Invalid admin token", "error");
+            errorToast({ title: "That admin token was not accepted — check it and try again.", description: problemDetail(e) });
         }
     }
 
     function deactivateAdmin() {
+        // GAB-21: cancel the in-flight stats read before the credential goes, or
+        // it lands after logout and re-seeds the panel it was logging out of.
+        // The house cure sat one module away, exported and called at four
+        // workspace transition sites and zero admin ones.
+        api.abortInflight([ADMIN_STATS_KEY]);
+        statsRun++;
         useAuthStore().adminLogout();
         adminMode.value = false;
         adminStats.value = null;
+        adminStatsError.value = null;
+        adminStatsLoading.value = false;
     }
 
     async function refreshAdminStats() {
         const token = useAuthStore().getAdminToken();
-        if (!token) return;
-        adminStatsLoading.value = true;
-        try {
-            adminStats.value = await api.getAdminStats(token);
-        } catch {
-            // ignore
-        } finally {
-            adminStatsLoading.value = false;
+        if (!token) {
+            adminStatsError.value = "Admin session has expired — re-enter admin mode.";
+            return;
         }
+        const ticket = ++statsRun;
+        const current = () => ticket === statsRun;
+        adminStatsLoading.value = true;
+        adminStatsError.value = null;
+        try {
+            const stats = await api.getAdminStats(token);
+            if (!current()) return;
+            adminStats.value = stats;
+        } catch (e: unknown) {
+            if (api.isAbortError(e) || !current()) return;
+            adminStatsError.value = problemMessage(e, "Failed to load admin statistics");
+        } finally {
+            if (current()) adminStatsLoading.value = false;
+        }
+    }
+
+    /**
+     * X·F F.W4 `.d` — the SHARED INVALIDATION CHANNEL (GCM-24 · FR-GFC-1 ·
+     * FR-AFP-11 (+FR-AFP-57) · FR-GFC-20).
+     *
+     * Two opposite defects meet here. `setTier`/`deleteEntry` DISCARDED the fresh
+     * entity the operation already returns and paid `resetAndFetch()` for it —
+     * destroying accumulated infinite-scroll state, the featured strip, the scroll
+     * offset and focus on EVERY tier toggle (and, through the public search and
+     * filter watchers, on every anonymous visitor's search pause, which refetched
+     * a provably identical page). Meanwhile `AdminFlaggedPanel` duplicated these
+     * two methods verbatim MINUS `resetAndFetch`, so the gallery kept the deleted
+     * row and the stale tier after moderation. One channel answers both: the
+     * in-place patch the store's OWN `recordView`/`restore` idiom already used,
+     * exposed so every surface that mutates an entry can invalidate it.
+     */
+    function patchEntry(slug: string, patch: Partial<Visualization>) {
+        const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
+        if (idx === -1) return;
+        entries.value[idx] = { ...entries.value[idx], ...patch };
+    }
+
+    function removeEntry(slug: string) {
+        const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
+        if (idx !== -1) entries.value.splice(idx, 1);
     }
 
     // `slug` is the converged visualization identity (the value the gallery
     // cards emit from their `:key`).
-    async function setTier(slug: string, tier: GalleryTier) {
+    //
+    // X.F.W14V.au4 — A2-FO-L1-10: the ONE tier mutation. The flagged queue had
+    // forked it (its own PUT, patch and toast) because this action used to
+    // refetch; it patches in place now, so every surface calls it and reads
+    // the settled tier back from its answer (`null` when the act failed).
+    async function setTier(slug: string, tier: GalleryTier): Promise<GalleryTier | null> {
         const token = useAuthStore().getAdminToken();
-        if (!token) return;
+        if (!token) {
+            errorToast({ title: "Admin session has expired — re-enter admin mode." });
+            return null;
+        }
         try {
-            await api.setVisualizationTier(token, slug, tier);
-            await resetAndFetch();
-            toast(`Tier set to ${tier}`, "success");
-        } catch (e: any) {
-            toast(e.message ?? "Failed to set tier", "error");
+            // `admin.py` re-reads and returns `_public_doc(updated)` with a fresh
+            // ETag, and `api.ts` types it `Promise<Visualization>` — the correct
+            // effect was on the wire, unclaimed, at zero network cost.
+            const updated = await api.setVisualizationTier(token, slug, tier);
+            const settled = updated && typeof updated === "object" && "slug" in updated ? updated : null;
+            patchEntry(slug, settled ?? { tier });
+            toast({ title: `Tier set to ${tier}`, tone: "success" });
+            return settled?.tier ?? tier;
+        } catch (e: unknown) {
+            if (!api.isAbortError(e)) {
+                errorToast({ title: "Failed to set tier", description: problemDetail(e) });
+            }
+            return null;
         }
     }
 
     async function deleteEntry(slug: string) {
         const token = useAuthStore().getAdminToken();
-        if (!token) return;
+        if (!token) {
+            errorToast({ title: "Admin session has expired — re-enter admin mode." });
+            return;
+        }
         try {
             await api.adminDeleteVisualization(token, slug);
-            await resetAndFetch();
-            toast("Entry deleted", "success");
-        } catch (e: any) {
-            toast(e.message ?? "Failed to delete entry", "error");
+            removeEntry(slug);
+            toast({ title: "Entry deleted", tone: "success" });
+        } catch (e: unknown) {
+            if (!api.isAbortError(e)) {
+                errorToast({ title: "Failed to delete entry", description: problemDetail(e) });
+            }
         }
     }
 
@@ -169,9 +298,9 @@ export const useGalleryStore = defineStore("gallery", () => {
             etags.delete(slug);
             const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
             if (idx !== -1) entries.value.splice(idx, 1);
-            toast("Deleted", "success");
+            toast({ title: "Deleted", tone: "success" });
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(e.message ?? "Failed to delete", "error");
+            if (!api.isAbortError(e)) errorToast({ title: "Failed to delete", description: problemDetail(e) });
         }
     }
 
@@ -180,22 +309,51 @@ export const useGalleryStore = defineStore("gallery", () => {
             const { data, etag } = await api.restoreVisualization(slug);
             if (etag) etags.set(slug, etag);
             if (data.visibility === "public") entries.value.unshift(data);
-            toast("Restored", "success");
+            toast({ title: "Restored", tone: "success" });
         } catch (e: any) {
-            if (!api.isAbortError(e)) toast(e.message ?? "Failed to restore", "error");
+            if (!api.isAbortError(e)) errorToast({ title: "Failed to restore", description: problemDetail(e) });
         }
     }
 
-    async function like(slug: string): Promise<{ liked: boolean; likes: number } | null> {
-        // Likes ride the read-side view counter on the converged entity; the
-        // converged surface exposes likes as a derived counter (no dedicated
-        // toggle endpoint under the CRUD shape — optimistic local bump).
-        const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
-        if (idx === -1) return null;
-        const liked = true;
-        const likes = (entries.value[idx].likes ?? 0) + 1;
-        entries.value[idx] = { ...entries.value[idx], likes };
-        return { liked, likes };
+    function markLiked(slug: string, liked: boolean) {
+        const next = new Set(likedSlugs.value);
+        if (liked) next.add(slug);
+        else next.delete(slug);
+        likedSlugs.value = next;
+    }
+
+    function applyLike(result: api.VisualizationLike) {
+        markLiked(result.slug, result.liked);
+        const idx = entries.value.findIndex((e) => entrySlug(e) === result.slug);
+        if (idx !== -1) entries.value[idx] = { ...entries.value[idx], likes: result.likes };
+    }
+
+    /**
+     * X.F.W14U.gallery — UIA-F-46 (BROKEN, consumer half): Like is a persisted
+     * TOGGLE. The press asks for the opposite of the state the server last
+     * answered, through `PUT /api/visualizations/{slug}/like` (`.srv`), and the
+     * heart and the count take the server's answer — never a local +1. A like
+     * needs a session user, so the first like mints the anonymous session
+     * (`ensureUser`, as publishing does).
+     */
+    async function toggleLike(slug: string) {
+        try {
+            await useAuthStore().ensureUser();
+            applyLike(await api.setVisualizationLike(slug, !likedSlugs.value.has(slug)));
+        } catch (e: any) {
+            if (!api.isAbortError(e)) errorToast({ title: "Could not save the like", description: problemDetail(e) });
+        }
+    }
+
+    /** Seed one visualization's like state after a reload (logged in only). */
+    async function readLike(slug: string) {
+        if (!useAuthStore().isLoggedIn) return;
+        try {
+            applyLike(await api.getVisualizationLike(slug));
+        } catch {
+            // The heart stays unpressed: reading the state is advisory, and a
+            // failed read leaves the press itself (the PUT) authoritative.
+        }
     }
 
     async function recordView(slug: string) {
@@ -216,29 +374,52 @@ export const useGalleryStore = defineStore("gallery", () => {
     // `imageSlug` positional — unused under the converged identity (the slug
     // alone addresses the entity), kept so the pre-existing call site need not
     // change.
-    async function publish(slug: string, _imageSlug?: string) {
+    //
+    // X.F.W14V.u3 — UIA-F-183: the toast names the act (or the piece's title,
+    // when it has one), never the raw four-word slug; View is where the piece
+    // lives. The outcome is returned so the caller's control can show the
+    // published state instead of offering the same publish again.
+    async function publish(slug: string, _imageSlug?: string): Promise<boolean> {
         // A previously-created draft transitions to `public` (the visibility
         // lift, §4). PATCH is ETag-guarded (§0 SOTA-2).
         try {
             const etag = etags.get(slug) ?? (await api.getVisualization(slug)).etag;
-            const { etag: nextETag } = await api.updateVisualization(
+            const { data, etag: nextETag } = await api.updateVisualization(
                 slug,
                 { visibility: "public" },
                 etag,
             );
             if (nextETag) etags.set(slug, nextETag);
-            toast("Published!", "success", { slug });
-            await resetAndFetch();
+            const title = data.title?.trim();
+            toast({
+                title: title ? `Published “${title}”` : "Published to the gallery",
+                tone: "success",
+                action: viewAction(`/v/${slug}`),
+            });
         } catch (e: any) {
-            toast(e.message ?? "Failed to publish", "error");
+            errorToast({ title: "Publish failed", description: problemDetail(e) });
+            return false;
         }
+        await resetAndFetch();
+        return true;
     }
 
-    async function publishDraft(draft: WorkspaceDraft) {
-        if (!draft.contour) throw new Error("Draft has no contour");
+    /**
+     * X.F.W14U.gallery — UIA-F-248: the toast names the PIECE that was
+     * published (the new visualization's slug), not the session user it was
+     * published as; and the refetch that follows is outside the publish's
+     * error channel, so a failed refresh reads as a failed load (its own
+     * toast), never as "Publish failed" after "Published!".
+     * UIA-F-190: a draft without a contour is not publishable, and the Drafts
+     * card says so before the press; this guard is the contract's floor.
+     */
+    async function publishDraft(draft: WorkspaceDraft): Promise<boolean> {
+        if (!draft.contour) {
+            errorToast({ title: "This draft has no contour to publish yet" });
+            return false;
+        }
         try {
-            const auth = useAuthStore();
-            const slug = await auth.ensureUser();
+            await useAuthStore().ensureUser();
             // Create the visualization directly at `public` visibility — the
             // converged entity collapses the snapshot→gallery two-step into a
             // single POST (CRUD-CONTRACT §1). `image_slug` / `contour_hash`
@@ -255,11 +436,23 @@ export const useGalleryStore = defineStore("gallery", () => {
                 animation_settings: draft.animationSettings,
             });
             if (etag) etags.set(data.slug, etag);
-            toast("Published!", "success", { slug });
-            await resetAndFetch();
+            // X.F.W14.u — UIA-F-47: the draft records the entity it became, so
+            // the Drafts list can drop it. `savedSnapshots` was written `[]` on
+            // every save and never filled, so a published draft stayed listed
+            // with Publish enabled and could be published again and again.
+            const raw = toRaw(draft);
+            await saveDraft({ ...raw, savedSnapshots: [...(raw.savedSnapshots ?? []), data.slug] });
+            toast({
+                title: `Published ${data.title?.trim() || data.slug}`,
+                tone: "success",
+                action: viewAction(`/v/${data.slug}`),
+            });
         } catch (e: any) {
-            toast(e.message ?? "Publish failed", "error");
+            errorToast({ title: "Publish failed", description: problemDetail(e) });
+            return false;
         }
+        await resetAndFetch();
+        return true;
     }
 
     return {
@@ -273,19 +466,25 @@ export const useGalleryStore = defineStore("gallery", () => {
         adminMode,
         adminStats,
         adminStatsLoading,
+        adminStatsError,
         nextCursor,
         hasMore,
         loadingMore,
+        loadError,
         fetchNextPage,
         resetAndFetch,
         activateAdmin,
         deactivateAdmin,
         refreshAdminStats,
+        patchEntry,
+        removeEntry,
         setTier,
         deleteEntry,
         softDelete,
         restore,
-        like,
+        likedSlugs,
+        toggleLike,
+        readLike,
         recordView,
         publish,
         publishDraft,

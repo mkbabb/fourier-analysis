@@ -1,19 +1,38 @@
 /**
  * Shared easing catalogs and utility functions.
  *
- * Two catalogs:
- *  - EASING_PRESETS: comprehensive list used by the morph subsystem (in/out/in-out variants)
- *  - ANIMATION_EASINGS: compact subset used by the animation store (in-out only)
+ * ONE catalogue (X.F.W14V.r3, F-81 i):
+ *  - EASING_PRESETS: every catalogue name (in/out/in-out variants), used by the morph subsystem
+ *  - ANIMATION_EASINGS: the animation pane's six choices — catalogue names, catalogue functions
+ *
+ * ESC-4 (COHESION §0o, 2026-09-18) — DRIFT REFUSED. value.js 4.0.0 deletes
+ * `timingFunctions` and ships no `"."` export, so the catalogue no longer
+ * resolves 22 keys through one producer map. The eight keys the producer still
+ * publishes analytically are imported from `@mkbabb/value.js/easing`; the other
+ * fourteen are DEFINED HERE, each reproducing the pre-bump 0.13.0 function
+ * EXACTLY (MPC-5's sampler asserts Δ = 0 at every sample point, all 22 keys).
+ *
+ * Six of the fourteen — `ease-in`/`ease-out`/`ease-in-out` and the three `back`
+ * arms — were CSS cubic-bézier curves at 0.13.0 too, never analytic closed
+ * forms, so their zero-drift definition is the bézier ITSELF, evaluated by the
+ * solver this file now owns (`cssCubicBezier` below, the 0.13.0 algorithm to
+ * the iteration count and epsilon). That is not the "CubicBezier approximation"
+ * ESC-4 refuses: substituting an analytic curve with a bézier fit is the drift;
+ * re-deriving a bézier key's own bézier is the identity. Routing those six
+ * through the producer's 4.0.0 `CubicBezier` instead measures Δ ≈ 1.4e-6 — a
+ * different solver, therefore a different function, therefore refused.
  */
 
-import { timingFunctions } from "@mkbabb/value.js";
 import {
-    easeInOutSine,
-    easeInOutCubic,
+    linear,
     easeInOutQuad,
+    easeOutCubic,
+    easeInOutCubic,
+    easeInOutSine,
+    easeOutExpo,
     easeInOutExpo,
     easeInOutCirc,
-} from "@mkbabb/value.js";
+} from "@mkbabb/value.js/easing";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -23,6 +42,86 @@ export interface EasingPreset {
     label: string;
     fn: EasingFn;
 }
+
+// ── The bézier seat (ESC-4): the corpus's own closed form ────────────
+
+/** Linear interpolation — the de Casteljau step. */
+const lerp = (start: number, end: number, t: number): number => (1 - t) * start + t * end;
+
+/** de Casteljau evaluation of a 1-D Bézier control polygon. */
+function deCasteljau(t: number, points: number[]): number {
+    const n = points.length - 1;
+    const b = [...points];
+    for (let i = 1; i <= n; i++) {
+        for (let j = 0; j <= n - i; j++) {
+            b[j] = lerp(b[j]!, b[j + 1]!, t);
+        }
+    }
+    return b[0]!;
+}
+
+/**
+ * Solve X(t) = x for t — Newton-Raphson (8 iterations) with a 64-step
+ * bisection fallback, epsilon 1e-6.
+ */
+function solveCubicBezierX(x: number, x1: number, x2: number, epsilon = 1e-6): number {
+    let t = x;
+    for (let i = 0; i < 8; i++) {
+        const t2 = t * t;
+        const t3 = t2 * t;
+        const mt = 1 - t;
+        const mt2 = mt * mt;
+        const xt = 3 * mt2 * t * x1 + 3 * mt * t2 * x2 + t3 - x;
+        if (Math.abs(xt) < epsilon) return t;
+        const dxt = 3 * mt2 * x1 + 6 * mt * t * (x2 - x1) + 3 * t2 * (1 - x2);
+        if (Math.abs(dxt) < 1e-12) break;
+        t -= xt / dxt;
+    }
+    let lo = 0;
+    let hi = 1;
+    t = x;
+    for (let i = 0; i < 64; i++) {
+        const mt = 1 - t;
+        const xt = 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t;
+        if (Math.abs(xt - x) < epsilon) return t;
+        if (x > xt) lo = t;
+        else hi = t;
+        t = (lo + hi) / 2;
+    }
+    return t;
+}
+
+/** A CSS `cubic-bezier(x1, y1, x2, y2)` timing function. */
+const cssCubicBezier =
+    (x1: number, y1: number, x2: number, y2: number): EasingFn =>
+    (x: number) => {
+        if (x <= 0) return 0;
+        if (x >= 1) return 1;
+        const t = solveCubicBezierX(x, x1, x2);
+        return deCasteljau(t, [0, y1, y2, 1]);
+    };
+
+// ── The fourteen orphans, defined here (ESC-4) ──────────────────────
+
+/** CSS `ease-in` — cubic-bezier(0.42, 0, 1, 1). */
+const easeIn = cssCubicBezier(0.42, 0, 1, 1);
+/** CSS `ease-out` — cubic-bezier(0, 0, 0.58, 1). */
+const easeOut = cssCubicBezier(0, 0, 0.58, 1);
+/** CSS `ease-in-out` — cubic-bezier(0.42, 0, 0.58, 1). */
+const easeInOut = cssCubicBezier(0.42, 0, 0.58, 1);
+/** The `back` arms — anticipation/overshoot, bézier-authored at 0.13.0. */
+const easeInBack = cssCubicBezier(0.6, -0.28, 0.735, 0.045);
+const easeOutBack = cssCubicBezier(0.175, 0.885, 0.32, 1.275);
+const easeInOutBack = cssCubicBezier(0.68, -0.55, 0.265, 1.55);
+
+const easeInQuad: EasingFn = (t) => t * t;
+const easeOutQuad: EasingFn = (t) => -t * (t - 2);
+const easeInCubic: EasingFn = (t) => t * t * t;
+const easeInSine: EasingFn = (t) => 1 - Math.cos((t * Math.PI) / 2);
+const easeOutSine: EasingFn = (t) => Math.sin((t * Math.PI) / 2);
+const easeInExpo: EasingFn = (t) => (t === 0 ? 0 : 2 ** (10 * (t - 1)));
+const easeInCirc: EasingFn = (t) => 1 - Math.sqrt(1 - t * t);
+const easeOutCirc: EasingFn = (t) => Math.sqrt(1 - --t * t);
 
 // ── Morph easing presets (comprehensive) ────────────────────────────
 
@@ -51,11 +150,43 @@ const EASING_LABELS: Record<string, string> = {
     "ease-in-out-circ": "Ease In-Out Circ",
 };
 
-/** All available easing presets, backed by value.js timing functions. */
+/**
+ * The easing function for every catalogue key — eight from value.js 4.0.0's
+ * `./easing`, fourteen owned here. One entry per `EASING_LABELS` key; the map
+ * is exhaustive by construction, so no lookup can fall through (the deleted
+ * `timingFunctions[name] as EasingFn` cast typechecked a miss and threw on the
+ * first rAF tick).
+ */
+const EASING_FNS: Record<keyof typeof EASING_LABELS, EasingFn> = {
+    linear,
+    "ease-in": easeIn,
+    "ease-out": easeOut,
+    "ease-in-out": easeInOut,
+    "ease-in-back": easeInBack,
+    "ease-out-back": easeOutBack,
+    "ease-in-out-back": easeInOutBack,
+    "ease-in-quad": easeInQuad,
+    "ease-out-quad": easeOutQuad,
+    "ease-in-out-quad": easeInOutQuad,
+    "ease-in-cubic": easeInCubic,
+    "ease-out-cubic": easeOutCubic,
+    "ease-in-out-cubic": easeInOutCubic,
+    "ease-in-sine": easeInSine,
+    "ease-out-sine": easeOutSine,
+    "ease-in-out-sine": easeInOutSine,
+    "ease-in-expo": easeInExpo,
+    "ease-out-expo": easeOutExpo,
+    "ease-in-out-expo": easeInOutExpo,
+    "ease-in-circ": easeInCirc,
+    "ease-out-circ": easeOutCirc,
+    "ease-in-out-circ": easeInOutCirc,
+};
+
+/** All available easing presets. */
 export const EASING_PRESETS: Record<string, EasingPreset> = Object.fromEntries(
     Object.entries(EASING_LABELS).map(([name, label]) => [
         name,
-        { label, fn: timingFunctions[name as keyof typeof timingFunctions] as EasingFn },
+        { label, fn: EASING_FNS[name]! },
     ]),
 );
 
@@ -66,26 +197,112 @@ export function getEasingFn(name: string): EasingFn {
     return EASING_PRESETS[name]?.fn ?? EASING_PRESETS.linear.fn;
 }
 
-// ── Animation easing options (compact in-out subset) ────────────────
+// ── Animation easing options (the in-out arms of the ONE catalogue) ──
 
-export type AnimationEasingName = "linear" | "sine" | "quad" | "cubic" | "circ" | "expo";
+/**
+ * X.F.W14V.r3 — F-81 (i), F-W14V addendum (h) 3(i), COHESION §0eb: ONE easing
+ * catalogue. The animation pane's six choices are catalogue NAMES (the keys of
+ * `EASING_LABELS` above) and run the catalogue's own functions; the old six
+ * short keys (`sine`, `quad`, `cubic`, `circ`, `expo`) were a second catalogue.
+ * Stored visualizations were rewritten once server-side
+ * (`api/scripts/migrate_animation_easing.py`; `api/models/shared.py`
+ * `AnimationEasing` is this same union), the IndexedDB draft store discards a
+ * pre-catalogue easing at its v3 upgrade (`draftStorage.ts`), and nothing maps
+ * an old key to a new one — no alias layer.
+ */
+export type AnimationEasingName =
+    | "linear"
+    | "ease-in-out-sine"
+    | "ease-in-out-quad"
+    | "ease-in-out-cubic"
+    | "ease-in-out-circ"
+    | "ease-in-out-expo";
 
-export const ANIMATION_EASINGS: Record<AnimationEasingName, {
-    label: string;
-    fn: EasingFn;
-    description: string;
-}> = {
-    linear:  { label: "Linear",      fn: (t) => t,          description: "Constant rate" },
-    sine:    { label: "Sine",        fn: easeInOutSine,     description: "Gentle ebb and flow" },
-    quad:    { label: "Quadratic",   fn: easeInOutQuad,     description: "Smooth acceleration" },
-    cubic:   { label: "Cubic",       fn: easeInOutCubic,    description: "Pronounced ease" },
-    circ:    { label: "Circular",    fn: easeInOutCirc,     description: "Snappy midpoint" },
-    expo:    { label: "Exponential", fn: easeInOutExpo,     description: "Dramatic slow-fast-slow" },
+/** The catalogue default for animation playback. */
+export const DEFAULT_ANIMATION_EASING: AnimationEasingName = "ease-in-out-sine";
+
+const ANIMATION_EASING_COPY: Record<AnimationEasingName, { label: string; description: string }> = {
+    linear:              { label: "Linear",      description: "Constant rate" },
+    "ease-in-out-sine":  { label: "Sine",        description: "Gentle ebb and flow" },
+    "ease-in-out-quad":  { label: "Quadratic",   description: "Smooth acceleration" },
+    "ease-in-out-cubic": { label: "Cubic",       description: "Pronounced ease" },
+    "ease-in-out-circ":  { label: "Circular",    description: "Snappy midpoint" },
+    "ease-in-out-expo":  { label: "Exponential", description: "Dramatic slow-fast-slow" },
 };
 
-// ── SVG path utilities ──────────────────────────────────────────────
+export const ANIMATION_EASINGS = Object.fromEntries(
+    (Object.keys(ANIMATION_EASING_COPY) as AnimationEasingName[]).map((name) => [
+        name,
+        { ...ANIMATION_EASING_COPY[name], fn: EASING_FNS[name]! },
+    ]),
+) as Record<AnimationEasingName, { label: string; fn: EasingFn; description: string }>;
 
-/** Generate an SVG path `d` attribute by sampling an easing function (normalized 0-1 coords). */
+/** The catalog's keys, as the closed domain a restored value must land in. */
+export const ANIMATION_EASING_NAMES = Object.keys(
+    ANIMATION_EASINGS,
+) as readonly AnimationEasingName[];
+
+/** Is this an easing this app can actually run? */
+export function isAnimationEasingName(v: unknown): v is AnimationEasingName {
+    return typeof v === "string" && v in ANIMATION_EASINGS;
+}
+
+/**
+ * `AC-L-11 + M-10`'s easing half (X·F F.W4 `.f`) — the restore seam's coercion.
+ *
+ * The loader restored a persisted easing with `as.easing as EasingName`: an
+ * assertion of an OPEN string into this six-key union. A drifted or hand-edited
+ * record therefore produced an `AnimationEasingName` the catalog has no entry
+ * for, and the two consumers degraded in different directions — the store's
+ * `ANIMATION_EASINGS[easing]?.fn ?? identity` fell silently to LINEAR while the
+ * picker, matching on the same key, showed NO active chip. One assertion, two
+ * incompatible silent degradations. Coercing at the seam makes the off-catalog
+ * state unrepresentable downstream instead of merely unlikely.
+ */
+export function coerceAnimationEasingName(
+    v: unknown,
+    fallback: AnimationEasingName = DEFAULT_ANIMATION_EASING,
+): AnimationEasingName {
+    return isAnimationEasingName(v) ? v : fallback;
+}
+
+// ── SVG path utilities — ONE builder, ONE `d`-precision policy ──────
+
+/**
+ * THE ONE `d`-PRECISION POLICY — X.F.W3 `.b`, discharging `fr-EasingCurvePreview`
+ * FACET ⊕ SAMPLE and `fr-MorphPhaseConfig` MISS-2 (⊕ MPC-33, a FACET rider and
+ * never a fresh row). The three rows are ONE decision, and the spec requires it
+ * stated in the same edit that touches either builder — this is that edit.
+ *
+ * THE DEFECT, AT THE BYTES IT HAD: this module carried TWO curve builders
+ * twenty-six lines apart that disagreed on every axis at once.
+ * `generateCurveSVGPath` sampled 32 points into a normalized 0–1 box and
+ * quantised with `toFixed(3)`; `easingCurvePath` sampled 24 into a baked 40×20
+ * box (`x = 2 + t*36`, `y = 18 - v*16`, MPC-23's 2.25× anisotropy) and quantised
+ * not at all. Same module, opposite polarity — which is why neither could hold
+ * a policy, and why the cure is one builder rather than two agreeing ones.
+ *
+ * THE POLICY:
+ *   · space     — the producer `<EasingCurve>`'s own plot space: x rightwards
+ *                 0→1, y DOWNWARDS with 0 at the top (`y = 1 - v`). The frame is
+ *                 the producer's constant square with ±0.1 headroom (viewBox
+ *                 `-0.1 -0.1 1.2 1.2`), so NO consumer bakes a box any more.
+ *   · samples   — 32, the finer of the two (24 drew visible facets on the
+ *                 `back` arms, which are precisely the curves worth looking at).
+ *   · precision — `toFixed(3)` — 0.1 % of the unit box, under half a device
+ *                 pixel at every size either preview renders at.
+ *   · identity  — one memo, keyed by catalogue and name, so a path is built once.
+ *
+ * ⊘ The 40×20 box is NOT re-expressed as a parameter: a second space is a second
+ * policy wearing an argument, which is the defect this row names.
+ *
+ * ⊘ WRONGPAD, measured rather than assumed (this seat, 2026-09-19, over all 22
+ * presets at 2001 samples each): the catalogue's true excursion is
+ * `v ∈ [-0.096882, 1.092713]` — the three `back` arms alone — so
+ * `y = 1 - v ∈ [-0.092713, 1.096882]`, CONTAINED by the producer's ±0.1
+ * headroom with room to spare. The `clipped` excursion contract is therefore
+ * never armed by this catalogue and no consumer passes a constant `false`.
+ */
 export function generateCurveSVGPath(fn: EasingFn, n = 32): string {
     const pts: string[] = [];
     for (let i = 0; i <= n; i++) {
@@ -96,32 +313,23 @@ export function generateCurveSVGPath(fn: EasingFn, n = 32): string {
     return `M ${pts.join(" L ")}`;
 }
 
-const _svgCache = new Map<AnimationEasingName, string>();
+const _svgCache = new Map<string, string>();
 
-/** Get the cached SVG path for an animation easing curve. */
-export function getEasingSVGPath(name: AnimationEasingName): string {
-    let p = _svgCache.get(name);
-    if (!p) {
-        p = generateCurveSVGPath(ANIMATION_EASINGS[name].fn);
-        _svgCache.set(name, p);
+function cachedCurvePath(key: string, fn: EasingFn): string {
+    let p = _svgCache.get(key);
+    if (p === undefined) {
+        p = generateCurveSVGPath(fn);
+        _svgCache.set(key, p);
     }
     return p;
 }
 
-/**
- * Generate an SVG path `d` string for a morph easing curve preview.
- * Draws the easing function as a polyline in a 40x20 viewBox.
- */
+/** The animation catalogue's curve, in `<EasingCurve>` plot space. */
+export function getEasingSVGPath(name: AnimationEasingName): string {
+    return cachedCurvePath(`animation:${name}`, ANIMATION_EASINGS[name].fn);
+}
+
+/** The morph catalogue's curve, in `<EasingCurve>` plot space. */
 export function easingCurvePath(name: string): string {
-    const fn = EASING_PRESETS[name]?.fn ?? ((t: number) => t);
-    const steps = 24;
-    let d = "";
-    for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const v = fn(t);
-        const x = 2 + t * 36;
-        const y = 18 - v * 16;
-        d += i === 0 ? `M${x},${y}` : ` L${x},${y}`;
-    }
-    return d;
+    return cachedCurvePath(`preset:${name}`, getEasingFn(name));
 }

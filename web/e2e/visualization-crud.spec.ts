@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Response } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
-import * as path from "node:path";
+import { checkA11y } from "./a11y";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * B.W4.d — visualization CRUD-lifecycle + a11y-keystone Playwright spec.
@@ -14,7 +14,8 @@ import * as path from "node:path";
  *   • A fresh `fourier` Mongo DB (the migration source collections are empty per
  *     audit/challenge.md §2 — the spec seeds its own image/contour/visualization).
  *   • Run:  `cd web && npx playwright test e2e/visualization-crud.spec.ts --project=chromium`
- * The fixture image is `assets/animals/golden-retriever.webp` (exists, repo-root).
+ * The fixture image is `SAMPLE_IMAGE` (`fixtures/sample.ts`): the owner's standard
+ * sample, `assets/portraits/daraksha.jpg` (repo-root).
  *
  * SCOPE (W4 scope item 10 + 15; hard-gate items 5 + 13; Wχ H-W4-1)
  * ----------------------------------------------------------------
@@ -47,11 +48,6 @@ import * as path from "node:path";
  * `page.evaluate(fetch(...))` call carries the same authenticated session.
  */
 
-const TEST_IMAGE = path.resolve(
-    import.meta.dirname,
-    "../../assets/animals/golden-retriever.webp",
-);
-
 /** The three viewports the lifecycle is swept at (fourier-A invariant 3). */
 const VIEWPORTS = [
     { name: "mobile", width: 375, height: 667 },
@@ -80,27 +76,10 @@ const CONTOUR_SETTINGS = {
 
 // ── axe-core keystone helper ────────────────────────────────────────────────
 
-/** Inject axe-core into `page` and assert zero serious/critical violations. */
-async function checkA11y(page: Page, label: string): Promise<void> {
-    const results = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-        .analyze();
-
-    const blocking = results.violations.filter(
-        (v) => v.impact === "serious" || v.impact === "critical",
-    );
-
-    expect(
-        blocking,
-        `axe-core serious/critical violations at "${label}":\n` +
-            blocking
-                .map(
-                    (v) =>
-                        `  • [${v.impact}] ${v.id} — ${v.help} (${v.nodes.length} node(s))`,
-                )
-                .join("\n"),
-    ).toEqual([]);
-}
+/**
+ * X.F.W3 `.d` — `LC-1`. The divergent twin of `visualization-ux.spec.ts`’s
+ * helper; both are retired onto the one home in `e2e/a11y.ts`.
+ */
 
 // ── session / auth ──────────────────────────────────────────────────────────
 
@@ -167,12 +146,12 @@ async function openWorkspace(page: Page): Promise<string> {
 
     // Positive mount signal — the dropzone copy from ImageUpload.vue.
     await expect(
-        page.getByText("Drop or click to upload", { exact: false }).first(),
+        page.getByRole("button", { name: "Choose an image" }),
     ).toBeVisible({ timeout: 15_000 });
 
     const fileInput = page.getByTestId("image-file-input");
     await expect(fileInput).toBeAttached({ timeout: 15_000 });
-    await fileInput.setInputFiles(TEST_IMAGE);
+    await fileInput.setInputFiles(SAMPLE_IMAGE);
 
     // Upload redirects to the pre-save working session `/w/{imageSlug}`.
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
@@ -195,26 +174,6 @@ async function openWorkspace(page: Page): Promise<string> {
     await page.waitForTimeout(2_000);
 
     return imageSlug as string;
-}
-
-/**
- * Open the AnimationControls "More options" dropdown.
- *
- * The trigger (`[aria-label="More options"]`) lives in the dock's EXPANDED
- * layer (`.dock-layer--full`), which GlassDock keeps `visibility:hidden` while
- * the dock is in its default COLLAPSED state. Hovering the `.animation-dock`
- * container drives the dock to `expanded`, swapping the full layer to
- * `layer-active`; only then is the trigger visible + clickable. We settle on
- * the `expanded` class (the FLIP-crossfade completion signal) before clicking.
- */
-async function openMoreOptions(page: Page): Promise<void> {
-    const dock = page.locator(".animation-dock").first();
-    await dock.hover();
-    await expect(dock).toHaveClass(/expanded/, { timeout: 5_000 });
-
-    const moreOptions = page.locator('[aria-label="More options"]').first();
-    await expect(moreOptions).toBeVisible({ timeout: 5_000 });
-    await moreOptions.click();
 }
 
 // ── API lifecycle helpers (run in-page so they carry the session header) ─────
@@ -620,13 +579,65 @@ for (const vp of VIEWPORTS) {
         // (`aria-hidden="true"`) while keeping their focusable triggers inside
         // (glass-ui omits `inert`) — an axe `aria-hidden-focus` **serious**
         // violation that is vendored, not app-owned, and identical across all
-        // viewports. The app consumes the PUBLISHED `@mkbabb/glass-ui@^2.0.0`, so
-        // the fix is a glass-ui release (`inert` on the collapsed layer) + a
-        // guarded `^2→^3` bump — booked as an inv-16′ sweep ask
+        // viewports.
+        //
+        // X·F F.W0 (G-9, row 19) — JUSTIFICATION CORRECTED TO THE 4.0.0 TRUTH.
+        // This read "the app consumes the PUBLISHED `@mkbabb/glass-ui@^2.0.0`,
+        // so the fix is a glass-ui release (`inert` on the collapsed layer) + a
+        // guarded `^2→^3` bump". The bump already happened — the declared pin is
+        // `^4.0.0`, the installed producer is 4.0.0 — and it did not carry the
+        // fix: `grep -c 'inert' node_modules/@mkbabb/glass-ui/dist/glass-ui.js`
+        // → **0** (measured 2026-09-17). The unblock is a producer release that
+        // ships `inert`, relayed to glass-ui; never a consumer-side patch
+        // (SS-6). Booked as an inv-16′ sweep ask
         // (`docs/constellation/ADOPTION-ASKS.md`, glass-ui-a11y). `test.fixme`
         // keeps the job honest (acknowledged, booked baseline — NOT a hidden
         // failure); the `published view` + `ExportModal` keystones below still
         // enforce a11y on surfaces without the collapsed-region defect.
+        //
+        // ▲▲ X.F.W3 `.d` — `fr-ExportModal LC-2`: THE RATIONALE ABOVE IS FALSE ON
+        // ALL THREE OF ITS CLAUSES AT THE ADOPTED PIN, AND THE PROBE THAT ESTABLISHED
+        // THE FIRST ONE WAS A FALSE NEGATIVE BY CONSTRUCTION. Measured at this seat,
+        // 2026-09-19, against the installed 8.0.0:
+        //
+        //   (a) "glass-ui omits `inert`" — DEAD. `ConfiguratorLayer`’s collapsed
+        //       region emits `inert: !open || void 0` DIRECTLY BESIDE
+        //       `"aria-hidden": !open` on the `configurator-layer-region` div. This
+        //       is banked `K-13` and it reproduces at the bytes.
+        //
+        //       The F.W0 probe that concluded otherwise is re-run verbatim and it
+        //       STILL returns 0 — because it reads the wrong file:
+        //         `grep -c inert dist/glass-ui.js`            → 0
+        //         `grep -c inert dist/configurator-*.js`      → 2
+        //         `grep -rl inert dist/*.js | wc -l`          → 6
+        //       `glass-ui.js` is the ROOT BARREL chunk of a ~60-subpath split build;
+        //       `ConfiguratorLayer` is not in it. A one-chunk grep cannot falsify a
+        //       claim about a split package, whatever it returns.
+        //
+        //   (b) "consumes the PUBLISHED ^2.0.0" → already corrected once to ^4.0.0,
+        //       and stale again: the adopted pin is 8.0.0.
+        //
+        //   (c) "keystones 2–4 below still enforce a11y on surfaces without the
+        //       collapsed-region defect" — STRUCTURALLY FALSE, and it is the reason
+        //       `LC-1` exists. Those keystones run `openWorkspace` BEFORE opening
+        //       their surface, so their unscoped runs evaluated the very collapsed
+        //       layers this `fixme` excludes, over a strict DOM SUPERSET of this
+        //       test’s page — and passed only because a visible `[role=dialog]`
+        //       converts `aria-hidden-focus` from a violation into an `incomplete`.
+        //       Two adjacent tests asserted contradictory things about one DOM. The
+        //       modal keystones are SCOPED now (see `e2e/a11y.ts`), so the claim is
+        //       true of them going forward rather than false of them silently.
+        //
+        // WHY THE `fixme` STAYS ANYWAY, stated rather than quietly kept: `LC-2`’s
+        // cure is "RE-RUN this keystone at the installed pin; K-13 predicts green →
+        // delete the fixme AND its rationale". The prediction is now supported at
+        // the bytes, but the RUN is the precondition and it needs the full stack
+        // (uvicorn + Mongo + vite via `scripts/e2e.sh`) — this suite declares no
+        // `webServer`, and standing that stack up is not this unit’s act. Deleting a
+        // booked baseline on a prediction instead of a measurement is the failure
+        // mode `LC-2` is itself convicting. The deletion is named as this unit’s
+        // residual, one green run away.
+        // 2026-09-22 (COHESION §0al): stays fixme — the mobile failure is producer-owned: glass-ui SegmentedTabs inactive underline ink 4.33:1, escalated E-F10S-b2, relayed to glass-ui BK as A-3.
         test.fixme(`a11y keystone: workspace default is clean @ ${vp.name} @mutating`, async ({
             page,
         }) => {
@@ -644,19 +655,28 @@ for (const vp of VIEWPORTS) {
             await establishSession(page);
             await openWorkspace(page);
 
-            // Export lives behind the AnimationControls "More options" menu;
-            // expand the dock, open the menu, then trigger Export.
-            await openMoreOptions(page);
-            await page
-                .getByText("Export", { exact: false })
-                .first()
-                .click();
+            // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own
+            // control; expand the canvas dock, then trigger Export.
+            const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
+            await canvasDock.hover();
+            // The dock swallows a press that lands mid-expansion (glass's morph guard).
+            await expect(canvasDock).toHaveClass(/\bexpanded\b/);
+            await expect(canvasDock).not.toHaveAttribute("data-morphing");
+            await page.locator('.controls-dock-anchor [aria-label="Export frame"]').click();
 
             // The glass-ui Dialog exposes role="dialog" + aria-modal.
             const dialog = page.locator('[role="dialog"]').first();
             await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-            await checkA11y(page, `ExportModal Dialog-open @ ${vp.name}`);
+            // `LC-1`: SCOPED, for the reason the adjudication states in terms
+            // — this test runs `establishSession` + `openWorkspace` BEFORE
+            // opening the dialog, so its unscoped run evaluated the very
+            // collapsed layers the `fixme` above excludes, over a strict DOM
+            // SUPERSET of the suppressed test’s page. It passed only through
+            // the modal suppression. Scoped, it measures the dialog.
+            await checkA11y(page, `ExportModal Dialog-open @ ${vp.name}`, {
+                include: '[role="dialog"]',
+            });
         });
     });
 }

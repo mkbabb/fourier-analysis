@@ -1,7 +1,7 @@
 """LaTeX output formatting for Fourier series.
 
 Provides two rendering modes:
-  - **expanded**: first few terms with computed numerical coefficients + cdots
+  - **expanded**: every kept term with its computed numerical coefficient (the budget truncates upstream, ``truncate_by_budget``)
   - **sigma**: compact Σ notation with symbolic a_n, b_n, c_n placeholders
 """
 
@@ -18,25 +18,46 @@ from fourier_analysis.symbolic.latex_format import (
 # ─────────────────────────── Expanded renderers ───────────────────────────
 
 
+def _frequency(n: int, variable: str) -> str:
+    """The exponent of e for harmonic n: `it`, `-it`, `2it`, `-3it`.
+
+    UIA-F-176: the sign leads the exponent; `i-t` (i times -t, written with
+    the sign inside) read as a subtraction.
+    """
+    sign = "-" if n < 0 else ""
+    mag = abs(n)
+    return rf"{sign}{mag if mag > 1 else ''}i{variable}"
+
+
+def _hooked(kind: str, term: str) -> str:
+    r"""Wrap one expanded term in its coefficient family's hover hook.
+
+    X.F.W14V `.u2` — UIA-F-253 (server limb): the expanded form carried no
+    ``eq-coeff`` hooks, so coefficient hover existed only in Σ mode. The hook is
+    the Σ renderers' own ``\htmlClass{eq-coeff eq-<kind>}``; the term's leading
+    sign stays outside it, so KaTeX keeps the binary spacing between terms.
+    """
+    sign = term[0] if term[:1] in ("+", "-") else ""
+    return rf"{sign}\htmlClass{{eq-coeff eq-{kind}}}{{{term[len(sign):]}}}"
+
+
 def render_trig(
     terms: list[FourierTerm],
     variable: str = "t",
     compact: bool = True,
 ) -> str:
-    """Expanded trig: first few computed a_n cos(nt) + b_n sin(nt) + cdots."""
+    """Expanded trig: every kept a_n cos(nt) + b_n sin(nt)."""
     if not terms:
         return "0"
 
     a0_half, pairs = extract_trig_pairs(terms)
     parts: list[str] = []
-    max_terms = 4
 
     if a0_half is not None:
         parts.append(rf"\frac{{{format_number(a0_half)}}}{{2}}")
 
     max_amp = max((abs(a) + abs(b) for _, a, b in pairs), default=0)
     threshold = max_amp * 0.005
-    term_count = 0
 
     for k, a_n, b_n in pairs:
         first = len(parts) == 0
@@ -44,15 +65,10 @@ def render_trig(
         omega_t = rf"{n_str}{variable}"
 
         if abs(a_n) > threshold:
-            parts.append(rf"{format_coefficient(a_n, first=first)}\cos({omega_t})")
+            parts.append(_hooked("an", rf"{format_coefficient(a_n, first=first)}\cos({omega_t})"))
             first = False
-            term_count += 1
         if abs(b_n) > threshold:
-            parts.append(rf"{format_coefficient(b_n, first=first)}\sin({omega_t})")
-            term_count += 1
-        if term_count >= max_terms:
-            parts.append(r"\cdots")
-            break
+            parts.append(_hooked("bn", rf"{format_coefficient(b_n, first=first)}\sin({omega_t})"))
 
     return " ".join(parts) if parts else "0"
 
@@ -62,14 +78,13 @@ def render_exponential(
     variable: str = "t",
     compact: bool = True,
 ) -> str:
-    """Expanded exponential: first few c_n e^{int} + cdots."""
+    """Expanded exponential: every kept c_n e^{int}."""
     if not terms:
         return "0"
 
     parts: list[str] = []
     max_amp = max((t.amplitude for t in terms), default=0)
     threshold = max_amp * 0.005
-    shown = 0
 
     for i, t in enumerate(terms):
         if t.amplitude < threshold and t.n != 0:
@@ -97,13 +112,7 @@ def render_exponential(
         if t.n == 0:
             parts.append(coeff_str if coeff_str else format_number(re))
         else:
-            n_str = str(t.n) if abs(t.n) > 1 else ("-" if t.n == -1 else "")
-            parts.append(rf"{coeff_str}e^{{i{n_str}{variable}}}")
-
-        shown += 1
-        if shown >= 4:
-            parts.append(r"\cdots")
-            break
+            parts.append(_hooked("cn", rf"{coeff_str}e^{{{_frequency(t.n, variable)}}}"))
 
     return " ".join(parts) if parts else "0"
 
@@ -113,14 +122,13 @@ def render_polar(
     variable: str = "t",
     compact: bool = True,
 ) -> str:
-    """Expanded polar: first few A_n e^{i(nt + phi)} + cdots."""
+    """Expanded polar: every kept A_n e^{i(nt + phi)}."""
     if not terms:
         return "0"
 
     parts: list[str] = []
     max_amp = max((t.amplitude for t in terms), default=0)
     threshold = max_amp * 0.005
-    shown = 0
 
     for i, t in enumerate(terms):
         if t.amplitude < threshold and t.n != 0:
@@ -133,17 +141,12 @@ def render_polar(
         else:
             n_str = str(t.n) if abs(t.n) > 1 else ("-" if t.n == -1 else "")
             if abs(t.phase) < 1e-10:
-                parts.append(rf"{A_str}e^{{i{n_str}{variable}}}")
+                parts.append(_hooked("An", rf"{A_str}e^{{{_frequency(t.n, variable)}}}"))
             else:
                 phi_str = format_number(t.phase)
                 if not phi_str.startswith("-"):
                     phi_str = "+" + phi_str
-                parts.append(rf"{A_str}e^{{i({n_str}{variable}{phi_str})}}")
-
-        shown += 1
-        if shown >= 4:
-            parts.append(r"\cdots")
-            break
+                parts.append(_hooked("An", rf"{A_str}e^{{i({n_str}{variable}{phi_str})}}"))
 
     return " ".join(parts) if parts else "0"
 
@@ -276,7 +279,7 @@ def render_latex(
     variable: str = "t",
     compact: bool = True,
 ) -> str:
-    """Render Fourier terms as expanded LaTeX (individual terms + cdots)."""
+    """Render the kept Fourier terms as expanded LaTeX (every term, no cap)."""
     renderer = _EXPANDED.get(notation, render_trig)
     latex = renderer(terms, variable, compact=compact)
     return f"f({variable}) \\approx {latex}"

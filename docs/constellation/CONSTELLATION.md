@@ -10,20 +10,22 @@
 
 ---
 
-## §1 — The roster (verified 2026-06-02)
+## §1 — The roster (verified 2026-06-02; cohort heads RE-GROUND 2026-06-04 — see §9)
+
+> **⚠ Re-ground 2026-06-04 (§9): every cohort head below MOVED.** glass-ui SHIPPED **3.2.0** (tranches AQ→AR→AS; `06b35d9`, npm `latest=3.2.0`); value.js ran J→K→**L CLOSED** (`66dcd68`); keyframes SHIPPED **3.0.0** (`c66e6f3`). The "J authored / awaits Begin / g.w5 release wave" cells are STALE — read them with §9's correction. The deploy spine is the live outlier: STUCK at `f2fe447`, 29 commits behind.
 
 | Repo | Identity | Tranche head | State | Tier | Write boundary | Deploy |
 |---|---|---|---|---|---|---|
-| **fourier-analysis** | the paper + viz-server (FastAPI/Vue) | **J authored** (`7bbaa51`, 1 unpushed) | clean | **Cohort lead** | `fourier-analysis/**` + `deploy/**` | push → webhook |
-| **value.js** | palette / color-api (Hono) | **J authored** (`2f7fc87`) | dirty ×3 (light) | **Cohort twin** | `value.js/**` | own chain |
-| **glass-ui** | shared design system (reka-ui) | lineage→V; `g.w5` release wave (`84a6cc1`) | dirty ×5 | **Cohort hub / publisher** | `glass-ui/**` | npm publish |
+| **fourier-analysis** | the paper + viz-server (FastAPI/Vue) | **J authored** (`7bbaa51`, 1 unpushed); 2026-06-04: J authored + executed (W2 CORE), K-deploy authored | clean | **Cohort lead** | `fourier-analysis/**` + `deploy/**` | push → webhook |
+| **value.js** | palette / color-api (Hono) | ~~J authored~~ → **J EXECUTED+GREEN → K CLOSED → L CLOSED** (`66dcd68`, 2026-06-04) | branch `docs/constellation-grand-audit-2026-06-03`, dirty (precepts) | **Cohort twin** | `value.js/**` | own chain |
+| **glass-ui** | shared design system (reka-ui) | ~~lineage→V; `g.w5` release wave~~ → **3.2.0 PUBLISHED** (AQ→AR→AS; `06b35d9`) | clean | **Cohort hub / publisher** | `glass-ui/**` | npm publish |
 | **speedtest** | speedtest.friday.institute | tranche-AT, WAVE-C (`f4b95e54`) | dirty ×157 (heavy) | Independent sibling | `speedtest/**` | own chain |
-| **keyframes.js** | `@mkbabb/keyframes.js` engine | A authored (`12f8282`) | **clean** | Supplier → glass-ui | `keyframes.js/**` | npm publish |
+| **keyframes.js** | `@mkbabb/keyframes.js` engine | ~~A authored~~ → **3.0.0 PUBLISHED** (tranche B; `c66e6f3`) | clean | Supplier → glass-ui | `keyframes.js/**` | npm publish |
 | **words / Floridify** | dictionary app (`floridify-workspace`) | A, WAVE-C (`83da49e`) | dirty ×21 | Independent | `words/**` | own chain |
 | **muster** | CSP / sudoku (csp-wasm) | **A–K**, WAVE-C (`f5d476e`) | dirty ×87 (heavy) | Independent | `muster/**` | own chain |
-| **deploy** | the deploy spine (deploy.babb.dev) | — (no tranches) | clean (`3c3fbd2`) | Infrastructure | `deploy/**` (fourier-owned) | — |
+| **deploy** | the deploy spine (deploy.babb.dev) | — (no tranches); **babb.dev API host STUCK at `f2fe447`, 29 behind** (the live chronic) | clean repo (`3c3fbd2`) | Infrastructure | `deploy/**` (fourier-owned) | — |
 
-Ordering letters differ by lineage and do NOT cross: fourier = Greek (`μ′` = J head, `CANONICAL-ORDERING §19`); value.js = its own A–J; glass-ui = uppercase→V; speedtest = tranche-AT; muster = A–K; words/keyframes = A. There is no global letter; the only cross-repo synchronization is the §3 cohort.
+Ordering letters differ by lineage and do NOT cross: fourier = Greek (`μ′` = J head → `ν′` = K-deploy, `CANONICAL-ORDERING §19/§20`); value.js = its own A–L; glass-ui = uppercase→AS; speedtest = tranche-AT; muster = A–K; words = A; keyframes = A→B. There is no global letter; the only cross-repo synchronization is the §3 cohort (now re-grounded, §9).
 
 ---
 
@@ -36,17 +38,19 @@ Ordering letters differ by lineage and do NOT cross: fourier = Greek (`μ′` = 
 
 ---
 
-## §3 — The cohort (the only synchronized work)
+## §3 — The cohort (the only synchronized work) — RE-GROUND 2026-06-04 (§9)
 
-**fourier-J ↔ value.js-J**, with **glass-ui** as the hub. Symmetric-by-contract, asymmetric-by-implementation; close **paired**.
+> **⚠ This §3 "wait for glass-ui" model is OBSOLETE (re-ground 2026-06-04).** glass-ui SHIPPED 3.2.0; value.js's CORE half is two tranches behind it (K, L CLOSED); the supplier (keyframes) published 3.0.0. **value.js owes the cohort NOTHING further** — its contract bound, its `/diff` envelope proven, its publish peer + [P0] filter shipped + deepened in L. The "design waves wait for glass-ui's release" edge is DISSOLVED: glass-ui's primitives are PUBLISHED and the fourier adoption is a one-line `^3.1.0`→`^3.2.0` ADOPT-NOW bump, not a wait. The only remaining cohort act is **fourier's OWN** adoption + its own `/diff`+publish conformance probe + the paired-close parity computation. See §9 + `ADOPTION-ASKS.md §10`.
+
+**fourier-J ↔ value.js-J**, with **glass-ui** as the hub. Symmetric-by-contract, asymmetric-by-implementation; close **paired** — except the cohort is now asymmetric-in-TIME: value.js-J's obligation is DISCHARGED (it sprinted J→K→L), fourier-J's close is GATED ON FOURIER'S OWN WORK (the bump + the consumer-wire + the inv-27 green).
 
 - **The shared contracts (fourier owns; value.js binds, read-only — absolute hub paths):**
-  - `/Users/mkbabb/Programming/fourier-analysis/docs/tranches/J/design/J-diff-shape.md` — the canonical `/diff` envelope (`{fromHash,toHash,ops,identical}`; op vocab `added`/`removed`/`changed`; pattern name `atomdiff`). Both impls + both conformance probes assert against THIS doc, never against each other.
-  - `/Users/mkbabb/Programming/fourier-analysis/docs/tranches/J/design/J.W1c-publish-visibility.md` — the publish/unpublish facet (idempotent in-place flag-flip; NEVER a new row). value.js builds the symmetric peer + the [P0] `visibility="public"` filter fix.
-  - `/Users/mkbabb/Programming/fourier-analysis/docs/constellation/ADOPTION-ASKS.md §7` — the two value.js arms (`valuejs-J-atomdiff`, `valuejs-J-publish`) + the glass-ui ask (`glass-ui-P5-inner-rounding`).
-- **The dependency edges:**
-  - The **CORE backend** (fourier W2 remix+publish; value.js W2) depends on *nothing* but the already-committed `J-diff-shape.md` → runs immediately, in parallel.
-  - The **design waves** (fourier W5 WC; value.js WC) depend on **glass-ui's release** → they wait for glass-ui to ship `g.w5` + the P5/a11y fixes.
+  - `/Users/mkbabb/Programming/fourier-analysis/docs/tranches/J/design/J-diff-shape.md` — the canonical `/diff` envelope (`{fromHash,toHash,ops,identical}`; op vocab `added`/`removed`/`changed`; pattern name `atomdiff`). Both impls + both conformance probes assert against THIS doc, never against each other. **value.js's conformance probe BINDS this doc + proves its half** (`value.js/api/test/conformance/diff.test.ts`); fourier's OWN Python probe is the remaining half.
+  - `/Users/mkbabb/Programming/fourier-analysis/docs/tranches/J/design/J.W1c-publish-visibility.md` — the publish/unpublish facet (idempotent in-place flag-flip; NEVER a new row). value.js built the symmetric peer + the [P0] `visibility="public"` filter fix — **DONE in value.js-L** (`crud-list.ts:114`).
+  - `/Users/mkbabb/Programming/fourier-analysis/docs/constellation/ADOPTION-ASKS.md §7/§10` — the two value.js arms (`valuejs-J-atomdiff`, `valuejs-J-publish`) are now **DONE-in-sibling** (flipped §7/§10); the `glass-ui-P5-inner-rounding` ask is **KILLED-AS-PHANTOM** (struck — container-owned by design).
+- **The dependency edges (re-grounded):**
+  - The **CORE backend** (fourier W2 remix+publish; value.js W2) depends on *nothing* but the already-committed `J-diff-shape.md` → runs immediately, in parallel. value.js's is DONE.
+  - The **design waves** (fourier W5 WC) consume glass-ui's **ALREADY-PUBLISHED 3.2.0** primitives (`asideSide`, `useTextHighlight` on `/dom`, `inert`, the useId dock fix) via the ADOPT-NOW bump — they no longer WAIT on a glass-ui release. A-1/A-2 are the only outstanding glass-ui asks (BOOK-to-AT/3.3.0; non-blocking).
   - fourier↔value.js sync is **read-time only** (value.js reads fourier's contract). No write crosses.
 
 ---
@@ -116,6 +120,32 @@ All under `HUB = /Users/mkbabb/Programming/fourier-analysis/`:
 - **Order:** `HUB/docs/tranches/CANONICAL-ORDERING.md` (fourier Greek chain; `§19 = μ′ = J`)
 - **Deep-audit substrate:** `HUB/docs/audits/runs/2026-06-02-J-deep-audit/`
 - **Deploy facts:** `HUB/docs/constellation/DEPLOY-STANDARDIZATION-DESIGN.md` + memory `deploy_operational_knowledge.md`
+
+(`HUB` = `/Users/mkbabb/Programming/fourier-analysis`. Your-own-repo paths in §4 stay relative to your cwd.)
+
+---
+
+## §9 — Re-ground note (2026-06-04): every cohort head moved
+
+This manifest self-mandates (§5): *"Reconcile against reality whenever a member's tranche head moves."* The 2026-06-04 glass-ui-reground deep audit (`/Users/mkbabb/Programming/fourier-analysis/docs/audits/runs/2026-06-04-glassui-reground-deep-audit/SYNTHESIS.md`, 6 dimension auditors against the SIBLINGS' ACTUAL HEADS) found **every cohort head had moved past the §1/§3 roster snapshot**, which was authored 2026-06-02 and frozen while siblings sprinted:
+
+| Member | §1/§3 booked (2026-06-02) | ACTUAL (2026-06-04) |
+|---|---|---|
+| glass-ui | "lineage→V; `g.w5` release wave; the cohort waits for it to ship" | **3.2.0 PUBLISHED** (AQ→AR→AS; `06b35d9`, npm `latest=3.2.0`) — the wait is OVER |
+| value.js | "J authored (`2f7fc87`); close paired with fourier-J" | **J EXECUTED+GREEN → K CLOSED → L CLOSED** (`66dcd68`) — two tranches past its cohort obligation |
+| keyframes.js | "A authored; at 2.2.0" | **3.0.0 PUBLISHED** (tranche B; `c66e6f3`); glass-ui peer-widened to `^2.2.0\|\|^3.0.0` |
+| deploy | "clean (`3c3fbd2`)" | repo clean, but the **babb.dev API host is STUCK at `f2fe447`, 29 commits behind** — the one real live chronic |
+
+**The §3 "synchronized cohort — fourier-J ↔ value.js-J, glass-ui hub waits" model is OBSOLETE.** What re-grounds:
+
+1. **The "wait for glass-ui" edge dissolves to an ADOPT-NOW bump.** glass-ui's primitives are PUBLISHED; fourier consumes them via a one-line `web/package.json` `^3.1.0`→`^3.2.0` + `npm install`. This single bump greens fourier e2e at the source (the useId dock fix), un-`fixme`s the 2 a11y keystones (`inert`), enables DEC-2 controls-LEFT (`asideSide`), and wires `useTextHighlight` (from `/dom`). It belongs at the FRONT of fourier's executable chain.
+2. **value.js's cohort obligation is DISCHARGED.** `valuejs-J-atomdiff` + `valuejs-J-publish` are DONE-in-sibling (executed in J, folded into K, hardened through L; the [P0] public filter shipped `crud-list.ts:114`). The only residual is fourier's OWN `/diff`+publish envelope parity probe. value.js's still-open K continuation + dirty precepts submodule are value.js's arm (inv-16) — booked, not fourier debts.
+3. **`glass-ui-P5-inner-rounding` is KILLED-AS-PHANTOM** (container-owned by design; struck from `ADOPTION-ASKS.md`). The §3 contract-list reference is corrected.
+4. **The asymmetry is in TIME, not contract.** value.js-J cannot wait at a paired close-gate while fourier finishes; the honest re-frame is value.js-J = discharged, fourier-J's close = gated on fourier's own bump + consumer-wire + inv-27 green.
+
+The full re-grounded ASK ledger lives in `ADOPTION-ASKS.md §10`; the terminal chronic ledger + re-sequenced wave skeleton in the audit-run `SYNTHESIS.md §3/§4/§2`.
+
+**inv-16 attestation (§9 re-ground)**: this note edited `fourier-analysis/docs/constellation/CONSTELLATION.md` only (fourier owns `docs/constellation/`); NO sibling repo source, NO host state, NO code. Every cross-repo head cites the sibling's own committed artifact, read-only. fourier's only forward act is the fourier-local `^3.2.0` bump.
 
 (`HUB` = `/Users/mkbabb/Programming/fourier-analysis`. Your-own-repo paths in §4 stay relative to your cwd.)
 

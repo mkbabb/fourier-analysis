@@ -5,7 +5,7 @@
  * DC, Y-bounds) and drives a 500ms eased interpolation to the new state.
  */
 
-import { easeInOutSine } from "@mkbabb/value.js";
+import { easeInOutSine } from "@mkbabb/value.js/easing";
 
 export interface TrigHarmonic {
     k: number;
@@ -32,11 +32,24 @@ export function createTransitionState(): TransitionState {
 /**
  * Start a lerp transition. Calls `onFrame` each rAF tick until complete.
  * Returns a cancel function.
+ *
+ * `D-9 + C-2` — this is the second of the plot's three JS clocks, and
+ * `prefers-reduced-motion` reaches it as an ARGUMENT rather than a media query:
+ * the module is pure and node-assertable (`G-F4-VITEST`), and a `matchMedia`
+ * call inside it would end that. ⊘ `M-D1`'s law holds here too — the reduced arm
+ * settles at the TERMINAL frame (`progress = 1`, the NEW curve) and paints once,
+ * never at `progress = 0`, which is the old curve the transition exists to leave.
  */
 export function startTransition(
     state: TransitionState,
     onFrame: () => void,
+    reducedMotion = false,
 ): () => void {
+    if (reducedMotion) {
+        state.progress = 1;
+        onFrame();
+        return () => {};
+    }
     state.progress = 0;
     const start = performance.now();
     let rafId: number | null = null;
@@ -79,9 +92,4 @@ export function snapshotForTransition(
     const pad = (rawMax - rawMin) * 0.08 || 1;
     state.prevMinY = rawMin - pad;
     state.prevMaxY = rawMax + pad;
-}
-
-/** Lerp a single value. */
-export function lerp(a: number, b: number, t: number): number {
-    return a + (b - a) * t;
 }

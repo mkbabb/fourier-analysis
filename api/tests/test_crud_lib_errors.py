@@ -29,6 +29,7 @@ CATALOG = [
     ("flag_self", 400, "urn:contract:flag-self"),
     ("flag_duplicate", 409, "urn:contract:flag-duplicate"),
     ("slug_pool_exhausted", 503, "urn:contract:slug-exhausted"),
+    ("internal_error", 500, "urn:contract:internal-error"),
 ]
 
 
@@ -75,7 +76,8 @@ def test_precondition_required_status_428():
     assert errors.precondition_required().status_code == 428
 
 
-def test_catalog_has_21_rows():
-    # 20 helper rows + rate_limited = 21 SCHEMA §5 catalog entries.
-    assert len(CATALOG) == 20
+def test_catalog_has_22_rows():
+    # 21 helper rows + rate_limited = 22 SCHEMA §5 catalog entries
+    # (F.REL .m added ``internal_error``, the unhandled-exception boundary).
+    assert len(CATALOG) == 21
     assert errors.rate_limited(1).status_code == 429

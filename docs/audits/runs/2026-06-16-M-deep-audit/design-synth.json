@@ -1,0 +1,400 @@
+{
+ "headline": "Tranche M (ordering xi-prime): front-load the 4.0.0/4.2.0/0.12.0 multi-major bump as W1, then suffuse the design language (glass depth ladder + audacious typography + the icon-rainbow OKLCH palette + math/grid chrome), build ONE unified Fourier-playhead motion architecture that retires 8 hand-rolled rAF loops, and carry the J inv-15 wire-up + K deploy spine \u2014 all no-legacy, gestalt, proportion-governed.",
+ "coverage_matrix": [
+  {
+   "request": "(a) close J \u2014 data-model + inv-15 wire-the-UI consumer gap",
+   "addressed": "partial",
+   "where": "M.W8 wires the 7 CORE endpoints into api.ts + gallery card provenance/publish affordances (B3-01, B3-04); but the actual J close (W2-fix/W2-transpose data-model, e2e green) is owned by J itself, unblocked by M.W1's bump (D1-04 dock-VT useId). M surfaces the consumer affordances; J retains the close-gate."
+  },
+  {
+   "request": "(b) execute the multi-major dependency bump as front-loaded enabler",
+   "addressed": "yes",
+   "where": "M.W1 \u2014 glass-ui ^3.1.0\u2192^4.0.0, keyframes ^2.2.0\u2192^4.2.0, value.js ^0.10.0\u2192^0.12.0, folding the in-flight glass-subtle\u2192glass-wash rename + the BA migration breaks (UnderlineTabs\u2192SegmentedTabs, MetricBadge amount\u2192value). Every other wave gates on it (D1-01, D4-12, E6-9, C1-01)."
+  },
+  {
+   "request": "(c) suffuse the design language (glass/grid/math/audacious-typography/colour-pops) with proper hierarchy",
+   "addressed": "yes",
+   "where": "M.W3 (glass depth ladder C3-08 + cartoon-card shim retirement), M.W4 (typography \u03c6-ladder + Fraunces display C6), M.W5 (control-pane hierarchy C1 + per-pane B2/B3/B4/B5/B7), M.W6 (icon-rainbow OKLCH palette C7+E4 + math/grid chrome C4/C5)"
+  },
+  {
+   "request": "(d) build the unified mathematical motion architecture",
+   "addressed": "yes",
+   "where": "M.W7 (motion CORE \u2014 one Fourier-playhead over keyframes 4.2 light tier, retires animation.ts + ConvergencePlot clocks E6-1/E6-2, signature convergence-reveal E1-01, scroll-driven CSS + View-Transitions E6-6/E6-8)"
+  },
+  {
+   "request": "(e) carry the K-deploy spine",
+   "addressed": "partial",
+   "where": "M.W2 carries the deploy spine (HEALTHCHECK + fail-closed inv-28 gate + page-on-rollback) as the shared infra prerequisite; full K-deploy chronic (months-class API outage) noted as cross-repo and owner-tracked \u2014 M lands the HEALTHCHECK + the bump that greens e2e, deploy-of-record close stays K-owned."
+  },
+  {
+   "request": "NO legacy, idiomatic/gestalt, proportion",
+   "addressed": "yes",
+   "where": "Every proposal DELETES rather than wraps (cartoon-card shim, glass-scrubber phantom variant, 4 spectrumColor copies, 118-line color parser, 8 rAF loops); pops/motion all PRM-gated + INP-safe; new_invariants encode the discipline"
+  }
+ ],
+ "proposed_waves": [
+  {
+   "id": "M.W1",
+   "title": "The multi-major bump (front-loaded keystone)",
+   "goal": "Bump web/package.json to @mkbabb/glass-ui ^4.0.0, @mkbabb/keyframes.js ^4.2.0, @mkbabb/value.js ^0.12.0 as ONE atomic changeset; regen package-lock (single-copy, keyframes now a direct dep + glass-ui peer); discharge the BA migration breaks in sequence \u2014 UnderlineTabs\u2192<SegmentedTabs variant=\"underline\"> (3 sites), MetricBadge :amount\u2192:value (11 sites), glass-elevated\u2192glass-floating (2 sites), the phantom variant=\"glass-scrubber\" string drop (~9 sites); FOLD the in-flight glass-subtle rename and CORRECT it to glass-wash (subtle's 4.0 successor is wash ~0.30\u03b1, NOT quiet ~0.50\u03b1 \u2014 the dirty-tree rename over-weights every overlay a full rung); add keyframes.js as a direct dependency (light tier is value.js-free, no bundle regression). Gate on a cited green CI run (inv-27), not a blind bump.",
+   "depends_on": "none",
+   "rolls_up": [
+    "D1-01",
+    "D1-02",
+    "D1-03",
+    "D4-12",
+    "E6-9",
+    "C1-01",
+    "C3-01",
+    "C3-02",
+    "C3-03",
+    "E3-01",
+    "E4-F1",
+    "C6-F1",
+    "C7-4",
+    "E5-09",
+    "D3-01",
+    "C1-10"
+   ]
+  },
+  {
+   "id": "M.W2",
+   "title": "Deploy spine + shape-extractor harness promotion (infra floor)",
+   "goal": "Carry the K-deploy spine fourier-side: HEALTHCHECK + service_healthy in compose, the inv-28 fail-closed SPA/API gate, off-host paging on silent-rollback. Concurrently promote the /demo/shape-extractor debug harness to a real internal tool page (B7): retire the setTimeout(200) race \u2192 onMounted+nextTick, the document.getElementById reach \u2192 Vue ref, the window.__fourierShapeData global \u2192 data-testid, all inline styles \u2192 tokens, add route meta + noindex. The bump in W1 greens the glass-dock-1 e2e blocker at source (useId), which is the J close-gate and the deploy-of-record predecessor.",
+   "depends_on": "M.W1",
+   "rolls_up": [
+    "SE-01",
+    "SE-02",
+    "SE-03",
+    "SE-04",
+    "SE-05",
+    "SE-06",
+    "SE-07",
+    "SE-08",
+    "SE-11",
+    "SE-13",
+    "SE-14"
+   ]
+  },
+  {
+   "id": "M.W3",
+   "title": "Glass depth hierarchy + cartoon-card shim retirement",
+   "goal": "Establish and freeze a 3-band glass DEPTH hierarchy (BAND 0 bare math grid/paper \u00b7 BAND 1 in-flow instrument panels glass-quiet/glass-resting \u00b7 BAND 2 lifted/anchored chrome glass-floating; text-plates compose veil-surface) and map every existing surface onto it in one pass (C3-08). DELETE the .cartoon-card @utility shim from style.css and migrate the 14-25 consumer sites to <Card surface=\"cartoon\">/cartoon-surface (glass-ui 4.0 ships both natively). Strip hand-rolled box-shadow/blur/color-mix glass recipes (C3-06); switch text overlays to veil register (C3-09); wire --glass-backdrop:light + the specular catch-light on BAND 1 panels over the bright canvas (C3-10). Sweep the C2 cross-page incongruences (1.5px border token, spinner\u2192Pulse ring, rgba shadows\u2192--shadow-*, raw radii\u2192--radius-*, text-red\u2192--destructive).",
+   "depends_on": "M.W1",
+   "rolls_up": [
+    "C3-04",
+    "C3-05",
+    "C3-06",
+    "C3-07",
+    "C3-08",
+    "C3-09",
+    "C3-10",
+    "C2-01",
+    "C2-02",
+    "C2-03",
+    "C2-04",
+    "C2-05",
+    "C2-06",
+    "C2-09",
+    "D4-01",
+    "D4-07",
+    "B4-07"
+   ]
+  },
+  {
+   "id": "M.W4",
+   "title": "Audacious typography: \u03c6-ladder + Fraunces display + KaTeX as hero",
+   "goal": "Bind --font-serif-math\u2192Computer Modern (the 4.0 .cm-serif token, else the paper voice silently degrades to Times) and --font-display\u2192the already-vendored-but-dead Fraunces (activate the dead ~30KB payload AS the display brand, override glass-ui's Plus-Jakarta default). Adopt the \u03c6-display ladder verbatim (text-display-*/text-hero/text-pane-title/text-title) across the paper hero (text-display-2) and the 7 page heads \u2014 gallery + equation currently have NO h1 at all (C6-F4). Make KaTeX a first-class ladder member (.katex-display\u2192--type-title, B4-01). Migrate mono micro-labels to text-admin-label/text-mono-caption (C6-F5). Reconcile canvas-drawn font literals to the resolved CSS faces (C6-F8). One PRM-gated useStaggerReveal/char-stagger entrance on the paper hero (C6-F7).",
+   "depends_on": "M.W1",
+   "rolls_up": [
+    "C6-F1",
+    "C6-F2",
+    "C6-F3",
+    "C6-F4",
+    "C6-F5",
+    "C6-F6",
+    "C6-F7",
+    "C6-F8",
+    "B4-01",
+    "B4-11"
+   ]
+  },
+  {
+   "id": "M.W5",
+   "title": "Control-pane hierarchy + per-pane composition",
+   "goal": "Unify the control panes to ONE platform instrument: migrate the equation (.eq-grid) and morph (.config-grid) routes onto Configurator + ConfiguratorLayer (they never consume the chassis today \u2014 C1-02), retire CollapsibleSection + the ImageUpload <h3> mimic + the morph config-card-title onto the canonical section-label (C1-03/C1-04), adopt asideSide=\"left\" for the DEC-2 authoring-rail flip + delete the 3 grid-template-columns overrides + the mobile :deep stage patch (B2-01/B2-04/D1-05), pass :dividers for inter-row grooves + use density as the ONE rhythm lever (C1-05/C1-07), enforce the two-tier altitude + one-amber-per-pane rule (C1-08), fix the BasisSelector value-row void (C1-06/B2-05). Per-pane: compose-the-void workspace dropzone hero (B2-02/B2-06), gallery card 3-tier hierarchy + empty-state CTA fix (B3-02/B3-03), equation Compute-button glass treatment + legend de-occlusion + f(x) coherence (B4-06/B4-08/B4-09), morph timeline + spring-native easing + glass re-skin (B5-02/B5-03/B5-05). Adopt the inert a11y + useTextHighlight + native-popover overlay primitives (D1-06/D1-08/D1-10/D1-11/D4-06/D4-10).",
+   "depends_on": "M.W3",
+   "rolls_up": [
+    "C1-02",
+    "C1-03",
+    "C1-04",
+    "C1-05",
+    "C1-06",
+    "C1-07",
+    "C1-08",
+    "C1-09",
+    "B2-01",
+    "B2-02",
+    "B2-03",
+    "B2-04",
+    "B2-05",
+    "B2-06",
+    "B2-08",
+    "B3-02",
+    "B3-03",
+    "B3-08",
+    "B4-06",
+    "B4-08",
+    "B4-09",
+    "B4-10",
+    "B5-02",
+    "B5-03",
+    "B5-04",
+    "B5-05",
+    "B5-06",
+    "B5-09",
+    "D1-05",
+    "D1-06",
+    "D1-08",
+    "D1-10",
+    "D1-11",
+    "D4-04",
+    "D4-05",
+    "D4-06",
+    "D4-09",
+    "D4-10",
+    "D3-02",
+    "D3-03",
+    "D3-05"
+   ]
+  },
+  {
+   "id": "M.W6",
+   "title": "Colour pops + math/grid chrome from one OKLCH source",
+   "goal": "Promote the six-stop icon-rainbow favicon palette to ONE canonical OKLCH ramp generated by value.js 0.12 (mixColorsN/safeAccentColor), delete the divergent STATIC.rainbow twin + the 4 duplicated spectrumColor HSL copies + the 118-line bespoke colour parser (C7-1/C7-3/C7-8, E4-F2/E4-F3). Key per-route accents off it (--route-accent, C7-2). Route the dark-mode toggle through OKLCH lerp (E4-F4), source notation/tier/energy from value.js (B4-04/B4-05/C7-6), apply contrast-safe accents on swatches (E4-F7). Math-chrome: consume the 5 orphaned per-page Fourier-path assets as ambient epicycle signatures (C5-1), one shared EpicycleSpinner replacing 8 generic spinners (C5-2/D4-07-overlap), math-literate grid (\u03c0-ticks, mode-aware tokens, dot-lattice at significant positions C4-G2/C4-G7), consolidate the split-brain grid modules (C4-G8), unify the grid-pitch token (C4-G6), apply the \u2131 signature consistently (C5-6).",
+   "depends_on": "M.W1",
+   "rolls_up": [
+    "C7-1",
+    "C7-2",
+    "C7-3",
+    "C7-4",
+    "C7-5",
+    "C7-6",
+    "C7-7",
+    "C7-8",
+    "E4-F2",
+    "E4-F3",
+    "E4-F4",
+    "E4-F5",
+    "E4-F6",
+    "E4-F7",
+    "E4-F8",
+    "B4-04",
+    "B4-05",
+    "B4-12",
+    "C4-G1",
+    "C4-G2",
+    "C4-G3",
+    "C4-G6",
+    "C4-G7",
+    "C4-G8",
+    "C5-1",
+    "C5-2",
+    "C5-3",
+    "C5-4",
+    "C5-5",
+    "C5-6",
+    "C5-7",
+    "B3-05"
+   ]
+  },
+  {
+   "id": "M.W7",
+   "title": "Unified mathematical motion architecture (CORE)",
+   "goal": "Collapse fourier's 8 hand-rolled rAF loops + 2 duplicated ping-pong clocks into ONE three-layer architecture: CSS-first (native scroll-driven/View-Transitions/@keyframes) over glass-ui motion composables (useRAFLoop/useScrollProgress/useViewTransition/useIntersectionPause/useSpring) over keyframes.js 4.2 light primitives (RAFPlayback/NumericAnimation/SpringProgress/SmoothProgress). Make stores/animation.ts a pure STATE atom driven by RAFPlayback + glass-ui useIntersectionPause (E6-1, the named legacy DELETED); extract ONE useFourierPlayhead consumed by both the epicycle canvas and ConvergencePlot (E6-2, kills the duplicate clock + the ungated off-screen loop); transpose useFourierMorph off the heavy engine onto NumericAnimation+Sequence (E6-3/E3-06), useCurveTransition\u2192SmoothProgress (E6-4), useCanvasHover\u2192SpringProgress + shared playhead shimmer (E6-5/E5-02). Build THE signature: convergence-reveal at first-paint of every canvas + harmonic-accumulation staggers + draw-on via DrawSVG/MotionPath (E1-01/E1-02/E1-04). Adopt glass-ui useScrollProgress/.scroll-progress + [data-scroll-reveal] (E6-6, retire the manual paper writer), useViewTransition/view-transition.css (E6-8), fix the ConvergencePlot per-frame canvas resize (E5-03), close the 3 PRM gaps (E5-05/E5-06/E1-03), unify the easing catalog on keyframes resolveEasing + spring twins (E6-10), move play-btn rainbow-drift to compositor filter (E5-10).",
+   "depends_on": "M.W1",
+   "rolls_up": [
+    "E6-1",
+    "E6-2",
+    "E6-3",
+    "E6-4",
+    "E6-5",
+    "E6-6",
+    "E6-7",
+    "E6-8",
+    "E6-10",
+    "E1-01",
+    "E1-02",
+    "E1-03",
+    "E1-04",
+    "E1-05",
+    "E1-06",
+    "E1-08",
+    "E3-02",
+    "E3-03",
+    "E3-04",
+    "E3-05",
+    "E3-06",
+    "E3-07",
+    "E3-09",
+    "E3-16",
+    "E5-01",
+    "E5-02",
+    "E5-03",
+    "E5-04",
+    "E5-07",
+    "E5-08",
+    "E5-10",
+    "E5-11",
+    "E5-14",
+    "D4-02",
+    "D4-03",
+    "D1-07",
+    "D1-09",
+    "D1-13",
+    "E4-F8",
+    "B5-07",
+    "B5-10"
+   ]
+  },
+  {
+   "id": "M.W8",
+   "title": "J inv-15 consumer wire-up + scroll-driven hero reveals (close J)",
+   "goal": "Wire the 7 J-CORE endpoints into web/src/lib/api.ts (fork/provenance/diff/versions/remix/publish/unpublish), re-point gallery.publish()/publishDraft() off the dead PATCH onto POST /:slug/{publish,unpublish} (idempotent flip-in-place, B3-01). Surface provenance on the gallery card (fork/version cluster, 'forked from' breadcrumb), the publish-state ribbon/dot owner-toggle (B3-04), the Remix CTA + Versions disclosure rendering the bounded chain via the atom-diff viewer (consuming the booked glass-ui AtomDiff primitive, D2-05). Plumb search query to the wire + widen to title/tags (B3-07). Add the kinetic mathematical home/landing hero (E2-03) + the scroll-driven section reveals with once-discipline for the virtual paper window (E2-04/E2-05) + parallax math-lattice (E2-07). This wave + J's own e2e-green (from W1's bump) close J.",
+   "depends_on": "M.W7",
+   "rolls_up": [
+    "B3-01",
+    "B3-04",
+    "B3-06",
+    "B3-07",
+    "B3-09",
+    "B3-10",
+    "E2-02",
+    "E2-03",
+    "E2-04",
+    "E2-05",
+    "E2-06",
+    "E2-07",
+    "E2-08",
+    "E1-07",
+    "C5-2"
+   ]
+  }
+ ],
+ "new_invariants": [
+  {
+   "id": "inv-M1",
+   "statement": "GLASS DEPTH BAND rule: every surface picks its glass rung by its semantic depth band (BAND 0 bare math substrate / BAND 1 in-flow instrument panel = glass-quiet ambient or glass-resting focused / BAND 2 lifted-anchored chrome = glass-floating; text-plates compose veil-surface), NOT by local taste. No hand-rolled box-shadow/blur/color-mix glass material; the chosen rung owns the material. Documented in INVARIANTS.md so future surfaces inherit the rule."
+  },
+  {
+   "id": "inv-M2",
+   "statement": "ONE COLOUR SOURCE: all runtime colour derives from value.js (0.12+) over the canonical icon-rainbow OKLCH ramp \u2014 no hand-rolled HSL templating, no duplicated spectrumColor, no bespoke CSS-var parser, no hardcoded Tailwind-palette literals (text-red-400, #60a5fa, #ccc). Accents are contrast-floored by construction (safeAccentColor); per-route identity rides a single --route-accent channel."
+  },
+  {
+   "id": "inv-M3",
+   "statement": "ONE MOTION CLOCK / NO RAW rAF: fourier source contains zero requestAnimationFrame call-sites for animation (layout-sync measure loops like the paper teleport are explicitly exempt and doc-marked). All animation flows through the three-layer architecture (CSS-first \u2192 glass-ui motion composables \u2192 keyframes.js light primitives); value.js owns only colour/easing curves. The epicycle clock is a pure STATE atom; the playhead is a single shared primitive."
+  },
+  {
+   "id": "inv-M4",
+   "statement": "PROPORTION + PRM FLOOR: every motion and colour-pop is proportion-governed (audacious-not-gaudy) and honours prefers-reduced-motion at the engine layer (respectReducedMotion), collapsing to a static terminal state \u2014 not a shortened one. Every animation is INP-safe (transform/opacity/filter on the compositor; no paint-tier background-position loops; no per-frame getBoundingClientRect on hot input paths)."
+  },
+  {
+   "id": "inv-M5",
+   "statement": "PLATFORM-OVER-LIBRARY, NO SHIMS (inv-30 hardened): no resurrected dead glass-ui classes (cartoon-card shim DELETED), no phantom variant strings (glass-scrubber), no parallel re-implementations of shipped primitives (CollapsibleSection, local GlassTimeline, hand-rolled focus traps, bespoke popovers). Where fourier hand-rolls a primitive glass-ui should own, fourier BOOKS the ask (inv-16) and consumes once shipped \u2014 it never writes glass-ui."
+  }
+ ],
+ "chronic_fold": [
+  {
+   "item": "A-1 / A-2 / A-3 ConfiguratorLayer asks (inter-row divider, label/sub ladder, asideSide) \u2014 carried as BOOK-to-AT across I/J/K",
+   "verdict": "STRIKE \u2014 all three SHIPPED in glass-ui 4.0.0 (dividers prop, .configurator-section-label token hook, asideSide). Do NOT re-book. The kill-date is the M.W1 bump commit; they become pure fourier-local adoptions.",
+   "wave": "M.W1 (bump) \u2192 M.W5 (consume)"
+  },
+  {
+   "item": ".cartoon-card dead-class shim (style.css resurrection of a class glass-ui removed at C.W5; carried since D.W4 across D/E/F/G/H/I/J)",
+   "verdict": "RETIRE \u2014 glass-ui 4.0 ships cartoon-surface + Card surface=\"cartoon\" natively. DELETE the @utility shim and migrate all 14-25 sites. The standing no-shims directive is finally honoured. Terminal.",
+   "wave": "M.W3"
+  },
+  {
+   "item": "--viz-amber light-mode contrast override (D.W4 local token patch, axe AA fail, carried D\u2192I)",
+   "verdict": "BOOK-UPSTREAM with kill-date \u2014 fold the rebaseline (hsl 35 70% 42%\u219235 76% 35%, 3.54:1\u21924.6:1) into glass-ui so all consumers inherit; fourier's :root override deletes on the next bump. value.js safeAccentColor makes it systematic, not one-off.",
+   "wave": "glassui_ask (book) \u2192 M.W6 (delete local override once shipped)"
+  },
+  {
+   "item": "RUN-BOARD E1 hinge \u2014 'glass-ui 3.3.0 on npm BLOCKED' treated as the root blocking edge across the tri-tranche run",
+   "verdict": "KILL \u2014 vacuously cleared; glass-ui shipped 4.0.0 (a MAJOR past 3.3.0). The RUN-BOARD (11 days stale, pins 3.2.0/keyframes 3.0.0) is STALE; treat all its blocking edges as dead. Re-ground the board to 4.0.0/4.2.0/0.12.0.",
+   "wave": "M.W1"
+  },
+  {
+   "item": "Two duplicated ping-pong rAF clocks (animation.ts + ConvergencePlot) + manual-rAF-not-keyframes.js (the MEMORY-flagged legacy, carried since the prior engine was ripped out)",
+   "verdict": "RETIRE \u2014 collapse to ONE useFourierPlayhead over keyframes 4.2 light tier; the named manual-rAF legacy is DELETED not wrapped. Terminal under inv-M3.",
+   "wave": "M.W7"
+  },
+  {
+   "item": "keyframes.js / value.js stale pins (^2.2.0 vs 4.2.0 TWO majors; ^0.10.0 vs 0.12.0) blocking the entire motion + colour leverage",
+   "verdict": "DISCHARGE \u2014 bumped atomically in M.W1; the light tier is value.js-free so no bundle regression. keyframes becomes a direct dep.",
+   "wave": "M.W1"
+  },
+  {
+   "item": "inv-15 CORE consumer gap \u2014 7 J endpoints with ZERO api.ts caller, gallery.publish still PATCHes (binary breach, carried J\u2192K)",
+   "verdict": "CLOSE \u2014 M.W8 wires all 7 + re-points publish onto the idempotent verb + surfaces card provenance/publish affordances. This is the J close-gate; M discharges the consumer half, J's W2-fix/transpose owns the data-model half.",
+   "wave": "M.W8"
+  }
+ ],
+ "glassui_asks": [
+  {
+   "name": "Tonal-accent recipe (accent-tone primitive)",
+   "what": "A library recipe minting a contrast-floored three-channel tonal accent (--accent-fill ~12-16%, --accent-edge ~30-40%, --accent-ink solid) from ONE --tone input, as a .accent-tone utility and/or a tone arm on the pill/badge family, reusing value.js mixing + flooring light/dark contrast once.",
+   "why": "fourier re-derives this exact color-mix recipe ~57x (NotationPills, EquationModeToggle, BasisSelector, InfoCard, HarmonicLevelGrid). IconChip owns only the icon-GLYPH tone; there is no primitive for the background/border/text tonal FILL every accent chip/active pill/tier badge/legend swatch needs. It IS the colour-pop system the user wants suffused, and generalizes to value.js palette chips + speedtest tone badges."
+  },
+  {
+   "name": "AtomDiff / diff-highlight viewer",
+   "what": "A three-tone (added/removed/changed) keyed row renderer over the canonical J atomdiff shape, reusing the tonal-accent recipe (green/red/amber) + glass-ui's View-Transitions/@starting-style motion floor for row enter/leave.",
+   "why": "J-CORE shipped /diff with zero frontend consumer; when M.W8 builds the viewer it would hand-roll the highlighter inside fourier. The three-tone diff row is general \u2014 value.js palette diffs + speedtest run-compares want the same grammar. Born in glass-ui, the J consumer stays thin and the diff vocabulary lives in one place."
+  },
+  {
+   "name": "ConfiguratorLayer header trailing/actions slot",
+   "what": "A named trailing (or actions) slot on the ConfiguratorLayer trigger header, right-aligned before the chevron, inside a @click.stop boundary so a slotted reset button does not toggle the section.",
+   "why": "fourier needs a header-right panel-wide reset aligned to the title. Today ConfiguratorLayer's only slot is the body, so fourier drops the reset into the body with negative-margin nudges (ContourSettings, BasisSelector) AND maintains an entire parallel CollapsibleSection.vue solely for its actions slot. This slot lets fourier align the reset AND retire CollapsibleSection (inv-30)."
+  },
+  {
+   "name": "DockIconButton active/pressed toggle contract",
+   "what": "An active?: boolean toggle prop on DockIconButton (and ideally Button) stamping aria-pressed + data-active and driving a selected visual register (tinting at --dock-selected-accent).",
+   "why": "DockIconButton models only press/hover/focus \u2014 no selected register. fourier hand-rolls :class=\"{is-active}\" at 7 dock sites but .dock-icon-button.is-active has NO backing paint in either tree \u2014 the toggled-on state renders identically to idle. A native pressed prop lets fourier write :active and delete the dead class + per-consumer CSS."
+  },
+  {
+   "name": "useSpecular composable (pointer-anchored catch-light)",
+   "what": "A tiny exported composable wiring a glass surface's --mouse-x/--mouse-y from pointermove (rAF-throttled, reduced-motion-aware) + composing .glass-specular-track, so a consumer gets the iOS-26 illuminate-from-within with one binding.",
+   "why": "The material.css specular recipe ships but the ergonomic wiring is not exported; the only way today is hand-writing two custom props on pointermove per surface. fourier wants the catch-light on its focused BAND 1 panels over the bright math canvas; a one-line composable makes it the easy default."
+  },
+  {
+   "name": "useCharStagger / SplitChars kinetic primitive",
+   "what": "A composable/render component that splits a string into per-glyph spans, sets --char-index, and preserves an accessible full-text aria-label \u2014 the JS partner to the shipped .char-stagger CSS recipe, PRM-aware terminal state.",
+   "why": "glass-ui ships the .char-stagger CSS (needs --char-index) but no helper to produce the spans, so every hero (paper, landing, speedtest) hand-rolls glyph-splitting + a11y labelling. fourier carries a local kill-on-adopt stopgap until this ships."
+  },
+  {
+   "name": "canvas-anchored-overlay (virtual anchor for top-layer popover)",
+   "what": "A way to anchor glass-ui 4.0's top-layer/anchored popover to an arbitrary canvas-relative point (cursor or sampled curve coordinate) via a synthetic getBoundingClientRect rect, rather than only a DOM element.",
+   "why": "Both the per-coefficient hover and the convergence-curve hover live over a <canvas>; without a virtual-anchor escape hatch they cannot adopt the 4.0 overlay substrate and must keep bespoke absolutely-positioned divs with manual px math and no keyboard path."
+  },
+  {
+   "name": "data-scroll-reveal once-discipline for virtualized/teleporting scrollers",
+   "what": "An opt-in once mode on [data-scroll-reveal] (a [data-scroll-reveal=once] variant or data-revealed latch) that reveals a child exactly once and renders terminal-state on re-entry.",
+   "why": "The view()-timeline recipe re-fires every viewport re-entry \u2014 correct for static lists but wrong for fourier's virtual section window (sections unmount/remount) and teleport navigation, causing reveal flicker + corrupting the teleport stable-frame loop. A once-latch lets the paper body adopt scroll-reveal safely."
+  },
+  {
+   "name": "convergence-reveal motion preset",
+   "what": "A reusable 'partial-sum settle' motion preset (spring curve + orchestration helper) driving a 0\u21921 accumulation clock with PRM-collapse-to-terminal built in \u2014 the canonical 'series settling onto target' grammar, composed from useStaggerReveal/useSpring/useCountup.",
+   "why": "fourier needs it at every canvas + spectrum entrance and the J.WC spec names it THE signature; the fourier viz + equation routes want the identical accumulation curve, so it belongs in the shared motion layer rather than hand-rolled per-repo."
+  }
+ ],
+ "risks": [
+  "The bump is the single point of failure: glass-ui is a MAJOR and keyframes TWO majors \u2014 latent faults can surface (the BA migration touches ~25 call sites: UnderlineTabs/MetricBadge/glass-elevated/glass-scrubber). Gate M.W1 on a cited green CI run per inv-27, run a full MIGRATION.md sweep against the 11 used glass-ui subpaths BEFORE the bump lands, NOT a blind bump.",
+  "The in-flight glass-subtle\u2192glass-quiet rename in the dirty tree is SEMANTICALLY WRONG (subtle's 4.0 successor is glass-wash ~0.30\u03b1, not quiet ~0.50\u03b1 \u2014 it over-weights every legend/toggle/equation overlay a full rung). It MUST be corrected to glass-wash inside M.W1, not committed standalone, or fourier pins to a half-migrated 4.0 vocab against the still-3.1.0 node_modules.",
+  "J close has a hard interlock: M.W8 wires the consumer half but J's data-model (W2-fix/W2-transpose) + e2e-green remain J-owned. The e2e greens via M.W1's dock-VT useId, but if J's data-model waves are not also executed, J still cannot close \u2014 M unblocks but does not subsume J.",
+  "Retiring placeholder.ts (compose-the-void) and renaming search-highlight markup may break e2e/visual-regression selectors that assert canvas-painted text or v-html <mark> structure \u2014 selectors must follow the DOM moves (B2 open-question, D1-06).",
+  "value.js sampleColorRamp (the ideal OKLCH-ramp primitive for the harmonic spectrum) is RATIFIED for 0.13.0 but NOT yet published \u2014 M.W6 must use mixColorsN equal-weight loop as the interim and book sampleColorRamp with a hard kill-date = 0.13.0 publish, verified at adoption time.",
+  "The K-deploy chronic (months-class babb.dev API outage, host 29 commits behind, silent health-gate rollback since H-era) is cross-repo infra and NOT fully closable inside M \u2014 M lands the HEALTHCHECK + the e2e-greening bump, but the deploy-of-record close stays K-owned; risk of M being treated as discharging K when it only carries the fourier-side spine.",
+  "Motion CORE (M.W7) is the deepest transposition \u2014 collapsing 8 rAF loops + 2 clocks risks regressing the I.\u03b3 off-screen-park semantics. Verify RAFPlayback.loop + Sequence.pause retains exact phase on resume; keep the paper teleport measure-loop explicitly EXEMPT (inv-M3 doc-mark) to avoid category-error over-reach."
+ ],
+ "prose": "Tranche M is an ADOPT-AND-SUFFUSE tranche, not a build-from-scratch one \u2014 the re-grounding to a glass-ui 4.0.0 / keyframes 4.2.0 / value.js 0.12.0 world inverts the prior posture: nearly every primitive the last three audits booked as a future glass-ui ASK has SHIPPED, so the work collapses from \"wait + hand-roll\" to \"bump + consume + delete.\" The single load-bearing move is M.W1, the multi-major bump, which is the hard predecessor of all five mandate axes at once: it greens the J e2e blocker at source (the glass-dock-1 dup-VT-name \u2192 useId in 4.x), unblocks the entire motion CORE (the keyframes light tier + glass-ui /motion suite), unblocks the colour leverage (value.js mixColorsN/safeAccentColor), unblocks the typography ladder + the dead-Fraunces activation, and clears the stale RUN-BOARD E1 hinge. It must land as ONE atomic changeset with the BA migration breaks discharged and the in-flight glass-subtle rename CORRECTED to glass-wash \u2014 committing that rename standalone, or to glass-quiet, pins fourier to a half-migrated 4.0 vocabulary against a 3.1.0 node_modules.\n\nThe gestalt that emerges from merging groups B\u2013E is that fourier's design language is half-built and quarantined, and its motion is fragmented across 8 hand-rolled rAF loops \u2014 and BOTH conditions resolve through the same library bump plus a discipline of deletion. The glass story: primary content surfaces are paper stickers (cartoon-card shim), not glass, while the GLASS pillar appears only on transient chrome; the fix is a frozen 3-band depth hierarchy (bare math substrate \u2192 in-flow instrument panels \u2192 lifted chrome) with the shim DELETED and the catch-light wired over the bright canvas. The colour story: the icon-rainbow IS audacious but lives in one chart legend, while four duplicated HSL spectrumColor copies, a 118-line bespoke parser, and a divergent STATIC.rainbow twin hand-mix what value.js 0.12 generates perceptually from the favicon's own six stops \u2014 collapse them to ONE OKLCH ramp and key per-route accents off it. The typography story: .cm-serif silently degrades to Times under 4.0 unless --font-serif-math is bound, Fraunces is vendored-but-dead, and gallery+equation have NO page heading at all \u2014 bind the tokens, adopt the \u03c6-ladder, make KaTeX the hero. The motion story: two ping-pong clocks are duplicated verbatim, the manual rAF store is the MEMORY-flagged legacy, and the most on-brand effect (the partial sum visibly converging onto its target) is built at ZERO sites despite the renderers already computing every quantity it needs \u2014 collapse to ONE useFourierPlayhead and build the convergence-reveal as THE signature.\n\nSequencing honours the dependency spine: W1 (bump) is the root; W2 (deploy spine + harness promotion) and W3/W4/W6 (glass/type/colour, all gating only on W1) can parallelize; W5 (control-pane hierarchy) gates on W3's glass ladder; W7 (motion CORE) gates on W1; W8 (J wire-up + scroll heroes) gates on W7's motion architecture and is the J close. Every proposal is no-legacy by construction \u2014 each finding DELETES rather than wraps: the cartoon-card shim, the phantom glass-scrubber variant, the four spectrumColor copies, the bespoke colour parser, the eight rAF loops, the hand-rolled focus traps and popovers. The five new invariants (glass-depth-band, one-colour-source, one-motion-clock/no-raw-rAF, proportion+PRM-floor, platform-over-library-no-shims) encode the discipline so the next tranche inherits the rules rather than re-deriving them. The boundary fourier must hold throughout is inv-16: where a primitive belongs IN glass-ui (the tonal-accent recipe, the AtomDiff viewer, the ConfiguratorLayer trailing slot, the DockIconButton active prop, the specular composable, the char-stagger primitive, the canvas-anchored overlay, the once-discipline scroll-reveal, the convergence-reveal preset), fourier BOOKS the ask and consumes once shipped \u2014 it never writes glass-ui. M does not subsume J or K: it unblocks J's e2e and wires J's consumer gap, and it carries K's fourier-side deploy spine, but J's data-model close and K's cross-repo API-outage chronic remain owned by their tranches."
+}

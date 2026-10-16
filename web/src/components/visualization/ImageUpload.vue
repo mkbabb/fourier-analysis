@@ -1,32 +1,40 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useImageUpload } from "./composables/useImageUpload";
+import { useImageUploadContext } from "./composables/useImageUpload";
 import { thumbnailUrl } from "@/lib/api";
-import { ImagePlus, Upload, ImageOff } from "lucide-vue-next";
+import { ConfiguratorLayer } from "@mkbabb/glass-ui/configurator";
+import { Progress } from "@mkbabb/glass-ui/progress";
+import { Button } from "@mkbabb/glass-ui/button";
+import { Upload, ImageOff } from "@lucide/vue";
 
 const store = useWorkspaceStore();
-const fileInput = ref<HTMLInputElement>();
 const imgError = ref(false);
 
-const { isDragging, preview, clearPreview, handleDrop, handleDragOver, handleDragEnter, handleDragLeave, handleFileSelect } =
-    useImageUpload(async (file: File) => {
-        imgError.value = false;
-        await store.uploadImage(file);
-    });
+/*
+ * X.F.W14V.au2 — A2-FO-L1-11: this layer is presentation only. The workspace
+ * view is the one upload owner (its `useImageUpload`, its file input, its drop
+ * target); the layer's own instance, its second input and the drop target
+ * nested inside the view's are deleted. What the layer shows is the view's.
+ */
+const { isDragging, preview, openPicker } = useImageUploadContext();
 
-// Reset component-local preview when the workspace image changes, including
-// uploads initiated from the global dropzone or canvas click target.
+// A new workspace image replaces the one that failed to load.
 watch(() => store.imageSlug, () => {
     imgError.value = false;
-    clearPreview();
 });
 
 const hasPreview = () => !!store.imageMeta || preview.value;
 
-function openFilePicker() {
-    fileInput.value?.click();
-}
+/*
+ * X.F.W14V.u4 — UIA-F-71 ⊕ F-238: whether the upload in flight REPLACES an
+ * image (read at its start: the first upload sets `imageMeta` midway, and its
+ * flight runs on through the draft save and the first compute).
+ */
+const replacing = ref(false);
+watch(() => store.uploading, (now) => {
+    if (now) replacing.value = !!store.imageMeta;
+});
 
 function onImgError() {
     imgError.value = true;
@@ -34,136 +42,105 @@ function onImgError() {
 </script>
 
 <template>
-    <div
-        class="cartoon-card px-3 py-2 relative"
-        @drop="handleDrop"
-        @dragover="handleDragOver"
-        @dragenter="handleDragEnter"
-        @dragleave="handleDragLeave"
-    >
-        <h3 class="cm-serif mb-3 text-sm font-semibold tracking-tight flex items-center gap-2">
-            <ImagePlus class="h-4 w-4 text-muted-foreground" />
-            Image
-            <span class="ml-0.5 text-xs font-normal text-muted-foreground">— source input</span>
-        </h3>
+    <!-- X-DS pass 2 · DS-F2-C1: the layer IS the root. The plain wrapper
+         <div> kept it out of glass's sibling fusing (squared corners, one
+         shared hairline) and took the stack's 12 px non-layer margin, so the
+         Image layer stood apart from Basis as a second rounded box. Attrs
+         fall through to the layer. -->
+    <ConfiguratorLayer label="Image">
+        <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 10's INTERLOCK: the layer
+             supplies no heading (its header is a `<button>`), so the `<h3>` is
+             carried in the layer, visually hidden because the trigger already
+             paints the same word. Roster 18: the "source input" words are the
+             layer's `sub`, not inside the heading's name. (X.F.W14V.au2 —
+             A2-FO-L1-11: the drop target is the view's, the one upload owner.) -->
+        <h3 class="sr-only">Image</h3>
 
-        <!-- Preview with overlay replace button + drag-over dashed outline -->
-        <div
-            v-if="hasPreview()"
-            class="group relative mb-0 overflow-hidden rounded-lg animate-scale-in transition-all duration-200"
-            :class="{
-                'ring-2 ring-dashed ring-primary ring-offset-2 ring-offset-card': isDragging,
-            }"
-        >
-            <!-- Broken image fallback -->
-            <div v-if="imgError" class="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
-                <ImageOff class="h-10 w-10 opacity-40" />
-                <p class="text-xs fira-code">Image unavailable</p>
+        <!-- X.F.W14U.vstage — UIA-F-169 ⊕ F-239: the image took the aside's top
+             third (a 200 px letterboxed preview above a full-width Replace
+             button), and its rounded corner fell on letterbox space, not on
+             the image. It is a compact row now: the thumbnail at the image's
+             own aspect (its box IS the image, so the media radius rounds the
+             picture) beside its Replace command. The drag-over signal is the
+             row's ring; the "Drop to replace" plate is the stage's
+             (VisualizationView, F-166). -->
+        <div v-if="hasPreview()" class="image-row" :data-dragging="isDragging || undefined">
+            <div v-if="imgError" class="image-missing text-muted-foreground">
+                <ImageOff aria-hidden="true" />
+                <p class="text-caption">Image unavailable</p>
             </div>
             <img
                 v-else
                 :src="preview || (store.imageSlug ? thumbnailUrl(store.imageSlug) : '')"
                 alt="Uploaded image"
-                class="w-full max-h-[200px] object-contain transition-all duration-300"
+                class="image-thumb"
                 @error="onImgError"
             />
-            <div
-                class="absolute inset-0 flex items-center justify-center bg-black/0 transition-all duration-200 cursor-pointer"
-                :class="{
-                    'bg-primary/10': isDragging,
-                }"
-                @click="openFilePicker"
-            >
-                <div
-                    v-if="isDragging"
-                    class="flex items-center gap-1.5 rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur-sm fira-code"
-                >
-                    <Upload class="h-3 w-3" />
-                    Drop to replace
-                </div>
-            </div>
+            <Button emphasis="secondary" size="sm" @click="openPicker">
+                <Upload />
+                Replace image
+            </Button>
         </div>
 
-        <!-- D.W4.b — Slim source-strip (replaces the redundant full-card
-             empty-state dropzone). The canvas-center placeholder is the
-             hero affordance; this strip is a secondary cue + click target.
-             Once an image lands, the thumbnail/replace card above (with
-             `hasPreview()` true) becomes the only "full" panel form. -->
-        <button
-            v-else
-            type="button"
-            class="source-strip group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150"
-            :class="{
-                'is-dragging': isDragging,
-            }"
-            @click="openFilePicker"
-        >
-            <Upload
-                class="h-4 w-4 shrink-0 transition-colors duration-150"
-                :class="{
-                    'text-primary': isDragging,
-                    'text-muted-foreground': !isDragging,
-                }"
-            />
-            <span class="flex-1 text-sm font-medium text-muted-foreground">
-                Drop or click to upload — PNG/JPG/SVG ≤ 10 MB
-            </span>
-        </button>
+        <!-- X.F.W13.c — the source strip ("Drop or click to upload — PNG/JPG/SVG
+             ≤ 10 MB") RETIRED (owner frame 4: "duplicative"). This layer renders
+             only once an image exists (the sidebar arrives with it); with no
+             image the main area's drop target is the one upload affordance. -->
 
-        <!-- Rainbow computing bar — below the card content -->
+        <!-- X.F.W3 `.d` — `fr-ImageUpload` roster 4 (⊕ roster 24). 47 lines of
+             hand-rolled indeterminate progress with ZERO a11y channel (`grep -c
+             aria-` over this file returned 0: no role, no status, no sr-only)
+             retire onto `./progress`, exported at the installed pin.
+
+             Roster 24 closes with it, and the routing is why: under
+             `prefers-reduced-motion` the hand-rolled bar FROZE at its 100 %
+             frame while the `<Transition>` still faded it in — opacity is
+             allow-listed by the blanket clamp — so a motionless, nameless
+             decorative gradient was the PRM+AT user's entire busy signal. The
+             correct channel is NON-MOTION, not a new PRM carve: reka's
+             `role="progressbar"` with an indeterminate value and a real name
+             says "busy" without moving anything.
+
+             ▲ CENSUS DRIFT, MEASURED AT THE PIN AND RECORDED, NOT INHERITED:
+             roster 4 names "variant `gradient`, `indeterminate`" — the 4.0.0
+             spelling. At the adopted 8.0.0 bytes `ProgressVariant` is
+             `"default" | "liquid"` and indeterminate is `:model-value="null"`
+             ("`null` is INDETERMINATE — reka's own door, and the only one",
+             the producer's own docblock). The cure is unchanged; its spelling
+             is the pin's. -->
         <Transition name="rainbow-fade">
-            <div v-if="store.computing" class="rainbow-track">
-                <div class="rainbow-bar" />
-            </div>
+            <!-- X.F.W14.r — the sidebar now enters on drop (F.W13 `.c` r1),
+                 so the upload in flight is this layer's busy state too. -->
+            <!-- X.F.W14U.vstage — UIA-F-71 ⊕ F-238: computing is the stage's
+                 one busy mark (VisualizationView); this bar carried it too, and
+                 its unmount at the end of a compute jumped the Decomposition
+                 layer up ~33 px. The layer's bar is the upload's only. -->
+            <!-- X.F.W14V.u4 — UIA-F-71 ⊕ F-238: a REPLACE upload's mark (the
+                 image is already here). The first upload's one mark is the
+                 stage's drop-target button (glass's dot ring); a second bar
+                 here doubled it, and its unmount at the end of the first
+                 compute jumped the layers below. -->
+            <Progress
+                v-if="store.uploading && replacing"
+                :model-value="null"
+                variant="liquid"
+                size="sm"
+                class="mt-2"
+                aria-label="Uploading the image"
+            />
         </Transition>
 
-        <input
-            ref="fileInput"
-            data-testid="image-file-input"
-            type="file"
-            accept="image/*"
-            class="hidden"
-            @change="handleFileSelect"
-        />
-    </div>
+    </ConfiguratorLayer>
 </template>
 
 <style scoped>
-/* Rainbow bar — absolutely positioned at bottom of card, no layout shift */
-.rainbow-track {
-    position: absolute;
-    bottom: 0;
-    left: 0.5rem;
-    right: 0.5rem;
-    height: 6px;
-    border-radius: 9999px;
-    overflow: hidden;
-    background: var(--muted);
-}
-
-.rainbow-bar {
-    height: 100%;
-    width: 100%;
-    border-radius: 9999px;
-    background: linear-gradient(
-        90deg,
-        #f87171 0%,
-        #fbbf24 17%,
-        #34d399 33%,
-        #60a5fa 50%,
-        #c084fc 67%,
-        #f472b6 83%,
-        #f87171 100%
-    );
-    background-size: 200% 100%;
-    animation: rainbow-slide 1.4s linear infinite;
-}
-
-@keyframes rainbow-slide {
-    0% { background-position: 0% 0; }
-    100% { background-position: 200% 0; }
-}
-
+/* X.F.W3 `.d` — the 47 hand-rolled lines roster 4 books are DELETED, not
+   rewritten: the track, the seven-stop literal-hex gradient bar (zero tokens,
+   zero `dark:`) and the `rainbow-slide` keyframes it animated. `./progress`
+   ships the rail, the indeterminate motion, the reduced-motion arm and the
+   `role="progressbar"` channel none of this had. The fade transition below
+   SURVIVES — it is the mount treatment, not the progress, and deleting it
+   would be an unasked-for change to how the bar arrives. */
 .rainbow-fade-enter-active {
     transition: opacity 0.3s ease-out;
 }
@@ -175,33 +152,29 @@ function onImgError() {
     opacity: 0;
 }
 
-.ring-dashed {
-    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
-    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
-    outline: 2px dashed var(--primary);
-    outline-offset: 3px;
+/* The compact image row (F-169). The thumbnail's box is the image: bounded on
+   both axes with `auto` sizes, so it keeps the image's aspect and the media
+   radius rounds the picture itself (F-239). */
+.image-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: var(--radius-media);
 }
-
-/* D.W4.b — slim source-strip. Replaces the redundant full dashed-border
-   empty-state dropzone with a one-line click target that yields hero
-   primacy to the canvas placeholder. The dashed-border affordance is
-   reserved for the canvas hero; the panel's secondary cue is flat. */
-.source-strip {
-    background: color-mix(in srgb, var(--muted) 40%, transparent);
-    border: 1px solid var(--border);
-    cursor: pointer;
+.image-row[data-dragging] {
+    box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
-.source-strip:hover {
-    background: color-mix(in srgb, var(--muted) 60%, transparent);
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
+.image-thumb {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 7.5rem;
+    max-height: 5rem;
+    border-radius: var(--radius-media);
 }
-.source-strip:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-}
-.source-strip.is-dragging {
-    background: color-mix(in srgb, var(--primary) 6%, transparent);
-    border-color: var(--primary);
+.image-missing {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 </style>

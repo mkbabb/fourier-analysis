@@ -1,19 +1,164 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
-import { Button } from "@mkbabb/glass-ui/button";
+/**
+ * X·F F.W3 `.c` — `FR-PS-CLIP` ⊕ `FR-PS-BDT` ⊕ `FR-PS-Z`, cured as ONE thing,
+ * because they are one thing: an overlay authored as a descendant of the box it
+ * has to escape.
+ *
+ * `FR-PS-CLIP` (the SIDEBAR arm): the panel was `position: absolute` inside
+ * `.paper-search`, which is `.sidebar-nav`'s FIRST child. `.sidebar-nav`
+ * declares `overflow-y: auto` and no `overflow-x`, so `overflow-x` computes to
+ * `auto` (measured live: `getComputedStyle(nav).overflowX === "auto"`) and the
+ * nav is a scroll container on BOTH axes — it clips every descendant whose
+ * containing block is inside it, `absolute` ones included. The panel could not
+ * leave it, and `max-height: 50vh` was never honoured because the nav's own
+ * `max-height: calc(--paper-scroll-viewport-height − insets)` is the real cap.
+ *
+ * `FR-PS-BDT` (the FLOATING arm): the click-away shim was
+ * `position: fixed; inset: 0`, and `.floating-toc-bar` carries the producer's
+ * `glass-resting` recipe, whose `backdrop-filter` (measured live:
+ * `blur(16px) saturate(1.5)`) makes the bar the containing block for a FIXED
+ * descendant. The shim therefore resolved against the BAR's padding box, i.e.
+ * it covered the INPUT: a tap meant for the field fired `close()` and wiped the
+ * query. The banked `D-6`/`L-1¶3` cure is a REVIVAL of that element and is
+ * refused by name; dismissal is re-derived OUTSIDE the containing block, as a
+ * document-level pointer test that has no geometry at all.
+ *
+ * `FR-PS-Z`: the panel was filed at `--z-bar` and the shim at the SAME token as
+ * the plate it had to sit behind, while on the floating consumer both were
+ * clamped inside `.floating-toc`'s stacking context (`position: sticky` +
+ * `z-index: var(--z-controls)`), so no value either could carry reached past
+ * the chrome above it. The rung is assigned HERE, inside the re-parenting that
+ * dissolves the clamp — `--z-popover`, the token that exists for exactly this
+ * surface — and never as a nudge on a clamped element.
+ *
+ * The cure is a portal: the panel renders into `<body>`, where no ancestor
+ * filters, contains or clips, and is positioned from the field's own viewport
+ * rect. A component's elements carry its scope id wherever they are portalled,
+ * so the rules below still reach them (`PSM-1`'s mechanism, used deliberately
+ * this time).
+ */
+import { computed, nextTick, onScopeDispose, ref, watch } from "vue";
 import type { PaperSearchState } from "./usePaperSearch";
-import { TYPE_LABELS, resultLabel, highlightFuzzy } from "./searchHelpers";
+import PaperSearchResultRow from "./PaperSearchResultRow.vue";
 
 const props = defineProps<{
     search: PaperSearchState;
     variant: "sidebar" | "floating";
-}>();
-
-const emit = defineEmits<{
-    select: [id: string];
+    /** The field this panel hangs from — `PaperSearch`'s own root element. */
+    anchor: HTMLElement | null;
+    /**
+     * X.F.W14V.r4 — A2-FO-X-7 x UIA-F-59: the column the plate lives in (the
+     * sidebar's `.sidebar-nav`). When given, the plate takes the column's
+     * inline box and stays above its bottom edge; when absent (the floating
+     * bar) it hangs from the field alone.
+     */
+    column: HTMLElement | null;
 }>();
 
 const resultsRef = ref<HTMLElement | null>(null);
+
+/** UIA-F-158: a query that matched nothing keeps the panel, which says so. */
+const isOpen = computed(() => props.search.panelOpen.value);
+
+// ── The anchored geometry ────────────────────────────────────
+// Physical coordinates, because the measurement is physical: the rect comes
+// from `getBoundingClientRect()` and is already resolved in the writing mode
+// the document actually has.
+const GAP_PX = 4;
+const VIEWPORT_MARGIN_PX = 8;
+/** UIA-F-59: the floating panel's content floor (the register's 22-26rem band). */
+const PANEL_MIN_REM = 24;
+
+const panelStyle = ref<Record<string, string>>({});
+
+function measure() {
+    const el = props.anchor;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    // UIA-F-235: both arms hang GAP_PX below their anchor. The floating arm
+    // sat flush under the bar, its corner overlapping the bar's edge.
+    const top = r.bottom + GAP_PX;
+    // `50vh`/`60vh` are now REACHABLE, so they are also now a real cap and have
+    // to be clamped against the space that actually exists below the field.
+    const preferred = props.variant === "floating" ? 0.6 : 0.5;
+    const col = props.column?.getBoundingClientRect() ?? null;
+    const floor = Math.min(window.innerHeight - VIEWPORT_MARGIN_PX, col ? col.bottom : Infinity);
+    const room = Math.max(0, floor - top);
+    // A panel that tracks its field must also DISAPPEAR with it. `.sidebar-nav`
+    // is itself a scroll port and `useSidebarFollow` scrolls it to keep the
+    // active entry in view, so the field — the nav's first child — can be
+    // carried out of that port entirely (measured: `nav.scrollTop = 217` after
+    // a deep navigation puts the field at `top: -133px`). While the panel was
+    // an `absolute` descendant the nav's own clip hid it; portalled, nothing
+    // does, and it would hang detached over the page. This is that clip, kept.
+    const onScreen =
+        r.bottom > 0 &&
+        r.top < window.innerHeight &&
+        r.right > 0 &&
+        r.left < window.innerWidth;
+    // X.F.W14V.r4 — A2-FO-X-7 x UIA-F-59 (F-W14V addendum (h) 4, COHESION
+    // §0eb): in the sidebar the plate IS the column's width — it never breaks
+    // out over the article (X-7), and F-59's cut titles are cured by wrapping
+    // (`PaperSearchResultRow`), not by widening. The floating bar has no
+    // column: its panel keeps F-59's content floor, at least the field, never
+    // past the viewport's right margin.
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const reach = window.innerWidth - r.left - VIEWPORT_MARGIN_PX;
+    const left = col ? col.left : r.left;
+    const width = col ? col.width : Math.max(r.width, Math.min(PANEL_MIN_REM * rem, reach));
+    panelStyle.value = {
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${width}px`,
+        maxHeight: `${Math.min(window.innerHeight * preferred, room)}px`,
+        visibility: onScreen ? "visible" : "hidden",
+        pointerEvents: onScreen ? "auto" : "none",
+    };
+}
+
+/**
+ * Dismissal, derived rather than painted. `capture: true` because the panel and
+ * the field are in different subtrees and a row's own `@click` must still run:
+ * the test is containment, and both containers are excluded before anything is
+ * closed.
+ */
+function onPointerDownOutside(e: PointerEvent) {
+    const t = e.target as Node | null;
+    if (!t) return;
+    if (props.anchor?.contains(t)) return;
+    if (resultsRef.value?.contains(t)) return;
+    props.search.close();
+}
+
+// `scroll` does not bubble, but it DOES capture at the window — which is the
+// point: the field moves when `.sidebar-nav` scrolls, when `.paper-scroll`
+// scrolls, and when the page scrolls, and one capturing listener sees all three.
+function arm() {
+    document.addEventListener("pointerdown", onPointerDownOutside, true);
+    window.addEventListener("scroll", measure, { capture: true, passive: true });
+    window.addEventListener("resize", measure, { passive: true });
+}
+
+function disarm() {
+    document.removeEventListener("pointerdown", onPointerDownOutside, true);
+    window.removeEventListener("scroll", measure, true);
+    window.removeEventListener("resize", measure);
+}
+
+watch(isOpen, (open) => {
+    if (!open) {
+        disarm();
+        return;
+    }
+    measure();
+    // The field's own box can change in the same tick that opens the panel
+    // (the clear control mounts with the first character), so the rect is read
+    // again after the patch.
+    nextTick(measure);
+    arm();
+});
+
+onScopeDispose(disarm);
 
 // Scroll selected result into view (only when not expanded / modal)
 watch(
@@ -31,40 +176,111 @@ defineExpose({ resultsRef });
 </script>
 
 <template>
-    <!-- Inline dropdown (non-expanded) -->
-    <Transition name="search-dropdown">
-        <div
-            v-if="search.isOpen.value && !search.isExpanded.value && search.results.value.length > 0"
-            ref="resultsRef"
-            class="paper-search-results glass-elevated"
-        >
-            <Button
-                v-for="(r, i) in search.results.value"
-                :key="`${r.id}-${r.type}-${i}`"
-                variant="ghost"
-                class="paper-search-result"
-                :class="{ 'is-selected': i === search.selectedIndex.value }"
-                @click="search.selectResult(r)"
-                @mouseenter="search.selectedIndex.value = i"
+    <Teleport to="body">
+        <Transition name="search-dropdown">
+            <div
+                v-if="isOpen"
+                ref="resultsRef"
+                class="paper-search-results glass-floating glass-overlay-plate"
+                data-reveal="menu"
+                :style="panelStyle"
             >
-                <span class="paper-search-badge" :data-type="r.type">
-                    {{ TYPE_LABELS[r.type] ?? r.type }}
-                </span>
-                <span v-if="r.number" class="paper-search-number fira-code">
-                    {{ r.number }}
-                </span>
-                <span
-                    class="paper-search-label"
-                    v-html="highlightFuzzy(resultLabel(r), search.query.value)"
-                />
-            </Button>
-        </div>
-    </Transition>
-
-    <!-- Backdrop for inline dropdown (floating variant only) -->
-    <div
-        v-if="variant === 'floating' && search.isOpen.value && !search.isExpanded.value && search.results.value.length > 0"
-        class="paper-search-backdrop"
-        @click="search.close()"
-    />
+                <!-- UIA-F-160: the options are the listbox's, and none is a tab
+                     stop — the field keeps focus (pointerdown does not move
+                     it) and `aria-activedescendant` is the one cursor. Hover
+                     moves that cursor; nothing else paints a row. -->
+                <div
+                    :id="search.listboxId"
+                    role="listbox"
+                    aria-label="Search results"
+                    class="paper-search-listbox"
+                >
+                    <div
+                        v-for="(r, i) in search.results.value"
+                        :key="r.key"
+                        :id="search.optionId(i)"
+                        role="option"
+                        :aria-selected="i === search.selectedIndex.value"
+                        class="paper-search-option"
+                        :class="{ 'is-selected': i === search.selectedIndex.value }"
+                        @pointerdown.prevent
+                        @pointermove="search.selectedIndex.value = i"
+                        @click="search.selectResult(r)"
+                    >
+                        <PaperSearchResultRow :result="r" :query="search.debouncedQuery.value" />
+                    </div>
+                </div>
+                <p
+                    v-if="search.results.value.length === 0"
+                    class="paper-search-empty"
+                    role="status"
+                >
+                    No results
+                </p>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
+
+<style scoped>
+@reference "tailwindcss";
+/* X·F F.W4 `.e` — `PSM-1`: this component's ENTIRE subtree was orphaned, and
+   not by the single-root rule — it had TWO template roots (the Transition and
+   the backdrop), so it was a real fragment with no root to inherit the parent's
+   scope id at all. Its rules live here now.
+
+   X·F F.W3 `.c` — the backdrop root is GONE (`FR-PS-BDT`), so this component
+   has one root; and the panel is portalled, so its box is fixed to the viewport
+   and its position/size are bound inline from the field's measured rect. Only
+   the declarations that are NOT geometry stay here. */
+.paper-search-results {
+    position: fixed;
+    /* `FR-PS-Z`: `--z-popover` is the token minted for this surface. The old
+       `--z-bar` (30) was both the wrong rung and, on the floating consumer,
+       unreachable — clamped inside `.floating-toc`'s stacking context. The
+       portal dissolves the clamp; this names the altitude. */
+    z-index: var(--z-popover);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* UIA-F-59: the hand 1.5px border, the 8px corner, the shadow and the
+       padding retire onto the producer's menu plate (`.glass-overlay-plate
+       [data-reveal=menu]`: `--radius-card`, `--overlay-pad`), which
+       `glass-floating` paints. */
+}
+
+.paper-search-option {
+    display: flex;
+    align-items: baseline;
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius-button);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.paper-search-option[aria-selected="true"] {
+    background: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+/* UIA-F-158: an explicit miss, not a silent vanish. */
+.paper-search-empty {
+    margin: 0;
+    padding: 0.5rem;
+    font-size: var(--type-small);
+    color: var(--muted-foreground);
+}
+
+/* ── Inline dropdown transition ──────────────────────────── */
+/* A.W3.d — bezier→`--ease-out-expo`. */
+.search-dropdown-enter-active,
+.search-dropdown-leave-active {
+    transition:
+        opacity 0.15s var(--ease-standard),
+        transform 0.15s var(--ease-out-expo);
+}
+
+.search-dropdown-enter-from,
+.search-dropdown-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+</style>

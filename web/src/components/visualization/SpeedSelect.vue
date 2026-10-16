@@ -1,70 +1,69 @@
 <script setup lang="ts">
-import { computed } from "vue";
+/**
+ * X.F.W14U.vdock — UIA-F-9 (BROKEN) ⊕ F-82 ⊕ F-175: the playback speed is ONE
+ * control, the menu's own idiom, wherever it is shown.
+ *
+ * WHAT THIS FILE WAS: a glass `Select` rendered twice — a bare, hand-stripped
+ * trigger in the expanded dock from `sm` up, and an `.input-pill` trigger inside
+ * the ⋮ menu below `sm`. At 390 the pill (154px) ran 24px past the 204px menu,
+ * the opened listbox piled a second frosted layer over the menu and scrolled its
+ * group sideways ("Easinε"), and speed wore a different control at each
+ * breakpoint. A menu is never the parent of another floating list.
+ *
+ * NOW: the speed catalogue (`ANIMATION_SPEEDS`, the domain `lib/defaults.ts`
+ * owns) is a labelled `DropdownMenuRadioGroup` — the sibling of `EasingPicker`,
+ * one section idiom for every setting the menu holds. Choosing a rate keeps the
+ * menu open (`select` is prevented), so rate and easing can be tried in turn.
+ * The store's own setter still coerces every write into the catalogue.
+ *
+ * ⊘ The ONE shared animation pane (UIA-F-81: speed and easing leave the menu for
+ * a pane beside the stage, one catalogue and one picker with /morph) is the
+ * register's final form; its mount is outside this unit's bounds and is
+ * escalated (F.W14U.vdock receipt). This section is the register's interim for
+ * F-9 and moves with the picker when the pane lands.
+ */
+import { useId } from "vue";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@mkbabb/glass-ui/select";
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuSeparator,
+} from "@mkbabb/glass-ui/menu";
+import { ANIMATION_SPEEDS, isAnimationSpeed } from "@/lib/defaults";
+import { useAnimationStore } from "@/stores/animation";
 
-const props = withDefaults(
-    defineProps<{
-        modelValue: number;
-        compact?: boolean;
-    }>(),
-    { compact: false },
-);
+const anim = useAnimationStore();
+const speedLabelId = useId();
 
-const emit = defineEmits<{
-    (e: "update:modelValue", v: number): void;
-}>();
-
-const speedStr = computed({
-    get: () => String(props.modelValue),
-    set: (v: string) => emit("update:modelValue", parseFloat(v)),
-});
+function selectSpeed(value: unknown) {
+    if (isAnimationSpeed(value)) anim.speed = value;
+}
 </script>
 
 <template>
-    <Select v-model="speedStr">
-        <SelectTrigger
-            aria-label="Playback speed"
-            :class="compact ? 'speed-trigger-compact' : 'speed-trigger'"
+    <DropdownMenuLabel :id="speedLabelId">Speed</DropdownMenuLabel>
+    <DropdownMenuRadioGroup
+        :model-value="anim.speed"
+        :aria-labelledby="speedLabelId"
+        @update:model-value="selectSpeed"
+    >
+        <DropdownMenuRadioItem
+            v-for="rate in ANIMATION_SPEEDS"
+            :key="rate"
+            :value="rate"
+            :text-value="`${rate}×`"
+            class="speed-item"
+            @select="(e: Event) => e.preventDefault()"
         >
-            <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-            <SelectItem value="0.25">0.25&times;</SelectItem>
-            <SelectItem value="0.5">0.5&times;</SelectItem>
-            <SelectItem value="1">1&times;</SelectItem>
-            <SelectItem value="2">2&times;</SelectItem>
-            <SelectItem value="4">4&times;</SelectItem>
-        </SelectContent>
-    </Select>
+            {{ rate }}&times;
+        </DropdownMenuRadioItem>
+    </DropdownMenuRadioGroup>
+    <DropdownMenuSeparator />
 </template>
 
 <style scoped>
-@reference "tailwindcss";
-.speed-trigger {
-    height: 1.75rem;
-    width: 3.5rem;
-    flex-shrink: 0;
-    font-family: "Fira Code", monospace;
-    @apply text-sm;
-    border: none;
-    background: none;
-    border-radius: 9999px;
-    color: var(--muted-foreground);
-}
-
-.speed-trigger-compact {
-    height: 2rem;
-    width: 4rem;
-    flex-shrink: 0;
-    font-family: "Fira Code", monospace;
-    @apply text-sm;
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    border-radius: 9999px;
+/* The rates read as numerals in the mono family, as the collapsed reading does. */
+.speed-item {
+    font-family: var(--font-mono);
 }
 </style>

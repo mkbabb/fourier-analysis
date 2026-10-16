@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { useElementSize, useMediaQuery } from "@vueuse/core";
 import type { FourierTermDTO } from "@/lib/equation/types";
-import { applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
-import { easeInOutSine } from "@mkbabb/value.js";
-import katex from "katex";
+import { applyGoldenStroke } from "@/lib/golden-stroke";
+import { easeInOutSine } from "@mkbabb/value.js/easing";
+import { lerp } from "@mkbabb/value.js/math";
+import { renderLatex } from "@/lib/equation/render";
 
-import { drawPlotGrid, type PlotPadding } from "./lib/grid";
-import { hitTestCurves, type CurveHitRegion } from "./lib/hit-test";
-import { groupTrigHarmonics, harmonicProgress, spectrumColor, type TrigHarmonic } from "./lib/harmonics";
-import { createTransitionState, startTransition, snapshotForTransition, lerp } from "./composables/useCurveTransition";
+import { useCanvasSetup } from "@/components/shared/canvas/useCanvasSetup";
+import { drawPlotGrid, type PlotPadding } from "@/lib/equation/grid";
+import { hitTestCurves, type CurveHitRegion } from "@/lib/equation/hit-test";
+import { groupTrigHarmonics, harmonicProgress, revealWeight, spectrumColor, type TrigHarmonic } from "@/lib/equation/harmonics";
+import { createTransitionState, startTransition, snapshotForTransition } from "./composables/useCurveTransition";
 
 import ConvergenceLegend from "./convergence/ConvergenceLegend.vue";
 import ConvergenceTimeline from "./convergence/ConvergenceTimeline.vue";
@@ -19,11 +22,20 @@ const props = defineProps<{
     nHarmonics: number;
     domain: [number, number];
     expression?: string;
+    /** UIA-F-201 — the variable the rendered series is written in (one across the page). */
+    variable?: string;
 }>();
+
+const v = computed(() => props.variable ?? "x");
 
 // ── Refs ──
 const canvasRef = ref<HTMLCanvasElement>();
 const containerRef = ref<HTMLDivElement>();
+/* X-DS pass 2 · DS-F2-C9: under ~30rem the legend leaves its desktop column
+   (a plate nested in the stage plate, a third of the plot at 390) and wraps
+   as one plate-less row under the curves. */
+const { width: containerWidth } = useElementSize(containerRef);
+const legendWrapped = computed(() => containerWidth.value > 0 && containerWidth.value < 480);
 
 const t = ref(0);
 const playing = ref(false);
@@ -45,19 +57,46 @@ const transition = createTransitionState();
 let cancelTransition: (() => void) | null = null;
 
 // ── Canvas state ──
-let resizeObserver: ResizeObserver | null = null;
+let visibilityObserver: IntersectionObserver | null = null;
 let rafId: number | null = null;
 let loopStartTime: number | null = null;
 let cachedScreenCurves: CurveHitRegion[] = [];
 
 const PAD: PlotPadding = { top: 14, bottom: 18, left: 12, right: 12 };
 
+/**
+ * `D-9 + C-2` — three JS clocks CSS cannot reach ran regardless of
+ * `prefers-reduced-motion`: the autoplaying ping-pong rAF (2–12 s sweeps, from
+ * mount, forever), the 500 ms transition rAF, and the shimmer's
+ * `performance.now()` alpha oscillation (which only ticks while a loop is
+ * redrawing, so gating the loops silences it too).
+ *
+ * ⊘ `M-D1` IS THE WHOLE CURE CONSTRAINT: both prescribed gates freeze the plot
+ * at `t = 0`, and at `t = 0` `easeInOutSine(0) = 0`, every `harmonicProgress`
+ * returns 0, every cursor is 0, `:205`'s guard skips EVERY harmonic stroke and
+ * hit region, and the sum collapses to DC — a blank grid whose only escape is a
+ * scrubber. The reduced arm therefore seeds the TERMINAL frame `t = 1`, where
+ * every harmonic is fully drawn: a reduced-motion reader gets the CONVERGED
+ * state, which is what the instrument is for.
+ *
+ * A user who presses Play is asking for motion explicitly, and that still works;
+ * what PRM gates is the clock nobody asked for.
+ */
+const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+/** `L-M3 + D-26` — false while the panel is `display:none` (mobile `panel-inactive`). */
+const isVisible = ref(true);
+
 // ── Animation loop ──
 
 function startLoop() {
+    // `L-B2` — the store's two guards, ported: never a second loop (the old
+    // `rafId !== null` predicate was untruthful because `tick`'s early return
+    // never nulled it), and never a loop for a plot nobody can see.
+    if (rafId !== null || !isVisible.value) return;
     loopStartTime = null;
     function tick(now: number) {
-        if (!playing.value) return;
+        if (!playing.value || !isVisible.value) { rafId = null; return; }
         if (loopStartTime === null) loopStartTime = now - t.value * animDuration.value;
         const elapsed = now - loopStartTime;
         const cycle = Math.floor(elapsed / animDuration.value);
@@ -74,45 +113,148 @@ function stopLoop() {
     loopStartTime = null;
 }
 
+// ── Frame geometry (memoised) ──
+
+/** Sample count of the partial-sum grid. */
+const N_POINTS = 500;
+
+interface FrameGeometry {
+    xGrid: number[];
+    /** One sampled curve per harmonic, at the transition-lerped coefficients. */
+    curves: number[][];
+    lerpDc: number;
+    /** Y-extent of the samples and of the CONVERGED series — neither is animated. */
+    tMinY: number;
+    tMaxY: number;
+}
+
+let geometryKey: readonly unknown[] | null = null;
+let geometryValue: FrameGeometry | null = null;
+
+/**
+ * `L-B3 + C-11` — the curve matrix and a COMPLETE second series evaluation were
+ * rebuilt on every frame although neither reads `t`, `easedT` or `cursors`: only
+ * the prefix reveal (`end = cursors[hi] + 1`) is animated. At the UI-reachable
+ * ceiling (N = 100, FunctionInput's slider max) that is ≈200k trig calls and
+ * ≈51k allocations per frame, doubled during the 500 ms transition window when
+ * `draw()` runs twice per frame.
+ *
+ * The memo key is exactly the record's: `[coefficients, nHarmonics, domain,
+ * transition.progress]` — identity-compared, since every one of them is replaced
+ * wholesale rather than mutated. ⊘ SEQUENCING: this lands and is MEASURED BEFORE
+ * the BasisCanvas↔FourierField convergence study (`G-F4-CONV-STUDY`, unit `.f`),
+ * or the study charges Canvas2D for recomputation it never asked for.
+ */
+function frameGeometry(
+    harmonics: TrigHarmonic[],
+    dc: FourierTermDTO | undefined,
+    tp: number,
+    domA: number,
+    domB: number,
+): FrameGeometry {
+    const key = [props.coefficients, props.nHarmonics, domA, domB, tp] as const;
+    if (geometryValue && geometryKey && key.every((k, i) => k === geometryKey![i])) {
+        return geometryValue;
+    }
+
+    const omega = (2 * Math.PI) / (domB - domA);
+    const xGrid: number[] = [];
+    // X-grid for the partial-sum curve (endpoint=false matches backend convention:
+    // the canonical equispaced Fourier sampling drops x = domB since the periodic
+    // wrap identifies it with x = domA — see api/routers/equations.py:61).
+    for (let i = 0; i < N_POINTS; i++) xGrid.push(domA + (i / N_POINTS) * (domB - domA));
+
+    const lerpH: TrigHarmonic[] = harmonics.map((h, i) => {
+        if (tp >= 1 || i >= transition.prevHarmonics.length) return h;
+        const o = transition.prevHarmonics[i];
+        return { k: h.k, a_n: lerp(o.a_n, h.a_n, tp), b_n: lerp(o.b_n, h.b_n, tp), amplitude: lerp(o.amplitude, h.amplitude, tp) };
+    });
+    const lerpDc = tp >= 1 ? (dc?.coefficient_re ?? 0) : lerp(transition.prevDcRe, dc?.coefficient_re ?? 0, tp);
+
+    const curves = lerpH.map((h) =>
+        xGrid.map((x) => h.a_n * Math.cos(h.k * omega * x) + h.b_n * Math.sin(h.k * omega * x)),
+    );
+
+    // The converged series, whose only consumers are the two extent calls below.
+    const oy = props.originalPoints.y;
+    let tMinY = Infinity, tMaxY = -Infinity;
+    for (let j = 0; j < N_POINTS; j++) {
+        let v = dc?.coefficient_re ?? 0;
+        for (let hi = 0; hi < harmonics.length; hi++) {
+            const h = harmonics[hi];
+            v += h.a_n * Math.cos(h.k * omega * xGrid[j]) + h.b_n * Math.sin(h.k * omega * xGrid[j]);
+        }
+        if (v < tMinY) tMinY = v;
+        if (v > tMaxY) tMaxY = v;
+    }
+    // ⊘ `Math.min(...oy)` on a 500-element spread is a stack-shaped hazard as well
+    // as a cost; the extents are folded instead.
+    for (let i = 0; i < oy.length; i++) {
+        if (oy[i] < tMinY) tMinY = oy[i];
+        if (oy[i] > tMaxY) tMaxY = oy[i];
+    }
+    // X.F.W14U.eq — UIA-F-205: every drawn series is inside the plot box, so the
+    // range covers each harmonic's own curve too (they oscillate about zero and
+    // ran off the canvas bottom whenever f stayed positive).
+    for (const curve of curves) {
+        for (let j = 0; j < curve.length; j++) {
+            if (curve[j] < tMinY) tMinY = curve[j];
+            if (curve[j] > tMaxY) tMaxY = curve[j];
+        }
+    }
+
+    geometryKey = key;
+    geometryValue = { xGrid, curves, lerpDc, tMinY, tMaxY };
+    return geometryValue;
+}
+
 // ── Draw ──
+
+// OA-44 — the backing store is the app's one DPR-aware idiom: sized to the
+// canvas's device-pixel box on resize, zoom and DPR change, never per frame
+// (the old per-draw `canvas.width =` reallocated the bitmap 60 times a second).
+const { surface } = useCanvasSetup(canvasRef, () => draw());
 
 function draw() {
     const canvas = canvasRef.value;
-    const container = containerRef.value;
-    if (!canvas || !container) return;
+    const s = surface.value;
+    if (!canvas || !s) return;
 
-    const rect = container.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-
-    const ctx = canvas.getContext("2d")!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const ctx = s.ctx;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    const w = rect.width, h = rect.height;
+    // `D-1` — the neutral ink, READ FROM THE CASCADE rather than frozen. The
+    // canvas carries `text-muted-foreground`, so `getComputedStyle().color` hands
+    // back the USED value (an `rgb()` Canvas2D can paint) with `light-dark()` and
+    // the alias chain already resolved by the engine — the same probe the sibling
+    // `FrequencyGraph` uses for its index labels, and the only form that follows
+    // a theme flip without a string-parsing guess. The three frozen greys it
+    // replaces (`rgba(150,150,150,.2)` axes · `rgba(150,150,150,.07)` grid ·
+    // `rgba(180,180,180,.55)` original) were theme-blind by construction and put
+    // every meaning-bearing mark under the 1.4.11 floor in the default arm.
+    const ink = getComputedStyle(canvas).getPropertyValue("color").trim() || "#888";
+
+    const w = s.width, h = s.height;
     const ox = props.originalPoints.x, oy = props.originalPoints.y;
     if (!ox.length) return;
     ctx.clearRect(0, 0, w, h);
 
     const [domA, domB] = props.domain;
-    const omega = (2 * Math.PI) / (domB - domA);
+    // `M-L1` — the precondition nothing stated. A zero-width domain divides by
+    // zero in `omega` and in `toScreen`'s x-mapping; a reversed one renders a
+    // mirrored projection. Neither is a frame worth painting.
+    if (!(domB > domA)) return;
     const harmonics = trigHarmonics.value;
     const totalH = harmonics.length;
     const dc = dcTerm.value;
-    const nPts = 500;
     const tp = transition.progress;
 
-    // X-grid for the partial-sum curve (endpoint=false matches backend convention:
-    // the canonical equispaced Fourier sampling drops x = domB since the periodic wrap
-    // identifies it with x = domA — see api/routers/equations.py:61).
-    const xGrid: number[] = [];
-    for (let i = 0; i < nPts; i++) xGrid.push(domA + (i / nPts) * (domB - domA));
+    // `L-B3 + C-11` — the curve matrix and the full-series evaluation come from
+    // the memo, because NEITHER reads `t`, `easedT` or `cursors`: only the prefix
+    // reveal is animated, and everything under it was rebuilt from scratch on
+    // every frame.
+    const { xGrid, curves, lerpDc, tMinY, tMaxY } = frameGeometry(harmonics, dc, tp, domA, domB);
 
     // Lerp original Y
     const oyLerped = oy.map((y, i) => {
@@ -128,20 +270,9 @@ function draw() {
     const oxClosed = ox.length ? [...ox, domB] : ox;
     const oyClosed = oyLerped.length ? [...oyLerped, oyLerped[0]] : oyLerped;
 
-    // Lerp harmonic coefficients
-    const lerpH: TrigHarmonic[] = harmonics.map((h, i) => {
-        if (tp >= 1 || i >= transition.prevHarmonics.length) return h;
-        const o = transition.prevHarmonics[i];
-        return { k: h.k, a_n: lerp(o.a_n, h.a_n, tp), b_n: lerp(o.b_n, h.b_n, tp), amplitude: lerp(o.amplitude, h.amplitude, tp) };
-    });
-    const lerpDc = tp >= 1 ? (dc?.coefficient_re ?? 0) : lerp(transition.prevDcRe, dc?.coefficient_re ?? 0, tp);
-
-    // Cursor indices
+    // Cursor indices — the one genuinely per-frame quantity.
     const eT = easedT.value;
-    const cursors = lerpH.map((_, hi) => Math.floor(harmonicProgress(hi, totalH, eT) * (nPts - 1)));
-
-    // Harmonic curves
-    const curves = lerpH.map((h) => xGrid.map((x) => h.a_n * Math.cos(h.k * omega * x) + h.b_n * Math.sin(h.k * omega * x)));
+    const cursors = curves.map((_, hi) => Math.floor(harmonicProgress(hi, totalH, eT) * (N_POINTS - 1)));
 
     // Sum curve
     const BLEND = 10;
@@ -149,19 +280,12 @@ function draw() {
         let val = lerpDc;
         for (let hi = 0; hi < totalH; hi++) {
             const c = cursors[hi];
-            const wt = j <= c - BLEND ? 1 : j >= c + 1 ? 0 : Math.max(0, Math.min(1, (c - j + 1) / (BLEND + 1)));
-            val += curves[hi][j] * wt;
+            val += curves[hi][j] * revealWeight(j, c, BLEND, N_POINTS);
         }
         return val;
     });
 
-    // Y-bounds (lerped for smooth transition)
-    const fullSum = xGrid.map((x) => {
-        let v = dc?.coefficient_re ?? 0;
-        for (const h of harmonics) v += h.a_n * Math.cos(h.k * omega * x) + h.b_n * Math.sin(h.k * omega * x);
-        return v;
-    });
-    const tMinY = Math.min(...oy, ...fullSum), tMaxY = Math.max(...oy, ...fullSum);
+    // Y-bounds (lerped for smooth transition) — from the memo, above.
     const yP = (tMaxY - tMinY) * 0.08 || 1;
     let minY: number, maxY: number;
     if (tp >= 1 || !transition.prevOrigY.length) {
@@ -181,12 +305,15 @@ function draw() {
     ];
 
     // Grid
-    drawPlotGrid(ctx, w, h, PAD, minX, maxX, minY, maxY, toScreen);
+    drawPlotGrid(ctx, w, h, PAD, minX, maxX, minY, maxY, toScreen, ink);
 
     // Original f(x) — rendered over the closed [a, b] grid so the curve visually
-    // closes (periodic wrap appended as final sample).
+    // closes (periodic wrap appended as final sample). Hover is carried by stroke
+    // WIDTH, which was always the second channel here; the brightness step that
+    // used to carry it is what put the resting curve at 1.40:1.
     const isOrigHov = hoveredCurve.value === "original";
-    ctx.strokeStyle = isOrigHov ? "rgba(220,220,220,0.85)" : "rgba(180,180,180,0.55)";
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha = isOrigHov ? 1 : 0.85;
     ctx.lineWidth = isOrigHov ? 3.5 : 2.5;
     ctx.setLineDash([6, 4]);
     const origPts: [number, number][] = [];
@@ -194,10 +321,12 @@ function draw() {
     for (let i = 0; i < oxClosed.length; i++) {
         const pt = toScreen(oxClosed[i], oyClosed[i]);
         origPts.push(pt);
-        i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
+        if (i === 0) ctx.moveTo(pt[0], pt[1]);
+        else ctx.lineTo(pt[0], pt[1]);
     }
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
 
     // Individual harmonics
     const harmPts: CurveHitRegion[] = [];
@@ -208,11 +337,12 @@ function draw() {
         ctx.lineWidth = isHov ? 3.5 : 2.5;
         const pts: [number, number][] = [];
         ctx.beginPath();
-        const end = Math.min(cursors[hi] + 1, nPts);
+        const end = Math.min(cursors[hi] + 1, N_POINTS);
         for (let i = 0; i < end; i++) {
             const pt = toScreen(xGrid[i], curves[hi][i]);
             pts.push(pt);
-            i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
+            if (i === 0) ctx.moveTo(pt[0], pt[1]);
+            else ctx.lineTo(pt[0], pt[1]);
         }
         ctx.stroke();
         harmPts.push({ key: `h-${hi}`, points: pts });
@@ -220,17 +350,38 @@ function draw() {
 
     // Sum curve (golden)
     ctx.save();
-    applyGoldenShimmer(ctx, { hovered: hoveredCurve.value === "sum", playing: playing.value, baseWidth: 5, hoverWidth: 7, hoverBlur: 14, playBlur: 8 });
+    applyGoldenStroke(ctx, { hovered: hoveredCurve.value === "sum", baseWidth: 5, hoverWidth: 7 });
     const sumPts: [number, number][] = [];
     ctx.beginPath();
-    for (let i = 0; i < nPts; i++) {
+    for (let i = 0; i < N_POINTS; i++) {
         const pt = toScreen(xGrid[i], sumY[i]);
         sumPts.push(pt);
-        i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]);
+        if (i === 0) ctx.moveTo(pt[0], pt[1]);
+        else ctx.lineTo(pt[0], pt[1]);
     }
     ctx.stroke();
-    clearShimmer(ctx);
     ctx.restore();
+
+    // UIA-F-253 — a sweep held part-way shows where it stands: the harmonics
+    // enter from the left, so the Sum right of the front is still the partial
+    // one. A thin rule in the axis ink marks the entering harmonic's front.
+    if (eT > 0 && eT < 1) {
+        const entering = cursors.filter((c) => c > 0 && c < N_POINTS - 1);
+        if (entering.length) {
+            const front = Math.max(...entering);
+            const [fx] = toScreen(xGrid[front], minY);
+            ctx.save();
+            ctx.strokeStyle = ink;
+            ctx.globalAlpha = 0.45;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(fx, PAD.top);
+            ctx.lineTo(fx, h - PAD.bottom);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
 
     cachedScreenCurves = [{ key: "sum", points: sumPts }, { key: "original", points: origPts }, ...harmPts];
 }
@@ -239,10 +390,22 @@ function draw() {
 
 function onCanvasMove(e: MouseEvent) {
     const canvas = canvasRef.value;
-    if (!canvas) return;
+    const container = containerRef.value;
+    if (!canvas || !container) return;
     const rect = canvas.getBoundingClientRect();
-    mousePos.value = { x: e.clientX, y: e.clientY };
     const hit = hitTestCurves(cachedScreenCurves, e.clientX - rect.left, e.clientY - rect.top);
+    // `L-m10` — `mousePos` was written on EVERY move regardless of hover state,
+    // so a pointer crossing empty plot re-rendered the template for a tooltip
+    // that was not shown. It is written only when there is something to place.
+    if (hit !== null) {
+        // `D·D-m9` — the template used to call `getBoundingClientRect()` TWICE
+        // per render for one rect, unthrottled, over a KaTeX subtree. One read,
+        // at the event, and the tooltip positions off plain numbers.
+        const cr = container.getBoundingClientRect();
+        mousePos.value = { x: e.clientX - cr.left + 14, y: e.clientY - cr.top - 32 };
+    } else {
+        mousePos.value = null;
+    }
     if (hit !== hoveredCurve.value) { hoveredCurve.value = hit; if (!playing.value) draw(); }
 }
 
@@ -252,16 +415,20 @@ function onCanvasLeave() {
     if (!playing.value) draw();
 }
 
+/**
+ * `L-M8 + C-9` — the old catch returned the raw interpolated user expression
+ * into a `v-html` sink. `renderLatex` escapes on that path, at the one home.
+ */
 function renderKatexInline(latex: string): string {
-    try { return katex.renderToString(latex, { throwOnError: false, displayMode: false }); }
-    catch { return latex; }
+    return renderLatex(latex, { displayMode: false });
 }
 
 const tooltipHtml = computed(() => {
     const h = hoveredCurve.value;
     if (!h) return "";
-    if (h === "sum") return renderKatexInline(`f(x) = ${props.expression ?? "\\text{sum}"}`);
-    if (h === "original") return renderKatexInline(`f(x) = ${props.expression ?? "f(x)"}`);
+    // UIA-F-201 — the partial sum is S_N, never "f(x) = …"; both speak the series' variable.
+    if (h === "sum") return renderKatexInline(`S_{${trigHarmonics.value.length}}(${v.value})`);
+    if (h === "original") return renderKatexInline(`f(${v.value})`);
     if (h.startsWith("h-")) {
         const harm = trigHarmonics.value[parseInt(h.slice(2))];
         return harm ? renderKatexInline(`n = ${harm.k},\\; A = ${harm.amplitude.toFixed(4)}`) : "";
@@ -295,6 +462,14 @@ function onScrubEnd() {
 function onLegendEnter(key: string) { hoveredCurve.value = key; if (!playing.value) draw(); }
 function onLegendLeave() { hoveredCurve.value = null; if (!playing.value) draw(); }
 
+const plotDescription = computed(() => {
+    const total = trigHarmonics.value.length;
+    if (!total) return "Convergence plot: no harmonics to draw yet.";
+    return `Convergence plot: the function f(x), its ${total}-harmonic Fourier sum, `
+        + `and each harmonic drawn separately. ${activeCount.value} of ${total} harmonics `
+        + `have entered at the current position in the sweep.`;
+});
+
 const activeCount = computed(() => {
     const total = trigHarmonics.value.length;
     const eT = easedT.value;
@@ -305,51 +480,121 @@ const activeCount = computed(() => {
 
 // ── Watches ──
 
-watch(() => [props.originalPoints, props.coefficients], (_, old) => {
-    if (old?.[0]) {
-        const oldOy = (old[0] as { x: number[]; y: number[] }).y;
-        snapshotForTransition(transition, oldOy, trigHarmonics.value, dcTerm.value?.coefficient_re ?? 0, props.originalPoints.x, props.domain);
+/**
+ * `L-M1` — the snapshot was taken from the NEW state and called PREVIOUS.
+ *
+ * `trigHarmonics` and `dcTerm` are computeds, and a pre-flush watcher runs after
+ * the source has already mutated, so both re-evaluated to the incoming values:
+ * only `oldOy` was genuinely old. Every harmonic and DC lerp was therefore an
+ * IDENTITY for all `tp`, `prevMinY`/`prevMaxY` were derived from a hybrid state
+ * that never existed on screen, and the composable's own docblock was false on
+ * three of its four claims. The watcher already held the answer in `old[1]`.
+ *
+ * ⊘ `deep: true` goes in the SAME edit and not as a separate tidy: a deep watcher
+ * on in-place mutation hands back the same reference as both arguments, which
+ * destabilises the very `old` tuple this cure reads. Both props are replaced
+ * wholesale on every response, so the getter's array identity is the honest
+ * trigger (`SP-16`'s member: the deep traversal was priced for nothing).
+ */
+watch(() => [props.originalPoints, props.coefficients] as const, (_now, old) => {
+    const oldPoints = old?.[0];
+    const oldCoefficients = old?.[1];
+    if (oldPoints && oldCoefficients) {
+        const oldHarmonics = groupTrigHarmonics(oldCoefficients, props.nHarmonics);
+        const oldDc = oldCoefficients.find((c) => c.n === 0)?.coefficient_re ?? 0;
+        snapshotForTransition(transition, oldPoints.y, oldHarmonics, oldDc, oldPoints.x, props.domain);
         cancelTransition?.();
-        cancelTransition = startTransition(transition, draw);
+        cancelTransition = startTransition(transition, draw, prefersReducedMotion.value);
     } else {
         draw();
     }
-}, { deep: true });
+});
 
 watch(() => props.nHarmonics, () => { if (!playing.value) draw(); });
+
+/**
+ * `L-M2` — `props.domain` feeds `omega`, the x-grid, the closing sample and
+ * `maxX`, and had NO watcher at all, so a domain change repainted only if
+ * something else happened to trigger a draw. The divergence window was
+ * UNBOUNDED at the callsite, which bound live refs against last-response data:
+ * a typed domain edit emitted nothing, so the plot rendered wrong-frequency
+ * curves and a backwards closing segment until the user pressed Compute, which
+ * may be never. The callsite now sources `domain` from the request that produced
+ * the result; this watcher is the other half, for the props that reach it.
+ */
+watch(() => [props.domain, props.expression], () => { if (!playing.value) draw(); });
 
 // ── Lifecycle ──
 
 onMounted(() => {
-    nextTick(() => { draw(); t.value = 0; playing.value = true; startLoop(); });
-    resizeObserver = new ResizeObserver(() => draw());
-    if (containerRef.value) resizeObserver.observe(containerRef.value);
+    nextTick(() => {
+        if (prefersReducedMotion.value) {
+            // The TERMINAL frame, per `M-D1`: converged, complete, and static.
+            t.value = 1;
+            playing.value = false;
+            draw();
+        } else {
+            draw();
+            t.value = 0;
+            playing.value = true;
+            startLoop();
+        }
+    });
+    // `L-M3 + D-26` — neither clock was visibility-gated, and the mobile panel is
+    // `display:none` WHILE MOUNTED (`EquationView`'s `.panel-inactive`, default
+    // tab `controls`), so the loop, the per-frame layout read and the reactive
+    // cascade all ran unseen. A `display:none` element never intersects, which
+    // is precisely the signal needed.
+    visibilityObserver = new IntersectionObserver((entries) => {
+        const visible = entries.some((e) => e.isIntersecting);
+        if (visible === isVisible.value) return;
+        isVisible.value = visible;
+        if (visible) {
+            if (playing.value) startLoop();
+            else draw();
+        } else {
+            stopLoop();
+        }
+    });
+    if (containerRef.value) visibilityObserver.observe(containerRef.value);
 });
 
 onUnmounted(() => {
+    // `L-B2` — `playing` was never cleared, so a teardown mid-play left the flag
+    // true for any orphan tick to re-arm on; the orphan retained the whole
+    // closure (props, transition state, the cached screen curves).
+    playing.value = false;
     stopLoop();
     cancelTransition?.();
-    resizeObserver?.disconnect();
+    visibilityObserver?.disconnect();
 });
 </script>
 
 <template>
-    <div ref="containerRef" class="convergence-container">
-        <canvas
-            ref="canvasRef"
-            class="block size-full text-muted-foreground"
-            @mousemove="onCanvasMove"
-            @mouseleave="onCanvasLeave"
-        />
+    <div ref="containerRef" class="convergence-container" :data-legend-wrapped="legendWrapped || undefined">
+        <!-- `D-5` — the plot is the route's primary figure and announced as
+             nothing at all: no role, no name, no text equivalent. `role="img"`
+             plus a name that carries the READING (which curves, how many
+             harmonics, where the sweep is) is the text equivalent a canvas
+             cannot otherwise have. -->
+        <!-- X.F.W14U.eq — UIA-F-205: the plot box and the legend are two cells;
+             the legend sits in its own gutter beside the curves, never on them. -->
+        <div class="plot-box">
+            <canvas
+                ref="canvasRef"
+                class="absolute inset-0 size-full text-muted-foreground"
+                role="img"
+                :aria-label="plotDescription"
+                @mousemove="onCanvasMove"
+                @mouseleave="onCanvasLeave"
+            />
+        </div>
 
         <!-- Cursor-following tooltip -->
         <div
             v-if="hoveredCurve && mousePos && tooltipHtml"
-            class="curve-tooltip"
-            :style="{
-                left: (mousePos.x - (containerRef?.getBoundingClientRect().left ?? 0) + 14) + 'px',
-                top: (mousePos.y - (containerRef?.getBoundingClientRect().top ?? 0) - 32) + 'px',
-            }"
+            class="curve-tooltip glass-floating"
+            :style="{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }"
             v-html="tooltipHtml"
         />
 
@@ -357,6 +602,9 @@ onUnmounted(() => {
         <ConvergenceLegend
             :harmonics="trigHarmonics"
             :hovered-curve="hoveredCurve"
+            :variable="v"
+            :wrapped="legendWrapped"
+            :drawn="activeCount"
             @hover="onLegendEnter"
             @leave="onLegendLeave"
         />
@@ -382,19 +630,31 @@ onUnmounted(() => {
 .convergence-container {
     @apply w-full relative flex-1 select-none;
     min-height: 200px;
+    display: flex;
+    gap: 0.5rem;
+}
+.plot-box {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.convergence-container[data-legend-wrapped] {
+    flex-direction: column;
 }
 
 /* ── Tooltip ── */
+/* X.F.W14U.eq — UIA-F-203: the same floating surface as the coefficient
+   popover — glass's `glass-floating` plate (template) at the popover canon's
+   `--radius-panel` corner — instead of a second hand-rolled plate. */
 .curve-tooltip {
-    @apply absolute pointer-events-none rounded-md;
-    font-family: "Fira Code", monospace;
-    font-size: 13px;
-    line-height: 1.4;
-    padding: 5px 10px;
-    background: color-mix(in srgb, var(--popover) 92%, transparent);
+    @apply absolute pointer-events-none;
+    border-radius: var(--radius-panel);
+    font-family: var(--font-mono);
+    font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
+    padding: 0.375rem 0.75rem;
     color: var(--popover-foreground);
-    border: 1.5px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    /* X-DS pass 1 · F1-11: the plate's one shadow is glass-floating's. */
     white-space: nowrap;
     z-index: var(--z-controls);
     /* A.W3.d — `tooltip-in` is canonical in glass-ui's animations.css; the
@@ -402,9 +662,10 @@ onUnmounted(() => {
     animation: tooltip-in 0.1s var(--ease-standard);
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .curve-tooltip {
-        animation: none;
-    }
-}
+/* `M-L7` — the local `@media (prefers-reduced-motion: reduce) { animation: none }`
+   block is GONE: glass-ui's `utilities/a11y-overrides.css` already resets
+   `animation-duration` to 0.01ms on `*` with `!important` under the same query,
+   so the component's one act of compliance was a no-op that cost a maintainer's
+   attention and bought nothing. The clocks CSS cannot reach are gated in script,
+   above, which is where the omission actually was. */
 </style>

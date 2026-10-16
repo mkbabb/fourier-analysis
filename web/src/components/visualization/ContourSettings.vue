@@ -5,6 +5,8 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { Button } from "@mkbabb/glass-ui/button";
+// `./alert` has no subpath export at the 8.0.0 pin; the root barrel carries it.
+import { Alert, AlertDescription } from "@mkbabb/glass-ui";
 import {
     Collapsible,
     CollapsibleTrigger,
@@ -17,15 +19,48 @@ import {
     SelectTrigger,
 } from "@mkbabb/glass-ui/select";
 import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
-import { Wand2, ChevronRight, RotateCcw, RefreshCw } from "lucide-vue-next";
+import { Wand2, ChevronRight, RotateCcw, RefreshCw, CircleAlert } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import SliderControl from "@/components/ui/SliderControl.vue";
 
 const advancedOpen = ref(false);
+/** X.F.W14U.c1 — addendum (g) reverses UIA-F-172's colour limb: the contour
+ *  rows set contour-owned quantities and wear the contour's hue from the one
+ *  palette (`VIZ_COLORS.amber`, the ink the contour stroke paints with). */
+const CONTOUR_HUE = computed(() => VIZ_COLORS.amber);
 
+/**
+ * X.F.W3 `.d` — `fr-ContourSettings M-16` (≡ `C-9` / `L-M3`(contract) / `D-i2`),
+ * the panel half of §5a split (4). THE CONTRACT IS INBOUND-ONLY, AND SAYS SO HERE.
+ *
+ * Both mount sites bound `v-model:n-harmonics` / `v-model:n-points` over a
+ * component that declares props and nothing else — zero `defineEmits`, zero
+ * `emit(` in the whole file — so the binding advertised a writeback this panel
+ * structurally cannot perform, while the sibling six lines away
+ * (`BasisSelector`) declares and emits the identical pair. The reader cannot
+ * tell from either end which child owns the two scalars.
+ *
+ * M-16 offered two cures: props-only at the call sites, or real emits here. The
+ * bytes decide it: every use of the pair in this file is a READ
+ * (`currentComputeKey`, `runCompute`'s settings write, the two watch sources) —
+ * the panel consumes the harmonic budget to key and trigger a recompute and
+ * never authors it. Minting emits to honour a contract nothing would ever fire
+ * is a second fiction, so the contract is declared INBOUND and the two
+ * `v-model:` call sites drop to `:` bindings at the host.
+ *
+ * ⊘ The host half is `VisualizationView.vue`'s, which is `.e`'s file (§5a split
+ * (4)): `.e` opens only after this commit lands, and until it does the call
+ * sites are unchanged and inert — exactly as they have shipped. Nothing
+ * regresses in the interval, because the writeback never worked.
+ */
 const props = defineProps<{
+    /** Inbound only — the harmonic budget the recompute is keyed on. */
     nHarmonics: number;
+    /** Inbound only — the resample resolution the recompute is keyed on. */
     nPoints: number;
+    /** X-DS pass 2 · DS-F2-C20: open at mount (the contour editor, where this
+     *  is the aside's only layer); shut by default beside the other layers. */
+    defaultOpen?: boolean;
 }>();
 
 const store = useWorkspaceStore();
@@ -187,28 +222,40 @@ watch(
 </script>
 
 <template>
-    <ConfiguratorLayer label="Contour" sub="edge extraction settings" :default-open="false">
-        <!-- Panel-wide reset: ConfiguratorLayer has no header-actions slot, so
-             the affordance lives at the top of the layer body. -->
-        <div class="flex items-center justify-end -mt-1 -mb-1">
+    <!-- X.F.W3 `.d` — `fr-ContourSettings i-3`, the default-collapsed IA, is
+         RECORDED HERE AND EXECUTED NOWHERE. COHESION §0x `S-6b` ruled it
+         2026-09-19: "Contour settings are secondary to the canvas; progressive
+         disclosure is the audit's own posture. No per-viewer persistence is
+         minted for it in this wave." The ruling AGREES with the shipped byte —
+         `:default-open="false"` below is what i-3 measured and what S-6b
+         affirms — so the correct act is to leave it untouched and say why, and
+         `.d`'s spec order ("i-3's ruling is RECORDED, not executed") is
+         satisfied by exactly that. No `open`/persistence prop is added. -->
+    <ConfiguratorLayer label="Contour" :default-open="defaultOpen">
+        <!-- X.F.W14U.a2 — O-68 CONFIGURATOR-HEADER-ACTIONS (glass 10.1.0,
+             COHESION §0dd). The owner: "the refresh button should be inline in
+             the section when expanded too". The layer-wide reset sits in the
+             layer's `#actions` header slot, on the label's row while the layer
+             is open (glass's default `actionsWhen="open"`); the body row it held
+             is deleted. -->
+        <template #actions>
             <Tooltip text="Reset to defaults">
                 <Button
-                    variant="ghost"
-                    size="icon"
-                    class="reset-icon-btn"
-                    :class="{ 'is-default': isDefault }"
+                    emphasis="quiet"
+                    size="sm" icon-only
+                    :disabled="isDefault"
                     aria-label="Reset to defaults"
                     @click.stop="resetDefaults"
                 >
                     <RotateCcw class="h-3.5 w-3.5" />
                 </Button>
             </Tooltip>
-        </div>
+        </template>
 
         <!-- Strategy -->
         <ConfiguratorRow label="Strategy">
             <Select v-model="strategy" class="w-full">
-                <SelectTrigger aria-label="Contour extraction strategy" class="w-full h-10 text-sm border-2 border-foreground/15 rounded-lg">
+                <SelectTrigger aria-label="Contour extraction strategy" class="w-full">
                     <div class="inline-flex items-center gap-1.5">
                         <Wand2 v-if="strategy === 'auto'" class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         {{ strategyLabel }}
@@ -218,7 +265,7 @@ watch(
                     <SelectItem v-for="(desc, key) in strategyDescriptions" :key="key" :value="key">
                         <div>
                             <div class="font-medium">{{ strategyLabels[key] }}</div>
-                            <div class="text-xs text-muted-foreground max-w-[280px]">{{ desc }}</div>
+                            <div class="text-caption text-muted-foreground max-w-[280px]">{{ desc }}</div>
                         </div>
                     </SelectItem>
                 </SelectContent>
@@ -226,231 +273,154 @@ watch(
         </ConfiguratorRow>
 
         <!-- ML Threshold (visible for ml or auto) -->
-        <Tooltip v-if="strategy === 'ml' || strategy === 'auto'" text="Saliency cutoff — lower values capture more background detail">
-            <SliderControl
-                v-model="mlThreshold"
-                label="ML Threshold"
-                :min="0.1"
-                :max="0.9"
-                :step="0.05"
-                :color="VIZ_COLORS.amber"
-                :format-value="(v: number) => v.toFixed(2)"
-            />
-        </Tooltip>
+        <SliderControl v-if="strategy === 'ml' || strategy === 'auto'"
+            v-model="mlThreshold"
+            label="ML Threshold"
+            :min="0.1"
+            :max="0.9"
+            :step="0.05"
+            :color="CONTOUR_HUE"
+            :format-value="(v: number) => v.toFixed(2)"
+            subtitle="saliency cutoff"
+        />
 
         <!-- Blur Sigma -->
-        <Tooltip text="Soften before tracing — crank it up for furry subjects or noisy backgrounds">
-            <SliderControl
-                v-model="blurSigma"
-                label="Blur Sigma"
-                :min="0"
-                :max="5"
-                :step="0.1"
-                :color="VIZ_COLORS.amber"
-                :format-value="(v: number) => v.toFixed(1)"
-            />
-        </Tooltip>
+        <SliderControl
+            v-model="blurSigma"
+            label="Blur Sigma"
+            :min="0"
+            :max="5"
+            :step="0.1"
+            :color="CONTOUR_HUE"
+            :format-value="(v: number) => v.toFixed(1)"
+            subtitle="softens noisy edges"
+        />
 
-        <!-- Advanced divider + collapsible -->
+        <!-- X.F.W14U.vstage — UIA-F-171: the Advanced disclosure was a hand-rolled
+             divider trigger (two hairlines around a bare text trigger), a second
+             disclosure idiom in an aside whose layers use glass's. The trigger is
+             glass's Button through the Collapsible's own `as-child` seat, so it
+             carries `aria-expanded` and the Button's focus ring and press. -->
         <Collapsible v-model:open="advancedOpen">
-            <div class="advanced-divider">
-                <div class="divider-line" />
-                <CollapsibleTrigger class="advanced-trigger">
-                    <span>Advanced</span>
-                    <ChevronRight class="h-3 w-3 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
-                </CollapsibleTrigger>
-                <div class="divider-line" />
-            </div>
+            <CollapsibleTrigger as-child>
+                <Button emphasis="quiet" size="sm" class="advanced-trigger">
+                    Advanced
+                    <ChevronRight class="transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
+                </Button>
+            </CollapsibleTrigger>
 
             <CollapsibleContent class="advanced-content">
                 <div class="advanced-grid">
                     <!-- Min Area % -->
-                    <Tooltip text="Ignore tiny contours — raise to drop grass, fences, and stray edges">
-                        <SliderControl
-                            v-model="minContourArea"
-                            label="Min Area %"
-                            :min="0"
-                            :max="20"
-                            :step="0.5"
-                            :color="VIZ_COLORS.amber"
-                            :format-value="(v: number) => v.toFixed(1)"
-                        />
-                    </Tooltip>
+                    <SliderControl
+                        v-model="minContourArea"
+                        label="Min Area %"
+                        :min="0"
+                        :max="20"
+                        :step="0.5"
+                        :color="CONTOUR_HUE"
+                        :format-value="(v: number) => v.toFixed(1)"
+                        subtitle="drops stray specks"
+                    />
 
                     <!-- Max Contours -->
-                    <Tooltip text="How many outlines to keep — 1 for a clean silhouette, more for interior detail">
-                        <SliderControl
-                            v-model="maxContours"
-                            label="Max Contours"
-                            :min="0"
-                            :max="50"
-                            :step="1"
-                            :color="VIZ_COLORS.amber"
-                            :format-value="(v: number) => v === 0 ? 'All' : String(v)"
-                        />
-                    </Tooltip>
+                    <SliderControl
+                        v-model="maxContours"
+                        label="Max Contours"
+                        :min="0"
+                        :max="50"
+                        :step="1"
+                        :color="CONTOUR_HUE"
+                        :format-value="(v: number) => v === 0 ? 'All' : String(v)"
+                        subtitle="1 = one silhouette"
+                    />
 
                     <!-- Smoothing -->
-                    <Tooltip text="Iron out jagged edges — tame fur, leaves, and pixelated boundaries">
-                        <SliderControl
-                            v-model="smoothContours"
-                            label="Smoothing"
-                            :min="0"
-                            :max="1"
-                            :step="0.05"
-                            :color="VIZ_COLORS.amber"
-                            :format-value="(v: number) => v.toFixed(2)"
-                        />
-                    </Tooltip>
+                    <SliderControl
+                        v-model="smoothContours"
+                        label="Smoothing"
+                        :min="0"
+                        :max="1"
+                        :step="0.05"
+                        :color="CONTOUR_HUE"
+                        :format-value="(v: number) => v.toFixed(2)"
+                        subtitle="irons jagged edges"
+                    />
                 </div>
             </CollapsibleContent>
         </Collapsible>
 
         <!-- Retry banner for transient errors -->
         <Transition name="slide-down">
-            <div v-if="store.error" class="retry-banner">
-                <span class="retry-msg fira-code">{{ shortError }}</span>
-                <Button variant="destructive" size="sm" class="retry-btn" @click="runCompute" :disabled="store.computing">
-                    <RefreshCw class="h-3.5 w-3.5" :class="{ 'animate-spin': store.computing }" />
-                    Retry
-                </Button>
-            </div>
+            <!-- X.F.W13.b — the hand-rolled banner (its own border, tint and radius) and
+                 the per-instance `.retry-btn` restyle of the glass Button retire onto the
+                 producer's pair: `Alert tone="destructive"` owns the surface, the tone
+                 and the announcement; the Button owns the command. -->
+            <Alert v-if="store.error" tone="destructive" announce="polite" class="mt-2">
+                <CircleAlert />
+                <AlertDescription>
+                    <span class="retry-msg fira-code">{{ shortError }}</span>
+                    <Button emphasis="primary" tone="destructive" size="sm" :loading="store.computing" @click="runCompute">
+                        <RefreshCw />
+                        Retry
+                    </Button>
+                </AlertDescription>
+            </Alert>
         </Transition>
     </ConfiguratorLayer>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
-/* Advanced section */
-.advanced-divider {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-}
-.divider-line {
-    flex: 1;
-    height: 1px;
-    background: color-mix(in srgb, var(--foreground) 10%, transparent);
-}
+/* Advanced section — the trigger is glass's Button (X.F.W14U.vstage, F-171);
+   the host only seats it at the start of its row. */
+/* X-DS pass 2 · DS-F2-C18: the quiet Button's own inline pad is pulled out,
+   read from glass's Button recipe (`calc(var(--button-size) / 2 -
+   var(--space-residue))`), so "Advanced" sits on the layer's label column. */
 .advanced-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    cursor: pointer;
-    user-select: none;
-    @apply text-sm;
-    font-weight: 500;
-    letter-spacing: 0.03em;
-    color: color-mix(in srgb, var(--foreground) 40%, transparent);
-    transition: color 0.15s;
-    white-space: nowrap;
-    padding: 0.125rem 0;
-}
-.advanced-trigger:hover {
-    color: color-mix(in srgb, var(--foreground) 60%, transparent);
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    margin-inline-start: calc(var(--space-residue) - var(--button-size) / 2);
 }
 
-/* B.W2.d — the hand-rolled `adv-open` / `adv-close` keyframes retire in
-   favour of `CollapsibleContent`'s `data-state` channel driving the
-   canonical glass-ui `collapsible-open` / `collapsible-close` keyframes
-   (shipped at `@mkbabb/glass-ui/styles/animations.css`, resolved via global
-   cascade — the same substrate animation `CollapsibleSection` adopted at
-   A.W3.d). The `--reka-collapsible-content-height` channel the substrate
-   keyframes read is supplied by the primitive. */
+/* B.W2.d retired the hand-rolled `adv-open` / `adv-close` keyframes in favour
+   of the canonical glass-ui `collapsible-open` / `collapsible-close` pair. At
+   the F.W1 pin the producer ships neither, and the consumer-side shorthands
+   that named them are deleted below (G10). */
 .advanced-content {
     overflow: hidden;
 }
-.advanced-content[data-state="open"] {
-    animation: collapsible-open 0.2s var(--ease-out);
-}
-.advanced-content[data-state="closed"] {
-    animation: collapsible-close 0.2s var(--ease-out);
-}
-@media (prefers-reduced-motion: reduce) {
-    .advanced-content[data-state="open"],
-    .advanced-content[data-state="closed"] {
-        animation: none;
-    }
-}
+/* F.W1 / B-1 / G10 — deleted symmetrically with `CollapsibleSection`'s twin:
+   the two `[data-state]` `animation` shorthands and the
+   `prefers-reduced-motion` arm both name keyframes glass-ui ≥7 no longer
+   ships, and a shorthand naming an absent keyframe hangs reka's `usePresence`
+   on an `animationend` that never fires. `overflow: hidden` above STAYS on
+   both twins. */
 
+/* X.F.W14U.vstage — one column, like every other row in the aside: at half
+   the aside's width each row's hint (F-146's cure: the tooltip text became the
+   row's own subtitle) and its value field could not share one line. */
 .advanced-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.625rem 0.75rem;
+    gap: 0.625rem;
     padding-top: 0.625rem;
 }
-.advanced-grid > :last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-}
 
-.reset-icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    border: none;
-    background: none;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    border-radius: 0.25rem;
-    transition: color 0.15s, opacity 0.2s;
-}
-.reset-icon-btn.is-default {
-    opacity: 0.25;
-    pointer-events: none;
-}
-.reset-icon-btn:hover {
-    color: var(--foreground);
-}
+/* X.F.W13.b — the `.reset-icon-btn` block retires: it restated the glass Button's
+   geometry (a 4px corner on the 40x40 icon-only square, measured) and faked the
+   disabled state with `pointer-events: none` on a control that stayed focusable
+   and keyboard-live. The Button owns both: `icon-only` is the circle, and
+   `:disabled` is the one disabled channel. */
 
-/* Retry banner */
-.retry-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    margin-top: 0.5rem;
-    border-radius: 0.5rem;
-    background: color-mix(in srgb, var(--destructive) 8%, transparent);
-    border: 1px solid color-mix(in srgb, var(--destructive) 20%, transparent);
-}
-
+/* Retry banner — the surface, tone and radius are the glass Alert's; the message
+   only truncates to one line. */
 .retry-msg {
-    @apply text-sm;
-    color: var(--destructive);
-    flex: 1;
-    min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.retry-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.625rem;
-    border-radius: 0.375rem;
-    border: 1px solid color-mix(in srgb, var(--destructive) 30%, transparent);
-    background: color-mix(in srgb, var(--destructive) 10%, transparent);
-    color: var(--destructive);
-    @apply text-sm;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: background 0.15s, border-color 0.15s;
-}
-.retry-btn:hover {
-    background: color-mix(in srgb, var(--destructive) 18%, transparent);
-    border-color: color-mix(in srgb, var(--destructive) 40%, transparent);
-}
-.retry-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
 
 /* A.W3.d — named properties + canonical tokens, no `transition: all`. */
 .slide-down-enter-active {

@@ -1,0 +1,322 @@
+{
+ "headline": "Tranche M (ordering xi-prime) is the EXECUTION tranche that discharges what J/K only planned: front-load the glass-ui 4.0.0 / keyframes 4.2.0 / value.js 0.12.0 multi-major bump (greens e2e at source), land the deploy spine (the 44-commit-behind months-class outage), wire the inv-15 consumer gap, transpose the phantom data-model \u2014 its close-gate is OBSERVED-GREEN PROD + a live UI consumer per endpoint + a green inv-27 run, not a seventh re-plan.",
+ "coverage_matrix": [
+  {
+   "request": "Deploy-of-record actually LIVE (host caught up to HEAD)",
+   "addressed": "no",
+   "where": "CHR-01/A4-*/A1-01: host 44 commits behind f2fe447 (CONFIRMED this run, not the 29 K.md claims); G/H/I/J never deployed; silent rollback for months. M.W2-W4 the deploy spine."
+  },
+  {
+   "request": "inv-15 consumer wire-up \u2014 UI calls J's 7 CORE endpoints",
+   "addressed": "no",
+   "where": "A1-02/A2-M5/A3-*/CHR-05: api.ts grep = 0 callers (CONFIRMED); gallery.publish still PATCHes visibility. M.W5 the wire-the-UI close-gate."
+  },
+  {
+   "request": "Adopt the shipped siblings (glass-ui/keyframes/value.js)",
+   "addressed": "no",
+   "where": "A5-*/A7-5/CHR-02..04: pins ^3.1.0/^2.2.0/^0.10.0 vs published 4.0.0/4.2.0/0.12.0 (CONFIRMED). M.W1 the front-loaded major-bump wave."
+  },
+  {
+   "request": "Design language suffuse (Fraunces, audacious pops, large typography, motion)",
+   "addressed": "no",
+   "where": "A1-04: WC design docs authored in J, Fraunces grep=0 at HEAD. M design-language wave rides J.W5 surfaces."
+  },
+  {
+   "request": "Phantom within-viz version chain DELETED",
+   "addressed": "no",
+   "where": "A2-M1/A1-05: depth always 0, version_count never $inc'd, /versions always one entry. M.W5 W2-transpose."
+  },
+  {
+   "request": "Control-pane four-dialect schism resolved",
+   "addressed": "no",
+   "where": "A1-06/CHR-14/A7-2: four panes, four dialects; A-1/A-2 booked to glass-ui. M design-language wave + re-verify A-1/A-2 at 4.0.0."
+  },
+  {
+   "request": "e2e/inv-27 green run over HEAD",
+   "addressed": "no",
+   "where": "A1-07/CHR-06/A7-7: CI red on glass-dock-1 dup VT-name; fix shipped glass-ui 3.1.1, present at 4.0.0. M.W6 EVIDENCE downstream of bump."
+  },
+  {
+   "request": "Measured CWV/INP deltas for shipped perf waves",
+   "addressed": "partial",
+   "where": "A1-08/CHR-11: W3 scheduler.yield + W4 content-visibility SHIPPED, deltas unmeasured. M.W6 captures in the green run."
+  },
+  {
+   "request": "Recap all prompts / fold chronics / idiomatic-not-implementation (meta-directive)",
+   "addressed": "partial",
+   "where": "A1-10: honoured at the PLANNING layer ~6x but the two physical chronics (deploy + consumer) keep re-planning. M IS the execution discharge."
+  },
+  {
+   "request": "palette_slug integrity / set_hash staleness fixed",
+   "addressed": "no",
+   "where": "A2-M2/A2-M3/A2-M4: PATCH mutates palette_slug outside the version model; /diff to-param ignored; migration cements empty atom_diff. M.W5 W2-fix."
+  },
+  {
+   "request": "Cohort /diff + publish envelope parity confirm",
+   "addressed": "no",
+   "where": "A6 CHR-04/A7-10: value.js peers DONE-in-L; fourier owes only its own Python parity probe. M cohort-parity wave."
+  },
+  {
+   "request": "Booked tails (CSP/fetchLater, dispatch.sh, operator-entrypoint, L-webmcp)",
+   "addressed": "partial",
+   "where": "A1-09/A1-11/CHR-07/CHR-08/A4-09: ride >=2 tranches; L correctly external-gated. M hygiene sweep + book-with-kill-dates."
+  },
+  {
+   "request": "GitHub Actions Node 20 deprecation (forced 2026-06-16 = today)",
+   "addressed": "no",
+   "where": "CHR-09: deadline arrived; checkout@v4/setup-node@v4 need v5. M.W1 fold with dep bump."
+  },
+  {
+   "request": "Uncommitted glass-subtle->glass-quiet rename resolved (clean tree)",
+   "addressed": "partial",
+   "where": "CHR-13/A5-01/A7-4: 7 dirty files reference 4.0 vocab atop a pinned ^3.1.0 dep. M.W1 commit atop the bump (not before it)."
+  }
+ ],
+ "proposed_waves": [
+  {
+   "id": "M.W0",
+   "title": "Charter + re-ground sweep + numbering/ledger hygiene",
+   "goal": "Declare M = the EXECUTION tranche that discharges J/K, NOT a seventh re-plan; its close-gate is observed-green prod + a live UI consumer per endpoint + a green inv-27 run (physical artefacts). Re-verify the live facts at source (npm view -> 4.0.0/4.2.0/0.12.0; host backlog = 44 commits not 29; A-1/A-2 against glass-ui 4.0.0 source; RUN-BOARD E1 cleared). Author the new invariants at clean integers 32/33/34 (31 stays K-reserved). Edit inv-29 scope to exclude class-vocab renames. Add the struck C1-killed row to ADOPTION-ASKS; flip the two value.js-peer rows to DONE-in-sibling. Strike RUN-BOARD's stale E1/E2 3.2.0/3.3.0 pins to 4.0.0 reality.",
+   "depends_on": "none",
+   "rolls_up": [
+    "A1-10",
+    "A4-06",
+    "A5-09",
+    "A6 CHR-12",
+    "A6 CHR-16",
+    "A7-4",
+    "A7-5",
+    "A7-6",
+    "A7-11"
+   ]
+  },
+  {
+   "id": "M.W1",
+   "title": "FRONT-LOADED multi-major dependency bump (glass-ui 4.0.0 / keyframes 4.2.0 / value.js 0.12.0) + commit the glass-quiet rename atop it",
+   "goal": "One atomic version reconciliation: bump all three siblings, re-derive the lock, verify single-copy. Audit the glass-ui 3.1.0->4.0.0 MAJOR breaking surface (NOT the caret-safe one-liner the stale charters assumed) and execute the 21 enumerated mechanical migrations: 3x UnderlineTabs->SegmentedTabs variant=underline, 3x DialogContent variant=opaque->surface=opaque, 12x MetricBadge :amount->:value, 3x useClipboard->/dom subpath, 1x Collapsible->/collapsible. Commit the 7-file glass-subtle->glass-quiet rename as part of this wave (coherent only once 4.0 is the resolved dep; verify glass-quiet exists in 4.0 dist). Bump actions/checkout + setup-node to v5 (Node-20 deadline = today). This greens e2e at source (dock useId shipped 3.1.1), un-fixmes the 2 a11y keystones, enables DEC-2 asideSide + useTextHighlight. Close-gate: green vue-tsc + build, cite a green CI run id (inv-27).",
+   "depends_on": "M.W0",
+   "rolls_up": [
+    "A1-03",
+    "A5-01..A5-10",
+    "A6 CHR-02",
+    "A6 CHR-03",
+    "A6 CHR-04",
+    "A6 CHR-06",
+    "A6 CHR-09",
+    "A6 CHR-13",
+    "A7-5"
+   ]
+  },
+  {
+   "id": "M.W2",
+   "title": "Deploy spine I \u2014 split readiness from liveness (HEALTHCHECK + service_healthy + lifespan index off the serving path)",
+   "goal": "Add a real container HEALTHCHECK to backend (GET /api/health, start_period 60s) + nginx; make nginx depends_on backend condition:service_healthy. Move the ~35 serial create_index calls off the lifespan startup-blocking path (asyncio.create_task after yield, idempotent) so /api/health answers immediately and a cold WORKERS=1 start is never a race against the 60s blind poll. NOT a longer blind poll. This is the structural fix for why G/H/I/J never landed. Verify migrations resume on a healthy gate.",
+   "depends_on": "M.W0",
+   "rolls_up": [
+    "A4-01",
+    "A4-02",
+    "A4-08",
+    "A6 CHR-01",
+    "A1-01"
+   ]
+  },
+  {
+   "id": "M.W3",
+   "title": "Deploy spine II \u2014 fail-closed inv-28 API-arm green-CI gate",
+   "goal": "Add green_ci_gate() to deploy-hook.sh querying commits/<sha>/status (host-only read-only PAT from untracked .env) BEFORE git reset --hard; no PAT OR non-success => refuse (return non-zero), never deploy-anyway. Closes the inv-28 asymmetry (SPA gates, API does not). Backport to deploy/templates (no-op + loud warn when PAT unset). Reconcile deploy.sh's advisory gate to probe the SAME two conditions as the on-host gate (/api/health token AND /->404 inv-22) from a shared constant.",
+   "depends_on": "M.W2",
+   "rolls_up": [
+    "A4-04",
+    "A4-07",
+    "A6 CHR-10"
+   ]
+  },
+  {
+   "id": "M.W4",
+   "title": "Deploy spine III \u2014 kill silent-rollback (page an off-host sink) + author inv-31",
+   "goal": "Add page() to deploy-hook.sh POSTing all three terminal states (DEPLOY OK / ROLLBACK / no-green ALERT) to a constellation-watched sink (ntfy/Discord/Slack, host-only untracked .env, HMAC-secret discipline). Backport to deploy/templates as a SINK_URL var (no-op when empty). Verify a real delivery (inv-27 evidence applied to the page). Author inv-31 (observability-floor) firmly \u2014 the deploy chain has gone silently-broken-for-months TWICE; it reaches all 8 repos via the template backport. Land a known-green SHA through the now-fixed spine -> host catches up to HEAD.",
+   "depends_on": "M.W3",
+   "rolls_up": [
+    "A4-03",
+    "A4-05",
+    "A6 CHR-01 (close)",
+    "A1-01 (close)"
+   ]
+  },
+  {
+   "id": "M.W5",
+   "title": "Wire the inv-15 consumer gap + data-model transpose (J.W5 + W2-fix + W2-transpose)",
+   "goal": "Add the 7 client methods to api.ts; build the /v/:slug detail host with the diff-viewer (glass-ui useTextHighlight from /motion at 4.0, CSS Custom Highlight, supported-flag PE floor), provenance breadcrumb, version timeline + forks drill-down, and the remix action. Re-point gallery.publish() + the workspace publish path OFF PATCH{visibility} onto POST /:slug/publish (the verb's idempotent in-place semantics finally exercised); add unpublish. W2-transpose: DELETE VisualizationVersion.{parent_hash,depth,root_hash} + version_count + GET/versions + the within-viz chain (keep per-viz atom snapshot /diff reads + cross-viz fork_of); sweep types.ts in lockstep. W2-fix: make palette_slug remix-only, make /diff to-param real, recompute atom_diff in the migration for forks. Land DEC-2 controls-LEFT via aside-side=left. Re-verify A-1/A-2 against 4.0.0; adopt if shipped.",
+   "depends_on": "M.W1",
+   "rolls_up": [
+    "A1-02",
+    "A1-05",
+    "A2-M1",
+    "A2-M2",
+    "A2-M3",
+    "A2-M4",
+    "A2-M5",
+    "A2-M6",
+    "A2-M7",
+    "A2-M8",
+    "A3-01..A3-08",
+    "A6 CHR-05",
+    "A6 CHR-14",
+    "A6 CHR-15",
+    "A7-8",
+    "A7-9"
+   ]
+  },
+  {
+   "id": "M.W6",
+   "title": "EVIDENCE \u2014 green inv-27 run + measured CWV/INP + axe (folds J.W6 + I-deferred)",
+   "goal": "Over the migrated + wired tree, capture a single covering green CI run id (all jobs): remix-flow e2e + publish-flow-no-duplicate e2e (downstream of M.W5), un-test.fixme the 2 a11y keystones into live asserts, axe on gallery + diff-viewer, the I-deferred gamma LCP/INP delta + delta scroll-anchor pass, and the W3/W4 measured INP/CWV deltas on the live post-deploy SPA (chrome-devtools trace / lighthouse). Assert no live row carries set_hash==''. NO console-filter bridge for the dock error (it no longer exists at 4.0 \u2014 a bridge would mask a non-existent error, the NO-LEGACY violation forbidden). Tie each perf claim to a number or demote it to 'shipped, unmeasured' honestly.",
+   "depends_on": "M.W4",
+   "rolls_up": [
+    "A1-07",
+    "A1-08",
+    "A2-M8",
+    "A6 CHR-06 (close)",
+    "A6 CHR-11",
+    "A7-7"
+   ]
+  },
+  {
+   "id": "M.W7",
+   "title": "Tail hygiene sweep + cohort parity + booked-with-kill-dates",
+   "goal": "Confirm CSP recipe intact post-J-endpoints + wire fetchLater behind the sendBeacon floor. Run the fourier-local Python /diff + publish envelope parity probe against J-diff-shape.md. Ship deploy.sh/dev.sh as the canonical operator entrypoint. Re-verify each constellation adoption ask (1-7) against the actual sibling repos at HEAD (no rolling re-affirmation without evidence); record a terminal disposition per ask (ESCALATE / KILL / ACCEPT-chronic). dispatch.sh retirement stays BOOKED with a hard kill-date = the fourth repo's migration (value.js rsync->git is critical-path; fourier holds no lever, inv-16) \u2014 escalate to the user rather than book a 7th silent roll. Re-affirm L-webmcp's external Chromium-146 gate (its thin-wrapper premise depended on M.W5 landing).",
+   "depends_on": "M.W6",
+   "rolls_up": [
+    "A1-09",
+    "A1-11",
+    "A4-09",
+    "A6 CHR-04",
+    "A6 CHR-07",
+    "A6 CHR-08",
+    "A7-10"
+   ]
+  }
+ ],
+ "new_invariants": [
+  {
+   "id": "inv-31",
+   "statement": "observability-floor (K-RESERVED, authored firmly in M.W4): a deploy/rollback terminal state MUST page a constellation-watched sink, or the deploy path is NOT closed. Orthogonal to inv-25 (automated) / inv-27 (green) / inv-28 (verified) \u2014 those govern WHAT ships; inv-31 governs that a HUMAN is notified when it fails. Reaches all 8 repos via the deploy/templates backport. Satisfaction evidence = a verified real page delivery. Rationale: the deploy chain went silently-broken-for-months TWICE (F's missing HMAC secret; the health-gate silent rollback)."
+  },
+  {
+   "id": "inv-32",
+   "statement": "version-currency: a fourier dependency pin on a constellation sibling MUST NOT trail the sibling's published major by more than one major, AND any cross-tranche 'gated on a future sibling release' edge MUST cite a re-verification (npm view <pkg> version) dated within the current tranche's W0 \u2014 a stale gate-prose is an inv-27-class honesty defect, not a real block. Structural fix for the I->J->K three-tranche book-rot (3.1.0/3.2.0/4.0.0 re-grounds). Namespace-partitioned from the glass-ui precept 'invariant 32'."
+  },
+  {
+   "id": "inv-33",
+   "statement": "design-hierarchy floor: every control pane (a titled region grouping interactive controls) is a glass-ui Configurator/ConfiguratorLayer instrument \u2014 title on the typography ladder, rows on the density grid, the machined groove between sub-regions \u2014 NEVER a hand-rolled <h3>+card mimic (.eq-grid / .config-grid / cartoon-card). The structural strengthening of inv-10 (token-first) for the control-pane surface; net code DECREASES on conformance (five idioms -> one). Namespace-partitioned from the glass-ui precept 'invariant 33'."
+  },
+  {
+   "id": "inv-34",
+   "statement": "motion-proportion floor: every animation target (a) honours prefers-reduced-motion by snapping to target via the platform/glass-ui/keyframes PRM-aware primitives \u2014 NOT a hand-rolled @media carve (that carve retires per inv-3), (b) stays INP-safe (no main-thread block on the interaction-driven path; scheduler.yield on hot paths), and (c) obeys a proportion ceiling (the user's 'audacious but not gaudy' standing directive \u2014 pops/scales bounded). Codifies the standing PROPORTION directive as a binding gate; composes with inv-30 (platform-over-library)."
+  },
+  {
+   "id": "inv-29-amend",
+   "statement": "inv-29 (progressive-enhancement-floor) SCOPE CLARIFICATION: inv-29 governs platform-CAPABILITY adoption (a feature-gated behaviour change); it does NOT apply to a library class-vocabulary rename (e.g. glass-subtle->glass-quiet), which is a hard RETIRED-class swap under inv-3 \u2014 retaining the old class as a 'floor' would be the dead-class legacy inv-3 forbids."
+  }
+ ],
+ "chronic_fold": [
+  {
+   "item": "Deploy-of-record never landed \u2014 host 44 commits behind since G; every closed tranche shipped against a tree prod never saw",
+   "verdict": "DISCHARGE-IN-M (the single largest gap): the deploy spine (M.W2 HEALTHCHECK+service_healthy+index-off-serving-path, M.W3 fail-closed inv-28 gate, M.W4 page-the-sink+inv-31) lands and a known-green SHA flows through it so the host catches up to HEAD. Close-gate = observed-green prod, not a plan.",
+   "wave": "M.W2-W4"
+  },
+  {
+   "item": "inv-15 consumer gap \u2014 7 CORE endpoints have ZERO api.ts callers; gallery.publish still PATCHes (binary breach at HEAD)",
+   "verdict": "DISCHARGE-IN-M as the binding inv-15 close-gate: M.W5 wires all 7 + builds the /v/:slug detail host + re-points publish onto the verb. Treat 'no api.ts caller' as a red gate.",
+   "wave": "M.W5"
+  },
+  {
+   "item": "Sibling re-ground unconsumed \u2014 pins ^3.1.0/^2.2.0/^0.10.0 vs published 4.0.0/4.2.0/0.12.0; RUN-BOARD E1 gate 11 days stale and FALSE",
+   "verdict": "DISCHARGE-IN-M.W1 as the FRONT-LOADED enabler (greens e2e at source, unblocks everything downstream); the 3.1.0->4.0.0 is a MAJOR adoption wave with a breaking-change audit, NOT the caret one-liner the charters assumed. inv-32 codifies the discipline so the book-rot stops.",
+   "wave": "M.W1"
+  },
+  {
+   "item": "Phantom within-viz version chain (depth always 0, version_count never incremented, /versions always one entry)",
+   "verdict": "DELETE-IN-M (W2-transpose): excise depth/parent_hash/root_hash/version_count/GET-versions; keep per-viz atom snapshot /diff + cross-viz fork_of. Permanent deletion absent a named consumer (inv-3 no-legacy; net code decrease).",
+   "wave": "M.W5"
+  },
+  {
+   "item": "Standing design-language directive (Fraunces display, audacious pops, large typography, motion targets) authored in J, executed nowhere",
+   "verdict": "EXECUTE-IN-M as a first-class wave riding J.W5 surfaces (not a defer-if-tight tail); inv-33 + inv-34 codify the hierarchy + motion-proportion floors so it cannot regress.",
+   "wave": "M design-language (rolled into W5)"
+  },
+  {
+   "item": "e2e/inv-27 green gate never reached \u2014 CI red on glass-dock-1 since before J",
+   "verdict": "DISCHARGE-IN-M.W6 downstream of the M.W1 bump (the useId fix is present at 4.0); NO console-filter bridge \u2014 the error no longer exists at 4.0, building one would mask a non-existent error (NO-LEGACY violation).",
+   "wave": "M.W6"
+  },
+  {
+   "item": "dispatch.sh retirement gated on 4 sibling migrations (stuck since F, 18 days)",
+   "verdict": "BOOK-WITH-HARD-KILL-DATE = the fourth repo's (value.js rsync->git) green-CI acceptance; fourier holds no lever (inv-16). Escalate to the user rather than book a 7th silent 30-day roll.",
+   "wave": "M.W7"
+  },
+  {
+   "item": "Constellation adoption asks 1-7 (open 18+ days, stale-watch lapsed)",
+   "verdict": "RE-VERIFY-LIVE-IN-M.W7 against the actual sibling repos at HEAD; record a terminal disposition per ask (ESCALATE / KILL / ACCEPT-chronic). words-spa 404 escalates to P0. No more evidence-free re-affirmations.",
+   "wave": "M.W7"
+  },
+  {
+   "item": "The recap/idiomatic/fold-chronics meta-directive \u2014 satisfied at the planning layer, deferred at execution, ~6 recurrences",
+   "verdict": "RESOLVE-BY-CONSTRUCTION: M's CORE is EXECUTION of the twice-planned chronics, not a seventh re-plan; M.W0 states 'this tranche discharges what J/K planned, it does not re-plan it.' The recap discipline stays (this matrix); the close criterion is physical artefacts.",
+   "wave": "M.W0"
+  },
+  {
+   "item": "C1 colour-lift (sampleToSVGPath) \u2014 KILLED at J.W0 but only in prose, not the canonical ledger",
+   "verdict": "LEDGER-THE-KILL in M.W0: add a struck ADOPTION-ASKS row so the kill is locatable without J.md archaeology. NEVER re-book.",
+   "wave": "M.W0"
+  },
+  {
+   "item": "anyCanvasVisible over-export (flagged in I, drifted through J)",
+   "verdict": "TRIM-IN-M.W5 during the wire-up wave: drop it from the store public return (computed stays load-bearing). One-line no-legacy trim.",
+   "wave": "M.W5"
+  }
+ ],
+ "glassui_asks": [
+  {
+   "name": "A-1 ConfiguratorLayer inter-row divider-rule opt-in (RE-VERIFY at 4.0.0 first)",
+   "what": "An opt-in inter-row divider-rule groove (twin-line catch-light/under-shadow, dark-aware) on the Configurator/ConfiguratorLayer chassis \u2014 the machined groove that today ships ONLY on .instrument-rail; .configurator-layer emits a flat border-b.",
+   "why": "fourier's four control panes need ONE platform divider idiom; hand-rolling a hairline between rows is the forbidden NO-LEGACY workaround and reaching inside the component breaches inv-16. glass-ui SELF-BOOKED this to its AT successor at 3.2.0 \u2014 RE-VERIFY against the shipped 4.0.0 source (it may already ship; this is the exact inv-32 book-rot risk). Book to glass-ui only what 4.0 genuinely lacks."
+  },
+  {
+   "name": "A-2 ConfiguratorLayer label/sub -> typography ladder hook (RE-VERIFY at 4.0.0 first)",
+   "what": "Bind ConfiguratorLayer's label/sub props to the text-title/text-heading \u03c6-ladder at the component root, replacing the literal text-sm font-semibold magic string so one ladder-token change restyles every pane title across all routes.",
+   "why": "So fourier never reaches inside the component (inv-16) to set the title utility; the canonical title pattern becomes one ladder-bound primitive. The WC-typo audit found pane-title sizing the single highest-leverage one-line lever \u2014 but the lever is glass-ui-owned. RE-VERIFY against 4.0.0 before re-booking."
+  },
+  {
+   "name": "useTextHighlight export-path adoption-ledger correction (no glass-ui code change)",
+   "what": "fourier's J.WC + W1 re-ground recorded useTextHighlight as shipping on glass-ui 3.2.0 at the /dom subpath. In shipped 4.0.0 it lives at composables/motion/useTextHighlight.ts, exported from @mkbabb/glass-ui/motion (+ root). This is a fourier-side ledger correction so the M.W5 diff-viewer imports the real path \u2014 booked as glass-ui-facing so the ADOPTION-ASKS row reflects 4.0 reality, not the stale 3.2.0/dom claim.",
+   "why": "The diff-viewer is the named consumer-2 of the design; importing a non-existent /dom path would fail the build. The composable's multi-instance registry + readonly supported flag are exactly what the inv-29 PE floor needs \u2014 the only blocker is the stale path in fourier's own docs."
+  },
+  {
+   "name": "Verify-4.0-surface for DEC-2 + a11y keystones (verification ask, not a build ask)",
+   "what": "Read-confirm at glass-ui 4.0.0 (inv-16): asideSide (Configurator controls-LEFT, DEC-2), useTextHighlight on /motion, the inert-on-collapsed-ConfiguratorLayer a11y fix, and the dock useId() VT-name fix are all present (authored for 3.1.1/3.2.0 against a 3.2.0 world that no longer matches the published 4.0.0).",
+   "why": "M.W1's bump + the M.W5/W6 a11y un-fixme + DEC-2 controls-LEFT all presuppose these shipped; the prior audits asserted them against a stale 3.2.0 world. fourier must read-verify before relying on them."
+  },
+  {
+   "name": "Semantic diff-row highlight token trio (optional refinement)",
+   "what": "A canonical set of semantic highlight tokens (--glass-highlight-added/-removed/-changed mapped to value.js diff hues) so the three repos that will eventually paint diffs (fourier viz-config, value.js palette stops, future) don't each invent ::highlight colours and drift.",
+   "why": "value.js is the colour authority; a shared semantic-highlight trio keeps the colour language consistent. Low priority \u2014 fourier defines locally and books the unification as an ADOPTION-ASK if glass-ui declines."
+  },
+  {
+   "name": "glass-tier-migration staleness gate (process refinement, from a real silent regression)",
+   "what": "A proof:consumer-staleness allowlist / PostCSS lint that warns on retired tier class names (glass-subtle/glass-default/glass-medium/glass-elevated) at the glass-ui styles import after a major bump.",
+   "why": "The v0.8.0 ladder rename was a SILENT visual regression for all external consumers \u2014 fourier ran four elements with zero glass styling (no backdrop-filter/background/border/shadow) for the entire 3.1.0 era with no diagnostic. A build-time warning would surface this class of regression at the first build after a bump."
+  }
+ ],
+ "risks": [
+  "The glass-ui 3.1.0->4.0.0 bump is a MAJOR, not the caret-safe one-liner every prior charter (and RUN-BOARD) assumed. The breaking surface enumerated so far is 21 mechanical edits, but a major may carry breaks BEYOND the glass-quiet rename + the 5 known categories \u2014 M.W1 must run a full CHANGELOG diff + class/prop/composable grep against 4.0 as its first act, or the bump greens nothing and blocks the whole chain.",
+  "keyframes.js is TWO majors ahead (^2.2.0 -> 4.2.0). The narrow useFourierMorph surface (loadAnimationEngine/Animation/addFrame/parse/play/stop) is reportedly stable across the jump, but the lazy-import boundary signature must be re-verified against 4.x before the bump is treated as low-risk; a moved Animation constructor signature would break the one caller.",
+  "The host-only read-only GitHub PAT for the inv-28 API-arm gate (M.W3) is the single named human dependency and is UNPROVISIONED. The gate fails-closed (refuses to deploy) without it \u2014 which would block ALL API deploys. M.W2 (the spine) may need to land FIRST, with the gate shipping in warn-only mode for exactly one deploy until the PAT exists, or M.W4's known-green-SHA push is blocked.",
+  "Which off-host sink the constellation already watches (ntfy topic / Discord / Slack) is unconfirmed for M.W4/inv-31. Standing up a new sink vs binding to an existing one is an operator decision that must precede the page() implementation.",
+  "The dirty-tree glass-quiet rename committed BEFORE the dep bump would reference a class vocabulary the pinned ^3.1.0 dependency does not ship \u2014 the rename is only coherent atop the resolved 4.0 dep (M.W1 ordering is load-bearing: bump THEN commit the rename).",
+  "After W2-transpose deletes the linear version chain, the diff-viewer's only real comparison is the cross-viz fork delta (every viz is born depth-0; remix creates a NEW viz, not a new version on the same viz) \u2014 so the VersionTimeline (A3-05) may collapse to a single node. Confirm whether the within-viz timeline earns its keep before building it, or fold it into the cross-viz forks drill-down.",
+  "The whole M chain is long (W0->W7) and the deploy spine (W2-W4) is independent of the dep bump (W1) \u2014 these two arms can parallelize, but W5 (consumer wire-up) depends on W1 (green bump) and W6 (evidence) depends on BOTH arms converging. A serial reading would over-sequence; the critical path is W1->W5->W6 and W2->W3->W4 in parallel, joining at W6.",
+  "The cohort dispatch.sh + adoption-asks tail (M.W7) is genuinely outside fourier's write boundary (inv-16) \u2014 M can re-verify and escalate but cannot DISCHARGE these; booking with a hard kill-date risks a 7th silent roll unless the user is explicitly engaged on the value.js rsync->git critical-path item."
+ ],
+ "prose": "Tranche M is not a seventh plan \u2014 it is the EXECUTION tranche whose entire reason to exist is to discharge the two physical chronics that have ridden every fourier plan since G/J: the deploy-of-record that never landed (host 44 commits behind, CONFIRMED this run \u2014 worse than the 29 K.md records) and the inv-15 consumer gap (api.ts has zero callers for J's 7 CORE endpoints, CONFIRMED). A1-10 names the deepest pattern in the whole corpus: the recap/idiomatic/fold-chronics meta-directive has been honoured at the PLANNING layer ~6 times while these two chronics keep being re-planned rather than shipped. M resolves that by construction \u2014 M.W0 states 'this tranche discharges what J/K planned; it does not re-plan it,' and M's close-gate is physical: observed-green prod + a live UI consumer for every endpoint + a green inv-27 run.\\n\\nThe sequencing has two parallel arms joining at evidence. The FRONT enabler is M.W1, the multi-major dependency reconciliation: glass-ui 4.0.0 / keyframes 4.2.0 / value.js 0.12.0 (all CONFIRMED published; pins still ^3.1.0/^2.2.0/^0.10.0). This is the highest-leverage first move because it greens e2e AT SOURCE (the glass-dock-1 dup-VT blocker that has held CI red since before J is fixed by the useId() shipped in 3.1.1, present at 4.0), un-fixmes the two a11y keystones, and unblocks DEC-2 asideSide + useTextHighlight. The critical re-grounding correction the prior audits all missed: this is a MAJOR bump (3.1.0->4.0.0), NOT the caret-safe one-liner K.md and the 11-days-stale RUN-BOARD assumed \u2014 its breaking surface is at least the 21 enumerated mechanical edits (3 UnderlineTabs, 3 DialogContent, 12 MetricBadge, 5 import-path moves) plus the glass-subtle->glass-quiet rename already half-applied in the dirty tree. That rename is only coherent ATOP the resolved 4.0 dep, so the ordering is load-bearing: bump, then commit the rename, never the reverse. Node-20's forced Actions cutover (today, 2026-06-16) folds into the same commit.\\n\\nThe second arm is the deploy spine (M.W2-W4), independent of the bump and runnable in parallel. The root cause is correctly diagnosed and confirmed at code level: no container HEALTHCHECK (only mongo has one), and the FastAPI lifespan builds ~35 indexes serially BEFORE /api/health can answer, so a cold WORKERS=1 start with 44 new commits loses the race against the 60s blind poll and silently rolls back. The fix is idiomatic, NOT a longer poll: move index creation off the serving path (create-after-yield, idempotent) + a real HEALTHCHECK with depends_on:service_healthy (W2); a fail-closed inv-28 green-CI gate that refuses a red SHA (W3, closing the asymmetry where the SPA gates but the API does not); and page() on all three terminal states to a constellation-watched sink with inv-31 authored firmly (W4 \u2014 the chain has gone silently-broken-for-months TWICE; observability is not a maybe-invariant). A known-green SHA then flows through the fixed spine and the host finally catches up to HEAD.\\n\\nThe two arms join at M.W5 (wire the consumer gap + transpose the data-model) and M.W6 (evidence). W5 is the binding inv-15 close-gate: the 7 client methods, a /v/:slug detail host carrying the diff-viewer (glass-ui useTextHighlight from /motion at 4.0, with the supported-flag PE floor), provenance breadcrumb, version timeline, forks drill-down, and the remix action \u2014 and crucially re-points gallery.publish() off the generic PATCH onto POST /:slug/publish so the idempotent in-place verb is finally exercised. W5 also lands the two data-model transpositions the directive demands: W2-transpose DELETES the phantom within-viz version chain (depth always 0, version_count never incremented, /versions always one entry \u2014 dead substrate, net code decrease, inv-3 no-legacy) keeping only the per-viz atom snapshot /diff and the cross-viz fork_of lineage; W2-fix force-resolves the palette_slug-mutable-outside-the-version-model integrity hole, makes the ignored /diff to-param real, and recompiles the migration's empty atom_diff. The design language (Fraunces display voice, audacious amber-dominant pops, the \u03c6-tuned typography ladder, the motion targets) suffuses W5's surfaces so it ships WITH the features it dresses \u2014 governed by the new inv-33 (design-hierarchy floor: one Configurator instrument, no hand-rolled <h3>+card mimics) and inv-34 (motion-proportion floor: PRM-honoured, INP-safe, proportion-ceilinged). W6 captures the single covering green inv-27 run \u2014 remix/publish e2e, un-fixme'd a11y keystones, axe, the I-deferred and W3/W4 measured CWV/INP deltas \u2014 with NO console-filter bridge (the dock error no longer exists at 4.0; a bridge would mask a non-existent error, the exact NO-LEGACY violation forbidden). M.W7 sweeps the tails (CSP/fetchLater, cohort parity probe, operator entrypoint) and books the genuinely-out-of-boundary cross-repo items (dispatch.sh, adoption asks 1-7) with hard kill-dates and live re-verification rather than a seventh silent roll. New invariants take clean integers 32/33/34 (31 stays K-reserved for observability-floor, authored in M.W4); inv-29 gets a one-line scope clarification so the class-vocab rename is never mistaken for a PE-floor case. L-webmcp stays correctly external-gated (Chromium 146) \u2014 re-affirmed at M close, not folded."
+}

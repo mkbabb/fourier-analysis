@@ -6,6 +6,8 @@ import hashlib
 import io
 import logging
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -24,10 +26,11 @@ from api.responses import contour_response
 from api.services import computation
 from api.services.database import get_db
 from api.services.image_storage import (
-    _resolve,
+    BlobNotFound,
     extraction_cache_key,
     image_bytes,
     image_tempfile,
+    resolve_blob,
     store_contour_asset,
     store_image_asset,
 )
@@ -76,6 +79,19 @@ CONTENT_TYPE_MAP = {
     ".heif": "image/heif",
     ".avif": "image/avif",
 }
+
+
+@contextmanager
+def _blob_not_found_as_404() -> Iterator[None]:
+    """Answer the storage layer's typed ``BlobNotFound`` as HTTP 404.
+
+    A row whose blob file is gone (F.W14U.b, COHESION §0cv) is a not-found
+    resource, not a server fault; re-uploading the same bytes re-stores it.
+    """
+    try:
+        yield
+    except BlobNotFound as exc:
+        raise HTTPException(status_code=404, detail="Image blob not found") from exc
 
 
 def _image_response(doc: dict[str, Any]) -> ImageAssetResponse:
@@ -138,7 +154,8 @@ async def get_image_blob(imageSlug: str) -> FileResponse:
     # ``Cache-Control`` are unchanged. D.W3 γ: the asset is the typed
     # ``ImageAsset`` model — field access is type-checked, not raw subscript.
     asset = await get_image_asset(imageSlug)
-    path = _resolve(asset.storage_uri)
+    with _blob_not_found_as_404():
+        path = resolve_blob(asset.storage_uri)
     return FileResponse(
         path,
         media_type=asset.content_type,
@@ -152,12 +169,13 @@ async def get_image_thumbnail(imageSlug: str) -> FileResponse:
     # Serve the thumbnail file if one exists, otherwise fall back to the primary
     # storage uri (the ``thumbnail_uri is None`` no-thumbnail case — invariant
     # 18; preserves the prior fallback). D.W3 γ: typed field access.
-    if asset.thumbnail_uri is not None:
-        path = _resolve(asset.thumbnail_uri)
-        content_type = asset.thumbnail_content_type or "image/avif"
-    else:
-        path = _resolve(asset.storage_uri)
-        content_type = asset.content_type
+    with _blob_not_found_as_404():
+        if asset.thumbnail_uri is not None:
+            path = resolve_blob(asset.thumbnail_uri)
+            content_type = asset.thumbnail_content_type or "image/avif"
+        else:
+            path = resolve_blob(asset.storage_uri)
+            content_type = asset.content_type
     return FileResponse(
         path,
         media_type=content_type,
@@ -175,7 +193,8 @@ async def get_image_overlay(imageSlug: str, resize: int = 1024) -> StreamingResp
     from PIL import Image as PILImage
 
     asset = await get_image_asset(imageSlug)
-    data, _ = image_bytes(asset)
+    with _blob_not_found_as_404():
+        data, _ = image_bytes(asset)
 
     def _resize() -> tuple[bytes, str, tuple[int, int]]:
         from PIL import ImageOps
@@ -225,7 +244,8 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest) -> Any:
         logger.info("extraction cache hit for %s (key=%s…)", imageSlug, cache_key[:12])
         return contour_response(existing)
 
-    tmp = image_tempfile(asset)
+    with _blob_not_found_as_404():
+        tmp = image_tempfile(asset)
     try:
         result = await computation.compute_contours(
             Path(tmp.name),

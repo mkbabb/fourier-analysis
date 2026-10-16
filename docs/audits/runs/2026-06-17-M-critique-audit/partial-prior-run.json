@@ -1,0 +1,333 @@
+{
+ "A1": {
+  "dimension": "A1 \u2014 Recap & Coverage (whole-engagement prompt recap + the 8 live critiques mapped to the M plan)",
+  "verdict": "COVERAGE SUMMARY. I recapped the engagement across MEMORY.md (tranches A\u2013M lineage), project_tranche_{m,k,j}.md, the M plan corpus (M.md \u00a70\u2013\u00a713, PROGRESS.md, M-AMENDMENT-latest-and-BB.md, M-design-language.md), the prior 32-agent audit index, and the live state (5 jpeg panes @1440 + 5 user crops). The recurring META-DIRECTIVE (deeply-audit / idiomatic-gestalt / fold-ALL-chronics / recap-ALL-prompts / NOT-implementation / no-legacy) is HONOURED by M at the planning layer and \u2014 crucially \u2014 M is explicitly framed as the EXECUTION tranche that resolves the \"~6\u00d7 planned-never-shipped\" chronic by-construction (M.md \u00a70). NEW THIS RUN: M.W1 was actually EXECUTED this session (the bump + the UnderlineTabs->SegmentedTabs/MetricBadge/glass-scrubber/DialogContent/glass-wash migration ran on branch m/w1-bump-migration). This is the FIRST tranche-M wave to physically run. The PROGRESS.md ledger still marks M.W1 `planned` \u2014 it does NOT reflect the executed migration (gamma residue finding F-RECAP-01).\n\nTHE 8-CRITIQUE DISPOSITION (each traced to the M plan):\n(1) not-glassy cartoon cards -> ALREADY-COVERED by M.W5 (glass depth ladder + .cartoon-card DELETE). PARTIAL: the design doc maps error/loading cards to glass but the live toast/error card (crop 01, gallery toast) still renders cartoon \u2014 confirms W5 not yet run; no new gap.\n(2) borders-not-rounded -> PARTIAL. M.W5 sweeps \"raw radii -> --radius-*\" (C2 incongruence) but the plan never states a frozen radius SYSTEM tied to the band ladder; new finding F-CRIT-02.\n(3) no-desktop-tabs-for-visualizer -> the tabs ARE `lg:hidden` in source (VisualizationView.vue:181) so are mobile-only by design; the @1440 capture rendered the mobile branch (controls pinned RIGHT, dead dot-grid left). The REAL issue the critique exposes is the desktop layout (controls-RIGHT + dead stage), which is critique 4. New observation finding F-CRIT-03 (breakpoint/capture nuance + the desktop-layout root).\n(4) ALL-controls-LEFT (DEC-2) -> ALREADY-COVERED, strongly, by M.W8 (asideSide=\"left\" + delete the 3 grid-template-columns overrides). Confirmed: source still pins controls RIGHT (VisualizationView.vue:322). No new gap; reaffirm.\n(5) dropdown/glass-DARKENED -> NEW / PARTIAL. The plan only books the dead `glass-elevated` on the coeff popover (C3-02) as a fourier adoption; it does NOT name a glass-ui 4.0 MENU/overlay surface darkening regression. The live nav dropdown (crop 08) is flat opaque grey on glass-ui 4.0. New glass-ui ask + finding F-CRIT-05 (alpha).\n(6) buttons-invisible-unhovered -> PARTIAL. M.W8 names one-amber-per-pane + the DockIconButton-active ask + \u00a73 accent-tone, but does NOT crisply address ghost/outline-button idle paint in DARK mode (the \"Open the Visualizer\" outline chip, the preset pills). New finding F-CRIT-06 (beta + possible glass-ui ask).\n(7) tabs-should-be-GLASS -> NEW CONFLICT. M.W1 (and M.W8 prose) deliberately chose `variant=\"underline\"` to match the retired UnderlineTabs; the user REVERSES this. This is the sharpest gamma residue. New finding F-CRIT-07.\n(8) search-OFFSET-SQUARE -> NEW. The plan has no item on the input focus-ring. The live focus ring (crop 11) is a square blue outline offset beyond the rounded field. New glass-ui input focus-ring ask + finding F-CRIT-08 (alpha).\n\nNET: 4 of 8 are already well-covered (1,3,4 + the proportion frame) and reaffirmed; 4 are NEW or materially under-covered (5,6,7,8) and one ROOT version mismatch threads them all \u2014 the user critiqued glass-ui 4.0.0 while the M amendment targets BB's 4.1.0 (F-RECAP-02). The recap/fold meta-directive is honoured; the M.W1-executed-but-PROGRESS-stale is the one bookkeeping breach.",
+  "findings": [
+   {
+    "id": "F-RECAP-01",
+    "title": "M.W1 was EXECUTED this session but PROGRESS.md still marks every wave `planned` \u2014 the ledger does not reflect reality",
+    "severity": "high",
+    "evidence": "docs/tranches/M/PROGRESS.md:14-28 (all rows `planned`); live branch m/w1-bump-migration with the migration applied (VisualizationView.vue:27 imports SegmentedTabs; :182 variant=\"underline\"; CRITIQUE.md:3 enumerates the executed migration set)",
+    "current_state": "The bump + UnderlineTabs->SegmentedTabs + MetricBadge :amount->:value + glass-scrubber->standard + DialogContent surface->opaque + glass-subtle/glass-quiet->glass-wash + glass-elevated->glass-floating migration physically ran on m/w1-bump-migration, but PROGRESS.md still says M is AUTHORED-only and M.W1 is `planned`. The \u00a73/\u00a712 PHYSICAL close-gate discipline (M.md) demands the ledger match reality; it does not.",
+    "proposed": "At the M.W0 re-ground (which this critique-audit IS), flip PROGRESS.md M.W1 to `executed-partial` with the actual branch + the cited migration commit, and split the W1 evidence row into (a) the framework/sibling majors landed and (b) the glass-ui leg \u2014 recording that the live instance runs glass-ui 4.0.0, NOT the BB-gated 4.1.0 target. No new wave; an honest ledger reconciliation, exactly the recap discipline M codifies.",
+    "root_class": "gamma",
+    "wave_hint": "M.W0 (ledger reconciliation) / M.W1",
+    "is_chronic": true,
+    "is_deferred": false
+   },
+   {
+    "id": "F-RECAP-02",
+    "title": "Version mismatch: the user critiqued glass-ui 4.0.0, but the M amendment targets BB's 4.1.0 \u2014 the critiqued surface is not the planned target",
+    "severity": "high",
+    "evidence": "M-AMENDMENT-latest-and-BB.md \u00a72 table (glass-ui target = 4.1.0, BB-GATED) and \u00a75 (W1b gated on BB publish); CRITIQUE.md:3 + system prompt (live instance = glass-ui 4.0.0). M-design-language.md \u00a70 still cites 4.0.0 throughout.",
+    "current_state": "M.W1 splits W1a (ungated) + W1b (glass-ui ^4.1.0, gated on glass-ui BB close+publish). The session installed glass-ui 4.0.0 (+ 4 peers --no-save) to MIGRATE now, but every alpha-class critique (darkened menu 5, square focus ring 8) is rooted in 4.0.0 source \u2014 which the plan does not even intend to ship. If those are fixed in BB 4.1.0, the asks are already-met-on-bump; if not, they are live regressions the plan must carry forward to 4.1.0.",
+    "proposed": "Make the glass-ui version target a first-class re-ground row in this audit: re-verify each alpha critique (5,8) against glass-ui BB's tranche/BB tree (read-only, inv-16) BEFORE booking the ask \u2014 if BB's ladder/menu/input work already addresses the darkening/focus-ring, STRIKE the ask as consume-on-4.1.0; else book to BB W-CROSSREPO-ASKS. inv-32 (version-currency) already mandates a dated re-verification at the gate \u2014 apply it here.",
+    "root_class": "plan",
+    "wave_hint": "M.W0 / M.W1b",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "F-CRIT-07",
+    "title": "Tabs render as underline (M.W1 choice) but the user wants GLASS \u2014 the sharpest bump residue, reverses the migration decision",
+    "severity": "high",
+    "evidence": "user-critique/10-tabs-should-be-glass.png (underline \"Controls | Canvas\"); user-critique/01 (same); VisualizationView.vue:182, EquationView.vue:188, GalleryView.vue:223 all `<SegmentedTabs variant=\"underline\">`; CRITIQUE.md:13",
+    "current_state": "The M.W1 migration mapped the retired UnderlineTabs onto `<SegmentedTabs variant=\"underline\">` at 3 sites to preserve the prior look. The user explicitly reverses this: tabs should be the glass (pill / glass-track) register. The plan's M-bump-migration premise (underline-to-match) is now contradicted by the live critique.",
+    "proposed": "Adopt the glass SegmentedTabs register (the shipped pill/glass-track variant \u2014 verify the exact prop name in glass-ui's tabs styles) at all 3 sites; key the active-pill fill off the per-route `--route-accent` (M.W7 OKLCH ramp) so the active tab carries a proportioned colour pop. This is a one-prop change per site that lands the GLASS pillar on the most-seen chrome; book it as a folded item in M.W8 (control-pane hierarchy) and amend M-bump-migration.md to record the reversal. No CSS override \u2014 the variant owns the material (inv-33).",
+    "root_class": "gamma",
+    "wave_hint": "M.W8 (fold) / amend M-bump-migration.md",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "F-CRIT-05",
+    "title": "Nav dropdown / glass elements render DARKENED-opaque on glass-ui 4.0, not translucent \u2014 no glass-ui menu-surface ask is booked",
+    "severity": "high",
+    "evidence": "user-critique/08-dropdown-glass-darkened.png (flat opaque grey menu, no translucency); live-paper.jpeg (the @mbabb GitHub dropdown is opaque white-grey); CRITIQUE.md:11; M-design-language.md \u00a71.1 only books the dead glass-elevated coeff popover (C3-02), not a menu-surface darkening",
+    "current_state": "The plan treats not-glassy surfaces as a fourier adoption gap (adopt the ladder, M.W5) and books the dead glass-elevated class \u2014 but the live nav dropdown composites as flat opaque grey on glass-ui 4.0's menu.css surface, which is a 4.0-owned rendering register, not a fourier omission. The audit must separate the alpha root (menu/overlay surface composites dark) from the beta adoption (fourier picking the right BAND-2 rung).",
+    "proposed": "Root-cause against glass-ui 4.0 menu.css + ladder.css (read-only, inv-16): if the menu/overlay surface darkens because the --glass-* tier alpha over a light backdrop loses translucency (the bright-bucket adaptive not engaging on menus), book a glass-ui ASK for a translucent menu surface register (or the --glass-backdrop:light adaptive reaching menu.css) \u2014 NEVER a fourier !important. Pair with M.W5 wiring the correct BAND-2 glass-floating rung + the W-ON-GLASS-FG contrast register on the consumer side. Re-verify against BB 4.1.0 first per F-RECAP-02.",
+    "root_class": "alpha",
+    "wave_hint": "glass-ui ask (BB W-CROSSREPO-ASKS) + M.W5",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "F-CRIT-08",
+    "title": "Search/input focus ring is SQUARE and OFFSET beyond the rounded field \u2014 a raw default outline, no glass-ui rounded focus-ring ask is booked",
+    "severity": "high",
+    "evidence": "user-critique/11-search-offset-square.png (blue square outline offset outside the rounded field); live-gallery.jpeg (square-cornered search field); CRITIQUE.md:14; no input-focus-ring item exists anywhere in M.md/M-design-language.md",
+    "current_state": "The plan has zero items on input focus styling. The live paper-search and gallery-search inputs paint a square, mis-positioned blue focus outline (the UA/default :focus-visible ring) that does not follow the field's border-radius \u2014 reading as a glitch against the glass design language.",
+    "proposed": "Root-cause against glass-ui 4.0 input/focus tokens (read-only): a rounded glass focus ring (box-shadow ring or outline-offset honouring --radius-*, on the composited glass fill) belongs in glass-ui's input primitive \u2014 book a glass-ui ASK for a rounded, correctly-offset glass focus-ring on the input/search components (generalizes to value.js palette inputs + speedtest). fourier consumes it on bump; the interim is to ensure fourier's search inputs use the glass-ui Input/search component rather than a hand-rolled field (a beta adoption in M.W8/W5). Re-verify against BB 4.1.0 per F-RECAP-02. No fourier !important outline override.",
+    "root_class": "alpha",
+    "wave_hint": "glass-ui ask (BB W-CROSSREPO-ASKS) + M.W5/W8",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "F-CRIT-06",
+    "title": "Ghost/outline buttons have no idle paint in DARK mode \u2014 preset pills + 'Open the Visualizer' invisible until hover",
+    "severity": "medium",
+    "evidence": "user-critique/09-buttons-invisible-unhovered.png (light-mode preset pills DO have idle fill but active 'Square wave' is a flat beige; the x(pi-x) red pill is the lone tonal accent); live-gallery.jpeg 'Open the Visualizer' is a flat dark variant=\"outline\" chip (GalleryView.vue:282); CRITIQUE.md:12",
+    "current_state": "M.W8 names one-amber-per-pane + the DockIconButton-active ask, and \u00a73 colour names the accent-tone recipe \u2014 but no item crisply addresses ghost/outline-button IDLE paint in dark mode. Idle controls (outline buttons, preset pills) carry no resting background, so options read as bare text until hover/active; and the active preset pill is a flat beige with no tonal-accent register.",
+    "proposed": "Land the tonal-accent idle fill (the \u00a73/\u00a710 `accent-tone` recipe: --accent-fill at a low idle mix, --accent-edge, --accent-ink) on the preset/option pills so an unselected option has a faint resting glass-wash fill and the selected one carries the proportioned --route-accent pop (audacious-not-gaudy, <=8% mix idle per \u00a73.5). If the missing idle register is a glass-ui Button ghost/outline-in-dark-mode gap, book it as a glass-ui ASK (the accent-tone ask already generalizes this ~57x); else it is a fourier adoption in M.W8. The active-state DockIconButton-active ask covers the dock; this extends to option pills.",
+    "root_class": "beta",
+    "wave_hint": "M.W8 + glass-ui accent-tone ask",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "F-CRIT-02",
+    "title": "No frozen radius SYSTEM tied to the band ladder \u2014 rounding is swept ad hoc, not single-sourced",
+    "severity": "medium",
+    "evidence": "user-critique/01 (near-square error card); user-critique/11 (square search field); live-gallery.jpeg (square search); M-design-language.md \u00a71 sweeps 'raw radii -> --radius-*' as a C2 incongruence only, no radius system",
+    "current_state": "The plan folds raw-radius cleanup into the M.W5 C2 incongruence sweep but never establishes a frozen --radius-* scale mapped to the depth bands (the way the glass rung owns the material). So 'not rounded' is treated as scattered cleanup, not a system \u2014 which is why the live cards/inputs still read square.",
+    "proposed": "Add a one-line radius-system clause to M-design-language.md \u00a71: each depth BAND owns a radius token (BAND 1 instrument panels --radius-lg, BAND 2 floating chrome --radius-xl, inputs/pills --radius-md) sourced from glass-ui's --radius-* scale, so rounding follows the band like the material does (inv-33 single-source). The W5 sweep then maps radius alongside the rung in the same pass, not as a separate cleanup. Net: no new tokens invented, the glass-ui scale is the source.",
+    "root_class": "beta",
+    "wave_hint": "M.W5 (amend M-design-language \u00a71)",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "F-CRIT-03",
+    "title": "The @1440 'desktop' workspace capture rendered the MOBILE tab branch + controls-RIGHT over a dead stage \u2014 the desktop layout is the real defect",
+    "severity": "medium",
+    "evidence": "live-workspace.jpeg (tabs 'Controls | Canvas' + controls pinned RIGHT, vast dead dot-grid LEFT); VisualizationView.vue:181 `<div class=\"... lg:hidden\">` wraps the SegmentedTabs (mobile-only by design); :322 grid-template-columns puts canvas-left controls-right; CRITIQUE.md:9-10",
+    "current_state": "The visualizer tabs are correctly `lg:hidden` (mobile affordance). The live @1440 capture shows them, which means either the capture viewport fell below the lg breakpoint or the desktop layout itself is the controls-RIGHT-over-dead-grid arrangement the user objects to (critique 4). Either way the desktop workspace presents a vast empty dot-grid with controls exiled right \u2014 the inverse of DEC-2.",
+    "proposed": "This collapses into the M.W8 asideSide=\"left\" transpose (already planned) + the workspace 'compose-the-void' dropzone hero (B2-02, already planned): flip to the left authoring rail, delete the 3 grid-template-columns overrides + the mobile :deep stage patch, and make the empty canvas an intentional phase-plane diagram rather than dead dot-grid. Confirm the lg breakpoint hides tabs cleanly at >=1024 so no mobile affordance leaks to desktop. No new wave; reaffirm M.W8 + verify the breakpoint at evidence (M.W11).",
+    "root_class": "beta",
+    "wave_hint": "M.W8 (reaffirm) / M.W11 verify",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "F-RECAP-03",
+    "title": "The 4 glass-ui peers (vaul-vue/embla/lucide-vue/perfect-freehand) were installed --no-save \u2014 an off-ledger dependency state the bump must regularize",
+    "severity": "low",
+    "evidence": "system prompt + CRITIQUE.md:3 ('4 glass-ui peers ... installed --no-save'); M.W1 evidence row owes 'lock single-copy' (PROGRESS.md:16)",
+    "current_state": "To run the migration this session, 4 glass-ui peer deps were installed --no-save, so they are present in node_modules but absent from package.json/lock \u2014 exactly the masked-by-sibling-node_modules class the amendment warns about for pencil-boil (M-AMENDMENT \u00a74).",
+    "proposed": "At M.W1's lock-single-copy step, declare the required glass-ui peers explicitly in web/package.json (or confirm glass-ui 4.1.0 vendors/peer-declares them) and regenerate the lock so the build is reproducible \u2014 never rely on --no-save transients. Fold the pencil-boil 0.4.1 pin + import-path check (M-AMENDMENT \u00a74) into the same step. inv-30/inv-32 honesty.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 (lock step)",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "F-RECAP-04",
+    "title": "vue-tsc 3 typecheck gate not yet run against the migrated tree \u2014 the cited-green-CI bump discipline is unproven",
+    "severity": "medium",
+    "evidence": "M-AMENDMENT \u00a72 (vue-tsc ^3 is a MAJOR, the typecheck gate); PROGRESS.md:16 owes 'cited green vue-tsc 3 + vite 8 build + e2e'; CRITIQUE.md:21 ('vue-tsc 3 not yet run')",
+    "current_state": "The migration ran but the framework-major gates (vue-tsc 3 typecheck, vite 8 build, e2e) that M.W1 promises to cite as green have not been executed/recorded. The plan forbids a blind bump; the live state is a bump without the cited green run.",
+    "proposed": "Run vue-tsc 3 + vite 8 build + the e2e suite over m/w1-bump-migration and record the run ids in PROGRESS.md M.W1 evidence before any further wave proceeds (inv-27). If glass-ui 4.0.0 (the installed version) diverges from the 4.1.0 target, gate the e2e-green claim on W1b per F-RECAP-02 rather than claiming green at 4.0.0.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 (gate)",
+    "is_chronic": false,
+    "is_deferred": false
+   }
+  ],
+  "glassui_asks": [
+   {
+    "name": "glass-ui-menu-surface-translucent",
+    "what": "A translucent menu/overlay surface register so dropdown menus (menu.css) carry the glass material instead of compositing flat opaque grey over a light backdrop \u2014 i.e. the --glass-backdrop:light adaptive bright-bucket should reach the menu/overlay tiers, not only the in-flow glass panels.",
+    "why": "The user critiqued the nav dropdown as 'darkened and not right' (crop 08) on glass-ui 4.0.0; every glass-consuming app (value.js palette menus, speedtest) inherits the same flat-opaque menu register. Root-cause in glass-ui (inv-16); fourier must never patch it with !important. Re-verify against BB 4.1.0 \u2014 if BB's ladder/menu work already addresses it, STRIKE."
+   },
+   {
+    "name": "glass-ui-input-rounded-focus-ring",
+    "what": "A rounded, correctly-offset glass focus ring on the Input/search components that honours the field's border-radius (--radius-*) and composes over the glass fill, replacing the square UA :focus-visible outline that paints offset beyond the field.",
+    "why": "The user critiqued the paper/gallery search focus ring as 'offset + square' (crop 11). A correct rounded glass focus ring belongs in glass-ui's input primitive so all consumers (value.js inputs, speedtest forms) inherit it; fourier consumes on bump. Re-verify against BB 4.1.0 first."
+   },
+   {
+    "name": "glass-ui-button-idle-paint-dark",
+    "what": "An idle resting register for ghost/outline Button variants in dark mode (a faint glass-wash fill or edge) so option/preset controls are visible before hover \u2014 distinct from the accent-tone recipe but composable with it.",
+    "why": "The user critiqued options as 'not visible when not hovered' (crop 09 + the dark-mode 'Open the Visualizer' outline chip). If ghost/outline buttons render with zero idle paint in dark mode at 4.0, that is a glass-ui Button gap every consumer hits; book it (or confirm the shipped accent-tone/4.1.0 work covers it and STRIKE). fourier consumes, never overrides."
+   }
+  ],
+  "open_questions": [
+   "Does glass-ui BB 4.1.0 (the M target, not the critiqued 4.0.0) already address the darkened menu surface (crit 5) and the square/offset input focus ring (crit 8)? If yes, both alpha asks STRIKE to consume-on-bump; if no, they carry to BB W-CROSSREPO-ASKS. This must be re-verified against the tranche/BB tree at M.W0 per inv-32.",
+   "Which exact glass SegmentedTabs variant does glass-ui 4.0/4.1 ship for the pill/glass-track register the user wants (crit 7)? The migration chose 'underline'; the reversal needs the correct shipped variant prop name verified at source before M.W8 lands it.",
+   "Should the M.W1 PROGRESS ledger record the live instance as glass-ui 4.0.0 (executed-interim) distinct from the 4.1.0 BB target, so the e2e-green-at-source close-gate is honestly attributed to W1b and not claimed prematurely at 4.0.0?",
+   "Was the @1440 workspace capture genuinely above the lg (1024px) breakpoint? If so, the mobile tabs leaking onto desktop is a real breakpoint defect beyond the controls-RIGHT layout; if the capture was sub-lg, only the desktop controls-RIGHT layout (M.W8 asideSide) is at issue.",
+   "Does the idle-button-paint gap (crit 6) belong in glass-ui's Button (dark-mode ghost/outline register) or is it purely fourier's adoption of the accent-tone recipe on its option pills? The root_class hinges on whether glass-ui's shipped Button has any idle paint in dark mode."
+  ]
+ },
+ "A2": null,
+ "A3": {
+  "dimension": "A3 \u2014 M.W1 bump+migration audit (correctness vs glass-ui 4.0 API + the residue ledger)",
+  "verdict": "The M.W1 migration is LANDED-BUT-INCOMPLETE and UNCOMMITTED (entire bump lives in the working tree, zero commits on m/w1-bump-migration vs master). The four headline mechanical renames are CORRECT against glass-ui 4.0: UnderlineTabs\u2192SegmentedTabs, MetricBadge :amount\u2192:value (0 :amount remain), DialogContent variant\u2192surface (0 variant=\"opaque\" remain), and the glass-ladder vocab swaps (0 glass-subtle/elevated/medium/quiet remain). BUT the migration is NOT green and NOT plan-complete on SEVEN counts: (1) the BB PEER-GATE is BREACHED \u2014 value.js@0.13.0 is INVALID against glass-ui 4.0.0's peer `^0.10.0 || ^0.11.0` (npm ls \u2192 ELSPROBLEMS); this only closes at glass-ui 4.1.0 (BB W-PEER-SPINE admits `^0.12.0 || ^0.13.0`), so the inv-27 green-CI gate CANNOT be cited today and `npm ci` may fail strict. (2) The glass-scrubber\u2192standard variant swap landed but the `--slider-scrub-*` retint hooks were NOT remapped to the 4.0 knobs (`--slider-range-bg`/`--slider-track-bg`) in all 7 files \u2014 they are now DEAD CSS (inv-3 legacy breach); this was the one non-mechanical step the plan flagged (\u00a76.3.2) and it was skipped. (3) CanvasOverlayButton.vue was NOT deleted (plan STEP 2i). (4) useClipboard (3 sites) was NOT moved to /dom and Collapsible was NOT moved to /collapsible (plan 2f/2g). (5) The Node-20 Actions cutover was NOT done \u2014 ci.yml + deploy-pages.yml still pin checkout@v4/setup-node@v4 (plan STEP 3). (6) Four peer packages (vaul-vue, embla-carousel-vue, perfect-freehand, @lucide/vue) are present in node_modules but ABSENT from package.json (the --no-save install) \u2192 non-reproducible CI install. (7) The variant=\"underline\" tab choice is now REVERSED by user critique #7 (wants glass/pill). The cartoon-card shim survives at 25 sites + its style.css @utility definition (a self-described \"dead-class resurrection\"). The latex-paper/theme TS2882 is pre-existing CSS-side-effect noise (present on master, exit 0) \u2014 NOT bump-induced, out of scope.",
+  "findings": [
+   {
+    "id": "A3-01",
+    "title": "BB peer-gate BREACH: value.js@0.13.0 is INVALID against glass-ui 4.0.0's peer range \u2014 npm ls reports ELSPROBLEMS; inv-27 green-CI gate cannot be cited until glass-ui 4.1.0",
+    "severity": "critical",
+    "evidence": "npm ls @mkbabb/value.js @mkbabb/glass-ui \u2192 'invalid: \"^0.10.0 || ^0.11.0\" from node_modules/@mkbabb/glass-ui' + 'npm error code ELSPROBLEMS'; web/node_modules/@mkbabb/glass-ui/package.json peerDependencies['@mkbabb/value.js']='^0.10.0 || ^0.11.0'; web/package.json bumped to '^0.13.0'; glass-ui BB-AMENDMENT-crossrepo.md:43 'W-PEER-SPINE (Batch 5) admits value.js ^0.12.0 || ^0.13.0 (closes F-2)' shipped at the 4.1.0 cut",
+    "current_state": "fourier bumped value.js to ^0.13.0 (to consume sampleColorRamp, confirmed shipped in value.js 0.13.0 dist/index.d.ts:19) but glass-ui 4.0.0 was published pinning value.js peer at ^0.10.0||^0.11.0. The installed tree is in an unsatisfied-peer state; value.js@0.13.0 is flagged invalid in three places in the dep graph (direct + deduped under glass-ui + deduped under keyframes). value.js@0.12.0 is the highest version that satisfies glass-ui 4.0.0; the plan's M-bump-migration.md predates value.js 0.13.0 and targets ^0.12.0.",
+    "proposed": "Do NOT downgrade fourier to value.js ^0.12.0 (that forfeits sampleColorRamp which M.W7 needs and which value.js shipped at 0.13.0 explicitly for this). Instead BOOK the glass-ui peer-range widening as a hard gate: M.W1 stays YELLOW until glass-ui ships 4.1.0 with W-PEER-SPINE (value.js ^0.12.0||^0.13.0). On glass-ui 4.1.0 publish, bump fourier's glass-ui pin ^4.0.0\u2192^4.1.0 in the SAME commit that lands the value.js 0.13.0 consume \u2014 this is the single coherent cut. Until then the inv-27 cited-green-CI gate cannot be honestly satisfied (npm ci strict-peer will fault). Add a peer-validity check (npm ls clean exit) to the M.W1 acceptance criteria alongside vue-tsc+build+CI-id.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 (the bump keystone) \u2014 gated on glass-ui 4.1.0 (BB W-PEER-SPINE); fold the ^4.0.0\u2192^4.1.0 re-pin into the M.W1 close",
+    "is_chronic": false,
+    "is_deferred": true
+   },
+   {
+    "id": "A3-02",
+    "title": "glass-scrubber\u2192standard variant swapped, but the --slider-scrub-* retint hooks were NOT remapped to the 4.0 knobs \u2014 7 files now carry DEAD inert CSS (inv-3 breach); the one non-mechanical migration step the plan flagged was skipped",
+    "severity": "high",
+    "evidence": "grep 'slider-scrub' web/src/ \u2192 7 files still reference --slider-scrub-range-bg/-thumb-bg (BasisSelector.vue:319-322, EditorControlsDock.vue:225-228, + GlassTimeline/SliderControl/HarmonicLevelGrid/MorphPhaseConfig/ConvergenceTimeline); all <Slider> now correctly variant=\"standard\" (BasisSelector.vue:170,197); glass-ui 4.0 Slider exposes only --slider-range-bg/--slider-track-bg/--slider-range-blur/--slider-range-shadow (M-bump-migration.md \u00a7Flags-4, Slider.vue:203,225,232,238); --slider-scrub-* absent from entire 4.0 source. M-bump-migration.md \u00a76.3.2 named this 'the one step that is not a pure mechanical rename \u2014 it requires reading each file's scoped <style> block'",
+    "current_state": "The variant attribute migrated correctly to 'standard', but every per-instance retint block (e.g. BasisSelector.vue:315 '/* A.W2.c \u2014 glass-scrubber per-instance retint hook */') still sets --slider-scrub-* custom properties that glass-ui 4.0 never reads. These are now no-op declarations \u2014 the track/range colour retints (--track-color tinting) are silently lost; sliders paint with glass-ui's default range/track colours, not fourier's per-instance accent. This is exactly the silent-visual-regression class the bump was meant to prevent, and it is dead CSS (no-legacy violation).",
+    "proposed": "Per the plan's own \u00a76.3.2 discipline: read each of the 7 scoped <style> blocks and remap --slider-scrub-range-bg\u2192--slider-range-bg, --slider-scrub-range-bg-hover\u2192 the 4.0 hover knob, --slider-scrub-thumb-bg\u2192 the 4.0 thumb knob (verify exact names against Slider.vue 4.0 source). Drop the A.W2.c comment lineage and rename the hook comments to the 4.0 vocabulary. This is the proper idiomatic close \u2014 retint via the variables glass-ui 4.0 actually consumes, not a dangling token set.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 STEP 2h (the per-file scrubber retint remap) \u2014 must complete before the M.W5 glass-depth wave touches slider surfaces",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-03",
+    "title": "The --no-save peer install is non-reproducible: vaul-vue, embla-carousel-vue, perfect-freehand, @lucide/vue are in node_modules but ABSENT from package.json \u2014 CI npm ci will not install them",
+    "severity": "high",
+    "evidence": "ls web/node_modules \u2192 vaul-vue@0.4.1, embla-carousel-vue@8.6.0, perfect-freehand@1.2.3, @lucide/vue PRESENT; grep package.json for vaul-vue|embla|perfect-freehand \u2192 'NOT in package.json'; glass-ui 4.0 peerDependencies require embla-carousel-vue ^8.0, perfect-freehand ^1.2.3, vaul-vue ^0.4, @lucide/vue ^1.16.0 (web/node_modules/@mkbabb/glass-ui/package.json). embla+vaul are peerDependenciesMeta.optional=true; perfect-freehand and @lucide/vue are NOT optional",
+    "current_state": "These four were installed locally with --no-save to make the dev server render, so localhost:3000 works on this machine. But package.json/package-lock do not record perfect-freehand or @lucide/vue (the two NON-optional glass-ui 4.0 peers). A fresh npm ci in CI or on a clean checkout will omit them \u2192 any glass-ui component that imports perfect-freehand (drawing) or @lucide/vue (icon recipe \u2014 glass-ui dist/createLucideIcon resolves @lucide/vue) will fail to resolve at build/runtime. This silently passes locally and breaks the inv-27 CI gate and the deploy build.",
+    "proposed": "Add the NON-optional glass-ui 4.0 peers to fourier's package.json dependencies with the exact peer-satisfying ranges glass-ui declares: perfect-freehand ^1.2.3 and @lucide/vue ^1.16.0 (and embla-carousel-vue ^8.0 / vaul-vue ^0.4 IF any consumed glass-ui component path pulls them \u2014 otherwise leave the optional peers out). Regenerate package-lock.json with a proper npm install (no --no-save). Verify npm ls exits clean. This is part of the same M.W1 commit as A3-01's 4.1.0 re-pin.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 STEP 1 (the package.json/lock authoring) \u2014 co-commit with the peer-gate close",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-04",
+    "title": "Two lucide packages coexist: app uses lucide-vue-next ^1.0.0 while glass-ui 4.0 peers @lucide/vue ^1.16.0 \u2014 duplicate icon libraries shipped",
+    "severity": "medium",
+    "evidence": "web/package.json devDependencies 'lucide-vue-next': '^1.0.0'; 14+ fourier source sites import from 'lucide-vue-next' (PaperView.vue:23, BasisSelector.vue:9, GalleryView.vue:11, etc.); glass-ui 4.0 peerDependencies['@lucide/vue']='^1.16.0' and glass-ui dist resolves @lucide/vue (createLucideIcon-DydS2qgk.js \u2192 from\"@lucide/vue\"); both @lucide/vue and lucide-vue-next present in node_modules",
+    "current_state": "fourier's application code imports icons from lucide-vue-next (the legacy package name); glass-ui 4.0 internally consumes @lucide/vue (the renamed package). Both ship. This doubles the icon-library footprint in the bundle and risks tree-shaking duplication. lucide-vue-next ^1.0.0 also lags the @lucide/vue ^1.16.0 glass-ui expects \u2014 version skew between the two icon sets.",
+    "proposed": "Migrate fourier's ~14 application import sites from 'lucide-vue-next' to '@lucide/vue' (the package glass-ui 4.0 already requires as a peer), and drop lucide-vue-next from package.json. Single icon library, shared with glass-ui, no bundle duplication. The icon component names are stable across the rename (verify the few used: Undo2, ChevronDown, Search, X, RotateCcw, Layers, Trash2, Crown, Download, Wand2, ChevronRight, RefreshCw, ArrowRight, Minimize2, Maximize2, ChevronUp). This is the idiomatic platform-over-library consolidation (inv-30).",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 (import-hygiene sweep, alongside the useClipboard/Collapsible subpath moves A3-06)",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-05",
+    "title": "CanvasOverlayButton.vue NOT deleted \u2014 plan STEP 2i (dead-component removal) skipped",
+    "severity": "medium",
+    "evidence": "ls web/src/components/visualization/CanvasOverlayButton.vue \u2192 file still present; M-bump-migration.md \u00a72.4 + STEP 2i: 'DELETE outright \u2014 zero consumers; never imported; functionality subsumed by DockIconButton from @mkbabb/glass-ui/dock'; A8-14 grep showed 0 import/usage hits outside the file itself",
+    "current_state": "The dead component the plan explicitly scheduled for deletion still exists. It has zero importers (confirmed by the original audit's grep). It is now stale dead code carrying the pre-4.0 button pattern.",
+    "proposed": "Delete web/src/components/visualization/CanvasOverlayButton.vue outright (no migration \u2014 it has no consumers). Confirm grep -rn CanvasOverlay web/src/ \u2192 0 hits post-delete. This is the no-legacy/no-dead-code close (inv-3).",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 STEP 2i (dead-component delete)",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-06",
+    "title": "useClipboard (3 sites) NOT moved to /dom and Collapsible NOT moved to /collapsible \u2014 plan STEP 2f/2g import-hygiene moves skipped; vueuse SCC dragged into entry chunk",
+    "severity": "medium",
+    "evidence": "grep useClipboard web/src/ \u2192 still root-barrel at useMorphConfig.ts:9, UserSlugBar.vue:5, EquationResult.vue:4 ('from \"@mkbabb/glass-ui\"'); CollapsibleSection.vue:2 still 'from \"@mkbabb/glass-ui\"' (root barrel); M-bump-migration.md \u00a72.3 + STEP 2f/2g: canonical paths are @mkbabb/glass-ui/dom (useClipboard, SCC-trap closure) and @mkbabb/glass-ui/collapsible",
+    "current_state": "useClipboard still imports from the root barrel at 3 sites, pulling the vueuse strongly-connected-component into the entry chunk (the SCC-trap the plan identified). CollapsibleSection.vue still imports Collapsible/CollapsibleTrigger/CollapsibleContent from the root barrel while PaperSidebar.vue and ContourSettings.vue already use the /collapsible subpath \u2014 an inconsistency. These resolve correctly at 4.0 (not build breaks) but degrade tree-shaking.",
+    "proposed": "Move the 3 useClipboard imports to @mkbabb/glass-ui/dom and CollapsibleSection.vue's Collapsible imports to @mkbabb/glass-ui/collapsible (matching the two siblings already on the subpath). Pure import-path edits, byte-identical runtime, restores tree-shaking and SCC-trap closure per glass-ui MIGRATION \u00a71.5. Bundle in the M.W1 import-hygiene sweep.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 STEP 2f/2g (subpath import hygiene)",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-07",
+    "title": "Node-20 Actions cutover NOT done \u2014 ci.yml + deploy-pages.yml still pin checkout@v4 / setup-node@v4 (plan STEP 3 skipped); deadline arrived",
+    "severity": "medium",
+    "evidence": "grep checkout@|setup-node@ \u2192 ci.yml:54,84,117 = @v4 (3\u00d7), ci.yml:85,122 = setup-node@v4 (2\u00d7); deploy-pages.yml:62,96 = checkout@v4, deploy-pages.yml:100 = setup-node@v4; M-bump-migration.md \u00a75 + STEP 3: 'checkout@v4\u2192@v5; setup-node@v4\u2192@v5; deadline 2026-06-16'; node-version 22 already set (no version change needed, only action pinning)",
+    "current_state": "Both workflows still pin the v4 actions whose Node-20 runtime hit end-of-life on the stated deadline. 5 checkout + 3 setup-node substitutions outstanding. The inv-28 deploy-of-record gate runs through these workflows.",
+    "proposed": "Bump actions/checkout@v4\u2192@v5 (5 sites) and actions/setup-node@v4\u2192@v5 (3 sites) across ci.yml and deploy-pages.yml in the M.W1 commit. node-version stays '22'. This is hygiene the plan already scoped into M.W1 \u2014 execute it.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 STEP 3 (Node-20 Actions cutover)",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-08",
+    "title": "SegmentedTabs variant=\"underline\" was the correct mechanical migration but is REVERSED by user critique #7 (wants glass) \u2014 the underline choice is now bump residue, not the target",
+    "severity": "high",
+    "evidence": "user-critique/10 (tabs rendered as underline; 'tabs should be GLASS'); CRITIQUE.md #7; git diff \u2192 VisualizationView.vue/GalleryView.vue/EquationView.vue all '<SegmentedTabs variant=\"underline\"'; M-bump-migration.md \u00a72.1 chose variant=\"underline\" 'to match the retired UnderlineTabs' \u2014 a correct receiver-contract-preserving choice for the bump, but a design choice the user now overturns",
+    "current_state": "The migration faithfully preserved the old underline look (variant=\"underline\") to avoid changing visuals during the bump \u2014 mechanically correct. But the user's live critique #7 explicitly wants the glass/pill variant, so the underline choice is now obsolete residue. The tabs also surface on desktop where they should not (critique #3), but that is a layout concern (separate finding domain).",
+    "proposed": "In M.W8 (tabs-as-glass), switch the 3 SegmentedTabs from variant=\"underline\" to the glass/pill variant glass-ui 4.0 ships (verify the exact variant name in glass-ui 4.0 tabs source \u2014 likely variant=\"pill\" or a glass-track treatment). Do NOT do this in M.W1 \u2014 keep M.W1 as the pure-bump-parity commit (underline) so the bump and the design change are separable, then transpose to glass in M.W8 as a deliberate design move with the desktop-tabs-suppression and asideSide layout. Confirm the glass variant against glass-ui 4.0 styles/glass-specular-track.css.",
+    "root_class": "gamma",
+    "wave_hint": "M.W8 (tabs-as-glass design wave) \u2014 the variant flip + desktop suppression; M.W1 keeps underline for bump-parity",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-09",
+    "title": ".cartoon-card shim (25 sites + @utility definition in style.css) survives \u2014 a self-described 'dead-class resurrection' that is the root of critique #1 (cartoon-stamp, not glassy)",
+    "severity": "high",
+    "evidence": "grep cartoon-card web/src/ \u2192 25 occurrences across 14 files (GalleryView, BasisCanvas, ImageUpload, ContourPreview, EquationView, InfoCard, FunctionInput, MorphShapePreview, HarmonicLevelGrid, MorphPhaseConfig, EqCoefficientsPanel, AdminUserList, GalleryCardModal, + style.css); style.css:98-111 '/* D.W4.a \u2014 .cartoon-card shim (the dead-class resurrection). glass-ui removed the .cartoon-card recipe at C.W5 ... this shim is the fourier-local KISS stop-gap */ @utility cartoon-card { @apply cartoon-surface; border-color: var(--border); background: var(--card); }'; user-critique/01 (cartoon-stamp card); CRITIQUE.md #1",
+    "current_state": "The .cartoon-card @utility re-binds a class glass-ui deleted at C.W5, applying a 2px border + offset-stamp shadow + opaque var(--card) fill. This is precisely the 'cartoon-stamp, not glassy' surface the user critiques (#1) \u2014 the opaque fill prevents any glass translucency, and the offset-stamp shadow + var(--border) reads as a paper stamp. It is explicitly self-documented as a 'dead-class resurrection' / 'KISS stop-gap' \u2014 a no-legacy violation under inv-3, and the antithesis of the glass ladder.",
+    "proposed": "Retire the .cartoon-card @utility and shim entirely; transpose all 25 sites onto the glass-ui 4.0 depth ladder (.glass-wash/-quiet/-resting/-floating from styles/glass/ladder.css) chosen per surface register (document cards \u2192 glass-wash/quiet; floating panels/modals \u2192 glass-floating; overlays \u2192 glass-overlay). Drop the offset-stamp shadow and opaque fill in favour of the translucent ladder + proper --radius tokens. This is the M.W5 glass-depth adoption (\u03b2) and directly answers critiques #1 (glassy) and #2 (rounded). The shim deletion is the no-legacy close. Map each of the 14 files to a ladder rung in the M.W5 design spec.",
+    "root_class": "gamma",
+    "wave_hint": "M.W5 (glass-depth ladder adoption) \u2014 delete the shim + transpose 25 sites to the ladder; this is the \u03b2 adoption that answers critiques #1 and #2",
+    "is_chronic": true,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-10",
+    "title": "The entire M.W1 bump is UNCOMMITTED working-tree state with zero commits on the branch \u2014 no green-CI run id can exist, the inv-27 gate is unmet, and STEP 0 (the commit-ready glass-medium renames) was never separated",
+    "severity": "high",
+    "evidence": "git log master..HEAD \u2192 empty (0 commits); git merge-base = 02c5d24 (branch tip == master); git status \u2192 28 modified files in web/ + package.json + package-lock all uncommitted; M-bump-migration.md \u00a76.1 STEP 0 'commit the glass-medium\u2192glass-resting/floating correct renames from dirty tree (MobileFloatingToc, GallerySearchBar) FIRST' and STEP 5 'GATE: cite a green CI run id (inv-27)'",
+    "current_state": "branch m/w1-bump-migration carries the full bump+migration as one uncommitted blob \u2014 no STEP-0 separation, no incremental commits, no CI run. vue-tsc -b exits 0 (the only printed diagnostic, TS2882 on @mkbabb/latex-paper/theme, is a pre-existing CSS-side-effect-import type-noise present identically on master \u2014 NOT bump-induced, not fatal). But with the npm peer tree invalid (A3-01) and the --no-save peers unrecorded (A3-03), a clean CI npm ci cannot reproduce this tree, so no honest green CI id is citable. The migration LOOKS done locally but is not gate-ready.",
+    "proposed": "Sequence the close per the plan's own ordering once the prerequisites (A3-01 4.1.0 re-pin, A3-03 peer recording) land: (STEP 0) commit the already-correct glass-medium\u2192glass-resting/floating renames separately; (STEP 1-3) land the dep+migration+residue fixes A3-02..A3-08 as ordered commits; (STEP 4) vue-tsc -b clean + vite build + npm ls clean; (STEP 5) cite a real green CI run id over the committed tree (inv-27). Do not declare M.W1 done while the tree is uncommitted and the peer graph is invalid. The latex-paper/theme TS2882 is out of scope (pre-existing, CSS side-effect) \u2014 note but do not chase it under M.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 (commit sequencing + the inv-27 CI gate) \u2014 blocked on A3-01 (4.1.0) and A3-03 (peer recording)",
+    "is_chronic": false,
+    "is_deferred": false
+   },
+   {
+    "id": "A3-11",
+    "title": "Migrations VERIFIED-CORRECT (the positive ledger): UnderlineTabs\u2192SegmentedTabs, MetricBadge :amount\u2192:value, DialogContent variant\u2192surface, glass-ladder vocab swaps \u2014 all clean against glass-ui 4.0",
+    "severity": "low",
+    "evidence": "grep :amount web/src/ \u2192 0 hits (MetricBadge rename complete, 7 files/12 sites); grep variant=\"opaque\" \u2192 0 hits (DialogContent\u2192surface complete, 4 files incl the corrected GalleryView.vue:402/AdminFlaggedPanel/AdminUserList/GalleryCardModal); grep glass-subtle|glass-elevated|glass-medium|glass-quiet \u2192 0 hits (ladder vocab fully on the 4.0 tiers); git diff shows UnderlineTabs\u2192SegmentedTabs at 3 import + 3 template sites; glass-scrubber variant \u2192 standard at all template sites (variant=\"standard\" confirmed)",
+    "current_state": "The mechanical-rename portion of the migration is correct and complete: no orphaned :amount, no variant=\"opaque\", no retired glass-* vocab, tabs and slider variants swapped. The glass-subtle\u2192glass-wash correction (NOT glass-quiet, which the dirty tree had wrongly) appears to have been applied correctly (0 glass-quiet remain). This is the part of M.W1 that is done right.",
+    "proposed": "No action \u2014 recorded as the verified-correct baseline so the M.W1 close ledger distinguishes done-right (this) from outstanding (A3-01..A3-10). Carry this row into PROGRESS.md as the migration-correctness attestation once the CI id is cited.",
+    "root_class": "gamma",
+    "wave_hint": "M.W1 (the verified-correct portion of the migration)",
+    "is_chronic": false,
+    "is_deferred": false
+   }
+  ],
+  "glassui_asks": [
+   {
+    "name": "W-PEER-SPINE (already in BB Batch 5 \u2014 confirm it admits value.js ^0.13.0 at the 4.1.0 cut)",
+    "what": "glass-ui 4.1.0 must widen its value.js peerDependency from '^0.10.0 || ^0.11.0' (the 4.0.0 pin) to '^0.12.0 || ^0.13.0' so that consumers (fourier, speedtest) bumping value.js to 0.13.0 for sampleColorRamp do not breach the peer range. BB-AMENDMENT-crossrepo.md:43 already names W-PEER-SPINE admitting '^0.12.0 || ^0.13.0 (closes F-2)' \u2014 fourier confirms this is load-bearing: fourier's M.W1 inv-27 CI gate is BLOCKED until 4.1.0 ships it (npm ls currently ELSPROBLEMS-invalid).",
+    "why": "fourier (and per the BB doc, speedtest AW.W7) cannot satisfy strict-peer npm install while pinning value.js 0.13.0 against glass-ui 4.0.0. This is the single dep-graph blocker on fourier's M.W1 keystone. inv-16: fourier consumes, glass-ui owns the peer-range publish. fourier re-pins ^4.0.0\u2192^4.1.0 the moment 4.1.0 lands."
+   }
+  ],
+  "open_questions": [
+   "Does any glass-ui 4.0 component path actually consumed by fourier pull embla-carousel-vue or vaul-vue (the two OPTIONAL peers)? If yes they must also enter package.json; if no, only perfect-freehand + @lucide/vue (the non-optional peers) are required. Needs a per-import trace of the glass-ui subpaths fourier imports.",
+   "Should fourier hold M.W1's CI gate until glass-ui 4.1.0 ships W-PEER-SPINE, OR temporarily pin value.js ^0.12.0 to get a green CI now and re-bump to 0.13.0 at the 4.1.0 cut? The plan targeted ^0.12.0 (predating 0.13.0); holding for 4.1.0 avoids a double-bump but leaves M.W1 YELLOW longer. Recommend hold-for-4.1.0 to keep sampleColorRamp and avoid churn \u2014 but this is a sequencing call for the orchestrator.",
+   "Does CI run npm ci with --strict-peer-deps / does npm 9+ default-fail on the ELSPROBLEMS peer-invalid state, or only warn? Determines whether A3-01 hard-fails the inv-27 gate or merely warns. Needs the CI npm version + install flags checked in ci.yml.",
+   "Is the @mkbabb/latex-paper/theme TS2882 (CSS side-effect import lacking a .d.ts) worth a one-line ambient module declaration in fourier's env.d.ts to silence vue-tsc noise, or left as-is since it is pre-existing and non-fatal (exit 0)? Out of M scope but a hygiene candidate."
+  ]
+ },
+ "A4": null,
+ "A5": null,
+ "A6": null,
+ "A7": null,
+ "A8": null,
+ "B1": null,
+ "B2": null,
+ "B3": null,
+ "B4": null,
+ "B5": null,
+ "B6": null,
+ "B7": null,
+ "C1": null,
+ "C2": null,
+ "C3": null,
+ "C4": null,
+ "C5": null,
+ "C6": null,
+ "C7": null,
+ "D1": null,
+ "D2": null,
+ "D3": null,
+ "D4": null,
+ "E1": null,
+ "E2": null,
+ "E3": null,
+ "E4": null,
+ "E5": null,
+ "E6": null
+}

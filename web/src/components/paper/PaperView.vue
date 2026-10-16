@@ -6,21 +6,32 @@ import {
     flattenPaperSections,
     useClickDelegate,
     useSidebarFollow,
-    useTreeIndex,
     useVirtualSectionWindow,
 } from "@mkbabb/latex-paper/vue";
 import "@mkbabb/latex-paper/theme";
-import PaperSidebar from "./PaperSidebar.vue";
-import MobileFloatingToc from "./MobileFloatingToc.vue";
+import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
+import { useMediaQuery } from "@vueuse/core";
+import PaperTocBar from "./PaperTocBar.vue";
+import PaperTocDrawer from "./PaperTocDrawer.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
-import { getPaperPreview, paperSectionToTreeNode } from "./paperTree";
+import PaperSearchModal from "./search/PaperSearchModal.vue";
+import { PAPER_TOC_KEY, assertSectionRampFits, sectionColorVar, type PaperTocModel } from "./paperToc";
 import { useScrollNavigation } from "./useScrollNavigation";
 import { usePaperSearch } from "./search/usePaperSearch";
-import { paperSections, labelMap, totalPages, pageMap, extractedMacros } from "@/lib/paperContent";
-import type { PaperSectionData } from "@/lib/paperContent";
+// One specifier, one import — the type used to arrive on a second `import type`
+// line from the same module (`no-duplicate-imports`, TS6133 when it fell dead).
+import {
+    paperSections,
+    labelMap,
+    pageMap,
+    extractedMacros,
+    type PaperSectionData,
+} from "@/lib/paperContent";
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Undo2 } from "lucide-vue-next";
+import { Card } from "@mkbabb/glass-ui/card";
+import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
+import { Undo2 } from "@lucide/vue";
 
 // ── KaTeX with app-specific macros ─────────────────────────
 const macros: Record<string, string> = {
@@ -41,11 +52,9 @@ const scrollContainer = ref<HTMLElement | null>(null);
 const sectionWindowRoot = ref<HTMLElement | null>(null);
 const sectionStartOffsetPx = ref(0);
 const scrollViewportHeightPx = ref(0);
-const sidebarRef = ref<InstanceType<typeof PaperSidebar> | null>(null);
+const sidebarNavEl = ref<HTMLElement | null>(null);
 const baseUrl = import.meta.env.BASE_URL;
 const flatSections = flattenPaperSections(paperSections);
-const treeNodes = paperSections.map(paperSectionToTreeNode);
-const { index: treeIndex, isActive, isInActiveChain } = useTreeIndex(treeNodes);
 
 // ── Build PaperContext and wire up tracking ────────────────
 let _scrollTo: (id: string) => void = () => {};
@@ -63,6 +72,8 @@ const paperContext: PaperContext = {
 provide(PAPER_CONTEXT, paperContext);
 
 const SCROLL_POS_KEY = "paper-active-section";
+/** The lg breakpoint the sidebar and the floating ToC split on (UIA-F-22). */
+const isDesktop = useMediaQuery("(min-width: 1024px)");
 
 const {
     visibleItems,
@@ -96,6 +107,36 @@ useClickDelegate({
     scrollTo: (id) => _scrollTo(id),
 });
 
+/**
+ * X·F F.W3 `.c` — `★NAV-1`: the map from a NON-section destination back to the
+ * flat section that holds it.
+ *
+ * `labelMap` already knows this — every entry carries `sectionId` beside its
+ * `anchorId`/`elementId` — and the app threw it away at exactly the moment it
+ * was needed: `useClickDelegate`'s `resolve` above returns
+ * `anchorId ?? elementId ?? sectionId`, i.e. it hands the navigator the precise
+ * target and drops the only thing that could mount it. The virtual window is
+ * keyed on sections, so without the owner an element id reached a `getOffsetFor`
+ * that returned null and an `ensureTargetWindow` that returned immediately —
+ * the silent no-op the row measured at 71/164 `\ref`-family uses and 66/374
+ * search entries.
+ *
+ * Built once, over every spelling a destination can arrive as: the label key
+ * itself (search entries take `thm.label`/`fig.label` as their id), the anchor
+ * and the element id. Section destinations never reach here — they resolve in
+ * the layout, which is path (1) of `performScroll`.
+ */
+const ownerSectionByTargetId = (() => {
+    const map = new Map<string, string>();
+    for (const [key, info] of Object.entries(labelMap)) {
+        if (!info?.sectionId) continue;
+        for (const spelling of [key, info.anchorId, info.elementId]) {
+            if (spelling && !map.has(spelling)) map.set(spelling, info.sectionId);
+        }
+    }
+    return map;
+})();
+
 const { navigateTo, navigateBack, scrollToTop, performScroll, navStack } = useScrollNavigation({
     scrollContainer,
     contentStartOffsetPx: sectionStartOffsetPx,
@@ -103,21 +144,52 @@ const { navigateTo, navigateBack, scrollToTop, performScroll, navStack } = useSc
     ensureTargetWindow,
     getOffsetFor,
     recalculate,
+    resolveOwningSection: (id) => ownerSectionByTargetId.get(id) ?? null,
 });
 
 // Wire all navigation (TOC clicks, cross-references) through navigateTo
 _scrollTo = navigateTo;
 
-const search = usePaperSearch({ sections: paperSections, navigateTo });
+const search = usePaperSearch({ sections: paperSections, labelMap, navigateTo });
 
-function handleGlobalKeydown(e: KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        search.open();
-    }
+/**
+ * `L/D27` — ⌘K, as four separate defects.
+ *
+ * It tested `e.key === "k"`, so Shift or a caps-lock user missed it entirely;
+ * it opened only the inline dropdown (`isOpen`), which below 1024px lives in
+ * the `display:none` sidebar instance where a `focus()` on a boxless input is a
+ * no-op — undiscoverable everywhere; it had no dismiss path of its own; and it
+ * fired while the user was typing into any other field on the page.
+ *
+ * `PSM-42`: the footer advertises ↑↓/⏎/esc and omitted the key that got the
+ * user there — it does not any more, because the key now lands on the palette
+ * whose footer that is.
+ */
+function isTypingTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+    const tag = el.tagName;
+    return (
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable
+    );
 }
 
-const sections = computed(() => paperSections);
+function handleGlobalKeydown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.code === "KeyK") {
+        // UIA-F-159: ⌘K from the paper's own search field opens the palette
+        // with the field's query (the retired Expand control's one job). Any
+        // other typing target keeps its keys.
+        const fromSearch = (e.target as Element | null)?.closest?.(".paper-search") != null;
+        if (isTypingTarget(e.target) && !search.isExpanded.value && !fromSearch) return;
+        e.preventDefault();
+        search.openPalette();
+    }
+    // X.F.W14U.paper — the palette's Escape is the dialog's (UIA-F-25: one
+    // dismissal owner; Esc collapses and KEEPS the query). A window-level
+    // Escape that called `close()` here cleared the query whenever it ran
+    // before the palette's own layer (glass `Command`'s, UIA-F-64).
+}
+
 const currentPage = ref(pageMap[flatSections[0]?.id] ?? 1);
 const paperRootStyle = computed(() =>
     scrollViewportHeightPx.value > 0
@@ -125,6 +197,17 @@ const paperRootStyle = computed(() =>
         : {},
 );
 let scrollContainerResizeObserver: ResizeObserver | null = null;
+
+// X.F.W14.u — UIA-F-20: the section to restore is read HERE, synchronously in
+// setup, before the persisting watcher below runs. That watcher is `immediate`
+// and the first section is active at mount, so it removed the saved key ~40 ms
+// before `onMounted`'s restore read it back — the restore always read `null`
+// and the paper reopened at the top. The watcher keeps persisting as the
+// reader scrolls; the restore consumes the value it had at entry.
+let restoreSectionId: string | null = null;
+try {
+    restoreSectionId = sessionStorage.getItem(SCROLL_POS_KEY);
+} catch {}
 
 watch(
     activeId,
@@ -141,46 +224,44 @@ watch(
     { immediate: true },
 );
 
-// ── Mobile floating TOC visibility ───────────────────────────
-const mobileNavRef = ref<HTMLElement | null>(null);
-const mobileTocVisible = ref(true);
-let mobileTocObserver: IntersectionObserver | null = null;
 
-// ── I.δ — reading-progress bar (native-first, JS floor) ──────
-// The native `.scroll-progress` recipe owns the bar on a `scroll()`-timeline
-// engine (compositor). This listener is the SOLE writer ONLY when that recipe
-// is absent — the dual-path-single-writer discipline (no double-run): if the
-// engine supports `scroll()` timelines (or the user requests reduced motion,
-// where the native recipe is inert and a JS bar would defeat PRM), it never
-// attaches.
-const progressBar = ref<HTMLElement | null>(null);
-const NATIVE_SCROLL_TIMELINE =
-    typeof CSS !== "undefined" && CSS.supports("animation-timeline", "scroll()");
+// ── Reading progress (glass ScrollProgressRim) ───────────────
+// X.F.W14U.paper — UIA-F-157: the hand-rolled 2px hairline (a local
+// `.paper-progress-track` running full-bleed under the dock, on the
+// `.scroll-progress` recipe plus a JS floor) is glass `ScrollProgressRim`.
+// The rim takes its aggregate as a value, so this is the one writer: one rAF
+// coalesces a scroll burst into one write of the position the reader
+// produced. It owns no clock and no easing of its own (the rim's fill
+// transition is the producer's, and its PRM arm zeroes it) — `G-F4-PRM-CLOCK`
+// holds: under reduced motion the rim still reads the true position.
+const readingProgress = ref(0);
+// X-DS DS-F4R-C6: the rim is in the ONE hue of the chapter being read (the
+// ToC's `--toc-accent` for that chapter, through the rim's own `stops`), so it
+// ties to the rail and the readout, not glass's default rainbow, whose red
+// start read as a stray salmon mark at the page's edge. Its geometry is glass's.
+const progressRimStops = computed(() => {
+    const i = paperSections.findIndex((s) => s.id === activeRootId.value);
+    return [sectionColorVar(Math.max(0, i))];
+});
 let progressRaf = 0;
 function writeProgress() {
     progressRaf = 0;
     const s = scrollContainer.value;
-    const bar = progressBar.value;
-    if (!s || !bar) return;
+    if (!s) return;
     const max = s.scrollHeight - s.clientHeight;
-    const p = max > 0 ? Math.min(1, Math.max(0, s.scrollTop / max)) : 0;
-    bar.style.transform = `scaleX(${p})`;
+    readingProgress.value = max > 0 ? Math.min(1, Math.max(0, s.scrollTop / max)) : 0;
 }
 function onProgressScroll() {
     if (progressRaf) return;
     progressRaf = requestAnimationFrame(writeProgress);
 }
-function armProgressFallback() {
-    const prm =
-        typeof window !== "undefined" &&
-        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (NATIVE_SCROLL_TIMELINE || prm) return;
+function armProgress() {
     const s = scrollContainer.value;
     if (!s) return;
     s.addEventListener("scroll", onProgressScroll, { passive: true });
     writeProgress();
 }
-function disarmProgressFallback() {
+function disarmProgress() {
     scrollContainer.value?.removeEventListener("scroll", onProgressScroll);
     if (progressRaf) cancelAnimationFrame(progressRaf);
     progressRaf = 0;
@@ -229,7 +310,38 @@ function bindScrollContainerObserver(scroller: HTMLElement | null) {
     scrollContainerResizeObserver.observe(scroller);
 }
 
-const sidebarNavEl = computed(() => sidebarRef.value?.sidebarNav ?? null);
+// ── The ONE ToC model (COHESION §0o ESC-2, executing §3 D9) ────────────────
+// Ruled: one model, owned by the paper view — the highest common ancestor of
+// sidebar and body — and provided through a TYPED `InjectionKey`. Before this,
+// the same 98-node tree was derived three times across two producers
+// (`useTreeIndex` here + `useSidebarState` in each of the two ToC hosts), and
+// the winner was decided by nothing. `useSidebarState` wins on measurement: it
+// already returns the index, the active/in-chain predicates AND the expansion
+// state, which is the whole model; the losing index and the `paperTree.ts`
+// adapter that fed it are deleted.
+const sidebarState = useSidebarState<PaperSectionData>({
+    sections: paperSections,
+    activeId: () => activeId.value,
+    activeRootId: () => activeRootId.value,
+    scrollTo: (id) => navigateTo(id),
+    scrollToTop: () => scrollToTop(),
+    getChildren: (n) => n.subsections,
+});
+
+const tocModel: PaperTocModel = {
+    ...sidebarState,
+    // `M6` retired: the view reads the ToC element through the model it
+    // provides, never through a child's untyped `defineExpose`.
+    registerNavEl: (el) => {
+        sidebarNavEl.value = el;
+    },
+};
+
+provide(PAPER_TOC_KEY, tocModel);
+
+// `★MF-10`: the ramp is exactly saturated at this paper's 13 roots.
+assertSectionRampFits(paperSections.length);
+
 const { queueSidebarFollow } = useSidebarFollow({
     sidebarEl: sidebarNavEl,
     activeId,
@@ -237,37 +349,28 @@ const { queueSidebarFollow } = useSidebarFollow({
     scrollSource: scrollContainer,
 });
 
-const currentSection = computed(() => {
-    if (!activeRootId.value) return null;
-    const entry = treeIndex.get(activeRootId.value);
-    if (!entry) return null;
-    return paperSections.find((s) => s.id === entry.node.id) ?? null;
-});
+// `L/D11` — the index round-trip was provably an identity (`entry.node.id`
+// found in the very array the entry's node came from); the entry carries the
+// node itself.
+const currentSection = computed(() =>
+    activeRootId.value
+        ? (sidebarState.treeIndex.get(activeRootId.value)?.node ?? null)
+        : null,
+);
 
 onMounted(() => {
-    mobileTocObserver = new IntersectionObserver(
-        (entries) => {
-            for (const entry of entries) {
-                mobileTocVisible.value = entry.isIntersecting;
-            }
-        },
-        { threshold: 0 },
-    );
     nextTick(() => {
-        if (mobileNavRef.value) mobileTocObserver!.observe(mobileNavRef.value);
         updateScrollViewportHeight();
         updateSectionStartOffset();
         recalculate();
         queueSidebarFollow(true);
-        armProgressFallback();
+        armProgress();
 
         // Restore scroll position from session (skip first section — that's the top)
-        try {
-            const saved = sessionStorage.getItem(SCROLL_POS_KEY);
-            if (saved && saved !== flatSections[0]?.id && flatSections.some((s) => s.id === saved)) {
-                performScroll(saved);
-            }
-        } catch {}
+        const saved = restoreSectionId;
+        if (saved && saved !== flatSections[0]?.id && flatSections.some((s) => s.id === saved)) {
+            performScroll(saved);
+        }
     });
     window.addEventListener("resize", handleWindowResize);
     window.addEventListener("keydown", handleGlobalKeydown);
@@ -289,9 +392,8 @@ watch([scrollContainer, sectionWindowRoot], ([scroller, root]) => {
 });
 
 onUnmounted(() => {
-    mobileTocObserver?.disconnect();
     scrollContainerResizeObserver?.disconnect();
-    disarmProgressFallback();
+    disarmProgress();
     window.removeEventListener("resize", handleWindowResize);
     window.removeEventListener("keydown", handleGlobalKeydown);
 });
@@ -299,82 +401,54 @@ onUnmounted(() => {
 
 <template>
     <div class="paper-root" :style="paperRootStyle">
+        <ScrollProgressRim :value="readingProgress" class="paper-progress-rim" :stops="progressRimStops" />
         <div ref="scrollContainer" class="paper-scroll">
-            <!-- I.δ — reading-progress bar. Native path: glass-ui's
-                 `.scroll-progress` recipe (scroll-driven.css) drives the 0..1
-                 `scaleX` on the COMPOSITOR off a `scroll()` timeline
-                 (`--scroll-progress-scroller: nearest` → the enclosing
-                 `.paper-scroll`, so the bar lives INSIDE the scroller it tracks).
-                 Fallback path: when the engine lacks `scroll()` timelines, a tiny
-                 feature-detected listener is the SOLE writer of the bar's
-                 `scaleX` (inv-29 floor). PRM zeroes the native animation (its
-                 `@supports` block sits under `prefers-reduced-motion`); the
-                 fallback listener is not armed under PRM either. -->
-            <div class="paper-progress-track">
-                <div ref="progressBar" class="paper-progress-bar scroll-progress" />
-            </div>
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
+            <!-- UIA-F-162: content first. The floating bar is the phone's one
+                 ToC from the top of the paper (the inline chapter list it used
+                 to wait behind pushed the text off the first screen). -->
             <Transition name="slide-down">
-                <MobileFloatingToc
-                    v-if="!mobileTocVisible"
-                    :sections="sections"
-                    :active-root-id="activeRootId"
+                <PaperTocBar
+                    v-if="!isDesktop"
                     :current-section="currentSection"
-                    :scroll-to="navigateTo"
-                    :scroll-to-top="scrollToTop"
+                    :current-page="currentPage"
                     :render-title="renderTitle"
-                    :scroll-container="scrollContainer"
                     :search="search"
                 />
             </Transition>
 
-            <div class="paper-layout mx-auto max-w-5xl px-2 pt-2 pb-0 sm:pt-2 sm:pb-0 sm:px-6">
-                <div class="paper-grid">
-                    <!-- Desktop sidebar TOC -->
-                    <PaperSidebar
-                        ref="sidebarRef"
-                        :sections="sections"
-                        :active-root-id="activeRootId"
-                        :active-id="activeId"
-                        :scroll-to="navigateTo"
-                        :scroll-to-top="scrollToTop"
-                        :render-title="renderTitle"
-                        :tree-index="treeIndex"
-                        :is-active="isActive"
-                        :is-in-active-chain="isInActiveChain"
-                        :get-preview="getPaperPreview"
-                        :search="search"
-                    />
+            <!-- `PSM-3`: ONE modal, owned by the ancestor both ToC hosts share.
+                 It used to be rendered inside `PaperSearch`, which mounts twice
+                 below 1024px — two overlays, two inputs racing focus, and one
+                 shared `isExpanded` driving both. -->
+            <PaperSearchModal :search="search" />
+
+            <div class="paper-layout mx-auto max-w-6xl px-[var(--page-gutter)] pt-2 pb-0 sm:pt-2 sm:pb-0">
+                <div class="paper-columns">
+                    <!-- Desktop sidebar TOC. X.F.W14.u — UIA-F-22: ONE PaperSearch
+                         per breakpoint. The sidebar was only CSS-hidden below lg,
+                         so on mobile two PaperSearch instances shared one state:
+                         two listboxes with the same 30 option ids
+                         (`aria-activedescendant` resolved to the hidden list), and
+                         the hidden instance's capture-phase outside-pointerdown
+                         closed the search before a tapped result could navigate.
+                         Each host now mounts only at its own breakpoint. -->
+                    <PaperTocDrawer v-if="isDesktop" :current-page="currentPage" :render-title="renderTitle" :search="search" />
 
                     <!-- Main article -->
-                    <article class="paper-article leading-relaxed">
+                    <!-- UIA-F-61: the reading surface is glass Card (opaque: the ToC
+                         drawer slides UNDER it, X.F.W14U.t), not a hand-rolled
+                         cartoon card casting against the rail's shadow. -->
+                    <Card as="article" surface="opaque" class="paper-article leading-relaxed">
                         <header class="mb-10 lg:mb-20 text-center">
                             <h1
-                                class="cm-serif text-4xl font-bold tracking-tight sm:text-5xl md:text-[3.25rem] leading-[1.15]"
+                                class="font-serif-math text-display-2 font-bold tracking-tight leading-display"
                             >
                                 An Introduction to<br /><span class="fourier-f">ℱ</span>ourier Analysis
                             </h1>
                         </header>
 
-                        <!-- Mobile-only inline TOC -->
-                        <nav ref="mobileNavRef" class="mb-14 cm-serif text-sm text-muted-foreground lg:hidden">
-                            <ol class="list-none space-y-1.5 pl-0">
-                                <li v-for="section in sections" :key="section.id">
-                                    <Button
-                                        variant="link"
-                                        size="sm"
-                                        class="mobile-toc-link"
-                                        @click="navigateTo(section.id)"
-                                    >
-                                        <template v-if="section.number">
-                                            <span>{{ section.number }}. </span>
-                                        </template>
-                                        <span v-html="renderTitle(section.title)" />
-                                    </Button>
-                                </li>
-                            </ol>
-                        </nav>
 
                         <PaperArticleWindow
                             :visible-items="visibleItems"
@@ -383,28 +457,30 @@ onUnmounted(() => {
                             :register-root="registerWindowRoot"
                             :measure-section="measureSection"
                         />
-                    </article>
+                    </Card>
                 </div>
             </div>
         </div>
 
-        <!-- Bottom overlay: page indicator (left) + back button (right) -->
+        <!-- Bottom overlay: the back button. X-DS pass 1 · F1-09: the page
+             readout left this overlay for the ToC hosts (`PaperPageReadout`). -->
         <div class="paper-bottom-overlay">
-            <div class="overlay-page glass-subtle fira-code">
-                pg {{ currentPage }}<span class="overlay-page-sep">/</span>{{ totalPages }}
-            </div>
-
             <Transition name="fade-scale">
+                <!-- `D/M-6`: name-from-content outranks `title`, so once the
+                     badge rendered the sole history control announced itself as
+                     a NUMBER — "2" — and below two as "Back (1 in history)".
+                     The name is fixed and the count is decoration. -->
                 <Button
                     v-if="navStack.length > 0"
-                    variant="glass"
-                    size="icon"
+                    emphasis="primary"
+                    size="md" icon-only
+                    type="button"
                     class="overlay-btn overlay-back"
+                    aria-label="Back"
                     @click="navigateBack"
-                    :title="`Back (${navStack.length} in history)`"
                 >
                     <Undo2 class="h-3.5 w-3.5" />
-                    <span v-if="navStack.length > 1" class="overlay-badge">{{ navStack.length }}</span>
+                    <span v-if="navStack.length > 1" class="overlay-badge" aria-hidden="true">{{ navStack.length }}</span>
                 </Button>
             </Transition>
         </div>
@@ -421,39 +497,11 @@ onUnmounted(() => {
     flex-direction: column;
 }
 
-/* Subtle top/bottom edge fade when content is clipped */
-.paper-root::before,
-.paper-root::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 2rem;
-    z-index: var(--z-content);
-    pointer-events: none;
-}
-
-.paper-root::before {
-    top: 0;
-    background: linear-gradient(
-        to bottom,
-        color-mix(in srgb, var(--background) 55%, transparent),
-        transparent 70%
-    );
-    mask-image: linear-gradient(to bottom, black, transparent);
-    -webkit-mask-image: linear-gradient(to bottom, black, transparent);
-}
-
-.paper-root::after {
-    bottom: 0;
-    background: linear-gradient(
-        to top,
-        color-mix(in srgb, var(--background) 55%, transparent),
-        transparent 70%
-    );
-    mask-image: linear-gradient(to top, black, transparent);
-    -webkit-mask-image: linear-gradient(to top, black, transparent);
-}
+/* X-DS fourier pass 7 · DS-F7-C3: the top and bottom edge fades are deleted.
+   They hung on the full-bleed root, so at the foot they ruled a pale band
+   across the page grid either side of the article and half-washed its last
+   line. The article is an opaque card on the page and needs no fade (ORIGIN
+   had none). */
 
 .paper-scroll {
     flex: 1;
@@ -464,52 +512,24 @@ onUnmounted(() => {
     max-width: 100dvw;
 }
 
-/* ── I.δ — reading-progress bar ───────────────────────────────
-   The track is sticky at the top of the `.paper-scroll` viewport; the bar
-   inside it scales 0→1 across the full read. The native path is glass-ui's
-   `.scroll-progress` (composited `scroll()` timeline); `--scroll-progress-
-   scroller: nearest` binds it to the enclosing `.paper-scroll` rather than the
-   document root. The JS floor writes the same `scaleX` only when `scroll()`
-   timelines are absent (and not under PRM). */
-.paper-progress-track {
-    position: sticky;
-    top: 0;
-    z-index: var(--z-overlay);
-    height: 2px;
-    width: 100%;
-    pointer-events: none;
-    /* Pull the 2px track out of the flow so it does not nudge content down. */
-    margin-bottom: -2px;
-}
-
-.paper-progress-bar {
-    height: 100%;
-    width: 100%;
-    transform-origin: 0 50%;
-    /* Initial/fallback resting state — overwritten by the native recipe's
-       `scaleX` keyframe or the JS floor's inline `transform`. */
-    transform: scaleX(0);
-    background: linear-gradient(
-        to right,
-        color-mix(in srgb, var(--primary) 70%, transparent),
-        var(--primary)
-    );
-    border-radius: 0 1px 1px 0;
-    /* Bind the native `scroll()` timeline to the paper scroller (not root). */
-    --scroll-progress-scroller: nearest;
-}
-
 .teleport-overlay {
     position: fixed;
     inset: 0;
     z-index: var(--z-overlay);
-    background:
-        radial-gradient(circle at center, color-mix(in srgb, var(--background) 92%, transparent), color-mix(in srgb, var(--background) 98%, transparent) 68%),
-        var(--background);
+    /* X-DS pass 3 · DS-F3-C16: the page tone alone; a 92→98% vignette over an
+       opaque ground could not show. */
+    background: var(--background);
     opacity: 0;
     pointer-events: none;
     /* A.W3.d — bezier→`--ease-out-expo`. */
     transition: opacity 180ms var(--ease-out-expo);
+}
+
+/* `★MF-7`: `will-change: opacity` stood permanently on a fixed full-viewport
+   element for chrome that only appears during a far jump — a compositor layer
+   the size of the window, held for the whole session. It is declared only while
+   the overlay is actually being shown. */
+.teleport-overlay[style*="opacity: 1"] {
     will-change: opacity;
 }
 
@@ -519,10 +539,8 @@ onUnmounted(() => {
     -webkit-font-smoothing: antialiased;
     hyphens: auto;
     min-width: 0;
-    border-radius: 0.75rem;
-    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    background: var(--card);
-    box-shadow: 3px 3px 0px 0px color-mix(in srgb, var(--foreground) 8%, transparent);
+    /* UIA-F-61: radius, border, fill and cast are glass Card's (`--radius-card`,
+       the opaque plate, the one light source). The padding is the page's. */
     padding: 1.25rem 1rem;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -550,17 +568,23 @@ onUnmounted(() => {
     }
 }
 
-.paper-grid {
+.paper-columns {
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
     min-width: 0;
 }
 
+/* X.F.W14U.t — OA-60: the ToC track is `auto`, sized by the one ToC's own
+   drawer width (`PaperTocDrawer.vue`, which carries the gutter as its tab rail), so
+   hiding the ToC collapses the column and the paper slides over it. `center`
+   keeps the paper centred in the room the collapsed column gives back; `start`
+   would leave it flush left, and the default would stretch the auto track. */
 @media (min-width: 1024px) {
-    .paper-grid {
-        grid-template-columns: 220px minmax(0, 48rem);
-        gap: 2rem;
+    .paper-columns {
+        grid-template-columns: auto minmax(0, 48rem);
+        column-gap: 0;
+        justify-content: center;
     }
 }
 
@@ -573,46 +597,27 @@ onUnmounted(() => {
     z-index: var(--z-controls);
     pointer-events: none;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: flex-end;
     padding: 0.75rem 1rem;
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* X.F.W13.a — OA-14 (owner frame 2: "this is not a circle"). The history
+   control measured 32×40 with `border-radius: 9999px` on the served page — a
+   stadium, not a circle. Cause at the bytes: this block pinned `width/height:
+   2rem` UNLAYERED while the glass Button's layered `min-block-size:
+   var(--button-size)` (40px at `md`) still won the block axis, so only the
+   inline axis shrank. It also restated the producer's border, fill, blur,
+   shadow, hover lift and press scale per instance (and then had to re-add a
+   focus outline its own shadow had erased, `★MF-1`). All of it retires: the
+   glass `Button icon-only` is a `--button-size` square with half-size
+   corners — a true circle — and owns its ink, press and focus ring. What
+   remains is layout only: the overlay row is `pointer-events: none`, and the
+   count badge is positioned against the button. */
 .overlay-btn {
     pointer-events: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     position: relative;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    border: 1.5px solid var(--border);
-    background: color-mix(in srgb, var(--background) 92%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: color-mix(in srgb, var(--foreground) 70%, transparent);
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    /* A.W3.d — named properties + canonical token, no `transition: all`. */
-    transition:
-        color 0.2s var(--ease-out-expo),
-        border-color 0.2s var(--ease-out-expo),
-        background-color 0.2s var(--ease-out-expo),
-        box-shadow 0.2s var(--ease-out-expo),
-        transform 0.2s var(--ease-out-expo);
-}
-
-.overlay-btn:hover {
-    color: var(--foreground);
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    transform: scale(1.05);
-}
-
-.overlay-btn:active {
-    transform: scale(0.95);
 }
 
 .overlay-badge {
@@ -621,31 +626,16 @@ onUnmounted(() => {
     right: -4px;
     min-width: 16px;
     height: 16px;
-    border-radius: 8px;
+    border-radius: var(--radius-badge);
     background: var(--primary);
     color: var(--primary-foreground);
-    @apply text-sm;
+    font-size: var(--type-micro);
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0 3px;
     line-height: 1;
-}
-
-.overlay-page {
-    pointer-events: auto;
-    @apply text-sm;
-    color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
-    border-radius: 0.375rem;
-    padding: 0.25rem 0.5rem;
-    letter-spacing: 0.02em;
-    user-select: none;
-}
-
-.overlay-page-sep {
-    opacity: 0.4;
-    margin: 0 1px;
 }
 
 /* ── Transition: slide-down ──────────────────────────────── */
@@ -656,13 +646,12 @@ onUnmounted(() => {
                 opacity 0.25s var(--ease-out-expo);
 }
 
-.slide-down-enter-from {
-    transform: translateY(-100%);
-    opacity: 0;
-}
-
+/* `D/M-5`: `translateY(-100%)` resolved against `.floating-toc`'s own
+   `height: 0` root — zero distance, so only the co-declared opacity ever
+   showed. A real length is the whole cure. */
+.slide-down-enter-from,
 .slide-down-leave-to {
-    transform: translateY(-100%);
+    transform: translateY(-2.75rem);
     opacity: 0;
 }
 

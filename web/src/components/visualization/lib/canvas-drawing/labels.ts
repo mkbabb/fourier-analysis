@@ -1,47 +1,84 @@
-import type { CanvasSurface } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { basisDisplay } from "../basis-display";
 import type { LabelHitRegion } from "../../composables/useCanvasHover";
 import { VIZ_COLORS } from "@/lib/colors";
-import { goldenShimmerAlpha, applyGoldenShimmer, clearShimmer } from "@/lib/golden-shimmer";
+import { basisModeLabel, normalizeBasisKey } from "@/lib/basis";
 
 export interface LabelDrawResult {
     hitRegions: LabelHitRegion[];
 }
 
 /**
- * Draw basis name labels in the top-right corner with optional shimmer on hover.
+ * X-DS DS-F4R-C5: the count under a legend is a CAPTION, not a second
+ * heading: regular weight, a step under the 16 px title, in the theme's
+ * `--muted-foreground` (it was a literal grey, the one canvas ink off the
+ * tokens, and bold at the title's size). The token is read from the canvas
+ * at draw time, so a theme switch re-inks it on the next frame.
+ */
+const CAPTION_FONT = "400 13px 'Fira Code', monospace";
+function setCaptionInk(ctx: CanvasRenderingContext2D): void {
+    // The grey stays only as the fallback a canvas keeps if the token's
+    // computed colour does not parse.
+    ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
+    const v = getComputedStyle(ctx.canvas).getPropertyValue("--muted-foreground").trim();
+    if (v) ctx.fillStyle = v;
+}
+
+/**
+ * X-DS DS-F3C-C2: a legend's TITLE is the basis name, so it is set in the
+ * text face its chooser chip resolves to (`--font-text`, read from the canvas
+ * at draw time like the caption ink); mono stays on the count caption only.
+ */
+const TEXT_FACE_FALLBACK = "'Computer Modern Serif', Georgia, serif";
+function titleFont(ctx: CanvasRenderingContext2D): string {
+    const face = getComputedStyle(ctx.canvas).getPropertyValue("--font-text").trim();
+    return `bold 16px ${face || TEXT_FACE_FALLBACK}`;
+}
+
+/**
+ * Draw basis name labels in the top-left corner; a hovered label is its own
+ * hue at full strength against dimmed siblings (X-DS pass 1 · F1-05).
  */
 export function drawBasisLabels(
     surface: CanvasSurface,
     activeBases: string[],
     levelText: string,
     hoveredBasis: string | null,
+    top = 16,
+    /** X-DS pass 8 · DS-F10-C2: the stage's `--stage-inset-inline`, the edge
+     *  the epicycle inset shares. */
+    left = 16,
 ): LabelDrawResult {
-    const { ctx, width, height } = surface;
+    // X.F.W4 · G-F4-VUE-TSC-CLEAN — `width`/`height` were destructured and
+    // never read here or in `drawEpicycleLabel`: both routines anchor to the
+    // TOP-LEFT (`xBase = 16`, `yOff` from 16), so neither ever needed the
+    // surface extent. They were four of the tree's `noUnusedLocals` violations,
+    // and they are deleted rather than voided — a destructure that exists to be
+    // ignored is a claim about the drawing model that is not true.
+    const { ctx } = surface;
     const hitRegions: LabelHitRegion[] = [];
 
-    const xBase = 16;
+    const xBase = left;
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    let yOff = 16;
+    // X.F.W14V.u4 — UIA-F-239: the legend's first row starts at `top`, the
+    // stage's `--legend-inset-top` (below the expanded dock where the dock
+    // spans the stage, at the default 16 px elsewhere).
+    let yOff = top;
 
     for (const basisKey of activeBases) {
-        const basisName = basisKey.startsWith("fourier") ? "fourier" : basisKey;
+        // X.F.W3 `.e` / `fr-BasisSelector M-10` — the canvas spelling of the
+        // key->family bridge and of the mode-label ladder, both retired onto
+        // `lib/basis.ts`. The bridge was authored 7× tree-wide and the ladder 4×.
+        const basisName = normalizeBasisKey(basisKey);
         const cfg = basisDisplay[basisName];
         if (!cfg) continue;
-        const modeLabel = basisKey === "fourier-epicycles" ? "Epicycles"
-            : basisKey === "fourier-series" ? "Series"
-            : cfg.label;
+        const modeLabel = basisModeLabel(basisKey, cfg.label);
 
         const isHovered = hoveredBasis === basisKey;
-        const labelShimmer = isHovered ? goldenShimmerAlpha() : 0;
 
-        ctx.fillStyle = isHovered ? VIZ_COLORS.golden : cfg.color;
-        ctx.globalAlpha = isHovered ? labelShimmer : 0.9;
-        if (isHovered) {
-            // Use fill-based shimmer (not stroke), so apply shadow manually
-            applyGoldenShimmer(ctx, { hovered: true, baseWidth: 0, hoverWidth: 0, hoverBlur: 5 });
-        }
+        ctx.fillStyle = cfg.color;
+        ctx.globalAlpha = isHovered ? 1 : hoveredBasis ? 0.45 : 0.9;
 
         // Draw icon — fourier ℱ is slightly larger
         const isFourier = basisName === "fourier";
@@ -51,11 +88,11 @@ export function drawBasisLabels(
         const iconW = ctx.measureText(cfg.icon).width;
         ctx.fillText(cfg.icon, xBase, yOff - iconYAdj);
 
-        // Draw mode label
-        ctx.font = "bold 16px 'Fira Code', monospace";
+        // Draw mode label, in the text face (DS-F3C-C2)
+        ctx.font = titleFont(ctx);
         ctx.fillText(` ${modeLabel}`, xBase + iconW, yOff);
 
-        clearShimmer(ctx);
+        ctx.globalAlpha = 1;
 
         // Store hit region — uniform row height for all bases
         const labelW = ctx.measureText(` ${modeLabel}`).width;
@@ -65,10 +102,10 @@ export function drawBasisLabels(
         yOff += 26;
     }
 
-    // N count as another legend row
+    // N count: the legend's caption line, under the title rows (DS-F4R-C5).
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
-    ctx.font = "bold 16px 'Fira Code', monospace";
+    setCaptionInk(ctx);
+    ctx.font = CAPTION_FONT;
     ctx.textBaseline = "top";
     ctx.fillText(levelText, xBase, yOff - 4);
 
@@ -82,7 +119,7 @@ export function drawEpicycleLabel(
     surface: CanvasSurface,
     tValue: number,
 ): void {
-    const { ctx, width, height } = surface;
+    const { ctx } = surface;
 
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
@@ -91,13 +128,13 @@ export function drawEpicycleLabel(
     ctx.font = "bold 44px 'Computer Modern Serif', Georgia, serif";
     const iconW = ctx.measureText("\u2131").width;
     ctx.fillText("\u2131", 16, 2);
-    ctx.font = "bold 16px 'Fira Code', monospace";
+    ctx.font = titleFont(ctx);
     ctx.fillText(" Epicycles", 16 + iconW, 16);
 
-    // t value tight below the label
+    // t value tight below the label, on the caption line (DS-F4R-C5)
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
-    ctx.font = "bold 16px 'Fira Code', monospace";
+    setCaptionInk(ctx);
+    ctx.font = CAPTION_FONT;
     ctx.textBaseline = "top";
     ctx.fillText(`t = ${tValue.toFixed(2)}`, 16, 40);
 }

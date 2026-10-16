@@ -57,8 +57,12 @@ class TestExtractContours:
         contours = extract_contours(img_path, ContourConfig(strategy=ContourStrategy.THRESHOLD, resize=None))
 
         assert len(contours) >= 1
-        biggest = max(contours, key=len)
-        assert len(biggest) > 50
+        biggest = max(contours, key=lambda c: np.abs(np.diff(c)).sum())
+        # The simplifier keeps as few points as the tolerance allows (CT-3), so
+        # judge the shape, not the point count: a closed circle of radius ~80.
+        assert abs(biggest[0] - biggest[-1]) < 1e-9
+        assert np.allclose(np.abs(biggest), 80, atol=2.5)
+        assert abs(np.abs(np.diff(biggest)).sum() - 2 * np.pi * 80) < 0.03 * 2 * np.pi * 80
 
     def test_canny_strategy_on_gradient_image(self, tmp_path: Path):
         """An image with clear edges should yield contours via CANNY."""
@@ -210,7 +214,11 @@ class TestExtractContours:
 
         assert result.contours
         assert result.diagnostics.used_alpha is False
-        assert result.diagnostics.total_points > 1500
+        # Detail is interior ink, not vertex count (a smooth ridge simplifies
+        # to few vertices): the strokes inside draw at least as much as the
+        # enclosing outline.
+        lengths = sorted((float(np.abs(np.diff(c)).sum()) for c in result.contours), reverse=True)
+        assert sum(lengths[1:]) >= lengths[0]
         assert result.diagnostics.primary_span_fraction > 0.7
         assert result.diagnostics.secondary_area_fraction > 0.05
         assert result.diagnostics.max_jump < 400
@@ -236,13 +244,17 @@ class TestExtractContours:
             assert result.contours, image_path.name
             assert 0.05 < result.diagnostics.retained_area_fraction <= 1.0, image_path.name
             assert result.diagnostics.max_jump < 1000, image_path.name
-            assert result.diagnostics.total_points > 400, image_path.name
+            # Ink, not vertex count (smooth strokes simplify to few vertices):
+            # at least the image's long side (the default resize) is drawn.
+            ink = sum(float(np.abs(np.diff(c)).sum()) for c in result.contours)
+            assert ink > 1024, image_path.name
 
-    def test_animal_corpus_preserves_subject_extent_or_internal_structure(self):
-        animals_dir = Path(__file__).resolve().parents[1] / "assets" / "animals"
+    def test_corpus_preserves_subject_extent_or_internal_structure(self):
+        assets = Path(__file__).resolve().parents[1] / "assets"
 
-        for name in ["golden-retriever.webp", "giraffe.webp", "llama-1.webp", "sun.png"]:
-            result = extract_contours_result(animals_dir / name)
+        for name in ["portraits/daraksha.jpg", "animals/golden-retriever.webp",
+                     "animals/giraffe.webp", "animals/llama-1.webp", "animals/sun.png"]:
+            result = extract_contours_result(assets / name)
 
             assert result.contours
             assert (
@@ -351,6 +363,36 @@ class TestResampleArcLength:
         dists = np.abs(np.diff(resampled))
         np.testing.assert_allclose(dists, np.mean(dists), rtol=0.05)
 
+    def test_samples_lie_closer_where_the_path_turns(self):
+        """A long straight run with a small loop on it: the loop is a
+        twentieth of the length and takes far more than a twentieth of the
+        samples; with ``detail=0`` it takes its share by length."""
+        t = np.linspace(0.0, 2.0 * np.pi, 200)
+        loop = 950.0 + 8.0 * (1.0 - np.exp(1j * t)) * 1j  # a circle of radius 8 on the run's end
+        path = np.concatenate([np.linspace(0.0, 950.0, 400), loop[1:], np.linspace(950.0, 0.0, 400)[1:]])
+        on_loop = lambda z: int(np.sum(z.imag > 0.5))  # noqa: E731  (the run lies on the real axis)
+        even = resample_arc_length(path, 512, detail=0.0)
+        fine = resample_arc_length(path, 512)
+        assert len(even) == len(fine) == 512
+        share = 2.0 * np.pi * 8.0 / (1900.0 + 2.0 * np.pi * 8.0)
+        assert on_loop(even) <= 1.5 * share * 512
+        assert on_loop(fine) >= 3.0 * share * 512
+        # Every sample still lies on the path.
+        dense = resample_arc_length(path, 20000, detail=0.0)
+        gap = np.abs(fine[:, None] - dense[None, :]).min(axis=1)
+        assert gap.max() < 0.2
+
+    def test_a_dead_end_is_approached_slowly(self):
+        """A stroke walked out and back: the samples crowd toward the turn at
+        its end, so the pen slows there, and the tip itself is sampled."""
+        out = np.linspace(0.0, 400.0, 300)
+        path = np.concatenate([out, out[::-1][1:]]) + 0j
+        z = resample_arc_length(path, 256)
+        near_tip = np.sum(z.real > 380.0)
+        assert near_tip > 1.5 * 256 * (40.0 / 800.0)
+        assert np.isclose(z.real.max(), 400.0)
+        assert np.abs(z.imag).max() < 1e-9
+
     def test_output_length(self):
         """Output should have exactly n_points points."""
         contour = np.array([0, 1, 1 + 1j, 1j], dtype=np.complex128)
@@ -402,25 +444,6 @@ class TestPipelineRefinements:
         assert result.contours
         assert result.diagnostics.contour_count >= 2
 
-    def test_feature_budget_adapts_to_edge_density(self, tmp_path: Path):
-        """A high-edge-density image should allocate more budget to features."""
-        from fourier_analysis.contours.image import load_image_inputs
-        from fourier_analysis.contours.isolation import isolate_subject
-        from fourier_analysis.contours.pipeline import _compute_structure_fraction
-
-        size = 256
-        arr = np.zeros((size, size), dtype=np.uint8)
-        for i in range(0, size, 4):
-            arr[i:i+2, :] = 255
-        img_path = _save_image(arr, tmp_path / "dense_edges.png")
-
-        config = ContourConfig(resize=None).normalized()
-        image = load_image_inputs(img_path, config)
-        isolation = isolate_subject(image, config)
-
-        frac = _compute_structure_fraction(image, isolation)
-        assert frac <= 0.25, f"Expected <= 0.25 structure fraction for dense edges, got {frac}"
-
     def test_nested_config_round_trip(self):
         """Nested config fields should survive normalized() and to_dict()."""
         config = ContourConfig(
@@ -463,3 +486,95 @@ class TestPipelineRefinements:
         """Default resize should now be 1024."""
         config = ContourConfig().normalized()
         assert config.resize == 1024
+
+
+def _segment_distance(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Distance from complex points ``p`` to the segments ``a[i]-b[i]``."""
+    ab = b - a
+    t = np.clip(((p - a) * np.conj(ab)).real / np.maximum(np.abs(ab) ** 2, 1e-12), 0, 1)
+    return np.abs(p - (a + t * ab))
+
+
+class TestSimplifyAndOpenStrokes:
+    """F.CT CT-3: a bounded simplifier and no force-closing."""
+
+    def test_douglas_peucker_bounds_the_deviation(self):
+        from fourier_analysis.contours.processing import _simplify_contour
+
+        rng = np.random.default_rng(0)
+        t = np.linspace(0, 2 * np.pi, 800)
+        # A gentle arc: every per-step turn is tiny, the total bend is not.
+        z = 300 * np.exp(1j * t / 4) + rng.normal(0, 0.1, t.size)
+        s = _simplify_contour(z, tolerance=0.5)
+        assert len(s) < len(z) / 4
+        assert s[0] == z[0] and s[-1] == z[-1]
+        # Every dropped point is within the tolerance of the simplified polyline.
+        d = np.min([_segment_distance(z, a, b) for a, b in zip(s[:-1], s[1:])], axis=0)
+        assert d.max() <= 0.5 + 1e-9
+
+    def test_closed_loop_stays_closed_and_bounded(self):
+        from fourier_analysis.contours.processing import _simplify_contour
+
+        t = np.linspace(0, 2 * np.pi, 501)
+        z = 100 * np.exp(1j * t)
+        z[-1] = z[0]
+        s = _simplify_contour(z, tolerance=0.5)
+        assert s[0] == s[-1] and 8 < len(s) < 100
+        d = np.min([_segment_distance(z, a, b) for a, b in zip(s[:-1], s[1:])], axis=0)
+        assert d.max() <= 0.5 + 1e-9
+
+    def test_open_trace_is_never_force_closed(self, tmp_path: Path):
+        from fourier_analysis.contours.image import load_image_inputs
+        from fourier_analysis.contours.processing import _postprocess_raw_contours
+
+        config = ContourConfig(resize=None, min_contour_area=0.0).normalized()
+        image = load_image_inputs(_save_image(np.zeros((200, 200)), tmp_path / "z.png"), config)
+        arc = np.column_stack([100 + 60 * np.sin(np.linspace(0, 3, 300)),
+                               100 + 60 * np.cos(np.linspace(0, 3, 300))])
+        (z,), (area,) = _postprocess_raw_contours([arc], image, config)
+        assert abs(z[0] - z[-1]) > 50  # no closing chord appended
+        assert area == 0.0
+        assert np.abs(np.diff(z)).max() < 20  # no segment jumps across the arc
+
+
+FRAME_TOUCHING = ("portraits/daraksha.jpg", "portraits/euler.jpg", "portraits/chef.png",
+                  "animals/giraffe.webp", "animals/llama-1.webp",
+                  "animals/sponge-pineapple.JPG", "animals/sponge-scared.jpeg")
+
+
+@pytest.mark.parametrize("rel", FRAME_TOUCHING)
+def test_silhouette_traces_the_mask_boundary_and_never_the_frame(rel: str):
+    """Every silhouette stroke of the drawing lies on the subject mask's
+    boundary (no chord through the body) and none of it runs along the frame."""
+    from scipy import ndimage as ndi
+
+    from fourier_analysis.contours.drawing import draw_subject
+    from fourier_analysis.contours.image import load_image_inputs
+    from fourier_analysis.contours.strokes import SILHOUETTE, uniform
+
+    path = Path(__file__).resolve().parents[1] / "assets" / rel
+    config = ContourConfig().normalized()
+    drawing = draw_subject(load_image_inputs(path, config), config)
+    assert drawing is not None
+    mask = drawing.subject
+    h, w = mask.shape
+    silhouette = [e.pts for e in drawing.graph.edges if e.layer == SILHOUETTE]
+    assert silhouette
+
+    boundary = mask & ~ndi.binary_erosion(mask, border_value=1)
+    dist = ndi.distance_transform_edt(~boundary)
+    tol = max(3.0, 0.01 * float(np.hypot(h, w)))
+    on_frame = 0
+    total = 0
+    for pts in silhouette:
+        q = uniform(pts, 1.0)
+        r = np.clip(np.rint(q[:, 0]).astype(int), 0, h - 1)
+        c = np.clip(np.rint(q[:, 1]).astype(int), 0, w - 1)
+        assert dist[r, c].max() <= tol, rel
+        frame = (q[:, 0] <= 2) | (q[:, 1] <= 2) | (q[:, 0] >= h - 3) | (q[:, 1] >= w - 3)
+        # A stroke may end on the frame (it meets it square-on, its last few
+        # samples inside the frame band): only the samples between are counted.
+        on_frame += int(frame[4:-4].sum())
+        total += len(q)
+    # None runs along the frame.
+    assert on_frame <= 0.005 * total, rel

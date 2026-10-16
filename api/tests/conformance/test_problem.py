@@ -12,7 +12,7 @@ import re
 from api.lib.crud import errors
 from api.lib.crud.errors import ProblemDetails
 
-# The closed SCHEMA §5 catalog: 20 ``partial`` helper rows + ``rate_limited`` = 21.
+# The closed SCHEMA §5 catalog: 21 ``partial`` helper rows + ``rate_limited`` = 22.
 _CATALOG = [
     ("slug_invalid", 400, "urn:contract:slug-invalid"),
     ("slug_conflict", 409, "urn:contract:slug-conflict"),
@@ -34,6 +34,7 @@ _CATALOG = [
     ("flag_self", 400, "urn:contract:flag-self"),
     ("flag_duplicate", 409, "urn:contract:flag-duplicate"),
     ("slug_pool_exhausted", 503, "urn:contract:slug-exhausted"),
+    ("internal_error", 500, "urn:contract:internal-error"),
 ]
 
 
@@ -57,9 +58,9 @@ def test_envelope():
 
 
 def test_catalog_coverage():
-    """CS5.2 — 21 catalogued ``type`` URNs, each in ``urn:contract:<kebab>`` form."""
-    # 20 partial helpers + rate_limited = 21.
-    assert len(_CATALOG) == 20
+    """CS5.2 — 22 catalogued ``type`` URNs, each in ``urn:contract:<kebab>`` form."""
+    # 21 partial helpers + rate_limited = 22.
+    assert len(_CATALOG) == 21
     assert errors.rate_limited(1).status_code == 429
     urn_re = re.compile(r"^urn:contract:[a-z]+(-[a-z]+)*$")
     seen = set()
@@ -67,7 +68,7 @@ def test_catalog_coverage():
         assert urn_re.fullmatch(type_), type_
         seen.add(_body(getattr(errors, name)())["type"])
     seen.add(_body(errors.rate_limited(1))["type"])
-    assert len(seen) == 21  # every catalogued type is emitted by at least one path
+    assert len(seen) == 22  # every catalogued type is emitted by at least one path
 
 
 def test_slug_exhausted_503():

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, Callable
 
@@ -17,6 +19,7 @@ from fourier_analysis.shortest_tour import build_contour_tour
 from api.config import get_settings
 
 _semaphore: asyncio.Semaphore | None = None
+_process_pool: ProcessPoolExecutor | None = None
 
 
 def _get_semaphore() -> asyncio.Semaphore:
@@ -42,6 +45,63 @@ async def submit_compute_job(name: str, fn: Callable[[], Any]) -> Any:
     try:
         return await asyncio.wait_for(
             asyncio.to_thread(fn),
+            timeout=settings.compute_timeout_s,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Compute job '{name}' timed out after {settings.compute_timeout_s}s",
+        )
+    finally:
+        sem.release()
+
+
+def _get_process_pool() -> ProcessPoolExecutor:
+    """The worker processes for jobs that need a process's main thread.
+
+    ``spawn``, never ``fork``: the server process runs threads (the event loop's
+    executor, the database driver), and a forked child inherits their locks.
+    """
+    global _process_pool
+    if _process_pool is None:
+        _process_pool = ProcessPoolExecutor(
+            max_workers=get_settings().compute_concurrency,
+            mp_context=multiprocessing.get_context("spawn"),
+        )
+    return _process_pool
+
+
+def shutdown_process_pool() -> None:
+    """Stop the worker processes (the app lifespan's exit)."""
+    global _process_pool
+    if _process_pool is not None:
+        _process_pool.shutdown(wait=False, cancel_futures=True)
+        _process_pool = None
+
+
+async def submit_process_job(name: str, fn: Callable[..., Any], *args: Any) -> Any:
+    """Run the module-level *fn* with *args* in a worker process, bounded like
+    ``submit_compute_job`` (the same semaphore, the same timeout).
+
+    X.F.W14V `.u2` — a job whose library code arms a ``SIGALRM`` timer (the
+    symbolic tier) needs a MAIN thread, which a ``to_thread`` worker never is; a
+    pool worker runs each task on its process's main thread.
+    """
+    sem = _get_semaphore()
+    settings = get_settings()
+
+    try:
+        await asyncio.wait_for(sem.acquire(), timeout=30.0)
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=429,
+            detail="Compute queue saturated, try again shortly",
+        )
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await asyncio.wait_for(
+            loop.run_in_executor(_get_process_pool(), fn, *args),
             timeout=settings.compute_timeout_s,
         )
     except asyncio.TimeoutError:

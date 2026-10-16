@@ -296,6 +296,14 @@ class VisualizationRemix(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class VisualizationLike(BaseModel):
+    """``PUT /visualizations/{slug}/like`` — the like state the caller's session asks for."""
+
+    liked: bool
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class DiffResponse(BaseModel):
     """The canonical ``/diff`` wire envelope (``docs/tranches/J/design/J-diff-shape.md``
     §3.2). Field NAMES + the op vocabulary are normative; the parity probe asserts

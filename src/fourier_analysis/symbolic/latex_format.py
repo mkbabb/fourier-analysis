@@ -28,7 +28,16 @@ def format_number(val: float, sig_digits: int = 2) -> str:
                 return rf"-\frac{{\pi}}{{{denom}}}"
             return rf"\frac{{{num}\pi}}{{{denom}}}"
 
-    return f"{val:.{sig_digits}g}"
+    # UIA-F-176: `:g` switches to scientific notation past 1e4 or below 1e-4
+    # at two significant digits (210.3 -> "2.1e+02"), which KaTeX typesets as
+    # the arithmetic 2.1e + 02. The value is rounded to its significant digits
+    # and written as a plain decimal.
+    rounded = float(f"{val:.{sig_digits}g}")
+    decimals = max(0, sig_digits - 1 - math.floor(math.log10(abs(rounded))))
+    text = f"{rounded:.{decimals}f}"
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text
 
 
 def format_coefficient(val: float, first: bool = False) -> str:

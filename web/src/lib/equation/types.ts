@@ -17,6 +17,11 @@ export interface ComputeEquationRequest {
     n_eval_points: number;
     notation: NotationMode;
     budget: number;
+    /**
+     * X.F.W14V `.u2` — UIA-F-201: the page's Auto (Parseval) state. The server
+     * bounds the Σ form at the displayed N, the effective N under Auto.
+     */
+    auto_harmonics: boolean;
 }
 
 export type EquationDisplayMode = "expanded" | "sigma";
@@ -37,10 +42,13 @@ export interface SimplifyRequest {
     coefficients: FourierTermDTO[];
     budget: number;
     notation: NotationMode;
+    auto_harmonics?: boolean;
 }
 
 export interface SimplifyResponse {
     latex: string;
+    /** The Σ form at the displayed N (UIA-F-201). */
+    latex_sigma: string;
     energy_captured: number;
     term_count: number;
 }

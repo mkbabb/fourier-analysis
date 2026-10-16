@@ -11,15 +11,24 @@ export function usePointDrag(
     const selectedIdx = ref<number | null>(null);
     let dragStartIdx: number | null = null;
     let dragPrevPt: Point2D | null = null;
+    // X.F.W14U.vedit — UIA-F-242: a press that never moves is a selection, not
+    // an edit; only a drag that moved a point ends in a history snapshot.
+    let moved = false;
 
     function onPointPointerDown(idx: number, e: PointerEvent) {
         e.preventDefault();
         e.stopPropagation();
         selectedIdx.value = idx;
         dragStartIdx = idx;
-        dragPrevPt = { ...points.value[idx] };
+        // The drag follows the pointer's travel from the press, so a press
+        // beside a point (inside its target floor) moves it without a jump.
+        dragPrevPt = svgPoint(e);
         dragging.value = true;
-        (e.target as Element).setPointerCapture(e.pointerId);
+        moved = false;
+        // The press may land on the surface near the point (the editor picks
+        // the nearest point within its target floor), so the capture is taken
+        // by the element the handler is bound to.
+        ((e.currentTarget ?? e.target) as Element).setPointerCapture(e.pointerId);
     }
 
     function onPointerMove(e: PointerEvent) {
@@ -27,8 +36,11 @@ export function usePointDrag(
         const pt = svgPoint(e);
         const dx = pt.x - dragPrevPt.x;
         const dy = pt.y - dragPrevPt.y;
+        if (dx === 0 && dy === 0) return;
+        moved = true;
 
-        points.value[dragStartIdx] = pt;
+        const p = points.value[dragStartIdx];
+        points.value[dragStartIdx] = { x: p.x + dx, y: p.y + dy };
 
         const n = points.value.length;
         const radius = magnetRadius.value;
@@ -52,11 +64,12 @@ export function usePointDrag(
     }
 
     function onPointerUp() {
-        if (dragging.value && dragStartIdx !== null) {
+        if (dragging.value && dragStartIdx !== null && moved) {
             onDragEnd();
         }
         dragging.value = false;
         dragStartIdx = null;
+        moved = false;
     }
 
     function deselect() {

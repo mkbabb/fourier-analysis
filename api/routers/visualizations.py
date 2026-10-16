@@ -22,7 +22,9 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
+from typing import Annotated, Any, get_args
 
 from fastapi import APIRouter, Query, Request, Response
 from pymongo.errors import DuplicateKeyError
@@ -34,6 +36,7 @@ from api.dependencies import (
 )
 from api.lib.crud import atomdiff, cursors, errors, etag, idempotency, slugs, softdelete
 from api.lib.crud.canonical_digest import canonical_digest
+from api.models.gallery import GalleryTier
 from api.models.visualization import (
     AtomOp,
     DiffResponse,
@@ -44,6 +47,7 @@ from api.models.visualization import (
     VersionsResponse,
     Visualization,
     VisualizationCreate,
+    VisualizationLike,
     VisualizationRemix,
     VisualizationUpdate,
     VisualizationVersion,
@@ -291,14 +295,25 @@ async def list_visualizations(
     sort: str = Query(default="newest"),
     cursor: str = Query(default=""),
     owner: str = Query(default=""),
+    # ``Annotated`` so the Python defaults hold for direct calls, too.
+    q: Annotated[str, Query(max_length=200)] = "",
+    tier: Annotated[str, Query()] = "all",
+    basis: Annotated[str, Query(max_length=64)] = "",
 ) -> Response:
     """List visualizations with cursor pagination (CRUD-CONTRACT §0 SOTA-1, §4).
 
     Anonymous / default: only ``visibility=public`` live rows. ``?owner=me``
     (with a session) returns the caller's rows in all three visibility states.
+
+    Narrowing (UIA-F-39), each optional and ANDed: ``q`` — a case-insensitive
+    substring of the title, description or a tag; ``tier`` — ``featured`` /
+    ``saved`` / ``normal`` (a row never tiered is ``normal``) or ``all``;
+    ``basis`` — a member of ``active_bases``.
     """
     if sort not in cursors.SORT_KEYS:
         return errors.cursor_invalid(detail=f"unknown sort {sort!r}")
+    if tier != "all" and tier not in get_args(GalleryTier):
+        return errors.validation_failed(detail=f"unknown tier {tier!r}")
 
     db = get_db()
 
@@ -310,6 +325,19 @@ async def list_visualizations(
         base_query["owner_slug"] = viewer
     else:
         base_query["visibility"] = "public"
+
+    # ``paginate`` owns the top-level ``$or`` (its keyset clause), so the
+    # narrowing filters ride one ``$and``.
+    narrow: list[dict[str, Any]] = []
+    if q:
+        needle = {"$regex": re.escape(q), "$options": "i"}
+        narrow.append({"$or": [{"title": needle}, {"description": needle}, {"tags": needle}]})
+    if tier != "all":
+        narrow.append({"tier": {"$in": [tier, None]} if tier == "normal" else tier})
+    if basis:
+        narrow.append({"active_bases": basis})
+    if narrow:
+        base_query["$and"] = narrow
 
     cursor_payload = cursors.decode_cursor(cursor or None)
     query, sort_spec = cursors.paginate(base_query, cursor_payload, sort_key=sort)
@@ -676,6 +704,75 @@ async def publish_visualization(slug: str, request: Request) -> Response:
 async def unpublish_visualization(slug: str, request: Request) -> Response:
     """Flip a ``public`` row out of the public view to ``unlisted`` (contract-legal)."""
     return await _visibility_verb(slug, request, verb="unpublish")
+
+
+# ---------------------------------------------------------------------------
+# Like (UIA-F-46)
+# ---------------------------------------------------------------------------
+#
+# One ``visualization_likes`` row per (visualization, session user), keyed by a
+# deterministic ``_id`` so the uniqueness is the primary key's — no extra
+# index. The row's ``likes`` counter moves only when that row is created or
+# removed, so repeating a state is a no-op and the counter never drops below 0.
+
+
+def _like_id(slug: str, viewer: str) -> str:
+    return f"{slug}:{viewer}"
+
+
+async def _like_state(db: Any, slug: str, viewer: str) -> Response:
+    doc = await db.visualizations.find_one({"slug": slug}, {"likes": 1})
+    liked = await db.visualization_likes.count_documents({"_id": _like_id(slug, viewer)}, limit=1)
+    body = {"slug": slug, "liked": bool(liked), "likes": max(0, (doc or {}).get("likes", 0))}
+    return Response(content=json.dumps(body), status_code=200, media_type="application/json")
+
+
+async def _liker(slug: str, request: Request) -> str | Response:
+    """The session user for a like verb on a readable row, or the problem to answer."""
+    if not slugs.validate_slug(slug):
+        return errors.slug_invalid(detail=f"{slug!r} is not a 4-word slug")
+    viewer = await resolve_session(request)
+    if not viewer:
+        return errors.session_invalid(detail="A session is required to like.")
+    if await _readable_or_none(get_db(), slug, viewer) is None:
+        return errors.not_found(detail=f"no visualization {slug!r}")
+    return viewer
+
+
+@router.get("/{slug}/like")
+async def get_like(slug: str, request: Request) -> Response:
+    """The caller's like state and the row's like count."""
+    viewer = await _liker(slug, request)
+    if isinstance(viewer, Response):
+        return viewer
+    return await _like_state(get_db(), slug, viewer)
+
+
+@router.put("/{slug}/like")
+async def set_like(slug: str, body: VisualizationLike, request: Request) -> Response:
+    """Set the caller's like state (idempotent per session); returns ``{liked, likes}``."""
+    viewer = await _liker(slug, request)
+    if isinstance(viewer, Response):
+        return viewer
+
+    db = get_db()
+    key = _like_id(slug, viewer)
+    if body.liked:
+        try:
+            await db.visualization_likes.insert_one(
+                {"_id": key, "slug": slug, "user_slug": viewer, "created_at": datetime.now(UTC)}
+            )
+        except DuplicateKeyError:
+            pass  # already liked by this session user: the state asked for holds
+        else:
+            await db.visualizations.update_one({"slug": slug}, {"$inc": {"likes": 1}})
+    else:
+        removed = await db.visualization_likes.delete_one({"_id": key})
+        if removed.deleted_count:
+            await db.visualizations.update_one(
+                {"slug": slug, "likes": {"$gt": 0}}, {"$inc": {"likes": -1}}
+            )
+    return await _like_state(db, slug, viewer)
 
 
 # ---------------------------------------------------------------------------

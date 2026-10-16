@@ -1,23 +1,28 @@
 <script setup lang="ts">
 /**
- * Convergence timeline scrubber — play button + scrub track + N=… count.
+ * Convergence transport — play control, the one scrub composition, N=… count.
  *
- * P.W5 Lane B.4 — migrated from the 166 LOC shadow recipe (manual
- * pointer-state-machine + `glass-track`/`glass-fill`/`glass-thumb` paints)
- * to `<Slider variant="glass-scrubber">`. The play button + harmonics
- * count column remain consumer-owned (chassis-level concerns; not the
- * slider scrubber proper). Dock-keep-open isn't directly wired here —
- * this site isn't a `<GlassDock>` descendant — but the variant's internal
- * `useOptionalDockContext()` resolves to `null` and the behavior is a
- * no-op, matching the surrounding consumer pattern.
+ * X.F.W3 `.a` — `fr-AnimationControls C-4 / M-1 / M-14` ⊕ `fr-ConvergenceTimeline
+ * L·D-7`. This file WAS a verbatim fork of `visualization/GlassTimeline.vue` (renamed `FourierTimeline.vue` at X.F.W14V.u4, UIA-F-239):
+ * the same latch, the same `[0..1] → [0..100]` adapter, the same dead retint
+ * token, re-authored a second time because the original had no `modelValue` and
+ * no emits and bound the animation store directly. The composition is
+ * parameterised now, so what is left here is what was always genuinely this
+ * site's: a play button, a harmonic count, and the wiring between them.
  *
- * Scrub events are emitted to the parent as before (toggle-play +
- * scrub-start + scrub-move + scrub-end); we adapt the `[0..1]` `t` axis
- * to reka-ui's integer slider model by scaling by 100.
+ * The scrub axis, the session pair, the caret and the announcement all live in
+ * the composition. This host's own contribution to them is one decision —
+ * `step` — and it is the decision `C·C-7` demanded be made inside the
+ * re-derivation rather than after it. See below.
+ *
+ * ⊘ The parent's event surface is UNCHANGED (`toggle-play` · `scrub-start` ·
+ * `scrub-move` · `scrub-end` over `t` · `playing` · `activeCount` ·
+ * `totalHarmonics`): `ConvergencePlot.vue` is another unit's file, and a fold
+ * that re-cut its callsite would be this unit writing outside its bounds.
  */
-import { computed, ref } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Slider } from "@mkbabb/glass-ui/slider";
+import { Pause, Play } from "@lucide/vue";
+import FourierTimeline from "@/components/shared/FourierTimeline.vue";
 
 const props = defineProps<{
     t: number;
@@ -33,56 +38,75 @@ const emit = defineEmits<{
     "scrub-end": [];
 }>();
 
-const scrubbing = ref(false);
+/**
+ * `fr-ConvergenceTimeline C·C-7`, THE AXIS DECISION.
+ *
+ * The integer `[0..100]` axis the fork carried under-resolved the quantity this
+ * control actually moves: adjacent harmonics are 0.004823 apart at the tightest,
+ * and 99 of 99 pairs fell inside a single step — so a third of the sweep
+ * addressed positions the reader could not reach. `:max="1000"` was the named
+ * ANTI-CURE, on the ground that it multiplies the announcement rate tenfold.
+ *
+ * On the float axis, step and announcement are no longer the same knob. `0.001`
+ * is five times finer than the tightest harmonic gap, so every pair is
+ * addressable; and the announcement is `valueText`, keyed on the HARMONIC
+ * COUNT, so it changes at most once per harmonic however fine the step is. The
+ * anti-cure's objection is answered by arithmetic rather than conceded to.
+ */
+const STEP = 0.001;
 
-const tArr = computed<number[]>({
-    get: () => [Math.round(props.t * 100)],
-    set: (arr) => {
-        const next = Math.max(0, Math.min(1, (arr[0] ?? 0) / 100));
-        emit("scrub-move", next);
-    },
-});
-
-function onPointerDown() {
-    if (scrubbing.value) return;
-    scrubbing.value = true;
-    emit("scrub-start");
-}
-
-function onValueCommit() {
-    if (!scrubbing.value) return;
-    scrubbing.value = false;
-    emit("scrub-end");
-}
+/**
+ * `D·D-4` / `C·C-3` / `D·D-3` — the `aria-valuenow`/`-valuemin`/`-valuemax`
+ * trio this replaces was a FALLTHROUGH onto the component root, where the
+ * primitive's own range attributes already live on the thumb, so the three
+ * either did nothing or announced a different quantity (the harmonic COUNT)
+ * than the control moves (the sweep position). `aria-valuetext` went the same
+ * way. The count is the humane reading of the position, so it is authored ONTO
+ * the thumb through the producer's `valueText` prop — and the count also keeps
+ * the live region below, which is what a reader not on the control hears.
+ */
+const harmonicValueText = (): string =>
+    `${props.activeCount} of ${props.totalHarmonics} harmonics`;
 </script>
 
 <template>
     <div class="timeline-dock">
-        <Button variant="glass" size="icon" class="play-btn" :class="{ 'is-playing': playing }" @click="emit('toggle-play')">
+        <!-- `D·D-3` / `C·C-2` (SP-7) — the play control was named by nothing at
+             all: an icon-only Button over two inline SVGs. The label carries the
+             ACTION, and `aria-pressed` already carried the state. -->
+        <!-- X-DS pass 9 · DS-F11-C1: secondary, so Compute is the one primary. -->
+        <Button
+            emphasis="secondary"
+            size="md" icon-only
+            class="play-btn"
+            :aria-label="playing ? 'Pause the convergence sweep' : 'Play the convergence sweep'"
+            :aria-pressed="playing"
+            @click="emit('toggle-play')"
+        >
+            <!-- X.F.W14U.eq — UIA-F-253: the app's glyph set (lucide), not two
+                 inline Font Awesome paths. -->
             <Transition name="icon-swap" mode="out-in">
-                <svg v-if="playing" class="size-3" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
-                <svg v-else class="size-3" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
+                <!-- X-DS pass 2 · DS-F2-C10: the one glyph set (filled, size-4),
+                     as /v's playback control. -->
+                <Pause v-if="playing" class="size-4" fill="currentColor" />
+                <Play v-else class="size-4" fill="currentColor" />
             </Transition>
         </Button>
 
         <div class="timeline-track-wrap">
-            <Slider
-                v-model="tArr"
-                variant="glass-scrubber"
-                :min="0"
-                :max="100"
-                :step="1"
-                :aria-valuenow="activeCount"
-                aria-valuemin="0"
-                :aria-valuemax="totalHarmonics"
-                aria-label="Harmonics timeline"
-                class="convergence-slider"
-                @pointerdown="onPointerDown"
-                @value-commit="onValueCommit"
+            <FourierTimeline
+                class="convergence-timeline"
+                :model-value="t"
+                :step="STEP"
+                accessible-name="Convergence sweep position"
+                :value-text="harmonicValueText"
+                @update:model-value="emit('scrub-move', $event)"
+                @scrub-start="emit('scrub-start')"
+                @scrub-end="emit('scrub-end')"
             />
         </div>
 
-        <span class="timeline-count">N={{ activeCount }}/{{ totalHarmonics }}</span>
+        <span class="timeline-count" role="status" aria-live="polite">N={{ activeCount }}/{{ totalHarmonics }}</span>
     </div>
 </template>
 
@@ -94,8 +118,8 @@ function onValueCommit() {
 }
 
 .timeline-count {
-    font-family: "Fira Code", monospace;
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--type-caption);
     color: var(--muted-foreground);
     width: 3.5rem;
     text-align: right;
@@ -103,28 +127,14 @@ function onValueCommit() {
     font-variant-numeric: tabular-nums;
 }
 
+/* `D·D-5` + `C·C-5` (SP-9) — the literal box is gone, so the primitive's own
+   `icon-only` geometry governs on the comfort axis.
+   X.F.W14U.eq — UIA-F-253: the rest of the local repaint (border, plate,
+   backdrop, ink, hover and pressed fills over glass's Button) is deleted with
+   the Font Awesome paths: the Button's `emphasis` owns its surface, and its
+   `aria-pressed` state is the producer's to paint. */
 .play-btn {
-    @apply flex items-center justify-center shrink-0 rounded-full cursor-pointer;
-    width: 1.75rem;
-    height: 1.75rem;
-    border: 1.5px solid color-mix(in srgb, var(--foreground) 10%, transparent);
-    background: color-mix(in srgb, var(--background) 60%, transparent);
-    backdrop-filter: blur(8px);
-    color: var(--muted-foreground);
-    /* A.W3.d — named properties + canonical token, no `transition: all`. */
-    transition:
-        color 0.15s var(--ease-standard),
-        background-color 0.15s var(--ease-standard),
-        border-color 0.15s var(--ease-standard);
-}
-.play-btn:hover {
-    background: color-mix(in srgb, var(--background) 85%, transparent);
-    color: var(--foreground);
-}
-.play-btn.is-playing {
-    background: color-mix(in srgb, var(--foreground) 8%, transparent);
-    border-color: color-mix(in srgb, var(--foreground) 20%, transparent);
-    color: var(--foreground);
+    flex-shrink: 0;
 }
 
 .timeline-track-wrap {
@@ -132,9 +142,8 @@ function onValueCommit() {
     padding: 0 0.125rem;
 }
 
-.convergence-slider {
-    --slider-scrub-track-height: 20px;
-}
+/* X-DS pass 3 · DS-F3-C5: the 20px track knob is deleted; the composition's
+   own thin track (FourierTimeline) is this host's too. */
 
 /* ── Transitions ── */
 .icon-swap-enter-active,

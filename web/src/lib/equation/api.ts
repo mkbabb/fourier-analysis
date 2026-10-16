@@ -34,6 +34,7 @@ export async function simplifyCoefficients(
     components: BasisComponent[],
     budget: number,
     notation: string,
+    autoHarmonics = false,
 ): Promise<SimplifyResponse> {
     const coefficients: FourierTermDTO[] = components.map((c) => ({
         n: c.index,
@@ -47,6 +48,7 @@ export async function simplifyCoefficients(
         coefficients,
         budget,
         notation: notation as SimplifyRequest["notation"],
+        auto_harmonics: autoHarmonics,
     };
     return apiFetch<SimplifyResponse>("/api/equations/simplify", "eq-simplify", {
         method: "POST",
@@ -54,4 +56,10 @@ export async function simplifyCoefficients(
     });
 }
 
-export { isAbortError } from "../api";
+/**
+ * The two abort keys this route owns. Named here so the teardown that cancels
+ * them cannot drift from the calls that register them (`L·M-7`).
+ */
+export const EQUATION_ABORT_KEYS = ["eq-compute", "eq-simplify"] as const;
+
+export { isAbortError, abortInflight } from "../api";

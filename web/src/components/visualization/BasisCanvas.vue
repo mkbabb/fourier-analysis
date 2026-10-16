@@ -2,13 +2,14 @@
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
-import { fourierPositionsAt, evaluateFourier } from "@/lib/bases";
-import { VIZ_COLORS, hexToRgba } from "@/lib/colors";
-import { goldenShimmerAlpha, clearShimmer } from "@/lib/golden-shimmer";
+import { fourierPositionsAt, evaluateFourier } from "@/lib/evaluators";
+import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
 import type { BasisComponent } from "@/lib/types";
-import type { CanvasSurface, ViewTransform, EpicycleBbox } from "./lib/canvas-drawing";
 import {
+    type ViewTransform,
+    type EpicycleBbox,
+    type EpicycleFit,
     drawGrid,
     drawGhostPath,
     drawPlaceholder,
@@ -24,8 +25,7 @@ import {
     isMouseInEpicycleBounds,
     epicycleAlphaFromScale,
 } from "./lib/canvas-drawing";
-import type { EpicycleFit } from "./lib/canvas-drawing";
-import { useCanvasSetup } from "./composables/useCanvasSetup";
+import { useCanvasSetup, type CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";
 import { useViewTransform } from "./composables/useViewTransform";
@@ -55,7 +55,35 @@ let epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
 const trail = new TrailManager();
 
 // ── Canvas setup ──
-const { surface, setupCanvas } = useCanvasSetup(canvasRef, containerRef, (s) => {
+/*
+ * X.F.W14V.u4 — UIA-F-239: where the legend's first row sits, read from the
+ * stage's `--legend-inset-top` (registered as a <length> in style.css, so the
+ * computed value is resolved px). Below `sm` the expanded canvas dock spans
+ * the stage and the stage sets the inset under it; elsewhere it is 16 px.
+ * Read on every (re)size, the one moment the stage's width class can change,
+ * and when the stage's dock expands or collapses (X-DS DS-F7-C6, `readInsets`).
+ */
+let legendTop = 16;
+/* X-DS pass 4 · DS-F4-C8: the epicycle inset's bottom pad, read from the
+   stage's `--epicycle-inset-bottom` (registered like `--legend-inset-top`):
+   the bottom dock's reserved block, so the chain's tip is never under it. */
+let epicycleBottom = 12;
+/* X-DS pass 8 · DS-F10-C2: the stage's inline-start inset (`--stage-inset-inline`),
+   one edge for the legend and the epicycle inset. */
+let insetInline = 16;
+function readLegendTop(): void {
+    const el = containerRef.value;
+    const cs = el ? getComputedStyle(el) : null;
+    const px = cs ? parseFloat(cs.getPropertyValue("--legend-inset-top")) : NaN;
+    legendTop = Number.isFinite(px) ? px : 16;
+    const pb = cs ? parseFloat(cs.getPropertyValue("--epicycle-inset-bottom")) : NaN;
+    epicycleBottom = Number.isFinite(pb) ? pb : 12;
+    const pi = cs ? parseFloat(cs.getPropertyValue("--stage-inset-inline")) : NaN;
+    insetInline = Number.isFinite(pi) ? pi : 16;
+}
+
+const { surface, setupCanvas } = useCanvasSetup(canvasRef, (s) => {
+    readLegendTop();
     stableEpicycleBbox = null;
     baseFitCenter = null;
     if (store.epicycleData) drawFrame();
@@ -117,17 +145,39 @@ function drawFrame() {
 }
 
 // ── Single epicycle mode ──
+// X.F.W14.u — UIA-F-17: the export dialog's "Epicycles" and "Trace path"
+// switches were read by nobody (exportFrame destructured only grid and labels),
+// so a PNG exported with every layer off still held the chain and the trace.
+// Both frame painters take the layer set; the live draw paints every layer.
+//
+// X.F.W14U.vdock — UIA-F-243 ⊕ F-182: every exported layer has a switch. The
+// grey reference contour (the view's trace) was painted into every export with
+// no switch, and "Labels" off was a `clearRect(0, 0, 200, 100)` that erased a
+// fixed corner — grid included — whatever the labels' real extent. Both are
+// layers now: `ghost` (the live draw follows the view's trace toggle) and
+// `labels` (skipped, never erased).
+interface FrameLayers {
+    epicycles: boolean;
+    trail: boolean;
+    ghost: boolean;
+    labels: boolean;
+}
+function liveLayers(): FrameLayers {
+    return { epicycles: true, trail: true, ghost: props.showGhost, labels: true };
+}
+
 function drawEpicycleFrame(
     s: CanvasSurface,
     data: typeof store.epicycleData & {},
     view: ViewTransform,
+    layers: FrameLayers = liveLayers(),
 ) {
     const hoveredBasis = hover.getHoveredBasis();
     const epicycleHovered = hoveredBasis === "fourier-epicycles";
-    const trailColor = epicycleHovered ? VIZ_COLORS.golden : VIZ_COLORS.fourier;
+    const trailColor = VIZ_COLORS.fourier;
 
     // Ghost path
-    if (props.showGhost) {
+    if (layers.ghost) {
         drawGhostPath(s, view, data.path.x, data.path.y, true);
     }
 
@@ -142,7 +192,7 @@ function drawEpicycleFrame(
 
     // Trail — golden when hovered
     trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
-    trail.draw(s, view, trailColor);
+    if (layers.trail) trail.draw(s, view, trailColor);
 
     // Epicycle circles — prefix of the cumulative-position array
     const visPositions = nVis === components.length
@@ -158,19 +208,18 @@ function drawEpicycleFrame(
 
     let fit: EpicycleFit | null = null;
     if (isDesktop && nVis > 0) {
-        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter);
+        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom, insetInline);
         if (result) {
             fit = result.fit;
             baseFitCenter = result.baseFitCenter;
         }
     }
 
-    // Golden shimmer on epicycle circles when hovered
-    if (epicycleHovered) {
-        s.ctx.globalAlpha = goldenShimmerAlpha();
+    // X-DS pass 1 · F1-05 — a hovered chain keeps its spectrum hues and steps
+    // its stroke once; no gold re-ink, no time-based alpha.
+    if (layers.epicycles) {
+        drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 5, arm: 4.5 } : { circle: 4, arm: 3.5 });
     }
-    drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 4, arm: 3.5 }, epicycleHovered ? VIZ_COLORS.golden : undefined);
-    s.ctx.globalAlpha = 1;
 
     // Update epicycle bounds for hover detection
     if (fit) {
@@ -184,29 +233,42 @@ function drawEpicycleFrame(
         epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
     }
 
-    // Connecting line
-    if (fit) {
-        drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+    if (layers.epicycles) {
+        // Connecting line
+        if (fit) {
+            drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+        }
+
+        // Tip dot
+        drawTipDot(s, view, tip[0], tip[1]);
     }
 
-    // Tip dot
-    drawTipDot(s, view, tip[0], tip[1]);
-
     // Label with hit regions for hover detection
-    const level = Math.max(1, Math.ceil(anim.easedT * components.length));
-    const { hitRegions } = drawBasisLabels(s, ["fourier-epicycles"], `N = ${level}`, hoveredBasis);
-    hover.setLabelHitRegions(hitRegions);
+    if (layers.labels) {
+        const level = Math.max(1, Math.ceil(anim.easedT * components.length));
+        // X.F.W14V.u4 — UIA-F-170 (legend limb): this count is CIRCLES drawn
+        // (every ±k term of the series is its own circle, 2N + 1 of them), not
+        // the Harmonics N beside it in the pane, so it says what it counts.
+        const { hitRegions } = drawBasisLabels(
+            s, ["fourier-epicycles"], `${level} of ${components.length} circles`, hoveredBasis, legendTop, insetInline,
+        );
+        hover.setLabelHitRegions(hitRegions);
+    }
 }
 
 // ── Multi-basis mode ──
-function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
+function drawMultiBasesFrame(
+    s: CanvasSurface,
+    view: ViewTransform,
+    layers: FrameLayers = liveLayers(),
+) {
     const { ctx, width, height } = s;
     const basesData = store.basesData;
     const epicycleData = store.epicycleData;
     const hoveredBasis = hover.getHoveredBasis();
 
     // Ghost path
-    if (props.showGhost) {
+    if (layers.ghost) {
         let origX: number[] | undefined;
         let origY: number[] | undefined;
         if (basesData) {
@@ -251,16 +313,14 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
         const cfg = basisDisplay[basisName];
         if (!cfg) continue;
 
+        // X-DS pass 1 · F1-05 — hover is a steady state: the curve in its own
+        // hue at full strength and one width step, against dimmed siblings.
+        // No glow, no gold re-ink, no time-based alpha.
         const isHovered = hoveredBasis === basisKey;
-        const shimmer = isHovered ? goldenShimmerAlpha() : 0;
         ctx.beginPath();
-        ctx.strokeStyle = isHovered ? VIZ_COLORS.golden : cfg.color;
+        ctx.strokeStyle = cfg.color;
         ctx.lineWidth = isHovered ? 4 : 3;
-        ctx.globalAlpha = isHovered ? shimmer : 0.85;
-        if (isHovered) {
-            ctx.shadowColor = hexToRgba(VIZ_COLORS.golden, shimmer * 0.5);
-            ctx.shadowBlur = 10;
-        }
+        ctx.globalAlpha = isHovered ? 1 : hoveredBasis ? 0.4 : 0.85;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
 
@@ -311,7 +371,7 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
             }
         }
         ctx.stroke();
-        clearShimmer(ctx);
+        ctx.globalAlpha = 1;
     }
 
     // Epicycle trail + tip + hover overlay when fourier-epicycles is active
@@ -323,14 +383,14 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
         const tip = allPositions[allPositions.length - 1];
 
         const epicycleHovered = hoveredBasis === "fourier-epicycles";
-        const epicycleColor = epicycleHovered ? VIZ_COLORS.golden : VIZ_COLORS.fourier;
+        const epicycleColor = VIZ_COLORS.fourier;
 
         // Trail
         trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
-        trail.draw(s, view, epicycleColor);
+        if (layers.trail) trail.draw(s, view, epicycleColor);
 
         // Tip dot
-        drawTipDot(s, view, tip[0], tip[1]);
+        if (layers.epicycles) drawTipDot(s, view, tip[0], tip[1]);
 
         // Epicycle overlay — prefix slice, no recomputation
         const visPositions = nVis === components.length
@@ -346,14 +406,16 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
 
         let fit: EpicycleFit | null = null;
         if (isDesktop && nVis > 0) {
-            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter);
+            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom, insetInline);
             if (result) {
                 fit = result.fit;
                 baseFitCenter = result.baseFitCenter;
             }
         }
 
-        drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, { circle: 5, arm: 4.5 }, epicycleHovered ? epicycleColor : null);
+        if (layers.epicycles) {
+            drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 6, arm: 5.5 } : { circle: 5, arm: 4.5 });
+        }
 
         if (fit) {
             epicycleBounds = {
@@ -362,13 +424,19 @@ function drawMultiBasesFrame(s: CanvasSurface, view: ViewTransform) {
                 w: fit.scaledW,
                 h: fit.scaledH,
             };
-            drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+            if (layers.epicycles) {
+                drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+            }
         }
     }
 
     // Labels
-    const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis);
-    hover.setLabelHitRegions(hitRegions);
+    if (layers.labels) {
+        // The partial-sum level IS the Harmonics N (the levels run 1…N), so it
+        // keeps the pane's own name for it.
+        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis, legendTop, insetInline);
+        hover.setLabelHitRegions(hitRegions);
+    }
 }
 
 // ── Watchers (split: epicycle vs bases) ──
@@ -459,6 +527,18 @@ onUnmounted(() => {
 });
 
 // ── Export ──
+/** The first OPAQUE background up the canvas's ancestry, as the engine resolves it. */
+function groundColor(el: HTMLElement): string {
+    for (let node: HTMLElement | null = el; node; node = node.parentElement) {
+        const bg = getComputedStyle(node).backgroundColor;
+        const alpha = /(?:\/\s*|rgba\([^)]*,\s*)([\d.]+%?)\)$/.exec(bg)?.[1];
+        const a = alpha === undefined ? 1 : alpha.endsWith("%") ? parseFloat(alpha) / 100 : parseFloat(alpha);
+        if (bg !== "transparent" && a >= 1) return bg;
+    }
+    // The page's own ground (the loop starts at the canvas, whose ancestry ends at <html>).
+    return getComputedStyle(document.body).backgroundColor;
+}
+
 function exportFrame(options: Record<string, boolean> = {}) {
     if (!canvasRef.value || !surface.value) return;
     const s = surface.value;
@@ -466,14 +546,19 @@ function exportFrame(options: Record<string, boolean> = {}) {
     const {
         withGrid: showGrid = true,
         withLabels: showLabels = true,
+        withEpicycles = true,
+        withTrail = true,
+        withReference = true,
+        withBackground = false,
     } = options;
+    const layers: FrameLayers = { epicycles: withEpicycles, trail: withTrail, ghost: withReference, labels: showLabels };
 
     // Create an offscreen canvas at the same resolution
     const offCanvas = document.createElement("canvas");
     offCanvas.width = canvasRef.value.width;
     offCanvas.height = canvasRef.value.height;
     const offCtx = offCanvas.getContext("2d")!;
-    offCtx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
+    offCtx.setTransform(s.ctx.getTransform());
 
     // Swap surface ctx temporarily
     const origCtx = s.ctx;
@@ -483,6 +568,13 @@ function exportFrame(options: Record<string, boolean> = {}) {
     const basesData = store.basesData;
     if (data || basesData) {
         offCtx.clearRect(0, 0, s.width, s.height);
+        // UIA-F-243: an opaque ground on request — the ground the canvas is
+        // seen on (its nearest painted ancestor), so a dark export is a dark
+        // plate, not a light grid on nothing.
+        if (withBackground) {
+            offCtx.fillStyle = groundColor(canvasRef.value);
+            offCtx.fillRect(0, 0, s.width, s.height);
+        }
         const view = getViewTransform(s);
         if (showGrid) drawGrid(s, view);
 
@@ -490,14 +582,11 @@ function exportFrame(options: Record<string, boolean> = {}) {
         const onlyEpic = hasEpic && props.activeBases.length === 1;
 
         if (onlyEpic && data) {
-            drawEpicycleFrame(s, data, view);
+            drawEpicycleFrame(s, data, view, layers);
         } else {
-            drawMultiBasesFrame(s, view);
+            drawMultiBasesFrame(s, view, layers);
         }
 
-        if (!showLabels) {
-            offCtx.clearRect(0, 0, 200, 100);
-        }
     }
 
     // Restore
@@ -512,13 +601,26 @@ function exportFrame(options: Record<string, boolean> = {}) {
     document.body.removeChild(a);
 }
 
-defineExpose({ anim, exportFrame, drawImageOverlay });
+/** Re-read the stage's insets and repaint (the dock expanded or collapsed). */
+function readInsets(): void {
+    readLegendTop();
+    if (!surface.value) return;
+    if (store.epicycleData) drawFrame();
+    else drawPlaceholderFrame(surface.value);
+}
+
+defineExpose({ anim, exportFrame, drawImageOverlay, readInsets });
 </script>
 
 <template>
+    <!-- X.F.W14V.u4 — UIA-F-68 ⊕ F-168 (stage limb): the canvas mounts only in
+         the Configurator's stage, and the stage cell is the surface. The
+         `cartoon-card` stamp it wore (a 16px corner, a 2px border and a
+         three-layer offset shadow at 0 inset inside the stage's own corner) is
+         gone; the canvas paints on the stage's card. -->
     <div
         ref="containerRef"
-        class="canvas-container cartoon-card"
+        class="canvas-container"
         @mousemove="hover.onMouseMove"
         @mouseleave="hover.onMouseLeave"
         @click="hover.onClick"

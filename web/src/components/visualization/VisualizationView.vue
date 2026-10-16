@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
-import { watchDebounced, useMediaQuery } from "@vueuse/core";
-import { useRouter } from "vue-router";
+import { ref, shallowRef, computed, watch, nextTick, useTemplateRef, provide } from "vue";
+import { watchDebounced, useEventListener } from "@vueuse/core";
+import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
+import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
+import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
-import { useImageUpload } from "./composables/useImageUpload";
+import { useImageUpload, IMAGE_UPLOAD_KEY } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
-import { Upload } from "lucide-vue-next";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Upload } from "@lucide/vue";
 import { useGalleryStore } from "@/stores/gallery";
-import { useToast } from "@/composables/useToast";
+import { isOwnerRequired } from "@/lib/api-problem";
+import { useAuthStore } from "@/stores/auth";
 import ImageUpload from "./ImageUpload.vue";
 import ContourSettings from "./ContourSettings.vue";
 import BasisCanvas from "./BasisCanvas.vue";
@@ -18,28 +20,60 @@ import BasisSelector from "./BasisSelector.vue";
 import AnimationControls from "./AnimationControls.vue";
 import ContourEditorCanvas from "./ContourEditorCanvas.vue";
 import EditorControlsDock from "./EditorControlsDock.vue";
-import ContourPreview from "./ContourPreview.vue";
 import CanvasControlsDock from "./CanvasControlsDock.vue";
-import CoefficientsPanel from "./CoefficientsPanel.vue";
+import CoefficientsPanel from "@/components/shared/CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
-import { UnderlineTabs } from "@mkbabb/glass-ui/tabs";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@mkbabb/glass-ui/dialog";
+import { Progress } from "@mkbabb/glass-ui/progress";
 
 const router = useRouter();
+const route = useRoute();
+/** `/v/:visualizationSlug` (a saved entity) vs `/w/:imageSlug?` (a working session). */
+const isSavedRoute = computed(() => route.name === "visualization");
 const store = useWorkspaceStore();
 const anim = useAnimationStore();
 const gallery = useGalleryStore();
-const { toast } = useToast();
+const auth = useAuthStore();
 
 // ── View state (editing, ghost, overlay — persisted to localStorage) ──
 const { isEditing, showGhost, showImageOverlay, showEquation } = useViewState();
 
 // ── Image drag-and-drop ──
-const { isDragging: globalDragging, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave } =
-    useImageUpload(async (file: File) => { await store.uploadImage(file); });
+const { isDragging: globalDragging, rejection: dropRejection, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave, handleFileSelect: globalFileSelect, preview: uploadPreview, clearPreview: clearUploadPreview } =
+    useImageUpload((file: File) => store.uploadImage(file));
+
+/*
+ * X.F.W14U.vstage — UIA-F-166: a file dropped outside this view (the header
+ * band) fell through to the browser, which navigated away to the file. While
+ * the studio is mounted the window takes every file drag it does not route,
+ * so a stray drop is a no-op instead of a lost session.
+ */
+useEventListener(window, "dragover", (e: DragEvent) => e.preventDefault());
+useEventListener(window, "drop", (e: DragEvent) => e.preventDefault());
+
+/** The drop target's one message line: a rejected file, else a failed upload
+ *  (UIA-F-166 ⊕ F-167 — shown where the file was dropped, never as a failed
+ *  workspace load). */
+const dropMessage = computed(() =>
+    dropRejection.value ?? (store.uploadError ? `The upload failed: ${store.uploadError}` : null),
+);
+
+/* UIA-F-237: "Drop or click" is wrong on touch; the primary action names the
+   act, which is pointer-neutral, and while uploading it says that (UIA-F-133).
+   X-DS pass 2 · DS-F2-C13: one label at every width — "Tap to choose an
+   image" wrapped to two lines in its pill at 390, stranding the glyph. */
+const primaryUploadLabel = computed(() => (store.uploading ? "Uploading…" : "Choose an image"));
 
 // ── Active bases ──
 const activeBases = ref<string[]>(
@@ -67,15 +101,37 @@ watchDebounced(
 // ── Canvas + modals ──
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
 const mobileView = ref<"controls" | "canvas">("controls");
-const isDesktop = useMediaQuery("(min-width: 1024px)");
+/*
+ * X.F.W14V.au1 — A2-FO-X-1 ⊕ L2-4: the workspace's form is read from glass's
+ * Configurator shell at glass's own split threshold (`useWorkspaceForm`), not
+ * from a viewport width that disagreed with it at 1024×768. `sheet` is the
+ * tabbed portrait form; `rail` (short and tablet landscape) and `split` show
+ * both regions, so no region is ever inactive there.
+ */
+const workspace = useTemplateRef<HTMLElement>("workspace");
+const form = useWorkspaceForm(computed(() => workspace.value?.querySelector<HTMLElement>(".viz-configurator") ?? null));
+const tabbed = computed(() => form.value === "sheet");
 const showExport = ref(false);
 const showFullscreen = ref(false);
+/*
+ * X.F.W14V.u1 — UIA-F-14 (BROKEN) ⊕ F-93: the takeover's stage host. While the
+ * takeover is open the ONE live stage below is teleported into it (never a
+ * second stage), and it returns here when the takeover closes.
+ */
+const fsHost = shallowRef<HTMLElement | null>(null);
+const stageInTakeover = computed(() => showFullscreen.value && fsHost.value !== null);
 
 // ── Editor state ──
 // B.W2 — `CanvasControlsDock` now emits `update:expanded` (sibling W2-C
 // converts its out-of-band `defineExpose(dockExpanded)` to a typed emit); the
 // parent owns the `dockExpanded` ref and listens via `v-model:expanded`.
 const dockExpanded = ref(false);
+// X-DS pass 5 · DS-F7-C6: the stage's legend inset follows the dock's state
+// (`[data-dock-expanded]`); the canvas re-reads it once the attribute lands.
+watch(dockExpanded, async () => {
+    await nextTick();
+    canvasComponent.value?.readInsets();
+});
 const editorState = ref({ canUndo: false, canRedo: false, canDelete: false, pointCount: 0 });
 const editorRef = ref<InstanceType<typeof ContourEditorCanvas> | null>(null);
 const editorSaved = ref(false);
@@ -95,6 +151,45 @@ async function onEditorSave() {
     editorSaved.value = true;
 }
 
+/*
+ * X.F.W14U.vedit — UIA-F-180: leaving edit mode had no exit or dirty
+ * affordance — unsaved edits stayed behind in the hidden editor. The editor's
+ * history is the dirty flag (a step to undo is an unsaved edit: a save
+ * re-seeds the history from the saved contour), and leaving with one asks:
+ * save, discard, or keep editing. Leaving always clears the selection
+ * (UIA-F-15's rider), so no hidden point stays picked.
+ */
+const leaveAsk = ref(false);
+
+function leaveEditor() {
+    editorRef.value?.clearSelection();
+    isEditing.value = false;
+}
+
+function toggleEdit() {
+    if (!isEditing.value) {
+        isEditing.value = true;
+        return;
+    }
+    if (editorState.value.canUndo) {
+        leaveAsk.value = true;
+        return;
+    }
+    leaveEditor();
+}
+
+async function saveAndLeave() {
+    leaveAsk.value = false;
+    await onEditorSave();
+    leaveEditor();
+}
+
+function discardAndLeave() {
+    leaveAsk.value = false;
+    editorRef.value?.discardEdits();
+    leaveEditor();
+}
+
 function handleExportFrame() { showExport.value = true; }
 function doExport(options: Record<string, boolean>) {
     canvasComponent.value?.exportFrame(options);
@@ -103,15 +198,91 @@ function doExport(options: Record<string, boolean>) {
 
 // ── Publish to gallery ──
 const publishing = ref(false);
+
+/**
+ * X.F.W3 `.e` / `fr-VisualizationView MAJ-7` — ONE ERROR CHANNEL PER ACTION,
+ * and the diagnostic this component already holds is the one it shows.
+ *
+ * THE FALSE NOUN. `store.createSnapshot` is an ALIAS the store keeps for this
+ * one unmigrated call site; its own comment says so, and says that it creates a
+ * DRAFT VISUALIZATION rather than a snapshot row. The failure message
+ * ("Could not create snapshot") therefore named an entity the system stopped
+ * having. The call site adopts the real verb, `saveVisualization`, which is
+ * exported beside the alias — so the noun is corrected at THIS end, without
+ * reaching into a store this unit does not own. The alias is left with no
+ * caller and is named as residue for the store's owner.
+ *
+ * THE DUPLICATE CHANNEL. Two toasts served one failed save. `gallery.publish`
+ * catches and toasts every failure of its own and never rethrows, and
+ * `saveVisualization` catches everything and returns `null` — so the `catch`
+ * arm here could only ever fire a SECOND message about a failure something
+ * else had already reported, and at the settled bytes it is unreachable
+ * besides. It is deleted; `finally` keeps the busy flag, which is the only work
+ * it was actually doing.
+ *
+ * THE DISCARDED DIAGNOSTIC. `saveVisualization` writes `problemMessage(e, …)`
+ * into `store.error` — the real reason, from the real response — and this
+ * function threw it away to volunteer a constant. It is read here, with the
+ * constant demoted to the fallback it always should have been.
+ */
+//
+// X.F.W14.u — UIA-F-18: a second activation while the first was in flight
+// started a second POST, which aborted the first (the api's per-key inflight
+// abort); the aborted save returned `null` and fell through to the fallback
+// "Could not save" toast beside the second save's "Published!". One action is
+// one outcome: a publish in flight suppresses activation (DESIGN.md: loading
+// suppresses activation), and an aborted save is not a failure — only a real
+// diagnosis (`store.error`, cleared at the save's start) is reported.
+//
+// X.F.W14U.vstage — UIA-F-95 ⊕ F-245: logged out, Publish made the round trip
+// the api refuses, and the one refusal arrived as two error toasts (this
+// function's, and the loader's `store.error` channel, which reports every
+// workspace diagnosis while an image is open). The gate is before the round
+// trip — a session is a precondition, said once with the way to meet it — and a
+// failed save is reported by the loader's channel alone.
+//
+// X.F.W14V.u3 — UIA-F-183: publishing is not a dead end and does not
+// duplicate. A publish that lands is recorded on the session; while the session
+// is still what was published, the control shows Published and opens the piece
+// (no second public copy). An edit re-arms Publish for the new piece.
+//
+// X.F.W14V.p — a signed-out Publish never ends in a toast (the owner frame: the
+// raw "A session is required to publish." over the pane). It opens the shell's
+// own inline sign-in and RESUMES once the person signs in; dismissing the
+// sign-in stands the publish down. The same holds when the client believed it
+// was signed in and the server's typed 401 `owner-required` says the save
+// carried no session: the stale local sign-in is ended and the sign-in asked
+// for. The sign-in lives in the app dock, so an open takeover is closed first.
+async function signInToPublish(): Promise<boolean> {
+    if (showFullscreen.value) {
+        showFullscreen.value = false;
+        await nextTick();
+    }
+    return auth.requestSignIn();
+}
+
+async function saveSignedIn() {
+    try {
+        return await store.saveVisualization();
+    } catch (e: unknown) {
+        if (!isOwnerRequired(e)) throw e;
+        auth.forgetUser();
+        return (await signInToPublish()) ? store.saveVisualization() : null;
+    }
+}
+
 async function handlePublish() {
-    if (!store.imageSlug || !store.contour) return;
+    if (store.publishedSlug) {
+        await router.push(`/v/${store.publishedSlug}`);
+        return;
+    }
+    if (publishing.value || !store.imageSlug || !store.contour) return;
+    if (!auth.isLoggedIn && !(await signInToPublish())) return;
     publishing.value = true;
     try {
-        const snapshot = await store.createSnapshot();
-        if (!snapshot) { toast("Could not create snapshot", "error"); return; }
-        await gallery.publish(snapshot.slug, store.imageSlug);
-    } catch (e: any) {
-        toast(e.message ?? "Publish failed", "error");
+        const saved = await saveSignedIn();
+        if (!saved) return;
+        if (await gallery.publish(saved.slug, store.imageSlug)) store.markPublished(saved.slug);
     } finally {
         publishing.value = false;
     }
@@ -123,17 +294,93 @@ const hasEpicycles = computed(() => activeBases.value.includes("fourier-epicycle
 const hasImage = computed(() => !!store.imageMeta);
 
 // ── Mobile canvas click-to-upload ──
-const canvasFileInput = ref<HTMLInputElement>();
-function onCanvasClick() {
-    if (!hasImage.value && !hasData.value) {
-        canvasFileInput.value?.click();
-    }
+/**
+ * X.F.W13.c — owner frame 4 (2026-09-23, OA-16): "we should just display the
+ * main area with no right sidebar when nothing is there, and then smoothly
+ * animate in the right sidebar when something is dragged over and dropped."
+ *
+ * The sidebar exists only with an image. `sidebarPresent` holds the
+ * Configurator's aside column open for as long as the sidebar's content is in
+ * the DOM — it opens the moment an image lands (the column's width and the
+ * content's translate enter together, on the glass `--spring-panel` pair) and
+ * closes only after the content's leave has run, so the leave is seen instead
+ * of being cut off by the column collapsing under it.
+ */
+/*
+ * X.F.W14.r — F.W13 `.c` residual (r1): the spec's words are "on drop (or
+ * file pick) the sidebar enters", and it entered only when the upload
+ * response LANDED (`imageMeta`). The upload in flight is the drop's own
+ * state, so the sidebar enters with it — its Image layer carrying the
+ * upload's busy signal — and the landed image fills it. An upload that fails
+ * clears the flight with no image, which is the leave path (r2).
+ */
+const hasSidebar = computed(() => hasImage.value || store.uploading);
+const sidebarPresent = ref(hasSidebar.value);
+watch(hasSidebar, (present) => {
+    if (present) sidebarPresent.value = true;
+});
+
+/*
+ * X.F.W14V.u4 — below lg the two panes are tabs, and an upload decides which
+ * one is in front.
+ *  · UIA-F-74 (the `.vstage` cure, re-landed under addendum (h) E-3): when an
+ *    upload finishes, the canvas, where its result appears, is in front. The
+ *    user never lands on a thumbnail and a rail instead of the decomposition.
+ *  · UIA-F-71: the FIRST upload (no image yet) starts at the stage's drop
+ *    target, and its one busy mark is that button's. The sidebar enters on the
+ *    drop (F.W13 `.c`), so without this the tab strip put the Controls sheet
+ *    in front and hid the mark the person had just started.
+ */
+watch(() => store.uploading, (now, was) => {
+    if (now && !hasImage.value) mobileView.value = "canvas";
+    else if (was && !now && store.imageMeta) mobileView.value = "canvas";
+});
+
+/*
+ * X.F.W14U.vstage — the band's `onConfiguratorUnmounted` re-read retired: a
+ * failed upload no longer swaps the Configurator for the not-found card (the
+ * card and the busy mark render inside the stage, UIA-F-70 ⊕ F-167), so the
+ * sidebar's `@after-leave` always runs and closes the band itself.
+ */
+/** The stage's two whole-route states (UIA-F-70): a cold load, and a load that
+ *  failed with nothing on screen. Both keep the Configurator chassis. */
+const stageLoading = computed(() => store.loading && !store.imageSlug);
+const stageError = computed(() => !!store.error && !store.imageSlug);
+/** X-DS DS-F-C5: the server's detail, unless it only restates the
+ * description (a not-found detail names the same slug the description does).
+ * X-DS pass 13 · DS-F15-C5: a bare not-found title ("Image not found") restates
+ * it too, so the diagnosis line is left to a real server diagnosis. */
+const stageErrorDetail = computed(() => {
+    const slug = String(route.params.visualizationSlug ?? route.params.imageSlug ?? "");
+    const error = store.error;
+    if (!error || (slug && error.includes(slug)) || /\bnot found\.?$/i.test(error.trim())) return null;
+    return error;
+});
+/** UIA-F-73 ⊕ F-71: the first compute has nothing to draw yet; the stage says
+ *  so in the DOM (one busy mark), not with a painted box. */
+const firstCompute = computed(() => store.computing && !store.epicycleData && !store.basesData);
+
+// The ONE upload affordance with no image: the main area's drop target (a
+// glass Button + the format line). The canvas itself is no longer a
+// pointer-only click target.
+// X.F.W14V.au2 — A2-FO-L1-11: this view is the ONE upload owner. Its
+// `useImageUpload` instance and its file input serve the empty stage's button
+// and the Image layer's Replace alike (the layer injects them); the input sits
+// outside every `v-if`, so it is live in both states.
+const fileInput = ref<HTMLInputElement>();
+function openFilePicker() {
+    fileInput.value?.click();
 }
-async function onCanvasFileSelect(e: Event) {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (file) await store.uploadImage(file);
-    if (canvasFileInput.value) canvasFileInput.value.value = "";
+/* A picked file takes the drop's path (the same image check and rejection
+   message, UIA-F-166); the input is cleared so the same file can be picked
+   again. */
+function onFileSelect(e: Event) {
+    globalFileSelect(e);
+    if (fileInput.value) fileInput.value.value = "";
 }
+// The local preview is the upload's own; a new workspace image supersedes it.
+watch(() => store.imageSlug, () => clearUploadPreview());
+provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDragging, preview: uploadPreview });
 </script>
 
 <template>
@@ -141,84 +388,197 @@ async function onCanvasFileSelect(e: Event) {
         @drop="globalDrop" @dragover="globalDragOver"
         @dragenter="globalDragEnter" @dragleave="globalDragLeave"
     >
-        <!-- Global drag overlay -->
-        <Transition name="fade">
-            <div v-if="globalDragging" class="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-background/80 backdrop-blur-sm"
-                @drop="globalDrop" @dragover.prevent>
-                <div class="flex flex-col items-center gap-3 text-muted-foreground">
-                    <Upload class="h-12 w-12" />
-                    <p class="text-lg font-medium">Drop image anywhere</p>
-                </div>
-            </div>
-        </Transition>
-
-        <!-- Loading -->
-        <div v-if="store.loading && !store.imageSlug" class="flex flex-col items-center justify-center flex-1 gap-3">
-            <div class="h-8 w-8 animate-spin rounded-full border-[2.5px] border-border border-t-primary" />
-            <p class="text-sm text-muted-foreground fira-code">Loading workspace...</p>
-        </div>
-
-        <!-- Error (no workspace) -->
-        <div v-else-if="store.error && !store.imageSlug" class="flex items-center justify-center flex-1">
-            <div class="mx-auto max-w-md cartoon-card p-6 text-center space-y-3">
-                <p class="text-sm font-medium text-foreground">Could not load workspace</p>
-                <p class="text-xs text-muted-foreground fira-code break-all">{{ store.error }}</p>
-                <Tooltip text="Go back to upload a new image">
-                    <Button
-                        variant="outline"
-                        class="mt-2 border-2 border-foreground/15"
-                        @click="store.reset(); router.push('/visualize')"
-                    >
-                        Start fresh
-                    </Button>
-                </Tooltip>
-            </div>
-        </div>
-
-        <!-- Main workspace -->
-        <div v-else class="flex flex-col flex-1 min-h-0">
-            <!-- Mobile tab bar -->
-            <div class="flex px-3 py-1 bg-background lg:hidden">
-                <UnderlineTabs
-                    :options="[{ label: 'Controls', value: 'controls' }, { label: 'Canvas', value: 'canvas' }]"
-                    :model-value="mobileView"
-                    @update:model-value="mobileView = $event as 'controls' | 'canvas'" />
-            </div>
+        <!-- X.F.W14V.au2 — A2-FO-L1-11: the view's one file input (the empty
+             stage's button and the Image layer's Replace both summon it). It is
+             never inside a `v-if` or an `inert` region, so the programmatic
+             `.click()` always reaches it. -->
+        <input ref="fileInput" data-testid="image-file-input" type="file" accept="image/*" class="hidden" @change="onFileSelect" />
+        <!-- Main workspace. X.F.W14U.vstage — UIA-F-70: the cold load and the
+             load error used to REPLACE this chassis (a bare ring, or a card
+             floating on the page, then the frame popping in). They render inside
+             the Configurator's stage now, as /gallery and /equation do; the
+             page-covering drag overlay retired for the stage's own signal
+             (UIA-F-166 ⊕ F-237). -->
+        <div ref="workspace" class="viz-workspace flex flex-col flex-1 min-h-0" :data-form="form">
+            <!-- The sheet form's Controls/Canvas strip (the one shared bar,
+                 X.F.W14V.au1 — A2-FO-L2-5). -->
+            <WorkspaceTabs v-if="hasSidebar && tabbed" v-model="mobileView" />
 
             <!-- B.W2.a — the visualization-route left-panel stack adopts the
                  glass-ui `Configurator` chassis: `BasisCanvas` + its overlaid
                  docks lift into the `#stage` slot; the control panels (each now
                  a `ConfiguratorLayer`) stack in the controls aside (default
                  slot). The bespoke `cartoon-card` panel backgrounds retire for
-                 the substrate's layered chassis. -->
-            <Configurator scroll-mode="auto" class="viz-configurator">
+                 the substrate's layered chassis.
+
+                 X.F.W3 repair 1 (g14 leg 3) — THE SCOPE OF THAT RETIREMENT,
+                 STATED, because the sentence above read as a tree-wide claim
+                 and one `cartoon-card` still paints in this very file. It is
+                 `:191`, the no-workspace ERROR card, and it is not a panel: the
+                 retirement is of the CONTROL-PANEL stack's backgrounds, which
+                 the `ConfiguratorLayer`s below now carry, and the error card
+                 stands outside the `Configurator` in the `v-else-if` branch
+                 above it. It keeps the shim deliberately — it is a lone
+                 bordered card on an empty route, with no layered chassis around
+                 it to belong to. The census that governs the shim is re-measured
+                 at `style.css`'s own declaration. -->
+            <!-- X.F.W14.g — OA-43 ("why is the controls items, these sidebars and
+                 elements, so gray and grayed out?"). The producer's shell is a
+                 `glass-floating` plate: its light veil is `oklch(0.28 0.035 70 / 0.18)`
+                 smoke over the paper, measured rgb(215 212 207). The stage covers it
+                 with its own `--card` card, but the controls aside had nothing over it,
+                 so the controls sat on the smoke beside a cream stage, and the
+                 muted ink read 4.44:1. No opacity, filter or inert was on any
+                 ancestor. The studio is an opaque instrument on paper, so it takes
+                 glass's named OPAQUE escape (`.glass-opaque` = `--glass-level: 0` →
+                 solid `--card` + `blur(0)`, docs/canon/glass-system.md). Its veil
+                 then resolves to the same `--card` the stage and every other fourier
+                 pane paint. -->
+            <!-- X.F.W14V.s2 (glass half, adopted early) — O-75 CONFIGURATOR-DETACHED
+                 (glass 10.1.0, COHESION §0dd). The owner's frame
+                 (`owner-2026-09-24-configurator-shell-band.png`) showed the shell
+                 plate in the gutter between the stage and the controls pane, so
+                 the two did not read as two surfaces. `layout="detached"` paints
+                 no shell plate: the stage and the aside are each glass's own card
+                 over the `--configurator-detached-gap`, and the page ground shows
+                 between them. `.glass-opaque` stays: its `--glass-level: 0`
+                 inherits into both cards, so each is the solid `--card` of OA-43,
+                 and the shell it sits on paints nothing. -->
+            <Configurator scroll-mode="auto" layout="detached" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
-                    <div class="viz-panel-right canvas-stage" :class="{ 'panel-inactive': mobileView !== 'canvas' && !isDesktop }">
-                        <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour, 'canvas-clickable': !hasImage && !hasData }" @click="onCanvasClick">
+                    <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark (glass's
+                         indeterminate Progress; the retired transparent-topped ring is
+                         gone), announced as a status. -->
+                    <div v-if="stageLoading" class="stage-state" role="status">
+                        <Progress :model-value="null" variant="liquid" size="sm" class="stage-busy-bar"
+                            :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'" />
+                        <p class="text-caption text-muted-foreground">{{ isSavedRoute ? "Loading the visualization…" : "Loading the workspace…" }}</p>
+                    </div>
+                    <!-- Error (no workspace). X.F.W14.u — UIA-F-4: route-aware copy
+                         naming the slug that failed; UIA-F-49: the button's own label
+                         carries the meaning. Inside the stage (UIA-F-70). -->
+                    <!-- X-DS pass 12 · DS-F14-C1: the stage is the one frame. The
+                         message is composed on it directly, on the empty stage's
+                         type roles (the route's h1, the body lede, the caption
+                         diagnosis, one centred action row). NotFoundCard keeps its
+                         Card for the catch-all route only, where it sits on the page
+                         ground; here it was a resting plate inside a resting plate. -->
+                    <div v-else-if="stageError" class="stage-state stage-error" data-testid="not-found">
+                        <h1 class="stage-error-title font-serif-math">
+                            {{ isSavedRoute ? "Could not open this visualization" : "Could not load this workspace" }}
+                        </h1>
+                        <!-- X-DS pass 13 · DS-F15-C4: the quoted slug is one token; its
+                             hyphens are not break points, so the line breaks before it. -->
+                        <p class="stage-error-lede text-body text-muted-foreground">
+                            {{ isSavedRoute ? "No saved visualization loaded from" : "No image loaded from" }}
+                            <span class="whitespace-nowrap">“{{ isSavedRoute ? route.params.visualizationSlug : route.params.imageSlug }}”.</span>
+                        </p>
+                        <!-- X-DS pass 13 · DS-F15-C2: glass's own mono rung (fira-code lost
+                             to text-caption's font-family in the utility order). -->
+                        <p v-if="stageErrorDetail" class="stage-error-lede text-mono-small break-all text-muted-foreground">{{ stageErrorDetail }}</p>
+                        <div class="stage-error-actions">
+                            <!-- X-DS F3 · DS-F3-C4: the same action, the same glyph as the empty stage's primary. -->
+                            <Button emphasis="primary" size="md" @click="store.reset(); router.push('/visualize')">
+                                <Upload />
+                                Upload a new image
+                            </Button>
+                            <!-- X-DS pass 13 · DS-F15-C3: the quiet rung, as on the empty
+                                 stage: one primary, one quiet action, one cast stack. -->
+                            <Button emphasis="text" size="sm" @click="store.reset(); router.push('/gallery')">
+                                Browse the gallery
+                            </Button>
+                        </div>
+                    </div>
+                    <!-- X.F.W14V.u1 — UIA-F-14 ⊕ F-93 ⊕ F-182 ⊕ F-244: this stage (the
+                         canvas, the editor with its ref and listeners, both docks,
+                         the equation panel) is the ONE live stage. Fullscreen moves
+                         it into the takeover's host rather than mounting a copy, so
+                         an edit, a view toggle or an Export there is this stage's. -->
+                    <Teleport v-else :to="fsHost" :disabled="!stageInTakeover">
+                    <div class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
+                        :data-dock-expanded="dockExpanded || undefined"
+                        :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && tabbed }">
+                        <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
                                 :show-ghost="showGhost" :show-image-overlay="showImageOverlay" />
-                            <input ref="canvasFileInput" type="file" accept="image/*" class="hidden" @change="onCanvasFileSelect" />
                         </div>
-                        <div v-if="store.contour" class="editor-shell" :class="{ 'is-hidden': !isEditing }">
+                        <!-- X.F.W13.c — the ONE upload affordance (owner frame 4). The
+                             sidebar's "Drop or click to upload — PNG/JPG/SVG ≤ 10 MB" card
+                             retired; click-to-browse (a glass Button) and the format/size
+                             line (the producer's caption type) live here, and the drop
+                             target signals while a file is dragged over the page. -->
+                        <!-- X.F.W14U.vstage — UIA-F-69 ⊕ F-165 ⊕ F-237: the empty stage had no
+                             hierarchy (one secondary 240×44 button in a blank stage, no
+                             heading, nothing saying what the tool does). It is composed on
+                             glass's type roles: the route's one h1, a lede, the primary
+                             action (primary emphasis, copy per pointer), the format line, a
+                             secondary path to the gallery; a rejected file or a failed
+                             upload is said here, where it was dropped (UIA-F-166 ⊕ F-167). -->
+                        <!-- X-DS pass 8 · DS-F8X-C2: the empty stage shows the app's
+                             paper grid (glass's `.paper-grid`, identity), as the
+                             origin's empty canvas did, so it reads as a drawing
+                             surface awaiting its outline, not a blank plate.
+                             X-DS pass 9 · DS-F9X-C1: at the origin's faint register
+                             (its own layer, the `.band-grid` idiom), not the page
+                             ground's strength, since the plate carries reading text. -->
+                        <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
+                            <div class="drop-target-grid paper-grid" aria-hidden="true" />
+                            <!-- X-DS DS-F4R-C1: the zone draws no frame of its own.
+                                 The stage's hairline is the frame, and the stage's
+                                 ring is the one drop signal. -->
+                            <div class="drop-zone">
+                                <h1 class="drop-target-title font-serif-math">Draw any outline in circles</h1>
+                                <p class="drop-target-lede text-body text-muted-foreground">
+                                    Upload an image: its outline is traced and redrawn by a Fourier series, a chain of rotating circles.
+                                </p>
+                                <Button emphasis="primary" size="md" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
+                                    <Upload v-if="!store.uploading" />
+                                    {{ primaryUploadLabel }}
+                                </Button>
+                                <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
+                                <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
+                                <!-- X-DS DS-F4R-C7: the second path is an action in the
+                                     zone, not a footnote outside it. X-DS F2R · DS-F2R-C4:
+                                     it is glass's link rung (`text`, accent ink) at `sm`,
+                                     so it reads as a command, not a second caption, at one
+                                     size at every width; the format caption sits between
+                                     it and the primary. -->
+                                <Button emphasis="text" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
+                            </div>
+                        </div>
+                        <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
+                             (the canvas no longer paints a dashed "drop here" box). -->
+                        <div v-if="firstCompute" class="stage-state stage-state--over" role="status">
+                            <Progress :model-value="null" variant="liquid" size="sm" class="stage-busy-bar"
+                                aria-label="Computing the Fourier decomposition" />
+                            <p class="text-caption text-muted-foreground">Computing the Fourier decomposition…</p>
+                        </div>
+                        <!-- UIA-F-15: out of edit mode the editor is opacity-hidden but
+                             mounted; `inert` keeps it out of the tab order and the
+                             pointer, so a hidden surface can never hold focus. -->
+                        <div v-if="store.contour" class="editor-shell" :class="{ 'is-hidden': !isEditing }" :inert="!isEditing">
                             <ContourEditorCanvas ref="editorRef" :contour="store.contour"
                                 :image-slug="store.imageSlug" :show-image-overlay="showImageOverlay"
+                                :show-ghost="showGhost"
                                 @state-change="onEditorStateChange" />
                         </div>
 
                         <!-- Top controls dock -->
-                        <div v-if="hasData || (isEditing && store.contour)" class="controls-dock-anchor" :class="{ 'dock-centered': dockExpanded }">
+                        <div v-if="hasData || (isEditing && store.contour)" class="controls-dock-anchor">
                             <CanvasControlsDock
                                 v-model:expanded="dockExpanded"
                                 :is-editing="isEditing"
+                                v-model:is-fullscreen="showFullscreen"
                                 :show-image-overlay="showImageOverlay"
                                 :show-ghost="showGhost"
                                 :show-equation="showEquation"
                                 :has-data="!!hasData"
                                 :has-contour="!!store.contour"
                                 :publishing="publishing"
-                                @toggle-edit="isEditing = !isEditing"
-                                @toggle-fullscreen="showFullscreen = true"
+                                :published="!!store.publishedSlug"
+                                @toggle-edit="toggleEdit"
+                                @export-frame="handleExportFrame"
                                 @toggle-equation="showEquation = !showEquation"
                                 @toggle-image-overlay="showImageOverlay = !showImageOverlay"
                                 @toggle-ghost="showGhost = !showGhost"
@@ -233,7 +593,7 @@ async function onCanvasFileSelect(e: Event) {
 
                         <!-- Bottom dock -->
                         <div v-if="hasData && !isEditing" class="controls-overlay">
-                            <AnimationControls :active-bases="activeBases" @export-frame="handleExportFrame" />
+                            <AnimationControls :active-bases="activeBases" />
                         </div>
                         <div v-if="isEditing && store.contour" class="controls-overlay">
                             <EditorControlsDock :can-undo="editorState.canUndo" :can-redo="editorState.canRedo"
@@ -247,42 +607,93 @@ async function onCanvasFileSelect(e: Event) {
                                 @reset="editorRef?.resetToExtraction()" @save="onEditorSave" />
                         </div>
                     </div>
+                    </Teleport>
                 </template>
 
                 <!-- ── Controls aside: the left-panel layer stack ── -->
-                <div class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && !isDesktop }">
+                <!-- X.F.W13.c — the sidebar renders only with an image, and arrives
+                     with it (`viz-sidebar`, glass `--spring-panel`, PRM-honoured). -->
+                <Transition name="viz-sidebar" @after-leave="sidebarPresent = false">
+                <!-- X.F.W14U.s (OA-59) placed a consumer `Card` inside the aside; the
+                     shell plate still showed around it (the §0cz frame). With
+                     O-75 (X.F.W14V.s2) the aside IS glass's detached card, so the
+                     wrap is a plain column again at every width. Below lg the
+                     mobile sheet keeps its own form. -->
+                <div v-if="hasSidebar"
+                    class="viz-panel-left-wrap" :class="{ 'panel-inactive': mobileView !== 'controls' && tabbed }">
                     <Transition name="panel-swap" mode="out-in">
                         <div v-if="isEditing" key="editor-panel" class="viz-panel-left">
-                            <!-- Preview above tools -->
-                            <ContourPreview :points="editorRef?.points" />
+                            <!-- X.F.W14U.vstage — UIA-F-169: the Preview layer repeated the
+                                 stage (the editor it previews is on screen beside it) at
+                                 160 px of the aside's height; it is not mounted. -->
                             <!-- Editor tools live in the floating EditorControlsDock (B.W2.4);
                                  the static EditorToolsPanel was retired. -->
-                            <ContourSettings v-if="hasImage" v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
+                            <!-- X.F.W3 `.e` / `fr-VisualizationView MAJ-5` FOLD -> `fr-ContourSettings
+                                 M-16`, the HOST half of section-5a split (4). `.d` declared the
+                                 panel's contract INBOUND-ONLY at `be623d9` after
+                                 measuring that every use of the pair inside it is a
+                                 READ; these two mounts advertised a writeback the
+                                 panel structurally could not perform, and the
+                                 reader could not tell from either end which child
+                                 owned the two scalars. Nothing regresses: the
+                                 writeback never worked. -->
+                            <!-- X-DS pass 2 · DS-F2-C20: the only layer here, so it
+                                 mounts open (collapsed, it left ~730 px of empty plate). -->
+                            <ContourSettings v-if="hasImage" default-open :n-harmonics="nHarmonics" :n-points="nPoints" />
                         </div>
                         <div v-else key="viz-panel" class="viz-panel-left">
                             <ImageUpload />
                             <Transition name="slide-down">
-                                <BasisSelector v-if="hasData" :active-bases="activeBases"
-                                    v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints"
-                                    @update:active-bases="activeBases = $event" />
+                                <!-- MAJ-5's second limb: the SAME TAG spelled one
+                                     two-way binding two ways — `v-model:` for the
+                                     scalars and a hand-written prop+listener pair
+                                     for the bases. `BasisSelector` declares
+                                     `update:activeBases` like the other two, so
+                                     the third binding is written like the other
+                                     two. -->
+                                <BasisSelector v-if="hasData"
+                                    v-model:active-bases="activeBases"
+                                    v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
                             </Transition>
                             <Transition name="slide-down">
-                                <ContourSettings v-if="hasImage" v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
+                                <ContourSettings v-if="hasImage" :n-harmonics="nHarmonics" :n-points="nPoints" />
                             </Transition>
                             <Transition name="slide-down">
-                                <CoefficientsPanel v-if="store.epicycleData || store.computing" />
+                                <!-- UIA-F-169: the spectrum rows are the one amplitude view (no
+                                     bar chart above them). A2-FO-L1-6: the one panel /equation mounts. -->
+                                <CoefficientsPanel
+                                    v-if="store.epicycleData || store.computing"
+                                    :components="store.epicycleData?.components ?? []"
+                                    empty-text="Compute epicycles to see coefficients"
+                                    unit="terms"
+                                />
                             </Transition>
                         </div>
                     </Transition>
                 </div>
+                </Transition>
             </Configurator>
         </div>
 
+        <Dialog :open="leaveAsk" @update:open="leaveAsk = $event">
+            <DialogContent surface="opaque" class="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>Leave with unsaved edits?</DialogTitle>
+                    <DialogDescription>
+                        The contour has edits that are not saved. Save them, discard them, or keep editing.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button emphasis="quiet" @click="leaveAsk = false">Keep editing</Button>
+                    <Button emphasis="secondary" @click="discardAndLeave">Discard</Button>
+                    <Button emphasis="primary" @click="saveAndLeave">Save</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
         <ExportModal v-if="showExport" :has-epicycles="hasEpicycles" @export="doExport" @close="showExport = false" />
-        <FullscreenViewer :visible="showFullscreen" :active-bases="activeBases" :show-ghost="showGhost"
-            :show-image-overlay="showImageOverlay" :is-editing="isEditing" :contour="store.contour ?? undefined"
-            :image-slug="store.imageSlug" @close="showFullscreen = false"
-            @toggle-ghost="showGhost = !showGhost" @toggle-image-overlay="showImageOverlay = !showImageOverlay" />
+        <FullscreenViewer :visible="showFullscreen" :is-editing="isEditing"
+            @update:host="fsHost = $event" @close="showFullscreen = false" />
     </div>
 </template>
 
@@ -292,11 +703,22 @@ async function onCanvasFileSelect(e: Event) {
    makes it flex-fill the workspace column and tunes the aside (controls)
    width band to match the prior left-panel widths. The substrate's intrinsic
    arrangement is stage-first (canvas) + controls-aside; the prior bespoke
-   grid was controls-left + canvas-right. */
-.viz-configurator {
+   grid was controls-left + canvas-right.
+
+   glass-ui 10.0.0 wraps the grid (`[data-slot="configurator"]`) in an outer
+   `.configurator-shell`, and the component's `class` prop lands on that shell
+   (the height envelope); the grid is its child. The consumer class therefore
+   names the shell, and every rule below reaches it — and the grid inside — with
+   `:deep()`, because the shell is not this component's scoped root (that is the
+   producer's `display: contents` expand host, which carries `data-sidebar`). */
+:deep(.viz-configurator) {
     flex: 1;
     min-height: 0;
-    margin: 0.25rem;
+    /* X.F.W14U.vstage — UIA-F-237: at 390 the chassis sat 4 px from the
+       viewport edge. X.F.W14V.au1 — A2-FO-L3-6: the inline margin is the ONE
+       page gutter at every width (it was 8 px at desktop beside the gallery's
+       16), so the content edge holds across a nav switch. */
+    margin: 0.25rem var(--page-gutter);
 }
 
 /* I.ε — the View-Transitions morph anchor. The canvas stage is the persistent
@@ -314,37 +736,99 @@ async function onCanvasFileSelect(e: Event) {
         }
     }
 }
+/* The aside band rides the producer's `--configurator-aside-{min,max}` pair
+   (read by the grid's two-column container rule), set on the shell and
+   inherited by the grid: it tracks the prior 360/400/440px left-panel widths.
+   X.F.W14U.s widened each bound by two `--space-body` insets; X.F.W14V.s2
+   keeps that band: the insets are now glass's detached aside card's own
+   padding and edge, and without them the layer headers ellipsised their
+   labels ("Decompos…") beside the header reset (O-68). */
 @media (min-width: 1024px) {
-    .viz-configurator {
-        margin: 0.5rem;
-        margin-bottom: 0.75rem;
-        /* aside band tracks the prior 360/400/440px left-panel widths. */
-        grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+    :deep(.viz-configurator) {
+        margin: 0.5rem var(--page-gutter) 0.75rem;
+        --configurator-aside-min: calc(320px + 2 * var(--space-body));
+        --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }
 }
 @media (min-width: 1280px) {
-    .viz-configurator { grid-template-columns: minmax(0, 1fr) minmax(360px, 400px); }
+    :deep(.viz-configurator) { --configurator-aside-min: calc(360px + 2 * var(--space-body)); --configurator-aside-max: calc(400px + 2 * var(--space-body)); }
 }
 @media (min-width: 1536px) {
-    .viz-configurator { grid-template-columns: minmax(0, 1fr) minmax(400px, 440px); }
+    :deep(.viz-configurator) { --configurator-aside-min: calc(400px + 2 * var(--space-body)); --configurator-aside-max: calc(440px + 2 * var(--space-body)); }
 }
-/* On mobile the Configurator stacks (grid-cols-1); the `panel-inactive`
-   toggle inside each slot drives the tab switch. */
-@media (max-width: 1023px) {
-    .viz-configurator { display: flex; flex-direction: column; }
+/* The sheet form (`data-form="sheet"`, X.F.W14V.au1: read from glass's shell,
+   not the viewport): one column, and the `panel-inactive` toggle inside each
+   slot drives the tab switch. */
+/* X.F.W14U.s — the column may not outgrow the shell: as the shell grid's one
+   `auto` track item its automatic minimum was its content's min-content
+   (a 393 px sheet in a 380 px shell at 390, clipped 8 px past the viewport
+   edge). `min-width: 0` lets the track fit the shell; the sheet's form is
+   unchanged. */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
 
-    /* When the Configurator drops its desktop grid for the mobile flex column,
-       glass-ui's `.configurator-stage` cell becomes a `flex: 0 1 auto` item
-       and — since the canvas-container inside is `position: absolute` — it has
-       no intrinsic height, collapsing the stage to 0px (the `<canvas>` renders
-       at ~4px and the bottom AnimationControls dock floats up under the sticky
-       header). On the desktop grid the cell drew its height from the grid
-       track; in the flex column it must grow explicitly. Make the active stage
-       cell flex-fill the column so the canvas + bottom dock lay out correctly. */
-    .viz-configurator :deep(.configurator-stage) {
-        flex: 1 1 0%;
-        min-height: 0;
-    }
+/* When the Configurator drops its desktop grid for the mobile flex column,
+   glass-ui's `.configurator-stage` cell becomes a `flex: 0 1 auto` item
+   and — since the canvas-container inside is `position: absolute` — it has
+   no intrinsic height, collapsing the stage to 0px (the `<canvas>` renders
+   at ~4px and the bottom AnimationControls dock floats up under the sticky
+   header). On the desktop grid the cell drew its height from the grid
+   track; in the flex column it must grow explicitly. Make the active stage
+   cell flex-fill the column so the canvas + bottom dock lay out correctly. */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-stage) {
+    flex: 1 1 0%;
+    min-height: 0;
+}
+/* X.F.W14U.vstage — with the Controls tab up the stage's one child is
+   `display: none`, and the growing empty cell took the column's leftover
+   height as a blank band above the sheet (exposed once the Image layer
+   became a compact row, UIA-F-169). The inactive stage takes no height. */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)) {
+    flex: 0 0 0%;
+}
+/* X.F.W14V.s2 — detached, the stage is its own card: an empty inactive
+   stage would still paint its 1 px border and cast as a line under the
+   tabs, and hold a detached gap above the sheet. The inactive stage takes
+   no box at all, so the mobile sheet reads as before. */
+/* X-DS pass 4 · DS-F6-C1 — the mirror case: with the Canvas tab up the
+   detached aside is an empty card too, and kept its box as a 2 px strip
+   painting its border and cast as an orphan rule under the stage. The
+   inactive aside takes no box either (/equation's rule, same marker). */
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-stage:has(> .panel-inactive)),
+.viz-workspace[data-form="sheet"] :deep(.viz-configurator .configurator-aside:has(.viz-panel-left-wrap.panel-inactive)) {
+    display: none;
+}
+
+/* X.F.W14V.au1 — A2-FO-L2-4 ⊕ X-1: the rail form (landscape, narrower than
+   glass's split). Short landscape (844×390) spent 128 of 390 px on chrome with
+   the controls a tab away and the docks over the stage; tablet landscape
+   (1024×768) stacked a 285 px stage strip over a centred column. Here the two
+   regions sit in a row: the stage takes the width, the aside is a rail beside
+   it (glass's detached gap between them), each its own glass card. */
+.viz-workspace[data-form="rail"] :deep(.viz-configurator > [data-slot="configurator"]) {
+    display: flex;
+    flex-direction: row;
+    min-width: 0;
+}
+.viz-workspace[data-form="rail"] :deep(.viz-configurator .configurator-stage) {
+    flex: 1 1 0%;
+    min-width: 0;
+    min-height: 0;
+}
+.viz-workspace[data-form="rail"] :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
+    flex: 0 0 clamp(16rem, 38%, 22rem);
+    min-height: 0;
+    border-block-start-width: 0;
+}
+
+/* X-DS pass 3 · DS-F3-C8 — the split form's aside card hugs its sections.
+   Stretched to the stage's row, the plate ran on as an empty slab under them
+   (122 px on the default view, ~390 px under the contour editor's one layer);
+   the ORIGIN cards hugged their content. It starts at the row's top, is as
+   tall as its sections, and at most the stage's height, past which glass's
+   own fading scroll (the aside's flex child) scrolls inside it. */
+.viz-workspace:not([data-form="sheet"]):not([data-form="rail"]) :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
+    align-self: start;
+    max-block-size: 100%;
 }
 
 /* ── Left panel (controls aside body) ── */
@@ -358,16 +842,36 @@ async function onCanvasFileSelect(e: Event) {
     min-height: 0;
     flex: 1;
 }
-@media (min-width: 1024px) { .viz-panel-left-wrap { max-width: none; margin: 0; } }
+/* X.F.W14V.s2 — the X.F.W14U.s lg placement rule (an inset margin for the
+   consumer Card) is deleted with the Card: the aside is glass's detached card,
+   and glass owns the gap (`--configurator-detached-gap`). */
 
+/* F.W1 / FR-CP-13 ⊕ FR-CP-24 — THE GAP DECISION, made once for both rows.
+   At the adopted pin the producer FUSES adjacent inspector sections
+   (`configurator/styles.css`: a section with a following sibling squares its
+   bottom corners and drops its bottom border; a section preceded by one squares
+   its top corners and collapses `margin-block-start` to 0) so that one
+   inspector reads as ONE contiguous grouped list. That join assumes the stack
+   spaces its children with MARGINS — which is exactly what a flex `gap` is not,
+   and a `gap` the producer cannot cancel is what turns the fused group into
+   flat-ended rectangles floating 12px apart, with FR-CP-24's `border-b`
+   hairlines terminating in the same air.
+   The decision is to KEEP THE FUSING (glass-ui-first: the producer ruled the
+   grouped-list read) and to move this stack's spacing off `gap` and onto the
+   children the fusing does NOT claim. The layers touch, the shared hairline is
+   the one between them, and the non-layer cards above keep their 12px. */
+/* X-DS DS-F-C4: no inset — the layer group's hairline is the aside's own
+   edge (glass fuses the layers), not a second ring 8 px inside it. */
 .viz-panel-left {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
     width: 100%;
-    padding: 0.5rem;
+    padding: 0;
     min-height: 0;
     flex: 1;
+}
+.viz-panel-left > :not(.configurator-layer):not(:last-child) {
+    margin-block-end: 0.75rem;
 }
 
 /* ── Right panel (the Configurator #stage cell body) ── */
@@ -389,6 +893,29 @@ async function onCanvasFileSelect(e: Event) {
 /* ── Canvas crossfade ── */
 /* Both canvases are always absolutely positioned so switching between them
    is a pure opacity crossfade with no layout shift. */
+/* X.F.W14V.u4 — UIA-F-239: the legend's first row (BasisCanvas reads this).
+   Below `sm` the expanded canvas dock (anchored 0.5rem in, glass's `--dock-h`
+   tall) spans the stage's width, so the legend starts under it; wider, the
+   dock sits right of the legend and the legend keeps its 16 px.
+   X-DS pass 5 · DS-F7-C6: keyed on the dock's state, not the width alone. A
+   collapsed dock is two buttons at the top right, so the legend keeps its
+   16 px and shares the toolbar row, as it does at 1440. */
+.canvas-stage {
+    --legend-inset-top: 16px;
+    /* X-DS pass 8 · DS-F10-C2: the legend's and the epicycle inset's shared
+       inline-start edge. */
+    --stage-inset-inline: 16px;
+    /* X-DS pass 4 · DS-F4-C8: the epicycle inset sits above the bottom dock's
+       reserved block (`.controls-overlay`'s offset plus glass's `--dock-h`),
+       with the inset's own 12 px over it. */
+    --epicycle-inset-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px) + var(--dock-h) + 12px);
+}
+@media (width < 40rem) {
+    .canvas-stage[data-dock-expanded] {
+        --legend-inset-top: calc(0.5rem + var(--dock-h) + 1rem);
+    }
+}
+
 .canvas-stage > .canvas-container,
 .canvas-stage > .editor-shell {
     position: absolute;
@@ -409,23 +936,42 @@ async function onCanvasFileSelect(e: Event) {
 }
 
 /* ── Controls overlay ── */
+/* X.F.W14V.au1 — A2-FO-L2-2 (consumer half): the bottom docks clear the home
+   indicator. The overlay read no inset, so on a phone the animation dock ended
+   16 px inside the 34 px zone (in the stage and, teleported, in the takeover).
+   glass's `--safe-block-end` root token is the producer half (O-74); until it
+   lands the overlay adds the inset itself. */
 .controls-overlay {
     position: absolute;
-    bottom: 0.75rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
     left: 0.375rem;
     right: 0.375rem;
     z-index: var(--z-controls);
     display: flex;
     justify-content: center;
     pointer-events: none;
-    overflow: visible;
 }
 .controls-overlay > * { pointer-events: auto; }
 
-/* ── Transitions (A.W3.d — bezier→tokens; transition:all→named properties) ── */
-.expand-pop-enter-active { transition: opacity 0.3s var(--ease-standard), transform 0.35s var(--ease-apple-spring); }
-.expand-pop-leave-active { transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard); }
-.expand-pop-enter-from, .expand-pop-leave-to { opacity: 0; transform: scale(0.3); }
+/* X.F.W4 · SP-6 / `fr-VisualizationView L-17 · D-16 · MIN-3` — the dead-CSS
+   census, all five declarations, deleted with their zero-consumer proofs:
+
+     • `overflow: visible` on `.controls-overlay` (just above) restated the
+       initial value, so it was inert — and worse than inert, because its
+       evident intent is structurally defeated by TWO ancestors
+       (`.viz-panel-right { overflow: hidden }`, and the producer stage cell's
+       own `overflow-hidden`). It was simultaneously a no-op AND a false
+       "escape permitted" signal to the next reader, which is the expensive
+       half.
+     • the three `.expand-pop-*` rules styled a Vue <Transition> that appeared
+       nowhere in this file: at the bytes this seat measured, every occurrence
+       of the name was one of the three rules themselves, and no template node
+       carried it. Their `transform` leg additionally consumed
+       `--ease-apple-spring`, which is declared in NO tree — ⟨cmd⟩ `grep -roh --
+       '--ease-apple-spring' node_modules/@mkbabb/glass-ui/dist | wc -l` → 0,
+       re-run at this pin.
+     • `.viz-grid`, in the narrow-viewport band, was the same shape: a class no
+       element in this file carried. */
 
 .panel-swap-enter-active, .panel-swap-leave-active { transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard); }
 .panel-swap-enter-from { opacity: 0; transform: translateY(4px); }
@@ -439,48 +985,228 @@ async function onCanvasFileSelect(e: Event) {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s var(--ease-standard); }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* ── Mobile panel toggle ── */
-@media (max-width: 1023px) {
-    .panel-inactive {
-        display: none;
-    }
+/* ── Sheet panel toggle ── (`panel-inactive` is only set in the sheet form) */
+.panel-inactive {
+    display: none;
 }
 
-/* ── Controls dock positioning ── */
+/* ── Controls dock positioning ──
+   X.F.W14.u — UIA-F-5: the dock is right-anchored at every width. Below lg the
+   expanded dock was re-seated at `left: 50%; right: auto`, and an absolute box
+   with those insets shrinks-to-fit into HALF its container: at 390 the 254 px
+   layer sat in a 121 px box, the persistent Edit control overlapped Σ Equation
+   (a tap on Σ entered edit mode), and Fullscreen lay outside the plate. Anchored
+   by `right` alone, the shrink-to-fit width is the whole stage, so the dock is
+   its content's width (dock README: fit-content), and it clears the legend. */
 .controls-dock-anchor {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
     z-index: var(--z-controls);
-    /* A.W3.d — bezier→`--ease-out-expo`. */
-    transition: left 0.3s var(--ease-out-expo),
-                right 0.3s var(--ease-out-expo),
-                transform 0.3s var(--ease-out-expo);
 }
 
-.controls-dock-anchor.dock-centered {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+/* ── X.F.W13.c — the main area's drop target (the one upload affordance) ── */
+.drop-target {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    /* X-DS pass 10 · DS-F12-C4: the zone fills the stage's content box.
+       X-DS F2R · DS-F2R-C3: inset by the residue step, not the card pad, so
+       the dashed edge hugs the plate's own edge (one frame, not a frame drawn
+       12 px inside a frame) and a phone keeps its gutter. */
+    padding: var(--space-residue);
+    text-align: center;
+    pointer-events: none;
+    z-index: var(--z-controls);
+}
+/* X-DS pass 8 · DS-F8X-C2: the grid is pinned to the viewport, so its lines
+   register with the page ground's grid round the plate (the `.band-grid`
+   idiom on /morph).
+   X-DS pass 9 · DS-F9X-C1: at the page ground's strength (glass's
+   `--paper-grid-opacity`, 0.08: majors at 12.8 %, minors at 8 %) the lines ran
+   through the title, the lede and the caption. The plate reads at the origin's
+   faint register, an effective `--paper-grid-opacity` of 0.035. Glass derives
+   its line inks from the knob at `:root`, so re-setting the knob on a scope is
+   inert; the layer's opacity is the ratio of the two instead, so it follows
+   the token. No local colour, gradient or mask. */
+.drop-target-grid {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-attachment: fixed;
+    opacity: calc(0.035 / var(--paper-grid-opacity));
+}
+/* X.F.W14U.vstage — the empty state's hierarchy (UIA-F-69): the title, then the
+   lede one step down, then the action; the gallery path sits apart below.
+   X-DS pass 14 · DS-F16-C2: the route's h1 is on ONE rung app-wide — the
+   /morph title's (display-1 at 400). Both stage messages (empty and load
+   error) were on display-2 at 700, louder than any route's title. */
+.drop-target-title,
+.stage-error-title {
+    margin: 0;
+    max-inline-size: 18ch;
+    font-size: var(--type-display-1);
+    line-height: var(--type-leading-display);
+    font-weight: 400;
+    text-wrap: balance;
+}
+/* X-DS pass 15 · DS-F17-C2: the empty-stage title takes its own measure. The
+   shared 18ch cap balanced "Draw any outline in circles" short-first ("Draw
+   any" over a long second line) and forced two lines on a stage wide enough
+   for one. Uncapped, it sets on one line at desktop and balance breaks it
+   evenly at phone width. The load-error title keeps the 18ch cap. */
+.drop-target-title {
+    max-inline-size: none;
+}
+.drop-target-lede {
+    margin: 0 0 0.75rem;
+    max-inline-size: 52ch;
+    text-wrap: pretty;
+}
+.drop-target-message {
+    color: var(--destructive);
+    max-inline-size: 42ch;
+}
+.drop-target > * {
+    pointer-events: auto;
+}
+/* The empty stage's prompt and its action, centred in the stage. It draws no
+   frame of its own (X-DS F4R · DS-F4R-C1): the stage's hairline is the frame
+   at rest and the stage's ring (below) is the one drop signal. */
+.drop-zone {
+    flex: 1;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem 1.5rem;
+}
+/* X-DS pass 4 · DS-F4-C9: on a phone the prompt sits on the app's one gutter,
+   not two stacked 1.5rem insets, so the balanced title takes two lines
+   ("Draw any / outline in circles"), never "outline" alone on a line. */
+@media (width < 40rem) {
+    .drop-zone {
+        padding-inline: var(--page-gutter);
+    }
+}
+/* UIA-F-166 — the whole stage signals a file dragged over it; inset, so the
+   Configurator's rounded stage cell draws it on its own rim. With an image, a
+   drop here replaces it.
+   X-DS F4R · DS-F4R-C1: this ring is the ONE drop signal, on the empty and
+   the loaded stage alike. The dashed rim 5px inside it and the ring round the
+   Choose button fired on the same drag and drew three frames at once; both
+   are deleted. */
+.canvas-stage[data-dragging]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px var(--focus-ring-color);
+    pointer-events: none;
+    z-index: var(--z-controls);
 }
 
-@media (min-width: 1024px) {
-    .controls-dock-anchor,
-    .controls-dock-anchor.dock-centered {
-        left: auto;
-        right: 0.5rem;
+/* ── X.F.W14U.vstage — the stage's whole-route states (UIA-F-70 ⊕ F-73) ──
+   The cold load, the load error and the first compute render inside the
+   stage cell, centred, so the chassis never leaves. */
+.stage-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 100%;
+    padding: 1.5rem 1rem;
+}
+.stage-state--over {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    z-index: var(--z-controls);
+    pointer-events: none;
+}
+/* X-DS pass 12 · DS-F14-C1 — the load error on the stage's own frame: the
+   empty stage's title and lede measures, the diagnosis under them, and one
+   centred action group (a column since pass 14). */
+.stage-error {
+    text-align: center;
+}
+.stage-error-lede {
+    margin: 0;
+    max-inline-size: 52ch;
+    text-wrap: pretty;
+}
+/* X-DS pass 14 · DS-F16-C5: one action grammar for the stage's two states —
+   the drop zone's centred column (primary, then the second path beneath on
+   the zone's gap), both primaries on the page-action rung (md), both second
+   paths on glass's link rung at sm (F2R · DS-F2R-C4). */
+.stage-error-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+.stage-busy-bar {
+    inline-size: min(12rem, 60%);
+}
+
+/* ── X.F.W13.c — the sidebar arrives with content ──
+   The producer's aside is always in the Configurator's DOM (8.0.0; also at glass
+   src 10.0.1), so the host owns its column: with no image the aside takes no box
+   and its band closes to zero, and the stage fills the full width. When an image
+   lands the band opens on the glass panel spring while the content translates in
+   on the same pair; it leaves on the panel exit clock. Motion only from the glass
+   motion tokens; under reduced motion none of it moves. */
+:deep(.viz-configurator > [data-slot="configurator"]) {
+    transition:
+        grid-template-columns var(--spring-panel-duration) var(--spring-panel),
+        gap var(--spring-panel-duration) var(--spring-panel);
+}
+/* X.F.W14V.s2 — with the aside closed the detached gap closes with its band
+   (glass's `--configurator-detached-gap`), so the stage card fills the studio. */
+[data-sidebar="none"] > :deep(.viz-configurator) {
+    --configurator-aside-min: 0px;
+    --configurator-aside-max: 0px;
+    --configurator-detached-gap: 0px;
+}
+[data-sidebar="none"] > :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
+    display: none;
+}
+.viz-sidebar-enter-active {
+    transition: opacity var(--spring-panel-duration) var(--ease-out),
+                transform var(--spring-panel-duration) var(--spring-panel);
+}
+.viz-sidebar-leave-active {
+    transition: opacity var(--spring-panel-exit-duration) var(--ease-in),
+                transform var(--spring-panel-exit-duration) var(--ease-in);
+}
+.viz-sidebar-enter-from,
+.viz-sidebar-leave-to {
+    opacity: 0;
+    transform: translateX(var(--enter-overlay-slide, 0.5rem));
+}
+@media (prefers-reduced-motion: reduce) {
+    :deep(.viz-configurator > [data-slot="configurator"]),
+    .viz-sidebar-enter-active,
+    .viz-sidebar-leave-active {
+        transition: none;
+    }
+    .viz-sidebar-enter-from,
+    .viz-sidebar-leave-to {
+        opacity: 1;
         transform: none;
     }
 }
 
-/* ── Clickable canvas placeholder ── */
-.canvas-clickable {
-    cursor: pointer;
-}
-
 /* ── Mobile ── */
 @media (max-width: 900px) {
-    .viz-grid { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
-    .controls-overlay { left: 0.5rem; right: 0.5rem; bottom: 0.75rem; }
+    .controls-overlay { left: 0.5rem; right: 0.5rem; }
 }
 </style>

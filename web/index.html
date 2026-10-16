@@ -7,28 +7,99 @@
         <meta name="description" content="An interactive treatise on Fourier analysis and orthogonal decomposition — epicycle visualizations, an equation explorer, and a full typeset paper deriving the transform through the dual lenses of linear algebra and complex analysis." />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-        <!-- Preload the critical CM Serif body + bold faces (used on every page).
-             Same-origin, vendored under /public/fonts — no crossorigin attribute. -->
-        <link rel="preload" href="/fonts/Serif/cmunrm.woff" as="font" type="font/woff" />
-        <link rel="preload" href="/fonts/Serif/cmunbx.woff" as="font" type="font/woff" />
-        <link rel="preload" href="/fonts/Serif/cmunti.woff" as="font" type="font/woff" />
+        <!-- X.F.W4 / SP-10 · FR-AH-36 — the CM preloads, made matchable.
+
+             `crossorigin` is NOT about the origin. A font fetched by
+             `@font-face` is ALWAYS made in CORS-anonymous mode, so a preload
+             WITHOUT the attribute occupies a different cache key and can never
+             be matched by the fetch it exists to warm — the previous comment's
+             same-origin reasoning was wrong on the platform rule, and these
+             three files (402,944 B) were fetched at highest priority on every
+             route and then discarded, twice over: the faces also had no
+             consumer, because `--font-serif`/`--font-serif-math` resolved to an
+             unloaded Plus Jakarta stack (FR-AH-2).
+
+             Both halves of FR-AH-36's alternative are now met — the faces have
+             a consumer (the CM identity is committed at `style.css`'s `@theme`)
+             and the preloads can match — so they live rather than die. The
+             remaining question is how many of the three belong in the critical
+             set at all; that is FR-AH-1's boot-payload budget, measured with
+             the JSON prune and not guessed here. -->
+        <link rel="preload" href="/fonts/Serif/cmunrm.woff" as="font" type="font/woff" crossorigin />
+        <link rel="preload" href="/fonts/Serif/cmunbx.woff" as="font" type="font/woff" crossorigin />
+        <link rel="preload" href="/fonts/Serif/cmunti.woff" as="font" type="font/woff" crossorigin />
 
         <!-- Self-hosted webfonts: Computer Modern Serif body face + Fraunces
              (display) + Fira Code (mono). KaTeX CSS is bundler-imported in
              main.ts (fingerprinted, same-origin). Zero third-party origins. -->
         <link rel="stylesheet" href="/fonts.css" />
 
+        <!-- X.F.W4 / SP-6 · FR-AH-30 — THE CASCADE-LAYER ORDER, declared once,
+             in the document head, before any stylesheet this document loads.
+
+             A cascade layer takes its position from where its name FIRST
+             appears, and nothing later can move it. Declaring the order inside
+             `src/style.css` does not work here and the failure is silent: Vite
+             emits SFC `<style>` output BEFORE the entry stylesheet (`main.ts`
+             imports `App.vue` above `./style.css`), so the first `@layer
+             glass-overrides { … }` block in a component registered the layer
+             FIRST — i.e. at the BOTTOM of the order, beneath `components`. That
+             is the same inverted outcome `FR-AH-30` adjudicates dead for the
+             `@layer components` remedy, reached by a different route. Measured
+             at the emitted bundle before this line existed: `glass-overrides`
+             at byte 4193, `components` at 45523.
+
+             An authored `<style>` in the head is first in document order in
+             BOTH modes — the build appends its `<link>` at the end of `<head>`,
+             and the dev server injects `<style>` elements at the end too — so
+             this is the one position that fixes the order for every layer the
+             app and its producer use. `glass-overrides` is last, which is the
+             only shape that lets a deliberate consumer override beat glass-ui's
+             `@layer components` recipes BY ORDER instead of by being unlayered.
+        -->
+        <style>@layer theme, base, components, utilities, glass-overrides;</style>
+
+        <!-- X.F.W3 `.e` / `fr-App MG-γ` ⊕ `m-2`/`L-3`/`C-7` ⊕ `R-8` — THE
+             PRE-PAINT ARM OF THE ONE DARK-MODE OWNER.
+
+             This is the ONE real file (R-10.2), and the script it carried was
+             wrong in three independent ways, all of which a dark-OS user sees
+             as a guaranteed light flash for the length of the initial chunk
+             fetch:
+
+              1. `"auto"` FELL THROUGH BOTH ARMS. `saved === "dark"` is false
+                 for it and `!saved` is false for it, so a user who has
+                 explicitly chosen "follow the system" — which is vueuse's own
+                 default value and therefore the commonest stored state — got
+                 no class at all.
+              2. `color-scheme` WAS NEVER SET (R-8's coupling). glass-ui
+                 authors its palette through `light-dark()`, which follows
+                 `color-scheme` and NOT the `.dark` class, so even the arms
+                 that fired painted a light palette until the app booted.
+              3. THE LEGACY `"theme"` KEY DISAGREED WITH THE RUNTIME. Nothing
+                 in this tree writes it (⟨cmd⟩ this seat, `grep -rn '"theme"'
+                 src` → 0) and vueuse never reads it, so a stale `theme=dark`
+                 stamped a class the runtime immediately revoked.
+
+             The cure is the adoption the row asks for rather than three
+             patches: `@mkbabb/glass-ui/dark` ships `darkModeSyncScript()`,
+             whose whole purpose is to emit exactly this string, and the app
+             already holds the dependency edge. The bytes below are that
+             function's OUTPUT at the adopted pin, verbatim — ⟨cmd⟩ re-derived
+             2026-09-23 at glass-ui 10.0.1 (313 B; 10.0.0 treats an unreadable
+             store as absent), `node --input-type=module -e 'import {
+             darkModeSyncScript } from "@mkbabb/glass-ui/dark";
+             console.log(darkModeSyncScript())'`. A static `index.html` cannot
+             import a module in the head, so it is inlined; the generator is
+             named here so a later seat re-derives the string instead of
+             editing it by hand, and `DARK_MODE_STORAGE_KEY` from the same
+             module is the key it reads.
+
+             The runtime half is `useVizColorSync()` in `lib/colors.ts`, seeded
+             `"auto"` so the parse-time answer and the runtime answer are the
+             same answer. -->
         <script>
-            // Init dark mode before first paint to prevent flash
-            // Checks both legacy key ("theme") and VueUse key ("vueuse-color-scheme")
-            (function() {
-                var legacy = localStorage.getItem("theme");
-                var vueuse = localStorage.getItem("vueuse-color-scheme");
-                var saved = vueuse || legacy;
-                if (saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-                    document.documentElement.classList.add("dark");
-                }
-            })();
+            (function(){try{try{var m=localStorage.getItem("vueuse-color-scheme")}catch(_){}var d=m==="dark"||((m==null||m==="auto")&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);var e=document.documentElement;e.classList.toggle("dark",d);e.style.colorScheme=d?"dark":"light";}catch(_){}})();
         </script>
     </head>
     <body>

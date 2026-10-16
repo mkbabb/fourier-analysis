@@ -64,17 +64,11 @@ test.describe("Contour extraction with animal images", () => {
         // Wait for Blur Sigma to be visible
         await expect(page.locator("text=Blur Sigma").first()).toBeVisible({ timeout: 5_000 });
 
-        // Adjust blur sigma via the number input next to the slider
-        const blurSection = page.locator("text=Blur Sigma").first().locator("..");
-        const blurInput = blurSection.locator('input[type="number"]');
-        if (await blurInput.count() > 0) {
-            await blurInput.fill("3");
-            await blurInput.press("Enter");
-        } else {
-            // Fallback: fill the range input
-            const blurSlider = blurSection.locator('input[type="range"]');
-            await blurSlider.fill("3");
-        }
+        // Adjust blur sigma via the numeric field beside the slider — the
+        // producer's NumberField (X.F.W13.b), a spinbutton named by its label.
+        const blurInput = page.getByRole("spinbutton", { name: "Blur Sigma" });
+        await blurInput.fill("3");
+        await blurInput.press("Enter");
 
         // Wait for debounced recomputation (1s debounce + compute time)
         await page.waitForTimeout(5000);

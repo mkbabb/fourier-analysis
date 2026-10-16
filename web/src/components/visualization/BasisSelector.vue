@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { Slider } from "@mkbabb/glass-ui/slider";
 import { Button } from "@mkbabb/glass-ui/button";
-import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
+import { ConfiguratorLayer } from "@mkbabb/glass-ui/configurator";
+import SliderControl from "@/components/ui/SliderControl.vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import { VIZ_COLORS } from "@/lib/colors";
+import { ToggleGroup, ToggleGroupItem } from "@mkbabb/glass-ui/toggle-group";
+import { ANIMATION_DEFAULTS, CONTOUR_DEFAULTS } from "@/lib/defaults";
+import { normalizeBasisKey } from "@/lib/basis";
 import { basisDisplay } from "./lib/basis-display";
-import { RotateCcw } from "lucide-vue-next";
+import { RotateCcw } from "@lucide/vue";
 
-const fourierModes = ["fourier-epicycles", "fourier-series"] as const;
+/* X.F.W14U.c1 — addendum (g), COHESION §0da: the owner reverses UIA-F-172's
+   colour limb. The basis hues are fourier's visual language on the controls as
+   on the canvas, so every control that sets a basis-owned quantity wears that
+   basis's hue from the one palette (`basisDisplay`, derived from `VIZ_COLORS`):
+   Harmonics the Fourier red, Sample Points the Chebyshev blue, and the pressed
+   basis chip its own basis tint. The one-accent token `--control-accent` is
+   deleted. */
+const FOURIER_HUE = computed(() => basisDisplay.fourier.color);
 
 const props = defineProps<{
     activeBases?: string[];
@@ -22,65 +31,85 @@ const emit = defineEmits<{
     (e: "update:nPoints", v: number): void;
 }>();
 
-/* A.W2.c — `<Slider variant="glass-scrubber">` accepts an array model; the
-   parent's scalar `nHarmonics` / `nPoints` are adapted via paired computed
-   getters/setters that wrap the emit. */
-const harmonicsModel = computed<number[]>({
-    get: () => [props.nHarmonics ?? 50],
-    set: (arr) => emit("update:nHarmonics", Math.max(1, Math.min(500, arr[0] ?? 50))),
-});
-const pointsModel = computed<number[]>({
-    get: () => [props.nPoints ?? 1024],
-    set: (arr) => emit("update:nPoints", Math.max(128, Math.min(4096, arr[0] ?? 1024))),
-});
+/* X.F.W14.h · OA-45 — the two resolution rows are the app's one control-row
+   idiom (`ui/SliderControl.vue`): label and value field on one line, the slider
+   beneath. The frame's three-line row (label; the field alone on a right-aligned
+   line; a thumbless bar) retires with the local ConfiguratorRow + NumberField +
+   Slider composition. The clamps stay here, the range authority; a cleared
+   field commits `NaN`, folded to the floor by `|| min`. */
+function emitHarmonics(v: number) {
+    emit("update:nHarmonics", Math.max(1, Math.min(500, Math.round(v) || 1)));
+}
+function emitPoints(v: number) {
+    emit("update:nPoints", Math.max(128, Math.min(4096, Math.round(v) || 128)));
+}
 
 const selected = ref<string[]>(props.activeBases ?? ["fourier-epicycles"]);
 
 watch(() => props.activeBases, (v) => { if (v) selected.value = [...v]; });
 
-const fourierMode = computed(() => {
+/*
+ * X.F.W14U.vstage — UIA-F-170 ⊕ F-238: the Fourier pill hid a three-state cycle
+ * (epicycles → series → off) behind a binary `aria-pressed`, and the three
+ * stadium pills wrapped into a 2+1 orphan in the aside. The mode is a one-of-
+ * three chooser and the polynomial bases are N independent toggles: glass's
+ * `ToggleGroup` in its two selection modes, each on one row.
+ */
+type FourierMode = "fourier-epicycles" | "fourier-series" | "off";
+const FOURIER_MODES: { value: FourierMode; label: string }[] = [
+    { value: "fourier-epicycles", label: "Epicycles" },
+    { value: "fourier-series", label: "Series" },
+    { value: "off", label: "Off" },
+];
+const POLYNOMIAL_BASES = ["chebyshev", "legendre"] as const;
+
+const fourierMode = computed<FourierMode>(() => {
     if (selected.value.includes("fourier-epicycles")) return "fourier-epicycles";
     if (selected.value.includes("fourier-series")) return "fourier-series";
-    return null;
+    return "off";
 });
+const polynomialBases = computed(() =>
+    selected.value.filter((b) => normalizeBasisKey(b) !== "fourier"),
+);
 
-const fourierLabel = computed(() => {
-    if (fourierMode.value === "fourier-epicycles") return "Epicycles";
-    if (fourierMode.value === "fourier-series") return "Series";
-    return "Fourier";
-});
-
-function isBasisActive(key: string): boolean {
-    if (key === "fourier") return fourierMode.value !== null;
-    return selected.value.includes(key);
+function commit(next: string[]) {
+    selected.value = next;
+    emit("update:activeBases", [...next]);
 }
 
-function getBasisLabel(key: string, info: { label: string }): string {
-    if (key === "fourier") return fourierLabel.value;
-    return info.label;
+/** A single-mode group emits `undefined` when its pressed item is pressed
+ *  again; the mode is always one of three, so that is not a change. */
+function setFourierMode(mode: unknown) {
+    if (typeof mode !== "string") return;
+    const fourier = mode === "off" ? [] : [mode];
+    commit([...fourier, ...polynomialBases.value]);
 }
 
-const basisTooltips: Record<string, string> = {
-    fourier: "Fourier series — click to cycle: epicycles → series → off",
-    chebyshev: "Chebyshev polynomial approximation",
-    legendre: "Legendre polynomial approximation",
-};
-
-function getBasisTooltip(key: string): string {
-    return basisTooltips[key] ?? key;
+function setPolynomialBases(bases: unknown) {
+    const next = Array.isArray(bases) ? bases.map(String) : [];
+    const fourier = fourierMode.value === "off" ? [] : [fourierMode.value];
+    commit([...fourier, ...next]);
 }
 
+/**
+ * X.F.W13.b — the reset read a private copy of the defaults that had drifted
+ * from the app's one spelling (`nHarmonics: 50` here, `n_harmonics: 200` in
+ * `lib/defaults.ts`, which is what a fresh workspace actually loads). Measured
+ * on the served page: a fresh upload read N = 200 with the reset LIT, and
+ * pressing it moved N to 50 — "reset" left the defaults. It now reads the one
+ * owner, so it restores what a fresh workspace shows and is disabled there.
+ */
 const DEFAULTS = {
-    activeBases: ["fourier-epicycles"],
-    nHarmonics: 50,
-    nPoints: 1024,
+    activeBases: ANIMATION_DEFAULTS.active_bases,
+    nHarmonics: CONTOUR_DEFAULTS.n_harmonics,
+    nPoints: CONTOUR_DEFAULTS.n_points,
 } as const;
 
 const isDefault = computed(() =>
-    (props.nHarmonics ?? 50) === DEFAULTS.nHarmonics
-    && (props.nPoints ?? 1024) === DEFAULTS.nPoints
-    && selected.value.length === 1
-    && selected.value[0] === "fourier-epicycles",
+    (props.nHarmonics ?? DEFAULTS.nHarmonics) === DEFAULTS.nHarmonics
+    && (props.nPoints ?? DEFAULTS.nPoints) === DEFAULTS.nPoints
+    && selected.value.length === DEFAULTS.activeBases.length
+    && DEFAULTS.activeBases.every((b) => selected.value.includes(b)),
 );
 
 function resetDefaults() {
@@ -90,235 +119,132 @@ function resetDefaults() {
     emit("update:nPoints", DEFAULTS.nPoints);
 }
 
-function toggleBasis(key: string) {
-    if (key === "fourier") {
-        // Cycle: epicycles -> series -> off -> epicycles
-        const hasEpi = selected.value.includes("fourier-epicycles");
-        const hasSeries = selected.value.includes("fourier-series");
-        const otherBases = selected.value.filter(b => !b.startsWith("fourier"));
-        selected.value = [...otherBases];
-        if (hasEpi) {
-            selected.value.push("fourier-series");
-        } else if (hasSeries) {
-            // Go to "off" — allow empty selection (canvas handles it gracefully)
-        } else {
-            selected.value.push("fourier-epicycles");
-        }
-    } else {
-        const idx = selected.value.indexOf(key);
-        if (idx >= 0) {
-            selected.value.splice(idx, 1);
-        } else {
-            selected.value.push(key);
-        }
-    }
-    emit("update:activeBases", [...selected.value]);
-}
 </script>
 
 <template>
-    <ConfiguratorLayer label="Decomposition" sub="basis &amp; resolution" :default-open="true">
-        <!-- Panel-wide reset: ConfiguratorLayer has no header-actions slot, so
-             the affordance lives at the top of the layer body. -->
-        <div class="flex items-center justify-end -mt-1 -mb-1">
+    <ConfiguratorLayer label="Basis" :default-open="true">
+        <!-- X.F.W14U.a2 — O-68 CONFIGURATOR-HEADER-ACTIONS (glass 10.1.0,
+             COHESION §0dd). The owner: "the refresh button should be inline in
+             the section when expanded too". The layer-wide reset sits in the
+             layer's `#actions` header slot, on the label's row while the layer
+             is open (glass's default `actionsWhen="open"`); the body row it held
+             is deleted. -->
+        <template #actions>
             <Tooltip text="Reset to defaults">
                 <Button
-                    variant="ghost"
-                    size="icon"
-                    class="reset-icon-btn"
-                    :class="{ 'is-default': isDefault }"
+                    emphasis="quiet"
+                    size="sm" icon-only
+                    :disabled="isDefault"
                     aria-label="Reset to defaults"
                     @click.stop="resetDefaults"
                 >
                     <RotateCcw class="h-3.5 w-3.5" />
                 </Button>
             </Tooltip>
+        </template>
+
+        <!-- X-DS pass 2 · DS-F2-C15: two selection semantics (a one-of-three
+             Fourier mode; independent polynomial toggles) each get a caption
+             label on the aside's label size and start on its label column, so
+             "Off" reads as the first row's. The groups keep their names. -->
+        <div class="basis-groups">
+            <span class="basis-group-label" aria-hidden="true">Fourier</span>
+            <ToggleGroup type="single" size="sm" aria-label="Fourier mode"
+                :model-value="fourierMode" @update:model-value="setFourierMode">
+                <ToggleGroupItem v-for="m in FOURIER_MODES" :key="m.value" :value="m.value"
+                    :class="{ 'hue-chip': m.value !== 'off' }"
+                    :style="m.value !== 'off' ? { '--chip-hue': FOURIER_HUE } : undefined">
+                    <span v-if="m.value !== 'off'" class="basis-icon basis-icon--fourier font-serif-math" aria-hidden="true">{{ basisDisplay.fourier.icon }}</span>
+                    {{ m.label }}
+                </ToggleGroupItem>
+            </ToggleGroup>
+            <span class="basis-group-label" aria-hidden="true">Polynomial</span>
+            <ToggleGroup type="multiple" size="sm" aria-label="Polynomial bases"
+                :model-value="polynomialBases" @update:model-value="setPolynomialBases">
+                <ToggleGroupItem v-for="key in POLYNOMIAL_BASES" :key="key" :value="key"
+                    class="hue-chip" :style="{ '--chip-hue': basisDisplay[key].color }">
+                    <span class="basis-icon font-serif-math" aria-hidden="true">{{ basisDisplay[key].icon }}</span>
+                    {{ basisDisplay[key].label }}
+                </ToggleGroupItem>
+            </ToggleGroup>
         </div>
 
-        <div class="flex flex-wrap justify-center gap-1.5 pb-1">
-            <Tooltip v-for="(info, key) in basisDisplay" :key="key" :text="getBasisTooltip(key as string)">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    class="basis-toggle"
-                    :aria-pressed="isBasisActive(key as string)"
-                    :style="isBasisActive(key as string) ? { '--pill-color': info.color } : {}"
-                    @click="toggleBasis(key as string)"
-                >
-                    <span class="basis-icon cm-serif font-semibold" :class="{ 'basis-icon--fourier': key === 'fourier' }">{{ info.icon }}</span>
-                    {{ getBasisLabel(key as string, info) }}
-                </Button>
-            </Tooltip>
-        </div>
-
-        <ConfiguratorRow label="Harmonics" name="N">
-            <div class="w-full">
-                <div class="mb-1.5 flex items-center justify-end">
-                    <input
-                        type="number"
-                        class="inline-number fira-code"
-                        :value="nHarmonics"
-                        min="1"
-                        max="500"
-                        step="1"
-                        aria-label="Harmonics"
-                        @input="emit('update:nHarmonics', Math.max(1, Math.min(500, parseInt(($event.target as HTMLInputElement).value) || 1)))"
-                    />
-                </div>
-                <Slider
-                    v-model="harmonicsModel"
-                    variant="glass-scrubber"
-                    :min="1"
-                    :max="500"
-                    :step="1"
-                    aria-label="Harmonics"
-                    class="basis-slider-track"
-                    :style="{ '--track-color': VIZ_COLORS.fourier }"
-                />
-            </div>
-        </ConfiguratorRow>
-
-        <ConfiguratorRow label="Sample Points">
-            <div class="w-full">
-                <div class="mb-1.5 flex items-center justify-end">
-                    <input
-                        type="number"
-                        class="inline-number fira-code"
-                        :value="nPoints"
-                        min="128"
-                        max="4096"
-                        step="128"
-                        aria-label="Sample Points"
-                        @input="emit('update:nPoints', Math.max(128, Math.min(4096, parseInt(($event.target as HTMLInputElement).value) || 128)))"
-                    />
-                </div>
-                <Slider
-                    v-model="pointsModel"
-                    variant="glass-scrubber"
-                    :min="128"
-                    :max="4096"
-                    :step="128"
-                    aria-label="Sample Points"
-                    class="basis-slider-track"
-                    :style="{ '--track-color': VIZ_COLORS.chebyshev }"
-                />
-            </div>
-        </ConfiguratorRow>
+        <SliderControl
+            label="Harmonics"
+            subtitle="N; the Fourier sum runs −N to N"
+            :model-value="nHarmonics ?? 50"
+            :min="1"
+            :max="500"
+            :step="1"
+            :color="FOURIER_HUE"
+            @update:model-value="emitHarmonics"
+        />
+        <SliderControl
+            label="Sample Points"
+            subtitle="points traced on the outline"
+            :model-value="nPoints ?? 1024"
+            :min="128"
+            :max="4096"
+            :step="128"
+            :color="basisDisplay.chebyshev.color"
+            @update:model-value="emitPoints"
+        />
     </ConfiguratorLayer>
 </template>
 
 <style scoped>
 @reference "tailwindcss";
-.inline-number {
-    width: 2.75rem;
-    text-align: right;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid transparent;
-    color: var(--foreground);
-    font-size: inherit;
-    padding: 0;
-    outline: none;
-    -moz-appearance: textfield;
-    transition: border-color 0.15s;
-}
-.inline-number:hover,
-.inline-number:focus {
-    border-bottom-color: color-mix(in srgb, var(--foreground) 30%, transparent);
-}
-.inline-number::-webkit-inner-spin-button,
-.inline-number::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
 .basis-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5em;
+    font-size: 1.25em;
     line-height: 1;
-    min-width: 1.2em;
+    min-width: 1em;
     height: 1em;
 }
+/* X.F.W14U.c2 — §0db: the Fourier modes wear ℱ again, as the Fourier pill did
+   before `.vstage`'s restructure. The script F sits small in its em box, so it
+   is set larger and pulled into the line (the pre-`.vstage` compact rule). */
 .basis-icon--fourier {
-    font-size: 2.2em;
-    margin: -0.35em -0.1em;
-    transform: translateY(0.06em);
+    font-size: 1.75em;
+    margin: -0.3em -0.05em;
 }
-/* A.W2.e — `.basis-toggle` is the per-instance retint hook over
-   `<Button variant="outline" size="sm">`. The variant already ships the
-   focus-ring, the press-scale, the rounded-pill shape, and the disabled
-   geometry; the toggle layer adds the basis-specific tint (driven by
-   `aria-pressed`), the 5.5 rem min-width that keeps all three pills
-   uniform-width, the 2 px border weight the outline variant ships at 1 px,
-   and the mobile-compact rules. The `:where()` selector ensures these
-   override the variant's `h-9 px-3` defaults without raising specificity
-   beyond a single class. */
-.basis-toggle {
-    @apply gap-1 min-w-[5.5rem] justify-center font-medium;
-    border-width: 2px;
-    border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
-    color: var(--muted-foreground);
+/* X.F.W14U.vstage — the two choosers stack, each one row. X-DS pass 2 ·
+   DS-F2-C15: each row is captioned and start-aligned, as every other row in
+   the aside; the caption wears the control-row label's rung. */
+.basis-groups {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-atom);
+    padding-bottom: 0.25rem;
 }
-.basis-toggle:hover {
-    border-color: color-mix(in srgb, var(--foreground) 25%, transparent);
-    background: transparent;
-    color: var(--muted-foreground);
-}
-.basis-toggle[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--pill-color) 12%, transparent);
-    border-color: color-mix(in srgb, var(--pill-color) 40%, transparent);
-    color: var(--pill-color);
-}
-.basis-toggle[aria-pressed="true"]:hover {
-    background: color-mix(in srgb, var(--pill-color) 16%, transparent);
-    color: var(--pill-color);
-}
-
-/* Compact pills on mobile so all three fit on one line */
-@media (max-width: 639px) {
-    .basis-toggle {
-        @apply px-2 gap-0.5;
-        border-width: 1.5px;
-    }
-    .basis-icon {
-        font-size: 1.25em;
-        min-width: 1em;
-    }
-    .basis-icon--fourier {
-        font-size: 1.75em;
-        margin: -0.3em -0.05em;
-    }
-}
-
-.reset-icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    border: none;
-    background: none;
-    color: var(--muted-foreground);
-    cursor: pointer;
-    border-radius: 0.25rem;
-    transition: color 0.15s, opacity 0.2s;
-}
-.reset-icon-btn.is-default {
-    opacity: 0.25;
-    pointer-events: none;
-}
-.reset-icon-btn:hover {
+/* X-DS F3R · DS-F3R-C1: the caption rides glass Label's own size token
+   (`--control-label`, the rung `.control-row-label` wears), so the heading and
+   the rows beside it move on one ramp. `--type-small` shrank at 390 while the
+   row labels grew on the coarse-pointer ramp, and the hierarchy inverted. */
+.basis-group-label {
+    font-size: var(--control-label);
+    line-height: var(--type-leading-small);
+    font-weight: 500;
     color: var(--foreground);
 }
-
-/* A.W2.c — glass-scrubber per-instance retint hook. The variant ships
-   neutral defaults; we project `--track-color` onto the range fill + thumb
-   so each slider inherits its corresponding `VIZ_COLORS` palette entry. */
-.basis-slider-track {
-    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 30%, transparent);
-    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 45%, transparent);
-    --slider-scrub-thumb-bg: var(--track-color);
-    --slider-scrub-thumb-bg-hover: var(--track-color);
+/* X-DS F4C · DS-F4C-C1: the step before a group is a full body step, so the
+   caption sits with the chips below it (an atom to its own row) and never
+   floats midway once the coarse chip floor grows at 390. */
+.basis-group-label:not(:first-child) {
+    margin-top: var(--space-body);
 }
+
+/* X.F.W14U.c1 — addendum (g): the pressed basis chip carries its basis tint,
+   through the app's one hue-chooser tone (`.hue-chip`, style.css; X-DS DS-F3-C7).
+   "Off" is not a basis and keeps glass's neutral pressed state. */
+
+/* X.F.W13.b — the `.reset-icon-btn` block retires: it restated the glass Button's
+   geometry (a 4px corner on the 40x40 icon-only square, measured) and faked the
+   disabled state with `pointer-events: none` on a control that stayed focusable
+   and keyboard-live. The Button owns both: `icon-only` is the circle, and
+   `:disabled` is the one disabled channel. */
+
 </style>

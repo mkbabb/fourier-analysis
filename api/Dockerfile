@@ -17,6 +17,18 @@ CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "800
 
 FROM deps AS production
 RUN adduser --disabled-password app
+# X·F F.REL .m — the contour models are BAKED, not fetched. The container runs
+# with a read-only root FS (docker-compose.prod.yml), so a first-use download
+# into $HOME (the development default) can never succeed there. Every pinned
+# model is downloaded and sha256-verified at build time by the runtime's own
+# loader (`ensure_model_downloaded`: the URLs and sha256s come from the
+# SubjectModelSpecs, the one source) into FOURIER_MODEL_DIR, which the same
+# loader reads at runtime. A digest mismatch raises and fails the build. The
+# layer sits before `COPY . .` so only a change under src/ re-downloads.
+ENV FOURIER_MODEL_DIR=/opt/fourier-models
+RUN uv run --no-sync python -c \
+        "from fourier_analysis.contours.ml import ensure_model_downloaded; ensure_model_downloaded()" \
+    && chmod -R a=rX "$FOURIER_MODEL_DIR"
 COPY . .
 RUN chown -R app:app /app/.venv
 # C2 (C.W5): pre-create the blob-backend mount point owned by the unprivileged
@@ -39,8 +51,27 @@ USER app
 # single source of truth. No Redis / no shared store needed: compute_cache and
 # idempotency are Mongo-backed; nginx is the per-client edge governor.
 ENV WORKERS=1
+# X·F F.REL .mem2 — ONE malloc arena. glibc gives each thread its own arena, and
+# an arena keeps its high-water mark: contour extractions landing on different
+# executor threads each left 200-460 MB behind, and the fourth was OOM-killed
+# under the backend's 2G cap. With one arena the same run plateaus near 1.43 GB
+# (scripts/model-smoke.sh extracts each portrait on a fresh thread to hold it).
+ENV MALLOC_ARENA_MAX=1
 # G.β.2: NO uvicorn --proxy-headers. nginx `real_ip` is the SOLE client-IP
 # rewriter (one trust boundary, not two): it resolves the real client through the
 # Apache→nginx XFF chain and stamps X-Real-IP, which get_client_ip reads. A second
 # uvicorn-side XFF rewriter would re-introduce the two-identity ambiguity β.2 removes.
+#
+# X·F F.W9 (M.W2) — the image's own LIVENESS contract, declared where the image
+# is built rather than inferred by whatever polls it. This answers exactly one
+# question — "did uvicorn come up and can it answer?" — and deliberately NOT the
+# readiness question, which is about what the EDGE serves (inv-22's root-404) and
+# is asked at the gateway. Compose reads this to satisfy `depends_on: condition:
+# service_healthy`, so the stack now orders on health rather than on
+# container-started. Python's own urllib: no curl/wget in python:3.13-slim, and
+# adding a package to run a healthcheck would be the wrong cure. `retries` is
+# bounded so an unhealthy container ENDS `compose up --wait` non-zero instead of
+# hanging it — the deploy hook's rollback depends on that termination.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+    CMD ["python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)"]
 CMD ["sh", "-c", "uv run --no-sync uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers ${WORKERS}"]

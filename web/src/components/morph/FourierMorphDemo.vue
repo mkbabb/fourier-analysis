@@ -8,21 +8,44 @@
             </p>
         </div>
 
-        <!-- ── Preview stage ──────────────────────────────────── -->
-        <MorphShapePreview
-            :current-path="morph.currentPath.value"
-            :phase="morph.phase.value"
-            :harmonic-level="Math.round(morph.harmonicLevel.value)"
-            :shape-name="currentShapeName"
-            :total-ms="morphConfig.totalMs.value"
-            :disabled="isAnimating"
-            @toggle="handleToggle"
-        />
+        <!-- X.F.W14U.misc — UIA-F-115: the morph is the page's dominant
+             content. At >=1024px the stage takes the wider column (about 55%)
+             and stays in view while the controls beside it scroll; below, the
+             stage band is sticky at the top of the scroller, so tuning a
+             control never scrolls the thing it tunes away. UIA-F-254: Export
+             and Reset sit under the stage they act on, at secondary weight. -->
+        <div class="demo-layout">
+            <!-- X-DS fourier pass 5 · DS-F5-C1: below 1024px only the plate and
+                 its readings pin (`.stage-column`); Export and Reset are one-off
+                 actions and scroll with the page (`.stage-rail` is
+                 `display: contents` there). Beside the controls the rail is the
+                 sticky column, actions under the plate as before. -->
+            <div class="stage-rail">
+                <section class="stage-column paper-texture" aria-label="Morph stage">
+                    <div class="band-grid paper-grid" aria-hidden="true" />
+                    <MorphShapePreview
+                        :current-path="morph.currentPath.value"
+                        :phase="morph.phase.value"
+                        :harmonic-level="Math.round(morph.harmonicLevel.value)"
+                        :shape-name="currentShapeName"
+                        :total-ms="morphConfig.totalMs.value"
+                        :disabled="isAnimating"
+                        @toggle="handleToggle"
+                    />
+                </section>
+                <div class="stage-actions">
+                    <Button emphasis="secondary" size="sm" @click="morphConfig.copyToClipboard()">
+                        <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" />
+                        {{ morphConfig.status.value === 'success' ? 'Copied' : 'Export' }}
+                    </Button>
+                    <Button emphasis="quiet" size="sm" :disabled="isAnimating" @click="handleReset">
+                        <RotateCcw />
+                        Reset
+                    </Button>
+                </div>
+            </div>
 
-        <!-- ── Controls section ────────────────────────────────── -->
-        <div class="controls-section">
-            <!-- Phase config cards -->
-            <div class="config-grid">
+            <div class="controls-column">
                 <MorphPhaseConfig
                     title="Settle Out"
                     description="Shape degrades to low harmonics"
@@ -52,30 +75,22 @@
                     @update:duration="morphConfig.config.settleInMs = $event"
                     @update:easing="morphConfig.config.settleInEasing = $event"
                 />
-            </div>
 
-            <!-- Harmonic level grid -->
-            <HarmonicLevelGrid
-                :shape="currentShape"
-                :levels="morphConfig.previewLevels.value"
-                :active-level="nearestActiveLevel"
-                :low-level="morphConfig.config.lowLevel"
-                :high-level="morphConfig.config.highLevel"
-                @update:low-level="morphConfig.config.lowLevel = $event"
-                @update:high-level="morphConfig.config.highLevel = $event"
-                @select="handlePreviewClick"
-            />
-
-            <!-- Export / Reset -->
-            <div class="export-row">
-                <Button variant="default" size="default" class="btn-export" @click="morphConfig.copyToClipboard()">
-                    <component :is="morphConfig.copied.value ? Check : ClipboardCopy" class="btn-icon" />
-                    {{ morphConfig.copied.value ? 'Copied' : 'Export' }}
-                </Button>
-                <Button variant="outline" size="default" class="btn-reset" @click="handleReset">
-                    <RotateCcw class="btn-icon" />
-                    Reset
-                </Button>
+                <!-- UIA-F-208: mid-morph the tiles are disabled (they were
+                     silently dropped); UIA-F-210: a tile previews its level and
+                     never rewrites the Low/High range. -->
+                <HarmonicLevelGrid
+                    :shape="currentShape"
+                    :levels="morphConfig.previewLevels.value"
+                    :active-level="nearestActiveLevel"
+                    :low-level="morphConfig.config.lowLevel"
+                    :high-level="morphConfig.config.highLevel"
+                    :max-level="morphConfig.maxLevel.value"
+                    :disabled="isAnimating"
+                    @update:low-level="morphConfig.config.lowLevel = $event"
+                    @update:high-level="morphConfig.config.highLevel = $event"
+                    @select="handlePreviewClick"
+                />
             </div>
         </div>
     </div>
@@ -84,11 +99,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
-import { ClipboardCopy, Check, RotateCcw } from "lucide-vue-next";
+import { ClipboardCopy, Check, RotateCcw } from "@lucide/vue";
 import MorphShapePreview from "@/components/morph/MorphShapePreview.vue";
 import MorphPhaseConfig from "@/components/morph/MorphPhaseConfig.vue";
 import HarmonicLevelGrid from "@/components/morph/HarmonicLevelGrid.vue";
-import { useFourierMorph } from "@/composables/useFourierMorph";
+import { useFourierMorph, DEFAULT_MORPH_CONFIG } from "@/composables/useFourierMorph";
 import { useMorphConfig } from "@/composables/useMorphConfig";
 import { prepareFourierShape, nearestLevel } from "@/lib/svg-fourier";
 
@@ -104,7 +119,13 @@ const currentShapeName = computed(() => (isMoon.value ? "Moon" : "Sun"));
 const currentShape = computed(() => (isMoon.value ? moonShape : sunShape));
 
 // ── Config + morph composables ───────────────────────────────────
-const morphConfig = useMorphConfig();
+/* FM-20 — the source-of-truth shape is named HERE, at the only place that knows
+   which shape the strip is previewing, rather than guessed inside the config. */
+const shapeMaxLevel = computed(() => {
+    const levels = currentShape.value.data.levels;
+    return levels[levels.length - 1] ?? DEFAULT_MORPH_CONFIG.highLevel;
+});
+const morphConfig = useMorphConfig(undefined, shapeMaxLevel);
 const morph = useFourierMorph({ config: { ...morphConfig.config } });
 
 // Sync live config changes into the morph composable
@@ -131,48 +152,32 @@ async function handleToggle() {
     const to = isMoon.value ? sunShape : moonShape;
     isMoon.value = !isMoon.value;
 
-    await morph.morphTo(from, to);
+    try {
+        await morph.morphTo(from, to);
+    } catch (err) {
+        /* FMD-9's consumer half — see DarkModeToggle for the reasoning. The
+           shape state has already advanced, so the destination IS the truthful
+           frame; the failure is reported, not swallowed. */
+        morph.setShape(to);
+        console.error("[FourierMorphDemo] morph engine unavailable; snapped to the destination shape", err);
+    }
 }
 
+/* X.F.W14U.misc — UIA-F-210: a preview tile PREVIEWS. It used to snap the
+   nearer of Low/High to the clicked level, silently rewriting the morph's
+   range; the range is the two sliders' alone now. */
 function handlePreviewClick(level: number) {
     if (isAnimating.value) return;
-
-    const { lowLevel, highLevel } = morphConfig.config;
-    const levels = morphConfig.previewLevels.value;
-
-    if (level < lowLevel) {
-        morphConfig.config.lowLevel = level;
-    } else if (level > highLevel) {
-        morphConfig.config.highLevel = level;
-    } else {
-        // Snap based on grid frame adjacency, not pure number distance.
-        const idx = levels.indexOf(level);
-        const lowIdx = levels.indexOf(lowLevel);
-        const highIdx = levels.indexOf(highLevel);
-
-        if (idx !== -1 && lowIdx !== -1 && highIdx !== -1) {
-            const framesToLow = idx - lowIdx;
-            const framesToHigh = highIdx - idx;
-            if (framesToLow <= framesToHigh) {
-                morphConfig.config.lowLevel = level;
-            } else {
-                morphConfig.config.highLevel = level;
-            }
-        } else {
-            const distToLow = level - lowLevel;
-            const distToHigh = highLevel - level;
-            if (distToLow <= distToHigh) {
-                morphConfig.config.lowLevel = level;
-            } else {
-                morphConfig.config.highLevel = level;
-            }
-        }
-    }
-
     morph.setLevel(currentShape.value, level);
 }
 
 function handleReset() {
+    /* FMD-5 — Reset was UNGUARDED: pressed mid-morph it called `setShape`,
+       whose `stopAnim` resolved the pending `play()` and so ADVANCED the very
+       coroutine it meant to kill. The epoch token now makes that resumption a
+       no-op, and the guard keeps the config from moving under a live morph in
+       the first place. */
+    if (isAnimating.value) return;
     morphConfig.reset();
     morph.setShape(currentShape.value);
 }
@@ -180,151 +185,186 @@ function handleReset() {
 
 <style scoped>
 @reference "tailwindcss";
+/* X.F.W14U.misc — UIA-F-254: `.demo-page` was its own scroll container
+   (`overflow-x: hidden` computes `overflow-y: auto`), a second scroller with a
+   rail mid-page inside `<main>`, the app's one scroller. `clip` keeps the
+   horizontal guard without minting a scroll container, which is also what
+   lets the stage stick to `<main>` (UIA-F-115). */
 .demo-page {
-    max-width: 960px;
     width: 100%;
+    max-width: 72rem;
     min-width: 0;
     margin: 0 auto;
-    padding: 0.75rem;
-    padding-bottom: 2rem;
+    /* X-DS pass 2 · DS-F2-C5: the side gutter is the app's `--page-gutter`
+       at every width (the page sat on an 8 px gutter at 390, where the dock,
+       /paper and /gallery hold 16 px). */
+    padding: var(--space-body) var(--page-gutter) var(--space-section);
     font-family: var(--font-serif);
-    overflow-x: hidden;
+    overflow-x: clip;
     box-sizing: border-box;
-}
-
-@media (min-width: 640px) {
-    .demo-page {
-        padding: 2rem;
-        padding-bottom: 4rem;
-    }
 }
 
 /* ── Header ─────────────────────────────────── */
 
 .demo-header {
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-family);
 }
 
-@media (min-width: 640px) {
-    .demo-header {
-        margin-bottom: 2rem;
-    }
-}
-
+/* X.F.W14.h · OA-45 — the page title and lede on glass's type scale
+   (`--type-display-1`, fluid; `--type-body` for the lede). Below them every
+   card title sits on `--type-subheading` (MorphPhaseConfig, HarmonicLevelGrid;
+   X-DS pass 14 · DS-F16-C1: display-1's floor is `--type-heading`, so a card
+   title on that rung matched the page title at narrow widths). */
 .demo-title {
     font-family: var(--font-serif);
-    @apply text-2xl;
+    font-size: var(--type-display-1);
+    line-height: var(--type-leading-display);
     font-weight: 400;
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--space-atom);
     color: var(--foreground);
-}
-
-@media (min-width: 640px) {
-    .demo-title {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-    }
 }
 
 .demo-subtitle {
     color: var(--muted-foreground);
-    @apply text-base;
+    font-size: var(--type-body);
+    line-height: var(--type-leading-body);
     max-width: 36rem;
+    /* X-DS pass 11 · DS-F13-C3: no orphan last word at 390 (as the /w lede). */
+    text-wrap: pretty;
 }
 
-@media (min-width: 640px) {
-    .demo-subtitle {
-        @apply text-lg;
-        margin-bottom: 0;
-    }
-}
+/* ── Layout (UIA-F-115) ─────────────────────── */
 
-/* ── Controls section ───────────────────────── */
-
-.controls-section {
+.demo-layout {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-family);
 }
 
-@media (min-width: 640px) {
-    .controls-section {
-        gap: 1rem;
-    }
-}
-
-/* ── Config grid ────────────────────────────── */
-
-.config-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.625rem;
-}
-
-@media (min-width: 640px) {
-    .config-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-    }
-}
-
-/* ── Export row ──────────────────────────────── */
-
-.export-row {
+/* Below 1024px the stage band sticks to the top of `<main>` on the page's own
+   ground, so the controls scroll beneath it. X-DS DS-F-C6: that ground is the
+   paper grid, not a flat --background slab. X-DS pass 4 · DS-F4-C2: the band
+   carries the shell's layers exactly (App.vue): the page tone with the
+   `.paper-texture` ground, and glass's `.paper-grid` as its own layer above
+   it, both fixed to the viewport, so band and page are one tone and the lines
+   run through unbroken. It spans the scroller's full inline size (out over
+   `.demo-page`'s gutter), so nothing scrolling under it shows beside it.
+   X-DS DS-F5-C4 (folds DS-F4-C2's hunk): it ends on one hairline, so content
+   scrolls under a rule, not under a cut. */
+.stage-column {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
-    gap: 0.75rem;
-    justify-content: center;
-    padding-top: 0.5rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-atom);
+    margin-inline: calc(-1 * var(--page-gutter));
+    padding: var(--space-atom) var(--page-gutter);
+    background-color: var(--background);
+    background-attachment: fixed;
+    border-block-end: 1px solid var(--border-soft);
 }
 
-.btn-icon {
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
+/* X-DS fourier pass 5 · DS-F5-C1: the rail is no box below 1024px, so the
+   band (plate and readings) is the only sticky thing and Export/Reset are an
+   ordinary flex item of `.demo-layout` that scrolls with the controls. */
+.stage-rail {
+    display: contents;
 }
 
-.btn-export {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    border: 0;
-    background: var(--foreground);
-    color: var(--background);
-    font-family: var(--font-mono);
-    @apply text-base;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.15s ease, opacity 0.15s ease;
+.band-grid {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-attachment: fixed;
 }
 
-.btn-export:hover {
-    opacity: 0.85;
+.controls-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-body);
+    min-width: 0;
 }
 
-.btn-export:active {
-    transform: scale(0.97);
+@media (min-width: 1024px) {
+    .demo-layout {
+        display: grid;
+        /* X-DS pass 2 · DS-F2-C4: the stage column is the plate's own
+           measure and the cards take the rest; an 11fr column around a 26rem
+           plate left ~200 px of dead grid before the cards. */
+        grid-template-columns: 26rem minmax(0, 1fr);
+        align-items: start;
+    }
+
+    /* X-DS DS-F-C6: the stage starts on the title's axis (one left edge); its
+       plate, readouts and actions share the plate's measure (26rem, the
+       MorphShapePreview bound). DS-F2-C4: the readouts and the actions both
+       start on the plate's edge (one axis, as the title above). */
+    /* DS-F5-C1: beside the controls the rail is the sticky column (plate,
+       readings, then the actions under them, UIA-F-254); the band itself is
+       an ordinary block here. */
+    .stage-rail {
+        position: sticky;
+        top: var(--space-family);
+        display: flex;
+        flex-direction: column;
+        align-items: start;
+        gap: var(--space-atom);
+    }
+
+    .stage-column {
+        position: static;
+        margin-inline: 0;
+        padding: 0;
+        align-items: start;
+        background: none;
+        border-block-end: 0;
+    }
+
+    .band-grid {
+        display: none;
+    }
+
+    .stage-rail > *,
+    .stage-column > * {
+        width: min(100%, 26rem);
+    }
 }
 
-.btn-reset {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    border: 2px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-    background: none;
-    color: var(--muted-foreground);
-    font-family: var(--font-mono);
-    @apply text-base;
-    font-weight: 500;
-    cursor: pointer;
-    transition: border-color 0.15s ease, color 0.15s ease;
+/* X-DS DS-F4R-C3: where the controls column has the measure for it (from
+   1280 px it is ~43 rem, the page's 72 rem cap less the stage), the three
+   phases sit side by side as PRE-DOCK set them, one row of peers, and the
+   levels card spans the row beneath, so every phase is above the fold. */
+@media (min-width: 1280px) {
+    .controls-column {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    /* X-DS DS-F5-C3: three across, the peers' rows line up. A subtitle
+       that wraps (Settle Out's) pushed that card's Duration and Easing rows
+       ~19 px below its two peers'. Each subtitle holds two lines' room here,
+       so every card's title, subtitle, field, slider and select sit on one
+       baseline. (Shared subgrid rows were the first choice; glass Card's
+       `contain: paint` makes a card an independent formatting context, so it
+       cannot be a subgrid, and that containment is glass's.) */
+    .controls-column :deep([data-card-subtitle]) {
+        min-block-size: 2lh;
+    }
+
+    .controls-column > :last-child {
+        grid-column: 1 / -1;
+    }
 }
 
-.btn-reset:hover {
-    border-color: color-mix(in srgb, var(--foreground) 30%, transparent);
-    color: var(--foreground);
+/* X-DS DS-F5-C5: the actions start on the plate's edge at every width; in
+   the phone band the plate now starts on the content box's edge (the row is
+   bounded by it), so centred actions sat off the plate's axis. */
+.stage-actions {
+    display: flex;
+    gap: var(--space-atom);
+    justify-content: flex-start;
 }
 </style>

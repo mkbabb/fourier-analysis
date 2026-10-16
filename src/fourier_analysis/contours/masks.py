@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage  # type: ignore[import-untyped]
 from scipy.ndimage import binary_fill_holes  # type: ignore[import-untyped]
-from skimage import exposure, feature, filters, measure, morphology  # type: ignore[import-untyped]
+from skimage import feature, filters, morphology  # type: ignore[import-untyped]
 
 from fourier_analysis.contours.models import ContourConfig
 from fourier_analysis.contours.image import LoadedImage
@@ -67,52 +67,6 @@ def multi_threshold_masks(
     return tuple(masks)
 
 
-def quantile_threshold_masks(
-    image: LoadedImage,
-    config: ContourConfig,
-    *,
-    n_levels: int = 16,
-    use_detail: bool = False,
-    subject_mask: NDArray[np.bool_] | None = None,
-) -> tuple[NDArray[np.bool_], ...]:
-    """Build nested masks at evenly-spaced intensity quantiles.
-
-    Like a topographic map: many iso-intensity contour lines produce
-    rich interior detail (eyes, nose, folds, texture).
-
-    When *subject_mask* is provided, quantile levels are computed from
-    only the subject pixels so all levels spread across the subject's
-    intensity range — placing contour lines through facial features
-    instead of wasting levels on the background.
-    """
-    source = image.detail_grayscale if use_detail else image.grayscale
-    percentiles = np.linspace(5, 95, n_levels)
-
-    if subject_mask is not None and np.any(subject_mask):
-        subject_pixels = source[subject_mask]
-        thresholds = np.percentile(subject_pixels, percentiles)
-    else:
-        thresholds = np.percentile(source, percentiles)
-
-    # Deduplicate near-identical thresholds
-    thresholds = sorted(set(round(float(t), 4) for t in thresholds))
-
-    masks: list[NDArray[np.bool_]] = []
-    prev_count = -1
-    for t in thresholds:
-        mask = source >= t
-        cleaned = _cleanup_binary_mask(mask, image, config, preserve_detail=True)
-        count = int(np.count_nonzero(cleaned))
-        if count < 0.003 * image.image_area:
-            continue
-        if prev_count > 0 and abs(count - prev_count) < 0.008 * image.image_area:
-            continue
-        masks.append(cleaned)
-        prev_count = count
-
-    return tuple(masks) if masks else multi_threshold_masks(image, config)
-
-
 def canny_masks(
     image: LoadedImage,
     config: ContourConfig,
@@ -121,24 +75,6 @@ def canny_masks(
     edges = feature.canny(image.detail_grayscale, sigma=config.canny.sigma)
     closed = morphology.closing(edges, morphology.disk(config.canny.closing_radius))
     cleaned = _remove_small_components(closed, max(4, int(image.image_area * 0.0001)))
-    return (cleaned,)
-
-
-def detail_canny_masks(
-    image: LoadedImage,
-    config: ContourConfig,
-) -> tuple[NDArray[np.bool_], ...]:
-    """Tighter Canny pass on detail-enhanced grayscale for interior features.
-
-    Uses a lower sigma and heavier closing to bridge gaps, producing
-    more interior edge loops (eyes, nose, clothing folds).
-    """
-    sigma = max(0.8, config.canny.sigma * 0.5)
-    edges = feature.canny(image.detail_grayscale, sigma=sigma)
-    # Heavier closing to bridge small edge gaps into closed loops
-    radius = max(config.canny.closing_radius, 4)
-    closed = morphology.closing(edges, morphology.disk(radius))
-    cleaned = _remove_small_components(closed, max(4, int(image.image_area * 0.0002)))
     return (cleaned,)
 
 
@@ -209,91 +145,6 @@ def edge_aware_masks(
         return (hull,)
 
     return (carved,)
-
-
-def direct_iso_contours(
-    image: LoadedImage,
-    config: ContourConfig,
-    *,
-    n_levels: int = 20,
-    use_detail: bool = True,
-    subject_mask: NDArray[np.bool_] | None = None,
-) -> list[NDArray[np.floating]]:
-    """Extract contours directly from the grayscale at multiple iso-levels.
-
-    Bypasses the mask pipeline entirely — no morphological cleanup,
-    no hole filling.  Produces contours that faithfully trace intensity
-    transitions including fine facial features.
-    """
-    source = image.detail_grayscale if use_detail else image.grayscale
-    percentiles = np.linspace(8, 92, n_levels)
-
-    if subject_mask is not None and np.any(subject_mask):
-        subject_pixels = source[subject_mask]
-        levels = np.percentile(subject_pixels, percentiles)
-    else:
-        levels = np.percentile(source, percentiles)
-
-    levels = sorted(set(round(float(v), 4) for v in levels))
-
-    raw: list[NDArray[np.floating]] = []
-    for level in levels:
-        contours = measure.find_contours(source, level=level)
-        for c in contours:
-            if len(c) < config.min_contour_length:
-                continue
-            raw.append(c)
-    return raw
-
-
-def edge_density_contours(
-    image: LoadedImage,
-    config: ContourConfig,
-    *,
-    subject_mask: NDArray[np.bool_] | None = None,
-) -> list[NDArray[np.floating]]:
-    """Contours that trace edge features (eyes, nose, mouth, folds).
-
-    Runs Canny edge detection, blurs the edge map into a smooth
-    density field, then extracts iso-contours at multiple levels.
-    Contour lines hug edges closely at high levels and broadly at
-    low levels — like a topographic map of edge strength.
-    """
-    # Use color gradient (max across RGB channels) — detects color
-    # boundaries like blue eyes on yellow skin that are invisible
-    # in grayscale.  Falls back to grayscale Canny for B&W images.
-    color_grad = image.color_gradient
-    gray_edges = feature.canny(image.detail_grayscale, sigma=0.8)
-    # Combine: color gradient as base density + Canny edges for sharpness.
-    density = filters.gaussian(color_grad, sigma=1.5)
-    canny_density = filters.gaussian(gray_edges.astype(np.float64), sigma=2.0)
-    density = np.maximum(density, canny_density)
-
-    # Normalize to [0, 1].
-    d_max = float(density.max())
-    if d_max > 0:
-        density = density / d_max
-
-    # More levels at the tight end to capture fine facial features.
-    levels = [0.06, 0.10, 0.15, 0.22, 0.30, 0.40, 0.52, 0.65, 0.78]
-
-    # Use a higher length threshold to filter texture noise (fur, etc.)
-    min_length = max(config.min_contour_length, 60)
-    min_area = image.image_area * 0.0005
-
-    raw: list[NDArray[np.floating]] = []
-    for level in levels:
-        contours = measure.find_contours(density, level=level)
-        for c in contours:
-            if len(c) < min_length:
-                continue
-            # Filter tiny contours by bounding-box area.
-            rows, cols = c[:, 0], c[:, 1]
-            bbox_area = (rows.max() - rows.min()) * (cols.max() - cols.min())
-            if bbox_area < min_area:
-                continue
-            raw.append(c)
-    return raw
 
 
 def alpha_masks(image: LoadedImage) -> tuple[NDArray[np.bool_], ...]:

@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, h } from "vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
-import {
-    Download, EllipsisVertical, } from "lucide-vue-next";
+import { EllipsisVertical, Pause, Play } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import { GlassDock, DockDropdownTrigger } from "@mkbabb/glass-ui/dock";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/dropdown-menu";
-import { MetricBadge } from "@mkbabb/glass-ui/metric-badge";
-import GlassTimeline from "./GlassTimeline.vue";
+import { GlassDock, DockTrigger, DockControl } from "@mkbabb/glass-ui/dock";
+import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/menu";
+import { Metric } from "@mkbabb/glass-ui/metric";
+import FourierTimeline from "@/components/shared/FourierTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
 import SpeedSelect from "./SpeedSelect.vue";
 
@@ -25,12 +24,9 @@ const props = withDefaults(
     { activeBases: () => ["fourier-epicycles"], maxWidth: "960px" },
 );
 
-const emit = defineEmits<{
-    (e: "exportFrame"): void;
-}>();
-
 const anim = useAnimationStore();
 const store = useWorkspaceStore();
+
 
 const isEpicycleOnly = computed(() =>
     props.activeBases.includes("fourier-epicycles") && props.activeBases.length === 1,
@@ -52,75 +48,165 @@ const currentLevel = computed(() => {
 const caretLabel = computed(() =>
     isEpicycleOnly.value ? `t = ${anim.t.toFixed(2)}` : `N = ${currentLevel.value}`,
 );
+
+/**
+ * X.F.W4 · SP-4 / `fr-AnimationControls M-12` — the two 60Hz readouts,
+ * ISOLATED.
+ *
+ * Both dock layers are always mounted (the producer toggles `inert` rather than
+ * unmounting), and the template read `anim.t` directly in two places — the
+ * collapsed progress fill and the timeline caret label. That put the clock in
+ * THIS component's render effect, so the entire two-branch vnode tree — every
+ * Tooltip, the dropdown, the speed select, both hand-inlined play glyphs — was
+ * re-rendered sixty times a second, beside two Canvas2D surfaces already
+ * drawing at the same rate.
+ *
+ * Each readout now renders in a scope of its own. The parent's render effect
+ * reads neither `anim.t` nor `caretLabel`, so it re-renders when the dock's
+ * STRUCTURE changes and not when the clock ticks; the tick re-renders exactly
+ * the two nodes that display it. Nothing about what is displayed changes.
+ *
+ * ⊘ They are components and not `v-memo`/`shallowRef` tricks because the cure
+ * has to be a render BOUNDARY: memoisation still runs the parent's render and
+ * only skips patching, which is the cost this row is about. Magnitude at a real
+ * profile → SS-13.
+ */
+//
+// X.F.W14.u — UIA-F-7: the fill is a render-function child, and such a child
+// carries no `data-v` scope, so the SFC's scoped `.mini-fill` rule never
+// matched it: 0 px tall and transparent, the dock's only position readout
+// permanently empty. The rule reaches it through `:deep()` from the scoped
+// root (which does carry the scope). The producer's `Progress` was tried and
+// measured out: its fill carries a `transform` transition, which a 60 fps clock
+// restarts every frame — a perpetual running CSSTransition that lags the
+// readout and never lets the page settle. The root is a real `progressbar`.
+const MiniProgressReadout = () =>
+    h(
+        "div",
+        {
+            class: "mini-progress",
+            role: "progressbar",
+            "aria-label": "Animation position",
+            "aria-valuemin": 0,
+            "aria-valuemax": 1,
+            "aria-valuenow": Math.round(anim.t * 100) / 100,
+            "aria-valuetext": `${Math.round(anim.t * 100)}%`,
+        },
+        [h("div", { class: "mini-fill", style: { width: `${anim.t * 100}%` } })],
+    );
+
+/**
+ * X.F.W3 `.a` — the timeline is a parameterised composition now, so this host
+ * supplies the binding the fork used to take by reaching into the store itself
+ * (`fr-AnimationControls C-4 / M-1 / M-14`: no `modelValue`, no emits, a hard
+ * `useAnimationStore()` bind — which is exactly why a second site could not
+ * reuse it and forked instead).
+ *
+ * The render-boundary this functional component exists for is unchanged and is
+ * the reason the bindings live HERE and not in the template: `anim.t` and
+ * `caretLabel` are read inside this render scope, so the clock re-renders the
+ * two nodes that display it and not the dock's whole two-branch vnode tree.
+ *
+ * `step` is this host's axis decision, the counterpart of the convergence
+ * host's: `t` is continuous here and nothing quantises it, so one arrow key
+ * moves 1% — the granularity the integer axis used to give, now expressed on
+ * the `[0..1]` axis the producer's own contract states.
+ */
+const TimelineReadout = () =>
+    h(FourierTimeline, {
+        modelValue: anim.t,
+        accessibleName: "Timeline",
+        label: caretLabel.value,
+        step: 0.01,
+        valueText: () => caretLabel.value,
+        "onUpdate:modelValue": (next: number) => anim.seek(next),
+        onScrubStart: () => anim.startScrub(),
+        onScrubEnd: () => anim.endScrub(),
+    });
 </script>
 
 <template>
     <GlassDock
+        ref="dock"
         class="animation-dock"
-        :collapse-delay="2000"
-        :start-collapsed="true"
         :style="{ '--animation-dock-max-width': maxWidth }"
     >
-        <!-- ═══ COLLAPSED SUMMARY ═══ -->
-        <template #collapsed>
-            <Tooltip :text="anim.playing ? 'Pause' : 'Play'">
-                <button class="play-btn play-btn--mini" :class="{ 'is-playing': anim.playing }" :aria-label="anim.playing ? 'Pause animation' : 'Play animation'" @click.stop="anim.toggle">
+        <!--
+          X.F.W10S.b — `G-F9-8` (keystones 1 · 2 · crud:664, `nested-interactive`,
+          serious). glass-ui 8.0.0 makes the auto-posture collapsed summary the
+          dock's own disclosure (`role="button"`, `aria-label="Expand dock"`),
+          and a `role="button"` host may not contain interactive content — so
+          the mini Play/Pause this file put in `#collapsed` became a control
+          nested inside a control. `EditorControlsDock.vue` met the same producer
+          cure with the same move: the one action that must outlive the
+          auto-collapse leaves the summary for `#persistent`, the never-inert
+          region rendered OUTSIDE `.dock-layers` at both poles, and the expanded
+          row's duplicate goes with it (one action, one control). The control
+          keeps its two sizes by reading the posture: mini beside the collapsed
+          readout, full beside the timeline.
+        -->
+        <template #persistent>
+            <!-- X.F.W13.b — the dock's own control (owner frame 3, OA-15). The
+                 hand-rolled `.play-btn` was a 40x32 / 48x40 stadium beside the dock's
+                 40x40 circles; `DockControl` is the circle, and its `active` is the
+                 same toggle channel (`aria-pressed` + `data-active`).
+                 X.F.W14V.u4 — UIA-F-146: this note sat INSIDE the Tooltip, so in dev
+                 the trigger's first child was a comment node and the tooltip had no
+                 element to focus; it sits outside now, and the trigger is the
+                 DockControl. -->
+            <Tooltip :text="anim.playing ? 'Pause animation' : 'Play animation'">
+                <DockControl
+                    class="play-control"
+                    :active="anim.playing"
+                    :aria-label="anim.playing ? 'Pause animation' : 'Play animation'"
+                    @click.stop="anim.toggle"
+                >
+                    <!-- X-DS pass 2 · DS-F2-C10: the app's one play/pause glyph
+                         set, lucide filled at size-4, as /equation's sweep
+                         control (two separately authored sets read apart). -->
                     <Transition name="icon-swap" mode="out-in">
-                        <svg v-if="anim.playing" class="play-icon" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
-                        <svg v-else class="play-icon" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
+                        <Pause v-if="anim.playing" class="size-4" fill="currentColor" aria-hidden="true" />
+                        <Play v-else class="size-4" fill="currentColor" aria-hidden="true" />
                     </Transition>
-                </button>
+                </DockControl>
             </Tooltip>
-            <div class="mini-progress"><div class="mini-fill" :style="{ width: (anim.t * 100) + '%' }" /></div>
-            <MetricBadge :amount="anim.speed" unit="×" size="sm" class="summary-speed" />
+        </template>
+
+        <!-- ═══ COLLAPSED SUMMARY — readouts only; NO interactive content ═══ -->
+        <template #collapsed>
+            <MiniProgressReadout />
+            <Metric :value="anim.speed" unit="×" size="sm" />
         </template>
 
         <!-- ═══ EXPANDED FULL CONTROLS ═══ -->
         <div class="flex items-center gap-2 w-full">
-            <!-- Play/Pause -->
-            <Tooltip :text="anim.playing ? 'Pause animation' : 'Play animation'">
-                <button class="play-btn" :class="{ 'is-playing': anim.playing }" :aria-label="anim.playing ? 'Pause animation' : 'Play animation'" @click="anim.toggle">
-                    <Transition name="icon-swap" mode="out-in">
-                        <svg v-if="anim.playing" class="play-icon" viewBox="0 0 320 512" fill="currentColor"><path d="M48 64C21.5 64 0 85.5 0 112L0 400c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48L48 64zm192 0c-26.5 0-48 21.5-48 48l0 288c0 26.5 21.5 48 48 48l32 0c26.5 0 48-21.5 48-48l0-288c0-26.5-21.5-48-48-48l-32 0z"/></svg>
-                        <svg v-else class="play-icon" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>
-                    </Transition>
-                </button>
-            </Tooltip>
-
             <!-- Timeline -->
-            <GlassTimeline :label="caretLabel" />
-
-            <!-- Speed -->
-            <Tooltip text="Playback speed">
-                <div class="hidden sm:block">
-                    <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" />
-                </div>
-            </Tooltip>
+            <TimelineReadout />
 
             <!-- Three-dot menu — glass-ui DropdownMenu (role="menu", focus
                  management, Esc + click-outside dismissal all from the
                  primitive; replaces the hand-rolled popup + onClickOutside). -->
             <DropdownMenu :modal="false">
-                <DockDropdownTrigger aria-label="More options">
-                    <Tooltip text="More options">
-                        <EllipsisVertical class="h-4 w-4" />
-                    </Tooltip>
-                </DockDropdownTrigger>
+                <DockTrigger for="dropdown" aria-label="More options">
+                    <!-- X.F.W14V.u4 — UIA-F-146: no Tooltip around the glyph. It was the
+                     as-child of a bare SVG (never focusable, so no keyboard path);
+                     the trigger's own aria-label names the control. -->
+                    <EllipsisVertical class="h-4 w-4" />
+                </DockTrigger>
+                <!-- X.F.W14U.vdock — UIA-F-9 (BROKEN) ⊕ F-82 ⊕ F-175. Every setting
+                     is a labelled menu section in the menu's own idiom (speed and
+                     easing as radio groups; the speed Select that sat in the dock
+                     from `sm` up and inside this menu below it is gone — one
+                     control per setting, and no listbox ever opens over the
+                     menu). The sections scroll inside the plate when the space
+                     above the dock is short (the 390 frame: sh464/ch382).
+                     X.F.W14V.u1 — UIA-F-182: Export left this menu for the canvas
+                     dock, where it always opens the export dialog (one path). -->
                 <DropdownMenuContent class="menu-popup" :side-offset="8" align="end">
-                    <!-- The Speed + Easing controls are rich grouped settings,
-                         not command items; `role="group"` makes them allowed
-                         children of the `role="menu"` content (satisfies the
-                         ARIA `aria-required-children` contract) without
-                         mislabelling a combobox/toggle-grid as `menuitem`. -->
-                    <div role="group" aria-label="Speed" class="flex sm:hidden items-center gap-2 px-3 py-1.5 border-b border-border/50 mb-0.5 pb-2">
-                        <span class="text-muted-foreground text-xs">Speed</span>
-                        <SpeedSelect :model-value="anim.speed" @update:model-value="anim.speed = $event" compact />
+                    <div class="menu-sections">
+                        <SpeedSelect />
+                        <EasingPicker />
                     </div>
-                    <EasingPicker />
-                    <DropdownMenuItem class="menu-item" @select="emit('exportFrame')">
-                        <Download class="h-4 w-4" />
-                        <span class="text-sm font-medium">Export</span>
-                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -135,61 +221,28 @@ const caretLabel = computed(() =>
     width: min(var(--animation-dock-max-width, 960px), calc(100dvw - 1rem));
 }
 
-/* ── Play button ── */
-.play-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 2.5rem;
-    border-radius: 9999px;
-    cursor: pointer;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-    backdrop-filter: blur(12px) saturate(1.4);
-    -webkit-backdrop-filter: blur(12px) saturate(1.4);
-    color: #fff;
-    flex-shrink: 0;
-    transition: transform 0.2s, box-shadow 0.3s, border-color 0.3s;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-.play-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, hsl(0 75% 62% / 0.55), hsl(35 85% 58% / 0.5), hsl(55 80% 55% / 0.45), hsl(140 50% 50% / 0.45), hsl(210 65% 58% / 0.5), hsl(275 55% 58% / 0.5), hsl(330 65% 58% / 0.55));
-    background-size: 300% 300%;
-    z-index: -1;
-    transition: opacity 0.3s ease;
-}
-.play-btn::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 50%);
-    pointer-events: none;
-}
-.play-btn.is-playing::before { animation: rainbow-drift 2.5s var(--ease-standard) infinite; }
-
-@media (prefers-reduced-motion: reduce) {
-    .play-btn.is-playing::before { animation: none; }
-}
-.play-btn:hover { transform: scale(1.08); border-color: rgba(255, 255, 255, 0.4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 20px rgba(200, 100, 255, 0.2), 0 2px 12px rgba(100, 180, 255, 0.15); }
-.play-btn:active { transform: scale(0.93); }
-.play-btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
-.play-btn--mini { width: 2.5rem; height: 2rem; }
-.play-btn--mini .play-icon { width: 14px; height: 14px; }
-.play-icon { width: 17px; height: 17px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15)); }
-@keyframes rainbow-drift { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
+/* ── Play control ── */
+/* X-DS pass 1 · F1-01 — the seven-stop rainbow the control wore while playing,
+   and its infinite drift, are DELETED: a decorative gradient on a control and
+   idle motion on chrome. The playing state is `DockControl`'s own flat
+   selected fill (`[data-active]`), and the play/pause glyph carries it. */
 
 /* ── Collapsed summary ── */
-.mini-progress { width: 3rem; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
-.mini-fill { height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--foreground) 25%, transparent); transition: width 0.1s linear; }
-.summary-speed { @apply text-base; color: color-mix(in srgb, var(--foreground) 35%, transparent); }
+.mini-progress { width: 3rem; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
+.mini-progress :deep(.mini-fill) { height: 100%; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 25%, transparent); }
+/* X.F.W4 · SP-4 / `fr-AnimationControls M-8` — the `transition: width 0.1s
+   linear` is DELETED, not shortened. `width` here is rewritten every rAF tick,
+   so a 100ms transition was retargeted every ~16ms and never once completed:
+   the collapsed dock's only position readout was structurally ~100ms behind the
+   clock it claimed to report, and the browser ran a live interpolation for the
+   entire playback to achieve that. One line removed fixes correctness AND cost,
+   and removes an ungated-motion surface from D-8's inventory. */
+/* X.F.W14U.d — OA-57, the consumer half. The speed reading is glass's Metric as
+   glass paints it. The retired `.summary-speed` inked the value at 35% while the
+   unit kept glass's muted ink, so "1" read dimmer than its own "×" and the unit
+   read as a loose glyph beside the plate (the owner's frame). Its `text-base`
+   never reached the value (`size="sm"` sets it); it only re-based the reading's
+   em gap off the dock's own size. The plate that does not wrap the summary is glass's (DOCK-COLLAPSED-FORM, O-65). */
 
 /* ── Transitions ── */
 /* A.W3.d — named properties + canonical token, no `transition: all`. */
@@ -208,17 +261,20 @@ const caretLabel = computed(() =>
     flex-direction: column;
     gap: 0.125rem;
     min-width: 9rem;
+    /* X.F.W14U.vdock — UIA-F-9: the plate never outgrows the space reka
+       measures on the side it opens, and it never scrolls itself — its
+       sections do (below). */
+    max-block-size: var(--reka-dropdown-menu-content-available-height);
+    overflow: hidden;
 }
 
-/* `<Button variant="ghost" size="sm">` ships the focus-ring + hover + press;
-   the `.menu-item` hook widens the chassis to the full menu width and pins
-   the gap + left-aligned text + nowrap layout the menu pattern requires. */
-.menu-popup .menu-item {
-    width: 100%;
-    justify-content: flex-start;
-    gap: 0.375rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    white-space: nowrap;
+.menu-popup .menu-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-block-size: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 </style>

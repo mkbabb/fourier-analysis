@@ -1,5 +1,8 @@
+import { nextTick } from "vue";
 import { createRouter, createWebHistory, type RouteLocationNormalized } from "vue-router";
 import { supportsViewTransitions } from "@mkbabb/glass-ui";
+import { safeSetItem, safeStorage } from "@/composables/useSafeStorage";
+import { routes, SAVED_TAB_KEY } from "./routes";
 
 // I.ε — the `/w/`↔`/v/` route-morph. The worked-example (`/w/:imageSlug`) and
 // the saved visualization (`/v/:visualizationSlug`) both render
@@ -12,112 +15,44 @@ import { supportsViewTransitions } from "@mkbabb/glass-ui";
 // the back-and-forth with the gallery. Every other navigation falls straight
 // through to the unchanged remount path (the floor). glass-ui's
 // `view-transition.css` owns the `::view-transition-*` LOOK + the PRM carve.
+// ⊘ FR-AH-6 — one predicate, one home. A second copy lives at
+// `composables/useFourierMorph.ts`, gating the morph clock. WHICH home survives
+// is F.W5's rider; both sites carry this note so the collapse is one move.
 const prefersReducedMotion = () =>
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-/** True when the from→to pair is a visualization-surface morph worth animating. */
+const VIZ_ROUTES = new Set(["visualization", "workspace"]);
+/** The routes that morph with the visualization surface (I.ε; UIA-F-96: the gallery's card opens the saved entity). */
+const MORPH_ROUTES = new Set([...VIZ_ROUTES, "gallery"]);
+
+/** The slug a visualization-surface route addresses (`/visualize` alone carries none). */
+function vizSlug(r: RouteLocationNormalized): string | undefined {
+    return (r.params.visualizationSlug ?? r.params.imageSlug) as string | undefined;
+}
+
+/**
+ * True when the from→to pair is a visualization-surface morph worth animating.
+ *
+ * X.F.W14U.misc — UIA-F-246: one view transition per navigation. A
+ * visualization route that carries no slug (`/visualize`) is not a
+ * destination: the loader `replace()`s it with the loaded workspace's `/w/`
+ * at once, and a transition opened for it was aborted by the one that
+ * replace opened. The transition is opened for the navigation that lands.
+ */
 function isVizMorph(
     to: RouteLocationNormalized,
     from: RouteLocationNormalized,
 ): boolean {
-    const vizNames = new Set(["visualization", "workspace"]);
-    return vizNames.has(to.name as string) && vizNames.has(from.name as string);
-}
-
-const SAVED_TAB_KEY = "fourier_active_tab";
-const VALID_TABS = new Set(["/paper", "/visualize", "/morph", "/gallery", "/equation"]);
-
-function getSavedTab(): string {
-    const saved = localStorage.getItem(SAVED_TAB_KEY);
-    return saved && VALID_TABS.has(saved) ? saved : "/paper";
+    if (!MORPH_ROUTES.has(to.name as string) || !MORPH_ROUTES.has(from.name as string)) return false;
+    if (!VIZ_ROUTES.has(to.name as string) && !VIZ_ROUTES.has(from.name as string)) return false;
+    if (VIZ_ROUTES.has(to.name as string) && !vizSlug(to)) return false;
+    return to.fullPath !== from.fullPath;
 }
 
 export const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
-    routes: [
-        {
-            path: "/",
-            redirect: () => getSavedTab(),
-        },
-        {
-            path: "/paper",
-            name: "paper",
-            component: () => import("@/components/paper/PaperView.vue"),
-            meta: {
-                title: "Paper — Fourier Analysis",
-                description:
-                    "The full typeset treatise: deriving the Fourier transform through the dual lenses of linear algebra and complex analysis — Sturm–Liouville theory, Hilbert spaces, and the spectral theorem.",
-            },
-        },
-        // B.W4 — one slug per noun (CRUD-CONTRACT §1). `/v/:visualizationSlug`
-        // addresses a SAVED visualization entity; `/w/:imageSlug` is the
-        // pre-save working session over an image asset. The converged entity is
-        // slug-addressed, so the saved view needs only the single path segment.
-        {
-            path: "/v/:visualizationSlug",
-            name: "visualization",
-            component: () =>
-                import("@/components/visualization/VisualizationView.vue"),
-            meta: {
-                title: "Visualize — Fourier Analysis",
-                description:
-                    "Decompose any image's contour into a chain of rotating epicycles and watch the Fourier series redraw it stroke by stroke.",
-            },
-        },
-        {
-            path: "/w/:imageSlug?",
-            name: "workspace",
-            alias: ["/visualize"],
-            component: () =>
-                import("@/components/visualization/VisualizationView.vue"),
-            meta: {
-                title: "Visualize — Fourier Analysis",
-                description:
-                    "Decompose any image's contour into a chain of rotating epicycles and watch the Fourier series redraw it stroke by stroke.",
-            },
-        },
-        {
-            path: "/gallery",
-            name: "gallery",
-            component: () =>
-                import("@/components/visualization/GalleryView.vue"),
-            meta: {
-                title: "Gallery — Fourier Analysis",
-                description:
-                    "A curated gallery of community epicycle visualizations — saved Fourier decompositions of hand-traced contours.",
-            },
-        },
-        {
-            path: "/equation",
-            name: "equation",
-            component: () => import("@/components/equation/EquationView.vue"),
-            meta: {
-                title: "Equation Explorer — Fourier Analysis",
-                description:
-                    "Enter an arbitrary function and watch its Fourier, Chebyshev, and Legendre series converge — coefficients, partial sums, and the convergence plot rendered live.",
-            },
-        },
-        {
-            path: "/morph",
-            name: "morph",
-            component: () => import("@/components/morph/FourierMorphDemo.vue"),
-            meta: {
-                title: "Morph — Fourier Analysis",
-                description:
-                    "Morph one shape into another through their shared Fourier harmonic basis — an interactive study of epicycle interpolation.",
-            },
-        },
-        {
-            path: "/demo/shape-extractor",
-            name: "shape-extractor",
-            component: () => import("@/components/morph/FourierShapeExtractor.vue"),
-        },
-        {
-            path: "/s/:slug",
-            redirect: (to) => `/w/${to.params.slug}`,
-        },
-    ],
+    routes,
 });
 
 // ── I.ε — View-Transitions route-morph bracket ──────────────────────────────
@@ -161,31 +96,43 @@ function applyRouteMeta(to: RouteLocationNormalized) {
         document.head.appendChild(tag);
     }
     tag.setAttribute("content", description);
+
+    let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (to.meta.noindex) {
+        if (!robots) {
+            robots = document.createElement("meta");
+            robots.setAttribute("name", "robots");
+            document.head.appendChild(robots);
+        }
+        robots.setAttribute("content", "noindex");
+    } else {
+        robots?.remove();
+    }
 }
 
 router.afterEach((to: RouteLocationNormalized) => {
     applyRouteMeta(to);
 
     // I.ε — release the View-Transition update callback once the DOM has
-    // committed the new route component (next microtask + a frame).
+    // committed the new route component: Vue's next flush patches the
+    // `RouterView`, so `nextTick` is the commit.
+    //
+    // ⊘ X.F.W10S.b — `G-F9-11` / `C2-M1`: NEVER a frame here. While the update
+    // callback is pending the browser SUPPRESSES RENDERING for the document, and
+    // `requestAnimationFrame` callbacks run only inside a rendering update — so
+    // the double-rAF this release used to wait on could not fire until the
+    // browser gave up on the callback: every `/visualize` → `/w/` upload froze
+    // the page for the 4 s DOM-update timeout ("Transition was aborted because
+    // of timeout in DOM update"), dropped the pointer's hover for that long, and
+    // the late dock expansion then swallowed the first click on its Fullscreen
+    // control (the producer's click guard discards a press begun mid-morph).
     if (resolveViewSwap) {
         const release = resolveViewSwap;
         resolveViewSwap = null;
-        requestAnimationFrame(() => requestAnimationFrame(release));
+        void nextTick(release);
     }
 
-    const tab = to.path;
-    if (
-        tab === "/paper" ||
-        tab === "/visualize" ||
-        tab === "/morph" ||
-        tab === "/gallery" ||
-        tab === "/equation"
-    ) {
-        localStorage.setItem("fourier_active_tab", tab);
-    } else if (tab.startsWith("/w/")) {
-        localStorage.setItem("fourier_active_tab", "/visualize");
-    }
+    if (to.meta.tab) safeSetItem(safeStorage("local"), SAVED_TAB_KEY, to.meta.tab);
 });
 
 export default router;

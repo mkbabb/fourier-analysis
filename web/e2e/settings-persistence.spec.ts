@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import * as path from "node:path";
+import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
  * Settings persistence across reload — asset architecture.
@@ -20,8 +20,6 @@ import * as path from "node:path";
  * device-local IndexedDB, the cross-visitor share path is the published
  * `/v/{slug}` visualization, covered by visualization-crud.spec.ts).
  */
-
-const TEST_IMAGE = path.resolve(import.meta.dirname, "../../assets/animals/golden-retriever.webp");
 
 /** The IndexedDB draft layer the asset arch persists settings into. */
 const DRAFT_DB = "fourier-drafts";
@@ -49,7 +47,7 @@ async function readDraft(page: Page, imageSlug: string): Promise<any> {
 /** Upload the fixture, returning the `/w/{imageSlug}` slug once the canvas renders. */
 async function uploadAndOpen(page: Page): Promise<string> {
     await page.goto("/visualize");
-    await page.getByTestId("image-file-input").setInputFiles(TEST_IMAGE);
+    await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 15_000 });
     const imageSlug = page.url().match(/\/w\/([^/?#]+)/)?.[1];
     expect(imageSlug, "imageSlug parsed from /w/ URL").toBeTruthy();

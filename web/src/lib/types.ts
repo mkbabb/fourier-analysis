@@ -1,3 +1,5 @@
+import type { AnimationEasingName } from "./easings";
+
 export interface BasisComponent {
     index: number;
     coefficient: [number, number]; // [re, im]
@@ -45,7 +47,8 @@ export interface AnimationSettings {
     fps: number;
     duration: number;
     max_circles: number;
-    easing: string;
+    /** A name of the one easing catalogue (X.F.W14V.r3; the api's `AnimationEasing`). */
+    easing: AnimationEasingName;
     speed: number;
     active_bases: string[];
 }
@@ -94,6 +97,32 @@ export interface WorkspaceDraft {
 // ── Gallery ──
 
 export type GalleryTier = "featured" | "saved" | "normal";
+
+/**
+ * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` — THE TIER FILTER, and THE SORT
+ * CANON.
+ *
+ * `GalleryTier` is a CLOSED union with one canonical home and three importers,
+ * and it was still RE-DECLARED INLINE at eight sites across six files —
+ * verbatim six times, hand-widened with `"all"` twice. Measured at this seat,
+ * 2026-09-19: ⟨cmd⟩ `grep -rn '"featured" | "saved" | "normal"' src` →
+ * `gallery.ts:34` · `GallerySearchBar.vue:17`/`:24` · `GalleryInfiniteGrid.vue:19`
+ * · `GalleryCard.vue:32` · `GalleryFeaturedCarousel.vue:53` ·
+ * `GalleryCardModal.vue:28` · `GalleryView.vue:152`. The two widened spellings
+ * are why the filter variant is named HERE rather than re-derived per consumer:
+ * a hand-widening is how a closed union stops being closed.
+ *
+ * ⊘ The SORT canon is minted from the vocabulary THIS APP offers, which is the
+ * only one measurable from this tree: the three `SelectItem`s the search bar
+ * renders. The corpus books the server as accepting five keys; `api.ts` types
+ * the parameter as a bare `string` at both call sites, so the server's set is
+ * not readable from here and widening this union to meet it is a decision that
+ * needs the API contract, not a guess. Named as residue rather than invented.
+ */
+export type GalleryTierFilter = GalleryTier | "all";
+
+/** The gallery's sort vocabulary — authored three times, with no canon. */
+export type GallerySort = "newest" | "views" | "likes";
 
 // ── Session/Auth ──
 
@@ -155,7 +184,13 @@ export interface FlaggedVisualization {
     flags: FlagInfo[];
     image_slug: string | null;
     owner_slug: string | null;
-    tier: string | null;
+    // `FR-AFP-59`'s type half (X·F F.W4 `.f`; the same narrowing `FR-AFP-31`
+    // asks for on `FlagReason`'s side). `GalleryTier` is closed on BOTH wire
+    // sides — `Visualization.tier` above already says so — and this row alone
+    // widened it back to `string`, which is why a drifted vocabulary could ship
+    // a raw wire token into the panel's meta line and into the `data-tier`
+    // recipe the sibling gallery card resolves against a closed set.
+    tier: GalleryTier | null;
     created_at: string | null;
 }
 

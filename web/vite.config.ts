@@ -45,6 +45,12 @@ export default defineConfig({
         //   - vendor-paper:  paper compile/render path; only loaded on /paper routes.
         //   - vendor-keyframes: animation runtime.
         //   - <route>:       Vite's built-in route-level chunking handles the rest.
+        //
+        // F.W1 — two members re-key at the adopted pin: `lucide-vue-next` is
+        // renamed to `@lucide/vue`, and value.js 4.0.0 publishes NO `"."` export,
+        // so the cluster is named by the three subpaths this repo imports. A bare
+        // `@mkbabb/value.js` id here resolves to nothing and would silently drop
+        // the split.
         rollupOptions: {
             output: {
                 manualChunks: {
@@ -52,9 +58,19 @@ export default defineConfig({
                     "vendor-ui": [
                         "@mkbabb/glass-ui",
                         "reka-ui",
-                        "lucide-vue-next",
+                        "@lucide/vue",
                     ],
-                    "vendor-math": ["@mkbabb/value.js", "katex"],
+                    // `./easing` is deliberately NOT named here (FR-AH-7): the
+                    // persistent header reaches it through DarkModeToggle →
+                    // useFourierMorph → lib/easings, so welding it to katex is
+                    // what made a 348 kB math cluster eager. The colour-math and
+                    // LaTeX halves stay together; the easing curves ride the
+                    // chunk of whoever imports them.
+                    "vendor-math": [
+                        "@mkbabb/value.js/color",
+                        "@mkbabb/value.js/css",
+                        "katex",
+                    ],
                     "vendor-paper": ["@mkbabb/latex-paper", "@mkbabb/pencil-boil"],
                     "vendor-keyframes": ["@mkbabb/keyframes.js"],
                 },

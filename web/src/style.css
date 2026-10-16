@@ -2,6 +2,32 @@
 @import "tw-animate-css";
 @import "@mkbabb/glass-ui/styles";
 
+/* X.F.W4 / SP-6 — THE ONE CASCADE DECISION (FR-AH-11 + MISS-3 ⊕ FMD-13 ⊕
+   FMD-N3 ⊕ FMD-27, adjudicated cure-shape FR-AH-30).
+
+   Vue emits SFC `<style scoped>` and plain `<style>` output UNLAYERED, and
+   unlayered beats every `@layer`. That is why consumer overrides silently
+   replaced glass-ui's `@layer components` recipes wholesale — hover plates,
+   density rungs, the coarse-pointer `min-block-size` floor, the six-leg
+   spring transitions and the focus paint — regardless of specificity.
+
+   ⊘ `@layer components` wrapping REVERSES the outcome (FR-AH-30, adjudicated
+   dead): glass's competing rules are already in `@layer components` at higher
+   specificity, so a consumer block moved there would LOSE every deliberate
+   override. The ONLY shape that works is a layer appended AFTER `utilities`.
+
+   Deliberate consumer divergence goes inside `@layer glass-overrides { … }` —
+   in this file or in any SFC `<style>` block — and beats the producer by
+   ORDER, which is auditable. Everything that is not deliberate divergence is
+   deleted, and the producer recipe governs.
+
+   ⊘ THE ORDER IS NOT DECLARED HERE. A layer's position is fixed by where its
+   name first appears, and Vite emits SFC `<style>` output BEFORE this entry
+   sheet, so a statement in this file arrives too late and silently seats
+   `glass-overrides` at the BOTTOM. The single authority is the one-line
+   `@layer` statement in the document head — `web/index.html`, which carries
+   the measurement. Do not add a rival statement here. */
+
 /* A.W2.b — folded from `styles/fourier-overrides.css` (deleted). The brand
    fork remaps the `font-sans` Tailwind utility onto Computer Modern Serif;
    the global app shell, the safe-area inset, the KaTeX font-face swap +
@@ -10,8 +36,64 @@
    block and `[data-state="active"][role="tabpanel"]` animation are filed
    upstream as glass-ui carries — see `coordination/CONSTELLATION.md`. */
 
+/* X.F.W4 / SP-10 — FONT TRUTH: THE ONE DECISION, STATED (FR-AH-2 · MISS-FONT,
+   and §3 D10's font leg).
+
+   The decision is **COMMIT TO THE CM IDENTITY**, not `@import
+   "@mkbabb/glass-ui/styles/fonts"`. Measured, not preferred:
+
+     · glass-ui's font corpus is a deliberate separate subpath and ships
+       **132,840 B** of base64-inlined faces — exactly two families, ⟨cmd⟩
+       `grep -o 'font-family: *"[^"]*"' dist/styles/fonts.css | sort -u` →
+       `"Fira Code"` · `"Plus Jakarta Sans"`. Fourier already self-hosts Fira
+       Code same-origin (`public/fonts.css`), and Plus Jakarta Sans has ZERO
+       application sites in this app. Importing it would add a third of a
+       megabyte of CSS to make a sans the brand fork exists to REJECT.
+     · The app's own identity is Computer Modern: four CM faces vendored under
+       `/public/fonts/Serif`, a `@theme` fork that already remaps `--font-sans`
+       onto it, and 26 `cm-serif` sites across 17 files.
+
+   What was broken is that the brand fork stopped at ONE token. glass-ui bridges
+   `--font-serif` → `--font-stack-text` → `"Plus Jakarta Sans"` (a SANS, and an
+   unloaded one), `--font-display` the same, and `--font-serif-math` — the
+   variable the producer's own `@utility cm-serif{font-family:var(
+   --font-serif-math,serif)}` reads — is declared in NO tree, so every
+   `cm-serif` site fell to generic serif. That is why the masthead rendered its
+   ℱ (`fourier-f` → `--font-display`) and its wordmark (`cm-serif` →
+   `--font-serif-math`) in two unrelated fallbacks.
+
+   The three registers are bound here, to faces this app actually loads, and the
+   producer's utilities resolve through them unchanged. ⊘ `--font-mono` is NOT
+   restated: the producer already resolves it to the Fira Code this app vendors.
+   ⊘ The D-B2 unicode-range leg stays KILLED — Plus Jakarta never loads at all,
+   so there is no range to split. GLASS-RELAY (ridden, not hacked here): `cm-serif`
+   reads a variable glass-ui never declares, so it silently no-ops for every
+   consumer that does not know to declare it. */
 @theme {
+    /* ⊘ The fork is stated at each REGISTER, not at the producer's
+       `--font-stack-text` bridge head. That was tried first and MEASURED not to
+       take: `@theme` wins against `theme/bridges.css`'s leaf declarations but
+       loses against the stack head, so forking the head left `--font-serif` and
+       `--font-text` on Plus Jakarta while `--font-sans` resolved to nothing at
+       all. Four declarations that are proven to win beat one that reads
+       elegantly and silently does not. */
     --font-sans: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
+    --font-serif: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
+    /* `--font-text` is the one the PRODUCER's own `body { font-family:
+       var(--font-text) }` reads, and that rule beats this app's `@layer base`
+       binding — so forking the leaves without it left the page's own body copy
+       on an unloaded sans while every branded element moved. The omission was
+       invisible precisely because the platform fallback is also a serif. */
+    --font-text: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
+    /* The display register: Fraunces is vendored beside CM and is the face the
+       producer's `fourier-f` utility renders the masthead ℱ in. It is NOT
+       bridged to the text stack, because the two ARE different faces. */
+    --font-display: "Fraunces", "Computer Modern Serif", "Latin Modern Roman", Georgia, serif;
+    /* The register `font-serif-math` reads. glass-ui 10.0.0 retired `cm-serif`
+       for `font-serif-math` and now declares `--font-serif-math: serif` in its
+       plain `@theme`; this `@theme` re-declaration replaces that default in the
+       one root Tailwind emits (MIGRATION.md §10.0.0, the token-root contract). */
+    --font-serif-math: "Computer Modern Serif", "Latin Modern Roman", "CMU Serif", Georgia, serif;
 }
 
 @layer base {
@@ -21,8 +103,19 @@
         min-height: 100dvh;
     }
 
-    body {
-        padding-bottom: env(safe-area-inset-bottom);
+    /* X.F.W14V.au1 — A2-FO-L2-1: the body's `padding-bottom:
+       env(safe-area-inset-bottom)` is deleted. The app is an `h-dvh`,
+       overflow-hidden shell (`App.vue`) whose one scroller is `<main>`, so the
+       padding made the document the viewport plus the inset (878 of 844 at
+       390, 411 of 390 in landscape): the whole page scrolled by the inset and
+       a drag out of `<main>` lifted the app dock under the status bar. The
+       document's scroll range is 0 again. The bottom inset is read where it
+       matters, by the bottom-anchored overlays (`.controls-overlay`, the
+       paper's bottom overlay); the notch sides by the shell (`.app-shell`). */
+    .app-shell {
+        /* A2-FO-L2-3: `viewport-fit=cover` (index.html) draws under the
+           landscape notch sides, so the shell keeps its content clear of them. */
+        padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
     }
 
     ::selection {
@@ -35,18 +128,29 @@
     }
 }
 
-/* A.W2.c — folded from `styles/ios-fixes.css` (deleted): mobile-first
-   responsive root font sizing. Global concern, hosted at the entry. */
-html {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
-}
+/* A.W2.c — folded from `styles/ios-fixes.css` (deleted). Global concern,
+   hosted at the entry.
 
-@media (min-width: 768px) {
-    html {
-        font-size: 1rem;
-        line-height: 1.5rem;
-    }
+   X.F.W4 — COHESION §0j.D **G-15(b), RULED**: *"the root-size fork →
+   `html{font-size:1.125rem}` under 768px GOES: the 12.5% inflation compounds
+   with `--ui-scale` (67.5px against the token author's 60px); F.W1's
+   token-parity re-tune absorbs it, F.W4 executes per component."*
+
+   The mobile arm inflated EVERY rem in the app by 12.5% on exactly the
+   viewports where the producer's coarse-pointer scaling is already at work, so
+   the two multiplied. It also minted a third breakpoint the app does not
+   otherwise have: components query 640px, the root queried 768px, and the
+   128px band between them ran at a different rem — which is why the `/morph`
+   title rendered LARGER at 640-767 than at ≥768 (FMD-29 · HLG-19) and why the
+   header toggle's rendered ladder was non-monotonic at 45 → 49.5 → 44 px
+   (FM-21). One root size, and the ladder is monotonic by construction.
+
+   ⊘ What this does NOT decide is FM-21's own question — which scaling system
+   owns the app's absolute-pixel figures. That is POSED at §3 D10 and answered
+   nowhere here. */
+html {
+    font-size: 1rem;
+    line-height: 1.5rem;
 }
 
 /* KaTeX faces are self-hosted, same-origin, via the `katex/dist/katex.min.css`
@@ -61,9 +165,28 @@ html {
     font-size: 1.02em;
 }
 
+/* X.F.W4 / `PAW-55` — the declaration that computed to its own opposite.
+
+   `overflow-x: auto; overflow-y: visible` reads as "scroll wide math sideways,
+   never clip it vertically". CSS Overflow 3 §3 says otherwise: when one axis is
+   not `visible`, a `visible` on the other axis COMPUTES TO `auto`. So the
+   authored line was dead, every display-math box on the `/paper` route (~263 of
+   them, all entering through one `PaperSectionBlocks` call) became a
+   BLOCK-AXIS scroll container, and tall KaTeX ink — `\overbrace`, stacked
+   limits, tall delimiters — was clipped at the padding box with the 0.75rem
+   block padding as its only headroom.
+
+   `clip` is the value that does what `visible` was written to mean: it is
+   exempt from the computed-value rule, so it composes with `auto` on the inline
+   axis, and it makes the box a non-scroll container again.
+   `overflow-clip-margin` then hands the block axis real headroom instead of the
+   padding's incidental 0.75rem. ⊘ Whether any SPECIFIC equation was clipping
+   at the old line is the row's own SS-13 probe and is not claimed here — the
+   dead declaration is the defect, and it is cured. */
 .katex-display {
     overflow-x: auto;
-    overflow-y: visible;
+    overflow-y: clip;
+    overflow-clip-margin: 0.75rem;
     padding: 0.75rem 0;
     margin: 1rem 0;
 }
@@ -72,8 +195,141 @@ html {
     font-size: 1.1em;
 }
 
-.dark .katex {
-    color: var(--foreground);
+/* X-DS DS-F3-C2 — wide display math says that it scrolls. A display that
+   overflows its measure fades at the edge that still has ink beyond it: the
+   trailing edge at rest, both edges mid-scroll, the leading edge at the end.
+   The fade rides the box's own inline scroll timeline, so a display that fits
+   has no timeline, runs no animation and keeps no mask. The equation number
+   already sits outside this box (latex-paper's `.math-block__number` column). */
+@property --math-edge-start {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+}
+@property --math-edge-end {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+}
+@supports (animation-timeline: scroll()) {
+    .katex-display {
+        mask-image: linear-gradient(
+            to right,
+            transparent,
+            #000 var(--math-edge-start),
+            #000 calc(100% - var(--math-edge-end)),
+            transparent
+        );
+        animation: math-edge-cue linear both;
+        animation-timeline: scroll(self inline);
+    }
+}
+@keyframes math-edge-cue {
+    from { --math-edge-start: 0px; --math-edge-end: 2.5rem; }
+    10% { --math-edge-start: 2.5rem; }
+    90% { --math-edge-end: 2.5rem; }
+    to { --math-edge-start: 2.5rem; --math-edge-end: 0px; }
+}
+
+/* X-DS pass 5 · DS-F7-C1..C5 — THE latex-paper 0.2.1 BRIDGE. The served theme
+   writes `hsl(var(--token))` over bare `H S% L%` triples; glass ships full
+   colours, so every such value is invalid here (rules fall back to ink, the
+   sticky headers go transparent). The root is cured in latex-paper `5166529`
+   (a 0.3.0 changeset: full-colour reads, no equation hover rule, 2.5rem over
+   a sub-heading; the flat theorem block, straight rule and flat divider were
+   already on its master).
+   Publishing it is an owner act; until the repin these few rules restate the
+   root's result. DELETE THIS BLOCK AT THE 0.3.0 REPIN. `article.` lifts each
+   rule one element over the theme's, which loads after this sheet. */
+article.paper-article .math-block {
+    border-left: 0;
+}
+article.paper-article .theorem-block,
+article.paper-article .theorem-block:hover {
+    border-radius: 0 0.5rem 0.5rem 0;
+    box-shadow: none;
+    transform: none;
+    transition: none;
+}
+article.paper-article .theorem-block::before {
+    content: none;
+}
+article.paper-article :is(.theorem-block--theorem, .theorem-block--proposition, .theorem-block--corollary) {
+    --theorem-hue: var(--theorem-accent);
+}
+article.paper-article :is(.theorem-block--definition, .theorem-block--example) {
+    --theorem-hue: var(--accent-pink);
+}
+article.paper-article :is(.theorem-block--lemma, .theorem-block--aside) {
+    --theorem-hue: var(--muted-foreground);
+}
+article.paper-article .theorem-block {
+    border-left-color: var(--theorem-hue);
+}
+article.paper-article .theorem-block .theorem-label {
+    color: var(--theorem-hue);
+}
+article.paper-article :is(.section-header--chapter, .section-header--sub) {
+    background: var(--card);
+}
+article.paper-article .section-header--sub {
+    margin-top: 2.5rem;
+}
+article.paper-article .section-divider {
+    background: color-mix(in srgb, var(--_section-color, var(--section-heading)) 25%, transparent);
+}
+/* DS-F8-C3: an equation number is upright mono, inside a theorem's italic too
+   (Fira Code has no italic; the slant was synthetic). */
+article.paper-article .math-block__number {
+    font-style: normal;
+}
+/* DS-F8-C5: below the narrow measure the number drops under its display, so
+   the equation takes the column's whole width. */
+@media (max-width: 40rem) {
+    article.paper-article .math-block {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    article.paper-article .math-block__number {
+        justify-self: end;
+    }
+    /* DS-F9-C6: the number hugs the display's last line. */
+    article.paper-article .math-block .katex-display {
+        margin-block-end: 0;
+        padding-block-end: 0;
+    }
+}
+/* DS-F9-C2: the list markers a preflight reset strips. */
+article.paper-article .section-body ol.paper-list { list-style: decimal; }
+article.paper-article .section-body ul.paper-list { list-style: disc; }
+article.paper-article .section-body .paper-list li::marker { color: var(--muted-foreground); }
+/* X-DS F3R · DS-F3R-C3: a bracketed reference key is one token. The article's
+   `hyphens: auto` broke it mid-name ("[Fouri-" / "er, 1878]"); prose keeps
+   auto-hyphenation. */
+article.paper-article .paper-cite {
+    hyphens: manual;
+    white-space: nowrap;
+}
+
+/* X-DS pass 6 · DS-F8-C1 — the theorem family's accent, kept OUTSIDE the
+   bridge (it is fourier's binding of latex-paper 0.3.0's `--theorem-accent`):
+   the violet section rung, a hue in BOTH arms. `--primary` is glass's ink in
+   light and the violet only in dark, so the rule read as an ink bar in one
+   theme and an accent in the other. */
+article.paper-article {
+    --theorem-accent: var(--section-color-7);
+}
+
+/* X-DS pass 3 · DS-F3-C7 — THE ONE hue-chooser tone. A pressed chooser item
+   (glass ToggleGroupItem, keyed on the `data-state` it ships) wears its own
+   hue: a 12% tint, and the hue carried a quarter toward `--foreground` for the
+   ink (AA on the tint in both arms, the c1 record). The basis, notation,
+   preset and Auto choosers each restated this rule; they set `--chip-hue`. */
+.hue-chip[data-state="on"] {
+    background-color: color-mix(in srgb, var(--chip-hue) 12%, transparent);
+    color: color-mix(in oklab, var(--chip-hue) 75%, var(--foreground));
+}
+.hue-chip[data-state="on"]:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--chip-hue) 16%, transparent);
 }
 
 /* Tab-panel entry animation — local carry pending glass-ui's Tabs
@@ -95,19 +351,35 @@ html {
     }
 }
 
-/* D.W4.a — `.cartoon-card` shim (the dead-class resurrection).
-   glass-ui removed the `.cartoon-card` recipe at C.W5 (cards.css:2);
-   `cartoon-surface` survives as a decoration-only utility (cards.css:33).
-   Fourier consumes `.cartoon-card` at 14 application sites (13 files; one
-   uses it 5 times). The shim re-binds the class against `cartoon-surface`
-   (the 2px border + offset-stamp shadow + hover-lift) and the existing
-   `--border`/`--card` tokens, restoring parity with the pre-C.W5 visual
-   without touching glass-ui. Cross-repo re-publish recorded as a
-   coordination ask; this shim is the fourier-local KISS stop-gap. */
-@utility cartoon-card {
-    @apply cartoon-surface;
-    border-color: var(--border);
-    background: var(--card);
+/* X.F.W14V.au3 — A2-FO-L1-13: the D.W4.a `.cartoon-card` shim (the
+   dead-class resurrection over glass's `cartoon-surface`, with the X.F.W13.a
+   radius) is RETIRED. Every site moved to glass Card or Surface in the same
+   change: the morph cards and the batch bar to Card, the morph control to
+   Surface (the /equation, /visualize and admin sites had already moved). */
+/* X.F.W14V.u4 — UIA-F-239: the stage's legend inset, registered as a <length>
+   so `getComputedStyle` hands BasisCanvas a resolved px value (an unregistered
+   custom property computes to its unresolved `calc()` text). Set on
+   `.canvas-stage` (VisualizationView). */
+@property --legend-inset-top {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 16px;
+}
+
+/* X-DS pass 4 · DS-F4-C8: the epicycle inset's bottom pad (BasisCanvas reads
+   it resolved, so it is registered too). Set on `.canvas-stage`. */
+@property --epicycle-inset-bottom {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 12px;
+}
+
+/* X-DS pass 8 · DS-F10-C2: the stage's inline-start inset, the one edge the
+   legend and the epicycle inset share (BasisCanvas reads it resolved). */
+@property --stage-inset-inline {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 16px;
 }
 
 /* D.W4.d — light-mode `--viz-amber` darken (axe contrast carry).
@@ -116,28 +388,277 @@ html {
    `hsl(35 76% 35%)` ≈ 4.6:1 (clears AA). Dark-mode value stays put. The
    companion glass-ui carry (rebaseline the upstream light token) is held
    as a coordination ask. */
+/* X.F.W4 / `PV ★MF-10` ⟨= banked `fr-PaperSidebar D-M4 extended`⟩ — the three
+   light-arm section-ramp stops that do not reach 4.5:1, joined to the block
+   above because they are the SAME fork in the same shape.
+
+   The finding and its replacements are unit `.e`'s, handed over measured; the
+   tokens are authored in `glass-ui/dist/styles/tokens/{color-radius,dark-arm,
+   light-dark}.css` and forked HERE, which is why `.e` declared them rather than
+   writing them — this file is `.f`'s ownership window, and glass-ui is
+   READ-ONLY (the ramp's own WIDTH — thirteen stops, thirteen roots — is a
+   producer row and rides the relay, not this sheet).
+
+   ⊘ THE HANDED-OVER L VALUES ARE TAKEN 0.003–0.006 DARKER, and the reason is
+   the PLATE. `.e` measured live against `rgb(251 250 248)` = `--background`,
+   where its values read 4.63/4.61/4.61. The ramp also paints on `--card`
+   (`hsl(30 85% 96%)` = `rgb(253 245 236)`), which is the STRICTER of the two
+   light plates, and against it those same values read 4.454/4.438/4.433 — all
+   three back under the floor. The values below clear 4.5:1 on BOTH, arithmetic
+   double-run at CSS Color 4's own oklch→sRGB and cross-checked against `.e`'s
+   live readings to within 0.03:
+
+     stop-4   oklch(0.538 0.088 171.1)   card 4.511:1   background 4.687:1
+     stop-10  oklch(0.541 0.103 128.8)   card 4.513:1   background 4.690:1
+     stop-11  oklch(0.540 0.092 208.0)   card 4.508:1   background 4.684:1
+
+   Chroma and hue are untouched in all three — only L moves, by 0.013 / 0.015 /
+   0.061 — so every chapter keeps the hue that identifies it, which is the whole
+   point of a section ramp. The DARK arm is not touched at all: it reads
+   7.4–10.2:1 across all thirteen stops and needs nothing, so each stop is
+   restored to the producer's dark value below, exactly as `--section-color-5`
+   already was. */
+/* X.F.W14V.au1 — A2-FO-L3-6 (consumer half): the ONE page gutter. Every route
+   root reads it (the tool routes' Configurator margin, the gallery column, the
+   paper column, the shape extractor, not-found, and the workspace tab strip),
+   so the content edge no longer jumps on a nav switch (it was 8 px on /visualize
+   and /equation at desktop, 4 px beside a 16 px gallery on phones). glass ships
+   no layout-gutter token at 10.1.0 (the glass half rides O-68); when it does,
+   this one line reads it. */
+:root {
+    --page-gutter: 1rem;
+}
+
+/* X-DS pass 15 · DS-F17-C1 — the Configurator aside's section label on the
+   app's card-title rung (subheading at 500, the /morph card titles' since
+   DS-F16-C1). glass's default (`--type-heading` at 600) renders Computer
+   Modern, which has no semibold, as CMU Bold Extended: the heaviest and widest
+   type on /v, /w and /equation, level with the route h1 at 390. These are
+   glass's own token slots, rebound here as the app's other type slots are. */
+:root {
+    --configurator-section-size: var(--type-subheading);
+    --configurator-section-weight: 500;
+}
+
+/* X-DS fourier pass 6 · DS-F6-C1 — a resting card's hover is one lightness
+   step toward the page's far end: darker on the cream, lighter on the dark
+   arm (GalleryCard reads it in its own hue). */
+:root {
+    --card-hover-step: -0.02;
+}
+.dark {
+    --card-hover-step: 0.02;
+}
+
 :root {
     --viz-amber: hsl(35 76% 35%);
     --section-color-5: hsl(35 76% 35%);
+    --section-color-4: oklch(0.538 0.088 171.1);
+    --section-color-10: oklch(0.541 0.103 128.8);
+    --section-color-11: oklch(0.540 0.092 208.0);
 }
 .dark {
-    /* Dark-mode value stays as glass-ui ships (hsl(37 73% 67%)). */
+    /* Dark-mode values stay as glass-ui ships them. */
     --viz-amber: hsl(37 73% 67%);
     --section-color-5: hsl(37 73% 67%);
+    --section-color-4: oklch(0.776 0.105 172.6);
+    --section-color-10: oklch(0.794 0.116 127.9);
+    --section-color-11: oklch(0.805 0.095 206.7);
 }
 
 /* D.W4.d — `:focus-visible` rings on the TOC link classes + the gallery
-   card. Mirrors the canonical pattern at AppHeader.vue:174-177 (the only
-   pre-W4 conformant site). The classes are declared in scoped styles in
+   card. Mirrors the canonical pattern the app chrome paints — today
+   `AppDock.vue`, whose controls carry the producer's `--focus-ring-width` /
+   `--focus-ring-color` outline (X.F.W12 `.a`, 2026-09-22, R-e-2: re-pointed
+   from the header this cited, retired at X.F.W11 `.c`). The classes are declared in scoped styles in
    PaperSidebar.vue, MobileFloatingToc.vue, PaperArticleWindow.vue,
    GalleryCard.vue — all four scoped-styled. Because Vue's scoped styles
    add a data-attribute selector, the ring lives at the global layer so it
    applies regardless of the component scope hash. */
-.sidebar-link:focus-visible,
-.floating-toc-item:focus-visible,
+/* X.F.W4 / FM-2 rider — `--ring` IS NOT A TOKEN AT THE ADOPTED PIN.
+
+   glass-ui 8.0.0 declares neither `--ring` nor `--color-ring` anywhere
+   (⟨cmd⟩ `grep -roh -- '--[a-z-]*ring[a-z-]*: *[^;}]*' dist --include='*.css'
+   | sort -u` → `--focus-ring-color` · `--focus-ring-shadow` ·
+   `--focus-ring-width` · `--control-edge-ring` · `--dock-ring` · …, and no
+   `--ring`), and neither does this app. An `outline` whose colour is an
+   undeclared `var()` is invalid at computed-value time and is DROPPED — so
+   these four classes, which exist for no other purpose, have been painting NO
+   focus ring at all. Six read sites across five files, exactly as FM-2 banked;
+   the three inside this unit's bounds are cured here and in the app chrome —
+   now `AppDock.vue` (the header that held one retired at X.F.W11 `.c`;
+   re-pointed X.F.W12 `.a`, 2026-09-22, R-e-2) — and `DarkModeToggle.vue`. The remaining three are named, not written, because
+   their files belong to sibling units: `ImageUpload.vue:200` (→ `.c`) and
+   `GalleryCard.vue:222`/`:223` (→ `.d`).
+
+   `--focus-ring-color` and `--focus-ring-width` are the producer's own
+   registers — the same pair its `.focus-ring:focus-visible` recipe paints
+   with — so the app's hand-rolled rings and the producer's now agree.
+
+   X.F.W11.a (OA-1) — `GCM-23` TAKEN: the rule-wide `inherit` corner is gone.
+   It re-shaped each focused element to its PARENT's corner (a card's child
+   took the card's radius on focus). Each of the four now carries its own token
+   corner — `.toc-link` (the paper ToC tree, X.F.W14V.au5; glass's row canon
+   `--radius-lg`, X.F.W14.r) · `.floating-toc-top` (the phone bar's Scroll to top)
+   · `.callout-btn` (the glass Button's `--radius-button`) · `.gallery-card`
+   (`rounded-xl`) — and an outline follows its own element's corner. */
+.toc-link:focus-visible,
+.floating-toc-top:focus-visible,
 .callout-btn:focus-visible,
 .gallery-card:focus-visible {
-    outline: 2px solid var(--ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
     outline-offset: 2px;
-    border-radius: inherit;
+}
+
+/* F.W1 / B-2 — `.paper-texture` RESTORED as a consumer-local rule (G5's
+   texture-restore arm, landing inside the uplift transaction).
+
+   glass-ui shipped the rule in its own `@layer components`
+   (`styles/cards.css`: the four declarations plus a `:where(.dark)` blend
+   arm) and retired it at the adopted pin — 8.0.0 keeps the class only as
+   prose in `tokens/scale-paper.css`, so the app shell (`App.vue`, one
+   application) would lose its paper ground SILENTLY: no import, no prop,
+   no type, no build error.
+
+   BOTH tokens the producer's rule composed survive at 8.0.0
+   (`--paper-clean-texture` in `tokens/scale-paper.css`, `--paper-texture-size`
+   in `tokens/offsets.css`), so this is a re-declaration against the published
+   token seam, not a hand-rolled texture: no data-URI is authored here, and
+   neither surviving `@utility paper-*` recipe is used — they paint a uniform
+   opaque black over this surface (fr-SvgFilters M-1/R-3, re-measured at the
+   adopted pin). If the producer restores the rule, this block is deleted and
+   nothing else moves. */
+@layer components {
+    .paper-texture {
+        background-image: var(--paper-clean-texture);
+        background-repeat: repeat;
+        background-size: var(--paper-texture-size);
+        background-blend-mode: multiply;
+    }
+
+    :where(.dark) .paper-texture {
+        background-blend-mode: screen;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   X.F.W3 `.e` — THE ACTIVE-STATE VOCABULARY, PUBLISHED (`fr-CanvasOverlayButton
+   FR-COB-3` ⊕ `fr-App MG-η` ⊕ `fr-EquationView D·D-M12`).
+
+   This block is `.e`'s PUBLICATION under §5a-v2 item 1: the decision every
+   other unit applies inside the files it already owns. It is the law, not a
+   paint surface — no global rule is minted here, because each control paints
+   its own skin; what is fixed is WHICH CHANNEL carries the state and WHICH
+   SELECTOR reads it.
+
+   THE DEFECT IT ANSWERS, measured at this seat (fourier `74084fa`, worktree
+   `f3e`): FIVE spellings of one state were live —
+     ⟨cmd⟩ `grep -rl 'is-active' src | sort`       → 6 files / 18 sites
+     ⟨cmd⟩ `grep -rn 'is-active-sub' src | wc -l`  → 1
+     ⟨cmd⟩ `grep -rn 'is-playing' src | wc -l`     → 6
+     ⟨cmd⟩ `grep -rn 'liked' src | wc -l`          → 22 (6 are the class)
+     ⟨cmd⟩ `grep -rn 'aria-current' src | wc -l`   → 0
+   — and the sixth, a `:class="{ active: … }"` binding with no rule anywhere,
+   was DEAD. The banked fifth spelling, `PaperView.vue`'s `:is-active` PROP, is
+   ABSENT from this tree (⟨cmd⟩ `grep -rn ':is-active' src` → 0); its
+   prohibition below stands anyway, because the grep that would corrupt it is
+   the one a sweeping seat reaches for first.
+
+   ── THE VOCABULARY ────────────────────────────────────────────────────────
+   A control's active state is ANNOUNCED through the ARIA attribute its role
+   owes, and PAINTED from that same attribute. A bespoke class is never the
+   sole channel, and never the paint hook.
+
+     state                          channel (the ONE)          CSS hook
+     ─────────────────────────────  ─────────────────────────  ──────────────────────────
+     a toggle that stays on/off     aria-pressed="true|false"  [aria-pressed="true"]
+     a disclosure trigger           aria-expanded="true|false" [aria-expanded="true"]
+     a nav item = current location  aria-current="page"        [aria-current]
+     a selected option in a set     the primitive's own        [data-state="active"],
+                                    data-state/aria-selected/  [aria-selected="true"],
+                                    aria-checked               [aria-checked="true"]
+     a transient run state          aria-pressed on the        [aria-pressed="true"]
+     (playing, liked)               TOGGLE that owns it
+
+   A class survives ONLY as a scoping handle for a rule that also names the
+   attribute (`.filter-toggle[aria-pressed="true"]`), never as the state itself.
+   RETIRED: `.is-active` · `.is-active-sub` · `.is-playing` · `.liked` · the
+   dead `.active`.
+
+   ── THE THREE ANTI-CURES, BINDING ON EVERY APPLYING UNIT ──────────────────
+   1. SWEEP-LAW RIDER (FR-COB-3). The sweep may NEVER key on a bare
+      `is-active` grep: the token is also a PROP name in the paper route's
+      contract, and a prop rename corrupts a contract in a file the sweeping
+      unit does not own. The operand of record is the FILE LIST, per unit —
+      §5a-v2's 11-file table — never a token match.
+   2. TOGGLE-VS-ACTION (FR-COB-4). `aria-pressed` binds ONLY on a true toggle.
+      A one-shot action (close, clear, submit) gets an accessible NAME and
+      never a pressed state.
+   3. `role="radiogroup"` IS KILLED (FR-NP-19 / K-18): it ships axe-critical
+      `aria-required-children` and announces an APG contract this tree does not
+      implement. The naming cure for a bare set of buttons is `role="group"` +
+      `aria-label`. Re-adding `.glass-btn` is likewise NOT a cure — the
+      producer declares `.glass-btn` and `.btn-pill` mutually exclusive
+      (R8-17).
+
+   ── WHY THE ATTRIBUTE AND NOT THE CLASS ───────────────────────────────────
+   The producer's `prefers-contrast` and `forced-colors` arms key on ARIA
+   EXCLUSIVELY, and its Button CVA ships `aria-pressed:` arms. A class-only
+   state therefore paints nothing in those modes AND announces nothing to AT —
+   one defect with two faces, which is why one channel closes both.
+   `GallerySearchBar.vue`'s `.basis-pill-btn[aria-pressed="true"]` is the
+   tree's own prior instance of this recipe, and it is the shape generalised
+   here rather than a new invention.
+
+   ── CLOSURE ───────────────────────────────────────────────────────────────
+   g9 is TREE-WIDE and closes at `.f`, never here: `.e` publishes, each owning
+   unit applies in its own files, `.f` measures the set difference over all
+   eleven. A green reported from inside one unit would be measured over a
+   fifth of the operand.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* X.F.W3 `.e` — `fr-EquationView L·m-8`: ONE `slide-down` recipe, ONE PRM
+   intent, DECLARED.
+
+   The name was authored FOUR times with divergent durations
+   (⟨cmd⟩ `grep -rln 'slide-down-enter-active' src` → `PaperView.vue` ·
+   `ContourSettings.vue` · `VisualizationView.vue` · `EquationView.vue`) and
+   NOT ONE copy declared a reduced-motion bracket, so the app's most-used
+   entry transition ignored the setting in every route.
+
+   The canon lives here because a Transition class is global by nature — the
+   element carries the scope attribute, so an unscoped rule matches it without
+   a scope selector. The three remaining scoped copies are MORE specific
+   (`[data-v-*]` adds one attribute selector) and therefore keep winning inside
+   their own files until their owners retire them: this canon changes nothing
+   there, which is exactly why it is safe to publish from one unit. Named as
+   residue, not swept. */
+.slide-down-enter-active {
+    transition:
+        opacity 0.3s var(--ease-standard),
+        transform 0.3s var(--ease-standard);
+}
+.slide-down-leave-active {
+    transition:
+        opacity 0.2s var(--ease-in),
+        transform 0.2s var(--ease-in);
+}
+.slide-down-enter-from {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+.slide-down-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .slide-down-enter-active,
+    .slide-down-leave-active {
+        transition: none;
+    }
+    .slide-down-enter-from,
+    .slide-down-leave-to {
+        transform: none;
+    }
 }

@@ -13,19 +13,21 @@ def compute_energy(terms: list[FourierTerm]) -> float:
 
 
 def truncate_by_budget(terms: list[FourierTerm], budget: int) -> list[FourierTerm]:
-    """Keep top *budget* terms by amplitude (always includes DC if present)."""
-    if len(terms) <= budget:
+    """Keep the top *budget* harmonics by energy, each whole (DC counts as one).
+
+    A harmonic is the ``±n`` group: cutting single terms could split a conjugate
+    pair, and the trig form of a half pair renders half its coefficient.
+    """
+    groups: dict[int, float] = {}
+    for t in terms:
+        groups[abs(t.n)] = groups.get(abs(t.n), 0.0) + t.amplitude ** 2
+    if len(groups) <= budget:
         return terms
 
-    # Separate DC term
-    dc = [t for t in terms if t.n == 0]
-    non_dc = [t for t in terms if t.n != 0]
-
-    # Sort by amplitude
-    non_dc.sort(key=lambda t: t.amplitude, reverse=True)
-
-    remaining = budget - len(dc)
-    kept = dc + non_dc[:remaining]
+    has_dc = 0 in groups
+    ranked = sorted((k for k in groups if k != 0), key=groups.__getitem__, reverse=True)
+    keep = set(ranked[: budget - has_dc]) | ({0} if has_dc else set())
+    kept = [t for t in terms if abs(t.n) in keep]
     # Re-sort by index for display
     kept.sort(key=lambda t: (abs(t.n), -t.n))
     return kept

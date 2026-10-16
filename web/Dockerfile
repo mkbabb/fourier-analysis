@@ -30,6 +30,15 @@ RUN npm run build
 
 FROM nginx:alpine AS production
 COPY --from=builder /app/dist /usr/share/nginx/html
+# X·F F.W9 (G-F9-19) — ONE Cache-Control, not two. Measured as-running against
+# api.fourier.babb.dev/assets/index-YfdYiI2C.js on 2026-09-19, this location was
+# emitting the header TWICE: `expires 1y` synthesises its own
+# `Cache-Control: max-age=31536000` (plus an `Expires:` date) and the
+# `add_header` beside it appended a second `Cache-Control: public, immutable`.
+# Two headers for one directive is a policy stated by two authorities inside a
+# single config — caches are entitled to combine them, and an intermediary that
+# takes only the first silently loses `immutable`. One `add_header` now carries
+# the whole policy. `always` keeps it on error responses too.
 RUN printf 'server {\n\
     listen 80;\n\
     root /usr/share/nginx/html;\n\
@@ -37,7 +46,16 @@ RUN printf 'server {\n\
         try_files $uri $uri/ /index.html;\n\
     }\n\
     location ~* \\.(?:js|css|woff2|png|jpg|svg)$ {\n\
-        expires 1y;\n\
-        add_header Cache-Control "public, immutable";\n\
+        add_header Cache-Control "public, max-age=31536000, immutable" always;\n\
     }\n\
 }\n' > /etc/nginx/conf.d/default.conf
+
+# X·F F.W9 (M.W2) — the image's own LIVENESS contract: is this nginx up and
+# serving the built SPA? It says nothing about the API edge, which is a
+# different container asking a different question. busybox wget ships in
+# nginx:alpine, so no package is added to run a healthcheck; the request writes
+# nothing, which matters under the overlay's read_only root FS. `retries` is
+# bounded so an unhealthy container ENDS `compose up --wait` non-zero rather
+# than hanging it — the deploy hook's rollback depends on that termination.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
+    CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1

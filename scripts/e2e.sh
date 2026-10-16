@@ -84,6 +84,7 @@ trap cleanup EXIT INT TERM
 
 CORS_ORIGINS="http://localhost:$WEB_PORT" \
     COMPUTE_RATE_LIMIT="$COMPUTE_RATE_LIMIT" \
+    COMPUTE_CONCURRENCY="${COMPUTE_CONCURRENCY:-1}" \
     uv run uvicorn api.main:app \
     --host 0.0.0.0 --port "$API_PORT" &
 PIDS+=($!)
@@ -119,4 +120,4 @@ if [[ "${1:-}" == "--no-tests" ]]; then
 fi
 
 cd "$ROOT/web"
-BASE_URL="$BASE_URL" npx playwright test --project=chromium "${@}"
+BASE_URL="$BASE_URL" npx playwright test --project=chromium --workers="${PW_WORKERS:-1}" "${@}"

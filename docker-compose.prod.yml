@@ -22,6 +22,9 @@ services:
     # where UV_CACHE_DIR lives; /data/blobs is a rw volume, .venv is read-only),
     # all Linux caps dropped (a Python/uvicorn app on :8000 needs none), and
     # no-new-privileges to block setuid escalation.
+    # F.REL .m: the contour models are baked into the image at FOURIER_MODEL_DIR
+    # (api/Dockerfile), so extraction never writes; scripts/model-smoke.sh
+    # extracts under exactly this hardening, with no network.
     read_only: true
     tmpfs:
       - /tmp
@@ -56,9 +59,16 @@ services:
     #   /var/cache/nginx — proxy/fastcgi/client_body/scgi/uwsgi temp dirs.
     #   /var/run         — the master writes /var/run/nginx.pid here.
     #   /tmp             — scratch.
-    # All Linux caps are dropped, then NET_BIND_SERVICE is added back (the master
-    # binds the privileged :80). tmpfs is noexec,nosuid,size-capped per the
-    # mkbabb/deploy docker-compose.hardening.yml canonical recipe.
+    # All Linux caps are dropped, then the four the stock nginx master needs are
+    # added back: NET_BIND_SERVICE (it binds the privileged :80), CHOWN (at start
+    # it chowns its /var/cache/nginx temp dirs to the `nginx` worker user) and
+    # SETUID + SETGID (it drops its workers to that user). F.REL .h measured the
+    # H.W4 floor with NET_BIND_SERVICE alone: the master exits at boot with
+    # `[emerg] chown("/var/cache/nginx/client_temp", 101) failed (1: Operation
+    # not permitted)` and restarts forever, so every deploy since H.W4 failed the
+    # host health gate and rolled back (the webhook log of 2026-10-06 16:45Z;
+    # scripts/prod-compose-smoke.sh reproduces it and is the CI gate). tmpfs is
+    # noexec,nosuid,size-capped per the mkbabb/deploy hardening recipe.
     read_only: true
     tmpfs:
       - /var/cache/nginx:noexec,nosuid,size=16m
@@ -68,6 +78,9 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -103,6 +116,18 @@ services:
     # mongod; this comment supersedes it for the promoted tls.md. The flag does
     # NOT make the trust posture weaker on the client side: pymongo still does
     # full chain + SAN verification via tlsCAFile.
+    #
+    # X·F F.W9 (G-F9-19) — verdict on the honesty pivot: SUSTAINED, and the
+    # basis of that verdict is stated so it is not mistaken for a re-measurement.
+    # The pivot is upheld on the mechanism, not as-running: mongo publishes no
+    # port by design (D.W1), so the handshake cannot be probed from outside the
+    # stack, and this seat has no route to the deployed stack. What IS decidable
+    # here is the reasoning, and it holds — under server-only TLS the client
+    # presents no certificate, so without this flag mongod rejects at the
+    # handshake before SCRAM runs, and the client's own trust posture is carried
+    # entirely by tlsCAFile. The superseded tls.md §1 "inert" note stays
+    # superseded. If a future seat CAN reach a running mongod, re-measure the
+    # handshake rather than inheriting this line.
     command: ["mongod", "--tlsMode", "requireTLS",
               "--tlsCertificateKeyFile", "/etc/ssl/mongo.pem",
               "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
@@ -111,6 +136,28 @@ services:
     # G.W7 (ε.2) — no-new-privileges is safe for the stateful DB. read_only is
     # impossible (mongod writes /data/db) and cap_drop needs verification against
     # mongod 8.0's runtime caps — BOOKED as a residual (staging test).
+    #
+    # X·F F.W9 (G-F9-19) — the two G.W7 ε.2 residuals, each given the explicit
+    # verdict the gate demands instead of being carried forward a third time:
+    #
+    #   read_only  — DECLINED, PERMANENTLY. Not "not yet": mongod's dbPath must
+    #     be writable, and WiredTiger also writes lock and diagnostic paths
+    #     outside the /data/db volume. Enumerating those into tmpfs mounts is
+    #     guesswork without a running instance to check against, and a
+    #     mis-enumerated path yields a database that will not start. The
+    #     security value is also the lowest of the four services: mongo
+    #     publishes no port (D.W1) and is reachable only over app-network. The
+    #     residual is CLOSED as declined-with-reason, not re-deferred.
+    #
+    #   cap_drop   — STILL BOOKED, and its blocker is now named rather than
+    #     implied. The cure is unchanged (drop ALL, add back only what mongod
+    #     8.0 actually needs) and it is decidable ONLY against a running
+    #     instance — the same `docker inspect` capability G-F9-19 requires and
+    #     this seat does not have (no daemon here; the deployed stack is on a
+    #     host this seat has no route to). It is not landed blind, because a
+    #     capability set guessed from documentation and shipped to a production
+    #     database is the exact class of unverified hardening this gate exists
+    #     to refuse. Owner: whoever next brings the stack up.
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -136,19 +183,56 @@ services:
   nginx:
     image: nginx:alpine
     ports: ["127.0.0.1:${HTTP_PORT:-8100}:80"]
+    # F.REL .h — the DIRECTORY, not the file: a deploy's `git reset` replaces
+    # nginx/fourier.conf by rename, which a single-file bind-mount never sees
+    # (G.W7), so a config change used to need an edge recreate. Mounted by
+    # directory, the live edge reads the new bytes by name and the deploy hook
+    # loads them with `nginx -t` + a graceful `nginx -s reload` (edge_apply).
+    # .deploy/edge holds the deploy hook's upstream pins (one
+    # `set $<svc>_upstream <container>:<port>;` per switched service, read by
+    # the `include` in nginx/fourier.conf). The pins are gitignored host state;
+    # the directory is tracked (.deploy/edge/README.md) so the checkout, not
+    # the daemon, creates it — a daemon-created bind source is root-owned and
+    # the hook runs as the deploy user.
     volumes:
-      - ./nginx/fourier.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on: [backend, frontend]
+      - ./nginx:/etc/nginx/conf.d:ro
+      - ./.deploy/edge:/etc/nginx/fourier-upstreams:ro
+    # X·F F.W9 (M.W2) — readiness ordering, not start ordering. The bare
+    # `[backend, frontend]` form waits only for "container created", so the
+    # gateway routinely came up before either upstream could answer and the
+    # deploy's health gate absorbed the gap as elapsed poll time. The long form
+    # blocks on each upstream's own HEALTHCHECK (api/Dockerfile,
+    # web/Dockerfile), which is what `depends_on: service_healthy` means.
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     networks: [app-network]
     restart: unless-stopped
+    # X·F F.W9 (M.W2) — the gateway's READINESS probe, and the reason it is not
+    # the same shape as the two upstream LIVENESS probes. nginx's own liveness
+    # is the static `location = /health` 200 it serves from its own config; that
+    # 200 is true whether or not the backend exists, which is precisely why it
+    # cannot be the readiness answer. Readiness here means "this gateway can
+    # serve the API", so the probe goes THROUGH the proxy to /api/health. The
+    # deploy hook asks the same two questions from outside the stack and reports
+    # them apart; this is the in-stack half of the same separation.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     # H.W4 (γ) — levelled UP to the constellation hardening FLOOR (was
     # no-new-privileges only; read_only + cap_drop were G.W7 BOOKED residuals).
     # Same nginx:alpine writable-path recipe as the frontend above: an immutable
     # root FS with tmpfs for the three paths a stock nginx-alpine writes
     # (/var/cache/nginx temp dirs, /var/run/nginx.pid, /tmp scratch). The mounted
-    # fourier.conf is :ro and the master binds/proxies :80 — drop ALL caps, add
-    # back only NET_BIND_SERVICE. tmpfs noexec,nosuid,size-capped per the
-    # mkbabb/deploy docker-compose.hardening.yml canonical recipe.
+    # config is :ro and the master binds/proxies :80 — drop ALL caps, add back
+    # the same four as the frontend (NET_BIND_SERVICE · CHOWN · SETUID · SETGID;
+    # F.REL .h: NET_BIND_SERVICE alone crash-loops the master at its temp-dir
+    # chown). tmpfs noexec,nosuid,size-capped per the mkbabb/deploy recipe.
     read_only: true
     tmpfs:
       - /var/cache/nginx:noexec,nosuid,size=16m
@@ -158,6 +242,9 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
     security_opt:
       - no-new-privileges:true
     deploy:

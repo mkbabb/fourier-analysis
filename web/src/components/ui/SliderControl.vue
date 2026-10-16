@@ -1,30 +1,82 @@
 <script setup lang="ts">
 /**
- * Labeled slider chassis — label + inline numeric input + glass-scrubber track.
+ * Labeled slider chassis — label + inline numeric input + the producer's track.
  *
- * P.W5 Lane B.4 + B.1 — migrated from the 221 LOC shadow recipe (manual
- * pointer-state-machine + `glass-track`/`glass-fill`/`glass-thumb` paints +
- * legacy string-key dock injects) to `<Slider variant="glass-scrubber">`
+ * P.W5 Lane B.4 + B.1 — migrated from the 221 LOC shadow recipe to `<Slider>`
  * with the canonical label + numeric-input chassis preserved as the wrapper.
  *
- * A.W3.b D5 fold — the legacy `variant?: "timeline" | "default"` prop is
- * retired here. The two branches were already cosmetically identical (both
- * mapped to `<Slider variant="glass-scrubber">`) and no consumer in the
- * tree passes the prop explicitly (verified via `git grep '<SliderControl'
- * | xargs grep variant`). Retirement disposition (b) per `audit/W3-adoption-
- * ledger.md`; the wrapper now commits unconditionally to the canonical
- * glass-scrubber surface, discharging the H1-hardening flag.
+ * ⊘ X.F.W3 `.a` · `fr-SliderControl R-21` — the docblock is corrected in the
+ * same edit as the `R-1` cure below, because a stale comment is how a cured bug
+ * gets re-derived. Four drifts, each named:
  *
- * Dock-keep-open: the v1.8.x `<Slider>` acquires the typed `DockContext`
- * token internally, so we no longer inject `dockKeepOpen`/`dockRelease`
- * by string-key (CR-2 silent regression at v1.7.0 — keys retired at O.W2).
+ *   · The shadow relation was INVERTED (`fr-AnimationControls M-4`).
+ *     `glass-track` / `glass-fill` / `glass-thumb` are the PRODUCER's own live
+ *     class literals, not a hand-rolled recipe this wrapper escaped — so the
+ *     old sentence credited the migration with leaving the very surface it
+ *     migrated ONTO.
+ *   · `v1.8.x` was pinned against an installed 4.0.0 and the tree now resolves
+ *     8.0.0; the version is dropped rather than re-spelled, because the
+ *     producer fact that matters here is a CONTRACT (`<Slider>` acquires the
+ *     typed dock context itself, so no `dockKeepOpen`/`dockRelease` string-key
+ *     inject — CR-2's regression at v1.7.0, keys retired at O.W2), and a
+ *     contract does not need a version label to be true.
+ *   · The retired `variant?: "timeline" | "default"` prop (A.W3.b D5 fold,
+ *     retirement disposition (b)) is kept as history; the claim that the
+ *     wrapper "commits to the glass-scrubber surface" is not, since that
+ *     vocabulary is two majors dead — at the adopted pin the variants are
+ *     `"scrubber" | "spectrum"` and `scrubber` is already the default.
+ *   · The projection the old `:140-142` asserted did not occur — see the rule
+ *     at the foot of this file.
+ *
+ * ⊘ X.F.W14.h · OA-45 (owner frame `owner-2026-09-23-hierarchy.png`) — THE ONE
+ * CONTROL-ROW IDIOM. Every labelled slider in the app is this component; no
+ * page composes its own row:
+ *
+ *   line 1 — the label (glass `Label`, `--type-small`) and the value field
+ *            (glass `NumberField`) at the line's end, with an optional unit;
+ *   hint   — optional: the row's `subtitle`, whole, on its own caption line
+ *            under the label;
+ *   line 2 — the producer's `Slider`, directly beneath, with a VISIBLE thumb and
+ *            a track FILL.
+ *
+ * Rhythm is glass's spacing scale (`--space-atom` inside the row).
+ * X-DS pass 2 · DS-F2-C3 rules the orphan hunk P2-07 ADOPTED: there is ONE hint
+ * idiom. The hint shared line 1 with the field and was ellipsised mid-word
+ * ("terms in the Fo…"), and a second idiom (an inline mono `N` token) sat
+ * beside it; the token is retired into the hint, and no hint is truncated.
+ * Rows with a hint measure one height, rows without one another.
+ *
+ * X-DS pass 7 · DS-F7X-C2 — the PRE-DOCK density, revived (576e40a's morph
+ * rows: label, field, track on one ~38 px line). At a fine pointer from 1024 px
+ * up, a row WITHOUT a hint (`data-row-kind="plain"`: Low, High, Duration)
+ * lays line 1 and the track on one line, the track taking the rest. A hint row
+ * keeps P2-07's caption line, and the coarse and phone ramps keep the stack.
+ * Where the row is too narrow for a usable track it wraps back to the stack.
+ *
+ * The producer ships no slider that has both a visible thumb and a fill: the
+ * `scrubber` variant's thumb is `width: 0; opacity: 0` by contract (its fill's
+ * leading edge is the handle — the "thick bar with no visible thumb" of the
+ * frame), and the `spectrum` variant's thumb is visible but its range paints
+ * nothing. Nor does it ship a labelled slider with an inline value field
+ * (`LabeledSlider` carries no value). Both are ROUTED to glass BL by id
+ * (`BL-FW14H-1` slider thumb+fill; `BL-FW14H-2` labelled slider with inline
+ * value; the O-59 relay line). Meanwhile the row COMPOSES existing primitives
+ * through the producer's public surface: the `spectrum` variant (visible thumb)
+ * and its documented track token `--glass-slider-track-background`, painted as
+ * the fill up to the thumb's centre (reka's `contain` thumb alignment: the
+ * centre travels from half a thumb in to half a thumb short of the end).
  */
-import { computed } from "vue";
+import { computed, useAttrs, useId } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
+import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
+import { Label } from "@mkbabb/glass-ui/label";
 
 const props = defineProps<{
     label: string;
+    /** A muted hint, on its own caption line under the label (X-DS P2-07). */
     subtitle?: string;
+    /** The value's unit, after the field (`ms`). */
+    unit?: string;
     modelValue: number;
     min: number;
     max: number;
@@ -35,17 +87,78 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: "update:modelValue", v: number): void;
+    /**
+     * X.F.W3 `.a` · `g10` ⊕ `fr-SliderControl R-7` — THE RE-EMITTED SETTLE EVENT.
+     *
+     * The primitive emits two things, and this wrapper declared one. The one it
+     * dropped is the one that says a drag is OVER, so every consumer saw only
+     * the per-step stream and had to invent its own coalescing — which produced
+     * three different dialects across the tree (1000ms, 300ms, and none at
+     * all), and the "none" case is a synchronous `sessionStorage.setItem` per
+     * accepted step off a 100-step track.
+     *
+     * A wrapper earns its existence by ADDING contract the primitive lacks; it
+     * never earns it by removing some. Re-emitting is the whole cure: a
+     * consumer that wants the settle event can have it, and the debounce
+     * dialects become one consumer's choice rather than a forced invention.
+     */
+    (e: "valueCommit", v: number): void;
 }>();
+
+/**
+ * `g10`'s WRAPPER LAW, at the one wrapper whose anti-rule is written into the
+ * gate: *"NEVER blanket `inheritAttrs: false` on SliderControl — `class`
+ * fallthrough is WANTED; cure = explicit passthrough."*
+ *
+ * Both halves of that are honoured by SPLITTING the fallthrough rather than by
+ * disabling it. Before this, every attribute a consumer set landed on the outer
+ * `<div>`: `class` and `style` correctly, since the chassis IS the thing being
+ * laid out — and `aria-describedby`, `id`, `data-*`, `disabled` and every
+ * native listener incorrectly, onto a plain div with no role, while the control
+ * that has the role never saw them. The asymmetry was silent in both
+ * directions.
+ *
+ * So the layout attributes go to the chassis and everything else goes to the
+ * control, and the split is explicit rather than a blanket switch. The
+ * consumer's own bindings are applied AFTER the derived ones on the control, so
+ * an explicitly-passed `aria-label` beats the one derived from `label` — stated
+ * intent outranks a default.
+ */
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+
+const chassisAttrs = computed(() => ({ class: attrs.class, style: attrs.style }));
+
+const controlAttrs = computed(() => {
+    const { class: _class, style: _style, ...rest } = attrs;
+    return rest;
+});
 
 function clamp(v: number, lo: number, hi: number): number {
     return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo;
 }
 
-function onInput(e: Event) {
-    emit(
-        "update:modelValue",
-        clamp(parseFloat((e.target as HTMLInputElement).value), props.min, props.max),
-    );
+/**
+ * X.F.W13.b — the inline numeric field is the producer's `NumberField`, not a
+ * hand-rolled `<input>` (owner frame 3, OA-15: a bare underline field with no
+ * name of its own, no corner, and no stepping keys). Its display precision is
+ * read from `step` — the digits `formatValue` spelled by hand at every callsite
+ * (`toFixed(2)` on a 0.05 step, `toFixed(1)` on 0.1/0.5, integers on 1) — so the
+ * field formats, parses and steps in one locale-aware register. A `formatValue`
+ * whose reading is NOT a number (Max Contours' `0 → "All"`) is shown as the
+ * field's placeholder over an empty value, and clearing the field commits
+ * `min`, the value that reading names.
+ */
+const fractionDigits = computed(() => String(props.step).split(".")[1]?.length ?? 0);
+const numberFormat = computed<Intl.NumberFormatOptions>(() => ({
+    minimumFractionDigits: fractionDigits.value,
+    maximumFractionDigits: fractionDigits.value,
+    useGrouping: false,
+}));
+
+function onNumber(v: number) {
+    emit("update:modelValue", clamp(v, props.min, props.max));
 }
 
 /* reka-ui's SliderRoot accepts an array model; we adapt the scalar binding
@@ -55,96 +168,205 @@ const sliderModel = computed<number[]>({
     set: (arr) => emit("update:modelValue", clamp(arr[0] ?? props.min, props.min, props.max)),
 });
 
+function onValueCommit(arr: number[]) {
+    const raw = arr?.[0];
+    if (raw === undefined || !Number.isFinite(raw)) return;
+    emit("valueCommit", clamp(raw, props.min, props.max));
+}
+
+/**
+ * The chassis's own half of the `disabled` contract. `disabled` reaches the
+ * control through the split above, but the inline numeric input is this
+ * wrapper's addition and the producer knows nothing about it — so without this
+ * a disabled slider still had a live number field beside it, which is the
+ * disabled state lying.
+ */
+const isDisabled = computed(() => attrs.disabled === "" || attrs.disabled === true);
+
 const displayValue = computed(() =>
     props.formatValue ? props.formatValue(props.modelValue) : String(props.modelValue),
 );
 const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)));
+
+/** The field's id: the row's visible `Label` names it (`for`). */
+const fieldId = useId();
+
+/**
+ * The fill's extent, 0…1 — read by the track token in the stylesheet (see the
+ * docblock: the composition over `spectrum` until BL ships thumb + fill).
+ */
+const fillFraction = computed(() => {
+    const span = props.max - props.min;
+    return span > 0 ? (clamp(props.modelValue, props.min, props.max) - props.min) / span : 0;
+});
 </script>
 
 <template>
-    <div class="slider-control">
-        <label class="slider-label">
-            <span>
-                <slot>{{ label }}</slot>
-                <span v-if="subtitle" class="slider-subtitle"> — {{ subtitle }}</span>
+    <div class="control-row" data-control-row :data-row-kind="subtitle ? 'hint' : 'plain'" v-bind="chassisAttrs">
+        <div class="control-row-line">
+            <Label :for="fieldId" class="control-row-label" data-row-label :disabled="isDisabled">
+                {{ label }}
+            </Label>
+            <span class="control-row-value">
+                <NumberField
+                    :model-value="isNumericDisplay ? modelValue : null"
+                    :min="min"
+                    :max="max"
+                    :step="step"
+                    :format-options="numberFormat"
+                    :disabled="isDisabled"
+                    size="sm"
+                    class="control-row-field"
+                    @update:model-value="onNumber"
+                >
+                    <NumberFieldInput
+                        :id="fieldId"
+                        class="fira-code"
+                        :aria-label="label"
+                        :placeholder="isNumericDisplay ? undefined : displayValue"
+                    />
+                </NumberField>
+                <span v-if="unit" class="control-row-unit fira-code">{{ unit }}</span>
             </span>
-            <input
-                :type="isNumericDisplay ? 'number' : 'text'"
-                class="inline-number fira-code"
-                :value="displayValue"
-                :min="isNumericDisplay ? min : undefined"
-                :max="isNumericDisplay ? max : undefined"
-                :step="isNumericDisplay ? step : undefined"
-                @input="onInput"
-            />
-        </label>
+            <!-- X-DS pass 1 · F1-07: a control that belongs to this row (the
+                 Harmonics "Auto" toggle) sits in the row, after its field. -->
+            <slot name="adornment" />
+        </div>
+        <!-- X-DS pass 2 · DS-F2-C3 (P2-07 adopted): the hint is its own caption
+             line under the label, whole; a hint cut to "terms in the Fo…" was
+             ornament. -->
+        <span v-if="subtitle" class="control-row-sub" data-row-sub>{{ subtitle }}</span>
         <Slider
             v-model="sliderModel"
-            variant="glass-scrubber"
+            variant="spectrum"
+            size="md"
             :min="min"
             :max="max"
             :step="step"
             :aria-label="label"
-            class="slider-track-host"
-            :style="{ '--track-color': color }"
+            class="control-row-track"
+            :style="{ '--track-color': color, '--row-fill': fillFraction }"
+            v-bind="controlAttrs"
+            @value-commit="onValueCommit"
         />
     </div>
 </template>
 
 <style scoped>
-@reference "tailwindcss";
-.slider-control {
+/*
+   X.F.W14.h — the idiom's geometry, on glass's scales only:
+   · rhythm: `--space-atom` between the two lines and between the line's parts;
+   · type: the label is glass `Label`'s own rung (`--control-label`, the one
+     LabeledField sets, so every label in a pane is one size; X-DS DS-F4-C1),
+     the hint and unit on `--type-caption`;
+   · the field keeps the producer's `sm` rung; only its measure is ours.
+*/
+.control-row {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--space-atom);
+    min-width: 0;
 }
 
-.slider-label {
+.control-row-line {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    @apply text-sm;
-    font-weight: 500;
+    gap: var(--space-atom);
+    min-width: 0;
+}
+
+.control-row-label {
+    flex: none;
+    white-space: nowrap;
+}
+
+.control-row-sub {
+    margin-top: calc(-1 * var(--space-atom) / 2);
+    font-size: var(--type-caption);
+    line-height: var(--type-leading-caption);
     color: var(--muted-foreground);
 }
 
-.slider-subtitle {
-    font-weight: 400;
-    font-size: 0.75em;
-    opacity: 0.7;
+.control-row-value {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-atom);
+    margin-inline-start: auto;
+    flex: none;
 }
 
-.inline-number {
-    width: 2.75rem;
-    text-align: right;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid transparent;
-    color: var(--foreground);
-    font-size: inherit;
-    padding: 0;
-    outline: none;
-    -moz-appearance: textfield;
-    transition: border-color 0.15s;
-}
-.inline-number:hover,
-.inline-number:focus {
-    border-bottom-color: color-mix(in srgb, var(--foreground) 30%, transparent);
-}
-.inline-number::-webkit-inner-spin-button,
-.inline-number::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+.control-row-field {
+    width: 4.5rem;
 }
 
-/* Retint the glass-scrubber variant tokens for the per-instance color hook
-   (`--track-color`). The variant defaults compose `--surface-tint-*`; we
-   project the per-color tint onto the range + thumb. */
-.slider-track-host {
-    --slider-scrub-track-height: 16px;
-    --slider-scrub-range-bg: color-mix(in srgb, var(--track-color) 25%, transparent);
-    --slider-scrub-range-bg-hover: color-mix(in srgb, var(--track-color) 35%, transparent);
-    --slider-scrub-thumb-bg: var(--track-color);
-    --slider-scrub-thumb-bg-hover: var(--track-color);
+.control-row-unit {
+    font-size: var(--type-caption);
+    color: var(--muted-foreground);
+}
+
+/*
+   The fill, composed over the producer's documented track token (see the
+   docblock; routed to BL). The stop sits at the thumb's centre under reka's
+   `contain` alignment: half a thumb in at the minimum, half a thumb short of the
+   end at the maximum. `--slider-thumb-size` is the producer's own size-rung
+   token on this same element; the `spectrum` thumb is 0.75 of it wide.
+   `D-14`: an empty `color` falls back to the producer's capsule tint.
+*/
+.control-row-track {
+    --row-thumb: calc(var(--slider-thumb-size, 1rem) * 0.75);
+    --row-stop: calc(var(--row-thumb) / 2 + (100% - var(--row-thumb)) * var(--row-fill, 0));
+    --row-rule: 0.375rem;
+    --glass-slider-track-background: linear-gradient(
+        to right,
+        color-mix(in oklab, var(--track-color, var(--glass-capsule-warm)) 55%, var(--muted-medium)) 0 var(--row-stop),
+        var(--surface-tint-15) var(--row-stop) 100%
+    ) center / 100% var(--row-rule) no-repeat;
+}
+
+/* X-DS DS-F-C8 — glass's `md` rung, so the thumb is a legible mark at fine
+   and coarse pointers (the `sm` thumb was a 6 × 12 px tick beside a 36–44 px
+   field), and the hue at full strength is the thumb's alone, the one mark
+   that says where the value is. X-DS DS-F4R-C2: the track is a thin rule
+   (`--row-rule`, glass's own 0.375 rem track fallback, the PRE-DOCK ~6–8 px
+   track), not the rung's 24 px slab: the label and field already state the
+   value, so the bar under them is the quietest thing in the row. The thumb's
+   frame and cast stay glass's (O-87). X-DS DS-F5-C1: the unfilled stop is
+   glass's hairline tint (`--surface-tint-15`, the foreground at 15%), not
+   `--muted-medium`, which in light is the card's own tone (~1.03:1), so the
+   rule has a visible extent in both themes, one geometry. The 24 px well's
+   lone top edge around it is glass's track-well inset (O-87, DS-F5-G2). */
+/* X-DS pass 7 · DS-F7X-C2 — the plain row on one line (see the docblock). The
+   order is the DOM's and PRE-DOCK's: label, field, track. The track has a floor
+   (`--row-track-min`); a row too narrow for it wraps, and then line 1 takes
+   the whole width (field at its end) and the track its own line: today's
+   stack, with no second rule. On one line the track takes the free space
+   (grow 999 : 1). */
+@media (min-width: 1024px) and (pointer: fine) {
+    .control-row[data-row-kind="plain"] {
+        --row-track-min: 8rem;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: var(--space-body);
+    }
+
+    .control-row[data-row-kind="plain"] > .control-row-line {
+        flex: 1 0 auto;
+    }
+
+    /* PRE-DOCK's label column (576e40a `.level-label`, 2.5 rem): short labels
+       stacked in one card (Low, High) start their fields and tracks on one x. */
+    .control-row[data-row-kind="plain"] .control-row-label {
+        min-width: 2.5rem;
+    }
+
+    .control-row[data-row-kind="plain"] > .control-row-track {
+        flex: 999 1 var(--row-track-min);
+        min-width: var(--row-track-min);
+    }
+}
+
+.control-row-track :deep(.slider-thumb) {
+    background: var(--track-color, var(--glass-capsule-warm));
 }
 </style>

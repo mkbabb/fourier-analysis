@@ -48,10 +48,74 @@ export const FIGURE_DIMENSIONS: Record<string, readonly [number, number]> = {
     "f25_hermite_eigenfunctions.png": [2651, 1744],
 };
 
+/**
+ * X·F F.W4 `.e` — `PAW-6`: figures the dark arm must NOT photo-negate.
+ *
+ * The consumer used to decide this with `filename.includes("portrait")`, and
+ * the record measured that substring wrong in BOTH directions on the only two
+ * figures where it decides anything: `f21` matches and was left un-inverted (a
+ * white slab inside `hsl(24 8% 16%)`), while `f20` does not match and WAS
+ * inverted — the Fourier engraving, photo-negated.
+ *
+ * The discriminator is data now, not a guess about a filename. ⊘ `K-17` is
+ * carried and it is why this is an exemption list rather than a cure: NO
+ * whole-figure boolean is correct for `f20`, whose panels are mixed. The real
+ * repair is asset-side — re-rasterise `f20`'s panels separately, or ship
+ * dark-mode variants and retire whole-figure `invert()` altogether — and it
+ * travels on the LATEX-PAPER relay. Until then this list is wrong for neither
+ * of the two figures the record measured, where the substring was wrong for
+ * both, and the line-art figures keep the inversion that serves them.
+ */
+export const DARK_INVERT_EXEMPT: ReadonlySet<string> = new Set([
+    "f20_contour_pipeline.png",
+    "f21_epicycle_portraits.png",
+]);
+
 /** Figures transcoded to AVIF + WebP alongside the PNG (the `<picture>` set). */
 const TRANSCODED_FIGURES = new Set(Object.keys(FIGURE_DIMENSIONS));
 
 /** True when `.avif`/`.webp` siblings exist for this `.png` figure. */
 export function hasModernVariants(pngFilename: string): boolean {
     return TRANSCODED_FIGURES.has(pngFilename);
+}
+
+export interface ResolvedFigure {
+    png: string;
+    avif: string | null;
+    webp: string | null;
+    width?: number;
+    height?: number;
+}
+
+/**
+ * Resolve a figure's served URLs and intrinsic dimensions.
+ *
+ * `PAW-24`: the consumer used to run a `.pdf`→`.png` replace here and carry a
+ * doc comment stating the INVERSE of the installed contract. Measured at the
+ * producer's bytes this round — latex-paper's parser normalises the filename
+ * before any consumer sees it (`chunk-5VAEDP55.js`: *"if (!filename.includes(
+ * ".")) filename += ".png"; filename = filename.replace(/\.pdf$/, ".png")"*) —
+ * so the replace was dead and the comment was the load-bearing half of the
+ * defect. `figure.filename` arrives as a `.png` basename.
+ *
+ * `<picture>` does NOT fall back on a 404, only on an unsupported format, so
+ * the AVIF/WebP sources are emitted ONLY for figures known to carry variants.
+ *
+ * ⊘ Lives here rather than in the SFC so that it is reachable by the unit floor
+ * (`G-F4-VITEST`) — `PAW-12`'s set-equality rider is F.W9/W10's and needs a
+ * function it can import.
+ */
+export function resolveFigure(filename: string, assetBase: string): ResolvedFigure {
+    const dims = FIGURE_DIMENSIONS[filename];
+    const png = `${assetBase}${filename}`;
+    const base: ResolvedFigure = {
+        png,
+        avif: null,
+        webp: null,
+        width: dims?.[0],
+        height: dims?.[1],
+    };
+    if (!hasModernVariants(filename)) return base;
+    const stem = filename.replace(/\.png$/, "");
+    return { ...base, avif: `${assetBase}${stem}.avif`, webp: `${assetBase}${stem}.webp` };
 }

@@ -49,6 +49,11 @@ uploads/
 # Environment
 .env
 
+# Deploy-time edge upstream pins (scripts/deploy-hook.sh; host state, not source).
+# The directory itself is tracked (.deploy/edge/README.md) so a checkout creates
+# it as the deploy user before compose bind-mounts it.
+.deploy/edge/*.conf
+
 # Scripts (private/local only — tracked scripts use negation)
 scripts/*
 !scripts/dev.sh
@@ -57,6 +62,13 @@ scripts/*
 !scripts/deploy-hook.sh
 !scripts/pages-deploy.sh
 !scripts/pages-smoke.sh
+!scripts/model-smoke.sh
+!scripts/export-birefnet-lite.py
+!scripts/cors-probe.sh
+!scripts/cors-probe.mjs
+!scripts/prod-verify.mjs
+!scripts/prod-compose-smoke.sh
+!scripts/deploy-switch-smoke.sh
 !scripts/dns-cf-sync.sh
 !scripts/gen-mongo-certs.sh
 !scripts/conformance/
@@ -71,9 +83,16 @@ mongo_data/
 # Dev
 .dev.pids
 
-# Debug/screenshot artifacts
+# Debug/screenshot artifacts — root/scratch PNGs are ignored, but the π
+# visual-runtime lane's evidence (precept `tranche/SPEC.md §The π visual-runtime
+# lane`, edict `8ccf9f4`) MUST be committable: every-page paired before/after
+# captures live under `docs/tranches/<L>/audit/screenshots/{before,after}/`, and
+# app figures under `assets/`. The blanket `*.png` ignore otherwise made the
+# lane's archive-not-delete evidence un-committable (gap1, 2026-06-04).
 *.png
 !assets/**/*.png
+!docs/**/*.png
+!tests/fixtures/*.png
 
 # Playwright
 web/test-results/
@@ -85,3 +104,4 @@ web/playwright-report/
 
 # TLS certificates
 ssl/
+!bench/contours/reference/*.png

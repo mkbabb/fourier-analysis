@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, shallowRef, watch, toRaw, markRaw, onScopeDispose } from "vue";
+import { ref, shallowRef, computed, watch, toRaw, markRaw, onScopeDispose } from "vue";
 import { useRouter } from "vue-router";
 import type {
     ImageMeta,
@@ -11,8 +11,14 @@ import type {
     WorkspaceDraft,
 } from "@/lib/types";
 import * as api from "@/lib/api";
+import { isOwnerRequired, problemMessage } from "@/lib/api-problem";
 import { saveDraft, loadDraft, listDrafts } from "@/lib/draftStorage";
-import { defaultContourSettings, defaultAnimationSettings } from "@/lib/defaults";
+import {
+    defaultContourSettings,
+    defaultAnimationSettings,
+    coerceContourSettings,
+    coerceAnimationSettings,
+} from "@/lib/defaults";
 
 // B.W4 — the workspace's save/publish actions write to the converged
 // `/visualizations` entity (CRUD-CONTRACT §1). Navigation identity is the
@@ -39,14 +45,32 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const visualizationSlug = ref<string | null>(null);
     // The strong validator for `visualizationSlug`, replayed as `If-Match`.
     const visualizationETag = ref<string | null>(null);
-    const imageMeta = ref<ImageMeta | null>(null);
+    // SP-16 — `AA-36`'s shape, store-side. Both members below are SERVER- or
+    // IndexedDB-owned records that are only ever assigned WHOLESALE (`imageMeta`
+    // from `api.getImageMeta`, `drafts` from `listDrafts()`); nothing anywhere
+    // mutates a field of either in place. A deep `ref` therefore buys nothing
+    // and pays for a recursive proxy over every nested container the record
+    // carries — for `drafts` that is each draft's contour point arrays, its
+    // epicycle trace/path and its `partial_sums` map, re-wrapped on every
+    // `refreshDrafts()`.
+    const imageMeta = shallowRef<ImageMeta | null>(null);
     const contour = shallowRef<ContourAsset | null>(null);
     const epicycleData = shallowRef<EpicycleData | null>(null);
     const basesData = shallowRef<AnimationData | null>(null);
     const contourSettings = ref<ContourSettings>(defaultContourSettings());
     const animationSettings = ref<AnimationSettings>(defaultAnimationSettings());
-    const drafts = ref<WorkspaceDraft[]>([]);
+    const drafts = shallowRef<WorkspaceDraft[]>([]);
     const loading = ref(false);
+    // X.F.W13.c — an upload is not a workspace load. `loading` drives the view's
+    // "Loading workspace…" plate, which REPLACES the whole workspace; raised by an
+    // upload it tore the drop target and the Configurator down mid-upload, so the
+    // sidebar could never arrive — it could only remount. The upload's busy
+    // signal is its own flag, read by the drop target that started it.
+    const uploading = ref(false);
+    // X.F.W14U.vstage — UIA-F-167: an upload failure is the drop target's to
+    // show. Written into the shared `error`, it read as a failed WORKSPACE load
+    // ("Could not load this workspace") on a route that had loaded nothing.
+    const uploadError = ref<string | null>(null);
     const computing = ref(false);
     const error = ref<string | null>(null);
     const revision = ref(0);
@@ -90,6 +114,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         api.abortInflight(["extractContour", "computeEpicycles", "computeBases", "getContour"]);
     }
 
+    // UIA-F-47: the published slugs the loaded draft carries. Every draft save
+    // rewrites the whole record, so it carries them forward instead of writing
+    // `[]` and returning a published draft to the Drafts list on reopen.
+    let draftSnapshots: string[] = [];
+
     async function _saveDraftNow() {
         if (!imageSlug.value) return;
         const raw: WorkspaceDraft = structuredClone({
@@ -99,7 +128,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             animationSettings: toRaw(animationSettings.value),
             epicycleData: epicycleData.value,
             basesData: basesData.value,
-            savedSnapshots: [],
+            savedSnapshots: [...draftSnapshots],
             lastOpenedAt: new Date().toISOString(),
         });
         await saveDraft(raw).catch((e) => { console.warn("[draft] save failed:", e); });
@@ -109,8 +138,13 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     // Methods
     async function uploadImage(file: File) {
-        loading.value = true;
+        // UIA-F-19: an upload in flight suppresses a second one (one drop,
+        // one upload; loading suppresses activation).
+        if (uploading.value) return;
+        uploading.value = true;
+        draftSnapshots = [];
         error.value = null;
+        uploadError.value = null;
         try {
             invalidateInFlightComputation();
             contour.value = null;
@@ -124,14 +158,24 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             imageMeta.value = meta;
             router.push(`/w/${meta.image_slug}`);
             await _saveDraftNow();
-        } catch (e: any) {
-            if (!api.isAbortError(e)) error.value = e.message ?? "Upload failed";
-            throw e;
+        } catch (e: unknown) {
+            // Recorded, not rethrown: the diagnosis is `uploadError`, which the
+            // drop target shows. A rethrow reached no handler (the drop and
+            // file-pick listeners do not await), so it surfaced as an
+            // unhandled rejection beside the message.
+            if (!api.isAbortError(e)) uploadError.value = problemMessage(e, "Upload failed");
         } finally {
-            loading.value = false;
+            uploading.value = false;
         }
     }
 
+    /*
+     * X.F.W14U.vstage — UIA-F-167: the two loads record their failure in
+     * `error` (the stage's not-found card reads it) and no longer rethrow it:
+     * the loader calls them from `onMounted` and a route watcher, neither of
+     * which awaits, so an unknown slug threw an unhandled "Not Found" beside
+     * the card that already said so.
+     */
     async function loadWorkspace(slug: string) {
         loading.value = true;
         error.value = null;
@@ -147,6 +191,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (revision.value !== rev) return;
             imageSlug.value = slug;
             imageMeta.value = meta;
+            draftSnapshots = draft?.savedSnapshots ?? [];
             if (draft) {
                 let draftContour = draft.contour;
                 // Re-fetch contour from API if draft is missing image_bounds
@@ -160,14 +205,14 @@ export const useWorkspaceStore = defineStore("workspace", () => {
                     if (revision.value !== rev) return;
                 }
                 contour.value = draftContour ? markRaw(draftContour) : null;
-                contourSettings.value = {
-                    ...defaultContourSettings(),
-                    ...draft.contourSettings,
-                };
-                animationSettings.value = {
-                    ...defaultAnimationSettings(),
-                    ...draft.animationSettings,
-                };
+                // SP-13 — the restore seam. An IndexedDB record is not typed at
+                // runtime by anything: the prior spread put whatever had been
+                // persisted straight onto the live settings, which is how an
+                // off-catalog `speed` reached a control that could not show it
+                // and an off-catalog `easing` reached two consumers that
+                // degraded in opposite directions (`AC-L-11 + M-10`).
+                contourSettings.value = coerceContourSettings(draft.contourSettings);
+                animationSettings.value = coerceAnimationSettings(draft.animationSettings);
                 epicycleData.value = draft.epicycleData ? markRaw(draft.epicycleData) : null;
                 basesData.value = draft.basesData ? markRaw(draft.basesData) : null;
             } else {
@@ -179,10 +224,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             }
             // Save draft immediately so gallery shows this workspace
             await _saveDraftNow();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Failed to load workspace";
-            throw e;
+                error.value = problemMessage(e, "Failed to load workspace");
         } finally {
             loading.value = false;
         }
@@ -210,22 +254,19 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (revision.value !== rev) return;
             imageSlug.value = viz.image_slug;
             imageMeta.value = meta;
-            contourSettings.value = {
-                ...defaultContourSettings(),
-                ...viz.contour_settings,
-            };
-            animationSettings.value = {
-                ...defaultAnimationSettings(),
-                ...viz.animation_settings,
-            };
+            // SP-13 — the same seam on the server path. `Visualization` is a
+            // declared TypeScript shape, not a checked one, so a drifted or
+            // hand-written row arrives here with exactly the same authority an
+            // IndexedDB draft has: none.
+            contourSettings.value = coerceContourSettings(viz.contour_settings);
+            animationSettings.value = coerceAnimationSettings(viz.animation_settings);
             // Load the contour asset (FK kept under the convergence).
             const contourAsset = await api.getContour(viz.contour_hash);
             if (revision.value !== rev) return;
             contour.value = markRaw(contourAsset);
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Failed to load visualization";
-            throw e;
+                error.value = problemMessage(e, "Failed to load visualization");
         } finally {
             loading.value = false;
         }
@@ -251,9 +292,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (revision.value !== rev) return;
             contour.value = markRaw(result);
             scheduleDraftSave();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Contour extraction failed";
+                error.value = problemMessage(e, "Contour extraction failed");
             throw e;
         } finally {
             endCompute();
@@ -270,12 +311,20 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             api.abortInflight(["computeEpicycles", "computeBases"]);
             const result = await api.saveContour(imageSlug.value, points);
             contour.value = markRaw(result);
-            epicycleData.value = null;
-            basesData.value = null;
             scheduleDraftSave();
-        } catch (e: any) {
+            // X.F.W10S.b — `G-F9-8` (Invariant 19, the `save_contour_then_recompute`
+            // keystone). The save used to NULL `epicycleData`/`basesData` and launch
+            // nothing, and no watcher keys on `contour` — so every saved edit left
+            // the canvas on its placeholder until the user nudged an unrelated
+            // setting. The saved contour is recomputed here, once, inside this
+            // action's own `computing` bracket; the previous frame stays on screen
+            // until each result lands (the revision guards above already discard
+            // any answer for the pre-save contour), exactly as a settings
+            // recompute in `ContourSettings.runCompute` behaves.
+            await Promise.allSettled([runComputeEpicycles(), runComputeBases()]);
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Failed to save contour";
+                error.value = problemMessage(e, "Failed to save contour");
             throw e;
         } finally {
             endCompute();
@@ -298,9 +347,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (epicycleRevision !== rev) return;
             epicycleData.value = markRaw(result);
             scheduleDraftSave();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Epicycle computation failed";
+                error.value = problemMessage(e, "Epicycle computation failed");
             throw e;
         } finally {
             endCompute();
@@ -327,9 +376,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             if (basesRevision !== rev) return;
             basesData.value = markRaw(result);
             scheduleDraftSave();
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = e.message ?? "Bases computation failed";
+                error.value = problemMessage(e, "Bases computation failed");
             throw e;
         } finally {
             endCompute();
@@ -341,25 +390,61 @@ export const useWorkspaceStore = defineStore("workspace", () => {
      * converged entity (CRUD-CONTRACT §1, §4) and return its slug. The publish
      * path then lifts `draft → public` via an ETag-guarded PATCH.
      */
-    async function saveVisualization(): Promise<SavedVisualizationRef | null> {
+    /** The working session as the visualization body it would save (no visibility). */
+    function visualizationBody() {
         if (!imageSlug.value || !contour.value) return null;
+        return {
+            image_slug: imageSlug.value,
+            contour_hash: contour.value.contour_hash,
+            active_bases: animationSettings.value.active_bases?.length
+                ? animationSettings.value.active_bases
+                : ["fourier-epicycles"],
+            n_harmonics: contourSettings.value.n_harmonics,
+            contour_settings: toRaw(contourSettings.value),
+            animation_settings: toRaw(animationSettings.value),
+        };
+    }
+
+    /**
+     * X.F.W14V.u3 — UIA-F-183: every Publish created another public copy of
+     * the same piece, because the session never knew it had been published.
+     * The session now records what it published (the slug and the body it
+     * was published from). While the working session still IS that body,
+     * `publishedSlug` names the piece: the control shows the published state
+     * and opens it, and no second copy is made. An edit to anything the body
+     * carries is a new piece, and Publish is offered for it again.
+     */
+    const published = shallowRef<{ slug: string; body: string } | null>(null);
+    const publishedSlug = computed(() => {
+        const at = published.value;
+        const body = visualizationBody();
+        return at && body && JSON.stringify(body) === at.body ? at.slug : null;
+    });
+    function markPublished(slug: string) {
+        const body = visualizationBody();
+        published.value = body ? { slug, body: JSON.stringify(body) } : null;
+    }
+
+    /**
+     * X.F.W14V.p — the typed `urn:contract:owner-required` (401: the save was
+     * sent with no session) is not a workspace diagnosis. It is rethrown to the
+     * caller, which asks for the sign-in and resumes; written into `error` it
+     * surfaced through the loader's channel as the raw "A session is required
+     * to publish." toast over the pane (the owner frame, 2026-09-24).
+     */
+    async function saveVisualization(): Promise<SavedVisualizationRef | null> {
+        const body = visualizationBody();
+        if (!body) return null;
+        error.value = null;
         try {
-            const { data, etag } = await api.createVisualization({
-                visibility: "draft",
-                image_slug: imageSlug.value,
-                contour_hash: contour.value.contour_hash,
-                active_bases: animationSettings.value.active_bases?.length
-                    ? animationSettings.value.active_bases
-                    : ["fourier-epicycles"],
-                n_harmonics: contourSettings.value.n_harmonics,
-                contour_settings: toRaw(contourSettings.value),
-                animation_settings: toRaw(animationSettings.value),
-            });
+            const { data, etag } = await api.createVisualization({ visibility: "draft", ...body });
             visualizationSlug.value = data.slug;
             visualizationETag.value = etag;
             return { slug: data.slug };
-        } catch (e: any) {
-            error.value = e.message ?? "Failed to save visualization";
+        } catch (e: unknown) {
+            if (isOwnerRequired(e)) throw e;
+            if (api.isAbortError(e)) return null;
+            error.value = problemMessage(e, "Failed to save visualization");
             return null;
         }
     }
@@ -382,8 +467,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             );
             visualizationETag.value = etag;
             visualizationSlug.value = data.slug;
-        } catch (e: any) {
-            error.value = e.message ?? "Failed to update visibility";
+        } catch (e: unknown) {
+            if (!api.isAbortError(e))
+                error.value = problemMessage(e, "Failed to update visibility");
             throw e;
         }
     }
@@ -399,8 +485,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             await api.deleteVisualization(slug, visualizationETag.value);
             visualizationSlug.value = null;
             visualizationETag.value = null;
-        } catch (e: any) {
-            error.value = e.message ?? "Failed to delete visualization";
+        } catch (e: unknown) {
+            if (!api.isAbortError(e))
+                error.value = problemMessage(e, "Failed to delete visualization");
             throw e;
         }
     }
@@ -410,6 +497,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
 
     function reset() {
+        published.value = null;
         imageSlug.value = null;
         visualizationSlug.value = null;
         visualizationETag.value = null;
@@ -420,7 +508,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         contourSettings.value = defaultContourSettings();
         animationSettings.value = defaultAnimationSettings();
         error.value = null;
+        uploadError.value = null;
         loading.value = false;
+        uploading.value = false;
         _computeDepth = 0;
         computing.value = false;
     }
@@ -430,6 +520,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         imageSlug,
         visualizationSlug,
         visualizationETag,
+        publishedSlug,
         imageMeta,
         contour,
         epicycleData,
@@ -438,6 +529,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         animationSettings,
         drafts,
         loading,
+        uploading,
+        uploadError,
         computing,
         error,
         revision,
@@ -454,6 +547,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         computeEpicycles: runComputeEpicycles,
         computeBases: runComputeBases,
         saveVisualization,
+        markPublished,
         // `createSnapshot` is retained as an alias for the (unmigrated)
         // visualization-view publish call site; it now creates a `draft`
         // visualization on the converged entity rather than a snapshot row.

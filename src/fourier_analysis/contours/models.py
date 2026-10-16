@@ -118,27 +118,27 @@ class MLConfig:
 
 @dataclass(frozen=True)
 class FeatureConfig:
-    """Parameters for the AUTO pipeline's edge-feature extraction stage.
+    """Parameters of the retired edge-feature stage.
 
-    Controls how the density field is built and how feature contours
-    are selected — only meaningful when strategy=AUTO.
+    The AUTO pipeline no longer reads them (``contours.pipeline`` draws from
+    part boundaries and a learned line drawing); they are kept so stored
+    settings and the API's contour schema still round-trip.
     """
 
-    density_sigma: float = 1.0
-    """Gaussian sigma applied to the Canny edge density field.
+    density_sigma: float = 2.0
+    """Gaussian sigma of the Canny ridge detector for feature strokes.
     Lower values preserve finer edges (eyelids, lip lines)."""
 
     spatial_diversity_fraction: float = 0.02
-    """Minimum spacing between picked features as a fraction of
-    the image diagonal (0.02 = 2%).  Prevents near-duplicate features
-    while allowing clustered facial geometry."""
+    """Retained for configuration compatibility; feature strokes are now
+    de-duplicated by the ink they repeat, not by centre spacing."""
 
-    edge_model: str = "auto"
-    """Edge detector backend: 'auto' (use PiDiNet if cached),
-    'pidinet' (require learned edges), or 'canny' (classic only)."""
+    edge_model: str = "canny"
+    """Formerly the ridge backend for feature strokes ('canny', 'auto' or
+    'pidinet').  Unused by the pipeline; see the class docstring."""
 
     def normalized(self) -> FeatureConfig:
-        edge_model = self.edge_model if self.edge_model in ("auto", "pidinet", "canny") else "auto"
+        edge_model = self.edge_model if self.edge_model in ("auto", "pidinet", "canny") else "canny"
         return FeatureConfig(
             density_sigma=max(0.1, float(self.density_sigma)),
             spatial_diversity_fraction=max(0.0, min(0.2, float(self.spatial_diversity_fraction))),
@@ -174,7 +174,7 @@ class ContourConfig:
     alpha_mode: AlphaMode | str = AlphaMode.AUTO
     """How to handle the image's alpha channel (if present)."""
 
-    tour_method: str = "nearest_2opt"
+    tour_method: str = "postman"
     """Algorithm for ordering contours into a continuous path."""
 
     # ── Preprocessing ─────────────────────────────────────────────────
@@ -195,7 +195,9 @@ class ContourConfig:
     """Minimum contour area as a fraction of total image area."""
 
     max_contours: int | None = 24
-    """Maximum number of contours to keep (None = unlimited)."""
+    """Ceiling on the number of contours (None = no ceiling).  The AUTO
+    pipeline's greedy selection stops on marginal value, so a sparse subject
+    draws fewer; it is never a target to fill."""
 
     smooth_contours: float = 0.03
     """Savitzky-Golay smoothing window as a fraction of contour length."""
@@ -236,7 +238,7 @@ class ContourConfig:
         return ContourConfig(
             strategy=strategy,
             alpha_mode=alpha_mode,
-            tour_method=self.tour_method,
+            tour_method=self.tour_method if self.tour_method in ("postman",) else "postman",
             resize=resize,
             blur_sigma=max(0.0, float(self.blur_sigma)),
             contrast_enhance=bool(self.contrast_enhance),
@@ -292,7 +294,7 @@ class ContourConfig:
             blur_sigma=d.get("blur_sigma", 0.5),
             contrast_enhance=d.get("contrast_enhance", True),
             alpha_mode=d.get("alpha_mode", AlphaMode.AUTO),
-            tour_method=d.get("tour_method", "nearest_2opt"),
+            tour_method=d.get("tour_method", "postman"),
             min_contour_length=d.get("min_contour_length", 40),
             min_contour_area=d.get("min_contour_area", 0.001),
             max_contours=d.get("max_contours", 24),
@@ -311,9 +313,9 @@ class ContourConfig:
                 detail_threshold=d.get("ml_detail_threshold", 0.3),
             ),
             feature=FeatureConfig(
-                density_sigma=d.get("feature_density_sigma", 1.0),
+                density_sigma=d.get("feature_density_sigma", 2.0),
                 spatial_diversity_fraction=d.get("spatial_diversity_fraction", 0.02),
-                edge_model=d.get("edge_model", "auto"),
+                edge_model=d.get("edge_model", "canny"),
             ),
         ).normalized()
 

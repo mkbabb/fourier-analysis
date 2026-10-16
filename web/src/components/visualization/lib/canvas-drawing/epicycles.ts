@@ -1,8 +1,9 @@
 import type { BasisComponent } from "@/lib/types";
-import type { CanvasSurface, ViewTransform } from "./types";
+import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
+import type { ViewTransform } from "./types";
 import { spectrumColor } from "./transforms";
-import { fourierPositionsAt } from "@/lib/bases";
-import { VIZ_COLORS, hexToRgba } from "@/lib/colors";
+import { fourierPositionsAt } from "@/lib/evaluators";
+import { VIZ_COLORS, withAlpha } from "@/lib/colors";
 
 export const BASE_EPICYCLE_SCALE = 0.38;
 export const HOVER_EPICYCLE_SCALE = 0.55;
@@ -63,13 +64,17 @@ export function computeEpicycleFit(
     surface: CanvasSurface,
     currentScale: number,
     baseFitCenter: { cx: number; cy: number; baseFitScale: number } | null,
+    /** X-DS pass 4 · DS-F4-C8: the stage's bottom reserve (the bottom dock's
+     *  block), so the inset and its tether sit above the dock, not under it. */
+    padBottom = 12,
+    /** X-DS pass 8 · DS-F10-C2: the stage's inline-start inset, the legend's
+     *  edge (`--stage-inset-inline`), not a private 12 px. */
+    padStart = 16,
 ): { fit: EpicycleFit; baseFitCenter: { cx: number; cy: number; baseFitScale: number } } | null {
     const { width, height } = surface;
     const bboxW = bbox.maxX - bbox.minX;
     const bboxH = bbox.maxY - bbox.minY;
     if (bboxW <= 0 || bboxH <= 0) return null;
-
-    const pad = 12;
 
     // Compute the base fit (at BASE_EPICYCLE_SCALE) — this determines the fixed center
     if (!baseFitCenter) {
@@ -79,8 +84,8 @@ export function computeEpicycleFit(
         const baseScaledW = bboxW * bfs;
         const baseScaledH = bboxH * bfs;
         baseFitCenter = {
-            cx: pad + baseScaledW / 2,
-            cy: height - pad - baseScaledH / 2,
+            cx: padStart + baseScaledW / 2,
+            cy: height - padBottom - baseScaledH / 2,
             baseFitScale: bfs,
         };
     }
@@ -96,8 +101,11 @@ export function computeEpicycleFit(
             fitScale,
             bboxCX: (bbox.minX + bbox.maxX) / 2,
             bboxCY: (bbox.minY + bbox.maxY) / 2,
-            targetCX: baseFitCenter.cx,
-            targetCY: baseFitCenter.cy,
+            // DS-F10-C2: hover grows from the cached center, but never past the
+            // stage's insets: the grown chain keeps the legend's edge and the
+            // bottom reserve rather than crowding the frame.
+            targetCX: Math.max(baseFitCenter.cx, padStart + scaledW / 2),
+            targetCY: Math.min(baseFitCenter.cy, height - padBottom - scaledH / 2),
             scaledW,
             scaledH,
         },
@@ -138,7 +146,6 @@ export function drawEpicycleCircles(
     fit: EpicycleFit | null,
     epicycleAlpha: number,
     lineWidths: { circle: number; arm: number },
-    colorOverride?: string | null,
 ): void {
     const { ctx } = surface;
     const { toScreen, scale } = view;
@@ -154,12 +161,65 @@ export function drawEpicycleCircles(
         ctx.scale(fit.fitScale, fit.fitScale);
         ctx.translate(-fit.bboxCX, -fit.bboxCY);
     }
+    // OA-44 — strokes are CSS pixels. Under the fit scale a `lineWidth` is
+    // multiplied by `fitScale`, so a shrunk figure drew its circles and arms
+    // at sub-pixel widths (at a fit of 0.3 a 4-px circle strokes 1.2 px at
+    // alpha 0.5) and grew them past their weight on hover. Divide it back out.
+    const strokeScale = fit ? fit.fitScale : 1;
+    const circleWidth = lineWidths.circle / strokeScale;
+    const armWidth = lineWidths.arm / strokeScale;
+
+    // X-DS DS-F4R-C8 — the chain's tail: below ~6 px on-screen radius the
+    // circles, their dots and their full-weight arms piled into a lumpy
+    // rainbow blob at the tip that hid where the pen is. There the remaining
+    // arms are ONE thin polyline in the tail's hue (where the tail starts),
+    // with no circle and no dot; the hues are kept (identity), only the
+    // overdraw goes. A run is flushed if a larger circle interrupts it.
+    // X-DS F3 · DS-F3-C1 — a fixed 6 px cut left dozens of 6–15 px circles,
+    // each with two dots, stacked in a ~40 px fuzz at the tip. The cut is
+    // relative to the chain: under max(12 px, 4 % of its largest on-screen
+    // radius) a link is tail. Every drawn circle is then >= 12 px, so no dot
+    // is ever drawn on a circle under ~10 px.
+    let rMax = 0;
+    for (let i = 0; i < nVis; i++) {
+        if (components[i].index !== 0) rMax = Math.max(rMax, components[i].amplitude);
+    }
+    const TAIL_R = Math.max(12, 0.04 * rMax * scale * strokeScale);
+    let tailOpen = false;
+    // X-DS pass 4 · DS-F4-C5 — the tail drew at 0.6, above the circles' own
+    // 0.5, so its hundreds of folded sub-cut vectors read as a bright knot at
+    // the tip. It is the quietest stroke in the chain now (below the circles),
+    // one thin thread in its hue (§0dm), the pen's lead-in rather than noise.
+    const flushTail = () => {
+        if (!tailOpen) return;
+        ctx.globalAlpha = 0.35 * epicycleAlpha;
+        ctx.lineWidth = 1 / strokeScale;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        tailOpen = false;
+    };
 
     for (let i = 0; i < nVis; i++) {
         const [ccx, ccy] = toScreen(visPositions[i][0], visPositions[i][1]);
         const [tx, ty] = toScreen(visPositions[i + 1][0], visPositions[i + 1][1]);
         const r = components[i].amplitude * scale;
-        const color = colorOverride ?? spectrumColor(i, nVis);
+        const color = spectrumColor(i, nVis);
+        // X-DS DS-F-C2 — the chain's tail is hundreds of circles a pixel or
+        // two across. At the full 4–5 px stroke each one paints a filled disc,
+        // and they pile into a saturated bloom at the tip. Strokes and dots
+        // scale with the circle's on-screen radius (full weight from ~10 px),
+        // over a 1 px floor; widths are on screen, divided back out of the fit
+        // scale as below (OA-44).
+        const rScreen = r * strokeScale;
+        const thin = Math.max(1, rScreen * 0.5);
+        // X-DS pass 2 · DS-F2-C19 — the 1 px floor still stacked dozens of
+        // 2–5 px circles into a translucent fuzz at the tip, and the large
+        // circles stroked 3–4 px. Circles under ~2 px on-screen radius are
+        // skipped (their arms still draw the chain), and the circle stroke's
+        // ceiling is half its given weight (2 px at rest, 2.5 px hovered).
+        const circleCeil = circleWidth / 2;
 
         // DC-term suppression (W2.8): the chain is amplitude-sorted, so the
         // `index === 0` (frequency 0) component lands first and would render as
@@ -168,6 +228,7 @@ export function drawEpicycleCircles(
         // circle + arm we drop a small centre-marker at the offset; the arm
         // (which links to the next epicycle) still renders below.
         if (components[i].index === 0) {
+            flushTail();
             ctx.beginPath();
             ctx.arc(ccx, ccy, Math.max(5.5, lineWidths.circle * 1.5), 0, Math.PI * 2);
             ctx.fillStyle = color;
@@ -181,7 +242,7 @@ export function drawEpicycleCircles(
             ctx.lineTo(tx, ty);
             ctx.strokeStyle = color;
             ctx.globalAlpha = 0.75 * epicycleAlpha;
-            ctx.lineWidth = lineWidths.arm;
+            ctx.lineWidth = armWidth;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
             ctx.stroke();
@@ -189,12 +250,25 @@ export function drawEpicycleCircles(
             continue;
         }
 
-        // Circle
+        if (rScreen < TAIL_R) {
+            if (!tailOpen) {
+                ctx.beginPath();
+                ctx.moveTo(ccx, ccy);
+                ctx.strokeStyle = color;
+                tailOpen = true;
+            }
+            ctx.lineTo(tx, ty);
+            continue;
+        }
+        flushTail();
+
+        // Circle (every circle here is at least TAIL_R (>= 12 px) on screen; DS-F2-C19's
+        // ~2 px skip is subsumed by the tail run above).
         ctx.beginPath();
         ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
         ctx.strokeStyle = color;
         ctx.globalAlpha = 0.5 * epicycleAlpha;
-        ctx.lineWidth = lineWidths.circle;
+        ctx.lineWidth = Math.min(circleCeil, thin / strokeScale);
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
         ctx.stroke();
@@ -206,28 +280,30 @@ export function drawEpicycleCircles(
         ctx.lineTo(tx, ty);
         ctx.strokeStyle = color;
         ctx.globalAlpha = 0.75 * epicycleAlpha;
-        ctx.lineWidth = lineWidths.arm;
+        ctx.lineWidth = Math.min(armWidth, thin / strokeScale);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.stroke();
         ctx.globalAlpha = 1;
 
-        // Center dot
+        // Centre and endpoint dots: scaled with the circle over a small
+        // floor (they were fixed 5.5 / 4.5 px); none in the tail run.
+
         ctx.beginPath();
-        ctx.arc(ccx, ccy, Math.max(r * 0.1, 5.5), 0, Math.PI * 2);
+        ctx.arc(ccx, ccy, Math.max(rScreen * 0.1, 1.5) / strokeScale, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.globalAlpha = 0.75 * epicycleAlpha;
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // Endpoint dot
         ctx.beginPath();
-        ctx.arc(tx, ty, Math.max(r * 0.08, 4.5), 0, Math.PI * 2);
+        ctx.arc(tx, ty, Math.max(rScreen * 0.08, 1.25) / strokeScale, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.globalAlpha = 0.6 * epicycleAlpha;
         ctx.fill();
         ctx.globalAlpha = 1;
     }
+    flushTail();
 
     ctx.restore();
 }
@@ -255,7 +331,7 @@ export function drawConnectingLine(
     ctx.beginPath();
     ctx.moveTo(tipSx, tipSy);
     ctx.lineTo(traceSx, traceSy);
-    ctx.strokeStyle = hexToRgba(VIZ_COLORS.fourier, 0.25);
+    ctx.strokeStyle = withAlpha(VIZ_COLORS.fourier, 0.25);
     ctx.globalAlpha = epicycleAlpha;
     ctx.lineWidth = 1.5;
     ctx.lineCap = "round";
@@ -265,7 +341,13 @@ export function drawConnectingLine(
     ctx.globalAlpha = 1;
 }
 
-/** Draw the tip dot and glow at the trace position. */
+/**
+ * Draw the tip dot at the trace position.
+ *
+ * X-DS pass 1 · F1-03 — one flat dot in the Fourier identity hue. The pulsing
+ * halo (an idle `sin(t)` alpha), the white specular disc and the literal
+ * `#ff3b3b` outside the viz tokens are DELETED.
+ */
 export function drawTipDot(
     surface: CanvasSurface,
     view: ViewTransform,
@@ -273,25 +355,9 @@ export function drawTipDot(
     tipY: number,
 ): void {
     const { ctx } = surface;
-    const { toScreen } = view;
-    const [sx, sy] = toScreen(tipX, tipY);
-
-    // Pulsing glow
-    const glowAlpha = 0.2 + 0.1 * Math.sin(performance.now() / 300);
-    ctx.beginPath();
-    ctx.arc(sx, sy, 20, 0, Math.PI * 2);
-    ctx.fillStyle = hexToRgba(VIZ_COLORS.fourier, glowAlpha);
-    ctx.fill();
-
-    // Solid dot
+    const [sx, sy] = view.toScreen(tipX, tipY);
     ctx.beginPath();
     ctx.arc(sx, sy, 9, 0, Math.PI * 2);
-    ctx.fillStyle = "#ff3b3b";
-    ctx.fill();
-
-    // White highlight
-    ctx.beginPath();
-    ctx.arc(sx, sy, 3, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.fillStyle = VIZ_COLORS.fourier;
     ctx.fill();
 }

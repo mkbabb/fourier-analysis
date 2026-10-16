@@ -21,6 +21,9 @@ class ComputeEquationRequest(BaseModel):
     n_eval_points: int = Field(default=500, ge=50, le=5000)
     notation: str = Field(default="trig", pattern=r"^(trig|exponential|polar)$")
     budget: int = Field(default=10, ge=2, le=50)
+    # X.F.W14V `.u2` — UIA-F-201: render Σ to the displayed N (the Parseval
+    # effective N under the page's Auto), not every computed harmonic.
+    auto_harmonics: bool = False
 
 
 class ComputeEquationResponse(BaseModel):
@@ -39,9 +42,11 @@ class SimplifyRequest(BaseModel):
     coefficients: list[FourierTermDTO]
     budget: int = Field(default=6, ge=2, le=50)
     notation: str = Field(default="trig", pattern=r"^(trig|exponential|polar)$")
+    auto_harmonics: bool = False  # UIA-F-201, as on ComputeEquationRequest
 
 
 class SimplifyResponse(BaseModel):
     latex: str
+    latex_sigma: str  # the Σ form at the displayed N (UIA-F-201)
     energy_captured: float
     term_count: int
