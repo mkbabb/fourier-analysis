@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onScopeDispose, useTemplateRef } from "vue";
+import { nextTick, onScopeDispose, ref, useTemplateRef } from "vue";
 import { RouterView, useRouter } from "vue-router";
 import { TooltipProvider } from "@mkbabb/glass-ui/tooltip";
 import { Toaster } from "@mkbabb/glass-ui/toast";
@@ -134,6 +134,19 @@ const stopAfter = router.afterEach(async (to) => {
     });
 });
 
+/*
+ * X-DS pass 10 · DS-F10X-C3: the shell scroller's block-start edge is a bare
+ * clip, so a scrolled card's top border and title vanished mid-glyph under
+ * the dock row. Once `<main>` has scrolled, the edge is the one hairline the
+ * /morph sticky band ends on (DS-F5-C4): content scrolls under a rule, not
+ * under a cut. At rest there is nothing beneath it, so there is no rule.
+ * The edge is pulled up its own pixel (`-mt-px`), so no route moves.
+ */
+const mainScrolled = ref(false);
+function onMainScroll() {
+    mainScrolled.value = (mainEl.value?.scrollTop ?? 0) > 0;
+}
+
 onScopeDispose(() => {
     stopBefore();
     stopAfter();
@@ -166,7 +179,12 @@ onScopeDispose(() => {
                  at its place far down the grid, and gave the document a scroll
                  range of its own (1031 of 844 at 390) that the shell's premise
                  says is zero. -->
-            <main ref="main" class="relative flex-1 min-h-0 flex flex-col overflow-y-auto">
+            <main
+                ref="main"
+                class="relative flex-1 min-h-0 flex flex-col overflow-y-auto -mt-px border-t border-transparent data-[scrolled]:border-[var(--border-soft)]"
+                :data-scrolled="mainScrolled || undefined"
+                @scroll.passive="onMainScroll"
+            >
                 <RouterView />
             </main>
         </div>
