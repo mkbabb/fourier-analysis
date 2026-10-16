@@ -36,6 +36,16 @@ export interface SavedVisualizationRef {
     slug: string;
 }
 
+/**
+ * The two loaders' fallback messages, for a failure that carries no detail of
+ * its own. X-DS fourier pass 11 · DS-F11X-T1: exported so the stage can tell a
+ * real server diagnosis from this restatement of its own heading.
+ */
+export const LOAD_FALLBACK = {
+    workspace: "Failed to load workspace",
+    visualization: "Failed to load visualization",
+} as const;
+
 export const useWorkspaceStore = defineStore("workspace", () => {
     const router = useRouter();
 
@@ -226,7 +236,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             await _saveDraftNow();
         } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = problemMessage(e, "Failed to load workspace");
+                error.value = problemMessage(e, LOAD_FALLBACK.workspace);
         } finally {
             loading.value = false;
         }
@@ -266,7 +276,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             contour.value = markRaw(contourAsset);
         } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = problemMessage(e, "Failed to load visualization");
+                error.value = problemMessage(e, LOAD_FALLBACK.visualization);
         } finally {
             loading.value = false;
         }

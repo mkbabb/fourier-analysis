@@ -282,8 +282,9 @@ test.describe("m254 UIA-F-254 — /morph's micro-issues", () => {
             p.remove();
             return c;
         });
-        const bound = await page.locator(".grid-cell.is-bound").first().evaluate((e) => getComputedStyle(e).borderTopColor);
-        expect(bound, "bound tile edge").not.toBe(legendre);
+        // X-DS fourier pass 11 (DS-F11X-C2): the bound mark is the caption's ink.
+        const bound = await page.locator(".grid-cell.is-bound .grid-label").first().evaluate((e) => getComputedStyle(e).color);
+        expect(bound, "bound tile caption").not.toBe(legendre);
     });
 });
 

@@ -4,7 +4,7 @@ import { watchDebounced, useEventListener } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
 import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import { useRoute, useRouter } from "vue-router";
-import { useWorkspaceStore } from "@/stores/workspace";
+import { LOAD_FALLBACK, useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { useImageUpload, IMAGE_UPLOAD_KEY } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
@@ -349,11 +349,16 @@ const stageError = computed(() => !!store.error && !store.imageSlug);
 /** X-DS DS-F-C5: the server's detail, unless it only restates the
  * description (a not-found detail names the same slug the description does).
  * X-DS pass 13 · DS-F15-C5: a bare not-found title ("Image not found") restates
- * it too, so the diagnosis line is left to a real server diagnosis. */
+ * it too, so the diagnosis line is left to a real server diagnosis.
+ * X-DS fourier pass 11 · DS-F11X-T1: and so does the loaders' own fallback
+ * ("Failed to load visualization"), which a failure with no detail of its own
+ * leaves: the line renders only for a problem that carries one. */
+const loadFallbacks: readonly string[] = Object.values(LOAD_FALLBACK);
 const stageErrorDetail = computed(() => {
     const slug = String(route.params.visualizationSlug ?? route.params.imageSlug ?? "");
     const error = store.error;
-    if (!error || (slug && error.includes(slug)) || /\bnot found\.?$/i.test(error.trim())) return null;
+    if (!error || loadFallbacks.includes(error)) return null;
+    if ((slug && error.includes(slug)) || /\bnot found\.?$/i.test(error.trim())) return null;
     return error;
 });
 /** UIA-F-73 ⊕ F-71: the first compute has nothing to draw yet; the stage says

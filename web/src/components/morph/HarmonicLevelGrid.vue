@@ -59,10 +59,7 @@
                         stroke-linejoin="round"
                     />
                 </svg>
-                <span
-                    class="grid-label"
-                    :class="{ 'grid-label-active': level === activeLevel }"
-                >
+                <span class="grid-label">
                     n={{ level }}
                 </span>
             </Button>
@@ -303,10 +300,12 @@ function getPath(level: number): string {
        Legendre basis hue, a colour that says "Legendre" on a page with no
        Legendre in it. An endpoint is a neutral full-strength edge (the resting
        edge is a 50% mix), without the selection's red ring. */
-    .grid-cell.is-bound:not(.active) {
-        border-color: var(--foreground);
-    }
-
+    /* X-DS fourier pass 11 · DS-F11X-C2: the edge belongs to ONE state. The
+       bound edge (full ink, `:not(.active)`) and the selection edge (red, with
+       its ring) competed for the same property, so at rest the High bound
+       (also the active tile) lost its bound mark and the Low bound read as a
+       second, uncaptioned selection. Selection keeps the edge and its ring;
+       the bounds are marked on the caption (below), which composes with it. */
     .grid-cell.active {
         border-color: var(--accent-red);
         box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-red) 15%, transparent);
@@ -341,8 +340,10 @@ function getPath(level: number): string {
     transition: color 0.15s;
 }
 
-.grid-label-active {
-    color: var(--accent-red);
+/* DS-F11X-C2: the bounds' mark — both of them, the active one included —
+   is the caption at foreground ink and weight; the pair reads as a pair. */
+.grid-cell.is-bound .grid-label {
+    color: var(--foreground);
     font-weight: 600;
 }
 

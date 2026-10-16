@@ -155,11 +155,13 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // 1.4.11 in the light arm at both of its sites. `.a` tokenised both to
     // `--viz-legendre`. X.F.W14U.misc (UIA-F-254) retired the basis hue from
     // the bound tile: its edge is `--foreground` at full strength now.
+    // X-DS fourier pass 11 (DS-F11X-C2): the edge is the selection's alone;
+    // the bound mark moved to the tile's caption, `--foreground` on `--card`.
     {
-        id: "FMD-18[bound-tile-border]",
-        what: ".grid-cell.is-bound boundary against the cell fill",
+        id: "FMD-18[bound-tile-caption]",
+        what: ".grid-cell.is-bound caption against the cell fill",
         stack: ["var(--card)", "var(--foreground)"],
-        kind: "non-text",
+        kind: "text",
         banked: {},
         owner: ".a",
     },

@@ -69,7 +69,7 @@
                  As a filled Chip it wore the Export button's plate, height and
                  width; it is an inline Metric like its neighbours now, with
                  its tone on the value's ink (the hue-chip ink recipe). -->
-            <Metric label="phase" :value="phase" size="sm" posture="inline" class="phase-reading">
+            <Metric label="phase" :value="phase" size="sm" posture="inline">
                 <template #value>
                     <span class="phase-value" :style="phaseTone ? { '--phase-tone': phaseTone } : undefined">{{ phase }}</span>
                 </template>
@@ -258,9 +258,17 @@ defineEmits<{
    so no reading floats alone beside it. X-DS pass 3 · DS-F3-C13: with the
    phase a labelled reading too, the four no longer fit the 26rem measure on
    one line at any width, so the two rows are the form everywhere. */
+/* X-DS fourier pass 11 · DS-F11X-T2: the four readings are ONE family on one
+   grid, the live phase first: phase · n over shape · total, two even rows
+   whose columns align. The phase's row of its own split the family 1 + 3.
+   One line does not fit: the column is the plate's ruled 26rem (416 px) at
+   every desktop width, and the four readings with their longest-word
+   reservations need 483 px, so a wrapping row would strand "total" alone.
+   The phase and shape values keep their reservations, so a reading that
+   changes at animation rate still cannot re-flow the grid. */
 .demo-info {
     display: grid;
-    grid-template-columns: repeat(3, auto);
+    grid-template-columns: repeat(2, auto);
     justify-content: center;
     justify-items: start;
     align-items: center;
@@ -268,10 +276,6 @@ defineEmits<{
     row-gap: var(--space-atom);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-}
-.phase-reading {
-    grid-column: 1 / -1;
-    justify-self: center;
 }
 
 /* The phase reading reserves the measure of its longest word ("settle-out"),
@@ -303,9 +307,6 @@ defineEmits<{
         grid-template-columns: auto;
         justify-content: start;
     }
-    .phase-reading {
-        justify-self: start;
-    }
     .phase-value,
     .shape-value {
         min-inline-size: 0;
@@ -318,9 +319,6 @@ defineEmits<{
     .demo-info {
         align-self: flex-start;
         justify-content: start;
-    }
-    .phase-reading {
-        justify-self: start;
     }
 }
 

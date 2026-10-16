@@ -42,6 +42,7 @@ import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, ExternalLink } from "@lucide/vue";
 import { sectionNav } from "@/router/routes";
+import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockTrigger, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
@@ -110,13 +111,40 @@ function overflows(run: HTMLElement): boolean {
     return right + run.scrollLeft - end > 0.5;
 }
 
-/** Show the name, then drop it if the run cannot hold it. */
+/**
+ * X-DS fourier pass 11 · DS-F11X-C1: ONE answer for every route. Measuring
+ * only the current section's name put each phone route within a pixel of the
+ * run's capacity, so the dock kept "Visualize" (fits by 0.16 px) and dropped
+ * "Equation" (1 px over): its form changed per route on sub-pixel glyph
+ * widths. The run is now tried with EVERY section's name in turn (the
+ * longest is whichever overflows, read from the rendered boxes, not guessed
+ * from a character count), and the name shows only if the run holds them
+ * all. Each trial is a microtask turn, so no trial name is ever painted.
+ */
+const probeLabel = ref<string | null>(null);
+const navLabel = computed(() => probeLabel.value ?? activeTabData.value?.label ?? "Sections");
+
+/** Every name the trigger can show: the five sections, and "Sections" off them. */
+const navLabels = [...tabs.map((t) => t.label), "Sections"];
+let fitRun = 0;
+
 async function fitNavLabel(): Promise<void> {
+    const run0 = ++fitRun;
     showNavLabel.value = true;
-    await nextTick();
-    const trigger = headerRef.value?.querySelector(".nav-trigger");
-    const run = trigger ? scrollPort(trigger) : null;
-    if (run && overflows(run)) showNavLabel.value = false;
+    let fits = true;
+    for (const label of navLabels) {
+        probeLabel.value = label;
+        await nextTick();
+        if (run0 !== fitRun) return; // a newer fit owns the trial
+        const trigger = headerRef.value?.querySelector(".nav-trigger");
+        const run = trigger ? scrollPort(trigger) : null;
+        if (run && overflows(run)) {
+            fits = false;
+            break;
+        }
+    }
+    probeLabel.value = null;
+    showNavLabel.value = fits;
 }
 
 // The header spans the viewport, so its inline size changes only with the
@@ -128,8 +156,11 @@ useResizeObserver(headerRef, (entries) => {
     headerWidth = width;
     void fitNavLabel();
 });
-// A new section's name, and the web fonts' arrival, each change the name's measure.
-watch(() => activeTabData.value?.label, () => void fitNavLabel(), { flush: "post" });
+// The web fonts' arrival changes every name's measure, and signing in or out
+// changes the Account seat beside it. A route switch does not: the answer
+// already covers every section's name.
+const auth = useAuthStore();
+watch(() => auth.userSlug, () => void fitNavLabel(), { flush: "post" });
 if (typeof document !== "undefined" && document.fonts) {
     useEventListener(document.fonts, "loadingdone", () => void fitNavLabel());
 }
@@ -191,7 +222,7 @@ if (typeof document !== "undefined" && document.fonts) {
             <DropdownMenu :modal="false">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
                     <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
-                    <span v-show="showNavLabel" class="nav-trigger-label">{{ activeTabData?.label ?? "Sections" }}</span>
+                    <span v-show="showNavLabel" class="nav-trigger-label">{{ navLabel }}</span>
                     <ChevronDown class="nav-trigger-chevron" aria-hidden="true" />
                 </DockTrigger>
                 <DropdownMenuContent align="start">
