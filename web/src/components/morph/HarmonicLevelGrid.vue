@@ -259,6 +259,11 @@ function getPath(level: number): string {
         padding-inline: var(--space-atom);
         aspect-ratio: 1;
         min-block-size: auto;
+        /* X-DS pass 10 · DS-F10X-C1: the tile's corner is the card radius at
+           every pointer. The recipe derives its corner from the control height
+           (`--button-size / 2`), which the coarse ramp grows to 30 px; on a
+           60 px phone track that rounded the tile into a stadium. */
+        border-radius: var(--radius-card);
         /* SP-3 · HLG-37 — the control boundary, raised to the 1.4.11 floor.
            `--foreground` at 12% over `--card` measured 1.275 L / 1.395 D: the
            cell's entire boundary vocabulary was sub-3:1 in BOTH arms, which is
@@ -314,9 +319,12 @@ function getPath(level: number): string {
    64 px shape keeps the 1440 tile's near-square at 390 too. */
 /* X-DS pass 9 · DS-F9X-C3: the shape fills its track up to that 64 px, so a
    phone's five columns (~60 px tracks) hold it whole. */
+/* X-DS pass 10 · DS-F10X-C1: and to 65 % of the tile's content box, so the
+   shape, the gap and the caption label fit inside the square (at 390 the
+   full-track shape stood the tile 60 x 80; at 1024, 96 x 108). */
 .grid-svg {
     inline-size: 100%;
-    max-inline-size: 64px;
+    max-inline-size: min(64px, 65%);
     aspect-ratio: 1;
     block-size: auto;
     overflow: visible;
