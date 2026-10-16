@@ -27,7 +27,9 @@ Layers, in priority order (``strokes.SILHOUETTE`` < ``PARTS`` < ``LINES``
    and never jumps between pieces.  A face's features are joined to each
    other first, across its own skin (``face_zones``), and hang on the
    figure by one connector; one that reaches the nose runs down its side
-   (``connector_strength``).
+   (``connector_strength``).  A brow joins the nose before its eye (no
+   line across the lid), and connectors that run together are drawn once
+   (``merge_forks``).
 
 A later layer's ink within ``SUPPRESS_FRACTION`` of the diagonal (half the
 bench's boundary tolerance) of earlier ink repeats it and is dropped before
@@ -55,7 +57,7 @@ from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.isolation import subject_mask
 from fourier_analysis.contours.lines import line_maps, soft_alpha
 from fourier_analysis.contours.models import ContourConfig
-from fourier_analysis.contours.parts import HAIR, Face, part_labels
+from fourier_analysis.contours.parts import BROWS, EYES, HAIR, IRIS, Face, part_labels
 from fourier_analysis.contours.strokes import (
     CONNECT,
     FILL_COMPACTNESS,
@@ -197,7 +199,7 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     wall = glabella(parts.nose, zones > 0)
     path_strength = connector_strength(strength, parts.form | parts.face_core, parts.nose)
     graph = route_connectors(
-        graph, path_strength, reach, wall=wall, faces=zones
+        graph, path_strength, reach, wall=wall, faces=zones, kinds=feature_kinds(parts.labels)
     )
     graph = route_jumps(graph, path_strength, reach, wall=wall)
     return Drawing(graph, mask, parts.source, parts.faces)
@@ -291,6 +293,7 @@ def route_connectors(
     subject: NDArray[np.bool_],
     wall: NDArray[np.bool_] | None = None,
     faces: NDArray[np.int32] | None = None,
+    kinds: NDArray[np.int8] | None = None,
 ) -> StrokeGraph:
     """Join the drawing's separate pieces along the lines of the image.
 
@@ -323,7 +326,16 @@ def route_connectors(
     ``face_zones``): only pieces of one face are joined first, and only by
     a path across that face (one that leaves its skin, round through the
     hair, is weighed with the rest).  Without it the pieces with a
-    ``PARTS`` stroke are one face's."""
+    ``PARTS`` stroke are one face's.
+
+    Of a face's own joins, one from a brow to an eye is weighed last
+    (``kinds``, ``feature_kinds``): it crosses the lid and the socket, open
+    skin that a drawn face leaves empty, and hangs the eye from its brow by a
+    line across the lid; with the brow's root also joined to the eye's
+    inner corner and the eye on to the nose, the brow runs on into the bridge
+    as a Z.  The brow is joined first to the nose, where its root meets the
+    bridge's drawn side (the brow-to-nose line), and the eye beside it; only
+    a brow with no other way onto the face hangs on its eye."""
     from skimage.graph import MCP_Geometric
 
     parts = graph.components()
@@ -441,6 +453,14 @@ def route_connectors(
 
     on_face = ndi.binary_dilation(faces > 0, iterations=FACE_RIM_PX).ravel() if faces is not None else None
 
+    kind = [0] * len(parts)
+    if kinds is not None:
+        for i, p in enumerate(parts):
+            r, c = _pixels(np.vstack([graph.edges[k].pts for k in p if graph.edges[k].layer == PARTS] or [np.zeros((0, 2))]), shape)
+            if r.size:
+                votes = np.bincount(kinds[r, c], minlength=3)
+                kind[i] = int(votes.argmax())
+
     def weighed(kv: tuple[tuple[int, int], tuple[float, int, int]]) -> tuple[int, float]:
         (i, j), (val, a, b) = kv
         first = face_of[i] and face_of[i] == face_of[j]
@@ -448,7 +468,9 @@ def route_connectors(
             # Across the face's own skin: a path that leaves it (round
             # through the hair, over the wall's top) is no line of the face.
             first = bool(on_face[trace(a)].all() and on_face[trace(b)].all())
-        return (0 if first else 1, val)
+        if not first:
+            return (2, val)
+        return (1 if {kind[i], kind[j]} == {BROW_KIND, EYE_KIND} else 0, val)
 
     chosen = []
     for key, (val, a, b) in sorted(best.items(), key=weighed):
@@ -477,6 +499,7 @@ def route_connectors(
         pts = pts.copy()
         pts[0], pts[-1] = out.nodes[u], out.nodes[v]
         out.edges.append(Edge(u, v, pts, CONNECT))
+    out = merge_forks(out, SUPPRESS_FRACTION * float(np.hypot(*shape)))
     out = smooth_edges(out, CONNECT_SMOOTH_PX, layers=(CONNECT,))
     return dissolve_degree_two(out)
 
@@ -607,7 +630,22 @@ def route_jumps(
             continue
         pts[0], pts[-1] = nodes[ends[0]], nodes[ends[1]]
         out.edges.append(Edge(ends[0], ends[1], pts, CONNECT))
+    out = merge_forks(out, SUPPRESS_FRACTION * float(np.hypot(*shape)))
     return smooth_edges(out, CONNECT_SMOOTH_PX, layers=(CONNECT,))
+
+
+BROW_KIND, EYE_KIND = 1, 2
+
+
+def feature_kinds(labels: NDArray[np.int32]) -> NDArray[np.int8]:
+    """Each pixel's feature kind for ``route_connectors``: ``BROW_KIND`` on
+    and around a brow's label, ``EYE_KIND`` on and around an eye's (its
+    iris included), 0 elsewhere; grown by ``FACE_RIM_PX``, as a feature's
+    stroke runs a pixel or two off its label."""
+    out = np.zeros(labels.shape, np.int8)
+    out[ndi.binary_dilation(np.isin(labels, BROWS), iterations=FACE_RIM_PX)] = BROW_KIND
+    out[ndi.binary_dilation(np.isin(labels, (*EYES, IRIS)), iterations=FACE_RIM_PX)] = EYE_KIND
+    return out
 
 
 def pen_cost(strength: NDArray[np.float64], subject: NDArray[np.bool_]) -> NDArray[np.float64]:
@@ -704,6 +742,77 @@ def pull_string(pts: NDArray[np.float64], cost: NDArray[np.float64]) -> NDArray[
 CONNECT_SMOOTH_PX = 2.0
 """A connector's pixel path is smoothed this much (arc length) so it reads
 as a pen stroke, not a grid walk."""
+
+
+def merge_forks(graph: StrokeGraph, reach: float) -> StrokeGraph:
+    """Two connectors that leave one node and run on together are one line:
+    a trunk to where they part, then their two branches.
+
+    Each connector is the cheapest path from its own piece, and two that
+    reach a piece by the same way (a brow's root and an eye's corner, both
+    joined down the side of the nose) share its last run, a doubled strand
+    the tour draws twice, a little apart.  Here the run along which each
+    stays within ``reach`` of the other (the drawing's repeat distance,
+    ``SUPPRESS_FRACTION`` of the diagonal) is drawn once, from their shared
+    node to a new node where they part; a connector that never leaves the
+    other ends on it there.  To a fixed point; only ``CONNECT`` strokes are
+    merged (a drawn line is never moved onto a connector)."""
+    from itertools import combinations
+
+    def from_node(e: Edge, n: int) -> NDArray[np.float64]:
+        return uniform(e.pts if e.u == n else e.pts[::-1], 1.0)
+
+    def run_length(p: NDArray[np.float64], q: NDArray[np.float64]) -> int:
+        far = np.flatnonzero(cKDTree(q).query(p)[0] > reach)
+        return int(far[0]) - 1 if far.size else len(p) - 1
+
+    while True:
+        at: dict[int, list[int]] = {}
+        for k, e in enumerate(graph.edges):
+            if e.layer == CONNECT and e.u != e.v:
+                at.setdefault(e.u, []).append(k)
+                at.setdefault(e.v, []).append(k)
+        change = None
+        for n, ks in at.items():
+            for a, b in combinations(ks, 2):
+                ea, eb = graph.edges[a], graph.edges[b]
+                pa, pb = from_node(ea, n), from_node(eb, n)
+                if len(pa) < 2 or len(pb) < 2:
+                    continue
+                ia, ib = run_length(pa, pb), run_length(pb, pa)
+                if min(ia, ib) < 2.0 * reach:
+                    continue  # they meet at the node and part at once
+                change = (n, a, b, pa, pb, ia, ib)
+                break
+            if change:
+                break
+        if change is None:
+            return graph
+        n, a, b, pa, pb, ia, ib = change
+        other_a = graph.edges[a].v if graph.edges[a].u == n else graph.edges[a].u
+        other_b = graph.edges[b].v if graph.edges[b].u == n else graph.edges[b].u
+        nodes = list(graph.nodes)
+        edges = [e for k, e in enumerate(graph.edges) if k not in (a, b)]
+        if ia == len(pa) - 1 or ib == len(pb) - 1:
+            # One lies along the other the whole way: it ends on it.
+            if ia != len(pa) - 1:
+                pa, pb, other_a, other_b = pb, pa, other_b, other_a
+            if other_a == other_b:
+                edges.append(Edge(n, other_b, pb, CONNECT))
+            else:
+                j = int(cKDTree(pb).query(nodes[other_a])[1])
+                trunk = np.vstack([pb[: j + 1], nodes[other_a][None]])
+                edges.append(Edge(n, other_a, trunk, CONNECT))
+                edges.append(Edge(other_a, other_b, np.vstack([nodes[other_a][None], pb[j + 1 :]]), CONNECT))
+        else:
+            m = len(nodes)
+            nodes.append(pa[ia].copy())
+            edges.append(Edge(n, m, pa[: ia + 1], CONNECT))
+            edges.append(Edge(m, other_a, pa[ia:], CONNECT))
+            edges.append(Edge(m, other_b, np.vstack([pa[ia][None], pb[ib + 1 :]]), CONNECT))
+        for e in edges:
+            e.pts[0], e.pts[-1] = nodes[e.u], nodes[e.v]
+        graph = compact(StrokeGraph(nodes, [e for e in edges if len(e.pts) >= 2]))
 
 
 def shape_strokes(graph: StrokeGraph) -> dict[int, NDArray[np.float64]]:
