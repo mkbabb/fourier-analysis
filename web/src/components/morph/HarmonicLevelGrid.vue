@@ -314,9 +314,14 @@ function getPath(level: number): string {
        (also the active tile) lost its bound mark and the Low bound read as a
        second, uncaptioned selection. Selection keeps the edge and its ring;
        the bounds are marked on the caption (below), which composes with it. */
+    /* X-DS fourier pass 13 · DS-F13X-T1: the ring is one solid accent pixel,
+       so the selection is a crisp 2 px accent edge in both themes. The 2 px
+       ring at a 15 % mix lost its edge on the dark `--card` and read as a soft
+       halo. It stays spread-only (no blur, no offset), so it is still the flat
+       ring that means "selected", with no per-theme counter-style. */
     .grid-cell.active {
         border-color: var(--accent-red);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-red) 15%, transparent);
+        box-shadow: 0 0 0 1px var(--accent-red);
     }
 }
 
