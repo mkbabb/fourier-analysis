@@ -29,16 +29,13 @@
             />
         </div>
 
-        <!-- X.F.W14U.misc — UIA-F-210: the strip says where it continues (a
-             fading edge on each side that has more), and a chosen tile is
-             scrolled into view. UIA-F-208: mid-morph the tiles are disabled,
-             not silently dropped. -->
+        <!-- X-DS pass 9 · DS-F9X-C2 ⊕ C3: the levels lie in two even rows at
+             every width, so the whole range the card names (both bounds among
+             it) is in view; there is no scroller, so no fading edge.
+             UIA-F-208: mid-morph the tiles are disabled, not silently dropped. -->
         <div
-            ref="stripRef"
             class="grid"
-            :data-more-start="moreStart || undefined"
-            :data-more-end="moreEnd || undefined"
-            @scroll.passive="measureStrip"
+            :style="{ '--levels-per-row': Math.ceil(levels.length / 2) }"
         >
             <Button
                 v-for="level in levels"
@@ -50,7 +47,7 @@
                     'is-bound': level === lowLevel || level === highLevel,
                 }"
                 :disabled="disabled"
-                @click="onSelect(level, $event)"
+                @click="onSelect(level)"
             >
                 <svg viewBox="0 0 200 200" class="grid-svg">
                     <path
@@ -74,8 +71,6 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
-import { useResizeObserver } from "@vueuse/core";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Card } from "@mkbabb/glass-ui/card";
 import SliderControl from "@/components/ui/SliderControl.vue";
@@ -125,25 +120,7 @@ function emitHigh(raw: number) {
     emit("update:highLevel", v);
 }
 
-/* X.F.W14U.misc — UIA-F-210: which edges of the strip hide tiles (the fading
-   edge is painted only there), and a chosen tile is centred in the strip. */
-const stripRef = ref<HTMLElement | null>(null);
-const moreStart = ref(false);
-const moreEnd = ref(false);
-
-function measureStrip() {
-    const el = stripRef.value;
-    if (!el) return;
-    moreStart.value = el.scrollLeft > 1;
-    moreEnd.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-}
-
-onMounted(measureStrip);
-useResizeObserver(stripRef, measureStrip);
-watch(() => props.levels, measureStrip, { flush: "post" });
-
-function onSelect(level: number, event: MouseEvent) {
-    (event.currentTarget as HTMLElement).scrollIntoView({ inline: "center", block: "nearest" });
+function onSelect(level: number) {
     emit("select", level);
 }
 
@@ -224,75 +201,19 @@ function getPath(level: number): string {
 
 /* ── Preview grid ────────────────────────────── */
 
+/* X-DS pass 9 · DS-F9X-C2 ⊕ DS-F9X-C3: one grid at every width and pointer.
+   The column count follows the level count (`--levels-per-row`, half of it
+   rounded up, set on the element), so the levels lie in two even rows. Pass 8
+   (DS-F8X-C1) wrapped them only at a fine pointer, with `auto-fill`, which
+   took its count from the strip's width (6 + 4 at 1440, a two-cell hole after
+   the High tile); the phone and coarse pointers kept a scroller whose 118 px
+   tiles left 2 of 10 whole and both bounds out of view. The scroller, its
+   fading edges (UIA-F-210), its snap and its scroll-into-view are deleted:
+   nothing is hidden, so nothing has to say it continues. */
 .grid {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(var(--levels-per-row), minmax(0, 1fr));
     gap: 0.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    /* FMD-18 — the top gutter. `overflow-y: hidden` plus a one-sided
-       `padding-bottom` clipped this strip's own outward decorations (ring,
-       lift, focus) at the TOP edge only. The gutter is two-sided now, so the
-       affordances the cells paint are the affordances the user sees. */
-    padding-top: 0.375rem;
-    padding-bottom: 0.375rem;
-    scrollbar-width: thin;
-    /* UIA-F-210 ⊕ UIA-F-254: the fading edge, only on a side that hides tiles
-       (no hard cut at the strip's end, and no feather where nothing continues). */
-    /* X-DS pass 8 · DS-F10-C1: the fade spans half a tile (a ~98px tile, an
-       0.5rem gap), so a cut anywhere reads as a tile fading out, never as the
-       next tile's lone border at the card's edge. 1.25rem was shorter than a
-       gap plus any readable part of a tile. */
-    --strip-fade: 3rem;
-    --strip-fade-start: 0px;
-    --strip-fade-end: 0px;
-    /* X-DS pass 12 · DS-F14-C3: a fading side reaches alpha 0 before the
-       strip's edge, so a tile rim caught in the last few px is gone, not a
-       faint arc. A side with no fade is unchanged.
-       X-DS pass 4 · DS-F4-C3: the alpha-0 band is a whole gap (0.5rem), not a
-       twelfth of the fade (4px): a rim landing anywhere in the last gap's
-       width is cut, never left as a lone hairline beside the last tile. */
-    --strip-clear-start: min(var(--strip-fade-start), 0.5rem);
-    --strip-clear-end: min(var(--strip-fade-end), 0.5rem);
-    mask-image: linear-gradient(
-        to right,
-        transparent var(--strip-clear-start),
-        #000 var(--strip-fade-start),
-        #000 calc(100% - var(--strip-fade-end)),
-        transparent calc(100% - var(--strip-clear-end))
-    );
-    /* X-DS pass 4 · DS-F4-C3: a scrolled strip rests with a tile's start on
-       its leading edge, so the cut lands at a tile boundary, not mid-rim. */
-    scroll-snap-type: x mandatory;
-}
-
-.grid[data-more-start] {
-    --strip-fade-start: var(--strip-fade);
-}
-
-.grid[data-more-end] {
-    --strip-fade-end: var(--strip-fade);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .grid {
-        scroll-behavior: smooth;
-    }
-}
-
-/* X-DS fourier pass 8 · DS-F8X-C1: on a fine pointer with the room for it,
-   the card shows the whole range it names. The phone strip carried up to
-   1440 hid the bound High tile (and 18/25/35) past the right edge, with only
-   the end fade to say so; here the levels wrap into a grid, every tile is in
-   view, and there is no scroller, so no fade. Coarse pointers and phones keep
-   the strip and its fade. */
-@media (min-width: 1024px) and (pointer: fine) {
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
-        overflow: visible;
-        mask-image: none;
-        scroll-snap-type: none;
-    }
 }
 
 /* X.F.W4 / SP-6 · FMD-13 — the `.grid-cell` re-skin is DELETED down to the
@@ -303,8 +224,8 @@ function getPath(level: number): string {
    the corner radius / `cursor` / the three-leg `transition` shorthand (HLG-6 —
    it truncated the producer's six-leg tokenised list) / `background`
    (it replaced the `glass-capsule` plate `emphasis="secondary"` selects).
-   Kept, and LAYERED: the column stack and the no-shrink, which is what makes a
-   horizontally-scrolling strip of shape tiles out of a row of buttons.
+   Kept, and LAYERED: the column stack (shape over label). The no-shrink and
+   the snap went with the scroller (X-DS pass 9 · DS-F9X-C3).
 
    ⊘ TWO BANKED MECHANISMS DIED AT THE ADOPTED PIN — recorded, not smoothed.
    (i) `FMD-16`/`HLG-2` (*"`.grid-cell` keeps the recipe's fixed
@@ -325,8 +246,6 @@ function getPath(level: number): string {
 @layer glass-overrides {
     .grid-cell {
         flex-direction: column;
-        flex-shrink: 0;
-        scroll-snap-align: start;
         /* DS-F5-C3: the label clears the tile's foot by a block pad (the
            recipe's block padding is 0, so "n=1" sat ~1 px off the border),
            and the tile is never wider than tall: on the coarse ramp the
@@ -334,6 +253,10 @@ function getPath(level: number): string {
            automatic minimum (in place of the recipe's control-height floor)
            lets the content hold the tile open where it is the taller side. */
         padding-block: var(--space-atom);
+        /* DS-F9X-C3: the tile's content is the shape, so it takes the same
+           atom pad inline as on its block axis; the coarse recipe's 26 px
+           control pad is what held the phone tile at 118 px. */
+        padding-inline: var(--space-atom);
         aspect-ratio: 1;
         min-block-size: auto;
         /* SP-3 · HLG-37 — the control boundary, raised to the 1.4.11 floor.
@@ -389,9 +312,13 @@ function getPath(level: number): string {
    phone thumbnail sat in a button whose inline size does not shrink, so the
    tile fell to ~1.5:1 and the coarse radius rounded it into a pill; the
    64 px shape keeps the 1440 tile's near-square at 390 too. */
+/* X-DS pass 9 · DS-F9X-C3: the shape fills its track up to that 64 px, so a
+   phone's five columns (~60 px tracks) hold it whole. */
 .grid-svg {
-    width: 64px;
-    height: 64px;
+    inline-size: 100%;
+    max-inline-size: 64px;
+    aspect-ratio: 1;
+    block-size: auto;
     overflow: visible;
 }
 

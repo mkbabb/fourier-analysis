@@ -518,8 +518,12 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <!-- X-DS pass 8 · DS-F8X-C2: the empty stage shows the app's
                              paper grid (glass's `.paper-grid`, identity), as the
                              origin's empty canvas did, so it reads as a drawing
-                             surface awaiting its outline, not a blank plate. -->
-                        <div v-if="!hasImage && !hasData" class="drop-target paper-grid" :data-dragging="globalDragging || undefined">
+                             surface awaiting its outline, not a blank plate.
+                             X-DS pass 9 · DS-F9X-C1: at the origin's faint register
+                             (its own layer, the `.band-grid` idiom), not the page
+                             ground's strength, since the plate carries reading text. -->
+                        <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
+                            <div class="drop-target-grid paper-grid" aria-hidden="true" />
                             <!-- X-DS DS-F4R-C1: the zone draws no frame of its own.
                                  The stage's hairline is the frame, and the stage's
                                  ring is the one drop signal. -->
@@ -1017,11 +1021,25 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     padding: var(--space-residue);
     text-align: center;
     pointer-events: none;
-    /* X-DS pass 8 · DS-F8X-C2: the grid is pinned to the viewport, so its
-       lines register with the page ground's grid round the plate (the
-       `.band-grid` idiom on /morph). */
-    background-attachment: fixed;
     z-index: var(--z-controls);
+}
+/* X-DS pass 8 · DS-F8X-C2: the grid is pinned to the viewport, so its lines
+   register with the page ground's grid round the plate (the `.band-grid`
+   idiom on /morph).
+   X-DS pass 9 · DS-F9X-C1: at the page ground's strength (glass's
+   `--paper-grid-opacity`, 0.08: majors at 12.8 %, minors at 8 %) the lines ran
+   through the title, the lede and the caption. The plate reads at the origin's
+   faint register, an effective `--paper-grid-opacity` of 0.035. Glass derives
+   its line inks from the knob at `:root`, so re-setting the knob on a scope is
+   inert; the layer's opacity is the ratio of the two instead, so it follows
+   the token. No local colour, gradient or mask. */
+.drop-target-grid {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-attachment: fixed;
+    opacity: calc(0.035 / var(--paper-grid-opacity));
 }
 /* X.F.W14U.vstage — the empty state's hierarchy (UIA-F-69): the title, then the
    lede one step down, then the action; the gallery path sits apart below.
