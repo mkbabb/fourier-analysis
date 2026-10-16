@@ -91,6 +91,7 @@ mongo_data/
 *.png
 !assets/**/*.png
 !docs/**/*.png
+!tests/fixtures/*.png
 
 # Playwright
 web/test-results/
