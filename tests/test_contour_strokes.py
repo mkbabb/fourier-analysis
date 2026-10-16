@@ -1142,7 +1142,7 @@ def test_the_upper_teeth_are_parted_from_the_lower_toward_the_lower_lip():
     """A smile's teeth band: a bright upper row over a darker lower row, the
     lower lip under it and skin above.  The parting runs between the rows,
     from the band's outline to its outline; a band of one row has none."""
-    from fourier_analysis.contours.parts import L_LIP, SKIN, TEETH, teeth_parting
+    from fourier_analysis.contours.parts import L_LIP, SKIN, TEETH, teeth_rows
 
     h, w = 80, 200
     yy, xx = np.mgrid[:h, :w]
@@ -1150,7 +1150,7 @@ def test_the_upper_teeth_are_parted_from_the_lower_toward_the_lower_lip():
     labels = np.where(band, TEETH, np.where(yy > 40, L_LIP, SKIN)).astype(np.int32)
     lab = np.full((h, w, 3), 0.5)
     lab[..., 0] = np.where(band & (yy < 44), 0.85, np.where(band, 0.45, 0.3))
-    lines = teeth_parting(labels, lab)
+    _, lines = teeth_rows(labels, lab)
     assert len(lines) == 1
     line = lines[0]
     assert np.all(np.abs(line[:, 0] - 43.5) <= 1.5), line[:, 0]
@@ -1158,7 +1158,29 @@ def test_the_upper_teeth_are_parted_from_the_lower_toward_the_lower_lip():
 
     one_row = lab.copy()
     one_row[..., 0] = np.where(band, 0.85, 0.3)
-    assert teeth_parting(labels, one_row) == ()
+    assert teeth_rows(labels, one_row)[1] == ()
+
+
+def test_a_sliver_of_lower_teeth_goes_to_the_lower_lip_and_is_not_parted():
+    """The same smile with the dark under the upper row a sliver (thinner
+    than the doubled-strand width): the parting and the band's outline
+    would run side by side, so there is no parting, and the sliver joins
+    the lower lip: the upper row's edge is the teeth's one lower line."""
+    from fourier_analysis.contours.parts import L_LIP, SKIN, TEETH, teeth_rows
+
+    h, w = 80, 200
+    yy, xx = np.mgrid[:h, :w]
+    band = (np.abs(yy - 40) <= 12) & (np.abs(xx - 100) <= 70)
+    labels = np.where(band, TEETH, np.where(yy > 40, L_LIP, SKIN)).astype(np.int32)
+    lab = np.full((h, w, 3), 0.5)
+    lab[..., 0] = np.where(band & (yy < 48), 0.85, np.where(band, 0.45, 0.3))  # a 5-px lower row
+    out, lines = teeth_rows(labels, lab, max_width=12.0)
+    assert lines == ()
+    assert np.all(out[band & (yy >= 49)] == L_LIP)
+    assert np.all(out[band & (yy < 47) & (np.abs(xx - 100) <= 64)] == TEETH)  # its corners rounded
+    # Wider than a sliver, the rows are parted as before.
+    _, lines = teeth_rows(labels, lab, max_width=4.0)
+    assert len(lines) == 1
 
 
 def test_a_seam_that_stops_in_the_hair_runs_on_to_the_hairs_edge():
