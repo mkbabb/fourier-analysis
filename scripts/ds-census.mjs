@@ -7,15 +7,15 @@
 //              utilities in Vue templates: box-shadow layers, inset (highlight) layers,
 //              text-shadow, filter drop-shadow / blur, backdrop blur, decorative gradients,
 //              @keyframes run `infinite`.
-//   computed — every served route via the REAL Chrome in new-headless mode (§0ei: channel
-//              "chrome", headless true, never a visible window): computed box-shadow layers,
+//   computed — every served route, headless (the bundled headless shell; the REAL Chrome in
+//              new-headless mode, §0ei, when --frames or --chrome): computed box-shadow layers,
 //              inset highlight layers (focus-ring spreads excluded), text-shadow, filter
 //              drop-shadow / blur, backdrop blur, gradient fills on controls, and running
 //              infinite animations on chrome (canvas / svg subjects excluded).
 //
 // Usage:
 //   node scripts/ds-census.mjs [--base http://localhost:3100] [--static-only]
-//                              [--frames DIR] [--routes /paper,/gallery,...] [--root REPO_DIR]
+//                              [--frames DIR] [--routes /paper,/gallery,...] [--root REPO_DIR] [--chrome]
 //   --root scans another checkout's web/src (e.g. a historical worktree) in the static half.
 //   --frames DIR also writes <route>-<theme>-<width>.png for every route × light/dark × 1440/390.
 // The served app is expected at --base (vite on :3100 proxying the API on :8000).
@@ -184,8 +184,16 @@ function pageCensus() {
 
 async function computedCensus() {
     const { chromium } = await import(join(ROOT, "web", "node_modules", "playwright", "index.mjs"));
-    // §0ei: the real Chrome, new headless, never a visible window.
-    const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--use-angle=metal", "--ignore-gpu-blocklist"] });
+    // The computed census reads getComputedStyle / getAnimations, which the bundled
+    // headless shell answers identically at a fraction of the memory. The real Chrome
+    // (§0ei: new headless, never a visible window, Metal GPU) is launched only when the
+    // run renders pixels that depend on the GPU: --frames, or an explicit --chrome.
+    const realChrome = !!FRAMES || args.includes("--chrome");
+    const browser = await chromium.launch(
+        realChrome
+            ? { channel: "chrome", headless: true, args: ["--use-angle=metal", "--ignore-gpu-blocklist"] }
+            : { headless: true },
+    );
     const routes = (opt("--routes", null)?.split(",")) ?? (await discoverRoutes());
     const out = {};
     if (FRAMES) mkdirSync(FRAMES, { recursive: true });

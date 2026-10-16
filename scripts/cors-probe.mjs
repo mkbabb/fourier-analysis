@@ -19,95 +19,98 @@ if (!spa || !api || !imagePath) {
 }
 const image = readFileSync(imagePath).toString("base64");
 
-const browser = await chromium.launch({ channel: "chrome", headless: true });
-const page = await browser.newPage();
 const corsErrors = [];
-page.on("console", (m) => {
-    if (m.type() === "error" && /CORS|Access-Control/i.test(m.text())) corsErrors.push(m.text());
-});
-// Chromium does not surface CORS preflights as page requests; the API's own
-// access log (read by cors-probe.sh) is the preflight witness.
 const requests = [];
-page.on("request", (r) => {
-    if (r.url().startsWith(api)) requests.push(`${r.method()} ${new URL(r.url()).pathname}`);
-});
+let result;
+const browser = await chromium.launch({ channel: "chrome", headless: true });
+try {
+    const page = await browser.newPage();
+    page.on("console", (m) => {
+        if (m.type() === "error" && /CORS|Access-Control/i.test(m.text())) corsErrors.push(m.text());
+    });
+    // Chromium does not surface CORS preflights as page requests; the API's own
+    // access log (read by cors-probe.sh) is the preflight witness.
+    page.on("request", (r) => {
+        if (r.url().startsWith(api)) requests.push(`${r.method()} ${new URL(r.url()).pathname}`);
+    });
 
-await page.goto(`${spa}/`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${spa}/`, { waitUntil: "domcontentloaded" });
 
-const result = await page.evaluate(
-    async ({ image, name }) => {
-        const c = await import("/src/lib/api.ts");
-        const steps = [];
-        const step = (label, value) => steps.push([label, value]);
+    result = await page.evaluate(
+        async ({ image, name }) => {
+            const c = await import("/src/lib/api.ts");
+            const steps = [];
+            const step = (label, value) => steps.push([label, value]);
 
-        const session = await c.createSession();
-        c.setSessionToken(session.token);
-        step("session", session.user_slug);
+            const session = await c.createSession();
+            c.setSessionToken(session.token);
+            step("session", session.user_slug);
 
-        const bytes = Uint8Array.from(atob(image), (ch) => ch.charCodeAt(0));
-        const meta = await c.uploadImage(new File([bytes], name, { type: "image/png" }));
-        step("upload", meta.image_slug);
+            const bytes = Uint8Array.from(atob(image), (ch) => ch.charCodeAt(0));
+            const meta = await c.uploadImage(new File([bytes], name, { type: "image/png" }));
+            step("upload", meta.image_slug);
 
-        const contour = await c.saveContour(meta.image_slug, {
-            x: [0, 1, 1, 0, 0],
-            y: [0, 0, 1, 1, 0],
-        });
-        step("contour", contour.contour_hash.slice(0, 12));
+            const contour = await c.saveContour(meta.image_slug, {
+                x: [0, 1, 1, 0, 0],
+                y: [0, 0, 1, 1, 0],
+            });
+            step("contour", contour.contour_hash.slice(0, 12));
 
-        const created = await c.createVisualization({
-            image_slug: meta.image_slug,
-            contour_hash: contour.contour_hash,
-            active_bases: ["fourier-epicycles"],
-            n_harmonics: 8,
-            visibility: "draft",
-        });
-        step("create.etag", created.etag);
+            const created = await c.createVisualization({
+                image_slug: meta.image_slug,
+                contour_hash: contour.contour_hash,
+                active_bases: ["fourier-epicycles"],
+                n_harmonics: 8,
+                visibility: "draft",
+            });
+            step("create.etag", created.etag);
 
-        const read = await c.getVisualization(created.data.slug);
-        step("read.etag", read.etag);
+            const read = await c.getVisualization(created.data.slug);
+            step("read.etag", read.etag);
 
-        // The edit: the store's exact call (If-Match from the read's ETag).
-        const edited = await c.updateVisualization(
-            created.data.slug,
-            { title: "F.REL .c cors probe" },
-            read.etag,
-        );
-        step("edit.title", edited.data.title);
-        step("edit.etag", edited.etag);
+            // The edit: the store's exact call (If-Match from the read's ETag).
+            const edited = await c.updateVisualization(
+                created.data.slug,
+                { title: "F.REL .c cors probe" },
+                read.etag,
+            );
+            step("edit.title", edited.data.title);
+            step("edit.etag", edited.etag);
 
-        // Every remaining client request header on a preflighted verb:
-        // If-Match + Idempotency-Key + Content-Type + X-Session-Token.
-        const again = await c.apiFetch(`/api/visualizations/${created.data.slug}`, "frel-cors", {
-            method: "PATCH",
-            body: { description: "edited with every client header" },
-            ifMatch: edited.etag,
-            idempotencyKey: crypto.randomUUID(),
-        });
-        step("edit2.description", again.description);
+            // Every remaining client request header on a preflighted verb:
+            // If-Match + Idempotency-Key + Content-Type + X-Session-Token.
+            const again = await c.apiFetch(`/api/visualizations/${created.data.slug}`, "frel-cors", {
+                method: "PATCH",
+                body: { description: "edited with every client header" },
+                ifMatch: edited.etag,
+                idempotencyKey: crypto.randomUUID(),
+            });
+            step("edit2.description", again.description);
 
-        const fresh = await c.getVisualization(created.data.slug);
-        await c.deleteVisualization(created.data.slug, fresh.etag);
-        step("delete", "204");
+            const fresh = await c.getVisualization(created.data.slug);
+            await c.deleteVisualization(created.data.slug, fresh.etag);
+            step("delete", "204");
 
-        // Soft delete (CRUD-CONTRACT §5): the owner still reads the row, now
-        // stamped deleted_at (restorable in grace); anyone else gets 404.
-        const owned = await c.getVisualization(created.data.slug);
-        step("owner-read-after-delete.deleted_at", owned.data.deleted_at ?? "null");
-        c.setSessionToken(null);
-        let anon;
-        try {
-            await c.getVisualization(created.data.slug);
-            anon = "still readable";
-        } catch (e) {
-            anon = `${e.status ?? "?"} ${e.type ?? e.message}`;
-        }
-        step("anon-read-after-delete", anon);
-        return steps;
-    },
-    { image, name: basename(imagePath) },
-);
-
-await browser.close();
+            // Soft delete (CRUD-CONTRACT §5): the owner still reads the row, now
+            // stamped deleted_at (restorable in grace); anyone else gets 404.
+            const owned = await c.getVisualization(created.data.slug);
+            step("owner-read-after-delete.deleted_at", owned.data.deleted_at ?? "null");
+            c.setSessionToken(null);
+            let anon;
+            try {
+                await c.getVisualization(created.data.slug);
+                anon = "still readable";
+            } catch (e) {
+                anon = `${e.status ?? "?"} ${e.type ?? e.message}`;
+            }
+            step("anon-read-after-delete", anon);
+            return steps;
+        },
+        { image, name: basename(imagePath) },
+    );
+} finally {
+    await browser.close();
+}
 
 for (const [label, value] of result) console.log(`${label}: ${value}`);
 console.log(`requests: ${requests.join(" · ")}`);
