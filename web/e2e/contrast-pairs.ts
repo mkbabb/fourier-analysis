@@ -121,7 +121,7 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // figures so the drift line reads as the cure rather than as a surprise.
     {
         id: "HLG-37[grid-cell-border]",
-        what: ".grid-cell 1.5px boundary against its own fill",
+        what: ".grid-cell 1px boundary against its own fill (DS-F12X-C1: weight 1.5px -> 1px, ink unchanged)",
         stack: [
             "var(--card)",
             "color-mix(in srgb, var(--foreground) 50%, transparent)",

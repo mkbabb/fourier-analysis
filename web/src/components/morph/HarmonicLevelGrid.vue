@@ -268,7 +268,15 @@ function getPath(level: number): string {
            strip. At 50% it measures 3.291 L / 3.984 D. (Re-derived from the
            token values; the 12% reading reproduces the banked 1.275/1.398 to
            the thousandth, which is what validates the model.) */
-        border: 1.5px solid color-mix(in srgb, var(--foreground) 50%, transparent);
+        /* X-DS fourier pass 12 · DS-F12X-C1: the resting edge is a 1 px
+           hairline, the weight of the card's own edge, so the inner tile no
+           longer outweighs its container and the selection (accent edge plus
+           its 2 px ring) is the one heavier mark. The ink stays at the 50 %
+           mix: that is the 1.4.11 floor HLG-37 grades (on `--card`, `--border`
+           measures 1.87 L / 2.00 D and `--border-soft` 1.31 / 1.35, both
+           under 3:1), so the critic's tone arm is
+           refused and only the weight is cured. */
+        border: 1px solid color-mix(in srgb, var(--foreground) 50%, transparent);
         /* ⊘ NOT cured here, and not smoothed: `--card` and `--background` are
            the SAME luminance in the light arm (1.000:1), so the cell's FILL
            carries no separation from the page whatever the consumer does. That
