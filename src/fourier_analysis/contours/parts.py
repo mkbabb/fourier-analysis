@@ -146,7 +146,7 @@ class PartLabels:
     spined: tuple[int, ...] = ()  # labels drawn by their spine, not their outline
     missed: NDArray[np.bool_] | None = None  # an eye the detector sees and the parser does not
     feature_lines: tuple[NDArray[np.float64], ...] = ()  # (row, col) lines of eyes and mouths the parser missed
-    teeth_lines: tuple[NDArray[np.float64], ...] = ()  # (row, col) lines where the upper teeth meet the lower (``teeth_parting``)
+    teeth_lines: tuple[NDArray[np.float64], ...] = ()  # (row, col) lines where the upper teeth meet the lower (``teeth_rows``)
 
     @property
     def subject(self) -> NDArray[np.bool_]:
@@ -399,6 +399,7 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
         # The dark of a smile between a lip and the teeth is a sliver (the
         # gum line): one line, where the lip meets the teeth.
         labels = thin_to_line(labels, (MOUTH,), THIN_FRACTION * diag)
+        labels, parting = teeth_rows(labels, image.lab, THIN_FRACTION * diag)
         drawn = ~np.eye(N_LABELS, dtype=bool)
         drawn[UNPARSED, :] = False
         drawn[:, UNPARSED] = False
@@ -410,7 +411,6 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
         marked &= ~np.eye(N_LABELS, dtype=bool)
         labels = _frame_band(labels)
         missed, lines = missed_features(labels, faces, image.lab)
-        parting = teeth_parting(labels, image.lab)
         return PartLabels(labels, drawn, marked, tuple(faces), "face-parsing", BROWS, missed, lines, parting)
 
     labels = np.where(subject, UNPARSED, BACKGROUND).astype(np.int32)
@@ -829,8 +829,12 @@ def teeth(
 L_LIP = 13
 
 
-def teeth_parting(labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | None) -> tuple[NDArray[np.float64], ...]:
-    """The line where the upper teeth meet the lower, one per open mouth.
+def teeth_rows(
+    labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | None, max_width: float = 0.0
+) -> tuple[NDArray[np.int32], tuple[NDArray[np.float64], ...]]:
+    """The line where the upper teeth meet the lower, one per open mouth;
+    or, where the lower row is a sliver, the lower lip carried up onto the
+    upper teeth.
 
     ``teeth`` draws a smile's teeth as one band (it averages the gaps
     between teeth away), and its outline is a closed loop: a drawing also
@@ -843,16 +847,29 @@ def teeth_parting(labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | Non
     band's own outline at both ends.  It is drawn only where the rows differ
     clearly (``IRIS_MIN_DELTA_L``) and the edge spans ``PARTING_SPAN`` of the
     band's length: a single row of teeth is drawn by its outline alone.
-    Returns ``(row, col)`` points."""
+
+    Where the dark under the upper row is thinner than ``max_width`` (the
+    doubled-strand scale, ``THIN_FRACTION``) over most of it, the parting
+    and the band's outline below it would run side by side, one strand
+    drawn twice under the teeth.  That row (the lower teeth's edge, the
+    shadow under the upper row, a lower tooth's tip) is no row of its own:
+    its pixels go to their
+    nearest part off the band (the lower lip), as ``teeth`` gives the dark
+    of a smile's corners to the lips, and the upper row's edge, drawn once
+    as the band's outline, is the line where the teeth meet the lip.
+
+    Returns the labels and the ``(row, col)`` points of each parting."""
     if lab_norm is None or not (labels == TEETH).any():
-        return ()
+        return labels, ()
     from skimage.filters import threshold_otsu
+    from skimage.morphology import disk, skeletonize
 
     lum = lab_norm[..., 0] * 100.0
     out: list[NDArray[np.float64]] = []
     off_teeth = labels != TEETH
     _, (ri, ci) = ndi.distance_transform_edt(~off_teeth, return_indices=True)
     nearest = labels[ri, ci]
+    sliver = np.zeros(labels.shape, bool)
     comp, n = ndi.label(~off_teeth)
     for i in range(1, n + 1):
         band = comp == i
@@ -883,6 +900,26 @@ def teeth_parting(labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | Non
         span = float(np.ptp((pix - centre) @ axis))
         if np.ptp(s) < PARTING_SPAN * span:
             continue
+        # The lower row: the dark that faces the lower lip (not the gum
+        # line under the upper lip, nor the gaps between the upper teeth).
+        lower = dark & (nearest == L_LIP)
+        skel = skeletonize(lower)
+        if max_width > 0 and skel.any():
+            dt = ndi.distance_transform_edt(lower)
+            _, (si, sj) = ndi.distance_transform_edt(~skel, return_indices=True)
+            narrow = lower & (2.0 * dt[si, sj] < max_width)
+            if narrow.sum() >= 0.5 * lower.sum():
+                # A row that is a sliver along most of it is no row: a lower
+                # tooth's tip showing in it, or a neck of the band thinner
+                # than half a sliver, would hang off the band as a hook.
+                rest = band & ~lower
+                r = max(1, int(round(max_width / 4.0)))
+                kept = ndi.binary_opening(rest, structure=disk(r))
+                pieces, m = ndi.label(kept)
+                if m:
+                    kept = pieces == 1 + int(np.argmax(ndi.sum(kept, pieces, np.arange(1, m + 1))))
+                sliver |= band & ~kept
+                continue
         # One point per pixel of the long axis: the edge's median offset there.
         bins = np.round(s).astype(int)
         keys = np.unique(bins)
@@ -891,7 +928,11 @@ def teeth_parting(labels: NDArray[np.int32], lab_norm: NDArray[np.float64] | Non
         line = centre + keys[:, None] * axis + mid[:, None] * across
         line = np.vstack([_run_out(line[::-1], band)[::-1], line[1:-1], _run_out(line, band)])
         out.append(line)
-    return tuple(out)
+    if sliver.any():
+        labels = labels.copy()
+        _, (ri, ci) = ndi.distance_transform_edt(sliver | ~off_teeth, return_indices=True)
+        labels[sliver] = labels[ri[sliver], ci[sliver]]
+    return labels, tuple(out)
 
 
 PARTING_SPAN = 0.5
