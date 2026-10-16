@@ -99,19 +99,11 @@ class UnhandledErrorProblem:
 
 app.add_middleware(UnhandledErrorProblem)
 
-origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=list(CORS_ALLOW_METHODS),
-    allow_headers=list(CORS_ALLOW_HEADERS),
-    expose_headers=list(CORS_EXPOSE_HEADERS),
-)
-
 # RFC 9239 RateLimit-* headers on every response (Invariant 24 / CRUD-CONTRACT
-# §0 SOTA-6). Registered after CORS so its ``RateLimit-*`` fields ride out
-# through the CORS-wrapped response unmodified.
+# §0 SOTA-6). Registered BEFORE CORS (``add_middleware`` prepends, so it sits
+# INSIDE CORS): its 429 and its ``RateLimit-*`` fields leave through the CORS
+# layer, so a rate-limited cross-origin request is readable, not a CORS failure
+# (F.REL .pd, COHESION §0fq.2).
 app.add_middleware(RateLimitHeaderMiddleware)
 
 
@@ -148,6 +140,20 @@ async def reject_dollar_keys(request: Request, call_next):
                             },
                         )
     return await call_next(request)
+
+
+# CORS is registered LAST, so it is the OUTERMOST middleware: every response the
+# layers above answer (the unhandled-error problem, the 429, the dollar-key 400)
+# carries the CORS headers (F.REL .pd, COHESION §0fq.2).
+origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=list(CORS_ALLOW_METHODS),
+    allow_headers=list(CORS_ALLOW_HEADERS),
+    expose_headers=list(CORS_EXPOSE_HEADERS),
+)
 
 
 app.include_router(images.router)
