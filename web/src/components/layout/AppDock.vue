@@ -35,7 +35,8 @@
  *  - UIA-F-152: the header clears the content by the same gutter it keeps
  *    above the dock (`--space-body`).
  */
-import { computed } from "vue";
+import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
+import { useEventListener, useResizeObserver } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
@@ -75,10 +76,67 @@ const navName = computed(() =>
 function onTabSelect(path: string) {
     router.push(path);
 }
+
+// ── F.REL `.x5` (COHESION §0fo.2 arm (a), the §0fh.4 idiom): the run keeps what fits ──
+// The run's seats are About, Sections, Account and Dark mode, each at glass's
+// 44 px floor; all four fit every phone run, so the seat set is whole. What
+// does not always fit is the Sections seat's visible section name: at 390 on
+// linux metrics the run needed 348 px for a 346 px run (the name 63 px, the
+// ℱ wordmark's fallback glyph 46 px), and panned. The name is the run's
+// lowest-priority content and it already has its menu home: the menu's
+// `aria-current` row, and the trigger's accessible name ("Navigate — current
+// section …"). So the trigger shows the name only while the run holds it —
+// MEASURED from layout boxes at the bytes the browser rendered, never a
+// breakpoint guessed from one platform's font metrics. When glass O-85
+// DOCK-PRIORITY-OVERFLOW lands, this measure is retired for it.
+const headerRef = useTemplateRef<HTMLElement>("header");
+const showNavLabel = ref(true);
+
+/** The dock run: the nearest ancestor that scrolls inline (glass's overflow contract). */
+function scrollPort(el: Element): HTMLElement | null {
+    for (let node = el.parentElement; node !== null; node = node.parentElement) {
+        const overflow = getComputedStyle(node).overflowX;
+        if (overflow === "auto" || overflow === "scroll") return node;
+    }
+    return null;
+}
+
+/** Whether the run's children extend past its content box (layout boxes, not `scrollWidth`). */
+function overflows(run: HTMLElement): boolean {
+    const box = run.getBoundingClientRect();
+    const end = box.left + run.clientLeft + run.clientWidth - parseFloat(getComputedStyle(run).paddingInlineEnd);
+    let right = -Infinity;
+    for (const child of run.children) right = Math.max(right, child.getBoundingClientRect().right);
+    return right + run.scrollLeft - end > 0.5;
+}
+
+/** Show the name, then drop it if the run cannot hold it. */
+async function fitNavLabel(): Promise<void> {
+    showNavLabel.value = true;
+    await nextTick();
+    const trigger = headerRef.value?.querySelector(".nav-trigger");
+    const run = trigger ? scrollPort(trigger) : null;
+    if (run && overflows(run)) showNavLabel.value = false;
+}
+
+// The header spans the viewport, so its inline size changes only with the
+// viewport, never with the name it holds (the dock itself is content-sized).
+let headerWidth = -1;
+useResizeObserver(headerRef, (entries) => {
+    const width = Math.round(entries[0]?.contentRect.width ?? 0);
+    if (width === headerWidth) return;
+    headerWidth = width;
+    void fitNavLabel();
+});
+// A new section's name, and the web fonts' arrival, each change the name's measure.
+watch(() => activeTabData.value?.label, () => void fitNavLabel(), { flush: "post" });
+if (typeof document !== "undefined" && document.fonts) {
+    useEventListener(document.fonts, "loadingdone", () => void fitNavLabel());
+}
 </script>
 
 <template>
-    <header class="app-header">
+    <header ref="header" class="app-header">
         <GlassDock class="app-dock" orientation="horizontal" shape="pill" :collapse="false">
             <!-- Logo + attribution card. The wordmark is the trigger's whole
                  face; at <640px it is the lone ℱ glyph and the dock's control
@@ -133,7 +191,7 @@ function onTabSelect(path: string) {
             <DropdownMenu :modal="false">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
                     <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
-                    <span class="nav-trigger-label">{{ activeTabData?.label ?? "Sections" }}</span>
+                    <span v-show="showNavLabel" class="nav-trigger-label">{{ activeTabData?.label ?? "Sections" }}</span>
                     <ChevronDown class="nav-trigger-chevron" aria-hidden="true" />
                 </DockTrigger>
                 <DropdownMenuContent align="start">
@@ -234,15 +292,12 @@ function onTabSelect(path: string) {
 
 /* X.F.W14V.au1 — A2-FO-X-5: at 360 the dock's one run is 334 px of faces in a
    316 px layer, so it panned sideways by 18 px (at every section, and the
-   longest names, "Visualize" and "Equation", more). On the narrowest phones
-   the trigger drops its visible label and keeps the section's glyph and the
-   menu chevron; its accessible name still carries the section
-   ("Navigate — current section …"). */
-@media (max-width: 24rem) {
-    .nav-trigger-label {
-        display: none;
-    }
-}
+   longest names, "Visualize" and "Equation", more). When the run cannot
+   hold it, the trigger drops its visible label and keeps the section's glyph
+   and the menu chevron; its accessible name still carries the section
+   ("Navigate — current section …"). F.REL `.x5` (§0fo.2): "cannot hold"
+   is MEASURED (`fitNavLabel`), not a 24rem breakpoint: the breakpoint held on
+   darwin and was 2 px short at 390 on linux metrics. */
 
 .nav-trigger[data-state="open"] .nav-trigger-chevron {
     transform: rotate(180deg);
