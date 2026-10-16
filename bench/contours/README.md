@@ -41,6 +41,12 @@ boundary tolerance (1% of the diagonal) are added. Thinner rim slivers fall
 inside the band the harness already forgives. The result is +14,455 px (the
 ray), with 0 px removed.
 
+The pipeline was not fitted to the corrected reference. Its own subject
+models score the ray at about 1.0 (both of them). The mask dropped the ray
+only because hysteresis grows the subject from one seed and the ray does not
+touch the body. `isolation.confident_pieces` now keeps every detached piece
+that both models are sure of, down to the part floor (F.CT3 r1).
+
 **Sampling.** `resample_arc_length` puts more of the tour's samples where
 the path turns (a third of them by turning, the rest by length), so the pen
 slows on an eye and stops at a stroke's end. The measures that are means over

@@ -392,8 +392,9 @@ def part_labels(image: LoadedImage, subject: NDArray[np.bool_]) -> PartLabels:
             REGION_MIN_FRACTION * subject_area,
         )
         diag = float(np.hypot(*shape))
-        for classes in (LIPS, *((k,) for k in MATERIALS)):
-            labels = thin_to_line(labels, classes, THIN_FRACTION * diag)
+        labels = thin_to_line(labels, LIPS, LIP_THIN_FRACTION * diag)
+        for k in MATERIALS:
+            labels = thin_to_line(labels, (k,), THIN_FRACTION * diag)
         labels = teeth(irises(labels, image.lab), image.lab, feature_floor)
         # The dark of a smile between a lip and the teeth is a sliver (the
         # gum line): one line, where the lip meets the teeth.
@@ -523,6 +524,14 @@ THIN_FRACTION = 0.015
 outlines run within one cell of the drawing's stroke-density scale
 (``drawing.DENSITY_FRACTION``), where strokes side by side read as one
 doubled strand, not two lines."""
+LIP_THIN_FRACTION = 0.005
+"""A lip narrower than this (of the diagonal) is one line.  A lip is no
+texture: its two edges are the two lines a drawing of a smile has (the
+lip's border on the skin, and its edge on the teeth), so it is drawn by
+both down to the width at which two strokes are one (``drawing``'s
+``SUPPRESS_FRACTION``: a later line that close to an earlier one repeats
+it).  Thinned at the material scale, a smile's upper lip went to the skin
+and the teeth, and the skin met the teeth with no lip between."""
 
 
 EYE_ZONE_IOD = 0.25

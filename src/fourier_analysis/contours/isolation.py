@@ -110,4 +110,33 @@ def subject_mask(
                     mask = combined
         return mask
 
-    return significant_components(leaning_on(grown(agreed), grown(saliency))), saliency
+    mask = significant_components(leaning_on(grown(agreed), grown(saliency)))
+    return mask | confident_pieces(agreed, mask), saliency
+
+
+CONFIDENT_MIN_FRACTION = 0.002
+"""A detached piece both models are sure of is kept down to this fraction of
+the subject's area: the part floor (``parts.REGION_MIN_FRACTION``), below
+which a region is a fleck, not a part."""
+
+
+def confident_pieces(agreed: NDArray[np.float64], mask: NDArray[np.bool_]) -> NDArray[np.bool_]:
+    """The pieces of the subject that stand apart from it: each component of
+    ``agreed >= SEED_THRESHOLD`` (both models sure) that does not touch
+    ``mask``, at least ``CONFIDENT_MIN_FRACTION`` of its area.
+
+    Hysteresis grows the subject from one seed, so a part of it that does not
+    touch the rest (a cartoon sun's detached ray, a separate paw) is left
+    out however salient, and the significance floor (``significant_components``,
+    a share of the largest component) is for what the models dispute, not
+    for what they agree on."""
+    if not mask.any():
+        return np.zeros_like(mask)
+    sure, n = ndi.label(agreed >= SEED_THRESHOLD)
+    if n == 0:
+        return np.zeros_like(mask)
+    touching = np.unique(sure[ndi.binary_dilation(mask)])
+    sizes = ndi.sum(np.ones(sure.shape), sure, index=np.arange(1, n + 1))
+    keep = np.flatnonzero(sizes >= CONFIDENT_MIN_FRACTION * float(mask.sum())) + 1
+    keep = np.setdiff1d(keep, touching)
+    return ndi.binary_fill_holes(np.isin(sure, keep)) if keep.size else np.zeros_like(mask)

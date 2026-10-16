@@ -301,9 +301,9 @@ def daraksha():
 
 def test_daraksha_has_her_named_face_parts(daraksha):
     """The primary sample: one confirmed face with skin, both brows, both
-    eyes, the nose, the lower lip and the hair, and an iris in each eye (her
-    upper lip, a sliver in her smile, is drawn as one line: see
-    ``test_daraksha_brows_are_strokes_and_the_thin_upper_lip_one_line``)."""
+    eyes, the nose, both lips and the hair, and an iris in each eye (her
+    upper lip, thin in her smile, is drawn by both its edges: see
+    ``test_daraksha_brows_are_strokes_and_the_upper_lip_is_drawn``)."""
     from scipy import ndimage as ndi
 
     from fourier_analysis.contours.parts import EYES, FACE_CLASSES, HAIR, IRIS, NOSE, SKIN
@@ -313,7 +313,7 @@ def test_daraksha_has_her_named_face_parts(daraksha):
     assert len(parts.faces) == 1
     present = set(np.unique(parts.labels).tolist())
     name = {n: i for i, n in enumerate(FACE_CLASSES)}
-    wanted = {SKIN, NOSE, HAIR, IRIS, name["l_brow"], name["r_brow"], name["l_lip"], *EYES}
+    wanted = {SKIN, NOSE, HAIR, IRIS, name["l_brow"], name["r_brow"], name["u_lip"], name["l_lip"], *EYES}
     assert wanted <= present, {FACE_CLASSES[i] if i < len(FACE_CLASSES) else i for i in wanted - present}
     irises, n_irises = ndi.label(parts.labels == IRIS)
     assert n_irises == 2
@@ -561,10 +561,11 @@ def test_portrait_parts_come_from_the_face_parser():
     assert NOSE in present and present & set(EYES)
 
 
-def test_daraksha_brows_are_strokes_and_the_thin_upper_lip_one_line(daraksha):
+def test_daraksha_brows_are_strokes_and_the_upper_lip_is_drawn(daraksha):
     """Each brow is drawn by one open stroke along it (its spine), not by its
-    outline; the upper lip, a sliver in her smile, is one line (its parts on
-    either side meet along its middle), while the full lower lip stays."""
+    outline; the upper lip, thin in her smile, keeps its label, so it is
+    drawn apart from the teeth (its border on the skin above, its edge on
+    the teeth below), as the full lower lip is."""
     from scipy import ndimage as ndi
 
     from fourier_analysis.contours.parts import BROWS, FACE_CLASSES
@@ -572,7 +573,13 @@ def test_daraksha_brows_are_strokes_and_the_thin_upper_lip_one_line(daraksha):
     parts, drawing = daraksha
     name = {n: i for i, n in enumerate(FACE_CLASSES)}
     present = set(np.unique(parts.labels).tolist())
-    assert name["u_lip"] not in present and name["l_lip"] in present
+    assert name["u_lip"] in present and name["l_lip"] in present
+    from fourier_analysis.contours.parts import SKIN, TEETH
+
+    upper = parts.labels == name["u_lip"]
+    ring = ndi.binary_dilation(upper) & ~upper
+    # Between the skin and the teeth: both of its edges are part boundaries.
+    assert (parts.labels[ring] == SKIN).any() and (parts.labels[ring] == TEETH).any()
     assert parts.spined == BROWS
     for k in BROWS:
         brow = parts.labels == k
