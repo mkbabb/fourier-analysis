@@ -22,9 +22,12 @@ Layers, in priority order (``strokes.SILHOUETTE`` < ``PARTS`` < ``LINES``
 4. **Connectors** (``route_connectors``): the drawing's separate pieces
    joined by the cheapest pen paths along the image's lines, each leaving
    a piece at a free end or a corner (``entry_points``), pulled taut
-   (``pull_string``) and never across the face's midline above the nose
-   (``glabella``), so the tour walks one figure and never jumps between
-   pieces.
+   (``pull_string``) and never across the face's midline (``glabella``:
+   the nose's axis and on up the forehead), so the tour walks one figure
+   and never jumps between pieces.  A face's features are joined to each
+   other first, across its own skin (``face_zones``), and hang on the
+   figure by one connector; one that reaches the nose runs down its side
+   (``connector_strength``).
 
 A later layer's ink within ``SUPPRESS_FRACTION`` of the diagonal (half the
 bench's boundary tolerance) of earlier ink repeats it and is dropped before
@@ -188,10 +191,14 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     graph = drop_line_flecks(graph, MIN_PART_FRACTION * diag)
     if parts.faces:
         graph = run_seams_on(graph, parts.labels == HAIR, width)
-    reach = mask & ~frame_band(shape, width) & ~glabella(parts.nose)
-    path_strength = connector_strength(strength, parts.form | parts.face_core)
-    graph = route_connectors(graph, path_strength, reach, barred=brow_roots(parts.labels, parts.faces))
-    graph = route_jumps(graph, path_strength, reach)
+    reach = mask & ~frame_band(shape, width)
+    zones = face_zones(parts.form | parts.face_core, parts.faces)
+    wall = glabella(parts.nose, zones > 0)
+    path_strength = connector_strength(strength, parts.form | parts.face_core, parts.nose)
+    graph = route_connectors(
+        graph, path_strength, reach, barred=brow_roots(parts.labels, parts.faces), wall=wall, faces=zones
+    )
+    graph = route_jumps(graph, path_strength, reach, wall=wall)
     return Drawing(graph, mask, parts.source, parts.faces)
 
 
@@ -270,16 +277,9 @@ CONNECT_FLOOR = 0.1
 """A connector's cost per pixel is ``1 / (CONNECT_FLOOR + line strength)``:
 along a line the drawing model sees (faint or not) a pen step costs up to
 ``1 / CONNECT_FLOOR`` times less than across blank paper."""
-OUTLINE_LINK_FACTOR = 1.5
-"""A link between a parsed feature (an eye, a brow, the nose, the mouth) and
-the figure (the face's outline, the largest piece) is weighed at this many
-times its cost.  From the outline a connector runs in across the open cheek,
-a crease that is not there (a tail on an eye's corner, a mouth corner tied to
-the jaw, the cheek cut into panels); between two features it stays in their
-own neighbourhood and reads as the form between them (a socket from eye to
-brow, the fold from the nose to the mouth's corner).  So the features hang
-together, and the face is tied to its outline where a feature lies nearest
-it."""
+FACE_RIM_PX = 3
+"""A face's features lie on its skin to within this (a brow's stroke runs a
+pixel or two into the hairline's label)."""
 OFF_SUBJECT_COST = 10.0
 """Off the subject a connector step costs this many times the blank-paper cost."""
 
@@ -289,6 +289,8 @@ def route_connectors(
     strength: NDArray[np.float64],
     subject: NDArray[np.bool_],
     barred: NDArray[np.bool_] | None = None,
+    wall: NDArray[np.bool_] | None = None,
+    faces: NDArray[np.int32] | None = None,
 ) -> StrokeGraph:
     """Join the drawing's separate pieces along the lines of the image.
 
@@ -304,11 +306,25 @@ def route_connectors(
     pen stroke on the subject where there is none.  The pieces are joined by
     the minimum spanning tree of those path costs (one geodesic front from
     all pieces at once; adjacent fronts of two pieces meet on their geodesic
-    Voronoi boundary), a feature's link to the outline weighed up
-    (``OUTLINE_LINK_FACTOR``).  Each path is a ``CONNECT`` edge from ink to ink;
+    Voronoi boundary).  Each path is a ``CONNECT`` edge from ink to ink;
     the tour walks it there and back, the return exactly on top.  No piece
     is entered on a ``barred`` pixel (``brow_roots``) while it has another
-    entry."""
+    entry, and no path crosses the ``wall`` (``glabella``).
+
+    A face's features (an eye, a brow, the nose, the mouth, a crease beside
+    them: every piece but the figure, the largest, that lies in the face)
+    are joined to each other first, and so hang on the figure by one
+    connector, the cheapest.  From the outline a connector runs in across
+    the open skin, a crease that is not there (a brow run on to the temple,
+    a mouth corner tied to the jaw, the cheek cut into panels), and each one
+    more is one more scar; between two features it stays in their own
+    neighbourhood and reads as the form between them (a socket from eye to
+    brow, the side of the nose from an eye's corner, the fold from the nose
+    to the mouth's corner).  ``faces`` gives each pixel's face (0 for none,
+    ``face_zones``): only pieces of one face are joined first, and only by
+    a path across that face (one that leaves its skin, round through the
+    hair, is weighed with the rest).  Without it the pieces with a
+    ``PARTS`` stroke are one face's."""
     from skimage.graph import MCP_Geometric
 
     parts = graph.components()
@@ -335,13 +351,16 @@ def route_connectors(
         closed[r[~entry[k]], c[~entry[k]]] = True
     seeds = np.argwhere(seed_edge >= 0)
 
-    cost = 1.0 / (CONNECT_FLOOR + np.clip(strength, 0.0, 1.0))
-    cost = np.where(subject, cost, OFF_SUBJECT_COST / CONNECT_FLOOR)
+    cost = pen_cost(strength, subject)
     # A connector does not run along a piece to reach its entry (it would
     # leave the piece from the middle after all), nor slip across its stroke.
     if closed.any():
         closed = ndi.binary_dilation(closed) & ~ndi.binary_dilation(seed_edge >= 0)
         cost = np.where(closed, OFF_SUBJECT_COST / CONNECT_FLOOR, cost)
+    if wall is not None and wall.any():
+        # The wall stops a path, not a stroke: where the drawing's own ink
+        # crosses it (the nose's base) the ink is the way through.
+        cost = np.where(wall & ~ndi.binary_dilation(seed_edge >= 0), np.inf, cost)
     mcp = MCP_Geometric(cost)
     total, tb = mcp.find_costs([tuple(s) for s in seeds])
     offsets = np.asarray(mcp.offsets)
@@ -375,7 +394,8 @@ def route_connectors(
         m = (o[a] != o[b]) & (o[a] >= 0) & (o[b] >= 0)
         a, b = a[m], b[m]
         link = np.hypot(dr, dc) * 0.5 * (cost.ravel()[a] + cost.ravel()[b])
-        cands.append((tot[a] + tot[b] + link, a, b))
+        ok = np.isfinite(link)
+        cands.append(((tot[a] + tot[b] + link)[ok], a[ok], b[ok]))
     val = np.concatenate([c[0] for c in cands])
     a_all = np.concatenate([c[1] for c in cands])
     b_all = np.concatenate([c[2] for c in cands])
@@ -398,23 +418,20 @@ def route_connectors(
             x = parent[x]
         return x
 
-    # A parsed feature is joined to a neighbouring feature before the
-    # figure's outline (``OUTLINE_LINK_FACTOR``).
+    # A face's features are joined to each other before anything else.
     lengths = [sum(graph.edges[k].length for k in p) for p in parts]
     main = int(np.argmax(lengths))
-    feature = [any(graph.edges[k].layer == PARTS for k in p) for p in parts]
-
-    def weighed(kv: tuple[tuple[int, int], tuple[float, int, int]]) -> float:
-        (i, j), (val, _, _) = kv
-        to_outline = main in (i, j) and feature[i] and feature[j]
-        return val * (OUTLINE_LINK_FACTOR if to_outline else 1.0)
-
-    chosen = []
-    for key, (val, a, b) in sorted(best.items(), key=weighed):
-        ra, rb = find(key[0]), find(key[1])
-        if ra != rb:
-            parent[ra] = rb
-            chosen.append((a, b))
+    face_of = [0] * len(parts)
+    for i, p in enumerate(parts):
+        if i == main:
+            continue
+        if faces is None:
+            face_of[i] = int(any(graph.edges[k].layer == PARTS for k in p))
+            continue
+        r, c = _pixels(np.vstack([graph.edges[k].pts for k in p]), shape)
+        votes = np.bincount(faces[r, c])
+        if votes[1:].sum() > votes[0]:
+            face_of[i] = int(votes[1:].argmax()) + 1
 
     def trace(x: int) -> list[int]:
         path = [x]
@@ -422,6 +439,24 @@ def route_connectors(
             x = int(pred[x])
             path.append(x)
         return path
+
+    on_face = ndi.binary_dilation(faces > 0, iterations=FACE_RIM_PX).ravel() if faces is not None else None
+
+    def weighed(kv: tuple[tuple[int, int], tuple[float, int, int]]) -> tuple[int, float]:
+        (i, j), (val, a, b) = kv
+        first = face_of[i] and face_of[i] == face_of[j]
+        if first and on_face is not None:
+            # Across the face's own skin: a path that leaves it (round
+            # through the hair, over the wall's top) is no line of the face.
+            first = bool(on_face[trace(a)].all() and on_face[trace(b)].all())
+        return (0 if first else 1, val)
+
+    chosen = []
+    for key, (val, a, b) in sorted(best.items(), key=weighed):
+        ra, rb = find(key[0]), find(key[1])
+        if ra != rb:
+            parent[ra] = rb
+            chosen.append((a, b))
 
     links = []
     for a, b in chosen:
@@ -560,7 +595,12 @@ def brow_roots(labels: NDArray[np.int32], faces: tuple[Face, ...]) -> NDArray[np
     return ndi.binary_dilation(out, iterations=BROW_ROOT_PX) if out.any() else out
 
 
-def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDArray[np.bool_]) -> StrokeGraph:
+def route_jumps(
+    graph: StrokeGraph,
+    strength: NDArray[np.float64],
+    subject: NDArray[np.bool_],
+    wall: NDArray[np.bool_] | None = None,
+) -> StrokeGraph:
     """Draw the tour's pen jumps as routed strokes.
 
     The tour (``shortest_tour``) pairs the drawing's odd nodes, and where a
@@ -569,7 +609,11 @@ def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDAr
     each pair the tour would jump is joined instead by the cheapest pen path
     over the image (the cost of ``route_connectors``), added to the drawing as
     a ``CONNECT`` stroke between the two nodes.  Both nodes are then even,
-    so the tour walks the stroke once in place of the jump."""
+    so the tour walks the stroke once in place of the jump.  Like a
+    connector, the path never crosses the face's midline (the ``wall``,
+    ``glabella``): two brows' roots the tour pairs across the glabella are
+    joined round through the nose, down one side and up the other, not by a
+    bar between the brows."""
     from skimage.graph import route_through_array
 
     from fourier_analysis.shortest_tour import _StrokeGraph
@@ -588,8 +632,11 @@ def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDAr
         return graph
     nodes = np.asarray(graph.nodes)
     tree = cKDTree(nodes)
-    cost = 1.0 / (CONNECT_FLOOR + np.clip(strength, 0.0, 1.0))
-    cost = np.where(subject, cost, OFF_SUBJECT_COST / CONNECT_FLOOR)
+    cost = pen_cost(strength, subject)
+    walled = cost
+    if wall is not None and wall.any():
+        # As in ``route_connectors``: the wall stops a path, not the ink.
+        walled = np.where(wall & ~ndi.binary_dilation(rasterize(graph, shape)), np.inf, cost)
     out = StrokeGraph(list(graph.nodes), list(graph.edges))
     for e in jumps:
         ends = []
@@ -599,8 +646,12 @@ def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDAr
         if min(ends) < 0 or ends[0] == ends[1]:
             continue
         a, b = (tuple(np.clip(np.round(nodes[k]).astype(int), 0, [h - 1, w - 1])) for k in ends)
-        path, _ = route_through_array(cost, a, b, fully_connected=True, geometric=True)
-        pts = pull_string(np.asarray(path, dtype=np.float64), cost)
+        path, total = route_through_array(walled, a, b, fully_connected=True, geometric=True)
+        use = walled
+        if not np.isfinite(total):  # the wall closes the way: leave the subject instead
+            path, _ = route_through_array(np.where(wall, OFF_SUBJECT_COST / CONNECT_FLOOR, cost), a, b, fully_connected=True, geometric=True)
+            use = cost
+        pts = pull_string(np.asarray(path, dtype=np.float64), use)
         if len(pts) < 2:
             continue
         pts[0], pts[-1] = nodes[ends[0]], nodes[ends[1]]
@@ -608,7 +659,35 @@ def route_jumps(graph: StrokeGraph, strength: NDArray[np.float64], subject: NDAr
     return smooth_edges(out, CONNECT_SMOOTH_PX, layers=(CONNECT,))
 
 
-def connector_strength(strength: NDArray[np.float64], face: NDArray[np.bool_]) -> NDArray[np.float64]:
+def pen_cost(strength: NDArray[np.float64], subject: NDArray[np.bool_]) -> NDArray[np.float64]:
+    """A connector's cost per pixel: ``1 / (CONNECT_FLOOR + line strength)`` on
+    the ``subject``, ``OFF_SUBJECT_COST`` times blank paper off it."""
+    cost = 1.0 / (CONNECT_FLOOR + np.clip(strength, 0.0, 1.0))
+    return np.where(subject, cost, OFF_SUBJECT_COST / CONNECT_FLOOR)
+
+
+def face_zones(face: NDArray[np.bool_], faces: tuple[Face, ...]) -> NDArray[np.int32]:
+    """Each pixel's face: on the ``face`` (its skin and features, not its
+    hair or neck), the 1-based index of the detection whose box centre is
+    nearest; 0 off it."""
+    out = np.zeros(face.shape, np.int32)
+    if not faces or not face.any():
+        return out
+    rows, cols = np.nonzero(face)
+    centres = np.array([[f.box[1] + f.box[3] / 2, f.box[0] + f.box[2] / 2] for f in faces])
+    d = np.hypot(rows[:, None] - centres[None, :, 0], cols[:, None] - centres[None, :, 1])
+    out[rows, cols] = d.argmin(axis=1) + 1
+    return out
+
+
+NOSE_SIDE_STRENGTH = 1.0
+"""The line strength of the nose's sides for a connector (``connector_strength``):
+a step along them costs about a tenth of one across the open skin."""
+
+
+def connector_strength(
+    strength: NDArray[np.float64], face: NDArray[np.bool_], nose: NDArray[np.bool_] | None = None
+) -> NDArray[np.float64]:
     """The line strength a connector is led along.
 
     On a face's skin the line model's faint strength is shading (a brow
@@ -618,8 +697,23 @@ def connector_strength(strength: NDArray[np.float64], face: NDArray[np.bool_]) -
     the strength is the feature itself, already drawn by its spine or
     outline: a connector led along it doubles the stroke.  On all of the
     ``face`` a connector is the shortest pen step between the features it
-    joins."""
-    return np.where(face, 0.0, strength) if face.any() else strength
+    joins, except along the ``nose``'s sides below its root (``nose_sides``),
+    which are lines of the face: the two halves of a face are joined
+    through the nose (``glabella``), and a connector that reaches it from an
+    eye's inner corner runs down its side to the wing, drawing the side the
+    light left unmarked, where a straight chord from the corner to the wing
+    would cut the cheek beside it."""
+    out = np.where(face, 0.0, strength) if face.any() else strength
+    if nose is not None and nose.any():
+        out = np.where(nose_sides(nose), NOSE_SIDE_STRENGTH, out)
+    return out
+
+
+def nose_sides(nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
+    """The nose's rim (a pixel either side of its outline) off its root
+    between the brows (``upper_nose``)."""
+    rim = ndi.binary_dilation(nose) & ~ndi.binary_erosion(nose)
+    return rim & ~ndi.binary_dilation(upper_nose(nose), iterations=2)
 
 
 def pull_string(pts: NDArray[np.float64], cost: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -818,15 +912,19 @@ GLABELLA_REACH = 0.6
 between the brows."""
 
 
-def glabella(nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
-    """The face's midline above the drawn nose: from the top of the nose's
-    drawn part (``lower_nose``) up its axis, through the bridge and on between
-    the brows (``GLABELLA_REACH``), three pixels wide.
+def glabella(nose: NDArray[np.bool_], face: NDArray[np.bool_] | None = None) -> NDArray[np.bool_]:
+    """The face's midline along the nose and above it: from the nose's base
+    up its axis, through the bridge and on between the brows, three pixels
+    wide: on up the forehead to the edge of the ``face`` (its skin and
+    features) when that is given, so no path rounds its top on the skin,
+    and ``GLABELLA_REACH`` nose lengths past the nose's narrow end at least.
 
-    The two sides of a face are joined through the nose, never straight
-    across its bridge: a connector from brow to brow over the glabella is a
-    unibrow, and from a brow down the bridge's root a scowl.  A connector may
-    cross this line only at the cost of leaving the subject."""
+    The two sides of a face are joined through the nose's own strokes, never
+    by a line across it: a connector from brow to brow over the glabella is
+    a unibrow, from eye to eye across the bridge a pair of spectacles.  No
+    connector crosses this line (``route_connectors``'s ``wall``); a pen jump
+    of the tour's (``route_jumps``) crosses it only at the cost of leaving
+    the subject."""
     out = np.zeros_like(nose)
     comp, n = ndi.label(nose)
     h, w = nose.shape
@@ -845,8 +943,8 @@ def glabella(nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
             continue
         probe = WING_FRACTION * span
         wide_hi = np.ptp(b[a >= hi - probe]) >= np.ptp(b[a <= lo + probe])
-        # Walk up from the drawn part's top to past the narrow end.
-        start = hi - BRIDGE_DRAWN_FRACTION * span if wide_hi else lo + BRIDGE_DRAWN_FRACTION * span
+        # From the nose's wide end (its base) up to past the narrow end.
+        start = hi if wide_hi else lo
         end = lo - GLABELLA_REACH * span if wide_hi else hi + GLABELLA_REACH * span
         t = np.linspace(start, end, int(abs(end - start)) * 2 + 2)
         pts = centre + t[:, None] * axis
@@ -854,6 +952,15 @@ def glabella(nose: NDArray[np.bool_]) -> NDArray[np.bool_]:
         c = np.round(pts[:, 1]).astype(int)
         ok = (r >= 0) & (r < h) & (c >= 0) & (c < w)
         out[r[ok], c[ok]] = True
+        if face is None:
+            continue
+        x, step = pts[-1].copy(), np.sign(end - start) * 0.5 * axis
+        while True:
+            x = x + step
+            rr, cc = int(round(x[0])), int(round(x[1]))
+            if not (0 <= rr < h and 0 <= cc < w and face[rr, cc]):
+                break
+            out[rr, cc] = True
     return ndi.binary_dilation(out) if out.any() else out
 
 

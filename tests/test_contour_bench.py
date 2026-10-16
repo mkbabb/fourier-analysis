@@ -73,3 +73,16 @@ def test_wiggle_reads_jags_not_stroke_ends() -> None:
     k = np.arange(80)
     stair = 6.0 * ((k + 1) // 2) + 1j * 6.0 * (k // 2)  # 6 px steps along a diagonal
     assert ink_wiggle([stair]) > BAR["wiggle"][1]
+
+
+def test_the_epicycle_error_is_a_mean_over_the_tours_length():
+    """Samples crowded on one part of a tour do not weigh it more: each
+    sample counts for the length of tour it stands for."""
+    import numpy as np
+
+    from bench.contours.harness import sample_lengths
+
+    square = np.array([0, 1, 2, 3, 4, 4 + 4j, 4j], dtype=np.complex128)  # five samples on one side
+    w = sample_lengths(square)
+    assert np.isclose(w.sum(), 16.0)
+    assert np.isclose(w[1], 1.0) and np.isclose(w[5], 4.0)

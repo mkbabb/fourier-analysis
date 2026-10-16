@@ -41,6 +41,13 @@ boundary tolerance (1% of the diagonal) are added. Thinner rim slivers fall
 inside the band the harness already forgives. The result is +14,455 px (the
 ray), with 0 px removed.
 
+**Sampling.** `resample_arc_length` puts more of the tour's samples where
+the path turns (a third of them by turning, the rest by length), so the pen
+slows on an eye and stops at a stroke's end. The measures that are means over
+the tour (`epi_err_N`, `background_fraction`) weigh each sample by the length
+of tour it stands for, and the jump threshold is `JUMP_K` times the even step
+`tour_length / n_points`; all three read as they did for even sampling.
+
 **The bar** is `BAR` in `harness.py`; each row of `metrics.json` carries its
 `bar_failures`. Metrics are necessary, not sufficient: the three-judge panel and
 the portrait landmark checklist (F.CT) sit on top.
