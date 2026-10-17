@@ -364,6 +364,12 @@ const stageErrorDetail = computed(() => {
 /** UIA-F-73 ⊕ F-71: the first compute has nothing to draw yet; the stage says
  *  so in the DOM (one busy mark), not with a painted box. */
 const firstCompute = computed(() => store.computing && !store.epicycleData && !store.basesData);
+/** X-DS fourier pass 6 · DS-F6C-C1: a background compute failed with nothing
+ *  drawn. The stage, the primary surface, carries the same one line the Basis
+ *  layer does (one channel: `store.computeError`), not a void plate. */
+const stageComputeFailed = computed(
+    () => !!store.computeError && !store.computing && !store.epicycleData && !store.basesData,
+);
 
 // The ONE upload affordance with no image: the main area's drop target (a
 // glass Button + the format line). The canvas itself is no longer a
@@ -558,6 +564,16 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                             <Progress :model-value="null" size="sm" class="stage-busy-bar"
                                 aria-label="Computing the Fourier decomposition" />
                             <p class="text-caption text-muted-foreground">Computing the Fourier decomposition…</p>
+                        </div>
+                        <!-- X-DS fourier pass 6 · DS-F6C-C1: a failed background compute
+                             with nothing drawn says so where the outline would be, in the
+                             first compute's slot: the shared `.compute-status` line (the
+                             aside's own, which stays the live region). -->
+                        <div v-if="stageComputeFailed" class="stage-state stage-state--over">
+                            <p class="compute-status text-caption">
+                                <span class="compute-status-msg">{{ store.computeError }}</span>
+                                <Button emphasis="text" size="sm" @click="store.retryCompute()">Retry</Button>
+                            </p>
                         </div>
                         <!-- UIA-F-15: out of edit mode the editor is opacity-hidden but
                              mounted; `inert` keeps it out of the tab order and the
@@ -1138,6 +1154,11 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     height: auto;
     z-index: var(--z-controls);
     pointer-events: none;
+}
+/* DS-F6C-C1: the stage's compute-failure line keeps its Retry pressable. */
+.stage-state--over > .compute-status {
+    max-inline-size: 100%;
+    pointer-events: auto;
 }
 /* X-DS pass 12 · DS-F14-C1 — the load error on the stage's own frame: the
    empty stage's title and lede measures, the diagnosis under them, and one
