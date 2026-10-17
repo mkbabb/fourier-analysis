@@ -328,7 +328,12 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
 </script>
 
 <template>
-    <div class="flex flex-col gap-4 overflow-y-auto h-full py-4">
+    <!-- X-DS fourier pass 8 · DS-F8C-C1: the route's page measure. The column
+         is the scroller, so it stays full width (the wheel and the scrollbar
+         live at the window's edge) and centres its content in the same 72rem
+         measure /paper's `max-w-6xl` and /morph use, by inline padding. Every
+         child keeps its own gutter inside the measure, as /paper's does. -->
+    <div class="flex flex-col gap-4 overflow-y-auto h-full py-4 px-[max(0px,calc((100%-var(--container-6xl))/2))]">
         <!-- Tab toggle + search (tight grouping). X.F.W14V.au4 — A2-FO-L3-3:
              at >= sm one toolbar row — the tabs lead, the search trails at its
              own measure (`--search-measure`); the 512 px field left 896 px of
