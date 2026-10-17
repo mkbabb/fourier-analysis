@@ -320,8 +320,14 @@ const created = useTimeAgo(() => props.entry.created_at);
 .card-meta {
     justify-content: space-between;
 }
+/* X-DS fourier pass 10 · DS-F10C-C1: the row is drawn at its glyphs' height
+   (the `size-3.5` stat glyphs), so its ink ends one `--card-pad` from the
+   card's bottom edge, as the thumbnail starts one `--card-pad` from its top.
+   The like Button's hit box (below) overflows the row instead of setting it. */
 .card-stats {
+    --stat-glyph: 0.875rem;
     gap: 0.75rem;
+    line-height: var(--stat-glyph);
 }
 
 
@@ -387,6 +393,9 @@ const created = useTimeAgo(() => props.entry.created_at);
        1.1, so the like count sits on the same line as the view count. */
     line-height: inherit;
     color: var(--muted-foreground);
+    /* DS-F10C-C1: the 24 px hit box keeps its size and its glass floor, but
+       takes only the glyph's height in the row's layout. */
+    margin-block: calc((var(--stat-glyph) - 1.5rem) / 2);
 }
 /* X.F.W3 `.e` — the published active-state vocabulary, applied (`FR-COB-3`).
    The like control already SET `aria-pressed` and then painted from a parallel

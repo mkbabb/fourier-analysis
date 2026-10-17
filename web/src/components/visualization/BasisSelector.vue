@@ -220,6 +220,13 @@ function resetDefaults() {
     font-size: 1.75em;
     margin: -0.3em -0.05em;
 }
+/* X-DS fourier pass 10 · DS-F10C-T1: the busy notice speaks for the whole
+   section, so it sits on the section head's gap on both sides: below it, the
+   same step glass composes above it (the trigger's `py-2` under the heading
+   plus the layer body's `py-2`), not the groups' row step. */
+.compute-status {
+    margin-block-end: calc(var(--spacing) * 4);
+}
 /* X.F.W14U.vstage — the two choosers stack, each one row. X-DS pass 2 ·
    DS-F2-C15: each row is captioned and start-aligned, as every other row in
    the aside; the caption wears the control-row label's rung. */
