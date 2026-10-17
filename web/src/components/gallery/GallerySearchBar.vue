@@ -201,15 +201,14 @@ const hasActiveFilters = computed(
 <style scoped>
 @reference "tailwindcss";
 
-/* FR-GSB-30 — ONE measure, named once.
-   `32rem` was authored twice with no shared property, on the pill and on the
-   drawer that must line up with it, so the two could drift apart silently.
-   `justify-content: flex-start` is DELETED on corrected grounds (K-10): it is
-   live whenever the root exceeds 32rem and dead only because `normal` already
-   behaves as `flex-start` for a flex container — so it was restating the
-   initial value, not holding a layout. */
+/* X-DS fourier pass 9 · DS-F9C-C2: the search has no measure of its own.
+   The 32rem cap (FR-GSB-30, DS-F7-C4) predates the 72rem page measure
+   (DS-F8C-C1); inside it the field ended at x 857, mid-way through the third
+   card track, and the toolbar's right edge lined up with nothing. The pill
+   now fills the root, and at >= sm the root is the toolbar row's `flex-1`, so
+   the search ends on the grid's right edge (the auto-fill tracks are `1fr`,
+   so that edge is the measure's at every width). Layout only. */
 .search-bar-root {
-    --search-measure: 32rem;
     position: relative;
     display: flex;
 }
@@ -223,11 +222,9 @@ const hasActiveFilters = computed(
    surface". The `field-control` now owns boundary, fill, pill radius and the
    `:focus-visible` ring (the input's `outline-none` had left the bar with no
    focus paint at all), and `.search-pill` is layout only: a positioning
-   context that seats the glyph and the actions INSIDE the producer's field.
-   The measure is still named once (`--search-measure`, FR-GSB-30). */
+   context that seats the glyph and the actions INSIDE the producer's field. */
 .search-pill {
     width: 100%;
-    max-width: var(--search-measure);
     /* The actions' run inside the field (X.F.W14V.au6, SearchField): two `xs`
        rungs (`--control-h-xs`, the producer's token, floored on coarse
        pointers) plus the separator. */

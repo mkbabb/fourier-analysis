@@ -335,14 +335,12 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
          child keeps its own gutter inside the measure, as /paper's does. -->
     <div class="flex flex-col gap-4 overflow-y-auto h-full py-4 px-[max(0px,calc((100%-var(--container-6xl))/2))]">
         <!-- Tab toggle + search (tight grouping). X.F.W14V.au4 — A2-FO-L3-3:
-             at >= sm one toolbar row — the tabs lead, the search trails at its
-             own measure (`--search-measure`); the 512 px field left 896 px of
-             its own row empty and the content began a whole row lower. Below sm
-             the tabs, then the search (the "N loaded" row left at UIA-F-247).
-             X-DS fourier pass 7 · DS-F7-C4: the search no longer runs to the
-             far gutter. It follows the tabs at its own measure (32rem, about
-             two card tracks), so the toolbar never promises a right edge the
-             auto-fill grid leaves empty on a short result set.
+             at >= sm one toolbar row — the tabs lead, the search trails them
+             (the 512 px field on its own row left 896 px of it empty and
+             the content began a whole row lower). Below sm the tabs, then the search (the "N loaded" row left at UIA-F-247).
+             X-DS fourier pass 9 · DS-F9C-C2: inside the 72rem page measure
+             the search fills the row to the grid's right edge (the 32rem cap
+             of DS-F7-C4 ended it mid-track), so the toolbar ends on a grid edge.
              X-DS fourier pass 5 · DS-F5C-T1: at >= sm the row aligns on its
              block-end, so the search's foot sits on the tabs' underline and the
              two read as one toolbar on one line (centred, the field floated

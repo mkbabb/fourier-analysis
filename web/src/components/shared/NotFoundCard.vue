@@ -38,9 +38,11 @@ const router = useRouter();
 
 <template>
     <div class="flex flex-1 items-center justify-center py-4 px-[var(--page-gutter)]">
-        <!-- X-DS pass 3 · DS-F3-C6: glass's `md` card (the `--space-body` pad and
-             title rung), the gallery card's size; `sm` left the actions on the edge. -->
-        <Card surface="opaque" size="md" class="w-full max-w-md" data-testid="not-found">
+        <!-- X-DS pass 3 · DS-F3-C6: glass's `md` card, the gallery card's size;
+             `sm` left the actions on the edge. X-DS fourier pass 9 · DS-F9C-C1:
+             its pad takes the step above `md` (see the style) so the route-rung
+             title has room. -->
+        <Card surface="opaque" size="md" class="not-found-card w-full max-w-md" data-testid="not-found">
             <CardHeader>
                 <!-- X-DS F4R · DS-F4R-C5: this h1 is the route's title, so it sets
                      on the route rung (see the style), not glass's card-title rung. -->
@@ -68,6 +70,15 @@ const router = useRouter();
 </template>
 
 <style scoped>
+/* X-DS fourier pass 9 · DS-F9C-C1: the pad agrees with the title's rung. The
+   h1 is on the route rung (display-1, DS-F4R-C5), but `md` pads for the
+   card-title rung (`--space-body`, 12px), so the 42px title started 13px off
+   the card's edges. Glass ships no `lg` Card, so the card takes its own pad
+   token one ladder step up (`--space-family`, 20px; ORIGIN cards were p-4).
+   Token only; the material and its edge are glass's. */
+.not-found-card {
+    --card-pad: var(--space-family);
+}
 /* X-DS F4R · DS-F4R-C5: the route's h1 is on ONE rung app-wide (display-1 at
    400; DS-F16-C2, as /morph's title and the stage messages). On the card-title
    rung at 600 it was the only bold title in the app. */
