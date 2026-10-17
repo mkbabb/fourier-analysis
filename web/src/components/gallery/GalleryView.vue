@@ -337,8 +337,13 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
              X-DS fourier pass 7 · DS-F7-C4: the search no longer runs to the
              far gutter. It follows the tabs at its own measure (32rem, about
              two card tracks), so the toolbar never promises a right edge the
-             auto-fill grid leaves empty on a short result set. -->
-        <div class="flex flex-col gap-1.5 px-[var(--page-gutter)] sm:flex-row sm:items-center sm:gap-4">
+             auto-fill grid leaves empty on a short result set.
+             X-DS fourier pass 5 · DS-F5C-T1: at >= sm the row aligns on its
+             block-end, so the search's foot sits on the tabs' underline and the
+             two read as one toolbar on one line (centred, the field floated
+             off the rule on the tab text's middle). Below sm the tabs own a
+             row and their rule runs its full width. -->
+        <div class="flex flex-col gap-1.5 px-[var(--page-gutter)] sm:flex-row sm:items-end sm:gap-4">
             <!-- X.F.W14.u — UIA-F-41 (consumer half): the strip scrolls in its
                  own inline track. The column is `overflow-y: auto`, which makes
                  its `overflow-x` compute to `auto` as well, so at 390 the 5-tab

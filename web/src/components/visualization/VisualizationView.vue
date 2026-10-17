@@ -656,7 +656,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                      `update:activeBases` like the other two, so
                                      the third binding is written like the other
                                      two. -->
-                                <BasisSelector v-if="hasData"
+                                <!-- X-DS fourier pass 5 · DS-F5C-C1: a failed compute keeps the
+                                     layer, which holds the failure's status line. -->
+                                <BasisSelector v-if="hasData || store.computeError"
                                     v-model:active-bases="activeBases"
                                     v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
                             </Transition>

@@ -5,8 +5,6 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { VIZ_COLORS } from "@/lib/colors";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { Button } from "@mkbabb/glass-ui/button";
-// `./alert` has no subpath export at the 8.0.0 pin; the root barrel carries it.
-import { Alert, AlertDescription } from "@mkbabb/glass-ui";
 import {
     Collapsible,
     CollapsibleTrigger,
@@ -19,7 +17,7 @@ import {
     SelectTrigger,
 } from "@mkbabb/glass-ui/select";
 import { ConfiguratorLayer, ConfiguratorRow } from "@mkbabb/glass-ui/configurator";
-import { Wand2, ChevronRight, RotateCcw, RefreshCw, CircleAlert } from "@lucide/vue";
+import { Wand2, ChevronRight, RotateCcw } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import SliderControl from "@/components/ui/SliderControl.vue";
 
@@ -111,13 +109,6 @@ function resetDefaults() {
     mlThreshold.value = CONTOUR_DEFAULTS.ml_threshold;
 }
 
-const shortError = computed(() => {
-    const msg = store.error ?? "";
-    if (msg.includes("503")) return "Server busy — try again";
-    if (msg.includes("fetch")) return "Network error";
-    return msg.length > 60 ? msg.slice(0, 60) + "…" : msg;
-});
-
 function currentComputeKey(): string {
     const maxContoursValue = maxContours.value === 0 ? null : maxContours.value;
     return JSON.stringify({
@@ -140,7 +131,7 @@ async function runCompute() {
     if (!store.imageMeta) return;
 
     store.beginCompute();
-    store.error = null;
+    store.computeError = null;
 
     try {
         // Update contour settings with ML params
@@ -350,23 +341,15 @@ watch(
             </CollapsibleContent>
         </Collapsible>
 
-        <!-- Retry banner for transient errors -->
-        <Transition name="slide-down">
-            <!-- X.F.W13.b — the hand-rolled banner (its own border, tint and radius) and
-                 the per-instance `.retry-btn` restyle of the glass Button retire onto the
-                 producer's pair: `Alert tone="destructive"` owns the surface, the tone
-                 and the announcement; the Button owns the command. -->
-            <Alert v-if="store.error" tone="destructive" announce="polite" class="mt-2">
-                <CircleAlert />
-                <AlertDescription>
-                    <span class="retry-msg fira-code">{{ shortError }}</span>
-                    <Button emphasis="primary" tone="destructive" size="sm" :loading="store.computing" @click="runCompute">
-                        <RefreshCw />
-                        Retry
-                    </Button>
-                </AlertDescription>
-            </Alert>
-        </Transition>
+        <!-- X-DS fourier pass 5 · DS-F5C-C1: a failed compute is one muted
+             status line with a Retry text button (the shared `.compute-status`,
+             style.css), not a destructive Alert. It renders here only where this
+             is the aside's sole layer (the contour editor, `defaultOpen`);
+             beside the other layers the Basis layer holds it. -->
+        <p v-if="store.computeError && defaultOpen" class="compute-status text-caption" role="status">
+            <span class="compute-status-msg">{{ store.computeError }}</span>
+            <Button emphasis="text" size="sm" :loading="store.computing" @click="store.retryCompute()">Retry</Button>
+        </p>
     </ConfiguratorLayer>
 </template>
 
@@ -411,15 +394,6 @@ watch(
    disabled state with `pointer-events: none` on a control that stayed focusable
    and keyboard-live. The Button owns both: `icon-only` is the circle, and
    `:disabled` is the one disabled channel. */
-
-/* Retry banner — the surface, tone and radius are the glass Alert's; the message
-   only truncates to one line. */
-.retry-msg {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
 
 
 /* A.W3.d — named properties + canonical tokens, no `transition: all`. */

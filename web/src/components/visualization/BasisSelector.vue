@@ -8,6 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from "@mkbabb/glass-ui/toggle-group";
 import { ANIMATION_DEFAULTS, CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { normalizeBasisKey } from "@/lib/basis";
 import { basisDisplay } from "./lib/basis-display";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { RotateCcw } from "@lucide/vue";
 
 /* X.F.W14U.c1 — addendum (g), COHESION §0da: the owner reverses UIA-F-172's
@@ -18,6 +19,10 @@ import { RotateCcw } from "@lucide/vue";
    basis chip its own basis tint. The one-accent token `--control-accent` is
    deleted. */
 const FOURIER_HUE = computed(() => basisDisplay.fourier.color);
+
+/* X-DS fourier pass 5 · DS-F5C-C1: the layer stays mounted when a background
+   compute fails, and says so in one muted line (`store.computeError`). */
+const store = useWorkspaceStore();
 
 const props = defineProps<{
     activeBases?: string[];
@@ -142,6 +147,11 @@ function resetDefaults() {
                 </Button>
             </Tooltip>
         </template>
+
+        <p v-if="store.computeError" class="compute-status text-caption" role="status">
+            <span class="compute-status-msg">{{ store.computeError }}</span>
+            <Button emphasis="text" size="sm" :loading="store.computing" @click="store.retryCompute()">Retry</Button>
+        </p>
 
         <!-- X-DS pass 2 · DS-F2-C15: two selection semantics (a one-of-three
              Fourier mode; independent polynomial toggles) each get a caption

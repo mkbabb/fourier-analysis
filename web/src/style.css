@@ -332,6 +332,25 @@ article.paper-article {
     background-color: color-mix(in srgb, var(--chip-hue) 16%, transparent);
 }
 
+/* X-DS fourier pass 5 · DS-F5C-C1: a failed background compute's one line in
+   the aside (BasisSelector; ContourSettings in the editor). Muted ink, the
+   message truncated to one line, a Retry text button at its end. No surface,
+   tint or border: the state is quiet, not an alarm. */
+.compute-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-atom);
+    min-width: 0;
+    margin: 0;
+    color: var(--muted-foreground);
+}
+.compute-status-msg {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Tab-panel entry animation — local carry pending glass-ui's Tabs
    primitive shipping this on its own. Selector targets the data-attribute
    the upstream UnderlineTabs primitive sets; cite `EquationView`,
