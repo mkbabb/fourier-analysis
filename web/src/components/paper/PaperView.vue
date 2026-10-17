@@ -510,19 +510,21 @@ onUnmounted(() => {
     overflow-x: hidden;
     overscroll-behavior-y: contain;
     max-width: 100dvw;
-    /* X-DS fourier pass 6 (critic P6) · DS-F6P-C2: /paper owns its scroll, so
-       the shell's `<main>` edge rule (App.vue, DS-F10X-C3) never shows here and
-       the scrolled article was cut in open air under the dock. Once scrolled,
-       the port's top is that same one hairline (the /morph band's --border,
-       DS-F5-C4/DS-F15X-T1); at rest the rule is transparent. It is NOT pulled
-       up its own pixel as the shell's is: `<main>` clips at its padding box, so
-       a −1px rule sat in `<main>`'s border band and was clipped away
-       (measured). No fade, no shadow (DS-F7-C3 stands). */
-    border-block-start: 1px solid transparent;
 }
 
-.paper-scroll[data-scrolled] {
-    border-block-start-color: var(--border);
+/* X-DS fourier pass 7 (critic P7) · DS-F7C-C1: the scrolled rule is drawn at
+   the cut and at the article's measure, not on the port's top edge (DS-F6P-C2
+   drew it there: full-bleed across the page grid either side of the article at
+   1440, and at 390 over the sticky ToC band, above the real cut).
+   - Below lg the cut is the ToC band's foot, so the band ends on the rule once
+     the port has scrolled (`--floating-toc-rule`, read by `PaperTocBar`'s
+     `.floating-toc`; /morph's band recipe, DS-F5-C4).
+   - At lg the rule is a 1px sticky line in the article's own grid track (the
+     `::before` of `.paper-columns`, sharing the article's cell), so it runs the
+     article's width and nothing else. Transparent at rest.
+   No fade and no shadow (DS-F7-C3 stands). */
+.paper-scroll[data-scrolled] .floating-toc {
+    --floating-toc-rule: var(--border);
 }
 
 .teleport-overlay {
@@ -598,6 +600,27 @@ onUnmounted(() => {
         grid-template-columns: auto minmax(0, 48rem);
         column-gap: 0;
         justify-content: center;
+    }
+
+    .paper-columns::before,
+    .paper-article {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    /* DS-F7C-C1: the scrolled rule, in the article's track. */
+    .paper-columns::before {
+        content: "";
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        align-self: start;
+        block-size: 1px;
+        pointer-events: none;
+    }
+
+    .paper-scroll[data-scrolled] .paper-columns::before {
+        background: var(--border);
     }
 }
 

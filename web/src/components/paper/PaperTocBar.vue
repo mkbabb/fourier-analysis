@@ -158,7 +158,7 @@ watch(
                         />
                     </PopoverContent>
                 </Popover>
-                <PaperPageReadout :current-page="currentPage" />
+                <PaperPageReadout :current-page="currentPage" class="floating-toc-page" />
                 <Button
                     emphasis="quiet"
                     size="sm"
@@ -200,6 +200,22 @@ watch(
     /* X-DS pass 2 · DS-F2-C6: the bar sits on the article's own gutter, so
        their edges line up (it was inset 8 px over a 16 px article). */
     padding: 0.5rem var(--page-gutter) 0;
+    /* X-DS fourier pass 7 · DS-F7C-C1: the band's foot is where the scrolled
+       paper is cut, one atom under the bar, as /morph's band (DS-F5-C4). */
+    padding-block-end: var(--space-atom);
+}
+
+/* DS-F7C-C1: the cut's rule, the app's one hairline, hung just under the band's
+   foot so it adds nothing to the band's height. PaperView sets
+   `--floating-toc-rule` once the port has scrolled; transparent at rest. */
+.floating-toc::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: -1px;
+    block-size: 1px;
+    background: var(--floating-toc-rule, transparent);
+    pointer-events: none;
 }
 
 .floating-toc-grid {
@@ -216,6 +232,8 @@ watch(
 @media (orientation: landscape) and (max-height: 500px) {
     .floating-toc {
         padding-top: var(--space-residue);
+        /* DS-F7C-C1: one title rung; the rule hangs at the bar's foot. */
+        padding-block-end: 0;
     }
 }
 
@@ -229,6 +247,13 @@ watch(
 .floating-toc-bar--search > :first-child {
     flex: 1;
     min-width: 0;
+}
+
+/* X-DS fourier pass 7 · DS-F7C-T1: the readout holds its widest measure
+   (PaperPageReadout), so the title button, and its chevron, keep one place as
+   the page count grows; the figures sit against the search button. */
+.floating-toc-page {
+    text-align: end;
 }
 
 .floating-toc-title-btn {
