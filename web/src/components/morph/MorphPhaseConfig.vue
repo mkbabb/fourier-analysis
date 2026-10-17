@@ -231,12 +231,10 @@ const easingNames = EASING_PRESET_NAMES;
    bounded measure (a preset name, not the card's whole width), so the card's
    heaviest element is no longer its secondary control. Elsewhere both rows
    stay stacked. `--row-label-col` is the column both rows share, so the
-   select starts on the Duration field's x. */
+   select starts on the Duration field's x. DS-F16X-C1: the column is declared
+   once on /morph's controls column (FourierMorphDemo), so the levels card's
+   Low and High rows read the same one. */
 @media (min-width: 1024px) and (pointer: fine) {
-    .config-card {
-        --row-label-col: 3.75rem;
-    }
-
     .config-easing {
         display: flex;
         flex-wrap: wrap;

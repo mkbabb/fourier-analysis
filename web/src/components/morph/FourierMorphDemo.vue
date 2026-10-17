@@ -290,6 +290,16 @@ function handleReset() {
     min-width: 0;
 }
 
+/* X-DS pass 16 · DS-F16X-C1: one label column for every control row in the
+   column (the phase cards' Duration and Easing, the levels card's Low and
+   High), at SliderControl's one-line gate. Stacked at 1024, the four cards'
+   fields then start on one x. */
+@media (min-width: 1024px) and (pointer: fine) {
+    .controls-column {
+        --row-label-col: 3.75rem;
+    }
+}
+
 @media (min-width: 1024px) {
     .demo-layout {
         display: grid;

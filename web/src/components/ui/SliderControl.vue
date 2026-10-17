@@ -356,8 +356,8 @@ const fillFraction = computed(() => {
 
     /* PRE-DOCK's label column (576e40a `.level-label`, 2.5 rem): short labels
        stacked in one card (Low, High) start their fields and tracks on one x.
-       X-DS pass 15 · DS-F15X-C2: a card whose sibling row shares the column
-       (MorphPhaseConfig's Easing) sets `--row-label-col`. */
+       X-DS pass 15 · DS-F15X-C2 / pass 16 · DS-F16X-C1: a surface whose rows
+       share one column (/morph's controls column) sets `--row-label-col`. */
     .control-row[data-row-kind="plain"] .control-row-label {
         min-width: var(--row-label-col, 2.5rem);
     }
