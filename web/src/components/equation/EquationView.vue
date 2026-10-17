@@ -20,7 +20,7 @@ import { Progress } from "@mkbabb/glass-ui/progress";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
-import { Info, RotateCcw } from "@lucide/vue";
+import { Info } from "@lucide/vue";
 
 import FunctionInput from "./FunctionInput.vue";
 import EquationResult from "./EquationResult.vue";
@@ -427,20 +427,16 @@ watchDebounced(
                     <p class="text-caption text-muted-foreground">Computing…</p>
                 </div>
 
-                <!-- Error (no prior result): a transient failure keeps its retry. -->
-                <!-- X-DS DS-F-C5: a plain in-stage status (no Card plate on the
-                     stage card), and the message only when it says more than
-                     the title. -->
+                <!-- Error (no prior result): a transient failure keeps its retry.
+                     X-DS fourier pass 11 · DS-F11C-C1: the app's one recovery
+                     grammar for a failed background compute, the shared
+                     `.compute-status` line (/visualize's stage and aside wear
+                     it): the message, then glass's text Retry. No raised pill. -->
                 <div v-else-if="error && !result" class="eq-state">
-                    <div role="alert" class="eq-state-failure text-center">
-                        <p class="text-small font-medium text-foreground mb-1">{{ COMPUTE_FAILED }}</p>
-                        <p v-if="error !== COMPUTE_FAILED" class="text-mono-small text-muted-foreground break-words">{{ error }}</p>
-                        <!-- X-DS fourier pass 7 · DS-F7-C2: the one recovery
-                             grammar (a leading glyph, as Upload's actions wear). -->
-                        <Button emphasis="secondary" size="sm" class="mt-3" @click="doCompute(true)">
-                            <RotateCcw aria-hidden="true" />Try again
-                        </Button>
-                    </div>
+                    <p role="alert" class="compute-status text-caption">
+                        <span class="compute-status-msg">{{ error }}</span>
+                        <Button emphasis="text" size="sm" @click="doCompute(true)">Retry</Button>
+                    </p>
                 </div>
 
                 <!-- Results -->
@@ -733,9 +729,9 @@ watchDebounced(
 .eq-state-bar {
     width: 10rem;
 }
-.eq-state-failure {
-    max-width: 28rem;
-    padding: 1rem;
+/* DS-F11C-C1: the failure line stays inside the stage's measure. */
+.eq-state > .compute-status {
+    max-inline-size: 100%;
 }
 
 /* ── Equation card ── */
