@@ -96,61 +96,66 @@ function toggleDrawer() {
                 aria-label="Table of contents"
                 :inert="!drawerOpen"
             >
-                <PaperSearch :search="search" variant="sidebar" :column="sidebarNav" />
                 <!-- X.F.W13.a — OA-13: the CONTENTS disclosure is the producer's
                      `Collapsible` (it owns `aria-expanded` and the motion) on a
                      glass `Button icon-only` whose own circle is not overwritten. -->
                 <Collapsible v-model:open="contentsOpen">
-                    <div class="sidebar-header">
-                        <p class="sidebar-label font-serif-math">Contents</p>
-                        <!-- X-DS DS-F-C9: the page readout sits in the CONTENTS
-                             header row, inside the rail's plate (it hung under
-                             the rail as an unframed line on the grid). -->
-                        <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="sidebar-page" />
-                        <!-- X.F.W14.r — r1: the scroll-to-top sits BESIDE the
-                             disclosure on the same glass primitive. -->
-                        <div class="sidebar-header-actions">
-                            <Tooltip text="Scroll to top" side="right">
-                                <Button
-                                    emphasis="quiet"
-                                    size="md" icon-only
-                                    class="sidebar-scroll-top"
-                                    aria-label="Scroll to top"
-                                    @click="scrollToTop()"
-                                >
-                                    <ArrowUpToLine class="sidebar-contents-icon" />
-                                </Button>
-                            </Tooltip>
-                            <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
-                                <CollapsibleTrigger as-child>
+                    <!-- X-DS fourier pass 6 (critic P6) · DS-F6P-C1: the search
+                         and the CONTENTS header are the rail's head, held at
+                         the top while only the list scrolls under it. -->
+                    <div class="sidebar-head">
+                        <PaperSearch :search="search" variant="sidebar" :column="sidebarNav" />
+                        <div class="sidebar-header">
+                            <p class="sidebar-label font-serif-math">Contents</p>
+                            <!-- X-DS DS-F-C9: the page readout sits in the CONTENTS
+                                 header row, inside the rail's plate (it hung under
+                                 the rail as an unframed line on the grid). -->
+                            <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="sidebar-page" />
+                            <!-- X.F.W14.r — r1: the scroll-to-top sits BESIDE the
+                                 disclosure on the same glass primitive. -->
+                            <div class="sidebar-header-actions">
+                                <Tooltip text="Scroll to top" side="right">
                                     <Button
                                         emphasis="quiet"
                                         size="md" icon-only
-                                        class="sidebar-contents-toggle"
-                                        aria-label="Contents"
+                                        class="sidebar-scroll-top"
+                                        aria-label="Scroll to top"
+                                        @click="scrollToTop()"
                                     >
-                                        <ChevronUp class="sidebar-contents-icon" />
+                                        <ArrowUpToLine class="sidebar-contents-icon" />
                                     </Button>
-                                </CollapsibleTrigger>
-                            </Tooltip>
-                            <!-- X-DS pass 1 · F1-06: while open, the drawer's
-                                 own toggle is one of the CONTENTS header's
-                                 controls, not a bare glyph in the gutter. -->
-                            <Tooltip v-if="drawerOpen" text="Hide contents" side="right">
-                                <Button
-                                    ref="drawerTab"
-                                    emphasis="quiet"
-                                    size="md" icon-only
-                                    type="button"
-                                    class="paper-toc-tab"
-                                    aria-label="Hide contents"
-                                    aria-expanded="true"
-                                    :aria-controls="drawerId"
-                                    @click="toggleDrawer"
-                                >
-                                    <PanelLeftClose class="sidebar-contents-icon" />
-                                </Button>
-                            </Tooltip>
+                                </Tooltip>
+                                <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
+                                    <CollapsibleTrigger as-child>
+                                        <Button
+                                            emphasis="quiet"
+                                            size="md" icon-only
+                                            class="sidebar-contents-toggle"
+                                            aria-label="Contents"
+                                        >
+                                            <ChevronUp class="sidebar-contents-icon" />
+                                        </Button>
+                                    </CollapsibleTrigger>
+                                </Tooltip>
+                                <!-- X-DS pass 1 · F1-06: while open, the drawer's
+                                     own toggle is one of the CONTENTS header's
+                                     controls, not a bare glyph in the gutter. -->
+                                <Tooltip v-if="drawerOpen" text="Hide contents" side="right">
+                                    <Button
+                                        ref="drawerTab"
+                                        emphasis="quiet"
+                                        size="md" icon-only
+                                        type="button"
+                                        class="paper-toc-tab"
+                                        aria-label="Hide contents"
+                                        aria-expanded="true"
+                                        :aria-controls="drawerId"
+                                        @click="toggleDrawer"
+                                    >
+                                        <PanelLeftClose class="sidebar-contents-icon" />
+                                    </Button>
+                                </Tooltip>
+                            </div>
                         </div>
                     </div>
                     <CollapsibleContent>
@@ -300,7 +305,9 @@ function toggleDrawer() {
     scrollbar-gutter: stable;
     scroll-padding-bottom: var(--sidebar-bottom-inset);
     touch-action: pan-y;
-    padding: 0.625rem 0.625rem var(--sidebar-bottom-inset);
+    /* DS-F6P-C1: the top inset is the head's own (`.sidebar-head`), so the
+       held head sits flush at the port's top with nothing showing above it. */
+    padding: 0 0.625rem var(--sidebar-bottom-inset);
     /* X.F.W14U.paper — UIA-F-61: the rail is `.glass-quiet` (DESIGN.md:47),
        not a hand-rolled cartoon card whose +3px cast fell against the
        article's −3px (two light sources). Border, fill and cast are the quiet
@@ -317,6 +324,22 @@ function toggleDrawer() {
 
 .sidebar-nav[data-contents="closed"] .sidebar-header {
     margin-bottom: 0;
+}
+
+/* X-DS fourier pass 6 (critic P6) · DS-F6P-C1: deep in the paper the follow
+   scrolled the whole rail, so the search, the CONTENTS label, its tools and
+   the page readout left view and the rail began mid-tree, untitled. The head
+   is held at the port's top on the rail's own opaque fill (glass's
+   `data-surface="opaque"` is `--card`); only the list scrolls under it. No
+   shadow and no rule: the head is the same plate. `flow-root` keeps the
+   header's bottom margin inside the fill. */
+.sidebar-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flow-root;
+    padding-top: 0.625rem;
+    background: var(--card);
 }
 
 .sidebar-header {

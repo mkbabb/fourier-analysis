@@ -268,6 +268,14 @@ const renderCalloutText = computed(
        measured case). Where `content-visibility` is absent the section renders
        as before (the floor) and the JS window is unchanged. */
     --deferred-section-size: 1200px;
+    /* X-DS fourier pass 6 (critic P6) · DS-F6P-C3: `content-visibility: auto`
+       implies paint containment, which isolates each section as its own blend
+       group over a transparent backdrop, so the figure's blend found no card
+       to fall back to (measured: `screen` computed, slab still #000). The
+       section takes the card's own tone, which it already sits on (the article
+       is the opaque `--card` plate), so the blend reads --card and nothing else
+       changes. */
+    background-color: var(--card);
 }
 
 .paper-window-spacer {
@@ -298,6 +306,13 @@ const renderCalloutText = computed(
 .paper-portrait {
     max-block-size: min(60svh, 34rem);
     block-size: auto;
+}
+
+/* X-DS fourier pass 6 (critic P6) · DS-F6P-C3: the line-art figure's own
+   opaque ground sat as a white (light) or #000 (dark) slab inside the card.
+   It blends into --card instead (`--paper-figure-blend`, style.css). */
+.paper-figure {
+    mix-blend-mode: var(--paper-figure-blend);
 }
 
 /* X.F.W3 `.d` / `PAW-8` — the hand-drawn chassis is DELETED, not re-tuned. The

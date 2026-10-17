@@ -469,6 +469,18 @@ article.paper-article {
     --card-hover-step: 0.02;
 }
 
+/* X-DS fourier pass 6 (critic P6) · DS-F6P-C3 — a line-art figure takes the
+   card's tone: its asset ground (white; black once the dark arm inverts it)
+   drops out against --card and only the ink stays. Multiply in light, screen
+   in dark. Read by `.paper-figure` alone (portraits keep their photo ground).
+   The asset-side repair (dark variants) stays K-17 on the LATEX-PAPER relay. */
+:root {
+    --paper-figure-blend: multiply;
+}
+.dark {
+    --paper-figure-blend: screen;
+}
+
 :root {
     --viz-amber: hsl(35 76% 35%);
     --section-color-5: hsl(35 76% 35%);

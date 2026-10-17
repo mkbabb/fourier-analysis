@@ -402,7 +402,7 @@ onUnmounted(() => {
 <template>
     <div class="paper-root" :style="paperRootStyle">
         <ScrollProgressRim :value="readingProgress" class="paper-progress-rim" :stops="progressRimStops" />
-        <div ref="scrollContainer" class="paper-scroll">
+        <div ref="scrollContainer" class="paper-scroll" :data-scrolled="readingProgress > 0 || undefined">
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
             <!-- UIA-F-162: content first. The floating bar is the phone's one
@@ -510,6 +510,19 @@ onUnmounted(() => {
     overflow-x: hidden;
     overscroll-behavior-y: contain;
     max-width: 100dvw;
+    /* X-DS fourier pass 6 (critic P6) · DS-F6P-C2: /paper owns its scroll, so
+       the shell's `<main>` edge rule (App.vue, DS-F10X-C3) never shows here and
+       the scrolled article was cut in open air under the dock. Once scrolled,
+       the port's top is that same one hairline (the /morph band's --border,
+       DS-F5-C4/DS-F15X-T1); at rest the rule is transparent. It is NOT pulled
+       up its own pixel as the shell's is: `<main>` clips at its padding box, so
+       a −1px rule sat in `<main>`'s border band and was clipped away
+       (measured). No fade, no shadow (DS-F7-C3 stands). */
+    border-block-start: 1px solid transparent;
+}
+
+.paper-scroll[data-scrolled] {
+    border-block-start-color: var(--border);
 }
 
 .teleport-overlay {
