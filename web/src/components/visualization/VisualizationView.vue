@@ -568,9 +568,13 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <!-- X-DS fourier pass 6 · DS-F6C-C1: a failed background compute
                              with nothing drawn says so where the outline would be, in the
                              first compute's slot: the shared `.compute-status` line (the
-                             aside's own, which stays the live region). -->
+                             aside's own, which stays the live region). X-DS fourier pass 12 ·
+                             DS-F12C-C1: one line per visible surface. In the rail and split
+                             forms the stage and aside show together, so the aside drops its
+                             copy and this line is the live region; in the tabbed sheet each
+                             tab keeps its own line, the aside's still the live one. -->
                         <div v-if="stageComputeFailed" class="stage-state stage-state--over">
-                            <p class="compute-status text-caption">
+                            <p class="compute-status text-caption" :role="tabbed ? undefined : 'status'">
                                 <span class="compute-status-msg">{{ store.computeError }}</span>
                                 <Button emphasis="text" size="sm" @click="store.retryCompute()">Retry</Button>
                             </p>
@@ -675,6 +679,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 <!-- X-DS fourier pass 5 · DS-F5C-C1: a failed compute keeps the
                                      layer, which holds the failure's status line. -->
                                 <BasisSelector v-if="hasData || store.computeError"
+                                    :stage-says-failed="stageComputeFailed && !tabbed"
                                     v-model:active-bases="activeBases"
                                     v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
                             </Transition>

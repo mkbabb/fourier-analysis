@@ -28,6 +28,10 @@ const props = defineProps<{
     activeBases?: string[];
     nHarmonics?: number;
     nPoints?: number;
+    /** X-DS fourier pass 12 · DS-F12C-C1: the stage beside this aside already
+     *  says the compute failed (side-by-side form, nothing drawn), so the
+     *  section does not repeat the line; the stage's line is the live region. */
+    stageSaysFailed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -148,7 +152,7 @@ function resetDefaults() {
             </Tooltip>
         </template>
 
-        <p v-if="store.computeError" class="compute-status text-caption" role="status">
+        <p v-if="store.computeError && !stageSaysFailed" class="compute-status text-caption" role="status">
             <span class="compute-status-msg">{{ store.computeError }}</span>
             <Button emphasis="text" size="sm" :loading="store.computing" @click="store.retryCompute()">Retry</Button>
         </p>
