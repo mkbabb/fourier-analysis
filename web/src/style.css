@@ -196,8 +196,16 @@ html {
     margin: 1rem 0;
 }
 
+/* The 1.1em display scale is the desktop measure's. X-DS DS-F16C-T1: below the
+   narrow arm a display takes the text size, so a display a few percent over a
+   ~324px measure fits whole instead of losing its last ink to the edge cue. */
 .katex-display > .katex {
     font-size: 1.1em;
+}
+@media (max-width: 40rem) {
+    .katex-display > .katex {
+        font-size: 1em;
+    }
 }
 
 /* X-DS DS-F3-C2 — wide display math says that it scrolls. A display that
