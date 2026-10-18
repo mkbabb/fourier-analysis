@@ -285,8 +285,8 @@ watch(
    844x390, a tablet below lg) the button took all the free space, so its
    chevron stood ~400px from the label it opens. There the button is its
    content's width, the chevron follows the label, and the readout and search
-   keep the bar's end. On the phone the button still fills the bar, so the
-   chevron holds one place (DS-F7C-T1). */
+   keep the bar's end. On the phone the button still fills the bar (its tap
+   target), and the chevron follows the label there too (DS-F18C-T1). */
 @media (min-width: 40rem) {
     .floating-toc-title-btn {
         flex: 0 1 auto;
@@ -297,11 +297,15 @@ watch(
     }
 }
 
+/* X-DS fourier pass 18 (critic F18C) · DS-F18C-T1: the label takes its own
+   width, so the chevron follows it at every width (DS-F8C-T2 did this at
+   40rem and up only). Below 40rem the button still fills the bar, so its tap
+   target is the whole free run; only the chevron moves, to the label's end. */
 .floating-toc-section {
     display: flex;
     align-items: baseline;
     gap: 0.375rem;
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     font-size: var(--type-small);

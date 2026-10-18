@@ -41,8 +41,10 @@ const router = useRouter();
         <!-- X-DS pass 3 · DS-F3-C6: glass's `md` card, the gallery card's size;
              `sm` left the actions on the edge. X-DS fourier pass 9 · DS-F9C-C1:
              its pad takes the step above `md` (see the style) so the route-rung
-             title has room. -->
-        <Card surface="opaque" size="md" class="not-found-card w-full max-w-md" data-testid="not-found">
+             title has room. X-DS fourier pass 18 · DS-F18C-T2: the card takes
+             its content's measure up to 28rem (a full 28rem left ~70px of empty
+             slack beside left-set content); on a phone it still fills the gutter. -->
+        <Card surface="opaque" size="md" class="not-found-card w-fit max-w-md" data-testid="not-found">
             <CardHeader>
                 <!-- X-DS F4R · DS-F4R-C5: this h1 is the route's title, so it sets
                      on the route rung (see the style), not glass's card-title rung. -->
