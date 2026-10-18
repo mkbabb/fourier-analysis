@@ -255,7 +255,12 @@ function handleReset() {
    ground at 1px, so the rule reads in both themes. X-DS fourier pass 8
    (critic F8C) · DS-F8C-C3: /paper's band recipe (DS-F7C-C1) — the rule is
    transparent at rest and turns --border only once `<main>` has scrolled
-   (App.vue's `data-scrolled`), so at scrollTop 0 no line crosses the grid. */
+   (App.vue's `data-scrolled`), so at scrollTop 0 no line crosses the grid.
+   X-DS fourier pass 10 (critic F10C) · DS-F10C-L1: the rule is the cards'
+   measure, not the band's: the band runs out over the gutter so nothing shows
+   beside it, and a border on it stood 16px past the cards on each side. It is
+   hung under the band's foot (`::after`, inset by the gutter it spans), as
+   /paper's band rule (DS-F7C-C1), so it adds nothing to the band's height. */
 .stage-column {
     position: sticky;
     top: 0;
@@ -268,11 +273,20 @@ function handleReset() {
     padding: var(--space-atom) var(--page-gutter);
     background-color: var(--background);
     background-attachment: fixed;
-    border-block-end: 1px solid transparent;
 }
 
-main[data-scrolled] .stage-column {
-    border-block-end-color: var(--border);
+.stage-column::after {
+    content: "";
+    position: absolute;
+    inset-inline: var(--page-gutter);
+    inset-block-end: -1px;
+    block-size: 1px;
+    pointer-events: none;
+}
+
+main[data-scrolled] .stage-column::after,
+main[data-scrolled] .demo-page::before {
+    background: var(--border);
 }
 
 /* X-DS fourier pass 5 · DS-F5-C1: the rail is no box below 1024px, so the
@@ -339,7 +353,26 @@ main[data-scrolled] .stage-column {
         padding: 0;
         align-items: start;
         background: none;
-        border-block-end: 0;
+    }
+
+    .stage-column::after {
+        display: none;
+    }
+
+    /* DS-F10C-L1: beside the controls nothing bands the top, so the cut is
+       the page's own: a 1px sticky line in `.demo-page`'s content box (the
+       title's and the cards' measure), pulled up through the page's top
+       padding to sit on `<main>`'s edge and giving that pixel back, so no
+       route moves. The shell draws no rule here (`meta.ownsCut`). */
+    .demo-page::before {
+        content: "";
+        display: block;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        block-size: 1px;
+        margin-block: calc(-1 * var(--space-body)) calc(var(--space-body) - 1px);
+        pointer-events: none;
     }
 
     .band-grid {

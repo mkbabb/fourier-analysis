@@ -147,8 +147,10 @@ const stopAfter = router.afterEach(async (to) => {
  * X-DS fourier pass 9 (critic F9C) · DS-F9C-L1: a route whose sticky band
  * carries the cut below lg (`meta.ownsCut`: /morph's `.stage-column`) owns
  * it there, so the shell draws no second rule above a band that nothing ever
- * passes under. One rule, at the band's foot, as on /paper. At lg the band
- * is gone and the shell's rule stands.
+ * passes under. One rule, at the band's foot, as on /paper.
+ * X-DS fourier pass 10 (critic F10C) · DS-F10C-L1: at lg too, where /morph
+ * draws its cut at its column's measure (`.demo-page::before`), not the
+ * shell's full-bleed edge (/paper's article-measure rule, DS-F7C-C1).
  */
 const mainScrolled = ref(false);
 function onMainScroll() {
@@ -189,7 +191,7 @@ onScopeDispose(() => {
                  says is zero. -->
             <main
                 ref="main"
-                class="relative flex-1 min-h-0 flex flex-col overflow-y-auto -mt-px border-t border-transparent data-[scrolled]:border-[var(--border)] max-lg:data-[owns-cut]:data-[scrolled]:border-transparent"
+                class="relative flex-1 min-h-0 flex flex-col overflow-y-auto -mt-px border-t border-transparent data-[scrolled]:border-[var(--border)] data-[owns-cut]:data-[scrolled]:border-transparent"
                 :data-scrolled="mainScrolled || undefined"
                 :data-owns-cut="$route.meta.ownsCut || undefined"
                 @scroll.passive="onMainScroll"

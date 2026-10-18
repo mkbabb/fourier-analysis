@@ -46,7 +46,8 @@ declare module "vue-router" {
         /**
          * X-DS fourier pass 9 · DS-F9C-L1: below lg the route's sticky band
          * ends on the scroll cut's rule, so the shell's `<main>` draws none
-         * (`App.vue`).
+         * (`App.vue`). X-DS fourier pass 10 · DS-F10C-L1: at every width; at
+         * lg the route draws its cut at its own column's measure.
          */
         ownsCut?: boolean;
         /**

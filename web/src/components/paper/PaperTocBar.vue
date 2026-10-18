@@ -207,11 +207,15 @@ watch(
 
 /* DS-F7C-C1: the cut's rule, the app's one hairline, hung just under the band's
    foot so it adds nothing to the band's height. PaperView sets
-   `--floating-toc-rule` once the port has scrolled; transparent at rest. */
+   `--floating-toc-rule` once the port has scrolled; transparent at rest.
+   X-DS fourier pass 10 (critic F10C) · DS-F10C-L1: the rule runs the plates'
+   measure, the band's own gutter, as at lg it runs the article's: the band is
+   full-bleed only so it can stick, and its rule stood 16px past the bar and
+   the article on each side. */
 .floating-toc::after {
     content: "";
     position: absolute;
-    inset-inline: 0;
+    inset-inline: var(--page-gutter);
     inset-block-end: -1px;
     block-size: 1px;
     background: var(--floating-toc-rule, transparent);
