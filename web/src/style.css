@@ -182,7 +182,12 @@ html {
    `overflow-clip-margin` then hands the block axis real headroom instead of the
    padding's incidental 0.75rem. ⊘ Whether any SPECIFIC equation was clipping
    at the old line is the row's own SS-13 probe and is not claimed here — the
-   dead declaration is the defect, and it is cured. */
+   dead declaration is the defect, and it is cured.
+   X-DS DS-F13C-T1, measured: beside `overflow-x: auto` the `clip` COMPUTES TO
+   `hidden` (Overflow 3 §3 maps both `visible` and `clip`), so the clip margin
+   never applies and the 0.75rem block padding IS the tall-ink headroom. Inside a
+   `.math-block` the display keeps that padding and nothing else; the row's
+   spacing is the math-block's (bridge below). */
 .katex-display {
     overflow-x: auto;
     overflow-y: clip;
@@ -244,9 +249,26 @@ html {
 article.paper-article .math-block {
     border-left: 0;
 }
+/* DS-F13C-T1: a display's spacing is its row's. The display inside a
+   math-block carries no margin (only the headroom padding above); in a theorem
+   body the row is set off by 0.75rem and no padding, and the last row ends on
+   the block's own 0.75rem inset, so the label-to-ink and ink-to-foot gaps are
+   one 24px step at every width. Replaces the DS-F9-C6 narrow-arm override. */
+article.paper-article .math-block .katex-display {
+    margin-block: 0;
+}
+article.paper-article .theorem-body .math-block {
+    margin-block: 0.75rem;
+    padding-block: 0;
+}
+article.paper-article .theorem-body > .math-block:last-child {
+    margin-block-end: 0;
+}
+/* DS-F13C-N1: no fill and no right or bottom border, so no corner to round
+   (the proof block's DS-F12C-T1 reading). */
 article.paper-article .theorem-block,
 article.paper-article .theorem-block:hover {
-    border-radius: 0 0.5rem 0.5rem 0;
+    border-radius: 0;
     box-shadow: none;
     transform: none;
     transition: none;
@@ -317,13 +339,13 @@ article.paper-article .math-block__number {
     article.paper-article .math-block {
         grid-template-columns: minmax(0, 1fr);
     }
+    /* DS-F13C-T1: the stacked number is the row's last ink, so it carries
+       the display's 0.75rem headroom step below it (that padding now sits
+       between the formula and the number); the row reads one step above and
+       below at both widths. */
     article.paper-article .math-block__number {
         justify-self: end;
-    }
-    /* DS-F9-C6: the number hugs the display's last line. */
-    article.paper-article .math-block .katex-display {
-        margin-block-end: 0;
-        padding-block-end: 0;
+        margin-block-end: 0.75rem;
     }
 }
 /* DS-F9-C2: the list markers a preflight reset strips. */
