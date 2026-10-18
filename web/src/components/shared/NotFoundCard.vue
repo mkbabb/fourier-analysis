@@ -97,11 +97,33 @@ const router = useRouter();
    same amount, so beside the primary the spacing is unchanged and, wrapped,
    the glyph sits on the card's text column. Layout only; glass's skin is
    untouched. */
+/* X-DS fourier pass 19 · DS-F19C-N1: wrapped at 390, the quiet link's 44px
+   coarse tap box centres a 20px line, so 12px of empty box sat on top of the
+   card's bottom pad: the ink-to-edge inset read 23 against 9 at the top. The
+   link keeps its whole tap box, but the box bleeds that slack out of layout on
+   both block sides (so it stays centred in an unwrapped row), and the row gap
+   takes the same amount back, so wrapped it never overlaps the primary above
+   while its bottom slack lies inside the pad. The slack is read from glass's
+   own sizing: the `sm` box is `--control-h-sm`, raised on coarse pointers to
+   `--touch-target` by glass's `[data-control-target]` rule; the line is `1lh`
+   on the link's own rung (the footer holds only buttons, which set their own
+   type, so its font here is a measuring context only). Layout only. */
 .not-found-actions {
     --text-link-inset: calc(var(--space-residue) + 1px);
+    --text-link-box: var(--control-h-sm);
+    --text-link-bleed: calc((var(--text-link-box) - 1lh) / 2);
+    font-size: var(--control-text-sm);
+    line-height: 1.1;
     column-gap: calc(0.5rem + var(--text-link-inset));
+    row-gap: calc(0.5rem + var(--text-link-bleed));
+}
+@media (pointer: coarse) {
+    .not-found-actions {
+        --text-link-box: var(--touch-target, 2.75rem);
+    }
 }
 .not-found-actions > [data-emphasis="text"] {
     margin-inline-start: calc(-1 * var(--text-link-inset));
+    margin-block: calc(-1 * var(--text-link-bleed));
 }
 </style>
