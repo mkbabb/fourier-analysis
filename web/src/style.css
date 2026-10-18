@@ -269,6 +269,15 @@ article.paper-article .theorem-block {
 article.paper-article .theorem-block .theorem-label {
     color: var(--theorem-hue);
 }
+/* X-DS fourier pass 11 (critic F11C) · DS-F11C-L1: the proof block's rule and
+   tint were `hsl(var(--border))` / `hsl(var(--card) / 0.6)`, invalid here, so
+   the block was a bare indent. Restate the root's result (latex-paper master):
+   one straight 3px rule in --border, no tint, as the theorem block. */
+article.paper-article .paper-proof-block {
+    border-left: 3px solid var(--border);
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: none;
+}
 article.paper-article :is(.section-header--chapter, .section-header--sub) {
     background: var(--card);
 }
