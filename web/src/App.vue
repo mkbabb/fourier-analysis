@@ -144,6 +144,11 @@ const stopAfter = router.afterEach(async (to) => {
  * X-DS fourier pass 6 (critic P6) · DS-F6P-C2: the rule is --border, the
  * /morph band's own since DS-F15X-T1 (--border-soft all but vanished on the
  * dark ground at 1px), and /paper's own scroll port ends on the same rule.
+ * X-DS fourier pass 9 (critic F9C) · DS-F9C-L1: a route whose sticky band
+ * carries the cut below lg (`meta.ownsCut`: /morph's `.stage-column`) owns
+ * it there, so the shell draws no second rule above a band that nothing ever
+ * passes under. One rule, at the band's foot, as on /paper. At lg the band
+ * is gone and the shell's rule stands.
  */
 const mainScrolled = ref(false);
 function onMainScroll() {
@@ -184,8 +189,9 @@ onScopeDispose(() => {
                  says is zero. -->
             <main
                 ref="main"
-                class="relative flex-1 min-h-0 flex flex-col overflow-y-auto -mt-px border-t border-transparent data-[scrolled]:border-[var(--border)]"
+                class="relative flex-1 min-h-0 flex flex-col overflow-y-auto -mt-px border-t border-transparent data-[scrolled]:border-[var(--border)] max-lg:data-[owns-cut]:data-[scrolled]:border-transparent"
                 :data-scrolled="mainScrolled || undefined"
+                :data-owns-cut="$route.meta.ownsCut || undefined"
                 @scroll.passive="onMainScroll"
             >
                 <RouterView />

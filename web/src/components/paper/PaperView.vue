@@ -583,7 +583,12 @@ onUnmounted(() => {
     }
 }
 
+/* X-DS fourier pass 9 (critic F9C) · DS-F9C-T1: the one line both columns
+   start on once the port has scrolled: the article's cut (`::before`) and the
+   ToC rail's sticky top (`PaperTocDrawer`'s `--sidebar-top-inset`) read it, so
+   the two tops never part under the dock (they stood ~7px apart). */
 .paper-columns {
+    --paper-cut-top: 0px;
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -612,7 +617,7 @@ onUnmounted(() => {
     .paper-columns::before {
         content: "";
         position: sticky;
-        top: 0;
+        top: var(--paper-cut-top);
         z-index: 1;
         align-self: start;
         block-size: 1px;

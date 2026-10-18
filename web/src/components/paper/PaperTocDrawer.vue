@@ -206,7 +206,8 @@ function toggleDrawer() {
    holds it from the first frame). Expanding reverses the same width, so the
    ToC returns exactly to its place. */
 .paper-sidebar {
-    --sidebar-top-inset: 0.5rem;
+    /* DS-F9C-T1: the rail pins on the article's cut line (`PaperView`). */
+    --sidebar-top-inset: var(--paper-cut-top, 0px);
     --sidebar-bottom-inset: 1.5rem;
     --paper-toc-width: 17rem;
     /* The tab rail is the gutter between the ToC and the paper. */

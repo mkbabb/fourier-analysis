@@ -244,6 +244,20 @@ watch(
     padding: 0.25rem;
 }
 
+/* X-DS fourier pass 9 (critic F9C) · DS-F9C-L2: in short landscape the plate
+   hugs the one coarse row. Its block padding goes, and the icon buttons take
+   glass's `xs` rung, which the coarse floor holds at the 44px touch target (the
+   `sm` rung grew them to 54, so the plate stood 64 around a 44 row). */
+@media (orientation: landscape) and (max-height: 500px) {
+    .floating-toc-bar {
+        padding-block: 0;
+    }
+    .floating-toc-search-btn,
+    .floating-toc-search-close {
+        --button-size: var(--control-h-xs);
+    }
+}
+
 .floating-toc-bar--search > :first-child {
     flex: 1;
     min-width: 0;
