@@ -263,6 +263,22 @@ watch(
     text-align: start;
 }
 
+/* X-DS fourier pass 8 (critic F8C) · DS-F8C-T2: on a wide bar (landscape
+   844x390, a tablet below lg) the button took all the free space, so its
+   chevron stood ~400px from the label it opens. There the button is its
+   content's width, the chevron follows the label, and the readout and search
+   keep the bar's end. On the phone the button still fills the bar, so the
+   chevron holds one place (DS-F7C-T1). */
+@media (min-width: 40rem) {
+    .floating-toc-title-btn {
+        flex: 0 1 auto;
+        max-inline-size: 100%;
+    }
+    .floating-toc-page {
+        margin-inline-start: auto;
+    }
+}
+
 .floating-toc-section {
     display: flex;
     align-items: baseline;

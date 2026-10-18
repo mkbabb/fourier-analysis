@@ -252,7 +252,10 @@ function handleReset() {
    X-DS DS-F5-C4 (folds DS-F4-C2's hunk): it ends on one hairline, so content
    scrolls under a rule, not under a cut. X-DS pass 15 · DS-F15X-T1: the rule
    is --border, not --border-soft, which all but vanished on the dark paper
-   ground at 1px, so the rule reads in both themes. */
+   ground at 1px, so the rule reads in both themes. X-DS fourier pass 8
+   (critic F8C) · DS-F8C-C3: /paper's band recipe (DS-F7C-C1) — the rule is
+   transparent at rest and turns --border only once `<main>` has scrolled
+   (App.vue's `data-scrolled`), so at scrollTop 0 no line crosses the grid. */
 .stage-column {
     position: sticky;
     top: 0;
@@ -265,7 +268,11 @@ function handleReset() {
     padding: var(--space-atom) var(--page-gutter);
     background-color: var(--background);
     background-attachment: fixed;
-    border-block-end: 1px solid var(--border);
+    border-block-end: 1px solid transparent;
+}
+
+main[data-scrolled] .stage-column {
+    border-block-end-color: var(--border);
 }
 
 /* X-DS fourier pass 5 · DS-F5-C1: the rail is no box below 1024px, so the

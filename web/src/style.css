@@ -278,6 +278,21 @@ article.paper-article .section-header--sub {
 article.paper-article .section-divider {
     background: color-mix(in srgb, var(--_section-color, var(--section-heading)) 25%, transparent);
 }
+/* X-DS fourier pass 8 (critic F8C) · DS-F8C-C2: an author-year citation is
+   prose, in the text face and on the line (latex-paper `2468553` set it in
+   Fira Code at 0.8em, raised to super). */
+article.paper-article .section-body .paper-cite {
+    font: inherit;
+    font-style: normal;
+    vertical-align: baseline;
+    line-height: inherit;
+}
+/* DS-F8C-T1: the theme's `nowrap` on `.math-inline` kept KaTeX from breaking
+   at its own relation and operator points, so seven inline formulas ran past
+   the article's edge at 390 (latex-paper `2468553` deletes it). */
+article.paper-article .math-inline {
+    white-space: normal;
+}
 /* DS-F8-C3: an equation number is upright mono, inside a theorem's italic too
    (Fira Code has no italic; the slant was synthetic). */
 article.paper-article .math-block__number {
