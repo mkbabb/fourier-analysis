@@ -60,6 +60,13 @@ const contentsOpen = ref(true);
 // bar never registers, so its mount/unmount cannot clear the drawer's.
 const sidebarNav = ref<HTMLElement | null>(null);
 watch(sidebarNav, (el) => toc.registerNavEl(el), { immediate: true });
+
+/** X-DS DS-F14C-L1: the list has scrolled under the held head (the follow
+ *  scrolls it too), so the head's foot shows the cut's hairline. */
+const navScrolled = ref(false);
+function onNavScroll() {
+    navScrolled.value = (sidebarNav.value?.scrollTop ?? 0) > 0;
+}
 onBeforeUnmount(() => toc.registerNavEl(null));
 
 /**
@@ -93,8 +100,10 @@ function toggleDrawer() {
                 class="sidebar-nav glass-quiet scrollbar-thin"
                 data-surface="opaque"
                 :data-contents="contentsOpen ? 'open' : 'closed'"
+                :data-scrolled="navScrolled || undefined"
                 aria-label="Table of contents"
                 :inert="!drawerOpen"
+                @scroll.passive="onNavScroll"
             >
                 <!-- X.F.W13.a — OA-13: the CONTENTS disclosure is the producer's
                      `Collapsible` (it owns `aria-expanded` and the motion) on a
@@ -332,8 +341,11 @@ function toggleDrawer() {
    the page readout left view and the rail began mid-tree, untitled. The head
    is held at the port's top on the rail's own opaque fill (glass's
    `data-surface="opaque"` is `--card`); only the list scrolls under it. No
-   shadow and no rule: the head is the same plate. `flow-root` keeps the
-   header's bottom margin inside the fill. */
+   shadow: the head is the same plate. `flow-root` keeps the header's bottom
+   margin inside the fill.
+   X-DS fourier pass 14 (critic F14C) · DS-F14C-L1: at rest no rule either,
+   but once the list has scrolled under the head the cut shows the app's one
+   hairline at the head's foot, as the article's own cut does (DS-F7C-C1). */
 .sidebar-head {
     position: sticky;
     top: 0;
@@ -341,6 +353,20 @@ function toggleDrawer() {
     display: flow-root;
     padding-top: 0.625rem;
     background: var(--card);
+}
+
+.sidebar-head::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: -1px;
+    block-size: 1px;
+    background: transparent;
+    pointer-events: none;
+}
+
+.sidebar-nav[data-scrolled] .sidebar-head::after {
+    background: var(--border);
 }
 
 .sidebar-header {
