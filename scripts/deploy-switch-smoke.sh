@@ -165,7 +165,9 @@ check "D changed: mongo was recreated ($(printf '%.12s' "$m1") → $(printf '%.1
   && "$(container_state "$m2")" == "healthy" ]]; rc=$?
 check "D changed: the recreated mongo runs the checked-out definition (1 GiB) and is healthy" "$rc"
 backup="$(ls -1 "$FOURIER_MONGO_BACKUP_DIR"/mongo-data-*.tar.gz 2>/dev/null)"
-[[ "$(printf '%s\n' "$backup" | grep -c .)" -eq 1 ]] && tar tzf "$backup" | grep -q 'WiredTiger.wt'; rc=$?
+# The listing goes to a file first: `tar | grep -q` would SIGPIPE tar under pipefail.
+[[ "$(printf '%s\n' "$backup" | grep -c .)" -eq 1 ]] && tar tzf "$backup" >"$WORK/backup.list" \
+  && grep -q 'WiredTiger.wt' "$WORK/backup.list"; rc=$?
 check "D changed: one cold backup of the data volume was taken first ($(basename "${backup:-none}"))" "$rc"
 [[ "$(mexec 'db.getSiblingDB("fourier").s1_marker.countDocuments({_id: "s1"})')" == "1" ]]; rc=$?
 check "D changed: the data survived the recreate (the marker document reads back)" "$rc"
