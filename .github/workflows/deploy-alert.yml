@@ -1,0 +1,75 @@
+# deploy-alert.yml — X·F F.REL .h1 (COHESION §0ge.4, R-h1 ruled): the WATCHED
+# channel of the API deploy (inv-31).
+#
+# The API ships over the host webhook (scripts/deploy-hook.sh), which has no
+# GITHUB_TOKEN and so cannot raise an alert anyone sees. This workflow watches
+# that deploy from outside: after every GREEN master push CI run it reads the
+# host's deploy-of-record at the edge (GET /deploy-record.json, written by the
+# hook's publish_record) until it shows outcome OK at the CI-verified SHA with
+# /api/health live. A ROLLED_BACK or ALERT deploy, or no OK within the bound (a
+# refused deploy, a hook that never ran, a host whose hook predates .h1, a dead
+# API), opens ONE GitHub issue labelled `deploy-alert`, or comments on the open
+# one, through this workflow's own GITHUB_TOKEN (scripts/deploy-alert.sh).
+# FOURIER_DEPLOY_ALERT_WEBHOOK, on the host, is an optional second sink.
+#
+# The trigger and the guard mirror deploy-pages.yml: `workflow_run` on CI, the
+# job gated on conclusion success + head_branch master + event push, and the
+# watched SHA is github.event.workflow_run.head_sha (never github.sha, which is
+# the workflow-file ref under workflow_run). workflow_dispatch re-watches a SHA
+# by hand (default: the master tip).
+
+name: deploy-alert
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "The 40-hex master SHA whose API deploy to watch (empty = the master tip)"
+        required: false
+        default: ""
+
+# One watcher per SHA; a newer push's watcher never cancels an older one's alert.
+concurrency:
+  group: deploy-alert-${{ github.event.workflow_run.head_sha || inputs.sha || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    name: watch the API deploy (alert on failure or timeout)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    # The watcher's own bound is 30 min (scripts/deploy-alert.sh --timeout).
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          sparse-checkout: scripts/deploy-alert.sh
+          sparse-checkout-cone-mode: false
+
+      - name: resolve the watched SHA
+        id: sha
+        env:
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          sha="${RUN_SHA:-${INPUT_SHA:-$(git rev-parse HEAD)}}"
+          echo "sha=${sha}" >>"$GITHUB_OUTPUT"
+
+      - name: watch the deploy-of-record; open or update the deploy-alert issue on failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.sha.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash scripts/deploy-alert.sh --sha "$SHA" --run-url "$RUN_URL" --repo "$GITHUB_REPOSITORY"
