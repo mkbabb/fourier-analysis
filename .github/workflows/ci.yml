@@ -49,10 +49,18 @@ on:
 jobs:
   api-tests:
     name: api/tests (with live Mongo)
-    runs-on: ubuntu-latest
+    # X·F F.REL `.m2` (value.js COHESION §0gh.1): CI runs production's own cell —
+    # mongod 8.0.20 exactly (docker-compose.yml, which the prod overlay inherits)
+    # on Ubuntu 22.04, the host's OS and kernel family. `ubuntu-latest` moved to
+    # kernels >= 6.19, which mongod 8.0.x refuses (log id 12257600,
+    # SERVER-121912). The 22.04 image is deprecated from 2026-09-17 and retired
+    # 2027-04-17 (actions/runner-images#14254); moving off it, and to 8.0.35,
+    # is one deliberate act on production and CI together. Every job that boots
+    # mongo carries this pin and this label.
+    runs-on: ubuntu-22.04
     services:
       mongo:
-        image: mongo:8.0
+        image: mongo:8.0.20
         ports:
           - 27017:27017
         options: >-
@@ -74,6 +82,10 @@ jobs:
         # NOT `web` — without `--extra dev` `uv run pytest` fails "Failed to spawn: pytest".
         # Mirror the Dockerfile dev stage (`uv sync --frozen --extra web --extra dev`).
         run: uv sync --extra web --extra dev
+      - name: The cell of record (kernel + live mongod version)
+        run: |
+          echo "kernel $(uname -r)"
+          uv run python -c "from pymongo import MongoClient; print('mongod', MongoClient('mongodb://localhost:27017', serverSelectionTimeoutMS=15000).server_info()['version'])"
       - name: Run api tests
         env:
           MONGO_TEST_URI: mongodb://localhost:27017
@@ -283,7 +295,7 @@ jobs:
 
   e2e-tests:
     name: e2e (Playwright, COMPUTE_RATE_LIMIT=1000)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # X·F F.REL `.vb2` (value.js COHESION §0fk.2 (b)): the job runs IN the
     # renderer the visual goldens are minted and read on, so one renderer of
     # record serves both the local `*-linux.png` mint and this gate (CI never
@@ -295,7 +307,7 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.61.0-noble
     services:
       mongo:
-        image: mongo:8.0
+        image: mongo:8.0.20
         options: >-
           --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' || mongo --quiet --eval 'db.runCommand({ping:1}).ok'"
           --health-interval 10s
@@ -317,6 +329,11 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Install Python deps
         run: uv sync --extra web
+      # `.m2`: inside the job container `uname -r` is the runner's kernel.
+      - name: The cell of record (kernel + live mongod version)
+        run: |
+          echo "kernel $(uname -r)"
+          uv run python -c "from pymongo import MongoClient; print('mongod', MongoClient('mongodb://mongo:27017', serverSelectionTimeoutMS=15000).server_info()['version'])"
       - name: Install web deps
         working-directory: web
         run: npm ci
@@ -445,7 +462,7 @@ jobs:
   # never ships a SHA whose production stack does not boot.
   prod-compose:
     name: production compose boot + health
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -454,6 +471,16 @@ jobs:
       # writes the server PEM 0600 as the runner user, which mongod in the
       # container cannot read through the bind-mount; hand it to mongod's uid
       # exactly as the host does.
+      # `.m2`: the mongo image as the deploy hook composes it (base + prod
+      # overlay; the overlay states no image, so production inherits the pin),
+      # and that image's mongod. The password only satisfies the overlay's
+      # required-variable interpolation; nothing boots in this step.
+      - name: The cell of record (kernel + composed mongod version)
+        run: |
+          echo "kernel $(uname -r)"
+          img="$(MONGO_PASSWORD=config-read-only docker compose -f docker-compose.yml -f docker-compose.prod.yml config --images | grep '^mongo:')"
+          echo "image ${img}"
+          docker run --rm "${img}" mongod --version | head -1
       - name: Mongo TLS material, owned as on the host
         run: |
           bash scripts/gen-mongo-certs.sh >/dev/null
