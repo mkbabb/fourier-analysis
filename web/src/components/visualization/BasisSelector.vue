@@ -8,6 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from "@mkbabb/glass-ui/toggle-group";
 import { ANIMATION_DEFAULTS, CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { normalizeBasisKey } from "@/lib/basis";
 import { basisDisplay } from "./lib/basis-display";
+import { useWorkspaceStore } from "@/stores/workspace";
 import { RotateCcw } from "@lucide/vue";
 
 /* X.F.W14U.c1 — addendum (g), COHESION §0da: the owner reverses UIA-F-172's
@@ -19,10 +20,18 @@ import { RotateCcw } from "@lucide/vue";
    deleted. */
 const FOURIER_HUE = computed(() => basisDisplay.fourier.color);
 
+/* X-DS fourier pass 5 · DS-F5C-C1: the layer stays mounted when a background
+   compute fails, and says so in one muted line (`store.computeError`). */
+const store = useWorkspaceStore();
+
 const props = defineProps<{
     activeBases?: string[];
     nHarmonics?: number;
     nPoints?: number;
+    /** X-DS fourier pass 12 · DS-F12C-C1: the stage beside this aside already
+     *  says the compute failed (side-by-side form, nothing drawn), so the
+     *  section does not repeat the line; the stage's line is the live region. */
+    stageSaysFailed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -143,6 +152,11 @@ function resetDefaults() {
             </Tooltip>
         </template>
 
+        <p v-if="store.computeError && !stageSaysFailed" class="compute-status text-caption" role="status">
+            <span class="compute-status-msg">{{ store.computeError }}</span>
+            <Button emphasis="text" size="sm" :loading="store.computing" @click="store.retryCompute()">Retry</Button>
+        </p>
+
         <!-- X-DS pass 2 · DS-F2-C15: two selection semantics (a one-of-three
              Fourier mode; independent polynomial toggles) each get a caption
              label on the aside's label size and start on its label column, so
@@ -209,6 +223,13 @@ function resetDefaults() {
 .basis-icon--fourier {
     font-size: 1.75em;
     margin: -0.3em -0.05em;
+}
+/* X-DS fourier pass 10 · DS-F10C-T1: the busy notice speaks for the whole
+   section, so it sits on the section head's gap on both sides: below it, the
+   same step glass composes above it (the trigger's `py-2` under the heading
+   plus the layer body's `py-2`), not the groups' row step. */
+.compute-status {
+    margin-block-end: calc(var(--spacing) * 4);
 }
 /* X.F.W14U.vstage — the two choosers stack, each one row. X-DS pass 2 ·
    DS-F2-C15: each row is captioned and start-aligned, as every other row in

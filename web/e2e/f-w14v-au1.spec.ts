@@ -326,11 +326,19 @@ for (const vp of [{ width: 1440, height: 900 }, PORTRAIT]) {
             const g: Record<string, number> = {};
             g.visualize = await gutter(page, `/v/${seededViz().slug}`, ".viz-configurator");
             g.equation = await gutter(page, "/equation", ".eq-configurator");
-            g.gallery = await gutter(page, "/gallery", "main [role=tablist]");
+            // X-DS fourier pass 8 · DS-F8C-C1: /gallery is a content route. At
+            // >= 640 it sits in /paper's 72rem measure, so its content edge is
+            // /paper's, not the workspace routes' gutter; below 640 the measure
+            // is wider than the column and every route shares the one gutter.
+            const gallery = await gutter(page, "/gallery", "main [role=tablist]");
             if (vp.width < 640) {
+                g.gallery = gallery;
                 g.extractor = await gutter(page, "/demo/shape-extractor", ".extractor-page", true);
                 g.notFound = await gutter(page, "/no-such-route", "[data-testid=not-found]");
                 g.paper = await gutter(page, "/paper", ".paper-layout", true);
+            } else {
+                const paper = await gutter(page, "/paper", ".paper-layout", true);
+                expect.soft(gallery, `gallery edge ${gallery} vs /paper's measure ${paper}`).toBe(paper);
             }
             const vals = Object.values(g);
             expect.soft(Math.max(...vals) - Math.min(...vals), `gutters ${JSON.stringify(g)}`).toBe(0);

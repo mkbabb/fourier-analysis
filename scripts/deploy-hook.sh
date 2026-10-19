@@ -46,11 +46,15 @@
 #     the webhook receiver's log, which nothing watches — and the spec's own
 #     words are that "an ALERT line in an unwatched log does not clear this
 #     gate". Every terminal outcome now goes to a WATCHED channel and leaves a
-#     durable, machine-readable deploy-of-record; the channel is REQUIRED, so
-#     an unobservable deploy refuses to start rather than running blind. The
-#     deploy-of-record is also the surface that makes the host's SHA readable
-#     at all: before it, "which commit is the host on?" had no answer from
-#     anywhere off the host, which is why the drift went 24 days unnoticed.
+#     durable, machine-readable deploy-of-record. F.REL .h1 (COHESION §0ge.4)
+#     moved the watched channel OFF the host: the edge serves the record at
+#     /deploy-record.json and .github/workflows/deploy-alert.yml raises a
+#     `deploy-alert` GitHub issue unless it reads OK at the CI-verified SHA, so
+#     the deploy no longer refuses to start for want of a webhook (now an
+#     optional second sink). The deploy-of-record is also the surface that
+#     makes the host's SHA readable at all: before it, "which commit is the
+#     host on?" had no answer from anywhere off the host, which is why the
+#     drift went 24 days unnoticed.
 #
 # It carries NO secret — the HMAC secret lives only in GitHub's webhook config
 # and the host's un-tracked hooks.json (see the precepts note staged in
@@ -132,12 +136,19 @@ readonly DEPLOY_BRANCH="${FOURIER_DEPLOY_BRANCH:-master}"
 # ROLLED_BACK, ALERT). It is the answer to "which commit is the host on, and
 # how did it get there?" — a question that had no answer anywhere before this.
 #
-# ALERT_WEBHOOK is the WATCHED channel. It is REQUIRED: fail-closed on
-# observability. A deploy that cannot report its own failure is precisely the
-# chronic M.W4 names, and adding one more line to an unwatched log does not
-# cure it. The operator sets FOURIER_DEPLOY_ALERT_WEBHOOK in the host's
-# un-tracked hooks.json environment (a Slack/Discord/ntfy-compatible endpoint
-# accepting {"text": "..."}); it is a URL, not a secret this script may print.
+# THE WATCHED CHANNEL (X·F F.REL .h1, COHESION §0ge.4 — R-h1 ruled). The
+# primary sink is a GitHub issue labelled `deploy-alert`, opened or updated by
+# .github/workflows/deploy-alert.yml through its own GITHUB_TOKEN (the host has
+# no token). That workflow runs after every green master CI, reads the record
+# below OFF the host (the edge serves it at /deploy-record.json, see
+# publish_record) and alerts unless it reads outcome OK at the CI-verified SHA
+# before its bound — so a REFUSED, ROLLED_BACK or ALERT deploy, a hook that never
+# ran, and a host whose hook predates this cure all reach the same watched issue.
+#
+# ALERT_WEBHOOK is an OPTIONAL second sink: when the operator sets
+# FOURIER_DEPLOY_ALERT_WEBHOOK in the host's un-tracked hooks.json environment
+# (a Slack/Discord/ntfy-compatible endpoint accepting {"text": "..."}), every
+# notify also posts there. Unset, the deploy runs: the issue is the floor.
 readonly DEPLOY_RECORD="${FOURIER_DEPLOY_RECORD:-/opt/deploy/fourier-deploy-record.json}"
 readonly ALERT_WEBHOOK="${FOURIER_DEPLOY_ALERT_WEBHOOK:-}"
 readonly SYSLOG_TAG="fourier-deploy"
@@ -192,23 +203,21 @@ notify() {
     fi
 }
 
-# require_alert_channel — the BLOCKING half of M.W4.
+# require_alert_channel — inv-31's channel check, no longer a REFUSE (F.REL .h1).
 #
-# Fail-closed on observability. An unobservable deploy is refused before it can
-# touch the tree, because the alternative is the exact chronic: a rollback that
-# happened, worked or did not, and told nobody.
+# The watched channel is the off-host `deploy-alert` issue, which needs nothing
+# on the host, so an unset webhook no longer blocks a deploy: it is named in the
+# log and syslog, and the deploy runs. (The prior REFUSE here held every master
+# deploy, the one carrying this cure included, while no owner secret existed.)
 require_alert_channel() {
     if [[ -z "${ALERT_WEBHOOK}" ]]; then
-        printf '[deploy-hook %s] REFUSE — inv-31: FOURIER_DEPLOY_ALERT_WEBHOOK is unset.\n' \
-            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
-        printf '  A deploy that cannot report its own failure in a watched channel does not run.\n' >&2
-        printf '  Set FOURIER_DEPLOY_ALERT_WEBHOOK in the host hooks.json environment for this arm.\n' >&2
+        log "inv-31: FOURIER_DEPLOY_ALERT_WEBHOOK unset — the second sink is off; the watched channel is the deploy-alert issue (.github/workflows/deploy-alert.yml)"
         if command -v logger >/dev/null 2>&1; then
-            logger -t "${SYSLOG_TAG}" -p daemon.err -- \
-                "REFUSE — inv-31: FOURIER_DEPLOY_ALERT_WEBHOOK unset; deploy not attempted" || true
+            logger -t "${SYSLOG_TAG}" -p daemon.notice -- \
+                "inv-31: webhook sink unset; alerts reach the deploy-alert issue only" || true
         fi
-        return 1
     fi
+    return 0
 }
 
 # write_record OUTCOME PREV NEW CI_RUN_ID DETAIL — the DURABLE half of inv-31.
@@ -241,6 +250,39 @@ write_record() {
     fi
     mv -f "${tmp}" "${DEPLOY_RECORD}" 2>/dev/null \
         || notify warning "inv-31 — could not install the deploy-of-record at ${DEPLOY_RECORD}"
+    publish_record "${outcome}" "${prev}" "${new}" "${ci_run_id}" "${stamp}" "${detail}"
+}
+
+# publish_record OUTCOME PREV NEW CI_RUN_ID STAMP DETAIL — the OFF-HOST half of
+# inv-31 (F.REL .h1). The deploy-alert workflow cannot read /opt/deploy, so the
+# same record is served by the edge at GET /deploy-record.json: one exact-match
+# location, written as a gitignored .conf in the pin directory nginx/fourier.conf
+# already includes, then validated (`nginx -t`) and reloaded gracefully by
+# edge_reload. A config the edge rejects is removed, so a bad record can never
+# poison the next pin. Best-effort like the durable write: the workflow reads a
+# missing or stale record as "no OK at this SHA" and alerts on its bound.
+publish_record() {
+    local outcome="$1" prev="$2" new="$3" ci_run_id="$4" stamp="$5" detail="$6"
+    local file="${EDGE_PIN_DIR}/deploy-record.conf" json
+    # nginx's quoted return string: no single quote (the delimiter), no `$`
+    # (variable interpolation) and no backslash or double quote (nginx's own
+    # escapes would unescape the JSON's) may reach it; the detail is prose and
+    # every other field is a SHA, an id or a stamp, so no field a reader parses loses a byte.
+    detail="$(printf '%s' "${detail}" | tr -d "'\$\\\\\"")"
+    json="$(printf '{"repo":"%s","outcome":"%s","deployed_sha":"%s","previous_sha":"%s","ci_run_id":"%s","recorded_at":"%s","detail":"%s"}' \
+        "${REPO_SLUG}" "${outcome}" "${new}" "${prev}" "${ci_run_id}" "${stamp}" "${detail}")"
+    if ! { mkdir -p "${EDGE_PIN_DIR}" \
+            && printf "location = /deploy-record.json { default_type application/json; return 200 '%s'; }\n" \
+                "${json}" >"${file}.tmp" \
+            && mv -f "${file}.tmp" "${file}"; } 2>/dev/null; then
+        rm -f "${file}.tmp" 2>/dev/null || true
+        notify warning "inv-31 — could not write the edge copy of the deploy-of-record (outcome ${outcome} for ${new})"
+        return 0
+    fi
+    if ! edge_reload; then
+        rm -f "${file}"
+        notify warning "inv-31 — the edge refused the deploy-of-record location; /deploy-record.json is not serving ${outcome} for ${new}"
+    fi
 }
 
 # ── M.W3 — inv-28: the API arm is fail-closed on a same-SHA green CI run ─────
@@ -749,8 +791,8 @@ deploy() {
 
 # ── Entry point — serialise the whole deploy under the fourier lock ──────────
 main() {
-    # M.W4 — fail-closed on observability, BEFORE the lock and before any act
-    # that could change the host's state.
+    # inv-31 — name the channels before the lock (F.REL .h1: the watched
+    # channel is the off-host deploy-alert issue; the webhook is optional).
     require_alert_channel
 
     log "fourier deploy-hook invoked (repo arg: ${1:-<none>})"

@@ -57,7 +57,7 @@
             @update:model-value="emitDuration"
         />
 
-        <div class="config-field">
+        <div class="config-field config-easing">
             <!-- X-DS DS-F5-C2: glass `Label`, the rung the Duration row's
                  label takes (SliderControl), so the card's two field labels
                  are one size. -->
@@ -79,7 +79,7 @@
                     `aria-hidden` HTML text rather than SVG `<text>`, or a
                     caption opt-out — rides the SS-6 relay, never a local hack.
                 -->
-                <SelectTrigger class="w-full" :aria-labelledby="`${easingLabelId} ${titleId}`">
+                <SelectTrigger class="config-select" :aria-labelledby="`${easingLabelId} ${titleId}`">
                     <span class="truncate">{{ presets[easing]?.label ?? easing }}</span>
                 </SelectTrigger>
                 <SelectContent>
@@ -219,5 +219,37 @@ const easingNames = EASING_PRESET_NAMES;
 .config-label {
     display: block;
     margin-bottom: var(--space-atom);
+}
+
+.config-select {
+    inline-size: 100%;
+}
+
+/* X-DS pass 15 · DS-F15X-C2 — Easing takes the Duration row's grammar where
+   that row is one line (SliderControl's DS-F7X-C2 gate: a fine pointer from
+   1024 px up): the label in the card's one label column, then the select at a
+   bounded measure (a preset name, not the card's whole width), so the card's
+   heaviest element is no longer its secondary control. Elsewhere both rows
+   stay stacked. `--row-label-col` is the column both rows share, so the
+   select starts on the Duration field's x. DS-F16X-C1: the column is declared
+   once on /morph's controls column (FourierMorphDemo), so the levels card's
+   Low and High rows read the same one. */
+@media (min-width: 1024px) and (pointer: fine) {
+    .config-easing {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-atom);
+    }
+
+    .config-easing .config-label {
+        min-width: var(--row-label-col);
+        margin-bottom: 0;
+    }
+
+    .config-easing .config-select {
+        inline-size: 12rem;
+        max-inline-size: 100%;
+    }
 }
 </style>

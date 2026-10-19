@@ -190,7 +190,8 @@ function drawEpicycleFrame(
     const allPositions = fourierPositionsAt(components, anim.t, components.length);
     const tip = allPositions[allPositions.length - 1];
 
-    // Trail — golden when hovered
+    // Trail: the fourier identity hue, at rest and on hover (the golden
+    // hover re-ink was deleted at X-DS pass 1, F1-05).
     trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
     if (layers.trail) trail.draw(s, view, trailColor);
 

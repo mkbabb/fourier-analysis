@@ -11,7 +11,7 @@ import type {
     WorkspaceDraft,
 } from "@/lib/types";
 import * as api from "@/lib/api";
-import { isOwnerRequired, problemMessage } from "@/lib/api-problem";
+import { ApiProblem, isOwnerRequired, problemMessage } from "@/lib/api-problem";
 import { saveDraft, loadDraft, listDrafts } from "@/lib/draftStorage";
 import {
     defaultContourSettings,
@@ -35,6 +35,16 @@ import {
 export interface SavedVisualizationRef {
     slug: string;
 }
+
+/**
+ * The two loaders' fallback messages, for a failure that carries no detail of
+ * its own. X-DS fourier pass 11 · DS-F11X-T1: exported so the stage can tell a
+ * real server diagnosis from this restatement of its own heading.
+ */
+export const LOAD_FALLBACK = {
+    workspace: "Failed to load workspace",
+    visualization: "Failed to load visualization",
+} as const;
 
 export const useWorkspaceStore = defineStore("workspace", () => {
     const router = useRouter();
@@ -73,6 +83,16 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const uploadError = ref<string | null>(null);
     const computing = ref(false);
     const error = ref<string | null>(null);
+    /*
+     * X-DS fourier pass 5 · DS-F5C-C1: a background compute's failure is the
+     * aside's to show, not a toast's. The contour, epicycle and basis computes
+     * start on their own (an image landing, a settings change), so their
+     * failure was a transient alarm that left the Basis and Coefficients
+     * sections unmounted with no word on why. It is recorded here, apart from
+     * `error` (the toast and the stage card's channel, for acts the person
+     * started), and the Basis layer keeps its place and says so in one line.
+     */
+    const computeError = ref<string | null>(null);
     const revision = ref(0);
     // Separate revision counters for compute methods so that
     // loadWorkspace incrementing `revision` doesn't cause compute
@@ -90,6 +110,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     function endCompute() {
         _computeDepth = Math.max(0, _computeDepth - 1);
         computing.value = _computeDepth > 0;
+    }
+    /** A rate limit or an overloaded server is "busy", not a broken compute. */
+    function computeFailure(e: unknown, fallback: string): string {
+        if (e instanceof ApiProblem && (e.status === 429 || e.status === 503)) return "Server busy, not computed yet";
+        return problemMessage(e, fallback);
     }
 
     // Draft auto-save (debounced)
@@ -144,6 +169,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         uploading.value = true;
         draftSnapshots = [];
         error.value = null;
+        computeError.value = null;
         uploadError.value = null;
         try {
             invalidateInFlightComputation();
@@ -179,6 +205,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     async function loadWorkspace(slug: string) {
         loading.value = true;
         error.value = null;
+        computeError.value = null;
         epicycleRevision++;
         basesRevision++;
         api.abortInflight(["computeEpicycles", "computeBases", "getContour"]);
@@ -226,7 +253,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             await _saveDraftNow();
         } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = problemMessage(e, "Failed to load workspace");
+                error.value = problemMessage(e, LOAD_FALLBACK.workspace);
         } finally {
             loading.value = false;
         }
@@ -241,6 +268,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     async function loadVisualization(slug: string) {
         loading.value = true;
         error.value = null;
+        computeError.value = null;
         epicycleRevision++;
         basesRevision++;
         api.abortInflight(["computeEpicycles", "computeBases", "getContour"]);
@@ -266,7 +294,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             contour.value = markRaw(contourAsset);
         } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = problemMessage(e, "Failed to load visualization");
+                error.value = problemMessage(e, LOAD_FALLBACK.visualization);
         } finally {
             loading.value = false;
         }
@@ -282,7 +310,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     async function extractContour() {
         if (!imageSlug.value) return;
         beginCompute();
-        error.value = null;
+        computeError.value = null;
         const rev = ++revision.value;
         try {
             const result = await api.extractContour(
@@ -294,8 +322,21 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             scheduleDraftSave();
         } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = problemMessage(e, "Contour extraction failed");
+                computeError.value = computeFailure(e, "Contour extraction failed");
             throw e;
+        } finally {
+            endCompute();
+        }
+    }
+
+    /** The status line's Retry: the contour if there is none yet, then both computes. */
+    async function retryCompute() {
+        beginCompute();
+        try {
+            if (!contour.value) await extractContour();
+            await Promise.allSettled([runComputeEpicycles(), runComputeBases()]);
+        } catch {
+            // Recorded in `computeError`, which the status line shows.
         } finally {
             endCompute();
         }
@@ -334,7 +375,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     async function runComputeEpicycles() {
         if (!contour.value) return;
         beginCompute();
-        error.value = null;
+        computeError.value = null;
         const rev = ++epicycleRevision;
         try {
             const result = await api.computeEpicycles(
@@ -349,7 +390,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             scheduleDraftSave();
         } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = problemMessage(e, "Epicycle computation failed");
+                computeError.value = computeFailure(e, "Epicycle computation failed");
             throw e;
         } finally {
             endCompute();
@@ -359,7 +400,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     async function runComputeBases() {
         if (!contour.value) return;
         beginCompute();
-        error.value = null;
+        computeError.value = null;
         const rev = ++basesRevision;
         try {
             const result = await api.computeBases(
@@ -378,7 +419,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             scheduleDraftSave();
         } catch (e: unknown) {
             if (!api.isAbortError(e))
-                error.value = problemMessage(e, "Bases computation failed");
+                computeError.value = computeFailure(e, "Bases computation failed");
             throw e;
         } finally {
             endCompute();
@@ -508,6 +549,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         contourSettings.value = defaultContourSettings();
         animationSettings.value = defaultAnimationSettings();
         error.value = null;
+        computeError.value = null;
         uploadError.value = null;
         loading.value = false;
         uploading.value = false;
@@ -533,6 +575,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         uploadError,
         computing,
         error,
+        computeError,
         revision,
         // Methods
         uploadImage,
@@ -546,6 +589,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         saveContourPoints,
         computeEpicycles: runComputeEpicycles,
         computeBases: runComputeBases,
+        retryCompute,
         saveVisualization,
         markPublished,
         // `createSnapshot` is retained as an alias for the (unmigrated)

@@ -44,6 +44,13 @@ declare module "vue-router" {
          */
         ownsScroll?: boolean;
         /**
+         * X-DS fourier pass 9 · DS-F9C-L1: below lg the route's sticky band
+         * ends on the scroll cut's rule, so the shell's `<main>` draws none
+         * (`App.vue`). X-DS fourier pass 10 · DS-F10C-L1: at every width; at
+         * lg the route draws its cut at its own column's measure.
+         */
+        ownsCut?: boolean;
+        /**
          * X.F.W14V.au6 — A2-FO-L1-25: the section's entry in the dock, declared
          * on the one route that names it (the dock links to its `tab`).
          * `order` places it: `router.getRoutes()` returns the matchers by
@@ -192,6 +199,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
             tab: "/morph",
             nav: { label: "Morph", icon: Shuffle, order: 4 },
+            ownsCut: true,
             title: "Morph — Fourier Analysis",
             description:
                 "Morph one shape into another through their shared Fourier harmonic basis — an interactive study of epicycle interpolation.",

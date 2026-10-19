@@ -4,7 +4,7 @@ import { watchDebounced, useEventListener } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
 import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import { useRoute, useRouter } from "vue-router";
-import { useWorkspaceStore } from "@/stores/workspace";
+import { LOAD_FALLBACK, useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { useImageUpload, IMAGE_UPLOAD_KEY } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
@@ -349,16 +349,27 @@ const stageError = computed(() => !!store.error && !store.imageSlug);
 /** X-DS DS-F-C5: the server's detail, unless it only restates the
  * description (a not-found detail names the same slug the description does).
  * X-DS pass 13 · DS-F15-C5: a bare not-found title ("Image not found") restates
- * it too, so the diagnosis line is left to a real server diagnosis. */
+ * it too, so the diagnosis line is left to a real server diagnosis.
+ * X-DS fourier pass 11 · DS-F11X-T1: and so does the loaders' own fallback
+ * ("Failed to load visualization"), which a failure with no detail of its own
+ * leaves: the line renders only for a problem that carries one. */
+const loadFallbacks: readonly string[] = Object.values(LOAD_FALLBACK);
 const stageErrorDetail = computed(() => {
     const slug = String(route.params.visualizationSlug ?? route.params.imageSlug ?? "");
     const error = store.error;
-    if (!error || (slug && error.includes(slug)) || /\bnot found\.?$/i.test(error.trim())) return null;
+    if (!error || loadFallbacks.includes(error)) return null;
+    if ((slug && error.includes(slug)) || /\bnot found\.?$/i.test(error.trim())) return null;
     return error;
 });
 /** UIA-F-73 ⊕ F-71: the first compute has nothing to draw yet; the stage says
  *  so in the DOM (one busy mark), not with a painted box. */
 const firstCompute = computed(() => store.computing && !store.epicycleData && !store.basesData);
+/** X-DS fourier pass 6 · DS-F6C-C1: a background compute failed with nothing
+ *  drawn. The stage, the primary surface, carries the same one line the Basis
+ *  layer does (one channel: `store.computeError`), not a void plate. */
+const stageComputeFailed = computed(
+    () => !!store.computeError && !store.computing && !store.epicycleData && !store.basesData,
+);
 
 // The ONE upload affordance with no image: the main area's drop target (a
 // glass Button + the format line). The canvas itself is no longer a
@@ -451,7 +462,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                          indeterminate Progress; the retired transparent-topped ring is
                          gone), announced as a status. -->
                     <div v-if="stageLoading" class="stage-state" role="status">
-                        <Progress :model-value="null" variant="liquid" size="sm" class="stage-busy-bar"
+                        <Progress :model-value="null" size="sm" class="stage-busy-bar"
                             :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'" />
                         <p class="text-caption text-muted-foreground">{{ isSavedRoute ? "Loading the visualization…" : "Loading the workspace…" }}</p>
                     </div>
@@ -550,9 +561,23 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
                              (the canvas no longer paints a dashed "drop here" box). -->
                         <div v-if="firstCompute" class="stage-state stage-state--over" role="status">
-                            <Progress :model-value="null" variant="liquid" size="sm" class="stage-busy-bar"
+                            <Progress :model-value="null" size="sm" class="stage-busy-bar"
                                 aria-label="Computing the Fourier decomposition" />
                             <p class="text-caption text-muted-foreground">Computing the Fourier decomposition…</p>
+                        </div>
+                        <!-- X-DS fourier pass 6 · DS-F6C-C1: a failed background compute
+                             with nothing drawn says so where the outline would be, in the
+                             first compute's slot: the shared `.compute-status` line (the
+                             aside's own, which stays the live region). X-DS fourier pass 12 ·
+                             DS-F12C-C1: one line per visible surface. In the rail and split
+                             forms the stage and aside show together, so the aside drops its
+                             copy and this line is the live region; in the tabbed sheet each
+                             tab keeps its own line, the aside's still the live one. -->
+                        <div v-if="stageComputeFailed" class="stage-state stage-state--over">
+                            <p class="compute-status text-caption" :role="tabbed ? undefined : 'status'">
+                                <span class="compute-status-msg">{{ store.computeError }}</span>
+                                <Button emphasis="text" size="sm" @click="store.retryCompute()">Retry</Button>
+                            </p>
                         </div>
                         <!-- UIA-F-15: out of edit mode the editor is opacity-hidden but
                              mounted; `inert` keeps it out of the tab order and the
@@ -651,7 +676,10 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                      `update:activeBases` like the other two, so
                                      the third binding is written like the other
                                      two. -->
-                                <BasisSelector v-if="hasData"
+                                <!-- X-DS fourier pass 5 · DS-F5C-C1: a failed compute keeps the
+                                     layer, which holds the failure's status line. -->
+                                <BasisSelector v-if="hasData || store.computeError"
+                                    :stage-says-failed="stageComputeFailed && !tabbed"
                                     v-model:active-bases="activeBases"
                                     v-model:n-harmonics="nHarmonics" v-model:n-points="nPoints" />
                             </Transition>
@@ -1131,6 +1159,11 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     height: auto;
     z-index: var(--z-controls);
     pointer-events: none;
+}
+/* DS-F6C-C1: the stage's compute-failure line keeps its Retry pressable. */
+.stage-state--over > .compute-status {
+    max-inline-size: 100%;
+    pointer-events: auto;
 }
 /* X-DS pass 12 · DS-F14-C1 — the load error on the stage's own frame: the
    empty stage's title and lede measures, the diagnosis under them, and one

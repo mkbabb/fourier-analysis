@@ -49,20 +49,20 @@
                 :disabled="disabled"
                 @click="onSelect(level)"
             >
+                <!-- X-DS fourier pass 14 · DS-F14X-P1: the stage plate's
+                     mechanism; the line is 1.5 css px at every tile size. -->
                 <svg viewBox="0 0 200 200" class="grid-svg">
                     <path
                         :d="getPath(level)"
                         fill="none"
                         stroke="var(--accent-red)"
-                        stroke-width="4"
+                        stroke-width="1.5"
+                        vector-effect="non-scaling-stroke"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                     />
                 </svg>
-                <span
-                    class="grid-label"
-                    :class="{ 'grid-label-active': level === activeLevel }"
-                >
+                <span class="grid-label">
                     n={{ level }}
                 </span>
             </Button>
@@ -271,7 +271,15 @@ function getPath(level: number): string {
            strip. At 50% it measures 3.291 L / 3.984 D. (Re-derived from the
            token values; the 12% reading reproduces the banked 1.275/1.398 to
            the thousandth, which is what validates the model.) */
-        border: 1.5px solid color-mix(in srgb, var(--foreground) 50%, transparent);
+        /* X-DS fourier pass 12 · DS-F12X-C1: the resting edge is a 1 px
+           hairline, the weight of the card's own edge, so the inner tile no
+           longer outweighs its container and the selection (accent edge plus
+           its 2 px ring) is the one heavier mark. The ink stays at the 50 %
+           mix: that is the 1.4.11 floor HLG-37 grades (on `--card`, `--border`
+           measures 1.87 L / 2.00 D and `--border-soft` 1.31 / 1.35, both
+           under 3:1), so the critic's tone arm is
+           refused and only the weight is cured. */
+        border: 1px solid color-mix(in srgb, var(--foreground) 50%, transparent);
         /* ⊘ NOT cured here, and not smoothed: `--card` and `--background` are
            the SAME luminance in the light arm (1.000:1), so the cell's FILL
            carries no separation from the page whatever the consumer does. That
@@ -303,13 +311,20 @@ function getPath(level: number): string {
        Legendre basis hue, a colour that says "Legendre" on a page with no
        Legendre in it. An endpoint is a neutral full-strength edge (the resting
        edge is a 50% mix), without the selection's red ring. */
-    .grid-cell.is-bound:not(.active) {
-        border-color: var(--foreground);
-    }
-
+    /* X-DS fourier pass 11 · DS-F11X-C2: the edge belongs to ONE state. The
+       bound edge (full ink, `:not(.active)`) and the selection edge (red, with
+       its ring) competed for the same property, so at rest the High bound
+       (also the active tile) lost its bound mark and the Low bound read as a
+       second, uncaptioned selection. Selection keeps the edge and its ring;
+       the bounds are marked on the caption (below), which composes with it. */
+    /* X-DS fourier pass 13 · DS-F13X-T1: the ring is one solid accent pixel,
+       so the selection is a crisp 2 px accent edge in both themes. The 2 px
+       ring at a 15 % mix lost its edge on the dark `--card` and read as a soft
+       halo. It stays spread-only (no blur, no offset), so it is still the flat
+       ring that means "selected", with no per-theme counter-style. */
     .grid-cell.active {
         border-color: var(--accent-red);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-red) 15%, transparent);
+        box-shadow: 0 0 0 1px var(--accent-red);
     }
 }
 
@@ -341,8 +356,10 @@ function getPath(level: number): string {
     transition: color 0.15s;
 }
 
-.grid-label-active {
-    color: var(--accent-red);
+/* DS-F11X-C2: the bounds' mark — both of them, the active one included —
+   is the caption at foreground ink and weight; the pair reads as a pair. */
+.grid-cell.is-bound .grid-label {
+    color: var(--foreground);
     font-weight: 600;
 }
 

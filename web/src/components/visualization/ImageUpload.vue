@@ -76,7 +76,7 @@ function onImgError() {
                 class="image-thumb"
                 @error="onImgError"
             />
-            <Button emphasis="secondary" size="sm" @click="openPicker">
+            <Button emphasis="secondary" size="sm" class="image-replace" @click="openPicker">
                 <Upload />
                 Replace image
             </Button>
@@ -123,7 +123,6 @@ function onImgError() {
             <Progress
                 v-if="store.uploading && replacing"
                 :model-value="null"
-                variant="liquid"
                 size="sm"
                 class="mt-2"
                 aria-label="Uploading the image"
@@ -155,11 +154,19 @@ function onImgError() {
 /* The compact image row (F-169). The thumbnail's box is the image: bounded on
    both axes with `auto` sizes, so it keeps the image's aspect and the media
    radius rounds the picture itself (F-239). */
+/* X-DS pass 7 (DS-F7C-C1): each label keeps its one-line reading. The
+   caption and the command never break mid-phrase; when they do not fit side
+   by side, the command drops whole under the caption (the row wraps). */
 .image-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
     border-radius: var(--radius-media);
+}
+.image-replace {
+    flex: none;
+    white-space: nowrap;
 }
 .image-row[data-dragging] {
     box-shadow: 0 0 0 2px var(--focus-ring-color);
@@ -176,5 +183,8 @@ function onImgError() {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+.image-missing p {
+    white-space: nowrap;
 }
 </style>

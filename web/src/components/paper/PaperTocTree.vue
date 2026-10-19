@@ -30,6 +30,7 @@ import {
     CollapsibleTrigger,
 } from "@mkbabb/glass-ui/collapsible";
 import { ChevronRight } from "@lucide/vue";
+import { computed } from "vue";
 
 defineOptions({ name: "PaperTocTree" });
 
@@ -65,6 +66,27 @@ function plainTitle(node: PaperSectionData): string {
         .trim();
 }
 
+/**
+ * X-DS fourier pass 10 (critic F10C) · DS-F10C-T1: each depth's widest ordinal,
+ * in characters with its period ("0.1." among the chapters). The root list
+ * publishes them as `--toc-ord-<depth>`, so every ordinal at a depth holds that
+ * one measure in its own mono figures and the titles there share a left edge,
+ * whichever chapter list they sit in.
+ */
+function ordinalWidths(nodes: readonly PaperSectionData[], depth = 0, out: number[] = []): number[] {
+    for (const node of nodes) {
+        if (node.number) out[depth] = Math.max(out[depth] ?? 0, node.number.length + 1);
+        if (node.subsections) ordinalWidths(node.subsections, depth + 1, out);
+    }
+    return out;
+}
+
+const ordinalMeasures = computed(() =>
+    props.depth === 0
+        ? Object.fromEntries(ordinalWidths(props.nodes).map((w, d) => [`--toc-ord-${d}`, String(w ?? 0)]))
+        : undefined,
+);
+
 function isCurrent(id: string): boolean {
     return props.depth === 0 ? isInActiveChain(id) : isActive(id);
 }
@@ -82,7 +104,7 @@ function choose(node: PaperSectionData) {
 </script>
 
 <template>
-    <ol class="toc-list" :data-depth="depth">
+    <ol class="toc-list" :data-depth="depth" :style="ordinalMeasures">
         <li
             v-for="(node, i) in nodes"
             :key="node.id"
@@ -107,7 +129,7 @@ function choose(node: PaperSectionData) {
                         @click="choose(node)"
                     >
                         <span class="toc-label">
-                            <span v-if="node.number" class="toc-number fira-code">{{ node.number }}.</span>
+                            <span class="toc-number fira-code">{{ node.number ? `${node.number}.` : "" }}</span>
                             <span v-html="renderTitle(node.title)" />
                         </span>
                     </Button>
@@ -226,32 +248,37 @@ function choose(node: PaperSectionData) {
     }
 }
 /* X-DS pass 2 · DS-F2-C8: number and title are ONE child of glass Button's
-   centred row, set as a hanging indent: the number hangs on the title's first
-   line in a fixed measure, and the wrapped lines align in one column. (As two
-   flex children, the number centred between a wrapped title's lines and the
-   numbers zig-zagged down the rail.) */
+   centred row, the number hung on the title's first line, so a wrapped title's
+   lines align in one column (as two children of the Button, the number centred
+   between a wrapped title's lines and the numbers zig-zagged down the rail).
+   X-DS fourier pass 10 (critic F10C) · DS-F10C-T1: the hang is the depth's
+   widest ordinal (`--toc-ord`, from the root list), not a fixed rem guess:
+   "0.1." outran the chapters' 1.5rem and pushed "Introduction" 9px past the
+   chapter titles. The label is a baseline row, so the title column starts at
+   the ordinal's measure and its wrapped lines keep it; an unnumbered row
+   keeps the empty measure, so its title starts on the same edge. */
+.toc-list[data-depth="0"] {
+    --toc-ord: var(--toc-ord-0, 0);
+}
+.toc-list[data-depth="1"] {
+    --toc-ord: var(--toc-ord-1, 0);
+}
+.toc-list[data-depth="2"] {
+    --toc-ord: var(--toc-ord-2, 0);
+}
 .toc-label {
-    --toc-hang: 1.5rem;
-    display: block;
-    padding-inline-start: var(--toc-hang);
-    text-indent: calc(-1 * var(--toc-hang));
+    display: flex;
+    align-items: baseline;
+    gap: 0.22rem;
+    min-inline-size: 0;
 }
-.toc-link[data-depth="1"] .toc-label {
-    --toc-hang: 2.25rem;
-}
-.toc-link[data-depth="2"] .toc-label {
-    --toc-hang: 2.75rem;
-}
-.toc-label:not(:has(.toc-number)) {
-    padding-inline-start: 0;
-    text-indent: 0;
+.toc-label > :last-child {
+    min-inline-size: 0;
 }
 .toc-number {
-    display: inline-block;
-    min-inline-size: var(--toc-hang);
-    text-indent: 0;
+    flex: none;
+    min-inline-size: calc(var(--toc-ord) * 1ch);
     font-size: 0.72rem;
-    padding-inline-end: 0.22rem;
     opacity: 0.5;
 }
 .toc-link[aria-current] .toc-number {

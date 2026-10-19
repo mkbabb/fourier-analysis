@@ -60,6 +60,8 @@ scripts/*
 !scripts/deploy.sh
 !scripts/e2e.sh
 !scripts/deploy-hook.sh
+!scripts/deploy-alert.sh
+!scripts/deploy-alert-fixture.sh
 !scripts/pages-deploy.sh
 !scripts/pages-smoke.sh
 !scripts/model-smoke.sh

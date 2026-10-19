@@ -158,7 +158,7 @@ watch(
                         />
                     </PopoverContent>
                 </Popover>
-                <PaperPageReadout :current-page="currentPage" />
+                <PaperPageReadout :current-page="currentPage" class="floating-toc-page" />
                 <Button
                     emphasis="quiet"
                     size="sm"
@@ -200,6 +200,26 @@ watch(
     /* X-DS pass 2 · DS-F2-C6: the bar sits on the article's own gutter, so
        their edges line up (it was inset 8 px over a 16 px article). */
     padding: 0.5rem var(--page-gutter) 0;
+    /* X-DS fourier pass 7 · DS-F7C-C1: the band's foot is where the scrolled
+       paper is cut, one atom under the bar, as /morph's band (DS-F5-C4). */
+    padding-block-end: var(--space-atom);
+}
+
+/* DS-F7C-C1: the cut's rule, the app's one hairline, hung just under the band's
+   foot so it adds nothing to the band's height. PaperView sets
+   `--floating-toc-rule` once the port has scrolled; transparent at rest.
+   X-DS fourier pass 10 (critic F10C) · DS-F10C-L1: the rule runs the plates'
+   measure, the band's own gutter, as at lg it runs the article's: the band is
+   full-bleed only so it can stick, and its rule stood 16px past the bar and
+   the article on each side. */
+.floating-toc::after {
+    content: "";
+    position: absolute;
+    inset-inline: var(--page-gutter);
+    inset-block-end: -1px;
+    block-size: 1px;
+    background: var(--floating-toc-rule, transparent);
+    pointer-events: none;
 }
 
 .floating-toc-grid {
@@ -216,6 +236,8 @@ watch(
 @media (orientation: landscape) and (max-height: 500px) {
     .floating-toc {
         padding-top: var(--space-residue);
+        /* DS-F7C-C1: one title rung; the rule hangs at the bar's foot. */
+        padding-block-end: 0;
     }
 }
 
@@ -226,9 +248,30 @@ watch(
     padding: 0.25rem;
 }
 
+/* X-DS fourier pass 9 (critic F9C) · DS-F9C-L2: in short landscape the plate
+   hugs the one coarse row. Its block padding goes, and the icon buttons take
+   glass's `xs` rung, which the coarse floor holds at the 44px touch target (the
+   `sm` rung grew them to 54, so the plate stood 64 around a 44 row). */
+@media (orientation: landscape) and (max-height: 500px) {
+    .floating-toc-bar {
+        padding-block: 0;
+    }
+    .floating-toc-search-btn,
+    .floating-toc-search-close {
+        --button-size: var(--control-h-xs);
+    }
+}
+
 .floating-toc-bar--search > :first-child {
     flex: 1;
     min-width: 0;
+}
+
+/* X-DS fourier pass 7 · DS-F7C-T1: the readout holds its widest measure
+   (PaperPageReadout), so the title button, and its chevron, keep one place as
+   the page count grows; the figures sit against the search button. */
+.floating-toc-page {
+    text-align: end;
 }
 
 .floating-toc-title-btn {
@@ -238,11 +281,31 @@ watch(
     text-align: start;
 }
 
+/* X-DS fourier pass 8 (critic F8C) · DS-F8C-T2: on a wide bar (landscape
+   844x390, a tablet below lg) the button took all the free space, so its
+   chevron stood ~400px from the label it opens. There the button is its
+   content's width, the chevron follows the label, and the readout and search
+   keep the bar's end. On the phone the button still fills the bar (its tap
+   target), and the chevron follows the label there too (DS-F18C-T1). */
+@media (min-width: 40rem) {
+    .floating-toc-title-btn {
+        flex: 0 1 auto;
+        max-inline-size: 100%;
+    }
+    .floating-toc-page {
+        margin-inline-start: auto;
+    }
+}
+
+/* X-DS fourier pass 18 (critic F18C) · DS-F18C-T1: the label takes its own
+   width, so the chevron follows it at every width (DS-F8C-T2 did this at
+   40rem and up only). Below 40rem the button still fills the bar, so its tap
+   target is the whole free run; only the chevron moves, to the label's end. */
 .floating-toc-section {
     display: flex;
     align-items: baseline;
     gap: 0.375rem;
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     font-size: var(--type-small);

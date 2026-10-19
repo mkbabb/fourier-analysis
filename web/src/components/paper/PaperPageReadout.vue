@@ -12,10 +12,13 @@
 import { totalPages } from "@/lib/paperContent";
 
 defineProps<{ currentPage: number }>();
+
+/** X-DS fourier pass 7 · DS-F7C-T1: the widest string the readout can show. */
+const widestChars = `pg ${totalPages}/${totalPages}`.length;
 </script>
 
 <template>
-    <span class="page-readout fira-code" role="status" aria-live="polite">
+    <span class="page-readout fira-code" role="status" aria-live="polite" :style="{ '--readout-chars': widestChars }">
         pg {{ currentPage }}<span class="page-readout-sep">/</span>{{ totalPages }}
     </span>
 </template>
@@ -28,6 +31,10 @@ defineProps<{ currentPage: number }>();
     letter-spacing: 0.02em;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    /* X-DS fourier pass 7 · DS-F7C-T1: the readout reserves its widest string
+       (a mono figure is 1ch, plus the tracking and the separator's 2px), so its
+       neighbours hold still while the page count grows. */
+    min-inline-size: calc(var(--readout-chars) * (1ch + 0.02em) + 2px);
     color: var(--muted-foreground-strong);
 }
 

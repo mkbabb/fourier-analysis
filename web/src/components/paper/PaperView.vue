@@ -402,7 +402,7 @@ onUnmounted(() => {
 <template>
     <div class="paper-root" :style="paperRootStyle">
         <ScrollProgressRim :value="readingProgress" class="paper-progress-rim" :stops="progressRimStops" />
-        <div ref="scrollContainer" class="paper-scroll">
+        <div ref="scrollContainer" class="paper-scroll" :data-scrolled="readingProgress > 0 || undefined">
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
             <!-- UIA-F-162: content first. The floating bar is the phone's one
@@ -512,6 +512,21 @@ onUnmounted(() => {
     max-width: 100dvw;
 }
 
+/* X-DS fourier pass 7 (critic P7) · DS-F7C-C1: the scrolled rule is drawn at
+   the cut and at the article's measure, not on the port's top edge (DS-F6P-C2
+   drew it there: full-bleed across the page grid either side of the article at
+   1440, and at 390 over the sticky ToC band, above the real cut).
+   - Below lg the cut is the ToC band's foot, so the band ends on the rule once
+     the port has scrolled (`--floating-toc-rule`, read by `PaperTocBar`'s
+     `.floating-toc`; /morph's band recipe, DS-F5-C4).
+   - At lg the rule is a 1px sticky line in the article's own grid track (the
+     `::before` of `.paper-columns`, sharing the article's cell), so it runs the
+     article's width and nothing else. Transparent at rest.
+   No fade and no shadow (DS-F7-C3 stands). */
+.paper-scroll[data-scrolled] .floating-toc {
+    --floating-toc-rule: var(--border);
+}
+
 .teleport-overlay {
     position: fixed;
     inset: 0;
@@ -568,7 +583,12 @@ onUnmounted(() => {
     }
 }
 
+/* X-DS fourier pass 9 (critic F9C) · DS-F9C-T1: the one line both columns
+   start on once the port has scrolled: the article's cut (`::before`) and the
+   ToC rail's sticky top (`PaperTocDrawer`'s `--sidebar-top-inset`) read it, so
+   the two tops never part under the dock (they stood ~7px apart). */
 .paper-columns {
+    --paper-cut-top: 0px;
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -585,6 +605,27 @@ onUnmounted(() => {
         grid-template-columns: auto minmax(0, 48rem);
         column-gap: 0;
         justify-content: center;
+    }
+
+    .paper-columns::before,
+    .paper-article {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    /* DS-F7C-C1: the scrolled rule, in the article's track. */
+    .paper-columns::before {
+        content: "";
+        position: sticky;
+        top: var(--paper-cut-top);
+        z-index: 1;
+        align-self: start;
+        block-size: 1px;
+        pointer-events: none;
+    }
+
+    .paper-scroll[data-scrolled] .paper-columns::before {
+        background: var(--border);
     }
 }
 

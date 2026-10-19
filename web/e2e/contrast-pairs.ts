@@ -121,7 +121,7 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // figures so the drift line reads as the cure rather than as a surprise.
     {
         id: "HLG-37[grid-cell-border]",
-        what: ".grid-cell 1.5px boundary against its own fill",
+        what: ".grid-cell 1px boundary against its own fill (DS-F12X-C1: weight 1.5px -> 1px, ink unchanged)",
         stack: [
             "var(--card)",
             "color-mix(in srgb, var(--foreground) 50%, transparent)",
@@ -155,11 +155,13 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     // 1.4.11 in the light arm at both of its sites. `.a` tokenised both to
     // `--viz-legendre`. X.F.W14U.misc (UIA-F-254) retired the basis hue from
     // the bound tile: its edge is `--foreground` at full strength now.
+    // X-DS fourier pass 11 (DS-F11X-C2): the edge is the selection's alone;
+    // the bound mark moved to the tile's caption, `--foreground` on `--card`.
     {
-        id: "FMD-18[bound-tile-border]",
-        what: ".grid-cell.is-bound boundary against the cell fill",
+        id: "FMD-18[bound-tile-caption]",
+        what: ".grid-cell.is-bound caption against the cell fill",
         stack: ["var(--card)", "var(--foreground)"],
-        kind: "non-text",
+        kind: "text",
         banked: {},
         owner: ".a",
     },

@@ -60,6 +60,13 @@ const contentsOpen = ref(true);
 // bar never registers, so its mount/unmount cannot clear the drawer's.
 const sidebarNav = ref<HTMLElement | null>(null);
 watch(sidebarNav, (el) => toc.registerNavEl(el), { immediate: true });
+
+/** X-DS DS-F14C-L1: the list has scrolled under the held head (the follow
+ *  scrolls it too), so the head's foot shows the cut's hairline. */
+const navScrolled = ref(false);
+function onNavScroll() {
+    navScrolled.value = (sidebarNav.value?.scrollTop ?? 0) > 0;
+}
 onBeforeUnmount(() => toc.registerNavEl(null));
 
 /**
@@ -93,64 +100,71 @@ function toggleDrawer() {
                 class="sidebar-nav glass-quiet scrollbar-thin"
                 data-surface="opaque"
                 :data-contents="contentsOpen ? 'open' : 'closed'"
+                :data-scrolled="navScrolled || undefined"
                 aria-label="Table of contents"
                 :inert="!drawerOpen"
+                @scroll.passive="onNavScroll"
             >
-                <PaperSearch :search="search" variant="sidebar" :column="sidebarNav" />
                 <!-- X.F.W13.a — OA-13: the CONTENTS disclosure is the producer's
                      `Collapsible` (it owns `aria-expanded` and the motion) on a
                      glass `Button icon-only` whose own circle is not overwritten. -->
                 <Collapsible v-model:open="contentsOpen">
-                    <div class="sidebar-header">
-                        <p class="sidebar-label font-serif-math">Contents</p>
-                        <!-- X-DS DS-F-C9: the page readout sits in the CONTENTS
-                             header row, inside the rail's plate (it hung under
-                             the rail as an unframed line on the grid). -->
-                        <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="sidebar-page" />
-                        <!-- X.F.W14.r — r1: the scroll-to-top sits BESIDE the
-                             disclosure on the same glass primitive. -->
-                        <div class="sidebar-header-actions">
-                            <Tooltip text="Scroll to top" side="right">
-                                <Button
-                                    emphasis="quiet"
-                                    size="md" icon-only
-                                    class="sidebar-scroll-top"
-                                    aria-label="Scroll to top"
-                                    @click="scrollToTop()"
-                                >
-                                    <ArrowUpToLine class="sidebar-contents-icon" />
-                                </Button>
-                            </Tooltip>
-                            <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
-                                <CollapsibleTrigger as-child>
+                    <!-- X-DS fourier pass 6 (critic P6) · DS-F6P-C1: the search
+                         and the CONTENTS header are the rail's head, held at
+                         the top while only the list scrolls under it. -->
+                    <div class="sidebar-head">
+                        <PaperSearch :search="search" variant="sidebar" :column="sidebarNav" />
+                        <div class="sidebar-header">
+                            <p class="sidebar-label font-serif-math">Contents</p>
+                            <!-- X-DS DS-F-C9: the page readout sits in the CONTENTS
+                                 header row, inside the rail's plate (it hung under
+                                 the rail as an unframed line on the grid). -->
+                            <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="sidebar-page" />
+                            <!-- X.F.W14.r — r1: the scroll-to-top sits BESIDE the
+                                 disclosure on the same glass primitive. -->
+                            <div class="sidebar-header-actions">
+                                <Tooltip text="Scroll to top" side="right">
                                     <Button
                                         emphasis="quiet"
                                         size="md" icon-only
-                                        class="sidebar-contents-toggle"
-                                        aria-label="Contents"
+                                        class="sidebar-scroll-top"
+                                        aria-label="Scroll to top"
+                                        @click="scrollToTop()"
                                     >
-                                        <ChevronUp class="sidebar-contents-icon" />
+                                        <ArrowUpToLine class="sidebar-contents-icon" />
                                     </Button>
-                                </CollapsibleTrigger>
-                            </Tooltip>
-                            <!-- X-DS pass 1 · F1-06: while open, the drawer's
-                                 own toggle is one of the CONTENTS header's
-                                 controls, not a bare glyph in the gutter. -->
-                            <Tooltip v-if="drawerOpen" text="Hide contents" side="right">
-                                <Button
-                                    ref="drawerTab"
-                                    emphasis="quiet"
-                                    size="md" icon-only
-                                    type="button"
-                                    class="paper-toc-tab"
-                                    aria-label="Hide contents"
-                                    aria-expanded="true"
-                                    :aria-controls="drawerId"
-                                    @click="toggleDrawer"
-                                >
-                                    <PanelLeftClose class="sidebar-contents-icon" />
-                                </Button>
-                            </Tooltip>
+                                </Tooltip>
+                                <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
+                                    <CollapsibleTrigger as-child>
+                                        <Button
+                                            emphasis="quiet"
+                                            size="md" icon-only
+                                            class="sidebar-contents-toggle"
+                                            aria-label="Contents"
+                                        >
+                                            <ChevronUp class="sidebar-contents-icon" />
+                                        </Button>
+                                    </CollapsibleTrigger>
+                                </Tooltip>
+                                <!-- X-DS pass 1 · F1-06: while open, the drawer's
+                                     own toggle is one of the CONTENTS header's
+                                     controls, not a bare glyph in the gutter. -->
+                                <Tooltip v-if="drawerOpen" text="Hide contents" side="right">
+                                    <Button
+                                        ref="drawerTab"
+                                        emphasis="quiet"
+                                        size="md" icon-only
+                                        type="button"
+                                        class="paper-toc-tab"
+                                        aria-label="Hide contents"
+                                        aria-expanded="true"
+                                        :aria-controls="drawerId"
+                                        @click="toggleDrawer"
+                                    >
+                                        <PanelLeftClose class="sidebar-contents-icon" />
+                                    </Button>
+                                </Tooltip>
+                            </div>
                         </div>
                     </div>
                     <CollapsibleContent>
@@ -201,7 +215,8 @@ function toggleDrawer() {
    holds it from the first frame). Expanding reverses the same width, so the
    ToC returns exactly to its place. */
 .paper-sidebar {
-    --sidebar-top-inset: 0.5rem;
+    /* DS-F9C-T1: the rail pins on the article's cut line (`PaperView`). */
+    --sidebar-top-inset: var(--paper-cut-top, 0px);
     --sidebar-bottom-inset: 1.5rem;
     --paper-toc-width: 17rem;
     /* The tab rail is the gutter between the ToC and the paper. */
@@ -300,7 +315,9 @@ function toggleDrawer() {
     scrollbar-gutter: stable;
     scroll-padding-bottom: var(--sidebar-bottom-inset);
     touch-action: pan-y;
-    padding: 0.625rem 0.625rem var(--sidebar-bottom-inset);
+    /* DS-F6P-C1: the top inset is the head's own (`.sidebar-head`), so the
+       held head sits flush at the port's top with nothing showing above it. */
+    padding: 0 0.625rem var(--sidebar-bottom-inset);
     /* X.F.W14U.paper — UIA-F-61: the rail is `.glass-quiet` (DESIGN.md:47),
        not a hand-rolled cartoon card whose +3px cast fell against the
        article's −3px (two light sources). Border, fill and cast are the quiet
@@ -317,6 +334,39 @@ function toggleDrawer() {
 
 .sidebar-nav[data-contents="closed"] .sidebar-header {
     margin-bottom: 0;
+}
+
+/* X-DS fourier pass 6 (critic P6) · DS-F6P-C1: deep in the paper the follow
+   scrolled the whole rail, so the search, the CONTENTS label, its tools and
+   the page readout left view and the rail began mid-tree, untitled. The head
+   is held at the port's top on the rail's own opaque fill (glass's
+   `data-surface="opaque"` is `--card`); only the list scrolls under it. No
+   shadow: the head is the same plate. `flow-root` keeps the header's bottom
+   margin inside the fill.
+   X-DS fourier pass 14 (critic F14C) · DS-F14C-L1: at rest no rule either,
+   but once the list has scrolled under the head the cut shows the app's one
+   hairline at the head's foot, as the article's own cut does (DS-F7C-C1). */
+.sidebar-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flow-root;
+    padding-top: 0.625rem;
+    background: var(--card);
+}
+
+.sidebar-head::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: -1px;
+    block-size: 1px;
+    background: transparent;
+    pointer-events: none;
+}
+
+.sidebar-nav[data-scrolled] .sidebar-head::after {
+    background: var(--border);
 }
 
 .sidebar-header {
