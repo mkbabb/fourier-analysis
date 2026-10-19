@@ -58,6 +58,12 @@ jobs:
     # is one deliberate act on production and CI together. Every job that boots
     # mongo carries this pin and this label.
     runs-on: ubuntu-22.04
+    # The interpreter is production's too (api/Dockerfile `python:3.13-slim`).
+    # 22.04's system Python (3.10) is below requires-python, so an unstated
+    # version lets uv fetch its newest managed CPython (3.15 on 2026-10-19, for
+    # which ai-edge-litert ships no wheel: run 39304476891).
+    env:
+      UV_PYTHON: "3.13"
     services:
       mongo:
         image: mongo:8.0.20
