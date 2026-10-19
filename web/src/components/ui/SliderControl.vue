@@ -36,8 +36,8 @@
  *            (glass `NumberField`) at the line's end, with an optional unit;
  *   hint   — optional: the row's `subtitle`, whole, on its own caption line
  *            under the label;
- *   line 2 — the producer's `Slider`, directly beneath, with a VISIBLE thumb and
- *            a track FILL.
+ *   line 2 — the producer's `Slider`, directly beneath: glass's integrated-thumb
+ *            scrubber, its fill's leading edge the handle (OD19-F7).
  *
  * Rhythm is glass's spacing scale (`--space-atom` inside the row).
  * X-DS pass 2 · DS-F2-C3 rules the orphan hunk P2-07 ADOPTED: there is ONE hint
@@ -53,18 +53,14 @@
  * keeps P2-07's caption line, and the coarse and phone ramps keep the stack.
  * Where the row is too narrow for a usable track it wraps back to the stack.
  *
- * The producer ships no slider that has both a visible thumb and a fill: the
- * `scrubber` variant's thumb is `width: 0; opacity: 0` by contract (its fill's
- * leading edge is the handle — the "thick bar with no visible thumb" of the
- * frame), and the `spectrum` variant's thumb is visible but its range paints
- * nothing. Nor does it ship a labelled slider with an inline value field
- * (`LabeledSlider` carries no value). Both are ROUTED to glass BL by id
- * (`BL-FW14H-1` slider thumb+fill; `BL-FW14H-2` labelled slider with inline
- * value; the O-59 relay line). Meanwhile the row COMPOSES existing primitives
- * through the producer's public surface: the `spectrum` variant (visible thumb)
- * and its documented track token `--glass-slider-track-background`, painted as
- * the fill up to the thumb's centre (reka's `contain` thumb alignment: the
- * centre travels from half a thumb in to half a thumb short of the end).
+ * ⊘ X·OD19-F7 (owner, 2026-10-19, frame-12.50.45.png: "Sliders have a double
+ * border: use glass-ui sliders with the integrated thumb") — BL-FW14H-1's
+ * VISIBLE-THUMB demand is REVERSED by the owner. The row composed glass's
+ * `spectrum` variant (a 2 px-bordered thumb) over its 24 px track-well and
+ * painted a local 6 px gradient rule inside the well: two outlines. The row is
+ * now glass's `scrubber` variant, whose fill's leading edge IS the handle, tinted
+ * with the row hue on glass's own `--slider-range-bg`. No local fill recipe and
+ * no thumb paint remain; the well's edge is the row's one edge.
  */
 import { computed, useAttrs, useId } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
@@ -191,14 +187,6 @@ const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)
 /** The field's id: the row's visible `Label` names it (`for`). */
 const fieldId = useId();
 
-/**
- * The fill's extent, 0…1 — read by the track token in the stylesheet (see the
- * docblock: the composition over `spectrum` until BL ships thumb + fill).
- */
-const fillFraction = computed(() => {
-    const span = props.max - props.min;
-    return span > 0 ? (clamp(props.modelValue, props.min, props.max) - props.min) / span : 0;
-});
 </script>
 
 <template>
@@ -238,14 +226,14 @@ const fillFraction = computed(() => {
         <span v-if="subtitle" class="control-row-sub" data-row-sub>{{ subtitle }}</span>
         <Slider
             v-model="sliderModel"
-            variant="spectrum"
+            variant="scrubber"
             size="md"
             :min="min"
             :max="max"
             :step="step"
             :aria-label="label"
             class="control-row-track"
-            :style="{ '--track-color': color, '--row-fill': fillFraction }"
+            :style="{ '--slider-range-bg': color || undefined }"
             v-bind="controlAttrs"
             @value-commit="onValueCommit"
         />
@@ -304,37 +292,11 @@ const fillFraction = computed(() => {
     color: var(--muted-foreground);
 }
 
-/*
-   The fill, composed over the producer's documented track token (see the
-   docblock; routed to BL). The stop sits at the thumb's centre under reka's
-   `contain` alignment: half a thumb in at the minimum, half a thumb short of the
-   end at the maximum. `--slider-thumb-size` is the producer's own size-rung
-   token on this same element; the `spectrum` thumb is 0.75 of it wide.
-   `D-14`: an empty `color` falls back to the producer's capsule tint.
-*/
-.control-row-track {
-    --row-thumb: calc(var(--slider-thumb-size, 1rem) * 0.75);
-    --row-stop: calc(var(--row-thumb) / 2 + (100% - var(--row-thumb)) * var(--row-fill, 0));
-    --row-rule: 0.375rem;
-    --glass-slider-track-background: linear-gradient(
-        to right,
-        color-mix(in oklab, var(--track-color, var(--glass-capsule-warm)) 55%, var(--muted-medium)) 0 var(--row-stop),
-        var(--surface-tint-15) var(--row-stop) 100%
-    ) center / 100% var(--row-rule) no-repeat;
-}
-
-/* X-DS DS-F-C8 — glass's `md` rung, so the thumb is a legible mark at fine
-   and coarse pointers (the `sm` thumb was a 6 × 12 px tick beside a 36–44 px
-   field), and the hue at full strength is the thumb's alone, the one mark
-   that says where the value is. X-DS DS-F4R-C2: the track is a thin rule
-   (`--row-rule`, glass's own 0.375 rem track fallback, the PRE-DOCK ~6–8 px
-   track), not the rung's 24 px slab: the label and field already state the
-   value, so the bar under them is the quietest thing in the row. The thumb's
-   frame and cast stay glass's (O-87). X-DS DS-F5-C1: the unfilled stop is
-   glass's hairline tint (`--surface-tint-15`, the foreground at 15%), not
-   `--muted-medium`, which in light is the card's own tone (~1.03:1), so the
-   rule has a visible extent in both themes, one geometry. The 24 px well's
-   lone top edge around it is glass's track-well inset (O-87, DS-F5-G2). */
+/* X·OD19-F7 — the track is glass's scrubber at its `md` rung, painted by glass
+   alone: the row hue reaches the fill through `--slider-range-bg` (template), at
+   full strength (MPC-10), and `D-14`'s empty `color` leaves glass's capsule tint.
+   The local gradient rule and the thumb paint are deleted (BL-FW14H-1's
+   visible thumb, reversed by the owner). */
 /* X-DS pass 7 · DS-F7X-C2 — the plain row on one line (see the docblock). The
    order is the DOM's and PRE-DOCK's: label, field, track. The track has a floor
    (`--row-track-min`); a row too narrow for it wraps, and then line 1 takes
@@ -368,7 +330,4 @@ const fillFraction = computed(() => {
     }
 }
 
-.control-row-track :deep(.slider-thumb) {
-    background: var(--track-color, var(--glass-capsule-warm));
-}
 </style>
