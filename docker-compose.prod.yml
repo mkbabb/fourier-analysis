@@ -53,7 +53,14 @@ services:
         max-file: "3"
 
   frontend:
+    # X·W11.h18 (E18 · R-6) — the build context is stated here, not inherited
+    # silently: the repository ROOT, because web/Dockerfile's builder copies
+    # assets/ and paper/ from it (the image does not build from web/ alone).
+    # The production stage authors no nginx config; nginx/fourier.conf (the
+    # edge below) is the one nginx authority, SPA fallback and cache included.
     build:
+      context: .
+      dockerfile: web/Dockerfile
       target: production
       args:
         VITE_API_URL: ${VITE_API_URL:-}
