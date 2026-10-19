@@ -29,6 +29,9 @@ export COMPOSE_PROJECT_NAME="${PROJECT:-fourier-prod-smoke}"
 export HTTP_PORT="${HTTP_PORT:-8192}"
 export MONGO_USER="${MONGO_USER:-fourier-admin}"
 export MONGO_PASSWORD="${MONGO_PASSWORD:-prod-smoke-$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')}"
+# F.REL .s1: the prod overlay requires ADMIN_TOKEN (the host reads it from its
+# secret store); this stack gets a NON-SECRET fixture so ENV=production boots.
+export ADMIN_TOKEN="${ADMIN_TOKEN:-prod-smoke-fixture-token}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-420}"
 COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.prod.yml)
 BASE="http://127.0.0.1:${HTTP_PORT}"

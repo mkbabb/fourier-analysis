@@ -470,6 +470,10 @@ jobs:
     name: production compose boot + health
     runs-on: ubuntu-22.04
     timeout-minutes: 30
+    # F.REL .s1: the prod overlay requires ADMIN_TOKEN (backend ENV=production,
+    # the boot guard live). A NON-SECRET fixture: this job's stack is throwaway.
+    env:
+      ADMIN_TOKEN: prod-compose-ci-fixture-token
     steps:
       - uses: actions/checkout@v4
       # The host's TLS layout (measured on the host 2026-10-09: ssl/mongo.pem

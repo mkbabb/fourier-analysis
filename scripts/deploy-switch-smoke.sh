@@ -12,7 +12,11 @@
 #      always fails) → switch_service returns non-zero, the new container is
 #      removed, the SAME serving backend is still healthy, the edge pin never
 #      left it, and the edge never failed a request;
-#   C. an edge config change → `nginx -t` + graceful reload with zero failures.
+#   C. an edge config change → `nginx -t` + graceful reload with zero failures;
+#   D. (F.REL .s1) mongo_apply: an unchanged definition keeps the same mongo; a
+#      changed one (mongo first brought up at the pre-.s1 512 MiB definition)
+#      is backed up cold, then recreated at the checked-out 1 GiB definition,
+#      healthy, with its data, and the edge never failing a request.
 #
 #   scripts/deploy-switch-smoke.sh               # build, boot, run A-C, tear down
 #   SKIP_BUILD=1 scripts/deploy-switch-smoke.sh  # reuse the project's images
@@ -26,6 +30,9 @@ export COMPOSE_PROJECT_NAME="${PROJECT:-fourier-switch-smoke}"
 export HTTP_PORT="${HTTP_PORT:-8193}"
 export MONGO_USER="${MONGO_USER:-fourier-admin}"
 export MONGO_PASSWORD="${MONGO_PASSWORD:-switch-smoke-$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')}"
+# F.REL .s1: the prod overlay requires ADMIN_TOKEN (the host reads it from its
+# secret store); this stack gets a NON-SECRET fixture so ENV=production boots.
+export ADMIN_TOKEN="${ADMIN_TOKEN:-switch-smoke-fixture-token}"
 BASE="http://127.0.0.1:${HTTP_PORT}"
 WORK="$(mktemp -d)"
 # The per-request poll record (timestamp, api code, spa code) is kept where a
@@ -49,6 +56,9 @@ cleanup() {
 trap cleanup EXIT
 
 KEEP_UP=1 PROJECT="$COMPOSE_PROJECT_NAME" bash scripts/prod-compose-smoke.sh
+
+# The cold backup mongo_apply takes before it recreates mongo (section D).
+export FOURIER_MONGO_BACKUP_DIR="$WORK/mongo-backup"
 
 # The hook's functions, as the webhook arm runs them (its `main` only runs when
 # executed, not sourced).
@@ -125,6 +135,42 @@ edge_apply; rc=$?
 check "C: edge_apply validated and reloaded the edge config (rc $rc)" "$rc"
 sleep 6
 check "C: the edge failed 0 of $(($(requests) - n_before)) requests through the reload" "$(($(failures) - f_before))"
+
+# ── D. a changed mongo definition is applied: cold backup, then recreate ────
+# F.REL .s1: `up --no-recreate mongo` never applied a changed mongo definition
+# (the 1 GiB limit, the WiredTiger cache flag, the healthcheck). mongo_apply
+# compares compose's config hash. Unchanged → the same container. Changed (the
+# mongo below is first brought up at the PRE-.s1 512 MiB definition, as the host
+# runs it) → a backup that holds the data, then the checked-out definition.
+mexec() { "${COMPOSE[@]}" exec -T mongo mongosh --quiet -u "$MONGO_USER" -p "$MONGO_PASSWORD" \
+  --authenticationDatabase admin --tls --tlsCAFile /etc/ssl/mongo-ca.pem --eval "$1"; }
+n_before="$(requests)"; f_before="$(failures)"
+m0="$(service_ids mongo)"
+mongo_apply; rc=$?
+check "D unchanged: mongo_apply returned 0 (rc $rc)" "$rc"
+[[ "$(service_ids mongo)" == "$m0" ]]; rc=$?
+check "D unchanged: the same mongo ($(printf '%.12s' "$m0")) still serves, nothing backed up" "$rc"
+printf 'services:\n  mongo:\n    deploy:\n      resources:\n        limits:\n          memory: 512M\n' >"$WORK/mongo-pre-s1.yml"
+"${COMPOSE[@]}" -f "$WORK/mongo-pre-s1.yml" up -d --wait mongo >/dev/null 2>&1
+m1="$(service_ids mongo)"
+[[ "$(docker inspect -f '{{.HostConfig.Memory}}' "$m1")" == "536870912" ]]; rc=$?
+check "D setup: mongo runs the pre-.s1 definition (512 MiB)" "$rc"
+mexec 'db.getSiblingDB("fourier").s1_marker.insertOne({_id: "s1"}).acknowledged' >/dev/null
+mongo_apply; rc=$?
+check "D changed: mongo_apply returned 0 (rc $rc)" "$rc"
+m2="$(service_ids mongo)"
+[[ -n "$m2" && "$m2" != "$m1" ]]; rc=$?
+check "D changed: mongo was recreated ($(printf '%.12s' "$m1") → $(printf '%.12s' "$m2"))" "$rc"
+[[ "$(docker inspect -f '{{.HostConfig.Memory}}' "$m2")" == "1073741824" \
+  && "$(container_state "$m2")" == "healthy" ]]; rc=$?
+check "D changed: the recreated mongo runs the checked-out definition (1 GiB) and is healthy" "$rc"
+backup="$(ls -1 "$FOURIER_MONGO_BACKUP_DIR"/mongo-data-*.tar.gz 2>/dev/null)"
+[[ "$(printf '%s\n' "$backup" | grep -c .)" -eq 1 ]] && tar tzf "$backup" | grep -q 'WiredTiger.wt'; rc=$?
+check "D changed: one cold backup of the data volume was taken first ($(basename "${backup:-none}"))" "$rc"
+[[ "$(mexec 'db.getSiblingDB("fourier").s1_marker.countDocuments({_id: "s1"})')" == "1" ]]; rc=$?
+check "D changed: the data survived the recreate (the marker document reads back)" "$rc"
+sleep 6
+check "D: the edge failed 0 of $(($(requests) - n_before)) /api/health + SPA requests through the mongo apply" "$(($(failures) - f_before))"
 
 touch "$WORK/stop"; wait "$POLLER_PID" 2>/dev/null; POLLER_PID=""
 say "polled $(requests) request pairs through the edge; failed: $(failures)"

@@ -42,7 +42,10 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-fourier-admin}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-fourier-dev-only}
     healthcheck:
-      test: ["CMD", "mongosh", "-u", "${MONGO_USER:-fourier-admin}", "-p", "${MONGO_PASSWORD:-fourier-dev-only}", "--authenticationDatabase", "admin", "--eval", "db.runCommand('ping').ok", "--quiet"]
+      # F.REL .s1: one authenticated ping without the shell's startup probes
+      # (the production idiom, docker-compose.prod.yml; no TLS in dev).
+      test: ["CMD", "mongosh", "--nodb", "--norc", "--quiet", "--eval",
+             "quit(new Mongo('mongodb://' + encodeURIComponent(process.env.MONGO_INITDB_ROOT_USERNAME) + ':' + encodeURIComponent(process.env.MONGO_INITDB_ROOT_PASSWORD) + '@127.0.0.1:27017/?authSource=admin&directConnection=true').getDB('admin').runCommand({ping: 1}).ok === 1 ? 0 : 1)"]
       interval: 5s
       timeout: 5s
       retries: 5

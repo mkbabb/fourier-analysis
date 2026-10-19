@@ -68,7 +68,27 @@ set -euo pipefail
 # (lines 26, 29) verbatim — build --parallel then up -d, the same two-file
 # compose overlay.
 readonly REPO_DIR="/var/www/fourier-analysis"
-readonly COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.prod.yml)
+
+# F.REL .s1 (COHESION §0gi.2) — the compose environment. Compose reads the
+# repo's own .env by default, but naming any --env-file replaces that default,
+# so both are named: the repo .env (the host settings it always carried, kept)
+# and then the host secret store (ADMIN_TOKEN; mode 600, outside the checkout,
+# never tracked). The later file wins on a shared key. The hook never reads a
+# value from either: deploy() logs the store's KEY NAMES only, and an absent
+# store fails docker-compose.prod.yml's required `${ADMIN_TOKEN:?…}`
+# interpolation at switch_stack's render check, before anything is built or
+# stopped.
+readonly SECRET_ENV_FILE="${FOURIER_SECRET_ENV_FILE:-/opt/deploy/.env}"
+COMPOSE=(docker compose)
+[[ -f "${REPO_DIR}/.env" ]] && COMPOSE+=(--env-file "${REPO_DIR}/.env")
+[[ -f "${SECRET_ENV_FILE}" ]] && COMPOSE+=(--env-file "${SECRET_ENV_FILE}")
+COMPOSE+=(-f docker-compose.yml -f docker-compose.prod.yml)
+readonly COMPOSE
+
+# F.REL .s1 — where mongo_apply keeps the cold backup it takes before it
+# recreates mongo on a changed definition (newest MONGO_BACKUP_KEEP kept).
+readonly MONGO_BACKUP_DIR="${FOURIER_MONGO_BACKUP_DIR:-/opt/deploy/fourier-mongo-backups}"
+readonly MONGO_BACKUP_KEEP="${FOURIER_MONGO_BACKUP_KEEP:-3}"
 
 # G.W7 (T3) — set when the pulled diff touched nginx/, so the switch applies
 # the new edge config. G.W7 found a config-only change silently NOT applied: the
@@ -454,8 +474,12 @@ assert_clean_tree() {
 #      directory bind-mount, so the reset lands the new config in place and the
 #      switch validates it in the live edge (`nginx -t`) before a graceful
 #      reload. A config that fails `nginx -t` is never loaded.
-#   4. Mongo is never restarted by a deploy (`--no-recreate`): it is the one
-#      stateful service, and a change to its definition is an operator act.
+#   4. Mongo, the one stateful service, is never switched and never restarted
+#      for an unchanged definition. F.REL .s1: a CHANGED definition (command,
+#      limits, healthcheck, image) used to be silently NOT applied, because the
+#      old `up --no-recreate mongo` keeps the running container whatever the
+#      compose says. mongo_apply now compares compose's config hash, and on a
+#      change takes a cold backup of the data volume, then recreates mongo.
 #
 # The stack-level health gate (liveness + readiness through the edge) then
 # judges the switched stack; a red gate switches BACK the same way.
@@ -643,17 +667,73 @@ edge_apply() {
     fi
 }
 
+# mongo_apply — bring mongo to the checked-out definition (F.REL .s1). Compose
+# stamps every container with its service's config hash
+# (com.docker.compose.config-hash); `config --hash mongo` renders the checked-out
+# one. Equal, or no mongo yet: `up --no-recreate` only makes sure it runs. A
+# CHANGED definition: compose stops mongod cleanly, a throwaway container of the
+# same image with no network tars the data volume read-only into
+# MONGO_BACKUP_DIR (a cold backup: nothing runs inside mongod's container), and
+# only once that backup exists is mongo recreated and waited healthy. The
+# backend's /api/health does not touch the database, so the edge stays live;
+# requests that need the database fail for the stop-backup-start window, which
+# is paid only on a deploy that changes mongo's definition.
+mongo_apply() {
+    local id want have="" vol image out
+    id="$(service_ids mongo)"
+    want="$("${COMPOSE[@]}" config --hash mongo | awk '{print $2}')"
+    if [[ -n "${id}" ]]; then
+        have="$(docker inspect -f '{{index .Config.Labels "com.docker.compose.config-hash"}}' "${id}")"
+    fi
+    if [[ -z "${id}" || "${want}" == "${have}" ]]; then
+        "${COMPOSE[@]}" up -d --no-recreate --wait mongo
+        return
+    fi
+    log "mongo: its definition changed (config hash ${have:0:12} -> ${want:0:12}) — cold backup, then recreate"
+    vol="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data/db"}}{{.Name}}{{end}}{{end}}' "${id}")"
+    image="$(docker inspect -f '{{.Config.Image}}' "${id}")"
+    out="mongo-data-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
+    if [[ -z "${vol}" ]]; then
+        log "mongo: no volume at /data/db on ${id:0:12} — refusing to recreate without a backup"
+        return 1
+    fi
+    mkdir -p "${MONGO_BACKUP_DIR}"
+    "${COMPOSE[@]}" stop -t 60 mongo || return 1
+    if ! docker run --rm --network none --entrypoint tar \
+            -v "${vol}:/data/db:ro" -v "${MONGO_BACKUP_DIR}:/backup" "${image}" \
+            czf "/backup/${out}" -C /data/db .; then
+        log "mongo: the cold backup FAILED — restarting the unchanged mongo; nothing is recreated"
+        rm -f "${MONGO_BACKUP_DIR}/${out}"
+        "${COMPOSE[@]}" start mongo
+        return 1
+    fi
+    log "mongo: backup ${MONGO_BACKUP_DIR}/${out} ($(wc -c <"${MONGO_BACKUP_DIR}/${out}" | tr -d ' ') bytes)"
+    # shellcheck disable=SC2012 # our own timestamped names, no odd characters
+    ls -1t "${MONGO_BACKUP_DIR}"/mongo-data-*.tar.gz | tail -n +"$((MONGO_BACKUP_KEEP + 1))" | xargs rm -f
+    if ! "${COMPOSE[@]}" up -d --wait mongo; then
+        log "mongo: the recreated mongo did not become healthy"
+        return 1
+    fi
+    log "mongo: recreated at config hash ${want:0:12} (healthy)"
+}
+
 # switch_stack — build, then switch every upstream and the edge. Returns 1 at
 # the first step that fails; everything not yet switched is still the old one.
 switch_stack() {
     SWITCHED=()
     mkdir -p "${EDGE_PIN_DIR}"
+    # F.REL .s1: the render check — every required variable (MONGO_PASSWORD,
+    # ADMIN_TOKEN) resolves before a single image is built.
+    if ! "${COMPOSE[@]}" config --quiet; then
+        log "compose render FAILED (a required variable is unset) — nothing was started or stopped"
+        return 1
+    fi
     log "building (build --parallel) — the serving stack is untouched…"
     if ! "${COMPOSE[@]}" build --parallel; then
         log "build FAILED — nothing was started or stopped"
         return 1
     fi
-    "${COMPOSE[@]}" up -d --no-recreate --wait mongo
+    mongo_apply || return 1
     local svc
     for svc in "${SWITCH_SERVICES[@]}"; do
         switch_service "${svc}" || return 1
@@ -670,7 +750,7 @@ switch_back() {
     local svc
     log "building the rollback target's images…"
     "${COMPOSE[@]}" build --parallel || return 1
-    "${COMPOSE[@]}" up -d --no-recreate --wait mongo
+    mongo_apply || return 1
     for svc in ${SWITCHED[@]+"${SWITCHED[@]}"}; do
         switch_service "${svc}" || return 1
     done
@@ -708,6 +788,13 @@ deploy() {
         return 1
     fi
 
+    # F.REL .s1: name the secret store's keys (never a value) so the deploy log
+    # says what the compose environment was given.
+    if [[ -f "${SECRET_ENV_FILE}" ]]; then
+        log "compose env: ${SECRET_ENV_FILE} supplies keys: $(sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' "${SECRET_ENV_FILE}" | tr '\n' ' ')"
+    else
+        log "compose env: no secret store at ${SECRET_ENV_FILE} (a required key will fail the render check)"
+    fi
     log "advancing ${prev} -> ${new} (covered by CI run ${CI_RUN_ID})"
     git reset --hard "${new}"
 
