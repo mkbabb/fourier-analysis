@@ -36,6 +36,7 @@ import {
     DialogFooter,
 } from "@mkbabb/glass-ui/dialog";
 import { Progress } from "@mkbabb/glass-ui/progress";
+import { Skeleton } from "@mkbabb/glass-ui";
 
 const router = useRouter();
 const route = useRoute();
@@ -458,13 +459,14 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
             <Configurator scroll-mode="auto" layout="detached" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
-                    <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark (glass's
-                         indeterminate Progress; the retired transparent-topped ring is
-                         gone), announced as a status. -->
-                    <div v-if="stageLoading" class="stage-state" role="status">
-                        <Progress :model-value="null" size="sm" class="stage-busy-bar"
-                            :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'" />
-                        <p class="text-caption text-muted-foreground">{{ isSavedRoute ? "Loading the visualization…" : "Loading the workspace…" }}</p>
+                    <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark, announced
+                         as a status. X·OD19 ALL (owner: "the loading text should be
+                         removed in favor of a skeleton shimmer"): glass's `Skeleton` in
+                         the stage's own shape (the canvas it stands in for), the region
+                         `aria-busy`; the status keeps its name for AT, with no text. -->
+                    <div v-if="stageLoading" class="stage-state stage-state--skeleton" role="status" aria-busy="true"
+                        :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'">
+                        <Skeleton class="stage-skeleton" />
                     </div>
                     <!-- Error (no workspace). X.F.W14.u — UIA-F-4: route-aware copy
                          naming the slug that failed; UIA-F-49: the button's own label
@@ -889,8 +891,15 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
    children the fusing does NOT claim. The layers touch, the shared hairline is
    the one between them, and the non-layer cards above keep their 12px. */
 /* X-DS DS-F-C4: no inset — the layer group's hairline is the aside's own
-   edge (glass fuses the layers), not a second ring 8 px inside it. */
+   edge (glass fuses the layers), not a second ring 8 px inside it.
+   X·OD19 F5: the stack publishes the inset it really has. Glass derives a
+   layer's corner as `--radius-ctx − --radius-inset`, and the shell still
+   published its padded inset (`--configurator-pad-inline`, 1.25rem), so a
+   layer flush 1px inside the 16px card took `max(4px, 16 − 20)` = 4px: a
+   square inner ring at the card's corners. The real inset is the aside's 1px
+   border, so the layer is concentric (15px). */
 .viz-panel-left {
+    --radius-inset: 1px;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -1152,6 +1161,16 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     gap: 0.75rem;
     height: 100%;
     padding: 1.5rem 1rem;
+}
+/* X·OD19 ALL: the cold load's Skeleton stands where the canvas will paint, edge
+   to edge in the stage cell, on the stage card's own corner. */
+.stage-state--skeleton {
+    padding: 0;
+}
+.stage-skeleton {
+    inline-size: 100%;
+    block-size: 100%;
+    border-radius: inherit;
 }
 .stage-state--over {
     position: absolute;

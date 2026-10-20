@@ -205,7 +205,9 @@ for (const vp of WIDTHS) {
                 await route.fallback();
             });
             await page.goto(`/v/${viz.slug}`);
-            const busy = page.locator(".configurator-stage").getByRole("status").filter({ hasText: /Loading/ });
+            // X·OD19 ALL (owner row OD19-ALL): the busy mark is glass's Skeleton,
+            // with no visible text; the status is found by its accessible name.
+            const busy = page.locator(".configurator-stage").getByRole("status", { name: /Loading/ });
             await expect(busy).toBeVisible({ timeout: 3500 });
             await frame(page, "e70-coldload");
             await expect(page.locator(".viz-configurator")).toBeVisible();

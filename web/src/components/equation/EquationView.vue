@@ -1,8 +1,4 @@
-<script setup lang="ts">
-import { ref, computed, watch, onScopeDispose, useTemplateRef } from "vue";
-import { watchDebounced } from "@vueuse/core";
-import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
-import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
+<script lang="ts">
 import {
     computeEquation,
     isAbortError,
@@ -10,6 +6,145 @@ import {
     EQUATION_ABORT_KEYS,
 } from "@/lib/equation/api";
 import type { NotationMode, ComputeEquationRequest, ComputeEquationResponse, FourierTermDTO, EquationDisplayMode } from "@/lib/equation/types";
+import {
+    loadCachedInputState,
+    saveCachedInputState,
+    loadCachedResult,
+    saveCachedResult,
+    type CachedInputState,
+} from "./composables/useEquationCache";
+
+/** The inputs a first visit opens on. */
+const DEFAULT_INPUT: CachedInputState = {
+    expression: "x*(pi - x)",
+    domainStart: 0,
+    domainEnd: Math.PI,
+    nHarmonics: 20,
+    budget: 10,
+    notation: "trig",
+};
+
+// ── The ONE normalization seam ──
+//
+// `M-CK` — `computeKey()` used to return 4 fields while the POST carried 7,
+// including `notation` and `budget`, both of which the server reads to build the
+// response (`equations.py:91` `simplify_series(terms, budget, notation)` →
+// `latex`; `:96` `render_latex_sigma(terms, notation)` → `latex_sigma`). A key
+// that under-determines its own request is a memo that returns the wrong answer,
+// and it is why BOTH prescribed cures for `B-1` reproduced `B-1` one layer down.
+// `R2-N5` rides the same seam: the key read the UNTRIMMED expression while the
+// body sent the trimmed one, so a trailing space was a cache miss for an
+// identical request. Normalize ONCE, here, and key off the result — never off
+// the refs.
+const N_EVAL_POINTS = 500;
+
+/**
+ * `B-2` / `M-BR` — the server bounds `budget` at `ge=2, le=50` on BOTH pydantic
+ * models, and one Harmonics drag from the shipped defaults used to walk the ref
+ * past 50; the 422 then landed in `doSimplify`'s silent catch and the escalated
+ * value was persisted, so the NEXT session's first compute 422'd cold.
+ *
+ * The clamp lands HERE, at the one seam every request passes through, because
+ * `M-BR` killed the slider-side cure by enumeration: the restore path never
+ * passes through the slider at all. The Display-terms control clamps its own
+ * WRITE as well (`FI-N-5`) — that is the second instance, not a duplicate of
+ * this one: it stops the ref from ever HOLDING a number the component will not
+ * send, which is what makes the displayed figure honest.
+ *
+ * ⊘ The shared bound constant across the client/server seam is F.W5–W8's
+ * (`EV-B-2`'s contract half). Until it exists this is a local mirror and says so.
+ */
+const MAX_BUDGET = 50;
+const MIN_BUDGET = 2;
+
+function clampBudget(v: number): number {
+    return Math.max(MIN_BUDGET, Math.min(MAX_BUDGET, Math.round(v)));
+}
+
+/** The request the view sends for these inputs (`auto_harmonics` is not persisted). */
+function requestFor(input: CachedInputState, autoHarmonics: boolean): ComputeEquationRequest {
+    return {
+        expression: input.expression.trim(),
+        domain_start: input.domainStart,
+        domain_end: input.domainEnd,
+        n_harmonics: input.nHarmonics,
+        n_eval_points: N_EVAL_POINTS,
+        notation: input.notation,
+        budget: clampBudget(input.budget),
+        auto_harmonics: autoHarmonics,
+    };
+}
+
+/**
+ * The compute operation's identity — six of the seven request fields.
+ *
+ * `budget` is deliberately absent and the omission is SOUND, which is the thing
+ * the old key could not say: every field of the compute response is either
+ * determined by one of these six (`coefficients`, `original_points`,
+ * `effective_n`, and — the `B-1` fix — `latex_sigma`, which is
+ * notation-determined), or is repaired by the `doSimplify` the memo branch calls
+ * on its way out (`latex` and `energy_captured`, which are exactly what
+ * `/simplify` returns). Putting `budget` in here would turn every Display-terms
+ * drag into a fresh symbolic integration for a string `/simplify` already owns.
+ */
+function computeKey(req: ComputeEquationRequest): string {
+    return JSON.stringify([
+        req.expression,
+        req.domain_start,
+        req.domain_end,
+        req.n_harmonics,
+        req.n_eval_points,
+        req.notation,
+    ]);
+}
+
+/**
+ * X·OD19 ALL — the route's prefetch on navigation intent (`prefetchRoute` in
+ * `router/index.ts` calls it when the reader points at the section). The
+ * first visit's compute was a cold server integration (1.7–2.5 s TTFB) that
+ * started only once the view mounted, behind a loader. It now starts on intent,
+ * for exactly the request the view will send (the restored inputs, or the
+ * defaults): a view that mounts while it is in flight takes the promise
+ * (`takePrefetch`) instead of sending a second request, and a compute that
+ * lands first is filed in the session cache the view restores from, so the
+ * view mounts on its result. Nothing is fetched when the cache already holds
+ * that request's answer.
+ */
+let pending: { key: string; response: Promise<ComputeEquationResponse> } | null = null;
+
+export function prefetch(): void {
+    const req = requestFor(loadCachedInputState() ?? DEFAULT_INPUT, true);
+    if (!req.expression) return;
+    const key = computeKey(req);
+    if (pending?.key === key || loadCachedResult()?.key === key) return;
+    const response = computeEquation(req);
+    pending = { key, response };
+    response.then(
+        (res) => {
+            if (pending?.response !== response) return;
+            pending = null;
+            saveCachedResult(key, res, res.latex, res.energy_captured);
+        },
+        () => {
+            if (pending?.response === response) pending = null;
+        },
+    );
+}
+
+/** The in-flight prefetch for `key`, handed over once (the view owns it from here). */
+function takePrefetch(key: string): Promise<ComputeEquationResponse> | null {
+    if (pending?.key !== key) return null;
+    const { response } = pending;
+    pending = null;
+    return response;
+}
+</script>
+
+<script setup lang="ts">
+import { ref, computed, watch, onScopeDispose, useTemplateRef } from "vue";
+import { watchDebounced } from "@vueuse/core";
+import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
+import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import type { BasisComponent } from "@/lib/types";
 import { tierInfo } from "@/lib/equation/notation";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
@@ -17,6 +152,7 @@ import { Button } from "@mkbabb/glass-ui/button";
 import { DockControl } from "@mkbabb/glass-ui/dock";
 import { Badge } from "@mkbabb/glass-ui/badge";
 import { Progress } from "@mkbabb/glass-ui/progress";
+import { Skeleton } from "@mkbabb/glass-ui";
 import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
@@ -28,18 +164,17 @@ import EquationModeToggle from "./EquationModeToggle.vue";
 import ConvergencePlot from "./ConvergencePlot.vue";
 import CoefficientsPanel from "@/components/shared/CoefficientsPanel.vue";
 
-import { loadCachedInputState, saveCachedInputState, loadCachedResult, saveCachedResult } from "./composables/useEquationCache";
 import { useCoeffHover } from "./composables/useCoeffHover";
 import { useSimplifiedSeries } from "./composables/useSimplifiedSeries";
 
 // ── Input state (restore from cache) ──
 const cached = loadCachedInputState();
-const expression = ref(cached?.expression ?? "x*(pi - x)");
-const domainStart = ref(cached?.domainStart ?? 0);
-const domainEnd = ref(cached?.domainEnd ?? Math.PI);
-const nHarmonics = ref(cached?.nHarmonics ?? 20);
-const budget = ref(cached?.budget ?? 10);
-const notation = ref<NotationMode>(cached?.notation ?? "trig");
+const expression = ref(cached?.expression ?? DEFAULT_INPUT.expression);
+const domainStart = ref(cached?.domainStart ?? DEFAULT_INPUT.domainStart);
+const domainEnd = ref(cached?.domainEnd ?? DEFAULT_INPUT.domainEnd);
+const nHarmonics = ref(cached?.nHarmonics ?? DEFAULT_INPUT.nHarmonics);
+const budget = ref(cached?.budget ?? DEFAULT_INPUT.budget);
+const notation = ref<NotationMode>(cached?.notation ?? DEFAULT_INPUT.notation);
 
 // ── Result state ──
 const computing = ref(false);
@@ -133,77 +268,21 @@ const coefficients = computed(() => result.value?.coefficients ?? []);
 const { hoveredCoeff, popoverPos, popoverHtml, onMouseMove: onCoeffMove, onMouseLeave: onCoeffLeave } =
     useCoeffHover(coefficients);
 
-// ── The ONE normalization seam ──
-//
-// `M-CK` — `computeKey()` used to return 4 fields while the POST carried 7,
-// including `notation` and `budget`, both of which the server reads to build the
-// response (`equations.py:91` `simplify_series(terms, budget, notation)` →
-// `latex`; `:96` `render_latex_sigma(terms, notation)` → `latex_sigma`). A key
-// that under-determines its own request is a memo that returns the wrong answer,
-// and it is why BOTH prescribed cures for `B-1` reproduced `B-1` one layer down.
-// `R2-N5` rides the same seam: the key read the UNTRIMMED expression while the
-// body sent the trimmed one, so a trailing space was a cache miss for an
-// identical request. Normalize ONCE, here, and key off the result — never off
-// the refs.
-const N_EVAL_POINTS = 500;
-
-/**
- * `B-2` / `M-BR` — the server bounds `budget` at `ge=2, le=50` on BOTH pydantic
- * models, and one Harmonics drag from the shipped defaults used to walk the ref
- * past 50; the 422 then landed in `doSimplify`'s silent catch and the escalated
- * value was persisted, so the NEXT session's first compute 422'd cold.
- *
- * The clamp lands HERE, at the one seam every request passes through, because
- * `M-BR` killed the slider-side cure by enumeration: the restore path never
- * passes through the slider at all. The Display-terms control clamps its own
- * WRITE as well (`FI-N-5`) — that is the second instance, not a duplicate of
- * this one: it stops the ref from ever HOLDING a number the component will not
- * send, which is what makes the displayed figure honest.
- *
- * ⊘ The shared bound constant across the client/server seam is F.W5–W8's
- * (`EV-B-2`'s contract half). Until it exists this is a local mirror and says so.
- */
-const MAX_BUDGET = 50;
-const MIN_BUDGET = 2;
-
-function clampBudget(v: number): number {
-    return Math.max(MIN_BUDGET, Math.min(MAX_BUDGET, Math.round(v)));
-}
-
+// ── The ONE normalization seam ── (the pure half — the bounds, the request
+// shape and the key — lives in the module script above, so the route's
+// `prefetch()` builds the very request this view sends).
 function currentRequest(): ComputeEquationRequest {
-    return {
-        expression: expression.value.trim(),
-        domain_start: domainStart.value,
-        domain_end: domainEnd.value,
-        n_harmonics: nHarmonics.value,
-        n_eval_points: N_EVAL_POINTS,
-        notation: notation.value,
-        budget: clampBudget(budget.value),
-        auto_harmonics: autoHarmonics.value,
-    };
-}
-
-/**
- * The compute operation's identity — six of the seven request fields.
- *
- * `budget` is deliberately absent and the omission is SOUND, which is the thing
- * the old key could not say: every field of the compute response is either
- * determined by one of these six (`coefficients`, `original_points`,
- * `effective_n`, and — the `B-1` fix — `latex_sigma`, which is
- * notation-determined), or is repaired by the `doSimplify` the memo branch calls
- * on its way out (`latex` and `energy_captured`, which are exactly what
- * `/simplify` returns). Putting `budget` in here would turn every Display-terms
- * drag into a fresh symbolic integration for a string `/simplify` already owns.
- */
-function computeKey(req: ComputeEquationRequest): string {
-    return JSON.stringify([
-        req.expression,
-        req.domain_start,
-        req.domain_end,
-        req.n_harmonics,
-        req.n_eval_points,
-        req.notation,
-    ]);
+    return requestFor(
+        {
+            expression: expression.value,
+            domainStart: domainStart.value,
+            domainEnd: domainEnd.value,
+            nHarmonics: nHarmonics.value,
+            budget: budget.value,
+            notation: notation.value,
+        },
+        autoHarmonics.value,
+    );
 }
 
 /**
@@ -280,7 +359,8 @@ async function doCompute(force = false) {
     error.value = null;
     expressionError.value = null;
     try {
-        const res = await computeEquation(req);
+        // X·OD19 ALL: the intent prefetch for this very request, if one is in flight.
+        const res = await (takePrefetch(key)?.catch(() => computeEquation(req)) ?? computeEquation(req));
         if (gen !== computeGeneration) return;
         result.value = res;
         lastComputeKey = key;
@@ -420,11 +500,19 @@ watchDebounced(
                 :aria-busy="loading"
             >
                 <!-- Loading (no prior result). X.F.W14U.eq — UIA-F-202 ⊕ F-71's
-                     carried sites: glass's indeterminate Progress, not a
-                     transparent-topped ring. -->
-                <div v-if="computing && !result" class="eq-state" role="status">
-                    <Progress :model-value="null" size="sm" class="eq-state-bar" aria-label="Computing the series" />
-                    <p class="text-caption text-muted-foreground">Computing…</p>
+                     carried sites. X·OD19 ALL (owner: "the loading text should be
+                     removed in favor of a skeleton shimmer"): glass's `Skeleton` in
+                     the stage's own shape — the series card's lines over the plot
+                     region, on the same hairline — with the panel `aria-busy`
+                     (above); the status keeps its name for AT, with no text. -->
+                <div v-if="computing && !result" class="eq-skeleton" role="status" aria-label="Computing the series">
+                    <div class="eq-card eq-skeleton-series">
+                        <Skeleton class="eq-skeleton-line" />
+                        <Skeleton class="eq-skeleton-line eq-skeleton-line--short" />
+                    </div>
+                    <div class="eq-plot-card eq-skeleton-plot">
+                        <Skeleton class="eq-skeleton-fill" />
+                    </div>
                 </div>
 
                 <!-- Error (no prior result): a transient failure keeps its retry.
@@ -651,7 +739,12 @@ watchDebounced(
 /* ── Controls (the aside body) ── */
 /* X-DS DS-F-C4 (as on /v): no inset — the layer group's hairline is the
    aside's own edge, not a second ring inside it. */
+/* X·OD19 F5 (as on /v): the flush stack publishes its real inset, the aside's
+   1px border, so glass derives the first layer's corner concentric with the
+   card (`--radius-ctx − --radius-inset` = 15px), not the padded shell's
+   `max(4px, 16 − 20)`. */
 .eq-panel-left-wrap {
+    --radius-inset: 1px;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -675,6 +768,39 @@ watchDebounced(
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+}
+/* X·OD19 ALL — the cold compute's Skeleton: the series' two lines, then the
+   plot filling the rest, in the regions the result will occupy. */
+.eq-skeleton {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+.eq-skeleton-series {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2rem 1.5rem;
+}
+.eq-skeleton-line {
+    block-size: 1.5rem;
+    inline-size: min(36rem, 80%);
+    border-radius: var(--radius-floor);
+}
+.eq-skeleton-line--short {
+    inline-size: min(20rem, 50%);
+}
+.eq-skeleton-plot {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    padding: 0.5rem 0.75rem;
+}
+.eq-skeleton-fill {
+    flex: 1;
+    border-radius: var(--radius-floor);
 }
 /* The series and its plot are two regions of the one stage card, divided by
    glass's configurator hairline. */
@@ -722,12 +848,9 @@ watchDebounced(
     flex: none;
 }
 
-/* The cold states (no prior result): centred in the panel. */
+/* The cold failure state (no prior result): centred in the panel. */
 .eq-state {
     @apply flex flex-col items-center justify-center flex-1 gap-3;
-}
-.eq-state-bar {
-    width: 10rem;
 }
 /* DS-F11C-C1: the failure line stays inside the stage's measure. */
 .eq-state > .compute-status {
