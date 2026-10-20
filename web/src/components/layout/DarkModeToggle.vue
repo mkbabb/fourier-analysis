@@ -83,21 +83,18 @@
  *    producer's own idiom (F.W4, `SP-7`), so what remained to reconcile was
  *    the CHASSIS question, and the answer is that the chassis is the glyph.
  *
- * ⊘ NOT this unit's, and unmoved: `FR-AH-1`'s 450,631 B eager-payload row is
- * F.W4's and is not touched here.
+ * `FR-AH-1`'s 450,631 B eager payload (the two shapes' JSON) is cured by X·OD19
+ * ALL: the shapes load beside the boot, from `@/lib/sun-moon-shapes`.
  */
 import { ref, computed, onMounted, watch } from "vue";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import { DockControl } from "@mkbabb/glass-ui/dock";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
 import { DEFAULT_MORPH_CONFIG, useFourierMorph } from "@/composables/useFourierMorph";
-import { prepareFourierShape, type FourierShape } from "@/lib/svg-fourier";
-
-import sunData from "@/assets/fourier-paths/sun.json";
-import moonData from "@/assets/fourier-paths/moon.json";
-
-const sunShape = prepareFourierShape(sunData as any);
-const moonShape = prepareFourierShape(moonData as any);
+import type { FourierShape } from "@/lib/svg-fourier";
+// X·OD19 ALL — the shapes ride their own chunk beside the boot; the app mounts
+// once they have landed (`main.ts`), so both are set before this setup runs.
+import { moonShape, sunShape } from "@/lib/sun-moon-shapes";
 
 const { isDark, toggleDark } = useGlobalDark();
 /** true when morphing toward dark (moon), false when morphing toward light (sun) */
