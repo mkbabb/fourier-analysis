@@ -987,6 +987,8 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     display: flex;
     justify-content: center;
     pointer-events: none;
+    /* X-OD19 · F1: the transport face sizes from this overlay's width (`cqi`). */
+    container-type: inline-size;
 }
 .controls-overlay > * { pointer-events: auto; }
 

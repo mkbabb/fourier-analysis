@@ -99,7 +99,10 @@ for (const c of CASES) {
         });
         test.setTimeout(120_000);
 
-        test("d1 — the collapsed speed reading is glass's Metric: value never dimmer than its unit, the dock's own size", async ({
+        // X-OD19 · F1 (owner row OD19-F1): the speed Metric left the collapsed summary
+        // (it overflowed glass's 40 px summary square, "×" outside the pill); speed
+        // reads on its own dock seat. The summary is one readout inside the plate.
+        test("d1 — the collapsed summary is one readout, inside the plate", async ({
             page,
         }) => {
             await loadCollapsed(page, mobile);
@@ -110,27 +113,20 @@ for (const c of CASES) {
                 clip: { x: Math.max(0, box.x - 40), y: box.y - 20, width: box.width + 120, height: box.height + 40 },
             });
             const m = await page.evaluate(() => {
-                const alpha = (color: string): number => {
-                    const cv = document.createElement("canvas");
-                    cv.width = cv.height = 1;
-                    const ctx = cv.getContext("2d")!;
-                    ctx.fillStyle = color;
-                    ctx.fillRect(0, 0, 1, 1);
-                    return ctx.getImageData(0, 0, 1, 1).data[3] / 255;
-                };
-                const summary = document.querySelector(".animation-dock .dock-layer--summary")!;
-                const metric = summary.querySelector(".metric")!;
-                const value = metric.querySelector(".metric__value")!;
-                const unit = metric.querySelector(".metric__unit")!;
+                const dock = document.querySelector(".animation-dock")!;
+                const summary = dock.querySelector(".dock-layer--summary")!;
+                const p = dock.getBoundingClientRect();
+                const kids = [...summary.children];
                 return {
-                    valueAlpha: alpha(getComputedStyle(value).color),
-                    unitAlpha: alpha(getComputedStyle(unit).color),
-                    metricPx: parseFloat(getComputedStyle(metric).fontSize),
-                    hostPx: parseFloat(getComputedStyle(summary).fontSize),
+                    kids: kids.map((k) => k.className.toString()),
+                    outside: kids.filter((k) => {
+                        const r = k.getBoundingClientRect();
+                        return r.left < p.left - 0.5 || r.right > p.right + 0.5;
+                    }).length,
                 };
             });
-            expect(m.valueAlpha).toBeGreaterThanOrEqual(m.unitAlpha);
-            expect(m.metricPx).toBe(m.hostPx);
+            expect(m.kids).toEqual(["mini-progress"]);
+            expect(m.outside).toBe(0);
         });
 
         test("d2 — the canvas dock's view dot never covers the collapsed face's glyph and stays on the plate", async ({

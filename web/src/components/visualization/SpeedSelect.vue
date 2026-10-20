@@ -10,6 +10,10 @@
  * group sideways ("Easinε"), and speed wore a different control at each
  * breakpoint. A menu is never the parent of another floating list.
  *
+ * X-OD19 · F3: the section is the whole content of the dock's own Speed menu
+ * now (no longer one section of a shared ⋯ menu), so its trailing separator is
+ * gone.
+ *
  * NOW: the speed catalogue (`ANIMATION_SPEEDS`, the domain `lib/defaults.ts`
  * owns) is a labelled `DropdownMenuRadioGroup` — the sibling of `EasingPicker`,
  * one section idiom for every setting the menu holds. Choosing a rate keeps the
@@ -27,7 +31,6 @@ import {
     DropdownMenuLabel,
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
-    DropdownMenuSeparator,
 } from "@mkbabb/glass-ui/menu";
 import { ANIMATION_SPEEDS, isAnimationSpeed } from "@/lib/defaults";
 import { useAnimationStore } from "@/stores/animation";
@@ -58,7 +61,6 @@ function selectSpeed(value: unknown) {
             {{ rate }}&times;
         </DropdownMenuRadioItem>
     </DropdownMenuRadioGroup>
-    <DropdownMenuSeparator />
 </template>
 
 <style scoped>

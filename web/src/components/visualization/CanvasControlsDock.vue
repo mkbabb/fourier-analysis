@@ -40,6 +40,16 @@ const viewOffDefault = computed(() =>
     isViewOffDefault({ overlay: props.showImageOverlay, ghost: props.showGhost }),
 );
 
+/**
+ * X-OD19 · F4 — an open dock menu holds its dock open: each menu's
+ * `update:open` edge takes or gives back one glass keep-open count, so the
+ * collapse timer never folds the dock (and inerts the trigger) under an open menu.
+ */
+function holdDockWhileOpen(open: boolean) {
+    if (open) dockRef.value?.keepOpen();
+    else dockRef.value?.release();
+}
+
 // In-band coupling (W2.E): surface the dock's expanded state to the parent
 // (VisualizationView, which centres the anchor on expand) via a typed event
 // rather than an out-of-band `defineExpose` the parent reaches into.
@@ -82,6 +92,7 @@ watch(
                 :show-ghost="showGhost"
                 @toggle-image-overlay="emit('toggleImageOverlay')"
                 @toggle-ghost="emit('toggleGhost')"
+                @update:open="holdDockWhileOpen"
             />
 
             <DockSeparator />

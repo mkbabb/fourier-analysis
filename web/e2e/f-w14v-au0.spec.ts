@@ -285,7 +285,11 @@ async function walkWorkspace(page: Page, run: Run, tag: string): Promise<void> {
     await page.getByRole("button", { name: /(Play|Pause) animation/ }).first().hover();
     await page.waitForTimeout(800);
     await shot(page, run, tag, "playback-dock-expanded");
-    await openIf(page, run, tag, "more-options", ".animation-dock [aria-label='More options']", "no More options control");
+    // X-OD19 · F3 (owner row OD19-F3): Speed and Easing are dock seats of their own.
+    await openIf(page, run, tag, "speed", ".animation-dock [aria-label='Playback speed']", "no Playback speed control");
+    await page.getByRole("button", { name: /(Play|Pause) animation/ }).first().hover();
+    await page.waitForTimeout(800);
+    await openIf(page, run, tag, "easing", ".animation-dock [aria-label='Easing']", "no Easing control");
 
     await expandCanvasDock(page);
     await page.locator(`${anchor} [aria-label='Fullscreen']`).first().click();

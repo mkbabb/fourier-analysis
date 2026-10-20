@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, h } from "vue";
+import { computed, h, useTemplateRef } from "vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { EllipsisVertical, Pause, Play } from "@lucide/vue";
+import { Pause, Play } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockTrigger, DockControl } from "@mkbabb/glass-ui/dock";
 import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/menu";
-import { Metric } from "@mkbabb/glass-ui/metric";
+import { EasingCurve } from "@mkbabb/glass-ui/easing";
+import { getEasingSVGPath } from "@/lib/easings";
 import FourierTimeline from "@/components/shared/FourierTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
 import SpeedSelect from "./SpeedSelect.vue";
@@ -27,6 +28,17 @@ const props = withDefaults(
 const anim = useAnimationStore();
 const store = useWorkspaceStore();
 
+/**
+ * X-OD19 · F4 — an open dock menu holds its dock open. Glass's collapse timer
+ * reads only the dock's keep-open count (`useDockState` `scheduleCollapse`), so a
+ * menu that never takes a token was left open over a collapsed, `inert` face.
+ * Each menu's `update:open` edge takes and gives back exactly one count.
+ */
+const dock = useTemplateRef<InstanceType<typeof GlassDock>>("dock");
+function holdDockWhileOpen(open: boolean) {
+    if (open) dock.value?.keepOpen();
+    else dock.value?.release();
+}
 
 const isEpicycleOnly = computed(() =>
     props.activeBases.includes("fourier-epicycles") && props.activeBases.length === 1,
@@ -172,39 +184,47 @@ const TimelineReadout = () =>
             </Tooltip>
         </template>
 
-        <!-- ═══ COLLAPSED SUMMARY — readouts only; NO interactive content ═══ -->
+        <!-- ═══ COLLAPSED SUMMARY — ONE readout; NO interactive content ═══
+             X-OD19 · F1: glass's summary is a single-glyph square (40 px). It held
+             the 48 px progress AND a speed Metric, so "1×" sat on the plate edge and
+             its unit floated outside the pill. The summary is the position readout
+             alone, sized to the square; speed reads on its own dock trigger. -->
         <template #collapsed>
             <MiniProgressReadout />
-            <Metric :value="anim.speed" unit="×" size="sm" />
         </template>
 
-        <!-- ═══ EXPANDED FULL CONTROLS ═══ -->
-        <div class="flex items-center gap-2 w-full">
+        <!-- ═══ EXPANDED FULL CONTROLS ═══
+             X-OD19 · F1: the face carries a DEFINITE inline size (`.transport-face`),
+             so glass measures a real expanded endpoint at every posture and morphs
+             to it; the posture-keyed width override on the dock is gone. -->
+        <div class="transport-face flex items-center gap-2">
             <!-- Timeline -->
             <TimelineReadout />
 
-            <!-- Three-dot menu — glass-ui DropdownMenu (role="menu", focus
-                 management, Esc + click-outside dismissal all from the
-                 primitive; replaces the hand-rolled popup + onClickOutside). -->
-            <DropdownMenu :modal="false">
-                <DockTrigger for="dropdown" aria-label="More options">
-                    <!-- X.F.W14V.u4 — UIA-F-146: no Tooltip around the glyph. It was the
-                     as-child of a bare SVG (never focusable, so no keyboard path);
-                     the trigger's own aria-label names the control. -->
-                    <EllipsisVertical class="h-4 w-4" />
+            <!-- X-OD19 · F3: Speed and Easing are dock-level controls, each its own
+                 seat and its own menu (they were two radio groups inside one ⋯
+                 menu). The trigger's aria-label names the control; the face shows
+                 its value — the rate as mono numerals, the easing as its curve. -->
+            <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
+                <DockTrigger for="dropdown" class="speed-trigger" aria-label="Playback speed">
+                    {{ anim.speed }}&times;
                 </DockTrigger>
-                <!-- X.F.W14U.vdock — UIA-F-9 (BROKEN) ⊕ F-82 ⊕ F-175. Every setting
-                     is a labelled menu section in the menu's own idiom (speed and
-                     easing as radio groups; the speed Select that sat in the dock
-                     from `sm` up and inside this menu below it is gone — one
-                     control per setting, and no listbox ever opens over the
-                     menu). The sections scroll inside the plate when the space
-                     above the dock is short (the 390 frame: sh464/ch382).
-                     X.F.W14V.u1 — UIA-F-182: Export left this menu for the canvas
-                     dock, where it always opens the export dialog (one path). -->
                 <DropdownMenuContent class="menu-popup" :side-offset="8" align="end">
                     <div class="menu-sections">
                         <SpeedSelect />
+                    </div>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
+                <DockTrigger for="dropdown" aria-label="Easing">
+                    <EasingCurve
+                        :strokes="[{ d: getEasingSVGPath(anim.easing) }]"
+                        class="easing-glyph"
+                        aria-hidden="true"
+                    />
+                </DockTrigger>
+                <DropdownMenuContent class="menu-popup" :side-offset="8" align="end">
+                    <div class="menu-sections">
                         <EasingPicker />
                     </div>
                 </DropdownMenuContent>
@@ -216,9 +236,22 @@ const TimelineReadout = () =>
 <style scoped>
 @reference "tailwindcss";
 
-/* ── Dock width: stretch to fill container when expanded ── */
-.animation-dock:where(.expanded) {
-    width: min(var(--animation-dock-max-width, 960px), calc(100dvw - 1rem));
+/* ── The full face's definite inline size ── */
+/* X-OD19 · F1: the posture-keyed `.animation-dock:where(.expanded){width}` is
+   DELETED. It overrode glass's reserved `inline-size: var(--dock-expanded-px)`,
+   and the fluid face under it (`w-full`) gave glass no endpoint to measure (the
+   expanded endpoint read 164 → 102 → 1806 px; the scale floored at 0.06). The
+   face now has a size of its own, from `maxWidth` and the overlay it sits in,
+   identical at both postures, so glass's measured endpoint is the real one. */
+.transport-face {
+    /* The dock's chrome around the face, in glass's own tokens: the plate's two
+       inline paddings, the persistent Play seat (one layer square) and the gap
+       between the persistent region and the layers. `100cqi` is the controls
+       overlay (VisualizationView `.controls-overlay`, an inline-size container). */
+    --transport-chrome: calc(
+        2 * var(--dock-padding-inline, 0.5rem) + var(--dock-layer-height, 2.5rem) + var(--dock-layer-gap, 0.375rem)
+    );
+    inline-size: calc(min(var(--animation-dock-max-width, 960px), 100cqi) - var(--transport-chrome));
 }
 
 /* ── Play control ── */
@@ -228,7 +261,7 @@ const TimelineReadout = () =>
    selected fill (`[data-active]`), and the play/pause glyph carries it. */
 
 /* ── Collapsed summary ── */
-.mini-progress { width: 3rem; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
+.mini-progress { width: 2rem; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
 .mini-progress :deep(.mini-fill) { height: 100%; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 25%, transparent); }
 /* X.F.W4 · SP-4 / `fr-AnimationControls M-8` — the `transition: width 0.1s
    linear` is DELETED, not shortened. `width` here is rewritten every rAF tick,
@@ -237,12 +270,10 @@ const TimelineReadout = () =>
    clock it claimed to report, and the browser ran a live interpolation for the
    entire playback to achieve that. One line removed fixes correctness AND cost,
    and removes an ungated-motion surface from D-8's inventory. */
-/* X.F.W14U.d — OA-57, the consumer half. The speed reading is glass's Metric as
-   glass paints it. The retired `.summary-speed` inked the value at 35% while the
-   unit kept glass's muted ink, so "1" read dimmer than its own "×" and the unit
-   read as a loose glyph beside the plate (the owner's frame). Its `text-base`
-   never reached the value (`size="sm"` sets it); it only re-based the reading's
-   em gap off the dock's own size. The plate that does not wrap the summary is glass's (DOCK-COLLAPSED-FORM, O-65). */
+/* ── Speed + easing seats ── */
+/* The rate reads as numerals in the mono family (the menu's rates do the same). */
+.speed-trigger { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.easing-glyph { inline-size: var(--dock-icon-glyph, 1.25rem); }
 
 /* ── Transitions ── */
 /* A.W3.d — named properties + canonical token, no `transition: all`. */
