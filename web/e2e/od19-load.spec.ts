@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { ADMIN_TOKEN, ENTRY, stubAdminApi } from "./fixtures/gallery";
+import { expectHardwareGpu } from "./fixtures/gpu";
 import { seededViz } from "./fixtures/seed";
 
 /**
@@ -122,6 +123,35 @@ const ADMIN_BAR = { jsKB: 910, coldMs: 1100, tabMs: 450 };
 /** The transition's frame budget (every nav): no frame gap over this, and at most this many janked frames. */
 const FRAME_BAR = { maxGapMs: 450, over50: 20 };
 
+/**
+ * ESC-FREL-ci-1 (value.js COHESION §0gp.2-.3, the §0fr.2/.3 law) — THE FRAME
+ * BUDGET IS READ ON THE REAL-GPU CELL OF RECORD. A frame's cadence is the
+ * rasteriser's. On SwiftShader or a CI software rasteriser (the `chromium`
+ * project on the hosted runner) the transition's frames are produced by the
+ * CPU at the host's raster rate: CI 39595581721 read the /equation nav at
+ * over50 33/39 and max gap 500/650 ms with TBT 42 ms, i.e. no page jank, only
+ * the emulator's cadence while the route's compute is awaited. There the frame
+ * reading is INFORMATIONAL (recorded on every run) and the leg asserts
+ * liveness: the sampler read at least two frame intervals across the
+ * transition (the form ruled LAWFUL at §0fr.3, value.js `w12-drag.spec.ts:136`).
+ * The budget itself (FRAME_BAR) gates on hardware: the `@gpu` cell below runs
+ * every nav on the `chrome-gpu` project — headless real Google Chrome
+ * (`channel: "chrome"`, ANGLE Metal), whose need is named here per the
+ * 2026-10-16 machine law: the frame budget is a GPU-raster measurement, which
+ * Playwright's headless shell cannot make on a hosted runner. The bytes and
+ * own-time legs stay gating in every cell, CI included.
+ */
+const SOFTWARE_GL = /SwiftShader|llvmpipe|softpipe|Software/i;
+
+/** The page's WebGL renderer string, or null when the page has no WebGL (treated as software). */
+async function rendererOf(page: Page): Promise<string | null> {
+    return page.evaluate(() => {
+        const gl = document.createElement("canvas").getContext("webgl2");
+        const ext = gl?.getExtension("WEBGL_debug_renderer_info");
+        return gl && ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : null;
+    });
+}
+
 interface Reading {
     jsKB: number;
     cssKB: number;
@@ -132,6 +162,10 @@ interface Reading {
     apiMs: number;
     maxGapMs?: number;
     over50?: number;
+    /** Frame intervals the sampler read over the transition. */
+    frames?: number;
+    /** The page's WebGL renderer (the cell's rasteriser). */
+    renderer?: string | null;
 }
 
 /** The page's own time to content: the reading less its wait on the API. */
@@ -270,7 +304,37 @@ async function navTo(page: Page, item: string, ready: string): Promise<Reading> 
         ...load,
         maxGapMs: Math.round(Math.max(0, ...frames)),
         over50: frames.filter((d) => d > 50).length,
+        frames: frames.length,
+        renderer: await rendererOf(page),
     };
+}
+
+/**
+ * One nav cell: enter from another section, navigate through the dock, read
+ * it. The bytes and own-time legs gate everywhere; the frame budget gates on a
+ * hardware rasteriser and is liveness on a software one (ESC-FREL-ci-1).
+ */
+async function navCell(browser: Browser, route: Route): Promise<Reading> {
+    const { ctx, page } = await throttled(browser, 1440, 900);
+    try {
+        // Enter from another section: /morph for /paper, /paper for the rest.
+        const from = route.name === "paper" ? ROUTES.find((r) => r.name === "morph")! : ROUTES[0];
+        await hardLoad(page, from);
+        const nav = await navTo(page, route.nav!, route.ready);
+        record(route.name, "nav", nav);
+        const msg = JSON.stringify({ ...nav, cpu: hostCalibration });
+        expect.soft(own(nav), `nav content ms (own) ${msg}`).toBeLessThanOrEqual(route.bar.navMs!);
+        if (!nav.renderer || SOFTWARE_GL.test(nav.renderer)) {
+            test.info().annotations.push({ type: "frames-informational", description: `software raster: ${msg}` });
+            expect.soft(nav.frames!, `nav frame sampler live across the transition (software raster) ${msg}`).toBeGreaterThan(1);
+        } else {
+            expect.soft(nav.maxGapMs!, `nav max frame gap ${msg}`).toBeLessThanOrEqual(FRAME_BAR.maxGapMs);
+            expect.soft(nav.over50!, `nav frames over 50 ms ${msg}`).toBeLessThanOrEqual(FRAME_BAR.over50);
+        }
+        return nav;
+    } finally {
+        await ctx.close();
+    }
 }
 
 test.describe("OD19-ALL · fourier load — every route, production bundle, CPU ×4", () => {
@@ -297,21 +361,23 @@ test.describe("OD19-ALL · fourier load — every route, production bundle, CPU 
 
     for (const route of ROUTES.filter((r) => r.nav)) {
         test(`${route.name}: an in-app navigation reaches content within the bar, with a smooth transition`, async ({ browser }) => {
-            const { ctx, page } = await throttled(browser, 1440, 900);
-            try {
-                // Enter from another section: /morph for /paper, /paper for the rest.
-                const from = route.name === "paper" ? ROUTES.find((r) => r.name === "morph")! : ROUTES[0];
-                await hardLoad(page, from);
-                const nav = await navTo(page, route.nav!, route.ready);
-                record(route.name, "nav", nav);
-                expect.soft(own(nav), `nav content ms (own) ${JSON.stringify({ ...nav, cpu: hostCalibration })}`).toBeLessThanOrEqual(route.bar.navMs!);
-                expect.soft(nav.maxGapMs!, `nav max frame gap ${JSON.stringify({ ...nav, cpu: hostCalibration })}`).toBeLessThanOrEqual(FRAME_BAR.maxGapMs);
-                expect.soft(nav.over50!, `nav frames over 50 ms ${JSON.stringify({ ...nav, cpu: hostCalibration })}`).toBeLessThanOrEqual(FRAME_BAR.over50);
-            } finally {
-                await ctx.close();
-            }
+            await navCell(browser, route);
         });
     }
+
+    // The real-GPU cell of record for the frame budget (§0gp.2): run by the
+    // `chrome-gpu` project only, never on a software rasteriser.
+    test.describe("on the real GPU", { tag: "@gpu" }, () => {
+        test.beforeAll(async ({ browser }) => {
+            await expectHardwareGpu(browser);
+        });
+        for (const route of ROUTES.filter((r) => r.nav)) {
+            test(`${route.name}: an in-app navigation keeps the frame budget on ANGLE Metal`, async ({ browser }) => {
+                const nav = await navCell(browser, route);
+                expect(nav.renderer ?? "", "the frame budget is read on the hardware GPU").not.toMatch(SOFTWARE_GL);
+            });
+        }
+    });
 
     test("gallery: an open card has already loaded its visualization's route chunk", async ({ browser }) => {
         const { ctx, page } = await throttled(browser, 1440, 900);
