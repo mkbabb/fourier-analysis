@@ -394,8 +394,12 @@ for (const vp of WIDTHS) {
                     .filter((el) => (el as HTMLElement).tabIndex < 0).length,
             );
             expect(unfocusable).toBe(0);
+            // X·OD19-F7 (976a704): each row is glass's integrated-thumb scrubber;
+            // the hue the reader sees is its `.slider-range` fill's tint (glass's
+            // `--liquid-fill-tint`, fed by the row's `--slider-range-bg`), read
+            // on glass's real DOM, not the retired `--row-fill`/`--track-color`.
             const fills = await side.evaluate((root) =>
-                [...root.querySelectorAll<HTMLElement>('[style*="--row-fill"]')].map((el) => el.style.getPropertyValue("--track-color").trim()),
+                [...root.querySelectorAll<HTMLElement>("[data-control-row] .slider-range")].map((el) => getComputedStyle(el).getPropertyValue("--liquid-fill-tint").trim()),
             );
             expect(fills.length).toBeGreaterThan(3);
             // X.F.W14U.c1 — addendum (g), COHESION §0da: the owner reverses F-172's
@@ -422,12 +426,12 @@ for (const vp of WIDTHS) {
                     return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3));
                 };
                 const destructive = rgb("var(--destructive)");
-                const sliders = [...root.querySelectorAll<HTMLElement>('[style*="--row-fill"]')].map((el) => {
+                const sliders = [...root.querySelectorAll<HTMLElement>("[data-control-row] .slider-range")].map((el) => {
                     const label = el.closest("[data-control-row]")?.querySelector("[data-row-label]")?.textContent?.trim() ?? "";
                     const token = owner[label];
                     return {
                         label,
-                        track: rgb(el.style.getPropertyValue("--track-color").trim()),
+                        track: rgb(getComputedStyle(el).getPropertyValue("--liquid-fill-tint").trim()),
                         want: token ? rgb(`var(${token})`) : null,
                     };
                 });

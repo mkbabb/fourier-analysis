@@ -397,6 +397,11 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         const save = dock.getByRole("button", { name: "Save contour" }).first();
         await save.hover();
         await page.waitForTimeout(400);
+        // Read the hover ink after glass's colour transition settles, never
+        // mid-fade (CI 39348303989 read alpha 0.98 at a fixed 400 ms).
+        await save.evaluate((b) => Promise.all(b.getAnimations({ subtree: true })
+            .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+            .map((a) => a.finished.catch(() => undefined))));
         expect.soft(await save.evaluate((b) => getComputedStyle(b).color), "hovered Save wears the Fourier red").toBe(toolHues.fourier);
         // The Magnet radius stays a menu row (no popover toggle, dd123a9's
         // structure); INVERTED colour limb: its Magnet glyph is back and wears the
@@ -461,7 +466,9 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         }
         await page.mouse.move(2, 2);
         const magnet = await page.getByRole("menu").evaluate((menu) => {
-            const row = menu.querySelector("[style*='--track-color']") as HTMLElement | null;
+            // X·OD19-F7 (976a704): the radius is glass's integrated-thumb
+            // scrubber; its hue is the `.slider-range` fill's tint.
+            const row = menu.querySelector("[data-control-row] .slider-range") as HTMLElement | null;
             const resolve = (v: string) => {
                 const s = document.createElement("span");
                 s.style.color = v;
@@ -471,7 +478,7 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
                 return c;
             };
             return row
-                ? { track: resolve(getComputedStyle(row).getPropertyValue("--track-color").trim()), owner: resolve("var(--viz-amber)") }
+                ? { track: resolve(getComputedStyle(row).getPropertyValue("--liquid-fill-tint").trim()), owner: resolve("var(--viz-amber)") }
                 : null;
         });
         expect(magnet, "the Magnet radius is in the menu").not.toBeNull();
@@ -583,8 +590,9 @@ test.describe("X.F.W14U.vedit — the equation panel", () => {
             probe.remove();
             const metric = el.querySelector(".metric") as HTMLElement;
             const value = el.querySelector(".metric__value") as HTMLElement;
-            // The Terms row paints its fill from `--track-color` (SliderControl).
-            const row = el.querySelector("[style*='--track-color']") as HTMLElement | null;
+            // The Terms row is glass's integrated-thumb scrubber (X·OD19-F7,
+            // 976a704): its fill paints `--liquid-fill-tint` on `.slider-range`.
+            const row = el.querySelector("[data-control-row] .slider-range") as HTMLElement | null;
             const resolve = (v: string) => {
                 const s = document.createElement("span");
                 s.style.color = v;
@@ -597,7 +605,7 @@ test.describe("X.F.W14U.vedit — the equation panel", () => {
                 destructive,
                 metric: getComputedStyle(metric).color,
                 value: getComputedStyle(value).color,
-                range: row ? resolve(getComputedStyle(row).getPropertyValue("--track-color").trim()) : null,
+                range: row ? resolve(getComputedStyle(row).getPropertyValue("--liquid-fill-tint").trim()) : null,
                 owner: resolve("var(--viz-fourier)"),
                 pct: value.textContent,
             };

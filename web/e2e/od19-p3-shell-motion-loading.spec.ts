@@ -27,6 +27,73 @@ const CELLS = [
 
 const LOADER_TEXT = /Loading the|Computing…/;
 
+/** One View Transition the page opened, as the browser reports it. */
+type VTRecord = {
+    types: string[];
+    /** `ready` resolved (true) or rejected: the transition was skipped (false). */
+    ready: boolean | null;
+    finished: boolean;
+    /** The `::view-transition-new(root)` animations at `ready`. */
+    newRoot: { name: string; duration: number; from: string | null }[];
+};
+
+/**
+ * Record every View Transition the page opens (an init script). The route
+ * window's crossfade runs on the compositor; `requestAnimationFrame` runs on the
+ * main thread, which the incoming route's mount can hold for the whole fade. On
+ * CI's software-rendered runner the rAF sampler sees 0–4 frames of a fade the
+ * compositor plays in full (39348303989: vtFrames 1, minOpacity 0). The
+ * falsifier therefore reads the transition itself: glass opened it typed
+ * `route`, it was not skipped, `::view-transition-new(root)` fades in from
+ * opacity 0 over at least six 60 Hz frames, and it finished. The sampled frame
+ * count stays in the record as evidence; a single sampled frame is a lawful
+ * reading of a fade that ran, and is never inflated.
+ */
+function recordViewTransitions() {
+    const w = window as unknown as { __od19VTs: VTRecord[] };
+    w.__od19VTs = [];
+    const start = Document.prototype.startViewTransition;
+    if (typeof start !== "function") return;
+    Document.prototype.startViewTransition = function (this: Document, arg?: unknown) {
+        const vt = start.call(this, arg as never) as ViewTransition;
+        const rec: VTRecord = {
+            types: [...(((arg as { types?: Iterable<string> } | undefined)?.types) ?? [])],
+            ready: null,
+            finished: false,
+            newRoot: [],
+        };
+        w.__od19VTs.push(rec);
+        vt.ready.then(
+            () => {
+                rec.ready = true;
+                rec.newRoot = document
+                    .getAnimations()
+                    .filter((a) => (a.effect as KeyframeEffect | null)?.pseudoElement === "::view-transition-new(root)")
+                    .map((a) => {
+                        const effect = a.effect as KeyframeEffect;
+                        const first = effect.getKeyframes()[0] as { opacity?: string } | undefined;
+                        return {
+                            name: (a as CSSAnimation).animationName ?? "",
+                            duration: Number(effect.getComputedTiming().duration),
+                            from: first?.opacity ?? null,
+                        };
+                    });
+            },
+            () => {
+                rec.ready = false;
+            },
+        );
+        vt.finished.then(
+            () => (rec.finished = true),
+            () => (rec.finished = true),
+        );
+        return vt;
+    };
+}
+
+/** Six frames at 60 Hz: the shortest fade a reader sees as motion. */
+const SIX_FRAMES_MS = (6 * 1000) / 60;
+
 /** Push a route through the app's router and trace each frame for `ms`. */
 async function pushAndTrace(page: Page, to: string, ms = 900) {
     const trace = page.evaluate(
@@ -66,11 +133,25 @@ async function pushAndTrace(page: Page, to: string, ms = 900) {
             }),
         [ms, LOADER_TEXT.source] as const,
     );
+    const before = await page.evaluate(() => (window as unknown as { __od19VTs?: VTRecord[] }).__od19VTs?.length ?? 0);
     await page.evaluate((to) => {
         const app = (document.querySelector("#app") as unknown as { __vue_app__: { config: { globalProperties: { $router: { push(p: string): Promise<unknown> } } } } }).__vue_app__;
         void app.config.globalProperties.$router.push(to);
     }, to);
-    return trace;
+    const sampled = await trace;
+    // The push's transitions, once each has settled (finished, or skipped).
+    const vts = await page
+        .waitForFunction(
+            (before) => {
+                const all = (window as unknown as { __od19VTs?: VTRecord[] }).__od19VTs ?? [];
+                const mine = all.slice(before);
+                return mine.every((r) => r.finished || r.ready === false) ? mine : null;
+            },
+            before,
+            { timeout: 10_000 },
+        )
+        .then((h) => h.jsonValue() as Promise<VTRecord[]>);
+    return { ...sampled, vts };
 }
 
 for (const cell of CELLS) {
@@ -98,12 +179,22 @@ for (const cell of CELLS) {
         test("F5 · ALL — every route push crossfades (≥ 6 frames), the dock holds still, no text loader", async ({ page }) => {
             test.setTimeout(120_000);
             const viz = seededViz();
+            await page.addInitScript(recordViewTransitions);
             await page.goto("/gallery");
             await expect(page.locator(".app-dock")).toBeVisible({ timeout: 30_000 });
             await page.waitForTimeout(800);
             for (const to of ["/paper", `/v/${viz.slug}`, "/gallery", "/equation", "/morph"]) {
                 const t = await pushAndTrace(page, to);
-                expect(t.vtFrames, `${to}: frames with the route window below opacity 1 ${JSON.stringify(t)}`).toBeGreaterThanOrEqual(6);
+                // One route transition per push (UIA-F-246), not skipped, finished.
+                const route = t.vts.filter((v) => v.types.includes("route"));
+                expect(route.length, `${to}: one route view transition ${JSON.stringify(t)}`).toBe(1);
+                expect(route[0].ready, `${to}: the transition was not skipped ${JSON.stringify(t)}`).toBe(true);
+                expect(route[0].finished, `${to}: the transition finished ${JSON.stringify(t)}`).toBe(true);
+                // The route window crossfades: its new image fades in from 0 over
+                // ≥ 6 frames of the compositor's clock (see recordViewTransitions).
+                const fade = route[0].newRoot.filter((a) => a.from !== null && Number(a.from) === 0);
+                expect(fade.length, `${to}: the new route window fades in from opacity 0 ${JSON.stringify(t)}`).toBeGreaterThan(0);
+                expect(Math.max(...fade.map((a) => a.duration)), `${to}: the crossfade spans ≥ 6 frames ${JSON.stringify(t)}`).toBeGreaterThanOrEqual(SIX_FRAMES_MS);
                 expect(t.dockMoves, `${to}: dock frames that moved ${JSON.stringify(t)}`).toBe(0);
                 expect(t.loaderFrames, `${to}: text-loader frames ${JSON.stringify(t)}`).toBe(0);
                 await page.waitForTimeout(500);
@@ -160,11 +251,13 @@ test.describe("OD19 P3 · loading states are glass Skeletons in the stage's shap
 
     test("reduced motion: a route push swaps with no transition", async ({ page }) => {
         await page.emulateMedia({ reducedMotion: "reduce" });
+        await page.addInitScript(recordViewTransitions);
         await page.goto("/gallery");
         await expect(page.locator(".app-dock")).toBeVisible({ timeout: 30_000 });
         await page.waitForTimeout(500);
         const t = await pushAndTrace(page, "/paper", 600);
         expect(t.vtFrames, JSON.stringify(t)).toBe(0);
+        expect(t.vts, `glass opens no view transition under reduced motion ${JSON.stringify(t)}`).toHaveLength(0);
         await expect(page).toHaveURL(/\/paper$/);
     });
 });
