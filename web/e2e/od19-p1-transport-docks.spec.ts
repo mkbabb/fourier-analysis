@@ -99,10 +99,20 @@ for (const c of CELLS) {
                     maxPlayJump = Math.max(maxPlayJump, Math.abs(rows[i].play - rows[i - 1].play));
                 }
                 const playTravel = Math.abs(rows.at(-1)!.play - rows[0].play);
+                // Play rides the morph: in every sampled frame, the share of its
+                // travel it has made stays near the share of the width's growth.
+                // A snap (Play's whole travel in one frame while the width still
+                // grows) breaks this at any frame cadence.
+                const wSpan = rows.at(-1)!.w - rows[0].w;
+                const pSpan = rows.at(-1)!.play - rows[0].play;
+                const maxDrift =
+                    Math.abs(wSpan) > 0.5 && Math.abs(pSpan) > 0.5
+                        ? Math.max(...rows.map((r) => Math.abs((r.play - rows[0].play) / pSpan - (r.w - rows[0].w) / wSpan)))
+                        : 1;
                 // The growth's span on the page clock: from the last frame before
                 // the width moved to the last frame it grew.
                 const growSpanMs = Number.isNaN(growFrom) ? 0 : Math.round(growTo - growFrom);
-                return { n: rows.length, w0: rows[0].w, wEnd: rows.at(-1)!.w, growing, growSpanMs, reversals, maxPlayJump, playTravel };
+                return { n: rows.length, w0: rows[0].w, wEnd: rows.at(-1)!.w, growing, growSpanMs, reversals, maxPlayJump, playTravel, maxDrift: +maxDrift.toFixed(3) };
             };
             const dock = page.locator(".animation-dock");
             const b = (await dock.boundingBox())!;
@@ -137,7 +147,18 @@ for (const c of CELLS) {
             // Before: Play's whole travel (459 -> 31 px) landed in ONE frame. A 428 px
             // travel at a headless rAF cadence cannot step <=12 px per frame, so the
             // snap is read as "no single frame carries half the travel".
-            expect(exp.maxPlayJump, "largest single-frame Play shift (px)").toBeLessThan(exp.playTravel / 2);
+            // ESC-FREL-v3-1: "no single frame carries half the travel" presumes a
+            // 60 Hz cadence. glass's spring covers most of its distance in its
+            // first ~80 ms, so a host painting at ~12 fps puts 88% of Play's
+            // travel in one frame without any snap (CI 39586131046: 372 of
+            // 424 px; locally at CPU x6, 52%, Play's share within 0.06 of the
+            // width's in every frame). Lawful arms: the half-travel bound, or Play
+            // riding the width (share drift <= 0.25 in every sampled frame; the
+            // one-frame snap against a growing width drifts by nearly 1).
+            expect(
+                exp.maxPlayJump < exp.playTravel / 2 || exp.maxDrift <= 0.25,
+                `largest single-frame Play shift (px) < half its travel, or Play rides the width ${JSON.stringify(exp)}`,
+            ).toBe(true);
             // Collapse: monotone, never under the settled collapsed width (before: 57 px, then a snap to 102).
             await page.mouse.move(2, c.height / 2);
             const colRows = await sample(6500);
