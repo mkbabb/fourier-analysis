@@ -64,7 +64,7 @@ for (const c of CELLS) {
             page,
         }) => {
             await openViz(page);
-            type Row = { w: number; play: number; morphing: boolean };
+            type Row = { t: number; w: number; play: number; morphing: boolean };
             const sample = (ms: number) =>
                 page.evaluate(
                     (ms) =>
@@ -74,7 +74,7 @@ for (const c of CELLS) {
                             const f = () => {
                                 const d = document.querySelector(".animation-dock")!;
                                 const p = d.querySelector(".dock-persistent")!.getBoundingClientRect();
-                                rows.push({ w: d.getBoundingClientRect().width, play: p.left, morphing: d.hasAttribute("data-morphing") });
+                                rows.push({ t: performance.now(), w: d.getBoundingClientRect().width, play: p.left, morphing: d.hasAttribute("data-morphing") });
                                 if (performance.now() - t0 < ms) requestAnimationFrame(f);
                                 else res(rows);
                             };
@@ -86,14 +86,23 @@ for (const c of CELLS) {
                 let growing = 0;
                 let reversals = 0;
                 let maxPlayJump = 0;
+                let growFrom = NaN;
+                let growTo = NaN;
                 for (let i = 1; i < rows.length; i++) {
                     const dw = rows[i].w - rows[i - 1].w;
-                    if (dw > 0.5) growing++;
+                    if (dw > 0.5) {
+                        growing++;
+                        if (Number.isNaN(growFrom)) growFrom = rows[i - 1].t;
+                        growTo = rows[i].t;
+                    }
                     if (dw < -0.5) reversals++;
                     maxPlayJump = Math.max(maxPlayJump, Math.abs(rows[i].play - rows[i - 1].play));
                 }
                 const playTravel = Math.abs(rows.at(-1)!.play - rows[0].play);
-                return { n: rows.length, w0: rows[0].w, wEnd: rows.at(-1)!.w, growing, reversals, maxPlayJump, playTravel };
+                // The growth's span on the page clock: from the last frame before
+                // the width moved to the last frame it grew.
+                const growSpanMs = Number.isNaN(growFrom) ? 0 : Math.round(growTo - growFrom);
+                return { n: rows.length, w0: rows[0].w, wEnd: rows.at(-1)!.w, growing, growSpanMs, reversals, maxPlayJump, playTravel };
             };
             const dock = page.locator(".animation-dock");
             const b = (await dock.boundingBox())!;
@@ -113,7 +122,17 @@ for (const c of CELLS) {
             const exp = read(await expP);
             test.info().annotations.push({ type: "expand-trace", description: JSON.stringify(exp) });
             expect(exp.wEnd, "the dock expanded").toBeGreaterThan(exp.w0 + 100);
-            expect(exp.growing, "frames of width growth").toBeGreaterThanOrEqual(5);
+            // ">=5 frames" is five frames of the 60 Hz clock. glass's morph is a
+            // spring stepped on rAF, so a host whose main thread paints slower
+            // (CI 39577437998: 4 and 3 sampled growth frames at 1440) shows the
+            // same morph in fewer, longer frames. Lawful arms (ESC-FREL-v3-1,
+            // COHESION §0gj.2: a slow host's few frames are a reading, never
+            // inflated): five sampled growth frames, or growth spanning five
+            // 60 Hz frame periods; either way the no-snap bound below holds.
+            expect(
+                exp.growing >= 5 || exp.growSpanMs >= (5 * 1000) / 60,
+                `frames of width growth (>= 5, or >= 5 frame periods of the 60 Hz clock) ${JSON.stringify(exp)}`,
+            ).toBe(true);
             expect(exp.reversals, "the width never reverses on expand").toBe(0);
             // Before: Play's whole travel (459 -> 31 px) landed in ONE frame. A 428 px
             // travel at a headless rAF cadence cannot step <=12 px per frame, so the

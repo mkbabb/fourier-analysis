@@ -47,6 +47,54 @@ import { seededViz } from "./fixtures/seed";
 const PROD = process.env.OD19_LOAD_PROD ?? "http://localhost:4190";
 const CPU_THROTTLE = 4;
 
+/**
+ * ESC-FREL-v3-1 (ci-green) — THE THROTTLE IS CALIBRATED TO THE HOST. The bars
+ * are budgets on the REFERENCE CPU (the machine they were read on) slowed 4×.
+ * A fixed `Emulation.setCPUThrottlingRate` of 4 slows whatever host runs the
+ * suite 4×, so a CI runner that is itself 2–4× slower than the reference read
+ * every bar at 8–16× (CI 39577437998: visualization@390 warm 2,006 ms against a
+ * reference AFTER of 498 ms). The cure is Lighthouse's: a fixed JS workload
+ * (`BENCH`) scores the host, unthrottled, and the rate becomes
+ * `CPU_THROTTLE × host / REF_CPU_INDEX` (never below 1), so every host reads the
+ * same effective CPU, the reference at 4×. The bars are unchanged; the index and
+ * the rate are recorded beside every reading.
+ */
+const REF_CPU_INDEX = 6500; // BENCH median on the reference Mac (2026-10-21: 6,115–6,658 over 5 contexts)
+
+/** Iterations of a fixed string-and-sort workload per 250 ms (median of 3, after one JIT warm-up). */
+const BENCH = () => {
+    const run = () => {
+        const t0 = performance.now();
+        let n = 0;
+        while (performance.now() - t0 < 250) {
+            let s = "";
+            for (let j = 0; j < 2000; j++) s += String.fromCharCode(97 + (j % 26));
+            const a = Array.from({ length: 500 }, (_, i) => (i * 7919) % 500);
+            a.sort((x, y) => x - y);
+            n += s.length > 0 && a[0] === 0 ? 1 : 0;
+        }
+        return n;
+    };
+    run();
+    const r = [run(), run(), run()].sort((a, b) => a - b);
+    return r[1];
+};
+
+let hostCalibration: { index: number; rate: number } | null = null;
+
+/** The host's BENCH index (unthrottled, its own context) and the calibrated rate. */
+async function calibrate(browser: Browser): Promise<{ index: number; rate: number }> {
+    if (hostCalibration) return hostCalibration;
+    const ctx = await browser.newContext();
+    try {
+        const index = await (await ctx.newPage()).evaluate(BENCH);
+        hostCalibration = { index, rate: Math.max(1, (CPU_THROTTLE * index) / REF_CPU_INDEX) };
+        return hostCalibration;
+    } finally {
+        await ctx.close();
+    }
+}
+
 interface Route {
     name: string;
     path: () => string;
@@ -96,7 +144,7 @@ function record(route: string, mode: string, r: Reading): void {
     mkdirSync(path.dirname(out), { recursive: true });
     const prior = existsSync(out) ? (JSON.parse(readFileSync(out, "utf8")).readings as Record<string, Record<string, Reading>>) : ({} as Record<string, Record<string, Reading>>);
     (prior[route] ??= {})[mode] = r;
-    writeFileSync(out, JSON.stringify({ cpuThrottle: CPU_THROTTLE, readings: prior }, null, 2));
+    writeFileSync(out, JSON.stringify({ cpuThrottle: CPU_THROTTLE, host: hostCalibration, readings: prior }, null, 2));
 }
 
 /** Long-task and frame-gap recorders, installed before any app script runs. */
@@ -110,11 +158,13 @@ const INIT = () => {
 };
 
 async function throttled(browser: Browser, width: number, height: number) {
+    const host = await calibrate(browser);
+    test.info().annotations.push({ type: "cpu-calibration", description: JSON.stringify({ ref: REF_CPU_INDEX, ...host }) });
     const ctx = await browser.newContext({ viewport: { width, height } });
     await ctx.addInitScript(INIT);
     const page = await ctx.newPage();
     const cdp = await ctx.newCDPSession(page);
-    await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: host.rate });
     return { ctx, page };
 }
 
@@ -235,9 +285,9 @@ test.describe("OD19-ALL · fourier load — every route, production bundle, CPU 
                     record(`${route.name}@${width}`, "cold", cold);
                     const warm = await hardLoad(page, route);
                     record(`${route.name}@${width}`, "warm", warm);
-                    expect.soft(cold.jsKB, `cold JS KB ${JSON.stringify(cold)}`).toBeLessThanOrEqual(route.bar.jsKB);
-                    expect.soft(own(cold), `cold content ms (own) ${JSON.stringify(cold)}`).toBeLessThanOrEqual(route.bar.coldMs);
-                    expect.soft(own(warm), `warm content ms (own) ${JSON.stringify(warm)}`).toBeLessThanOrEqual(route.bar.warmMs);
+                    expect.soft(cold.jsKB, `cold JS KB ${JSON.stringify({ ...cold, cpu: hostCalibration })}`).toBeLessThanOrEqual(route.bar.jsKB);
+                    expect.soft(own(cold), `cold content ms (own) ${JSON.stringify({ ...cold, cpu: hostCalibration })}`).toBeLessThanOrEqual(route.bar.coldMs);
+                    expect.soft(own(warm), `warm content ms (own) ${JSON.stringify({ ...warm, cpu: hostCalibration })}`).toBeLessThanOrEqual(route.bar.warmMs);
                 } finally {
                     await ctx.close();
                 }
@@ -254,9 +304,9 @@ test.describe("OD19-ALL · fourier load — every route, production bundle, CPU 
                 await hardLoad(page, from);
                 const nav = await navTo(page, route.nav!, route.ready);
                 record(route.name, "nav", nav);
-                expect.soft(own(nav), `nav content ms (own) ${JSON.stringify(nav)}`).toBeLessThanOrEqual(route.bar.navMs!);
-                expect.soft(nav.maxGapMs!, `nav max frame gap ${JSON.stringify(nav)}`).toBeLessThanOrEqual(FRAME_BAR.maxGapMs);
-                expect.soft(nav.over50!, `nav frames over 50 ms ${JSON.stringify(nav)}`).toBeLessThanOrEqual(FRAME_BAR.over50);
+                expect.soft(own(nav), `nav content ms (own) ${JSON.stringify({ ...nav, cpu: hostCalibration })}`).toBeLessThanOrEqual(route.bar.navMs!);
+                expect.soft(nav.maxGapMs!, `nav max frame gap ${JSON.stringify({ ...nav, cpu: hostCalibration })}`).toBeLessThanOrEqual(FRAME_BAR.maxGapMs);
+                expect.soft(nav.over50!, `nav frames over 50 ms ${JSON.stringify({ ...nav, cpu: hostCalibration })}`).toBeLessThanOrEqual(FRAME_BAR.over50);
             } finally {
                 await ctx.close();
             }
@@ -297,8 +347,8 @@ test.describe("OD19-ALL · fourier load — every route, production bundle, CPU 
             const tabAt = await contentAt(page, "[data-admin-row]");
             const tab = { ms: Math.round(tabAt - t0), ...(await readLoad(page, t0, tabAt)) };
             record("admin", "users-tab", tab);
-            expect.soft(cold.jsKB, `admin cold JS KB ${JSON.stringify(cold)}`).toBeLessThanOrEqual(ADMIN_BAR.jsKB);
-            expect.soft(own(cold), `admin cold content ms (own) ${JSON.stringify(cold)}`).toBeLessThanOrEqual(ADMIN_BAR.coldMs);
+            expect.soft(cold.jsKB, `admin cold JS KB ${JSON.stringify({ ...cold, cpu: hostCalibration })}`).toBeLessThanOrEqual(ADMIN_BAR.jsKB);
+            expect.soft(own(cold), `admin cold content ms (own) ${JSON.stringify({ ...cold, cpu: hostCalibration })}`).toBeLessThanOrEqual(ADMIN_BAR.coldMs);
             expect.soft(own(tab), `admin Users tab ms (own) ${JSON.stringify(tab)}`).toBeLessThanOrEqual(ADMIN_BAR.tabMs);
             // Prefetch on intent: admin mode turning on loaded the panels' chunks.
             expect.soft(tab.jsKB, `the Users tab fetched no code of its own ${JSON.stringify(tab)}`).toBe(0);
