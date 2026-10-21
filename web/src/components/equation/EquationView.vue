@@ -501,17 +501,17 @@ watchDebounced(
             >
                 <!-- Loading (no prior result). X.F.W14U.eq — UIA-F-202 ⊕ F-71's
                      carried sites. X·OD19 ALL (owner: "the loading text should be
-                     removed in favor of a skeleton shimmer"): glass's `Skeleton` in
+                     removed in favor of a skeleton shimmer"): glass's `Skeleton shimmer` (10.1.1) in
                      the stage's own shape — the series card's lines over the plot
                      region, on the same hairline — with the panel `aria-busy`
                      (above); the status keeps its name for AT, with no text. -->
                 <div v-if="computing && !result" class="eq-skeleton" role="status" aria-label="Computing the series">
                     <div class="eq-card eq-skeleton-series">
-                        <Skeleton class="eq-skeleton-line" />
-                        <Skeleton class="eq-skeleton-line eq-skeleton-line--short" />
+                        <Skeleton shimmer class="eq-skeleton-line" />
+                        <Skeleton shimmer class="eq-skeleton-line eq-skeleton-line--short" />
                     </div>
                     <div class="eq-plot-card eq-skeleton-plot">
-                        <Skeleton class="eq-skeleton-fill" />
+                        <Skeleton shimmer class="eq-skeleton-fill" />
                     </div>
                 </div>
 

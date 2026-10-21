@@ -234,6 +234,8 @@ test.describe("OD19 P3 · loading states are glass Skeletons in the stage's shap
         const stage = page.locator(".configurator-stage [aria-busy=true]");
         await expect(stage).toBeVisible({ timeout: 20_000 });
         await expect(stage.locator(".skeleton")).toBeVisible();
+        // OD19-V6/glass 10.1.1: the skeleton shimmers (glass's own sheen, O-102b(3)).
+        expect(await stage.locator(".skeleton:not([data-shimmer])").count()).toBe(0);
         await expect(page.locator("main")).not.toContainText(LOADER_TEXT);
     });
 
@@ -246,6 +248,10 @@ test.describe("OD19 P3 · loading states are glass Skeletons in the stage's shap
         const stage = page.locator(".eq-panel-right[aria-busy=true]");
         await expect(stage).toBeVisible({ timeout: 20_000 });
         await expect(stage.locator(".skeleton").first()).toBeVisible();
+        // OD19-V6/glass 10.1.1: every bar of the compute skeleton shimmers.
+        const bars = stage.locator(".skeleton");
+        expect(await bars.count()).toBeGreaterThan(0);
+        expect(await stage.locator(".skeleton:not([data-shimmer])").count()).toBe(0);
         await expect(page.locator("main")).not.toContainText(LOADER_TEXT);
     });
 

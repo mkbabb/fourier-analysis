@@ -461,12 +461,12 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                 <template #stage>
                     <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark, announced
                          as a status. X·OD19 ALL (owner: "the loading text should be
-                         removed in favor of a skeleton shimmer"): glass's `Skeleton` in
+                         removed in favor of a skeleton shimmer"): glass's `Skeleton shimmer` (10.1.1) in
                          the stage's own shape (the canvas it stands in for), the region
                          `aria-busy`; the status keeps its name for AT, with no text. -->
                     <div v-if="stageLoading" class="stage-state stage-state--skeleton" role="status" aria-busy="true"
                         :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'">
-                        <Skeleton class="stage-skeleton" />
+                        <Skeleton shimmer class="stage-skeleton" />
                     </div>
                     <!-- Error (no workspace). X.F.W14.u — UIA-F-4: route-aware copy
                          naming the slug that failed; UIA-F-49: the button's own label
