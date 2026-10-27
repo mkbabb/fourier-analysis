@@ -3,7 +3,16 @@ services:
     build:
       target: production
     ports: !reset []
+    # F.REL .s1 (COHESION §0gi.2): production states itself, so api/main.py's
+    # boot guard is live (ENV=production + an empty ADMIN_TOKEN refuses to
+    # boot; until .s1 the backend read ENV=development and every admin
+    # endpoint answered 503). ADMIN_TOKEN is interpolated from the compose
+    # environment: on the host, scripts/deploy-hook.sh passes the host secret
+    # store as an --env-file; CI and the smokes pass a non-secret fixture. The
+    # `:?` form refuses to render the stack without it.
     environment:
+      - ENV=production
+      - ADMIN_TOKEN=${ADMIN_TOKEN:?ADMIN_TOKEN must be set in production (the host secret store)}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://fourier.babb.dev}
       - MONGO_URI=mongodb://${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}@mongo:27017/fourier?authSource=admin&tls=true&tlsCAFile=/etc/ssl/mongo-ca.pem
     restart: unless-stopped
@@ -44,7 +53,14 @@ services:
         max-file: "3"
 
   frontend:
+    # X·W11.h18 (E18 · R-6) — the build context is stated here, not inherited
+    # silently: the repository ROOT, because web/Dockerfile's builder copies
+    # assets/ and paper/ from it (the image does not build from web/ alone).
+    # The production stage authors no nginx config; nginx/fourier.conf (the
+    # edge below) is the one nginx authority, SPA fallback and cache included.
     build:
+      context: .
+      dockerfile: web/Dockerfile
       target: production
       args:
         VITE_API_URL: ${VITE_API_URL:-}
@@ -132,7 +148,8 @@ services:
               "--tlsCertificateKeyFile", "/etc/ssl/mongo.pem",
               "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
               "--tlsAllowConnectionsWithoutCertificates",
-              "--auth"]
+              "--auth",
+              "--wiredTigerCacheSizeGB", "0.25"]
     # G.W7 (ε.2) — no-new-privileges is safe for the stateful DB. read_only is
     # impossible (mongod writes /data/db) and cap_drop needs verification against
     # mongod 8.0's runtime caps — BOOKED as a residual (staging test).
@@ -160,20 +177,37 @@ services:
     #     to refuse. Owner: whoever next brings the stack up.
     security_opt:
       - no-new-privileges:true
+    # F.REL .s1 (COHESION §0gi.2) — one authenticated ping, nothing else.
+    # `mongosh -u … --eval` first runs the shell's own startup probes on every
+    # interval (buildInfo, getParameter, an aggregate: measured locally,
+    # evidence F-REL/s1); the host's mongod logs `Checking authorization
+    # failed` for that shell traffic (§0gi). `--nodb --norc` starts no shell
+    # session at all; the eval opens
+    # one direct, verified-TLS client, authenticates (SCRAM, the root user from
+    # the container's own MONGO_INITDB_ROOT_* environment, so no credential is
+    # interpolated into this definition), sends `ping` and exits 0 only on
+    # ok: 1. A wrong credential exits non-zero. Measured locally per run:
+    # 2 connections instead of 4, no startup command, the ping authenticated.
     healthcheck:
-      test: ["CMD", "mongosh", "-u", "${MONGO_USER:-fourier-admin}", "-p", "${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}",
-             "--authenticationDatabase", "admin",
-             "--tls", "--tlsCAFile", "/etc/ssl/mongo-ca.pem",
-             "--eval", "db.runCommand('ping').ok", "--quiet"]
+      test: ["CMD", "mongosh", "--nodb", "--norc", "--quiet", "--eval",
+             "quit(new Mongo('mongodb://' + encodeURIComponent(process.env.MONGO_INITDB_ROOT_USERNAME) + ':' + encodeURIComponent(process.env.MONGO_INITDB_ROOT_PASSWORD) + '@127.0.0.1:27017/?authSource=admin&directConnection=true&tls=true&tlsCAFile=/etc/ssl/mongo-ca.pem').getDB('admin').runCommand({ping: 1}).ok === 1 ? 0 : 1)"]
     volumes:
       - mongo_data:/data/db
       - ./ssl/mongo.pem:/etc/ssl/mongo.pem:ro
       - ./ssl/mongo-ca.pem:/etc/ssl/mongo-ca.pem:ro
     restart: unless-stopped
+    # F.REL .s1 (COHESION §0gi.2, §0gh.3-4) — headroom. 512 MiB OOM-killed
+    # mongod at 18:27:48Z 2026-10-19 when a second process shared its cgroup.
+    # The limit is 1 GiB and the WiredTiger cache is pinned at 0.25 GiB
+    # (--wiredTigerCacheSizeGB above): mongod's own default sizes the cache
+    # from the cgroup limit as max(0.25 GiB, 50% of (limit - 1 GiB)) = 0.25 GiB
+    # at 1 GiB, so the flag states that number instead of leaving it implied,
+    # and leaves ~0.75 GiB for connections, sorts/aggregations, the journal and
+    # the healthcheck. Applied on the host by deploy-hook.sh's mongo_apply.
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1g
     logging:
       driver: json-file
       options:

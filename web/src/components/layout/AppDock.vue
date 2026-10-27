@@ -38,6 +38,7 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
 import { useEventListener, useResizeObserver } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
+import { prefetchRoute } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, ExternalLink } from "@lucide/vue";
@@ -231,6 +232,8 @@ if (typeof document !== "undefined" && document.fonts) {
                         :key="tab.value"
                         :aria-current="activeTab === tab.value ? 'page' : undefined"
                         @select="onTabSelect(tab.value)"
+                        @pointerenter="prefetchRoute(tab.value)"
+                        @focus="prefetchRoute(tab.value)"
                     >
                         <component :is="tab.icon" aria-hidden="true" />
                         <span>{{ tab.label }}</span>

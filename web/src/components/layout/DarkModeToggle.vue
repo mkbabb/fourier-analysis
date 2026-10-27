@@ -37,9 +37,9 @@
     >
         <FourierMorphSvg
             :path="morph.currentPath.value"
-            :stroke-width="14"
+            :stroke-width="strokeWidth"
             :stroke-color="strokeColor"
-            view-box="0 0 200 200"
+            :view-box="viewBox"
         />
     </DockControl>
 </template>
@@ -83,21 +83,18 @@
  *    producer's own idiom (F.W4, `SP-7`), so what remained to reconcile was
  *    the CHASSIS question, and the answer is that the chassis is the glyph.
  *
- * ⊘ NOT this unit's, and unmoved: `FR-AH-1`'s 450,631 B eager-payload row is
- * F.W4's and is not touched here.
+ * `FR-AH-1`'s 450,631 B eager payload (the two shapes' JSON) is cured by X·OD19
+ * ALL: the shapes load beside the boot, from `@/lib/sun-moon-shapes`.
  */
 import { ref, computed, onMounted, watch } from "vue";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import { DockControl } from "@mkbabb/glass-ui/dock";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
-import { useFourierMorph } from "@/composables/useFourierMorph";
-import { prepareFourierShape } from "@/lib/svg-fourier";
-
-import sunData from "@/assets/fourier-paths/sun.json";
-import moonData from "@/assets/fourier-paths/moon.json";
-
-const sunShape = prepareFourierShape(sunData as any);
-const moonShape = prepareFourierShape(moonData as any);
+import { DEFAULT_MORPH_CONFIG, useFourierMorph } from "@/composables/useFourierMorph";
+import type { FourierShape } from "@/lib/svg-fourier";
+// X·OD19 ALL — the shapes ride their own chunk beside the boot; the app mounts
+// once they have landed (`main.ts`), so both are set before this setup runs.
+import { moonShape, sunShape } from "@/lib/sun-moon-shapes";
 
 const { isDark, toggleDark } = useGlobalDark();
 /** true when morphing toward dark (moon), false when morphing toward light (sun) */
@@ -143,6 +140,46 @@ const morphT = computed(() => {
     }
     return isDark.value ? 1 : 0;
 });
+
+/**
+ * X·OD19 F6 — the owner: "darkmode toggle should be a bit bigger". The glyph
+ * box was already the dock's `--icon-xl` rung (24 px, below), but the paths sat
+ * in a padded `0 0 200 200` frame: the sun's ink read ~21 px and the moon's
+ * ~18 px of the 24. The frame is now each shape's own ink box — every level the
+ * morph draws (≥ `lowLevel`), squared about its centre, padded by the stroke
+ * and 1 unit for the curve's overshoot — so either resting glyph fills the box
+ * (~23.7 px). Mid-morph the frame travels between the two with the colour's
+ * own `morphT`, so the morph keeps its motion and nothing jumps. The stroke is
+ * scaled with the frame so the line keeps its rendered weight (14 units of
+ * the old 200-unit frame, ~1.7 px).
+ */
+const BASE_FRAME = 200;
+const BASE_STROKE = 14;
+
+/** `[cx, cy, side]` — the square frame that holds every level of `shape` the morph draws. */
+function inkFrame(shape: FourierShape): [number, number, number] {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [level, points] of shape.pointsByLevel) {
+        if (level < DEFAULT_MORPH_CONFIG.lowLevel) continue;
+        for (const [x, y] of points) {
+            x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+            x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+        }
+    }
+    // side = extent + 2 (overshoot) + the stroke at this frame's scale.
+    const side = (Math.max(x1 - x0, y1 - y0) + 2) / (1 - BASE_STROKE / BASE_FRAME);
+    return [(x0 + x1) / 2, (y0 + y1) / 2, side];
+}
+
+const SUN_FRAME = inkFrame(sunShape);
+const MOON_FRAME = inkFrame(moonShape);
+
+const frame = computed(() => SUN_FRAME.map((v, i) => v + (MOON_FRAME[i] - v) * morphT.value) as [number, number, number]);
+const viewBox = computed(() => {
+    const [cx, cy, side] = frame.value;
+    return `${(cx - side / 2).toFixed(2)} ${(cy - side / 2).toFixed(2)} ${side.toFixed(2)} ${side.toFixed(2)}`;
+});
+const strokeWidth = computed(() => (BASE_STROKE * frame.value[2]) / BASE_FRAME);
 
 const strokeColor = computed(
     () =>

@@ -1,3 +1,6 @@
+# Build context: the REPOSITORY ROOT, never web/ — the builder stage copies
+# assets/ and paper/ from the root (below). docker-compose.yml and
+# docker-compose.prod.yml both state `context: .` + `dockerfile: web/Dockerfile`.
 FROM node:22-slim AS base
 WORKDIR /app
 
@@ -30,25 +33,14 @@ RUN npm run build
 
 FROM nginx:alpine AS production
 COPY --from=builder /app/dist /usr/share/nginx/html
-# X·F F.W9 (G-F9-19) — ONE Cache-Control, not two. Measured as-running against
-# api.fourier.babb.dev/assets/index-YfdYiI2C.js on 2026-09-19, this location was
-# emitting the header TWICE: `expires 1y` synthesises its own
-# `Cache-Control: max-age=31536000` (plus an `Expires:` date) and the
-# `add_header` beside it appended a second `Cache-Control: public, immutable`.
-# Two headers for one directive is a policy stated by two authorities inside a
-# single config — caches are entitled to combine them, and an intermediary that
-# takes only the first silently loses `immutable`. One `add_header` now carries
-# the whole policy. `always` keeps it on error responses too.
-RUN printf 'server {\n\
-    listen 80;\n\
-    root /usr/share/nginx/html;\n\
-    location / {\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-    location ~* \\.(?:js|css|woff2|png|jpg|svg)$ {\n\
-        add_header Cache-Control "public, max-age=31536000, immutable" always;\n\
-    }\n\
-}\n' > /etc/nginx/conf.d/default.conf
+# X·W11.h18 (DISPOSITION §8 E18 · R-6 · G-F9-19) — ONE nginx authority.
+# This stage ships nginx:alpine's STOCK server (its packaged
+# conf.d/default.conf: listen 80, root /usr/share/nginx/html, index.html) and
+# authors no nginx config of its own. Every policy the SPA path carries — the
+# history fallback to /index.html and the one immutable Cache-Control on hashed
+# assets — is stated once, in nginx/fourier.conf, by the edge that fronts this
+# container (docker-compose.prod.yml's nginx service mounts ./nginx). Until
+# h18 a printf-inlined default.conf here was a second authority beside it.
 
 # X·F F.W9 (M.W2) — the image's own LIVENESS contract: is this nginx up and
 # serving the built SPA? It says nothing about the API edge, which is a

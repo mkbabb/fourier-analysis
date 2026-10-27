@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { useMediaQuery } from "@vueuse/core";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { GlassDock, DockControl, DockSeparator, DockTrigger } from "@mkbabb/glass-ui/dock";
@@ -81,10 +81,20 @@ const isSm = useMediaQuery("(min-width: 640px)");
 const viewOffDefault = computed(() =>
     isViewOffDefault({ overlay: props.showImageOverlay, ghost: !!props.showGhost }),
 );
+/**
+ * X-OD19 · F4 — an open dock menu holds its dock open: each menu's
+ * `update:open` edge takes or gives back one glass keep-open count, so the
+ * collapse timer never folds the dock (and inerts the trigger) under an open menu.
+ */
+const dock = useTemplateRef<InstanceType<typeof GlassDock>>("dock");
+function holdDockWhileOpen(open: boolean) {
+    if (open) dock.value?.keepOpen();
+    else dock.value?.release();
+}
 </script>
 
 <template>
-    <GlassDock fit-content>
+    <GlassDock ref="dock" fit-content>
         <!--
           X.F.W4 · SP-5 — `fr-EditorControlsDock B-2` ⊕ `fr-CanvasControlsDock M-2`,
           THE INVERSION LOCK, cured on both faces in one edit.
@@ -214,10 +224,11 @@ const viewOffDefault = computed(() =>
                     :show-ghost="!!showGhost"
                     @toggle-image-overlay="emit('toggleOverlay')"
                     @toggle-ghost="emit('toggleGhost')"
+                    @update:open="holdDockWhileOpen"
                 />
             </template>
 
-            <DropdownMenu :modal="false">
+            <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
                 <DockTrigger for="dropdown" aria-label="More editor tools">
                     <!-- X.F.W14V.u4 — UIA-F-146: no Tooltip around the glyph. It was the
                      as-child of a bare SVG (never focusable, so no keyboard path);

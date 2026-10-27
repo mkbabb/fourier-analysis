@@ -88,7 +88,9 @@ async function openMoreOptions(page: Page): Promise<void> {
     await dock.hover();
     await expect(dock).toHaveClass(/expanded/, { timeout: 5_000 });
 
-    const moreOptions = page.locator('[aria-label="More options"]').first();
+    // X-OD19 · F3 (owner row OD19-F3): the ⋮ menu is retired; the Speed seat's
+    // menu is the dock's dropdown this keystone opens.
+    const moreOptions = page.locator('.animation-dock [aria-label="Playback speed"]').first();
     await expect(moreOptions).toBeVisible({ timeout: 5_000 });
     await moreOptions.click();
 }

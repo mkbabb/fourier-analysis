@@ -105,14 +105,10 @@ import MorphPhaseConfig from "@/components/morph/MorphPhaseConfig.vue";
 import HarmonicLevelGrid from "@/components/morph/HarmonicLevelGrid.vue";
 import { useFourierMorph, DEFAULT_MORPH_CONFIG } from "@/composables/useFourierMorph";
 import { useMorphConfig } from "@/composables/useMorphConfig";
-import { prepareFourierShape, nearestLevel } from "@/lib/svg-fourier";
-
-import sunData from "@/assets/fourier-paths/sun.json";
-import moonData from "@/assets/fourier-paths/moon.json";
-
+import { nearestLevel } from "@/lib/svg-fourier";
 // ── Shapes ───────────────────────────────────────────────────────
-const sunShape = prepareFourierShape(sunData as any);
-const moonShape = prepareFourierShape(moonData as any);
+// X·OD19 ALL — the header toggle's own two shapes, from their one home.
+import { moonShape, sunShape } from "@/lib/sun-moon-shapes";
 
 const isMoon = ref(false);
 const currentShapeName = computed(() => (isMoon.value ? "Moon" : "Sun"));

@@ -3,6 +3,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import { router } from "./router";
 import { installVizColors } from "./lib/colors";
+import { sunMoonShapesReady } from "./lib/sun-moon-shapes";
 import "katex/dist/katex.min.css";
 import "./style.css";
 
@@ -16,4 +17,8 @@ app.use(router);
 // colour.
 installVizColors();
 
-router.isReady().then(() => app.mount("#app"));
+// X·OD19 ALL — the header toggle's sun and moon load in parallel with the
+// route's chunk (`lib/sun-moon-shapes.ts`); the app mounts once both have
+// landed. A shape chunk that cannot load stops the boot exactly as it did when
+// the shapes were part of the entry chunk.
+Promise.all([router.isReady(), sunMoonShapesReady]).then(() => app.mount("#app"));

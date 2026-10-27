@@ -99,9 +99,16 @@ async function census(page: Page, where: string): Promise<Row[]> {
                 !!lr && !!vr && tr.top < lineBottom && tr.bottom > Math.min(lr.top, vr.top) && tr.left >= vr.right - 1;
             const th = thumb.getBoundingClientRect();
             const thumbCs = getComputedStyle(thumb);
-            const thumbVisible = th.width >= 4 && Number(thumbCs.opacity) > 0;
             const trackBg = getComputedStyle(track).backgroundImage;
             const rangeCs = range ? getComputedStyle(range) : null;
+            // X·OD19-F7 (owner 2026-10-19) reverses BL-FW14H-1's visible thumb: the
+            // handle is glass's integrated scrubber thumb, the painted fill's leading
+            // edge at the thumb's centre. A separately painted thumb still counts.
+            const integrated =
+                root.dataset.variant === "scrubber" &&
+                !!range &&
+                Math.abs(range.getBoundingClientRect().right - (th.left + th.width / 2)) <= 1.5;
+            const thumbVisible = (th.width >= 4 && Number(thumbCs.opacity) > 0) || integrated;
             const rangePaints =
                 !!range &&
                 range.getBoundingClientRect().width > 0 &&
@@ -115,7 +122,9 @@ async function census(page: Page, where: string): Promise<Row[]> {
                 beneath,
                 inline,
                 thumb: thumbVisible,
-                fill: rangePaints || /gradient/.test(trackBg),
+                // OD19-F7: the scrubber's fill is glass's liquid fill at the value's
+                // extent (zero wide at the minimum, Max Contours' "All").
+                fill: rangePaints || /gradient/.test(trackBg) || (integrated && range!.classList.contains("glass-liquid-fill")),
                 hint: !!row.querySelector("[data-row-sub]"),
                 height: Math.round(row.getBoundingClientRect().height * 10) / 10,
             });

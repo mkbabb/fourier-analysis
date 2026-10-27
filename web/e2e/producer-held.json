@@ -30,15 +30,6 @@
             "expiry": "at glass 10.2.0 repin"
         },
         {
-            "test": "f-w14v-pd.spec.ts › F.W14V.pd — the playback dock is one glass surface (1440 light | 1440 dark | 1024 light | 1024 dark | 390 light | 390 dark) › collapsed: every element inside the plate",
-            "spec": "f-w14v-pd.spec.ts",
-            "title": "F\\.W14V\\.pd — the playback dock is one glass surface \\([^)]*\\) collapsed: every element inside the plate",
-            "token": "DOCK-SUMMARY-SQUARE",
-            "o": "O-84",
-            "row": "DOCK-SUMMARY-SQUARE — the collapsed summary is content-sized (O-84/O-84a/O-84b, folded into O-88)",
-            "expiry": "at glass 10.2.0 repin"
-        },
-        {
             "test": "gallery-admin-a11y.spec.ts › X·F F.W4 — admin-mode a11y (G-F4-ADMIN-AXE) › admin banner: the stat cells are graded for the first time",
             "spec": "gallery-admin-a11y.spec.ts",
             "title": "G-F4-ADMIN-AXE\\) admin banner: the stat cells are graded for the first time",

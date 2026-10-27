@@ -21,9 +21,17 @@ import { seededViz } from "./fixtures/seed";
  * content-based minimum, so a summary wider than one glyph overflows the square;
  * the root, and with it the plate, is sized from the 40px layer. The consumer
  * half measured clean: with only that producer rule content-sized, every cell
- * is contained and no consumer byte changes. So the collapsed cells are
+ * is contained and no consumer byte changes. So the collapsed cells were
  * honest-RED DOCK-SUMMARY-SQUARE (O-84, folding into O-65
  * DOCK-COLLAPSED-FORM) until glass ships the cure; no consumer override.
+ *
+ * ADOPTED (value.js COHESION §0gp, OD19 residue): since `e928541` (OD19-F1,
+ * the transport summary is one readout) the collapsed summary sits inside the
+ * plate in every cell, on glass 10.1.0 (CI 39577437998, first read) and
+ * 10.1.1. The honest-red reporter read "NOW PASSES" ×6 on every CI since, so
+ * the row left `e2e/producer-held.json` by adoption and the collapsed cells
+ * gate in `chromium` / `mobile-chromium` again. The producer rule itself stays
+ * asked under O-84; it is no longer this falsifier's to hold.
  *
  * `FW14V_PD_GLASS_CURE=1` injects the proposed producer rule (the summary
  * content-sized) into the page, to show the falsifier turns GREEN under the

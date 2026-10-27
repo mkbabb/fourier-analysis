@@ -268,11 +268,16 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
     test("u239 · UIA-F-239 — no local GlassTimeline; the caret is glass's floating plate", async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await openViz(page);
+        // X·OD19-F8: the caret is glass's portaled Tooltip, open while the rail is hovered.
+        await page.locator(".animation-dock").hover();
+        await page.waitForTimeout(900);
+        await page.locator(".animation-dock .timeline-row").hover();
+        await expect(page.locator(".timeline-caret")).toBeVisible();
         const m = await page.evaluate(() => {
             const row = document.querySelector(".animation-dock .timeline-row") as HTMLElement & {
                 __vueParentComponent?: { type: { __name?: string; name?: string } };
             };
-            const plate = row.querySelector(".caret-value") as HTMLElement;
+            const plate = document.querySelector(".timeline-caret") as HTMLElement;
             const probe = document.createElement("div");
             probe.style.borderRadius = "var(--radius-panel)";
             row.appendChild(probe);

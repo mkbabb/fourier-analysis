@@ -52,11 +52,12 @@ async function pause(page: Page): Promise<void> {
     await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeVisible();
 }
 
-/** Expand the animation dock and open its ⋮ menu. */
-async function openMore(page: Page) {
+/** Expand the animation dock and open one of its menus. X-OD19 · F3 (owner row
+ *  OD19-F3): the ⋮ menu is retired; Speed and Easing are dock seats of their own. */
+async function openMore(page: Page, seat: "Playback speed" | "Easing") {
     await page.getByRole("button", { name: /(Play|Pause) animation/ }).first().hover();
     await page.waitForTimeout(800);
-    await page.getByRole("button", { name: "More options" }).first().click();
+    await page.locator(".animation-dock").getByRole("button", { name: seat }).first().click();
     const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
     await page.waitForTimeout(400);
@@ -76,7 +77,7 @@ const WIDTHS = [
 ];
 
 for (const vp of WIDTHS) {
-    test.describe(`F.W14U.vdock — the animation dock's ⋮ menu (${vp.width})`, () => {
+    test.describe(`F.W14U.vdock — the animation dock's menus (${vp.width})`, () => {
         test.use({ viewport: vp });
         test.setTimeout(90_000);
 
@@ -85,44 +86,49 @@ for (const vp of WIDTHS) {
         }) => {
             await openViz(page);
             await pause(page);
-            const menu = await openMore(page);
-            await frame(page, "v9-more-open");
-            // F-82: one control per setting — the dock itself holds no speed Select.
-            await expect.soft(page.locator(".animation-dock [role=combobox]")).toHaveCount(0);
-            const fit = await menu.evaluate((el) => {
-                const b = el.getBoundingClientRect();
-                const rows = [...el.querySelectorAll<HTMLElement>("[role^=menuitem],[role=group],[role=combobox]")].filter(
-                    (r) => r.getClientRects().length,
-                );
-                return {
-                    overflowX: el.scrollWidth - el.clientWidth,
-                    out: rows
-                        .filter((r) => {
-                            const q = r.getBoundingClientRect();
-                            return q.left < b.left - 0.5 || q.right > b.right + 0.5;
-                        })
-                        .map((r) => r.textContent?.trim().slice(0, 24)),
-                    combobox: el.querySelectorAll("[role=combobox]").length,
-                };
-            });
-            test.info().annotations.push({ type: "v9-fit", description: JSON.stringify(fit) });
-            expect.soft(fit.combobox, "no Select listbox is a child of the menu").toBe(0);
-            expect.soft(fit.out, "every row sits inside the menu").toEqual([]);
-            expect.soft(fit.overflowX, "the menu never scrolls on x").toBeLessThanOrEqual(0.5);
-            // X.F.W14V.u1 (UIA-F-182, §0bt): Export left this menu for the canvas dock
-            // (one path, always through the dialog), so the menu holds no Export.
-            await expect.soft(menu.getByRole("menuitem", { name: /export/i }), "Export is on the canvas dock").toHaveCount(0);
-            // F-175: every section carries a menu label.
-            for (const name of ["Speed", "Easing"]) {
-                await expect(menu.getByRole("group", { name })).toHaveCount(1);
+            for (const [seat, section] of [
+                ["Playback speed", "Speed"],
+                ["Easing", "Easing"],
+            ] as const) {
+                const menu = await openMore(page, seat);
+                await frame(page, `v9-${section.toLowerCase()}-open`);
+                // F-82: one control per setting — the dock itself holds no speed Select.
+                await expect.soft(page.locator(".animation-dock [role=combobox]")).toHaveCount(0);
+                const fit = await menu.evaluate((el) => {
+                    const b = el.getBoundingClientRect();
+                    const rows = [...el.querySelectorAll<HTMLElement>("[role^=menuitem],[role=group],[role=combobox]")].filter(
+                        (r) => r.getClientRects().length,
+                    );
+                    return {
+                        overflowX: el.scrollWidth - el.clientWidth,
+                        out: rows
+                            .filter((r) => {
+                                const q = r.getBoundingClientRect();
+                                return q.left < b.left - 0.5 || q.right > b.right + 0.5;
+                            })
+                            .map((r) => r.textContent?.trim().slice(0, 24)),
+                        combobox: el.querySelectorAll("[role=combobox]").length,
+                    };
+                });
+                test.info().annotations.push({ type: `v9-fit-${section}`, description: JSON.stringify(fit) });
+                expect.soft(fit.combobox, "no Select listbox is a child of the menu").toBe(0);
+                expect.soft(fit.out, "every row sits inside the menu").toEqual([]);
+                expect.soft(fit.overflowX, "the menu never scrolls on x").toBeLessThanOrEqual(0.5);
+                // X.F.W14V.u1 (UIA-F-182, §0bt): Export left the playback menus for the
+                // canvas dock (one path, always through the dialog).
+                await expect.soft(menu.getByRole("menuitem", { name: /export/i }), "Export is on the canvas dock").toHaveCount(0);
+                // F-175: the section carries a menu label.
+                await expect(menu.getByRole("group", { name: section })).toHaveCount(1);
+                // F-82 / F-240: choosing a radio item keeps the menu open.
+                const item = section === "Speed" ? /^2\s*×$/ : "Linear";
+                await menu.getByRole("menuitemradio", { name: item }).click({ timeout: 5_000 });
+                await expect(menu).toBeVisible();
+                await expect(menu.getByRole("menuitemradio", { name: item })).toHaveAttribute("aria-checked", "true");
+                if (section === "Speed") {
+                    await page.keyboard.press("Escape");
+                    await expect(menu).toBeHidden();
+                }
             }
-            // F-82 / F-240: speed is a menu radio item; choosing one (and an easing) keeps the menu open.
-            await menu.getByRole("menuitemradio", { name: /^2\s*×$/ }).click({ timeout: 5_000 });
-            await expect(menu).toBeVisible();
-            await expect(menu.getByRole("menuitemradio", { name: /^2\s*×$/ })).toHaveAttribute("aria-checked", "true");
-            await menu.getByRole("menuitemradio", { name: "Linear" }).click({ timeout: 5_000 });
-            await expect(menu).toBeVisible();
-            await expect(menu.getByRole("menuitemradio", { name: "Linear" })).toHaveAttribute("aria-checked", "true");
             // F-137, read (not asserted here: the anchor is glass's DockTrigger, O-59).
             const clear = await page.evaluate(() => {
                 const m = document.querySelector("[role=menu]")!.getBoundingClientRect();

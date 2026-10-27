@@ -23,10 +23,14 @@ import GalleryAdminBanner from "./GalleryAdminBanner.vue";
 import GalleryDraftsSection from "./GalleryDraftsSection.vue";
 import BatchActionBar from "@/components/admin/BatchActionBar.vue";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
+import { prefetchRoute } from "@/router";
 
-const AdminUserList = defineAsyncComponent(() => import("@/components/admin/AdminUserList.vue"));
-const AdminFlaggedPanel = defineAsyncComponent(() => import("@/components/admin/AdminFlaggedPanel.vue"));
-const AdminAuditLog = defineAsyncComponent(() => import("@/components/admin/AdminAuditLog.vue"));
+const loadAdminUserList = () => import("@/components/admin/AdminUserList.vue");
+const loadAdminFlaggedPanel = () => import("@/components/admin/AdminFlaggedPanel.vue");
+const loadAdminAuditLog = () => import("@/components/admin/AdminAuditLog.vue");
+const AdminUserList = defineAsyncComponent(loadAdminUserList);
+const AdminFlaggedPanel = defineAsyncComponent(loadAdminFlaggedPanel);
+const AdminAuditLog = defineAsyncComponent(loadAdminAuditLog);
 
 const route = useRoute();
 const router = useRouter();
@@ -313,6 +317,22 @@ const confirmLabel = computed(() => {
 // Clear selection when the user leaves admin mode or switches tabs away
 // from the gallery (selections should not persist into another view).
 watch(() => gallery.adminMode, (on) => { if (!on) clearGallerySelection(); });
+
+// X·OD19 ALL — prefetch on intent. Admin mode is the intent to open its panels:
+// their chunks load as it turns on, so a tab opens on code already here (the
+// module cache dedupes each import). An open card is the intent to open its
+// visualization: the route's chunk loads while the reader looks at the card.
+watch(
+    () => gallery.adminMode,
+    (on) => {
+        // A failed prefetch is not reported here: the panel's own load retries and reports it.
+        if (on) for (const load of [loadAdminUserList, loadAdminFlaggedPanel, loadAdminAuditLog]) void load().catch(() => {});
+    },
+    { immediate: true },
+);
+watch(selectedSlug, (slug) => {
+    if (slug) prefetchRoute(`/v/${slug}`);
+});
 watch(activeTab, (tab) => { if (tab !== "gallery") clearGallerySelection(); });
 
 // UIA-F-103 ⊕ UIA-F-248: the store owns the publish's one error channel; this

@@ -74,8 +74,9 @@
  * float does. The announcement rate is bounded by the quantity, never by the
  * step, which is the whole of the anti-cure's objection.
  */
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
+import { Tooltip, TooltipContent } from "@mkbabb/glass-ui/tooltip";
 
 const props = withDefaults(
     defineProps<{
@@ -163,6 +164,27 @@ function resolveHost(): HTMLElement | null {
     return el instanceof HTMLElement ? el : null;
 }
 
+/**
+ * X·OD19-F8 (owner, 2026-10-19, frame-12.51.30.png: "The time popover in the
+ * dock is clipped") — the caret is glass's portaled `Tooltip`, anchored to the
+ * slider THUMB. It was an absolute box at `bottom: calc(100% + 6px)` inside the
+ * dock's run, which glass has made a scroll container since 10.x (G-3), so the
+ * run clipped all but a sliver of it. The portal leaves the scroll port; the
+ * thumb (`role="slider"`, the element reka places at the value) is the anchor,
+ * and glass's floating placement re-reads it every frame while the caret is
+ * open: the thumb travels with the quantised value (the old `--caret-t`)
+ * without resizing, so no resize or intersection observer would see it move.
+ *
+ * Open on the three readers the at-rest decision below names: hover, focus,
+ * scrub. The touch reader's at-rest arm (`M-3`) does not survive the portal: a
+ * top-layer plate open at rest would float over every sheet that covers the
+ * dock. A touch reader opens it by scrubbing, which is the session's own arm.
+ */
+const thumbEl = shallowRef<HTMLElement | null>(null);
+const hovered = ref(false);
+const focused = ref(false);
+const caretOpen = computed(() => !!thumbEl.value && (hovered.value || focused.value || scrubbing.value));
+
 function endSession(): void {
     if (!scrubbing.value) return;
     scrubbing.value = false;
@@ -200,7 +222,9 @@ function beginSession(event: PointerEvent): void {
  * listeners, which is what makes the pair auditable.
  */
 onMounted(() => {
-    resolveHost()?.addEventListener("pointerdown", beginSession);
+    const host = resolveHost();
+    host?.addEventListener("pointerdown", beginSession);
+    thumbEl.value = host?.querySelector<HTMLElement>('[role="slider"]') ?? null;
 });
 
 onBeforeUnmount(() => {
@@ -212,7 +236,14 @@ defineExpose({ scrubbing });
 </script>
 
 <template>
-    <div class="timeline-row" :data-scrubbing="scrubbing || undefined">
+    <div
+        class="timeline-row"
+        :data-scrubbing="scrubbing || undefined"
+        @pointerenter="hovered = true"
+        @pointerleave="hovered = false"
+        @focusin="focused = true"
+        @focusout="focused = false"
+    >
         <!--
             `fr-GlassTimeline AX-1` ⊕ `D-5` / `D-6`, THE TWO-ATTRIBUTE LAW —
             `aria-hidden` here AND `aria-valuetext` on the control, in one edit.
@@ -223,15 +254,24 @@ defineExpose({ scrubbing });
             attribute. The producer authors it onto the THUMB, which is the
             element that carries `role="slider"`; an `aria-valuetext` attribute
             lands on the root by fallthrough, where nothing reads it.
+
+            X·OD19-F8 — the caret is glass's Tooltip, portaled out of the dock's
+            scroll port and anchored to the thumb (`reference`), open on hover,
+            focus or scrub; no local top layer and no local anchor positioning.
         -->
-        <div
-            v-if="label"
-            class="timeline-caret"
-            aria-hidden="true"
-            :style="{ '--caret-t': quantised }"
-        >
-            <span class="caret-value glass-floating fira-code">{{ label }}</span>
-        </div>
+        <Tooltip v-if="label" :open="caretOpen">
+            <TooltipContent
+                class="timeline-caret"
+                side="top"
+                :side-offset="6"
+                :reference="thumbEl ?? undefined"
+                update-position-strategy="always"
+                hide-when-detached
+                aria-hidden="true"
+            >
+                <span class="caret-value fira-code">{{ label }}</span>
+            </TooltipContent>
+        </Tooltip>
         <Slider
             ref="sliderHost"
             v-model="sliderModel"
@@ -257,78 +297,16 @@ defineExpose({ scrubbing });
 }
 
 /*
-   `fr-GlassTimeline LF-1` — the producer's own rule is "NEVER `style.left`",
-   and the forks wrote an inline `left` percentage on every frame of a 60fps
-   clock. The position rides the INSET channel through one custom property:
-   `--caret-t` is the axis value itself, and the caret is laid out from it.
+   X·OD19-F8 — the caret's plate, placement and reveal are glass's Tooltip
+   (`glass-floating glass-overlay-plate`, the tooltip reveal). The absolute box,
+   its `--caret-t` inset (the thumb now carries that value), its opacity arms and its hand-rolled fade are deleted:
+   the position is the thumb's, and the three readers open it (script). Only
+   the readout's type stays here.
 */
-.timeline-caret {
-    position: absolute;
-    inset-inline-start: calc(var(--caret-t, 0) * 100%);
-    bottom: calc(100% + 6px);
-    transform: translateX(-50%);
-    pointer-events: none;
-    opacity: 0;
-    /* X.F.W4 · SP-4 / `fr-AnimationControls M-7` — raw `ease` and a bare
-       duration on a surface that is otherwise tokenised; and the caret's fade
-       was ungated, one of the two child surfaces that extend D-8's inventory. */
-    transition: opacity var(--duration-normal) var(--ease-standard);
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-/*
-   `fr-GlassTimeline D-6` ⊕ `fr-AnimationControls M-3` — THE AT-REST DECISION
-   the re-derivation owed.
-
-   The readout is the value half of what this component exists to produce, and
-   it was revealed by `:hover` alone — so a keyboard user drove an invisible
-   value (D-6) and a touch user never saw position at rest in either dock state
-   (M-3). Three arms, each naming its reader:
-
-     · `:hover`           — the pointer reader, unchanged.
-     · `:focus-within`    — the keyboard reader, which had no arm at all.
-     · `[data-scrubbing]` — the drag reader, driven by THIS component's own
-                            session. The fork reached into the producer's
-                            internals for it (`:has(.glass-slider[data-held])`),
-                            an ancestor compound over a class we do not own;
-                            `DT-1` deletes that reach.
-
-   The touch reader is served at rest, keyed on pointer CAPABILITY rather than
-   on a hover the device cannot produce. `D-7`/`D-23`'s collapsed-summary half
-   of the same finding is F.W4's row and is not taken here.
-*/
-.timeline-row:hover .timeline-caret,
-.timeline-row:focus-within .timeline-caret,
-.timeline-row[data-scrubbing] .timeline-caret {
-    opacity: 1;
-}
-
-@media (hover: none) and (pointer: coarse) {
-    .timeline-caret {
-        opacity: 1;
-    }
-}
-
-/*
-   `fr-GlassTimeline D-8 / D-9 / D-10 / L-m5` — three de-tokenised paints, back
-   on the tokens (the fourth leg, the transition, folded to `M-7` and landed at
-   F.W4; the fifth, the bare `6px` above, is STRUCK — the producer's own
-   `.timeline-caret` carries `bottom: calc(100% + 6px)` bare).
-   `S-alpha` — the three scheme-paired declarations stay paired.
-*/
-/* X.F.W14V.u4 — UIA-F-239: the readout was a hand-rolled plate (its own
-   popover fill, border, small shadow and a 4 px corner). It is glass's
-   `glass-floating` plate (template) at the popover canon's `--radius-panel`,
-   the same floating surface as the convergence plot's readout and the
-   coefficient popover. Only the type and the spacing stay here. */
 .caret-value {
     display: block;
-    padding: 0.125rem 0.375rem;
     font-size: var(--type-small);
     font-weight: 500;
-    color: var(--popover-foreground);
-    border-radius: var(--radius-panel);
     white-space: nowrap;
 }
 
@@ -364,9 +342,4 @@ defineExpose({ scrubbing });
     cursor: grabbing;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .timeline-caret {
-        transition: none;
-    }
-}
 </style>

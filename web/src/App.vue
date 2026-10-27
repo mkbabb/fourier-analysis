@@ -188,9 +188,14 @@ onScopeDispose(() => {
                  positioned ancestor) was laid out against the document instead,
                  at its place far down the grid, and gave the document a scroll
                  range of its own (1031 of 844 at 390) that the shell's premise
-                 says is zero. -->
+                 says is zero.
+                 X·OD19 F5 ⊕ ALL: `<main>` is the route window of glass's route
+                 grammar (`data-route-window`); every path change crossfades
+                 under `routeTransition({ nav: "route" })` at the router seam
+                 (`router/index.ts`), and the dock above it stays put. -->
             <main
                 ref="main"
+                data-route-window
                 class="relative flex-1 min-h-0 flex flex-col overflow-y-auto -mt-px border-t border-transparent data-[scrolled]:border-[var(--border)] data-[owns-cut]:data-[scrolled]:border-transparent"
                 :data-scrolled="mainScrolled || undefined"
                 :data-owns-cut="$route.meta.ownsCut || undefined"
