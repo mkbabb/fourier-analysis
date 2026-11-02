@@ -5,7 +5,16 @@
 # surface). It runs ON the target host, in /var/www/fourier-analysis, invoked
 # by the host-resident adnanh/webhook receiver's fourier hook arm. There is NO
 # SSH herein — the receiver invokes this script locally after verifying the
-# GitHub HMAC-SHA256 signature; the dev's sole manual act is `git push`.
+# HMAC-SHA256 signature; the dev's sole manual act is `git push`.
+#
+# THE TRIGGER (X §0hc.3). The request comes from .github/workflows/
+# deploy-trigger.yml, AFTER the push's ci.yml run has completed green: a
+# signed JSON body {ref: refs/heads/master, after: <sha>, deploy_trigger:
+# "ci-green", repository: {full_name}}. The hooks.json trigger rule requires
+# the HMAC, ref == refs/heads/master AND deploy_trigger == "ci-green", so
+# GitHub's own push-time delivery (which carries no deploy_trigger) no longer
+# starts a deploy that inv-28 must refuse. inv-28 below is unchanged and still
+# the fail-closed check: the host re-verifies the covering green run itself.
 #
 # Invocation contract (matches the live /opt/deploy/ dispatcher, per
 # docs/tranches/C/coordination/DEPLOY-RECONCILE.md): the hook calls this with

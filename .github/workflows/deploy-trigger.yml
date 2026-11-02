@@ -1,0 +1,132 @@
+# deploy-trigger.yml — X §0hc.3: the API deploy is requested AFTER CI is green.
+#
+# THE DEFECT. The GitHub repo webhook delivers `push` the moment a merge lands.
+# The host hook (scripts/deploy-hook.sh, run by adnanh/webhook) then asks
+# GitHub for a covering green ci.yml run (inv-28), finds none (CI has only just
+# started), and refuses, correctly. Nothing ever re-asked after CI went green,
+# so every API deploy needed a hand dispatch on the host.
+#
+# THE CURE. This workflow sends the deploy request itself, once the same-SHA CI
+# run has COMPLETED with conclusion success: an HMAC-SHA256-signed JSON body
+# carrying `deploy_trigger: "ci-green"`, which only this job sends. The host's
+# trigger rule also requires that field, so GitHub's push-time delivery no
+# longer fires a refused deploy. inv-28 stays as the host's fail-closed check:
+# the host still verifies the covering green run itself and trusts nothing here.
+#
+# WHY A workflow_run AND NOT A FINAL ci.yml JOB. A job inside ci.yml runs while
+# its own run is still `in_progress`, with conclusion null. inv-28's query
+# (`.../workflows/ci.yml/runs?head_sha=…&status=success`) only matches COMPLETED
+# runs, so a request sent from inside ci.yml would be refused every time, for
+# the same reason the push-time delivery is. `workflow_run: completed` with
+# `conclusion == 'success'` is the earliest point at which inv-28 can pass, and
+# a success conclusion already means every ci.yml job (inv-27-evidence included)
+# concluded success. The guard is the same one deploy-pages.yml (the reference
+# inv-28 implementation) and deploy-alert.yml use.
+#
+# deploy-alert.yml fires on the same CI completion and polls the
+# deploy-of-record for up to 30 min, so it still watches this deploy. A failure
+# here (no request sent, a refused rule, a non-2xx) leaves no OK record at the
+# SHA, and deploy-alert's bound opens the `deploy-alert` issue: a failed
+# trigger reaches the watched channel as well as failing this run.
+#
+# SECRET DISCIPLINE. FOURIER_DEPLOY_HMAC is a repo secret holding the same HMAC
+# key as the host's hooks.json. It is read from the environment, never echoed,
+# and never written to disk. `workflow_run` runs in the base-repo context; the
+# head_branch == 'master' && event == 'push' guard keeps it off fork-PR runs.
+
+name: deploy-trigger
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+# One request per SHA; a newer CI completion never cancels an older one's request
+# (the host serialises deploys under its own flock).
+concurrency:
+  group: deploy-trigger-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    name: request the API deploy (CI green on a master push)
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'master' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Skip a SHA master has moved past
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # The hook deploys origin/master's tip, not the SHA it is sent. If
+          # master has moved on, a request now would be refused (the newer tip's
+          # CI is not green yet); the newer tip's own CI completion sends it.
+          tip="$(gh api "repos/${REPO}/branches/master" --jq .commit.sha)"
+          if [ "$tip" != "$SHA" ]; then
+            echo "::notice::master is at ${tip}, past ${SHA}; that tip's own green CI run requests its deploy."
+            echo "current=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "current=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Send the HMAC-signed ci-green deploy request
+        if: steps.tip.outputs.current == 'true'
+        env:
+          FOURIER_DEPLOY_HMAC: ${{ secrets.FOURIER_DEPLOY_HMAC }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          HOOK_URL: https://deploy.babb.dev/hooks/fourier-analysis
+        run: |
+          set -euo pipefail
+          if [ -z "${FOURIER_DEPLOY_HMAC}" ]; then
+            echo "::error::the FOURIER_DEPLOY_HMAC repo secret is not set; no deploy request was sent." >&2
+            exit 1
+          fi
+
+          # The body, compact, written once. The signature is computed over
+          # this file and curl sends this file, so the signed bytes ARE the
+          # sent bytes.
+          jq -cn --arg sha "$SHA" --arg repo "$REPO" \
+            '{ref: "refs/heads/master", after: $sha, deploy_trigger: "ci-green", repository: {full_name: $repo}}' \
+            | tr -d '\n' >body.json
+          sig="$(openssl dgst -sha256 -hmac "$FOURIER_DEPLOY_HMAC" -r body.json | cut -d' ' -f1)"
+          case "$sig" in
+            *[!0-9a-f]*|'') echo "::error::the HMAC digest is malformed; no request was sent." >&2; exit 1 ;;
+          esac
+          [ "${#sig}" -eq 64 ] || { echo "::error::the HMAC digest is not 64 hex digits; no request was sent." >&2; exit 1; }
+
+          echo "POST ${HOOK_URL} for ${SHA}"
+          cat body.json; echo
+          code="$(curl -sS --max-time 30 -o response.txt -w '%{http_code}' \
+            -X POST "$HOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -H "X-Hub-Signature-256: sha256=${sig}" \
+            --data-binary @body.json)"
+          echo "HTTP ${code}"
+          cat response.txt; echo
+
+          case "$code" in
+            2??) ;;
+            *) echo "::error::the deploy hook answered HTTP ${code}; the deploy was NOT requested." >&2; exit 1 ;;
+          esac
+          if grep -qi 'Hook rules were not satisfied' response.txt; then
+            echo "::error::the deploy hook refused the request (Hook rules were not satisfied): the signature, ref or deploy_trigger did not match the host's trigger rule." >&2
+            exit 1
+          fi
+          {
+            echo "## API deploy requested"
+            echo
+            echo "SHA \`${SHA}\` (CI run ${CI_RUN_ID}), hook HTTP ${code}."
+            echo "deploy-alert watches the deploy-of-record for outcome OK at this SHA."
+          } >>"$GITHUB_STEP_SUMMARY"

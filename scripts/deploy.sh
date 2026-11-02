@@ -4,9 +4,10 @@
 # The constellation deploy.sh standard (value.js:docs/dev-deploy-standard.md §5).
 # A THIN wrapper over fourier's two independently-deployable surfaces — it WRAPS,
 # does NOT replace, the hardened spine:
-#   • api (backend)  — git push → GitHub webhook → deploy.babb.dev/hooks/fourier-analysis
-#                      → the on-host scripts/deploy-hook.sh (flock + dirty-tree-
-#                      fail-loud + bounded health-gate + rollback-on-rollback).
+#   • api (backend)  — git push → ci.yml green → deploy-trigger.yml (X §0hc.3)
+#                      → HMAC-signed `ci-green` POST to deploy.babb.dev/hooks/fourier-analysis
+#                      → the on-host scripts/deploy-hook.sh (inv-28 + flock + dirty-
+#                      tree-fail-loud + bounded health-gate + rollback-on-rollback).
 #                      No SSH, no secret herein; `git push` is the sole act.
 #   • frontend (SPA) — Cloudflare Pages, via scripts/pages-deploy.sh
 #                      (project pre-flight + rollback-target + ASCII commit-msg).
@@ -28,11 +29,8 @@ PROJECT_NAME="fourier-analysis"
 REMOTE="${DEPLOY_REMOTE:-origin}"
 BRANCH="${DEPLOY_BRANCH:-master}"
 WEBHOOK_URL="https://deploy.babb.dev/hooks/${PROJECT_NAME}"
-# Health-gate the live API after the webhook fires (bounded; non-fatal advisory:
-# the on-host deploy-hook.sh runs the authoritative gate + rollback).
-HEALTH_URL="${DEPLOY_HEALTH_URL:-https://api.fourier.babb.dev/api/health}"
-GATE_RETRIES="${DEPLOY_GATE_RETRIES:-30}"
-GATE_INTERVAL="${DEPLOY_GATE_INTERVAL:-2}"
+# The deploy-of-record the host publishes; deploy-alert.yml watches it for OK.
+RECORD_URL="${DEPLOY_RECORD_URL:-https://api.fourier.babb.dev/deploy-record.json}"
 
 ASSUME_YES=0
 
@@ -65,7 +63,7 @@ confirm() {
     esac
 }
 
-# ── api: git-push-driven webhook deploy + bounded advisory health-gate ──
+# ── api: git push; the deploy is requested after CI is green (X §0hc.3) ──
 deploy_api() {
     require_bins git
     local head_sha; head_sha="$(git rev-parse --short HEAD)"
@@ -76,11 +74,12 @@ deploy_api() {
   ${PROJECT_NAME} — API deploy (PROD)
 ──────────────────────────────────────
   WILL: git push ${REMOTE} ${BRANCH}   (HEAD ${head_sha})
-  THEN: GitHub webhook → ${WEBHOOK_URL}
-        → on-host scripts/deploy-hook.sh (flock + health-gate + rollback)
-  THEN: advisory health-gate ${HEALTH_URL}
-        (~$((GATE_RETRIES * GATE_INTERVAL))s; the AUTHORITATIVE gate is on-host)
-  This pushes ${BRANCH} and triggers a PRODUCTION deploy.
+  THEN: ci.yml runs; once it is GREEN, deploy-trigger.yml POSTs the signed
+        ci-green request to ${WEBHOOK_URL}
+        → on-host scripts/deploy-hook.sh (inv-28 + flock + health-gate + rollback)
+  THEN: deploy-alert.yml watches ${RECORD_URL} for OK at the SHA
+        (and opens a deploy-alert issue if it does not get there)
+  This pushes ${BRANCH} and, once CI is green, triggers a PRODUCTION deploy.
 ──────────────────────────────────────
 EOF
     if [[ -n "$dirty" ]]; then
@@ -94,36 +93,11 @@ EOF
     log "pushing ${REMOTE} ${BRANCH}..."
     git push "$REMOTE" "$BRANCH" || die "git push failed — nothing deployed." 1
 
-    # Belt-and-braces poke of the per-repo webhook. The GitHub push-trigger is
-    # authoritative, so a manual-GET non-200 is NON-FATAL (the hook still fired
-    # from the push). Only attempted if curl exists.
-    if command -v curl >/dev/null 2>&1; then
-        log "poking webhook ${WEBHOOK_URL} (advisory; push-trigger is authoritative)..."
-        if curl -fsS --max-time 10 "$WEBHOOK_URL" >/dev/null 2>&1; then
-            log "webhook responded 2xx"
-        else
-            note "webhook GET non-2xx — non-fatal (the GitHub push event already triggered the deploy)"
-        fi
-    fi
-
-    # Bounded advisory health-gate. The on-host deploy-hook.sh runs the real gate
-    # + rollback; this is operator feedback, not the rollback trigger.
-    if command -v curl >/dev/null 2>&1; then
-        log "health-gating ${HEALTH_URL} (advisory)..."
-        local attempt body
-        for ((attempt = 1; attempt <= GATE_RETRIES; attempt++)); do
-            body="$(curl -fsS --max-time 5 "$HEALTH_URL" 2>/dev/null || true)"
-            if [[ "$body" == *'"status"'*'"ok"'* ]]; then
-                log "health gate GREEN (attempt ${attempt}/${GATE_RETRIES})"
-                return 0
-            fi
-            sleep "$GATE_INTERVAL"
-        done
-        note "advisory health gate did not go green within ~$((GATE_RETRIES * GATE_INTERVAL))s."
-        note "check the on-host deploy-hook log; it ran the authoritative gate + any rollback."
-        return 1
-    fi
-    log "curl absent — skipping advisory health-gate (deploy was triggered by the push)."
+    # Nothing to poke or health-gate here: the host deploys only on the
+    # ci-green request, which CI sends once it is green (minutes from now), and
+    # until then the live API is still the previous SHA.
+    log "pushed. The deploy is requested when CI is green; watch: gh run list --workflow deploy-trigger.yml"
+    log "the deploy-of-record (OK at the SHA when done): ${RECORD_URL}"
 }
 
 # ── frontend: Cloudflare Pages, via scripts/pages-deploy.sh ──
@@ -150,7 +124,7 @@ EOF
 
 usage() {
     note "usage: scripts/deploy.sh [all|api|frontend] [--yes]"
-    note "  api       git push → webhook → on-host deploy-hook.sh + advisory health-gate"
+    note "  api       git push → CI green → deploy-trigger.yml → on-host deploy-hook.sh"
     note "  frontend  build SPA → Cloudflare Pages (scripts/pages-deploy.sh)"
     note "  all       both (default)"
     note "  --yes     skip the interactive confirmation (required deploys non-interactively)"

@@ -18,8 +18,9 @@
 #             hook predates .h1 and refused before it fetched — or a dead API)
 #                                                                       → alert, exit 1
 #
-# REFUSED is not terminal: the push-time hook run refuses a SHA whose CI has not
-# finished (inv-28) and a later delivery deploys it; only the bound decides.
+# REFUSED is not terminal (e.g. a hand dispatch that raced CI); since X §0hc.3
+# the deploy is requested by deploy-trigger.yml only after CI is green, and a
+# later request can still deploy the SHA; only the bound decides.
 #
 #   scripts/deploy-alert.sh --sha <40-hex> [--dry-run]
 #       [--record-url URL] [--health-url URL] [--timeout S] [--interval S]
