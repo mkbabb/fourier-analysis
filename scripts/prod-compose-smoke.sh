@@ -97,6 +97,54 @@ ready_code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$BASE/" || t
 say "READINESS GET / → ${ready_code} (want 404, inv-22)"
 [[ "$ready_code" == "404" ]] || fail=1
 
+# COHESION §0hc.2 — the edge's compute limiter (nginx/fourier.conf api_compute,
+# 2 r/s burst 5) through the real edge and backend. A CORS preflight is never
+# counted or refused; a POST burst over the limit is refused by the EDGE (no
+# RateLimit-Limit, which only the backend stamps) with a 429 that carries
+# Access-Control-Allow-Origin for the production origin and none for a
+# foreign origin. Production 2026-11-02 read 503, no CORS, on the preflight.
+EDGE_ORIGIN="https://fourier.babb.dev"   # docker-compose.prod.yml CORS_ORIGINS default
+FOREIGN_ORIGIN="https://not-an-allowed-origin.example"
+COMPUTE="$BASE/api/contours/prod-smoke-edge-limit/compute/epicycles"
+preflights() {
+  local i codes=""
+  for i in $(seq 1 20); do
+    codes+="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 -X OPTIONS \
+      -H "Origin: $EDGE_ORIGIN" -H 'Access-Control-Request-Method: POST' \
+      -H 'Access-Control-Request-Headers: content-type' "$COMPUTE" || true) "
+  done
+  printf '%s' "$codes"
+}
+pre_codes="$(preflights)"
+say "EDGE      20 OPTIONS preflights → ${pre_codes}(want all 200)"
+[[ "$(tr ' ' '\n' <<<"$pre_codes" | grep -cx 200)" == "20" ]] || fail=1
+burst_codes=""
+for i in $(seq 1 12); do
+  burst_codes+="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 -X POST \
+    -H "Origin: $EDGE_ORIGIN" -H 'Content-Type: application/json' -d '{}' "$COMPUTE" || true) "
+done
+say "EDGE      12 POST burst → ${burst_codes}"
+refused="$(curl -sS -D - -o /dev/null --max-time 5 -X POST -H "Origin: $EDGE_ORIGIN" \
+  -H 'Content-Type: application/json' -d '{}' "$COMPUTE" | tr -d '\r' || true)"
+say "EDGE      over-limit POST, allowed origin → $(head -1 <<<"$refused")"
+if [[ "$(head -1 <<<"$refused")" != *" 429"* ]] \
+  || ! grep -qix "access-control-allow-origin: $EDGE_ORIGIN" <<<"$refused" \
+  || grep -qi '^ratelimit-limit:' <<<"$refused"; then
+  say "  want an edge 429 (no RateLimit-Limit) with Access-Control-Allow-Origin: $EDGE_ORIGIN"
+  printf '%s\n' "$refused" | sed 's/^/[prod-compose-smoke]     /'
+  fail=1
+fi
+foreign="$(curl -sS -D - -o /dev/null --max-time 5 -X POST -H "Origin: $FOREIGN_ORIGIN" \
+  -H 'Content-Type: application/json' -d '{}' "$COMPUTE" | tr -d '\r' || true)"
+say "EDGE      over-limit POST, foreign origin → $(head -1 <<<"$foreign") (want 429, no ACAO)"
+if [[ "$(head -1 <<<"$foreign")" != *" 429"* ]] || grep -qi '^access-control-allow-origin:' <<<"$foreign"; then
+  printf '%s\n' "$foreign" | sed 's/^/[prod-compose-smoke]     /'
+  fail=1
+fi
+pre_codes="$(preflights)"
+say "EDGE      20 OPTIONS preflights, zone exhausted → ${pre_codes}(want all 200)"
+[[ "$(tr ' ' '\n' <<<"$pre_codes" | grep -cx 200)" == "20" ]] || fail=1
+
 if [[ "$fail" -ne 0 ]]; then
   dump
   exit 1
