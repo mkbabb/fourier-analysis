@@ -49,8 +49,8 @@ async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
         n_harmonics=req.n_harmonics,
         n_points=req.n_points,
     )
-    await compute_cache.store(contourHash, params, data, label="compute_epicycles")
-    return ComputeResult(data=data)
+    wire = await compute_cache.store(contourHash, params, data, label="compute_epicycles")
+    return ComputeResult(data=wire)
 
 
 @router.post("/{contourHash}/compute/bases", response_model=ComputeResult)
@@ -74,5 +74,5 @@ async def compute_bases(contourHash: str, req: ComputeBasesRequest):
         levels=req.levels,
         n_eval=req.n_eval,
     )
-    await compute_cache.store(contourHash, params, data, label="compute_bases")
-    return ComputeResult(data=data)
+    wire = await compute_cache.store(contourHash, params, data, label="compute_bases")
+    return ComputeResult(data=wire)

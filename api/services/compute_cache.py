@@ -21,10 +21,17 @@ basis-projection chain from scratch. The cache:
   `epicycle_cache` collection intentionally abandons the old documents — the
   ≤7-day TTL plus the fail-open property absorb the gap (a one-time empty-cache
   warm-up, never an incorrect result).
-- Hit: returns the cached `dict`; skips the compute chain entirely; emits a
-  `CACHE_HIT <label>` log line.
-- Miss: caller computes, then `store(...)` writes the result; emits
-  `CACHE_MISS <label>`.
+- Wire form (§0hc.1): the cache stores, and returns, the result in its WIRE
+  form — the JSON-mode serialization of the routes' `ComputeResult.data`
+  response field, which is what the HTTP response body carries. A raw compute
+  result is not BSON-storable as-is (`compute_bases` keys its partial sums by
+  integer level, and BSON keys must be strings); the wire form is, and a hit
+  is byte-identical on the wire to a fresh compute because both paths return
+  the same encoded dict.
+- Hit: returns the cached wire-form `dict`; skips the compute chain entirely;
+  emits a `CACHE_HIT <label>` log line.
+- Miss: caller computes, then `store(...)` encodes the result to its wire form,
+  writes it, and returns it for the response; emits `CACHE_MISS <label>`.
 
 The cache is fail-open: a Mongo failure during `lookup` or `store` does NOT
 break the request — the route falls through to compute as if the cache
@@ -39,6 +46,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from api.models.computation import ComputeResult
 from api.services.database import get_db
 
 # Bump when a compute algorithm changes (signature, sampling, basis function —
@@ -63,10 +71,20 @@ def cache_key(contour_hash: str, params: dict[str, Any]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def wire_form(result: dict[str, Any]) -> dict[str, Any]:
+    """The result as the HTTP response encodes it: `ComputeResult.data` in JSON mode.
+
+    This is the response model's own serializer (FastAPI renders
+    `response_model=ComputeResult` through it), so non-string keys become the
+    strings the client receives, and every value is a JSON-native type.
+    """
+    return ComputeResult(data=result).model_dump(mode="json")["data"]
+
+
 async def lookup(
     contour_hash: str, params: dict[str, Any], *, label: str
 ) -> dict[str, Any] | None:
-    """Cache lookup. Returns the cached payload on hit; None on miss (or error)."""
+    """Cache lookup. Returns the cached wire-form payload on hit; None on miss (or error)."""
     try:
         db = get_db()
         key = cache_key(contour_hash, params)
@@ -88,8 +106,12 @@ async def store(
     result: dict[str, Any],
     *,
     label: str,
-) -> None:
-    """Cache store. Upsert via `_id` so duplicate keys are deterministic."""
+) -> dict[str, Any]:
+    """Cache store. Encodes `result` to its wire form, upserts it via `_id` (so
+    duplicate keys are deterministic), and returns the wire form — the payload
+    the route responds with, identical to what a later `lookup` hit returns.
+    """
+    wire = wire_form(result)
     try:
         db = get_db()
         key = cache_key(contour_hash, params)
@@ -97,7 +119,7 @@ async def store(
             {"_id": key},
             {
                 "$set": {
-                    "result": result,
+                    "result": wire,
                     "compute_version": COMPUTE_VERSION,
                     "label": label,
                     "contour_hash": contour_hash,
@@ -110,3 +132,4 @@ async def store(
     except Exception:
         # Fail-open: a store-side failure does NOT break the request.
         logger.warning("compute_cache.store failed", exc_info=True)
+    return wire
