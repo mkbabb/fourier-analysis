@@ -12,13 +12,18 @@
 #      always fails) → switch_service returns non-zero, the new container is
 #      removed, the SAME serving backend is still healthy, the edge pin never
 #      left it, and the edge never failed a request;
-#   C. an edge config change → `nginx -t` + graceful reload with zero failures;
+#   C. an edge config change → `nginx -t` + graceful reload with zero failures,
+#      reloaded over EDGE_FROM_REF's config (default origin/master: what the
+#      edge serves before this change), and a reload the running edge refuses
+#      reported as a failure, never as success;
 #   D. (F.REL .s1) mongo_apply: an unchanged definition keeps the same mongo; a
 #      changed one (mongo first brought up at the pre-.s1 512 MiB definition)
 #      is backed up cold, then recreated at the checked-out 1 GiB definition,
-#      healthy, with its data, and the edge never failing a request.
+#      healthy, with its data, and the edge never failing a request;
+#   E. (X §0hc.2) edge_cors_agrees: the edge's 429 allowlist must equal the
+#      rendered CORS_ORIGINS, and a host override it lacks is refused.
 #
-#   scripts/deploy-switch-smoke.sh               # build, boot, run A-C, tear down
+#   scripts/deploy-switch-smoke.sh               # build, boot, run A-E, tear down
 #   SKIP_BUILD=1 scripts/deploy-switch-smoke.sh  # reuse the project's images
 # shellcheck disable=SC2319 # `[[ … ]]; rc=$?` captures the condition's status, by design
 # shellcheck disable=SC2034 # NGINX_CFG_CHANGED is read by the sourced hook's edge_apply
@@ -51,6 +56,7 @@ cleanup() {
   fi
   docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v --remove-orphans >/dev/null 2>&1 || true
   rm -f .deploy/edge/*.conf
+  [[ -s "$WORK/checked-out.conf" ]] && cp "$WORK/checked-out.conf" nginx/fourier.conf
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -128,13 +134,51 @@ check "B: the edge pin never left the serving backend ($(cat .deploy/edge/backen
 docker tag "$ORIG_IMAGE" "$BROKEN_TAG"; docker rmi "${BROKEN_TAG%:*}:switch-smoke-orig" >/dev/null; BROKEN_TAG=""
 check "B: the edge failed 0 of $(($(requests) - n_before)) requests during the refused switch" "$(($(failures) - f_before))"
 
-# ── C. an edge config reload ──────────────────────────────────────────────
+# ── C. an edge config reload, FROM the config production runs ─────────────
+# X §0hc.2: a reload is judged by the RUNNING master, against the config it
+# already holds, and `nginx -t` cannot see that comparison (re-keying an
+# existing limit_req zone passed `nginx -t` and was refused by the live edge,
+# which went on serving the old config while the hook logged success). So the
+# edge is first brought up on EDGE_FROM_REF's nginx/fourier.conf — the config
+# production serves before this change lands — and then:
+#   C-refused: a reload the running master must refuse (one of its own zones
+#     re-keyed) → edge_apply returns non-zero and the edge serves on;
+#   C: the checked-out config → edge_apply reloads it, and it is the one live
+#     (12 back-to-back compute preflights: the pre-§0hc config refused them
+#     after its burst of 5; the checked-out one never counts a preflight).
+EDGE_FROM_REF="${EDGE_FROM_REF:-origin/master}"
+cp nginx/fourier.conf "$WORK/checked-out.conf"
+restore_conf() { cp "$WORK/checked-out.conf" nginx/fourier.conf; }
+if ! git show "${EDGE_FROM_REF}:nginx/fourier.conf" >"$WORK/from.conf"; then
+  say "FAIL  C: cannot read nginx/fourier.conf at EDGE_FROM_REF=${EDGE_FROM_REF}"; exit 1
+fi
+cp "$WORK/from.conf" nginx/fourier.conf
+"${COMPOSE[@]}" restart nginx >/dev/null 2>&1
+for _ in $(seq 1 60); do curl -fs -o /dev/null --max-time 2 "$BASE/health" && break; sleep 0.5; done
+say "C setup: the edge restarted on ${EDGE_FROM_REF}'s nginx/fourier.conf (requests during this restart are not counted)"
+sleep 2
 n_before="$(requests)"; f_before="$(failures)"
 NGINX_CFG_CHANGED=1
+# shellcheck disable=SC2016 # nginx variables, literal
+sed 's/^limit_req_zone \$binary_remote_addr zone=api_general:/limit_req_zone $remote_addr zone=api_general:/' \
+  "$WORK/from.conf" >nginx/fourier.conf
+cmp -s "$WORK/from.conf" nginx/fourier.conf; [[ $? -eq 1 ]]; rc=$?
+check "C-refused setup: the running config's api_general zone is re-keyed" "$rc"
 edge_apply; rc=$?
-check "C: edge_apply validated and reloaded the edge config (rc $rc)" "$rc"
+[[ "$rc" -ne 0 ]]; ok=$?
+check "C-refused: edge_apply reports the reload the running edge refused (rc $rc)" "$ok"
+restore_conf
+edge_apply; rc=$?
+check "C: edge_apply validated and reloaded the checked-out config over ${EDGE_FROM_REF}'s (rc $rc)" "$rc"
+pre=""
+for _ in $(seq 1 12); do
+  pre+="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 -X OPTIONS -H 'Origin: https://fourier.babb.dev' \
+    -H 'Access-Control-Request-Method: POST' "$BASE/api/contours/switch-smoke/compute/epicycles") "
+done
+[[ "$(tr ' ' '\n' <<<"$pre" | grep -cx 200)" == "12" ]]; rc=$?
+check "C: the LIVE edge runs the checked-out config — 12 compute preflights, none refused (${pre% })" "$rc"
 sleep 6
-check "C: the edge failed 0 of $(($(requests) - n_before)) requests through the reload" "$(($(failures) - f_before))"
+check "C: the edge failed 0 of $(($(requests) - n_before)) requests through the refused and the good reload" "$(($(failures) - f_before))"
 
 # ── D. a changed mongo definition is applied: cold backup, then recreate ────
 # F.REL .s1: `up --no-recreate mongo` never applied a changed mongo definition
@@ -173,6 +217,16 @@ check "D changed: one cold backup of the data volume was taken first ($(basename
 check "D changed: the data survived the recreate (the marker document reads back)" "$rc"
 sleep 6
 check "D: the edge failed 0 of $(($(requests) - n_before)) /api/health + SPA requests through the mongo apply" "$(($(failures) - f_before))"
+
+# ── E. the edge's 429 allowlist is the backend's effective CORS_ORIGINS ────
+# X §0hc.2: nginx cannot read the backend's environment, so switch_stack
+# refuses a deploy whose rendered CORS_ORIGINS (the host's env files may
+# override the repo default) differs from nginx/fourier.conf's map.
+edge_cors_agrees; rc=$?
+check "E: the edge allowlist agrees with the rendered CORS_ORIGINS (rc $rc)" "$rc"
+CORS_ORIGINS="https://fourier.babb.dev,https://another-origin.example" edge_cors_agrees; rc=$?
+[[ "$rc" -ne 0 ]]; ok=$?
+check "E: a host CORS_ORIGINS the edge map does not carry is refused (rc $rc)" "$ok"
 
 touch "$WORK/stop"; wait "$POLLER_PID" 2>/dev/null; POLLER_PID=""
 say "polled $(requests) request pairs through the edge; failed: $(failures)"

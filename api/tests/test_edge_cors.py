@@ -75,6 +75,16 @@ def test_preflights_are_not_counted_and_refusals_are_429() -> None:
     entries = _map_entries("api_compute_key")
     assert entries == {"OPTIONS": "", "default": "$binary_remote_addr"}
     assert re.search(
-        r"limit_req_zone\s+\$api_compute_key\s+zone=api_compute:10m\s+rate=2r/s;", _CONF
+        r"limit_req_zone\s+\$api_compute_key\s+zone=api_compute_req:10m\s+rate=2r/s;", _CONF
     )
+    # A re-keyed zone keeps no old name: a running master refuses the reload.
+    assert not re.search(r"zone=api_compute[:\s]", _CONF)
     assert re.search(r"^limit_req_status\s+429;", _CONF, re.M)
+
+
+def test_preflights_to_compute_paths_stay_bounded_by_the_general_zone() -> None:
+    compute = re.search(r"location ~ \^/api/\(equations.*?\{(.*?)\n    \}", _CONF, re.S)
+    assert compute, "nginx/fourier.conf declares no compute location"
+    body = compute.group(1)
+    assert re.search(r"limit_req\s+zone=api_compute_req\s+burst=5\s+nodelay;", body)
+    assert re.search(r"limit_req\s+zone=api_general\s+burst=50\s+nodelay;", body)

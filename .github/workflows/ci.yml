@@ -501,8 +501,22 @@ jobs:
       # The deploy hook's own switch functions (sourced, not copied): a good
       # switch, a never-healthy backend refused with the serving one untouched,
       # and an edge reload — each with 0 failed requests through the edge.
+      # X §0hc.2: the edge reload is exercised FROM the config production
+      # serves before this commit lands (a push: the previous master tip; a PR
+      # or a dispatch: master), because the running edge, not `nginx -t`, is
+      # what refuses an incompatible reload.
       - name: Health-gated switch (deploy-hook.sh switch_service · edge_apply)
-        run: SKIP_BUILD=1 PROJECT=fourier-prod-smoke bash scripts/deploy-switch-smoke.sh
+        env:
+          EDGE_FROM_SHA: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: |
+          if [[ -n "${EDGE_FROM_SHA}" ]]; then
+            git fetch --no-tags --depth=1 origin "${EDGE_FROM_SHA}"
+            export EDGE_FROM_REF="${EDGE_FROM_SHA}"
+          else
+            git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
+            export EDGE_FROM_REF=origin/master
+          fi
+          SKIP_BUILD=1 PROJECT=fourier-prod-smoke bash scripts/deploy-switch-smoke.sh
 
   # ── X·F F.W9 `.c` — inv-27, THE EVIDENCE FLOOR ─────────────────────────────
   #
