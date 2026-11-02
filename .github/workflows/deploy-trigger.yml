@@ -25,13 +25,20 @@
 #
 # deploy-alert.yml fires on the same CI completion and polls the
 # deploy-of-record for up to 30 min, so it still watches this deploy. A failure
-# here (no request sent, a refused rule, a non-2xx) leaves no OK record at the
-# SHA, and deploy-alert's bound opens the `deploy-alert` issue: a failed
-# trigger reaches the watched channel as well as failing this run.
+# here (no request sent, a refused rule, a non-2xx) leaves no OK record at or
+# past the SHA, and deploy-alert's bound opens the `deploy-alert` issue: a
+# failed trigger reaches the watched channel as well as failing this run.
+#
+# A SHA master has moved past is skipped, not failed: the hook deploys the tip,
+# so the newer tip's own green run requests the deploy that ships this SHA, and
+# deploy-alert resolves this SHA as SUPERSEDED on that tip's OK record (an OK
+# at a SHA that contains it, scripts/deploy-alert.sh). The skip and the
+# watcher's verdict agree; neither alerts on a deploy that did ship.
 #
 # SECRET DISCIPLINE. FOURIER_DEPLOY_HMAC is a repo secret holding the same HMAC
-# key as the host's hooks.json. It is read from the environment, never echoed,
-# and never written to disk. `workflow_run` runs in the base-repo context; the
+# key as the host's hooks.json and the GitHub webhook (the three places it
+# lives; rotate all three together). It is read from the environment inside
+# python3, never placed in argv, never echoed, and never written to disk. `workflow_run` runs in the base-repo context; the
 # head_branch == 'master' && event == 'push' guard keeps it off fork-PR runs.
 
 name: deploy-trigger
@@ -100,7 +107,9 @@ jobs:
           jq -cn --arg sha "$SHA" --arg repo "$REPO" \
             '{ref: "refs/heads/master", after: $sha, deploy_trigger: "ci-green", repository: {full_name: $repo}}' \
             | tr -d '\n' >body.json
-          sig="$(openssl dgst -sha256 -hmac "$FOURIER_DEPLOY_HMAC" -r body.json | cut -d' ' -f1)"
+          # The key is read from the environment inside the interpreter, never
+          # expanded into argv (openssl -hmac would put it in the process table).
+          sig="$(python3 -c 'import hashlib, hmac, os; print(hmac.new(os.environb[b"FOURIER_DEPLOY_HMAC"], open("body.json", "rb").read(), hashlib.sha256).hexdigest())')"
           case "$sig" in
             *[!0-9a-f]*|'') echo "::error::the HMAC digest is malformed; no request was sent." >&2; exit 1 ;;
           esac
