@@ -36,7 +36,10 @@ const row = (name, ok, detail) => {
     console.log(`${ok ? "GREEN" : "RED  "} ${name} — ${JSON.stringify(detail)}`);
 };
 
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+// Playwright's default headless shell: the probe measures the HTTP/CORS
+// contract, not GPU paint, so it names no witness that needs branded Chrome
+// (machine law 2026-10-16: one browser per run, closed in `finally`).
+const browser = await chromium.launch({ headless: true });
 let token = null;
 const created = []; // visualization slugs the probe must delete
 const deleted = new Set();
