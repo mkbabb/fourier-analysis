@@ -32,10 +32,12 @@
 #                       is what makes *"cite a covering green run id"* an act
 #                       a later seat can perform instead of assert.
 #
-# Residual: the workflow is not yet wired into a `secrets:` block — there are
-# no inbound credentials needed for the test runs themselves (no deploy step;
-# no external API calls). If a future arm needs secrets (e.g. webhook deploy
-# token), this is the spot to add `secrets:` config.
+# No secrets: the test runs need no inbound credentials, and nothing here
+# deploys. The API deploy request is NOT a job in this file (X §0hc.3): a job
+# here runs while this run is still in_progress, and the host's inv-28 query
+# matches only COMPLETED green runs, so it would be refused. It is sent by
+# .github/workflows/deploy-trigger.yml on this workflow's `completed` event
+# with conclusion success, which already means every job below succeeded.
 
 name: CI
 

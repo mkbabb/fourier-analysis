@@ -17,6 +17,15 @@
 # watched SHA is github.event.workflow_run.head_sha (never github.sha, which is
 # the workflow-file ref under workflow_run). workflow_dispatch re-watches a SHA
 # by hand (default: the master tip).
+#
+# X §0hc.3: the deploy it watches is now REQUESTED by deploy-trigger.yml, which
+# fires on the same CI completion and sends the HMAC-signed `ci-green` request
+# (the host no longer deploys on GitHub's push-time delivery). Both start
+# together; the 30-min poll covers the request, the build and the health gate.
+# A trigger that failed or was refused leaves no OK at the SHA, so the bound
+# alerts on it too: deploy-alert stays keyed on CI, not on deploy-trigger.
+# A SHA master moved past (deploy-trigger skips it; the hook deploys the tip)
+# resolves SUPERSEDED on the tip's healthy OK record when that tip contains it.
 
 name: deploy-alert
 

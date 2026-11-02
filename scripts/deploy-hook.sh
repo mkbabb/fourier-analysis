@@ -5,7 +5,16 @@
 # surface). It runs ON the target host, in /var/www/fourier-analysis, invoked
 # by the host-resident adnanh/webhook receiver's fourier hook arm. There is NO
 # SSH herein — the receiver invokes this script locally after verifying the
-# GitHub HMAC-SHA256 signature; the dev's sole manual act is `git push`.
+# HMAC-SHA256 signature; the dev's sole manual act is `git push`.
+#
+# THE TRIGGER (X §0hc.3). The request comes from .github/workflows/
+# deploy-trigger.yml, AFTER the push's ci.yml run has completed green: a
+# signed JSON body {ref: refs/heads/master, after: <sha>, deploy_trigger:
+# "ci-green", repository: {full_name}}. The hooks.json trigger rule requires
+# the HMAC, ref == refs/heads/master AND deploy_trigger == "ci-green", so
+# GitHub's own push-time delivery (which carries no deploy_trigger) no longer
+# starts a deploy that inv-28 must refuse. inv-28 below is unchanged and still
+# the fail-closed check: the host re-verifies the covering green run itself.
 #
 # Invocation contract (matches the live /opt/deploy/ dispatcher, per
 # docs/tranches/C/coordination/DEPLOY-RECONCILE.md): the hook calls this with
@@ -56,9 +65,12 @@
 #     host on?" had no answer from anywhere off the host, which is why the
 #     drift went 24 days unnoticed.
 #
-# It carries NO secret — the HMAC secret lives only in GitHub's webhook config
-# and the host's un-tracked hooks.json (see the precepts note staged in
-# DEPLOY-RECONCILE.md). It carries NO SSH key and NO password. GITHUB_TOKEN, if
+# It carries NO secret — the HMAC secret lives in exactly three places: the
+# host's un-tracked hooks.json, GitHub's webhook config, and (X §0hc.3) the
+# GitHub Actions repo secret FOURIER_DEPLOY_HMAC that deploy-trigger.yml signs
+# with. Rotate all three together: a key rotated without FOURIER_DEPLOY_HMAC
+# leaves every ci-green request refused ("Hook rules were not satisfied"). See
+# the precepts note staged in DEPLOY-RECONCILE.md. It carries NO SSH key and NO password. GITHUB_TOKEN, if
 # set, is read from the environment and NEVER logged or echoed.
 
 set -euo pipefail

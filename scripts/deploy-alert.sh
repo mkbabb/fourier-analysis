@@ -12,14 +12,26 @@
 # one is. The verdicts:
 #
 #   OK        record.deployed_sha == SHA, outcome OK, /api/health live  → exit 0
+#   SUPERSEDED record.deployed_sha CONTAINS SHA (GitHub compare SHA...at is
+#             `ahead`), outcome OK, /api/health live                   → exit 0
 #   FAILED    record.deployed_sha == SHA, outcome ROLLED_BACK or ALERT  → alert, exit 1
 #   TIMEOUT   no OK at SHA within --timeout (a REFUSED record, a record at an
 #             older SHA, a record the edge does not serve — e.g. a host whose
 #             hook predates .h1 and refused before it fetched — or a dead API)
 #                                                                       → alert, exit 1
 #
-# REFUSED is not terminal: the push-time hook run refuses a SHA whose CI has not
-# finished (inv-28) and a later delivery deploys it; only the bound decides.
+# REFUSED is not terminal (e.g. a hand dispatch that raced CI); since X §0hc.3
+# the deploy is requested by deploy-trigger.yml only after CI is green, and a
+# later request can still deploy the SHA; only the bound decides.
+#
+# SUPERSEDED (X §0hc.3). The hook deploys origin/master's TIP, never the SHA a
+# request names, and deploy-trigger.yml skips a SHA master has already moved
+# past. So when B lands before A's CI completes, no record ever reads A: the
+# deploy that ships A's tree is the one recorded at B. A healthy OK at a SHA
+# that contains this one IS this SHA's deploy, and the watcher resolves on it
+# instead of timing out on a deploy that can never be recorded. Containment is
+# GitHub's compare (`repos/R/compare/SHA...at` → status `ahead`); a record at
+# an older, diverged or unknown SHA still falls through to the bound.
 #
 #   scripts/deploy-alert.sh --sha <40-hex> [--dry-run]
 #       [--record-url URL] [--health-url URL] [--timeout S] [--interval S]
@@ -27,7 +39,9 @@
 #
 # --dry-run prints every gh call (the lookup and the write) and posts nothing;
 # the lookup's answer is then DEPLOY_ALERT_DRY_ISSUE (an open issue number, or
-# empty for none), so the open-then-update path is exercisable offline
+# empty for none) and the containment compare's answer is
+# DEPLOY_ALERT_DRY_COMPARE (a compare status, e.g. `ahead`; empty = unknown),
+# so the open-then-update and the superseded paths are exercisable offline
 # (scripts/deploy-alert-fixture.sh). Live, gh reads GH_TOKEN from the
 # environment; it is never printed.
 set -euo pipefail
@@ -105,6 +119,22 @@ alert() {
     fi
 }
 
+# contains AT — 0 when commit AT contains SHA (SHA is a strict ancestor of AT,
+# GitHub compare status `ahead`); 1 otherwise, including any lookup failure, so
+# an unknown answer can only fall through to the bound, never pass. A read,
+# not a write: under --dry-run it is printed and answered from
+# DEPLOY_ALERT_DRY_COMPARE.
+contains() {
+    local at="$1" status
+    if ((DRY_RUN)); then
+        gh_call api "repos/${REPO}/compare/${SHA}...${at}" --jq .status >&2
+        status="${DEPLOY_ALERT_DRY_COMPARE:-}"
+    else
+        status="$(gh api "repos/${REPO}/compare/${SHA}...${at}" --jq .status 2>/dev/null || true)"
+    fi
+    [[ "${status}" == "ahead" ]]
+}
+
 # read_record — the edge's deploy-of-record as compact JSON, or empty when the
 # edge does not serve one (absent, HTML, unreachable).
 read_record() {
@@ -122,6 +152,9 @@ health_live() {
 say "watching the API deploy of ${SHA} (record ${RECORD_URL}; bound ${TIMEOUT}s, every ${INTERVAL}s)"
 deadline=$((SECONDS + TIMEOUT))
 last="no deploy-of-record served"
+# The containment verdict of the last OK record seen at another SHA, cached so
+# a record that stays put is compared once, not on every poll.
+compared_at="" compared_contains=1
 while :; do
     record="$(read_record)"
     if [[ -n "${record}" ]]; then
@@ -142,6 +175,19 @@ while :; do
                     exit 1
                     ;;
             esac
+        elif [[ "${outcome}" == "OK" && "${at}" =~ ^[0-9a-f]{40}$ ]]; then
+            if [[ "${at}" != "${compared_at}" ]]; then
+                compared_at="${at}"
+                compared_contains=1
+                contains "${at}" && compared_contains=0
+            fi
+            if ((compared_contains == 0)); then
+                if health_live; then
+                    say "SUPERSEDED - ${SHA} shipped inside the OK deploy of ${at} (CI run $(printf '%s' "${record}" | jq -r '.ci_run_id')), which contains it; the API is live"
+                    exit 0
+                fi
+                last="${last}; contains ${SHA}; /api/health is not live"
+            fi
         fi
     fi
     if ((SECONDS >= deadline)); then
