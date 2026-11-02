@@ -556,13 +556,17 @@ edge_workers() {
 # reload: the edge's longest proxy_read_timeout (120 s, nginx/fourier.conf)
 # plus margin.
 readonly EDGE_DRAIN_SECONDS="${FOURIER_EDGE_DRAIN_SECONDS:-150}"
+# How long a graceful reload may take to start its new workers (they start in
+# well under a second; a master that refused the config starts none).
+readonly EDGE_RELOAD_SECONDS="${FOURIER_EDGE_RELOAD_SECONDS:-15}"
 
 # edge_reload — validate the edge's whole config (nginx/ + the pins) in the live
 # edge, load it gracefully, and return only once every pre-reload worker has
 # exited: `nginx -s reload` only SIGNALS the master, and until the old workers
 # are gone they keep routing by the old config — retiring an upstream before
 # then hands their requests a stopping container (measured: one 502 per
-# switch). A config `nginx -t` rejects is never loaded.
+# switch). A config `nginx -t` rejects is never loaded, and a reload the
+# running master refuses returns 1, never a silent success.
 edge_reload() {
     if [[ -z "$(service_ids nginx)" ]]; then
         # No edge yet (a first bring-up): edge_apply starts it on these pins.
@@ -572,9 +576,30 @@ edge_reload() {
         log "edge: nginx -t REJECTED the config; it was not loaded"
         return 1
     fi
-    local before alive deadline
+    local before alive deadline since now emerg=""
     before="$(edge_workers | tr '\n' ' ')"
+    since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     "${COMPOSE[@]}" exec -T nginx nginx -s reload
+    # `nginx -s reload` exits 0 once it has SIGNALLED the master, and `nginx -t`
+    # validates the files alone, never against the running instance: a running
+    # master can still refuse the new config (measured, X §0hc.2: an existing
+    # limit_req zone re-keyed → `[emerg] … while previously it used …`) and go
+    # on serving the old one with the old workers. The reload took only when a
+    # worker NOT in the pre-reload set appears; an `[emerg]` from the master, or
+    # no new worker within EDGE_RELOAD_SECONDS, is a rejected reload.
+    deadline=$((SECONDS + EDGE_RELOAD_SECONDS))
+    while :; do
+        now="$(edge_workers | tr '\n' ' ')"
+        if [[ -n "$(comm -13 <(tr ' ' '\n' <<<"${before}" | sort) <(tr ' ' '\n' <<<"${now}" | sort) | tr -d '[:space:]')" ]]; then
+            break
+        fi
+        emerg="$(docker logs --since "${since}" "$(service_ids nginx | head -1)" 2>&1 | grep -F '[emerg]' | tail -1 || true)"
+        if [[ -n "${emerg}" ]] || ((SECONDS >= deadline)); then
+            log "edge: the running edge REFUSED the reload; it still serves the previous config: ${emerg:-no new worker within ${EDGE_RELOAD_SECONDS}s}"
+            return 1
+        fi
+        sleep 0.5
+    done
     deadline=$((SECONDS + EDGE_DRAIN_SECONDS))
     # shellcheck disable=SC2086 # PIDs, space-separated
     while [[ -n "${before// /}" ]] && alive="$(edge_workers ${before})" && [[ -n "${alive}" ]]; do
@@ -717,6 +742,27 @@ mongo_apply() {
     log "mongo: recreated at config hash ${want:0:12} (healthy)"
 }
 
+# edge_cors_agrees — X §0hc.2: the edge's own 429 (@api_rate_limited in
+# nginx/fourier.conf) carries Access-Control-Allow-Origin from a static map,
+# because nginx cannot read the backend's environment. That map must be the
+# backend's EFFECTIVE CORS_ORIGINS — the value compose renders from the host's
+# env files, which may override the repo default — or an extra origin the
+# backend allows reads the edge's refusal as a CORS failure. A mismatch fails
+# the deploy closed before anything is built. Only the CORS_ORIGINS line of the
+# rendered config is ever read; no other value is kept or printed.
+edge_cors_agrees() {
+    local backend edge
+    backend="$("${COMPOSE[@]}" config backend 2>/dev/null | sed -n 's/^ *CORS_ORIGINS: *//p' \
+        | tr -d "\"'" | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep . | sort -u || true)"
+    edge="$(awk '/^map \$http_origin \$edge_allowed_origin/ { f = 1; next }
+                 f && /^}/ { exit }
+                 f && $2 == "$http_origin;" { gsub(/"/, "", $1); print $1 }' nginx/fourier.conf | sort -u)"
+    if [[ -z "${backend}" || "${backend}" != "${edge}" ]]; then
+        log "edge CORS allowlist ($(printf '%s' "${edge}" | tr '\n' ' ')) != the backend's effective CORS_ORIGINS ($(printf '%s' "${backend:-unset}" | tr '\n' ' ')) — refusing; align nginx/fourier.conf's \$edge_allowed_origin map or the host's CORS_ORIGINS"
+        return 1
+    fi
+}
+
 # switch_stack — build, then switch every upstream and the edge. Returns 1 at
 # the first step that fails; everything not yet switched is still the old one.
 switch_stack() {
@@ -728,6 +774,7 @@ switch_stack() {
         log "compose render FAILED (a required variable is unset) — nothing was started or stopped"
         return 1
     fi
+    edge_cors_agrees || return 1
     log "building (build --parallel) — the serving stack is untouched…"
     if ! "${COMPOSE[@]}" build --parallel; then
         log "build FAILED — nothing was started or stopped"
