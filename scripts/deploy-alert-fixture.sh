@@ -20,6 +20,10 @@
 #   E  REFUSED at SHA past the bound      → TIMEOUT alert, exit 1
 #   F  edge serves no record (HTML; a host hook that predates .h1) → TIMEOUT alert, exit 1
 #   G  OK at SHA, API live                → exit 0, no gh call
+#   H  OK at a newer tip that contains SHA (master moved past it; X §0hc.3),
+#      API live                           → SUPERSEDED, exit 0, only the compare read
+#   I  OK at a SHA that does not contain SHA (diverged) → TIMEOUT alert, exit 1
+#   J  OK at a containing tip, API dead   → TIMEOUT alert, exit 1
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -29,6 +33,7 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 SHA="1111111111111111111111111111111111111111"
 PREV="2222222222222222222222222222222222222222"
+NEWER="3333333333333333333333333333333333333333"
 FAILS=0
 
 pass() { printf 'PASS %s\n' "$*"; }
@@ -46,10 +51,11 @@ printf '<!DOCTYPE html><html></html>' >"${WORK}/spa.html"
 printf '#!/bin/sh\nexit 0\n' >"${WORK}/bin/logger"
 chmod +x "${WORK}/bin/logger"
 
-# produce OUTCOME — run the hook's own write_record in a scratch "host" dir and
-# cut the JSON out of the nginx location it published; prints that file's path.
+# produce OUTCOME [AT] — run the hook's own write_record in a scratch "host" dir
+# (deployed SHA AT, default SHA) and cut the JSON out of the nginx location it
+# published; prints that file's path.
 produce() {
-    local outcome="$1" host="${WORK}/host-${1}"
+    local outcome="$1" at="${2:-${SHA}}" host="${WORK}/host-${1}-${2:-${SHA}}"
     mkdir -p "${host}"
     (
         cd "${host}" || exit 1
@@ -58,7 +64,7 @@ produce() {
         source "${HOOK}"
         # shellcheck disable=SC2329 # invoked by the sourced hook's publish_record
         edge_reload() { :; }
-        write_record "${outcome}" "${PREV}" "${SHA}" "424242" "fixture: forced ${outcome}"
+        write_record "${outcome}" "${PREV}" "${at}" "424242" "fixture: forced ${outcome}"
     ) >/dev/null 2>&1
     sed -n "s/^location = \/deploy-record.json { default_type application\/json; return 200 '\(.*\)'; }$/\1/p" \
         "${host}/.deploy/edge/deploy-record.conf" 2>/dev/null >"${host}/edge-record.json"
@@ -141,6 +147,38 @@ if [[ ${rc} -eq 0 ]] && ! grep -q 'DRY-RUN gh' "${WORK}/out"; then
     pass "G OK at SHA: exit 0, no gh call"
 else
     fail "G OK at SHA: rc ${rc} or an alert was printed"; sed 's/^/    /' "${WORK}/out"
+fi
+
+# H — master moved past SHA: the hook deployed the newer tip, which contains
+# SHA, and recorded OK there. That deploy shipped SHA: resolved, not alerted.
+watch "$(produce OK "${NEWER}")" DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_COMPARE=ahead; rc=$?
+if [[ ${rc} -eq 0 ]] && grep -q 'SUPERSEDED' "${WORK}/out" \
+        && grep -q "^\[deploy-alert\] DRY-RUN gh api repos/mkbabb/fourier-analysis/compare/${SHA}\.\.\.${NEWER} " "${WORK}/out" \
+        && ! grep -Eq 'DRY-RUN gh (issue|label)' "${WORK}/out"; then
+    pass "H OK at a containing tip: SUPERSEDED, exit 0, no alert"
+else
+    fail "H OK at a containing tip: rc ${rc} or alerted"; sed 's/^/    /' "${WORK}/out"
+fi
+
+# I — OK at a SHA that does not contain SHA: never resolves it; the bound alerts.
+watch "$(produce OK "${NEWER}")" DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_COMPARE=diverged; rc=$?
+if [[ ${rc} -eq 1 ]] && grep -q 'DRY-RUN gh issue create' "${WORK}/out" \
+        && grep -q 'TIMEOUT' "${WORK}/out" && ! grep -q 'SUPERSEDED' "${WORK}/out"; then
+    pass "I OK at a non-containing SHA: TIMEOUT alert (rc ${rc})"
+else
+    fail "I OK at a non-containing SHA: no TIMEOUT alert (rc ${rc})"; sed 's/^/    /' "${WORK}/out"
+fi
+
+# J — a containing OK with a dead API is not a healthy OK: the bound alerts.
+printf '<html>502</html>' >"${WORK}/dead.json"
+rec="$(produce OK "${NEWER}")"
+env DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_COMPARE=ahead bash "${ALERT}" --dry-run --sha "${SHA}" \
+    --repo mkbabb/fourier-analysis --record-url "file://${rec}" --health-url "file://${WORK}/dead.json" \
+    --timeout 2 --interval 1 >"${WORK}/out" 2>&1; rc=$?
+if [[ ${rc} -eq 1 ]] && grep -q 'TIMEOUT' "${WORK}/out" && grep -q 'api/health is not live' "${WORK}/out"; then
+    pass "J containing OK, API dead: TIMEOUT alert (rc ${rc})"
+else
+    fail "J containing OK, API dead: no TIMEOUT alert (rc ${rc})"; sed 's/^/    /' "${WORK}/out"
 fi
 
 # The tripwire: a dry-run never posts.
