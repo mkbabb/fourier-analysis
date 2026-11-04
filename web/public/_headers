@@ -33,6 +33,9 @@
 #       bundler), so a per-build hash would drift; 'unsafe-inline' is the stable,
 #       non-breaking choice here. There is no eval / new Function / wasm in the
 #       app, so we deliberately do NOT add 'unsafe-eval' or 'wasm-unsafe-eval'.
+#       https://static.cloudflareinsights.com — the Cloudflare Web Analytics
+#       beacon Pages auto-injects (X §0hm D-27, the value.js OD-6 ruling):
+#       admitted, not disabled; its report goes to connect-src below.
 #   style-src 'self' 'unsafe-inline'
 #       'self' covers the bundled CSS (app + KaTeX). 'unsafe-inline' is required
 #       by Vue scoped-style injection, Tailwind's runtime inline styles, and
@@ -44,12 +47,16 @@
 #       blob:   — canvas exports (BasisCanvas.vue offCanvas.toDataURL / blobs).
 #       api.fourier.babb.dev — <img :src> thumbnail/overlay/blob URLs the API
 #                              serves (api.ts thumbnailUrl/overlayUrl/imageUrl).
-#   font-src 'self'
+#   font-src 'self' data:
 #       Every face is self-hosted (/fonts) or bundled (KaTeX). No third-party.
+#       data: — glass-ui ships one face inlined as a data: woff2 in its CSS
+#       (X §0hm D-27: 'self' alone refused it, a console error on every load).
 #   connect-src 'self' https://api.fourier.babb.dev
 #       fetch() goes to the API origin (api.ts BASE = https://api.fourier.babb.dev
 #       in the prod build). 'self' covers any same-origin asset fetch. No
-#       WebSocket / EventSource / third-party telemetry exists in the app.
+#       WebSocket / EventSource exists in the app.
+#       https://cloudflareinsights.com — the Web Analytics beacon's report
+#       (X §0hm D-27; the one admitted telemetry, Pages' own).
 #   object-src 'none'
 #       No <object>/<embed>/<applet>; closes a legacy plugin-injection vector.
 #   base-uri 'self'
@@ -61,7 +68,7 @@
 # do NOT loosen an existing directive to a wildcard.
 
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.fourier.babb.dev; font-src 'self'; connect-src 'self' https://api.fourier.babb.dev; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.fourier.babb.dev; font-src 'self' data:; connect-src 'self' https://api.fourier.babb.dev https://cloudflareinsights.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
