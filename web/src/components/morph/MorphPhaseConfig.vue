@@ -223,6 +223,11 @@ const easingNames = EASING_PRESET_NAMES;
 
 .config-select {
     inline-size: 100%;
+    /* X §0hm D-21: the Easing select is the card's secondary control, so it
+       takes glass's compact control rung, not the md one the trigger reads
+       (60 px on a coarse pointer, the heaviest thing in the card); the touch
+       floor still holds it at 44. */
+    --control-h-md: var(--control-h-xs);
 }
 
 /* X-DS pass 15 · DS-F15X-C2 — Easing takes the Duration row's grammar where

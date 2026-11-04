@@ -233,9 +233,15 @@ test.describe("au1 L2-4 (844×390)", () => {
         f = await form(page, ".eq-configurator");
         expect.soft(f.tabs, "/equation: no Controls/Canvas tab row").toBeNull();
         expect.soft(f.stage && f.aside ? f.aside.x - f.stage.r : -1, "/equation: the aside starts right of the stage").toBeGreaterThanOrEqual(0);
+        // X §0hm D-8 (supersedes X-1's series-beside-plot): the series stands
+        // over the plot at the stage's full width, whole (no clipped Σ form),
+        // and the plot ends inside the viewport.
         const eq = await box(page, ".eq-card");
         const plot = await box(page, ".eq-plot-card");
-        expect.soft(eq && plot ? plot.x - eq.r : -1, "/equation: the plot starts right of the series").toBeGreaterThanOrEqual(-1);
+        expect.soft(eq && plot ? plot.y - eq.b : -1, "/equation: the plot starts under the series").toBeGreaterThanOrEqual(-1);
+        expect.soft(plot ? plot.r - plot.x : 0, "/equation: the plot takes the stage's width").toBeGreaterThanOrEqual((f.stage?.r ?? 0) - (f.stage?.x ?? 0) - 2);
+        const over = await page.locator(".eq-card .eq-scroll-region").evaluate((e) => e.scrollWidth - e.clientWidth);
+        expect.soft(over, "/equation: the series fits its row whole").toBeLessThanOrEqual(1);
         expect.soft(plot ? plot.b : 9999, "/equation: the plot ends inside the viewport").toBeLessThanOrEqual(LANDSCAPE.height);
     });
 });

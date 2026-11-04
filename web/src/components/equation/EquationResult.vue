@@ -214,6 +214,46 @@ async function copyLatex() {
     padding: 0.25rem 0;
 }
 
+/* X §0hm D-8 — short landscape (844×390): the stage cannot spend a header row
+   over the formula and still hold the plot beneath it, so the formula takes
+   the card's row and the tools stand at its end in one column (the leading
+   toggle over the tools' dock: side by side they left the series ~150 px
+   inside an iPhone's 47 px landscape insets; still siblings in flow, never
+   layers over the series, UIA-F-33). The series takes the fluid body step instead of
+   1.4em of the coarse control text, so the Σ form fits the row whole. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .eq-result-root:not(:has(> .eq-scroll-region[data-dense])) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        justify-items: end;
+        gap: var(--space-atom) 0.5rem;
+        padding: 0.5rem;
+    }
+    .eq-result-root:not(:has(> .eq-scroll-region[data-dense])) > .eq-result-header {
+        display: contents;
+    }
+    .eq-result-root:not(:has(> .eq-scroll-region[data-dense])) > .eq-result-header > :first-child {
+        grid-column: 2;
+        grid-row: 1;
+    }
+    .eq-result-root:not(:has(> .eq-scroll-region[data-dense])) > .eq-scroll-region {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        justify-self: stretch;
+        min-height: 0;
+        padding: 0;
+    }
+    .eq-result-root:not(:has(> .eq-scroll-region[data-dense])) .eq-result-actions {
+        grid-column: 2;
+        grid-row: 2;
+        margin-inline-start: 0;
+    }
+    .eq-scroll-region:not([data-dense]) :deep(.katex) {
+        font-size: var(--type-body);
+    }
+}
+
 /* `FR-EQR-7` — `text-green-500` measured 2.101:1 on the light `--card`, under the
    1.4.11 3:1 floor, and the design system's own light-arm `--success` fails at
    2.175:1, so adopting it would have been a token-shaped restatement of the same

@@ -359,6 +359,13 @@ if (typeof document !== "undefined" && document.fonts) {
     .app-header {
         padding-block: var(--space-residue);
     }
+    /* X §0hm D-22: there the dock's own plate takes glass's compact block
+       inset (the cockpit density's rung, `--dock-density-compact-padding-block`),
+       not the comfortable one; the controls keep their touch floor. The short-
+       height density itself is a glass row (relayed). */
+    .app-dock {
+        --dock-padding-block: calc(var(--dock-density-compact-padding-block, 0.25rem) * var(--dock-scale));
+    }
 }
 
 .about-avatar {

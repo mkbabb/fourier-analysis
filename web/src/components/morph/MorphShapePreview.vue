@@ -145,27 +145,14 @@ defineEmits<{
     width: 100%;
 }
 
-/* X-DS DS-F4R-C4: below 1024px the stage is the sticky band over the
-   controls, and it took ~53% of a 390 × 844 phone (the plate at full measure
-   with two rows of readings under it). The readings now stand in one column
-   BESIDE the plate, and the plate's block size is capped (22svh, square), so
-   the band holds under ~40% of the viewport and the controls get the rest. */
+/* X §0hm D-21: below 1024px the plate is the stage at the column's full
+   width, 1:1, with the readings under it (DS-F4R-C4's 7.5rem strip beside a
+   column of readings read as a ~120 px thumbnail at 390). It is bounded by the
+   plate's desktop measure (26rem) and, in short landscape, by the viewport's
+   height, so it stays a square that fits the screen. */
 @media (max-width: 1023.98px) {
-    .demo-stage {
-        flex-direction: row;
-        justify-content: center;
-        gap: var(--space-body);
-    }
-
-    /* X-DS DS-F5-C5: the plate is bounded by the row, not only by the
-       viewport's height (9rem holds "total 2400 ms" beside it).
-       X-DS fourier pass 5 · DS-F5-C1: the pinned band is a strip, not a
-       third of the phone: a 7.5rem plate (120 px, the m115 floor), and the
-       four readings stand in its height, so the band is the plate plus its
-       padding and hairline (~137 px, under 20% of an 844 px viewport). */
     .stage-row {
-        flex: none;
-        width: min(7.5rem, 100% - var(--space-body) - 9rem);
+        width: min(100%, 26rem, 70svh);
     }
 }
 
@@ -282,6 +269,10 @@ defineEmits<{
    The phase and shape values keep their reservations, so a reading that
    changes at animation rate still cannot re-flow the grid. */
 .demo-info {
+    /* X §0hm D-21: a reading's label is the caption step under its value
+       (glass Metric labels at `--control-label`, the coarse control rung,
+       which out-sized the `sm` value: 18.6 px over 16). */
+    --control-label: var(--type-caption);
     display: grid;
     grid-template-columns: repeat(2, auto);
     justify-content: center;
@@ -305,27 +296,6 @@ defineEmits<{
 .shape-value {
     display: inline-block;
     min-inline-size: 4.5ch;
-}
-
-/* DS-F4R-C4: beside the plate in the phone band, the four readings are one
-   column, each on its own line, starting on one edge. X-DS DS-F5-C5: the
-   column takes the rest of the row and no more (`flex: 1`, `min-width: 0`),
-   so plate and readings are bounded by the content box (the readings ran
-   ~6 px into the 16 px gutter), and its width no longer follows its words,
-   so nothing moves as the phase changes; the phase value's 10ch reservation
-   (the two-row form's guard) is dropped here, where no reading sits beside
-   it. */
-@media (max-width: 1023.98px) {
-    .demo-info {
-        flex: 1 1 0;
-        min-width: 0;
-        grid-template-columns: auto;
-        justify-content: start;
-    }
-    .phase-value,
-    .shape-value {
-        min-inline-size: 0;
-    }
 }
 
 /* X-DS pass 2 · DS-F2-C4: beside the controls the readouts start on the

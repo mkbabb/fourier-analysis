@@ -441,7 +441,7 @@ onUnmounted(() => {
                          drawer slides UNDER it, X.F.W14U.t), not a hand-rolled
                          cartoon card casting against the rail's shadow. -->
                     <Card as="article" surface="opaque" class="paper-article leading-relaxed">
-                        <header class="mb-10 lg:mb-20 text-center">
+                        <header class="paper-title-block mb-10 lg:mb-20 text-center">
                             <h1
                                 class="font-serif-math text-display-2 font-bold tracking-tight leading-display"
                             >
@@ -564,6 +564,23 @@ onUnmounted(() => {
 @media (min-width: 640px) {
     .paper-article {
         padding: 2rem 2.5rem;
+    }
+}
+
+/* X §0hm D-22 — short landscape (844×390): the dock, the ToC band and the
+   card top spent the whole first screen, so the first line of the paper stood
+   under the fold. There the title takes display-1 (its fluid floor is the
+   heading rung; display-2 set two 43 px lines), the title's foot and the card's
+   top inset drop to the family step. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .paper-article {
+        padding-block-start: var(--space-family);
+    }
+    .paper-title-block {
+        margin-block-end: var(--space-family);
+    }
+    .paper-title-block > h1 {
+        font-size: var(--type-display-1);
     }
 }
 

@@ -703,8 +703,12 @@ watchDebounced(
 }
 /* X.F.W14V.au1 — A2-FO-L2-4 ⊕ X-1: the rail form (landscape, narrower than
    glass's split), /visualize's rule: the stage and the controls rail sit in a
-   row. Inside the stage the plot sits beside the series (at 844×390 the series
-   filled the band and the plot began below the fold). */
+   row. X §0hm D-8: inside the stage the series stands OVER the plot at the
+   stage's full width. Side by side (X-1) each took half of a ~480 px stage, so
+   at 844×390 the formula clipped in a 232 px column (the Σ limit sliced, Copy
+   LaTeX half under the column edge) and the plot was 232×148. The height the
+   stack needs is bought where it is short (EquationResult's short-landscape
+   rule: the tools ride the formula's row, the formula on the fluid type step). */
 .eq-workspace[data-form="rail"] :deep(.eq-configurator > [data-slot="configurator"]) {
     display: flex;
     flex-direction: row;
@@ -720,20 +724,20 @@ watchDebounced(
     min-height: 0;
     border-block-start-width: 0;
 }
-.eq-workspace[data-form="rail"] .eq-panel-right {
-    flex-direction: row;
+@media (orientation: landscape) and (max-height: 500px) {
+    .eq-workspace[data-form="rail"] .eq-card {
+        min-height: 0;
+    }
 }
-.eq-workspace[data-form="rail"] .eq-card,
-.eq-workspace[data-form="rail"] .eq-plot-card {
-    flex: 1 1 0%;
-    min-width: 0;
-}
-.eq-workspace[data-form="rail"] .eq-card {
-    overflow-y: auto;
-}
-.eq-workspace[data-form="rail"] .eq-plot-card {
-    border-top: 0;
-    border-left: 1px solid var(--configurator-divider);
+
+/* X §0hm D-25 — the split form: the stage and the aside are one row of two
+   cards on one top and one foot. glass's split grid keeps a gallery row above
+   the aside (`auto minmax(0, 1fr)`, the stage spanning both); with no presets
+   that row is empty but its detached gap is not, so the aside card started
+   12 px under the stage card. The aside spans the same two rows as the stage
+   (glass relay: an empty gallery row should not hold the aside down). */
+.eq-workspace:not([data-form="sheet"]):not([data-form="rail"]) :deep(.eq-configurator > [data-slot="configurator"] > .configurator-aside) {
+    grid-row: 1 / span 2;
 }
 
 /* ── Controls (the aside body) ── */

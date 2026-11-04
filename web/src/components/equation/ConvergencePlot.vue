@@ -35,7 +35,11 @@ const containerRef = ref<HTMLDivElement>();
    (a plate nested in the stage plate, a third of the plot at 390) and wraps
    as one plate-less row under the curves. */
 const { width: containerWidth } = useElementSize(containerRef);
-const legendWrapped = computed(() => containerWidth.value > 0 && containerWidth.value < 480);
+/* X §0hm D-8: in short landscape (844×390) height is the scarce axis, so the
+   legend keeps its column beside the curves (wrapped under them it took two
+   rows and pushed the timeline out of the stage). */
+const shortLandscape = useMediaQuery("(orientation: landscape) and (max-height: 500px)");
+const legendWrapped = computed(() => !shortLandscape.value && containerWidth.value > 0 && containerWidth.value < 480);
 
 const t = ref(0);
 const playing = ref(false);
@@ -640,6 +644,13 @@ onUnmounted(() => {
 }
 .convergence-container[data-legend-wrapped] {
     flex-direction: column;
+}
+/* X §0hm D-8: in short landscape the plot takes the stage's remaining height
+   rather than a 200 px floor the stage cannot hold beside the series. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .convergence-container {
+        min-height: 0;
+    }
 }
 
 /* ── Tooltip ── */

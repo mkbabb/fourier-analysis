@@ -138,16 +138,24 @@ test.describe("m115 UIA-F-115 — the morph stage is the page's dominant content
     });
 });
 
-test.describe("m115 UIA-F-115 — the stage stays in view while tuning (390)", () => {
+// X §0hm D-21 supersedes UIA-F-115's phone arm (the pinned band, shrunk to a
+// 120 px strip by DS-F5-C1 so it could pin): at 390 the stage is the page's
+// hero, a full-width 1:1 plate above its readings, and it scrolls with the page.
+test.describe("D-21 X §0hm — the morph stage is a full-width square (390)", () => {
     test.use({ viewport: PHONE });
-    test("scrolled to the level strip, the stage is still on screen", async ({ page }) => {
+    test("the plate spans the column, square, with the readings under it", async ({ page }) => {
         await openMorph(page);
-        await tiles(page).last().scrollIntoViewIfNeeded();
-        await page.waitForTimeout(300);
         const s = await stage(page).boundingBox();
-        expect(s!.y, "stage top on screen").toBeGreaterThanOrEqual(0);
-        expect(s!.y + s!.height, "stage bottom on screen").toBeLessThanOrEqual(PHONE.height);
-        expect(s!.height, "stage keeps a useful size").toBeGreaterThanOrEqual(120);
+        const info = await page.locator(".demo-info").boundingBox();
+        const col = PHONE.width - 32;
+        expect(s!.width, "stage spans the column").toBeGreaterThanOrEqual(col - 1);
+        expect(Math.abs(s!.width - s!.height), "stage is 1:1").toBeLessThanOrEqual(1);
+        expect(info!.y, "readings sit under the stage").toBeGreaterThanOrEqual(s!.y + s!.height);
+        const [label, value] = await page.locator(".demo-info .metric").first().evaluate((m) => [
+            parseFloat(getComputedStyle(m.querySelector(".metric__label")!).fontSize),
+            parseFloat(getComputedStyle(m.querySelector(".metric__value")!).fontSize),
+        ]);
+        expect(label, "a reading's label is under its value's size").toBeLessThan(value);
     });
 });
 

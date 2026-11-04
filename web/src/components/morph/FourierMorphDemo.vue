@@ -257,9 +257,13 @@ function handleReset() {
    beside it, and a border on it stood 16px past the cards on each side. It is
    hung under the band's foot (`::after`, inset by the gutter it spans), as
    /paper's band rule (DS-F7C-C1), so it adds nothing to the band's height. */
+/* X §0hm D-21: below 1024px the stage is the page's hero, a full-width 1:1
+   plate (MorphShapePreview), so it no longer pins: a sticky band that size
+   would hold half the phone over the controls, and the 120 px strip it shrank
+   to (DS-F5-C1) read as a thumbnail. It scrolls with the page, on the band's
+   own ground. */
 .stage-column {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 1;
     display: flex;
     flex-direction: column;
@@ -271,16 +275,6 @@ function handleReset() {
     background-attachment: fixed;
 }
 
-.stage-column::after {
-    content: "";
-    position: absolute;
-    inset-inline: var(--page-gutter);
-    inset-block-end: -1px;
-    block-size: 1px;
-    pointer-events: none;
-}
-
-main[data-scrolled] .stage-column::after,
 main[data-scrolled] .demo-page::before {
     background: var(--border);
 }
@@ -349,10 +343,6 @@ main[data-scrolled] .demo-page::before {
         padding: 0;
         align-items: start;
         background: none;
-    }
-
-    .stage-column::after {
-        display: none;
     }
 
     /* DS-F10C-L1: beside the controls nothing bands the top, so the cut is
