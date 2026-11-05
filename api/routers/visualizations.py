@@ -53,9 +53,11 @@ from api.models.visualization import (
     VisualizationRemix,
     VisualizationUpdate,
     VisualizationVersion,
+    UnavailableCrumb,
     is_legal_visibility_transition,
 )
-from api.services.database import get_db
+from api.services import read_gate
+from api.services.database import get_db, touch_document
 from api.services.rate_limiter import hash_ip
 
 logger = logging.getLogger(__name__)
@@ -189,7 +191,7 @@ async def create_visualization(body: VisualizationCreate, request: Request) -> R
     validate_image_slug(body.image_slug)
 
     # The image blob is a stable FK (W3.21); the contour-hash must resolve.
-    if await db.images.find_one({"image_slug": body.image_slug}, {"_id": 1}) is None:
+    if await db.images.find_one({"image_slug": body.image_slug, "deleted_at": None}, {"_id": 1}) is None:
         return errors.not_found(detail=f"image {body.image_slug!r} does not resolve")
     if await db.contours.find_one({"contour_hash": body.contour_hash}, {"_id": 1}) is None:
         return errors.not_found(detail=f"contour {body.contour_hash!r} does not resolve")
@@ -238,6 +240,10 @@ async def create_visualization(body: VisualizationCreate, request: Request) -> R
             )
 
         slug = await slugs.slug_with_retry(_insert)
+        # Recency rides the write verbs (X·F F-D5): the subject the new row
+        # references is in use now.
+        await touch_document("images", {"image_slug": body.image_slug})
+        await touch_document("contours", {"contour_hash": body.contour_hash})
         saved = await db.visualizations.find_one({"slug": slug})
         response = Response(
             content=json.dumps(_public_doc(saved), default=str),
@@ -268,21 +274,17 @@ async def get_visualization(slug: str, request: Request, response: Response) -> 
         return errors.slug_invalid(detail=f"{slug!r} is not a 4-word slug")
 
     db = get_db()
+    viewer = await resolve_session(request)
     doc = await db.visualizations.find_one({"slug": slug})
     if doc is None:
         return errors.not_found(detail=f"no visualization {slug!r}")
-
-    viewer = await resolve_session(request)
     is_owner = viewer is not None and viewer == doc.get("owner_slug")
-
-    if doc.get("deleted_at") is not None and not is_owner:
-        return errors.not_found(detail=f"no visualization {slug!r}")
-    if doc.get("visibility") == "draft" and not is_owner:
-        return errors.not_found(detail=f"no visualization {slug!r}")
-
-    await db.visualizations.update_one(
-        {"slug": slug}, {"$inc": {"views": 1}, "$set": {"last_accessed_at": datetime.now(UTC)}}
-    )
+    # The owner still reads their soft-deleted row (the restore surface); every
+    # other read is the one gate. X·F F-D5: a read never writes — the view
+    # count and recency ride POST /{slug}/view (below).
+    if not (is_owner and doc.get("deleted_at") is not None):
+        if await _readable_or_none(db, slug, viewer) is None:
+            return errors.not_found(detail=f"no visualization {slug!r}")
 
     body = _public_doc(doc)
     out = Response(
@@ -551,15 +553,32 @@ async def restore_visualization(slug: str, request: Request) -> Response:
 # ===========================================================================
 
 
-async def _readable_or_none(db, slug: str, viewer: str | None) -> dict | None:
-    """The live, viewer-visible row for ``slug`` (a draft is owner-only), or None."""
-    doc = await db.visualizations.find_one({"slug": slug})
-    if doc is None or doc.get("deleted_at") is not None:
-        return None
-    is_owner = viewer is not None and viewer == doc.get("owner_slug")
-    if doc.get("visibility") == "draft" and not is_owner:
-        return None
-    return doc
+# The one read gate (X·F F-D5): ``api/services/read_gate.py``.
+_readable_or_none = read_gate.readable_visualization
+
+
+# ---------------------------------------------------------------------------
+# View (the one counter; a GET never writes) — X·F F-D5 · FW6-G6
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{slug}/view", status_code=204)
+async def record_view(slug: str, request: Request) -> Response:
+    """Count one view of a readable visualization and refresh its recency.
+
+    The web sends it once per page-visible open (``navigator.sendBeacon``); the
+    GET that renders the row writes nothing, so a crawler, a prefetch or a
+    re-render never moves the count or the janitor's retention signal.
+    """
+    if not slugs.validate_slug(slug):
+        return errors.slug_invalid(detail=f"{slug!r} is not a 4-word slug")
+    db = get_db()
+    if await _readable_or_none(db, slug, await resolve_session(request)) is None:
+        return errors.not_found(detail=f"no visualization {slug!r}")
+    await db.visualizations.update_one(
+        {"slug": slug}, {"$inc": {"views": 1}, "$set": {"last_accessed_at": datetime.now(UTC)}}
+    )
+    return Response(status_code=204)
 
 
 def _apply_atom_overrides(head_atoms: dict, body: VisualizationRemix | VisualizationUpdate) -> dict:
@@ -942,7 +961,10 @@ async def get_provenance(slug: str, request: Request) -> Response:
     ]
 
     # Cross-viz fork_of ancestry walk (this viz → its source → … → original).
-    breadcrumb: list[ForkCrumb] = []
+    # X·F F-D5 (FW6-G5): every hop passes the one read gate. An ancestor the
+    # viewer cannot read is emitted as an ``unavailable`` crumb carrying only
+    # its position, and the walk stops there (its own lineage is its owner's).
+    breadcrumb: list[ForkCrumb | UnavailableCrumb] = []
     seen: set[str] = set()
     cur: dict | None = doc
     while cur is not None and len(breadcrumb) < 50:
@@ -950,19 +972,25 @@ async def get_provenance(slug: str, request: Request) -> Response:
         if cur_slug in seen:
             break  # cycle-guard
         seen.add(cur_slug)
+        parent_slug = cur.get("fork_of")
+        parent = (
+            await _readable_or_none(db, parent_slug, viewer)
+            if parent_slug and parent_slug not in seen
+            else None
+        )
         breadcrumb.append(
             ForkCrumb(
                 slug=cur_slug,
                 set_hash=_head_set_hash(cur),
                 author_slug=cur.get("owner_slug", ""),
-                fork_of=cur.get("fork_of"),
+                # A pointer to an unreadable parent is that parent's identity.
+                fork_of=parent_slug if parent is not None else None,
                 created_at=cur["created_at"],
             )
         )
-        parent_slug = cur.get("fork_of")
-        if not parent_slug:
-            break
-        cur = await db.visualizations.find_one({"slug": parent_slug})
+        if parent_slug and parent is None and parent_slug not in seen:
+            breadcrumb.append(UnavailableCrumb(ordinal=len(breadcrumb)))
+        cur = parent
 
     resp = ProvenanceResponse(chain=chain, fork_breadcrumb=breadcrumb)
     out = Response(

@@ -276,6 +276,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         try {
             const { data: viz, etag } = await api.getVisualization(slug);
             if (revision.value !== rev) return;
+            api.recordView(viz.slug); // X·F F-D5: the open counts; the GET never writes
             visualizationSlug.value = viz.slug;
             visualizationETag.value = etag;
             const meta = await api.getImageMeta(viz.image_slug);

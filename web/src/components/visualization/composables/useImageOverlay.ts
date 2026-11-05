@@ -1,6 +1,6 @@
 import { ref, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { overlayUrl } from "@/lib/api";
+import { imageSrc, overlayUrl } from "@/lib/api";
 import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import type { ViewTransform } from "../lib/canvas-drawing";
 
@@ -90,7 +90,15 @@ export function useImageOverlay(onImageLoaded?: () => void) {
                     loading.value = false;
                 }
             };
-            img.src = overlayUrl(store.imageSlug!, resizeFromBounds(store));
+            // X·F F-D5: the overlay passes the read gate with the session; the
+            // object URL is released once the pixels are copied (luminanceKeyed).
+            void imageSrc(overlayUrl(store.imageSlug!, resizeFromBounds(store))).then((src) => {
+                if (src.startsWith("blob:")) {
+                    img.addEventListener("load", () => URL.revokeObjectURL(src), { once: true });
+                    img.addEventListener("error", () => URL.revokeObjectURL(src), { once: true });
+                }
+                img.src = src;
+            });
         },
         { immediate: true },
     );

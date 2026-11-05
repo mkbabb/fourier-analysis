@@ -45,6 +45,11 @@ export function setSessionToken(token: string | null) {
     sessionToken = token;
 }
 
+/** Whether requests carry a session (X·F F-D5: images are then read with it). */
+export function hasSession(): boolean {
+    return sessionToken !== null;
+}
+
 /**
  * Per-key AbortController registry. Calling `abortable(key)` cancels any
  * in-flight request for that key and returns a fresh AbortSignal.
@@ -375,6 +380,26 @@ export function overlayUrl(imageSlug: string, resize: number = 1024): string {
     return `${BASE}/api/images/${imageSlug}/overlay?resize=${resize}`;
 }
 
+/**
+ * X·F F-D5 (FW6-G11) — an image read passes the API's read gate: an image only
+ * drafts reference is its owner's, and an `<img src>` carries no session. With
+ * a session the bytes are read with it and served to the element as an object
+ * URL (the caller revokes it); without one the URL itself is the source (an
+ * anonymous reader is gated by the URL alone). A failed read answers the plain
+ * URL, so the element's own error path renders its fallback.
+ */
+export async function imageSrc(url: string, signal?: AbortSignal): Promise<string> {
+    if (!sessionToken) return url;
+    try {
+        const res = await fetch(url, { headers: { "X-Session-Token": sessionToken }, signal });
+        if (!res.ok) return url;
+        return URL.createObjectURL(await res.blob());
+    } catch (e: unknown) {
+        if (isAbortError(e)) throw e;
+        return url;
+    }
+}
+
 export async function extractContour(
     imageSlug: string,
     settings: ContourSettings,
@@ -455,6 +480,27 @@ export async function createVisualization(
         "createVisualization",
         { method: "POST", body: { ...body } },
     );
+}
+
+/**
+ * POST /api/visualizations/{slug}/view — count one view (X·F F-D5 · FW6-G6).
+ * A GET never writes, so the open itself reports the view: once per slug per
+ * page session, with `keepalive` so it survives a navigation away (the
+ * `sendBeacon` delivery, with the session header a beacon cannot carry).
+ * Fire-and-forget: a lost view is not an error the reader sees.
+ */
+const viewed = new Set<string>();
+export function recordView(slug: string): boolean {
+    if (viewed.has(slug)) return false;
+    viewed.add(slug);
+    const headers: Record<string, string> = {};
+    if (sessionToken) headers["X-Session-Token"] = sessionToken;
+    void fetch(`${BASE}/api/visualizations/${slug}/view`, {
+        method: "POST",
+        headers,
+        keepalive: true,
+    }).catch(() => {});
+    return true;
 }
 
 /** GET /api/visualizations/{slug} — read by slug; captures the ETag. */

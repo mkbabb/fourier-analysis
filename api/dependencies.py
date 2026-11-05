@@ -18,7 +18,7 @@ from pymongo import ReturnDocument
 
 from api.config import settings
 from api.models.assets import ImageAsset
-from api.services.database import get_db, touch_document
+from api.services.database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -72,18 +72,8 @@ async def get_image_asset(image_slug: str) -> ImageAsset:
         raise HTTPException(
             status_code=410, detail="Image asset is pre-migration and unavailable"
         )
-    await touch_document("images", {"image_slug": image_slug})
+    # X·F F-D5: a read never writes — image recency rides the write verbs.
     return asset
-
-
-async def get_image_meta(image_slug: str) -> dict[str, Any]:
-    """Fetch image metadata (excluding blob). 404 if not found."""
-    image_slug = validate_image_slug(image_slug)
-    db = get_db()
-    doc = await db.images.find_one({"image_slug": image_slug}, {"blob": 0})
-    if doc is None:
-        raise HTTPException(status_code=404, detail="Image not found")
-    return cast("dict[str, Any]", doc)
 
 
 async def get_contour(contour_hash: str) -> dict[str, Any]:
@@ -97,7 +87,6 @@ async def get_contour(contour_hash: str) -> dict[str, Any]:
     doc = await db.contours.find_one({"contour_hash": contour_hash})
     if doc is None:
         raise HTTPException(status_code=404, detail="Contour not found")
-    await touch_document("contours", {"contour_hash": contour_hash})
 
     if doc.get("image_bounds") is None and doc.get("image_slug"):
         doc = await _backfill_image_bounds(db, doc)

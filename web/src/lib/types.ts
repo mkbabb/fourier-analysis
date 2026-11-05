@@ -357,6 +357,7 @@ export interface ProvenanceNode {
 
 /** One step on the cross-viz `fork_of` ancestry breadcrumb (F-03). */
 export interface ForkCrumb {
+    kind: "visualization";
     slug: string;
     set_hash: string;
     author_slug: string;
@@ -370,7 +371,16 @@ export interface ForkCrumb {
  */
 export interface ProvenanceResponse {
     chain: ProvenanceNode[];
-    fork_breadcrumb: ForkCrumb[];
+    fork_breadcrumb: (ForkCrumb | UnavailableCrumb)[];
+}
+
+/**
+ * An ancestor the viewer cannot read (X·F F-D5 · FW6-G5): its place on the
+ * breadcrumb and nothing that names it.
+ */
+export interface UnavailableCrumb {
+    kind: "unavailable";
+    ordinal: number;
 }
 
 /** One entry in the bounded `/versions` list (J.W1-crud-remix §4.5). */

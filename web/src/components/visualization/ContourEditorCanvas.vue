@@ -12,6 +12,7 @@ import {
     type Point2D,
 } from "@/lib/contourEditing";
 import { overlayUrl } from "@/lib/api";
+import { useImageSources } from "@/composables/useImageSources";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useContourHistory } from "./composables/useContourHistory";
 import { usePointDrag } from "./composables/usePointDrag";
@@ -162,6 +163,8 @@ const overlayHref = computed(() => {
         : (wStore.contourSettings?.resize ?? 768);
     return overlayUrl(props.imageSlug, resize);
 });
+// X·F F-D5: the overlay passes the read gate with the session.
+const imageSource = useImageSources(() => [overlayHref.value]);
 
 // Image bounds from contour document (authoritative data-space rectangle).
 const imageOverlayRect = computed(() => {
@@ -356,8 +359,8 @@ defineExpose({
             <g transform="scale(1,-1)">
                 <!-- Image overlay — positioned using authoritative image_bounds -->
                 <image
-                    v-if="showImageOverlay && overlayHref && imageOverlayRect"
-                    :href="overlayHref"
+                    v-if="showImageOverlay && imageSource(overlayHref) && imageOverlayRect"
+                    :href="imageSource(overlayHref)"
                     :x="imageOverlayRect.x"
                     :y="imageOverlayRect.y"
                     :width="imageOverlayRect.w"

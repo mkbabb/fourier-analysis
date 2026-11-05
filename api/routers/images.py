@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+from datetime import UTC, datetime
 import logging
 import os
 from collections.abc import Iterator
@@ -11,20 +12,22 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
 logger = logging.getLogger(__name__)
 
 from api.config import settings
-from api.dependencies import get_image_asset, get_image_meta, validate_image_slug
+from api.dependencies import get_image_asset, resolve_session, validate_image_slug
+from api.lib.crud import errors
 from api.models.assets import (
     ExtractContourRequest,
     ImageAssetResponse,
 )
 from api.responses import contour_response
 from api.services import computation
-from api.services.database import get_db
+from api.services import read_gate
+from api.services.database import get_db, touch_document
 from api.services.image_storage import (
     BlobNotFound,
     extraction_cache_key,
@@ -106,8 +109,20 @@ def _image_response(doc: dict[str, Any]) -> ImageAssetResponse:
     )
 
 
+async def _readable(request: Request, image_slug: str) -> bool:
+    """The one read gate (X·F F-D5); raises 404 when the viewer may not read the
+    image, else answers whether shared caches may keep it."""
+    validate_image_slug(image_slug)
+    gate = await read_gate.readable_image(
+        get_db(), image_slug, await resolve_session(request), projection={"blob": 0}
+    )
+    if gate is None:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return gate[1]
+
+
 @router.post("", response_model=ImageAssetResponse)
-async def upload_image(file: UploadFile) -> ImageAssetResponse:
+async def upload_image(file: UploadFile, request: Request) -> ImageAssetResponse:
     if file.content_type and not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
@@ -126,45 +141,89 @@ async def upload_image(file: UploadFile) -> ImageAssetResponse:
     sha = hashlib.sha256(content).hexdigest()
     content_type = CONTENT_TYPE_MAP.get(ext, "image/png")
 
-    doc = await store_image_asset(sha, content, file.filename or "upload.png", content_type)
+    uploader = await resolve_session(request)
+    doc = await store_image_asset(
+        sha, content, file.filename or "upload.png", content_type, uploader=uploader
+    )
     return _image_response(doc)
 
 
 @router.get("/by-hash/{sha256}", response_model=ImageAssetResponse)
-async def get_image_by_hash(sha256: str) -> ImageAssetResponse:
+async def get_image_by_hash(sha256: str, request: Request) -> ImageAssetResponse:
     db = get_db()
-    doc = await db.images.find_one({"sha256": sha256}, {"blob": 0})
+    doc = await db.images.find_one({"sha256": sha256, "deleted_at": None}, {"image_slug": 1})
     if doc is None:
         raise HTTPException(status_code=404, detail="Image not found")
-    return _image_response(doc)
+    await _readable(request, doc["image_slug"])
+    full = await db.images.find_one({"sha256": sha256}, {"blob": 0})
+    return _image_response(full)
 
 
 @router.get("/{imageSlug}", response_model=ImageAssetResponse)
-async def get_image_metadata(imageSlug: str) -> ImageAssetResponse:
-    doc = await get_image_meta(imageSlug)
+async def get_image_metadata(imageSlug: str, request: Request, response: Response) -> ImageAssetResponse:
+    public = await _readable(request, imageSlug)
+    response.headers["Cache-Control"] = read_gate.image_cache_control(public)
+    doc = await get_db().images.find_one({"image_slug": imageSlug}, {"blob": 0})
     return _image_response(doc)
 
 
+@router.delete("/{imageSlug}", status_code=204)
+async def delete_image(imageSlug: str, request: Request) -> Response:
+    """The uploader's delete (X·F F-D5 · FW6-G11). Refused with 409 while any
+    live visualization references the image; otherwise a soft-delete, and the
+    janitor's grace hard-delete removes the blob, the thumbnail and the cached
+    contours. An image the caller did not upload reads 404 (never confirmed)."""
+    validate_image_slug(imageSlug)
+    viewer = await resolve_session(request)
+    if not viewer:
+        return errors.owner_required(detail="A session is required to delete an image.")
+    db = get_db()
+    doc = await db.images.find_one(
+        {"image_slug": imageSlug, "deleted_at": None}, {"owner_slug": 1}
+    )
+    if doc is None or doc.get("owner_slug") != viewer:
+        return errors.not_found(detail=f"no image {imageSlug!r}")
+    if await db.visualizations.find_one({"image_slug": imageSlug, "deleted_at": None}, {"_id": 1}):
+        return errors.problem(
+            "urn:contract:image-referenced", 409, "Image in use",
+            detail="a live visualization references this image; delete it first",
+        )
+    deleted = await _softdelete_image(db, imageSlug, viewer)
+    if not deleted:
+        return errors.not_found(detail=f"no image {imageSlug!r}")
+    return Response(status_code=204)
+
+
+async def _softdelete_image(db: Any, image_slug: str, owner_slug: str) -> bool:
+    result = await db.images.update_one(
+        {"image_slug": image_slug, "owner_slug": owner_slug, "deleted_at": None},
+        {"$set": {"deleted_at": datetime.now(UTC)}},
+    )
+    return result.modified_count > 0
+
+
 @router.get("/{imageSlug}/blob")
-async def get_image_blob(imageSlug: str) -> FileResponse:
+async def get_image_blob(imageSlug: str, request: Request) -> FileResponse:
     # C.W5: serve the relocated file via ``FileResponse`` — streams from disk
     # with ``Content-Length`` + conditional-request support, strictly better
     # than the in-memory ``BytesIO`` for large blobs. Route, auth (the
     # ``get_image_asset`` 404 / 410 + ``last_accessed_at`` touch), and
     # ``Cache-Control`` are unchanged. D.W3 γ: the asset is the typed
     # ``ImageAsset`` model — field access is type-checked, not raw subscript.
+    public = await _readable(request, imageSlug)
     asset = await get_image_asset(imageSlug)
     with _blob_not_found_as_404():
         path = resolve_blob(asset.storage_uri)
     return FileResponse(
         path,
         media_type=asset.content_type,
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={"Cache-Control": read_gate.image_cache_control(public)},
     )
 
 
 @router.get("/{imageSlug}/thumbnail")
-async def get_image_thumbnail(imageSlug: str) -> FileResponse:
+async def get_image_thumbnail(imageSlug: str, request: Request) -> FileResponse:
+    public = await _readable(request, imageSlug)
     asset = await get_image_asset(imageSlug)
     # Serve the thumbnail file if one exists, otherwise fall back to the primary
     # storage uri (the ``thumbnail_uri is None`` no-thumbnail case — invariant
@@ -179,12 +238,12 @@ async def get_image_thumbnail(imageSlug: str) -> FileResponse:
     return FileResponse(
         path,
         media_type=content_type,
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={"Cache-Control": read_gate.image_cache_control(public)},
     )
 
 
 @router.get("/{imageSlug}/overlay")
-async def get_image_overlay(imageSlug: str, resize: int = 1024) -> StreamingResponse:
+async def get_image_overlay(imageSlug: str, request: Request, resize: int = 1024) -> StreamingResponse:
     """Serve the image resized to match contour extraction dimensions.
 
     The returned image is in the same pixel space that contour coordinates
@@ -192,6 +251,7 @@ async def get_image_overlay(imageSlug: str, resize: int = 1024) -> StreamingResp
     """
     from PIL import Image as PILImage
 
+    public = await _readable(request, imageSlug)
     asset = await get_image_asset(imageSlug)
     with _blob_not_found_as_404():
         data, _ = image_bytes(asset)
@@ -221,7 +281,7 @@ async def get_image_overlay(imageSlug: str, resize: int = 1024) -> StreamingResp
         io.BytesIO(overlay_bytes),
         media_type=content_type,
         headers={
-            "Cache-Control": "public, max-age=86400",
+            "Cache-Control": read_gate.image_cache_control(public),
             "X-Image-Width": str(w),
             "X-Image-Height": str(h),
         },
@@ -229,17 +289,18 @@ async def get_image_overlay(imageSlug: str, resize: int = 1024) -> StreamingResp
 
 
 @router.post("/{imageSlug}/extract-contour")
-async def extract_contour(imageSlug: str, req: ExtractContourRequest) -> Any:
+async def extract_contour(imageSlug: str, req: ExtractContourRequest, request: Request) -> Any:
+    await _readable(request, imageSlug)
     asset = await get_image_asset(imageSlug)
     cs = req.contour_settings
     db = get_db()
+    # Recency rides the write verbs (X·F F-D5): extraction is a use of the image.
+    await touch_document("images", {"image_slug": imageSlug})
 
     # Check extraction cache before running the expensive pipeline
     cache_key = extraction_cache_key(asset.sha256, cs)
     existing = await db.contours.find_one({"extraction_cache_key": cache_key})
     if existing:
-        from api.services.database import touch_document
-
         await touch_document("contours", {"_id": existing["_id"]})
         logger.info("extraction cache hit for %s (key=%s…)", imageSlug, cache_key[:12])
         return contour_response(existing)

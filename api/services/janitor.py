@@ -142,6 +142,17 @@ async def _cleanup_cycle() -> None:
     #    (re-rooted off snapshots/gallery at B.W3 / H-W3-6).
     # ------------------------------------------------------------------
 
+    # 1b. X·F F-D5 (FW6-G11): images their uploader deleted (DELETE
+    #     /api/images/{slug}, refused while referenced) leave at the same grace:
+    #     the blob, the thumbnail and the contours extracted from them.
+    deleted_by_owner = await _delete_images(db, {"deleted_at": {"$lt": grace_cutoff}}, cascade_contours=True)
+    await _log_janitor_audit(
+        db,
+        "janitor:hard_delete_images",
+        count=deleted_by_owner,
+        cutoff=grace_cutoff,
+    )
+
     await _recompute_pin_flags(db)
 
     # ------------------------------------------------------------------
@@ -366,7 +377,7 @@ async def _recompute_pin_flags(db) -> None:
         pass
 
 
-async def _delete_images(db, filter_: dict) -> int:
+async def _delete_images(db, filter_: dict, *, cascade_contours: bool = False) -> int:
     """Delete images matching *filter_* and unlink their relocated blob files.
 
     Returns ``deleted_images``. The legacy gallery-cascade arm (paired with the
@@ -397,6 +408,9 @@ async def _delete_images(db, filter_: dict) -> int:
                 (blob_dir / name).unlink(missing_ok=True)
             except OSError:
                 logger.warning("Janitor failed to unlink blob file %s", name, exc_info=True)
+
+    if cascade_contours:
+        await db.contours.delete_many({"image_slug": {"$in": slugs_to_delete}, "pinned": {"$ne": True}})
 
     # Delete the images themselves
     result = await db.images.delete_many(filter_)

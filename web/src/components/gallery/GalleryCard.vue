@@ -6,6 +6,7 @@ import { Badge } from "@mkbabb/glass-ui/badge";
 import { Checkbox } from "@mkbabb/glass-ui";
 import type { GalleryTier, Visualization } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
+import { useImageSources } from "@/composables/useImageSources";
 import { useTimeAgo } from "@/lib/time";
 import { basisChips } from "@/components/visualization/lib/basis-display";
 import TierMark from "./TierMark.vue";
@@ -27,6 +28,10 @@ const props = defineProps<{
     likedHashes?: Set<string>;
     selected?: boolean;
 }>();
+
+// X·F F-D5: an owner's draft image passes the read gate with the session.
+const thumbHref = computed(() => thumbnailUrl(props.entry.image_slug));
+const imageSource = useImageSources(() => [thumbHref.value]);
 
 /**
  * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` ⊕ `GCM-39`.
@@ -121,7 +126,7 @@ const created = useTimeAgo(() => props.entry.created_at);
             <span class="card-media">
                 <img
                     v-if="!thumbBroken"
-                    :src="thumbnailUrl(entry.image_slug)"
+                    :src="imageSource(thumbHref)"
                     alt=""
                     loading="lazy"
                     @error="thumbBroken = true"

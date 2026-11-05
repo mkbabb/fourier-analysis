@@ -19,7 +19,7 @@ and queries assume aware datetimes throughout.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -363,6 +363,7 @@ class ForkCrumb(BaseModel):
     "remixed from → … → original"). A distinct walk from the version chain.
     """
 
+    kind: Literal["visualization"] = "visualization"
     slug: str
     set_hash: str
     author_slug: str
@@ -372,13 +373,25 @@ class ForkCrumb(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class UnavailableCrumb(BaseModel):
+    """An ancestor the viewer cannot read (X·F F-D5 · FW6-G5): its position on
+    the breadcrumb and nothing else — no slug, hash, author or lineage."""
+
+    kind: Literal["unavailable"] = "unavailable"
+    ordinal: int
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ProvenanceResponse(BaseModel):
     """``/provenance`` — the within-viz version ``chain`` PLUS the cross-viz
-    ``fork_breadcrumb`` (the two distinct walks named in F-03).
+    ``fork_breadcrumb`` (the two distinct walks named in F-03). A breadcrumb
+    entry is a readable ancestor or an ``unavailable`` one (discriminated by
+    ``kind``).
     """
 
     chain: list[ProvenanceNode]
-    fork_breadcrumb: list[ForkCrumb]
+    fork_breadcrumb: list[Annotated[ForkCrumb | UnavailableCrumb, Field(discriminator="kind")]]
 
     model_config = ConfigDict(extra="forbid")
 

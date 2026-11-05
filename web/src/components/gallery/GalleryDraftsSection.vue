@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
 import type { WorkspaceDraft } from "@/lib/types";
 import { thumbnailUrl } from "@/lib/api";
+import { useImageSources } from "@/composables/useImageSources";
 import { useRelativeTime } from "@/lib/time";
 import { basisChips } from "@/components/visualization/lib/basis-display";
 import { Upload } from "@lucide/vue";
@@ -43,6 +44,9 @@ const sortedDrafts = computed(() =>
         .sort((a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? "")),
 );
 
+// X·F F-D5: a draft's image passes the read gate with the session.
+const imageSource = useImageSources(() => sortedDrafts.value.map((d) => thumbnailUrl(d.imageSlug)));
+
 /** The one shared ticking clock, applied per row (`lib/time.ts`). */
 const relativeTimeOf = useRelativeTime();
 
@@ -65,7 +69,7 @@ function markBroken(slug: string) {
                     <span class="draft-media">
                         <img
                             v-if="!brokenThumbs.has(draft.imageSlug)"
-                            :src="thumbnailUrl(draft.imageSlug)"
+                            :src="imageSource(thumbnailUrl(draft.imageSlug))"
                             alt=""
                             loading="lazy"
                             @error="markBroken(draft.imageSlug)"

@@ -131,8 +131,15 @@ async def store_image_asset(
     content: bytes,
     original_name: str,
     content_type: str,
+    *,
+    uploader: str | None = None,
 ) -> dict[str, Any]:
     """Store an image blob in MongoDB, deduplicating by sha256.
+
+    X·F F-D5: a session upload records its user in ``uploaders`` (every
+    uploader of these bytes, dedup hits included, so each can read the image
+    while only their drafts reference it) and the first one as ``owner_slug``
+    (the one who may delete it). A dedup hit on a soft-deleted row revives it.
 
     Returns the full Mongo document. The typed-shim transposition lives at the
     *consumer* boundary (``image_bytes`` / ``image_tempfile`` /
@@ -173,9 +180,14 @@ async def store_image_asset(
                 "thumbnail_uri": f"fs:{slug}.thumb",
                 "thumbnail_content_type": thumb_ct,
             }
-        await db.images.update_one({"_id": existing["_id"]}, {"$set": thumb_fields})
-        existing.update(thumb_fields)
-        return cast("dict[str, Any]", existing)
+        change: dict[str, Any] = {"$set": {**thumb_fields, "deleted_at": None}}
+        if uploader is not None:
+            change["$addToSet"] = {"uploaders": f"user:{uploader}"}
+            if not existing.get("owner_slug"):
+                change["$set"]["owner_slug"] = uploader
+        await db.images.update_one({"_id": existing["_id"]}, change)
+        refreshed = await db.images.find_one({"_id": existing["_id"]})
+        return cast("dict[str, Any]", refreshed)
 
     # Generate the thumbnail bytes (the second blob — invariant 18). Both the
     # primary and the thumbnail are relocated onto the filesystem backend; the
@@ -196,6 +208,9 @@ async def store_image_asset(
         "content_type": content_type,
         "bytes": len(content),
         **thumbnail_fields,
+        "owner_slug": uploader,
+        "uploaders": [f"user:{uploader}"] if uploader is not None else [],
+        "deleted_at": None,
         "created_at": now,
         "last_accessed_at": now,
     }

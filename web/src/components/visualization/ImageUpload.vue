@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useImageUploadContext } from "./composables/useImageUpload";
 import { thumbnailUrl } from "@/lib/api";
+import { useImageSources } from "@/composables/useImageSources";
 import { ConfiguratorLayer } from "@mkbabb/glass-ui/configurator";
 import { Progress } from "@mkbabb/glass-ui/progress";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -10,6 +11,9 @@ import { Upload, ImageOff } from "@lucide/vue";
 
 const store = useWorkspaceStore();
 const imgError = ref(false);
+// X·F F-D5: the image passes the read gate with the session.
+const thumbHref = () => (store.imageSlug ? thumbnailUrl(store.imageSlug) : null);
+const imageSource = useImageSources(() => [thumbHref()]);
 
 /*
  * X.F.W14V.au2 — A2-FO-L1-11: this layer is presentation only. The workspace
@@ -71,7 +75,7 @@ function onImgError() {
             </div>
             <img
                 v-else
-                :src="preview || (store.imageSlug ? thumbnailUrl(store.imageSlug) : '')"
+                :src="preview || imageSource(thumbHref()) || ''"
                 alt="Uploaded image"
                 class="image-thumb"
                 @error="onImgError"

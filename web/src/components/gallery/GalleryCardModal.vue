@@ -13,6 +13,7 @@ import {
 import { Separator } from "@mkbabb/glass-ui/separator";
 import type { GalleryTier, Visualization } from "@/lib/types";
 import { overlayUrl } from "@/lib/api";
+import { useImageSources } from "@/composables/useImageSources";
 import { useTimeAgo } from "@/lib/time";
 import { basisChips } from "@/components/visualization/lib/basis-display";
 import { VIZ_COLORS } from "@/lib/colors";
@@ -29,6 +30,10 @@ const props = defineProps<{
     adminMode?: boolean;
     isLiked?: boolean;
 }>();
+
+// X·F F-D5: an owner's draft image passes the read gate with the session.
+const overlayHref = computed(() => overlayUrl(props.entry.image_slug));
+const imageSource = useImageSources(() => [overlayHref.value]);
 
 /**
  * X.F.W3 `.e` / `fr-GalleryCardModal GCM-47` ⊕ `GCM-39` — the union is
@@ -125,7 +130,7 @@ function focusTitle(e: Event) {
             </DialogHeader>
 
             <div class="modal-media">
-                <img :src="overlayUrl(entry.image_slug)" alt="" />
+                <img :src="imageSource(overlayHref)" alt="" />
             </div>
 
             <!-- Stats. GCM-36: the like control's name is fixed ("Like"), the

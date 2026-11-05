@@ -356,17 +356,12 @@ export const useGalleryStore = defineStore("gallery", () => {
         }
     }
 
-    async function recordView(slug: string) {
-        // `GET /api/visualizations/{slug}` increments the view counter
-        // server-side (visualizations.py); a fire-and-forget read suffices.
-        try {
-            const { data, etag } = await api.getVisualization(slug);
-            if (etag) etags.set(slug, etag);
-            const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
-            if (idx !== -1) entries.value[idx] = { ...entries.value[idx], views: data.views };
-        } catch {
-            // Silently ignore view tracking errors.
-        }
+    function recordView(slug: string) {
+        // X·F F-D5: a GET never writes; the open reports the view itself
+        // (POST …/view, once per slug per page session), and the card shows it.
+        if (!api.recordView(slug)) return;
+        const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
+        if (idx !== -1) entries.value[idx] = { ...entries.value[idx], views: entries.value[idx].views + 1 };
     }
 
     // `slug` is the visualization identity (the workspace's

@@ -43,6 +43,8 @@ _JANITOR_SRC = Path(__file__).resolve().parents[1] / "services" / "janitor.py"
 # to ``_log_janitor_audit`` — the source-grep arm fails loudly otherwise.
 _EXPECTED_ACTIONS = [
     "janitor:hard_delete_visualizations",
+    # X·F F-D5 (FW6-G11): the uploader-deleted images, at the same grace.
+    "janitor:hard_delete_images",
     "janitor:prune_contours",
     "janitor:prune_images",
     "janitor:delete_expired_sessions",
@@ -60,15 +62,16 @@ _EXPECTED_ACTIONS = [
 
 
 def test_single_helper_wired_to_every_destructive_sweep():
-    """One ``_log_janitor_audit`` helper, nine call-sites (§A.2 post-D.W3 γ)."""
+    """One ``_log_janitor_audit`` helper, ten call-sites (§A.2 post-D.W3 γ, plus
+    X·F F-D5's image hard-delete)."""
     src = _JANITOR_SRC.read_text()
-    # One definition + nine invocations == ten mentions of the token.
-    assert src.count("_log_janitor_audit") >= 10, (
-        "expected one _log_janitor_audit definition plus nine call-sites"
+    # One definition + ten invocations == eleven mentions of the token.
+    assert src.count("_log_janitor_audit") >= 11, (
+        "expected one _log_janitor_audit definition plus ten call-sites"
     )
     # Count the invocations specifically (the ``await _log_janitor_audit(`` form).
     invocations = len(re.findall(r"await\s+_log_janitor_audit\(", src))
-    assert invocations == 9, f"expected 9 audit emissions, found {invocations}"
+    assert invocations == 10, f"expected 10 audit emissions, found {invocations}"
 
 
 def test_every_expected_action_string_is_emitted():
@@ -121,7 +124,7 @@ async def _janitor_rows(db) -> list[dict]:
 
 
 async def _seed_full_deletable_set(db, now: datetime) -> None:
-    """Seed one deletable document per sweep so a single cycle exercises all nine rows.
+    """Seed one deletable document per sweep so a single cycle exercises all ten rows.
 
     Caveat (§A.4 Test 1): the pin recompute runs first and re-pins any contour /
     image referenced by a LIVE visualization. The seeded contour / image are NOT
@@ -139,6 +142,13 @@ async def _seed_full_deletable_set(db, now: datetime) -> None:
     # Row 1: a soft-deleted visualization past the grace window.
     await db.visualizations.insert_one(
         {"slug": "graced-viz-aa-bb", "owner_slug": "fresh-owner", "deleted_at": grace_old}
+    )
+
+    # Row 1b (X·F F-D5): an image its uploader deleted, past the grace window
+    # (recently used, so only the grace hard-delete reaps it, not the recency prune).
+    await db.images.insert_one(
+        {"image_slug": "owner-deleted-image", "pinned": False, "deleted_at": grace_old,
+         "last_accessed_at": now}
     )
 
     # Row 2: an old, unpinned contour, referenced by no live viz.
