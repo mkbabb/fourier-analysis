@@ -354,7 +354,10 @@ gh_api() {
 # not. The host provably lacks jq (the same reason scripts/pages-deploy.sh
 # parses wrangler's stdout rather than `--json | jq`), so the fallback is the
 # real path, not a courtesy. Only flat top-level scalars are read this way —
-# total_count, and the first workflow-run id.
+# total_count, and the first workflow-run id. GitHub pretty-prints its answer
+# across lines, so the fallback first folds the body onto one line: a key, its
+# colon and its value are then adjacent whatever the layout (X·F F-D1 repair:
+# a line-wise sed found no run id and the record read "ci_run_id":"unknown").
 json_scalar() {
     local key="$1" body; body="$(cat)"
     if command -v jq >/dev/null 2>&1; then
@@ -363,14 +366,15 @@ json_scalar() {
             else (.[$k] // empty) end' 2>/dev/null
         return 0
     fi
+    local flat; flat="$(printf '%s' "${body}" | tr '\r\n\t' '   ')"
     case "${key}" in
         total_count)
-            printf '%s' "${body}" | tr ',' '\n' \
-                | sed -n 's/.*"total_count"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -1
+            printf '%s' "${flat}" \
+                | sed -n 's/^[[:space:]]*{[[:space:]]*"total_count"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p'
             ;;
         run_id)
-            printf '%s' "${body}" \
-                | sed -n 's/.*"workflow_runs"[[:space:]]*:[[:space:]]*\[[[:space:]]*{[[:space:]]*"id"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -1
+            printf '%s' "${flat}" \
+                | sed -n 's/.*"workflow_runs"[[:space:]]*:[[:space:]]*\[[[:space:]]*{[[:space:]]*"id"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p'
             ;;
     esac
 }
@@ -400,8 +404,14 @@ require_green_ci() {
         return 1
     fi
 
+    # The record names the run that cleared the SHA. A covered SHA whose answer
+    # carries no run id is a contradictory answer: refuse it, never record a
+    # deploy against an unnamed run.
     CI_RUN_ID="$(printf '%s' "${body}" | json_scalar run_id)"
-    CI_RUN_ID="${CI_RUN_ID:-unknown}"
+    if [[ -z "${CI_RUN_ID}" ]]; then
+        notify err "inv-28 REFUSE — the covering-CI response for ${sha} counted ${count} green run(s) but named none; refusing rather than recording an unnamed run."
+        return 1
+    fi
     log "inv-28 GREEN — ${sha} is covered by ${CI_WORKFLOW_FILE} run ${CI_RUN_ID}"
 }
 
