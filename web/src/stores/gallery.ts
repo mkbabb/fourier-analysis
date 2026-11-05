@@ -358,10 +358,10 @@ export const useGalleryStore = defineStore("gallery", () => {
 
     function recordView(slug: string) {
         // X·F F-D5: a GET never writes; the open reports the view itself
-        // (POST …/view, once per slug per page session), and the card shows it.
-        if (!api.recordView(slug)) return;
-        const idx = entries.value.findIndex((e) => entrySlug(e) === slug);
-        if (idx !== -1) entries.value[idx] = { ...entries.value[idx], views: entries.value[idx].views + 1 };
+        // (POST …/view, once per slug per page session). The card keeps the
+        // count it was listed with, the views before this one, as the read
+        // that counted it always showed (visual-checkpoint item 5's golden).
+        api.recordView(slug);
     }
 
     // `slug` is the visualization identity (the workspace's
