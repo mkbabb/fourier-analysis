@@ -70,13 +70,26 @@ try {
             await new Promise((ok) => setTimeout(ok, 61_000 - (now - spent[bucket][0])));
         }
     };
+    // The budget is the client's (the limiter keys on its IP), not this
+    // process's, so a run started inside the window of the run before it meets
+    // spend this tracker never saw (X·F realization R-k4: the second of two
+    // back-to-back runs read its predecessor's 429s as REDs). The API states
+    // the window on its refusal (RateLimit-Reset, CORS-exposed), and the probe
+    // follows it as the app does (web/src/lib/api.ts): wait the stated reset,
+    // then ask again. Every row is still graded on the answer it gets.
     const call = async (path, init = {}) => {
         const bucket = bucketOf(path, init.method ?? "GET");
         if (bucket) {
             await room(bucket);
             spent[bucket].push(Date.now());
         }
-        return send(path, init);
+        let r = await send(path, init);
+        for (let again = 0; bucket && r.status === 429 && again < 2; again++) {
+            await new Promise((ok) => setTimeout(ok, 1000 * (Number(r.rateReset) || 60) + 500));
+            spent[bucket].push(Date.now());
+            r = await send(path, init);
+        }
+        return r;
     };
     const send = (path, init) =>
         page.evaluate(
@@ -97,7 +110,7 @@ try {
                     const text = await r.text();
                     let json = null;
                     try { json = JSON.parse(text); } catch { /* non-JSON body */ }
-                    return { status: r.status, etag: r.headers.get("ETag"), json, text: text.slice(0, 300) };
+                    return { status: r.status, etag: r.headers.get("ETag"), rateReset: r.headers.get("RateLimit-Reset"), json, text: text.slice(0, 300) };
                 } catch (e) {
                     return { status: 0, etag: null, json: null, text: String(e) };
                 }

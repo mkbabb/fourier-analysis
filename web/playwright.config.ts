@@ -138,9 +138,11 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
-    // CI pins one worker; locally Playwright's default parallelism stands
-    // (PW_WORKERS=N overrides either). The guard's browser pool bounds it machine-wide.
-    workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : process.env.CI ? 1 : undefined,
+    // One worker everywhere unless PW_WORKERS=N says otherwise. X·F realization
+    // (OPERATOR-6): the local default was Playwright's half-cores (~9 here), so
+    // a bare local run fanned nine browsers out against one dev server, which
+    // the machine law forbids; CI already pinned one.
+    workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : 1,
     reporter: "html",
     use: {
         baseURL: BASE_URL,
