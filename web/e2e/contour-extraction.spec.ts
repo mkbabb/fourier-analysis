@@ -41,10 +41,10 @@ test.describe("Contour extraction with animal images", () => {
     }
 
     test("adjust contour controls and verify recomputation", async ({ page }) => {
-        if (animalImages.length === 0) {
-            test.skip();
-            return;
-        }
+        // X·F realization (F.REL INFO-2): the fixture set is committed
+        // (assets/animals), so an empty set is a broken checkout, not a reason
+        // to skip silently.
+        expect(animalImages.length, "the committed assets/animals fixture set").toBeGreaterThan(0);
 
         // Upload first animal image
         const fileInput = page.getByTestId("image-file-input");
@@ -84,10 +84,10 @@ test.describe("Contour extraction with animal images", () => {
     });
 
     test("strategy switching triggers recomputation", async ({ page }) => {
-        if (animalImages.length === 0) {
-            test.skip();
-            return;
-        }
+        // X·F realization (F.REL INFO-2): the fixture set is committed
+        // (assets/animals), so an empty set is a broken checkout, not a reason
+        // to skip silently.
+        expect(animalImages.length, "the committed assets/animals fixture set").toBeGreaterThan(0);
 
         // Upload first animal image
         const fileInput = page.getByTestId("image-file-input");
@@ -138,10 +138,10 @@ test.describe("Contour extraction with animal images", () => {
             }
         });
 
-        if (animalImages.length === 0) {
-            test.skip();
-            return;
-        }
+        // X·F realization (F.REL INFO-2): the fixture set is committed
+        // (assets/animals), so an empty set is a broken checkout, not a reason
+        // to skip silently.
+        expect(animalImages.length, "the committed assets/animals fixture set").toBeGreaterThan(0);
 
         const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(path.join(ANIMALS_DIR, animalImages[0]));
