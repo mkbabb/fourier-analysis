@@ -2420,3 +2420,23 @@ units**, both published by `FR-COB-17`'s own cure sentence. **No ruling was re-o
 elected; nothing was dropped.**
 
 ---
+
+---
+
+### Addendum 2026-11-05 to §2.1 G-11 (X·F F-D10 · `G-F4-ANCHORS`, E-3 dated beside; rows 1–11 unedited)
+
+F.W4 published rows 12–18 ready to append (value.js `docs/tranches/X/fourier/F-W4-CLOSURE.md` §4)
+and could not write them here. They are appended now, each re-resolved at fourier `master`
+`3d1efae` first, read twice.
+
+| # | register (F-W4-CLOSURE §4) | re-resolved at `3d1efae` | state |
+|---|---|---|---|
+| **12** | `F-W4.md` §1 Bounds — the `views/` directory | ⟨cmd⟩ `ls web/src` → `App.vue assets components composables lib main.ts router stores style.css virtual-paper.d.ts` (no `views/`); ⟨cmd⟩ `find web/src -name '*View.vue'` → `components/equation/EquationView.vue` · `components/gallery/GalleryView.vue` · `components/paper/PaperView.vue` · `components/visualization/VisualizationView.vue` | **STRUCK, re-pointed.** `GalleryView.vue` has since moved `visualization/` → `gallery/`; the other three stand where F.W4 named them. |
+| **13** | `F-W4-CARRY.md:537-542` — the same `views/` spelling | as row 12 | **STRUCK** (the same kill at a second document). |
+| **14** | the dispatch's §3-relative coordinates (base 352) | a value.js-document class, not a fourier path | **CLASS, banked** at `DECISIONS-F.W4.md` §6.1; nothing to re-resolve in this tree. |
+| **15** | `fr-EditorControlsDock` rule-span `:222-228` | ⟨cmd⟩ `grep -n '</style>' web/src/components/visualization/EditorControlsDock.vue \| tail -1` → `:469` (was `:229`) | **STRUCK, drifted +240.** Cite by symbol, never by this line. |
+| **16** | the `/equation` record set (`EquationView.vue` at 469 → 478 lines) | ⟨cmd⟩ `wc -l web/src/components/equation/EquationView.vue` → **951** | **STRUCK.** Every line coordinate in the record has drifted; intent is taken at the bytes. |
+| **17** | `fr-SpeedSelect`'s eight anchors (a published negative) | `web/src/components/visualization/SpeedSelect.vue` present | **HOLDS as a file anchor**; its line anchors are not re-certified here. |
+| **18** | `G-F4-DERIVER`'s BS-2 anchors `AppHeader.vue:124/:137` | ⟨cmd⟩ `find web/src -name AppHeader.vue` → **none**; `npm run derive:loops` reports no `AppHeader` row | **STRUCK.** The file left the tree with the shell rebuild; the anchor has no successor to re-pin. |
+
+`G-F4-ANCHORS` reads GREEN against this table: rows 12–18 are in G-11's own bytes.
