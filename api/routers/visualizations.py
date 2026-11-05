@@ -37,7 +37,9 @@ from api.dependencies import (
 from api.lib.crud import atomdiff, cursors, errors, etag, idempotency, slugs, softdelete
 from api.lib.crud.canonical_digest import canonical_digest
 from api.models.gallery import GalleryTier
+from api.lib.crud.atomdiff import ATOM_KEY_ORDER
 from api.models.visualization import (
+    PATCH_METADATA_FIELDS,
     AtomOp,
     DiffResponse,
     ForkCrumb,
@@ -111,23 +113,31 @@ def _compute_content_hash(payload: VisualizationCreate) -> str:
     )
 
 
-async def _write_root_version(
+async def _write_version(
     db,
     *,
     viz_slug: str,
     author_slug: str,
     atoms: dict,
     set_hash_value: str,
+    parent: dict | None,
     fork_of_hash: str | None,
     atom_ops: list[AtomOp],
     now: datetime,
 ) -> None:
-    """Insert a viz's root ``VisualizationVersion`` (depth 0) — WAVE-D §2.2 / §11.
+    """Insert one ``VisualizationVersion`` — the ONE version writer (X·F F-D4).
+
+    Create, remix and an atom-changing PATCH all write through here, so the
+    chain quadruple (``parent_hash``, ``forked_from_hash``, ``root_hash``,
+    ``depth``) carries what it says. ``parent`` is the HEAD version document:
+    ``None`` writes a chain root (depth 0, its own root); a parent writes one
+    deeper, ``parent_hash`` = the parent's ``set_hash`` and ``root_hash`` its
+    root's. ``fork_of_hash`` is the source HEAD at remix time (a root only).
 
     The ``_id`` (``f"{viz_slug}:{set_hash}"``) is content-addressed, so a
     re-insert of the same (viz, atoms) is an idempotent no-op (the §11 crash-safe
-    property). ``atom_ops`` carries the recorded source→child remix delta for a
-    fork (empty for an original); ``fork_of_hash`` is the source HEAD at remix.
+    property). ``atom_ops`` is the recorded delta from the parent (from the
+    remix source for a fork root; empty for an original).
     """
     version = VisualizationVersion(
         _id=f"{viz_slug}:{set_hash_value}",
@@ -139,10 +149,10 @@ async def _write_root_version(
         contour_settings=atoms["contour_settings"],
         animation_settings=atoms["animation_settings"],
         palette_slug=atoms.get("palette_slug"),  # absent (null binding) → None
-        parent_hash=None,
+        parent_hash=parent["set_hash"] if parent else None,
         forked_from_hash=fork_of_hash,
-        root_hash=set_hash_value,
-        depth=0,
+        root_hash=parent["root_hash"] if parent else set_hash_value,
+        depth=parent["depth"] + 1 if parent else 0,
         atom_diff=atom_ops,
         created_at=now,
     )
@@ -221,9 +231,10 @@ async def create_visualization(body: VisualizationCreate, request: Request) -> R
             insert_doc["set_hash"] = set_hash_value
             insert_doc["last_accessed_at"] = now
             await db.visualizations.insert_one(insert_doc)
-            await _write_root_version(
+            await _write_version(
                 db, viz_slug=candidate, author_slug=owner_slug, atoms=atoms,
-                set_hash_value=set_hash_value, fork_of_hash=None, atom_ops=[], now=now,
+                set_hash_value=set_hash_value, parent=None, fork_of_hash=None,
+                atom_ops=[], now=now,
             )
 
         slug = await slugs.slug_with_retry(_insert)
@@ -406,9 +417,58 @@ async def update_visualization(slug: str, body: VisualizationUpdate, request: Re
             "de-publish via `unlisted` (POST /unpublish) first"
         )
 
-    updates = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
-    updates["updated_at"] = datetime.now(UTC)
-    await db.visualizations.update_one({"slug": slug}, {"$set": updates})
+    # X·F F-D4: metadata is a plain $set (non-null values); atoms are the remix
+    # idiom over the HEAD (omitted inherits, a value rebinds, null clears the
+    # one nullable atom) and a changed atom set is a new version.
+    now = datetime.now(UTC)
+    sent = body.model_fields_set
+    updates: dict[str, Any] = {
+        k: getattr(body, k) for k in PATCH_METADATA_FIELDS & sent if getattr(body, k) is not None
+    }
+    unset: dict[str, str] = {}
+
+    head_atoms = atomdiff.enumerate_atoms(doc)
+    child_atoms = _apply_atom_overrides(head_atoms, body)
+    atom_ops = atomdiff.diff_atoms(head_atoms, child_atoms)
+    if atom_ops:
+        head_hash = _head_set_hash(doc)
+        child_hash = atomdiff.set_hash(child_atoms)
+        head_version = await _head_version(db, doc, head_hash, now)
+        # Ordered and content-addressed like the remix (§11; the compose stack
+        # is a standalone mongod, so no transaction): the version first (an
+        # idempotent insert), then the row moves to it only if no other writer
+        # moved the HEAD since this read (the set_hash compare below).
+        await _write_version(
+            db, viz_slug=slug, author_slug=owner_slug, atoms=child_atoms,
+            set_hash_value=child_hash, parent=head_version, fork_of_hash=None,
+            atom_ops=atom_ops, now=now,
+        )
+        for key in ATOM_KEY_ORDER:
+            if key in child_atoms:
+                updates[key] = child_atoms[key]
+            elif key in doc:
+                unset[key] = ""
+        updates["set_hash"] = child_hash
+        updates["content_hash"] = _content_hash(
+            image_slug=doc["image_slug"], contour_hash=doc["contour_hash"],
+            active_bases=child_atoms["active_bases"], n_harmonics=child_atoms["n_harmonics"],
+        )
+        if {"active_bases", "n_harmonics"} & {op.atom_key for op in atom_ops}:
+            updates["animation_data"] = None  # the partial sums are of the old atoms (F-04)
+
+    updates["updated_at"] = now
+    change: dict[str, Any] = {"$set": updates}
+    if unset:
+        change["$unset"] = unset
+    if atom_ops:
+        change["$inc"] = {"version_count": 1}
+        moved = await db.visualizations.update_one(
+            {"slug": slug, "set_hash": doc.get("set_hash")}, change
+        )
+        if moved.matched_count == 0:
+            return errors.etag_mismatch(detail="the visualization changed during this update; re-read and retry")
+    else:
+        await db.visualizations.update_one({"slug": slug}, change)
 
     updated = await db.visualizations.find_one({"slug": slug})
     out = Response(
@@ -502,6 +562,45 @@ async def _readable_or_none(db, slug: str, viewer: str | None) -> dict | None:
     return doc
 
 
+def _apply_atom_overrides(head_atoms: dict, body: VisualizationRemix | VisualizationUpdate) -> dict:
+    """HEAD atoms ∪ a body's atom fields — the remix idiom, shared with PATCH.
+
+    An atom absent from ``model_fields_set`` inherits the HEAD; a value rebinds;
+    ``palette_slug: null`` clears the binding (the atom leaves the bag, F-08).
+    """
+    child = dict(head_atoms)
+    sent = body.model_fields_set
+    if "active_bases" in sent and body.active_bases is not None:
+        child["active_bases"] = sorted(body.active_bases)
+    if "n_harmonics" in sent and body.n_harmonics is not None:
+        child["n_harmonics"] = body.n_harmonics
+    if "contour_settings" in sent and body.contour_settings is not None:
+        child["contour_settings"] = body.contour_settings.model_dump()
+    if "animation_settings" in sent and body.animation_settings is not None:
+        child["animation_settings"] = body.animation_settings.model_dump()
+    if "palette_slug" in sent:
+        if body.palette_slug is None:
+            child.pop("palette_slug", None)
+        else:
+            child["palette_slug"] = body.palette_slug
+    return child
+
+
+async def _head_version(db, doc: dict, head_hash: str, now: datetime) -> dict:
+    """The HEAD's version document. A legacy row whose root was never written
+    (it predates WAVE D's version collection) gets its root written first, so a
+    PATCH always extends a real chain."""
+    found = await db.visualization_versions.find_one({"_id": f"{doc['slug']}:{head_hash}"})
+    if found is not None:
+        return found
+    await _write_version(
+        db, viz_slug=doc["slug"], author_slug=doc.get("owner_slug", ""),
+        atoms=atomdiff.enumerate_atoms(doc), set_hash_value=head_hash, parent=None,
+        fork_of_hash=doc.get("fork_of_hash"), atom_ops=[], now=now,
+    )
+    return await db.visualization_versions.find_one({"_id": f"{doc['slug']}:{head_hash}"})
+
+
 def _head_set_hash(doc: dict) -> str:
     """The viz's atom-set identity — the stored ``set_hash``, or computed for a
     legacy row that predates the additive fork-fields backfill migration."""
@@ -538,22 +637,7 @@ async def remix_visualization(slug: str, body: VisualizationRemix, request: Requ
 
     # The child atoms = source HEAD ∪ body overrides (palette_slug tri-state, F-08).
     source_atoms = atomdiff.enumerate_atoms(source)
-    child_atoms = dict(source_atoms)
-    if body.active_bases is not None:
-        child_atoms["active_bases"] = sorted(body.active_bases)
-    if body.n_harmonics is not None:
-        child_atoms["n_harmonics"] = body.n_harmonics
-    if body.contour_settings is not None:
-        child_atoms["contour_settings"] = body.contour_settings.model_dump()
-    if body.animation_settings is not None:
-        child_atoms["animation_settings"] = body.animation_settings.model_dump()
-    if "palette_slug" in body.model_fields_set:
-        # tri-state (F-08): null CLEARS the binding (atom removed from the bag);
-        # a slug rebinds; an omitted field inherits the source's.
-        if body.palette_slug is None:
-            child_atoms.pop("palette_slug", None)
-        else:
-            child_atoms["palette_slug"] = body.palette_slug
+    child_atoms = _apply_atom_overrides(source_atoms, body)
 
     # NOTE (F-02): ``palette_slug`` is a SOFT/optional reference — fourier owns no
     # ``palettes`` collection (palettes live in the value.js service, inv-16), so
@@ -617,9 +701,9 @@ async def remix_visualization(slug: str, body: VisualizationRemix, request: Requ
         child_slug = await slugs.slug_with_retry(_insert)
 
         # (3) insert the child root version, carrying the recorded remix delta.
-        await _write_root_version(
+        await _write_version(
             db, viz_slug=child_slug, author_slug=owner_slug, atoms=child_atoms,
-            set_hash_value=child_set_hash, fork_of_hash=source_set_hash,
+            set_hash_value=child_set_hash, parent=None, fork_of_hash=source_set_hash,
             atom_ops=atom_ops, now=now,
         )
 

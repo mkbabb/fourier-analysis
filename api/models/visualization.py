@@ -21,7 +21,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from api.lib.crud.atomdiff import AtomOp
 from api.lib.crud.softdelete import SoftDeleteMixin
@@ -195,18 +195,45 @@ class VisualizationCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# X·F F-D4 (FW6-G4): a PATCH body is METADATA plus ATOMS, and nothing else.
+# Metadata is editorial — it never versions. The atoms are exactly
+# ``atomdiff.ATOM_KEY_ORDER``; a PATCH that changes one writes a version.
+PATCH_METADATA_FIELDS: frozenset[str] = frozenset({"visibility", "title", "description", "tags"})
+
+
 class VisualizationUpdate(BaseModel):
     """PATCH body. Partial; ``slug`` is immutable and ``content_hash`` is
     recomputed server-side (so neither appears here).
+
+    Two kinds of field (X·F F-D4). **Metadata** (``PATCH_METADATA_FIELDS``:
+    visibility, title, description, tags) is a plain ``$set`` of the non-null
+    values and writes no version. **Atoms** (``ATOM_KEY_ORDER``) follow the remix
+    idiom, read through ``model_fields_set``: an omitted atom inherits the HEAD,
+    a value rebinds it, and ``null`` clears ``palette_slug`` (the one nullable
+    atom; any other atom sent as ``null`` is a 422). A PATCH that changes an atom
+    writes a ``VisualizationVersion`` one deeper than the HEAD and re-stamps
+    ``set_hash``. Each atom carries the create model's bounds.
     """
 
     visibility: Visibility | None = None
     title: str | None = Field(default=None, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     tags: list[str] | None = Field(default=None, max_length=10)
-    palette_slug: str | None = None
+
+    active_bases: list[str] | None = Field(default=None, min_length=1, max_length=16)
+    n_harmonics: int | None = Field(default=None, ge=1, le=4096)
+    contour_settings: ContourSettings | None = None
+    animation_settings: AnimationSettings | None = None
+    palette_slug: str | None = None  # tri-state — read via model_fields_set
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _only_palette_clears(self) -> VisualizationUpdate:
+        for name in ("active_bases", "n_harmonics", "contour_settings", "animation_settings"):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise ValueError(f"{name} cannot be null; only palette_slug clears")
+        return self
 
 
 # ---------------------------------------------------------------------------

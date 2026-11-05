@@ -288,11 +288,21 @@ export interface VisualizationCreate {
     palette_slug?: string | null;
 }
 
+/**
+ * PATCH body twin of `api/models/visualization.py` `VisualizationUpdate`
+ * (X·F F-D4). Metadata (visibility, title, description, tags) never versions;
+ * the five atoms do: an omitted atom inherits, a value rebinds, and
+ * `palette_slug: null` clears the binding (the one nullable atom).
+ */
 export interface VisualizationPatch {
     visibility?: Visibility;
     title?: string | null;
     description?: string | null;
     tags?: string[];
+    active_bases?: string[];
+    n_harmonics?: number;
+    contour_settings?: ContourSettings;
+    animation_settings?: AnimationSettings;
     palette_slug?: string | null;
 }
 
