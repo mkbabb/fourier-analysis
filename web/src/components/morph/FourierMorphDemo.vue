@@ -397,6 +397,53 @@ main[data-scrolled] .demo-page::before {
     }
 }
 
+/* X·F F-D14a — short landscape (844×390): the stage beside the controls.
+   Stacked, the title, a square cut by the fold and every control below it
+   meant the instrument was never wholly in view. This is /equation's D-8 query
+   (EquationView.vue, `(orientation: landscape) and (max-height: 500px)`) and
+   its form: the stage on the left, fitted to the viewport's height and held
+   there, the title and the controls on the right. The query is stated once per
+   route because the two routes' grids are their own (glass Configurator's on
+   /equation, this page's on /morph); the breakpoint is the one shared fact. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .demo-page {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-rows: auto auto 1fr;
+        column-gap: var(--space-family);
+        align-items: start;
+    }
+    .demo-layout,
+    .stage-rail {
+        display: contents;
+    }
+    .stage-column {
+        grid-column: 1;
+        grid-row: 1 / span 3;
+        position: sticky;
+        top: var(--space-family);
+        margin-inline: 0;
+        padding: 0;
+        background: none;
+    }
+    .band-grid {
+        display: none;
+    }
+    .demo-header {
+        grid-column: 2;
+        grid-row: 1;
+    }
+    .stage-actions {
+        grid-column: 2;
+        grid-row: 2;
+        margin-block-end: var(--space-family);
+    }
+    .controls-column {
+        grid-column: 2;
+        grid-row: 3;
+    }
+}
+
 /* X-DS DS-F5-C5: the actions start on the plate's edge at every width; in
    the phone band the plate now starts on the content box's edge (the row is
    bounded by it), so centred actions sat off the plate's axis. */

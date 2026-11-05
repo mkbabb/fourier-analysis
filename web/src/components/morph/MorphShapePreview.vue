@@ -1,5 +1,10 @@
 <template>
-    <div class="demo-stage">
+    <!-- X·F F-D14b: the stage is ONE card, the plate over its readout. The
+         readout hung between the plate and the controls on the page grid; it is
+         now the card's foot, under a hairline, as /equation's N = 8/8 sits in
+         its stage. The plate keeps its square and its press; the card carries
+         the hover tone step the plate's own plate carried. -->
+    <Surface surface="opaque" class="demo-stage morph-card">
         <div class="stage-row">
             <!-- SP-7 · FM-1 (= FMD-2), the HOST half. The route's primary and
                  only control had an empty accessible name: a bare `<button>`
@@ -15,10 +20,8 @@
                  the 350 ms the input is swallowed. -->
             <!-- X.F.W14V.au3 — A2-FO-L1-13: the control's plate is glass's
                  Surface (the local `.cartoon-card` stamp retires app-wide). -->
-            <Surface
-                as="button"
+            <button
                 type="button"
-                surface="opaque"
                 class="morph-button"
                 aria-label="Morph between the sun and moon shapes"
                 :aria-busy="disabled || undefined"
@@ -33,7 +36,7 @@
                     :stroke-width="3"
                     view-box="0 0 200 200"
                 />
-            </Surface>
+            </button>
 
             <!-- X.F.W3 `.d` — `fr-FourierMorphDemo FMD-12`, the info-chip
                  limb, with `fr-MorphShapePreview D-11`’s mapping rider taken as
@@ -90,7 +93,7 @@
             </Metric>
             <Metric label="total" :value="totalMs" unit="ms" size="sm" posture="inline" />
         </div>
-    </div>
+    </Surface>
 </template>
 
 <script setup lang="ts">
@@ -134,9 +137,11 @@ defineEmits<{
 .demo-stage {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--space-atom);
+    align-items: stretch;
     width: 100%;
+    overflow: clip;
+    transition: border-color var(--duration-fast) var(--ease-standard),
+        transform var(--duration-fast) var(--ease-standard);
 }
 
 .stage-row {
@@ -151,8 +156,9 @@ defineEmits<{
    plate's desktop measure (26rem) and, in short landscape, by the viewport's
    height, so it stays a square that fits the screen. */
 @media (max-width: 1023.98px) {
-    .stage-row {
+    .demo-stage {
         width: min(100%, 26rem, 70svh);
+        margin-inline: auto;
     }
 }
 
@@ -160,20 +166,34 @@ defineEmits<{
    a fixed 120/180px square; it now takes its column up to a bound — the
    phone band's 7.5rem row below 1024px (DS-F5-C1), 26rem beside the
    controls. */
+/* X·F F-D14a: in short landscape the card stands beside the controls
+   (FourierMorphDemo's rule) and fits the viewport's height: the plate takes
+   what the shell's header, the page's top padding and the readout foot leave. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .demo-stage {
+        width: min(26rem, calc(100svh - 10rem));
+        margin-inline: 0;
+    }
+}
+
 .morph-button {
     width: 100%;
     aspect-ratio: 1;
     cursor: pointer;
     padding: var(--space-body);
     flex-shrink: 0;
-    /* FMD-28 — tokenised: the literals restated the producer's own registers. */
-    transition: border-color var(--duration-fast) var(--ease-standard),
-        transform var(--duration-fast) var(--ease-standard);
+    background: none;
+    border: 0;
+    border-radius: inherit;
+    color: inherit;
+    font: inherit;
 }
 
 @media (min-width: 1024px) {
-    .morph-button {
+    .demo-stage {
         width: min(100%, 26rem);
+    }
+    .morph-button {
         padding: var(--space-family);
     }
 }
@@ -237,13 +257,15 @@ defineEmits<{
 
    ⊘ `FMD-N3`’s md→lg stamp growth is NOT part of the collision and stays: it
    is elevation, not state. */
+/* F-D14b: the plate is the card's top, so the hover tone and the press read
+   on the card, as they read on the plate when the plate was the card. */
 @media (hover: hover) {
-    .morph-button:hover:not(:disabled) {
+    .morph-card:has(.morph-button:hover:not(:disabled)) {
         border-color: color-mix(in srgb, var(--accent-red) 50%, transparent);
     }
 }
 
-.morph-button:active:not(:disabled) {
+.morph-card:has(.morph-button:active:not(:disabled)) {
     transform: scale(0.98);
 }
 
@@ -280,6 +302,8 @@ defineEmits<{
     align-items: center;
     column-gap: var(--space-body, 0.75rem);
     row-gap: var(--space-atom);
+    padding: var(--space-atom) var(--space-body);
+    border-block-start: 1px solid var(--border);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
@@ -302,7 +326,6 @@ defineEmits<{
    plate's edge, as the actions under them do (one axis in the column). */
 @media (min-width: 1024px) {
     .demo-info {
-        align-self: flex-start;
         justify-content: start;
     }
 }
@@ -312,4 +335,12 @@ defineEmits<{
    muted plate and the three phase re-tints are all `Metric`’s and `Chip`’s at
    the pin. What survives is the LAYOUT of the two responsive groups, which is
    this stage’s composition and not the readouts’ chrome. */
+/* F-D14a: the foot of the short-landscape card (its measure is the plate's,
+   ~230 px) takes the atom gaps, so "total 350 ms" ends inside the card. */
+@media (orientation: landscape) and (max-height: 500px) {
+    .demo-info {
+        column-gap: var(--space-atom);
+        padding-inline: var(--space-atom);
+    }
+}
 </style>

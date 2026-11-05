@@ -148,7 +148,11 @@ test.describe("D-21 X §0hm — the morph stage is a full-width square (390)", (
         const s = await stage(page).boundingBox();
         const info = await page.locator(".demo-info").boundingBox();
         const col = PHONE.width - 32;
-        expect(s!.width, "stage spans the column").toBeGreaterThanOrEqual(col - 1);
+        // X·F F-D14b: the stage card (plate over its readout foot) spans the
+        // column; the plate is its square top, inside the card's 1px edge.
+        const card = await page.locator(".morph-card").boundingBox();
+        expect(card!.width, "stage spans the column").toBeGreaterThanOrEqual(col - 1);
+        expect(s!.width, "the plate fills the card").toBeGreaterThanOrEqual(card!.width - 4);
         expect(Math.abs(s!.width - s!.height), "stage is 1:1").toBeLessThanOrEqual(1);
         expect(info!.y, "readings sit under the stage").toBeGreaterThanOrEqual(s!.y + s!.height);
         const [label, value] = await page.locator(".demo-info .metric").first().evaluate((m) => [
