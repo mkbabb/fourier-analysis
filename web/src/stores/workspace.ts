@@ -351,7 +351,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             epicycleRevision++;
             basesRevision++;
             api.abortInflight(["computeEpicycles", "computeBases"]);
-            const result = await api.saveContour(imageSlug.value, points);
+            const result = await api.saveContour(imageSlug.value, points, contour.value?.contour_hash ?? null);
             contour.value = markRaw(result);
             scheduleDraftSave();
             // X.F.W10S.b — `G-F9-8` (Invariant 19, the `save_contour_then_recompute`

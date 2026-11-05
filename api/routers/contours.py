@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from api.dependencies import get_contour
+from api.dependencies import get_contour, get_image_asset
 from api.models.assets import SaveContourRequest
 from api.models.computation import (
     ComputeBasesRequest,
@@ -13,7 +13,9 @@ from api.models.computation import (
 )
 from api.responses import contour_points, contour_response
 from api.services import computation, compute_cache
-from api.services.image_storage import store_contour_asset
+from api.models.shared import ContourSettings
+from api.services.database import get_db
+from api.services.image_storage import BlobNotFound, default_image_bounds, store_contour_asset
 
 router = APIRouter(prefix="/api/contours", tags=["contours"])
 
@@ -22,7 +24,22 @@ router = APIRouter(prefix="/api/contours", tags=["contours"])
 async def save_contour(req: SaveContourRequest):
     xs = req.points.get("x", [])
     ys = req.points.get("y", [])
-    doc = await store_contour_asset(xs, ys, req.image_slug, source="editor")
+    # X·F F-D7 (FW6-G14): the editor's bounds are written with it, on the POST
+    # (a GET never backfills them): the edited contour's, else the image's at
+    # the default extraction resize.
+    if req.from_contour is not None:
+        src = await get_db().contours.find_one({"contour_hash": req.from_contour}, {"image_bounds": 1})
+        if src is None:
+            raise HTTPException(status_code=404, detail="Source contour not found")
+        image_bounds = src.get("image_bounds")
+    else:
+        image_bounds = None
+    if image_bounds is None:
+        try:
+            image_bounds = default_image_bounds(await get_image_asset(req.image_slug), ContourSettings().resize)
+        except BlobNotFound as exc:
+            raise HTTPException(status_code=404, detail="Image blob not found") from exc
+    doc = await store_contour_asset(xs, ys, req.image_slug, source="editor", image_bounds=image_bounds)
     return contour_response(doc)
 
 

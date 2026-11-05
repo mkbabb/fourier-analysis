@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import io
 import logging
 import re
 import time
@@ -12,7 +11,6 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 from fastapi import HTTPException, Request
-from PIL import Image, ImageOps
 from pydantic import ValidationError
 from pymongo import ReturnDocument
 
@@ -79,88 +77,15 @@ async def get_image_asset(image_slug: str) -> ImageAsset:
 async def get_contour(contour_hash: str) -> dict[str, Any]:
     """Fetch contour document. 404 if not found.
 
-    Lazily backfills ``image_bounds`` for pre-migration contours by loading
-    the linked image, applying the same resize logic as contour extraction,
-    and persisting the computed bounds.
+    X·F F-D7: a read never writes. The lazy ``image_bounds`` backfill that
+    lived here moved to the one-time ``migrate_contour_bounds``; new contours
+    carry their bounds from the write (extraction, or the editor's POST).
     """
     db = get_db()
     doc = await db.contours.find_one({"contour_hash": contour_hash})
     if doc is None:
         raise HTTPException(status_code=404, detail="Contour not found")
-
-    if doc.get("image_bounds") is None and doc.get("image_slug"):
-        doc = await _backfill_image_bounds(db, doc)
-
     return cast("dict[str, Any]", doc)
-
-
-async def _backfill_image_bounds(db: Any, contour_doc: dict[str, Any]) -> dict[str, Any]:
-    """Compute and persist image_bounds for a contour that lacks it.
-
-    The fetched image document is validated through ``ImageAsset`` — a
-    pre-migration shape (missing ``storage_uri``) becomes a typed
-    ``ValidationError`` here rather than a ``KeyError`` swallowed by the
-    broad ``except`` below; the bounds backfill silently skips that
-    contour (the prior C10 silent-degradation mode is foreclosed at the
-    typed shim, not at the projection).
-    """
-    from api.services.image_storage import image_bytes
-
-    # E.W10 δ — C10 (C.W5) projection completed: the typed `ImageAsset`
-    # shim requires `sha256` at construct time (per `models/assets.py:61`).
-    # Pre-W10 the projection omitted it, so every backfill_image_bounds
-    # call on a migrated doc hit a silent ValidationError + degraded
-    # bounds. Adding `sha256: 1` restores the shim's promise: missing
-    # storage_uri now becomes the explicit "pre-migration" path, not a
-    # silent reject for ALL migrated docs.
-    image_doc = await db.images.find_one(
-        {"image_slug": contour_doc["image_slug"]},
-        {"image_slug": 1, "sha256": 1, "storage_uri": 1, "content_type": 1},
-    )
-    if image_doc is None:
-        return contour_doc
-
-    try:
-        asset = ImageAsset.model_validate(image_doc)
-    except ValidationError:
-        logger.warning(
-            "Pre-migration image rejected by typed shim during bounds backfill: %s",
-            contour_doc.get("image_slug"),
-        )
-        return contour_doc
-
-    try:
-        data, _ = image_bytes(asset)
-        opened = Image.open(io.BytesIO(data))
-        img: Image.Image = ImageOps.exif_transpose(opened) or opened
-        orig_w, orig_h = img.size
-        img.close()
-
-        # Use default extraction resize of 1024
-        resize = 1024
-        ratio = resize / max(orig_w, orig_h)
-        rw = int(orig_w * ratio)
-        rh = int(orig_h * ratio)
-
-        image_bounds = {
-            "minX": -rw / 2,
-            "maxX": rw / 2,
-            "minY": -rh / 2,
-            "maxY": rh / 2,
-        }
-
-        await db.contours.update_one(
-            {"_id": contour_doc["_id"]},
-            {"$set": {"image_bounds": image_bounds}},
-        )
-        contour_doc["image_bounds"] = image_bounds
-        logger.info("Backfilled image_bounds for contour %s", contour_doc["contour_hash"])
-    except Exception:
-        logger.warning(
-            "Failed to backfill image_bounds for %s", contour_doc.get("contour_hash"), exc_info=True
-        )
-
-    return contour_doc
 
 
 # ---------------------------------------------------------------------------

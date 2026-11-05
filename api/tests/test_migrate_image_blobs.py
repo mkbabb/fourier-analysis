@@ -276,7 +276,9 @@ def test_dedup_hit_on_migrated_doc(blob_dir):
 
 @requires_mongo
 def test_backfill_image_bounds_on_migrated_image(blob_dir):
-    from api.dependencies import _backfill_image_bounds
+    # X·F F-D7: the bounds backfill left the GET (a read never writes) for the
+    # one-time migrate_contour_bounds; the migrated-image shim is proven there.
+    from api.scripts.migrate_contour_bounds import run_migration
 
     async def body(db):
         await db.images.create_index("image_slug", unique=True)
@@ -300,14 +302,14 @@ def test_backfill_image_bounds_on_migrated_image(blob_dir):
             "image_bounds": None,
         }
         await db.contours.insert_one(contour_doc)
-        result = await _backfill_image_bounds(db, dict(contour_doc))
+        report = await run_migration(db)
         persisted = await db.contours.find_one({"_id": "contour-x"})
-        return result, persisted
+        return report, persisted
 
-    result, persisted = run_db(body)
+    report, persisted = run_db(body)
     # Bounds were computed (the shim resolved the file) and persisted — NOT
     # silently degraded by a {blob:1}-projection KeyError.
-    assert result["image_bounds"] is not None
+    assert report == {"backfilled": 1, "unresolvable": 0}
     assert persisted["image_bounds"] is not None
     assert persisted["image_bounds"]["maxX"] > 0
 

@@ -67,6 +67,8 @@ MIGRATIONS: list[tuple[str, int]] = [
     ("api.scripts.migrate_visualization_forks", 1),
     # X·F F-D6 (FW6-G9) — every admin_audit row names its actor.
     ("api.scripts.migrate_audit_actor", 1),
+    # X·F F-D7 (FW6-G14) — the GET-time image_bounds backfill, run once.
+    ("api.scripts.migrate_contour_bounds", 1),
 ]
 
 

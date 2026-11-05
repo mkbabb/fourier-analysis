@@ -100,6 +100,11 @@ class ExtractContourRequest(BaseModel):
 class SaveContourRequest(BaseModel):
     image_slug: str
     points: dict[str, Any]  # {"x": list[float], "y": list[float]}
+    # X·F F-D7 (FW6-G14): the contour this edit was made on. Its
+    # ``image_bounds`` (the data-space rectangle the points live in) is the
+    # edit's; without one the bounds are derived from the image at the default
+    # extraction resize.
+    from_contour: str | None = None
 
 
 class CreateSnapshotRequest(BaseModel):

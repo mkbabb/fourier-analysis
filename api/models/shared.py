@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -24,6 +24,17 @@ DEFAULT_ANIMATION_EASING: AnimationEasing = "ease-in-out-sine"
 
 
 class ContourSettings(BaseModel):
+    # X·F F-D7 (FW6-G13): the fields extraction consumes — ``to_contour_config``
+    # and ``images.extract_contour`` (``n_points``, the resample). The extraction
+    # cache key is derived from exactly this set, and a test walks both
+    # consumers' ``ast`` to hold it equal, so a newly consumed field cannot slip
+    # out of the key. ``n_harmonics`` is a series setting, not an extraction one.
+    EXTRACTION_FIELDS: ClassVar[frozenset[str]] = frozenset({
+        "strategy", "resize", "blur_sigma", "n_points", "n_classes",
+        "min_contour_length", "min_contour_area", "max_contours", "smooth_contours",
+        "ml_threshold", "ml_detail_threshold",
+    })
+
     strategy: str = "auto"
     resize: int = 1024
     blur_sigma: float = 0.5

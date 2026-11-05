@@ -27,6 +27,7 @@ from fourier_analysis.contours.version import PIPELINE_VERSION
 from api.config import settings
 from api.lib.crud.slugs import slug_with_retry
 from api.models.assets import ImageAsset
+from api.models.shared import ContourSettings
 from api.services.database import get_db
 
 try:
@@ -301,27 +302,36 @@ def image_tempfile(asset: ImageAsset) -> "tempfile._TemporaryFileWrapper[bytes]"
     return tmp
 
 
-def extraction_cache_key(image_sha256: str, settings: Any) -> str:
+def extraction_cache_key(image_sha256: str, settings: ContourSettings) -> str:
     """Deterministic key from image identity, extraction parameters and the
-    pipeline that extracts (so a pipeline change never serves a stale tour)."""
+    pipeline that extracts (so a pipeline change never serves a stale tour).
+
+    X·F F-D7 (FW6-G13): the parameters are ``ContourSettings.EXTRACTION_FIELDS``
+    — derived from the model, never listed by hand (the hand list missed the two
+    ML thresholds, so a threshold change served the old contour). ``_v`` 4.
+    """
     payload = json.dumps(
         {
-            "_v": 3,
+            "_v": 4,
             "pipeline": PIPELINE_VERSION,
             "image_sha256": image_sha256,
-            "strategy": settings.strategy,
-            "resize": settings.resize,
-            "blur_sigma": settings.blur_sigma,
-            "n_classes": settings.n_classes,
-            "min_contour_length": settings.min_contour_length,
-            "min_contour_area": settings.min_contour_area,
-            "max_contours": settings.max_contours,
-            "smooth_contours": settings.smooth_contours,
-            "n_points": settings.n_points,
+            **settings.model_dump(include=set(ContourSettings.EXTRACTION_FIELDS)),
         },
         sort_keys=True,
     )
     return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def default_image_bounds(asset: ImageAsset, resize: int) -> dict[str, float]:
+    """The data-space rectangle extraction lays an image into at ``resize``:
+    the longer side scaled to ``resize``, centred on the origin."""
+    opened = Image.open(io.BytesIO(image_bytes(asset)[0]))
+    img: Image.Image = ImageOps.exif_transpose(opened) or opened
+    orig_w, orig_h = img.size
+    img.close()
+    ratio = resize / max(orig_w, orig_h)
+    rw, rh = int(orig_w * ratio), int(orig_h * ratio)
+    return {"minX": -rw / 2, "maxX": rw / 2, "minY": -rh / 2, "maxY": rh / 2}
 
 
 def compute_contour_hash(xs: list[float], ys: list[float]) -> str:
@@ -350,13 +360,19 @@ async def store_contour_asset(
 ) -> dict[str, Any]:
     """Store contour points in MongoDB, deduplicating by contour_hash.
 
-    Returns the full document.
+    Returns the full document. X·F F-D7 (FW6-G14): an editor contour is
+    authoritative — an extraction whose points land on its hash returns it
+    untouched (no recency write, no bounds or cache key grafted onto it).
     """
     db = get_db()
 
     # Hash on the ordered coordinate pairs — independently sorting xs and ys
     # collapses distinct curves with identical multisets onto the same key.
     contour_hash = compute_contour_hash(xs, ys)
+    if source != "editor":
+        held = await db.contours.find_one({"contour_hash": contour_hash, "source": "editor"})
+        if held is not None:
+            return cast("dict[str, Any]", held)
 
     bbox = {
         "minX": min(xs) if xs else 0.0,

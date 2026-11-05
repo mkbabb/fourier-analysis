@@ -416,13 +416,19 @@ export async function extractContour(
 
 // ── Contours ──
 
+/**
+ * POST /api/contours — save an edited contour. `fromContour` is the contour
+ * the edit was made on (X·F F-D7): the server stores its `image_bounds` with
+ * the edit, so the overlay keeps its alignment without a read-time backfill.
+ */
 export async function saveContour(
     imageSlug: string,
     points: { x: number[]; y: number[] },
+    fromContour: string | null,
 ): Promise<ContourAsset> {
     return apiFetch<ContourAsset>("/api/contours", "saveContour", {
         method: "POST",
-        body: { image_slug: imageSlug, points },
+        body: { image_slug: imageSlug, points, from_contour: fromContour },
     });
 }
 
