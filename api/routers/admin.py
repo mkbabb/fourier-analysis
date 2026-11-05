@@ -26,13 +26,13 @@ inversion — the Wχ.P1 framework-in-disguise certification):
 
 from __future__ import annotations
 
-import json
+
 import logging
 import math
 import re
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 
 from api.dependencies import (
     admin_required,
@@ -40,6 +40,7 @@ from api.dependencies import (
     hash_ip,
     invalidate_suspension_cache,
     mark_suspended_in_cache,
+    resolve_session,
 )
 # Explicit per-module imports of the W3-landed CRUD utility helpers (the gate-9
 # adoption surface; each module is composed by name, not lifecycle-inverted).
@@ -48,11 +49,21 @@ from api.lib.crud.etag import compute_etag, require_if_match, set_etag_header
 from api.lib.crud.softdelete import not_deleted_filter, soft_delete
 from api.lib.crud import errors
 from api.models.admin import (
+    AdminDeleteResponse,
     AdminUserListResponse,
+    AdminVerifyResponse,
     AuditListResponse,
     BatchGalleryRequest,
+    BatchResponse,
     BatchUsersRequest,
+    DeleteUserResponse,
+    DismissFlagsResponse,
+    FlaggedEntryInfo,
+    FlaggedPageResponse,
+    PruneUsersResponse,
     SetUserStatusRequest,
+    TieredVisualization,
+    UserStatusResponse,
 )
 from api.models.gallery import AdminStatsResponse, SetTierRequest
 from api.services.database import get_db
@@ -70,16 +81,36 @@ admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
 # ---------------------------------------------------------------------------
 
 
-async def log_audit(ip_hash: str, action: str, target: str) -> None:
+async def log_audit(request: Request, action: str, target: str) -> None:
+    """One ``admin_audit`` row for an admin write (X·F F-D6 · FW6-G9).
+
+    The actor is a ``user``: the admin session's user slug when the request
+    carries one, else ``admin`` (the bearer token alone). ``ip_hash`` is the
+    request's hashed IP — never an actor sentinel."""
+    try:
+        viewer = await resolve_session(request)
+    except HTTPException:
+        viewer = None
     db = get_db()
     await db.admin_audit.insert_one(
         {
             "timestamp": datetime.now(UTC),
-            "ip_hash": ip_hash,
+            "actor": {"kind": "user", "id": viewer or "admin"},
+            "ip_hash": hash_ip(get_client_ip(request)),
             "action": action,
             "target": target,
         }
     )
+
+
+# X·F F-D6 (FW6-G10): the batch tier verbs are stated transitions. Each moves a
+# row only out of its ``from`` states; any other row is skipped and reported,
+# never overwritten (``saved`` is the reviewer's keep and no batch verb leaves
+# it). The single ``PUT …/tier`` is the admin's explicit choice of target.
+BATCH_TIER_TRANSITIONS: dict[str, tuple[tuple[str | None, ...], str]] = {
+    "feature": (("normal", None), "featured"),
+    "unfeature": (("featured",), "normal"),
+}
 
 
 def _public_doc(doc: dict) -> dict:
@@ -87,23 +118,15 @@ def _public_doc(doc: dict) -> dict:
     return {k: v for k, v in doc.items() if k not in ("_id", "liked_ips")}
 
 
-def _json(body: dict | list, status: int = 200) -> Response:
-    return Response(
-        content=json.dumps(body, default=str),
-        status_code=status,
-        media_type="application/json",
-    )
-
-
 # ---------------------------------------------------------------------------
 # Admin endpoints
 # ---------------------------------------------------------------------------
 
 
-@admin_router.get("/verify", dependencies=[Depends(admin_required)])
-async def admin_verify():
+@admin_router.get("/verify", response_model=AdminVerifyResponse, dependencies=[Depends(admin_required)])
+async def admin_verify() -> AdminVerifyResponse:
     """Verify admin token is valid."""
-    return {"ok": True}
+    return AdminVerifyResponse(ok=True)
 
 
 @admin_router.get(
@@ -159,17 +182,18 @@ async def admin_stats():
 
 @admin_router.put(
     "/visualizations/{slug}/tier",
+    response_model=TieredVisualization,
     dependencies=[Depends(admin_required)],
 )
-async def set_tier(slug: str, body: SetTierRequest, request: Request) -> Response:
+async def set_tier(
+    slug: str, body: SetTierRequest, request: Request, response: Response
+) -> TieredVisualization | Response:
     """Set the admin-curation tier for a visualization (CRUD-CONTRACT §7 ``feature``).
 
     Guarded by an ``If-Match`` ETag (§0 SOTA-2): a stale precondition is a 412
     ``urn:contract:etag-mismatch``. Idempotent — re-setting the same tier is a 200.
     """
     # Rate limiting (admin budget) is enforced once, in RateLimitHeaderMiddleware.
-    client_ip = get_client_ip(request)
-    ip_hashed = hash_ip(client_ip)
 
     db = get_db()
     doc = await db.visualizations.find_one({"slug": slug})
@@ -182,20 +206,21 @@ async def set_tier(slug: str, body: SetTierRequest, request: Request) -> Respons
         {"slug": slug},
         {"$set": {"tier": body.tier, "updated_at": datetime.now(UTC)}},
     )
-    await log_audit(ip_hashed, f"set_tier:{body.tier}", slug)
+    await log_audit(request, f"set_tier:{body.tier}", slug)
 
     updated = await db.visualizations.find_one({"slug": slug})
-    out = _json(_public_doc(updated))
-    set_etag_header(out, updated)
-    return out
+    set_etag_header(response, updated)
+    return TieredVisualization.model_validate(_public_doc(updated))
 
 
-@admin_router.delete("/visualizations/{slug}", dependencies=[Depends(admin_required)])
+@admin_router.delete(
+    "/visualizations/{slug}", response_model=AdminDeleteResponse, dependencies=[Depends(admin_required)]
+)
 async def delete_visualization(
     slug: str,
     request: Request,
     hard: bool = Query(default=False),
-) -> Response:
+) -> AdminDeleteResponse | Response:
     """Moderate-delete a visualization (CRUD-CONTRACT §5 / §7).
 
     Default is a soft-delete (``deleted_at`` write, restorable within grace).
@@ -203,8 +228,6 @@ async def delete_visualization(
     hard-delete in one operation. Both write an ``admin_audit`` row.
     """
     # Rate limiting (admin budget) is enforced once, in RateLimitHeaderMiddleware.
-    client_ip = get_client_ip(request)
-    ip_hashed = hash_ip(client_ip)
 
     db = get_db()
     doc = await db.visualizations.find_one({"slug": slug}, {"deleted_at": 1})
@@ -218,17 +241,17 @@ async def delete_visualization(
         if content_hash:
             await db.flags.delete_many({"content_hash": content_hash})
         await db.visualizations.delete_one({"slug": slug})
-        await log_audit(ip_hashed, "delete:hard", slug)
-        return _json({"ok": True, "hard": True})
+        await log_audit(request, "delete:hard", slug)
+        return AdminDeleteResponse(hard=True)
 
     deleted = await soft_delete(db.visualizations, slug)
     if not deleted:
         # Already soft-deleted (idempotent no-op post-state) or no live row.
-        await log_audit(ip_hashed, "delete:noop", slug)
-        return _json({"ok": True, "hard": False, "noop": True})
+        await log_audit(request, "delete:noop", slug)
+        return AdminDeleteResponse(hard=False, noop=True)
 
-    await log_audit(ip_hashed, "delete", slug)
-    return _json({"ok": True, "hard": False})
+    await log_audit(request, "delete", slug)
+    return AdminDeleteResponse(hard=False)
 
 
 # ---------------------------------------------------------------------------
@@ -236,7 +259,7 @@ async def delete_visualization(
 # ---------------------------------------------------------------------------
 
 
-@admin_router.get("/users", dependencies=[Depends(admin_required)])
+@admin_router.get("/users", response_model=AdminUserListResponse, dependencies=[Depends(admin_required)])
 async def list_users(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -307,14 +330,13 @@ async def list_users(
     return AdminUserListResponse(items=items, total=total, page=page, pages=pages)
 
 
-@admin_router.post("/users/{slug}/status", dependencies=[Depends(admin_required)])
+@admin_router.post(
+    "/users/{slug}/status", response_model=UserStatusResponse, dependencies=[Depends(admin_required)]
+)
 async def set_user_status(
     slug: str, body: SetUserStatusRequest, request: Request
-) -> Response:
+) -> UserStatusResponse | Response:
     """Set user status to active or suspended (CRUD-CONTRACT §7 suspend/unsuspend)."""
-    client_ip = get_client_ip(request)
-    ip_hashed = hash_ip(client_ip)
-
     db = get_db()
     result = await db.users.update_one(
         {"_id": slug},
@@ -329,16 +351,13 @@ async def set_user_status(
     else:
         invalidate_suspension_cache(slug)
 
-    await log_audit(ip_hashed, f"set_user_status:{body.status}", slug)
-    return _json({"ok": True, "status": body.status})
+    await log_audit(request, f"set_user_status:{body.status}", slug)
+    return UserStatusResponse(status=body.status)
 
 
-@admin_router.delete("/users/{slug}", dependencies=[Depends(admin_required)])
-async def delete_user(slug: str, request: Request) -> Response:
+@admin_router.delete("/users/{slug}", response_model=DeleteUserResponse, dependencies=[Depends(admin_required)])
+async def delete_user(slug: str, request: Request) -> DeleteUserResponse | Response:
     """Cascade-delete a user and all their data (CRUD-CONTRACT §7 ``delete_user``)."""
-    client_ip = get_client_ip(request)
-    ip_hashed = hash_ip(client_ip)
-
     db = get_db()
 
     user = await db.users.find_one({"_id": slug})
@@ -362,20 +381,17 @@ async def delete_user(slug: str, request: Request) -> Response:
     invalidate_suspension_cache(slug)
 
     await log_audit(
-        ip_hashed,
+        request,
         "delete_user",
         f"{slug} (entries={viz_result.deleted_count})",
     )
 
-    return _json({"ok": True, "deleted_entries": viz_result.deleted_count})
+    return DeleteUserResponse(deleted_entries=viz_result.deleted_count)
 
 
-@admin_router.post("/users/prune-empty", dependencies=[Depends(admin_required)])
-async def prune_empty_users(request: Request) -> Response:
+@admin_router.post("/users/prune-empty", response_model=PruneUsersResponse, dependencies=[Depends(admin_required)])
+async def prune_empty_users(request: Request) -> PruneUsersResponse:
     """Delete users that own zero visualizations."""
-    client_ip = get_client_ip(request)
-    ip_hashed = hash_ip(client_ip)
-
     db = get_db()
 
     pipeline = [
@@ -399,8 +415,8 @@ async def prune_empty_users(request: Request) -> Response:
         for slug in empty_slugs:
             invalidate_suspension_cache(slug)
 
-    await log_audit(ip_hashed, "prune_empty_users", f"count={len(empty_slugs)}")
-    return _json({"ok": True, "pruned": len(empty_slugs)})
+    await log_audit(request, "prune_empty_users", f"count={len(empty_slugs)}")
+    return PruneUsersResponse(pruned=len(empty_slugs))
 
 
 # ---------------------------------------------------------------------------
@@ -408,52 +424,46 @@ async def prune_empty_users(request: Request) -> Response:
 # ---------------------------------------------------------------------------
 
 
-@admin_router.post("/visualizations/batch", dependencies=[Depends(admin_required)])
-async def batch_visualizations(body: BatchGalleryRequest, request: Request) -> Response:
+@admin_router.post("/visualizations/batch", response_model=BatchResponse, dependencies=[Depends(admin_required)])
+async def batch_visualizations(body: BatchGalleryRequest, request: Request) -> BatchResponse:
     """Batch delete/feature/unfeature visualizations by slug (CRUD-CONTRACT §7 ``batch_*``).
 
     The request shape's ``hashes`` field carries visualization **slugs** under
     the converged identity. ``delete`` is a soft-delete (§5).
     """
-    client_ip = get_client_ip(request)
-    ip_hashed = hash_ip(client_ip)
-
     db = get_db()
     slugs = body.hashes
     affected = 0
+    skipped: list[str] = []
 
     if body.action == "delete":
         for slug in slugs:
             if await soft_delete(db.visualizations, slug):
                 affected += 1
-    elif body.action == "feature":
+            else:
+                skipped.append(slug)
+    else:
+        sources, target = BATCH_TIER_TRANSITIONS[body.action]
+        movable = {"slug": {"$in": slugs}, "tier": {"$in": list(sources)}, "deleted_at": None}
+        moving = set(await db.visualizations.distinct("slug", movable))
         result = await db.visualizations.update_many(
-            {"slug": {"$in": slugs}, "deleted_at": None},
-            {"$set": {"tier": "featured", "updated_at": datetime.now(UTC)}},
+            movable, {"$set": {"tier": target, "updated_at": datetime.now(UTC)}}
         )
         affected = result.modified_count
-    elif body.action == "unfeature":
-        result = await db.visualizations.update_many(
-            {"slug": {"$in": slugs}, "deleted_at": None},
-            {"$set": {"tier": "normal", "updated_at": datetime.now(UTC)}},
-        )
-        affected = result.modified_count
+        skipped = [s for s in slugs if s not in moving]
 
     await log_audit(
-        ip_hashed,
+        request,
         f"batch_visualizations:{body.action}",
-        f"slugs={len(slugs)}, affected={affected}",
+        f"slugs={len(slugs)}, affected={affected}, skipped={len(skipped)}",
     )
 
-    return _json({"ok": True, "affected": affected})
+    return BatchResponse(affected=affected, skipped=skipped)
 
 
-@admin_router.post("/users/batch", dependencies=[Depends(admin_required)])
-async def batch_users(body: BatchUsersRequest, request: Request) -> Response:
+@admin_router.post("/users/batch", response_model=BatchResponse, dependencies=[Depends(admin_required)])
+async def batch_users(body: BatchUsersRequest, request: Request) -> BatchResponse:
     """Batch delete/suspend/unsuspend users (CRUD-CONTRACT §7 ``batch_*``)."""
-    client_ip = get_client_ip(request)
-    ip_hashed = hash_ip(client_ip)
-
     db = get_db()
     affected = 0
 
@@ -493,12 +503,12 @@ async def batch_users(body: BatchUsersRequest, request: Request) -> Response:
             invalidate_suspension_cache(slug)
 
     await log_audit(
-        ip_hashed,
+        request,
         f"batch_users:{body.action}",
         f"slugs={len(body.slugs)}, affected={affected}",
     )
 
-    return _json({"ok": True, "affected": affected})
+    return BatchResponse(affected=affected)
 
 
 # ---------------------------------------------------------------------------
@@ -506,11 +516,11 @@ async def batch_users(body: BatchUsersRequest, request: Request) -> Response:
 # ---------------------------------------------------------------------------
 
 
-@admin_router.get("/flagged", dependencies=[Depends(admin_required)])
+@admin_router.get("/flagged", response_model=FlaggedPageResponse, dependencies=[Depends(admin_required)])
 async def list_flagged(
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str = Query(default=""),
-) -> Response:
+) -> FlaggedPageResponse:
     """List flagged visualizations, cursor-paginated over the converged entity.
 
     The flag stream (``flags``, keyed by ``content_hash``) is grouped per entity
@@ -548,7 +558,7 @@ async def list_flagged(
         flagged[row["_id"]] = row
 
     if not flagged:
-        return _json({"items": [], "next_cursor": None, "has_more": False})
+        return FlaggedPageResponse(items=[], next_cursor=None, has_more=False)
 
     query = {**base_query, "content_hash": {"$in": list(flagged.keys())}}
     docs = (
@@ -572,7 +582,7 @@ async def list_flagged(
     for doc in docs:
         agg = flagged.get(doc["content_hash"], {})
         items.append(
-            {
+            FlaggedEntryInfo.model_validate({
                 "slug": doc["slug"],
                 "content_hash": doc["content_hash"],
                 "image_slug": doc.get("image_slug"),
@@ -581,14 +591,16 @@ async def list_flagged(
                 "created_at": doc.get("created_at"),
                 "flag_count": agg.get("flag_count", 0),
                 "flags": agg.get("flags", []),
-            }
+            })
         )
 
-    return _json({"items": items, "next_cursor": next_cursor, "has_more": has_more})
+    return FlaggedPageResponse(items=items, next_cursor=next_cursor, has_more=has_more)
 
 
-@admin_router.delete("/visualizations/{slug}/flags", dependencies=[Depends(admin_required)])
-async def dismiss_flags(slug: str, request: Request) -> Response:
+@admin_router.delete(
+    "/visualizations/{slug}/flags", response_model=DismissFlagsResponse, dependencies=[Depends(admin_required)]
+)
+async def dismiss_flags(slug: str, request: Request) -> DismissFlagsResponse | Response:
     """Dismiss all flags for a visualization (CRUD-CONTRACT §7 ``dismiss_flags``).
 
     Resolves the entity by slug, then clears the flag stream keyed by its
@@ -596,18 +608,15 @@ async def dismiss_flags(slug: str, request: Request) -> Response:
     content hash). Idempotent — dismissing already-clear flags is a 200 with
     ``dismissed: 0``.
     """
-    client_ip = get_client_ip(request)
-    ip_hashed = hash_ip(client_ip)
-
     db = get_db()
     doc = await db.visualizations.find_one({"slug": slug}, {"content_hash": 1})
     if doc is None:
         return errors.not_found(detail=f"no visualization {slug!r}")
 
     result = await db.flags.delete_many({"content_hash": doc["content_hash"]})
-    await log_audit(ip_hashed, "dismiss_flags", slug)
+    await log_audit(request, "dismiss_flags", slug)
 
-    return _json({"dismissed": result.deleted_count})
+    return DismissFlagsResponse(dismissed=result.deleted_count)
 
 
 # ---------------------------------------------------------------------------
@@ -615,7 +624,7 @@ async def dismiss_flags(slug: str, request: Request) -> Response:
 # ---------------------------------------------------------------------------
 
 
-@admin_router.get("/audit", dependencies=[Depends(admin_required)])
+@admin_router.get("/audit", response_model=AuditListResponse, dependencies=[Depends(admin_required)])
 async def list_audit(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),

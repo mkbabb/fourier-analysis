@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from api.models.gallery import GalleryTier
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +49,61 @@ class BatchUsersRequest(BaseModel):
     slugs: list[str] = Field(min_length=1, max_length=50)
 
 
+class BatchResponse(BaseModel):
+    """The CRUD-CONTRACT batch return. X·F F-D6 (FW6-G10): ``skipped`` names
+    each slug the stated transition did not apply to (it was not in the
+    action's ``from`` state), instead of an overwrite."""
+
+    ok: bool = True
+    affected: int
+    skipped: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Plain admin responses (X·F F-D6 · FW6-G12: every admin route has one model)
+# ---------------------------------------------------------------------------
+
+
+class AdminVerifyResponse(BaseModel):
+    ok: bool
+
+
+class AdminDeleteResponse(BaseModel):
+    ok: bool = True
+    hard: bool
+    noop: bool = False
+
+
+class UserStatusResponse(BaseModel):
+    ok: bool = True
+    status: Literal["active", "suspended"]
+
+
+class DeleteUserResponse(BaseModel):
+    ok: bool = True
+    deleted_entries: int
+
+
+class PruneUsersResponse(BaseModel):
+    ok: bool = True
+    pruned: int
+
+
+class DismissFlagsResponse(BaseModel):
+    dismissed: int
+
+
+class TieredVisualization(BaseModel):
+    """``PUT …/tier`` answers the re-read row (with its fresh ETag). The fields
+    the moderation surface reads are checked; the rest of the public row rides
+    along as it is stored."""
+
+    slug: str
+    tier: GalleryTier
+
+    model_config = ConfigDict(extra="allow")
+
+
 # ---------------------------------------------------------------------------
 # Content flagging
 # ---------------------------------------------------------------------------
@@ -67,23 +124,25 @@ class FlagInfo(BaseModel):
 
 
 class FlaggedEntryInfo(BaseModel):
+    """One flagged visualization on ``GET /admin/flagged`` (the flag stream,
+    grouped by the ``content_hash`` FK, joined to its live row)."""
+
+    slug: str
     # The visualization's content_hash — the ``flags`` collection's FK key
     # (the renamed identity slot, fourier-D.W3 γ).
     content_hash: str
+    image_slug: str | None = None
+    owner_slug: str | None = None
+    tier: GalleryTier | None = None
+    created_at: datetime | None = None
     flag_count: int
     flags: list[FlagInfo]
-    # Palette metadata (joined)
-    image_slug: str | None = None
-    user_slug: str | None = None
-    tier: str | None = None
-    created_at: datetime | None = None
 
 
-class FlaggedListResponse(BaseModel):
+class FlaggedPageResponse(BaseModel):
     items: list[FlaggedEntryInfo]
-    total: int
-    page: int
-    pages: int
+    next_cursor: str | None = None
+    has_more: bool
 
 
 # ---------------------------------------------------------------------------
@@ -91,11 +150,22 @@ class FlaggedListResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class AuditActor(BaseModel):
+    """Who wrote an audit row (X·F F-D6 · FW6-G9). An admin request is a
+    ``user`` (its session's user slug, else ``admin``); the janitor is a
+    ``system`` actor. The actor never rides ``ip_hash``."""
+
+    kind: Literal["user", "system"]
+    id: str
+
+
 class AuditEntry(BaseModel):
     timestamp: datetime
     action: str
     target: str
-    ip_hash: str
+    actor: AuditActor
+    # The request's hashed IP; ``None`` for a system actor (no request).
+    ip_hash: str | None
 
 
 class AuditListResponse(BaseModel):

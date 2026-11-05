@@ -43,6 +43,8 @@ _JANITOR_SRC = Path(__file__).resolve().parents[1] / "services" / "janitor.py"
 # to ``_log_janitor_audit`` — the source-grep arm fails loudly otherwise.
 _EXPECTED_ACTIONS = [
     "janitor:hard_delete_visualizations",
+    # X·F F-D6 (FW6-G8): the hard-deleted rows' flags, by content_hash.
+    "janitor:cascade_flags_by_content_hash",
     # X·F F-D5 (FW6-G11): the uploader-deleted images, at the same grace.
     "janitor:hard_delete_images",
     "janitor:prune_contours",
@@ -65,13 +67,13 @@ def test_single_helper_wired_to_every_destructive_sweep():
     """One ``_log_janitor_audit`` helper, ten call-sites (§A.2 post-D.W3 γ, plus
     X·F F-D5's image hard-delete)."""
     src = _JANITOR_SRC.read_text()
-    # One definition + ten invocations == eleven mentions of the token.
-    assert src.count("_log_janitor_audit") >= 11, (
-        "expected one _log_janitor_audit definition plus ten call-sites"
+    # One definition + eleven invocations == twelve mentions of the token.
+    assert src.count("_log_janitor_audit") >= 12, (
+        "expected one _log_janitor_audit definition plus eleven call-sites"
     )
     # Count the invocations specifically (the ``await _log_janitor_audit(`` form).
     invocations = len(re.findall(r"await\s+_log_janitor_audit\(", src))
-    assert invocations == 10, f"expected 10 audit emissions, found {invocations}"
+    assert invocations == 11, f"expected 11 audit emissions, found {invocations}"
 
 
 def test_every_expected_action_string_is_emitted():
@@ -82,17 +84,19 @@ def test_every_expected_action_string_is_emitted():
 
 
 def test_helper_carries_sentinel_and_gate():
-    """The helper bakes in the ``"system:janitor"`` sentinel and the ``count >= 1`` gate."""
+    """The helper names the system actor (X·F F-D6: no ``ip_hash`` sentinel) and keeps the ``count >= 1`` gate."""
     src = _JANITOR_SRC.read_text()
-    assert '"system:janitor"' in src, "the janitor actor sentinel is missing"
+    assert '{"kind": "system", "id": "janitor"}' in src, "the janitor system actor is missing"
+    assert '"system:janitor"' not in src, "the ip_hash sentinel is back"
     assert "count < 1" in src, "the count >= 1 emission gate is missing"
 
 
 def test_audit_entry_model_not_loosened():
-    """``AuditEntry`` still requires all four fields (no ``str | None`` widening)."""
+    """``AuditEntry`` requires its five fields. X·F F-D6 (FW6-G9): the actor is its
+    own field; ``ip_hash`` is required but nullable (null for a system actor)."""
     fields = AuditEntry.model_fields
-    assert set(fields) == {"timestamp", "action", "target", "ip_hash"}
-    for name in ("timestamp", "action", "target", "ip_hash"):
+    assert set(fields) == {"timestamp", "action", "target", "actor", "ip_hash"}
+    for name in ("timestamp", "action", "target", "actor", "ip_hash"):
         assert fields[name].is_required(), f"{name} must stay required for homogeneity"
 
 
@@ -124,7 +128,7 @@ async def _janitor_rows(db) -> list[dict]:
 
 
 async def _seed_full_deletable_set(db, now: datetime) -> None:
-    """Seed one deletable document per sweep so a single cycle exercises all ten rows.
+    """Seed one deletable document per sweep so a single cycle exercises all eleven rows.
 
     Caveat (§A.4 Test 1): the pin recompute runs first and re-pins any contour /
     image referenced by a LIVE visualization. The seeded contour / image are NOT
@@ -141,8 +145,12 @@ async def _seed_full_deletable_set(db, now: datetime) -> None:
 
     # Row 1: a soft-deleted visualization past the grace window.
     await db.visualizations.insert_one(
-        {"slug": "graced-viz-aa-bb", "owner_slug": "fresh-owner", "deleted_at": grace_old}
+        {"slug": "graced-viz-aa-bb", "owner_slug": "fresh-owner", "content_hash": "graced-hash",
+         "deleted_at": grace_old}
     )
+    # Row 1a (X·F F-D6): a flag on that row, by a live reporter — it leaves with
+    # the row by content_hash.
+    await db.flags.insert_one({"content_hash": "graced-hash", "reporter_slug": "fresh-owner"})
 
     # Row 1b (X·F F-D5): an image its uploader deleted, past the grace window
     # (recently used, so only the grace hard-delete reaps it, not the recency prune).
@@ -220,7 +228,8 @@ def test_each_sweep_writes_its_audit_row():
         assert re.search(r"count=1\b", row["target"]), (
             f"{action}: expected count=1 in {row['target']!r}"
         )
-        assert row["ip_hash"] == "system:janitor", f"{action}: wrong actor sentinel"
+        assert row["actor"] == {"kind": "system", "id": "janitor"}, f"{action}: wrong actor"
+        assert row["ip_hash"] is None, f"{action}: a system row carries no IP hash"
         assert row["timestamp"].tzinfo is not None, f"{action}: timestamp not tz-aware"
 
     # The sweeps the table marks with a cutoff carry the ``cutoff=`` clause.
@@ -357,4 +366,4 @@ def test_audit_rows_satisfy_AuditEntry():
         # mixed admin+janitor collection without error.
         entry = AuditEntry(**without_id)
         assert entry.action.startswith("janitor:")
-        assert entry.ip_hash == "system:janitor"
+        assert entry.actor.kind == "system" and entry.ip_hash is None

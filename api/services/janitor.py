@@ -47,13 +47,11 @@ from api.services.database import get_db
 
 logger = logging.getLogger(__name__)
 
-# The janitor is an autonomous sweep, not an IP-bearing actor, yet
-# ``AuditEntry`` (``api/models/admin.py``) requires a string ``ip_hash``. A
-# sentinel constant keeps the ``admin_audit`` collection homogeneous (so the
-# ``/api/admin/audit`` viewer renders a mixed admin+janitor trail) without
-# loosening the admin-action contract to ``str | None``. It is self-documenting
-# in the viewer and trivially filterable.
-_JANITOR_ACTOR = "system:janitor"
+# The janitor is an autonomous sweep, not an IP-bearing actor. X·F F-D6
+# (FW6-G9): ``AuditEntry`` names every row's actor; the janitor is a ``system``
+# actor and its rows carry no IP hash (never a sentinel smuggled into
+# ``ip_hash``, which the prior shape did).
+_JANITOR_ACTOR = {"kind": "system", "id": "janitor"}
 
 
 async def _log_janitor_audit(
@@ -70,8 +68,8 @@ async def _log_janitor_audit(
     janitor mirrors the canonical four-field shape exactly (no new columns):
     the sweep identity is the ``janitor:<sweep>`` ``action`` namespace, the
     ``count``/``cutoff``/``extra`` payload is folded into the opaque ``target``
-    string (matching the admin convention), ``ip_hash`` is the sentinel actor,
-    and ``timestamp`` is tz-aware UTC.
+    string (matching the admin convention), ``actor`` is the system janitor
+    with ``ip_hash`` null, and ``timestamp`` is tz-aware UTC.
 
     Emission is gated on ``count >= 1`` — a zero-effect sweep writes no row
     (no audit noise; the gate makes re-run idempotence trivial: a re-run after
@@ -92,7 +90,8 @@ async def _log_janitor_audit(
     await db.admin_audit.insert_one(
         {
             "timestamp": datetime.now(UTC),
-            "ip_hash": _JANITOR_ACTOR,
+            "actor": _JANITOR_ACTOR,
+            "ip_hash": None,
             "action": action,
             "target": payload,
         }
@@ -122,7 +121,24 @@ async def _cleanup_cycle() -> None:
     # ------------------------------------------------------------------
 
     grace_cutoff = datetime.now(UTC) - timedelta(days=settings.soft_delete_grace_days)
-    hard_deleted = await db.visualizations.delete_many({"deleted_at": {"$lt": grace_cutoff}})
+    graced = {"deleted_at": {"$lt": grace_cutoff}}
+    # X·F F-D6 (FW6-G8): the flags keyed to these rows (by ``content_hash``,
+    # the entity key) leave with them, unless another row still holds the hash.
+    graced_hashes = set(await db.visualizations.distinct("content_hash", graced))
+    hard_deleted = await db.visualizations.delete_many(graced)
+    if graced_hashes:
+        held = set(
+            await db.visualizations.distinct("content_hash", {"content_hash": {"$in": list(graced_hashes)}})
+        )
+        orphaned = graced_hashes - held
+        if orphaned:
+            flags_gone = await db.flags.delete_many({"content_hash": {"$in": list(orphaned)}})
+            await _log_janitor_audit(
+                db,
+                "janitor:cascade_flags_by_content_hash",
+                count=flags_gone.deleted_count,
+                cutoff=grace_cutoff,
+            )
     if hard_deleted.deleted_count:
         logger.info(
             "Janitor hard-deleted %d visualizations past the soft-delete grace window",

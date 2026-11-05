@@ -205,11 +205,16 @@ export interface FlaggedCursorResponse {
 
 // ── Audit Log ──
 
+/**
+ * One `admin_audit` row (X·F F-D6 · FW6-G9): `actor` names who wrote it, and
+ * `ip_hash` is the request's hashed IP, null for a system actor (the janitor).
+ */
 export interface AuditEntry {
     timestamp: string;
     action: string;
     target: string;
-    ip_hash: string;
+    actor: { kind: "user" | "system"; id: string };
+    ip_hash: string | null;
 }
 
 export interface AuditListResponse {
@@ -226,7 +231,8 @@ export interface AuditListResponse {
 export interface BatchResponse {
     ok: boolean;
     affected: number;
-    errors?: string[];
+    /** X·F F-D6 (FW6-G10): slugs the stated tier transition did not apply to. */
+    skipped: string[];
 }
 
 // ── Converged `visualization` entity (CRUD-CONTRACT §1–§5; SCHEMA.md §3) ──

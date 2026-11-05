@@ -283,14 +283,18 @@ const TargetCell = defineComponent({
 
 // AA-15: `text-mono-micro` is the micro rung for the hash; AA-40: the sliced
 // hash is painted, the whole hash is read.
+// X·F F-D6 (FW6-G9): a system actor's row (the janitor) carries no IP hash;
+// the cell names the actor instead of painting an empty hash.
 const IpCell = defineComponent({
     name: "AuditIpCell",
     props: cellProps,
     setup: (props) => () =>
-        h("span", { class: "text-mono-micro whitespace-nowrap text-muted-foreground", title: props.value }, [
-            h("span", { "aria-hidden": "true" }, props.value.slice(0, 10)),
-            h("span", { class: "sr-only" }, `IP hash ${props.value}`),
-        ]),
+        props.row.ip_hash
+            ? h("span", { class: "text-mono-micro whitespace-nowrap text-muted-foreground", title: props.row.ip_hash }, [
+                  h("span", { "aria-hidden": "true" }, props.row.ip_hash.slice(0, 10)),
+                  h("span", { class: "sr-only" }, `IP hash ${props.row.ip_hash}`),
+              ])
+            : h("span", { class: "text-mono-micro whitespace-nowrap text-muted-foreground" }, props.row.actor.id),
 });
 
 const auditColumns: DataTableColumn<AuditRow>[] = [

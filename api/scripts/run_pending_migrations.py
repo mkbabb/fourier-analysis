@@ -65,6 +65,8 @@ MIGRATIONS: list[tuple[str, int]] = [
     ("api.scripts.migrate_animation_easing", 1),
     # J.W2 — additive set_hash + fork-fields + root-version backfill (F-16).
     ("api.scripts.migrate_visualization_forks", 1),
+    # X·F F-D6 (FW6-G9) — every admin_audit row names its actor.
+    ("api.scripts.migrate_audit_actor", 1),
 ]
 
 

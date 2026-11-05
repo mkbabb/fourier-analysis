@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 from pymongo.errors import DuplicateKeyError
 
 import api.routers.admin as admin
@@ -30,6 +30,16 @@ from conftest import requires_mongo, run_db
 from ._harness import bind, create_body, make_request, seed_fixtures
 import api.routers.visualizations as viz
 from api.models.visualization import VisualizationCreate
+
+
+def _status(resp) -> int:
+    """X·F F-D6 (FW6-G12): an admin route answers its response model on success
+    (FastAPI serialises it as a 200) and a problem ``Response`` otherwise."""
+    return resp.status_code if isinstance(resp, Response) else 200
+
+
+def _payload(resp) -> dict:
+    return json.loads(bytes(resp.body)) if isinstance(resp, Response) else resp.model_dump()
 
 
 async def _create_public(db) -> str:
@@ -81,11 +91,11 @@ def test_audit_row_per_action():
 
         req = make_request("PUT", path=f"/api/admin/visualizations/{slug}/tier",
                            headers={"If-Match": compute_etag(etag)})
-        resp = await admin.set_tier(slug, SetTierRequest(tier="featured"), req)
+        resp = await admin.set_tier(slug, SetTierRequest(tier="featured"), req, Response())
         rows = await db.admin_audit.count_documents(
             {"action": "set_tier:featured", "target": slug}
         )
-        return resp.status_code, rows
+        return _status(resp), rows
 
     status, rows = run_db(body)
     assert status == 200
@@ -107,7 +117,7 @@ def test_idempotent_suspend():
         audited = await db.admin_audit.count_documents(
             {"action": "set_user_status:suspended", "target": "zeta-eta-theta-iota"}
         )
-        return r1.status_code, r2.status_code, audited
+        return _status(r1), _status(r2), audited
 
     s1, s2, audited = run_db(body)
     assert s1 == 200 and s2 == 200
@@ -142,7 +152,7 @@ def test_hard_delete_bypasses_grace():
         resp = await admin.delete_visualization(slug, req, hard=True)
         remaining = await db.visualizations.count_documents({"slug": slug})
         audited = await db.admin_audit.count_documents({"action": "delete:hard", "target": slug})
-        return resp.status_code, remaining, audited
+        return _status(resp), remaining, audited
 
     status, remaining, audited = run_db(body)
     assert status == 200
@@ -161,7 +171,7 @@ def test_batch_return_shape():
         resp = await admin.batch_visualizations(
             BatchGalleryRequest(action="delete", hashes=[slug, "absent-slug-not-here"]), req
         )
-        return resp.status_code, json.loads(bytes(resp.body))
+        return _status(resp), _payload(resp)
 
     status, payload = run_db(body)
     assert status == 200

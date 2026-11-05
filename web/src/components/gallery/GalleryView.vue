@@ -277,8 +277,12 @@ async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch
               : "Unfeatured";
     const n = result.affected;
     toast({ title: `${verb} ${n} ${n === 1 ? "entry" : "entries"}`, tone: "success" });
-    if (result.errors?.length) {
-        for (const err of result.errors) errorToast({ title: err });
+    // X·F F-D6 (FW6-G10): a tier verb moves a row only out of its stated
+    // states (feature: from normal; unfeature: from featured), so a kept
+    // (saved) row is skipped, never overwritten — and the toast says so.
+    const skipped = result.skipped.length;
+    if (skipped) {
+        toast({ title: `${skipped} ${skipped === 1 ? "entry" : "entries"} left as ${skipped === 1 ? "it was" : "they were"}`, description: "Already in another tier." });
     }
     clearGallerySelection();
     await gallery.resetAndFetch();

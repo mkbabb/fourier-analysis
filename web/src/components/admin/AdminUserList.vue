@@ -266,9 +266,6 @@ async function performBatch(action: BatchKind, slugs: string[]) {
                   : "Deleted";
         const n = result.affected;
         toast({ title: `${verb} ${n} ${n === 1 ? "user" : "users"}`, tone: "success" });
-        if (result.errors?.length) {
-            for (const err of result.errors) errorToast({ title: err });
-        }
         clearSelection();
         await loadPage();
     } catch (e: unknown) {
