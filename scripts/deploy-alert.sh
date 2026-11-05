@@ -15,6 +15,9 @@
 #   SUPERSEDED record.deployed_sha CONTAINS SHA (GitHub compare SHA...at is
 #             `ahead`), outcome OK, /api/health live                   → exit 0
 #   FAILED    record.deployed_sha == SHA, outcome ROLLED_BACK or ALERT  → alert, exit 1
+#             (X·F F-D1) outcome ABORTED or TIMEOUT recorded since this
+#             watch began, at SHA or at a SHA the hook could not resolve:
+#             the hook exited without a deploy                         → alert, exit 1
 #   TIMEOUT   no OK at SHA within --timeout (a REFUSED record, a record at an
 #             older SHA, a record the edge does not serve — e.g. a host whose
 #             hook predates .h1 and refused before it fetched — or a dead API)
@@ -149,6 +152,9 @@ health_live() {
     [[ "${body}" == *'"status"'*'"ok"'* ]]
 }
 
+# F-D1: a hook that exited before resolving the SHA records "unknown"; a fresh
+# ABORTED or TIMEOUT record (recorded since this watch began) is this deploy's.
+STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 say "watching the API deploy of ${SHA} (record ${RECORD_URL}; bound ${TIMEOUT}s, every ${INTERVAL}s)"
 deadline=$((SECONDS + TIMEOUT))
 last="no deploy-of-record served"
@@ -161,6 +167,12 @@ while :; do
         at="$(printf '%s' "${record}" | jq -r '.deployed_sha')"
         outcome="$(printf '%s' "${record}" | jq -r '.outcome')"
         last="outcome ${outcome} at ${at} ($(printf '%s' "${record}" | jq -r '.detail // ""'))"
+        recorded="$(printf '%s' "${record}" | jq -r '.recorded_at // ""')"
+        if [[ "${outcome}" == "ABORTED" || "${outcome}" == "TIMEOUT" ]] \
+                && [[ "${at}" == "${SHA}" || ( "${at}" == "unknown" && ! "${recorded}" < "${STARTED}" ) ]]; then
+            alert "FAILED (${outcome})" "The host recorded ${last}."
+            exit 1
+        fi
         if [[ "${at}" == "${SHA}" ]]; then
             case "${outcome}" in
                 OK)

@@ -478,6 +478,13 @@ jobs:
       ADMIN_TOKEN: prod-compose-ci-fixture-token
     steps:
       - uses: actions/checkout@v4
+      # X·F F-D1 (issue #3): the deploy-of-record is total. The hook's real
+      # main() against a scratch host — a dirty tree, a failed fetch, a lock
+      # held past LOCK_WAIT, a SIGTERM mid-build — writes REFUSED, ABORTED or
+      # TIMEOUT, and the watcher reads a fresh ABORTED/TIMEOUT as terminal.
+      # Offline: gh is a tripwire, nothing posts.
+      - name: Deploy-of-record totality (deploy-alert-fixture.sh)
+        run: bash scripts/deploy-alert-fixture.sh
       # The host's TLS layout (measured on the host 2026-10-09: ssl/mongo.pem
       # owned by 999:999, mode 0400 — mongod's uid in mongo:8.0). The script
       # writes the server PEM 0600 as the runner user, which mongod in the

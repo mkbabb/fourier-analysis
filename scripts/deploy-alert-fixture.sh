@@ -24,6 +24,17 @@
 #      API live                           → SUPERSEDED, exit 0, only the compare read
 #   I  OK at a SHA that does not contain SHA (diverged) → TIMEOUT alert, exit 1
 #   J  OK at a containing tip, API dead   → TIMEOUT alert, exit 1
+#
+# X·F F-D1 (DEPLOY-ALERT-5001d2f, issue #3) — every exit of the hook writes the
+# record. The REAL main() runs against a scratch host (a bare origin and a clone
+# under ${WORK}); only the build/switch, the CI query and the edge reload are
+# stubbed. Each case asserts a record exists, its outcome, and that it was
+# recorded after the case started:
+#   K  dirty host tree                   → REFUSED naming the dirty path
+#   L  `git fetch origin` fails          → ABORTED naming the failing command
+#   M  the lock is held past LOCK_WAIT   → TIMEOUT naming the wait
+#   N  SIGTERM mid-build                 → ABORTED (exit status 143)
+#   O  the watcher reads a fresh ABORTED or TIMEOUT record as terminal (FAILED)
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -180,6 +191,92 @@ if [[ ${rc} -eq 1 ]] && grep -q 'TIMEOUT' "${WORK}/out" && grep -q 'api/health i
 else
     fail "J containing OK, API dead: no TIMEOUT alert (rc ${rc})"; sed 's/^/    /' "${WORK}/out"
 fi
+
+# ── F-D1: the hook's exits ───────────────────────────────────────────────────
+# scratch_host NAME — a bare origin with one commit, cloned as the host checkout.
+scratch_host() {
+    local h="${WORK}/host-exit-$1"
+    mkdir -p "${h}"
+    git init -q --bare "${h}/origin.git"
+    git init -q -b master "${h}/seed"
+    printf 'seed\n' >"${h}/seed/tracked.txt"
+    git -C "${h}/seed" add tracked.txt
+    git -C "${h}/seed" -c user.name=fixture -c user.email=fixture@invalid commit -qm seed
+    git -C "${h}/seed" push -q "${h}/origin.git" master
+    git clone -q "${h}/origin.git" "${h}/repo"
+    printf '%s' "${h}"
+}
+
+# hook_main HOST [ENV…] — the hook's own main(), its outward edges stubbed. Runs
+# in the foreground unless HOOK_BG=1 (then prints nothing and leaves $! set).
+hook_env() {
+    local h="$1"
+    printf '%s\n' "FOURIER_REPO_DIR=${h}/repo" "FOURIER_DEPLOY_LOCKFILE=${h}/deploy.lock" \
+        "FOURIER_GREEN_MARKER=${h}/green" "FOURIER_DEPLOY_RECORD=${h}/record.json"
+}
+# shellcheck disable=SC2016 # expanded by the inner bash
+HOOK_STUBS='source "$1"
+edge_reload() { :; }
+require_green_ci() { CI_RUN_ID=424242; return 0; }
+switch_stack() { sleep "${FIXTURE_BUILD_SECONDS:-0}"; }
+health_gate() { return 0; }
+main fixture'
+
+# record_ok HOST CASE OUTCOME STARTED PATTERN — the record exists, reads OUTCOME,
+# was recorded at or after STARTED, and its detail matches PATTERN.
+record_ok() {
+    local h="$1" case="$2" want="$3" started="$4" pattern="$5"
+    if jq -e --arg o "${want}" --arg t "${started}" --arg p "${pattern}" \
+            '.outcome == $o and .recorded_at >= $t and (.detail | test($p))' \
+            "${h}/record.json" >/dev/null 2>&1; then
+        pass "${case} record ${want}: $(jq -r .detail "${h}/record.json")"
+    else
+        fail "${case} no ${want} record (want detail ~ /${pattern}/); record: $(cat "${h}/record.json" 2>/dev/null || echo '<none>')"
+        sed 's/^/    /' "${h}/log" 2>/dev/null | tail -5
+    fi
+}
+
+stamp() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+# K — a dirty host tree is REFUSED, and the record names the path.
+h="$(scratch_host K)"; printf 'host edit\n' >>"${h}/repo/tracked.txt"; t0="$(stamp)"
+# shellcheck disable=SC2046 # one KEY=VALUE per line
+(cd "${h}" && env $(hook_env "${h}") bash -c "${HOOK_STUBS}" _ "${HOOK}") >"${h}/log" 2>&1
+record_ok "${h}" K REFUSED "${t0}" "tracked\\.txt"
+
+# L — `git fetch origin` fails (the remote is gone): ABORTED, naming the command.
+h="$(scratch_host L)"; git -C "${h}/repo" remote set-url origin "${h}/gone.git"; t0="$(stamp)"
+# shellcheck disable=SC2046
+(cd "${h}" && env $(hook_env "${h}") bash -c "${HOOK_STUBS}" _ "${HOOK}") >"${h}/log" 2>&1
+record_ok "${h}" L ABORTED "${t0}" "git fetch origin"
+
+# M — another deploy holds the lock past LOCK_WAIT: TIMEOUT, naming the wait.
+h="$(scratch_host M)"; : >"${h}/deploy.lock"
+flock "${h}/deploy.lock" sleep 8 & holder=$!
+sleep 0.5; t0="$(stamp)"
+# shellcheck disable=SC2046
+(cd "${h}" && env $(hook_env "${h}") LOCK_WAIT=2 bash -c "${HOOK_STUBS}" _ "${HOOK}") >"${h}/log" 2>&1
+kill "${holder}" 2>/dev/null; wait "${holder}" 2>/dev/null
+record_ok "${h}" M TIMEOUT "${t0}" "lock held"
+
+# N — SIGTERM mid-build (the receiver's own timeout): ABORTED, status 143.
+h="$(scratch_host N)"; t0="$(stamp)"
+# shellcheck disable=SC2046
+(cd "${h}" && exec env $(hook_env "${h}") FIXTURE_BUILD_SECONDS=3 bash -c "${HOOK_STUBS}" _ "${HOOK}") >"${h}/log" 2>&1 &
+victim=$!
+sleep 1; kill -TERM "${victim}" 2>/dev/null; wait "${victim}" 2>/dev/null
+record_ok "${h}" N ABORTED "${t0}" "status 143"
+
+# O — the watcher treats a fresh ABORTED or TIMEOUT record as terminal: FAILED
+# at once, not a wait out to the bound.
+for outcome in ABORTED TIMEOUT; do
+    watch "$(produce "${outcome}")" DEPLOY_ALERT_DRY_ISSUE=; rc=$?
+    if [[ ${rc} -eq 1 ]] && grep -q "FAILED (${outcome})" "${WORK}/out" && ! grep -q 'waiting' "${WORK}/out"; then
+        pass "O ${outcome} at SHA: FAILED at once (rc ${rc})"
+    else
+        fail "O ${outcome} at SHA: not terminal (rc ${rc})"; sed 's/^/    /' "${WORK}/out"
+    fi
+done
 
 # The tripwire: a dry-run never posts.
 if [[ -e "${WORK}/gh-posted" ]]; then

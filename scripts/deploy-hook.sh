@@ -79,7 +79,9 @@ set -euo pipefail
 # The deploy target and the compose invocation mirror the retired deploy.sh
 # (lines 26, 29) verbatim — build --parallel then up -d, the same two-file
 # compose overlay.
-readonly REPO_DIR="/var/www/fourier-analysis"
+# X·F F-D1: env-overridable (like FOURIER_DEPLOY_RECORD) so the fixture runs the
+# real main() against a scratch host; the host sets none of these.
+readonly REPO_DIR="${FOURIER_REPO_DIR:-/var/www/fourier-analysis}"
 
 # F.REL .s1 (COHESION §0gi.2) — the compose environment. Compose reads the
 # repo's own .env by default, but naming any --env-file replaces that default,
@@ -142,13 +144,18 @@ readonly GATE_INTERVAL=2
 # Serialisation: a fourier-scoped lockfile so overlapping fourier triggers
 # serialise (the replay / two-rapid-push contract). It is fourier-named so it
 # does NOT block sibling-repo deploys on the shared host.
-readonly LOCKFILE="/run/lock/fourier-deploy.lock"
+readonly LOCKFILE="${FOURIER_DEPLOY_LOCKFILE:-/run/lock/fourier-deploy.lock}"
+# X·F F-D1 (issue #3): the wait is BOUNDED. An unbounded `flock 9` let a wedged
+# earlier deploy hold every later one until the receiver killed it silently;
+# past LOCK_WAIT the deploy records TIMEOUT, naming the holder's pid (the holder
+# writes it beside the lock).
+readonly LOCK_WAIT="${LOCK_WAIT:-900}"
 
 # The last-known-GREEN marker — a host-side, out-of-tree file the script
 # reads/writes so the SECOND and subsequent rollbacks pin last-known-green
 # rather than bare HEAD. (For the first deploy the dirty-tree clause forces the
 # operator to reconcile the host tree, so the first baseline is reproducible.)
-readonly GREEN_MARKER="/opt/deploy/fourier-last-green"
+readonly GREEN_MARKER="${FOURIER_GREEN_MARKER:-/opt/deploy/fourier-last-green}"
 
 # ── M.W3 (inv-28) — the covering-CI query ────────────────────────────────────
 # The mirror of .github/workflows/deploy-pages.yml's `changes` job guard. That
@@ -185,7 +192,10 @@ readonly DEPLOY_RECORD="${FOURIER_DEPLOY_RECORD:-/opt/deploy/fourier-deploy-reco
 readonly ALERT_WEBHOOK="${FOURIER_DEPLOY_ALERT_WEBHOOK:-}"
 readonly SYSLOG_TAG="fourier-deploy"
 
+# The last line the deploy logged, quoted by on_exit's ABORTED record.
+LAST_LOG=""
 log() {
+    LAST_LOG="$*"
     printf '[deploy-hook %s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
 }
 
@@ -257,8 +267,14 @@ require_alert_channel() {
 # Atomic (write-temp-then-rename) so a reader never sees a half-written record.
 # Best-effort on the write itself: if /opt/deploy is not writable the deploy
 # must still report through the watched channel rather than die here.
+#
+# X·F F-D1 (issue #3): inv-31 is enforced at the script's EXIT, not by its call
+# sites. RECORDED is set here; on_exit (the EXIT trap main installs before the
+# lock) writes ABORTED for any way out that reached no write_record.
+RECORDED=0
 write_record() {
     local outcome="$1" prev="$2" new="$3" ci_run_id="$4" detail="$5"
+    RECORDED=1
     local stamp tmp
     stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     tmp="${DEPLOY_RECORD}.tmp.$$"
@@ -452,6 +468,9 @@ assert_clean_tree() {
     if [[ -n "${dirty}" ]]; then
         notify err "ABORT — host working tree is DIRTY; tracked changes would be discarded by reset --hard. Reconcile the host tree (commit, stash, or revert) before deploying."
         printf '%s\n' "${dirty}" >&2
+        # F-D1: the commonest operator error is a first-class outcome.
+        write_record "REFUSED" "$(git rev-parse HEAD 2>/dev/null || echo unknown)" "unknown" "none" \
+            "host working tree is dirty; reset --hard would discard: $(printf '%s' "${dirty}" | awk '{print $NF}' | paste -sd ' ' -)"
         return 1
     fi
 }
@@ -820,8 +839,8 @@ switch_back() {
 deploy() {
     cd "${REPO_DIR}"
 
-    # 1. Dirty-tree-fail-loud BEFORE any reset.
-    assert_clean_tree
+    # 1. Dirty-tree-fail-loud BEFORE any reset (it records REFUSED itself).
+    assert_clean_tree || return 1
 
     # 2. Record the rollback target BEFORE the reset. Prefer the recorded
     #    last-known-GREEN SHA; fall back to current HEAD on the first deploy.
@@ -832,6 +851,7 @@ deploy() {
         prev="$(git rev-parse HEAD)"
         log "rollback target = current HEAD ${prev} (no green marker yet — first deploy)"
     fi
+    DEPLOY_PREV="${prev}"
 
     # 3. M.W3 (inv-28) — resolve the candidate SHA, then REFUSE it unless a
     #    same-SHA green CI run covers it. The fetch is read-only; nothing in the
@@ -841,6 +861,7 @@ deploy() {
     git fetch origin
     local new
     new="$(git rev-parse "origin/${DEPLOY_BRANCH}")"
+    DEPLOY_NEW="${new}"
     if ! require_green_ci "${new}"; then
         write_record "REFUSED" "${prev}" "${new}" "none" \
             "inv-28: no covering green ${CI_WORKFLOW_FILE} run; the host stays on ${prev}"
@@ -936,14 +957,48 @@ deploy() {
 }
 
 # ── Entry point — serialise the whole deploy under the fourier lock ──────────
+# X·F F-D1 — the exit invariant. Every way out of main() that reached no
+# write_record (a bare failure under `set -e`: a cd, the fetch, a rev-parse, the
+# reset; a signal; the lock file itself) records ABORTED with the failing
+# command, its line, the exit status and the last logged line, using the SHAs as
+# far as they were resolved. The ERR trap (inherited into functions by `set -E`)
+# notes the failing command before `set -e` exits; the signal traps turn a TERM,
+# INT or HUP into an exit so the EXIT trap runs.
+DEPLOY_PREV="unknown"
+DEPLOY_NEW="unknown"
+FAIL_AT=""
+on_err() { FAIL_AT="'$1' at line $2"; }
+on_exit() {
+    local status="$1"
+    set +e
+    ((RECORDED)) && return 0
+    local at="${FAIL_AT:-no failing command noted}"
+    write_record "ABORTED" "${DEPLOY_PREV}" "${DEPLOY_NEW}" "${CI_RUN_ID:-none}" \
+        "the hook exited with status ${status} before an outcome: ${at}; last log: ${LAST_LOG}"
+    notify err "ABORTED — the deploy of ${DEPLOY_NEW} exited with status ${status} (${at}); the host stays on ${DEPLOY_PREV}."
+}
+
 main() {
+    set -E
+    trap 'on_err "${BASH_COMMAND}" "${LINENO}"' ERR
+    trap 'on_exit $?' EXIT
+    trap 'exit 143' TERM
+    trap 'exit 130' INT
+    trap 'exit 129' HUP
+
     # inv-31 — name the channels before the lock (F.REL .h1: the watched
     # channel is the off-host deploy-alert issue; the webhook is optional).
     require_alert_channel
 
     log "fourier deploy-hook invoked (repo arg: ${1:-<none>})"
     exec 9>"${LOCKFILE}"
-    flock 9
+    if ! flock -w "${LOCK_WAIT}" 9; then
+        write_record "TIMEOUT" "unknown" "unknown" "none" \
+            "lock held > ${LOCK_WAIT}s by pid $(cat "${LOCKFILE}.pid" 2>/dev/null || echo unknown); this deploy never started"
+        notify err "TIMEOUT — the fourier deploy lock ${LOCKFILE} was held for more than ${LOCK_WAIT}s; this deploy did not run."
+        exit 1
+    fi
+    printf '%s\n' "$$" >"${LOCKFILE}.pid" 2>/dev/null || true
     deploy
 }
 
