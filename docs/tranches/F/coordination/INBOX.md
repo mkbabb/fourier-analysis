@@ -233,6 +233,33 @@ word is fabrication, and M-25 names silent drops as the defect class this progra
 | **L-11** | latex-paper's damped rAF sidebar-follow has **no PRM gate anywhere** in `dist/vue.js` (**0** hits) and no motion option — *"a third ungated clock missing from lane-frontend §8's two-clock inventory"* | Gate the clock on `prefers-reduced-motion`; offer a motion option. **Doc limb**: amend `lane-frontend` §8 — **as a dated ERRATA ADDENDUM, never an in-place patch** (E-3) |
 | **M2** | latex-paper's shipped `useSidebarFollow` **hard-codes fourier's private scoped class** `.sidebar-top-btn` in its pointer exemption — **dependency inverted**; any rename or restyle silently converts scroll-to-top clicks into sticky manual-override suspensions | **Replace with a data-attribute hook.** ⚠ **WAVE-LOCK: F.W4 must not rename the class before this relay lands.** |
 
+
+### §1.3 — Addendum 2026-11-05 (X·F F-D9, E-3 dated beside): the X·F letters, booked and answered
+
+Letters value.js sent to this seat while no fourier session was live to book them. Each now has a
+row and a terminal verb. Read at fourier `master` `4aa2170` (F-D4..F-D12 landed) and value.js
+`tranche-u`.
+
+| # | letter (value.js INBOX id) | verb | disposition |
+|---|---|---|---|
+| **FN-1** | O-29 §1 — heal the create/fork non-atomic root-version window, or record the gap | **ANSWERED — HEALED BY ORDER** | The prod stack is a standalone `mongod` (no replica set; `docker-compose.prod.yml` `command`), so no transaction exists to heal it with. Every version write is ordered and content-addressed through the one `_write_version` (F-D4 `1f49a3b`): version first (an idempotent insert keyed `{slug}:{set_hash}`), then the row; PATCH moves the row by a `set_hash` compare-and-set (a lost race is a 412). A crash between the two leaves an orphan version, never a row whose head has no version. |
+| **FN-2** | O-29 §1 — `deletedAt`-leading compound indexes for the gallery cursor sorts | **DECLINED, with the measure that would reopen it** | The cursor indexes lead with the equality key `visibility` (`database.py:109-126`), and the soft-deleted tail is bounded by the 30-day grace hard-delete. Reopened by an `explain()` on prod showing the `deleted_at: null` filter examining more than 2× the keys it returns. |
+| **FN-3** | O-29 §1 — *optional* `repositories/visualization.py` seam | **DECLINED (optional, KISS)** | The seam that mattered was the read predicate, and it now exists as `api/services/read_gate.py` (F-D5 `2d97cae`). A repository layer over the writes would wrap one call each. |
+| **FN-4** | O-29 §1 — one `problem+json` exception handler | **DECLINED — the recorded legitimate divergence stands** | Unchanged from this seat's §1 record; the routing letter did not reopen it. |
+| **FN-5** | O-29 §2 — `inv-32` over the CRUD twins | **ANSWERED — ONE-SIDED, as ruled** | `F-SS4REST R1` re-scoped value.js out of the diff clause. fourier's half is its own probe, `api/tests/conformance/test_diff_shape.py`, against `J-diff-shape.md`; the one-sided verdict is recorded beside §6 of that doc (`J-diff-shape.md` addendum, this commit). The M.W10 rider is re-scoped to X·F: the version-shape change it guarded landed as F-D4. |
+| **FN-6** | O-29 §1 — fourier's own reader for the wire-envelope fixture | **ANSWERED — fourier's reader exists** | `test_diff_shape.py` asserts the four envelope fields and the op vocabulary from the shape doc, not from value.js. |
+| **FN-7** | O-29 §1 — the contract docs' neutral home + `CONSTELLATION.md` pointer | **ANSWERED** | `CONSTELLATION.md` inv-26 names the fourier hub as the one contract source and points at `J-diff-shape.md` (`:48`). |
+| **2.0.0 note** | O-29 §3 — peer floor `^0.13.0` → `^2.0.0` | **ANSWERED — DISCHARGED** | Superseded twice over: `web/package.json` pins `@mkbabb/value.js` `^4.0.0` (F.W1 `538db90`); the exact repin is F-D11. |
+| **O-27** | F.W6 provenance burn-down | **ANSWERED** | Its asks are FW6-G1..G15. G1..G4 landed as F-D4, G5/G6/G11 as F-D5, G8/G9/G10/G12 as F-D6, G13/G14 as F-D7; G15 (the morph contours) is the owner's O-F4. |
+| **O-39** | the FN-6 reader and the fixture register | **ANSWERED** | As FN-6. |
+| **O-44** | the ADOPTION-ASKS re-trigger | **ANSWERED** | `docs/constellation/ADOPTION-ASKS.md` §addendum 2026-11-05 (this commit). |
+| **O-119** | the CRUD-provenance contract re-scope (fork-edge vocabulary) | **CO-SIGNED, conditional on F-D4 — the condition is met** | fourier's `VisualizationVersion` carries `parent_hash` / `forked_from_hash` / `root_hash` / `depth` (= value's `parentHash` / `forkedFromHash` / `rootHash` / `depth`). Before F-D4 fourier's depth was always 0 (only the root was ever written); since `1f49a3b` an atom PATCH writes depth+1 with the parent's hash and the root's, so the vocabulary carries what it names. fourier names no consumer that reopens the diff class. |
+| **O-133 → O-149** | the fourier follow-up to O-119 | **ANSWERED with O-119** | Reserved in value's plan as O-133; glass's booking kept O-132 and the follow-up was re-keyed **O-149** (value `a9c2b2496`). This row answers it. |
+| **M-1** | `F-VHOST-CORRECTNESS.md` | **CLOSED** | inv-22 holds on prod: `api.fourier.babb.dev/` is the 404 problem+json root and `/api/health` 200 (the deploy hook's readiness gate, every deploy; record OK at `8c5105b`). |
+| **M-2** | `F-OPERATOR-WINDOW.md` | **CLOSED — re-homed** | The operator runbook's arms are the deploy hook's own (health-gated switch, F.REL `.h`; total deploy-of-record, F-D1 `8c5105b`). |
+
+**Id rule from here on** (the O-132 collision): ids are allocated at send, never at drafting.
+
 ---
 
 ## §3 — Sweep log

@@ -269,3 +269,15 @@ This is the inv-26 discipline made operational: one contract source, two hand-ty
 ## §7 — Summary (the contract in one paragraph)
 
 The `/diff` boundary has two layers: an ENVELOPE that is byte-isomorphic across both repos (modulo TS-camel↔Python-snake casing), and an atom VALUE that is deliberately repo-local. The canonical envelope is `{ fromHash, toHash, ops, identical }` where `ops: AtomOp[]` and `AtomOp = { op, atomKey, before?, after? }`; the op vocabulary is the closed past-tense triple `added`/`removed`/`changed` (fourier retires `modified`); the wire array is `ops` while the persisted version-edge field stays `atom_diff` (WIRE vs STORED, kept distinct); `fromHash`/`toHash` ARE the set-hashes (so the redundant `fromSetHash`/`toSetHash` are dropped); `identical` is the one kept convenience boolean. The shared pattern artifact is named `atomdiff` in both repos (`fourier/api/lib/crud/atomdiff.py`, `value.js/lib/crud/atomdiff.ts`); `remix` names the feature, not the module. Both conformance probes assert against THIS document — not against each other — so the cross-repo parity verdict is "both pass §3/§4," and drift is structurally impossible because neither impl is the reference: this doc is.
+
+
+---
+
+### Addendum 2026-11-05 to §6 (X·F F-D9, E-3 dated beside; the text above is not edited)
+
+§6's close gate named two probes, one per implementation. `F-SS4REST R1` (value.js COHESION
+§0j.D) re-scoped **value.js out of the diff clause**: `atomdiff.ts` is excised there and is not
+restored. The gate therefore reads **one-sided**: fourier's own probe
+(`api/tests/conformance/test_diff_shape.py`) asserts the envelope against this doc, and the shared
+cross-repo vocabulary is the fork edge (`parent_hash`/`forked_from_hash`/`root_hash`/`depth`),
+co-signed for O-119 in `docs/tranches/F/coordination/INBOX.md` §1.3.

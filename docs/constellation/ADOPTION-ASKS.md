@@ -252,3 +252,15 @@ Re-affirm the BB consume-contracts that SEQUENCE the M.W5 glass migration: **`W-
 **inv-16 attestation (§12)**: authored `fourier-analysis/docs/**` only; READ glass-ui 4.0 `ladder.css:200-204`/`:216-219` + the tabs/slider/dialog + the absent Input primitive (read-only) to root-cause the α findings; edited NO sibling tree, NO host, NO code. fourier books here + composes kill-dated no-legacy interims + consumes BB's 4.1.0. Provenance: `docs/audits/runs/2026-06-17-M-critique-audit/` + the user's live critique.
 
 End of ADOPTION-ASKS.md.
+
+
+---
+
+### Addendum 2026-11-05 (X·F F-D9, E-3 dated beside; rows above unedited) — the re-affirmed rows, answered
+
+| row | was | now | receipt |
+|---|---|---|---|
+| **Ask 3** (value.js palette-api: rsync deploy-dir → git checkout + the hardened hook) | re-affirmed G.W8 | **ADOPT** — repo half landed; host half named | The hardened-hook pattern (health-gated switch, a deploy-of-record on every exit) is fourier's `scripts/deploy-hook.sh` at `8c5105b`. The host conversion of value.js's deploy dir is a host act for the value.js deploy owner. |
+| **Ask 5** (frontends → CF Pages) | re-affirmed G.W8 | **DONE for value.js; keyframes.js half open** | value.js serves from Pages (color.babb.dev). keyframes.js still deploys through its own `deploy-pages` workflow. |
+| **inv-22-color** | re-affirmed G.W8 | **DONE** | `https://api.color.babb.dev` `/docs` 200, `/openapi.json` 200, `/health` 200 (read 2026-11-05). |
+| **cascade-vjs** | re-affirmed H.W6 | **SPLIT** | value.js `package.json`: `unplugin-vue-markdown ^32.0.0` (done) and `@mkbabb/glass-ui` `10.1.3` exact (published, done); `@mkbabb/keyframes.js` `^6.0.0` (published). The lockfile half rides the R.W7 letter's split. |
