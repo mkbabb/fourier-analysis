@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { EditorState } from "./lib/editor-state";
 import { ref, shallowRef, computed, watch, nextTick, useTemplateRef, provide } from "vue";
 import { watchDebounced, useEventListener } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
@@ -133,7 +134,7 @@ watch(dockExpanded, async () => {
     await nextTick();
     canvasComponent.value?.readInsets();
 });
-const editorState = ref({ canUndo: false, canRedo: false, canDelete: false, pointCount: 0 });
+const editorState = ref<EditorState>({ canUndo: false, canRedo: false, canDelete: false, pointCount: 0 });
 const editorRef = ref<InstanceType<typeof ContourEditorCanvas> | null>(null);
 const editorSaved = ref(false);
 const magnetRadius = computed({
@@ -141,7 +142,7 @@ const magnetRadius = computed({
     set: (v: number) => { if (editorRef.value) editorRef.value.magnetRadius = v; },
 });
 
-function onEditorStateChange(state: typeof editorState.value) {
+function onEditorStateChange(state: EditorState) {
     editorState.value = state;
     editorSaved.value = false;
 }

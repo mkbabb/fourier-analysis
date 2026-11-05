@@ -287,6 +287,48 @@ test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
     });
 });
 
+// X·F §0hs.3 — UIA-F-15's CI-only flake, made deterministic. "Save" in the
+// leave dialog waited for the post-save recompute (epicycles AND bases) before
+// it left edit mode, so the editor's panel stayed up for as long as
+// compute/bases ran; when it finally swapped, the Harmonics field was a fresh
+// element at the default, and a Backspace typed meanwhile was lost. A held
+// compute/bases answer stands in for a slow CI runner.
+test.describe("UIA-F-15 — Save-and-leave leaves when the save lands, not when the recompute does", () => {
+    test("with compute/bases held, edit mode ends at once and the Harmonics field keeps its Backspace", async ({ page }) => {
+        const { point } = await openEditor(page);
+        let hold = false;
+        let release!: () => void;
+        const released = new Promise<void>((r) => (release = r));
+        await page.route("**/compute/bases", async (route) => {
+            if (hold) await released;
+            await route.continue().catch(() => {});
+        });
+        await dragPoint(page, point);
+        const edit = page.getByRole("button", { name: "Edit contour" }).first();
+        await edit.hover();
+        await page.waitForTimeout(600);
+        await edit.click();
+        hold = true;
+        await page.getByRole("dialog", { name: /unsaved/i }).getByRole("button", { name: "Save", exact: true }).click();
+
+        // Edit mode ends while bases is still held.
+        await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "", { timeout: 5_000 });
+        const field = page.getByRole("spinbutton", { name: "Harmonics" });
+        await field.click();
+        await page.keyboard.press("End");
+        const typed = await field.inputValue();
+        await page.keyboard.press("Backspace");
+        await expect(field).toHaveValue(typed.slice(0, -1));
+
+        // The recompute then lands, and the field still holds what was typed.
+        const landed = page.waitForResponse((r) => r.url().endsWith("/compute/bases"));
+        release();
+        await landed;
+        await page.waitForTimeout(1500);
+        await expect(field).toHaveValue(typed.slice(0, -1));
+    });
+});
+
 test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
     test("a double-click sends one save and shows no false 'Could not save'", async ({ page }) => {
         const viz = firstSavedViz();

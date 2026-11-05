@@ -35,6 +35,13 @@
 #   M  the lock is held past LOCK_WAIT   → TIMEOUT naming the wait
 #   N  SIGTERM mid-build                 → ABORTED (exit status 143)
 #   O  the watcher reads a fresh ABORTED or TIMEOUT record as terminal (FAILED)
+#
+# X·F F-D1 repair (§0hs.3) — the record names its CI run. The REAL
+# require_green_ci reads GitHub's own pretty-printed answer for 4ec3eed
+# (tests/fixtures/gh-ci-runs-4ec3eed.json, saved from the API); only gh_api is
+# stubbed. The host has no jq, so the jq-less path is the one that ships:
+#   P  with jq and without it → CI_RUN_ID = 42040354998, never "unknown"
+#   Q  a covered SHA whose answer carries no run id → REFUSED, not "unknown"
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -275,6 +282,43 @@ for outcome in ABORTED TIMEOUT; do
         pass "O ${outcome} at SHA: FAILED at once (rc ${rc})"
     else
         fail "O ${outcome} at SHA: not terminal (rc ${rc})"; sed 's/^/    /' "${WORK}/out"
+    fi
+done
+
+# P / Q — require_green_ci on GitHub's real answer, with jq on PATH and with a
+# PATH that holds only the tools the jq-less host has. FIXTURE_ANSWER is the
+# body gh_api returns.
+GH_ANSWER="${ROOT}/tests/fixtures/gh-ci-runs-4ec3eed.json"
+mkdir -p "${WORK}/nojq"
+for tool in cat tr sed head date; do ln -sf "$(command -v "${tool}")" "${WORK}/nojq/${tool}"; done
+ln -sf "${WORK}/bin/logger" "${WORK}/nojq/logger"
+# shellcheck disable=SC2016 # expanded by the inner bash
+CI_STUBS='source "$1"
+gh_api() { cat "${FIXTURE_ANSWER}"; }
+if require_green_ci 4ec3eedfeaafed500b30551276d57e0afaf2179b; then
+    printf "rc=0 run=%s\n" "${CI_RUN_ID}"
+else
+    printf "rc=1 run=%s\n" "${CI_RUN_ID}"
+fi'
+BASH_BIN="$(command -v bash)"
+for leg in jq nojq; do
+    if [[ "${leg}" == nojq ]]; then leg_path="${WORK}/nojq"; else leg_path="${PATH}"; fi
+    got="$(FIXTURE_ANSWER="${GH_ANSWER}" PATH="${leg_path}" "${BASH_BIN}" -c "${CI_STUBS}" _ "${HOOK}" 2>/dev/null | tail -1)"
+    if [[ "${got}" == "rc=0 run=42040354998" ]]; then
+        pass "P ${leg}: require_green_ci names run 42040354998"
+    else
+        fail "P ${leg}: want 'rc=0 run=42040354998', got '${got}'"
+    fi
+done
+# Q — total_count 1 but no run in the list: refuse rather than record "unknown".
+printf '{\n  "total_count": 1,\n  "workflow_runs": [\n  ]\n}\n' >"${WORK}/no-run.json"
+for leg in jq nojq; do
+    if [[ "${leg}" == nojq ]]; then leg_path="${WORK}/nojq"; else leg_path="${PATH}"; fi
+    got="$(FIXTURE_ANSWER="${WORK}/no-run.json" PATH="${leg_path}" "${BASH_BIN}" -c "${CI_STUBS}" _ "${HOOK}" 2>/dev/null | tail -1)"
+    if [[ "${got}" == "rc=1 run=" ]]; then
+        pass "Q ${leg}: an answer with no run id is REFUSED"
+    else
+        fail "Q ${leg}: want 'rc=1 run=', got '${got}'"
     fi
 done
 

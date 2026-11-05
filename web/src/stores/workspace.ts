@@ -363,7 +363,17 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             // until each result lands (the revision guards above already discard
             // any answer for the pre-save contour), exactly as a settings
             // recompute in `ContourSettings.runCompute` behaves.
-            await Promise.allSettled([runComputeEpicycles(), runComputeBases()]);
+            //
+            // X·F UIA-F-15 (COHESION §0hs.3): the action resolves when the
+            // contour is SAVED, and the recompute runs on inside its own
+            // `computing` brackets (each run opens its bracket before its first
+            // await, so `computing` never drops between the two). A caller that
+            // awaited the save used to wait out compute/bases too: the leave
+            // dialog's Save held edit mode open for the whole recompute, then
+            // swapped the panel under the reader, and a field edited meanwhile
+            // came back as a fresh element at its default. Each run records its
+            // own failure in `computeError`; `allSettled` never rejects.
+            void Promise.allSettled([runComputeEpicycles(), runComputeBases()]);
         } catch (e: unknown) {
             if (!api.isAbortError(e))
                 error.value = problemMessage(e, "Failed to save contour");
