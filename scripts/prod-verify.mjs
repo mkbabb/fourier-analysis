@@ -57,6 +57,11 @@ try {
     // correct 429, not the rows it means to read, so every call waits for room
     // in its bucket, as a person working the app at human pace always has.
     const BUDGET = { write: 10, compute: 5 };
+    // The app's own retry bound, read from its source so the two cannot drift.
+    const MAX_RATE_LIMIT_RETRIES = Number(
+        /const MAX_RATE_LIMIT_RETRIES = (\d+);/.exec(readFileSync(join(root, "web/src/lib/api.ts"), "utf8"))?.[1] ?? NaN,
+    );
+    if (!Number.isInteger(MAX_RATE_LIMIT_RETRIES)) throw new Error("prod-verify: web/src/lib/api.ts states no MAX_RATE_LIMIT_RETRIES");
     const spent = { write: [], compute: [] };
     const bucketOf = (path, method) =>
         path.includes("/compute/") || path.endsWith("/extract-contour")
@@ -76,7 +81,10 @@ try {
     // back-to-back runs read its predecessor's 429s as REDs). The API states
     // the window on its refusal (RateLimit-Reset, CORS-exposed), and the probe
     // follows it as the app does (web/src/lib/api.ts): wait the stated reset,
-    // then ask again. Every row is still graded on the answer it gets.
+    // then ask again, at most MAX_RATE_LIMIT_RETRIES times, the app's own
+    // bound (X·F §0hs.3: fourier-DESIGN-TAIL F-T2 said "once"; the app's
+    // protocol is the contract the probe follows). Every row is still graded
+    // on the answer it gets.
     const call = async (path, init = {}) => {
         const bucket = bucketOf(path, init.method ?? "GET");
         if (bucket) {
@@ -84,7 +92,7 @@ try {
             spent[bucket].push(Date.now());
         }
         let r = await send(path, init);
-        for (let again = 0; bucket && r.status === 429 && again < 2; again++) {
+        for (let again = 0; bucket && r.status === 429 && again < MAX_RATE_LIMIT_RETRIES; again++) {
             await new Promise((ok) => setTimeout(ok, 1000 * (Number(r.rateReset) || 60) + 500));
             spent[bucket].push(Date.now());
             r = await send(path, init);
