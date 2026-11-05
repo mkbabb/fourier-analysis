@@ -2440,3 +2440,39 @@ and could not write them here. They are appended now, each re-resolved at fourie
 | **18** | `G-F4-DERIVER`'s BS-2 anchors `AppHeader.vue:124/:137` | ⟨cmd⟩ `find web/src -name AppHeader.vue` → **none**; `npm run derive:loops` reports no `AppHeader` row | **STRUCK.** The file left the tree with the shell rebuild; the anchor has no successor to re-pin. |
 
 `G-F4-ANCHORS` reads GREEN against this table: rows 12–18 are in G-11's own bytes.
+
+---
+
+### Addendum 2026-11-05 to §2.2 G-12 (X·F F-D10 · F.W3 g17): the shadow-surface aggregate row
+
+F.W3 g17 asked G-12 for a shadow-aggregate row to quote and found none (`grep -ic shadow` → 0,
+value.js `docs/tranches/X/fourier/evidence/w3/g17-X-F-W3-d.txt`). This is that row.
+
+**The source and its defect.** value.js `docs/tranches/V/megatranche/formation/fourier/lane-frontend.md:446`
+states *"9 components / ~1 990 LOC (127 + 98 + 41 + 109 + 547 + 764 + 168 + 91 + 134 ≈ 2 079 counting
+the canvas-drawing lib; 1 315 excluding it)"*. The nine terms sum to **2 079** exactly, and 2 079 − 764
+= **1 315**; the headline "~1 990" is the sum of no member scope and is struck.
+
+**Member scope (X-9).** The nine locals in lane-frontend's shadow tables, each with a glass primitive
+of the same job: GlassTimeline · EasingPicker · EasingCurvePreview · DarkModeToggle · BasisCanvas ·
+the canvas-drawing lib · CoefficientsSpectrum · GalleryFeaturedCarousel · GalleryMarquee. The 🟡
+candidate rows are outside the scope.
+
+**Re-derived at fourier `master` `e5e34e8`** (⟨cmd⟩ `find web/src -name <file> | xargs wc -l`;
+`cat web/src/components/visualization/lib/canvas-drawing/*.ts | wc -l`; twice, identical):
+
+| member | 2026-08 | at `e5e34e8` | note |
+|---|---|---|---|
+| GlassTimeline.vue | 127 | **absent** | replaced by glass's timeline (`shared/FourierTimeline.vue` wraps `@mkbabb/glass-ui/timeline`) |
+| EasingPicker.vue | 98 | 114 | now composes glass `EasingCurve` |
+| EasingCurvePreview.vue | 41 | **absent** | retired (`fr-EasingCurvePreview FORK`, X.F.W3 `.b`) |
+| DarkModeToggle.vue | 109 | 259 | composes glass `useGlobalDark` + `DockControl` |
+| BasisCanvas.vue | 547 | 651 | the interactive instrument (not a shadow of the decorative `FourierField`, lane-frontend's own nuance) |
+| canvas-drawing lib (9 files) | 764 | 847 | now under `components/visualization/lib/canvas-drawing/` |
+| CoefficientsSpectrum.vue | 168 | 233 | |
+| GalleryFeaturedCarousel.vue | 91 | 148 | |
+| GalleryMarquee.vue | 134 | **absent** | retired |
+
+**Sum at HEAD: 6 members present, 2 252 LOC; 1 405 excluding the canvas-drawing lib.** Three of the
+nine have been retired into glass or deleted; the remaining six have grown, and four of them now
+compose glass primitives rather than duplicating them.
