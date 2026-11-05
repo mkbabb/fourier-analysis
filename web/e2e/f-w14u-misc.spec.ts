@@ -149,10 +149,16 @@ test.describe("D-21 X §0hm — the morph stage is a full-width square (390)", (
         const info = await page.locator(".demo-info").boundingBox();
         const col = PHONE.width - 32;
         // X·F F-D14b: the stage card (plate over its readout foot) spans the
-        // column; the plate is its square top, inside the card's 1px edge.
+        // column; the plate is its square top, inside the card's edge. The
+        // bound is the card's own border box minus its borders (X·F §0hs.3: a
+        // flat `card − 4` let a plate ~3 px short of the edge pass).
         const card = await page.locator(".morph-card").boundingBox();
+        const edge = await page.locator(".morph-card").evaluate((e) => {
+            const cs = getComputedStyle(e);
+            return parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+        });
         expect(card!.width, "stage spans the column").toBeGreaterThanOrEqual(col - 1);
-        expect(s!.width, "the plate fills the card").toBeGreaterThanOrEqual(card!.width - 4);
+        expect(s!.width, "the plate fills the card inside its edge").toBeGreaterThanOrEqual(card!.width - edge - 0.5);
         expect(Math.abs(s!.width - s!.height), "stage is 1:1").toBeLessThanOrEqual(1);
         expect(info!.y, "readings sit under the stage").toBeGreaterThanOrEqual(s!.y + s!.height);
         const [label, value] = await page.locator(".demo-info .metric").first().evaluate((m) => [
