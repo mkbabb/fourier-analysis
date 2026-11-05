@@ -1,6 +1,7 @@
 import pluginVue from "eslint-plugin-vue";
 import vueParser from "vue-eslint-parser";
 import tsParser from "@typescript-eslint/parser";
+import noNakedLayer from "./eslint/rules/no-naked-layer.js";
 
 /**
  * X·F F.W4 `.g` — the ESLint leg of `G-F4-NO-UNUSED`.
@@ -69,8 +70,10 @@ export default [
         },
     },
     {
-        files: ["src/**/*.vue"],
-        plugins: { vue: pluginVue },
+        // X·F F-D8: the fixtures of the local rules lint as SFCs too (the
+        // rules' own vitest runs them; `eslint src` never reaches them).
+        files: ["src/**/*.vue", "eslint/__fixtures__/*.vue"],
+        plugins: { vue: pluginVue, fourier: { rules: { "no-naked-layer": noNakedLayer } } },
         languageOptions: {
             parser: vueParser,
             ecmaVersion: 2022,
@@ -90,6 +93,8 @@ export default [
             // (patch-in-place reuse) that no other gate in `web/` detects.
             "vue/require-v-for-key": "error",
             "no-duplicate-imports": "error",
+            // X·F F-D8 (F.W3 g16): a component opens only `@layer glass-overrides`.
+            "fourier/no-naked-layer": "error",
         },
     },
 ];

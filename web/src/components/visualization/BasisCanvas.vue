@@ -5,6 +5,7 @@ import { useAnimationStore } from "@/stores/animation";
 import { fourierPositionsAt, evaluateFourier } from "@/lib/evaluators";
 import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
+import { normalizeBasisKey } from "@/lib/basis";
 import type { BasisComponent } from "@/lib/types";
 import {
     type ViewTransform,
@@ -310,7 +311,7 @@ function drawMultiBasesFrame(
 
     // Draw each active basis curve
     for (const basisKey of props.activeBases) {
-        const basisName = basisKey.startsWith("fourier") ? "fourier" : basisKey;
+        const basisName = normalizeBasisKey(basisKey);
         const cfg = basisDisplay[basisName];
         if (!cfg) continue;
 

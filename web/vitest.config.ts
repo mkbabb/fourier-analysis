@@ -97,6 +97,8 @@ export default defineConfig({
         include: [
             "e2e/unit/**/*.vitest.ts",
             "scripts/**/*.vitest.ts",
+            // X·F F-D8: the local lint rules' fixtures.
+            "eslint/**/*.vitest.ts",
             // X·F F.W9 `.b` (`G-F9-1`, the FLOOR): X.F.W3 `.e`'s three
             // `src/lib` vitest files ran in NO runner until this line.
             "src/**/*.test.ts",
