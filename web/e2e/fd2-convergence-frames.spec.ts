@@ -31,6 +31,8 @@ const CELLS = [
 const FRAMES = 240;
 
 async function openAtMaxHarmonics(page: Page) {
+    // An N = 100 compute on a cold CI API takes most of the default 30 s.
+    test.setTimeout(120_000);
     await page.goto("/equation");
     const harmonics = page.getByRole("spinbutton", { name: "Harmonics", exact: true });
     await harmonics.fill("100");

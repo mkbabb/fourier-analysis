@@ -156,7 +156,12 @@ test.describe("X.F.W14V.au3 — equation and morph (1440)", () => {
     test("L1-13 · the morph control is a glass Surface, the cards glass Cards", async ({ page }) => {
         await openMorph(page);
         const morph = page.getByRole("button", { name: "Morph between the sun and moon shapes" });
-        await expect(morph).toHaveAttribute("data-slot", "surface");
+        // X·F F-D14b: the plate is the stage card, a glass Surface holding the
+        // control over its readout foot; the control is that plate's top.
+        const plate = page.locator(".morph-card");
+        await expect(plate).toHaveAttribute("data-slot", "surface");
+        await expect(plate.locator(".morph-button")).toHaveCount(1);
+        await expect(morph).toHaveClass(/morph-button/);
         await expect(page.locator(".config-card[data-slot=card]")).toHaveCount(3);
         await expect(page.locator(".levels-card[data-slot=card]")).toHaveCount(1);
     });

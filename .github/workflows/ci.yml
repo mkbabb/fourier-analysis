@@ -452,6 +452,18 @@ jobs:
           name: playwright-report
           path: web/playwright-report/
           retention-days: 7
+      # X·F realization (UIA-F-15 in CI 41965034924 / 41978984329): a trace
+      # shows a request the backend never answered, and nothing showed what
+      # the backend was doing. The backend's own log (uvicorn access lines,
+      # timings, tracebacks) travels with the report, so a CI RED that only
+      # the runner reproduces comes with both halves of its evidence.
+      - name: Upload backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: /tmp/backend.log
+          retention-days: 7
 
   # ── X·F F.REL `.h` — the production stack boots healthy ────────────────────
   #

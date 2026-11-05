@@ -12,13 +12,16 @@
  * which is the only way the `light-dark()` arm and the alias chain are picked by
  * the engine rather than guessed by a string match. value.js then converts that
  * used value — whatever CSS Color 4 form the engine serialises — to hex, which
- * is what the Canvas2D consumers speak (`./css` parses the used value, `./color`
+ * is what the Canvas2D consumers speak (`./color` parses the used value and
  * clips it into sRGB; both report failure as a Result, never a throw).
  */
 
 import { createTokenColorCache } from "@mkbabb/glass-ui/dom";
-import { toRgba8 } from "@mkbabb/value.js/color";
-import { parseCssColor } from "@mkbabb/value.js/css";
+// X·F F-D11: both from `./color`. At 4.2.0 `./css` is the whole CSS grammar
+// (its chunk alone is ~249 KB unpacked) and it rode every route's cold load
+// (od19: cold JS 1 606 KB over the 1 550 bar); `./color` carries the same
+// `parseCssColor` over the color grammar only.
+import { parseCssColor, toRgba8 } from "@mkbabb/value.js/color";
 import { reactive } from "vue";
 
 /** Static accent colors (not section-derived) */

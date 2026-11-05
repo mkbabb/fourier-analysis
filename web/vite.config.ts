@@ -74,10 +74,12 @@ export default defineConfig({
                     // what made a 348 kB math cluster eager. The easing curves
                     // ride the chunk of whoever imports them; so does katex
                     // (X·OD19 ALL, above).
-                    "vendor-math": [
-                        "@mkbabb/value.js/color",
-                        "@mkbabb/value.js/css",
-                    ],
+                    // X·F F-D11: `./color` alone. At value.js 4.2.0 `./css` is
+                    // the whole CSS grammar, and naming it here welded it into
+                    // this eager chunk (od19 cold JS +56..+105 KB on every
+                    // route); fourier's colours read `parseCssColor` from
+                    // `./color` now, and nothing on the boot path needs `./css`.
+                    "vendor-math": ["@mkbabb/value.js/color"],
                     "vendor-keyframes": ["@mkbabb/keyframes.js"],
                 },
             },
