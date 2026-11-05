@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { EditorState } from "./lib/editor-state";
 import { ref, computed, watch } from "vue";
 import { useMediaQuery, useResizeObserver } from "@vueuse/core";
 import type { ContourAsset } from "@/lib/types";
@@ -26,7 +27,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    stateChange: [state: { canUndo: boolean; canRedo: boolean; canDelete: boolean; pointCount: number }];
+    stateChange: [state: EditorState];
     save: [points: { x: number[]; y: number[] }];
 }>();
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { EditorState } from "./lib/editor-state";
 import { computed, useTemplateRef } from "vue";
 import { useMediaQuery } from "@vueuse/core";
 import SliderControl from "@/components/ui/SliderControl.vue";
@@ -40,11 +41,7 @@ import {
  */
 const magnetReadout = (radius: number) => (radius === 0 ? "Off" : String(radius));
 
-const props = defineProps<{
-    canUndo: boolean;
-    canRedo: boolean;
-    canDelete: boolean;
-    pointCount: number;
+const props = defineProps<EditorState & {
     showImageOverlay: boolean;
     showGhost?: boolean;
     magnetRadius: number;
