@@ -67,7 +67,6 @@ const emit = defineEmits<{
 /* X.F.W14U.eq — UIA-F-205: the legend is the plot's second cell (its own
    gutter), never an overlay on the curves. */
 .legend-overlay {
-    @apply pointer-events-auto;
     flex: none;
     align-self: flex-start;
     max-height: 100%;
