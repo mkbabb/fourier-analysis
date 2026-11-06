@@ -88,13 +88,7 @@ const {
 } = useVirtualSectionWindow({
     items: flatSections,
     scrollContainer,
-    // §0hz.paper: the window is symmetric. With 240px above, a section
-    // scrolled back up into view mounted a frame or two before it was on
-    // screen, too late for its figure to load, and the figure painted as an
-    // empty box (measured: 2 blank frames at 390 on an ascent after the
-    // remount and decode causes were cured). Reading back up the paper is as
-    // common as reading down.
-    overscanBeforePx: 720,
+    overscanBeforePx: 240,
     overscanAfterPx: 720,
     leadingOffsetPx: sectionStartOffsetPx,
     warmTargetBefore: 2,
