@@ -183,7 +183,9 @@ if (typeof document !== "undefined" && document.fonts) {
             <!-- Logo + attribution card. The wordmark is the trigger's whole
                  face; at <640px it is the lone ℱ glyph and the dock's control
                  cell (≥44px coarse) is its hit box. -->
-            <Popover>
+            <!-- keep-dock-open: the dock does not fold an open card under the
+                 user when the pointer leaves straight to the page (F-3b). -->
+            <Popover keep-dock-open>
                 <DockTrigger for="popover" class="logo-trigger" aria-label="About Fourier analysis">
                     <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
                         <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>

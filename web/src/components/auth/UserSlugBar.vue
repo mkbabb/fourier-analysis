@@ -214,7 +214,7 @@ async function copySlug() {
             </DropdownMenuContent>
         </DropdownMenu>
 
-        <Popover v-else :open="showLogin" @update:open="(open) => (open ? (showLogin = true) : closeLogin())">
+        <Popover v-else keep-dock-open :open="showLogin" @update:open="(open) => (open ? (showLogin = true) : closeLogin())">
             <DockTrigger for="popover" class="account-trigger" aria-label="Log in">
                 <LogIn aria-hidden="true" />
                 <span class="hidden sm:inline">Log in</span>
