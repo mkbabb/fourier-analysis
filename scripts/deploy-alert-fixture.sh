@@ -42,6 +42,11 @@
 # stubbed. The host has no jq, so the jq-less path is the one that ships:
 #   P  with jq and without it → CI_RUN_ID = 42040354998, never "unknown"
 #   Q  a covered SHA whose answer carries no run id → REFUSED, not "unknown"
+#
+# X·F round 2 (issue #9) — the watcher follows deploy-trigger's tip rule:
+#   R  master's tip contains SHA at start (no request was sent for SHA) → exit 0,
+#      NOT CURRENT, no issue; the record never reaching SHA does not alert
+#   S  the tip read fails or the tip diverges → the watch runs to its bound as before
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -161,8 +166,8 @@ fi
 
 # G — the green deploy: OK at SHA with the API live → exit 0, nothing alerted.
 watch "$(produce OK)" DEPLOY_ALERT_DRY_ISSUE=; rc=$?
-if [[ ${rc} -eq 0 ]] && ! grep -q 'DRY-RUN gh' "${WORK}/out"; then
-    pass "G OK at SHA: exit 0, no gh call"
+if [[ ${rc} -eq 0 ]] && ! grep -Eq 'DRY-RUN gh (issue|label)' "${WORK}/out"; then
+    pass "G OK at SHA: exit 0, nothing alerted"
 else
     fail "G OK at SHA: rc ${rc} or an alert was printed"; sed 's/^/    /' "${WORK}/out"
 fi
@@ -321,6 +326,36 @@ for leg in jq nojq; do
         fail "Q ${leg}: want 'rc=1 run=', got '${got}'"
     fi
 done
+
+# R — the watch starts with master already past SHA (its tip contains SHA), so
+# deploy-trigger sent no request for SHA and no record will ever name it (here
+# the edge serves none at all, as on 2026-11-06 for 2796f63): the watcher stands
+# down at once, NOT CURRENT, with no issue (issue #9). Before, it waited out the
+# bound and alerted TIMEOUT.
+env DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_TIP="${NEWER}" DEPLOY_ALERT_DRY_COMPARE=ahead bash "${ALERT}" --dry-run \
+    --sha "${SHA}" --repo mkbabb/fourier-analysis --record-url "file://${WORK}/spa.html" \
+    --health-url "file://${WORK}/health.json" --timeout 2 --interval 1 >"${WORK}/out" 2>&1; rc=$?
+if [[ ${rc} -eq 0 ]] && grep -q 'NOT CURRENT' "${WORK}/out" \
+        && grep -q "^\[deploy-alert\] DRY-RUN gh api repos/mkbabb/fourier-analysis/branches/master " "${WORK}/out" \
+        && ! grep -Eq 'DRY-RUN gh (issue|label)' "${WORK}/out"; then
+    pass "R master past SHA at start: NOT CURRENT, exit 0, no alert"
+else
+    fail "R master past SHA at start: rc ${rc} or alerted"; sed 's/^/    /' "${WORK}/out"
+fi
+
+# S — a tip that does not contain SHA, or SHA still the tip, is watched as before.
+watch "$(produce OK "${PREV}")" DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_TIP="${NEWER}" DEPLOY_ALERT_DRY_COMPARE=diverged; rc=$?
+if [[ ${rc} -eq 1 ]] && grep -q 'TIMEOUT' "${WORK}/out" && ! grep -q 'NOT CURRENT' "${WORK}/out"; then
+    pass "S diverged tip: watched to the bound, TIMEOUT alert (rc ${rc})"
+else
+    fail "S diverged tip: rc ${rc} or stood down"; sed 's/^/    /' "${WORK}/out"
+fi
+watch "$(produce OK)" DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_TIP="${SHA}"; rc=$?
+if [[ ${rc} -eq 0 ]] && grep -q '^\[deploy-alert\] OK - ' "${WORK}/out" && ! grep -q 'NOT CURRENT' "${WORK}/out"; then
+    pass "S SHA is the tip: watched, OK at SHA, exit 0"
+else
+    fail "S SHA is the tip: rc ${rc} or stood down"; sed 's/^/    /' "${WORK}/out"
+fi
 
 # The tripwire: a dry-run never posts.
 if [[ -e "${WORK}/gh-posted" ]]; then
