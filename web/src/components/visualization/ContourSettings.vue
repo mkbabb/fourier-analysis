@@ -109,7 +109,8 @@ function resetDefaults() {
     mlThreshold.value = CONTOUR_DEFAULTS.ml_threshold;
 }
 
-function currentComputeKey(): string {
+/** The settings the extraction reads: a change here re-extracts the contour. */
+function currentExtractionKey(): string {
     const maxContoursValue = maxContours.value === 0 ? null : maxContours.value;
     return JSON.stringify({
         imageSlug: store.imageSlug,
@@ -119,13 +120,39 @@ function currentComputeKey(): string {
         maxContours: maxContoursValue,
         smoothContours: smoothContours.value,
         mlThreshold: mlThreshold.value,
-        nHarmonics: props.nHarmonics,
-        nPoints: props.nPoints,
     });
+}
+
+function currentComputeKey(): string {
+    return JSON.stringify([currentExtractionKey(), props.nHarmonics, props.nPoints]);
 }
 
 let suppressSettingsRecompute = true;
 let lastComputedKey: string | null = null;
+let lastExtractionKey: string | null = null;
+
+/**
+ * A harmonic-budget or resolution change recomputes the contour on screen and
+ * never re-extracts it (Invariant 19's law: a saved edit is never replaced by
+ * a fresh extraction). Re-extracting here threw away a contour the reader had
+ * just saved, and put an ML extraction ahead of the recompute the reader asked
+ * for (UIA-F-15's held-recompute case, CI 42203111771 and 42236673174).
+ */
+async function runRecompute() {
+    store.beginCompute();
+    store.computeError = null;
+    try {
+        store.contourSettings = {
+            ...store.contourSettings,
+            n_harmonics: props.nHarmonics,
+            n_points: props.nPoints,
+        };
+        await Promise.allSettled([store.computeEpicycles(), store.computeBases()]);
+        lastComputedKey = currentComputeKey();
+    } finally {
+        store.endCompute();
+    }
+}
 
 async function runCompute() {
     if (!store.imageMeta) return;
@@ -157,6 +184,7 @@ async function runCompute() {
         ]);
 
         lastComputedKey = currentComputeKey();
+        lastExtractionKey = currentExtractionKey();
     } finally {
         store.endCompute();
     }
@@ -169,7 +197,8 @@ watchDebounced(
         if (suppressSettingsRecompute || !store.imageMeta) return;
         const nextKey = currentComputeKey();
         if (nextKey === lastComputedKey) return;
-        runCompute();
+        if (store.contour && currentExtractionKey() === lastExtractionKey) runRecompute();
+        else runCompute();
     },
     { debounce: 1000, immediate: false },
 );
@@ -181,10 +210,12 @@ watch(
         if (!meta) {
             suppressSettingsRecompute = true;
             lastComputedKey = null;
+            lastExtractionKey = null;
             return;
         }
 
         lastComputedKey = null;
+        lastExtractionKey = null;
         suppressSettingsRecompute = true;
 
         if (!store.epicycleData && !store.basesData && !store.computing) {
@@ -199,6 +230,7 @@ watch(
     () => {
         suppressSettingsRecompute = true;
         lastComputedKey = null;
+        lastExtractionKey = null;
     },
 );
 
