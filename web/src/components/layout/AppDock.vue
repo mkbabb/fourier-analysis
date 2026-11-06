@@ -92,6 +92,7 @@ function onTabSelect(path: string) {
 // breakpoint guessed from one platform's font metrics. When glass O-85
 // DOCK-PRIORITY-OVERFLOW lands, this measure is retired for it.
 const headerRef = useTemplateRef<HTMLElement>("header");
+const dockRef = useTemplateRef<InstanceType<typeof GlassDock>>("dockRef");
 const showNavLabel = ref(true);
 
 /** The dock run: the nearest ancestor that scrolls inline (glass's overflow contract). */
@@ -130,6 +131,10 @@ const navLabels = [...tabs.map((t) => t.label), "Sections"];
 let fitRun = 0;
 
 async function fitNavLabel(): Promise<void> {
+    // Collapsed, the full layer is inert and inset into the seal's circle, so
+    // its run overflows by construction: the fit is read on the expanded run
+    // only, and read again when the dock opens (the watch below).
+    if (!dockRef.value?.expanded) return;
     const run0 = ++fitRun;
     showNavLabel.value = true;
     let fits = true;
@@ -162,6 +167,11 @@ useResizeObserver(headerRef, (entries) => {
 // already covers every section's name.
 const auth = useAuthStore();
 watch(() => auth.userSlug, () => void fitNavLabel(), { flush: "post" });
+watch(
+    () => dockRef.value?.expanded,
+    (expanded) => expanded && void fitNavLabel(),
+    { flush: "post" },
+);
 if (typeof document !== "undefined" && document.fonts) {
     useEventListener(document.fonts, "loadingdone", () => void fitNavLabel());
 }
@@ -169,11 +179,13 @@ if (typeof document !== "undefined" && document.fonts) {
 
 <template>
     <header ref="header" class="app-header">
-        <GlassDock class="app-dock" orientation="horizontal" shape="pill" :collapse="false">
+        <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="open">
             <!-- Logo + attribution card. The wordmark is the trigger's whole
                  face; at <640px it is the lone ℱ glyph and the dock's control
                  cell (≥44px coarse) is its hit box. -->
-            <Popover>
+            <!-- keep-dock-open: the dock does not fold an open card under the
+                 user when the pointer leaves straight to the page (F-3b). -->
+            <Popover keep-dock-open>
                 <DockTrigger for="popover" class="logo-trigger" aria-label="About Fourier analysis">
                     <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
                         <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
@@ -250,6 +262,15 @@ if (typeof document !== "undefined" && document.fonts) {
             <DockSeparator />
 
             <DarkModeToggle class="dark-mode-toggle" />
+
+            <!-- Owner order 2026-11-05 ("fourier should have a dock collapse
+                 state, too"): the dock opens on first paint and yields to
+                 work; collapsed, its seal is the current section's glyph
+                 (Compass off the five), the same glyph the Sections trigger
+                 wears. -->
+            <template #collapsed>
+                <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon dock-summary-glyph" aria-hidden="true" />
+            </template>
         </GlassDock>
     </header>
 </template>

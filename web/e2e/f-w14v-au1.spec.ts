@@ -367,6 +367,13 @@ test.describe("au1 L2-17 (390 touch)", () => {
         expect.soft(like!.height, "modal Like block size").toBeGreaterThanOrEqual(44);
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
+        // The app dock yields to work (fourier-dock, 2026-11-05): the press on
+        // the card folded it, so the user opens it by its seal first.
+        const appDock = page.locator(".app-dock");
+        await expect(appDock).toHaveClass(/(^|\s)collapsed(\s|$)/);
+        await appDock.getByRole("button", { name: "Expand dock" }).click();
+        await expect(appDock).toHaveClass(/(^|\s)expanded(\s|$)/);
+        await expect(appDock).not.toHaveAttribute("data-morphing");
         await page.locator(".logo-trigger").click();
         const about = page.locator(".about-card");
         await expect(about).toBeVisible();

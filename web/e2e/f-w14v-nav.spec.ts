@@ -56,7 +56,7 @@ for (const vp of [
                 };
                 return {
                     morph: box(".app-dock .sun-moon-toggle svg"),
-                    section: box(".app-dock .nav-tab-icon"),
+                    section: box(".app-dock .dock-layer--full .nav-tab-icon"),
                     account: box(".app-dock .account-trigger svg"),
                 };
             });
