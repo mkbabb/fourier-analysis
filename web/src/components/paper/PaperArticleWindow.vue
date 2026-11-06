@@ -91,8 +91,8 @@ function bindSection(
 .paper-window-section {
 
     /* I.γ — defer layout/paint (incl. KaTeX typesetting + figure decode) for the
-       warm-but-off-screen sections the JS window keeps mounted (overscanAfterPx
-       720, warm-ahead 3). The `content-visibility: auto` + measurement-safe
+       warm-but-off-screen sections the JS window keeps mounted (overscan 720
+       both ways, warm-ahead 3). The `content-visibility: auto` + measurement-safe
        `contain-intrinsic-size: auto …` come from glass-ui's canonical
        `.deferred-section` utility (styles/utilities.css; the glass-ui rule even
        names fourier γ as a consumer) — applied as a class on each section above,
@@ -105,8 +105,11 @@ function bindSection(
        `useVirtualSectionWindow` measures every section via `offsetHeight` to
        build its spacer math + scroll-offset corrections, and a plain (non-`auto`)
        estimate would feed it the wrong number and corrupt scroll positioning.
-       Sections are measured on a post-mount rAF (latex-paper `measureSection`),
-       i.e. AFTER first paint, so the remembered size is always the real one.
+       A section mounted far ahead can still be skipped when it is measured,
+       so latex-paper (0.3.1) records a height only once the section has
+       rendered, and gives each newly mounted section its known height as an
+       inline `contain-intrinsic-block-size`, which takes the place of the
+       estimate below.
 
        `--deferred-section-size` retunes the never-painted estimate from the
        utility's 30rem default to this paper's 1200px (a long typeset section);

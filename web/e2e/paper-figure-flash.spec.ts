@@ -24,7 +24,7 @@ import { expect, test, type Page } from "@playwright/test";
  */
 
 const SAMPLER = () => {
-    const S = { pass: 0, inViewRemounts: [0, 0, 0], notReady: [0, 0, 0], seen: new Set<string>() };
+    const S = { pass: 0, inViewRemounts: [0, 0, 0], notReady: [0, 0, 0], maxJump: [0, 0, 0], seen: new Set<string>() };
     (window as unknown as { __flash: typeof S }).__flash = S;
     const decoded = new WeakSet<HTMLImageElement>();
     const tracked = new WeakSet<HTMLImageElement>();
@@ -42,7 +42,30 @@ const SAMPLER = () => {
         else img.addEventListener("load", () => void done(), { once: true });
     };
     let prev = new Map<string, HTMLImageElement>();
+    // Content jump (§0hz.paper.1): in a frame with no wheel input and no
+    // scroll, no on-screen section may move. A spacer that took a skipped
+    // section's placeholder height moved the whole page by hundreds of px.
+    let wheel = 0;
+    addEventListener("wheel", () => wheel++, { capture: true, passive: true });
+    let prevTops = new Map<string, number>();
+    let prevTop = -1;
     const tick = () => {
+        const scroller = document.querySelector(".paper-scroll");
+        const st = scroller ? scroller.scrollTop : 0;
+        const tops = new Map<string, number>();
+        for (const el of document.querySelectorAll(".paper-window-section > section[id]")) {
+            const r = el.getBoundingClientRect();
+            if (r.bottom > 0 && r.top < innerHeight) tops.set(el.id, r.top);
+        }
+        if (wheel === 0 && st === prevTop) {
+            for (const [id, y] of tops) {
+                const y0 = prevTops.get(id);
+                if (y0 != null) S.maxJump[S.pass] = Math.max(S.maxJump[S.pass], Math.abs(y - y0));
+            }
+        }
+        wheel = 0;
+        prevTop = st;
+        prevTops = tops;
         const now = new Map<string, HTMLImageElement>();
         for (const img of document.querySelectorAll<HTMLImageElement>(sel)) {
             track(img);
@@ -63,13 +86,21 @@ const SAMPLER = () => {
     requestAnimationFrame(tick);
 };
 
-type Flash = { inViewRemounts: number[]; notReady: number[]; seen: number };
+type Flash = { inViewRemounts: number[]; notReady: number[]; maxJump: number[]; seen: number };
 
 async function readFlash(page: Page): Promise<Flash> {
     return page.evaluate(() => {
-        const S = (window as unknown as { __flash: { inViewRemounts: number[]; notReady: number[]; seen: Set<string> } })
-            .__flash;
-        return { inViewRemounts: [...S.inViewRemounts], notReady: [...S.notReady], seen: S.seen.size };
+        const S = (
+            window as unknown as {
+                __flash: { inViewRemounts: number[]; notReady: number[]; maxJump: number[]; seen: Set<string> };
+            }
+        ).__flash;
+        return {
+            inViewRemounts: [...S.inViewRemounts],
+            notReady: [...S.notReady],
+            maxJump: [...S.maxJump],
+            seen: S.seen.size,
+        };
     });
 }
 
@@ -116,6 +147,7 @@ for (const vp of [
             expect(f.seen, "the descent reached eight figures").toBeGreaterThanOrEqual(8);
             expect(f.inViewRemounts, "FIGURE-FLASH on-screen <img> remounts [rest, descent, ascent]").toEqual([0, 0, 0]);
             expect(f.notReady[2], "FIGURE-FLASH not-paint-ready figure frames on the ascent").toBe(0);
+            expect(f.maxJump[2], "PAPER-JUMP an on-screen section moved with no scroll on the ascent (px)").toBeLessThanOrEqual(1);
         });
     });
 }

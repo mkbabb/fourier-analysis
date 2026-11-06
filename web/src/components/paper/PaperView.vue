@@ -88,7 +88,14 @@ const {
 } = useVirtualSectionWindow({
     items: flatSections,
     scrollContainer,
-    overscanBeforePx: 240,
+    // §0hz.paper.1: the window is symmetric, so a figure scrolled back up into
+    // view has mounted and decoded before it is on screen (240px above was a
+    // frame or two late at 390). It needs latex-paper 0.3.1, whose window
+    // records a section's height only once the browser has rendered it: with
+    // 0.3.0 a section mounted this far ahead was still skipped by
+    // `content-visibility`, its placeholder height went into the spacers, and
+    // the content jumped by up to 2786px at 1440 when it left the window.
+    overscanBeforePx: 720,
     overscanAfterPx: 720,
     leadingOffsetPx: sectionStartOffsetPx,
     warmTargetBefore: 2,
