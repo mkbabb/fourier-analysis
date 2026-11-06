@@ -40,10 +40,19 @@
 #       [--record-url URL] [--health-url URL] [--timeout S] [--interval S]
 #       [--run-url URL] [--repo OWNER/NAME]
 #
+# NOT CURRENT (X·F round 2). deploy-trigger.yml sends no deploy request for a
+# SHA master has already moved past when its CI completes: the newer tip's own
+# green CI run requests that deploy, and that run's watcher watches it. This
+# watcher reads master's tip the same way at start; when the tip contains SHA it
+# stands down (exit 0) instead of waiting out the bound on a deploy nobody
+# requested (issue #9: 2796f63's watch, master already at a224b63). An unknown
+# or diverged tip falls through to the watch.
+#
 # --dry-run prints every gh call (the lookup and the write) and posts nothing;
 # the lookup's answer is then DEPLOY_ALERT_DRY_ISSUE (an open issue number, or
 # empty for none) and the containment compare's answer is
 # DEPLOY_ALERT_DRY_COMPARE (a compare status, e.g. `ahead`; empty = unknown),
+# master's tip is DEPLOY_ALERT_DRY_TIP (empty = unknown),
 # so the open-then-update and the superseded paths are exercisable offline
 # (scripts/deploy-alert-fixture.sh). Live, gh reads GH_TOKEN from the
 # environment; it is never printed.
@@ -138,6 +147,17 @@ contains() {
     [[ "${status}" == "ahead" ]]
 }
 
+# master_tip — the SHA master points at now, or empty when it cannot be read.
+# Under --dry-run the read is printed and answered from DEPLOY_ALERT_DRY_TIP.
+master_tip() {
+    if ((DRY_RUN)); then
+        gh_call api "repos/${REPO}/branches/master" --jq .commit.sha >&2
+        printf '%s' "${DEPLOY_ALERT_DRY_TIP:-}"
+    else
+        gh api "repos/${REPO}/branches/master" --jq .commit.sha 2>/dev/null || true
+    fi
+}
+
 # read_record — the edge's deploy-of-record as compact JSON, or empty when the
 # edge does not serve one (absent, HTML, unreachable).
 read_record() {
@@ -155,6 +175,11 @@ health_live() {
 # F-D1: a hook that exited before resolving the SHA records "unknown"; a fresh
 # ABORTED or TIMEOUT record (recorded since this watch began) is this deploy's.
 STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+tip="$(master_tip)"
+if [[ "${tip}" =~ ^[0-9a-f]{40}$ && "${tip}" != "${SHA}" ]] && contains "${tip}"; then
+    say "NOT CURRENT - master is at ${tip}, which contains ${SHA}; deploy-trigger requested no deploy for ${SHA}, and ${tip}'s own green CI run requests and watches it"
+    exit 0
+fi
 say "watching the API deploy of ${SHA} (record ${RECORD_URL}; bound ${TIMEOUT}s, every ${INTERVAL}s)"
 deadline=$((SECONDS + TIMEOUT))
 last="no deploy-of-record served"
