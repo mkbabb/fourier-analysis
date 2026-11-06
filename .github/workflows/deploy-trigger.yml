@@ -30,10 +30,11 @@
 # failed trigger reaches the watched channel as well as failing this run.
 #
 # A SHA master has moved past is skipped, not failed: the hook deploys the tip,
-# so the newer tip's own green run requests the deploy that ships this SHA, and
-# deploy-alert resolves this SHA as SUPERSEDED on that tip's OK record (an OK
-# at a SHA that contains it, scripts/deploy-alert.sh). The skip and the
-# watcher's verdict agree; neither alerts on a deploy that did ship.
+# so the newer tip's own green run requests the deploy that ships this SHA.
+# deploy-alert's watch of this SHA follows the same rule: it is HANDED OFF to
+# that tip once the tip's CI concludes success (or resolves SUPERSEDED on an OK
+# record at a SHA that contains it), and it alerts on its bound when the tip's
+# CI ends red, since then nothing ships this SHA (scripts/deploy-alert.sh).
 #
 # SECRET DISCIPLINE. FOURIER_DEPLOY_HMAC is a repo secret holding the same HMAC
 # key as the host's hooks.json and the GitHub webhook (the three places it

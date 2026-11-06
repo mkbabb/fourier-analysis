@@ -25,7 +25,10 @@
 # A trigger that failed or was refused leaves no OK at the SHA, so the bound
 # alerts on it too: deploy-alert stays keyed on CI, not on deploy-trigger.
 # A SHA master moved past (deploy-trigger skips it; the hook deploys the tip)
-# resolves SUPERSEDED on the tip's healthy OK record when that tip contains it.
+# resolves SUPERSEDED on the tip's healthy OK record when that tip contains it,
+# or HANDED OFF once that tip's CI concludes success (its own trigger and watch
+# then carry the deploy). While that CI runs the watch waits on it (the 90-min
+# CI bound); a tip whose CI ends red ships nothing, and the bound alerts.
 
 name: deploy-alert
 
@@ -58,8 +61,9 @@ jobs:
        github.event.workflow_run.head_branch == 'master' &&
        github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    # The watcher's own bound is 30 min (scripts/deploy-alert.sh --timeout).
-    timeout-minutes: 40
+    # The watcher's bounds: 30 min for the deploy, held open to 90 min while a
+    # newer tip's CI runs (scripts/deploy-alert.sh --timeout, --ci-timeout).
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
         with:

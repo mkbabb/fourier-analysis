@@ -18,10 +18,13 @@
 #             (X·F F-D1) outcome ABORTED or TIMEOUT recorded since this
 #             watch began, at SHA or at a SHA the hook could not resolve:
 #             the hook exited without a deploy                         → alert, exit 1
+#   HANDED OFF master's tip contains SHA and its CI concluded success: the
+#             tip's own trigger and watcher carry this deploy          → exit 0
 #   TIMEOUT   no OK at SHA within --timeout (a REFUSED record, a record at an
 #             older SHA, a record the edge does not serve — e.g. a host whose
-#             hook predates .h1 and refused before it fetched — or a dead API)
-#                                                                       → alert, exit 1
+#             hook predates .h1 and refused before it fetched — a dead API,
+#             or a containing tip whose CI ended red); held open up to
+#             --ci-timeout while a containing tip's CI still runs      → alert, exit 1
 #
 # REFUSED is not terminal (e.g. a hand dispatch that raced CI); since X §0hc.3
 # the deploy is requested by deploy-trigger.yml only after CI is green, and a
@@ -38,22 +41,27 @@
 #
 #   scripts/deploy-alert.sh --sha <40-hex> [--dry-run]
 #       [--record-url URL] [--health-url URL] [--timeout S] [--interval S]
-#       [--run-url URL] [--repo OWNER/NAME]
+#       [--run-url URL] [--repo OWNER/NAME] [--ci-timeout S]
 #
-# NOT CURRENT (X·F round 2). deploy-trigger.yml sends no deploy request for a
-# SHA master has already moved past when its CI completes: the newer tip's own
-# green CI run requests that deploy, and that run's watcher watches it. This
-# watcher reads master's tip the same way at start; when the tip contains SHA it
-# stands down (exit 0) instead of waiting out the bound on a deploy nobody
-# requested (issue #9: 2796f63's watch, master already at a224b63). An unknown
-# or diverged tip falls through to the watch.
+# HANDED OFF (X·F round 2, issue #9; repaired at round 3). deploy-trigger.yml
+# sends no deploy request for a SHA master has already moved past when its CI
+# completes: the newer tip's own green CI run requests that deploy, and that
+# run's watcher watches it. So each poll also reads master's tip; when the tip
+# contains SHA, this watch is handed to the tip's watcher only once the tip's
+# CI run has concluded success (that run is what fires both). Until then the
+# watch goes on: a tip whose CI is still running holds the bound open up to
+# --ci-timeout (a CI run outlasts the 30 min deploy bound: a224b63's ended 37
+# min into 2796f63's watch), and a tip whose CI ended red ships nothing, so
+# the bound alerts and names it. The record is read first, so a re-watch of a
+# SHA already deployed reads its verdict (OK or SUPERSEDED). An unknown or
+# diverged tip is no hand-off.
 #
 # --dry-run prints every gh call (the lookup and the write) and posts nothing;
 # the lookup's answer is then DEPLOY_ALERT_DRY_ISSUE (an open issue number, or
 # empty for none) and the containment compare's answer is
 # DEPLOY_ALERT_DRY_COMPARE (a compare status, e.g. `ahead`; empty = unknown),
-# master's tip is DEPLOY_ALERT_DRY_TIP (empty = unknown),
-# so the open-then-update and the superseded paths are exercisable offline
+# master's tip is DEPLOY_ALERT_DRY_TIP (empty = unknown) and its CI run is
+# DEPLOY_ALERT_DRY_TIP_CI ("<status> <run id> <conclusion>"; empty = none), so the open-then-update and the superseded paths are exercisable offline
 # (scripts/deploy-alert-fixture.sh). Live, gh reads GH_TOKEN from the
 # environment; it is never printed.
 set -euo pipefail
@@ -64,6 +72,7 @@ RECORD_URL="${DEPLOY_RECORD_URL:-https://api.fourier.babb.dev/deploy-record.json
 HEALTH_URL="${DEPLOY_HEALTH_URL:-https://api.fourier.babb.dev/api/health}"
 TIMEOUT="${DEPLOY_ALERT_TIMEOUT:-1800}"
 INTERVAL="${DEPLOY_ALERT_INTERVAL:-30}"
+CI_TIMEOUT="${DEPLOY_ALERT_CI_TIMEOUT:-5400}"
 RUN_URL="${DEPLOY_ALERT_RUN_URL:-}"
 REPO="${GITHUB_REPOSITORY:-mkbabb/fourier-analysis}"
 readonly LABEL="deploy-alert"
@@ -80,13 +89,15 @@ while (($#)); do
         --health-url) HEALTH_URL="${2:-}"; shift 2 ;;
         --timeout) TIMEOUT="${2:-}"; shift 2 ;;
         --interval) INTERVAL="${2:-}"; shift 2 ;;
+        --ci-timeout) CI_TIMEOUT="${2:-}"; shift 2 ;;
         --run-url) RUN_URL="${2:-}"; shift 2 ;;
         --repo) REPO="${2:-}"; shift 2 ;;
         *) die "unknown argument: $1" ;;
     esac
 done
 [[ "${SHA}" =~ ^[0-9a-f]{40}$ ]] || die "--sha must be a full 40-hex commit SHA (got '${SHA}')"
-[[ "${TIMEOUT}" =~ ^[0-9]+$ && "${INTERVAL}" =~ ^[1-9][0-9]*$ ]] || die "--timeout/--interval must be integers"
+[[ "${TIMEOUT}" =~ ^[0-9]+$ && "${CI_TIMEOUT}" =~ ^[0-9]+$ && "${INTERVAL}" =~ ^[1-9][0-9]*$ ]] \
+    || die "--timeout/--ci-timeout/--interval must be integers"
 command -v jq >/dev/null 2>&1 || die "jq is required"
 
 # gh_call ARGS… — run gh, or under --dry-run print the exact call and post nothing.
@@ -158,6 +169,21 @@ master_tip() {
     fi
 }
 
+# tip_ci AT — master's push CI run at AT as "<status> <run id> <conclusion>"
+# (no conclusion while it runs), or empty when there is none or the read
+# fails. Under --dry-run the read is printed and answered from
+# DEPLOY_ALERT_DRY_TIP_CI.
+tip_ci() {
+    local q="repos/${REPO}/actions/workflows/ci.yml/runs?head_sha=$1&event=push&branch=master&per_page=1"
+    local jqf='.workflow_runs[0] // empty | "\(.status) \(.id) \(.conclusion // "")"'
+    if ((DRY_RUN)); then
+        gh_call api "${q}" --jq "${jqf}" >&2
+        printf '%s' "${DEPLOY_ALERT_DRY_TIP_CI:-}"
+    else
+        gh api "${q}" --jq "${jqf}" 2>/dev/null || true
+    fi
+}
+
 # read_record — the edge's deploy-of-record as compact JSON, or empty when the
 # edge does not serve one (absent, HTML, unreachable).
 read_record() {
@@ -175,17 +201,14 @@ health_live() {
 # F-D1: a hook that exited before resolving the SHA records "unknown"; a fresh
 # ABORTED or TIMEOUT record (recorded since this watch began) is this deploy's.
 STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-tip="$(master_tip)"
-if [[ "${tip}" =~ ^[0-9a-f]{40}$ && "${tip}" != "${SHA}" ]] && contains "${tip}"; then
-    say "NOT CURRENT - master is at ${tip}, which contains ${SHA}; deploy-trigger requested no deploy for ${SHA}, and ${tip}'s own green CI run requests and watches it"
-    exit 0
-fi
 say "watching the API deploy of ${SHA} (record ${RECORD_URL}; bound ${TIMEOUT}s, every ${INTERVAL}s)"
-deadline=$((SECONDS + TIMEOUT))
+deadline=$((SECONDS + TIMEOUT)) ci_deadline=$((SECONDS + CI_TIMEOUT))
 last="no deploy-of-record served"
 # The containment verdict of the last OK record seen at another SHA, cached so
 # a record that stays put is compared once, not on every poll.
 compared_at="" compared_contains=1
+# The same for master's tip: the last tip read and whether it contains SHA.
+tip_at="" tip_contains=1 tip_note=""
 while :; do
     record="$(read_record)"
     if [[ -n "${record}" ]]; then
@@ -227,10 +250,29 @@ while :; do
             fi
         fi
     fi
-    if ((SECONDS >= deadline)); then
-        alert "TIMEOUT" "No outcome OK at this SHA within ${TIMEOUT}s. Last reading - ${last}."
+    # The hand-off: a tip that contains SHA, once its CI is green, carries
+    # SHA's deploy (its trigger requests it, its watcher watches it).
+    tip="$(master_tip)" ci_pending=0 tip_note=""
+    if [[ "${tip}" =~ ^[0-9a-f]{40}$ && "${tip}" != "${SHA}" ]]; then
+        if [[ "${tip}" != "${tip_at}" ]]; then
+            tip_at="${tip}"
+            tip_contains=1
+            contains "${tip}" && tip_contains=0
+        fi
+        if ((tip_contains == 0)); then
+            read -r ci_status ci_id ci_conclusion <<<"$(tip_ci "${tip}")" || true
+            if [[ "${ci_status}" == completed && "${ci_conclusion}" == success ]]; then
+                say "HANDED OFF - master is at ${tip}, which contains ${SHA}; its CI run ${ci_id} concluded success, so its deploy request and its own watcher carry ${SHA}'s deploy"
+                exit 0
+            fi
+            [[ -n "${ci_status}" && "${ci_status}" != completed ]] && ci_pending=1
+            tip_note="; master is at ${tip} (contains ${SHA}), CI run ${ci_id:-<none>} ${ci_status:-not found}${ci_conclusion:+ ${ci_conclusion}}"
+        fi
+    fi
+    if ((SECONDS >= deadline)) && ! ((ci_pending && SECONDS < ci_deadline)); then
+        alert "TIMEOUT" "No outcome OK at this SHA within the bound. Last reading - ${last}${tip_note}."
         exit 1
     fi
-    say "waiting - ${last}"
+    say "waiting - ${last}${tip_note}"
     sleep "${INTERVAL}"
 done

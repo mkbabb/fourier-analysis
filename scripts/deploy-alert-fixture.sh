@@ -43,10 +43,19 @@
 #   P  with jq and without it → CI_RUN_ID = 42040354998, never "unknown"
 #   Q  a covered SHA whose answer carries no run id → REFUSED, not "unknown"
 #
-# X·F round 2 (issue #9) — the watcher follows deploy-trigger's tip rule:
-#   R  master's tip contains SHA at start (no request was sent for SHA) → exit 0,
-#      NOT CURRENT, no issue; the record never reaching SHA does not alert
+# X·F round 2 (issue #9) — the watcher follows deploy-trigger's tip rule. A tip
+# that contains SHA carries SHA's deploy; the watch is handed to that tip's
+# watcher only once the tip's CI has concluded success (that run is what fires
+# both the tip's deploy request and its watcher):
+#   R  the tip contains SHA, its CI concluded success → HANDED OFF, exit 0, no
+#      issue; the record never reaching SHA does not alert
 #   S  the tip read fails or the tip diverges → the watch runs to its bound as before
+#   T  the tip contains SHA, its CI concluded failure → SHA's tree never ships:
+#      TIMEOUT alert on the bound, naming the tip and its conclusion
+#   U  the tip's CI is still running at --timeout → the watch waits on it up to
+#      the CI bound (DEPLOY_ALERT_CI_TIMEOUT), then alerts TIMEOUT naming it
+#   V  a re-watch of a SHA a containing tip already deployed (workflow_dispatch)
+#      → SUPERSEDED from the record, a verdict, not a stand-down
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -327,31 +336,69 @@ for leg in jq nojq; do
     fi
 done
 
-# R — the watch starts with master already past SHA (its tip contains SHA), so
-# deploy-trigger sent no request for SHA and no record will ever name it (here
-# the edge serves none at all, as on 2026-11-06 for 2796f63): the watcher stands
-# down at once, NOT CURRENT, with no issue (issue #9). Before, it waited out the
-# bound and alerted TIMEOUT.
-env DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_TIP="${NEWER}" DEPLOY_ALERT_DRY_COMPARE=ahead bash "${ALERT}" --dry-run \
-    --sha "${SHA}" --repo mkbabb/fourier-analysis --record-url "file://${WORK}/spa.html" \
-    --health-url "file://${WORK}/health.json" --timeout 2 --interval 1 >"${WORK}/out" 2>&1; rc=$?
-if [[ ${rc} -eq 0 ]] && grep -q 'NOT CURRENT' "${WORK}/out" \
-        && grep -q "^\[deploy-alert\] DRY-RUN gh api repos/mkbabb/fourier-analysis/branches/master " "${WORK}/out" \
+# R — master is past SHA (its tip contains SHA), so deploy-trigger sent no
+# request for SHA and no record will ever name it (here the edge serves none at
+# all, as on 2026-11-06 for 2796f63). The tip's CI concluded success, so the
+# tip's own trigger and watcher carry SHA's deploy: HANDED OFF, no issue
+# (issue #9; before, the watch waited out the bound and alerted TIMEOUT).
+# tip_watch RECORD [ENV…] — the watcher with master's tip at NEWER, containing SHA.
+tip_watch() {
+    local record="$1"; shift
+    env DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_TIP="${NEWER}" DEPLOY_ALERT_DRY_COMPARE=ahead "$@" \
+        bash "${ALERT}" --dry-run --sha "${SHA}" --repo mkbabb/fourier-analysis --record-url "file://${record}" \
+        --health-url "file://${WORK}/health.json" --timeout 1 --interval 1 >"${WORK}/out" 2>&1
+}
+tip_watch "${WORK}/spa.html" DEPLOY_ALERT_DRY_TIP_CI="completed 4343 success"; rc=$?
+if [[ ${rc} -eq 0 ]] && grep -q 'HANDED OFF' "${WORK}/out" \
+        && grep -qF "DRY-RUN gh api repos/mkbabb/fourier-analysis/actions/workflows/ci.yml/runs\\?head_sha=${NEWER}\\&event=push" "${WORK}/out" \
         && ! grep -Eq 'DRY-RUN gh (issue|label)' "${WORK}/out"; then
-    pass "R master past SHA at start: NOT CURRENT, exit 0, no alert"
+    pass "R tip contains SHA, its CI green: HANDED OFF, exit 0, no alert"
 else
-    fail "R master past SHA at start: rc ${rc} or alerted"; sed 's/^/    /' "${WORK}/out"
+    fail "R tip contains SHA, its CI green: rc ${rc} or alerted or not handed off"; sed 's/^/    /' "${WORK}/out"
+fi
+
+# T — the tip that carries SHA ended red: no deploy will ship SHA's tree, and
+# no later watcher fires for it, so this watch alerts on its bound.
+tip_watch "${WORK}/spa.html" DEPLOY_ALERT_DRY_TIP_CI="completed 4344 failure"; rc=$?
+if [[ ${rc} -eq 1 ]] && grep -q 'DRY-RUN gh issue create' "${WORK}/out" && grep -q 'TIMEOUT' "${WORK}/out" \
+        && grep -q "master is at ${NEWER}.*CI run 4344 completed failure" "${WORK}/out"; then
+    pass "T tip contains SHA, its CI red: TIMEOUT alert naming the tip's CI (rc ${rc})"
+else
+    fail "T tip contains SHA, its CI red: rc ${rc} or no alert naming it"; sed 's/^/    /' "${WORK}/out"
+fi
+
+# U — the tip's CI is still running when the deploy bound ends (a224b63's CI
+# ended 37 min after 2796f63's watch began): the watch waits on it, to the CI
+# bound, and only then alerts.
+t0=${SECONDS}
+tip_watch "${WORK}/spa.html" DEPLOY_ALERT_DRY_TIP_CI="in_progress 4345" DEPLOY_ALERT_CI_TIMEOUT=3; rc=$?
+waited=$((SECONDS - t0))
+if [[ ${rc} -eq 1 ]] && ((waited >= 3)) && grep -q 'TIMEOUT' "${WORK}/out" \
+        && grep -q "CI run 4345 in_progress" "${WORK}/out"; then
+    pass "U tip CI running past --timeout: waited ${waited}s to the CI bound, then TIMEOUT (rc ${rc})"
+else
+    fail "U tip CI running past --timeout: rc ${rc}, waited ${waited}s"; sed 's/^/    /' "${WORK}/out"
+fi
+
+# V — a re-watch (workflow_dispatch) of a SHA that a containing tip already
+# deployed reads the record first: SUPERSEDED, the deploy that shipped it.
+tip_watch "$(produce OK "${NEWER}")" DEPLOY_ALERT_DRY_TIP_CI="completed 4343 success"; rc=$?
+if [[ ${rc} -eq 0 ]] && grep -q 'SUPERSEDED' "${WORK}/out" && ! grep -q 'HANDED OFF' "${WORK}/out" \
+        && ! grep -Eq 'DRY-RUN gh (issue|label)' "${WORK}/out"; then
+    pass "V re-watch of a deployed SHA: SUPERSEDED from the record, exit 0"
+else
+    fail "V re-watch of a deployed SHA: rc ${rc} or no SUPERSEDED verdict"; sed 's/^/    /' "${WORK}/out"
 fi
 
 # S — a tip that does not contain SHA, or SHA still the tip, is watched as before.
 watch "$(produce OK "${PREV}")" DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_TIP="${NEWER}" DEPLOY_ALERT_DRY_COMPARE=diverged; rc=$?
-if [[ ${rc} -eq 1 ]] && grep -q 'TIMEOUT' "${WORK}/out" && ! grep -q 'NOT CURRENT' "${WORK}/out"; then
+if [[ ${rc} -eq 1 ]] && grep -q 'TIMEOUT' "${WORK}/out" && ! grep -q 'HANDED OFF' "${WORK}/out"; then
     pass "S diverged tip: watched to the bound, TIMEOUT alert (rc ${rc})"
 else
     fail "S diverged tip: rc ${rc} or stood down"; sed 's/^/    /' "${WORK}/out"
 fi
 watch "$(produce OK)" DEPLOY_ALERT_DRY_ISSUE= DEPLOY_ALERT_DRY_TIP="${SHA}"; rc=$?
-if [[ ${rc} -eq 0 ]] && grep -q '^\[deploy-alert\] OK - ' "${WORK}/out" && ! grep -q 'NOT CURRENT' "${WORK}/out"; then
+if [[ ${rc} -eq 0 ]] && grep -q '^\[deploy-alert\] OK - ' "${WORK}/out" && ! grep -q 'HANDED OFF' "${WORK}/out"; then
     pass "S SHA is the tip: watched, OK at SHA, exit 0"
 else
     fail "S SHA is the tip: rc ${rc} or stood down"; sed 's/^/    /' "${WORK}/out"
