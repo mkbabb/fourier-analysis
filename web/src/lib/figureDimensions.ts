@@ -8,7 +8,7 @@
  * for a figure before it loads, and an un-dimensioned `<img>` in a
  * mount/unmount window is a CLS generator.
  *
- * This map lets `PaperArticleWindow` set `width`/`height` on each figure so the
+ * This map lets `PaperWindowSection` set `width`/`height` on each figure so the
  * browser reserves the correct box (the rendered size is still capped by the
  * `max-height: 400px` CSS — `width`/`height` only supply the aspect ratio the
  * layout reserves). Keyed by the resolved `.png` filename (the same string the
