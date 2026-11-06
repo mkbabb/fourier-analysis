@@ -495,7 +495,7 @@ for (const vp of VIEWPORTS) {
                         return img?.complete && img.naturalWidth > 0 ? img.naturalWidth : false;
                     },
                     null,
-                    { timeout: 30_000 },
+                    { timeout: 15_000 },
                 )
                 .then((h) => h.jsonValue(), () => 0);
             expect(thumbWidth, "the owner's draft thumbnail decodes").toBeGreaterThan(0);
