@@ -167,9 +167,15 @@ useResizeObserver(headerRef, (entries) => {
 // already covers every section's name.
 const auth = useAuthStore();
 watch(() => auth.userSlug, () => void fitNavLabel(), { flush: "post" });
+// Only an expansion re-measures (collapsed -> open). The ref's arrival at mount
+// (undefined -> true) is not one: answering it ran the six-name trial inside the
+// first route's mount, six forced layouts of a page still being built (od19
+// A/B on CI, 12 pairs: +53-76 ms median own time per /v/ and /visualize load
+// at 1440; with this guard the cost is 0 against the pre-collapse dock).
+// The header's ResizeObserver already takes the first measure after layout.
 watch(
     () => dockRef.value?.expanded,
-    (expanded) => expanded && void fitNavLabel(),
+    (expanded, was) => expanded && was === false && void fitNavLabel(),
     { flush: "post" },
 );
 if (typeof document !== "undefined" && document.fonts) {
