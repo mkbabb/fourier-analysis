@@ -484,6 +484,22 @@ for (const vp of VIEWPORTS) {
             await page.goto(`/v/${draft.slug}`);
             await page.waitForLoadState("networkidle");
             expect(page.url()).toContain(`/v/${draft.slug}`);
+            // The owner's draft image reads through the session (F-D5): the
+            // sidebar thumbnail decodes, and "Image unavailable" never shows.
+            // An empty `src` while the session read is in flight fired the
+            // <img>'s error, and the plate stuck (value.js COHESION §0hz.mt2.fourier.r).
+            const thumbWidth = await page
+                .waitForFunction(
+                    () => {
+                        const img = document.querySelector<HTMLImageElement>('img[alt="Uploaded image"]');
+                        return img?.complete && img.naturalWidth > 0 ? img.naturalWidth : false;
+                    },
+                    null,
+                    { timeout: 30_000 },
+                )
+                .then((h) => h.jsonValue(), () => 0);
+            expect(thumbWidth, "the owner's draft thumbnail decodes").toBeGreaterThan(0);
+            await expect(page.getByText("Image unavailable")).toHaveCount(0);
             // axe keystone: the saved/published entity view.
             await checkA11y(page, `published view @ ${vp.name}`);
 

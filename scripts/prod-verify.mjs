@@ -226,8 +226,27 @@ try {
             .waitFor({ state: "visible", timeout: 30_000 })
             .then(() => true, () => false);
         const failed = await page.getByText("Could not open this visualization").count();
+        // The owner's own image reads through the session (F-D5): the sidebar
+        // thumbnail decodes, and the "Image unavailable" plate never shows.
+        const thumbW = await page
+            .waitForFunction(
+                () => {
+                    const img = document.querySelector('img[alt="Uploaded image"]');
+                    return img?.complete && img.naturalWidth > 0 ? img.naturalWidth : false;
+                },
+                null,
+                { timeout: 30_000 },
+            )
+            .then((h) => h.jsonValue(), () => 0);
+        const unavailable = await page.getByText("Image unavailable").count();
         await page.screenshot({ path: join(outDir, "preview-1440.png") });
-        row("preview /v/<slug>", canvas && failed === 0, { slug: primary, canvas, failed });
+        row("preview /v/<slug>", canvas && failed === 0 && thumbW > 0 && unavailable === 0, {
+            slug: primary,
+            canvas,
+            failed,
+            thumbW,
+            unavailable,
+        });
     }
 
     // ---- publish · remix · diff ----------------------------------------------------
