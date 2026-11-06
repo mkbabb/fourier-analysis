@@ -92,6 +92,7 @@ function onTabSelect(path: string) {
 // breakpoint guessed from one platform's font metrics. When glass O-85
 // DOCK-PRIORITY-OVERFLOW lands, this measure is retired for it.
 const headerRef = useTemplateRef<HTMLElement>("header");
+const dockRef = useTemplateRef<InstanceType<typeof GlassDock>>("dockRef");
 const showNavLabel = ref(true);
 
 /** The dock run: the nearest ancestor that scrolls inline (glass's overflow contract). */
@@ -130,6 +131,10 @@ const navLabels = [...tabs.map((t) => t.label), "Sections"];
 let fitRun = 0;
 
 async function fitNavLabel(): Promise<void> {
+    // Collapsed, the full layer is inert and inset into the seal's circle, so
+    // its run overflows by construction: the fit is read on the expanded run
+    // only, and read again when the dock opens (the watch below).
+    if (!dockRef.value?.expanded) return;
     const run0 = ++fitRun;
     showNavLabel.value = true;
     let fits = true;
@@ -162,6 +167,11 @@ useResizeObserver(headerRef, (entries) => {
 // already covers every section's name.
 const auth = useAuthStore();
 watch(() => auth.userSlug, () => void fitNavLabel(), { flush: "post" });
+watch(
+    () => dockRef.value?.expanded,
+    (expanded) => expanded && void fitNavLabel(),
+    { flush: "post" },
+);
 if (typeof document !== "undefined" && document.fonts) {
     useEventListener(document.fonts, "loadingdone", () => void fitNavLabel());
 }
