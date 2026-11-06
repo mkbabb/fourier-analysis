@@ -190,9 +190,11 @@ function sliderRoot(page: Page, name: string | RegExp) {
     return page.locator(".glass-slider").filter({ has: page.getByRole("slider", { name, includeHidden: true }) }).first();
 }
 
-/** The canvas docks rest collapsed; open every one so its controls are reachable. */
+/** The canvas docks rest collapsed; open every one so its controls are reachable.
+ * Scoped off the app dock (fourier-dock, 2026-11-05), which now collapses too:
+ * its seal is not a canvas control, and pressing it would pin the header open. */
 async function expandDocks(page: Page): Promise<void> {
-    for (const b of await page.getByRole("button", { name: "Expand dock" }).all())
+    for (const b of await page.locator(".glass-dock:not(.app-dock)").getByRole("button", { name: "Expand dock" }).all())
         if (await b.isVisible()) await b.click();
 }
 
