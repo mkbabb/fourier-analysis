@@ -14,7 +14,6 @@ from fourier_analysis.bases_fitting import (
     BasisDecomposition,
     approximate_curve,
     chebyshev_fit,
-    legendre_from_chebyshev,
 )
 
 
@@ -149,24 +148,21 @@ def build_animation_data(
     eps = 0.03
     s_eval = np.linspace(-1 + eps, 1 - eps, n_eval)
 
-    for basis_name in ("chebyshev", "legendre"):
-        partial_sums[basis_name] = {}
-        for n in levels:
-            deg = min(n, len(contour_points) - 1)
-            cheb_x = chebyshev_fit(x_signal, deg)
-            cheb_y = chebyshev_fit(y_signal, deg)
-            if basis_name == "chebyshev":
-                x_vals = chebyshev.chebval(s_eval, cheb_x)
-                y_vals = chebyshev.chebval(s_eval, cheb_y)
-            else:
-                leg_x = legendre_from_chebyshev(cheb_x)
-                leg_y = legendre_from_chebyshev(cheb_y)
-                x_vals = legendre.legval(s_eval, leg_x)
-                y_vals = legendre.legval(s_eval, leg_y)
-            partial_sums[basis_name][n] = {
-                "x": x_vals.tolist(),
-                "y": y_vals.tolist(),
-            }
+    # The least-squares polynomial of degree n is one polynomial whichever
+    # basis spans it, so the Legendre partial sum at a level IS the Chebyshev
+    # one: one fit and one evaluation serve both. Re-fitting per basis and
+    # converting the coefficients (an O(n²) Clenshaw in polynomial objects)
+    # was ~60% of a bases request and moved no point by more than 1e-9.
+    partial_sums["chebyshev"] = {}
+    partial_sums["legendre"] = {}
+    for n in levels:
+        deg = min(n, len(contour_points) - 1)
+        xy = {
+            "x": chebyshev.chebval(s_eval, chebyshev_fit(x_signal, deg)).tolist(),
+            "y": chebyshev.chebval(s_eval, chebyshev_fit(y_signal, deg)).tolist(),
+        }
+        partial_sums["chebyshev"][n] = xy
+        partial_sums["legendre"][n] = xy
 
     # Serialize decompositions
     decompositions = {}
