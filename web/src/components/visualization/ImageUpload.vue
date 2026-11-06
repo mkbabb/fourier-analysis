@@ -11,7 +11,9 @@ import { Upload, ImageOff } from "@lucide/vue";
 
 const store = useWorkspaceStore();
 const imgError = ref(false);
-// X·F F-D5: the image passes the read gate with the session.
+// X·F F-D5: the image passes the read gate with the session. While that read
+// is in flight the source is undefined and the <img> carries no src: an empty
+// src fires its error, and the "Image unavailable" plate would stick.
 const thumbHref = () => (store.imageSlug ? thumbnailUrl(store.imageSlug) : null);
 const imageSource = useImageSources(() => [thumbHref()]);
 
@@ -75,7 +77,7 @@ function onImgError() {
             </div>
             <img
                 v-else
-                :src="preview || imageSource(thumbHref()) || ''"
+                :src="preview || imageSource(thumbHref())"
                 alt="Uploaded image"
                 class="image-thumb"
                 @error="onImgError"
