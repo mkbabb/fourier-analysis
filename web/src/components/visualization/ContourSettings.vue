@@ -215,7 +215,10 @@ watch(
         }
 
         lastComputedKey = null;
-        lastExtractionKey = null;
+        // A remount (leaving the contour editor swaps this panel back in) finds
+        // the contour on screen made under the store's settings, which seeded
+        // these refs: a budget change then recomputes it, never re-extracts.
+        lastExtractionKey = store.contour ? currentExtractionKey() : null;
         suppressSettingsRecompute = true;
 
         if (!store.epicycleData && !store.basesData && !store.computing) {
