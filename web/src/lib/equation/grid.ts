@@ -24,6 +24,21 @@ const AXIS_ALPHA = 0.8;
 /** The minor rules are orientation texture, not data: deliberately below the floor. */
 const MINOR_GRID_ALPHA = 0.12;
 
+const AXIS_WIDTH = 1.5;
+
+/**
+ * An axis's centre, moved onto the device grid (`FR-CP-D1`, composited). A
+ * stroke centred on a pixel boundary covers each neighbour only partly, so the
+ * 1.5 px axis at 1x painted two columns at 0.75 coverage: 0.6 of the ink, not
+ * the 0.8 the registry grades, and the light arm read 2.75:1 on screen. An odd
+ * whole number of device pixels under the stroke centres it on a pixel, an even
+ * one on a boundary; either way its core pixels are fully covered.
+ */
+function snap(v: number, dpr: number): number {
+    const device = v * dpr;
+    return (Math.floor(AXIS_WIDTH * dpr) % 2 ? Math.floor(device) + 0.5 : Math.round(device)) / dpr;
+}
+
 /**
  * Draw minor grid lines and axes onto a canvas context.
  *
@@ -71,18 +86,20 @@ export function drawPlotGrid(
         ctx.stroke();
     }
 
-    // Axes
+    // Axes. The context maps CSS pixels onto the device grid (`useCanvasSetup`),
+    // so its scales are the device-pixel ratios the bitmap was sized at.
+    const { a: dprX, d: dprY } = ctx.getTransform();
     ctx.globalAlpha = AXIS_ALPHA;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = AXIS_WIDTH;
     if (minY <= 0 && maxY >= 0) {
-        const [, zy] = toScreen(0, 0);
+        const zy = snap(toScreen(0, 0)[1], dprY || 1);
         ctx.beginPath();
         ctx.moveTo(pad.left, zy);
         ctx.lineTo(w - pad.right, zy);
         ctx.stroke();
     }
     if (minX <= 0 && maxX >= 0) {
-        const [zx] = toScreen(0, 0);
+        const zx = snap(toScreen(0, 0)[0], dprX || 1);
         ctx.beginPath();
         ctx.moveTo(zx, pad.top);
         ctx.lineTo(zx, h - pad.bottom);
