@@ -21,6 +21,8 @@ import { expectHardwareGpu } from "./fixtures/gpu";
  *         collapsed circle: after a resize and a font load while collapsed,
  *         the expanded dock shows the name the run holds.
  * U5      disclosure, focus and axe, collapsed and expanded.
+ * U8      a page left alone rests at the seal (no press, the pointer parked
+ *         off the dock), and reopens through intermediate widths.
  * U7      frame-time baseline of the morph and six mid-morph frames, recorded
  *         only (`@gpu`, glass 10.1.3; a gate at the 10.2.0 repin).
  */
@@ -340,6 +342,78 @@ test.describe("U5 disclosure, focus and axe 1440", () => {
         await settled(dock);
         await expect(dock.getByRole("button", { name: "About Fourier analysis" })).toBeFocused();
         await expect(dock.getByRole("button", { name: "Expand dock" })).toHaveCount(0);
+    });
+});
+
+// ── U8: a page left alone rests at the seal, and reopens through the widths ──
+// The o1105 adversary's prod dock cell (r1, r2): no press, the pointer parked
+// off the dock; by t+8 s the dock is a seal (its width its height), and the
+// reopen passes through widths between the seal and the open run, like
+// keyframes' dock.
+
+/** Every rendered width of the dock from now until `stop()`, one per frame. */
+async function recordWidths(page: Page): Promise<() => Promise<number[]>> {
+    await page.evaluate(() => {
+        const w = window as unknown as { __u8: number[]; __u8stop: boolean };
+        w.__u8 = [];
+        w.__u8stop = false;
+        const d = document.querySelector(".app-dock")!;
+        const tick = () => {
+            w.__u8.push(Math.round(d.getBoundingClientRect().width));
+            if (!w.__u8stop) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    });
+    return () =>
+        page.evaluate(() => {
+            const w = window as unknown as { __u8: number[]; __u8stop: boolean };
+            w.__u8stop = true;
+            return w.__u8;
+        });
+}
+
+async function restsAtSeal(page: Page, dock: Locator): Promise<{ w: number; h: number }> {
+    await page.waitForTimeout(8_000);
+    await expect(dock).toHaveClass(COLLAPSED);
+    await settled(dock);
+    const b = (await dock.boundingBox())!;
+    expect(Math.abs(b.width - b.height), `the seal is a circle (${b.width}x${b.height})`).toBeLessThanOrEqual(2);
+    return { w: b.width, h: b.height };
+}
+
+function throughIntermediates(widths: number[], seal: number, full: number): void {
+    const between = widths.filter((w) => w > seal + 4 && w < full - 4);
+    expect(between.length, `widths between ${seal} and ${full}: ${JSON.stringify(widths)}`).toBeGreaterThanOrEqual(2);
+}
+
+test.describe("U8 rest at the seal 1440", () => {
+    test.use({ viewport: { width: 1440, height: 900 } });
+    test("U8 a page left alone rests at the seal and reopens through intermediate widths", async ({ page }) => {
+        const dock = await open(page, "/");
+        const full = (await dock.boundingBox())!.width;
+        await page.mouse.move(720, 880);
+        const seal = await restsAtSeal(page, dock);
+        const b = (await dock.boundingBox())!;
+        const stop = await recordWidths(page);
+        await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+        await expect(dock).toHaveClass(EXPANDED);
+        await settled(dock);
+        throughIntermediates(await stop(), seal.w, full);
+    });
+});
+
+test.describe("U8 rest at the seal touch 390", () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+    test("@coarse U8 a page left alone rests at the seal and reopens through intermediate widths (touch)", async ({ page }) => {
+        const dock = await open(page, "/");
+        const full = (await dock.boundingBox())!.width;
+        const seal = await restsAtSeal(page, dock);
+        const b = (await dock.boundingBox())!;
+        const stop = await recordWidths(page);
+        await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+        await expect(dock).toHaveClass(EXPANDED);
+        await settled(dock);
+        throughIntermediates(await stop(), seal.w, full);
     });
 });
 
