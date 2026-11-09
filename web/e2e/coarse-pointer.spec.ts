@@ -176,4 +176,31 @@ test.describe("@coarse — the coarse-pointer cell (G-F9-13)", () => {
                 `below the ${TOUCH_TARGET_PX}px coarse floor`,
         ).toBeGreaterThanOrEqual(TOUCH_TARGET_PX - 0.5);
     });
+
+    test("@coarse a tapped coefficient opens its readout, and a tap elsewhere closes it", async ({
+        page,
+    }) => {
+        // EV-D·D-M3 (F-W4-ADDENDA-b §5). A touch browser follows a tap with
+        // compatibility mouse events, so the card's mousemove/mouseleave pair
+        // answers a tap as it answers a pointer. The readout is a plain
+        // `.coeff-popover` (no role, no data-state), so it is read by its class.
+        test.setTimeout(120_000);
+        await page.goto("/equation");
+        // The sheet form (this cell's width) shows Controls first.
+        const canvasTab = page.getByRole("tab", { name: "Canvas" });
+        await canvasTab.tap();
+        await expect(canvasTab).toHaveAttribute("aria-selected", "true");
+
+        const card = page.locator(".eq-card");
+        const coeff = card.locator(".eq-coeff:visible").first();
+        await expect(coeff).toBeVisible({ timeout: 90_000 });
+        const readout = card.locator(".coeff-popover");
+
+        await coeff.tap();
+        await expect(readout, "a tap on a coefficient opens no readout").toBeVisible();
+        await expect(readout).toContainText(/=/);
+
+        await canvasTab.tap();
+        await expect(readout, "a tap outside the equation leaves the readout open").toBeHidden();
+    });
 });

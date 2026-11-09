@@ -403,3 +403,38 @@ test.describe("q253 · UIA-F-253 — the equation's micro-issues", () => {
         await frame(page, "q253-tab-strip");
     });
 });
+
+test.describe("FR-CP-D1 · the plot's axes reach the device grid at their own alpha", () => {
+    test.use({ viewport: { width: 1440, height: 900 } });
+
+    test("the vertical zero axis has a fully covered device column at AXIS_ALPHA", async ({ page }) => {
+        // The contrast registry grades the axes at 0.8 of `--muted-foreground`
+        // (3.38 light / 4.04 dark). A 1.5 px stroke centred between device
+        // pixels spreads that over two pixels at 0.75 coverage each, so at 1x
+        // the light arm composited at 2.75:1, under the 3:1 floor. Read the
+        // bitmap: the axis's own column must carry the alpha the registry
+        // graded.
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await openEquation(page);
+        const canvas = page.locator(".plot-box canvas").first();
+        const axisAlpha = () =>
+            canvas.evaluate((el: HTMLCanvasElement) => {
+                const { width, height } = el;
+                const d = el.getContext("2d")!.getImageData(0, 0, width, height).data;
+                const y0 = Math.floor(height / 4), y1 = Math.floor((3 * height) / 4);
+                let best = 0;
+                for (let x = 0; x < width; x++) {
+                    const counts = new Map<number, number>();
+                    for (let y = y0; y < y1; y++) {
+                        const a = d[(y * width + x) * 4 + 3];
+                        if (a) counts.set(a, (counts.get(a) ?? 0) + 1);
+                    }
+                    // a full-height stroke: one alpha down most of the column (the
+                    // series start on the axis, so some rows carry a curve too)
+                    for (const [a, n] of counts) if (n >= 0.6 * (y1 - y0) && a > best) best = a;
+                }
+                return best;
+            });
+        await expect.poll(axisAlpha, { timeout: 30_000 }).toBeGreaterThanOrEqual(Math.floor(0.8 * 255) - 2);
+    });
+});

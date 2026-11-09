@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
+import functools
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -29,8 +31,17 @@ def _get_semaphore() -> asyncio.Semaphore:
     return _semaphore
 
 
-async def submit_compute_job(name: str, fn: Callable[[], Any]) -> Any:
-    """Run *fn* in a thread with bounded concurrency and timeout."""
+async def _bounded(name: str, start: Callable[[], asyncio.Future[Any]]) -> Any:
+    """Run the job *start* begins in one compute slot, held until the job ends.
+
+    A thread cannot be cancelled, nor can a process task once it runs. So the
+    slot is released by the job's own end, never by the request awaiting it:
+    a request that ends first (the client aborted, or the job outran
+    ``compute_timeout_s``) leaves its job holding the slot, and the semaphore
+    goes on bounding the work actually running. Releasing it with the request
+    let a page that superseded a few extractions leave them running unbounded
+    beside the next request (value.js COHESION §0hz.mt2.fourier.r2).
+    """
     sem = _get_semaphore()
     settings = get_settings()
 
@@ -43,17 +54,29 @@ async def submit_compute_job(name: str, fn: Callable[[], Any]) -> Any:
         )
 
     try:
-        return await asyncio.wait_for(
-            asyncio.to_thread(fn),
-            timeout=settings.compute_timeout_s,
-        )
+        job = start()
+    except BaseException:
+        sem.release()
+        raise
+    # The callback also reads the job's outcome, so a job whose request has
+    # gone logs no "exception never retrieved".
+    job.add_done_callback(lambda f: (sem.release(), f.cancelled() or f.exception()))
+
+    try:
+        return await asyncio.wait_for(asyncio.shield(job), timeout=settings.compute_timeout_s)
     except asyncio.TimeoutError:
         raise HTTPException(
             status_code=504,
             detail=f"Compute job '{name}' timed out after {settings.compute_timeout_s}s",
         )
-    finally:
-        sem.release()
+
+
+async def submit_compute_job(name: str, fn: Callable[[], Any]) -> Any:
+    """Run *fn* in a thread, bounded by the compute slots and the timeout
+    (``asyncio.to_thread``'s call, with the slot held as ``_bounded`` says)."""
+    loop = asyncio.get_running_loop()
+    call = functools.partial(contextvars.copy_context().run, fn)
+    return await _bounded(name, lambda: loop.run_in_executor(None, call))
 
 
 def _get_process_pool() -> ProcessPoolExecutor:
@@ -81,36 +104,14 @@ def shutdown_process_pool() -> None:
 
 async def submit_process_job(name: str, fn: Callable[..., Any], *args: Any) -> Any:
     """Run the module-level *fn* with *args* in a worker process, bounded like
-    ``submit_compute_job`` (the same semaphore, the same timeout).
+    ``submit_compute_job`` (the same slots, the same timeout).
 
     X.F.W14V `.u2` — a job whose library code arms a ``SIGALRM`` timer (the
     symbolic tier) needs a MAIN thread, which a ``to_thread`` worker never is; a
     pool worker runs each task on its process's main thread.
     """
-    sem = _get_semaphore()
-    settings = get_settings()
-
-    try:
-        await asyncio.wait_for(sem.acquire(), timeout=30.0)
-    except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=429,
-            detail="Compute queue saturated, try again shortly",
-        )
-
-    try:
-        loop = asyncio.get_running_loop()
-        return await asyncio.wait_for(
-            loop.run_in_executor(_get_process_pool(), fn, *args),
-            timeout=settings.compute_timeout_s,
-        )
-    except asyncio.TimeoutError:
-        raise HTTPException(
-            status_code=504,
-            detail=f"Compute job '{name}' timed out after {settings.compute_timeout_s}s",
-        )
-    finally:
-        sem.release()
+    loop = asyncio.get_running_loop()
+    return await _bounded(name, lambda: loop.run_in_executor(_get_process_pool(), fn, *args))
 
 
 async def compute_contours(
