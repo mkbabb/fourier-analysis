@@ -8,6 +8,8 @@ import hashlib
 import logging
 import os
 import threading
+import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -103,13 +105,43 @@ _session_lock = threading.Lock()
 _sessions: dict[str, Any] = {}
 
 
+_FETCH_ATTEMPTS = 5
+_FETCH_BACKOFF_S = 2.0
+
+
+def _fetch(url: str, dest: Path, *, sleep=time.sleep) -> None:
+    """Fetch ``url`` to ``dest``, retrying a transient failure.
+
+    The weights are release assets behind GitHub's download CDN, which answers
+    a burst of 502/503/504 now and then (2026-11-09: three CI runs in a row
+    failed the image bake on one 504).  A gateway error or a dropped
+    connection is retried with doubling backoff; any 4xx is the URL's own
+    answer and is raised at once.  The caller verifies the SHA-256 either way.
+    """
+    for attempt in range(1, _FETCH_ATTEMPTS + 1):
+        try:
+            urllib.request.urlretrieve(url, dest)  # noqa: S310
+            return
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500 or attempt == _FETCH_ATTEMPTS:
+                raise
+            reason = f"HTTP {exc.code}"
+        except urllib.error.URLError as exc:
+            if attempt == _FETCH_ATTEMPTS:
+                raise
+            reason = str(exc.reason)
+        delay = _FETCH_BACKOFF_S * 2 ** (attempt - 1)
+        logger.warning("fetch %s: %s; retry %d in %.0f s", url, reason, attempt, delay)
+        sleep(delay)
+
+
 def _download(spec: SubjectModelSpec) -> Path:
     path = spec.path
     if path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == spec.sha256:
         return path
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    urllib.request.urlretrieve(spec.url, tmp)  # noqa: S310
+    _fetch(spec.url, tmp)
     digest = hashlib.sha256(tmp.read_bytes()).hexdigest()
     if digest != spec.sha256:
         tmp.unlink(missing_ok=True)
