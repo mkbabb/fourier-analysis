@@ -35,7 +35,7 @@
  *  - UIA-F-152: the header clears the content by the same gutter it keeps
  *    above the dock (`--space-body`).
  */
-import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from "vue";
 import { useEventListener, useResizeObserver } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { prefetchRoute } from "@/router";
@@ -181,6 +181,19 @@ watch(
 if (typeof document !== "undefined" && document.fonts) {
     useEventListener(document.fonts, "loadingdone", () => void fitNavLabel());
 }
+
+// The dock opens on first paint and holds open while the first route mounts;
+// then it is released to glass's idle window, so a page left alone rests at
+// the seal (o1105 adversary r1/r2: the open dock was never released, and stayed
+// open at every width until the pointer crossed it or a press landed outside).
+// The hold is glass's own (`keepOpen`/`release`); the idle window is glass's
+// one timer (DOCK_COLLAPSE_DELAY_MS), never a second one here.
+onMounted(() => {
+    const dock = dockRef.value;
+    if (!dock) return;
+    dock.keepOpen();
+    void router.isReady().then(() => requestAnimationFrame(() => dock.release()));
+});
 </script>
 
 <template>
