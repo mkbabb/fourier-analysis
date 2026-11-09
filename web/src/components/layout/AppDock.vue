@@ -44,7 +44,8 @@ import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, ExternalLink } from "@lucide/vue";
 import { sectionNav } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
-import { GlassDock, DockTrigger, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
@@ -411,7 +412,7 @@ onMounted(() => {
 .about-avatar {
     inline-size: 2.5rem;
     block-size: 2.5rem;
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-circle);
     flex-shrink: 0;
 }
 </style>

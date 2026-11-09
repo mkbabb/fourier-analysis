@@ -3,7 +3,7 @@ import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Input } from "@mkbabb/glass-ui/input";
-import { DockTrigger } from "@mkbabb/glass-ui/dock";
+import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import {
     DropdownMenu,
     DropdownMenuContent,
