@@ -55,12 +55,14 @@ def sun_outline(n: int = 4096) -> np.ndarray:
 def main() -> None:
     contour = resample_arc_length(sun_outline(), N_SAMPLES)
     decomp = fourier_decomposition(contour, n_harmonics=N_HARMONICS)
-    partial_sums = {}
-    for level in LEVELS:
-        vals = evaluate_partial_sum(decomp, level, N_EVAL)
-        partial_sums[level] = {"x": vals.real.tolist(), "y": vals.imag.tolist()}
+    def xy(z: np.ndarray) -> dict[str, list[float]]:
+        # Three decimals in a 200-unit box: the bytes the boot parses, not
+        # precision a stroke can show (the moon asset is written the same way).
+        return {"x": np.round(z.real, 3).tolist(), "y": np.round(z.imag, 3).tolist()}
+
+    partial_sums = {level: xy(evaluate_partial_sum(decomp, level, N_EVAL)) for level in LEVELS}
     data = {
-        "original": {"x": contour.real.tolist(), "y": contour.imag.tolist()},
+        "original": xy(contour),
         "decomposition": _serialize_decomposition(decomp),
         "partial_sums": partial_sums,
         "eval_points": np.linspace(0, 1, N_EVAL, endpoint=False).tolist(),
