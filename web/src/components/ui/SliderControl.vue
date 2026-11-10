@@ -1,6 +1,11 @@
 <script setup lang="ts">
 /**
- * Labeled slider chassis — label + inline numeric input + the producer's track.
+ * Labeled slider chassis — label + value readout + the producer's track.
+ *
+ * Canon F2 (restraint, C-15/C-18): one control per number. The slider is the
+ * control; the value beside the label is its readout, not a second input (the
+ * NumberField that sat there doubled every parameter). The slider keeps the
+ * keyboard: arrows step, Page keys jump, Home/End reach the bounds.
  *
  * P.W5 Lane B.4 + B.1 — migrated from the 221 LOC shadow recipe to `<Slider>`
  * with the canonical label + numeric-input chassis preserved as the wrapper.
@@ -33,7 +38,7 @@
  * page composes its own row:
  *
  *   line 1 — the label (glass `Label`, `--type-small`) and the value field
- *            (glass `NumberField`) at the line's end, with an optional unit;
+ *            readout at the line's end, with an optional unit;
  *   hint   — optional: the row's `subtitle`, whole, on its own caption line
  *            under the label;
  *   line 2 — the producer's `Slider`, directly beneath: glass's integrated-thumb
@@ -62,9 +67,8 @@
  * with the row hue on glass's own `--slider-range-bg`. No local fill recipe and
  * no thumb paint remain; the well's edge is the row's one edge.
  */
-import { computed, useAttrs, useId } from "vue";
+import { computed, useAttrs } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
-import { NumberField, NumberFieldInput } from "@mkbabb/glass-ui/number-field";
 import { Label } from "@mkbabb/glass-ui/label";
 
 const props = defineProps<{
@@ -135,27 +139,6 @@ function clamp(v: number, lo: number, hi: number): number {
     return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo;
 }
 
-/**
- * X.F.W13.b — the inline numeric field is the producer's `NumberField`, not a
- * hand-rolled `<input>` (owner frame 3, OA-15: a bare underline field with no
- * name of its own, no corner, and no stepping keys). Its display precision is
- * read from `step` — the digits `formatValue` spelled by hand at every callsite
- * (`toFixed(2)` on a 0.05 step, `toFixed(1)` on 0.1/0.5, integers on 1) — so the
- * field formats, parses and steps in one locale-aware register. A `formatValue`
- * whose reading is NOT a number (Max Contours' `0 → "All"`) is shown as the
- * field's placeholder over an empty value, and clearing the field commits
- * `min`, the value that reading names.
- */
-const fractionDigits = computed(() => String(props.step).split(".")[1]?.length ?? 0);
-const numberFormat = computed<Intl.NumberFormatOptions>(() => ({
-    minimumFractionDigits: fractionDigits.value,
-    maximumFractionDigits: fractionDigits.value,
-    useGrouping: false,
-}));
-
-function onNumber(v: number) {
-    emit("update:modelValue", clamp(v, props.min, props.max));
-}
 
 /* reka-ui's SliderRoot accepts an array model; we adapt the scalar binding
    here so the surrounding API surface (scalar `modelValue`) is preserved. */
@@ -170,50 +153,24 @@ function onValueCommit(arr: number[]) {
     emit("valueCommit", clamp(raw, props.min, props.max));
 }
 
-/**
- * The chassis's own half of the `disabled` contract. `disabled` reaches the
- * control through the split above, but the inline numeric input is this
- * wrapper's addition and the producer knows nothing about it — so without this
- * a disabled slider still had a live number field beside it, which is the
- * disabled state lying.
- */
 const isDisabled = computed(() => attrs.disabled === "" || attrs.disabled === true);
 
+/** The readout writes the digits the step moves, and no more. */
+const fractionDigits = computed(() => String(props.step).split(".")[1]?.length ?? 0);
 const displayValue = computed(() =>
-    props.formatValue ? props.formatValue(props.modelValue) : String(props.modelValue),
+    props.formatValue ? props.formatValue(props.modelValue) : props.modelValue.toFixed(fractionDigits.value),
 );
-const isNumericDisplay = computed(() => !Number.isNaN(Number(displayValue.value)));
-
-/** The field's id: the row's visible `Label` names it (`for`). */
-const fieldId = useId();
 
 </script>
 
 <template>
     <div class="control-row" data-control-row :data-row-kind="subtitle ? 'hint' : 'plain'" v-bind="chassisAttrs">
         <div class="control-row-line">
-            <Label :for="fieldId" class="control-row-label" data-row-label :disabled="isDisabled">
+            <Label class="control-row-label" data-row-label :disabled="isDisabled">
                 {{ label }}
             </Label>
             <span class="control-row-value">
-                <NumberField
-                    :model-value="isNumericDisplay ? modelValue : null"
-                    :min="min"
-                    :max="max"
-                    :step="step"
-                    :format-options="numberFormat"
-                    :disabled="isDisabled"
-                    size="sm"
-                    class="control-row-field"
-                    @update:model-value="onNumber"
-                >
-                    <NumberFieldInput
-                        :id="fieldId"
-                        class="fira-code"
-                        :aria-label="label"
-                        :placeholder="isNumericDisplay ? undefined : displayValue"
-                    />
-                </NumberField>
+                <output class="control-row-readout fira-code" data-row-readout>{{ displayValue }}</output>
                 <span v-if="unit" class="control-row-unit fira-code">{{ unit }}</span>
             </span>
             <!-- X-DS pass 1 · F1-07: a control that belongs to this row (the
@@ -283,8 +240,9 @@ const fieldId = useId();
     flex: none;
 }
 
-.control-row-field {
-    width: 4.5rem;
+.control-row-readout {
+    font-variant-numeric: tabular-nums;
+    color: var(--foreground);
 }
 
 .control-row-unit {
