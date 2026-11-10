@@ -9,7 +9,6 @@
     <Card surface="opaque" class="config-card" :style="{ '--track-color': sliderColor ?? 'var(--accent-red)' }">
     <div role="group" :aria-labelledby="titleId">
         <h3 class="config-card-title" :id="titleId" data-card-title>{{ title }}</h3>
-        <p class="config-card-desc" data-card-subtitle>{{ description }}</p>
 
         <!-- SP-7 · FMD-14 ⊕ FMD-15 — this card is mounted THREE times (Settle
              Out / Morph / Settle In) and every control inside it carried the
@@ -142,7 +141,6 @@ import {
 
 const props = defineProps<{
     title: string;
-    description: string;
     duration: number;
     easing: string;
     sliderColor?: string;
@@ -198,13 +196,7 @@ const easingNames = EASING_PRESET_NAMES;
        display title (a 600 card title outweighed "Fourier Morph"). */
     font-weight: 500;
     color: var(--foreground);
-    margin-bottom: var(--space-residue);
-}
-
-.config-card-desc {
-    font-size: var(--type-caption);
-    line-height: var(--type-leading-caption);
-    color: var(--muted-foreground);
+    /* Canon F7: the subtitle is gone; the title takes the levels card's gap. */
     margin-bottom: var(--space-body);
 }
 

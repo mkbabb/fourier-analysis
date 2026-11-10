@@ -129,7 +129,7 @@ function choose(node: PaperSectionData) {
                         @click="choose(node)"
                     >
                         <span class="toc-label">
-                            <span class="toc-number fira-code">{{ node.number ? `${node.number}.` : "" }}</span>
+                            <span class="toc-number">{{ node.number ? `${node.number}.` : "" }}</span>
                             <span v-html="renderTitle(node.title)" />
                         </span>
                     </Button>
@@ -275,8 +275,10 @@ function choose(node: PaperSectionData) {
 .toc-label > :last-child {
     min-inline-size: 0;
 }
+/* Canon F9: the numerals are in the body face, the title's own. */
 .toc-number {
     flex: none;
+    font-variant-numeric: tabular-nums;
     min-inline-size: calc(var(--toc-ord) * 1ch);
     font-size: 0.72rem;
     opacity: 0.5;

@@ -383,11 +383,10 @@ function toggleDrawer() {
     gap: 0.125rem;
 }
 
+/* Canon F9 (restraint, C-9): the label is set in sentence case at the body
+   weight; caps, tracking and bold restated a word the rail's place already says. */
 .sidebar-label {
-    font-size: var(--type-caption);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-size: var(--type-small);
     /* `D-B2`: full strength is 5.021:1 light / 5.440:1 dark over `--card`
        (the 60% dilution measured 2.39:1 / 3.00:1 against a 4.5:1 floor). */
     color: var(--muted-foreground);
