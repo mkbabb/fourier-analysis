@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Response } from "@playwright/test";
 import { checkA11y } from "./a11y";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { showViewIfTabbed } from "./fixtures/workspace";
 
 /**
  * B.W4.d — visualization CRUD-lifecycle + a11y-keystone Playwright spec.
@@ -163,10 +164,7 @@ async function openWorkspace(page: Page): Promise<string> {
     // `.canvas-stage` carries `panel-inactive` (`display:none`) and `<canvas>`
     // never becomes visible. Desktop (`min-width:1024px`) renders both panels
     // side-by-side with no tab bar. Select the Canvas tab when it's present.
-    const canvasTab = page.getByRole("tab", { name: "Canvas" });
-    if (await canvasTab.isVisible().catch(() => false)) {
-        await canvasTab.click();
-    }
+    await showViewIfTabbed(page, "Canvas");
 
     // Canvas appears once auto-compute lands; let the dock/panels settle.
     const canvas = page.locator("canvas").first();

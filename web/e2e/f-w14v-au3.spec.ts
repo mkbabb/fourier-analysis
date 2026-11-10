@@ -21,6 +21,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { seededViz } from "./fixtures/seed";
+import { showViewIfTabbed } from "./fixtures/workspace";
 
 const DESKTOP = { width: 1440, height: 900 };
 const LOAD = 90_000;
@@ -105,8 +106,7 @@ test.describe("X.F.W14V.au3 — equation and morph (1440)", () => {
 
     test("L1-6 · one coefficients panel on /visualize and /equation", async ({ page }) => {
         await openViz(page);
-        const tabCtl = page.getByRole("tab", { name: "Controls" }).filter({ visible: true }).first();
-        if (await tabCtl.count()) await tabCtl.click();
+        await showViewIfTabbed(page, "Controls");
         await expect(page.locator(".configurator-layer", { hasText: "Coefficients" }).first()).toBeAttached({ timeout: 30_000 });
         const viz = await coefficientsOwner(page);
         await openEquation(page);

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { setSlider, slider } from "./fixtures/slider";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
@@ -64,11 +65,8 @@ test.describe("Contour extraction with animal images", () => {
         // Wait for Blur Sigma to be visible
         await expect(page.locator("text=Blur Sigma").first()).toBeVisible({ timeout: 5_000 });
 
-        // Adjust blur sigma via the numeric field beside the slider — the
-        // producer's NumberField (X.F.W13.b), a spinbutton named by its label.
-        const blurInput = page.getByRole("spinbutton", { name: "Blur Sigma" });
-        await blurInput.fill("3");
-        await blurInput.press("Enter");
+        // Adjust blur sigma through its slider, the number's one control (canon F2).
+        await setSlider(slider(page, "Blur Sigma"), 3);
 
         // Wait for debounced recomputation (1s debounce + compute time)
         await page.waitForTimeout(5000);

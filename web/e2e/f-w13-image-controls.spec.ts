@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { readout, setSlider } from "./fixtures/slider";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
@@ -118,26 +119,27 @@ test.describe("G-b — F.W13 image-mode controls act (frame 3)", () => {
         await chebyshev.click();
         await expect(chebyshev).toHaveAttribute("aria-pressed", pressed ?? "");
 
-        const harmonics = side.getByRole("spinbutton", { name: "Harmonics" });
+        // Canon F2: one control per number, the slider; its value is the
+        // row's readout.
+        const harmonics = readout(side, "Harmonics");
         const harmonicsSlider = side.getByRole("slider", { name: "Harmonics" });
-        await harmonics.fill("40");
-        await harmonics.press("Enter");
-        await expect(harmonicsSlider).toHaveAttribute("aria-valuenow", "40");
+        await setSlider(harmonicsSlider, 40);
+        await expect(harmonics).toHaveText("40");
         await harmonicsSlider.focus();
         await page.keyboard.press("ArrowRight");
-        await expect(harmonics).toHaveValue("41");
+        await expect(harmonics).toHaveText("41");
 
-        const points = side.getByRole("spinbutton", { name: "Sample Points" });
+        const points = readout(side, "Sample Points");
         const pointsSlider = side.getByRole("slider", { name: "Sample Points" });
         await pointsSlider.focus();
         await page.keyboard.press("Home");
-        await expect(points).toHaveValue(String(await pointsSlider.getAttribute("aria-valuemin")));
+        await expect(points).toHaveText(String(await pointsSlider.getAttribute("aria-valuemin")));
 
         const resetD = side.getByRole("button", { name: "Reset to defaults" }).first();
         await expectCircle(resetD);
         await resetD.click();
-        await expect(harmonics).toHaveValue("200");
-        await expect(points).toHaveValue("1024");
+        await expect(harmonics).toHaveText("200");
+        await expect(points).toHaveText("1024");
         await expect(resetD).toBeDisabled();
 
         // Contour — strategy select, the labelled number fields + their sliders,
@@ -147,25 +149,23 @@ test.describe("G-b — F.W13 image-mode controls act (frame 3)", () => {
         await expect(strategy).toHaveAttribute("data-slot", "select-trigger");
         await expect(strategy).toContainText("Auto");
 
-        const ml = side.getByRole("spinbutton", { name: "ML Threshold" });
+        const ml = readout(side, "ML Threshold");
         const mlSlider = side.getByRole("slider", { name: "ML Threshold" });
-        await expect(ml).toHaveValue("0.50");
-        await ml.fill("0.3");
-        await ml.press("Enter");
-        await expect(mlSlider).toHaveAttribute("aria-valuenow", "0.3");
-        await expect(ml).toHaveValue("0.30");
+        await expect(ml).toHaveText("0.50");
+        await setSlider(mlSlider, 0.3);
+        await expect(ml).toHaveText("0.30");
 
-        const blur = side.getByRole("spinbutton", { name: "Blur Sigma" });
+        const blur = readout(side, "Blur Sigma");
         const blurSlider = side.getByRole("slider", { name: "Blur Sigma" });
         await blurSlider.focus();
         await page.keyboard.press("ArrowRight");
-        await expect(blur).toHaveValue("0.6");
+        await expect(blur).toHaveText("0.6");
 
         const resetC = side.getByRole("button", { name: "Reset to defaults" }).nth(1);
         await expectCircle(resetC);
         await resetC.click();
-        await expect(ml).toHaveValue("0.50");
-        await expect(blur).toHaveValue("0.5");
+        await expect(ml).toHaveText("0.50");
+        await expect(blur).toHaveText("0.5");
         await expect(resetC).toBeDisabled();
 
         await strategy.click();
@@ -176,15 +176,13 @@ test.describe("G-b — F.W13 image-mode controls act (frame 3)", () => {
         const advanced = side.getByRole("button", { name: "Advanced" });
         await advanced.click();
         await expect(advanced).toHaveAttribute("aria-expanded", "true");
-        const maxContours = side.getByRole("spinbutton", { name: "Max Contours" });
-        await expect(maxContours).toHaveValue("24");
+        const maxContours = readout(side, "Max Contours");
+        await expect(maxContours).toHaveText("24");
         await side.getByRole("slider", { name: "Max Contours" }).focus();
         await page.keyboard.press("Home");
-        await expect(maxContours).toHaveValue("");
-        await expect(maxContours).toHaveAttribute("placeholder", "All");
-        await maxContours.fill("12");
-        await maxContours.press("Enter");
-        await expect(side.getByRole("slider", { name: "Max Contours" })).toHaveAttribute("aria-valuenow", "12");
+        await expect(maxContours).toHaveText("All");
+        await setSlider(side.getByRole("slider", { name: "Max Contours" }), 12);
+        await expect(maxContours).toHaveText("12");
         await advanced.click();
         await expect(advanced).toHaveAttribute("aria-expanded", "false");
 

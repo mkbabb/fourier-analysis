@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import * as fs from "node:fs";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14.h — gate G-h, OA-45 (owner, 2026-09-23, frame
@@ -87,7 +88,7 @@ async function census(page: Page, where: string): Promise<Row[]> {
                     (e) => !e.closest('[role="spinbutton"], .glass-slider') && e.textContent!.trim().length > 0,
                 ) ??
                 null;
-            const value = row.querySelector<HTMLElement>('[role="spinbutton"], [data-row-value]');
+            const value = row.querySelector<HTMLElement>('[role="spinbutton"], [data-row-value], [data-row-readout]');
             const tr = track.getBoundingClientRect();
             const lr = label?.getBoundingClientRect();
             const vr = value?.getBoundingClientRect();
@@ -252,9 +253,9 @@ for (const vp of VIEWPORTS) {
             await page.waitForURL(/\/w\//, { timeout: 20_000 });
             // X.F.W14V.u4 — UIA-F-74: below lg the finished upload brings the
             // canvas to the front; the controls are read from the Controls tab.
-            if (page.viewportSize()!.width < 1024) {
+            if (page.viewportSize()!.width < 640) {
                 await expect(page.locator(".canvas-stage")).not.toHaveClass(/panel-inactive/, { timeout: 60_000 });
-                await page.getByRole("tab", { name: "Controls" }).click();
+                await showView(page, "Controls");
             }
             await expect(sliderRoot(page, "Harmonics")).toBeVisible({ timeout: 90_000 });
             await page.getByRole("button", { name: /^Contour/ }).first().click();

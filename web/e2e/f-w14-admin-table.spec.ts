@@ -1,6 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { ADMIN_AUDIT, ADMIN_FLAGGED, ADMIN_TOKEN, stubAdminApi } from "./fixtures/gallery";
+import { selectTab } from "./fixtures/workspace";
 
 /**
  * X.F.W14.t — gate G-t, OA-42 (COHESION §0bu; owner frame
@@ -100,7 +101,7 @@ async function openPanel(page: Page, tab: string, label: string, settle: string)
     await expect(page.getByRole("region", { name: "Admin mode banner" })).toBeVisible({
         timeout: 60_000,
     });
-    await page.getByRole("tab", { name: tab }).click();
+    await selectTab(page, tab);
     // The panel is the labelled collection itself: every row and every badge
     // the gate reads sits inside it, and nothing from the tab bar or banner does.
     const panel = page.locator(`[aria-label="${label}"]`);

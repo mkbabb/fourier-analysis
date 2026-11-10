@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { seededViz } from "./fixtures/seed";
+import { showView, showViewIfTabbed } from "./fixtures/workspace";
 
 /**
  * X·OD19 P2-fourier-sliders-caret — owner rows OD19-F7 and OD19-F8 (2026-10-19).
@@ -64,6 +65,8 @@ for (const c of CELLS) {
 
         test("OD19-F7 · the control row is glass's integrated-thumb scrubber, one edge", async ({ page }) => {
             await page.goto("/equation");
+            await expect(page.locator(".eq-card").first()).toBeVisible({ timeout: 30_000 });
+            await showViewIfTabbed(page, "Controls");
             const m = await readRow(page);
             expect(m.variant, "glass Slider variant=scrubber").toBe("scrubber");
             expect(m.trackBg, "no local background-image on the track").toBe("none");
@@ -77,7 +80,7 @@ for (const c of CELLS) {
 
         test("OD19-F8 · the hovered timeline caret is whole and on top", async ({ page }) => {
             await page.goto(`/v/${seededViz().slug}`);
-            if (c.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+            if (c.width < 640) await showView(page, "Canvas");
             const dock = page.locator(".animation-dock");
             await expect(dock).toBeVisible({ timeout: 30_000 });
             const db = (await dock.boundingBox())!;

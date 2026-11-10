@@ -51,8 +51,11 @@ async function mountedSectionCount(page: Page): Promise<number> {
     return page.locator(".paper-section").count();
 }
 
+/** The page count's text. Canon F14: at the top of the paper the count is
+ *  hidden (it says nothing the title does not), so it is read as text, not as
+ *  rendered text. */
 async function overlayText(page: Page): Promise<string> {
-    return page.locator(".page-readout").innerText();
+    return (await page.locator(".page-readout").textContent()) ?? "";
 }
 
 async function scrollPaperTo(page: Page, top: number) {
@@ -337,8 +340,15 @@ test.describe("Paper performance", () => {
         // both are settled before the second reading is taken. Nothing is
         // swallowed: a theme that never flips reddens here, loudly, instead of
         // producing two identical readings 250 ms apart.
-        const toggle = page.getByRole("button", { name: /dark mode/i, pressed: false });
-        await toggle.click();
+        // Canon F6: the jumps above scroll the paper, which folds the dock; the
+        // pointer opens it. The toggle ignores a press while its glyph is still
+        // morphing (the dock's open), so the press is repeated until it takes.
+        const dark = page.getByRole("button", { name: /dark mode/i });
+        await expect(async () => {
+            await page.locator(".app-dock").hover();
+            await dark.click({ timeout: 2_000 });
+            await expect(dark).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
+        }).toPass({ timeout: 20_000 });
         await expect(page.getByRole("button", { name: /dark mode/i })).toHaveAttribute(
             "aria-pressed",
             "true",

@@ -82,15 +82,6 @@
             "o": "O-62",
             "row": "GLASS-VEIL-GREY — the light-theme glass veil is a light frost at the token, never dark ink (X·F F-T1)",
             "expiry": "at glass 10.2.0 repin"
-        },
-        {
-            "test": "f-t1-glass-held.spec.ts › F-T1 · glass-held contracts (1440, light) › O-55 · the scroll progress rim sits in the dock's bottom edge",
-            "spec": "f-t1-glass-held.spec.ts",
-            "title": "O-55 · the scroll progress rim sits in the dock's bottom edge",
-            "token": "DOCK-SCROLL-MORPH",
-            "o": "O-55",
-            "row": "DOCK-SCROLL-MORPH R-2 — ScrollProgressRim seated in the dock's bottom edge, radius-clipped (X·F F-T1)",
-            "expiry": "at glass 10.2.0 repin"
         }
     ],
     "pairsAbout": "F.REL .w2 (value.js COHESION §0fk.1, 2026-10-16): the PAIR-LEVEL hold. contrast-floor.spec.ts reads `pairs` (and only it) and reports each named pair as held, not failed, so the contrast test arm still fails on any consumer pair; no contrast test id is ever held in `rows`. `held: producer` rows are glass registers relayed by their O-id (ADOPT-AT-LANDING); `held: ruled-residual` rows are RED-with-cause by a standing ruling. A held pair that reads PASSING fails the arm (lift its hold), and a held id that names no registry pair fails it too. Id note (X·F F-D9, 2026-11-05): `o: \"O-97\"` is value.js's outbound id; glass books it as O-98 (glass BL/audit/INBOUND.md:60), and glass's own O-97 is EASING-CURVE-GLYPH.",

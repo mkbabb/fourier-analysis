@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
+import { sliderValue } from "./fixtures/slider";
 import { ENTRY, stubGallery } from "./fixtures/gallery";
 
 /**
@@ -207,29 +208,19 @@ test.describe("m208 UIA-F-208 — mid-morph, the controls that are dropped look 
     });
 });
 
-test.describe("m209 UIA-F-209 — the number fields keep a field's measure at 390", () => {
-    test.use({ viewport: PHONE });
-    test("no field renders as a circle", async ({ page }) => {
-        await openMorph(page);
-        const boxes = await page
-            .locator('main [role="spinbutton"]')
-            .evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ w: r.width, h: r.height })));
-        expect(boxes.length).toBeGreaterThan(0);
-        for (const b of boxes) expect(b.w / b.h, `field ${b.w}x${b.h}`).toBeGreaterThanOrEqual(1.5);
-    });
-});
-
+/* Canon F2 (restraint): the morph's numbers have one control each, a slider;
+   the number fields m209 measured are gone, so its measure has no subject. */
 test.describe("m210 UIA-F-210 — a preview tile previews; it never rewrites the range", () => {
     test.use({ viewport: PHONE });
     test("Low and High hold, and the chosen tile is in view", async ({ page }) => {
         await openMorph(page);
-        const low = page.getByRole("spinbutton", { name: "Low" });
-        const high = page.getByRole("spinbutton", { name: "High" });
-        const before = [await low.inputValue(), await high.inputValue()];
+        const low = page.getByRole("slider", { name: "Low harmonic level" });
+        const high = page.getByRole("slider", { name: "High harmonic level" });
+        const before = [await sliderValue(low), await sliderValue(high)];
         const target = tiles(page).nth(2);
         await target.click();
         await page.waitForTimeout(600);
-        expect([await low.inputValue(), await high.inputValue()], "range after a preview").toEqual(before);
+        expect([await sliderValue(low), await sliderValue(high)], "range after a preview").toEqual(before);
         const inView = await target.evaluate((t) => {
             const s = t.closest(".grid")!.getBoundingClientRect();
             const r = t.getBoundingClientRect();
@@ -248,8 +239,8 @@ for (const vp of [DESKTOP, { width: 1024, height: 900 }, PHONE]) {
         test("every tile, both bound tiles among them, is in view; two equal rows; no fading edge", async ({ page }) => {
             await openMorph(page);
             const bounds = [
-                await page.getByRole("spinbutton", { name: "Low" }).inputValue(),
-                await page.getByRole("spinbutton", { name: "High" }).inputValue(),
+                String(await sliderValue(page.getByRole("slider", { name: "Low harmonic level" }))),
+                String(await sliderValue(page.getByRole("slider", { name: "High harmonic level" }))),
             ];
             const read = await page.locator(".levels-card .grid").evaluate((strip, bs) => {
                 const s = strip.getBoundingClientRect();

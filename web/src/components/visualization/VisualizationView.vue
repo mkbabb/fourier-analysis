@@ -102,7 +102,7 @@ watchDebounced(
 
 // ── Canvas + modals ──
 const canvasComponent = ref<InstanceType<typeof BasisCanvas>>();
-const mobileView = ref<"controls" | "canvas">("controls");
+const mobileView = ref<"controls" | "canvas">("canvas");
 /*
  * X.F.W14V.au1 — A2-FO-X-1 ⊕ L2-4: the workspace's form is read from glass's
  * Configurator shell at glass's own split threshold (`useWorkspaceForm`), not
@@ -482,12 +482,8 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <h1 class="stage-error-title font-serif-math">
                             {{ isSavedRoute ? "Could not open this visualization" : "Could not load this workspace" }}
                         </h1>
-                        <!-- X-DS pass 13 · DS-F15-C4: the quoted slug is one token; its
-                             hyphens are not break points, so the line breaks before it. -->
-                        <p class="stage-error-lede text-body text-muted-foreground">
-                            {{ isSavedRoute ? "No saved visualization loaded from" : "No image loaded from" }}
-                            <span class="whitespace-nowrap">“{{ isSavedRoute ? route.params.visualizationSlug : route.params.imageSlug }}”.</span>
-                        </p>
+                        <!-- Canon F7: the title says it; the line that restated it
+                             with the slug from the address bar is gone. -->
                         <!-- X-DS pass 13 · DS-F15-C2: glass's own mono rung (fira-code lost
                              to text-caption's font-family in the utility order). -->
                         <p v-if="stageErrorDetail" class="stage-error-lede text-mono-small break-all text-muted-foreground">{{ stageErrorDetail }}</p>
@@ -529,28 +525,18 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              action (primary emphasis, copy per pointer), the format line, a
                              secondary path to the gallery; a rejected file or a failed
                              upload is said here, where it was dropped (UIA-F-166 ⊕ F-167). -->
-                        <!-- X-DS pass 8 · DS-F8X-C2: the empty stage shows the app's
-                             paper grid (glass's `.paper-grid`, identity), as the
-                             origin's empty canvas did, so it reads as a drawing
-                             surface awaiting its outline, not a blank plate.
-                             X-DS pass 9 · DS-F9X-C1: at the origin's faint register
-                             (its own layer, the `.band-grid` idiom), not the page
-                             ground's strength, since the plate carries reading text. -->
+                        <!-- Canon F14 (restraint, C-21): one grid, the page's. The
+                             plate's own second grid is gone. -->
                         <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
-                            <div class="drop-target-grid paper-grid" aria-hidden="true" />
                             <!-- X-DS DS-F4R-C1: the zone draws no frame of its own.
                                  The stage's hairline is the frame, and the stage's
                                  ring is the one drop signal. -->
                             <div class="drop-zone">
                                 <h1 class="drop-target-title font-serif-math">Draw any outline in circles</h1>
-                                <p class="drop-target-lede text-body text-muted-foreground">
-                                    Upload an image: its outline is traced and redrawn by a Fourier series, a chain of rotating circles.
-                                </p>
                                 <Button emphasis="primary" size="md" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
                                     <Upload v-if="!store.uploading" />
                                     {{ primaryUploadLabel }}
                                 </Button>
-                                <p class="text-caption text-muted-foreground">PNG/JPG/SVG ≤ 10 MB</p>
                                 <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
                                 <!-- X-DS DS-F4R-C7: the second path is an action in the
                                      zone, not a footnote outside it. X-DS F2R · DS-F2R-C4:
@@ -696,7 +682,6 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                     v-if="store.epicycleData || store.computing"
                                     :components="store.epicycleData?.components ?? []"
                                     empty-text="Compute epicycles to see coefficients"
-                                    unit="terms"
                                 />
                             </Transition>
                         </div>
@@ -1071,24 +1056,6 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     pointer-events: none;
     z-index: var(--z-controls);
 }
-/* X-DS pass 8 · DS-F8X-C2: the grid is pinned to the viewport, so its lines
-   register with the page ground's grid round the plate (the `.band-grid`
-   idiom on /morph).
-   X-DS pass 9 · DS-F9X-C1: at the page ground's strength (glass's
-   `--paper-grid-opacity`, 0.08: majors at 12.8 %, minors at 8 %) the lines ran
-   through the title, the lede and the caption. The plate reads at the origin's
-   faint register, an effective `--paper-grid-opacity` of 0.035. Glass derives
-   its line inks from the knob at `:root`, so re-setting the knob on a scope is
-   inert; the layer's opacity is the ratio of the two instead, so it follows
-   the token. No local colour, gradient or mask. */
-.drop-target-grid {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-attachment: fixed;
-    opacity: calc(0.035 / var(--paper-grid-opacity));
-}
 /* X.F.W14U.vstage — the empty state's hierarchy (UIA-F-69): the title, then the
    lede one step down, then the action; the gallery path sits apart below.
    X-DS pass 14 · DS-F16-C2: the route's h1 is on ONE rung app-wide — the
@@ -1110,11 +1077,6 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
    evenly at phone width. The load-error title keeps the 18ch cap. */
 .drop-target-title {
     max-inline-size: none;
-}
-.drop-target-lede {
-    margin: 0 0 0.75rem;
-    max-inline-size: 52ch;
-    text-wrap: pretty;
 }
 .drop-target-message {
     color: var(--destructive);

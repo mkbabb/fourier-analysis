@@ -190,6 +190,7 @@ async function openViz(page: Page, tag: string): Promise<void> {
         // not select the tab is a measured fact, not retried silently).
         let presses = 0;
         await expect(async () => {
+            if ((await canvasTab.getAttribute("aria-selected")) === "true") return;
             presses += 1;
             await canvasTab.click();
             await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 4_000 });

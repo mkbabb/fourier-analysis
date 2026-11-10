@@ -2,6 +2,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
 import { ADMIN_TOKEN, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
+import { controlRow } from "./fixtures/slider";
+import { showViewIfTabbed } from "./fixtures/workspace";
 
 /**
  * X·F F.W9 `.b` — `G-F9-23`: AN INSTRUMENT FOR THE F.W1 VISUAL-REGRESSION
@@ -187,8 +189,8 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         );
         await page.goto("/equation");
         expect((await compute).status()).toBe(200);
-        const disclosureBody = page.locator("[data-row-sub]").first();
-        await expect(disclosureBody).toBeVisible({ timeout: 60_000 });
+        // Canon F7: the row subtitles are gone; the Harmonics slider is the mark.
+        await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
         await freeze(page);
 
         const panel = page.locator(".eq-configurator .configurator-aside").first();
@@ -209,7 +211,10 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         // ⊘ `G-F9-22` owns FR-TT-1's NAMING half. This is the GEOMETRY half,
         // distinct, and the two are never folded.
         await page.goto("/equation");
-        await expect(page.locator("[data-row-sub]").first()).toBeVisible({ timeout: 60_000 });
+        // Canon F5: a phone opens on the series; the trigger is on Controls.
+        await expect(page.locator(".eq-card").first()).toBeVisible({ timeout: 60_000 });
+        await showViewIfTabbed(page, "Controls");
+        await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
         await freeze(page);
 
         // `FunctionInput`'s Parseval trigger is a `<Tooltip>`-wrapped icon-only

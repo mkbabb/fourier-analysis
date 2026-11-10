@@ -41,6 +41,13 @@ import {
  * radius 0 the magnet is off and its field says so; on, it shows its radius.
  */
 const magnetReadout = (radius: number) => (radius === 0 ? "Off" : String(radius));
+/* The slider's keys stay with the slider (the menu would read its arrows as
+   item navigation), except Escape and Tab, which leave the menu. With the
+   slider the row's one control (canon F2), a blanket stop kept a keyboard user
+   inside the open menu. */
+function keepSliderKeys(e: KeyboardEvent) {
+    if (e.key !== "Escape" && e.key !== "Tab") e.stopPropagation();
+}
 
 const props = defineProps<EditorState & {
     showImageOverlay: boolean;
@@ -250,7 +257,7 @@ function holdDockWhileOpen(open: boolean) {
                             aria-label="Magnet radius"
                             :format-value="magnetReadout"
                             @update:model-value="emit('update:magnetRadius', $event)"
-                            @keydown.stop
+                            @keydown="keepSliderKeys"
                         />
                     </div>
                     <DropdownMenuSeparator />

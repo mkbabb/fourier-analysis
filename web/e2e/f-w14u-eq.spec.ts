@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { setSlider, slider, sliderValue } from "./fixtures/slider";
 
 /**
  * X.F.W14U.eq — the equation explorer (spec `F-W14U.md` Units :8-18; register
@@ -45,7 +46,8 @@ async function frame(page: Page, name: string): Promise<void> {
 /** Open /equation and wait for the first rendered series. */
 async function openEquation(page: Page, canvas = false): Promise<Locator> {
     await page.goto("/equation");
-    if (canvas && page.viewportSize()!.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+    // Canon F5: a phone opens on the canvas; the controls are a tab away.
+    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: canvas ? "Canvas" : "Controls" }).click();
     const card = page.locator(".eq-card");
     if (canvas || page.viewportSize()!.width >= 1024) {
         await expect(card.locator(".katex").first()).toBeVisible({ timeout: LOAD });
@@ -68,23 +70,17 @@ test.setTimeout(240_000);
 test.describe("q35 · UIA-F-35 (consumer) — whole harmonics, counted as harmonics", () => {
     test.use({ viewport: { width: 1440, height: 900 } });
 
-    test("a4 reads -0.0625 at 8 shown; the control and the list count harmonics", async ({ page }) => {
+    test("a4 reads -0.0625 at 8 harmonics; the one count drives the render and the list", async ({ page }) => {
         const card = await openEquation(page);
-        const harmonics = page.getByRole("spinbutton", { name: "Harmonics", exact: true });
-        const n = Number(await harmonics.inputValue());
-        // The display control names the unit it moves, and reaches every harmonic plus DC.
-        const shown = page.getByRole("spinbutton", { name: /displayed harmonics/i });
-        await expect(shown).toBeVisible();
-        await expect(shown).toHaveAttribute("aria-valuemax", String(n + 1));
-        await shown.fill("8");
-        await shown.press("Enter");
+        // Canon F3: one count. The Harmonics slider is the control (canon F2);
+        // the expanded render keeps every harmonic it draws (the budget is N + 1).
+        await setSlider(slider(page, "Harmonics"), 8);
         await card.getByRole("button", { name: /Expanded|a \+ b/ }).first().click();
         await expect.poll(() => seriesTex(card), { timeout: LOAD }).toMatch(/0\.06(25|2|3)\b/);
         expect(await seriesTex(card)).not.toMatch(/0\.031\b/);
-        // The list names its count in the same unit: 41 exponential terms = 21 harmonics.
+        // Canon F7: the list carries no caption counting what it lists.
         const layer = page.locator(".configurator-layer").filter({ hasText: "Coefficients" });
-        await expect(layer).toContainText(/21 harmonics/);
-        await expect(layer).not.toContainText(/41 terms/);
+        await expect(layer).not.toContainText(/harmonics ·|terms ·/);
         await frame(page, "q35-expanded-8");
     });
 });
@@ -196,7 +192,7 @@ test.describe("q201 · UIA-F-201 — one variable, one harmonic count", () => {
         const legend = page.getByRole("region", { name: "Curve legend" });
         await expect(legend).toContainText(`f(${v})`);
         await expect(legend).not.toContainText(v === "x" ? "f(t)" : "f(x)");
-        const n = Number(await page.getByRole("spinbutton", { name: "Harmonics", exact: true }).inputValue());
+        const n = await sliderValue(slider(page, "Harmonics"));
         const entries = await legend.locator(".legend-entry").count();
         expect(entries - 2).toBe(n);
         const count = (await page.locator(".timeline-count").textContent()) ?? "";
@@ -364,7 +360,7 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
             expect(small).toEqual([]);
             if (vp.width < 1024) {
                 const auto = (await page.getByRole("button", { name: /Auto-select harmonics/ }).boundingBox())!;
-                const field = (await page.getByRole("spinbutton", { name: "Harmonics", exact: true }).boundingBox())!;
+                const field = (await page.locator("[data-control-row]", { has: slider(page, "Harmonics") }).locator("[data-row-readout]").boundingBox())!;
                 expect(auto.x + auto.width).toBeLessThanOrEqual(vp.width);
                 const hit = auto.x < field.x + field.width && field.x < auto.x + auto.width
                     && auto.y < field.y + field.height && field.y < auto.y + auto.height;

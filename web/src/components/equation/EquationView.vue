@@ -20,7 +20,6 @@ const DEFAULT_INPUT: CachedInputState = {
     domainStart: 0,
     domainEnd: Math.PI,
     nHarmonics: 20,
-    budget: 10,
     notation: "trig",
 };
 
@@ -62,7 +61,7 @@ function clampBudget(v: number): number {
 }
 
 /** The request the view sends for these inputs (`auto_harmonics` is not persisted). */
-function requestFor(input: CachedInputState, autoHarmonics: boolean): ComputeEquationRequest {
+function requestFor(input: CachedInputState, autoHarmonics: boolean, budget: number): ComputeEquationRequest {
     return {
         expression: input.expression.trim(),
         domain_start: input.domainStart,
@@ -70,7 +69,7 @@ function requestFor(input: CachedInputState, autoHarmonics: boolean): ComputeEqu
         n_harmonics: input.nHarmonics,
         n_eval_points: N_EVAL_POINTS,
         notation: input.notation,
-        budget: clampBudget(input.budget),
+        budget: clampBudget(budget),
         auto_harmonics: autoHarmonics,
     };
 }
@@ -113,7 +112,8 @@ function computeKey(req: ComputeEquationRequest): string {
 let pending: { key: string; response: Promise<ComputeEquationResponse> } | null = null;
 
 export function prefetch(): void {
-    const req = requestFor(loadCachedInputState() ?? DEFAULT_INPUT, true);
+    const input = loadCachedInputState() ?? DEFAULT_INPUT;
+    const req = requestFor(input, true, input.nHarmonics + 1);
     if (!req.expression) return;
     const key = computeKey(req);
     if (pending?.key === key || loadCachedResult()?.key === key) return;
@@ -165,6 +165,7 @@ import ConvergencePlot from "./ConvergencePlot.vue";
 import CoefficientsPanel from "@/components/shared/CoefficientsPanel.vue";
 
 import { useCoeffHover } from "./composables/useCoeffHover";
+import { formatNumber } from "@/lib/format";
 import { useSimplifiedSeries } from "./composables/useSimplifiedSeries";
 
 // ── Input state (restore from cache) ──
@@ -173,7 +174,6 @@ const expression = ref(cached?.expression ?? DEFAULT_INPUT.expression);
 const domainStart = ref(cached?.domainStart ?? DEFAULT_INPUT.domainStart);
 const domainEnd = ref(cached?.domainEnd ?? DEFAULT_INPUT.domainEnd);
 const nHarmonics = ref(cached?.nHarmonics ?? DEFAULT_INPUT.nHarmonics);
-const budget = ref(cached?.budget ?? DEFAULT_INPUT.budget);
 const notation = ref<NotationMode>(cached?.notation ?? DEFAULT_INPUT.notation);
 
 // ── Result state ──
@@ -200,7 +200,7 @@ const effectiveN = ref(cachedRes?.result?.effective_n ?? 20);
 const resultDomain = ref<[number, number]>([domainStart.value, domainEnd.value]);
 const autoHarmonics = ref(true);
 const eqMode = ref<EquationDisplayMode>("sigma");
-const mobileView = ref<"controls" | "canvas">("controls");
+const mobileView = ref<"controls" | "canvas">("canvas");
 /* X.F.W14V.au1 — A2-FO-X-1 ⊕ L2-4: /visualize's form rule (`useWorkspaceForm`),
    read from glass's shell at glass's split threshold. */
 const workspace = useTemplateRef<HTMLElement>("workspace");
@@ -216,6 +216,14 @@ const activeLatex = computed(() =>
 const vizHarmonics = computed(() =>
     autoHarmonics.value ? Math.min(effectiveN.value, nHarmonics.value) : nHarmonics.value,
 );
+/**
+ * Canon F3 (restraint, C-100): ONE harmonic count. The expanded form, the plot
+ * and the coefficient list all follow the count the Harmonics control shows;
+ * the separate "Displayed harmonics" budget is gone. The budget counts
+ * harmonics with DC as one (UIA-F-35), so showing every drawn harmonic takes
+ * N + 1, within the server's bound.
+ */
+const budget = computed(() => clampBudget(vizHarmonics.value + 1));
 
 const loading = computed(() => computing.value || series.loading.value);
 
@@ -235,6 +243,9 @@ const components = computed<BasisComponent[]>(() => {
  * writes the same three refs (its response carries the series), and the cache
  * seeds them.
  */
+/** Canon F3: the list shows the harmonics the series draws, |n| ≤ N. */
+const shownComponents = computed(() => components.value.filter((c) => Math.abs(c.index) <= vizHarmonics.value));
+
 const series = useSimplifiedSeries(components, {
     notation,
     budget: () => clampBudget(budget.value),
@@ -278,10 +289,10 @@ function currentRequest(): ComputeEquationRequest {
             domainStart: domainStart.value,
             domainEnd: domainEnd.value,
             nHarmonics: nHarmonics.value,
-            budget: budget.value,
             notation: notation.value,
         },
         autoHarmonics.value,
+        budget.value,
     );
 }
 
@@ -418,35 +429,13 @@ onScopeDispose(() => abortInflight([...EQUATION_ABORT_KEYS]));
 watch(expression, () => { expressionError.value = null; });
 
 // ── Watches ──
-
-// `L·M-6` — the rescale arm is GONE, not re-guarded. Its comment claimed to fire
-// only when the budget sat "at or near the old cap", but `budget <= oldV` holds
-// in EVERY reachable steady state (the first branch forces `budget ≤ v`, and the
-// Display-terms slider's own `:max` IS `vizHarmonics`), so exactly one branch
-// fired on every change and the user's explicit Display-terms choice was
-// rewritten on every step of a Harmonics drag. That recurrence — `budget(v) =
-// v − 10` on a monotone up-drag — is `B-2`'s engine, and a guard that merely
-// said what the comment said would keep a rescale nobody asked for. What
-// survives is the only honest half: when the cap DROPS below the choice, the
-// choice is lowered to the cap.
-//
-// `M-BR` — `immediate: true` is the restore-time reconciliation the watcher
-// never had: `autoHarmonics` is not persisted and resets true, so a reload could
-// collapse `vizHarmonics` below a restored `budget` with no watcher fire at all.
-// X.F.W14U.eq — UIA-F-35 (consumer): the budget counts harmonics with DC as
-// one, so the cap that shows every drawn harmonic is N + 1.
-watch(vizHarmonics, (v) => {
-    if (budget.value > v + 1) budget.value = Math.max(MIN_BUDGET, v + 1);
-}, { immediate: true });
-
 watch(
-    () => [expression.value, domainStart.value, domainEnd.value, nHarmonics.value, budget.value, notation.value],
+    () => [expression.value, domainStart.value, domainEnd.value, nHarmonics.value, notation.value],
     () => saveCachedInputState({
         expression: expression.value,
         domainStart: domainStart.value,
         domainEnd: domainEnd.value,
         nHarmonics: nHarmonics.value,
-        budget: budget.value,
         notation: notation.value,
     }),
 );
@@ -562,7 +551,7 @@ watchDebounced(
                                         <div class="flex items-center gap-2 flex-wrap">
                                             <Badge :tone="tierTone">{{ tier.label }}</Badge>
                                             <Metric
-                                                :value="(displayEnergy * 100).toFixed(1)"
+                                                :value="formatNumber(displayEnergy * 100, 3)"
                                                 unit="% energy"
                                                 size="sm"
                                             />
@@ -639,7 +628,6 @@ watchDebounced(
                         v-model:domain-start="domainStart"
                         v-model:domain-end="domainEnd"
                         v-model:n-harmonics="nHarmonics"
-                        v-model:budget="budget"
                         v-model:notation="notation"
                         :effective-n="effectiveN"
                         :energy-captured="displayEnergy"
@@ -652,9 +640,9 @@ watchDebounced(
                     />
                     <Transition name="slide-down">
                         <CoefficientsPanel
-                            v-if="components.length"
-                            :components="components"
-                            :rendered-terms="budget"
+                            v-if="shownComponents.length"
+                            :components="shownComponents"
+                            paired
                         />
                     </Transition>
                 </div>

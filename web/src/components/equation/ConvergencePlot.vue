@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useElementSize, useMediaQuery } from "@vueuse/core";
 import type { FourierTermDTO } from "@/lib/equation/types";
 import { applyGoldenStroke } from "@/lib/golden-stroke";
+import { formatNumber } from "@/lib/format";
 import { easeInOutSine } from "@mkbabb/value.js/easing";
 import { lerp } from "@mkbabb/value.js/math";
 import { renderLatex } from "@/lib/equation/render";
@@ -435,7 +436,7 @@ const tooltipHtml = computed(() => {
     if (h === "original") return renderKatexInline(`f(${v.value})`);
     if (h.startsWith("h-")) {
         const harm = trigHarmonics.value[parseInt(h.slice(2))];
-        return harm ? renderKatexInline(`n = ${harm.k},\\; A = ${harm.amplitude.toFixed(4)}`) : "";
+        return harm ? renderKatexInline(`n = ${harm.k},\\; A = ${formatNumber(harm.amplitude)}`) : "";
     }
     return "";
 });

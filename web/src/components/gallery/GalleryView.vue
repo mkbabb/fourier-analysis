@@ -365,12 +365,9 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
              X-DS fourier pass 9 · DS-F9C-C2: inside the 72rem page measure
              the search fills the row to the grid's right edge (the 32rem cap
              of DS-F7-C4 ended it mid-track), so the toolbar ends on a grid edge.
-             X-DS fourier pass 5 · DS-F5C-T1: at >= sm the row aligns on its
-             block-end, so the search's foot sits on the tabs' underline and the
-             two read as one toolbar on one line (centred, the field floated
-             off the rule on the tab text's middle). Below sm the tabs own a
-             row and their rule runs its full width. -->
-        <div class="flex flex-col gap-1.5 px-[var(--page-gutter)] sm:flex-row sm:items-end sm:gap-4">
+             Canon F4: the tabs are glass's default, so the row centres the
+             search on them. Below sm the tabs own a row. -->
+        <div class="flex flex-col gap-1.5 px-[var(--page-gutter)] sm:flex-row sm:items-center sm:gap-4">
             <!-- X.F.W14.u — UIA-F-41 (consumer half): the strip scrolls in its
                  own inline track. The column is `overflow-y: auto`, which makes
                  its `overflow-x` compute to `auto` as well, so at 390 the 5-tab
@@ -379,7 +376,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                  ~80 px left. A producer overflow track or compact mode for
                  SegmentedTabs is the glass half, routed under O-59. -->
             <div class="min-w-0 overflow-x-auto [scrollbar-width:none]">
-                <SegmentedTabs variant="underline"
+                <SegmentedTabs semantics="tabs"
                     :options="tabOptions"
                     v-model="activeTab"
                 />

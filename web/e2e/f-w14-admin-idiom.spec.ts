@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { ADMIN_FLAGGED, ADMIN_TOKEN, stubAdminApi } from "./fixtures/gallery";
+import { selectTab } from "./fixtures/workspace";
 
 /**
  * X.F.W14 `.h` — OA-50 (COHESION §0cc, addendum (b)): ONE admin card/row idiom
@@ -58,7 +59,7 @@ async function openPanel(page: Page, tab: string, label: string, settle: string)
     );
     await page.goto(`/gallery?admin=${ADMIN_TOKEN}`);
     await expect(page.getByRole("region", { name: "Admin mode banner" })).toBeVisible({ timeout: 60_000 });
-    await page.getByRole("tab", { name: tab }).click();
+    await selectTab(page, tab);
     const panel = page.locator(`[aria-label="${label}"]`);
     await expect(panel.getByText(settle).first()).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(400);

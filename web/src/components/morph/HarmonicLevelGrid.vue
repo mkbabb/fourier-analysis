@@ -264,29 +264,13 @@ function getPath(level: number): string {
            (`--button-size / 2`), which the coarse ramp grows to 30 px; on a
            60 px phone track that rounded the tile into a stadium. */
         border-radius: var(--radius-card);
-        /* SP-3 · HLG-37 — the control boundary, raised to the 1.4.11 floor.
-           `--foreground` at 12% over `--card` measured 1.275 L / 1.395 D: the
-           cell's entire boundary vocabulary was sub-3:1 in BOTH arms, which is
-           what made a grid of twelve controls read as one undifferentiated
-           strip. At 50% it measures 3.291 L / 3.984 D. (Re-derived from the
-           token values; the 12% reading reproduces the banked 1.275/1.398 to
-           the thousandth, which is what validates the model.) */
-        /* X-DS fourier pass 12 · DS-F12X-C1: the resting edge is a 1 px
-           hairline, the weight of the card's own edge, so the inner tile no
-           longer outweighs its container and the selection (accent edge plus
-           its 2 px ring) is the one heavier mark. The ink stays at the 50 %
-           mix: that is the 1.4.11 floor HLG-37 grades (on `--card`, `--border`
-           measures 1.87 L / 2.00 D and `--border-soft` 1.31 / 1.35, both
-           under 3:1), so the critic's tone arm is
-           refused and only the weight is cured. */
-        border: 1px solid color-mix(in srgb, var(--foreground) 50%, transparent);
-        /* ⊘ NOT cured here, and not smoothed: `--card` and `--background` are
-           the SAME luminance in the light arm (1.000:1), so the cell's FILL
-           carries no separation from the page whatever the consumer does. That
-           is a producer palette fact, so it rides the SS-6 relay as a
-           GLASS-RELAY ask and stays honestly RED in the pair registry — it is
-           not re-minted here as a frontend hack. */
-        background: var(--card);
+        /* Canon F10 (restraint, C-51): the tiles sit in the levels card
+           unboxed. Each wore a bordered plate on the card's own plate, a
+           card inside a card; at rest a tile is its shape and caption alone.
+           The edge is transparent, so the selection's edge below takes no
+           layout of its own. */
+        border: 1px solid transparent;
+        background: transparent;
     }
 
     /* SP-15 / DMT N-16 — ungated `:hover` latched on touch UAs after a tap and
@@ -295,10 +279,6 @@ function getPath(level: number): string {
         .grid-cell:hover {
             border-color: color-mix(in srgb, var(--accent-red) 50%, transparent);
         }
-    }
-
-    .grid-cell:active {
-        transform: scale(0.96);
     }
 
     /* FMD-18 — the state classes are ORDERED and SCOPED. `.is-bound` and
@@ -324,7 +304,6 @@ function getPath(level: number): string {
        ring that means "selected", with no per-theme counter-style. */
     .grid-cell.active {
         border-color: var(--accent-red);
-        box-shadow: 0 0 0 1px var(--accent-red);
     }
 }
 
@@ -360,7 +339,6 @@ function getPath(level: number): string {
    is the caption at foreground ink and weight; the pair reads as a pair. */
 .grid-cell.is-bound .grid-label {
     color: var(--foreground);
-    font-weight: 600;
 }
 
 </style>

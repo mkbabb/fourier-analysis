@@ -21,6 +21,7 @@
  */
 import { createHash } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { slider } from "./fixtures/slider";
 import { expectHardwareGpu } from "./fixtures/gpu";
 
 const CELLS = [
@@ -34,9 +35,9 @@ async function openAtMaxHarmonics(page: Page) {
     // An N = 100 compute on a cold CI API takes most of the default 30 s.
     test.setTimeout(120_000);
     await page.goto("/equation");
-    const harmonics = page.getByRole("spinbutton", { name: "Harmonics", exact: true });
-    await harmonics.fill("100");
-    await harmonics.press("Enter");
+    const harmonics = slider(page, "Harmonics");
+    await harmonics.focus();
+    await harmonics.press("End");
     await page.getByRole("button", { name: "Compute" }).click();
     await expect(page.locator(".timeline-count")).toHaveText(/\/\s*100$/, { timeout: 60_000 });
 }

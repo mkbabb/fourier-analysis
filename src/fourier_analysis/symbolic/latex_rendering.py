@@ -50,11 +50,11 @@ def render_trig(
     if not terms:
         return "0"
 
-    a0_half, pairs = extract_trig_pairs(terms)
+    dc_value, pairs = extract_trig_pairs(terms)
     parts: list[str] = []
 
-    if a0_half is not None:
-        parts.append(rf"\frac{{{format_number(a0_half)}}}{{2}}")
+    if dc_value is not None:
+        parts.append(format_number(dc_value))
 
     max_amp = max((abs(a) + abs(b) for _, a, b in pairs), default=0)
     threshold = max_amp * 0.005
@@ -163,16 +163,16 @@ def render_trig_sigma(
     if not terms:
         return "0"
 
-    a0_half, pairs = extract_trig_pairs(terms)
+    dc_value, pairs = extract_trig_pairs(terms)
     if not pairs:
-        if a0_half is not None:
-            return rf"\frac{{{format_number(a0_half)}}}{{2}}"
+        if dc_value is not None:
+            return format_number(dc_value)
         return "0"
 
     N = max(k for k, _, _ in pairs)
     parts: list[str] = []
-    if a0_half is not None:
-        parts.append(rf"\frac{{{format_number(a0_half)}}}{{2}}")
+    if dc_value is not None:
+        parts.append(format_number(dc_value))
 
     # Wrap a_n / b_n in \htmlClass for frontend hover interactivity
     an = r"\htmlClass{eq-coeff eq-an}{a_n}"

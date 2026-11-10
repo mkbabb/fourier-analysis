@@ -195,7 +195,8 @@ test.describe("paper-desktop 1440", () => {
     test("UIA-F-157: the reading progress is glass ScrollProgressRim and it tracks the scroll", async ({ page }) => {
         const scroller = await openPaper(page);
         await expect(page.locator(".paper-progress-track")).toHaveCount(0);
-        const rim = page.locator(".paper-root .scroll-progress-rim");
+        // Canon F6: the rim is the dock's border, not the paper's.
+        const rim = page.locator(".app-dock .scroll-progress-rim");
         await expect(rim).toHaveCount(1);
         await scroller.evaluate((el) => el.scrollTo({ top: (el.scrollHeight - el.clientHeight) / 2 }));
         await expect

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { seededViz } from "./fixtures/seed";
+import { showViewIfTabbed } from "./fixtures/workspace";
 
 /**
  * X·OD19 P3-fourier-shell-motion-loading — owner rows OD19-F5, OD19-F6 and
@@ -165,10 +166,7 @@ for (const cell of CELLS) {
                 ["/equation", ".eq-panel-left-wrap"],
             ] as const) {
                 await page.goto(route);
-                if (cell.width < 1024) {
-                    const tab = page.getByText("Controls", { exact: true });
-                    if (await tab.count()) await tab.first().click();
-                }
+                if (cell.width < 1024) await showViewIfTabbed(page, "Controls");
                 const layer = page.locator(`${stack} .configurator-layer`).first();
                 await expect(layer).toBeVisible({ timeout: 30_000 });
                 const r = await layer.evaluate((e) => parseFloat(getComputedStyle(e).borderTopLeftRadius));

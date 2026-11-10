@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5[1m]
 import { test, expect, type Page, type Request } from "@playwright/test";
+import { setSlider, slider, sliderValue, controlRow } from "./fixtures/slider";
 
 /**
  * X·F F.W9 `.b` — the **S2 seat** (`G-F9-6`): ONE `/equation` interaction spec,
@@ -65,7 +66,7 @@ function recordComputes(page: Page): ComputePayload[] {
 /** The route's own mount condition — never a blind timeout. */
 async function openEquation(page: Page): Promise<void> {
     await page.goto("/equation");
-    await expect(page.locator("[data-row-sub]").first()).toBeVisible({ timeout: 60_000 });
+    await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
 }
 
 /** The rendered series, which is the surface every leg below reads. */
@@ -135,32 +136,14 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         const expLatex = (await series.innerText()).trim();
 
         // ── 3. BUDGET ───────────────────────────────────────────────────────
-        // `FR-EQR-31` / `D-14`. "Display terms" is the budget knob, and the
-        // knob is THREE labelled nodes, not one: `SliderControl` names its
-        // inline numeric input through the wrapping `<label>`, and passes the
-        // same `label` down as `aria-label` on both the producer's slider host
-        // and reka-ui's `role="slider"` thumb. A bare `getByLabel` therefore
-        // resolves to 3 elements and dies of strict mode before it asserts
-        // anything — X.F.W9 repair 1, PART 1 of the cure for `Check 1`'s `HIGH-1`.
-        // The leg drives the NUMERIC input (it reads and fills a value), so it
-        // is addressed by that role; the two slider nodes carry no value to
-        // fill and are a different control surface.
-        const budget = page.getByRole("spinbutton", { name: /displayed harmonics/i });
-        await expect(budget).toBeVisible();
-        const budgetBefore = await budget.inputValue();
-
-        // THE BUDGET GOVERNS THE EXPANDED RENDER, NOT THE SIGMA ONE — X.F.W9
-        // repair 1, PART 2 of `HIGH-1`'s cure, found by executing the
-        // leg the locator defect had made unreachable. `eqMode` starts at
-        // `"sigma"` and `activeLatex` then prefers `latex_sigma`, which the
-        // server builds with `render_latex_sigma(terms, notation)` — a function
-        // that takes NO budget. Only `latex` (`simplify_series(terms, budget,
-        // notation)`) is budget-determined, and the control says so on its own
-        // face (`subtitle="shown in expanded (a+b) view"`). Asserting the sigma
-        // render changes under a budget edit therefore asserted something the
-        // product does not claim and could never do; the mode is switched to
-        // the surface the knob actually drives, which is also `B-1`'s shape —
-        // a knob change that silently reuses a stale result.
+        // Canon F3 (restraint): the budget is no longer its own knob. The
+        // expanded render keeps every harmonic the Harmonics count draws (the
+        // budget is N + 1, DC as one), so the leg moves the one count, through
+        // its slider (canon F2: the slider is the control), and reads the
+        // expanded render, the surface the budget governs.
+        const harmonics = slider(page, "Harmonics");
+        await expect(controlRow(page, "Harmonics")).toBeVisible();
+        const countBefore = await sliderValue(harmonics);
         const modeToggle = page.getByRole("group", { name: "Equation display mode" });
         const expandedMode = modeToggle.getByRole("button", { name: /Expanded terms/i });
         await expandedMode.click();
@@ -179,13 +162,9 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
             "the display-mode toggle flipped but the rendered surface did not change",
         ).not.toBe(expLatex);
 
-        const narrowed = String(Math.max(2, Number(budgetBefore) - 4));
-        expect(
-            narrowed,
-            "the budget did not actually move — the leg would assert nothing",
-        ).not.toBe(budgetBefore);
-        await budget.fill(narrowed);
-        await budget.blur();
+        const narrowed = Math.max(1, countBefore - 4);
+        expect(narrowed, "the count did not actually move — the leg would assert nothing").not.toBe(countBefore);
+        await setSlider(harmonics, narrowed);
 
         await expect
             .poll(async () => (await series.innerText()).trim(), {
@@ -211,16 +190,16 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         // 422, and it is invisible to any test that never reloads.
         const reloadCount = computes.length;
         await page.reload();
-        await expect(page.locator("[data-row-sub]").first()).toBeVisible({ timeout: 60_000 });
+        await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
 
         await expect(
             page.getByRole("radiogroup", { name: "Notation" }).getByRole("radio", { name: /Exp/ }),
             "the notation knob did not survive the reload",
         ).toHaveAttribute("aria-checked", "true", { timeout: 30_000 });
         await expect(
-            page.getByRole("spinbutton", { name: /displayed harmonics/i }),
-            "the display budget did not survive the reload",
-        ).toHaveValue(narrowed, { timeout: 30_000 });
+            slider(page, "Harmonics"),
+            "the harmonic count did not survive the reload",
+        ).toHaveAttribute("aria-valuenow", String(narrowed), { timeout: 30_000 });
 
         // THE COLD COMPUTE IS DRIVEN, NOT AWAITED — X.F.W9 repair 1, PART 3 of
         // `HIGH-1`'s cure, and again a thing only execution could show.
@@ -252,8 +231,8 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         ).toBeGreaterThan(0);
         expect(
             coldPayloads[coldPayloads.length - 1]!.budget,
-            "the cold compute did not carry the budget the reload restored",
-        ).toBe(Number(narrowed));
+            "the cold compute did not carry the budget the restored count implies",
+        ).toBe(narrowed + 1);
 
         // Whatever the cold session posts, it must be inside the server's own
         // bounds — the clamp is the cure `B-2` books and this is its witness.

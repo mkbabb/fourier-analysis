@@ -29,7 +29,6 @@ export interface CachedInputState {
     domainStart: number;
     domainEnd: number;
     nHarmonics: number;
-    budget: number;
     notation: NotationMode;
 }
 
@@ -65,7 +64,6 @@ function isCachedInputState(v: unknown): v is CachedInputState {
         num(v.domainStart) &&
         num(v.domainEnd) &&
         num(v.nHarmonics) &&
-        num(v.budget) &&
         NOTATIONS.includes(v.notation as NotationMode)
     );
 }

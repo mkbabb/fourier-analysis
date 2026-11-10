@@ -31,12 +31,18 @@ import { useAnimatedNumber } from "@mkbabb/glass-ui/motion";
 import { ChevronDown, ChevronUp } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { BasisComponent } from "@/lib/types";
+import { formatNumber } from "@/lib/format";
 
 const props = withDefaults(
     defineProps<{
         components: BasisComponent[];
         /** Copy shown when there are no components to plot. */
         emptyText?: string;
+        /**
+         * Canon F8: a real series' c₋ₙ is cₙ's mirror, so its rows came in
+         * identical pairs. Paired, the list is one row per ±n.
+         */
+        paired?: boolean;
     }>(),
     {
         emptyText: "Compute to see coefficients",
@@ -45,11 +51,21 @@ const props = withDefaults(
 
 const expanded = ref(false);
 
-const topComponents = computed(() =>
-    props.components.slice(0, expanded.value ? 40 : 12),
+const rows = computed(() =>
+    props.paired ? props.components.filter((c) => c.index >= 0) : props.components,
 );
 
-const totalComponents = computed(() => props.components.length);
+const topComponents = computed(() =>
+    rows.value.slice(0, expanded.value ? 40 : 12),
+);
+
+const totalComponents = computed(() => rows.value.length);
+
+/** The row's index: `±n` for a pair, signed `n` otherwise (true minus). */
+function indexLabel(n: number): string {
+    if (props.paired) return n === 0 ? "0" : `\u00b1${n}`;
+    return n < 0 ? `\u2212${-n}` : `+${n}`;
+}
 
 const maxAmplitude = computed(() =>
     topComponents.value.length ? topComponents.value[0].amplitude : 1,
@@ -61,16 +77,16 @@ function spectrumColor(i: number, total: number): string {
 }
 
 function formatPhase(phase: number): string {
-    return `${((phase * 180) / Math.PI).toFixed(1)}°`;
+    return `${formatNumber((phase * 180) / Math.PI)}°`;
 }
 
 function formatPercent(amplitude: number): string {
     if (!maxAmplitude.value) return "0%";
-    return `${((amplitude / maxAmplitude.value) * 100).toFixed(1)}%`;
+    return `${formatNumber((amplitude / maxAmplitude.value) * 100)}%`;
 }
 
 function fmtAmplitude(v: number): string {
-    return v.toFixed(2);
+    return formatNumber(v);
 }
 
 /**
@@ -99,11 +115,15 @@ const AmplitudeReadout = defineComponent({
 </script>
 
 <template>
-    <!-- X-DS pass 3 · DS-F3-C15: the unlabelled "12 / 41" readout is deleted;
-         the layer's subtitle is the list's one labelled count. -->
+    <!-- X-DS pass 3 · DS-F3-C15: the unlabelled "12 / 41" readout is deleted.
+         Canon F8: the list's one label is its column head, n and |cₙ|. -->
     <div class="pt-1">
-
         <div v-if="topComponents.length">
+            <div class="flex items-center gap-2 pe-1 pb-1 text-caption text-muted-foreground" aria-hidden="true">
+                <span class="w-8 text-right font-serif-math italic">n</span>
+                <span class="flex-1" />
+                <span class="flex-none min-w-[6.5ch] text-right font-serif-math italic">|c<sub>n</sub>|</span>
+            </div>
             <!-- X.F.W3 `.d` — `fr-CoefficientsSpectrum M-6`, THE FadingScroll
                  ADOPTION FAMILY. This was an unnamed 300px scroll port with no
                  `tabindex`, no `role` and no name, and the consequence is the
@@ -146,7 +166,7 @@ const AmplitudeReadout = defineComponent({
                              sized in ch from its widest value ("103.19"), never clipped. -->
                         <div class="coeff-row flex items-center gap-2 pe-1 text-caption" tabindex="0">
                             <span class="w-8 text-right fira-code text-muted-foreground tabular-nums">
-                                {{ comp.index >= 0 ? "+" : "" }}{{ comp.index }}
+                                {{ indexLabel(comp.index) }}
                             </span>
                             <!-- X-DS pass 3 · DS-F3-C15: the bars grow from a square
                                  baseline with near-square ends, so a short bar reads
@@ -167,17 +187,17 @@ const AmplitudeReadout = defineComponent({
                         <template #content>
                             <div class="flex items-center gap-1.5 mb-1">
                                 <span class="inline-block w-2 h-2 rounded-full" :style="{ backgroundColor: spectrumColor(i, topComponents.length) }" />
-                                <span class="font-semibold">n = {{ comp.index }}</span>
+                                <span>n = {{ indexLabel(comp.index) }}</span>
                             </div>
-                            <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-mono-micro uppercase font-medium">
+                            <div class="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-caption">
                                 <span class="text-muted-foreground">Amplitude</span>
-                                <span class="fira-code">{{ comp.amplitude.toFixed(4) }}</span>
+                                <span class="fira-code">{{ formatNumber(comp.amplitude) }}</span>
                                 <span class="text-muted-foreground">Phase</span>
                                 <span class="fira-code">{{ formatPhase(comp.phase) }}</span>
                                 <span class="text-muted-foreground">Relative</span>
                                 <span class="fira-code">{{ formatPercent(comp.amplitude) }}</span>
                                 <span class="text-muted-foreground">Re / Im</span>
-                                <span class="fira-code">{{ comp.coefficient[0].toFixed(3) }} / {{ comp.coefficient[1].toFixed(3) }}</span>
+                                <span class="fira-code">{{ formatNumber(comp.coefficient[0]) }} / {{ formatNumber(comp.coefficient[1]) }}</span>
                             </div>
                         </template>
                     </Tooltip>

@@ -116,11 +116,11 @@ watch(
                                      number names its chapter ("1.2."), so with a leaf
                                      active the bar shows it alone; else the chapter. -->
                                 <span v-if="activeLeaf" class="floating-toc-crumb">
-                                    <span v-if="activeLeaf.number" class="floating-toc-number fira-code">{{ activeLeaf.number }}.</span>
+                                    <span v-if="activeLeaf.number" class="floating-toc-number">{{ activeLeaf.number }}.</span>
                                     <span v-html="renderTitle(activeLeaf.title)" />
                                 </span>
                                 <span v-else-if="currentSection" class="floating-toc-crumb">
-                                    <span v-if="currentSection.number" class="floating-toc-number fira-code">{{ currentSection.number }}.</span>
+                                    <span v-if="currentSection.number" class="floating-toc-number">{{ currentSection.number }}.</span>
                                     <span v-html="renderTitle(currentSection.title)" />
                                 </span>
                             </span>

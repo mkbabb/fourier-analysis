@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5[1m]
 import { test, expect, type Locator } from "@playwright/test";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X·F F.W9 `.b` — `G-F9-13`'s witnesses (`FR-USB-16`, the matrix half).
@@ -186,10 +187,8 @@ test.describe("@coarse — the coarse-pointer cell (G-F9-13)", () => {
         // `.coeff-popover` (no role, no data-state), so it is read by its class.
         test.setTimeout(120_000);
         await page.goto("/equation");
-        // The sheet form (this cell's width) shows Controls first.
-        const canvasTab = page.getByRole("tab", { name: "Canvas" });
-        await canvasTab.tap();
-        await expect(canvasTab).toHaveAttribute("aria-selected", "true");
+        // The sheet form (this cell's width) opens on the canvas (canon F5).
+        await showView(page, "Canvas");
 
         const card = page.locator(".eq-card");
         const coeff = card.locator(".eq-coeff:visible").first();
@@ -200,7 +199,10 @@ test.describe("@coarse — the coarse-pointer cell (G-F9-13)", () => {
         await expect(readout, "a tap on a coefficient opens no readout").toBeVisible();
         await expect(readout).toContainText(/=/);
 
-        await canvasTab.tap();
+        // A tap outside the equation: on the selected Canvas tab, where glass's
+        // indicator sits.
+        const outside = (await page.getByRole("tab", { name: "Canvas", exact: true }).boundingBox())!;
+        await page.touchscreen.tap(outside.x + outside.width / 2, outside.y + outside.height / 2);
         await expect(readout, "a tap outside the equation leaves the readout open").toBeHidden();
     });
 });

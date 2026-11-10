@@ -156,8 +156,8 @@ const emit = defineEmits<{
     background: transparent;
     border: 1.5px solid var(--legend-hue);
 }
+/* Canon F9: the hue marks the sum; bold restated it. */
 .legend-label--golden {
     color: var(--viz-amber);
-    font-weight: 600;
 }
 </style>

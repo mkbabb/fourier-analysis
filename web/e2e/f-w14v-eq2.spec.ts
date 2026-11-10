@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14V.eq2 — F-W14V.md addendum (b), COHESION §0dh. The owner called
@@ -26,10 +27,11 @@ const LOAD = 90_000;
 
 async function openEquation(page: Page): Promise<void> {
     await page.goto("/equation");
+    // Canon F5: every width opens on the series; a phone then shows Controls,
+    // the view these frames read first.
+    await expect(page.locator(".eq-card .katex").first()).toBeVisible({ timeout: LOAD });
+    if (page.viewportSize()!.width < 640) await showView(page, "Controls");
     await expect(page.locator(".configurator-layer").first()).toBeVisible({ timeout: LOAD });
-    if (page.viewportSize()!.width >= 1024) {
-        await expect(page.locator(".eq-card .katex").first()).toBeVisible({ timeout: LOAD });
-    }
     await page.mouse.move(2, 2);
     await page.waitForTimeout(600);
 }
@@ -65,6 +67,7 @@ test.describe("X.F.W14V.eq2 — q2 /equation below lg (390)", () => {
     test.use({ viewport: { width: 390, height: 844 } });
     test("q2 Controls tab shows the layers and no empty stage box; Canvas tab shows the stage", async ({ page }) => {
         await openEquation(page);
+        await showView(page, "Controls");
         const cfg = page.locator('[data-slot="configurator"][data-layout="detached"]');
         await expect(cfg).toHaveCount(1);
         const stage = cfg.locator(":scope > .configurator-stage");
@@ -73,7 +76,7 @@ test.describe("X.F.W14V.eq2 — q2 /equation below lg (390)", () => {
         const sb = await stage.boundingBox();
         expect(sb === null || sb.height === 0, "no empty stage box above the controls").toBe(true);
 
-        await page.getByRole("tab", { name: "Canvas" }).click();
+        await showView(page, "Canvas");
         await expect(stage.locator(".eq-card .katex").first()).toBeVisible({ timeout: LOAD });
         const ab = await aside.boundingBox();
         expect(ab === null || ab.height === 0, "the aside is hidden on the Canvas tab").toBe(true);
@@ -91,7 +94,7 @@ for (const scheme of ["light", "dark"] as const) {
                 await openEquation(page);
                 await page.screenshot({ path: `${FRAMES}/${PHASE}-${w}-${scheme}.png` });
                 if (w < 1024) {
-                    await page.getByRole("tab", { name: "Canvas" }).click();
+                    await showView(page, "Canvas");
                     await expect(page.locator(".eq-card .katex").first()).toBeVisible({ timeout: LOAD });
                     await page.waitForTimeout(600);
                     await page.screenshot({ path: `${FRAMES}/${PHASE}-${w}-${scheme}-canvas.png` });

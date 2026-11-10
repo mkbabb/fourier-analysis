@@ -3,9 +3,6 @@
         <!-- ── Header ──────────────────────────────────────────── -->
         <div class="demo-header">
             <h1 class="demo-title">Fourier Morph</h1>
-            <p class="demo-subtitle">
-                Tune the morph transition between sun and moon shapes.
-            </p>
         </div>
 
         <!-- X.F.W14U.misc — UIA-F-115: the morph is the page's dominant
@@ -48,7 +45,6 @@
             <div class="controls-column">
                 <MorphPhaseConfig
                     title="Settle Out"
-                    description="Shape degrades to low harmonics"
                     :duration="morphConfig.config.settleOutMs"
                     :easing="morphConfig.config.settleOutEasing"
                     slider-color="var(--accent-red)"
@@ -58,7 +54,6 @@
 
                 <MorphPhaseConfig
                     title="Morph"
-                    description="Cross-fade at low harmonics"
                     :duration="morphConfig.config.morphMs"
                     :easing="morphConfig.config.morphEasing"
                     slider-color="var(--accent-pink)"
@@ -68,7 +63,6 @@
 
                 <MorphPhaseConfig
                     title="Settle In"
-                    description="Resolves to full fidelity"
                     :duration="morphConfig.config.settleInMs"
                     :easing="morphConfig.config.settleInEasing"
                     slider-color="var(--accent-red)"
@@ -218,15 +212,6 @@ function handleReset() {
     font-weight: 400;
     margin-bottom: var(--space-atom);
     color: var(--foreground);
-}
-
-.demo-subtitle {
-    color: var(--muted-foreground);
-    font-size: var(--type-body);
-    line-height: var(--type-leading-body);
-    max-width: 36rem;
-    /* X-DS pass 11 · DS-F13-C3: no orphan last word at 390 (as the /w lede). */
-    text-wrap: pretty;
 }
 
 /* ── Layout (UIA-F-115) ─────────────────────── */
@@ -379,17 +364,6 @@ main[data-scrolled] .demo-page::before {
     .controls-column {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    /* X-DS DS-F5-C3: three across, the peers' rows line up. A subtitle
-       that wraps (Settle Out's) pushed that card's Duration and Easing rows
-       ~19 px below its two peers'. Each subtitle holds two lines' room here,
-       so every card's title, subtitle, field, slider and select sit on one
-       baseline. (Shared subgrid rows were the first choice; glass Card's
-       `contain: paint` makes a card an independent formatting context, so it
-       cannot be a subgrid, and that containment is glass's.) */
-    .controls-column :deep([data-card-subtitle]) {
-        min-block-size: 2lh;
     }
 
     .controls-column > :last-child {

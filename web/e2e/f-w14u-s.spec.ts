@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14U.s — gate G-s, OA-59 (owner, 2026-09-24, frame
@@ -25,9 +26,9 @@ async function loadImage(page: Page): Promise<void> {
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
     // X.F.W14V.u4 — UIA-F-74: below lg a finished upload brings the canvas to
     // the front; this setup reads the Controls sheet, so it selects that tab.
-    if (page.viewportSize()!.width < 1024) {
+    if (page.viewportSize()!.width < 640) {
         await expect(page.locator(".canvas-stage")).not.toHaveClass(/panel-inactive/, { timeout: 60_000 });
-        await page.getByRole("tab", { name: "Controls" }).click();
+        await showView(page, "Controls");
     }
     await expect(page.locator(".viz-panel-left-wrap")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("button", { name: /Replace image/ })).toBeVisible({ timeout: 30_000 });
