@@ -1,7 +1,8 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { setSlider, slider } from "./fixtures/slider";
+import { setSlider, slider, controlRow } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14U.vedit — the contour editor and the equation panel (spec
@@ -54,7 +55,7 @@ async function frame(page: Page, name: string): Promise<void> {
 async function openViz(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
-    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
     await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
 }
@@ -245,7 +246,7 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         // The rest are one menu away.
         await dock.getByRole("button", { name: "More editor tools" }).click();
         const menu = page.getByRole("menu");
-        await expect(menu.getByRole("slider", { name: /Magnet/ })).toBeVisible();
+        await expect(controlRow(menu, /Magnet/)).toBeVisible();
         for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction", "View options", "Delete point"])
             await expect(menu.getByRole("menuitem", { name })).toBeVisible();
         // Delete is the menu's last item, behind a separator, in the rose tone.
@@ -267,7 +268,7 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
     test("v89 · UIA-F-89 — at 390, editing, the Controls tab gives the pane the height", async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await openEditor(page);
-        await page.getByRole("tab", { name: "Controls" }).click();
+        await showView(page, "Controls");
         await page.waitForTimeout(600);
         await frame(page, "v89-controls-tab");
         const read = await page.evaluate(() => {

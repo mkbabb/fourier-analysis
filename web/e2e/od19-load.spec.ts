@@ -100,8 +100,6 @@ interface Route {
     name: string;
     path: () => string;
     ready: string;
-    /** At 390 the stage sits behind the "Canvas" tab: the content the phone opens on. */
-    ready390?: string;
     /** The dock section menu item that opens it (nav); absent = not a section. */
     nav?: string;
     /** Bars: eager+route JS decoded KB (cold), cold / warm / nav content ms. */
@@ -111,9 +109,9 @@ interface Route {
 const ROUTES: Route[] = [
     { name: "paper", path: () => "/paper", ready: ".paper-section", nav: "Paper", bar: { jsKB: 1550, coldMs: 1100, warmMs: 700, navMs: 1000 } },
     { name: "visualize", path: () => "/visualize", ready: ".viz-configurator .configurator-stage", nav: "Visualize", bar: { jsKB: 1260, coldMs: 800, warmMs: 450, navMs: 700 } },
-    { name: "visualization", path: () => `/v/${seededViz().slug}`, ready: ".viz-configurator .configurator-stage canvas", ready390: ".viz-configurator .configurator-layer", bar: { jsKB: 1260, coldMs: 1500, warmMs: 1100 } },
+    { name: "visualization", path: () => `/v/${seededViz().slug}`, ready: ".viz-configurator .configurator-stage canvas", bar: { jsKB: 1260, coldMs: 1500, warmMs: 1100 } },
     { name: "gallery", path: () => "/gallery", ready: ".gallery-card", nav: "Gallery", bar: { jsKB: 870, coldMs: 1100, warmMs: 600, navMs: 1000 } },
-    { name: "equation", path: () => "/equation", ready: ".eq-card", ready390: ".eq-configurator .configurator-layer", nav: "Equation", bar: { jsKB: 1170, coldMs: 1000, warmMs: 700, navMs: 700 } },
+    { name: "equation", path: () => "/equation", ready: ".eq-card", nav: "Equation", bar: { jsKB: 1170, coldMs: 1000, warmMs: 700, navMs: 700 } },
     { name: "morph", path: () => "/morph", ready: ".demo-layout .stage-column svg path", nav: "Morph", bar: { jsKB: 810, coldMs: 1100, warmMs: 700, navMs: 900 } },
 ];
 
@@ -258,8 +256,8 @@ async function readLoad(page: Page, since: number, until: number, waitFrom = sin
 
 async function hardLoad(page: Page, route: Route): Promise<Reading> {
     await page.goto(PROD + route.path(), { waitUntil: "commit" });
-    const narrow = (page.viewportSize()?.width ?? 1440) < 640;
-    const ms = await contentAt(page, (narrow && route.ready390) || route.ready);
+    // Canon F5: a phone opens on the canvas, so every width waits for the stage.
+    const ms = await contentAt(page, route.ready);
     return { ms: Math.round(ms), ...(await readLoad(page, 0, ms)) };
 }
 

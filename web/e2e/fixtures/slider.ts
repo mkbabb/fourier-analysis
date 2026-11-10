@@ -33,3 +33,13 @@ export function readout(scope: Page | Locator, name: string | RegExp): Locator {
     const page = "page" in scope ? scope.page() : scope;
     return scope.locator("[data-control-row]", { has: slider(page, name) }).locator("[data-row-readout]");
 }
+
+/**
+ * The row a slider sits in. Glass's scrubber draws its handle as the fill's
+ * leading edge, so the thumb element has no box of its own; a spec that waits
+ * for a slider to show waits for its row.
+ */
+export function controlRow(scope: Page | Locator, name: string | RegExp): Locator {
+    const page = "page" in scope ? scope.page() : scope;
+    return scope.locator("[data-control-row]", { has: slider(page, name) });
+}

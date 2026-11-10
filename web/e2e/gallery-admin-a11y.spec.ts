@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 import { ADMIN_TOKEN, stubAdminApi } from "./fixtures/gallery";
+import { selectTab } from "./fixtures/workspace";
 
 /**
  * X·F F.W4 `.g` — `G-F4-ADMIN-AXE`: *"one spec enters admin mode and runs axe
@@ -83,7 +84,7 @@ async function enterAdminMode(page: Page) {
 
 /** Switch to one of the three admin-only tabs and settle on its own content. */
 async function openAdminTab(page: Page, label: string, settle: () => Promise<void>) {
-    await page.getByRole("tab", { name: label }).click();
+    await selectTab(page, label);
     await settle();
 }
 

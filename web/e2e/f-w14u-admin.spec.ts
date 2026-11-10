@@ -8,6 +8,7 @@ import {
     ENTRY,
     stubAdminApi,
 } from "./fixtures/gallery";
+import { selectTab } from "./fixtures/workspace";
 
 /**
  * X.F.W14U.admin — the admin family (spec `F-W14U.md` Units :8-18; register
@@ -57,7 +58,7 @@ async function openAdmin(page: Page, before?: (page: Page) => Promise<void>): Pr
 }
 
 async function openTab(page: Page, tab: string): Promise<void> {
-    await page.getByRole("tab", { name: tab }).click();
+    await selectTab(page, tab);
 }
 
 async function openUsers(page: Page, before?: (page: Page) => Promise<void>): Promise<Locator> {

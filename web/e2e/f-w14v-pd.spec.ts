@@ -1,6 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
 import { seededViz } from "./fixtures/seed";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14V `.pd` — the playback dock's floating readout (F-W14V.md addendum
@@ -47,7 +48,7 @@ const GLASS_CURE = process.env.FW14V_PD_GLASS_CURE === "1";
 
 async function openDock(page: Page, mobile: boolean): Promise<void> {
     await page.goto(`/v/${seededViz().slug}`);
-    if (mobile) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (mobile) await showView(page, "Canvas");
     await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 60_000 });
     if (GLASS_CURE)
         await page.addStyleTag({

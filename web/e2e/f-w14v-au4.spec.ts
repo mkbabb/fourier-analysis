@@ -1,6 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { ADMIN_AUDIT, ADMIN_TOKEN, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
+import { selectTab } from "./fixtures/workspace";
 
 /**
  * X.F.W14V.au4 — the AUDIT-2 gallery and admin family (F-W14V.md §1 `.au0…`,
@@ -44,7 +45,7 @@ async function openAdmin(page: Page): Promise<void> {
 }
 
 async function openTab(page: Page, tab: string, settle: string): Promise<void> {
-    await page.getByRole("tab", { name: tab }).click();
+    await selectTab(page, tab);
     await expect(page.getByText(settle).first()).toBeVisible({ timeout: 60_000 });
 }
 

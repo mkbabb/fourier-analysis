@@ -27,6 +27,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { ENTRY, stubGallery } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
+import { showView } from "./fixtures/workspace";
 
 const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
@@ -66,7 +67,7 @@ async function toCanvasTab(page: Page): Promise<void> {
     const tab = page.getByRole("tab", { name: "Canvas" }).filter({ visible: true }).first();
     if (await tab.count()) {
         await expect(async () => {
-            await tab.click();
+            if ((await tab.getAttribute("aria-selected")) !== "true") await tab.click();
             await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 4_000 });
         }).toPass({ timeout: 30_000 });
     }
@@ -385,6 +386,8 @@ test.describe("au1 L2-17 (390 touch)", () => {
         await page.keyboard.press("Escape");
         await page.goto("/equation");
         await expect(page.locator(".eq-configurator")).toBeVisible({ timeout: 30_000 });
+        // Canon F5: the phone opens on the canvas; the layer triggers are on Controls.
+        await showView(page, "Controls");
         await settle(page, 700);
         const trig = await page.locator(".eq-configurator .configurator-layer-trigger").evaluateAll((els) =>
             els.filter((e) => e.getBoundingClientRect().height > 0).map((e) => [e.textContent?.trim().slice(0, 16), e.getBoundingClientRect().height] as const),

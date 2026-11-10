@@ -43,7 +43,7 @@ async function openWorkspace(page: Page): Promise<void> {
 async function tab(page: Page, name: "Canvas" | "Controls"): Promise<void> {
     const t = page.getByRole("tab", { name }).filter({ visible: true }).first();
     if (await t.count()) {
-        await t.click();
+        if ((await t.getAttribute("aria-selected")) !== "true") await t.click();
         await settle(page, 500);
     }
 }

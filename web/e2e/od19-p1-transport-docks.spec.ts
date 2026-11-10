@@ -14,6 +14,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { seededViz } from "./fixtures/seed";
+import { showView } from "./fixtures/workspace";
 
 const CELLS = [
     { width: 1440, height: 900, scheme: "light" },
@@ -24,7 +25,7 @@ const CELLS = [
 
 async function openViz(page: Page): Promise<void> {
     await page.goto(`/v/${seededViz().slug}`);
-    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
     const dock = page.locator(".animation-dock");
     await expect(dock).toBeVisible({ timeout: 30_000 });
     await page.mouse.move(2, page.viewportSize()!.height / 2);

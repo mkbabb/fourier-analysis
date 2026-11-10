@@ -4,6 +4,7 @@ import { slider, sliderValue } from "./fixtures/slider";
 import { ADMIN_TOKEN, ADMIN_USERS, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
 import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { seededViz, type SeededViz } from "./fixtures/seed";
+import { showView, selectTab } from "./fixtures/workspace";
 
 /**
  * X.F.W14.u — the UIA-F register (`value.js/docs/tranches/X/audit/UI-AUDIT-fourier.md`).
@@ -97,11 +98,11 @@ test.describe("UIA-F-50 / UIA-F-4 / UIA-F-49 — not-found and load-error states
         await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
     });
 
-    test("F-4: /v/<unknown> names the failed slug instead of the upload prompt", async ({ page }) => {
+    test("F-4: /v/<unknown> says it could not open, not the upload prompt; the slug is not restated (canon F7)", async ({ page }) => {
         await page.goto("/v/no-such-slug");
         const card = page.getByTestId("not-found");
         await expect(card.getByRole("heading", { name: "Could not open this visualization" })).toBeVisible();
-        await expect(card).toContainText("no-such-slug");
+        await expect(card).not.toContainText("no-such-slug");
         await expect(page.getByText(/Drop or click to upload/i)).toHaveCount(0);
     });
 
@@ -447,7 +448,7 @@ async function openAdminTab(page: Page, tab: string) {
     await stubAdminApi(page);
     await page.goto(`/gallery?admin=${ADMIN_TOKEN}`);
     await expect(page.getByRole("region", { name: "Admin mode banner" })).toBeVisible({ timeout: 60_000 });
-    await page.getByRole("tab", { name: tab }).click();
+    await selectTab(page, tab);
 }
 
 test.describe("UIA-F-36 — the users batch bar docks below the list without displacing it", () => {
@@ -673,7 +674,7 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
 /** Open /equation with its result card in view (the Canvas panel below lg). */
 async function openEquationCard(page: Page) {
     await page.goto("/equation");
-    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
     const card = page.locator(".eq-card");
     await expect(card.locator(".katex").first()).toBeVisible({ timeout: 20_000 });
     return card;
@@ -764,7 +765,7 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
     test("each control's centre hits that control, inside the viewport", async ({ page }) => {
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
-        await page.getByRole("tab", { name: "Canvas" }).click();
+        await showView(page, "Canvas");
         await page.getByRole("button", { name: "Edit contour" }).first().hover();
         await expect(page.getByRole("button", { name: "Equation" }).first()).toBeVisible();
         await page.waitForTimeout(700);

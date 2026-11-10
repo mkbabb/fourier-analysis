@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14U.vdock — the visualize docks' family (spec `F-W14U.md` Units :8-18;
@@ -40,7 +41,7 @@ async function frame(page: Page, name: string): Promise<void> {
 async function openViz(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
-    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
     await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 30_000 });
 }
 

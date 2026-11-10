@@ -1,6 +1,6 @@
 // SERVED MODEL: claude-opus-5[1m]
 import { test, expect, type Page, type Request } from "@playwright/test";
-import { setSlider, slider, sliderValue } from "./fixtures/slider";
+import { setSlider, slider, sliderValue, controlRow } from "./fixtures/slider";
 
 /**
  * X·F F.W9 `.b` — the **S2 seat** (`G-F9-6`): ONE `/equation` interaction spec,
@@ -66,7 +66,7 @@ function recordComputes(page: Page): ComputePayload[] {
 /** The route's own mount condition — never a blind timeout. */
 async function openEquation(page: Page): Promise<void> {
     await page.goto("/equation");
-    await expect(slider(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
+    await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
 }
 
 /** The rendered series, which is the surface every leg below reads. */
@@ -142,7 +142,7 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         // its slider (canon F2: the slider is the control), and reads the
         // expanded render, the surface the budget governs.
         const harmonics = slider(page, "Harmonics");
-        await expect(harmonics).toBeVisible();
+        await expect(controlRow(page, "Harmonics")).toBeVisible();
         const countBefore = await sliderValue(harmonics);
         const modeToggle = page.getByRole("group", { name: "Equation display mode" });
         const expandedMode = modeToggle.getByRole("button", { name: /Expanded terms/i });
@@ -190,7 +190,7 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         // 422, and it is invisible to any test that never reloads.
         const reloadCount = computes.length;
         await page.reload();
-        await expect(slider(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
+        await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
 
         await expect(
             page.getByRole("radiogroup", { name: "Notation" }).getByRole("radio", { name: /Exp/ }),

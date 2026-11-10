@@ -2,6 +2,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { setSlider } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14V `.c3` — the editor dock's leftovers from F.W14U.c2 (F-W14V.md
@@ -32,7 +33,7 @@ const FRAMES = "e2e/screenshots/f-w14v/c3";
 async function openEditor(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
-    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
     await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
     const edit = page.getByRole("button", { name: "Edit contour" }).first();

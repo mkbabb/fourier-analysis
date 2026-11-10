@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { slider, sliderValue } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14V `.u4` — the stage surface and its readouts (F-W14V.md addendum (c)
@@ -58,7 +59,7 @@ async function canvasTexts(page: Page, since = 0): Promise<[string, number, numb
 
 async function openViz(page: Page): Promise<void> {
     await page.goto(`/v/${seededViz().slug}`);
-    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
     await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(600);
 }

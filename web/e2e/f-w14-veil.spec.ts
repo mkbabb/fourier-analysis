@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { showView } from "./fixtures/workspace";
 
 /**
  * X.F.W14.g — gate G-g, OA-43 (owner, 2026-09-23, frame
@@ -32,7 +33,7 @@ async function loadImage(page: Page): Promise<void> {
     // the front; this setup reads the Controls sheet, so it selects that tab.
     if (page.viewportSize()!.width < 640) {
         await expect(page.locator(".canvas-stage")).not.toHaveClass(/panel-inactive/, { timeout: 60_000 });
-        await page.getByRole("tab", { name: "Controls" }).click();
+        await showView(page, "Controls");
     }
     // The frame's state: the sidebar is in (at 390 the Controls tab selected
     // above, the stage behind it).

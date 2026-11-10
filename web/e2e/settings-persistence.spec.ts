@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { setSlider, slider } from "./fixtures/slider";
+import { setSlider, slider, controlRow } from "./fixtures/slider";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
@@ -67,7 +67,7 @@ test.describe.serial("Settings persistence across reload (asset arch)", () => {
         // The Harmonics input lives in BasisSelector (aria-label="Harmonics"),
         // visible once data has computed.
         const harmonicsInput = slider(page, "Harmonics");
-        await expect(harmonicsInput).toBeVisible({ timeout: 30_000 });
+        await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 30_000 });
 
         // Change harmonics to a non-default value, through its slider (canon F2).
         await setSlider(harmonicsInput, 120);
@@ -90,7 +90,7 @@ test.describe.serial("Settings persistence across reload (asset arch)", () => {
 
         // The restored draft seeds the Harmonics input back to 120 (not default 50).
         const harmonicsAfter = slider(page, "Harmonics");
-        await expect(harmonicsAfter).toBeVisible({ timeout: 30_000 });
+        await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 30_000 });
         await expect(harmonicsAfter).toHaveAttribute("aria-valuenow", "120");
 
         // And the persisted draft still carries it.
@@ -102,7 +102,7 @@ test.describe.serial("Settings persistence across reload (asset arch)", () => {
         const imageSlug = await uploadAndOpen(page);
 
         const pointsInput = slider(page, "Sample Points");
-        await expect(pointsInput).toBeVisible({ timeout: 30_000 });
+        await expect(controlRow(page, "Sample Points")).toBeVisible({ timeout: 30_000 });
 
         // Change sample points to 2048 (default 1024; step 128).
         await setSlider(pointsInput, 2048);
@@ -120,7 +120,7 @@ test.describe.serial("Settings persistence across reload (asset arch)", () => {
         await expect(canvas).toBeVisible({ timeout: 60_000 });
 
         const pointsAfter = slider(page, "Sample Points");
-        await expect(pointsAfter).toBeVisible({ timeout: 30_000 });
+        await expect(controlRow(page, "Sample Points")).toBeVisible({ timeout: 30_000 });
         await expect(pointsAfter).toHaveAttribute("aria-valuenow", "2048");
 
         const draftAfter = await readDraft(page, imageSlug);
