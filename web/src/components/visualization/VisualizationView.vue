@@ -748,8 +748,16 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     /* X.F.W14U.vstage — UIA-F-237: at 390 the chassis sat 4 px from the
        viewport edge. X.F.W14V.au1 — A2-FO-L3-6: the inline margin is the ONE
        page gutter at every width (it was 8 px at desktop beside the gallery's
-       16), so the content edge holds across a nav switch. */
-    margin: 0.25rem var(--page-gutter);
+       16), so the content edge holds across a nav switch. The gutter is the
+       workspace's padding, not this shell's margin: glass's shell floor
+       `min-inline-size: min(20rem, 100%)` reads 100% off the containing box,
+       so with the gutter as margin a column under 20rem + 2 gutters (a 360
+       viewport less glass 11's stable scrollbar gutter) pushed the shell 7 px
+       past the right gutter. */
+    margin-block: 0.25rem;
+}
+.viz-workspace {
+    padding-inline: var(--page-gutter);
 }
 
 /* I.ε — the View-Transitions morph anchor. The canvas stage is the persistent
@@ -776,7 +784,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
    labels ("Decompos…") beside the header reset (O-68). */
 @media (min-width: 1024px) {
     :deep(.viz-configurator) {
-        margin: 0.5rem var(--page-gutter) 0.75rem;
+        margin-block: 0.5rem 0.75rem;
         --configurator-aside-min: calc(320px + 2 * var(--space-body));
         --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }

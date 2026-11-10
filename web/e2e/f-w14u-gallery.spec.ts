@@ -246,8 +246,15 @@ for (const vp of [DESKTOP, PHONE]) {
             // leaves the page behind it inert (out of the accessibility tree).
             const box = (await cardByName(page, ENTRY).boundingBox())!;
             await openFilters(page);
-            // Press the card that sits outside the drawer.
-            const drawer = (await page.locator("#gallery-filter-drawer").boundingBox())!;
+            // Press the card that sits outside the drawer: below the popover's
+            // plate (its dismissable layer), not the filter body inside it. At a
+            // column narrowed by the root's stable scrollbar gutter (glass 11)
+            // the chips wrap, and a press read off the body's edge landed on
+            // the plate.
+            const drawer = await page.locator("#gallery-filter-drawer").evaluate((el) => {
+                const r = (el.closest("[data-dismissable-layer]") ?? el).getBoundingClientRect();
+                return { y: r.top, height: r.height };
+            });
             const y = Math.max(box.y + box.height - 8, drawer.y + drawer.height + 12);
             if (vp.width < 1024) await page.touchscreen.tap(box.x + 12, y);
             else await page.mouse.click(box.x + 12, y);

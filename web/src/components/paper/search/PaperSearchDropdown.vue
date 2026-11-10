@@ -103,7 +103,10 @@ function measure() {
     // column: its panel keeps F-59's content floor, at least the field, never
     // past the viewport's right margin.
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const reach = window.innerWidth - r.left - VIEWPORT_MARGIN_PX;
+    // The layout viewport's width, not `innerWidth`: glass 11's root
+    // `scrollbar-gutter: stable` reserves the scrollbar's lane, and a panel
+    // reaching `innerWidth` hung over it.
+    const reach = document.documentElement.clientWidth - r.left - VIEWPORT_MARGIN_PX;
     const left = col ? col.left : r.left;
     const width = col ? col.width : Math.max(r.width, Math.min(PANEL_MIN_REM * rem, reach));
     panelStyle.value = {
@@ -245,7 +248,11 @@ defineExpose({ resultsRef });
     /* UIA-F-59: the hand 1.5px border, the 8px corner, the shadow and the
        padding retire onto the producer's menu plate (`.glass-overlay-plate
        [data-reveal=menu]`: `--radius-card`, `--overlay-pad`), which
-       `glass-floating` paints. */
+       `glass-floating` paints. Its inline size is the one `measure()` sets
+       (the field's width or F-59's floor, clamped to the viewport), so glass
+       11's generic menu-plate cap (`min(22rem, 100vw - 2rem)`) does not apply:
+       at 390 it held the panel at 352 px under a 358 px bar (UIA-F-235). */
+    max-inline-size: none;
 }
 
 .paper-search-option {

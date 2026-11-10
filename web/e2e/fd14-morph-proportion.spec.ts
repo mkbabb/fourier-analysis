@@ -48,7 +48,10 @@ for (const colorScheme of SCHEMES) {
             expect(Math.abs((stage.left + stage.right) / 2 - (rail.left + rail.right) / 2), "the stage sits on its column's axis").toBeLessThanOrEqual(1);
             expect(slider.top, "the first slider is in view").toBeGreaterThanOrEqual(0);
             expect(slider.bottom, "the first slider is in view").toBeLessThanOrEqual(390);
-            expect(overflow, "no horizontal overflow").toBe(0);
+            // At most 0: glass 11's root `scrollbar-gutter: stable` reserves the
+            // scrollbar's lane, so on a classic-scrollbar runner an unscrolled
+            // page reads its content 15 px short of the client width.
+            expect(overflow, "no horizontal overflow").toBeLessThanOrEqual(0);
             const clipped = await page.locator(".demo-info").evaluate((e) => e.scrollWidth - e.clientWidth);
             expect(clipped, "the readout fits its foot").toBeLessThanOrEqual(0);
         });
