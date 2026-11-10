@@ -662,12 +662,20 @@ watchDebounced(
 :deep(.eq-configurator) {
     flex: 1;
     min-height: 0;
-    /* X.F.W14V.au1 — A2-FO-L3-6: the one page gutter, at every width. */
-    margin: 0.25rem var(--page-gutter);
+    /* X.F.W14V.au1 — A2-FO-L3-6: the one page gutter, at every width. It is
+       the workspace's padding, not this shell's margin: glass's shell floor
+       `min-inline-size: min(20rem, 100%)` reads 100% off the containing box,
+       so with the gutter as margin a column under 20rem + 2 gutters (a 360
+       viewport less glass 11's stable scrollbar gutter) pushed the shell 7 px
+       past the right gutter. */
+    margin-block: 0.25rem;
+}
+.eq-workspace {
+    padding-inline: var(--page-gutter);
 }
 @media (min-width: 1024px) {
     :deep(.eq-configurator) {
-        margin: 0.5rem var(--page-gutter) 0.75rem;
+        margin-block: 0.5rem 0.75rem;
         --configurator-aside-min: calc(320px + 2 * var(--space-body));
         --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }

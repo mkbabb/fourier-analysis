@@ -388,7 +388,14 @@ test.describe("s128 UIA-F-128 ⊕ s233 (nav) ⊕ s231 UIA-F-231 — the phone na
         await page.goto("/gallery");
         const trigger = page.getByRole("button", { name: /^Navigate/ });
         await expect(trigger).toBeVisible({ timeout: 30_000 });
-        expect((await trigger.innerText()).trim(), "the phone trigger has no visible label").toBe("Gallery");
+        // The label arm is read on a 390 px column. Glass 11's root
+        // `scrollbar-gutter: stable` takes a classic scrollbar's lane (15 px on
+        // CI's Linux runner; none under a phone's overlay scrollbars), and at a
+        // 375 column the longest name ("Visualize") overflows the dock's run by
+        // under a pixel, so the dock rightly drops the label on every route.
+        const gutter = await page.evaluate(() => innerWidth - document.body.clientWidth);
+        if (gutter > 0) await page.setViewportSize({ width: PHONE.width + gutter, height: PHONE.height });
+        await expect(trigger, "the phone trigger has no visible label").toHaveText("Gallery", { useInnerText: true });
         await trigger.click();
         const menu = page.getByRole("menu");
         await expect(menu).toBeVisible();

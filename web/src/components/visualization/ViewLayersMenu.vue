@@ -16,7 +16,7 @@
  */
 import { computed } from "vue";
 import { Eye } from "@lucide/vue";
-import { DockTrigger } from "@mkbabb/glass-ui/dock";
+import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import { DropdownMenu, DropdownMenuContent } from "@mkbabb/glass-ui/menu";
 import { StatusDot } from "@mkbabb/glass-ui/status-dot";
 import { isViewOffDefault } from "./composables/useViewState";

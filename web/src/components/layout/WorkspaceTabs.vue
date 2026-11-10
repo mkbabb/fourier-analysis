@@ -34,6 +34,5 @@ const OPTIONS: { label: string; value: WorkspaceView }[] = [
     justify-content: center;
     min-width: 0;
     padding-block: 0.25rem;
-    margin-inline: var(--page-gutter);
 }
 </style>

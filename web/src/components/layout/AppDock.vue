@@ -44,7 +44,8 @@ import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, ExternalLink } from "@lucide/vue";
 import { sectionNav } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
-import { GlassDock, DockTrigger, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
@@ -134,9 +135,13 @@ let fitRun = 0;
 
 async function fitNavLabel(): Promise<void> {
     // Collapsed, the full layer is inert and inset into the seal's circle, so
-    // its run overflows by construction: the fit is read on the expanded run
-    // only, and read again when the dock opens (the watch below).
-    if (!dockRef.value?.expanded) return;
+    // its run overflows by construction. Morphing, glass holds the box at the
+    // width it reserved for the content it measured (`--dock-expanded-px`), so
+    // a longer trial name overflows that box whatever room the header has. The
+    // fit is read on the RESTING expanded run only, and read again when an
+    // opening morph settles (the watch below).
+    const dock = dockRef.value;
+    if (!dock?.expanded || dock.isTransitioning) return;
     const run0 = ++fitRun;
     showNavLabel.value = true;
     let fits = true;
@@ -169,15 +174,21 @@ useResizeObserver(headerRef, (entries) => {
 // already covers every section's name.
 const auth = useAuthStore();
 watch(() => auth.userSlug, () => void fitNavLabel(), { flush: "post" });
-// Only an expansion re-measures (collapsed -> open). The ref's arrival at mount
-// (undefined -> true) is not one: answering it ran the six-name trial inside the
-// first route's mount, six forced layouts of a page still being built (od19
-// A/B on CI, 12 pairs: +53-76 ms median own time per /v/ and /visualize load
-// at 1440; with this guard the cost is 0 against the pre-collapse dock).
-// The header's ResizeObserver already takes the first measure after layout.
+// Only an expansion re-measures, once its morph has settled (glass 11 holds a
+// morphing dock at its reserved width, so a fit read on the expand flip itself
+// saw every longer name overflow and dropped the label for good). The ref's
+// arrival at mount (undefined -> true) is not one: answering it ran the
+// six-name trial inside the first route's mount, six forced layouts of a page
+// still being built (od19 A/B on CI, 12 pairs: +53-76 ms median own time per
+// /v/ and /visualize load at 1440; with this guard the cost is 0 against the
+// pre-collapse dock). The header's ResizeObserver already takes the first
+// measure after layout.
 watch(
-    () => dockRef.value?.expanded,
-    (expanded, was) => expanded && was === false && void fitNavLabel(),
+    () => {
+        const dock = dockRef.value;
+        return dock ? dock.expanded && !dock.isTransitioning : undefined;
+    },
+    (resting, was) => resting && was === false && void fitNavLabel(),
     { flush: "post" },
 );
 if (typeof document !== "undefined" && document.fonts) {
@@ -449,7 +460,7 @@ onMounted(() => {
 .about-avatar {
     inline-size: 2.5rem;
     block-size: 2.5rem;
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-circle);
     flex-shrink: 0;
 }
 </style>

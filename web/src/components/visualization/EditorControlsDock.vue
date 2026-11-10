@@ -3,7 +3,8 @@ import type { EditorState } from "./lib/editor-state";
 import { computed, useTemplateRef } from "vue";
 import { useMediaQuery } from "@vueuse/core";
 import SliderControl from "@/components/ui/SliderControl.vue";
-import { GlassDock, DockControl, DockSeparator, DockTrigger } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import {
     DropdownMenu,
     DropdownMenuContent,
