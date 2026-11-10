@@ -55,15 +55,17 @@ def format_coefficient(val: float, first: bool = False) -> str:
 def extract_trig_pairs(
     terms: list,
 ) -> tuple[float | None, list[tuple[int, float, float]]]:
-    """Extract DC half-value and (k, a_k, b_k) pairs from FourierTerms."""
+    r"""Extract the DC value (a_0 / 2, which is c_0) and (k, a_k, b_k) pairs.
+
+    The constant is returned as the value the series adds, so a renderer
+    writes ``\pi`` for the sawtooth rather than ``\frac{2\pi}{2}``.
+    """
     dc = [t for t in terms if t.n == 0]
     harmonics = [t for t in terms if t.n != 0]
 
-    a0_half: float | None = None
-    if dc:
-        a0 = 2 * dc[0].coefficient.real
-        if abs(a0) > 1e-14:
-            a0_half = a0
+    dc_value: float | None = None
+    if dc and abs(dc[0].coefficient.real) > 1e-14:
+        dc_value = dc[0].coefficient.real
 
     seen: set[int] = set()
     pairs: list[tuple[int, float, float]] = []
@@ -81,4 +83,4 @@ def extract_trig_pairs(
         if abs(a_n) > 1e-14 or abs(b_n) > 1e-14:
             pairs.append((k, a_n, b_n))
 
-    return a0_half, sorted(pairs, key=lambda p: p[0])
+    return dc_value, sorted(pairs, key=lambda p: p[0])
