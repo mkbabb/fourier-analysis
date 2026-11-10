@@ -24,7 +24,7 @@ const OPTIONS: { label: string; value: WorkspaceView }[] = [
 
 <template>
     <div class="workspace-tabs">
-        <SegmentedTabs variant="underline" :options="OPTIONS" v-model="view" />
+        <SegmentedTabs semantics="tabs" :options="OPTIONS" v-model="view" />
     </div>
 </template>
 
