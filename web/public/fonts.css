@@ -5,7 +5,10 @@
 
    - Computer Modern Serif (the `--font-sans` body face) — transcribed from
      aaaakshat/cm-web-fonts @333f55e font/Serif/cmun-serif.css. Upstream ships
-     only `woff` for these faces (no woff2), so we vendor `woff`.
+     only `woff`; canon F12 (C-24) re-encodes each face as a woff2 subset
+     (pyftsubset: Latin, Latin Extended, Greek, punctuation, letterlike and
+     math symbols, all layout features), 40 % of the woff bytes, the face
+     unchanged.
    - Fraunces (display) + Fira Code (mono) — transcribed from the Google Fonts
      css2 responses (latin subset, woff2). `unicode-range` preserved so the
      browser only fetches a face when latin glyphs are actually drawn. */
@@ -13,28 +16,36 @@
 /* ── Computer Modern Serif ───────────────────────────────────────────── */
 @font-face {
     font-family: "Computer Modern Serif";
-    src: url("/fonts/Serif/cmunrm.woff") format("woff");
+    src: url("/fonts/Serif/cmunrm.woff2") format("woff2");
+    unicode-range: U+0000-024F, U+0300-036F, U+0370-03FF, U+1E00-1EFF, U+2000-206F,
+        U+20AC, U+2100-214F, U+2190-21FF, U+2200-22FF;
     font-weight: normal;
     font-style: normal;
     font-display: swap;
 }
 @font-face {
     font-family: "Computer Modern Serif";
-    src: url("/fonts/Serif/cmunbx.woff") format("woff");
+    src: url("/fonts/Serif/cmunbx.woff2") format("woff2");
+    unicode-range: U+0000-024F, U+0300-036F, U+0370-03FF, U+1E00-1EFF, U+2000-206F,
+        U+20AC, U+2100-214F, U+2190-21FF, U+2200-22FF;
     font-weight: bold;
     font-style: normal;
     font-display: swap;
 }
 @font-face {
     font-family: "Computer Modern Serif";
-    src: url("/fonts/Serif/cmunti.woff") format("woff");
+    src: url("/fonts/Serif/cmunti.woff2") format("woff2");
+    unicode-range: U+0000-024F, U+0300-036F, U+0370-03FF, U+1E00-1EFF, U+2000-206F,
+        U+20AC, U+2100-214F, U+2190-21FF, U+2200-22FF;
     font-weight: normal;
     font-style: italic;
     font-display: swap;
 }
 @font-face {
     font-family: "Computer Modern Serif";
-    src: url("/fonts/Serif/cmunbi.woff") format("woff");
+    src: url("/fonts/Serif/cmunbi.woff2") format("woff2");
+    unicode-range: U+0000-024F, U+0300-036F, U+0370-03FF, U+1E00-1EFF, U+2000-206F,
+        U+20AC, U+2100-214F, U+2190-21FF, U+2200-22FF;
     font-weight: bold;
     font-style: italic;
     font-display: swap;
