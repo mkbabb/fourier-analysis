@@ -213,11 +213,15 @@ const displayValue = computed(() =>
     min-width: 0;
 }
 
+/* Line 1 keeps the `sm` control's height, the field's before canon F2, so a
+   row whose line also seats a control (Harmonics' Auto) is the height of
+   every other row. */
 .control-row-line {
     display: flex;
     align-items: center;
     gap: var(--space-atom);
     min-width: 0;
+    min-block-size: var(--control-h-sm);
 }
 
 .control-row-label {
