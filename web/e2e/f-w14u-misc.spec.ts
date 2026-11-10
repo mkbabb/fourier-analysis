@@ -147,7 +147,11 @@ test.describe("D-21 X §0hm — the morph stage is a full-width square (390)", (
         await openMorph(page);
         const s = await stage(page).boundingBox();
         const info = await page.locator(".demo-info").boundingBox();
-        const col = PHONE.width - 32;
+        // The column is the page's scroll port (the shell's <main>) less its
+        // two gutters. Under classic scrollbars (CI's Linux runner) the lane a
+        // scrollbar takes, which glass 11's root `scrollbar-gutter: stable` now
+        // reserves, comes off it: 15 px there, none under overlay scrollbars.
+        const col = (await page.locator("main").first().evaluate((m) => m.clientWidth)) - 32;
         // X·F F-D14b: the stage card (plate over its readout foot) spans the
         // column; the plate is its square top, inside the card's edge. The
         // bound is the card's own border box minus its borders (X·F §0hs.3: a
