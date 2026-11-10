@@ -11,6 +11,7 @@ import { Wand2, Play } from "@lucide/vue";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import NotationPills from "@/components/shared/NotationPills.vue";
+import { formatNumber } from "@/lib/format";
 
 const props = defineProps<{
     effectiveN?: number;
@@ -37,7 +38,6 @@ const expression = defineModel<string>("expression", { default: "" });
 const domainStart = defineModel<number>("domainStart", { default: 0 });
 const domainEnd = defineModel<number>("domainEnd", { default: 2 * Math.PI });
 const nHarmonics = defineModel<number>("nHarmonics", { default: 20 });
-const budget = defineModel<number>("budget", { default: 10 });
 const notation = defineModel<NotationMode>("notation", { default: "trig" });
 
 function onAuto(value: unknown) {
@@ -53,7 +53,7 @@ function applyPreset(preset: PresetFunction) {
 
 /** Parse domain strings like "pi", "π", "2π", "-pi/2", "3.14". */
 function parseDomainValue(raw: string): number | null {
-    const s = raw.trim().replace(/π/g, "pi").replace(/\s+/g, "");
+    const s = raw.trim().replace(/π/g, "pi").replace(/\u2212/g, "-").replace(/\s+/g, "");
     if (!s) return null;
     const m = s.match(/^([+-]?\d*\.?\d*)\*?pi(?:\/(\d+))?$/);
     if (m) {
@@ -74,36 +74,18 @@ function formatDomain(val: number): string {
     const r = val / Math.PI;
     if (Math.abs(r) < 1e-10) return "0";
     if (Math.abs(r - 1) < 1e-10) return "π";
-    if (Math.abs(r + 1) < 1e-10) return "-π";
+    if (Math.abs(r + 1) < 1e-10) return "\u2212π";
     if (Math.abs(r - 2) < 1e-10) return "2π";
-    if (Math.abs(r + 2) < 1e-10) return "-2π";
+    if (Math.abs(r + 2) < 1e-10) return "\u22122π";
     for (const d of [2, 3, 4, 6]) {
         const n = Math.round(r * d);
         if (Math.abs(r - n / d) < 1e-10 && n !== 0) {
-            const sign = n < 0 ? "-" : "";
+            const sign = n < 0 ? "\u2212" : "";
             const abs = Math.abs(n);
             return abs === 1 ? `${sign}π/${d}` : `${sign}${abs}π/${d}`;
         }
     }
-    return val.toFixed(4).replace(/\.?0+$/, "");
-}
-
-/**
- * `FI-N-5` — the Display-terms control clamped on READ and not on WRITE, so it
- * DISPLAYED a number the component would not SEND. The two now agree: one bound,
- * used by the model, the slider's `:max`, and the write.
- */
-/*
- * X.F.W14U.eq — UIA-F-35, the consumer half. The server's budget counts
- * HARMONICS (whole ±n groups, DC as one; `.srv` `798c98f`), so showing every
- * harmonic the plot draws plus the DC term takes N + 1, and the control is
- * named for the unit it moves.
- */
-const displayTermsMax = computed(() => Math.max(2, (props.vizHarmonics ?? nHarmonics.value) + 1));
-const displayTerms = computed(() => Math.min(budget.value, displayTermsMax.value));
-
-function onDisplayTerms(v: number) {
-    budget.value = Math.max(2, Math.min(displayTermsMax.value, v));
+    return formatNumber(val, 3);
 }
 
 /** UIA-F-204 — Presets are a one-of-N ToggleGroup; choosing one applies it. */
@@ -200,22 +182,16 @@ const activePreset = computed(() =>
                  (a radiogroup of radios), the chooser its neighbours use, not
                  Buttons carrying `aria-pressed`. -->
             <div class="border-t border-border/40 pt-3">
-                <!-- The per-preset hover Tooltip is not layered on the radios (a
-                     TooltipTrigger stamps its own `data-state` over the item's);
-                     the chosen preset's description is the group's caption. The
-                     radiogroup is not a labelable element, so it is named through
-                     the field's `labelledBy` (glass's composite-control door). -->
+                <!-- Canon F7: a preset's gloss is its hover title, not a
+                     standing caption. The radiogroup is named through the
+                     field's `labelledBy` (glass's composite-control door). -->
                 <LabeledField label="Presets" :control-labelable="false">
                     <template #default="{ labelledBy }">
                         <ToggleGroup type="single" size="sm" :aria-labelledby="labelledBy"
-                            :aria-describedby="activePreset ? 'fn-preset-description' : undefined"
                             class="preset-group" :model-value="activePreset?.name" @update:model-value="onPreset">
                             <ToggleGroupItem v-for="preset in PRESETS" :key="preset.name" :value="preset.name"
-                                class="hue-chip fourier-chip">{{ preset.name }}</ToggleGroupItem>
+                                :title="preset.description" class="hue-chip fourier-chip">{{ preset.name }}</ToggleGroupItem>
                         </ToggleGroup>
-                        <p v-if="activePreset" id="fn-preset-description" class="text-caption text-muted-foreground">
-                            {{ activePreset.description }}
-                        </p>
                     </template>
                 </LabeledField>
             </div>
@@ -231,7 +207,6 @@ const activePreset = computed(() =>
                  row, and wrapped under the slider at 390, is gone. -->
             <SliderControl
                 label="Harmonics"
-                subtitle="terms in the Fourier sum"
                 :model-value="autoHarmonics && vizHarmonics ? vizHarmonics : nHarmonics"
                 :min="1" :max="100" :step="1"
                 color="var(--viz-fourier)"
@@ -255,29 +230,20 @@ const activePreset = computed(() =>
                         </ToggleGroup>
                         <template #content>
                             <div class="auto-calc-tip">
-                                <p class="font-semibold mb-1">Auto (Parseval's theorem)</p>
+                                <p class="mb-1">Auto (Parseval's theorem)</p>
                                 <p class="text-muted-foreground">
                                     Sets N to the minimum harmonics capturing
                                     ≥99.99% of total energy ‖f‖².
                                 </p>
                                 <p v-if="effectiveN" class="mt-1 fira-code">
                                     N<sub>eff</sub> = {{ effectiveN }}
-                                    <span v-if="energyCaptured"> · {{ (energyCaptured * 100).toFixed(1) }}% energy</span>
+                                    <span v-if="energyCaptured"> · {{ formatNumber(energyCaptured * 100, 3) }}% energy</span>
                                 </p>
                             </div>
                         </template>
                     </Tooltip>
                 </template>
             </SliderControl>
-            <!-- UIA-F-35 (consumer) — the budget counts harmonics, DC as one. -->
-            <SliderControl
-                label="Displayed harmonics"
-                subtitle="in the a + b view · DC counts as one"
-                :model-value="displayTerms"
-                :min="2" :max="displayTermsMax" :step="1"
-                color="var(--viz-fourier)"
-                @update:model-value="onDisplayTerms"
-            />
             <!-- X-DS DS-F4-C1: one label rung per pane — the Notation label is
                  LabeledField's, like Domain and Presets beside it. -->
             <LabeledField label="Notation" :control-labelable="false">
