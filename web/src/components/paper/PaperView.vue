@@ -30,7 +30,7 @@ import {
 import { ref, computed, provide, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Card } from "@mkbabb/glass-ui/card";
-import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
+import { usePageScroll } from "@/composables/usePageScroll";
 import { Undo2 } from "@lucide/vue";
 
 // ── KaTeX with app-specific macros ─────────────────────────
@@ -233,6 +233,9 @@ watch(
 
 
 // ── Reading progress (glass ScrollProgressRim) ───────────────
+// Canon F6 (restraint, C-35): the rim is the dock's own border now
+// (`AppDock`, through `usePageScroll`); this view writes the progress and the
+// hue, and lends the dock its scroller while it is mounted.
 // X.F.W14U.paper — UIA-F-157: the hand-rolled 2px hairline (a local
 // `.paper-progress-track` running full-bleed under the dock, on the
 // `.scroll-progress` recipe plus a JS floor) is glass `ScrollProgressRim`.
@@ -250,6 +253,8 @@ const progressRimStops = computed(() => {
     const i = paperSections.findIndex((s) => s.id === activeRootId.value);
     return [sectionColorVar(Math.max(0, i))];
 });
+const pageScroll = usePageScroll();
+watch(progressRimStops, (stops) => { pageScroll.progressStops.value = stops; }, { immediate: true });
 let progressRaf = 0;
 function writeProgress() {
     progressRaf = 0;
@@ -257,6 +262,7 @@ function writeProgress() {
     if (!s) return;
     const max = s.scrollHeight - s.clientHeight;
     readingProgress.value = max > 0 ? Math.min(1, Math.max(0, s.scrollTop / max)) : 0;
+    pageScroll.progress.value = readingProgress.value;
 }
 function onProgressScroll() {
     if (progressRaf) return;
@@ -266,12 +272,16 @@ function armProgress() {
     const s = scrollContainer.value;
     if (!s) return;
     s.addEventListener("scroll", onProgressScroll, { passive: true });
+    pageScroll.routeScroller.value = s;
     writeProgress();
 }
 function disarmProgress() {
     scrollContainer.value?.removeEventListener("scroll", onProgressScroll);
     if (progressRaf) cancelAnimationFrame(progressRaf);
     progressRaf = 0;
+    pageScroll.routeScroller.value = null;
+    pageScroll.progress.value = null;
+    pageScroll.progressStops.value = undefined;
 }
 
 function updateSectionStartOffset() {
@@ -408,7 +418,6 @@ onUnmounted(() => {
 
 <template>
     <div class="paper-root" :style="paperRootStyle">
-        <ScrollProgressRim :value="readingProgress" class="paper-progress-rim" :stops="progressRimStops" />
         <div ref="scrollContainer" class="paper-scroll" :data-scrolled="readingProgress > 0 || undefined">
             <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
@@ -448,7 +457,7 @@ onUnmounted(() => {
                          drawer slides UNDER it, X.F.W14U.t), not a hand-rolled
                          cartoon card casting against the rail's shadow. -->
                     <Card as="article" surface="opaque" class="paper-article leading-relaxed">
-                        <header class="paper-title-block mb-10 lg:mb-20 text-center">
+                        <header class="paper-title-block mb-10 text-center">
                             <h1
                                 class="font-serif-math text-display-2 font-bold tracking-tight leading-display"
                             >
@@ -530,6 +539,12 @@ onUnmounted(() => {
      `::before` of `.paper-columns`, sharing the article's cell), so it runs the
      article's width and nothing else. Transparent at rest.
    No fade and no shadow (DS-F7-C3 stands). */
+/* Canon F14 (restraint, C-8): at the top of the paper the page count says
+   nothing the title does not; it appears once the reader has moved. Hidden,
+   not removed, so nothing beside it shifts when it comes in. */
+.paper-scroll:not([data-scrolled]) :deep(.page-readout) {
+    visibility: hidden;
+}
 .paper-scroll[data-scrolled] .floating-toc {
     --floating-toc-rule: var(--border);
 }

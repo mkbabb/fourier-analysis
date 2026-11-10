@@ -49,6 +49,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/gla
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
+import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
+import { usePageScroll } from "@/composables/usePageScroll";
 
 const route = useRoute();
 const router = useRouter();
@@ -188,6 +190,29 @@ if (typeof document !== "undefined" && document.fonts) {
 // open at every width until the pointer crossed it or a press landed outside).
 // The hold is glass's own (`keepOpen`/`release`); the idle window is glass's
 // one timer (DOCK_COLLAPSE_DELAY_MS), never a second one here.
+/*
+ * Canon F6 (restraint, C-35): "Docks shrink on scroll; page progress is a
+ * hairline border of the dock, edge to edge" (owner, 2026-11-06). The page's
+ * scroller is `<main>`, or the port a route lends (/paper). Scrolling down it
+ * folds the dock to its seal, unless a surface the dock opened is held; hover
+ * and focus open it again (glass's own writers). A scroll is read as a
+ * distance, not a velocity, so a key press (Page Down, End) folds it too. A route's reading progress is
+ * glass's `ScrollProgressRim`, seated in the dock's own box (below) and
+ * styled as its bottom border.
+ */
+const pageScroll = usePageScroll();
+/** How far down the page must move, from where it last stood, to fold the dock. */
+const FOLD_PX = 48;
+let foldFrom = 0;
+watch(pageScroll.scroller, (el) => { foldFrom = el?.scrollTop ?? 0; });
+useEventListener(pageScroll.scroller, "scroll", () => {
+    const top = pageScroll.scroller.value?.scrollTop ?? 0;
+    const dock = dockRef.value;
+    if (!dock?.expanded || top < foldFrom) foldFrom = top;
+    else if (top - foldFrom > FOLD_PX && !dock.isHeld) dock.collapse();
+}, { passive: true });
+const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLElement | undefined) ?? null);
+
 onMounted(() => {
     const dock = dockRef.value;
     if (!dock) return;
@@ -291,10 +316,23 @@ onMounted(() => {
                 <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon dock-summary-glyph" aria-hidden="true" />
             </template>
         </GlassDock>
+        <Teleport v-if="dockEl && pageScroll.progress.value !== null" :to="dockEl">
+            <ScrollProgressRim :value="pageScroll.progress.value" :stops="pageScroll.progressStops.value" class="dock-progress" />
+        </Teleport>
     </header>
 </template>
 
 <style scoped>
+/* Canon F6: the reading progress is the dock's bottom border, a hairline
+   running edge to edge and clipped to the dock's rounding (glass's rim
+   geometry, with its inset and side margins taken to zero). */
+.dock-progress {
+    --scroll-progress-rim-width: 1.5px;
+    --scroll-progress-rim-inset: 0px;
+    --scroll-progress-rim-margin: 0px;
+    border-radius: inherit;
+    overflow: hidden;
+}
 @reference "tailwindcss";
 
 /* The landmark is a plain flex row: no plate of its own (the dock IS the

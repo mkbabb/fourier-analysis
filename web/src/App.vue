@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { nextTick, onScopeDispose, ref, useTemplateRef } from "vue";
+import { nextTick, onScopeDispose, ref, useTemplateRef, watch } from "vue";
 import { RouterView, useRouter } from "vue-router";
 import { TooltipProvider } from "@mkbabb/glass-ui/tooltip";
 import { Toaster } from "@mkbabb/glass-ui/toast";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import AppDock from "@/components/layout/AppDock.vue";
+import { usePageScroll } from "@/composables/usePageScroll";
 import { resolveVizColors } from "@/lib/colors";
 
 /**
@@ -91,6 +92,9 @@ onScopeDispose(stopVizColorSync);
  * a shorter document is silently clamped.
  */
 const mainEl = useTemplateRef<HTMLElement>("main");
+// Canon F6: `<main>` is the page's scroller for the dock (`usePageScroll`).
+const { shellScroller } = usePageScroll();
+watch(mainEl, (el) => { shellScroller.value = el ?? null; }, { immediate: true });
 const router = useRouter();
 const offsets = new Map<string, number>();
 
