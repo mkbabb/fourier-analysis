@@ -60,7 +60,7 @@ async function openEmpty(page: Page): Promise<void> {
 async function openViz(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
-    if (page.viewportSize()!.width < 1024) await page.getByRole("tab", { name: "Controls" }).click();
+    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Controls" }).click();
     await expect(page.locator(".viz-panel-left-wrap")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
 }
@@ -330,9 +330,9 @@ for (const vp of WIDTHS) {
             await page.waitForTimeout(500);
             await expect(side.locator(".freq-graph-host")).toHaveCount(0);
             // F-169: no Preview layer in the editor.
-            if (vp.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+            if (vp.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
             await page.getByRole("button", { name: "Edit contour" }).first().click();
-            if (vp.width < 1024) await page.getByRole("tab", { name: "Controls" }).click();
+            if (vp.width < 640) await page.getByRole("tab", { name: "Controls" }).click();
             await page.waitForTimeout(600);
             await frame(page, "e169-editor-panel");
             await expect(side.locator('[data-slot="configurator-layer-trigger"]', { hasText: "Preview" })).toHaveCount(0);

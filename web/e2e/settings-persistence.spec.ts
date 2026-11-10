@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { setSlider, slider } from "./fixtures/slider";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
@@ -65,12 +66,11 @@ test.describe.serial("Settings persistence across reload (asset arch)", () => {
 
         // The Harmonics input lives in BasisSelector (aria-label="Harmonics"),
         // visible once data has computed.
-        const harmonicsInput = page.getByRole("spinbutton", { name: "Harmonics" });
+        const harmonicsInput = slider(page, "Harmonics");
         await expect(harmonicsInput).toBeVisible({ timeout: 30_000 });
 
-        // Change harmonics to a non-default value (default is 50).
-        await harmonicsInput.fill("120");
-        await harmonicsInput.press("Enter");
+        // Change harmonics to a non-default value, through its slider (canon F2).
+        await setSlider(harmonicsInput, 120);
 
         // The store debounces the draft save (~1s) after `contourSettings`
         // changes; poll IndexedDB until the draft reflects the new value. This is
@@ -89,9 +89,9 @@ test.describe.serial("Settings persistence across reload (asset arch)", () => {
         await expect(canvas).toBeVisible({ timeout: 60_000 });
 
         // The restored draft seeds the Harmonics input back to 120 (not default 50).
-        const harmonicsAfter = page.getByRole("spinbutton", { name: "Harmonics" });
+        const harmonicsAfter = slider(page, "Harmonics");
         await expect(harmonicsAfter).toBeVisible({ timeout: 30_000 });
-        await expect(harmonicsAfter).toHaveValue("120");
+        await expect(harmonicsAfter).toHaveAttribute("aria-valuenow", "120");
 
         // And the persisted draft still carries it.
         const draftAfter = await readDraft(page, imageSlug);
@@ -101,12 +101,11 @@ test.describe.serial("Settings persistence across reload (asset arch)", () => {
     test("sample points setting persists to the IndexedDB draft and restores on reload", async ({ page }) => {
         const imageSlug = await uploadAndOpen(page);
 
-        const pointsInput = page.getByRole("spinbutton", { name: "Sample Points" });
+        const pointsInput = slider(page, "Sample Points");
         await expect(pointsInput).toBeVisible({ timeout: 30_000 });
 
         // Change sample points to 2048 (default 1024; step 128).
-        await pointsInput.fill("2048");
-        await pointsInput.press("Enter");
+        await setSlider(pointsInput, 2048);
 
         await expect
             .poll(async () => (await readDraft(page, imageSlug))?.contourSettings?.n_points, {
@@ -120,9 +119,9 @@ test.describe.serial("Settings persistence across reload (asset arch)", () => {
         const canvas = page.locator("canvas").first();
         await expect(canvas).toBeVisible({ timeout: 60_000 });
 
-        const pointsAfter = page.getByRole("spinbutton", { name: "Sample Points" });
+        const pointsAfter = slider(page, "Sample Points");
         await expect(pointsAfter).toBeVisible({ timeout: 30_000 });
-        await expect(pointsAfter).toHaveValue("2048");
+        await expect(pointsAfter).toHaveAttribute("aria-valuenow", "2048");
 
         const draftAfter = await readDraft(page, imageSlug);
         expect(draftAfter?.contourSettings?.n_points).toBe(2048);

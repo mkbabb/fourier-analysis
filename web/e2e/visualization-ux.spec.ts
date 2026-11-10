@@ -238,7 +238,8 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // CollapsibleSection is `:default-open="true"`, and the desktop grid
         // renders the left panel unconditionally (the mobile tab bar is
         // `lg:hidden`), so the subtitle is in the default desktop DOM.
-        await expect(page.locator("[data-row-sub]").first()).toBeVisible({
+        // Canon F7: the subtitles are gone; the Harmonics slider is the mount mark.
+        await expect(page.getByRole("slider", { name: "Harmonics", exact: true })).toBeVisible({
             timeout: 60_000,
         });
 
@@ -293,7 +294,7 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         await expect(page.getByRole("heading", { name: "Morph", exact: true })).toBeVisible({
             timeout: 60_000,
         });
-        await expect(page.getByRole("spinbutton", { name: "Low", exact: true }).first()).toBeVisible({
+        await expect(page.getByRole("slider", { name: "Low harmonic level", exact: true }).first()).toBeVisible({
             timeout: 60_000,
         });
         await checkA11y(page, "/morph");
@@ -344,12 +345,11 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // spinbuttons now (an `input` carrying `role="spinbutton"`, not
         // `type="number"`), so the snapshot names that role too; without it the
         // two fields this guard exists to pin would silently drop out of it.
-        const controls = page.locator(
-            'input[type="number"], input[role="spinbutton"], input[type="range"]',
-        );
+        // Canon F2: each number's one control is its slider; its value is
+        // `aria-valuenow`.
+        const controls = page.locator('[role="slider"]');
         const readControls = () =>
-            controls
-                .evaluateAll((els) => (els as HTMLInputElement[]).map((el) => el.value));
+            controls.evaluateAll((els) => els.map((el) => el.getAttribute("aria-valuenow")));
         const controlsBefore = await readControls();
 
         // Every compute or extraction request issued from here on belongs to

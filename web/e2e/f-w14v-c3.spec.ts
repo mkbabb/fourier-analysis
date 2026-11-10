@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { setSlider } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 
 /**
@@ -31,7 +32,7 @@ const FRAMES = "e2e/screenshots/f-w14v/c3";
 async function openEditor(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
-    if (page.viewportSize()!.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
     await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
     const edit = page.getByRole("button", { name: "Edit contour" }).first();
@@ -76,9 +77,7 @@ async function openMore(page: Page): Promise<void> {
 async function setMagnet(page: Page, radius: number): Promise<void> {
     await openMore(page);
     await page.waitForTimeout(400);
-    const field = page.getByRole("menu").getByRole("spinbutton", { name: /Magnet/ });
-    await field.fill(String(radius));
-    await field.press("Enter");
+    await setSlider(page.getByRole("menu").getByRole("slider", { name: /Magnet/ }), radius);
     await page.waitForTimeout(300);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("menu")).toHaveCount(0);

@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
+import { slider, sliderValue } from "./fixtures/slider";
 import { ADMIN_TOKEN, ADMIN_USERS, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
 import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { seededViz, type SeededViz } from "./fixtures/seed";
@@ -276,13 +277,14 @@ test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
         // case keeps its edits (a new contour asset, as the dock's Save makes).
         await page.getByRole("dialog", { name: /unsaved/i }).getByRole("button", { name: "Save", exact: true }).click();
 
-        const field = page.getByRole("spinbutton").first();
-        await field.click();
-        await page.keyboard.press("End");
-        const typed = await field.inputValue();
+        // Canon F2: the number's one control is its slider; a key on it
+        // reaches the slider, not the editor's point deletion.
+        const field = slider(page, "Harmonics");
+        await field.focus();
+        const typed = await sliderValue(field);
         await page.keyboard.press("Backspace");
         await expect(points).toHaveCount(before - 1);
-        await expect(field).toHaveValue(typed.slice(0, -1));
+        await expect(field).toHaveAttribute("aria-valuenow", String(typed));
         await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "");
     });
 });
@@ -313,19 +315,18 @@ test.describe("UIA-F-15 — Save-and-leave leaves when the save lands, not when 
 
         // Edit mode ends while bases is still held.
         await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "", { timeout: 5_000 });
-        const field = page.getByRole("spinbutton", { name: "Harmonics" });
-        await field.click();
-        await page.keyboard.press("End");
-        const typed = await field.inputValue();
-        await page.keyboard.press("Backspace");
-        await expect(field).toHaveValue(typed.slice(0, -1));
+        const field = slider(page, "Harmonics");
+        await field.focus();
+        const typed = String((await sliderValue(field)) - 1);
+        await page.keyboard.press("ArrowLeft");
+        await expect(field).toHaveAttribute("aria-valuenow", typed);
 
         // The recompute then lands, and the field still holds what was typed.
         const landed = page.waitForResponse((r) => r.url().endsWith("/compute/bases"));
         release();
         await landed;
         await page.waitForTimeout(1500);
-        await expect(field).toHaveValue(typed.slice(0, -1));
+        await expect(field).toHaveAttribute("aria-valuenow", typed);
     });
 });
 
@@ -672,7 +673,7 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
 /** Open /equation with its result card in view (the Canvas panel below lg). */
 async function openEquationCard(page: Page) {
     await page.goto("/equation");
-    if (page.viewportSize()!.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
     const card = page.locator(".eq-card");
     await expect(card.locator(".katex").first()).toBeVisible({ timeout: 20_000 });
     return card;

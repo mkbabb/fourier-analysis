@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
+import { slider, sliderValue } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 
@@ -57,7 +58,7 @@ async function canvasTexts(page: Page, since = 0): Promise<[string, number, numb
 
 async function openViz(page: Page): Promise<void> {
     await page.goto(`/v/${seededViz().slug}`);
-    if (page.viewportSize()!.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
     await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(600);
 }
@@ -131,9 +132,7 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await recordCanvasText(page);
         await openViz(page);
-        const harmonics = Number(
-            await page.getByRole("spinbutton", { name: "Harmonics" }).inputValue(),
-        );
+        const harmonics = await sliderValue(slider(page, "Harmonics"));
         expect(harmonics).toBeGreaterThan(0);
         const mark = (await canvasTexts(page)).length;
         await toEnd(page);
@@ -208,8 +207,8 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await dock.getByRole("button", { name: "More editor tools" }).click();
         const menu = page.getByRole("menu");
         const slider = menu.getByRole("slider").first();
-        const field = menu.getByRole("spinbutton", { name: /Magnet/ });
-        const shown = () => field.evaluate((i: HTMLInputElement) => i.value || i.placeholder);
+        const field = menu.locator("[data-control-row]", { has: page.getByRole("slider") }).locator("[data-row-readout]").first();
+        const shown = async () => ((await field.textContent()) ?? "").trim();
         await slider.focus();
         await page.keyboard.press("Home");
         await page.waitForTimeout(200);

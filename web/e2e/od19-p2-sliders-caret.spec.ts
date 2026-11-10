@@ -77,7 +77,7 @@ for (const c of CELLS) {
 
         test("OD19-F8 · the hovered timeline caret is whole and on top", async ({ page }) => {
             await page.goto(`/v/${seededViz().slug}`);
-            if (c.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+            if (c.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
             const dock = page.locator(".animation-dock");
             await expect(dock).toBeVisible({ timeout: 30_000 });
             const db = (await dock.boundingBox())!;

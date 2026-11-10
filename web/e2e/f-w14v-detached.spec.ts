@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
+import { setSlider, slider } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 
 /**
@@ -158,12 +159,10 @@ test.describe("db · O-68 — each layer's reset is inline in its header", () =>
         await contourTrigger.click();
         await page.waitForTimeout(500);
         // Move a value off its default in each layer so the reset is live.
-        const harmonics = side.getByRole("spinbutton", { name: "Harmonics" });
-        await harmonics.fill("40");
-        await harmonics.press("Enter");
-        const blur = side.getByRole("spinbutton", { name: "Blur Sigma" });
-        await blur.fill("1.5");
-        await blur.press("Enter");
+        const harmonics = slider(side, "Harmonics");
+        const blur = slider(side, "Blur Sigma");
+        await setSlider(harmonics, 40);
+        await setSlider(blur, 1.5);
         await page.waitForTimeout(400);
         await page.screenshot({ path: `${FRAMES}/${PHASE}-db-1440-light.png` });
 
@@ -204,7 +203,7 @@ test.describe("db · O-68 — each layer's reset is inline in its header", () =>
             await layer.getByRole("button", { name: "Reset to defaults" }).click();
             await page.waitForTimeout(300);
             await expect.soft(trigger, `${name}: the reset does not toggle the layer`).toHaveAttribute("aria-expanded", "true");
-            await expect.soft(field, `${name}: the reset restores the default`).toHaveValue(want);
+            await expect.soft(field, `${name}: the reset restores the default`).toHaveAttribute("aria-valuenow", want);
         }
     });
 });

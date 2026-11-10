@@ -78,7 +78,8 @@ test.describe("G-c — F.W13 image mode: one drop affordance, the sidebar arrive
         await expect(uploads).toHaveCount(1);
         const target = page.locator(".drop-target").getByRole("button", { name: "Choose an image" });
         await expect(target).toHaveAttribute("data-slot", "button");
-        await expect(page.locator(".drop-target")).toContainText("PNG/JPG/SVG ≤ 10 MB");
+        // Canon F7: no standing format caption.
+        await expect(page.locator(".drop-target")).not.toContainText("10 MB");
         await expect(page.getByText(/Drop or click to upload —/)).toHaveCount(0);
         await expect(page.getByTestId("image-file-input")).toHaveCount(1);
         const [chooser] = await Promise.all([page.waitForEvent("filechooser"), target.click()]);

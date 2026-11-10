@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { slider, sliderValue } from "./fixtures/slider";
 
 /**
  * X.F.W14V `.u2` — the equation rows re-homed by F-W14U.md addendum (h)
@@ -108,10 +109,10 @@ test.describe("e201 · UIA-F-201 (server limb) — Σ is bounded at the displaye
 
     test("under Auto and with Auto off, Σ's bound = the Harmonics field = the legend", async ({ page }) => {
         const card = await openEquation(page);
-        const field = page.getByRole("spinbutton", { name: "Harmonics", exact: true });
+        const field = slider(page, "Harmonics");
         const legend = page.getByRole("region", { name: "Curve legend" });
         const agree = async () => {
-            const n = Number(await field.inputValue());
+            const n = await sliderValue(field);
             await expect.poll(async () => sigmaBound(await seriesTex(card)), { timeout: LOAD }).toBe(n);
             expect((await legend.locator(".legend-entry").count()) - 2).toBe(n);
             return n;

@@ -25,7 +25,7 @@ async function loadImage(page: Page): Promise<void> {
     await page.waitForURL(/\/w\//, { timeout: 20_000 });
     // X.F.W14V.u4 — UIA-F-74: below lg a finished upload brings the canvas to
     // the front; this setup reads the Controls sheet, so it selects that tab.
-    if (page.viewportSize()!.width < 1024) {
+    if (page.viewportSize()!.width < 640) {
         await expect(page.locator(".canvas-stage")).not.toHaveClass(/panel-inactive/, { timeout: 60_000 });
         await page.getByRole("tab", { name: "Controls" }).click();
     }

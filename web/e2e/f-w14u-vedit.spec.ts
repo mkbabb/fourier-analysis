@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { setSlider, slider } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 
 /**
@@ -53,7 +54,7 @@ async function frame(page: Page, name: string): Promise<void> {
 async function openViz(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
-    if (page.viewportSize()!.width < 1024) await page.getByRole("tab", { name: "Canvas" }).click();
+    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: "Canvas" }).click();
     await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
 }
@@ -244,7 +245,7 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         // The rest are one menu away.
         await dock.getByRole("button", { name: "More editor tools" }).click();
         const menu = page.getByRole("menu");
-        await expect(menu.getByRole("spinbutton", { name: /Magnet/ })).toBeVisible();
+        await expect(menu.getByRole("slider", { name: /Magnet/ })).toBeVisible();
         for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction", "View options", "Delete point"])
             await expect(menu.getByRole("menuitem", { name })).toBeVisible();
         // Delete is the menu's last item, behind a separator, in the rose tone.
@@ -410,9 +411,7 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         await dock.getByRole("button", { name: "More editor tools" }).click();
         await page.waitForTimeout(400);
         const menu = page.getByRole("menu");
-        const magnetField = menu.getByRole("spinbutton", { name: /Magnet/ });
-        await magnetField.fill("4");
-        await magnetField.press("Enter");
+        await setSlider(menu.getByRole("slider", { name: /Magnet/ }), 4);
         await page.waitForTimeout(300);
         const glyph = await menu.evaluate((m) => {
             const g = m.querySelector("svg.lucide-magnet");
@@ -488,12 +487,10 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
 });
 
 test.describe("X.F.W14U.vedit — the equation panel", () => {
-    /** Set Terms through its value field and return the answered LaTeX. */
+    /** Set Terms through its slider (canon F2) and return the answered LaTeX. */
     async function setTerms(page: Page, panel: Locator, n: number): Promise<string> {
         const answered = page.waitForResponse((r) => r.url().includes("/api/equations/simplify") && r.ok());
-        const field = panel.getByRole("spinbutton", { name: "Terms" });
-        await field.fill(String(n));
-        await field.press("Enter");
+        await setSlider(slider(panel, "Terms"), n);
         const body = await (await answered).json();
         await page.waitForTimeout(500);
         return body.latex as string;
@@ -537,13 +534,11 @@ test.describe("X.F.W14U.vedit — the equation panel", () => {
         // A refetch keeps the panel's size.
         const h0 = (await panel.boundingBox())!.height;
         let minH = h0;
-        const field = panel.getByRole("spinbutton", { name: "Terms" });
         await page.route("**/api/equations/simplify", async (route) => {
             await new Promise((r) => setTimeout(r, 900));
             await route.fallback();
         });
-        await field.fill("7");
-        await field.press("Enter");
+        await setSlider(slider(panel, "Terms"), 7);
         for (let i = 0; i < 12; i++) {
             await page.waitForTimeout(100);
             minH = Math.min(minH, (await panel.boundingBox())!.height);
