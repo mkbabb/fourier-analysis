@@ -8,6 +8,7 @@ import { renderLatex } from "@/lib/equation/render";
 import type { FourierTermDTO } from "@/lib/equation/types";
 import { groupTrigHarmonics } from "@/lib/equation/harmonics";
 import { VIZ_COLORS } from "@/lib/colors";
+import { formatNumber } from "@/lib/format";
 
 /**
  * How many rows the popover shows before it elides. ONE constant for all three
@@ -86,19 +87,19 @@ export function useCoeffHover(coefficients: Ref<FourierTermDTO[]>) {
             for (const h of harmonics.slice(0, MAX_ROWS)) {
                 const label = kind === "an" ? "a" : "b";
                 const val = kind === "an" ? h.a_n : h.b_n;
-                lines.push(`{\\color{${amber}}${label}_{${h.k}}} = ${val.toFixed(4)}`);
+                lines.push(`{\\color{${amber}}${label}_{${h.k}}} = ${formatNumber(val)}`);
             }
             if (harmonics.length > MAX_ROWS) lines.push("\\vdots");
         } else if (kind === "cn") {
             for (const t of coeffs.slice(0, MAX_ROWS)) {
                 const im = t.coefficient_im;
-                const val = `${t.coefficient_re.toFixed(3)}${im >= 0 ? "+" : ""}${im.toFixed(3)}i`;
+                const val = `${formatNumber(t.coefficient_re)}${im >= 0 ? "+" : ""}${formatNumber(im)}i`;
                 lines.push(`{\\color{${amber}}c_{${t.n}}} = ${val}`);
             }
             if (coeffs.length > MAX_ROWS) lines.push("\\vdots");
         } else if (kind === "An") {
             for (const t of coeffs.slice(0, MAX_ROWS)) {
-                lines.push(`{\\color{${amber}}A_{${t.n}}} = ${t.amplitude.toFixed(4)}`);
+                lines.push(`{\\color{${amber}}A_{${t.n}}} = ${formatNumber(t.amplitude)}`);
             }
             if (coeffs.length > MAX_ROWS) lines.push("\\vdots");
         }
