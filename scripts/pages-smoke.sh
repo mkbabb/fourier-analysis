@@ -57,9 +57,20 @@ summary "- bundle at $SITE carries \`$API_BASE\`: PASS"
 # Every route web/public/_redirects names still answers the shell as 200.
 status_of() { curl --silent --proto '=https' --tlsv1.2 --max-time 30 -o /dev/null -D - "$1" \
     | tr -d '\r' | awk 'toupper($1) ~ /^HTTP/ {c=$2} tolower($1)=="cache-control:" {sub(/^[^:]*: /,""); cc=$0} END {print c "|" cc}'; }
-absent="$SITE/assets/absent-$(date +%s).js"
-got="$(status_of "$absent")"
-if [ "${got%%|*}" != "404" ] || printf '%s' "${got#*|}" | grep -qE 'immutable|max-age=[1-9]'; then
+# The entry bundle can be unchanged by a deploy, so the bundle check above may
+# pass before the edge serves the new deployment: retry like it does.
+absent_ok() {
+    absent="$SITE/assets/absent-$(date +%s).js"
+    got="$(status_of "$absent")"
+    [ "${got%%|*}" = "404" ] && ! printf '%s' "${got#*|}" | grep -qE 'immutable|max-age=[1-9]'
+}
+ok=""
+for i in $(seq 1 "$ATTEMPTS"); do
+    if absent_ok; then ok=1; break; fi
+    log "attempt $i/$ATTEMPTS: $absent answers ${got%%|*} (${got#*|}); retrying in ${WAIT_S}s"
+    sleep "$WAIT_S"
+done
+if [ -z "$ok" ]; then
     err "FAIL: $absent answers ${got%%|*} (${got#*|}); a missing asset must be an uncached 404."
     exit 1
 fi
