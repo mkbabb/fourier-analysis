@@ -1,0 +1,63 @@
+# Publishes @mkbabb/fourier (packages/fourier) to npm, with provenance, on a
+# `fourier-pkg-vX.Y.Z` tag. The tag must equal packages/fourier/package.json's
+# version. After the publish, the registry's integrity must equal the tarball
+# this job packed, or the job fails.
+#
+# Needs the repository secret NPM_TOKEN (an npm automation token that can
+# publish @mkbabb/*). Once the package exists, npm's trusted publisher can
+# replace it: npmjs.com, @mkbabb/fourier, Settings, Trusted Publisher, GitHub
+# Actions, repository fourier-analysis, workflow release-fourier.yml.
+name: release @mkbabb/fourier
+
+on:
+  push:
+    tags:
+      - "fourier-pkg-v*.*.*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/fourier
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - name: The tag names the package version
+        run: |
+          TAG="${GITHUB_REF_NAME#fourier-pkg-v}"
+          PKG="$(node -p "require('./package.json').version")"
+          test "$TAG" = "$PKG" || { echo "tag ${GITHUB_REF_NAME} != package.json ${PKG}"; exit 1; }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Pack
+        id: pack
+        run: |
+          npm pack --json > pack.json
+          echo "integrity=$(node -p "require('./pack.json')[0].integrity")" >> "$GITHUB_OUTPUT"
+          echo "file=$(node -p "require('./pack.json')[0].filename")" >> "$GITHUB_OUTPUT"
+      - name: npm with provenance support
+        run: npm install -g npm@^11.5.1 && npm --version
+      - name: Publish
+        run: npm publish "${{ steps.pack.outputs.file }}" --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: The registry holds the tarball this job packed
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          for i in 1 2 3 4 5 6; do
+            GOT="$(npm view "@mkbabb/fourier@${VERSION}" dist.integrity 2>/dev/null || true)"
+            [ -n "$GOT" ] && break
+            sleep 10
+          done
+          echo "registry: $GOT"
+          echo "packed:   ${{ steps.pack.outputs.integrity }}"
+          test "$GOT" = "${{ steps.pack.outputs.integrity }}"
