@@ -52,6 +52,29 @@ if [ -z "$ok" ]; then
 fi
 summary "- bundle at $SITE carries \`$API_BASE\`: PASS"
 
+# A path the build does not hold is a 404 nobody keeps (web/dist/404.html), never
+# the shell as 200: under /assets/* that answer would be cached as the asset.
+# Every route web/public/_redirects names still answers the shell as 200.
+status_of() { curl --silent --proto '=https' --tlsv1.2 --max-time 30 -o /dev/null -D - "$1" \
+    | tr -d '\r' | awk 'toupper($1) ~ /^HTTP/ {c=$2} tolower($1)=="cache-control:" {sub(/^[^:]*: /,""); cc=$0} END {print c "|" cc}'; }
+absent="$SITE/assets/absent-$(date +%s).js"
+got="$(status_of "$absent")"
+if [ "${got%%|*}" != "404" ] || printf '%s' "${got#*|}" | grep -qE 'immutable|max-age=[1-9]'; then
+    err "FAIL: $absent answers ${got%%|*} (${got#*|}); a missing asset must be an uncached 404."
+    exit 1
+fi
+log "missing asset: $absent answers 404 (${got#*|})"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+for route in $(awk '$1 ~ /^\// {sub(/\*$/, "smoke", $1); print $1}' "$ROOT_DIR/web/public/_redirects"); do
+    got="$(status_of "$SITE$route")"
+    if [ "${got%%|*}" != "200" ]; then
+        err "FAIL: the route $SITE$route answers ${got%%|*}, not the shell as 200."
+        exit 1
+    fi
+done
+log "routes: every _redirects route answers 200"
+summary "- missing asset answers an uncached 404; every \`_redirects\` route answers 200: PASS"
+
 # ── 2 + 3. /api/health is JSON over strict TLS, with CORS for the site ───────
 hdrs="$(mktemp)"; body="$(mktemp)"; trap 'rm -f "$hdrs" "$body"' EXIT
 "${CURL[@]}" -H "Origin: $SITE" -H 'Accept: application/json' \
