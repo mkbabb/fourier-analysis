@@ -5,6 +5,10 @@ FROM node:22-slim AS base
 WORKDIR /app
 
 FROM base AS deps
+# @mkbabb/fourier is linked as `file:../packages/fourier` (/app/../packages =
+# /packages) and resolved through its built dist/, so it is built first.
+COPY packages/fourier /packages/fourier
+RUN cd /packages/fourier && npm ci && npm run build
 COPY web/package.json web/package-lock.json ./
 # The @mkbabb/* deps resolve from the npm registry (^semver pins). The former
 # file:./vendor/*.tgz seams (the D.W1 Docker-build unblock) were retired by the

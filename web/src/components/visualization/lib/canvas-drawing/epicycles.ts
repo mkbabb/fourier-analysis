@@ -2,7 +2,7 @@ import type { BasisComponent } from "@/lib/types";
 import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import type { ViewTransform } from "./types";
 import { spectrumColor } from "./transforms";
-import { fourierPositionsAt } from "@/lib/evaluators";
+import { chainAt, type Spectrum } from "@mkbabb/fourier";
 import { VIZ_COLORS, withAlpha } from "@/lib/colors";
 
 export const BASE_EPICYCLE_SCALE = 0.38;
@@ -31,6 +31,7 @@ export interface EpicycleBbox {
  * of all circle extents. This gives a tight but stable bound.
  */
 export function computeStableEpicycleBbox(
+    spectrum: Spectrum,
     components: BasisComponent[],
     nVis: number,
     toScreen: (x: number, y: number) => [number, number],
@@ -40,9 +41,9 @@ export function computeStableEpicycleBbox(
     const nSamples = 32;
     for (let s = 0; s <= nSamples; s++) {
         const t = s / nSamples;
-        const positions = fourierPositionsAt(components, t, nVis);
+        const positions = chainAt(spectrum, t, nVis);
         for (let i = 0; i < nVis; i++) {
-            const [ccx, ccy] = toScreen(positions[i][0], positions[i][1]);
+            const [ccx, ccy] = toScreen(positions[2 * i], positions[2 * i + 1]);
             const r = components[i].amplitude * scale;
             minX = Math.min(minX, ccx - r);
             minY = Math.min(minY, ccy - r);
@@ -140,7 +141,8 @@ export function epicycleAlphaFromScale(currentScale: number): number {
 export function drawEpicycleCircles(
     surface: CanvasSurface,
     view: ViewTransform,
-    visPositions: [number, number][],
+    /** The chain's cumulative positions `[x0, y0, x1, y1, ...]` (`chainAt`). */
+    visPositions: Float64Array,
     components: BasisComponent[],
     nVis: number,
     fit: EpicycleFit | null,
@@ -202,8 +204,8 @@ export function drawEpicycleCircles(
     };
 
     for (let i = 0; i < nVis; i++) {
-        const [ccx, ccy] = toScreen(visPositions[i][0], visPositions[i][1]);
-        const [tx, ty] = toScreen(visPositions[i + 1][0], visPositions[i + 1][1]);
+        const [ccx, ccy] = toScreen(visPositions[2 * i], visPositions[2 * i + 1]);
+        const [tx, ty] = toScreen(visPositions[2 * i + 2], visPositions[2 * i + 3]);
         const r = components[i].amplitude * scale;
         const color = spectrumColor(i, nVis);
         // X-DS DS-F-C2 — the chain's tail is hundreds of circles a pixel or
@@ -312,7 +314,7 @@ export function drawEpicycleCircles(
 export function drawConnectingLine(
     surface: CanvasSurface,
     view: ViewTransform,
-    visPositions: [number, number][],
+    visPositions: Float64Array,
     tipX: number,
     tipY: number,
     fit: EpicycleFit,
@@ -321,8 +323,8 @@ export function drawConnectingLine(
     const { ctx } = surface;
     const { toScreen } = view;
 
-    const visTip = visPositions[visPositions.length - 1];
-    const [rawX, rawY] = toScreen(visTip[0], visTip[1]);
+    const n = visPositions.length;
+    const [rawX, rawY] = toScreen(visPositions[n - 2], visPositions[n - 1]);
 
     const tipSx = fit.targetCX + (rawX - fit.bboxCX) * fit.fitScale;
     const tipSy = fit.targetCY + (rawY - fit.bboxCY) * fit.fitScale;

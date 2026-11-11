@@ -7,10 +7,11 @@ import hmac
 import logging
 import re
 import time
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any, cast
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
 from pydantic import ValidationError
 from pymongo import ReturnDocument
 
@@ -182,3 +183,49 @@ async def admin_required(request: Request) -> bool:
     if not hmac.compare_digest(auth.encode(), expected.encode()):
         raise HTTPException(status_code=403, detail="Forbidden")
     return True
+
+
+def token_required(scope: str) -> Callable[[Request, Response], Awaitable[str]]:
+    """Dependency for the ``/api/v1`` routes: a live ``fk_`` bearer token with
+    ``scope``, inside its own rate. Returns the token id.
+
+    Missing, malformed, unknown, wrong-secret or revoked → 401 problem+json;
+    a live token without ``scope`` → 403. The admin secret is not a token, so
+    it is a 401 here. Failed attempts are counted per IP (``bad_token_limiter``),
+    and an IP over that budget is refused before its token is read; a good
+    token is counted under its id at its ``rate_per_min``. The RateLimit-*
+    fields on the answer are the token's.
+    """
+    from api.lib.crud import errors
+    from api.services import api_tokens
+    from api.services.rate_limiter import bad_token_limiter, stamp, token_limiter
+
+    def limited(limiter: Any, key: str, limit: int | None = None) -> errors.ProblemError:
+        cap, _remaining, reset = limiter.snapshot(key, limit)
+        response = errors.rate_limited(reset or int(limiter.window_seconds))
+        stamp(response, cap, 0, reset)
+        return errors.ProblemError(response)
+
+    async def dependency(request: Request, response: Response) -> str:
+        ip = hash_ip(get_client_ip(request))
+        if bad_token_limiter.snapshot(ip)[1] == 0:
+            raise limited(bad_token_limiter, ip)
+        parsed = api_tokens.parse(request.headers.get("Authorization"))
+        doc = await api_tokens.verify(*parsed) if parsed else None
+        if doc is None:
+            bad_token_limiter.check(ip)
+            raise errors.ProblemError(errors.token_invalid(instance=request.url.path))
+        if scope not in doc["scopes"]:
+            raise errors.ProblemError(
+                errors.token_scope(detail=f"this route needs the '{scope}' scope", instance=request.url.path)
+            )
+        rate = int(doc.get("rate_per_min") or api_tokens.DEFAULT_RATE_PER_MIN)
+        try:
+            token_limiter.check(doc["_id"], rate)
+        except HTTPException:
+            raise limited(token_limiter, doc["_id"], rate) from None
+        await api_tokens.touch(doc)
+        stamp(response, *token_limiter.snapshot(doc["_id"], rate))
+        return cast("str", doc["_id"])
+
+    return dependency

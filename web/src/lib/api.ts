@@ -843,3 +843,32 @@ export async function listAuditLog(
         token,
     );
 }
+
+// ── Admin: API tokens (bearer tokens for /api/v1, the @mkbabb/fourier client) ──
+
+/** A token as the admin list carries it: its public key, never its secret. */
+export interface ApiToken {
+    id: string;
+    name: string;
+    scopes: string[];
+    rate_per_min: number;
+    created_at: string;
+    last_used_at: string | null;
+    revoked_at: string | null;
+}
+
+export async function listApiTokens(token: AdminToken): Promise<{ tokens: ApiToken[] }> {
+    return adminFetch<{ tokens: ApiToken[] }>("/api/admin/tokens", token);
+}
+
+/** The answer is the only time the full token is ever sent. */
+export async function mintApiToken(token: AdminToken, name: string): Promise<{ id: string; token: string }> {
+    return adminFetch<{ id: string; token: string }>("/api/admin/tokens", token, {
+        method: "POST",
+        body: { name, scopes: ["spectrum"] },
+    });
+}
+
+export async function revokeApiToken(token: AdminToken, id: string): Promise<ApiToken> {
+    return adminFetch<ApiToken>(`/api/admin/tokens/${encodeURIComponent(id)}`, token, { method: "DELETE" });
+}

@@ -165,6 +165,12 @@ The figures span the paper's arc: partial sums, orthogonal projection, inner pro
 
 An interactive web application for exploring Fourier and polynomial basis decompositions. Upload an image, extract contours, and view thereupon the animated epicycle reconstructions.
 
+## Using it from your own code
+
+The client-side engine is a small npm package, [`@mkbabb/fourier`](packages/fourier/README.md): spectra, partial sums, epicycle chains, and a client for the API. The web app runs on it.
+
+The API has two routes for other programs, `POST /api/v1/spectrum/image` (an image in, its single-line drawing and spectrum out) and `POST /api/v1/spectrum/contour` (points in, spectrum out). Both take a bearer token (`Authorization: Bearer fk_…`) and store nothing. Tokens are minted, listed and revoked by the admin (`/api/admin/tokens`, or Gallery, Tokens in the web app), each with its own rate, 10 calls a minute by default. A token is a secret, so call these routes from a server or a build step, never from a browser.
+
 ## The mdarray connection
 
 Both this project and [`mdarray`](https://github.com/mkbabb/mdarray) descend from `fftplusplus` (May 2018), a C++ FFTPACK port with CPython bindings and several pure-Python FFT iterations. `mdarray` carried that lineage into a full N-dimensional array library with a [Temperton](<https://doi.org/10.1016/0021-9991(83)90013-X>) staged mixed-radix FFT engine; this project applies the Fourier analysis to series, epicycles, and visualization.

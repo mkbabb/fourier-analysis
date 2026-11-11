@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     # stored URI. See ``api/services/image_storage.py`` (_resolve / image_bytes).
     blob_dir: str = "/data/blobs"
     compute_timeout_s: int = 300
-    compute_concurrency: int = 4
+    # One compute slot and one pool worker by default: each worker loads the
+    # ONNX contour models (GBs each). Both compose files state it explicitly.
+    compute_concurrency: int = 1
     # Compute (extract-contour / epicycles / bases) requests per minute per IP.
     # Production default is conservative; dev/e2e raise it via COMPUTE_RATE_LIMIT
     # since a full lifecycle run issues several compute calls in quick succession.

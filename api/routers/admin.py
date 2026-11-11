@@ -66,6 +66,8 @@ from api.models.admin import (
     UserStatusResponse,
 )
 from api.models.gallery import AdminStatsResponse, SetTierRequest
+from api.models.tokens import MintTokenRequest, MintTokenResponse, TokenInfo, TokenListResponse
+from api.services import api_tokens
 from api.services.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -659,3 +661,35 @@ async def list_audit(
     pages = math.ceil(total / limit) if total else 1
 
     return AuditListResponse(items=items, total=total, page=page, pages=pages)
+
+
+# ---------------------------------------------------------------------------
+# API tokens (bearer tokens for /api/v1; api.services.api_tokens)
+# ---------------------------------------------------------------------------
+
+
+@admin_router.post(
+    "/tokens", response_model=MintTokenResponse, status_code=201, dependencies=[Depends(admin_required)]
+)
+async def mint_token(body: MintTokenRequest, request: Request) -> MintTokenResponse:
+    """Mint a token. The answer is the only place the token ever appears."""
+    token, doc = await api_tokens.mint(body.name, body.scopes, body.rate_per_min)
+    await log_audit(request, f"mint_token:{body.name}", doc["_id"])
+    return MintTokenResponse(id=doc["_id"], token=token)
+
+
+@admin_router.get("/tokens", response_model=TokenListResponse, dependencies=[Depends(admin_required)])
+async def list_tokens() -> TokenListResponse:
+    """Every token, newest first, revoked ones included; never a hash."""
+    return TokenListResponse(tokens=[TokenInfo(**t) for t in await api_tokens.list_tokens()])
+
+
+@admin_router.delete("/tokens/{key}", response_model=TokenInfo, dependencies=[Depends(admin_required)])
+async def revoke_token(key: str, request: Request) -> TokenInfo | Response:
+    """Revoke a token by its public key (the id between ``fk_`` and the secret;
+    the secret is never in a URL). Idempotent: a revoked token answers as it stands."""
+    if not await api_tokens.revoke(key):
+        return errors.not_found(detail=f"no token {key!r}")
+    await log_audit(request, f"revoke_token:{key}", key)
+    doc = await get_db().api_tokens.find_one({"_id": key})
+    return TokenInfo(**api_tokens.public(doc))

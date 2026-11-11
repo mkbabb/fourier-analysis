@@ -14,6 +14,8 @@ services:
       - ENV=production
       - ADMIN_TOKEN=${ADMIN_TOKEN:?ADMIN_TOKEN must be set in production (the host secret store)}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://fourier.babb.dev}
+      # One compute worker: each loads the ONNX contour models (GBs each).
+      - COMPUTE_CONCURRENCY=1
       - MONGO_URI=mongodb://${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:?MONGO_PASSWORD must be set in production}@mongo:27017/fourier?authSource=admin&tls=true&tlsCAFile=/etc/ssl/mongo-ca.pem
     restart: unless-stopped
     volumes:

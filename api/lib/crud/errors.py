@@ -72,7 +72,18 @@ flag_self = partial(problem, "urn:contract:flag-self", 400, "Cannot flag own res
 flag_duplicate = partial(problem, "urn:contract:flag-duplicate", 409, "Already flagged")
 slug_pool_exhausted = partial(problem, "urn:contract:slug-exhausted", 503, "Slug-mint retry exhausted")
 internal_error = partial(problem, "urn:contract:internal-error", 500, "Internal server error")
+token_invalid = partial(problem, "urn:contract:token-invalid", 401, "API token missing, invalid or revoked")
+token_scope = partial(problem, "urn:contract:token-scope", 403, "API token lacks the scope")
 # fmt: on
+
+
+class ProblemError(Exception):
+    """Raised from a dependency to answer with a problem+json ``response`` as is
+    (``api.main`` registers the handler), so a dependency speaks the catalog."""
+
+    def __init__(self, response: JSONResponse) -> None:
+        super().__init__(response.status_code)
+        self.response = response
 
 
 def rate_limited(retry_after: int, **extras: Any) -> JSONResponse:

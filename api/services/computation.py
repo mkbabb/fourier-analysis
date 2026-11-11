@@ -157,6 +157,64 @@ async def compute_contours(
     return await submit_compute_job("contours", _run)
 
 
+def contour_path(contours: list[np.ndarray], n_points: int) -> np.ndarray:
+    """One closed tour through ``contours``, resampled to ``n_points``: the tail
+    every contour route shares (extract-contour, compute/epicycles, /api/v1)."""
+    return resample_arc_length(build_contour_tour(contours).path, n_points)
+
+
+def spectrum_of_contours(
+    contours: list[np.ndarray], n_points: int, n_harmonics: int
+) -> tuple[np.ndarray, EpicycleChain]:
+    """The tour's resampled path and its epicycle chain to ±``n_harmonics``."""
+    path = contour_path(contours, n_points)
+    return path, EpicycleChain.from_signal(path, n_harmonics=n_harmonics)
+
+
+# N_c is measured to this share of the contour's bbox width (the @mkbabb/fourier
+# convention for a converged figure).
+CONVERGED_SHARE = 0.0015
+
+
+def wire_spectrum(chain: EpicycleChain, top: int, path: np.ndarray) -> dict[str, Any]:
+    """The chain as the @mkbabb/fourier ``Spectrum``: ``c`` flat in frequency
+    order (0, +1, -1, +2, -2, ... to ±top, each [re, im]) and ``n``, the least
+    level whose partial sum lies within ``CONVERGED_SHARE`` of the path's width
+    (symmetric Hausdorff) of the whole band."""
+    from scipy.spatial import cKDTree
+
+    by_k = {c.frequency: c.coefficient for c in chain.components}
+    top = min(top, max((abs(k) for k in by_k), default=0))
+    ks = [0] + [k for j in range(1, top + 1) for k in (j, -j)]
+    coeffs = np.array([by_k.get(k, 0j) for k in ks], dtype=np.complex128)
+
+    m = 1024
+    while m <= 4 * top:
+        m *= 2
+    freq = np.array(ks) % m
+
+    def partial(level: int) -> np.ndarray:
+        spec = np.zeros(m, dtype=np.complex128)
+        keep = np.abs(np.array(ks)) <= level
+        spec[freq[keep]] = coeffs[keep]
+        z = np.fft.ifft(spec) * m
+        return np.column_stack([z.real, z.imag])
+
+    eps = CONVERGED_SHARE * float(np.ptp(path.real) or 1.0)
+    full = partial(top)
+    tree = cKDTree(full)
+    n = top
+    for level in range(top):
+        p = partial(level)
+        if tree.query(p, distance_upper_bound=eps)[0].max() <= eps and (
+            cKDTree(p).query(full, distance_upper_bound=eps)[0].max() <= eps
+        ):
+            n = level
+            break
+    flat = np.column_stack([coeffs.real, coeffs.imag]).ravel()
+    return {"c": flat.tolist(), "n": n}
+
+
 async def compute_epicycles(
     xs: list[float],
     ys: list[float],
@@ -164,10 +222,9 @@ async def compute_epicycles(
     n_points: int = 1024,
 ) -> dict[str, Any]:
     def _run():
-        path = np.array(xs) + 1j * np.array(ys)
-        path = build_contour_tour([path]).path
-        path = resample_arc_length(path, n_points)
-        chain = EpicycleChain.from_signal(path, n_harmonics=n_harmonics)
+        path, chain = spectrum_of_contours(
+            [np.array(xs) + 1j * np.array(ys)], n_points, n_harmonics
+        )
 
         components = [
             {
@@ -201,9 +258,7 @@ async def compute_bases(
     n_eval: int = 1000,
 ) -> dict[str, Any]:
     def _run():
-        path = np.array(xs) + 1j * np.array(ys)
-        path = build_contour_tour([path]).path
-        path = resample_arc_length(path, n_points)
+        path = contour_path([np.array(xs) + 1j * np.array(ys)], n_points)
         return build_animation_data(path, max_degree, levels=levels, n_eval=n_eval)
 
     return await submit_compute_job("bases", _run)

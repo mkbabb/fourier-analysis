@@ -77,8 +77,9 @@ class SlidingWindowLimiter:
     # Public API
     # ------------------------------------------------------------------
 
-    def check(self, hashed_key: str) -> None:
-        """Record a hit and raise *HTTPException(429)* if over limit."""
+    def check(self, hashed_key: str, limit: int | None = None) -> None:
+        """Record a hit and raise *HTTPException(429)* if over limit (``limit``
+        overrides ``max_requests`` for this key, e.g. a token's own rate)."""
         now = time.monotonic()
 
         # Evict if we are at capacity
@@ -95,7 +96,7 @@ class SlidingWindowLimiter:
 
         self._prune_bucket(entry, now)
 
-        if len(entry.timestamps) >= self.max_requests:
+        if len(entry.timestamps) >= (limit or self.max_requests):
             raise HTTPException(
                 status_code=429,
                 detail="Rate limit exceeded. Please try again later.",
@@ -103,7 +104,7 @@ class SlidingWindowLimiter:
 
         entry.timestamps.append(now)
 
-    def snapshot(self, hashed_key: str) -> tuple[int, int, int]:
+    def snapshot(self, hashed_key: str, limit: int | None = None) -> tuple[int, int, int]:
         """Return ``(limit, remaining, reset_seconds)`` without recording a hit.
 
         ``reset_seconds`` is the whole-second budget until the window's oldest
@@ -113,19 +114,20 @@ class SlidingWindowLimiter:
         enforces and records.
         """
         now = time.monotonic()
+        cap = limit or self.max_requests
         entry = self._buckets.get(hashed_key)
         if entry is None:
-            return self.max_requests, self.max_requests, 0
+            return cap, cap, 0
 
         self._prune_bucket(entry, now)
         used = len(entry.timestamps)
-        remaining = max(0, self.max_requests - used)
+        remaining = max(0, cap - used)
         if entry.timestamps:
             oldest = min(entry.timestamps)
             reset = max(0, math.ceil(oldest + self.window_seconds - now))
         else:
             reset = 0
-        return self.max_requests, remaining, reset
+        return cap, remaining, reset
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +171,17 @@ compute_limiter = SlidingWindowLimiter(
     max_requests=settings.compute_rate_limit, window_seconds=60
 )
 
+# /api/v1 (bearer API tokens): one bucket per TOKEN ID at the token's own
+# ``rate_per_min``, not per IP — a token is one caller wherever it runs. Hits
+# that fail authentication are counted per IP at the compute budget, so a flood
+# of bad tokens is held where it comes from. ``api.dependencies.token_required``
+# enforces both and stamps the RateLimit-* fields; the middleware below leaves
+# /api/v1 to it, since only it knows the token.
+token_limiter = SlidingWindowLimiter(max_requests=10, window_seconds=60)
+bad_token_limiter = SlidingWindowLimiter(
+    max_requests=settings.compute_rate_limit, window_seconds=60
+)
+
 
 # ---------------------------------------------------------------------------
 # RFC 9239 RateLimit-header middleware (CRUD-CONTRACT §0 SOTA-6, Invariant 24)
@@ -204,7 +217,7 @@ def _limiter_for_path(path: str, method: str) -> SlidingWindowLimiter:
     return write_limiter
 
 
-def _stamp(response, limit: int, remaining: int, reset: int) -> None:
+def stamp(response, limit: int, remaining: int, reset: int) -> None:
     response.headers["RateLimit-Limit"] = str(limit)
     response.headers["RateLimit-Remaining"] = str(remaining)
     response.headers["RateLimit-Reset"] = str(reset)
@@ -226,7 +239,7 @@ class RateLimitHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # CORS preflights are not real requests — never let one consume budget
         # (a preflight + its POST would otherwise double-count the write limiter).
-        if request.method == "OPTIONS":
+        if request.method == "OPTIONS" or request.url.path.startswith("/api/v1/"):
             return await call_next(request)
 
         limiter = _limiter_for_path(request.url.path, request.method)
@@ -242,10 +255,10 @@ class RateLimitHeaderMiddleware(BaseHTTPMiddleware):
             _limit, _remaining, reset = limiter.snapshot(hashed)
             retry_after = reset or int(limiter.window_seconds)
             response = rate_limited(retry_after)
-            _stamp(response, limiter.max_requests, 0, reset)
+            stamp(response, limiter.max_requests, 0, reset)
             return response
 
         response = await call_next(request)
         limit, remaining, reset = limiter.snapshot(hashed)
-        _stamp(response, limit, remaining, reset)
+        stamp(response, limit, remaining, reset)
         return response

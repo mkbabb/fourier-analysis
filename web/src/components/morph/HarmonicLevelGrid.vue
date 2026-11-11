@@ -74,9 +74,9 @@
 import { Button } from "@mkbabb/glass-ui/button";
 import { Card } from "@mkbabb/glass-ui/card";
 import SliderControl from "@/components/ui/SliderControl.vue";
+import { svgPathOf } from "@mkbabb/fourier";
 import {
     interpolateAtHarmonicLevel,
-    pointsToSvgPath,
     type FourierShape,
 } from "@/lib/svg-fourier";
 
@@ -139,7 +139,7 @@ function onSelect(level: number) {
  * ⊘ CURE-COMPLETENESS (the spec's lock): the memo alone leaves the 667.6 KiB
  * resident — it only stops rebuilding it — and the precision alone leaves the
  * rebuild churn. Both, or the row is half-landed. The precision half lands in
- * `pointsToSvgPath` (2dp at emission — see there for why rounding the INPUT
+ * `svgPathOf` (2dp at emission — see there for why rounding the INPUT
  * points does not work), so BOTH halves of the lock are in this one commit;
  * `PathPreview.vue:39` is the in-tree precedent for the idiom.
  *
@@ -159,7 +159,7 @@ function getPath(level: number): string {
     if (hit !== undefined) return hit;
 
     const points = interpolateAtHarmonicLevel(props.shape, level);
-    const path = pointsToSvgPath(points);
+    const path = svgPathOf(points.flat());
     byLevel.set(level, path);
     return path;
 }

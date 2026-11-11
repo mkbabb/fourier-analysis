@@ -1,7 +1,29 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import vue from "@vitejs/plugin-vue";
+import { rmSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import latexPaperPlugin from "@mkbabb/latex-paper/vite";
+
+/**
+ * `public/assets` links the repository's whole `assets/` tree, which also holds
+ * the contour test photographs (`assets/portraits/`). The SPA serves none of
+ * them, and they are people's photos, so the built site never carries them:
+ * the same rule `.dockerignore` already states for the image's build.
+ */
+function withoutPhotographs(): Plugin {
+    let outDir = "";
+    return {
+        name: "fourier:without-photographs",
+        apply: "build",
+        configResolved(config) {
+            outDir = resolve(config.root, config.build.outDir);
+        },
+        closeBundle() {
+            rmSync(join(outDir, "assets", "portraits"), { recursive: true, force: true });
+        },
+    };
+}
 
 export default defineConfig({
     plugins: [
@@ -19,6 +41,7 @@ export default defineConfig({
             },
         }),
         vue(),
+        withoutPhotographs(),
     ],
     base: process.env.VITE_BASE_URL || "/",
     resolve: {

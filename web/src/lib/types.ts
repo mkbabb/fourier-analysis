@@ -1,11 +1,8 @@
 import type { AnimationEasingName } from "./easings";
 
-export interface BasisComponent {
-    index: number;
-    coefficient: [number, number]; // [re, im]
-    amplitude: number;
-    phase: number;
-}
+// The epicycle component wire type is the Fourier package's, one type end to end.
+export type { BasisComponent } from "@mkbabb/fourier";
+import type { BasisComponent } from "@mkbabb/fourier";
 
 export interface BasisDecomposition {
     basis: "fourier" | "chebyshev" | "legendre" | string;

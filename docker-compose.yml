@@ -16,6 +16,8 @@ services:
       - image_blobs:/data/blobs
     environment:
       - CORS_ORIGINS=http://localhost:${WEB_PORT:-3000},http://localhost:5173
+      # One compute worker: each loads the ONNX contour models (GBs each).
+      - COMPUTE_CONCURRENCY=1
       - MONGO_URI=mongodb://${MONGO_USER:-fourier-admin}:${MONGO_PASSWORD:-fourier-dev-only}@mongo:27017/fourier?authSource=admin
     depends_on:
       mongo:

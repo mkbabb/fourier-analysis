@@ -71,6 +71,8 @@ def _reset_rate_limiters():
         "write_limiter",
         "admin_limiter",
         "compute_limiter",
+        "token_limiter",
+        "bad_token_limiter",
     ):
         _lim = getattr(_rl, _name, None)
         if _lim is not None and hasattr(_lim, "_buckets"):
@@ -101,6 +103,19 @@ async def asgi(
     headers: list[tuple[str, str]] | None = None,
     query: str = "",
 ) -> tuple[int, bytes]:
+    """``asgi_full`` without the response headers."""
+    status, _headers, raw = await asgi_full(method, path, body, headers, query)
+    return status, raw
+
+
+async def asgi_full(
+    method: str,
+    path: str,
+    body: bytes = b"",
+    headers: list[tuple[str, str]] | None = None,
+    query: str = "",
+    client: tuple[str, int] = ("127.0.0.1", 50000),
+) -> tuple[int, dict[str, str], bytes]:
     """One HTTP request through ``api.main.app``; returns (status, body).
 
     The app is driven through its real ASGI stack (routing, middleware and the
@@ -125,7 +140,7 @@ async def asgi(
         "query_string": query.encode(),
         "root_path": "",
         "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or [])],
-        "client": ("127.0.0.1", 50000),
+        "client": client,
         "server": ("testserver", 80),
     }
     delivered = False
@@ -138,11 +153,14 @@ async def asgi(
         return {"type": "http.disconnect"}
 
     status: list[int] = []
+    out_headers: dict[str, str] = {}
     chunks: list[bytes] = []
 
     async def send(message: dict[str, Any]) -> None:
         if message["type"] == "http.response.start":
             status.append(message["status"])
+            for k, v in message.get("headers", []):
+                out_headers[k.decode().lower()] = v.decode()
         elif message["type"] == "http.response.body":
             chunks.append(message.get("body", b""))
 
@@ -151,4 +169,4 @@ async def asgi(
     except Exception:
         if not status:
             raise
-    return status[0], b"".join(chunks)
+    return status[0], out_headers, b"".join(chunks)

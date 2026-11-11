@@ -102,9 +102,18 @@ else
 fi
 
 # ── 3. Build the SPA (in web/) ────────────────────────────────────────────────
+log "Building @mkbabb/fourier (the SPA links packages/fourier's dist/)..."
+npm --prefix packages/fourier ci
+npm --prefix packages/fourier run build
+
 log "Building the SPA (npm run build in web/)..."
 npm --prefix web run build
 [ -d "$BUILD_DIR" ] || { err "build dir '$BUILD_DIR' not found after build"; exit 1; }
+# The site never carries the contour test photographs (assets/portraits/).
+if [ -e "$BUILD_DIR/assets/portraits" ]; then
+    err "build dir carries assets/portraits/ (the test photographs) — refusing to deploy."
+    exit 1
+fi
 # §0eh — refuse to ship a bundle that does not carry the API base.
 if ! grep -rqF "$VITE_API_URL" "$BUILD_DIR/assets" --include='*.js'; then
     err "built bundle does not contain the API base '$VITE_API_URL' — refusing to deploy."
