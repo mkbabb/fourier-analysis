@@ -37,8 +37,6 @@ from api.services.image_storage import (
     store_contour_asset,
     store_image_asset,
 )
-from fourier_analysis.contours import resample_arc_length
-from fourier_analysis.shortest_tour import build_contour_tour
 
 import numpy as np
 
@@ -334,8 +332,7 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest, request: R
     complex_contours = [
         np.array(c["x"]) + 1j * np.array(c["y"]) for c in contours
     ]
-    path = build_contour_tour(complex_contours).path
-    path = resample_arc_length(path, cs.n_points)
+    path = computation.contour_path(complex_contours, cs.n_points)
     xs = path.real.tolist()
     ys = path.imag.tolist()
 

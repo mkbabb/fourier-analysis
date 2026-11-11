@@ -18,8 +18,8 @@ from api.config import (
     CORS_EXPOSE_HEADERS,
     settings,
 )
-from api.lib.crud.errors import internal_error
-from api.routers import contours, equations, images, sessions, visualizations
+from api.lib.crud.errors import ProblemError, internal_error
+from api.routers import contours, equations, images, sessions, v1, visualizations
 from api.routers.admin import admin_router
 from api.routers.gallery import gallery_router
 from api.services.computation import shutdown_process_pool
@@ -45,6 +45,11 @@ async def lifespan(app: FastAPI):
             "Set ADMIN_TOKEN for full functionality."
         )
 
+    # The server's own startup channel (the app's loggers have no handler at
+    # INFO), so the line sits beside "Application startup complete".
+    logging.getLogger("uvicorn.error").info(
+        "compute_concurrency=%d (each worker loads the ONNX models)", settings.compute_concurrency
+    )
     await connect_db()
     janitor_task = asyncio.create_task(run_janitor())
     yield
@@ -98,6 +103,13 @@ class UnhandledErrorProblem:
 
 
 app.add_middleware(UnhandledErrorProblem)
+
+
+@app.exception_handler(ProblemError)
+async def _problem_error(_request: Request, exc: ProblemError) -> JSONResponse:
+    """A dependency's problem+json answer (``errors.ProblemError``), as is."""
+    return exc.response
+
 
 # RFC 9239 RateLimit-* headers on every response (Invariant 24 / CRUD-CONTRACT
 # §0 SOTA-6). Registered BEFORE CORS (``add_middleware`` prepends, so it sits
@@ -163,6 +175,7 @@ app.include_router(sessions.router)
 app.include_router(visualizations.router)
 app.include_router(gallery_router)
 app.include_router(admin_router)
+app.include_router(v1.router)
 
 
 @app.get("/api/health")

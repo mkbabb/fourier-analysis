@@ -115,12 +115,13 @@ def test_grace_hard_delete_cascades_flags_by_content_hash():
 
 
 def test_every_admin_route_declares_a_response_model():
-    """(d) the route walk: 13 admin routes, each with a response_model."""
+    """(d) the route walk: 16 admin routes (13, plus the 3 token routes of
+    2026-11-10), each with a response_model."""
     from api.main import app
 
     routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path.startswith("/api/admin")]
     missing = sorted(f"{sorted(r.methods)} {r.path}" for r in routes if r.response_model is None)
-    assert len(routes) == 13
+    assert len(routes) == 16
     assert missing == []
 
 
