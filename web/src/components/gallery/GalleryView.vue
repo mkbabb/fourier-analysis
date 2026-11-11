@@ -28,9 +28,11 @@ import { prefetchRoute } from "@/router";
 const loadAdminUserList = () => import("@/components/admin/AdminUserList.vue");
 const loadAdminFlaggedPanel = () => import("@/components/admin/AdminFlaggedPanel.vue");
 const loadAdminAuditLog = () => import("@/components/admin/AdminAuditLog.vue");
+const loadAdminTokens = () => import("@/components/admin/AdminTokens.vue");
 const AdminUserList = defineAsyncComponent(loadAdminUserList);
 const AdminFlaggedPanel = defineAsyncComponent(loadAdminFlaggedPanel);
 const AdminAuditLog = defineAsyncComponent(loadAdminAuditLog);
+const AdminTokens = defineAsyncComponent(loadAdminTokens);
 
 const route = useRoute();
 const router = useRouter();
@@ -39,7 +41,7 @@ const gallery = useGalleryStore();
 const auth = useAuthStore();
 const { isLoggedIn } = storeToRefs(auth);
 
-type GalleryTab = "gallery" | "drafts" | "users" | "flagged" | "audit";
+type GalleryTab = "gallery" | "drafts" | "users" | "flagged" | "audit" | "tokens";
 const activeTab = ref<GalleryTab>("gallery");
 /**
  * X·F F.W4 `.d` — GCM-3 (the GCM restore family's core): the modal held a
@@ -76,6 +78,7 @@ const tabOptions = computed(() => {
             { label: "Users", value: "users" },
             { label: "Flagged", value: "flagged" },
             { label: "Audit Log", value: "audit" },
+            { label: "Tokens", value: "tokens" },
         );
     }
     return tabs;
@@ -330,7 +333,7 @@ watch(
     () => gallery.adminMode,
     (on) => {
         // A failed prefetch is not reported here: the panel's own load retries and reports it.
-        if (on) for (const load of [loadAdminUserList, loadAdminFlaggedPanel, loadAdminAuditLog]) void load().catch(() => {});
+        if (on) for (const load of [loadAdminUserList, loadAdminFlaggedPanel, loadAdminAuditLog, loadAdminTokens]) void load().catch(() => {});
     },
     { immediate: true },
 );
@@ -546,6 +549,11 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
         <!-- Audit Log tab (admin-only) -->
         <template v-if="activeTab === 'audit' && gallery.adminMode">
             <AdminAuditLog />
+        </template>
+
+        <!-- API tokens tab (admin-only) -->
+        <template v-if="activeTab === 'tokens' && gallery.adminMode">
+            <AdminTokens />
         </template>
 
         <GalleryCardModal
