@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { rmSync } from "node:fs";
+import { copyFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import latexPaperPlugin from "@mkbabb/latex-paper/vite";
@@ -25,6 +25,27 @@ function withoutPhotographs(): Plugin {
     };
 }
 
+/**
+ * The build writes `404.html` (the shell). With it, Pages answers a path the
+ * build does not hold, and that `_redirects` does not name as a route, with
+ * 404 and no long cache, not with the shell as 200: a missing `/assets/*` file
+ * is never cached as HTML. An unknown page still gets the shell, whose router
+ * renders the not-found card.
+ */
+function notFoundPage(): Plugin {
+    let outDir = "";
+    return {
+        name: "fourier:not-found-page",
+        apply: "build",
+        configResolved(config) {
+            outDir = resolve(config.root, config.build.outDir);
+        },
+        closeBundle() {
+            copyFileSync(join(outDir, "index.html"), join(outDir, "404.html"));
+        },
+    };
+}
+
 export default defineConfig({
     plugins: [
         latexPaperPlugin({
@@ -42,6 +63,7 @@ export default defineConfig({
         }),
         vue(),
         withoutPhotographs(),
+        notFoundPage(),
     ],
     base: process.env.VITE_BASE_URL || "/",
     resolve: {

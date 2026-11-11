@@ -1,1 +1,22 @@
-/*    /index.html    200
+# The SPA's routes (web/src/router/routes.ts), each answered by the shell.
+# A path named nowhere here and absent from the build is answered by 404.html
+# (the same shell, status 404, no long cache): a missing /assets/* file is never
+# cached as HTML, and an unknown page renders the not-found card. A new route
+# needs its line here, or it is served with status 404.
+#
+# The target is `/`, not `/index.html`: Pages answers a rewrite to /index.html
+# from a fixed path with a 308 to `/`, which loses the route.
+/paper        /  200
+/paper/       /  200
+/visualize    /  200
+/visualize/   /  200
+/w            /  200
+/w/*          /  200
+/v/*          /  200
+/gallery      /  200
+/gallery/     /  200
+/equation     /  200
+/equation/    /  200
+/morph        /  200
+/morph/       /  200
+/s/*          /  200
