@@ -196,12 +196,18 @@ start_backend() {
     track $!
 }
 start_frontend() {
+    # @mkbabb/fourier: the SPA resolves packages/fourier's built dist/; build
+    # it once, then keep it current while vite runs.
+    npm --prefix packages/fourier run build >"$LOG_DIR/fourier-pkg.log" 2>&1
+    npm --prefix packages/fourier run build:watch >>"$LOG_DIR/fourier-pkg.log" 2>&1 &
+    track $!
     VITE_PROXY_API="http://localhost:$BACKEND_PORT" \
         npx --prefix web vite web --port "$FRONTEND_PORT" --strictPort >"$LOG_DIR/web.log" 2>&1 &
     track $!
 }
 do_build() {
-    log "building SPA (npm run build in web/)..."
+    log "building @mkbabb/fourier, then the SPA (npm run build in web/)..."
+    npm --prefix packages/fourier run build
     npm --prefix web run build
 }
 do_test() {

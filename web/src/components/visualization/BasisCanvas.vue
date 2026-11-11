@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
-import { fourierPositionsAt, evaluateFourier } from "@/lib/evaluators";
+import { chainAt, evaluateAt, fromComponents } from "@mkbabb/fourier";
 import { VIZ_COLORS } from "@/lib/colors";
 import { basisDisplay } from "./lib/basis-display";
 import { normalizeBasisKey } from "@/lib/basis";
@@ -41,6 +41,12 @@ const props = withDefaults(
 );
 
 const store = useWorkspaceStore();
+// The chain as a spectrum, once per result. The API sends its components in
+// descending amplitude, the order `chainAt` walks, so `components[i]` is the
+// i-th vector of the chain.
+const epicycleSpectrum = computed(() =>
+    store.epicycleData ? fromComponents(store.epicycleData.components) : null,
+);
 const anim = useAnimationStore();
 const canvasRef = ref<HTMLCanvasElement>();
 const containerRef = ref<HTMLDivElement>();
@@ -183,29 +189,32 @@ function drawEpicycleFrame(
     }
 
     const components: BasisComponent[] = data.components;
+    const spectrum = epicycleSpectrum.value;
+    if (!spectrum) return;
     const nVis = Math.min(maxCircles.value, components.length);
 
     // Single pass over the full chain: the tip is the last cumulative
     // position; the visible-circles overlay is the same array sliced.
     // (Prior implementation traversed N components twice per frame.)
-    const allPositions = fourierPositionsAt(components, anim.t, components.length);
-    const tip = allPositions[allPositions.length - 1];
+    const allPositions = chainAt(spectrum, anim.t, components.length);
+    const tipX = allPositions[allPositions.length - 2];
+    const tipY = allPositions[allPositions.length - 1];
 
     // Trail: the fourier identity hue, at rest and on hover (the golden
     // hover re-ink was deleted at X-DS pass 1, F1-05).
-    trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
+    trail.update(anim.t, tipX, tipY, anim.scrubbing, spectrum);
     if (layers.trail) trail.draw(s, view, trailColor);
 
     // Epicycle circles — prefix of the cumulative-position array
     const visPositions = nVis === components.length
         ? allPositions
-        : allPositions.slice(0, nVis + 1);
+        : allPositions.subarray(0, 2 * (nVis + 1));
     const isDesktop = s.width >= 768;
     const currentScale = hover.getScale();
     const eAlpha = epicycleAlphaFromScale(currentScale);
 
     if (!stableEpicycleBbox) {
-        stableEpicycleBbox = computeStableEpicycleBbox(components, nVis, view.toScreen, view.scale);
+        stableEpicycleBbox = computeStableEpicycleBbox(spectrum, components, nVis, view.toScreen, view.scale);
     }
 
     let fit: EpicycleFit | null = null;
@@ -238,11 +247,11 @@ function drawEpicycleFrame(
     if (layers.epicycles) {
         // Connecting line
         if (fit) {
-            drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+            drawConnectingLine(s, view, visPositions, tipX, tipY, fit, eAlpha);
         }
 
         // Tip dot
-        drawTipDot(s, view, tip[0], tip[1]);
+        drawTipDot(s, view, tipX, tipY);
     }
 
     // Label with hit regions for hover detection
@@ -359,14 +368,14 @@ function drawMultiBasesFrame(
                     ctx.lineTo(sx, sy);
                 }
             }
-        } else if (basisName === "fourier" && epicycleData) {
+        } else if (basisName === "fourier" && epicycleData && epicycleSpectrum.value) {
             // Fallback: client-side evaluation
-            const components: BasisComponent[] = epicycleData.components;
-            const nTerms = Math.min(level, components.length);
+            const spectrum = epicycleSpectrum.value;
+            const nTerms = Math.min(level, epicycleData.components.length);
             const nEval = 800;
             for (let i = 0; i <= nEval; i++) {
                 const tEval = i / nEval;
-                const [re, im] = evaluateFourier(components, tEval, nTerms);
+                const [re, im] = evaluateAt(spectrum, tEval, nTerms);
                 const [sx, sy] = view.toScreen(re, im);
                 if (i === 0) ctx.moveTo(sx, sy);
                 else ctx.lineTo(sx, sy);
@@ -378,32 +387,34 @@ function drawMultiBasesFrame(
 
     // Epicycle trail + tip + hover overlay when fourier-epicycles is active
     const hasEpicyclesMode = props.activeBases.includes("fourier-epicycles");
-    if (hasEpicyclesMode && epicycleData) {
+    const spectrum = epicycleSpectrum.value;
+    if (hasEpicyclesMode && epicycleData && spectrum) {
         const components: BasisComponent[] = epicycleData.components;
         const nVis = Math.min(maxCircles.value, components.length);
-        const allPositions = fourierPositionsAt(components, anim.t, components.length);
-        const tip = allPositions[allPositions.length - 1];
+        const allPositions = chainAt(spectrum, anim.t, components.length);
+        const tipX = allPositions[allPositions.length - 2];
+        const tipY = allPositions[allPositions.length - 1];
 
         const epicycleHovered = hoveredBasis === "fourier-epicycles";
         const epicycleColor = VIZ_COLORS.fourier;
 
         // Trail
-        trail.update(anim.t, tip[0], tip[1], anim.scrubbing, components);
+        trail.update(anim.t, tipX, tipY, anim.scrubbing, spectrum);
         if (layers.trail) trail.draw(s, view, epicycleColor);
 
         // Tip dot
-        if (layers.epicycles) drawTipDot(s, view, tip[0], tip[1]);
+        if (layers.epicycles) drawTipDot(s, view, tipX, tipY);
 
         // Epicycle overlay — prefix slice, no recomputation
         const visPositions = nVis === components.length
             ? allPositions
-            : allPositions.slice(0, nVis + 1);
+            : allPositions.subarray(0, 2 * (nVis + 1));
         const isDesktop = width >= 768;
         const currentScale = hover.getScale();
         const eAlpha = epicycleAlphaFromScale(currentScale);
 
         if (!stableEpicycleBbox) {
-            stableEpicycleBbox = computeStableEpicycleBbox(components, nVis, view.toScreen, view.scale);
+            stableEpicycleBbox = computeStableEpicycleBbox(spectrum, components, nVis, view.toScreen, view.scale);
         }
 
         let fit: EpicycleFit | null = null;
@@ -427,7 +438,7 @@ function drawMultiBasesFrame(
                 h: fit.scaledH,
             };
             if (layers.epicycles) {
-                drawConnectingLine(s, view, visPositions, tip[0], tip[1], fit, eAlpha);
+                drawConnectingLine(s, view, visPositions, tipX, tipY, fit, eAlpha);
             }
         }
     }
@@ -452,8 +463,8 @@ watch(
         stableEpicycleBbox = null;
         baseFitCenter = null;
 
-        if (store.epicycleData) {
-            trail.precompute(store.epicycleData.components);
+        if (epicycleSpectrum.value) {
+            trail.precompute(epicycleSpectrum.value);
         } else {
             trail.reset();
         }

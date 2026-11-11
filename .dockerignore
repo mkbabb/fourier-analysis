@@ -16,3 +16,5 @@ dist
 build
 .pytest_cache
 .mypy_cache
+packages/fourier/node_modules
+packages/fourier/dist

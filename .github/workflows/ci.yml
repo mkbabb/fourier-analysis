@@ -119,7 +119,15 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            packages/fourier/package-lock.json
+      # @mkbabb/fourier (packages/fourier): the web app links it as
+      # `file:../packages/fourier` and resolves its built dist/, so it is
+      # tested and built before the web deps install.
+      - name: "@mkbabb/fourier: install, typecheck, test, build"
+        working-directory: packages/fourier
+        run: npm ci && npm run typecheck && npm test && npm run build
       - name: Install web deps
         working-directory: web
         run: npm ci
@@ -334,9 +342,14 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            packages/fourier/package-lock.json
       - name: Install Python deps
         run: uv sync --extra web
+      - name: "@mkbabb/fourier: build (the web app links its dist/)"
+        working-directory: packages/fourier
+        run: npm ci && npm run build
       # `.m2`: inside the job container `uname -r` is the runner's kernel.
       - name: The cell of record (kernel + live mongod version)
         run: |

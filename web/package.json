@@ -16,6 +16,7 @@
     },
     "dependencies": {
         "@lucide/vue": "^1.16.0",
+        "@mkbabb/fourier": "file:../packages/fourier",
         "@mkbabb/glass-ui": "11.0.0",
         "@mkbabb/keyframes.js": "6.3.0",
         "@mkbabb/latex-paper": "0.3.1",

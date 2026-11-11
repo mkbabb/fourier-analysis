@@ -3,7 +3,6 @@
  *
  * All Fourier decompositions are pre-computed in Python and shipped as
  * static JSON. This module handles:
- * - Converting partial-sum point arrays to SVG path `d` strings
  * - Interpolating between two same-length point arrays
  * - Selecting the right harmonic level for a given animation t
  */
@@ -44,69 +43,9 @@ function xyToPoints(xy: { x: number[]; y: number[] }): [number, number][] {
     return xy.x.map((x, i): [number, number] => [x, xy.y[i]]);
 }
 
-/**
- * Convert a point array to a closed SVG path `d` string using Catmull-Rom
- * smoothing, with modular indexing so tangents wrap at the seam.
- *
- * X.F.W4 · FM-22 (= FR-AH-53) — THE `closed = false` BRANCH IS DELETED, and the
- * `catmullRomToBezier` import with it. The parameter defaulted to `true` and
- * the tree-wide caller census is exactly two, both single-argument
- * (`useFourierMorph.ts` and `HarmonicLevelGrid.vue`), so the open branch was
- * unreachable APP-WIDE and the producer edge behind it was dead code riding
- * every bundle that touched this module.
- * ⊘ HLG-43's repair hazard is respected: `@mkbabb/pencil-boil` is NOT removable
- * as a dependency. X.F.W3 `.e` CORRECTS THIS CELL AT THE BYTES: `SvgFilters.vue`
- * was deleted with `fr-App L-5`⊕`L-8`⊕`m-1`, so the consumer list is now ONE —
- * ⟨cmd⟩ this seat, 2026-09-19, `grep -rn 'pencil-boil' src` →
- * `FourierShapeExtractor.vue:155` alone. The conclusion is unchanged and that is
- * why the cell is corrected rather than deleted: one live consumer keeps the
- * dependency, and only this EDGE dies.
- *
- * X.F.W4 · SP-19 — DMT N-14's 2dp EMISSION ⊕ FMD-N6's precision leg, in the one
- * place that can carry them.
- *
- * Every coordinate was emitted at full float64 — 17 significant digits per
- * number — into a `0 0 200 200` viewBox rendered at ≤180px. That is ~57 K chars
- * per path, rebuilt and re-parsed by the engine on every frame of a morph
- * (~1.2 MB of transient text per toggle) and ~667.6 KiB resident across the
- * twelve-cell strip. Rounding the INPUT points does not fix it: the Catmull-Rom
- * control points are computed from them here, so full precision comes straight
- * back in the arithmetic — the rounding has to happen at EMISSION, which is
- * this function.
- *
- * Two decimals is 0.01 user units, i.e. **0.0022px** at the toggle's 44px box
- * and 0.009px at the strip's 200px — below what any display can resolve, and
- * the figure DMT N-14 names.
- */
-const EMIT_DP = 2;
-
-/** Emit a coordinate at the ladder's resolution, without trailing zeros. */
-function n(v: number): string {
-    return String(Number(v.toFixed(EMIT_DP)));
-}
-
-export function pointsToSvgPath(points: [number, number][]): string {
-    if (points.length < 2) return "";
-
-    const count = points.length;
-    let d = `M${n(points[0][0])},${n(points[0][1])}`;
-
-    for (let i = 0; i < count; i++) {
-        const p0 = points[(i - 1 + count) % count];
-        const p1 = points[i];
-        const p2 = points[(i + 1) % count];
-        const p3 = points[(i + 2) % count];
-
-        const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
-        const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
-        const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
-        const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
-
-        d += ` C${n(cp1x)},${n(cp1y)} ${n(cp2x)},${n(cp2y)} ${n(p2[0])},${n(p2[1])}`;
-    }
-
-    return d + " Z";
-}
+// The SVG emission (Catmull-Rom through every point, 2dp at emission: X.F.W4
+// SP-19 / DMT N-14) is `svgPathOf` in @mkbabb/fourier, byte-identical to the
+// `pointsToSvgPath` it replaces.
 
 /**
  * Pre-process a FourierPathData into a FourierShape with cached point arrays.

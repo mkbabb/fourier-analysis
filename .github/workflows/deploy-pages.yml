@@ -101,7 +101,13 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            packages/fourier/package-lock.json
+
+      - name: "@mkbabb/fourier: build (the web app links its dist/)"
+        working-directory: packages/fourier
+        run: npm ci && npm run build
 
       - name: Install web deps
         working-directory: web

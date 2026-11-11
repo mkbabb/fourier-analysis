@@ -99,6 +99,9 @@ for i in $(seq 1 30); do
     [[ "$i" -eq 30 ]] && { echo "ERROR: backend health timed out"; exit 1; }
 done
 
+# @mkbabb/fourier: the SPA resolves packages/fourier's built dist/.
+npm --prefix packages/fourier run build
+
 VITE_PROXY_API="http://localhost:$API_PORT" \
     npx --prefix web vite web --port "$WEB_PORT" --strictPort &
 PIDS+=($!)

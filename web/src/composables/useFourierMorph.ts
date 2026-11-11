@@ -12,10 +12,10 @@
 
 import { ref, computed, onUnmounted, type Ref } from "vue";
 import { loadAnimationEngine, type KeyframesAnimation } from "@mkbabb/keyframes.js";
+import { svgPathOf } from "@mkbabb/fourier";
 import {
     interpolateAtHarmonicLevel,
     lerpPoints,
-    pointsToSvgPath,
     type FourierShape,
 } from "@/lib/svg-fourier";
 
@@ -138,7 +138,7 @@ export function useFourierMorph(options: UseFourierMorphOptions = {}) {
 
     const phase: Ref<MorphPhase> = ref("idle");
     const currentPoints: Ref<[number, number][]> = ref([]);
-    const currentPath = computed(() => pointsToSvgPath(currentPoints.value));
+    const currentPath = computed(() => svgPathOf(currentPoints.value.flat()));
     const harmonicLevel = ref(config.value.highLevel);
     /** 0 = fully "from" shape, 1 = fully "to" shape. Updated during morphTo(). */
     const morphProgress = ref(0);

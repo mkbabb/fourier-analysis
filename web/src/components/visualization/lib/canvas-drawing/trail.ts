@@ -1,5 +1,4 @@
-import { evaluateFourier } from "@/lib/evaluators";
-import type { BasisComponent } from "@/lib/types";
+import { evaluateAt, type Spectrum } from "@mkbabb/fourier";
 import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import type { ViewTransform } from "./types";
 
@@ -15,12 +14,12 @@ export class TrailManager {
     private preX: Float64Array | null = null;
     private preY: Float64Array | null = null;
 
-    precompute(components: BasisComponent[]): void {
+    precompute(spectrum: Spectrum): void {
         const n = TRAIL_RESOLUTION;
         this.preX = new Float64Array(n + 1);
         this.preY = new Float64Array(n + 1);
         for (let i = 0; i <= n; i++) {
-            const [re, im] = evaluateFourier(components, i / n);
+            const [re, im] = evaluateAt(spectrum, i / n);
             this.preX[i] = re;
             this.preY[i] = im;
         }
@@ -51,7 +50,7 @@ export class TrailManager {
         tipX: number,
         tipY: number,
         scrubbing: boolean,
-        components: BasisComponent[],
+        spectrum: Spectrum,
     ): void {
         const continuous =
             this.lastT >= 0 &&
@@ -73,7 +72,7 @@ export class TrailManager {
                 const nPts = Math.max(2, Math.ceil(t * 600));
                 for (let i = 0; i <= nPts; i++) {
                     const tEval = (i / nPts) * t;
-                    const [re, im] = evaluateFourier(components, tEval);
+                    const [re, im] = evaluateAt(spectrum, tEval);
                     this.x.push(re);
                     this.y.push(im);
                 }

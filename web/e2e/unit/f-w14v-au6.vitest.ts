@@ -43,10 +43,14 @@ describe("A2-FO-L1-21 — no toast compatibility shim", () => {
 });
 
 describe("A2-FO-L1-22 — no dead library code, no dead components", () => {
-    it("the superseded client-side multi-basis evaluation is deleted; the one evaluators module keeps the Fourier pair", async () => {
+    it("the superseded client-side multi-basis evaluation is deleted; the Fourier pair lives in @mkbabb/fourier", async () => {
         expect(has("/src/lib/bases.ts")).toBe(false);
-        const evaluators = await import("@/lib/evaluators");
-        expect(Object.keys(evaluators).sort()).toEqual(["evaluateFourier", "fourierPositionsAt"]);
+        // 2026-11-10 (@mkbabb/fourier 0.1.0): `src/lib/evaluators.ts` moved
+        // into the package as `evaluateAt`/`chainAt` (one-fourier-engine.vitest.ts).
+        expect(has("/src/lib/evaluators.ts")).toBe(false);
+        const fourier = await import("@mkbabb/fourier");
+        expect(typeof fourier.evaluateAt).toBe("function");
+        expect(typeof fourier.chainAt).toBe("function");
     });
 
     it("the draft store keeps no caller-less loader", async () => {
