@@ -113,8 +113,9 @@ jobs:
         working-directory: web
         run: npm ci
 
-      # Belt-and-braces type-check (the full pytest / e2e suites already ran +
-      # passed in the CI run that GATES this deploy — inv-28).
+      # Belt-and-braces type-check (the pytest suite and the web checks already
+      # ran + passed in the CI run that GATES this deploy — inv-28; the
+      # Playwright suite runs locally, scripts/preship.sh).
       - name: Type-check
         working-directory: web
         run: npx vue-tsc -b --force

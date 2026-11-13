@@ -1,36 +1,25 @@
 # D.W6 — CI workflow.
 #
-# Four jobs run on push / PR against the default branch (the fourth added by
-# X·F F.W9 `.c`, `G-F9-17`):
+# Owner order 2026-11-13: CI runs only cheap checks and no browser. Jobs on
+# push / PR against the default branch:
 #
-#   1. api-tests      — uv run pytest api/tests/ with an ephemeral Mongo
-#                       service container so the ~82 @requires_mongo
-#                       decorators actually exercise live Mongo (instead of
-#                       silently skipping as they do without the service).
-#                       Target floor: 211 passed (the 129 always-on + the
-#                       formerly-skipped 82 now-running). A small honest
-#                       residual is acceptable for tests that legitimately
-#                       require replica-set topology.
+#   1. api-tests      — uv run pytest api/ with an ephemeral Mongo service
+#                       container so the @requires_mongo tests run live.
 #
-#   2. web-build      — vue-tsc + vite build. Cheap; no Mongo needed.
+#   2. web-build      — unit floor, vue-tsc, lint, vite build. No Mongo.
 #
-#   3. e2e-tests      — Playwright against the local Vite dev server, with
-#                       the backend launched under COMPUTE_RATE_LIMIT=1000 so
-#                       the contour-extraction suite doesn't 429-cascade.
-#                       Mongo service container provided here too so the
-#                       backend can boot cleanly.
-#
-#   4. prod-compose   — X·F F.REL `.h`. Builds the production images and boots
+#   3. prod-compose   — X·F F.REL `.h`. Builds the production images and boots
 #                       docker-compose.prod.yml under its full hardening; the
 #                       deploy gate's liveness + readiness probes must answer
 #                       (scripts/prod-compose-smoke.sh).
 #
-#   5. inv-27-evidence — X·F F.W9 `.c`, `G-F9-17`. Mints ONE durable, citable
+#   4. inv-27-evidence — X·F F.W9 `.c`, `G-F9-17`. Mints ONE durable, citable
 #                       record — run id, run attempt, covering commit SHA, and
 #                       every gating job's own conclusion — and mints it ONLY
-#                       for a run in which all four concluded `success`. It
-#                       is what makes *"cite a covering green run id"* an act
-#                       a later seat can perform instead of assert.
+#                       for a run in which all three concluded `success`.
+#
+# The Playwright suite (web/e2e, formerly the `e2e-tests` job) runs locally
+# before a ship: `bash scripts/preship.sh`.
 #
 # No secrets: the test runs need no inbound credentials, and nothing here
 # deploys. The API deploy request is NOT a job in this file (X §0hc.3): a job
@@ -44,9 +33,19 @@ name: CI
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
     branches: [master]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   api-tests:
@@ -309,175 +308,6 @@ jobs:
         working-directory: web
         run: npm run build
 
-  e2e-tests:
-    name: e2e (Playwright, COMPUTE_RATE_LIMIT=1000)
-    runs-on: ubuntu-22.04
-    # X·F F.REL `.vb2` (value.js COHESION §0fk.2 (b)): the job runs IN the
-    # renderer the visual goldens are minted and read on, so one renderer of
-    # record serves both the local `*-linux.png` mint and this gate (CI never
-    # mints goldens). The tag is the `@playwright/test` version in
-    # web/package-lock.json; the image bakes that version's browsers, so a bump
-    # there moves this tag in the same commit. Inside a job container the
-    # service is reached by its name, not by a host port mapping.
-    container:
-      image: mcr.microsoft.com/playwright:v1.61.0-noble
-    services:
-      mongo:
-        image: mongo:8.0.20
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' || mongo --quiet --eval 'db.runCommand({ping:1}).ok'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      # NO submodules: `docs/precepts` (private mkbabb/precepts) is docs-only,
-      # inaccessible to the Actions token, and read by no test/build — fetching it
-      # was the chronic that kept every CI run red.
-      - uses: actions/checkout@v4
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          version: "latest"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: |
-            web/package-lock.json
-            packages/fourier/package-lock.json
-      - name: Install Python deps
-        run: uv sync --extra web
-      - name: "@mkbabb/fourier: build (the web app links its dist/)"
-        working-directory: packages/fourier
-        run: npm ci && npm run build
-      # `.m2`: inside the job container `uname -r` is the runner's kernel.
-      - name: The cell of record (kernel + live mongod version)
-        run: |
-          echo "kernel $(uname -r)"
-          uv run python -c "from pymongo import MongoClient; print('mongod', MongoClient('mongodb://mongo:27017', serverSelectionTimeoutMS=15000).server_info()['version'])"
-      - name: Install web deps
-        working-directory: web
-        run: npm ci
-      # The browsers and their system deps are baked into the container image;
-      # this step proves the package and the image agree instead of installing.
-      - name: Playwright matches the container image
-        working-directory: web
-        run: test "$(npx playwright --version)" = "Version 1.61.0"
-      - name: Launch backend (COMPUTE_RATE_LIMIT harness)
-        env:
-          MONGO_URI: mongodb://mongo:27017/fourier
-          # D.W6 — the e2e env raises compute_rate_limit via env var so the
-          # 49-spec contour-extraction suite doesn't 429-cascade. The prod
-          # api/config.py:23 default stays at 5; the override is env-only.
-          COMPUTE_RATE_LIMIT: "1000"
-          # H.W1 — the mutating e2e specs issue dozens of writes; raise the write
-          # budget for the e2e arm (sibling of COMPUTE_RATE_LIMIT) so the suite
-          # doesn't 429-cascade. Prod default (api/config.py write_rate_limit=10)
-          # is byte-identical; the override is env-only.
-          WRITE_RATE_LIMIT: "1000"
-          # H.W1 — the upload handler's _blob_dir() mkdir's settings.blob_dir; the
-          # prod default (/data/blobs) is NOT writable on the CI runner (creating
-          # /data needs root), so every POST /api/images 500'd and the SPA never
-          # navigated to /w/ — failing every upload-dependent spec. (The dead e2e
-          # gate masked this under the older locator failure.) Point blobs at a
-          # writable runner tmp dir for the e2e arm.
-          BLOB_DIR: /tmp/fourier-e2e-blobs
-          CORS_ORIGINS: "http://localhost:3000"
-        run: |
-          nohup uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
-          echo $! > /tmp/backend.pid
-          for i in $(seq 1 30); do
-            if curl -fsS http://localhost:8000/api/health >/dev/null 2>&1; then
-              echo "Backend healthy on :8000 (attempt $i)"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Backend failed to start"; cat /tmp/backend.log; exit 1
-      - name: Launch vite dev server
-        working-directory: web
-        env:
-          VITE_PROXY_API: "http://localhost:8000"
-        run: |
-          nohup npx vite --port 3000 --strictPort > /tmp/vite.log 2>&1 &
-          echo $! > /tmp/vite.pid
-          for i in $(seq 1 30); do
-            if curl -fsS http://localhost:3000 >/dev/null 2>&1; then
-              echo "Vite serving on :3000 (attempt $i)"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Vite failed to start"; cat /tmp/vite.log; exit 1
-      # F.REL `.w` (value.js COHESION §0ew ESC-FREL-g-2) — the gate below excludes
-      # EXACTLY the rows of `web/e2e/producer-held.json` (playwright.config.ts reads
-      # that file and nothing else for the set), and this step prints them on every
-      # run, to the log and to the job summary: test id, O-id, expiry. Every other
-      # e2e failure blocks the deploy.
-      - name: Producer-held manifest (excluded from the gate below)
-        working-directory: web
-        run: |
-          node -e '
-            const m = JSON.parse(require("fs").readFileSync("e2e/producer-held.json", "utf8"));
-            const lines = m.rows.map((r) => `| ${r.test} | ${r.o} | ${r.expiry} |`);
-            const out = [`Producer-held e2e rows excluded from the gate: ${m.rows.length}`, "", "| test | O-id | expiry |", "|---|---|---|", ...lines].join("\n");
-            console.log(out);
-            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## e2e — producer-held manifest\n\n${out}\n`);
-          '
-      - name: Run Playwright e2e
-        working-directory: web
-        env:
-          BASE_URL: "http://localhost:3000"
-        # X·F F.W9 `.b` (`G-F9-13`): the matrix carries TWO cells now. The step
-        # named only `chromium`, so adding the coarse project to the config
-        # alone would have left it unrun — an instrument nobody invokes. Both
-        # are named explicitly rather than by omission, so a third cell is a
-        # deliberate edit here and not a silent inheritance.
-        #
-        # ⊘ `mobile-chromium` is Chromium under `Pixel 7` emulation. It
-        # discharges NO Safari cell (`X-W11 G8`).
-        #
-        # F.REL `.vb2` (§0fk.2 (c)): `list` alone wrote no `playwright-report/`,
-        # so the upload below had nothing to carry and a CI RED came without
-        # its frames. `html` writes the report (actual/expected/diff PNGs and
-        # traces); `PLAYWRIGHT_HTML_OPEN=never` keeps it from serving it.
-        run: PLAYWRIGHT_HTML_OPEN=never npx playwright test --project=chromium --project=mobile-chromium --reporter=list,html
-      # F.REL `.g`/`.w` — the producer-held set (`web/e2e/producer-held.json`, read by
-      # web/playwright.config.ts: glass ADOPT-AT-LANDING rows, excluded from the two
-      # gating cells above). Run, never skipped: `e2e/honest-red-reporter.ts` passes only
-      # when every row is still RED on its own token, and fails the job the day a row
-      # turns green (adopt it) or stops matching a test.
-      - name: Producer-held set (glass ADOPT-AT-LANDING rows) — still RED as declared
-        if: ${{ !cancelled() }}
-        working-directory: web
-        env:
-          BASE_URL: "http://localhost:3000"
-        run: npx playwright test --project=honest-red --reporter=list,./e2e/honest-red-reporter.ts
-      - name: Tear down (always)
-        if: always()
-        run: |
-          [[ -f /tmp/vite.pid ]] && kill "$(cat /tmp/vite.pid)" 2>/dev/null || true
-          [[ -f /tmp/backend.pid ]] && kill "$(cat /tmp/backend.pid)" 2>/dev/null || true
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: web/playwright-report/
-          retention-days: 7
-      # X·F realization (UIA-F-15 in CI 41965034924 / 41978984329): a trace
-      # shows a request the backend never answered, and nothing showed what
-      # the backend was doing. The backend's own log (uvicorn access lines,
-      # timings, tracebacks) travels with the report, so a CI RED that only
-      # the runner reproduces comes with both halves of its evidence.
-      - name: Upload backend log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-log
-          path: /tmp/backend.log
-          retention-days: 7
-
   # ── X·F F.REL `.h` — the production stack boots healthy ────────────────────
   #
   # From H.W4 (2026-06) to F.REL .h every master push failed the host's deploy
@@ -569,7 +399,7 @@ jobs:
   # serialises the oracle; it never becomes one.
   #
   # FAIL-CLOSED, TWICE. First by `needs:` — GitHub will not start this job
-  # unless all four gating jobs concluded `success`, so a red run mints no
+  # unless all three gating jobs concluded `success`, so a red run mints no
   # record at all. Second by the assertion step below, which re-reads the three
   # results and exits non-zero on anything but `success`. The second check is
   # redundant TODAY and is here on purpose: the day someone adds `if: always()`
@@ -584,18 +414,17 @@ jobs:
   inv-27-evidence:
     name: inv-27 evidence (covering run id + SHA)
     runs-on: ubuntu-latest
-    needs: [api-tests, web-build, e2e-tests, prod-compose]
+    needs: [api-tests, web-build, prod-compose]
     steps:
       - name: Assert the run is covering-green (fail-closed)
         env:
           API_RESULT: ${{ needs.api-tests.result }}
           WEB_RESULT: ${{ needs.web-build.result }}
-          E2E_RESULT: ${{ needs.e2e-tests.result }}
           PROD_RESULT: ${{ needs.prod-compose.result }}
         run: |
           set -eu
           not_green=0
-          for pair in "api-tests:${API_RESULT}" "web-build:${WEB_RESULT}" "e2e-tests:${E2E_RESULT}" "prod-compose:${PROD_RESULT}"; do
+          for pair in "api-tests:${API_RESULT}" "web-build:${WEB_RESULT}" "prod-compose:${PROD_RESULT}"; do
             job="${pair%%:*}"
             result="${pair#*:}"
             printf '%-12s = %s\n' "$job" "$result"
@@ -605,12 +434,11 @@ jobs:
             echo "inv-27: this run is NOT covering-green — no evidence record is minted." >&2
             exit 1
           fi
-          echo "inv-27: all four gating jobs concluded success."
+          echo "inv-27: all three gating jobs concluded success."
       - name: Emit the inv-27 evidence record
         env:
           API_RESULT: ${{ needs.api-tests.result }}
           WEB_RESULT: ${{ needs.web-build.result }}
-          E2E_RESULT: ${{ needs.e2e-tests.result }}
           PROD_RESULT: ${{ needs.prod-compose.result }}
           GH_REPO: ${{ github.repository }}
           GH_WORKFLOW: ${{ github.workflow }}
@@ -643,7 +471,6 @@ jobs:
             "gating_jobs": {
               "api-tests": "${API_RESULT}",
               "web-build": "${WEB_RESULT}",
-              "e2e-tests": "${E2E_RESULT}",
               "prod-compose": "${PROD_RESULT}"
             }
           }
@@ -660,7 +487,6 @@ jobs:
             echo "| ref | \`${GH_REF_NAME}\` (${GH_EVENT}) |"
             echo "| api-tests | ${API_RESULT} |"
             echo "| web-build | ${WEB_RESULT} |"
-            echo "| e2e-tests | ${E2E_RESULT} |"
             echo "| prod-compose | ${PROD_RESULT} |"
             echo
             echo "Cite as: **run \`${GH_RUN_ID}\` @ \`${GH_SHA}\`** — ${run_url}"

@@ -59,6 +59,7 @@ scripts/*
 !scripts/dev.sh
 !scripts/deploy.sh
 !scripts/e2e.sh
+!scripts/preship.sh
 !scripts/deploy-hook.sh
 !scripts/deploy-alert.sh
 !scripts/deploy-alert-fixture.sh
