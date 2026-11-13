@@ -6,7 +6,8 @@
 #   1. api-tests      — uv run pytest api/ with an ephemeral Mongo service
 #                       container so the @requires_mongo tests run live.
 #
-#   2. web-build      — unit floor, vue-tsc, lint, vite build. No Mongo.
+#   2. web-build      — `npm run ci:actions` in web/: unit floor, vue-tsc,
+#                       lint, vite build. No Mongo.
 #
 #   3. prod-compose   — X·F F.REL `.h`. Builds the production images and boots
 #                       docker-compose.prod.yml under its full hardening; the
@@ -130,183 +131,16 @@ jobs:
       - name: Install web deps
         working-directory: web
         run: npm ci
-      # ── THE UNIT BLOCK RUNS FIRST (X·F F.W9 `.b`, `G-F9-1`) ──────────────
-      #
-      # It used to run LAST, after the type-check and both lint gates. Neither
-      # unit step depends on any of them — they need `node_modules` and nothing
-      # else, and together they take under a second. Sitting behind three
-      # blocking gates meant that on every run where an EARLIER gate was red,
-      # the unit population did not run at all: the job stopped above it. At
-      # the bytes this wave opened on, `npm run lint` was red on three
-      # `no-duplicate-imports` findings owned by F.W3/W4 — so the floor's own
-      # claim, *"the spec population runs in CI"*, was false in practice while
-      # every step was configured correctly.
-      #
-      # Moving the cheapest, most independent gates to the front is fail-fast,
-      # not leniency: nothing is `continue-on-error`, nothing is skipped, and a
-      # red unit run stops the job here exactly as a red lint run stops it
-      # below. The order changes WHICH signal arrives first, never whether the
-      # job fails.
-      - name: Unit-runner seat (X·F F.W0, G-9)
+      # The web gate is ONE script, `web/package.json` `ci:actions`, the same
+      # one a local run calls: the node:test seat (F.W0 G-9), the vitest unit
+      # floor (F.W4 + F.W9 G-F9-1, population asserted by
+      # e2e/unit/unit-floor-population.vitest.ts), vue-tsc, the oxlint floor
+      # (--deny-warnings), eslint, the deriver census, and the build. The
+      # cheapest, independent gates run first. The history of each gate is in
+      # git log for this file.
+      - name: Web gate (npm run ci:actions)
         working-directory: web
-        # `PP-NOTEST (= L-13) ≡ R-20 ≡ fr-App C-13`: `web/` has no unit runner,
-        # and probe-C1b-class defects (valid-and-wrong output — the `PP-LEN`
-        # shape) are catchable by nothing else. R-20 proves Playwright cannot
-        # substitute.
-        #
-        # F.W0 owns the SEAT; F.W9's `G-F9-1` owns the FLOOR (the spec
-        # population and its thresholds). This is ONE asserting spec proving the
-        # seat live and is explicitly NOT coverage — neither gate may be
-        # discharged by the other's evidence.
-        #
-        # The runner is Node's built-in one: already installed (it ships with
-        # the Node this job provisions), already typed by `@types/node` (in the
-        # lock), and therefore already inside the `vue-tsc` scope G-8 widened —
-        # all three of G-9's clauses with ZERO manifest bytes. Requires Node
-        # >= 22.6 for `--experimental-strip-types`; `node-version: "22"` above
-        # resolves to the latest 22.x.
-        run: node --test --experimental-strip-types e2e/unit/figure-dimensions.unit.ts
-      - name: Unit floor (X·F F.W4 G-F4-VITEST + F.W9 G-F9-1)
-        working-directory: web
-        # ONE step, TWO gates, and neither is erased by the other: F.W4's
-        # `G-F4-VITEST` stood the vitest runner up and wired this step; F.W9's
-        # `G-F9-1` lands the FLOOR on top of it — the population and its
-        # thresholds. F.W4's landed gate keeps its name here for that reason.
-        #
-        # THE FLOOR, and its two halves stated where they run.
-        #
-        # POPULATION — three globs, declared in `vitest.config.ts` and asserted
-        # by `e2e/unit/unit-floor-population.vitest.ts`:
-        #   `e2e/unit/**/*.vitest.ts` · `scripts/**/*.vitest.ts` ·
-        #   `src/**/*.test.ts`.
-        # The third was added by this wave. X.F.W3 `.e`'s three `src/lib`
-        # vitest files matched NO runner's glob — not this one, not the
-        # `node:test` seat above, not Playwright — so three files of real
-        # assertions ran in no job at all and nothing reported it. The floor
-        # went 8 files / 57 tests → 12 files / 80 tests when the glob closed.
-        #
-        # THRESHOLDS — blocking, and asserted rather than described:
-        #   · no `continue-on-error`, no `--passWithNoTests`: an empty run is a
-        #     RED run, so a glob that stops matching cannot read as success;
-        #   · the population itself is an assertion — add a test file no runner
-        #     claims and this step reddens on that fact alone. Measured:
-        #     seeding `e2e/orphan-probe.vitest.ts` turned the step red with the
-        #     orphan named, and removing it turned it green again.
-        #
-        # ⊘ TWO RUNNERS, DISCLOSED RATHER THAN SMOOTHED. The step above is
-        # F.W0's `G-9` SEAT (`node:test`, zero manifest bytes — that wave could
-        # not write `web/package.json`). Re-homing its assertions here would
-        # discharge a closed wave's landed gate with this wave's runner, which
-        # `F-W9.md` §2.4's RUNNER-SEAT DISJOINTNESS (R-5) forbids in as many
-        # words. The population assertion knows about the seat and counts its
-        # file as claimed, so the coexistence is measured, not assumed.
-        run: npm test
-      - name: Type-check
-        working-directory: web
-        # X·F F.W0 (G-7 + G-8) — this one command now carries three gates that
-        # did not exist before the wave:
-        #   • G-7 the unused-code gate — `noUnusedLocals` + `noUnusedParameters`
-        #     in `web/tsconfig.json`. `MG-θ` books an entire defect family behind
-        #     their absence; the flags ARE the gate, and `vue-tsc` is what runs
-        #     them, so wiring is by construction here.
-        #   • G-8 the SCOPE widening — `include` now reaches `vite.config.ts`,
-        #     `playwright.config.ts` and `e2e/**/*.ts`. `PP-TSSCOPE`: the only
-        #     type gate in this repo never checked its own build config or its
-        #     own test suite.
-        #   • the DELETIONS the flags surface route to F.W3/W4 — landing the
-        #     gate is this wave's act, driving it is theirs.
-        run: npx vue-tsc -b --force
-      - name: Lint floor (X·F F.W0, G-7)
-        working-directory: web
-        # FR-IC-25 — an unwired gate is an ornament, so the floor lands here and
-        # not in a README. It runs through `npx` at an EXACT pin because
-        # `web/package.json` is reserved to F.W0's unit *a* (§2b) and a
-        # devDependency is a manifest byte this wave may not write; the repo
-        # already invokes its toolchain this way (`npx vue-tsc`, `npx vite`,
-        # `npx playwright`). oxlint is zero-config by design, which is what makes
-        # it landable without an `eslint.config.*` byte either.
-        #
-        # FLOOR SEMANTICS, STATED SO NOTHING IS MASKED: this fails the job on a
-        # `correctness`-category ERROR. The first run over the settled tree found
-        # **0 errors and 18 warnings across 141 files** (measured 2026-09-17,
-        # double-run); every one of the 18 is enumerated in
-        # `docs/tranches/F/SUBSTRATE-LEDGER.md` §3 and routed — none is
-        # suppressed, allowlisted or disabled. Tightening to `--deny-warnings`
-        # is F.W9/W10's act, together with the `lint` npm script (§6b: "the lint
-        # script as a CI gate" is the W9/W10 half).
-        #
-        # ── X·F F.W9 `.b` (`G-F9-2` · §2.4's `M7` row): THE TIGHTENING, TAKEN ──
-        #
-        # The routing above is discharged here. It had to be, because the floor
-        # as it stood could not fail on anything oxlint grades a WARNING, which
-        # is most of what oxlint finds: measured 2026-09-19, seeding a duplicate
-        # object key into a checked file produced *"Found 1 warning and 0
-        # errors"* and **exit 0**. A gate that reports a real defect and exits 0
-        # is the ornament `FR-IC-25` names, so the 0-errors/18-warnings reading
-        # above was a reading of a step that could not redden.
-        #
-        # `--deny-warnings` makes every finding blocking. No `--allow`, no
-        # ignore file, no rule disabled, no `continue-on-error` — the only way
-        # this step goes green is the sites being cured.
-        #
-        # BORN-RED, WITH THE ROSTER PUBLISHED RATHER THAN HIDDEN. Seven findings
-        # remain at the settled bytes (measured 2026-09-19, double-run), all in
-        # `web/src/**` — product source, which F.W9 does not own (*"F.W9 owns
-        # GATES. F.W9 owns no CURE."*). Each routes to whichever wave next opens
-        # its file:
-        #   · `eslint(no-unused-expressions)` ×4 —
-        #       `components/equation/ConvergencePlot.vue:312,331,345`
-        #       `components/visualization/GalleryView.vue:148`
-        #   · `eslint-plugin-unicorn(no-new-array)` ×2 —
-        #       `lib/svg-fourier.ts:44,179`
-        #   · `eslint-plugin-unicorn(no-useless-fallback-in-spread)` ×1 —
-        #       `lib/api.ts:188`
-        # The three findings this floor convicted inside `web/e2e/` — F.W9's own
-        # surface — were CURED before the flag landed
-        # (`workspace-flow.spec.ts`'s non-null assertions on optional chains);
-        # `oxlint e2e` now reads *"Found 0 warnings and 0 errors"*.
-        run: npx --yes oxlint@1.42.0 --deny-warnings src e2e vite.config.ts playwright.config.ts
-      - name: Keyed-loop + duplicate-import gate (X·F F.W4, G-F4-NO-UNUSED)
-        working-directory: web
-        # The ESLint leg of `G-F4-NO-UNUSED`. The gate's OTHER leg —
-        # `noUnusedLocals`/`noUnusedParameters` on the shared tsconfig — landed
-        # at F.W0 `b3b736c` and runs in the `Type-check` step above; F.W4 claims
-        # no credit for it (`greenBeforeCure` #1). This step lands the half the
-        # gate still owed: `vue/require-v-for-key` + `no-duplicate-imports` over
-        # `web/src`, wired, blocking.
-        #
-        # ⊘ oxlint is NOT replaced. It is zero-config and correctness-scoped and
-        # parses no Vue template AST, so it can carry neither of these two rules.
-        # Both floors run; neither discharges the other.
-        #
-        # BORN-RED BY DESIGN, and the roster is published rather than hidden:
-        # 10 `no-duplicate-imports` errors and 0 `vue/require-v-for-key` errors
-        # at the settled bytes (measured 2026-09-18, double-run). Each of the 10
-        # is routed by path to its owning unit in
-        # `<vjs>/docs/tranches/X/execution/C/F-W4.md` §`.g`. No `eslint-disable`,
-        # no `--max-warnings`, no `continue-on-error` — the step goes green when
-        # the sites are cured, and by no other means.
-        run: npm run lint
-      - name: Deriver census (X·F F.W4, G-F4-DERIVER)
-        working-directory: web
-        # The gate's verb is PUBLISH: *"the deriver publishes: native-loop count
-        # BY DIRECTIVE with bounds + multiplicity, `:is` candidate sets,
-        # producer-internal loops from first-party d.ts, `url(#id)` edges,
-        # enclosing disclosure state, loop-source provenance"*. This step is the
-        # publication — the census lands in the job log of every run, so a later
-        # wave reads a dated figure instead of re-deriving one.
-        #
-        # ⊘ IT IS AN INSTRUMENT, NOT A GATE, AND THE DISTINCTION IS DELIBERATE.
-        # It has no pass/fail semantics to mask, so there is nothing here for a
-        # `continue-on-error` to hide — and none is used: if the deriver itself
-        # throws, this step fails, because a census that cannot be produced is
-        # worse than one that reports badly. The ASSERTIONS about its output
-        # live in `scripts/derive-loops.vitest.ts` and run in the blocking unit
-        # floor above.
-        run: npm run derive:loops
-      - name: Build
-        working-directory: web
-        run: npm run build
+        run: npm run ci:actions
 
   # ── X·F F.REL `.h` — the production stack boots healthy ────────────────────
   #

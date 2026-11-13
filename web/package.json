@@ -12,7 +12,8 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:e2e": "playwright test",
-        "test:e2e:ui": "playwright test --ui"
+        "test:e2e:ui": "playwright test --ui",
+        "ci:actions": "node --test --experimental-strip-types e2e/unit/figure-dimensions.unit.ts && vitest run && vue-tsc -b --force && npx --yes oxlint@1.42.0 --deny-warnings src e2e vite.config.ts playwright.config.ts && eslint src && npm run derive:loops && vite build"
     },
     "dependencies": {
         "@lucide/vue": "^1.16.0",
