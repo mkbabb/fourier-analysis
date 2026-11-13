@@ -27,14 +27,14 @@ import vitestConfig from "../../vitest.config";
  * ---------------
  *   1. **No orphans.** Every unit-shaped test file under `web/` is claimed by
  *      a runner — this vitest config, F.W0's `node:test` seat (read out of
- *      `ci.yml`, the step that IS the authority), or Playwright.
+ *      `web/package.json`'s `ci:actions`, the gate CI runs), or Playwright.
  *   2. **No double claims.** A file claimed by two runners runs under two
  *      frameworks; that is a defect of its own, not redundancy.
  *
  * ⊘ ORACLE DISCIPLINE (`KF.W4(d)` — *a gate may not re-derive its own oracle*).
  * Nothing here restates a runner's configuration. The vitest globs are READ
  * from `vitest.config.ts`; the `node:test` seat's operands are READ from
- * `.github/workflows/ci.yml`; Playwright's claim is READ from
+ * `web/package.json`'s `ci:actions` (the gate `.github/workflows/ci.yml` runs); Playwright's claim is READ from
  * `playwright.config.ts`'s `testDir` plus its documented default `testMatch`.
  * The only literal in this file is that default pattern, which the config does
  * not override — stated here with its provenance and asserted absent below, so
@@ -111,9 +111,10 @@ const vitestInclude: string[] = (vitestConfig as { test?: { include?: string[] }
     ?.include ?? [];
 const vitestClaims = vitestInclude.map(globToRegExp);
 
-// ── Runner 2 — F.W0's `node:test` seat, read from the CI step that runs it ──
-const CI_YML = readFileSync(join(REPO, ".github/workflows/ci.yml"), "utf8");
-const nodeTestOperands = [...CI_YML.matchAll(/node --test[^\n]*?([\w./-]+\.[cm]?[jt]s)\b/g)].map(
+// ── Runner 2 — F.W0's `node:test` seat, read from the gate CI runs ─────────
+const CI_GATE: string =
+    JSON.parse(readFileSync(join(WEB, "package.json"), "utf8")).scripts?.["ci:actions"] ?? "";
+const nodeTestOperands = [...CI_GATE.matchAll(/node --test[^\n]*?([\w./-]+\.[cm]?[jt]s)\b/g)].map(
     (m) => m[1]!,
 );
 
@@ -175,5 +176,32 @@ describe("G-F9-1 — the unit floor's population", () => {
                 "under two frameworks:\n" +
                 doubled.map(([f, c]) => `  • web/${f} → ${c.join(" + ")}`).join("\n"),
         ).toEqual([]);
+    });
+});
+
+// Owner order 2026-11-13: no browser runs in any GitHub Action. Playwright is a
+// local pre-ship run (scripts/preship.sh); this keeps a browser job from being
+// added back, and keeps CI on the one shared gate.
+describe("GitHub Actions run no browser", () => {
+    const dir = join(REPO, ".github/workflows");
+    const BROWSER = /playwright(?!\.config)|chromium|webkit|lighthouse|preship|e2e\.sh/i;
+    const workflows = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f));
+
+    it("finds the workflows", () => {
+        expect(workflows).toContain("ci.yml");
+    });
+
+    for (const file of workflows) {
+        it(`${file} launches no browser`, () => {
+            const code = readFileSync(join(dir, file), "utf8")
+                .split("\n")
+                .filter((line) => !line.trimStart().startsWith("#"))
+                .map((line) => line.replace(/\s#\s.*$/, ""));
+            expect(code.filter((line) => BROWSER.test(line))).toEqual([]);
+        });
+    }
+
+    it("CI runs the shared web gate", () => {
+        expect(readFileSync(join(dir, "ci.yml"), "utf8")).toMatch(/run: npm run ci:actions/);
     });
 });
