@@ -5,6 +5,8 @@ import { ADMIN_TOKEN, ADMIN_USERS, ENTRY, stubAdminApi, stubGallery } from "./fi
 import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { seededViz, type SeededViz } from "./fixtures/seed";
 import { showView, selectTab } from "./fixtures/workspace";
+import { openAppDock } from "./fixtures/app-dock";
+import { JOB_EVENTS, isJobStream } from "./fixtures/jobs";
 
 /**
  * X.F.W14.u — the UIA-F register (`value.js/docs/tranches/X/audit/UI-AUDIT-fourier.md`).
@@ -295,14 +297,15 @@ test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
 // it left edit mode, so the editor's panel stayed up for as long as
 // compute/bases ran; when it finally swapped, the Harmonics field was a fresh
 // element at the default, and a Backspace typed meanwhile was lost. A held
-// compute/bases answer stands in for a slow CI runner.
+// recompute stands in for a slow CI runner (O16: the recompute is a contour
+// job; its events stream is what is held).
 test.describe("UIA-F-15 — Save-and-leave leaves when the save lands, not when the recompute does", () => {
     test("with compute/bases held, edit mode ends at once and the Harmonics field keeps its Backspace", async ({ page }) => {
         const { point } = await openEditor(page);
         let hold = false;
         let release!: () => void;
         const released = new Promise<void>((r) => (release = r));
-        await page.route("**/compute/bases", async (route) => {
+        await page.route(JOB_EVENTS, async (route) => {
             if (hold) await released;
             await route.continue().catch(() => {});
         });
@@ -323,9 +326,9 @@ test.describe("UIA-F-15 — Save-and-leave leaves when the save lands, not when 
         await expect(field).toHaveAttribute("aria-valuenow", typed);
 
         // The recompute then lands, and the field still holds what was typed.
-        const landed = page.waitForResponse((r) => r.url().endsWith("/compute/bases"));
+        const landed = page.waitForResponse(isJobStream);
         release();
-        await landed;
+        await (await landed).finished();
         await page.waitForTimeout(1500);
         await expect(field).toHaveAttribute("aria-valuenow", typed);
     });
@@ -809,6 +812,7 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
             r.fulfill({ status: 404, contentType: "application/problem+json", body: JSON.stringify({ title: "Not found", status: 404, detail: "No account uses this slug — check the four words, or generate a new slug to start fresh." }) }),
         );
         await page.goto("/gallery");
+        await openAppDock(page);
         const dockBefore = await page.locator("header").first().evaluate((h) => h.getBoundingClientRect().width);
         await page.getByRole("button", { name: "Log in" }).click();
         const field = page.getByRole("textbox", { name: /Your slug/ });
@@ -830,6 +834,7 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
             localStorage.setItem("fourier-user-token", "e2e-token");
         });
         await page.goto("/gallery");
+        await openAppDock(page);
         const trigger = page.getByRole("button", { name: /^Account: |^Copy your slug$/ }).first();
         await expect(trigger).toBeAttached();
         await page.waitForTimeout(500);

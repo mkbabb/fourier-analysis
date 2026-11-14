@@ -1,8 +1,5 @@
 import type {
-    AnimationData,
     ContourAsset,
-    ContourSettings,
-    EpicycleData,
     ImageMeta,
     GalleryTier,
     GalleryTierFilter,
@@ -400,20 +397,6 @@ export async function imageSrc(url: string, signal?: AbortSignal): Promise<strin
     }
 }
 
-export async function extractContour(
-    imageSlug: string,
-    settings: ContourSettings,
-): Promise<ContourAsset> {
-    return apiFetch<ContourAsset>(
-        `/api/images/${imageSlug}/extract-contour`,
-        "extractContour",
-        {
-            method: "POST",
-            body: { contour_settings: { ...settings } },
-        },
-    );
-}
-
 // ── Contours ──
 
 /**
@@ -436,40 +419,8 @@ export async function getContour(contourHash: string): Promise<ContourAsset> {
     return apiFetch<ContourAsset>(`/api/contours/${contourHash}`, "getContour");
 }
 
-export async function computeEpicycles(
-    contourHash: string,
-    params: { n_harmonics: number; n_points: number },
-): Promise<EpicycleData> {
-    const res = await apiFetch<{ data: EpicycleData }>(
-        `/api/contours/${contourHash}/compute/epicycles`,
-        "computeEpicycles",
-        {
-            method: "POST",
-            body: { ...params },
-        },
-    );
-    return res.data;
-}
-
-export async function computeBases(
-    contourHash: string,
-    params: {
-        max_degree: number;
-        n_points: number;
-        levels: number[];
-        n_eval: number;
-    },
-): Promise<AnimationData> {
-    const res = await apiFetch<{ data: AnimationData }>(
-        `/api/contours/${contourHash}/compute/bases`,
-        "computeBases",
-        {
-            method: "POST",
-            body: { ...params },
-        },
-    );
-    return res.data;
-}
+// O16 (owner frame 50): the computes (outline extraction, epicycles, bases,
+// the equation series) are compute jobs, run through `runJob` below.
 
 // ── Visualizations (the converged CRUD entity) ──
 //
@@ -871,4 +822,160 @@ export async function mintApiToken(token: AdminToken, name: string): Promise<{ i
 
 export async function revokeApiToken(token: AdminToken, id: string): Promise<ApiToken> {
     return adminFetch<ApiToken>(`/api/admin/tokens/${encodeURIComponent(id)}`, token, { method: "DELETE" });
+}
+
+// ── Compute jobs (docs/api/compute-jobs.md) ──
+//
+// O16 (owner frame 50: "this should be async and provide realtime updates as
+// progress completes"). A long computation answers at once with a job; the
+// job's Server-Sent Events carry its stage, a fraction that never moves
+// backwards, drawable partials and the final answer (the synchronous route's
+// shape). The stream is read with `fetch` rather than `EventSource` so a drop is
+// resumed by hand with `?after=<last id>` (a cross-origin `Last-Event-ID` is
+// not relied on), the session header rides along, and the caller's abort key
+// (`abortInflight`) cancels it: the stream closes and the job is DELETEd.
+
+/** A `stage` event: where the job is and how far along, 0..1. */
+export interface JobStage {
+    stage: string;
+    fraction: number;
+    done?: number;
+    total?: number;
+}
+
+/** A `partial` event: a drawable piece of the answer, keyed by `stage`. */
+export type JobPartial = { stage: string } & Record<string, unknown>;
+
+export interface JobHandlers {
+    stage?: (d: JobStage) => void;
+    partial?: (d: JobPartial) => void;
+}
+
+interface JobTicket {
+    id: string;
+    status_url: string;
+    events_url: string;
+}
+
+interface JobEvent {
+    id: number;
+    event: string;
+    data: string;
+}
+
+/** Parse SSE blocks out of `buffer`; returns the complete events and the rest. */
+function parseSse(buffer: string): { events: JobEvent[]; rest: string } {
+    const events: JobEvent[] = [];
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    const rest = blocks.pop() ?? "";
+    for (const block of blocks) {
+        let id = NaN;
+        let event = "message";
+        const data: string[] = [];
+        for (const line of block.split(/\r?\n/)) {
+            if (!line || line.startsWith(":")) continue;
+            const i = line.indexOf(":");
+            const field = i < 0 ? line : line.slice(0, i);
+            const value = i < 0 ? "" : line.slice(i + 1).replace(/^ /, "");
+            if (field === "id") id = Number(value);
+            else if (field === "event") event = value;
+            else if (field === "data") data.push(value);
+        }
+        if (data.length || event !== "message") events.push({ id, event, data: data.join("\n") });
+    }
+    return { events, rest };
+}
+
+const JOB_RECONNECT_MS = 2000;
+const JOB_RECONNECTS = 8;
+
+/** Thrown when a job's URLs are gone (a deploy restarted the API): start it again. */
+class JobLost extends Error {}
+
+async function followJob<T>(ticket: JobTicket, on: JobHandlers, signal: AbortSignal): Promise<T> {
+    let after = 0;
+    let drops = 0;
+    for (;;) {
+        const headers: Record<string, string> = { Accept: "text/event-stream" };
+        if (sessionToken) headers["X-Session-Token"] = sessionToken;
+        const url = `${BASE}${ticket.events_url}${after ? `?after=${after}` : ""}`;
+        let res: Response;
+        try {
+            res = await fetch(url, { headers, signal });
+        } catch (e) {
+            if (isAbortError(e)) throw e;
+            res = new Response(null, { status: 599 });
+        }
+        if (res.status === 404) throw new JobLost();
+        if (res.ok && res.body) {
+            const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+            let buffer = "";
+            try {
+                for (;;) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += value;
+                    const parsed = parseSse(buffer);
+                    buffer = parsed.rest;
+                    for (const ev of parsed.events) {
+                        if (Number.isFinite(ev.id)) after = Math.max(after, ev.id);
+                        const data = ev.data ? JSON.parse(ev.data) : null;
+                        if (ev.event === "stage") on.stage?.(data as JobStage);
+                        else if (ev.event === "partial") on.partial?.(data as JobPartial);
+                        else if (ev.event === "result") return data as T;
+                        else if (ev.event === "error") {
+                            const d = (data ?? {}) as { status?: number; detail?: string };
+                            const status = d.status ?? 500;
+                            throw new ApiProblem(
+                                status === 422 ? "urn:contract:validation-failed" : "about:blank",
+                                "Computation failed",
+                                status,
+                                d.detail,
+                            );
+                        } else if (ev.event === "cancelled") {
+                            throw new DOMException("cancelled", "AbortError");
+                        }
+                    }
+                }
+            } catch (e) {
+                if (isAbortError(e) || e instanceof ApiProblem || e instanceof SyntaxError) throw e;
+                // A dropped body: resume below.
+            }
+        }
+        if (signal.aborted) throw new DOMException("aborted", "AbortError");
+        if (++drops > JOB_RECONNECTS) {
+            throw new ApiProblem("about:blank", "Lost the computation's progress stream", 503);
+        }
+        await new Promise((r) => setTimeout(r, JOB_RECONNECT_MS));
+    }
+}
+
+/**
+ * Start a compute job at `path` and follow it to its answer. `abortKey` is the
+ * caller's inflight key: `abortInflight([abortKey])` (or a later job on the
+ * same key) closes the stream and cancels the job on the server. A job lost to
+ * an API restart is started again once.
+ */
+export async function runJob<T>(path: string, body: unknown, abortKey: string, on: JobHandlers = {}): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+        const ticket = await apiFetch<JobTicket>(path, abortKey, {
+            method: "POST",
+            body: body as Record<string, unknown>,
+        });
+        const signal = abortable(abortKey);
+        const cancel = () => {
+            const headers: Record<string, string> = {};
+            if (sessionToken) headers["X-Session-Token"] = sessionToken;
+            void fetch(`${BASE}${ticket.status_url}`, { method: "DELETE", headers, keepalive: true }).catch(() => {});
+        };
+        signal.addEventListener("abort", cancel, { once: true });
+        try {
+            return await followJob<T>(ticket, on, signal);
+        } catch (e) {
+            if (e instanceof JobLost && attempt === 0) continue;
+            throw e;
+        } finally {
+            signal.removeEventListener("abort", cancel);
+        }
+    }
 }

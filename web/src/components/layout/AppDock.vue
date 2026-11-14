@@ -220,6 +220,17 @@ useEventListener(pageScroll.scroller, "scroll", () => {
     if (!dock?.expanded || top < foldFrom) foldFrom = top;
     else if (top - foldFrom > FOLD_PX && !dock.isHeld) dock.collapse();
 }, { passive: true });
+/**
+ * O16: an open Sections menu holds the dock open (glass's keep-open count, as
+ * the editor dock's menus do, X-OD19 F4). With the dock resting collapsed and
+ * opened by hover, a pointer that left the dock for the page folded it, and the
+ * menu with it, under the reader. glass's DropdownMenu has no `keep-dock-open`
+ * (its Popover does: About uses it).
+ */
+function holdDockWhileOpen(open: boolean) {
+    if (open) dockRef.value?.keepOpen();
+    else dockRef.value?.release();
+}
 const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLElement | undefined) ?? null);
 </script>
 
@@ -278,7 +289,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                  §0dw) whose name carries the current section, and a non-modal
                  menu (UIA-F-231) whose current row is `aria-current` (its
                  paint is glass's half, UIA-F-128). -->
-            <DropdownMenu :modal="false">
+            <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
                     <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
                     <span v-show="showNavLabel" class="nav-trigger-label">{{ navLabel }}</span>
@@ -386,7 +397,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 /* The collapsed seal's ℱ: the wordmark's glyph at the dock's glyph rung,
    in the Fourier amber the section glyphs wear. */
 .dock-summary-mark {
-    font-size: calc(var(--dock-icon-glyph) * 1.35);
+    font-size: calc(var(--dock-icon-glyph) * 1.6);
     line-height: 1;
     color: var(--viz-amber);
 }

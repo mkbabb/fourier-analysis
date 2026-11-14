@@ -50,13 +50,19 @@ async function settled(dock: Locator): Promise<void> {
     await expect(dock).not.toHaveAttribute("data-morphing", { timeout: 5_000 });
 }
 
-/** Arrive (the dock rests at its seal) and open it through the seal. */
+/**
+ * Arrive (the dock rests at its seal) and open it as a reader does: a fine
+ * pointer rests on the seal (hover opens it, and leaving lets it fold); a
+ * touch taps it (glass pins a pressed seal open until a press outside).
+ */
 async function open(page: Page, path: string): Promise<Locator> {
     await page.goto(path);
     const dock = appDock(page);
     await expect(dock).toHaveClass(COLLAPSED, { timeout: 30_000 });
     await settled(dock);
-    await dock.getByRole("button", { name: "Expand dock" }).click();
+    const seal = dock.getByRole("button", { name: "Expand dock" });
+    if (await page.evaluate(() => matchMedia("(hover: hover)").matches)) await seal.hover();
+    else await seal.tap();
     await expect(dock).toHaveClass(EXPANDED);
     await settled(dock);
     await expect(dock.locator(".dock-layer--full .nav-trigger")).toBeVisible();

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { EQUATION_JOB, stubJob } from "./fixtures/jobs";
 
 /**
  * X·F F.W3 `.a` — `g4` (SCRUB SESSION — freeze unreachable) and `g5`'s live
@@ -73,9 +74,7 @@ function squareWaveResponse() {
 }
 
 async function openTimeline(page: Page) {
-    await page.route("**/api/equations/compute", async (route) => {
-        await route.fulfill({ json: squareWaveResponse() });
-    });
+    await stubJob(page, EQUATION_JOB, squareWaveResponse());
     await page.route("**/api/equations/simplify", async (route) => {
         await route.fulfill({
             json: { latex: "\\sum", energy_captured: 0.97, term_count: HARMONICS },

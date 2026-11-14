@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Input } from "@mkbabb/glass-ui/input";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
+import { useOptionalDockContext } from "@mkbabb/glass-ui/dock";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -19,6 +20,14 @@ import { toast } from "@mkbabb/glass-ui/toast";
 import { errorToast } from "@/lib/toast-policy";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { User, LogIn, LogOut, Copy, Check, Dices, Shield } from "@lucide/vue";
+
+/** O16: the open account menu holds the app dock open (its Log in popover
+ *  does through `keep-dock-open`; glass's DropdownMenu has no such prop). */
+const dock = useOptionalDockContext();
+function holdDockWhileOpen(open: boolean) {
+    if (open) dock?.keepOpen();
+    else dock?.release();
+}
 
 const auth = useAuthStore();
 const { userSlug, isLoggedIn } = storeToRefs(auth);
@@ -187,7 +196,7 @@ async function copySlug() {
          (UIA-F-219: no consumer literal). X.F.W14U.shell — UIA-F-150: the
          admin state lives in this menu, not as a disc beside it. -->
     <div class="flex items-center">
-        <DropdownMenu v-if="isLoggedIn">
+        <DropdownMenu v-if="isLoggedIn" @update:open="holdDockWhileOpen">
             <DockTrigger for="dropdown" class="account-trigger" :aria-label="`Account: ${userSlug}`">
                 <User aria-hidden="true" />
                 <span class="fira-code hidden sm:inline">{{ handle }}</span>

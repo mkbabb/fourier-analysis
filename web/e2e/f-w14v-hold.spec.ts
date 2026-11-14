@@ -1,6 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test } from "@playwright/test";
 import { seededViz } from "./fixtures/seed";
+import { holdJobResult, isJobStream } from "./fixtures/jobs";
 
 /**
  * X.F.W14V Repair 1 (Check 1 RESUME 1, C1R1-1's second failure mode; F.W14U
@@ -23,19 +24,18 @@ const BASES_DELAY_MS = 3_000;
 
 test.describe("F.W14U R-1 — a reader's pause survives a late data write", () => {
     test("h1 pause while the bases compute is in flight; its arrival does not restart the clock", async ({ page }) => {
-        let releaseAt = 0;
-        await page.route("**/api/contours/*/compute/bases*", async (route) => {
-            await new Promise((r) => setTimeout(r, BASES_DELAY_MS));
-            releaseAt = Date.now();
-            await route.continue();
-        });
-        const basesLanded = page.waitForResponse((r) => /\/compute\/bases/.test(r.url()), { timeout: 30_000 });
+        // O16: the load's compute is one contour job; its epicycles arrive as a
+        // partial and its bases with the result, which is the write held back.
+        const releasedAt = await holdJobResult(page, BASES_DELAY_MS);
+        const basesLanded = page
+            .waitForResponse((r) => isJobStream(r) && new URL(r.url()).searchParams.has("after"), { timeout: 30_000 })
+            .then((r) => r.finished());
         await page.goto(`/v/${seededViz().slug}`);
 
         // The epicycles have arrived and the loader started the clock.
         const pause = page.getByRole("button", { name: "Pause animation" }).first();
         await expect(pause).toBeVisible({ timeout: 20_000 });
-        expect(releaseAt, "the bases response is still held back when the reader pauses").toBe(0);
+        expect(releasedAt(), "the bases response is still held back when the reader pauses").toBe(0);
 
         // The reader pauses (keyboard: a pointer press on a persistent dock
         // control can be discarded mid-morph by glass's click guard, UIA-F-8).

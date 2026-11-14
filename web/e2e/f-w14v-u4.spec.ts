@@ -4,6 +4,7 @@ import { slider, sliderValue } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { showView } from "./fixtures/workspace";
+import { IMAGE_JOB } from "./fixtures/jobs";
 
 /**
  * X.F.W14V `.u4` — the stage surface and its readouts (F-W14V.md addendum (c)
@@ -224,7 +225,7 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
 
     test("u238 · UIA-F-238 — reserved compute row, role=status, the tab strip, the header reset, no orphan", async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
-        await page.route("**/api/contours/*/compute/**", async (route) => {
+        await page.route(IMAGE_JOB, async (route) => {
             await new Promise((r) => setTimeout(r, 6000));
             await route.fallback();
         });

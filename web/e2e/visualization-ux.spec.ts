@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { checkA11y } from "./a11y";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { controlRow } from "./fixtures/slider";
+import { waitForJob } from "./fixtures/jobs";
 
 /**
  * B.W2 — visualization-route UX coherence spec (Invariant 18 + 19 binding).
@@ -33,27 +34,17 @@ async function openWorkspace(page: Page): Promise<void> {
     // state, a property of the whole browser under load, not of this page: under a
     // full 9-worker run it timed out and its serial file then skipped every
     // later test, the `:290` keystone among them. The workspace's own mount
-    // condition is the compute pair it awaits — `ContourSettings.runCompute`
-    // extracts the contour, then POSTs `compute/epicycles` and `compute/bases`
-    // together and renders from both — so the helper arms a listener for BOTH
-    // responses before the upload (a response that lands before the wait is
-    // armed cannot be missed) and requires each to answer 200.
-    const computes = Promise.all(
-        (["epicycles", "bases"] as const).map((kind) =>
-            page.waitForResponse(
-                (r) =>
-                    r.request().method() === "POST" &&
-                    new URL(r.url()).pathname.endsWith(`/compute/${kind}`),
-                { timeout: 60_000 },
-            ),
-        ),
-    );
+    // condition is the compute it awaits — O16: one image job that extracts the
+    // contour and fits both series, answered on its events stream — so the
+    // helper arms the job listener before the upload (a response that lands
+    // before the wait is armed cannot be missed) and reads the stream to its end.
+    const computes = waitForJob(page, "images");
     const fileInput = page.getByTestId("image-file-input");
     await fileInput.setInputFiles(SAMPLE_IMAGE);
     await page.waitForURL(/\/w\//, { timeout: 15_000 });
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible({ timeout: 60_000 });
-    for (const response of await computes) expect(response.status()).toBe(200);
+    expect((await computes).post.status()).toBe(202);
     // Then the mounted landmark the keystones depend on — NOT a blind fixed
     // timeout. The dock starts collapsed by default (AnimationControls'
     // GlassDock sets `:start-collapsed="true"`), and GlassDock hides the
@@ -221,18 +212,13 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
     test("keystone: /equation is a11y-clean", async ({ page }) => {
         // X.F.W12 `.a` (COHESION §0as) — the route's own readiness, not the
         // network's: a fresh context has no cached result, so `/equation` POSTs
-        // its first `/api/equations/compute` on mount and renders the Controls
+        // its first equation job (O16) on mount and renders the Controls
         // card from the answer (the same signal `visual-checkpoint` settles on).
         // The listener is armed before the navigation so the response cannot
         // land unobserved.
-        const compute = page.waitForResponse(
-            (r) =>
-                r.request().method() === "POST" &&
-                new URL(r.url()).pathname.endsWith("/api/equations/compute"),
-            { timeout: 60_000 },
-        );
+        const compute = waitForJob(page, "equations");
         await page.goto("/equation");
-        expect((await compute).status()).toBe(200);
+        expect((await compute).post.status()).toBe(202);
 
         // Settle on the mount condition this keystone exists for — the rendered
         // `SliderControl` subtitle — not a blind timeout. The "Controls"
@@ -332,7 +318,8 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
     // now enters the editor, saves, and returns, by keyboard — the activation
     // path every control owes — and every assertion is kept: the canvas keeps a
     // live render, the controls are unperturbed, and ONE compute pass runs,
-    // counted from the network and pinned to the SAVED contour's hash.
+    // counted from the network and pinned to the SAVED contour's hash (O16: one
+    // contour job, where there were two compute POSTs).
     test("save_contour_then_recompute: the saved contour is recomputed in one pass, the canvas keeps its render", async ({
         page,
     }) => {
@@ -359,7 +346,7 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         const computeCalls: string[] = [];
         page.on("request", (req) => {
             const path = new URL(req.url()).pathname;
-            if (req.method() === "POST" && /\/(compute\/(epicycles|bases)|extract-contour)$/.test(path))
+            if (req.method() === "POST" && /\/(jobs|compute\/(epicycles|bases)|extract-contour)$/.test(path))
                 computeCalls.push(path);
         });
 
@@ -377,19 +364,14 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         const saved = page.waitForResponse(
             (res) => new URL(res.url()).pathname === "/api/contours" && res.request().method() === "POST",
         );
-        const recomputed = Promise.all(
-            (["epicycles", "bases"] as const).map((kind) =>
-                page.waitForResponse((res) =>
-                    new URL(res.url()).pathname.endsWith(`/compute/${kind}`),
-                ),
-            ),
-        );
+        const recomputed = waitForJob(page, "contours");
         await save.press("Enter");
         const savedRes = await saved;
         expect(savedRes.ok(), "the contour save itself must succeed").toBe(true);
         const { contour_hash: savedHash } = (await savedRes.json()) as { contour_hash: string };
-        const results = await recomputed;
-        for (const res of results) expect(res.ok(), `${res.url()} must succeed`).toBe(true);
+        const { post, events } = await recomputed;
+        expect(post.status(), "the recompute job must be accepted").toBe(202);
+        expect(events.ok(), "its events stream must open").toBe(true);
 
         // Back to the render, which must be the live chain, not the placeholder.
         await canvasDock.hover();
@@ -407,9 +389,6 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
 
         // A single compute pass — not a recompute storm — and it is the SAVED
         // contour that is computed: no re-extraction from the image replaces it.
-        expect(computeCalls.sort()).toEqual([
-            `/api/contours/${savedHash}/compute/bases`,
-            `/api/contours/${savedHash}/compute/epicycles`,
-        ]);
+        expect(computeCalls).toEqual([`/api/contours/${savedHash}/jobs`]);
     });
 });

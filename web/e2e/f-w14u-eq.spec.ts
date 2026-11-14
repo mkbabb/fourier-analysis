@@ -1,6 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { setSlider, slider, sliderValue } from "./fixtures/slider";
+import { EQUATION_JOB } from "./fixtures/jobs";
 
 /**
  * X.F.W14U.eq — the equation explorer (spec `F-W14U.md` Units :8-18; register
@@ -209,7 +210,7 @@ test.describe("q202 · UIA-F-202 — status out of flow; a stale result is marke
         const plot = page.locator(".convergence-container");
         const top0 = (await plot.boundingBox())!.y;
         const eqTop0 = (await card.boundingBox())!.y;
-        await page.route("**/api/equations/compute", async (r) => {
+        await page.route(EQUATION_JOB, async (r) => {
             await new Promise((res) => setTimeout(res, 3000));
             await r.continue();
         });
@@ -225,8 +226,8 @@ test.describe("q202 · UIA-F-202 — status out of flow; a stale result is marke
         await page.waitForTimeout(500);
         const top1 = (await plot.boundingBox())!.y;
         const eqTop1 = (await card.boundingBox())!.y;
-        await page.unroute("**/api/equations/compute");
-        await page.route("**/api/equations/compute", (r) => r.fulfill({
+        await page.unroute(EQUATION_JOB);
+        await page.route(EQUATION_JOB, (r) => r.fulfill({
             status: 503,
             contentType: "application/problem+json",
             body: JSON.stringify({ type: "about:blank", title: "Service Unavailable", status: 503, detail: "The compute service is unavailable" }),

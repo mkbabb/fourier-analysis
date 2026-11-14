@@ -3,6 +3,7 @@ import { test, expect } from "@playwright/test";
 
 import { ENTRY, stubGallery } from "./fixtures/gallery";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { openAppDock } from "./fixtures/app-dock";
 
 /**
  * X·F F.W9 `.b` — the S4 seat (`G-F9-7`), plus `G-F9-9` and `G-F9-10`.
@@ -126,6 +127,7 @@ test.describe("Gallery UX", () => {
     test("login form shows the format placeholder and dice button", async ({ page }) => {
         await stubGallery(page);
         await page.goto("/gallery");
+        await openAppDock(page);
 
         // ── THE UN-VACUATED GUARD (`G-F9-7`, `FR-USB-16`'s unguard half) ──
         // Was: `if (await loginBtn.isVisible().catch(() => false))` around the

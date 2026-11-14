@@ -37,7 +37,9 @@ import { setSlider, slider, sliderValue, controlRow } from "./fixtures/slider";
  * shipped response together.
  */
 
-const COMPUTE_URL = /\/api\/equations\/compute$/;
+// O16: the compute is an equation job; its POST answers 202 once the body
+// validates (a request the model rejects is still a 422 here).
+const COMPUTE_URL = /\/api\/equations\/jobs$/;
 
 interface ComputePayload {
     expression?: string;
@@ -97,7 +99,7 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         expect(
             first.status(),
             "the default expression must compute — a 422 here is `B-2`'s cold-start shape",
-        ).toBe(200);
+        ).toBe(202);
 
         const series = renderedSeries(page);
         await expect(series).toBeVisible({ timeout: 60_000 });
@@ -222,7 +224,7 @@ test.describe("S2 — /equation: compute → notation → budget → reload (G-F
         expect(
             cold.status(),
             "the restored knobs 422'd on the cold compute — `B-2`'s shape exactly",
-        ).toBe(200);
+        ).toBe(202);
 
         const coldPayloads = computes.slice(reloadCount);
         expect(

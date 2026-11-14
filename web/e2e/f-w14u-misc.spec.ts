@@ -2,6 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { sliderValue } from "./fixtures/slider";
 import { ENTRY, stubGallery } from "./fixtures/gallery";
+import { openAppDock } from "./fixtures/app-dock";
 
 /**
  * X.F.W14U.misc — the remaining register sections (spec `F-W14U.md` Units
@@ -395,6 +396,7 @@ test.describe("x255 UIA-F-255 — the extractor's micro-issues", () => {
 // (Before `79ea9f6` these read the deleted inline tab row's `aria-current`.)
 const navTrigger = (page: Page) => page.locator(".app-dock").getByRole("button", { name: /^Navigate/ });
 async function expectSection(page: Page, label: string | null, msg: string) {
+    await openAppDock(page);
     const trigger = navTrigger(page);
     await expect(trigger, msg).toHaveAccessibleName(label ? `Navigate — current section ${label}` : "Navigate", {
         timeout: 30_000,
@@ -484,6 +486,7 @@ test.describe("r213 UIA-F-213 — a storage write after boot never crashes (auth
             }),
         );
         await page.goto(`${PROD}/gallery`);
+        await openAppDock(page);
         await page.getByRole("button", { name: "Log in" }).click();
         await page.getByRole("textbox", { name: /Your slug/ }).fill("quiet-amber-lattice-fox");
         await page.keyboard.press("Enter");
@@ -560,6 +563,7 @@ test.describe("a256 UIA-F-256 (.shell R-2) — a failed logout is reported, not 
                 : route.fallback(),
         );
         await page.goto("/gallery");
+        await openAppDock(page);
         await page.getByRole("button", { name: /^Account: / }).click();
         await page.getByRole("menuitem", { name: /Log out/ }).click();
         const notes = page.getByRole("region", { name: /Notifications/ }).locator("li");

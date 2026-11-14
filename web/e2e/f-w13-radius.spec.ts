@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { waitForJob } from "./fixtures/jobs";
 
 /**
  * X.F.W13.a — gate G-a: the radius register and the two owner-named controls
@@ -103,10 +104,7 @@ test.describe("G-a — F.W13 radius register (frames 1, 2, 5)", () => {
     });
 
     test("frame 5: every visualizer panel is on the card radius", async ({ page }) => {
-        const computed = page.waitForResponse(
-            (r) => r.url().includes("/api/equations/compute") && r.request().method() === "POST",
-            { timeout: 60_000 },
-        );
+        const computed = waitForJob(page, "equations");
         await page.goto("/equation");
         await computed;
         const card = await tokenPx(page, "--radius-card");

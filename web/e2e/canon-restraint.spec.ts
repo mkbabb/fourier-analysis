@@ -126,6 +126,9 @@ test.describe("canon · restraint · fourier", () => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto("/paper");
         const dock = page.locator(".app-dock");
+        // O16 [49] [57]: the dock arrives at its seal; the reader's pointer opens it.
+        await expect(dock).toHaveClass(/(^|\s)collapsed(\s|$)/, { timeout: LOAD });
+        await dock.getByRole("button", { name: "Expand dock" }).hover();
         await expect(dock).toHaveClass(/(^|\s)expanded(\s|$)/, { timeout: LOAD });
         await expect(dock.locator(".scroll-progress-rim")).toHaveCount(1);
         await page.mouse.move(720, 600);

@@ -6,6 +6,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { ADMIN_TOKEN, ENTRY, stubAdminApi } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
+import { openAppDock } from "./fixtures/app-dock";
 
 /**
  * X.F.W14V `.au0` — the AUDIT-2 fourier register re-baselined at HEAD
@@ -223,6 +224,7 @@ async function openIf(page: Page, run: Run, tag: string, view: string, trigger: 
 /** The shell's own overlays: About, the inline login, the nav dropdown. */
 async function walkShell(page: Page, run: Run, tag: string): Promise<void> {
     await page.goto("/gallery");
+    await openAppDock(page);
     await expect(page.locator(".app-dock")).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(800);
     await shot(page, run, tag, "shell");
@@ -365,6 +367,7 @@ for (const width of [360, 430]) {
                 localStorage.setItem("fourier-user-token", "e2e-token");
             });
             await page.goto("/gallery");
+            await openAppDock(page);
             await expect(page.locator(".app-dock")).toBeVisible({ timeout: 30_000 });
             await page.waitForTimeout(800);
             await shot(page, run, tag, "shell");

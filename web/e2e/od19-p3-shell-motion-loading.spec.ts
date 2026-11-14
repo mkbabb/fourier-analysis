@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { seededViz } from "./fixtures/seed";
 import { showViewIfTabbed } from "./fixtures/workspace";
+import { openAppDock } from "./fixtures/app-dock";
+import { EQUATION_JOB } from "./fixtures/jobs";
 
 /**
  * X·OD19 P3-fourier-shell-motion-loading — owner rows OD19-F5, OD19-F6 and
@@ -238,7 +240,7 @@ test.describe("OD19 P3 · loading states are glass Skeletons in the stage's shap
     });
 
     test("/equation cold compute: the stage is a busy Skeleton, no text", async ({ page }) => {
-        await page.route("**/api/equations/compute", async (route) => {
+        await page.route(EQUATION_JOB, async (route) => {
             await new Promise((r) => setTimeout(r, 2000));
             await route.fallback();
         });
@@ -272,6 +274,7 @@ test.describe("OD19 P3 · ALL — /equation is ready < 1 s after nav intent", ()
     test("hover the Equation section, then open it: the series paints within 1000 ms", async ({ page }) => {
         test.setTimeout(90_000);
         await page.goto("/paper");
+        await openAppDock(page);
         const trigger = page.locator(".app-dock").getByRole("button", { name: /^Navigate/ });
         await expect(trigger).toBeVisible({ timeout: 30_000 });
         await page.waitForTimeout(800);
