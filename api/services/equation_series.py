@@ -22,6 +22,16 @@ from __future__ import annotations
 
 from typing import Any
 
+# The equation job's bar (``jobs.Progress`` maps each stage's own 0..1 onto it).
+# A tier that fails hands over to the next; the bar never moves back.
+STAGES: dict[str, tuple[float, float]] = {
+    "parse": (0.0, 0.05),
+    "integrate": (0.05, 0.8),
+    "identify": (0.8, 0.88),
+    "spline": (0.88, 0.92),
+    "render": (0.92, 1.0),
+}
+
 
 class ExpressionInvalid(ValueError):
     """The user's f(x) is not a finite real function of ``x`` (a client error)."""
@@ -68,12 +78,27 @@ def render_sigma(terms: list, notation: str, shown: int) -> str:
     return render_latex_sigma([t for t in terms if abs(t.n) <= shown], notation)
 
 
-def compute_series(req: dict[str, Any]) -> dict[str, Any]:
+def term_dto(t: Any) -> dict[str, Any]:
+    """One term as the wire's ``FourierTermDTO``."""
+    return {
+        "n": t.n,
+        "coefficient_re": t.coefficient.real,
+        "coefficient_im": t.coefficient.imag,
+        "amplitude": t.amplitude,
+        "phase": t.phase,
+    }
+
+
+def compute_series(req: dict[str, Any], progress: Any = None) -> dict[str, Any]:
     """Compute the closed-form series for ``req`` (a ``ComputeEquationRequest`` dump).
 
     Tries three tiers: symbolic integration (exact), sequence identification
     (conjectured), spline approximation (approximate). Runs in a worker
     process's main thread (see the module docstring).
+
+    ``progress`` (a job's, else None): the stages of ``STAGES``, a ``samples``
+    partial (f on the grid, drawable before any coefficient) and one
+    ``coefficient`` partial per symbolic coefficient as it lands.
     """
     import numpy as np
     import sympy as sp
@@ -83,6 +108,8 @@ def compute_series(req: dict[str, Any]) -> dict[str, Any]:
     from fourier_analysis.symbolic.simplification import compute_effective_n, simplify_series
     from fourier_analysis.symbolic.spline import spline_fourier_coefficients
 
+    if progress is not None:
+        progress.stage("parse")
     expr = parse_function_of_x(req["expression"])
     x = sp.Symbol("x")
     domain = (req["domain_start"], req["domain_end"])
@@ -98,13 +125,24 @@ def compute_series(req: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         y_eval = np.array([complex(expr.subs(x, xv)).real for xv in x_eval])
 
+    on_term = None
+    if progress is not None:
+        progress.partial("samples", {"x": x_eval.tolist(), "y": y_eval.tolist()})
+        progress.stage("integrate", 0.0, done=0, total=2 * n_harmonics + 1)
+
+        def on_term(term: Any, done: int, total: int) -> None:
+            progress.partial("coefficient", {**term_dto(term), "done": done, "total": total})
+            progress.stage("integrate", done / total, done=done, total=total)
+
     # Tier 1: Symbolic integration
     tier = "symbolic"
-    terms = symbolic_fourier_coefficients(expr, n_harmonics, domain, period)
+    terms = symbolic_fourier_coefficients(expr, n_harmonics, domain, period, on_term=on_term)
 
     # Tier 2: Sequence identification
     if terms is None:
         tier = "identified"
+        if progress is not None:
+            progress.stage("identify")
         spline_terms = spline_fourier_coefficients(y_eval, x_eval, n_harmonics, period)
         coeffs = [t.coefficient for t in spline_terms]
         indices = [t.n for t in spline_terms]
@@ -113,8 +151,12 @@ def compute_series(req: dict[str, Any]) -> dict[str, Any]:
     # Tier 3: Spline fallback
     if terms is None:
         tier = "spline"
+        if progress is not None:
+            progress.stage("spline")
         terms = spline_fourier_coefficients(y_eval, x_eval, n_harmonics, period)
 
+    if progress is not None:
+        progress.stage("render")
     latex, energy = simplify_series(terms, req["budget"], req["notation"])
     latex_sigma = render_sigma(terms, req["notation"], displayed_n(terms, req["auto_harmonics"]))
 

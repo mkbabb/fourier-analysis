@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Response
 
 from api.lib.crud import errors
@@ -12,24 +14,33 @@ from api.models.equations import (
     SimplifyRequest,
     SimplifyResponse,
 )
+from api.routers.jobs import JobCreated, created, job_error
+from api.services import jobs
 from api.services.computation import submit_compute_job, submit_process_job
 from api.services.equation_series import (
+    STAGES,
     ExpressionInvalid,
     compute_series,
     displayed_n,
+    parse_function_of_x,
     render_sigma,
+    term_dto,
 )
 
 router = APIRouter(prefix="/api/equations", tags=["equations"])
 
 
-def _term_to_dto(term) -> FourierTermDTO:
-    return FourierTermDTO(
-        n=term.n,
-        coefficient_re=term.coefficient.real,
-        coefficient_im=term.coefficient.imag,
-        amplitude=term.amplitude,
-        phase=term.phase,
+def _response(result: dict) -> ComputeEquationResponse:
+    return ComputeEquationResponse(
+        status=result["status"],
+        tier=result["tier"],
+        latex=result["latex"],
+        latex_sigma=result["latex_sigma"],
+        coefficients=[FourierTermDTO(**term_dto(t)) for t in result["terms"]],
+        original_points=result["original_points"],
+        reconstructed_points=result["reconstructed_points"],
+        energy_captured=result["energy_captured"],
+        effective_n=result["effective_n"],
     )
 
 
@@ -48,18 +59,30 @@ async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationRespon
         result = await submit_process_job("equation", compute_series, req.model_dump())
     except ExpressionInvalid as e:
         return errors.validation_failed(detail=str(e))
+    return _response(result)
 
-    return ComputeEquationResponse(
-        status=result["status"],
-        tier=result["tier"],
-        latex=result["latex"],
-        latex_sigma=result["latex_sigma"],
-        coefficients=[_term_to_dto(t) for t in result["terms"]],
-        original_points=result["original_points"],
-        reconstructed_points=result["reconstructed_points"],
-        energy_captured=result["energy_captured"],
-        effective_n=result["effective_n"],
-    )
+
+@router.post("/jobs", status_code=202, response_model=JobCreated)
+async def start_equation_job(req: ComputeEquationRequest) -> Any:
+    """``/compute`` as a job (TRIAGE-16 rows F-a and 50): answers at once with
+    the job's id; ``GET /api/jobs/{id}/events`` streams the stages, a
+    ``samples`` partial, one ``coefficient`` partial per harmonic and the
+    ``result``, which is ``/compute``'s response. An f(x) that does not parse
+    answers 422 here, before any job exists."""
+    try:
+        parse_function_of_x(req.expression)
+    except ExpressionInvalid as e:
+        return errors.validation_failed(detail=str(e))
+
+    async def work(progress: jobs.Progress) -> dict:
+        result = await submit_process_job("equation", compute_series, req.model_dump())
+        return _response(result).model_dump(mode="json")
+
+    try:
+        job = jobs.registry.start("equation", STAGES, work, job_error)
+    except jobs.TooManyJobs:
+        return errors.rate_limited(5, detail="too many computations in progress")
+    return created(job)
 
 
 @router.post("/simplify", response_model=SimplifyResponse)

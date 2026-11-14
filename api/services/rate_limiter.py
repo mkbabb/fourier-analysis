@@ -206,10 +206,12 @@ def _limiter_for_path(path: str, method: str) -> SlidingWindowLimiter:
     # /api/equations/{compute,simplify}, /api/contours/.../compute/..., and the
     # image extract-contour pipeline. (Bare GET reads on these prefixes are NOT
     # compute — they fall through to the read budget below.)
+    # A job-creating POST (``.../jobs``) is the same compute, started async.
     if (
         path.startswith(("/api/equations/compute", "/api/equations/simplify"))
         or "/compute/" in path
         or path.endswith("/extract-contour")
+        or (method == "POST" and path.endswith("/jobs"))
     ):
         return compute_limiter
     if method in ("GET", "HEAD"):

@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import functools
+import itertools
 import multiprocessing
+import threading
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, Callable
@@ -19,6 +21,7 @@ from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.shortest_tour import build_contour_tour
 
 from api.config import get_settings
+from api.services import jobs
 
 _semaphore: asyncio.Semaphore | None = None
 _process_pool: ProcessPoolExecutor | None = None
@@ -84,22 +87,72 @@ def _get_process_pool() -> ProcessPoolExecutor:
 
     ``spawn``, never ``fork``: the server process runs threads (the event loop's
     executor, the database driver), and a forked child inherits their locks.
+    Each worker is handed the job bridge (``jobs.init_worker``): the queue its
+    progress reports ride back on and the ring of cancelled job serials.
     """
-    global _process_pool
+    global _process_pool, _report_queue, _cancelled, _drain
     if _process_pool is None:
+        ctx = multiprocessing.get_context("spawn")
+        _report_queue = ctx.Queue()
+        _cancelled = ctx.Array("q", jobs.CANCEL_RING, lock=False)
         _process_pool = ProcessPoolExecutor(
             max_workers=get_settings().compute_concurrency,
-            mp_context=multiprocessing.get_context("spawn"),
+            mp_context=ctx,
+            initializer=jobs.init_worker,
+            initargs=(_report_queue, _cancelled),
         )
+        _drain = threading.Thread(target=_drain_reports, args=(_report_queue,), daemon=True, name="job-reports")
+        _drain.start()
     return _process_pool
+
+
+_report_queue: Any = None
+_cancelled: Any = None
+_drain: threading.Thread | None = None
+# serial -> the job's Progress and the future its ``end`` report resolves,
+# while its work runs in a worker.
+_bridged: dict[int, tuple[jobs.Progress, asyncio.Future[None]]] = {}
+# How long a finished job waits for its last reports (a worker that died sends none).
+REPORTS_DRAIN_S = 5.0
+_serials = itertools.count(1)
+
+
+def _drain_reports(queue: Any) -> None:
+    """Replay the workers' reports through each job's ``Progress`` (a thread)."""
+    while True:
+        item = queue.get()
+        if item is None:
+            return
+        serial, kind, name, a, b = item
+        bridged = _bridged.get(serial)
+        if bridged is None:
+            continue
+        progress, end = bridged
+        if kind == "end":
+            # Queued behind the reports' own posts to the loop, so it resolves after them.
+            end.get_loop().call_soon_threadsafe(lambda f=end: f.done() or f.set_result(None))
+            continue
+        try:
+            if kind == "stage":
+                progress.stage(name, a, **b)
+            else:
+                progress.partial(name, a)
+        except jobs.JobCancelled:
+            pass
 
 
 def shutdown_process_pool() -> None:
     """Stop the worker processes (the app lifespan's exit)."""
-    global _process_pool
+    global _process_pool, _report_queue, _drain
     if _process_pool is not None:
         _process_pool.shutdown(wait=False, cancel_futures=True)
         _process_pool = None
+    if _report_queue is not None:
+        _report_queue.put(None)
+        if _drain is not None:
+            _drain.join(timeout=2)
+        _report_queue.close()
+        _report_queue, _drain = None, None
 
 
 async def submit_process_job(name: str, fn: Callable[..., Any], *args: Any) -> Any:
@@ -109,9 +162,39 @@ async def submit_process_job(name: str, fn: Callable[..., Any], *args: Any) -> A
     X.F.W14V `.u2` — a job whose library code arms a ``SIGALRM`` timer (the
     symbolic tier) needs a MAIN thread, which a ``to_thread`` worker never is; a
     pool worker runs each task on its process's main thread.
+
+    Inside a job (``jobs.current_progress()``), *fn* is called with
+    ``progress=``, a ``jobs.WorkerProgress`` whose reports reach this job, and
+    a cancel of the job stops the worker at its next report.
     """
     loop = asyncio.get_running_loop()
-    return await _bounded(name, lambda: loop.run_in_executor(_get_process_pool(), fn, *args))
+    progress = jobs.current_progress()
+    if progress is None:
+        return await _bounded(name, lambda: loop.run_in_executor(_get_process_pool(), fn, *args))
+
+    pool = _get_process_pool()
+    serial = next(_serials)
+    end: asyncio.Future[None] = loop.create_future()
+    _bridged[serial] = (progress, end)
+    cancelled = _cancelled
+
+    def _flag(_job: jobs.Job) -> None:
+        cancelled[serial % jobs.CANCEL_RING] = serial
+
+    progress.job.on_cancel.append(_flag)
+    try:
+        result = await _bounded(
+            name, lambda: loop.run_in_executor(pool, jobs.run_in_worker, fn, serial, *args)
+        )
+        # The answer can outrun the reports (two channels): publish it after them.
+        try:
+            await asyncio.wait_for(end, REPORTS_DRAIN_S)
+        except TimeoutError:
+            pass
+        return result
+    finally:
+        _bridged.pop(serial, None)
+        progress.job.on_cancel.remove(_flag)
 
 
 async def compute_contours(
@@ -259,6 +342,12 @@ async def compute_bases(
 ) -> dict[str, Any]:
     def _run():
         path = contour_path([np.array(xs) + 1j * np.array(ys)], n_points)
-        return build_animation_data(path, max_degree, levels=levels, n_eval=n_eval)
+        return build_animation_data(
+            path,
+            max_degree,
+            levels=levels,
+            n_eval=n_eval,
+            on_level=lambda done, total: jobs.report("bases", done / total, done=done, total=total),
+        )
 
     return await submit_compute_job("bases", _run)

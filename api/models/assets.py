@@ -21,6 +21,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from api.models.computation import ComputeBasesRequest, ComputeEpicyclesRequest
 from api.models.shared import ContourSettings, AnimationSettings
 
 
@@ -95,6 +96,18 @@ class ContourAssetResponse(BaseModel):
 
 class ExtractContourRequest(BaseModel):
     contour_settings: ContourSettings = Field(default_factory=ContourSettings)
+
+
+class SeriesJobRequest(BaseModel):
+    """The series a contour job computes: compute/epicycles' and compute/bases'
+    bodies, as those routes take them."""
+
+    epicycles: ComputeEpicyclesRequest = Field(default_factory=ComputeEpicyclesRequest)
+    bases: ComputeBasesRequest = Field(default_factory=ComputeBasesRequest)
+
+
+class ImageJobRequest(ExtractContourRequest, SeriesJobRequest):
+    """extract-contour's body plus the series to compute on its contour."""
 
 
 class SaveContourRequest(BaseModel):
