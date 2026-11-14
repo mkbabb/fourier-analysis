@@ -6,6 +6,8 @@ precomputes partial sums for frontend transfer.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 from numpy.polynomial import chebyshev, legendre
 from numpy.typing import NDArray
@@ -107,6 +109,7 @@ def build_animation_data(
     max_degree: int,
     levels: list[int] | None = None,
     n_eval: int = 1000,
+    on_level: Callable[[int, int], None] | None = None,
 ) -> dict:
     """Precompute all partial sums for frontend transfer.
 
@@ -118,6 +121,10 @@ def build_animation_data(
         Truncation levels to precompute. Defaults to a geometric progression.
     n_eval : int
         Evaluation points per partial sum.
+    on_level : callable, optional
+        Called as ``on_level(done, total)`` as the work advances: once after
+        the fit, then after each polynomial level (a progress report; it may
+        raise to stop).
 
     Returns
     -------
@@ -129,6 +136,9 @@ def build_animation_data(
         levels = _default_levels(max_degree)
 
     approx = approximate_curve(contour_points, max_degree)
+    total = len(levels) + 1
+    if on_level is not None:
+        on_level(1, total)
 
     partial_sums: dict[str, dict[int, dict[str, list[float]]]] = {}
 
@@ -155,7 +165,7 @@ def build_animation_data(
     # was ~60% of a bases request and moved no point by more than 1e-9.
     partial_sums["chebyshev"] = {}
     partial_sums["legendre"] = {}
-    for n in levels:
+    for done, n in enumerate(levels):
         deg = min(n, len(contour_points) - 1)
         xy = {
             "x": chebyshev.chebval(s_eval, chebyshev_fit(x_signal, deg)).tolist(),
@@ -163,6 +173,8 @@ def build_animation_data(
         }
         partial_sums["chebyshev"][n] = xy
         partial_sums["legendre"][n] = xy
+        if on_level is not None:
+            on_level(done + 2, total)
 
     # Serialize decompositions
     decompositions = {}
