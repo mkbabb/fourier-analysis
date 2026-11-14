@@ -30,10 +30,13 @@ summary "### Post-deploy smoke (X §0eh)"
 
 # ── 1. The served bundle carries the API base ────────────────────────────────
 bundle_has_base() {
-    local html src
+    local html src body
     html="$("${CURL[@]}" -H 'Cache-Control: no-cache' "$SITE/?smoke=$(date +%s)")" || return 1
     for src in $(printf '%s' "$html" | grep -oE '/assets/[A-Za-z0-9._-]+\.js' | sort -u); do
-        if "${CURL[@]}" "$SITE$src" | grep -qF "$API_BASE"; then
+        # Read the whole body first: `curl | grep -q` closes the pipe on the first
+        # match, curl exits 23, and under pipefail a found base reads as missing.
+        body="$("${CURL[@]}" "$SITE$src")" || continue
+        if grep -qF "$API_BASE" <<<"$body"; then
             log "bundle $src carries the API base $API_BASE"
             return 0
         fi
