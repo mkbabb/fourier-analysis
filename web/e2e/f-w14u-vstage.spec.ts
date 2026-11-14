@@ -3,6 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { seededViz } from "./fixtures/seed";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { showView } from "./fixtures/workspace";
+import { openAppDock } from "./fixtures/app-dock";
+import { CONTOUR_JOB } from "./fixtures/jobs";
 
 /**
  * X.F.W14U.vstage — the Visualize stage's family (spec `F-W14U.md` Units :8-18;
@@ -226,7 +228,7 @@ for (const scheme of ["light", "dark"] as const) {
         test.setTimeout(90_000);
 
         test("e73 · F-73 — the stage says computing in the DOM; the canvas paints no drop box", async ({ page }) => {
-            await page.route("**/api/contours/*/compute/**", async (route) => {
+            await page.route(CONTOUR_JOB, async (route) => {
                 await new Promise((r) => setTimeout(r, 6000));
                 await route.fallback();
             });
@@ -280,6 +282,7 @@ test.describe("F.W14U.vstage — upload and publish (1440)", () => {
         });
         const viz = seededViz();
         await page.goto(`/v/${viz.slug}`);
+        await openAppDock(page);
         await expect(page.getByRole("button", { name: "Log in" })).toBeVisible({ timeout: 30_000 });
         await page.getByRole("button", { name: "Edit contour" }).first().hover();
         const publish = page.getByRole("button", { name: "Publish to Gallery" }).first();

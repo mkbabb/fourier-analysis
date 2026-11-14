@@ -147,8 +147,7 @@ async function runRecompute() {
             n_harmonics: props.nHarmonics,
             n_points: props.nPoints,
         };
-        await Promise.allSettled([store.computeEpicycles(), store.computeBases()]);
-        lastComputedKey = currentComputeKey();
+        if (await store.computeContour()) lastComputedKey = currentComputeKey();
     } finally {
         store.endCompute();
     }
@@ -175,16 +174,12 @@ async function runCompute() {
             ml_detail_threshold: mlThreshold.value * 0.6,
         };
 
-        // Extract contour first, then compute in parallel
-        await store.extractContour();
-
-        await Promise.allSettled([
-            store.computeEpicycles(),
-            store.computeBases(),
-        ]);
-
-        lastComputedKey = currentComputeKey();
-        lastExtractionKey = currentExtractionKey();
+        // O16 frame 50: one image job extracts the outline and computes both
+        // series, streaming each piece to the stage as it lands.
+        if (await store.computeImage()) {
+            lastComputedKey = currentComputeKey();
+            lastExtractionKey = currentExtractionKey();
+        }
     } finally {
         store.endCompute();
     }

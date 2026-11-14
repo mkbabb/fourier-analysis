@@ -200,7 +200,7 @@ test.describe("F.W14V.u1 — the canvas dock's controls (1440)", () => {
         const viewRows = await menuRows(page);
         await frame(page, "u79-view-menu");
         await page.keyboard.press("Escape");
-        expect(viewRows).toEqual(["Image overlay", "Contour trace"]);
+        expect(viewRows).toEqual(["Image overlay", "Original outline"]);
         await page.getByRole("button", { name: "Edit contour" }).first().click();
         await page.getByRole("button", { name: "Save contour" }).first().hover();
         await page.waitForTimeout(700);
@@ -222,7 +222,7 @@ test.describe("F.W14V.u1 — the canvas dock's controls (1440)", () => {
         await expandCanvasDock(page);
         await expect(dock.locator(".view-dot"), "no mark at the default view").toHaveCount(0);
         await page.locator(".controls-dock-anchor [aria-label='View options']").click();
-        await page.getByRole("menuitemcheckbox", { name: "Contour trace" }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Original outline" }).click();
         // Dismiss by pointer, outside (an Escape hands focus back to the trigger,
         // and a dock holding focus stays expanded, by glass's design).
         await page.mouse.click(5, 5);

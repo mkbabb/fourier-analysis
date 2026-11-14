@@ -35,7 +35,7 @@
  *  - UIA-F-152: the header clears the content by the same gutter it keeps
  *    above the dock (`--space-body`).
  */
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from "vue";
+import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
 import { useEventListener, useResizeObserver } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { prefetchRoute } from "@/router";
@@ -195,12 +195,10 @@ if (typeof document !== "undefined" && document.fonts) {
     useEventListener(document.fonts, "loadingdone", () => void fitNavLabel());
 }
 
-// The dock opens on first paint and holds open while the first route mounts;
-// then it is released to glass's idle window, so a page left alone rests at
-// the seal (o1105 adversary r1/r2: the open dock was never released, and stayed
-// open at every width until the pointer crossed it or a press landed outside).
-// The hold is glass's own (`keepOpen`/`release`); the idle window is glass's
-// one timer (DOCK_COLLAPSE_DELAY_MS), never a second one here.
+// O16 [49] [57] (owner, 13 Nov: "it should by default be collapsed"): the dock
+// rests at its seal from first paint, glass's `collapse="closed"` (its
+// default); hover, focus or a press opens it, and glass's idle window folds it
+// again. The first-route open hold (o1105) is retired with the open start.
 /*
  * Canon F6 (restraint, C-35): "Docks shrink on scroll; page progress is a
  * hairline border of the dock, edge to edge" (owner, 2026-11-06). The page's
@@ -222,19 +220,23 @@ useEventListener(pageScroll.scroller, "scroll", () => {
     if (!dock?.expanded || top < foldFrom) foldFrom = top;
     else if (top - foldFrom > FOLD_PX && !dock.isHeld) dock.collapse();
 }, { passive: true });
+/**
+ * O16: an open Sections menu holds the dock open (glass's keep-open count, as
+ * the editor dock's menus do, X-OD19 F4). With the dock resting collapsed and
+ * opened by hover, a pointer that left the dock for the page folded it, and the
+ * menu with it, under the reader. glass's DropdownMenu has no `keep-dock-open`
+ * (its Popover does: About uses it).
+ */
+function holdDockWhileOpen(open: boolean) {
+    if (open) dockRef.value?.keepOpen();
+    else dockRef.value?.release();
+}
 const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLElement | undefined) ?? null);
-
-onMounted(() => {
-    const dock = dockRef.value;
-    if (!dock) return;
-    dock.keepOpen();
-    void router.isReady().then(() => requestAnimationFrame(() => dock.release()));
-});
 </script>
 
 <template>
     <header ref="header" class="app-header">
-        <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="open">
+        <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed">
             <!-- Logo + attribution card. The wordmark is the trigger's whole
                  face; at <640px it is the lone ℱ glyph and the dock's control
                  cell (≥44px coarse) is its hit box. -->
@@ -287,7 +289,7 @@ onMounted(() => {
                  §0dw) whose name carries the current section, and a non-modal
                  menu (UIA-F-231) whose current row is `aria-current` (its
                  paint is glass's half, UIA-F-128). -->
-            <DropdownMenu :modal="false">
+            <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
                     <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
                     <span v-show="showNavLabel" class="nav-trigger-label">{{ navLabel }}</span>
@@ -318,13 +320,10 @@ onMounted(() => {
 
             <DarkModeToggle class="dark-mode-toggle" />
 
-            <!-- Owner order 2026-11-05 ("fourier should have a dock collapse
-                 state, too"): the dock opens on first paint and yields to
-                 work; collapsed, its seal is the current section's glyph
-                 (Compass off the five), the same glyph the Sections trigger
-                 wears. -->
+            <!-- O16 [49] [57] (owner, 13 Nov): collapsed, the seal is the
+                 Fourier F, the wordmark's own ℱ (not redrawn), on every route. -->
             <template #collapsed>
-                <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon dock-summary-glyph" aria-hidden="true" />
+                <span class="dock-summary-mark font-serif-math font-semibold select-none" aria-hidden="true">&#x2131;</span>
             </template>
         </GlassDock>
         <Teleport v-if="dockEl && pageScroll.progress.value !== null" :to="dockEl">
@@ -393,6 +392,14 @@ onMounted(() => {
     .logo-text {
         display: inline;
     }
+}
+
+/* The collapsed seal's ℱ: the wordmark's glyph at the dock's glyph rung,
+   in the Fourier amber the section glyphs wear. */
+.dock-summary-mark {
+    font-size: calc(var(--dock-icon-glyph) * 1.6);
+    line-height: 1;
+    color: var(--viz-amber);
 }
 
 /* ── Section faces: the Fourier amber marks the section glyph ── */

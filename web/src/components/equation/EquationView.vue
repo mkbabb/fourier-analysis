@@ -141,7 +141,9 @@ function takePrefetch(key: string): Promise<ComputeEquationResponse> | null {
 </script>
 
 <script setup lang="ts">
-import { ref, computed, watch, onScopeDispose, useTemplateRef } from "vue";
+import { ref, shallowRef, computed, watch, onScopeDispose, useTemplateRef } from "vue";
+import type { JobStage } from "@/lib/api";
+import { jobProgressValue, jobStageLabel } from "@/lib/jobProgress";
 import { watchDebounced } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
 import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
@@ -198,6 +200,25 @@ const effectiveN = ref(cachedRes?.result?.effective_n ?? 20);
  * window. The plot is given the domain that produced the data it is drawing.
  */
 const resultDomain = ref<[number, number]>([domainStart.value, domainEnd.value]);
+
+/*
+ * O16 (owner frame 50: "realtime updates as progress completes ... visualize
+ * it too"): while a compute job runs, its live picture. The sampled f(x)
+ * arrives first and is drawn at once; each coefficient that lands joins the
+ * partial sum, so the plot sharpens harmonic by harmonic (ConvergencePlot
+ * tweens between coefficient sets: nothing jumps). The stage and fraction
+ * drive the determinate progress line and its caption.
+ */
+const jobStage = shallowRef<JobStage | null>(null);
+const liveSamples = shallowRef<{ x: number[]; y: number[] } | null>(null);
+const liveTerms = shallowRef<FourierTermDTO[]>([]);
+const liveDomain = ref<[number, number]>([domainStart.value, domainEnd.value]);
+const showLive = computed(() => computing.value && !!liveSamples.value);
+const plotPoints = computed(() => (showLive.value ? liveSamples.value : result.value?.original_points) ?? null);
+const plotCoefficients = computed(() => (showLive.value ? liveTerms.value : result.value?.coefficients) ?? []);
+const plotDomain = computed<[number, number]>(() => (showLive.value ? liveDomain.value : resultDomain.value));
+const jobValue = computed(() => jobProgressValue(jobStage.value));
+const jobLabel = computed(() => jobStageLabel(jobStage.value));
 const autoHarmonics = ref(true);
 const eqMode = ref<EquationDisplayMode>("sigma");
 const mobileView = ref<"controls" | "canvas">("canvas");
@@ -369,9 +390,24 @@ async function doCompute(force = false) {
     computing.value = true;
     error.value = null;
     expressionError.value = null;
+    jobStage.value = null;
+    liveSamples.value = null;
+    liveTerms.value = [];
+    liveDomain.value = [req.domain_start, req.domain_end];
+    const live = {
+        stage: (d: JobStage) => {
+            if (gen === computeGeneration) jobStage.value = d;
+        },
+        partial: (d: { stage: string } & Record<string, unknown>) => {
+            if (gen !== computeGeneration) return;
+            if (d.stage === "samples") liveSamples.value = { x: d.x as number[], y: d.y as number[] };
+            else if (d.stage === "coefficient") liveTerms.value = [...liveTerms.value, d as unknown as FourierTermDTO];
+        },
+    };
+    const run = () => computeEquation(req, live);
     try {
         // X·OD19 ALL: the intent prefetch for this very request, if one is in flight.
-        const res = await (takePrefetch(key)?.catch(() => computeEquation(req)) ?? computeEquation(req));
+        const res = await (takePrefetch(key)?.catch(run) ?? run());
         if (gen !== computeGeneration) return;
         result.value = res;
         lastComputeKey = key;
@@ -390,7 +426,12 @@ async function doCompute(force = false) {
             else error.value = failureMessage(e, COMPUTE_FAILED);
         }
     } finally {
-        if (gen === computeGeneration) computing.value = false;
+        if (gen === computeGeneration) {
+            computing.value = false;
+            jobStage.value = null;
+            liveSamples.value = null;
+            liveTerms.value = [];
+        }
     }
 }
 
@@ -498,10 +539,31 @@ watchDebounced(
                     <div class="eq-card eq-skeleton-series">
                         <Skeleton shimmer class="eq-skeleton-line" />
                         <Skeleton shimmer class="eq-skeleton-line eq-skeleton-line--short" />
+                        <!-- O16 frame 50: how far the job is, and in what stage. -->
+                        <div class="eq-job">
+                            <Progress :model-value="jobValue" :max="1" size="sm" class="eq-job-bar"
+                                :aria-label="jobLabel" />
+                            <span class="text-caption text-muted-foreground">{{ jobLabel }}</span>
+                        </div>
                     </div>
-                    <div class="eq-plot-card eq-skeleton-plot">
-                        <Skeleton shimmer class="eq-skeleton-fill" />
-                    </div>
+                    <!-- O16 frame 50: f(x) as soon as it is sampled, then the series
+                         sharpening term by term; the shimmer only until then. -->
+                    <Transition name="status-fade" mode="out-in">
+                        <div v-if="plotPoints" class="px-3 py-2 flex-1 min-h-0 flex flex-col eq-plot-card">
+                            <ConvergencePlot
+                                class="flex-1"
+                                :original-points="plotPoints"
+                                :coefficients="plotCoefficients"
+                                :n-harmonics="nHarmonics"
+                                :domain="plotDomain"
+                                :expression="expression"
+                                :variable="seriesVariable"
+                            />
+                        </div>
+                        <div v-else class="eq-plot-card eq-skeleton-plot">
+                            <Skeleton shimmer class="eq-skeleton-fill" />
+                        </div>
+                    </Transition>
                 </div>
 
                 <!-- Error (no prior result): a transient failure keeps its retry.
@@ -578,9 +640,9 @@ watchDebounced(
 
                         <Transition name="status-fade" mode="out-in">
                             <div v-if="loading" class="eq-status glass-floating glass-opaque" role="status">
-                                <Progress :model-value="null" size="sm" class="eq-status-bar"
-                                    :aria-label="computing ? 'Recomputing the series' : 'Re-rendering the series'" />
-                                <span class="text-caption text-muted-foreground">{{ computing ? "Recomputing…" : "Re-rendering…" }}</span>
+                                <Progress :model-value="computing ? jobValue : null" :max="1" size="sm" class="eq-status-bar"
+                                    :aria-label="computing ? jobLabel : 'Re-rendering the series'" />
+                                <span class="text-caption text-muted-foreground">{{ computing ? jobLabel : "Re-rendering" }}</span>
                             </div>
                             <div v-else-if="error" class="eq-status glass-floating glass-opaque" role="alert">
                                 <span class="text-caption font-medium text-foreground shrink-0">Not updated</span>
@@ -597,10 +659,10 @@ watchDebounced(
                     <div class="px-3 py-2 flex-1 min-h-0 flex flex-col eq-plot-card" :data-stale="stale || undefined">
                         <ConvergencePlot
                             class="flex-1"
-                            :original-points="result.original_points"
-                            :coefficients="result.coefficients"
-                            :n-harmonics="vizHarmonics"
-                            :domain="resultDomain"
+                            :original-points="plotPoints ?? result.original_points"
+                            :coefficients="plotCoefficients"
+                            :n-harmonics="showLive ? nHarmonics : vizHarmonics"
+                            :domain="plotDomain"
                             :expression="expression"
                             :variable="seriesVariable"
                         />
@@ -791,6 +853,18 @@ watchDebounced(
 }
 .eq-skeleton-line--short {
     inline-size: min(20rem, 50%);
+}
+/* O16 frame 50: the job's line and its stage, under the series' place. */
+.eq-job {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-atom);
+    inline-size: min(20rem, 70%);
+    margin-top: var(--space-atom);
+}
+.eq-job-bar {
+    inline-size: 100%;
 }
 .eq-skeleton-plot {
     flex: 1;

@@ -393,6 +393,11 @@ article.paper-article {
 .hue-chip[data-state="on"] {
     background-color: color-mix(in srgb, var(--chip-hue) 12%, transparent);
     color: color-mix(in oklab, var(--chip-hue) 75%, var(--foreground));
+    /* O16 (glass's ownership answer, 14 Nov: the bold selected chip on
+       /equation is the site's): the hue and the tint say "chosen"; the label
+       keeps the body weight (Computer Modern has no semibold, so 600 drew
+       CMU Bold Extended, wider than its neighbours). */
+    font-weight: inherit;
 }
 .hue-chip[data-state="on"]:hover:not(:disabled) {
     background-color: color-mix(in srgb, var(--chip-hue) 16%, transparent);
@@ -512,6 +517,13 @@ article.paper-article {
    this one line reads it. */
 :root {
     --page-gutter: 1rem;
+}
+
+/* O16 [48] [49] [51] [57] — fully round docks, glass's own answer for 11.0.x
+   (GLASS-16 answers, 14 Nov): `--radius-dock` set once, in px, at the root.
+   DELETE AT THE glass 11.1.0 BUMP, which makes the stadium the default. */
+:root {
+    --radius-dock: 9999px;
 }
 
 /* X-DS pass 15 · DS-F17-C1 — the Configurator aside's section label on the
@@ -758,4 +770,43 @@ article.paper-article {
     .slide-down-leave-to {
         transform: none;
     }
+}
+
+/* O16 X-a (owner, 13 Nov, cross-app): dragging on a visualization, a dock, a
+   slider or any control never raises a text selection, on desktop or touch.
+   Scoped to the controls and the drawing surfaces; prose, code, the equation's
+   KaTeX and the readouts keep their selection (never body-wide). */
+canvas,
+.canvas-stage,
+.editor-shell,
+.convergence-container,
+.stage-column,
+.glass-dock,
+.glass-slider,
+[role="slider"],
+[role="menu"],
+[role="listbox"],
+[role="tablist"],
+button,
+[data-slot="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+}
+canvas,
+.editor-shell svg {
+    -webkit-touch-callout: none;
+}
+.canvas-stage :is(.katex, .eq-scroll-region, output),
+.convergence-container :is(.katex, output) {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+/* O16 (glass's ownership answer, 14 Nov): a text Button ("Browse the gallery",
+   "View the project on GitHub") reads as a link in both arms. Its accent is
+   glass's `--primary`, the violet in dark but the black ink in light; it takes
+   the violet rung (`--section-color-7`, identical to dark's `--primary`) in
+   both. A destructive text button keeps its own accent. */
+.button[data-emphasis="text"][data-tone="neutral"] {
+    --button-accent: var(--section-color-7);
 }

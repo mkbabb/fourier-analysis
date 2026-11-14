@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5[1m]
 import { test, expect } from "@playwright/test";
+import { openAppDock } from "./fixtures/app-dock";
 
 /**
  * X·F F.W9 `.b` — `G-F9-12`: the shell header's nav, logo and toggle.
@@ -47,6 +48,7 @@ const NAV_WIDTHS = [
 test.describe("Shell header (G-F9-12)", () => {
     test("the logo trigger is named and opens its attribution card", async ({ page }) => {
         await page.goto("/");
+        await openAppDock(page);
 
         // `.logo-trigger` is a `PopoverTrigger` whose accessible name is the
         // component's own `aria-label`; the mark itself is decorative text.
@@ -68,6 +70,7 @@ test.describe("Shell header (G-F9-12)", () => {
             // this reads it at 1440, 1024, 768 and 390 (was: 390 only).
             await page.setViewportSize(vp);
             await page.goto("/gallery");
+            await openAppDock(page);
 
             // `:aria-label="`Navigate — current section ${activeTabData.label}`"` —
             // the trigger's name CARRIES the current section, which is the only
@@ -94,6 +97,7 @@ test.describe("Shell header (G-F9-12)", () => {
             // X.F.W14V `.nav` — owner-ruling re-baseline (§0dw): at every width.
             await page.setViewportSize(vp);
             await page.goto("/gallery");
+            await openAppDock(page);
 
             const nav = page.getByRole("button", { name: /^Navigate — current section/ });
             await expect(nav).toBeVisible({ timeout: 30_000 });
@@ -111,6 +115,7 @@ test.describe("Shell header (G-F9-12)", () => {
 
     test("the dark-mode toggle announces its state through aria-pressed", async ({ page }) => {
         await page.goto("/");
+        await openAppDock(page);
 
         // N-2's contract, spec side: the NAME is stable ("Dark mode") and the
         // STATE is `aria-pressed`. The old label put the state inside the name,

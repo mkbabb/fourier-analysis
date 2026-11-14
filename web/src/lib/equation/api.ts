@@ -19,15 +19,21 @@ import type {
     FourierTermDTO,
 } from "./types";
 import type { BasisComponent } from "@/lib/types";
-import { apiFetch } from "../api";
+import { apiFetch, runJob, type JobHandlers } from "../api";
 
+/**
+ * O16 (owner frame 50): the series is a compute job (`/api/equations/jobs`,
+ * docs/api/compute-jobs.md). `on` receives its stages (`integrate` with
+ * `done`/`total`, ...) and partials (`samples`: f(x) on the grid, first;
+ * `coefficient`: one term at a time, 0, +1, -1, +2, ...), so the page can draw
+ * the function at once and the series sharpening as the terms land. The
+ * answer is the synchronous route's response, field for field.
+ */
 export async function computeEquation(
     req: ComputeEquationRequest,
+    on: JobHandlers = {},
 ): Promise<ComputeEquationResponse> {
-    return apiFetch<ComputeEquationResponse>("/api/equations/compute", "eq-compute", {
-        method: "POST",
-        body: req,
-    });
+    return runJob<ComputeEquationResponse>("/api/equations/jobs", req, "eq-compute", on);
 }
 
 export async function simplifyCoefficients(

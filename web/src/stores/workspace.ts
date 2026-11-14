@@ -94,12 +94,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
      */
     const computeError = ref<string | null>(null);
     const revision = ref(0);
-    // Separate revision counters for compute methods so that
-    // loadWorkspace incrementing `revision` doesn't cause compute
-    // results to be silently discarded, which triggers an infinite
-    // retry loop in the auto-compute watcher.
-    let epicycleRevision = 0;
-    let basesRevision = 0;
+    // The current compute job's generation: a later job, a load or an
+    // invalidation bumps it, so a superseded job's partials and answer are dropped.
+    let jobRevision = 0;
 
     // Depth counter so `computing` stays true across sequential async steps
     let _computeDepth = 0;
@@ -134,9 +131,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     function invalidateInFlightComputation() {
         revision.value++;
-        epicycleRevision++;
-        basesRevision++;
-        api.abortInflight(["extractContour", "computeEpicycles", "computeBases", "getContour"]);
+        jobRevision++;
+        api.abortInflight(["computeJob", "getContour"]);
     }
 
     // UIA-F-47: the published slugs the loaded draft carries. Every draft save
@@ -206,9 +202,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         loading.value = true;
         error.value = null;
         computeError.value = null;
-        epicycleRevision++;
-        basesRevision++;
-        api.abortInflight(["computeEpicycles", "computeBases", "getContour"]);
+        jobRevision++;
+        api.abortInflight(["computeJob", "getContour"]);
         const rev = ++revision.value;
         try {
             const [meta, draft] = await Promise.all([
@@ -269,9 +264,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         loading.value = true;
         error.value = null;
         computeError.value = null;
-        epicycleRevision++;
-        basesRevision++;
-        api.abortInflight(["computeEpicycles", "computeBases", "getContour"]);
+        jobRevision++;
+        api.abortInflight(["computeJob", "getContour"]);
         const rev = ++revision.value;
         try {
             const { data: viz, etag } = await api.getVisualization(slug);
@@ -308,39 +302,120 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         return loadVisualization(vizSlug);
     }
 
-    async function extractContour() {
-        if (!imageSlug.value) return;
+    /*
+     * O16 (owner frame 50: "this should be async and provide realtime updates
+     * as progress completes ... and see if we can visualize it too"). The
+     * computes are compute jobs (docs/api/compute-jobs.md): an image job
+     * extracts the outline and computes both series; a contour job computes
+     * both series for a contour already in hand. Their partials land on the
+     * stage as they arrive (the outline first, then the epicycles, then the
+     * bases with the answer), and `job` carries the stage and fraction the
+     * progress line reads. One abort key: a later job, a new load or an
+     * unmount closes the stream and cancels the job on the server.
+     */
+    const job = shallowRef<api.JobStage | null>(null);
+
+    function epicycleParams() {
+        return {
+            n_harmonics: contourSettings.value.n_harmonics,
+            n_points: contourSettings.value.n_points,
+        };
+    }
+
+    function basesParams() {
+        const n = contourSettings.value.n_harmonics;
+        const steps = Math.min(n, 50);
+        return {
+            max_degree: n,
+            n_points: contourSettings.value.n_points,
+            levels: Array.from({ length: steps }, (_, i) => Math.max(1, Math.round((i + 1) * n / steps))),
+            n_eval: contourSettings.value.n_points,
+        };
+    }
+
+    /** A partial without its `stage` key: the payload the sync route returned. */
+    function payload<T>(d: api.JobPartial): T {
+        const { stage: _stage, ...rest } = d;
+        return rest as T;
+    }
+
+    function jobHandlers(rev: number): api.JobHandlers {
+        return {
+            stage: (d) => {
+                if (rev === jobRevision) job.value = d;
+            },
+            partial: (d) => {
+                if (rev !== jobRevision) return;
+                if (d.stage === "contour") contour.value = markRaw(payload<ContourAsset>(d));
+                else if (d.stage === "epicycles") epicycleData.value = markRaw(payload<EpicycleData>(d));
+            },
+        };
+    }
+
+    async function runJob(
+        path: string,
+        body: Record<string, unknown>,
+        apply: (res: { contour?: ContourAsset; epicycles: EpicycleData; bases: AnimationData }) => void,
+        fallback: string,
+    ): Promise<boolean> {
         beginCompute();
         computeError.value = null;
-        const rev = ++revision.value;
+        const rev = ++jobRevision;
+        job.value = null;
         try {
-            const result = await api.extractContour(
-                imageSlug.value,
-                contourSettings.value,
+            const res = await api.runJob<{ contour?: ContourAsset; epicycles: EpicycleData; bases: AnimationData }>(
+                path,
+                body,
+                "computeJob",
+                jobHandlers(rev),
             );
-            if (revision.value !== rev) return;
-            contour.value = markRaw(result);
+            if (rev !== jobRevision) return false;
+            apply(res);
             scheduleDraftSave();
+            return true;
         } catch (e: unknown) {
-            if (!api.isAbortError(e))
-                computeError.value = computeFailure(e, "Contour extraction failed");
-            throw e;
+            if (!api.isAbortError(e) && rev === jobRevision) computeError.value = computeFailure(e, fallback);
+            return false;
         } finally {
+            if (rev === jobRevision) job.value = null;
             endCompute();
         }
     }
 
+    /** Extract the outline with the current settings and compute both series (one image job). */
+    async function computeImage(): Promise<boolean> {
+        if (!imageSlug.value) return false;
+        return runJob(
+            `/api/images/${imageSlug.value}/jobs`,
+            { contour_settings: { ...contourSettings.value }, epicycles: epicycleParams(), bases: basesParams() },
+            (res) => {
+                if (res.contour) contour.value = markRaw(res.contour);
+                epicycleData.value = markRaw(res.epicycles);
+                basesData.value = markRaw(res.bases);
+            },
+            "Computation failed",
+        );
+    }
+
+    /** Compute both series for the contour in hand (one contour job). */
+    async function computeContour(): Promise<boolean> {
+        if (!contour.value) return false;
+        return runJob(
+            `/api/contours/${contour.value.contour_hash}/jobs`,
+            { epicycles: epicycleParams(), bases: basesParams() },
+            (res) => {
+                epicycleData.value = markRaw(res.epicycles);
+                basesData.value = markRaw(res.bases);
+            },
+            "Computation failed",
+        );
+    }
+
     /** The status line's Retry: the contour if there is none yet, then both computes. */
     async function retryCompute() {
-        beginCompute();
-        try {
-            if (!contour.value) await extractContour();
-            await Promise.allSettled([runComputeEpicycles(), runComputeBases()]);
-        } catch {
-            // Recorded in `computeError`, which the status line shows.
-        } finally {
-            endCompute();
-        }
+        // Each job records its own failure in `computeError`, which the status line shows.
+        if (!contour.value) await computeImage();
+        else await computeContour();
     }
 
     async function saveContourPoints(points: { x: number[]; y: number[] }) {
@@ -348,9 +423,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         beginCompute();
         error.value = null;
         try {
-            epicycleRevision++;
-            basesRevision++;
-            api.abortInflight(["computeEpicycles", "computeBases"]);
+            jobRevision++;
+            api.abortInflight(["computeJob"]);
             const result = await api.saveContour(imageSlug.value, points, contour.value?.contour_hash ?? null);
             contour.value = markRaw(result);
             scheduleDraftSave();
@@ -373,64 +447,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             // swapped the panel under the reader, and a field edited meanwhile
             // came back as a fresh element at its default. Each run records its
             // own failure in `computeError`; `allSettled` never rejects.
-            void Promise.allSettled([runComputeEpicycles(), runComputeBases()]);
+            void computeContour();
         } catch (e: unknown) {
             if (!api.isAbortError(e))
                 error.value = problemMessage(e, "Failed to save contour");
-            throw e;
-        } finally {
-            endCompute();
-        }
-    }
-
-    async function runComputeEpicycles() {
-        if (!contour.value) return;
-        beginCompute();
-        computeError.value = null;
-        const rev = ++epicycleRevision;
-        try {
-            const result = await api.computeEpicycles(
-                contour.value.contour_hash,
-                {
-                    n_harmonics: contourSettings.value.n_harmonics,
-                    n_points: contourSettings.value.n_points,
-                },
-            );
-            if (epicycleRevision !== rev) return;
-            epicycleData.value = markRaw(result);
-            scheduleDraftSave();
-        } catch (e: unknown) {
-            if (!api.isAbortError(e))
-                computeError.value = computeFailure(e, "Epicycle computation failed");
-            throw e;
-        } finally {
-            endCompute();
-        }
-    }
-
-    async function runComputeBases() {
-        if (!contour.value) return;
-        beginCompute();
-        computeError.value = null;
-        const rev = ++basesRevision;
-        try {
-            const result = await api.computeBases(
-                contour.value.contour_hash,
-                {
-                    max_degree: contourSettings.value.n_harmonics,
-                    n_points: contourSettings.value.n_points,
-                    levels: Array.from({ length: Math.min(contourSettings.value.n_harmonics, 50) }, (_, i) =>
-                        Math.max(1, Math.round((i + 1) * contourSettings.value.n_harmonics / Math.min(contourSettings.value.n_harmonics, 50)))
-                    ),
-                    n_eval: contourSettings.value.n_points,
-                },
-            );
-            if (basesRevision !== rev) return;
-            basesData.value = markRaw(result);
-            scheduleDraftSave();
-        } catch (e: unknown) {
-            if (!api.isAbortError(e))
-                computeError.value = computeFailure(e, "Bases computation failed");
             throw e;
         } finally {
             endCompute();
@@ -596,11 +616,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         // (the converged entity is slug-addressed; the former two-key load
         // pair degenerated to the single slug).
         loadSnapshot,
-        extractContour,
         saveContourPoints,
-        computeEpicycles: runComputeEpicycles,
-        computeBases: runComputeBases,
+        computeImage,
+        computeContour,
         retryCompute,
+        job,
         saveVisualization,
         markPublished,
         // `createSnapshot` is retained as an alias for the (unmigrated)

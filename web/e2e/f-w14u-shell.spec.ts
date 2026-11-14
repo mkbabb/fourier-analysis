@@ -2,6 +2,7 @@
 import { existsSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { ADMIN_TOKEN, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
+import { openAppDock } from "./fixtures/app-dock";
 
 /**
  * X.F.W14U.shell — the shell family (spec `F-W14U.md` Units :8-18; register
@@ -41,6 +42,7 @@ function toasts(page: Page) {
 
 async function openLogin(page: Page): Promise<void> {
     await page.goto("/gallery");
+    await openAppDock(page);
     await page.getByRole("button", { name: "Log in" }).click();
     await expect(page.getByRole("textbox", { name: /Your slug/ })).toBeVisible({ timeout: 10_000 });
 }
@@ -72,6 +74,7 @@ for (const vp of [DESKTOP, PHONE]) {
         test.use({ viewport: vp });
         test("opening the form and a slug error leave the dock box unchanged", async ({ page }) => {
             await page.goto("/gallery");
+            await openAppDock(page);
             await expect(page.getByRole("button", { name: "Log in" })).toBeVisible({ timeout: 30_000 });
             const before = await dockBox(page);
             await page.getByRole("button", { name: "Log in" }).click();
@@ -90,6 +93,7 @@ test.describe("s54 UIA-F-54 ⊕ s153 UIA-F-153 — one face per control, no plat
     test("logged in: the account is one trigger; every dock control is a dock face; no bordered plate", async ({ page }) => {
         await loggedIn(page);
         await page.goto("/gallery");
+        await openAppDock(page);
         const account = page.getByRole("group", { name: "Account" });
         await expect(account.getByRole("button", { name: /^Account: / })).toBeVisible({ timeout: 30_000 });
         expect(await account.getByRole("button").count()).toBe(1);
@@ -154,6 +158,7 @@ test.describe("s232 UIA-F-232 — the login micro-issues", () => {
         await page.keyboard.press("Escape");
         await loggedIn(page);
         await page.goto("/gallery");
+        await openAppDock(page);
         const trigger = page.getByRole("button", { name: /^Account: / });
         await expect(trigger).toBeVisible({ timeout: 30_000 });
         const face = (await trigger.innerText()).trim();
@@ -183,6 +188,7 @@ test.describe("s121 UIA-F-121 — no raw HTTP status as the message", () => {
             r.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ detail: "Forbidden" }) }),
         );
         await page.goto(`/gallery?admin=not-the-token`);
+        await openAppDock(page);
         const toast = toasts(page).first();
         await expect(toast).toBeVisible({ timeout: 30_000 });
         await frame(page, "toast-admin-error");
@@ -298,6 +304,7 @@ test.describe("s256 UIA-F-256 ⊕ UIA-F-248 (View) — the publish toast names t
 
 async function openAbout(page: Page) {
     await page.goto("/gallery");
+    await openAppDock(page);
     await page.getByRole("button", { name: "About Fourier analysis" }).click();
     const card = page.locator("[data-reka-popper-content-wrapper]").filter({ hasText: /orthogonal/i });
     await expect(card).toBeVisible({ timeout: 10_000 });
@@ -355,6 +362,7 @@ for (const vp of [DESKTOP, { width: 1024, height: 768 }, { width: 768, height: 1
         test.use({ viewport: vp });
         test("one Navigate trigger, no Sections tab row; the menu marks the current section; keyboard open/close", async ({ page }) => {
             await page.goto("/gallery");
+            await openAppDock(page);
             const trigger = page.getByRole("button", { name: /^Navigate/ });
             await expect(trigger).toBeVisible({ timeout: 30_000 });
             await expect(trigger).toHaveCount(1);
@@ -386,6 +394,7 @@ test.describe("s128 UIA-F-128 ⊕ s233 (nav) ⊕ s231 UIA-F-231 — the phone na
     test.use({ viewport: PHONE });
     test("no local current-row tint or plate literals; a visible label; one press reaches About", async ({ page }) => {
         await page.goto("/gallery");
+        await openAppDock(page);
         const trigger = page.getByRole("button", { name: /^Navigate/ });
         await expect(trigger).toBeVisible({ timeout: 30_000 });
         // The label arm is read on a 390 px column. Glass 11's root
@@ -415,6 +424,7 @@ test.describe("s128 UIA-F-128 ⊕ s233 (nav) ⊕ s231 UIA-F-231 — the phone na
     });
     test("an unknown route does not claim a section", async ({ page }) => {
         await page.goto("/nope-not-a-route");
+        await openAppDock(page);
         const trigger = page.getByRole("button", { name: /^Navigate/ });
         await expect(trigger).toBeVisible({ timeout: 30_000 });
         await expect(trigger).not.toHaveAccessibleName(/current section Paper/);
@@ -433,6 +443,7 @@ test.describe("s152 UIA-F-152 ⊕ s130 UIA-F-130 — the dock's gutter and one f
         });
         expect(parseFloat(pad.bottom)).toBeGreaterThan(0);
         expect(pad.bottom).toBe(pad.top);
+        await openAppDock(page);
         const toggle = page.getByRole("button", { name: "Dark mode" });
         const cls = await toggle.getAttribute("class");
         expect(cls).toMatch(/\bdock-(icon-button|tab-button|trigger)\b/);
@@ -448,6 +459,7 @@ test.describe("s150 UIA-F-150 ⊕ s144 UIA-F-144 (consumer) — one admin state,
         await loggedIn(page);
         await stubAdminApi(page, [ENTRY]);
         await page.goto(`/gallery?admin=${ADMIN_TOKEN}`);
+        await openAppDock(page);
         await expect(page.getByRole("region", { name: "Admin mode banner" })).toBeVisible({ timeout: 60_000 });
         expect(await page.locator(".app-dock .admin-badge, .app-dock [title='Admin mode active']").count()).toBe(0);
         await page.getByRole("button", { name: /^Account: / }).click();
@@ -464,6 +476,7 @@ for (const scheme of ["light", "dark"] as const) {
             test.use({ viewport: vp, colorScheme: scheme });
             test("dock, login, error, About, nav, account", async ({ page }) => {
                 await page.goto("/gallery");
+                await openAppDock(page);
                 await expect(page.getByRole("button", { name: "Log in" })).toBeVisible({ timeout: 30_000 });
                 await page.waitForTimeout(400);
                 await frame(page, `dock-${scheme}`);
@@ -486,6 +499,7 @@ for (const scheme of ["light", "dark"] as const) {
                 }
                 await loggedIn(page);
                 await page.goto("/gallery");
+                await openAppDock(page);
                 await page.getByRole("button", { name: /^Account: / }).click();
                 await page.waitForTimeout(300);
                 await frame(page, `account-${scheme}`);

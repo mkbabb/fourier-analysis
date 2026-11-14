@@ -4,6 +4,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { ADMIN_TOKEN, ENTRY, stubAdminApi } from "./fixtures/gallery";
 import { expectHardwareGpu } from "./fixtures/gpu";
 import { seededViz } from "./fixtures/seed";
+import { openAppDock } from "./fixtures/app-dock";
 
 /**
  * X·OD19 ALL (fourier) — owner row OD19-ALL (2026-10-19): "All loading times
@@ -263,6 +264,7 @@ async function hardLoad(page: Page, route: Route): Promise<Reading> {
 
 /** Open the dock's section menu, point at `item`, click it; trace frames until the content shows. */
 async function navTo(page: Page, item: string, ready: string): Promise<Reading> {
+    await openAppDock(page);
     const trigger = page.locator(".app-dock").getByRole("button", { name: /^Navigate/ });
     await expect(trigger).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(800);

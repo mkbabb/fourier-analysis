@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test } from "@playwright/test";
+import { openAppDock } from "./fixtures/app-dock";
 
 /**
  * X.F.W14V `.nav` — addendum (e), COHESION §0dw. The owner, on a 1440 dark
@@ -17,6 +18,7 @@ test.describe("nav falsifier (1440): one section trigger, no inline section link
     test.use({ viewport: { width: 1440, height: 900 } });
     test("the dock's sections are one dropdown trigger", async ({ page }) => {
         await page.goto("/gallery");
+        await openAppDock(page);
         const dock = page.locator(".app-dock");
         await expect(dock).toBeVisible({ timeout: 30_000 });
         await page.waitForTimeout(400);
@@ -47,6 +49,7 @@ for (const vp of [
         test.use({ viewport: vp });
         test("morph glyph bbox equals the section and account glyph bboxes", async ({ page }) => {
             await page.goto("/gallery");
+            await openAppDock(page);
             await expect(page.locator(".app-dock .sun-moon-toggle svg")).toBeVisible({ timeout: 30_000 });
             await page.waitForTimeout(400);
             const read = await page.evaluate(() => {

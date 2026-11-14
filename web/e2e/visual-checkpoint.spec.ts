@@ -4,6 +4,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { ADMIN_TOKEN, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
 import { controlRow } from "./fixtures/slider";
 import { showViewIfTabbed } from "./fixtures/workspace";
+import { waitForJob } from "./fixtures/jobs";
 
 /**
  * X·F F.W9 `.b` — `G-F9-23`: AN INSTRUMENT FOR THE F.W1 VISUAL-REGRESSION
@@ -181,14 +182,9 @@ test.describe("G-F9-23 — the F.W1 checkpoint set, instrumented", () => {
         // subtitle alone raced that response: the same bytes captured 20/10 once
         // and 8/8 twice. The capture now waits for the compute to answer, so it
         // is taken of the settled panel. No threshold moves.
-        const compute = page.waitForResponse(
-            (r) =>
-                new URL(r.url()).pathname.endsWith("/api/equations/compute") &&
-                r.request().method() === "POST",
-            { timeout: 60_000 },
-        );
+        const compute = waitForJob(page, "equations");
         await page.goto("/equation");
-        expect((await compute).status()).toBe(200);
+        expect((await compute).post.status()).toBe(202);
         // Canon F7: the row subtitles are gone; the Harmonics slider is the mark.
         await expect(controlRow(page, "Harmonics")).toBeVisible({ timeout: 60_000 });
         await freeze(page);
