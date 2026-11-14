@@ -225,8 +225,15 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
                 const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
                 return !inside || (!disabled && !(hit && (hit === b || b.contains(hit))));
             });
+            // glass 11.0.1's `.dock-run` is a MARKED run: a scroll container by
+            // design, with a focus-ring reserve at each end (O16: at 390 it
+            // reads 4 px wider than its box, relayed to glass). Every tool's
+            // reach is asserted above, so only an unmarked scroller counts.
             const scrollers = [...root.querySelectorAll<HTMLElement>("*")].filter(
-                (e) => e.scrollWidth > e.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(e).overflowX),
+                (e) =>
+                    !e.classList.contains("dock-run") &&
+                    e.scrollWidth > e.clientWidth + 1 &&
+                    /auto|scroll/.test(getComputedStyle(e).overflowX),
             );
             return { n: buttons.length, out: out.map((b) => b.getAttribute("aria-label")), scrollers: scrollers.length };
         });

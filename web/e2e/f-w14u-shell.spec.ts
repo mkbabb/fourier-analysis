@@ -443,6 +443,7 @@ test.describe("s152 UIA-F-152 ⊕ s130 UIA-F-130 — the dock's gutter and one f
         });
         expect(parseFloat(pad.bottom)).toBeGreaterThan(0);
         expect(pad.bottom).toBe(pad.top);
+        await openAppDock(page);
         const toggle = page.getByRole("button", { name: "Dark mode" });
         const cls = await toggle.getAttribute("class");
         expect(cls).toMatch(/\bdock-(icon-button|tab-button|trigger)\b/);

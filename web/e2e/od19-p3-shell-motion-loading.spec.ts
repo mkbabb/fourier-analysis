@@ -203,6 +203,7 @@ for (const cell of CELLS) {
 
         test("F6 · the toggle's ink fills its 24px glyph box (≥ 22px)", async ({ page }) => {
             await page.goto("/gallery");
+            await openAppDock(page);
             const svg = page.locator(".app-dock .sun-moon-toggle svg");
             await expect(svg).toBeVisible({ timeout: 30_000 });
             await page.waitForTimeout(400);

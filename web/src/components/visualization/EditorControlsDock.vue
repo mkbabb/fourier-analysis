@@ -469,6 +469,12 @@ function holdDockWhileOpen(open: boolean) {
     gap: var(--icon-label-gap);
     --button-tone: var(--tool-ink);
 }
+/* A row under the pointer or the keyboard takes its tool's tint, the menu row's
+   `--menu-row-bg`, as every menu row does; the Button's own quiet plate is
+   the tone at the hover fill, too faint for a hue to read. */
+.tool-row[data-highlighted]:not([data-disabled]) {
+    background: var(--menu-row-bg);
+}
 .tool-glyph {
     width: 1rem;
     height: 1rem;

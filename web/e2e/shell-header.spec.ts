@@ -115,6 +115,7 @@ test.describe("Shell header (G-F9-12)", () => {
 
     test("the dark-mode toggle announces its state through aria-pressed", async ({ page }) => {
         await page.goto("/");
+        await openAppDock(page);
 
         // N-2's contract, spec side: the NAME is stable ("Dark mode") and the
         // STATE is `aria-pressed`. The old label put the state inside the name,

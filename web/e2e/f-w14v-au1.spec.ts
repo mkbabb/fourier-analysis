@@ -28,6 +28,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { ENTRY, stubGallery } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
+import { openAppDock } from "./fixtures/app-dock";
 
 const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
@@ -428,7 +429,7 @@ for (const width of [360, 390]) {
             // Every section's name rides the nav trigger, so each is measured.
             for (const route of ["/gallery", "/paper", "/visualize", "/equation", "/morph"]) {
                 await page.goto(route);
-                await expect(page.locator(".app-dock")).toBeVisible({ timeout: 30_000 });
+                await openAppDock(page);
                 await expect(page.locator(".account-trigger")).toBeVisible({ timeout: 10_000 });
                 await settle(page, 800);
                 const pans = await page.evaluate(() =>

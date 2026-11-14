@@ -49,6 +49,7 @@ for (const vp of [
         test.use({ viewport: vp });
         test("morph glyph bbox equals the section and account glyph bboxes", async ({ page }) => {
             await page.goto("/gallery");
+            await openAppDock(page);
             await expect(page.locator(".app-dock .sun-moon-toggle svg")).toBeVisible({ timeout: 30_000 });
             await page.waitForTimeout(400);
             const read = await page.evaluate(() => {
