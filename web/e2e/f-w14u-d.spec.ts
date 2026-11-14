@@ -66,7 +66,7 @@ async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) =
 async function traceOff(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Edit contour" }).first().hover();
     await page.locator(".controls-dock-anchor [aria-label='View options']").click();
-    await page.getByRole("menuitemcheckbox", { name: "Contour trace" }).click();
+    await page.getByRole("menuitemcheckbox", { name: "Original outline" }).click();
     await page.mouse.click(5, 5);
     // The dock's collapse after an expansion settles in stages (its anchor
     // re-seats after the layer swap); wait until its box holds still.

@@ -163,14 +163,38 @@ function drawFrame() {
 // fixed corner — grid included — whatever the labels' real extent. Both are
 // layers now: `ghost` (the live draw follows the view's trace toggle) and
 // `labels` (skipped, never erased).
+// O16 [52]: `ghost` is the outline layer's strength, 0..1 (an export is 0 or
+// 1; the live draw follows `ghostFade`, the toggle's tween).
 interface FrameLayers {
     epicycles: boolean;
     trail: boolean;
-    ghost: boolean;
+    ghost: number;
     labels: boolean;
 }
 function liveLayers(): FrameLayers {
-    return { epicycles: true, trail: true, ghost: props.showGhost, labels: true };
+    return { epicycles: true, trail: true, ghost: ghostFade, labels: true };
+}
+
+// ── Original outline fade (O16 [52]) ──
+// The View layers toggle tweens the outline in and out over the stage's
+// standard duration; reduced motion keeps the fade, shorter. The stage repaints
+// each step, so the change reads even while the animation clock is parked.
+let ghostFade = props.showGhost ? 1 : 0;
+let ghostRaf = 0;
+function tweenGhost(to: number): void {
+    cancelAnimationFrame(ghostRaf);
+    const from = ghostFade;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const dur = reduce ? 120 : 280;
+    const t0 = performance.now();
+    const step = (now: number) => {
+        const k = Math.min(1, (now - t0) / dur);
+        const e = 1 - (1 - k) ** 3;
+        ghostFade = from + (to - from) * e;
+        if (surface.value) drawFrame();
+        if (k < 1) ghostRaf = requestAnimationFrame(step);
+    };
+    ghostRaf = requestAnimationFrame(step);
 }
 
 function drawEpicycleFrame(
@@ -182,11 +206,6 @@ function drawEpicycleFrame(
     const hoveredBasis = hover.getHoveredBasis();
     const epicycleHovered = hoveredBasis === "fourier-epicycles";
     const trailColor = VIZ_COLORS.fourier;
-
-    // Ghost path
-    if (layers.ghost) {
-        drawGhostPath(s, view, data.path.x, data.path.y, true);
-    }
 
     const components: BasisComponent[] = data.components;
     const spectrum = epicycleSpectrum.value;
@@ -204,6 +223,9 @@ function drawEpicycleFrame(
     // hover re-ink was deleted at X-DS pass 1, F1-05).
     trail.update(anim.t, tipX, tipY, anim.scrubbing, spectrum);
     if (layers.trail) trail.draw(s, view, trailColor);
+
+    // The original outline, over the trail (O16 [52]).
+    drawGhostPath(s, view, data.path.x, data.path.y, true, layers.ghost);
 
     // Epicycle circles — prefix of the cumulative-position array
     const visPositions = nVis === components.length
@@ -278,8 +300,9 @@ function drawMultiBasesFrame(
     const epicycleData = store.epicycleData;
     const hoveredBasis = hover.getHoveredBasis();
 
-    // Ghost path
-    if (layers.ghost) {
+    // The original outline, drawn over the curves (O16 [52]).
+    const drawOutline = () => {
+        if (!layers.ghost) return;
         let origX: number[] | undefined;
         let origY: number[] | undefined;
         if (basesData) {
@@ -290,9 +313,9 @@ function drawMultiBasesFrame(
             origY = epicycleData.path.y;
         }
         if (origX && origY) {
-            drawGhostPath(s, view, origX, origY);
+            drawGhostPath(s, view, origX, origY, false, layers.ghost);
         }
-    }
+    };
 
     // Current level — global easing drives one continuous flow,
     // linear interpolation between adjacent precomputed levels.
@@ -384,6 +407,7 @@ function drawMultiBasesFrame(
         ctx.stroke();
         ctx.globalAlpha = 1;
     }
+    drawOutline();
 
     // Epicycle trail + tip + hover overlay when fourier-epicycles is active
     const hasEpicyclesMode = props.activeBases.includes("fourier-epicycles");
@@ -497,7 +521,7 @@ watch(
 // minimum: animation clock ticks and the two display-toggle props.
 // basesData is intentionally NOT here — it belongs in the data watcher above.
 watch(
-    [() => anim.t, () => anim.easedT, () => props.showGhost, () => props.showImageOverlay],
+    [() => anim.t, () => anim.easedT, () => props.showImageOverlay],
     () => {
         if (surface.value) drawFrame();
     },
@@ -532,7 +556,10 @@ onMounted(() => {
     visibilityObserver.observe(containerRef.value);
 });
 
+watch(() => props.showGhost, (on) => tweenGhost(on ? 1 : 0));
+
 onUnmounted(() => {
+    cancelAnimationFrame(ghostRaf);
     visibilityObserver?.disconnect();
     visibilityObserver = null;
     // Release this canvas's visibility credit so the count never leaks.
@@ -564,7 +591,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
         withReference = true,
         withBackground = false,
     } = options;
-    const layers: FrameLayers = { epicycles: withEpicycles, trail: withTrail, ghost: withReference, labels: showLabels };
+    const layers: FrameLayers = { epicycles: withEpicycles, trail: withTrail, ghost: withReference ? 1 : 0, labels: showLabels };
 
     // Create an offscreen canvas at the same resolution
     const offCanvas = document.createElement("canvas");

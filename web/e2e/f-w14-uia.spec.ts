@@ -749,9 +749,9 @@ test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyb
             names.push((await page.evaluate(() => document.activeElement?.textContent?.trim())) ?? "");
             await page.keyboard.press("ArrowDown");
         }
-        expect(names).toContain("Contour trace");
+        expect(names).toContain("Original outline");
         expect(names).toContain("Image overlay");
-        const trace = page.getByRole("menuitemcheckbox", { name: "Contour trace" });
+        const trace = page.getByRole("menuitemcheckbox", { name: "Original outline" });
         await trace.focus();
         const was = await trace.getAttribute("aria-checked");
         await page.keyboard.press("Enter");

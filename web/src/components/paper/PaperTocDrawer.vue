@@ -28,6 +28,7 @@ import type { PaperSearchState } from "./search/usePaperSearch";
 import { injectPaperToc } from "./paperToc";
 import { safeGetItem, safeSetItem } from "@/composables/useSafeStorage";
 import { Button } from "@mkbabb/glass-ui/button";
+import { GlassDock, DockControl } from "@mkbabb/glass-ui/dock";
 import {
     Collapsible,
     CollapsibleContent,
@@ -115,56 +116,59 @@ function toggleDrawer() {
                     <div class="sidebar-head">
                         <PaperSearch :search="search" variant="sidebar" :column="sidebarNav" />
                         <div class="sidebar-header">
-                            <p class="sidebar-label font-serif-math">Contents</p>
                             <!-- X-DS DS-F-C9: the page readout sits in the CONTENTS
-                                 header row, inside the rail's plate (it hung under
-                                 the rail as an unframed line on the grid). -->
-                            <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="sidebar-page" />
+                                 header row, inside the rail's plate. O16 [59]: it is
+                                 the label's caption, in the label's own column, so
+                                 it never adds a line under the row (the tools' dock
+                                 is taller than both); at the top of the paper it
+                                 fades out in place and leaves no chin. -->
+                            <div class="sidebar-title">
+                                <p class="sidebar-label font-serif-math">Contents</p>
+                                <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="sidebar-page" />
+                            </div>
                             <!-- X.F.W14.r — r1: the scroll-to-top sits BESIDE the
                                  disclosure on the same glass primitive. -->
-                            <div class="sidebar-header-actions">
+                            <!-- O16 [58] (owner, 13 Nov: "this should be a glass-ui
+                                 dock"): the three tools sit on one glass dock, each
+                                 a DockControl (its hover plate, press and focus ring
+                                 are glass's); two or three tools need no summary
+                                 face, so the dock never collapses. -->
+                            <GlassDock fit-content :collapse="false" class="sidebar-header-actions">
                                 <Tooltip text="Scroll to top" side="right">
-                                    <Button
-                                        emphasis="quiet"
-                                        size="md" icon-only
+                                    <DockControl
                                         class="sidebar-scroll-top"
                                         aria-label="Scroll to top"
                                         @click="scrollToTop()"
                                     >
-                                        <ArrowUpToLine class="sidebar-contents-icon" />
-                                    </Button>
+                                        <ArrowUpToLine />
+                                    </DockControl>
                                 </Tooltip>
                                 <Tooltip :text="contentsOpen ? 'Collapse contents' : 'Expand contents'" side="right">
                                     <CollapsibleTrigger as-child>
-                                        <Button
-                                            emphasis="quiet"
-                                            size="md" icon-only
+                                        <DockControl
                                             class="sidebar-contents-toggle"
                                             aria-label="Contents"
                                         >
-                                            <ChevronUp class="sidebar-contents-icon" />
-                                        </Button>
+                                            <ChevronUp class="contents-chevron" />
+                                        </DockControl>
                                     </CollapsibleTrigger>
                                 </Tooltip>
                                 <!-- X-DS pass 1 · F1-06: while open, the drawer's
                                      own toggle is one of the CONTENTS header's
                                      controls, not a bare glyph in the gutter. -->
                                 <Tooltip v-if="drawerOpen" text="Hide contents" side="right">
-                                    <Button
+                                    <DockControl
                                         ref="drawerTab"
-                                        emphasis="quiet"
-                                        size="md" icon-only
-                                        type="button"
                                         class="paper-toc-tab"
                                         aria-label="Hide contents"
                                         aria-expanded="true"
                                         :aria-controls="drawerId"
                                         @click="toggleDrawer"
                                     >
-                                        <PanelLeftClose class="sidebar-contents-icon" />
-                                    </Button>
+                                        <PanelLeftClose />
+                                    </DockControl>
                                 </Tooltip>
-                            </div>
+                            </GlassDock>
                         </div>
                     </div>
                     <CollapsibleContent>
@@ -286,15 +290,13 @@ function toggleDrawer() {
     }
 }
 
-/* The readout is the header's second line, under the CONTENTS label (the
-   17rem row has no room beside the label and the three glyphs). */
-.sidebar-header:has(.sidebar-page) {
-    flex-wrap: wrap;
-}
-
-.sidebar-page {
-    order: 1;
-    flex-basis: 100%;
+/* O16 [59]: the label and its page caption stack in one column beside the
+   tools' dock (the 17rem row has no room for them side by side). */
+.sidebar-title {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -334,6 +336,22 @@ function toggleDrawer() {
 
 .sidebar-nav[data-contents="closed"] .sidebar-header {
     margin-bottom: 0;
+}
+
+/* O16 [59] (motion law): the card's foot moves on the Collapsible's own clock
+   and curve (glass's present spring), so it arrives with the list's end
+   instead of jumping before it. */
+.sidebar-nav,
+.sidebar-header {
+    transition-property: padding-bottom, margin-bottom;
+    transition-duration: var(--spring-present-duration);
+    transition-timing-function: var(--spring-present);
+}
+@media (prefers-reduced-motion: reduce) {
+    .sidebar-nav,
+    .sidebar-header {
+        transition-duration: 0.01ms;
+    }
 }
 
 /* X-DS fourier pass 6 (critic P6) · DS-F6P-C1: deep in the paper the follow
@@ -377,10 +395,9 @@ function toggleDrawer() {
     margin-bottom: 0.5rem;
 }
 
+/* O16 [58]: the tools' dock sits at the row's end; glass owns its plate. */
 .sidebar-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.125rem;
+    flex: none;
 }
 
 /* Canon F9 (restraint, C-9): the label is set in sentence case at the body
@@ -402,9 +419,13 @@ function toggleDrawer() {
     transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-/* Keyed on `aria-expanded`, not `data-state`: the Tooltip's own trigger
+/* The disclosure chevron turns with the Contents state (the dock sizes it).
+   Keyed on `aria-expanded`, not `data-state`: the Tooltip's own trigger
    stamps `data-state` (its open/closed) on this same node and wins it. */
-.sidebar-contents-toggle[aria-expanded="false"] .sidebar-contents-icon {
+.contents-chevron {
+    transition: transform var(--duration-normal) var(--ease-standard);
+}
+.sidebar-contents-toggle[aria-expanded="false"] .contents-chevron {
     transform: rotate(180deg);
 }
 

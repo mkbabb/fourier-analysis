@@ -117,8 +117,10 @@ const splinePath = computed(() => closedSplinePath(points.value));
 /* UIA-F-86: the dock's Contour trace acted on nothing here. On the editing
    surface it draws the saved outline under the edit, so every change reads
    against what it changes. */
+/* O16 [52]: the path stays mounted and the toggle fades it (an exit is an
+   animation too); `showGhost` drives its opacity, not its presence. */
 const referencePath = computed(() =>
-    props.showGhost ? closedSplinePath(zipPoints(props.contour.points.x, props.contour.points.y)) : null,
+    closedSplinePath(zipPoints(props.contour.points.x, props.contour.points.y)),
 );
 
 const handleR = computed(() => HANDLE_PX / pxPerUnit.value);
@@ -373,15 +375,15 @@ defineExpose({
 
                 <!-- UIA-F-86: the saved outline, under the edit -->
                 <path
-                    v-if="referencePath"
                     :d="referencePath"
                     fill="none"
-                    stroke="var(--contour-stroke)"
-                    stroke-opacity="0.35"
+                    stroke="var(--foreground)"
                     stroke-width="1.5"
-                    stroke-dasharray="6 5"
+                    stroke-dasharray="5 5"
                     vector-effect="non-scaling-stroke"
                     class="reference-trace"
+                    :class="{ 'is-shown': showGhost }"
+                    :data-shown="showGhost ? '' : undefined"
                 />
 
                 <!-- Spline path -->
@@ -426,6 +428,19 @@ defineExpose({
 </template>
 
 <style scoped>
+/* O16 [52]: the original outline fades in and out with its View layers toggle,
+   in the page's ink, dashed, over the edit; reduced motion keeps the fade. */
+.reference-trace {
+    stroke-opacity: 0;
+    pointer-events: none;
+    transition: stroke-opacity var(--duration-normal, 280ms) var(--ease-standard, ease);
+}
+.reference-trace.is-shown {
+    stroke-opacity: 0.6;
+}
+@media (prefers-reduced-motion: reduce) {
+    .reference-trace { transition-duration: 120ms; }
+}
 /* The contour stroke is the brand amber, taken from the semantic token rather
    than re-authored as an inline literal at every paint site: the retired
    inline amber (hue 40, 90%, 55%) composited to 1.660:1 against light

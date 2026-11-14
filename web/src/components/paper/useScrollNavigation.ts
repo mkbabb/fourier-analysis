@@ -488,22 +488,81 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
         }, 500);
     }
 
+    /**
+     * O16 [59] (owner, 13 Nov: "scroll to the top flashes"; PAPER-CRITIQUE
+     * 1.2). The far jump to the top no longer raises the viewport veil, which
+     * faded the card, the rail, the grid and the dock to the ground tone and
+     * back while the jump showed through it. Only the article's text changes,
+     * so only the text cross-fades: the window root goes out (about 100 ms),
+     * the scroll lands a quarter viewport below the top with the head sections
+     * mounted synchronously under it (`recalculate` after the instant scroll;
+     * Vue patches before the next paint), the text comes back once they are
+     * rendered (a signal, bounded by a short ceiling, not a clock), and the
+     * last stretch eases to the top, so the page arrives with momentum. The
+     * plate, the title, the rail and the dock stay painted throughout.
+     * Reduced motion: the fade alone, landing at the top.
+     */
+    let fadeRun = 0;
+    /** Whether the browser still skips `el`'s contents (`content-visibility`),
+     *  read as latex-paper's window reads it: on the section's first child. */
+    function renderSkipped(el: HTMLElement): boolean {
+        const child = el.firstElementChild as HTMLElement | null;
+        return !!child && typeof child.checkVisibility === "function"
+            && !child.checkVisibility({ contentVisibilityAuto: true });
+    }
+    function crossfadeToTop(scroller: HTMLElement) {
+        const root = scroller.querySelector(".paper-window-root") as HTMLElement | null;
+        const reduce = !!prmQuery?.matches;
+        const land = reduce ? 0 : Math.round(scroller.clientHeight * 0.25);
+        if (!root) {
+            scroller.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+            opts.recalculate();
+            return;
+        }
+        const run = ++fadeRun;
+        root.style.transition = "opacity 100ms var(--ease-in, ease-in)";
+        root.style.opacity = "0";
+        const jump = () => {
+            if (run !== fadeRun) return;
+            scroller.scrollTo({ top: land, behavior: "instant" as ScrollBehavior });
+            opts.recalculate();
+            const t0 = performance.now();
+            const ready = () => {
+                if (run !== fadeRun) return;
+                const first = root.querySelector(".paper-window-section") as HTMLElement | null;
+                const rendered = !!first && !renderSkipped(first);
+                if (!rendered && performance.now() - t0 < 240) {
+                    requestAnimationFrame(ready);
+                    return;
+                }
+                root.style.transition = "opacity 160ms var(--ease-out, ease-out)";
+                root.style.opacity = "";
+                if (land > 0) scroller.scrollTo({ top: 0, behavior: "smooth" });
+                const clear = () => {
+                    if (run === fadeRun) root.style.transition = "";
+                };
+                setTimeout(clear, 200);
+            };
+            nextTick(() => requestAnimationFrame(ready));
+        };
+        setTimeout(jump, 100);
+    }
+
     function scrollToTop() {
         const scroller = opts.scrollContainer.value;
         if (!scroller) return;
 
         if (scroller.scrollTop > teleportThreshold(scroller)) {
-            const overlay = scroller.querySelector(
-                ".teleport-overlay",
-            ) as HTMLElement | null;
-            if (!overlay) {
-                scroller.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+            // A far jump still under its overlay keeps it: this run takes the
+            // overlay over (and hides it) instead of racing its correction loop.
+            if (supersedeOverlayRun) {
+                withOverlay(scroller, (finish) => {
+                    scroller.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+                    finish();
+                });
                 return;
             }
-            withOverlay(scroller, (finish) => {
-                scroller.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-                finish();
-            });
+            crossfadeToTop(scroller);
             return;
         }
         scroller.scrollTo({ top: 0, behavior: scrollBehavior() });

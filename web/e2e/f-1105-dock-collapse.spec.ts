@@ -5,13 +5,16 @@ import { expectHardwareGpu } from "./fixtures/gpu";
 
 /**
  * Owner order 2026-11-05: "fourier should have a dock collapse state, too".
+ * Owner, 13 Nov (O16 [49] [57]): "it should by default be collapsed", and its
+ * seal is the Fourier F.
  *
- * The app dock is `collapse="open"`: it is open on first paint at every
- * width, it yields to work (the pointer leaving it, a press on the page),
- * and collapsed it wears a seal, the current section's glyph (Compass off
- * the five). Nothing below the dock moves when it folds.
+ * The app dock is glass's `collapse="closed"`: it rests at its seal from first
+ * paint at every width, opens on hover, focus or a press, yields to work (the
+ * pointer leaving it, a press on the page), and collapsed it wears the
+ * wordmark's ℱ. Nothing below the dock moves when it folds.
  *
- * U1 F-1  the seal is the full layer's section glyph, every section and a 404.
+ * U0      it arrives collapsed, wearing the ℱ.
+ * U1 F-1  the seal is the ℱ mark, every section and a 404.
  * U2 F-2  the content below the dock does not move across the morph; the gate
  *         is shown to see a block-size mutant.
  * U3 F-3  an open dock surface (About, Sections, Log in) is not folded under
@@ -47,11 +50,16 @@ async function settled(dock: Locator): Promise<void> {
     await expect(dock).not.toHaveAttribute("data-morphing", { timeout: 5_000 });
 }
 
+/** Arrive (the dock rests at its seal) and open it through the seal. */
 async function open(page: Page, path: string): Promise<Locator> {
     await page.goto(path);
     const dock = appDock(page);
-    await expect(dock.locator(".dock-layer--full .nav-trigger")).toBeVisible({ timeout: 30_000 });
+    await expect(dock).toHaveClass(COLLAPSED, { timeout: 30_000 });
+    await settled(dock);
+    await dock.getByRole("button", { name: "Expand dock" }).click();
     await expect(dock).toHaveClass(EXPANDED);
+    await settled(dock);
+    await expect(dock.locator(".dock-layer--full .nav-trigger")).toBeVisible();
     return dock;
 }
 
@@ -78,29 +86,15 @@ async function collapseByTap(page: Page, dock: Locator): Promise<void> {
     await settled(dock);
 }
 
-interface GlyphRead {
-    full: { sig: string; svg: string; w: number; h: number } | null;
-    seal: { sig: string; svg: string; w: number; h: number } | null;
-    sealCount: number;
+/** The seal's face: the ℱ marks in the summary layer, and any glyph beside them. */
+async function readSeal(dock: Locator): Promise<{ marks: string[]; glyphs: number }> {
+    return dock.evaluate((d) => ({
+        marks: [...d.querySelectorAll(".dock-layer--summary .dock-summary-mark")].map((e) => e.textContent ?? ""),
+        glyphs: d.querySelectorAll(".dock-layer--summary svg").length,
+    }));
 }
 
-async function readGlyphs(dock: Locator): Promise<GlyphRead> {
-    return dock.evaluate((d) => {
-        const read = (el: Element | null) => {
-            if (!el) return null;
-            const r = el.getBoundingClientRect();
-            const sig = [...el.classList].filter((c) => c.startsWith("lucide-")).sort().join(" ");
-            return { sig, svg: el.innerHTML, w: Math.round(r.width), h: Math.round(r.height) };
-        };
-        return {
-            full: read(d.querySelector(".dock-layer--full .nav-trigger .nav-tab-icon")),
-            seal: read(d.querySelector(".dock-layer--summary .nav-tab-icon")),
-            sealCount: d.querySelectorAll(".dock-layer--summary .dock-summary-glyph").length,
-        };
-    });
-}
-
-// ── U1 · F-1: the seal is the current section's glyph ────────────────────────
+// ── U1 · F-1: the seal is the Fourier F ──────────────────────────────────────
 const U1_CELLS = [
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
@@ -112,28 +106,33 @@ async function sealEverySection(page: Page, collapse: (page: Page, dock: Locator
         await test.step(s.path, async () => {
             const dock = await open(page, s.path);
             expect(await page.evaluate(() => document.documentElement.classList.contains("dark"))).toBe(scheme === "dark");
-            const before = await readGlyphs(dock);
-            expect(before.full?.sig, `the full layer's section glyph at ${s.path}`).toContain(`lucide-${s.icon}`);
+            await expect(dock.locator(`.dock-layer--full .nav-trigger .lucide-${s.icon}`)).toBeVisible();
             await collapse(page, dock);
             const summary = dock.locator(".dock-layer--summary");
             await expect(summary).toHaveClass(/is-active/);
-            const after = await readGlyphs(dock);
-            expect(after.sealCount, "one seal").toBe(1);
-            expect(after.seal?.sig, `seal vs full glyph at ${s.path}`).toBe(before.full!.sig);
-            expect(after.seal?.svg, `seal paths vs full glyph paths at ${s.path}`).toBe(before.full!.svg);
-            expect({ w: after.seal!.w, h: after.seal!.h }, `seal box vs full glyph box at ${s.path}`).toEqual({
-                w: before.full!.w,
-                h: before.full!.h,
-            });
+            expect(await readSeal(dock), `the seal at ${s.path} is the one Fourier F`).toEqual({ marks: ["\u2131"], glyphs: 0 });
         });
     }
+}
+
+// ── U0: the dock arrives at rest, collapsed ──────────────────────────────────
+for (const vp of U1_CELLS) {
+    test.describe(`U0 arrives collapsed ${vp.width}x${vp.height}`, () => {
+        test.use({ viewport: vp });
+        test("U0 the app dock arrives collapsed, wearing the Fourier F", async ({ page }) => {
+            await page.goto("/equation");
+            const dock = appDock(page);
+            await expect(dock).toHaveClass(COLLAPSED, { timeout: 30_000 });
+            expect(await readSeal(dock)).toEqual({ marks: ["\u2131"], glyphs: 0 });
+        });
+    });
 }
 
 for (const scheme of ["light", "dark"] as const) {
     for (const vp of U1_CELLS) {
         test.describe(`U1 F-1 seal ${vp.width}x${vp.height} ${scheme}`, () => {
             test.use({ viewport: vp, colorScheme: scheme });
-            test("U1 the seal is the full layer's section glyph on every section and a 404", async ({ page }) => {
+            test("U1 the seal is the Fourier F on every section and a 404", async ({ page }) => {
                 test.setTimeout(120_000);
                 await sealEverySection(page, collapseByLeaving, scheme);
             });
@@ -142,7 +141,7 @@ for (const scheme of ["light", "dark"] as const) {
     for (const vp of [U1_CELLS[0], U1_CELLS[2]]) {
         test.describe(`U1 F-1 seal touch ${vp.width}x${vp.height} ${scheme}`, () => {
             test.use({ viewport: vp, colorScheme: scheme });
-            test("@coarse U1 the seal is the full layer's section glyph on every section and a 404 (touch)", async ({ page }) => {
+            test("@coarse U1 the seal is the Fourier F on every section and a 404 (touch)", async ({ page }) => {
                 test.setTimeout(120_000);
                 await sealEverySection(page, collapseByTap, scheme);
             });

@@ -544,6 +544,14 @@ onUnmounted(() => {
    not removed, so nothing beside it shifts when it comes in. */
 .paper-scroll:not([data-scrolled]) :deep(.page-readout) {
     visibility: hidden;
+    opacity: 0;
+}
+/* O16 [59] (motion law): the readout fades in and out with the reading
+   position; `visibility` holds through the fade-out (a discrete transition). */
+.paper-scroll :deep(.page-readout) {
+    transition:
+        opacity var(--duration-normal) var(--ease-standard),
+        visibility var(--duration-normal);
 }
 .paper-scroll[data-scrolled] .floating-toc {
     --floating-toc-rule: var(--border);

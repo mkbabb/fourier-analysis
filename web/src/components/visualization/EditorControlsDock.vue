@@ -15,6 +15,7 @@ import {
     DropdownMenuSubTrigger,
 } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
+import { Button } from "@mkbabb/glass-ui/button";
 import { StatusDot } from "@mkbabb/glass-ui/status-dot";
 import { Tooltip } from "@/components/ui/tooltip";
 import ViewLayersMenu from "./ViewLayersMenu.vue";
@@ -261,19 +262,29 @@ function holdDockWhileOpen(open: boolean) {
                         />
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem class="tool-row is-amber" @select="emit('smooth')">
-                        <Sparkles class="h-4 w-4" />
-                        Smooth contour
-                    </DropdownMenuItem>
-                    <DropdownMenuItem class="tool-row is-sky" @select="emit('simplify')">
-                        <Minimize2 class="h-4 w-4" />
-                        Simplify contour
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem @select="emit('reset')">
-                        <RotateCcw class="h-4 w-4" />
-                        Reset to extraction
-                    </DropdownMenuItem>
+                    <!-- O16 [53] [54]: the three commands are buttons (glass Button
+                         merged onto the menu item, so the menu's roving focus and
+                         `select` stay), on the menu's one inset and glyph column. -->
+                    <div class="tool-commands">
+                        <Button as-child emphasis="quiet" size="sm">
+                            <DropdownMenuItem class="tool-row is-amber" @select="emit('smooth')">
+                                <Sparkles class="tool-glyph" />
+                                Smooth contour
+                            </DropdownMenuItem>
+                        </Button>
+                        <Button as-child emphasis="quiet" size="sm">
+                            <DropdownMenuItem class="tool-row is-sky" @select="emit('simplify')">
+                                <Minimize2 class="tool-glyph" />
+                                Simplify contour
+                            </DropdownMenuItem>
+                        </Button>
+                        <Button as-child emphasis="quiet" size="sm">
+                            <DropdownMenuItem class="tool-row is-neutral" @select="emit('reset')">
+                                <RotateCcw class="tool-glyph" />
+                                Reset to extraction
+                            </DropdownMenuItem>
+                        </Button>
+                    </div>
                     <!-- X.F.W14V.r1 — below sm only (addendum (h) 1): View options as a
                          submenu of the same rows, then Delete last, behind a separator. -->
                     <template v-if="!isSm">
@@ -389,9 +400,6 @@ function holdDockWhileOpen(open: boolean) {
 .tool-row {
     --menu-row-bg: color-mix(in srgb, var(--tool-hue) 15%, transparent);
 }
-.tool-row:is(:hover, :focus, [data-highlighted]):not([data-disabled]) > svg {
-    color: var(--tool-ink);
-}
 
 .is-save {
     background: color-mix(in srgb, var(--foreground) 6%, transparent);
@@ -413,32 +421,62 @@ function holdDockWhileOpen(open: boolean) {
     background: color-mix(in srgb, var(--success) 15%, transparent);
 }
 
-/* X.F.W14.h — one control row; the measure fits the label beside the field,
-   the inset is on the spacing scale. */
+/* O16 [53] [54] — one inset and one glyph column for the whole menu: every
+   row starts on the menu row's own inset (0.5rem, glass's `.menu__item`), with
+   a 1rem glyph and glass's `--icon-label-gap` after it, so the Magnet section,
+   the three command buttons and (below sm) View options and Delete share one
+   left edge at every pointer. The Magnet glyph is centred on its label's line
+   (SliderControl's line is the sm control height), its readout sits right on
+   that line, and the track starts on the labels' edge. */
 .magnet-section {
-    width: 12rem;
-    padding: var(--space-atom) var(--space-body);
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-atom);
+    width: 13.5rem;
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr);
+    column-gap: var(--icon-label-gap);
+    align-items: start;
+    padding-block: var(--space-atom);
+    padding-inline: 0.5rem;
 }
 .magnet-row {
-    flex: 1;
     min-width: 0;
 }
-/* X.F.W14U.c2 — the Magnet glyph is back beside its radius and wears the
-   Fourier red while the magnet is on (the pre-`.vedit` `text-viz-fourier`
-   state; the ink carried toward `--foreground` as above), the muted glyph ink
-   while it is off. */
+/* X.F.W14U.c2 — the Magnet glyph wears the Fourier red while the magnet is
+   on, the muted glyph ink while it is off; the ink tweens between them. */
 .magnet-glyph {
-    flex: none;
     width: 1rem;
     height: 1rem;
-    margin-top: 0.35rem;
+    margin-block: calc((var(--control-h-sm) - 1rem) / 2);
     color: var(--muted-foreground);
+    transition: color var(--duration-fast) var(--ease-standard);
 }
 .magnet-glyph.is-on {
     color: color-mix(in oklab, var(--viz-fourier) 75%, var(--foreground));
+}
+
+.tool-commands {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-block: var(--space-residue);
+}
+/* The commands are glass Buttons (their capsule plate, press and hover); the
+   row reads left to right on the menu's inset like every row around it. Each
+   glyph carries its tool's ink at rest (affordance by colour) and the plate
+   takes the tool's tint. */
+.tool-row {
+    justify-content: flex-start;
+    padding-inline: 0.5rem;
+    gap: var(--icon-label-gap);
+    --button-tone: var(--tool-ink);
+}
+.tool-glyph {
+    width: 1rem;
+    height: 1rem;
+    color: var(--tool-ink);
+}
+.is-neutral {
+    --tool-hue: var(--foreground);
+    --tool-ink: var(--foreground);
 }
 
 /**

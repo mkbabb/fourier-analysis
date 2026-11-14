@@ -112,8 +112,8 @@ async function traceControl(page: Page): Promise<Locator> {
     // both docks mount (they left More editor tools).
     await dock.getByRole("button", { name: "View options" }).click();
     await page.waitForTimeout(400);
-    return page.getByRole("menuitemcheckbox", { name: "Contour trace" })
-        .or(page.getByRole("button", { name: "Contour trace" })).first();
+    return page.getByRole("menuitemcheckbox", { name: "Original outline" })
+        .or(page.getByRole("button", { name: "Original outline" })).first();
 }
 
 /** The disabled state of a dock control, read off the element. */
@@ -140,7 +140,7 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
     test("v86 · UIA-F-86 — the editor's Contour trace acts on the editing surface", async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         const svg = await openEditor(page);
-        const traced = () => svg.locator(".reference-trace").count();
+        const traced = () => svg.locator(".reference-trace.is-shown").count();
         const before = await traced();
         const control = await traceControl(page);
         await frame(page, "v86-trace-control");
@@ -260,7 +260,7 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         await frame(page, "v88-more-menu");
         // View options opens its submenu of the same view-layer rows.
         await menu.getByRole("menuitem", { name: "View options" }).click();
-        for (const name of ["Image overlay", "Contour trace"])
+        for (const name of ["Image overlay", "Original outline"])
             await expect(page.getByRole("menuitemcheckbox", { name })).toBeVisible();
         await frame(page, "v88-view-sub");
     });

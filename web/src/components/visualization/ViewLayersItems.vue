@@ -39,6 +39,6 @@ function keepOpen(e: Event) {
         @select="keepOpen"
         @update:model-value="emit('toggleGhost')"
     >
-        Contour trace
+        Original outline
     </DropdownMenuCheckboxItem>
 </template>
