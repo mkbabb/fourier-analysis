@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from api.dependencies import get_contour, get_image_asset
-from api.models.assets import SaveContourRequest
+from api.lib.crud import errors
+from api.models.assets import SaveContourRequest, SeriesJobRequest
 from api.models.computation import (
     ComputeBasesRequest,
     ComputeEpicyclesRequest,
     ComputeResult,
 )
 from api.responses import contour_points, contour_response
-from api.services import computation, compute_cache
+from api.routers.jobs import JobCreated, created, job_error
+from api.services import computation, compute_cache, jobs
 from api.models.shared import ContourSettings
 from api.services.database import get_db
 from api.services.image_storage import BlobNotFound, default_image_bounds, store_contour_asset
@@ -49,8 +53,8 @@ async def get_contour_endpoint(contourHash: str):
     return contour_response(doc)
 
 
-@router.post("/{contourHash}/compute/epicycles", response_model=ComputeResult)
-async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
+async def epicycles_data(contourHash: str, req: ComputeEpicyclesRequest) -> dict:
+    """compute/epicycles' ``data`` (wire form), from the cache or computed."""
     # F.W2 T-β — content-addressable compute cache. Hit returns immediately
     # without the FFT chain. Fail-open: cache errors fall through to compute.
     params = {"n_harmonics": req.n_harmonics, "n_points": req.n_points}
@@ -58,7 +62,7 @@ async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
         contourHash, params, label="compute_epicycles"
     )
     if cached is not None:
-        return ComputeResult(data=cached)
+        return cached
     doc = await get_contour(contourHash)
     xs, ys = contour_points(doc)
     data = await computation.compute_epicycles(
@@ -66,12 +70,11 @@ async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
         n_harmonics=req.n_harmonics,
         n_points=req.n_points,
     )
-    wire = await compute_cache.store(contourHash, params, data, label="compute_epicycles")
-    return ComputeResult(data=wire)
+    return await compute_cache.store(contourHash, params, data, label="compute_epicycles")
 
 
-@router.post("/{contourHash}/compute/bases", response_model=ComputeResult)
-async def compute_bases(contourHash: str, req: ComputeBasesRequest):
+async def bases_data(contourHash: str, req: ComputeBasesRequest) -> dict:
+    """compute/bases' ``data`` (wire form), from the cache or computed."""
     # F.W2 T-β — same content-addressable cache as epicycles (was unwired).
     params = {
         "max_degree": req.max_degree,
@@ -81,7 +84,7 @@ async def compute_bases(contourHash: str, req: ComputeBasesRequest):
     }
     cached = await compute_cache.lookup(contourHash, params, label="compute_bases")
     if cached is not None:
-        return ComputeResult(data=cached)
+        return cached
     doc = await get_contour(contourHash)
     xs, ys = contour_points(doc)
     data = await computation.compute_bases(
@@ -91,5 +94,55 @@ async def compute_bases(contourHash: str, req: ComputeBasesRequest):
         levels=req.levels,
         n_eval=req.n_eval,
     )
-    wire = await compute_cache.store(contourHash, params, data, label="compute_bases")
-    return ComputeResult(data=wire)
+    return await compute_cache.store(contourHash, params, data, label="compute_bases")
+
+
+@router.post("/{contourHash}/compute/epicycles", response_model=ComputeResult)
+async def compute_epicycles(contourHash: str, req: ComputeEpicyclesRequest):
+    return ComputeResult(data=await epicycles_data(contourHash, req))
+
+
+@router.post("/{contourHash}/compute/bases", response_model=ComputeResult)
+async def compute_bases(contourHash: str, req: ComputeBasesRequest):
+    return ComputeResult(data=await bases_data(contourHash, req))
+
+
+async def series_work(
+    contourHash: str,
+    epicycles: ComputeEpicyclesRequest,
+    bases: ComputeBasesRequest,
+    progress: jobs.Progress,
+) -> dict:
+    """The series half of a contour or image job: an ``epicycles`` partial (the
+    whole spectrum, which a client draws at a growing term count), then the
+    bases, whose levels report as ``bases`` stages."""
+    progress.stage("epicycles", 0.0)
+    ep = await epicycles_data(contourHash, epicycles)
+    progress.stage("epicycles", 1.0)
+    progress.partial("epicycles", ep)
+    progress.stage("bases", 0.0)
+    bs = await bases_data(contourHash, bases)
+    return {"epicycles": ep, "bases": bs}
+
+
+# Weighted by measured cost (see images.IMAGE_JOB_STAGES).
+CONTOUR_JOB_STAGES: dict[str, tuple[float, float]] = {
+    "epicycles": (0.0, 0.05),
+    "bases": (0.05, 1.0),
+}
+
+
+@router.post("/{contourHash}/jobs", status_code=202, response_model=JobCreated)
+async def start_contour_job(contourHash: str, req: SeriesJobRequest) -> Any:
+    """compute/epicycles and compute/bases as one job (an edited contour's
+    recompute): ``result`` is ``{epicycles, bases}``, each compute's ``data``."""
+    await get_contour(contourHash)
+
+    async def work(progress: jobs.Progress) -> dict:
+        return await series_work(contourHash, req.epicycles, req.bases, progress)
+
+    try:
+        job = jobs.registry.start("contour", CONTOUR_JOB_STAGES, work, job_error)
+    except jobs.TooManyJobs:
+        return errors.rate_limited(5, detail="too many computations in progress")
+    return created(job)

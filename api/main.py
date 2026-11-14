@@ -19,7 +19,7 @@ from api.config import (
     settings,
 )
 from api.lib.crud.errors import ProblemError, internal_error
-from api.routers import contours, equations, images, sessions, v1, visualizations
+from api.routers import contours, equations, images, jobs, sessions, v1, visualizations
 from api.routers.admin import admin_router
 from api.routers.gallery import gallery_router
 from api.services.computation import shutdown_process_pool
@@ -43,6 +43,15 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "ADMIN_TOKEN is not set. Admin endpoints will return 503. "
             "Set ADMIN_TOKEN for full functionality."
+        )
+
+    # Compute jobs live in this process's memory (api/services/jobs.py): with
+    # a second worker a job's stream could land on a process that never saw
+    # it. Refuse to boot rather than answer 404s.
+    if int(os.environ.get("WORKERS", "1")) > 1:
+        raise RuntimeError(
+            "WORKERS > 1: compute jobs are held in one process's memory "
+            "(api/services/jobs.py); move them to Mongo before scaling out."
         )
 
     # The server's own startup channel (the app's loggers have no handler at
@@ -171,6 +180,7 @@ app.add_middleware(
 app.include_router(images.router)
 app.include_router(contours.router)
 app.include_router(equations.router)
+app.include_router(jobs.router)
 app.include_router(sessions.router)
 app.include_router(visualizations.router)
 app.include_router(gallery_router)

@@ -43,11 +43,11 @@ def test_cache_key_covers_the_ml_thresholds():
 
 
 def test_extraction_fields_are_the_fields_extraction_reads():
-    """(a) EXTRACTION_FIELDS == what to_contour_config and extract_contour read."""
-    from api.routers.images import extract_contour
+    """(a) EXTRACTION_FIELDS == what to_contour_config and extract_contour_doc read."""
+    from api.routers.images import extract_contour_doc
 
     consumed = (_attrs_read(ContourSettings.to_contour_config, "self") & set(ContourSettings.model_fields)) | (
-        _attrs_read(extract_contour, "cs") & set(ContourSettings.model_fields)
+        _attrs_read(extract_contour_doc, "cs") & set(ContourSettings.model_fields)
     )
     assert ContourSettings.EXTRACTION_FIELDS == consumed
     assert {"ml_threshold", "ml_detail_threshold", "n_points"} <= consumed

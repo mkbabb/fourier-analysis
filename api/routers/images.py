@@ -23,9 +23,13 @@ from api.lib.crud import errors
 from api.models.assets import (
     ExtractContourRequest,
     ImageAssetResponse,
+    ImageJobRequest,
 )
+from api.models.shared import ContourSettings
+from api.routers.contours import series_work
+from api.routers.jobs import JobCreated, created, job_error
 from api.responses import contour_response
-from api.services import computation
+from api.services import computation, jobs
 from api.services import read_gate
 from api.services.database import get_db, touch_document
 from api.services.image_storage import (
@@ -289,8 +293,13 @@ async def get_image_overlay(imageSlug: str, request: Request, resize: int = 1024
 @router.post("/{imageSlug}/extract-contour")
 async def extract_contour(imageSlug: str, req: ExtractContourRequest, request: Request) -> Any:
     await _readable(request, imageSlug)
+    return contour_response(await extract_contour_doc(imageSlug, req.contour_settings))
+
+
+async def extract_contour_doc(imageSlug: str, cs: ContourSettings) -> dict:
+    """The image's contour document for ``cs``: the cached one, else extracted
+    and stored (the caller has checked the image is readable)."""
     asset = await get_image_asset(imageSlug)
-    cs = req.contour_settings
     db = get_db()
     # Recency rides the write verbs (X·F F-D5): extraction is a use of the image.
     await touch_document("images", {"image_slug": imageSlug})
@@ -301,7 +310,7 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest, request: R
     if existing:
         await touch_document("contours", {"_id": existing["_id"]})
         logger.info("extraction cache hit for %s (key=%s…)", imageSlug, cache_key[:12])
-        return contour_response(existing)
+        return existing
 
     with _blob_not_found_as_404():
         tmp = image_tempfile(asset)
@@ -336,8 +345,43 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest, request: R
     xs = path.real.tolist()
     ys = path.imag.tolist()
 
-    contour_doc = await store_contour_asset(
+    return await store_contour_asset(
         xs, ys, imageSlug, source="extract", image_bounds=image_bounds,
         extraction_cache_key_value=cache_key,
     )
-    return contour_response(contour_doc)
+
+
+# The image job's bar, weighted by measured cost (giraffe.webp at the web's
+# defaults, 2026-11-14: extract 5.0-5.6 s, epicycles 0.02 s, bases 0.6-0.7 s).
+# Extraction is one opaque library call, so it reports only its start and end;
+# the bases report per level.
+IMAGE_JOB_STAGES: dict[str, tuple[float, float]] = {
+    "extract": (0.0, 0.85),
+    "epicycles": (0.85, 0.88),
+    "bases": (0.88, 1.0),
+}
+
+
+@router.post("/{imageSlug}/jobs", status_code=202, response_model=JobCreated)
+async def start_image_job(imageSlug: str, req: ImageJobRequest, request: Request) -> Any:
+    """extract-contour, compute/epicycles and compute/bases as one job
+    (TRIAGE-16 row 50): the stream carries a ``contour`` partial (the outline,
+    drawable before any series), an ``epicycles`` partial, per-level ``bases``
+    stages, and a ``result`` of ``{contour, epicycles, bases}``, each the shape
+    its synchronous route returns."""
+    await _readable(request, imageSlug)
+
+    async def work(progress: jobs.Progress) -> dict:
+        progress.stage("extract", 0.0)
+        doc = await extract_contour_doc(imageSlug, req.contour_settings)
+        contour = contour_response(doc).model_dump(mode="json")
+        progress.stage("extract", 1.0)
+        progress.partial("contour", contour)
+        series = await series_work(doc["contour_hash"], req.epicycles, req.bases, progress)
+        return {"contour": contour, **series}
+
+    try:
+        job = jobs.registry.start("image", IMAGE_JOB_STAGES, work, job_error)
+    except jobs.TooManyJobs:
+        return errors.rate_limited(5, detail="too many computations in progress")
+    return created(job)
