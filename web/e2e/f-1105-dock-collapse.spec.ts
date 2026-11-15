@@ -230,8 +230,8 @@ const SURFACES = [
     { name: "Log in", trigger: /^Log in$/, content: ".login-popover" },
 ] as const;
 
-/** Past glass's idle window (3600 ms) and the morph. */
-const IDLE = 4_600;
+/** Past glass's idle window (6000 ms since glass 11.0.2) and the morph. */
+const IDLE = 7_000;
 
 async function openSurface(page: Page, dock: Locator, s: (typeof SURFACES)[number], touch: boolean): Promise<Locator> {
     const trigger = dock.getByRole("button", { name: s.trigger });
