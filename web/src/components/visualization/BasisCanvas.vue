@@ -18,6 +18,7 @@ import {
     drawEpicycleCircles,
     drawConnectingLine,
     drawBasisLabels,
+    type StageInks,
     TrailManager,
     BASE_EPICYCLE_SCALE,
     HOVER_EPICYCLE_SCALE,
@@ -30,6 +31,8 @@ import { useCanvasSetup, type CanvasSurface } from "@/components/shared/canvas/u
 import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";
 import { useViewTransform } from "./composables/useViewTransform";
+import { useStageGestures } from "./composables/useStageGestures";
+import { composeView } from "./lib/stage-view";
 
 const props = withDefaults(
     defineProps<{
@@ -78,9 +81,17 @@ let epicycleBottom = 12;
 /* X-DS pass 8 · DS-F10-C2: the stage's inline-start inset (`--stage-inset-inline`),
    one edge for the legend and the epicycle inset. */
 let insetInline = 16;
+/* LAST-TEN F-04: the stage's inks and title face, read here (on a resize, a
+   dock change and a theme change), never per frame. */
+let inks: StageInks = { foreground: "", muted: "", textFace: "" };
 function readLegendTop(): void {
     const el = containerRef.value;
     const cs = el ? getComputedStyle(el) : null;
+    inks = {
+        foreground: cs?.getPropertyValue("--foreground").trim() ?? "",
+        muted: cs?.getPropertyValue("--muted-foreground").trim() ?? "",
+        textFace: cs?.getPropertyValue("--font-text").trim() ?? "",
+    };
     const px = cs ? parseFloat(cs.getPropertyValue("--legend-inset-top")) : NaN;
     legendTop = Number.isFinite(px) ? px : 16;
     const pb = cs ? parseFloat(cs.getPropertyValue("--epicycle-inset-bottom")) : NaN;
@@ -112,6 +123,22 @@ const hover = useCanvasHover({
 // ── View transform (extracted composable) ──
 const { getViewTransform } = useViewTransform();
 
+// ── The stage's own gestures (LAST-TEN F-01) ──
+// Pinch, wheel and drag zoom and pan the drawing (the page never zooms under
+// the stage); a double-click or double-tap returns to the fit.
+const gestures = useStageGestures({
+    el: containerRef,
+    fadeEl: () => canvasRef.value,
+    size: () => (surface.value ? { w: surface.value.width, h: surface.value.height } : { w: 1, h: 1 }),
+    onChange: () => { if (surface.value) drawFrame(); },
+});
+
+/** The fitted transform and the one the stage draws with (zoom and pan applied). */
+function views(s: CanvasSurface): { base: ViewTransform; view: ViewTransform } {
+    const base = getViewTransform(s);
+    return { base, view: composeView(base, gestures.getView(), s.width, s.height) };
+}
+
 // ── Image overlay (extracted composable) ──
 const { drawImageOverlay } = useImageOverlay(() => {
     if (surface.value) drawFrame();
@@ -131,7 +158,7 @@ function drawFrame() {
     if (!data && !basesData) { drawPlaceholderFrame(s); return; }
 
     s.ctx.clearRect(0, 0, s.width, s.height);
-    const view = getViewTransform(s);
+    const { base, view } = views(s);
 
     // Background grid
     drawGrid(s, view);
@@ -145,9 +172,9 @@ function drawFrame() {
     const onlyEpicycles = hasEpicycles && props.activeBases.length === 1;
 
     if (onlyEpicycles && data) {
-        drawEpicycleFrame(s, data, view);
+        drawEpicycleFrame(s, data, view, base);
     } else {
-        drawMultiBasesFrame(s, view);
+        drawMultiBasesFrame(s, view, base);
     }
 }
 
@@ -197,10 +224,16 @@ function tweenGhost(to: number): void {
     ghostRaf = requestAnimationFrame(step);
 }
 
+/*
+ * `view` is the stage's transform (zoom and pan included) for everything drawn
+ * on the drawing itself; `base` is the fitted one, which the desktop epicycle
+ * inset keeps, so the inset stays put while the drawing is zoomed.
+ */
 function drawEpicycleFrame(
     s: CanvasSurface,
     data: typeof store.epicycleData & {},
     view: ViewTransform,
+    base: ViewTransform,
     layers: FrameLayers = liveLayers(),
 ) {
     const hoveredBasis = hover.getHoveredBasis();
@@ -225,7 +258,7 @@ function drawEpicycleFrame(
     if (layers.trail) trail.draw(s, view, trailColor);
 
     // The original outline, over the trail (O16 [52]).
-    drawGhostPath(s, view, data.path.x, data.path.y, true, layers.ghost);
+    drawGhostPath(s, view, data.path.x, data.path.y, true, layers.ghost, inks.foreground);
 
     // Epicycle circles — prefix of the cumulative-position array
     const visPositions = nVis === components.length
@@ -236,7 +269,7 @@ function drawEpicycleFrame(
     const eAlpha = epicycleAlphaFromScale(currentScale);
 
     if (!stableEpicycleBbox) {
-        stableEpicycleBbox = computeStableEpicycleBbox(spectrum, components, nVis, view.toScreen, view.scale);
+        stableEpicycleBbox = computeStableEpicycleBbox(spectrum, components, nVis, base.toScreen, base.scale);
     }
 
     let fit: EpicycleFit | null = null;
@@ -251,7 +284,7 @@ function drawEpicycleFrame(
     // X-DS pass 1 · F1-05 — a hovered chain keeps its spectrum hues and steps
     // its stroke once; no gold re-ink, no time-based alpha.
     if (layers.epicycles) {
-        drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 5, arm: 4.5 } : { circle: 4, arm: 3.5 });
+        drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 5, arm: 4.5 } : { circle: 4, arm: 3.5 });
     }
 
     // Update epicycle bounds for hover detection
@@ -269,7 +302,7 @@ function drawEpicycleFrame(
     if (layers.epicycles) {
         // Connecting line
         if (fit) {
-            drawConnectingLine(s, view, visPositions, tipX, tipY, fit, eAlpha);
+            drawConnectingLine(s, view, base, visPositions, tipX, tipY, fit, eAlpha);
         }
 
         // Tip dot
@@ -283,7 +316,7 @@ function drawEpicycleFrame(
         // (every ±k term of the series is its own circle, 2N + 1 of them), not
         // the Harmonics N beside it in the pane, so it says what it counts.
         const { hitRegions } = drawBasisLabels(
-            s, ["fourier-epicycles"], `${level} of ${components.length} circles`, hoveredBasis, legendTop, insetInline,
+            s, ["fourier-epicycles"], `${level} of ${components.length} circles`, hoveredBasis, legendTop, insetInline, inks,
         );
         hover.setLabelHitRegions(hitRegions);
     }
@@ -293,6 +326,7 @@ function drawEpicycleFrame(
 function drawMultiBasesFrame(
     s: CanvasSurface,
     view: ViewTransform,
+    base: ViewTransform,
     layers: FrameLayers = liveLayers(),
 ) {
     const { ctx, width, height } = s;
@@ -313,7 +347,7 @@ function drawMultiBasesFrame(
             origY = epicycleData.path.y;
         }
         if (origX && origY) {
-            drawGhostPath(s, view, origX, origY, false, layers.ghost);
+            drawGhostPath(s, view, origX, origY, false, layers.ghost, inks.foreground);
         }
     };
 
@@ -438,7 +472,7 @@ function drawMultiBasesFrame(
         const eAlpha = epicycleAlphaFromScale(currentScale);
 
         if (!stableEpicycleBbox) {
-            stableEpicycleBbox = computeStableEpicycleBbox(spectrum, components, nVis, view.toScreen, view.scale);
+            stableEpicycleBbox = computeStableEpicycleBbox(spectrum, components, nVis, base.toScreen, base.scale);
         }
 
         let fit: EpicycleFit | null = null;
@@ -451,7 +485,7 @@ function drawMultiBasesFrame(
         }
 
         if (layers.epicycles) {
-            drawEpicycleCircles(s, view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 6, arm: 5.5 } : { circle: 5, arm: 4.5 });
+            drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 6, arm: 5.5 } : { circle: 5, arm: 4.5 });
         }
 
         if (fit) {
@@ -462,7 +496,7 @@ function drawMultiBasesFrame(
                 h: fit.scaledH,
             };
             if (layers.epicycles) {
-                drawConnectingLine(s, view, visPositions, tipX, tipY, fit, eAlpha);
+                drawConnectingLine(s, view, base, visPositions, tipX, tipY, fit, eAlpha);
             }
         }
     }
@@ -471,7 +505,7 @@ function drawMultiBasesFrame(
     if (layers.labels) {
         // The partial-sum level IS the Harmonics N (the levels run 1…N), so it
         // keeps the pane's own name for it.
-        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis, legendTop, insetInline);
+        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis, legendTop, insetInline, inks);
         hover.setLabelHitRegions(hitRegions);
     }
 }
@@ -558,8 +592,24 @@ onMounted(() => {
 
 watch(() => props.showGhost, (on) => tweenGhost(on ? 1 : 0));
 
+// A new drawing opens at its fit (LAST-TEN F-01).
+watch(() => store.epicycleData, () => gestures.reset(false));
+
+/* LAST-TEN F-04: the inks are read once per theme, not per frame. A theme
+   change rewrites the root's class (or its colour-scheme style); re-read the
+   inks then and repaint a parked frame. */
+let themeObserver: MutationObserver | null = null;
+onMounted(() => {
+    themeObserver = new MutationObserver(() => {
+        readLegendTop();
+        if (surface.value && store.epicycleData) drawFrame();
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
+});
+
 onUnmounted(() => {
     cancelAnimationFrame(ghostRaf);
+    themeObserver?.disconnect();
     visibilityObserver?.disconnect();
     visibilityObserver = null;
     // Release this canvas's visibility credit so the count never leaks.
@@ -615,16 +665,17 @@ function exportFrame(options: Record<string, boolean> = {}) {
             offCtx.fillStyle = groundColor(canvasRef.value);
             offCtx.fillRect(0, 0, s.width, s.height);
         }
-        const view = getViewTransform(s);
+        // The export is the frame on screen, zoom and pan included.
+        const { base, view } = views(s);
         if (showGrid) drawGrid(s, view);
 
         const hasEpic = props.activeBases.includes("fourier-epicycles");
         const onlyEpic = hasEpic && props.activeBases.length === 1;
 
         if (onlyEpic && data) {
-            drawEpicycleFrame(s, data, view, layers);
+            drawEpicycleFrame(s, data, view, base, layers);
         } else {
-            drawMultiBasesFrame(s, view, layers);
+            drawMultiBasesFrame(s, view, base, layers);
         }
 
     }
@@ -677,6 +728,17 @@ defineExpose({ anim, exportFrame, drawImageOverlay, readInsets });
     min-height: 0;
     user-select: none;
     -webkit-user-select: none;
+    /* LAST-TEN F-01: the stage owns every gesture over it (useStageGestures);
+       the page never pans or zooms under it. */
+    touch-action: none;
+    overscroll-behavior: contain;
+}
+/* A zoomed drawing can be dragged. */
+.canvas-container[data-zoomed] {
+    cursor: grab;
+}
+.canvas-container[data-zoomed]:active {
+    cursor: grabbing;
 }
 
 .canvas-el {
