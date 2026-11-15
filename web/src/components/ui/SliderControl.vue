@@ -259,6 +259,21 @@ const displayValue = computed(() =>
    full strength (MPC-10), and `D-14`'s empty `color` leaves glass's capsule tint.
    The local gradient rule and the thumb paint are deleted (BL-FW14H-1's
    visible thumb, reversed by the owner). */
+/* OD19-F7 under glass 11.0.2: the fill's leading edge stays the handle, with a
+   light disc inside the fill's round end, as on 11.0.1. 11.0.2 made the
+   scrubber thumb as tall as the track and painted it --foreground. Its
+   supported token --slider-thumb-bg takes a CSS background, so the 11.0.1 disc
+   is painted back inside the new thumb: --card, --slider-thumb-size (1rem)
+   across, centred on the fill's round end (half the track less the disc past
+   the thumb box's centre), the fill showing around it. */
+.control-row-track {
+    --slider-thumb-bg: radial-gradient(
+        circle calc(var(--slider-thumb-size, 1rem) / 2)
+            at calc(50% + (var(--slider-track-height, 1.25rem) - var(--slider-thumb-size, 1rem)) / 2 - 0.25px) 50%,
+        var(--card) calc(100% - 0.5px),
+        transparent 100%
+    );
+}
 /* X-DS pass 7 · DS-F7X-C2 — the plain row on one line (see the docblock). The
    order is the DOM's and PRE-DOCK's: label, field, track. The track has a floor
    (`--row-track-min`); a row too narrow for it wraps, and then line 1 takes
