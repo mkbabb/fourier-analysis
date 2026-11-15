@@ -2,6 +2,7 @@
 import type { GalleryTier, Visualization } from "@/lib/types";
 import { InfiniteScroll } from "@mkbabb/glass-ui/infinite-scroll";
 import { Skeleton } from "@mkbabb/glass-ui";
+import { Card } from "@mkbabb/glass-ui/card";
 import GalleryCard from "./GalleryCard.vue";
 
 defineProps<{
@@ -31,6 +32,27 @@ const emit = defineEmits<{
     <div class="gallery-grid-host flex flex-col gap-2 px-[var(--page-gutter)]">
         <InfiniteScroll :has-more="hasMore" :is-loading="loading" @load-more="emit('load-more')">
             <div class="gallery-grid grid gap-3" :data-admin="adminMode || undefined">
+                <!-- LAST-TEN F-02: the FIRST page's placeholders are in the grid
+                     itself, card-shaped, in the columns the cards will take
+                     (they were a single centred 16rem column in the loader's
+                     flex row, and the cards landed 557 px from them). The
+                     cards replace them in place. -->
+                <template v-if="loading && !entries.length">
+                    <Card
+                        v-for="i in 6"
+                        :key="`placeholder-${i}`"
+                        size="md"
+                        surface="opaque"
+                        class="gallery-card-placeholder"
+                        aria-hidden="true"
+                    >
+                        <Skeleton class="aspect-[4/3] rounded-media" />
+                        <Skeleton class="placeholder-line w-2/3" />
+                        <Skeleton class="placeholder-line placeholder-line--meta w-1/2" />
+                        <Skeleton class="placeholder-line placeholder-line--badges w-2/5" />
+                        <Skeleton class="placeholder-line placeholder-line--meta w-1/3" />
+                    </Card>
+                </template>
                 <GalleryCard
                     v-for="entry in entries"
                     :key="entry.slug"
@@ -48,15 +70,20 @@ const emit = defineEmits<{
             <!-- X.F.W14U.gallery — UIA-F-184 ⊕ UIA-F-247: loading is glass
                  Skeleton cards in the grid's own measure (the hand-rolled
                  transparent-topped ring is retired, F-71's carry), and the "N
-                 loaded" / "No more entries" chatter is gone. -->
+                 loaded" / "No more entries" chatter is gone. LAST-TEN F-02:
+                 the next page's row spans the grid's width (`w-full`; in the
+                 loader's centring row it shrank to one column), and the first
+                 page announces itself from the grid above. -->
             <template #loading>
                 <div
-                    class="gallery-grid grid gap-3 pt-3"
+                    v-if="entries.length"
+                    class="gallery-grid grid w-full gap-3 pt-3"
                     role="status"
-                    aria-label="Loading visualizations"
+                    aria-label="Loading more visualizations"
                 >
                     <Skeleton v-for="i in 3" :key="i" class="aspect-[4/3] rounded-card" />
                 </div>
+                <span v-else class="sr-only" role="status">Loading visualizations</span>
             </template>
         </InfiniteScroll>
     </div>
@@ -83,6 +110,25 @@ const emit = defineEmits<{
    the gutter the toolbar runs to. */
 .gallery-grid {
     grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+/* A first-page placeholder in the card's own measures (GalleryCard: the
+   md pad and gap, the 4:3 media, then the title, meta, basis and stats
+   rows). */
+.gallery-card-placeholder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--card-gap);
+    padding: var(--card-pad);
+}
+.placeholder-line {
+    block-size: 1.3rem;
+    border-radius: var(--radius-floor, 0.25rem);
+}
+.placeholder-line--meta {
+    block-size: 1.2rem;
+}
+.placeholder-line--badges {
+    block-size: 1.375rem;
 }
 @container (width < 30rem) {
     .gallery-grid:not([data-admin]) {
