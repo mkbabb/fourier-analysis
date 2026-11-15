@@ -1,7 +1,6 @@
 import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { basisDisplay } from "../basis-display";
 import type { LabelHitRegion } from "../../composables/useCanvasHover";
-import { VIZ_COLORS } from "@/lib/colors";
 import { basisModeLabel, normalizeBasisKey } from "@/lib/basis";
 
 export interface LabelDrawResult {
@@ -9,30 +8,42 @@ export interface LabelDrawResult {
 }
 
 /**
+ * The stage's inks, read from its cascade when the stage is sized or the theme
+ * changes (LAST-TEN F-04: they were three `getComputedStyle` reads per frame,
+ * each a forced style recalculation while the docks animate). An empty value
+ * keeps the canvas's fallback.
+ */
+export interface StageInks {
+    /** `--foreground`: the original outline. */
+    foreground: string;
+    /** `--muted-foreground`: the legend's caption. */
+    muted: string;
+    /** `--font-text`: the legend's title face. */
+    textFace: string;
+}
+
+/**
  * X-DS DS-F4R-C5: the count under a legend is a CAPTION, not a second
  * heading: regular weight, a step under the 16 px title, in the theme's
  * `--muted-foreground` (it was a literal grey, the one canvas ink off the
- * tokens, and bold at the title's size). The token is read from the canvas
- * at draw time, so a theme switch re-inks it on the next frame.
+ * tokens, and bold at the title's size).
  */
 const CAPTION_FONT = "400 13px 'Fira Code', monospace";
-function setCaptionInk(ctx: CanvasRenderingContext2D): void {
+function setCaptionInk(ctx: CanvasRenderingContext2D, inks: StageInks): void {
     // The grey stays only as the fallback a canvas keeps if the token's
     // computed colour does not parse.
     ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
-    const v = getComputedStyle(ctx.canvas).getPropertyValue("--muted-foreground").trim();
-    if (v) ctx.fillStyle = v;
+    if (inks.muted) ctx.fillStyle = inks.muted;
 }
 
 /**
  * X-DS DS-F3C-C2: a legend's TITLE is the basis name, so it is set in the
- * text face its chooser chip resolves to (`--font-text`, read from the canvas
- * at draw time like the caption ink); mono stays on the count caption only.
+ * text face its chooser chip resolves to (`--font-text`); mono stays on the
+ * count caption only.
  */
 const TEXT_FACE_FALLBACK = "'Computer Modern Serif', Georgia, serif";
-function titleFont(ctx: CanvasRenderingContext2D): string {
-    const face = getComputedStyle(ctx.canvas).getPropertyValue("--font-text").trim();
-    return `bold 16px ${face || TEXT_FACE_FALLBACK}`;
+function titleFont(inks: StageInks): string {
+    return `bold 16px ${inks.textFace || TEXT_FACE_FALLBACK}`;
 }
 
 /**
@@ -48,6 +59,7 @@ export function drawBasisLabels(
     /** X-DS pass 8 · DS-F10-C2: the stage's `--stage-inset-inline`, the edge
      *  the epicycle inset shares. */
     left = 16,
+    inks: StageInks = { foreground: "", muted: "", textFace: "" },
 ): LabelDrawResult {
     // X.F.W4 · G-F4-VUE-TSC-CLEAN — `width`/`height` were destructured and
     // never read here or in `drawEpicycleLabel`: both routines anchor to the
@@ -89,7 +101,7 @@ export function drawBasisLabels(
         ctx.fillText(cfg.icon, xBase, yOff - iconYAdj);
 
         // Draw mode label, in the text face (DS-F3C-C2)
-        ctx.font = titleFont(ctx);
+        ctx.font = titleFont(inks);
         ctx.fillText(` ${modeLabel}`, xBase + iconW, yOff);
 
         ctx.globalAlpha = 1;
@@ -104,37 +116,10 @@ export function drawBasisLabels(
 
     // N count: the legend's caption line, under the title rows (DS-F4R-C5).
     ctx.globalAlpha = 1;
-    setCaptionInk(ctx);
+    setCaptionInk(ctx, inks);
     ctx.font = CAPTION_FONT;
     ctx.textBaseline = "top";
     ctx.fillText(levelText, xBase, yOff - 4);
 
     return { hitRegions };
-}
-
-/**
- * Draw a simple epicycle-only label (single basis, no hit regions needed).
- */
-export function drawEpicycleLabel(
-    surface: CanvasSurface,
-    tValue: number,
-): void {
-    const { ctx } = surface;
-
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillStyle = VIZ_COLORS.fourier;
-    ctx.globalAlpha = 0.9;
-    ctx.font = "bold 44px 'Computer Modern Serif', Georgia, serif";
-    const iconW = ctx.measureText("\u2131").width;
-    ctx.fillText("\u2131", 16, 2);
-    ctx.font = titleFont(ctx);
-    ctx.fillText(" Epicycles", 16 + iconW, 16);
-
-    // t value tight below the label, on the caption line (DS-F4R-C5)
-    ctx.globalAlpha = 1;
-    setCaptionInk(ctx);
-    ctx.font = CAPTION_FONT;
-    ctx.textBaseline = "top";
-    ctx.fillText(`t = ${tValue.toFixed(2)}`, 16, 40);
 }

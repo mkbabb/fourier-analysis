@@ -13,6 +13,7 @@ import { drawPlotGrid, type PlotPadding } from "@/lib/equation/grid";
 import { hitTestCurves, type CurveHitRegion } from "@/lib/equation/hit-test";
 import { groupTrigHarmonics, harmonicProgress, revealWeight, spectrumColor, type TrigHarmonic } from "@/lib/equation/harmonics";
 import { createTransitionState, startTransition, snapshotForTransition } from "./composables/useCurveTransition";
+import { useAmbientHold } from "./composables/useAmbientHold";
 
 import ConvergenceLegend from "./convergence/ConvergenceLegend.vue";
 import ConvergenceTimeline from "./convergence/ConvergenceTimeline.vue";
@@ -44,6 +45,15 @@ const legendWrapped = computed(() => !shortLandscape.value && containerWidth.val
 
 const t = ref(0);
 const playing = ref(false);
+/**
+ * LAST-TEN F-06: the sweep that plays from mount is AMBIENT, motion nobody
+ * asked for, and it holds still while the reader acts (`useAmbientHold`). A
+ * press of Play, or a scrub, is the reader taking the instrument: from then
+ * the sweep is theirs and never holds on its own.
+ */
+const ambient = ref(false);
+const { held: readerBusy } = useAmbientHold(containerRef);
+const holding = computed(() => ambient.value && readerBusy.value);
 const hoveredCurve = ref<string | null>(null);
 const mousePos = ref<{ x: number; y: number } | null>(null);
 
@@ -65,7 +75,7 @@ let cancelTransition: (() => void) | null = null;
 let visibilityObserver: IntersectionObserver | null = null;
 let rafId: number | null = null;
 let loopStartTime: number | null = null;
-let cachedScreenCurves: CurveHitRegion[] = [];
+let cachedScreenCurves: CurveHitRegion[] | null = null;
 
 const PAD: PlotPadding = { top: 14, bottom: 18, left: 12, right: 12 };
 
@@ -98,10 +108,10 @@ function startLoop() {
     // `L-B2` — the store's two guards, ported: never a second loop (the old
     // `rafId !== null` predicate was untruthful because `tick`'s early return
     // never nulled it), and never a loop for a plot nobody can see.
-    if (rafId !== null || !isVisible.value) return;
+    if (rafId !== null || !isVisible.value || holding.value) return;
     loopStartTime = null;
     function tick(now: number) {
-        if (!playing.value || !isVisible.value) { rafId = null; return; }
+        if (!playing.value || !isVisible.value || holding.value) { rafId = null; return; }
         if (loopStartTime === null) loopStartTime = now - t.value * animDuration.value;
         const elapsed = now - loopStartTime;
         const cycle = Math.floor(elapsed / animDuration.value);
@@ -218,7 +228,35 @@ function frameGeometry(
 // OA-44 — the backing store is the app's one DPR-aware idiom: sized to the
 // canvas's device-pixel box on resize, zoom and DPR change, never per frame
 // (the old per-draw `canvas.width =` reallocated the bitmap 60 times a second).
-const { surface } = useCanvasSetup(canvasRef, () => draw());
+const { surface } = useCanvasSetup(canvasRef, () => { readInk(); draw(); });
+
+/*
+ * LAST-TEN F-06: the neutral ink was a `getComputedStyle` read in every frame
+ * of the sweep (a forced style recalculation while anything on the page
+ * animates). It is read when the canvas is sized and when the theme changes.
+ */
+let ink = "#888";
+function readInk(): void {
+    const canvas = canvasRef.value;
+    if (canvas) ink = getComputedStyle(canvas).getPropertyValue("color").trim() || "#888";
+}
+let themeObserver: MutationObserver | null = null;
+
+/*
+ * The last frame's geometry, kept so the hover hit-test can rebuild the screen
+ * curves when the pointer asks, rather than every frame building ~500 point
+ * tuples per curve that only a hover reads.
+ */
+let lastFrame: {
+    toScreen: (x: number, y: number) => [number, number];
+    xGrid: number[];
+    curves: number[][];
+    cursors: number[];
+    sumY: Float64Array;
+    oxClosed: number[];
+    oyClosed: number[];
+} | null = null;
+let sumScratch = new Float64Array(0);
 
 function draw() {
     const canvas = canvasRef.value;
@@ -232,13 +270,9 @@ function draw() {
     // `D-1` — the neutral ink, READ FROM THE CASCADE rather than frozen. The
     // canvas carries `text-muted-foreground`, so `getComputedStyle().color` hands
     // back the USED value (an `rgb()` Canvas2D can paint) with `light-dark()` and
-    // the alias chain already resolved by the engine — the same probe the sibling
-    // `FrequencyGraph` uses for its index labels, and the only form that follows
-    // a theme flip without a string-parsing guess. The three frozen greys it
-    // replaces (`rgba(150,150,150,.2)` axes · `rgba(150,150,150,.07)` grid ·
-    // `rgba(180,180,180,.55)` original) were theme-blind by construction and put
-    // every meaning-bearing mark under the 1.4.11 floor in the default arm.
-    const ink = getComputedStyle(canvas).getPropertyValue("color").trim() || "#888";
+    // the alias chain already resolved by the engine. The three frozen greys it
+    // replaces were theme-blind by construction. Read by `readInk` (sizing and
+    // theme changes), not here (LAST-TEN F-06).
 
     const w = s.width, h = s.height;
     const ox = props.originalPoints.x, oy = props.originalPoints.y;
@@ -261,34 +295,34 @@ function draw() {
     // every frame.
     const { xGrid, curves, lerpDc, tMinY, tMaxY } = frameGeometry(harmonics, dc, tp, domA, domB);
 
-    // Lerp original Y
-    const oyLerped = oy.map((y, i) => {
-        if (tp >= 1 || !transition.prevOrigY.length) return y;
-        return lerp(i < transition.prevOrigY.length ? transition.prevOrigY[i] : y, y, tp);
-    });
+    // Lerp original Y (only while a transition runs; at rest it is `oy`).
+    const lerping = tp < 1 && transition.prevOrigY.length > 0;
+    const oyLerped = lerping
+        ? oy.map((y, i) => lerp(i < transition.prevOrigY.length ? transition.prevOrigY[i] : y, y, tp))
+        : oy;
 
     // Closed grid for the ORIGINAL curve only (endpoint=true) — visual closure
     // over [a, b]. The Fourier expansion treats f as periodic with period (b - a)
     // (paper §ch:interpreting, f(x) = Σ c_n e^(πinx/L) on [-L, L]), hence the wrap
     // sample y(b) = y(a). The partial-sum curve below retains the backend's
     // endpoint=false grid so the numerical convention is preserved.
-    const oxClosed = ox.length ? [...ox, domB] : ox;
-    const oyClosed = oyLerped.length ? [...oyLerped, oyLerped[0]] : oyLerped;
+    const { oxClosed, oyClosed } = closedOriginal(ox, oyLerped, domB, lerping);
 
     // Cursor indices — the one genuinely per-frame quantity.
     const eT = easedT.value;
     const cursors = curves.map((_, hi) => Math.floor(harmonicProgress(hi, totalH, eT) * (N_POINTS - 1)));
 
-    // Sum curve
+    // Sum curve (into a reused buffer: no per-frame array)
     const BLEND = 10;
-    const sumY = xGrid.map((_, j) => {
+    if (sumScratch.length !== N_POINTS) sumScratch = new Float64Array(N_POINTS);
+    const sumY = sumScratch;
+    for (let j = 0; j < N_POINTS; j++) {
         let val = lerpDc;
         for (let hi = 0; hi < totalH; hi++) {
-            const c = cursors[hi];
-            val += curves[hi][j] * revealWeight(j, c, BLEND, N_POINTS);
+            val += curves[hi][j] * revealWeight(j, cursors[hi], BLEND, N_POINTS);
         }
-        return val;
-    });
+        sumY[j] = val;
+    }
 
     // Y-bounds (lerped for smooth transition) — from the memo, above.
     const yP = (tMaxY - tMinY) * 0.08 || 1;
@@ -321,11 +355,9 @@ function draw() {
     ctx.globalAlpha = isOrigHov ? 1 : 0.85;
     ctx.lineWidth = isOrigHov ? 3.5 : 2.5;
     ctx.setLineDash([6, 4]);
-    const origPts: [number, number][] = [];
     ctx.beginPath();
     for (let i = 0; i < oxClosed.length; i++) {
         const pt = toScreen(oxClosed[i], oyClosed[i]);
-        origPts.push(pt);
         if (i === 0) ctx.moveTo(pt[0], pt[1]);
         else ctx.lineTo(pt[0], pt[1]);
     }
@@ -334,33 +366,27 @@ function draw() {
     ctx.globalAlpha = 1;
 
     // Individual harmonics
-    const harmPts: CurveHitRegion[] = [];
     for (let hi = 0; hi < totalH; hi++) {
         if (cursors[hi] < 3) continue;
         const isHov = hoveredCurve.value === `h-${hi}`;
         ctx.strokeStyle = spectrumColor(hi, totalH, isHov ? 1.0 : 0.55);
         ctx.lineWidth = isHov ? 3.5 : 2.5;
-        const pts: [number, number][] = [];
         ctx.beginPath();
         const end = Math.min(cursors[hi] + 1, N_POINTS);
         for (let i = 0; i < end; i++) {
             const pt = toScreen(xGrid[i], curves[hi][i]);
-            pts.push(pt);
             if (i === 0) ctx.moveTo(pt[0], pt[1]);
             else ctx.lineTo(pt[0], pt[1]);
         }
         ctx.stroke();
-        harmPts.push({ key: `h-${hi}`, points: pts });
     }
 
     // Sum curve (golden)
     ctx.save();
     applyGoldenStroke(ctx, { hovered: hoveredCurve.value === "sum", baseWidth: 5, hoverWidth: 7 });
-    const sumPts: [number, number][] = [];
     ctx.beginPath();
     for (let i = 0; i < N_POINTS; i++) {
         const pt = toScreen(xGrid[i], sumY[i]);
-        sumPts.push(pt);
         if (i === 0) ctx.moveTo(pt[0], pt[1]);
         else ctx.lineTo(pt[0], pt[1]);
     }
@@ -371,9 +397,9 @@ function draw() {
     // enter from the left, so the Sum right of the front is still the partial
     // one. A thin rule in the axis ink marks the entering harmonic's front.
     if (eT > 0 && eT < 1) {
-        const entering = cursors.filter((c) => c > 0 && c < N_POINTS - 1);
-        if (entering.length) {
-            const front = Math.max(...entering);
+        let front = -1;
+        for (const c of cursors) if (c > 0 && c < N_POINTS - 1 && c > front) front = c;
+        if (front >= 0) {
             const [fx] = toScreen(xGrid[front], minY);
             ctx.save();
             ctx.strokeStyle = ink;
@@ -388,7 +414,42 @@ function draw() {
         }
     }
 
+    lastFrame = { toScreen, xGrid, curves, cursors, sumY, oxClosed, oyClosed };
+    cachedScreenCurves = null;
+}
+
+/** The closed original curve, rebuilt only when its source (or a transition) changes. */
+let closedKey: unknown[] = [];
+let closedValue = { oxClosed: [] as number[], oyClosed: [] as number[] };
+function closedOriginal(ox: number[], oy: number[], domB: number, lerping: boolean) {
+    if (!lerping && closedKey[0] === ox && closedKey[1] === oy && closedKey[2] === domB) return closedValue;
+    closedValue = {
+        oxClosed: ox.length ? [...ox, domB] : ox,
+        oyClosed: oy.length ? [...oy, oy[0]] : oy,
+    };
+    closedKey = lerping ? [] : [ox, oy, domB];
+    return closedValue;
+}
+
+/** The hover hit-test's screen curves for the frame on screen, built on demand. */
+function screenCurves(): CurveHitRegion[] {
+    if (cachedScreenCurves) return cachedScreenCurves;
+    if (!lastFrame) return [];
+    const { toScreen, xGrid, curves, cursors, sumY, oxClosed, oyClosed } = lastFrame;
+    const sumPts: [number, number][] = [];
+    for (let i = 0; i < N_POINTS; i++) sumPts.push(toScreen(xGrid[i], sumY[i]));
+    const origPts: [number, number][] = [];
+    for (let i = 0; i < oxClosed.length; i++) origPts.push(toScreen(oxClosed[i], oyClosed[i]));
+    const harmPts: CurveHitRegion[] = [];
+    for (let hi = 0; hi < curves.length; hi++) {
+        if (cursors[hi] < 3) continue;
+        const pts: [number, number][] = [];
+        const end = Math.min(cursors[hi] + 1, N_POINTS);
+        for (let i = 0; i < end; i++) pts.push(toScreen(xGrid[i], curves[hi][i]));
+        harmPts.push({ key: `h-${hi}`, points: pts });
+    }
     cachedScreenCurves = [{ key: "sum", points: sumPts }, { key: "original", points: origPts }, ...harmPts];
+    return cachedScreenCurves;
 }
 
 // ── Mouse interaction ──
@@ -398,7 +459,7 @@ function onCanvasMove(e: MouseEvent) {
     const container = containerRef.value;
     if (!canvas || !container) return;
     const rect = canvas.getBoundingClientRect();
-    const hit = hitTestCurves(cachedScreenCurves, e.clientX - rect.left, e.clientY - rect.top);
+    const hit = hitTestCurves(screenCurves(), e.clientX - rect.left, e.clientY - rect.top);
     // `L-m10` — `mousePos` was written on EVERY move regardless of hover state,
     // so a pointer crossing empty plot re-rendered the template for a tooltip
     // that was not shown. It is written only when there is something to place.
@@ -411,13 +472,13 @@ function onCanvasMove(e: MouseEvent) {
     } else {
         mousePos.value = null;
     }
-    if (hit !== hoveredCurve.value) { hoveredCurve.value = hit; if (!playing.value) draw(); }
+    if (hit !== hoveredCurve.value) { hoveredCurve.value = hit; if (rafId === null) draw(); }
 }
 
 function onCanvasLeave() {
     hoveredCurve.value = null;
     mousePos.value = null;
-    if (!playing.value) draw();
+    if (rafId === null) draw();
 }
 
 /**
@@ -444,6 +505,7 @@ const tooltipHtml = computed(() => {
 // ── Playback ──
 
 function togglePlay() {
+    ambient.value = false;
     playing.value = !playing.value;
     if (playing.value) { if (t.value >= 0.99) t.value = 0; startLoop(); }
     else { stopLoop(); draw(); }
@@ -452,6 +514,7 @@ function togglePlay() {
 // ── Scrubbing ──
 
 function onScrubStart() {
+    ambient.value = false;
     stopLoop();
 }
 function onScrubMove(newT: number) {
@@ -464,8 +527,8 @@ function onScrubEnd() {
 
 // ── Legend ──
 
-function onLegendEnter(key: string) { hoveredCurve.value = key; if (!playing.value) draw(); }
-function onLegendLeave() { hoveredCurve.value = null; if (!playing.value) draw(); }
+function onLegendEnter(key: string) { hoveredCurve.value = key; if (rafId === null) draw(); }
+function onLegendLeave() { hoveredCurve.value = null; if (rafId === null) draw(); }
 
 const plotDescription = computed(() => {
     const total = trigHarmonics.value.length;
@@ -515,7 +578,11 @@ watch(() => [props.originalPoints, props.coefficients] as const, (_now, old) => 
     }
 });
 
-watch(() => props.nHarmonics, () => { if (!playing.value) draw(); });
+watch(() => props.nHarmonics, () => { if (rafId === null) draw(); });
+
+/* The hold parks the loop where it stands (the frame stays); its release
+   continues the sweep from there. */
+watch(holding, (h) => { if (!h && playing.value) startLoop(); });
 
 /**
  * `L-M2` — `props.domain` feeds `omega`, the x-grid, the closing sample and
@@ -527,7 +594,7 @@ watch(() => props.nHarmonics, () => { if (!playing.value) draw(); });
  * may be never. The callsite now sources `domain` from the request that produced
  * the result; this watcher is the other half, for the props that reach it.
  */
-watch(() => [props.domain, props.expression], () => { if (!playing.value) draw(); });
+watch(() => [props.domain, props.expression], () => { if (rafId === null) draw(); });
 
 // ── Lifecycle ──
 
@@ -542,9 +609,15 @@ onMounted(() => {
             draw();
             t.value = 0;
             playing.value = true;
+            ambient.value = true;
             startLoop();
         }
     });
+    themeObserver = new MutationObserver(() => {
+        readInk();
+        if (rafId === null) draw();
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
     // `L-M3 + D-26` — neither clock was visibility-gated, and the mobile panel is
     // `display:none` WHILE MOUNTED (`EquationView`'s `.panel-inactive`, default
     // tab `controls`), so the loop, the per-frame layout read and the reactive
@@ -572,6 +645,7 @@ onUnmounted(() => {
     stopLoop();
     cancelTransition?.();
     visibilityObserver?.disconnect();
+    themeObserver?.disconnect();
 });
 </script>
 
@@ -671,7 +745,7 @@ onUnmounted(() => {
     z-index: var(--z-controls);
     /* A.W3.d — `tooltip-in` is canonical in glass-ui's animations.css; the
        consumer-side shadow keyframe has been excised. Resolves via global cascade. */
-    animation: tooltip-in 0.1s var(--ease-standard);
+    animation: tooltip-in var(--duration-control) var(--ease-out);
 }
 
 /* `M-L7` — the local `@media (prefers-reduced-motion: reduce) { animation: none }`

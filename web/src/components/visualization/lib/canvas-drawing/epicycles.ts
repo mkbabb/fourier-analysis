@@ -310,10 +310,15 @@ export function drawEpicycleCircles(
     ctx.restore();
 }
 
-/** Draw the dashed connecting line from the epicycle tip to the trace position. */
+/**
+ * Draw the dashed connecting line from the epicycle tip to the trace position.
+ * The inset's tip is placed through `insetView` (the fitted transform the
+ * inset is drawn in); the trace's through `view` (the stage's, zoom included).
+ */
 export function drawConnectingLine(
     surface: CanvasSurface,
     view: ViewTransform,
+    insetView: ViewTransform,
     visPositions: Float64Array,
     tipX: number,
     tipY: number,
@@ -324,7 +329,7 @@ export function drawConnectingLine(
     const { toScreen } = view;
 
     const n = visPositions.length;
-    const [rawX, rawY] = toScreen(visPositions[n - 2], visPositions[n - 1]);
+    const [rawX, rawY] = insetView.toScreen(visPositions[n - 2], visPositions[n - 1]);
 
     const tipSx = fit.targetCX + (rawX - fit.bboxCX) * fit.fitScale;
     const tipSy = fit.targetCY + (rawY - fit.bboxCY) * fit.fitScale;

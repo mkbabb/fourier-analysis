@@ -101,7 +101,8 @@ const emit = defineEmits<{
 
 .legend-entry {
     @apply flex items-center gap-2.5 px-2 py-1 rounded cursor-default;
-    transition: background 0.1s;
+    /* LAST-TEN F-27: the small-state clock (it was 100 ms `ease`). */
+    transition: background-color var(--duration-control) var(--spring-press);
 }
 .legend-entry:hover,
 .legend-entry.is-hovered {

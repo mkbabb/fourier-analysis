@@ -15,6 +15,6 @@ export {
     drawTipDot,
 } from "./epicycles";
 export type { EpicycleFit, EpicycleBbox } from "./epicycles";
-export { drawBasisLabels, drawEpicycleLabel } from "./labels";
-export type { LabelDrawResult } from "./labels";
+export { drawBasisLabels } from "./labels";
+export type { LabelDrawResult, StageInks } from "./labels";
 export { drawPlaceholder } from "./placeholder";
