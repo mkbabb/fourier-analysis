@@ -158,11 +158,15 @@ test.describe("X·F F.W3 — g4: the scrub session cannot freeze the transport",
         const { row, thumb, track, play } = await openTimeline(page);
 
         await setPlaying(play, true);
-        await page.waitForTimeout(300);
-        expect(
-            await valueNow(thumb),
-            "the sweep has to be running for a freeze to be visible",
-        ).toBeGreaterThan(0);
+        // LAST-TEN F-07: the autoplayed sweep starts HELD and begins once the
+        // route's first frames are past (`useAmbientHold`, 600 ms after the
+        // last act), so it is waited for rather than read at a fixed 300 ms.
+        await expect
+            .poll(() => valueNow(thumb), {
+                message: "the sweep has to be running for a freeze to be visible",
+                timeout: 5_000,
+            })
+            .toBeGreaterThan(0);
 
         const box = (await track.boundingBox())!;
         await page.mouse.move(box.x + box.width * 0.4, box.y + box.height / 2);
