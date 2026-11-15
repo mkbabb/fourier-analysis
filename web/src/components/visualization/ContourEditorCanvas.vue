@@ -73,6 +73,7 @@ const { selectedIdx, onPointPointerDown: rawPointPointerDown, onPointerMove, onP
     magnetRadius,
     svgPoint,
     pushHistory,
+    () => dragBounds.value,
 );
 
 // Stable bounds — computed from initial contour, not live points
@@ -103,6 +104,24 @@ watch(() => props.contour, initFromContour, { immediate: true });
 
 // Bounds — use stable bounds for viewBox and image overlay, live bounds for nothing
 const bounds = computed(() => stableBounds.value);
+
+/* LAST-TEN F-03: a dragged point stays on the stage: inside the viewBox's
+   extent, and inside the image's own rectangle (`image_bounds`, the
+   authoritative data space) when the contour carries one. */
+const dragBounds = computed(() => {
+    const b = bounds.value;
+    const padX = b.width * MARGIN;
+    const padY = b.height * MARGIN;
+    const stage = { minX: b.minX - padX, maxX: b.maxX + padX, minY: b.minY - padY, maxY: b.maxY + padY };
+    const ib = props.contour.image_bounds;
+    if (!ib) return stage;
+    return {
+        minX: Math.max(stage.minX, ib.minX),
+        maxX: Math.min(stage.maxX, ib.maxX),
+        minY: Math.max(stage.minY, ib.minY),
+        maxY: Math.min(stage.maxY, ib.maxY),
+    };
+});
 
 const viewBox = computed(() => {
     const b = bounds.value;
