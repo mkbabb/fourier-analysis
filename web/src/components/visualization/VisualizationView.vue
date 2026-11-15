@@ -318,9 +318,26 @@ const hasImage = computed(() => !!store.imageMeta);
  * clears the flight with no image, which is the leave path (r2).
  */
 const hasSidebar = computed(() => hasImage.value || store.uploading);
-const sidebarPresent = ref(hasSidebar.value);
+/*
+ * LAST-TEN F-10: a cold load of `/w/<slug>` or `/v/<slug>` mounted the stage
+ * at the full row (1406 px), then the aside column opened when the image's
+ * metadata landed and the canvas shrank to 970 px under it, 308 px of it in
+ * one frame (CLS 0.078). A route that names an image will have the sidebar,
+ * so its column is RESERVED from the first frame: the stage is laid out at
+ * its final width, and the aside's content fades in at its place. A load
+ * that fails with nothing to show releases the column.
+ */
+const routeNamesImage = computed(
+    () => route.name === "visualization" || (route.name === "workspace" && !!route.params.imageSlug),
+);
+const sidebarReserved = computed(() => routeNamesImage.value && !store.error && !hasSidebar.value);
+const sidebarPresent = ref(hasSidebar.value || sidebarReserved.value);
 watch(hasSidebar, (present) => {
     if (present) sidebarPresent.value = true;
+});
+watch(sidebarReserved, (reserved) => {
+    if (reserved) sidebarPresent.value = true;
+    else if (!hasSidebar.value) sidebarPresent.value = false;
 });
 
 /*
@@ -485,7 +502,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                  between them. `.glass-opaque` stays: its `--glass-level: 0`
                  inherits into both cards, so each is the solid `--card` of OA-43,
                  and the shell it sits on paints nothing. -->
-            <Configurator scroll-mode="auto" layout="detached" class="viz-configurator glass-opaque" :data-sidebar="sidebarPresent ? undefined : 'none'">
+            <Configurator scroll-mode="auto" layout="detached" class="viz-configurator glass-opaque" :data-sidebar="!sidebarPresent ? 'none' : sidebarReserved ? 'reserved' : undefined">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
                     <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark, announced
@@ -1291,6 +1308,18 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 [data-sidebar="none"] > :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
     display: none;
 }
+/* LAST-TEN F-10: the reserved column holds its width with its card unseen;
+   the card fades in with its content when the image lands. The sheet form
+   stacks the aside under the stage, so there it takes no box until then. */
+:deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
+    transition: opacity var(--spring-panel-duration) var(--ease-out);
+}
+[data-sidebar="reserved"] > :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
+    opacity: 0;
+}
+.viz-workspace[data-form="sheet"] [data-sidebar="reserved"] > :deep(.viz-configurator > [data-slot="configurator"] > .configurator-aside) {
+    display: none;
+}
 .viz-sidebar-enter-active {
     transition: opacity var(--spring-panel-duration) var(--ease-out),
                 transform var(--spring-panel-duration) var(--spring-panel);
@@ -1304,15 +1333,19 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     opacity: 0;
     transform: translateX(var(--enter-overlay-slide, 0.5rem));
 }
+/* Reduced motion: the column does not travel, and the content fades rather
+   than cutting in or out (owner law: a fade, never a cut). */
 @media (prefers-reduced-motion: reduce) {
-    :deep(.viz-configurator > [data-slot="configurator"]),
+    :deep(.viz-configurator > [data-slot="configurator"]) {
+        transition: none;
+    }
     .viz-sidebar-enter-active,
     .viz-sidebar-leave-active {
-        transition: none;
+        transition: opacity var(--duration-fast) var(--ease-out);
     }
     .viz-sidebar-enter-from,
     .viz-sidebar-leave-to {
-        opacity: 1;
+        opacity: 0;
         transform: none;
     }
 }
