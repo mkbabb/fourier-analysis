@@ -973,7 +973,8 @@ watchDebounced(
     cursor: pointer;
     border-radius: var(--radius-xs);
     padding: 0 2px;
-    transition: color 0.12s ease, background 0.12s ease;
+    /* LAST-TEN F-27: the small-state clock on the press spring. */
+    transition: color var(--duration-control) var(--spring-press), background-color var(--duration-control) var(--spring-press);
 }
 .eq-card :deep(.eq-coeff:hover) {
     color: var(--viz-amber) !important;

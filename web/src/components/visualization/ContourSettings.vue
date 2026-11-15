@@ -326,7 +326,7 @@ watch(
             <CollapsibleTrigger as-child>
                 <Button emphasis="quiet" size="sm" class="advanced-trigger">
                     Advanced
-                    <ChevronRight class="transition-transform duration-200" :class="{ 'rotate-90': advancedOpen }" />
+                    <ChevronRight class="transition-transform duration-(--spring-present-duration) ease-(--spring-present)" :class="{ 'rotate-90': advancedOpen }" />
                 </Button>
             </CollapsibleTrigger>
 

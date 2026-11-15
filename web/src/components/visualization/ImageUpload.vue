@@ -146,11 +146,13 @@ function onImgError() {
    `role="progressbar"` channel none of this had. The fade transition below
    SURVIVES — it is the mount treatment, not the progress, and deleting it
    would be an unasked-for change to how the bar arrives. */
+/* LAST-TEN F-27: on the glass clocks (it was 300 ms in, 400 ms out on the
+   raw keywords; exits are the quicker half). */
 .rainbow-fade-enter-active {
-    transition: opacity 0.3s ease-out;
+    transition: opacity var(--duration-normal) var(--ease-out);
 }
 .rainbow-fade-leave-active {
-    transition: opacity 0.4s ease-in;
+    transition: opacity var(--duration-fast) var(--ease-out);
 }
 .rainbow-fade-enter-from,
 .rainbow-fade-leave-to {

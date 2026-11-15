@@ -172,13 +172,16 @@ const AmplitudeReadout = defineComponent({
                                  baseline with near-square ends, so a short bar reads
                                  as a bar and the smallest is a 1 px hairline on the
                                  axis, not a rounded cap that reads as a stray glyph. -->
+                            <!-- LAST-TEN F-26: the bar is the track's full width,
+                                 scaled to its share (`transform`, on the dock
+                                 spring): a new spectrum moves no layout. It was
+                                 `transition-all` over `width` for 500 ms. -->
                             <div class="flex-1 h-3 rounded-e-xs bg-muted/50 overflow-hidden">
                                 <div
-                                    class="h-full rounded-e-xs transition-all duration-500 ease-out"
+                                    class="coeff-bar h-full rounded-e-xs"
                                     :style="{
-                                        width: `${(comp.amplitude / maxAmplitude) * 100}%`,
+                                        '--bar-share': comp.amplitude / maxAmplitude,
                                         backgroundColor: spectrumColor(i, topComponents.length),
-                                        minWidth: '1px',
                                     }"
                                 />
                             </div>
@@ -228,12 +231,24 @@ const AmplitudeReadout = defineComponent({
 
 <style scoped>
 @reference "tailwindcss";
-/* A.W3.d — named properties + canonical tokens, no `transition: all`. */
+/* LAST-TEN F-26: the bar's share is a scale from the axis (a 1 px floor
+   against a ~240 px track keeps the smallest a hairline), travelling on the
+   dock spring; the hue steps on the control clock. */
+.coeff-bar {
+    transform-origin: left center;
+    transform: scaleX(max(var(--bar-share), 0.004));
+    transition:
+        transform var(--spring-dock-duration) var(--spring-dock),
+        background-color var(--duration-control) var(--ease-standard);
+}
+/* A.W3.d — named properties + canonical tokens, no `transition: all`.
+   LAST-TEN F-26: rows enter on the presentation spring and leave on the
+   ease-out exit clock (they were 300 / 200 ms on the standard bezier). */
 .coeff-list-enter-active {
-    transition: opacity 0.3s var(--ease-standard), transform 0.3s var(--ease-standard);
+    transition: opacity var(--spring-present-duration) var(--ease-out), transform var(--spring-present-duration) var(--spring-present);
 }
 .coeff-list-leave-active {
-    transition: opacity 0.2s var(--ease-standard), transform 0.2s var(--ease-standard);
+    transition: opacity var(--spring-present-exit-duration) var(--ease-out), transform var(--spring-present-exit-duration) var(--ease-out);
 }
 .coeff-list-enter-from {
     opacity: 0;
@@ -244,7 +259,7 @@ const AmplitudeReadout = defineComponent({
     transform: translateX(8px);
 }
 .coeff-list-move {
-    transition: transform 0.3s ease;
+    transition: transform var(--spring-dock-duration) var(--spring-dock);
 }
 
 .coeff-row {

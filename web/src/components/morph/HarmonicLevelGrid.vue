@@ -332,7 +332,8 @@ function getPath(level: number): string {
     font-size: var(--type-caption);
     line-height: var(--type-leading-caption);
     color: var(--muted-foreground);
-    transition: color 0.15s;
+    /* LAST-TEN F-27: the small-state clock (it was 150 ms `ease`). */
+    transition: color var(--duration-control) var(--spring-press);
 }
 
 /* DS-F11X-C2: the bounds' mark — both of them, the active one included —

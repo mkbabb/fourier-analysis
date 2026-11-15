@@ -148,7 +148,8 @@ const harmonicValueText = (): string =>
 /* ── Transitions ── */
 .icon-swap-enter-active,
 .icon-swap-leave-active {
-    transition: opacity 0.1s ease, transform 0.1s ease;
+    /* LAST-TEN F-27: the small-state clock (it was 100 ms `ease`). */
+    transition: opacity var(--duration-control) var(--ease-out), transform var(--duration-control) var(--spring-press);
 }
 .icon-swap-enter-from { opacity: 0; transform: scale(0.7); }
 .icon-swap-leave-to   { opacity: 0; transform: scale(0.7); }
