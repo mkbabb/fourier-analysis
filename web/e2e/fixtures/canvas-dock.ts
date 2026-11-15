@@ -29,7 +29,8 @@ export async function clickCanvasDockExport(page: Page, scope: Page | Locator = 
     await editContour.hover();
     const dock = (await dockEl.boundingBox())!;
     await page.mouse.move(dock.x + dock.width / 2, dock.y + dock.height + 160);
-    await expect(dockEl).toHaveClass(/(^|\s)collapsed(\s|$)/);
+    // glass 11.0.2 folds an idle dock after 6 s (was 3.6 s), past the 5 s default.
+    await expect(dockEl).toHaveClass(/(^|\s)collapsed(\s|$)/, { timeout: 9_000 });
     await expect(dockEl).not.toHaveAttribute("data-morphing");
     await editContour.hover();
     await expect(dockEl).toHaveClass(/(^|\s)expanded(\s|$)/);
