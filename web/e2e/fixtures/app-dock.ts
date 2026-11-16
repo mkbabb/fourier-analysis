@@ -23,18 +23,19 @@ export async function openAppDock(page: Page): Promise<Locator> {
 
 /**
  * Owner, 2026-11-15: "Each page should have a tool set in the main dock". A
- * page's tool is a seat in the open app dock; below 40rem the page's tools
- * are ONE menu seat ("Visualize tools", "Equation tools") whose items are the
- * same acts. Press the named tool where it lives at the current width.
+ * page's tool is a seat in the open app dock; below 40rem the sections menu
+ * absorbs the page's tools (the phone's run holds four seats), so the tool is
+ * an item of that menu, under the page's tools label. Press the named tool
+ * where it lives at the current width.
  */
 export async function pressPageTool(page: Page, name: string): Promise<void> {
     const dock = await openAppDock(page);
-    const menuSeat = dock.getByRole("button", { name: / tools$/ });
-    if (await menuSeat.isVisible().catch(() => false)) {
-        await menuSeat.click();
+    if (page.viewportSize()!.width < 640) {
+        await dock.getByRole("button", { name: /^Navigate/ }).click();
         const menu = page.getByRole("menu");
         await expect(menu).toBeVisible();
-        await menu.getByRole("menuitem", { name, exact: true }).or(menu.getByRole("menuitemcheckbox", { name, exact: true })).click();
+        const tools = menu.locator("[data-page-tools]");
+        await tools.getByRole("menuitem", { name, exact: true }).or(tools.getByRole("menuitemcheckbox", { name, exact: true })).click();
         return;
     }
     const seat = dock.getByRole("button", { name, exact: true });

@@ -126,7 +126,7 @@ function isDisabled(control: Locator): Promise<boolean> {
 async function openEquation(page: Page): Promise<Locator> {
     await openViz(page);
     // Owner, 2026-11-15: the series panel is the page's tool, in the app dock
-    // (below 40rem an item of its one "Visualize tools" menu seat).
+    // (below 40rem an item of the sections menu, which absorbs the page's tools).
     await pressPageTool(page, "Equation");
     const panel = page.locator(".eq-panel");
     await expect(panel).toBeVisible();

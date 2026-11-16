@@ -10,19 +10,17 @@
  * (no copy of nothing), FR-COB-19 (the info card is the Popover's hover arm,
  * the icon-only trigger named), UIA-F-253 (glass Badge and Metric).
  *
- * On a phone (`PAGE_TOOLS_COMPACT`) the two are one menu seat, "Equation
- * tools": Copy LaTeX is its item, and the approximation's facts (the tier,
- * the energy, what the tier means) are read in the menu itself, since a touch
- * has no hover to open the card.
+ * Two forms (`usePageTools`): `seats`, dock controls (the app dock from
+ * 40rem); `items`, under 40rem, where the app dock's sections menu absorbs
+ * them: Copy LaTeX is an item, and the approximation's facts (the tier, the
+ * energy, what the tier means) are read in the menu itself, since a touch has
+ * no hover to open the card.
  */
 import { computed } from "vue";
-import { Check, Copy, Ellipsis, Info } from "@lucide/vue";
-import { useMediaQuery } from "@vueuse/core";
+import { Check, Copy, Info } from "@lucide/vue";
 import { DockControl } from "@mkbabb/glass-ui/dock";
-import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
+    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -34,13 +32,10 @@ import { useClipboard } from "@mkbabb/glass-ui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { plainLatex } from "@/lib/equation/render";
 import { formatNumber } from "@/lib/format";
-import { PAGE_TOOLS_COMPACT } from "@/composables/usePageTools";
-
-const compact = useMediaQuery(PAGE_TOOLS_COMPACT);
+import type { PageToolsForm } from "@/composables/usePageTools";
 
 const props = defineProps<{
-    /** The app dock's keep-open hold, for the phone's menu. */
-    hold: (open: boolean) => void;
+    form: PageToolsForm;
     latex: string;
     tier: { label: string; description: string } | null;
     tierTone: "success" | "warning" | "info";
@@ -58,20 +53,29 @@ const copyAnnouncement = computed(() => {
 async function copyLatex() {
     await copy(plainLatex(props.latex));
 }
+
+function onCopyItem(e: Event) {
+    e.preventDefault();
+    void copyLatex();
+}
 </script>
 
 <template>
-    <DropdownMenu v-if="compact" :modal="false" @update:open="hold">
-        <DockTrigger for="dropdown" aria-label="Equation tools">
-            <Ellipsis />
-        </DockTrigger>
-        <DropdownMenuContent align="center" class="equation-tools-menu">
-            <DropdownMenuItem :disabled="!latex" @select="copyLatex">
-                <Copy aria-hidden="true" />
-                <span>Copy LaTeX</span>
-            </DropdownMenuItem>
-            <template v-if="tier">
-                <DropdownMenuSeparator />
+    <template v-if="form === 'items'">
+        <!-- The menu stays open on Copy, so its check and the status line
+             below (inside the menu here) are seen and heard. -->
+        <DropdownMenuItem :disabled="!latex" @select="onCopyItem">
+            <Transition name="icon-swap" mode="out-in">
+                <Check v-if="status === 'success'" class="copy-ok" aria-hidden="true" />
+                <Copy v-else aria-hidden="true" />
+            </Transition>
+            <span>Copy LaTeX</span>
+        </DropdownMenuItem>
+        <template v-if="tier">
+            <DropdownMenuSeparator />
+            <!-- Its own group, so its label names it (a menu label names the
+                 group it sits in), not the page's tools around it. -->
+            <DropdownMenuGroup>
                 <DropdownMenuLabel>About this approximation</DropdownMenuLabel>
                 <div class="equation-tools-facts">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -80,9 +84,9 @@ async function copyLatex() {
                     </div>
                     <p class="text-small text-muted-foreground mt-2">{{ tier.description }}</p>
                 </div>
-            </template>
-        </DropdownMenuContent>
-    </DropdownMenu>
+            </DropdownMenuGroup>
+        </template>
+    </template>
     <template v-else>
         <Tooltip text="Copy LaTeX" side="bottom">
             <DockControl aria-label="Copy LaTeX" :disabled="!latex" @click="copyLatex">

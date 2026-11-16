@@ -18,11 +18,14 @@
  * (one Export, which opens the export dialog), UIA-F-93 ⊕ F-244 (in the
  * takeover this dock is hosted there and Fullscreen is the way out), UIA-F-94
  * (the folded face is a neutral glyph that names no action).
+ *
+ * In the takeover it also hosts the page's own tools (`page-tools` slot),
+ * outside the fold: the takeover covers the app dock that holds them.
  */
 import { computed } from "vue";
 import { Download, Ellipsis, Maximize2, Minimize2, Pencil, ScanSearch } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
-import { DockControl } from "@mkbabb/glass-ui/dock";
+import { DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { StatusDot } from "@mkbabb/glass-ui/status-dot";
 import StageDock from "@/components/shared/StageDock.vue";
 import ViewLayersMenu from "./ViewLayersMenu.vue";
@@ -94,7 +97,15 @@ const viewOffDefault = computed(() =>
 
         <!-- X.F.W11 R-close-1 (kept): Edit contour is the editor's one door in
              AND out, so it stands outside the fold, present folded and open. -->
+        <!-- In the fullscreen takeover the app dock is covered, so the page's
+             own tools (Publish, the series panel; the host's `page-tools` slot)
+             stand outside the fold here, before the editor's door: reachable
+             folded and open, without leaving the takeover. -->
         <template #persistent-end="{ column }">
+            <template v-if="isFullscreen && $slots['page-tools']">
+                <slot name="page-tools" :column="column" />
+                <DockSeparator />
+            </template>
             <Tooltip v-if="hasContour" text="Edit contour" :side="column ? 'left' : 'bottom'">
                 <DockControl aria-label="Edit contour" :active="isEditing" @click="emit('toggleEdit')">
                     <Pencil />

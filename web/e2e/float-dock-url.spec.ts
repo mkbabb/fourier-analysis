@@ -16,6 +16,14 @@ import { showView } from "./fixtures/workspace";
  *      is a column on a phone. Each tool has one home.
  * u1 — a deep link per page reopens that view cold; a change writes the URL;
  *      Back and Forward walk the discrete changes.
+ *
+ * float-dock-2 (owner, 16 Nov):
+ * m1 — /morph's state is in its URL: the picture, a previewed level, the
+ *      morph's range, durations and easings; Back plays the morph back.
+ * f1 — in the fullscreen takeover the page's own tools (Publish, Equation)
+ *      stand on the stage dock outside its fold, at every width.
+ * p1 — at 390 the app dock is four seats within the plate (~44 px either
+ *      side); the sections menu absorbs the page's tools; no seat under 44 px.
  */
 
 const LOAD = 60_000;
@@ -97,6 +105,103 @@ test.describe("t1 — the stage dock on a phone @coarse", () => {
         await expect(dock).toHaveAttribute("aria-orientation", /vertical/).catch(() => undefined);
     });
 });
+
+test.describe("p1 — the app dock on a phone @coarse", () => {
+    test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+    async function seatsWithin(page: Page) {
+        const dock = await openAppDock(page);
+        const g = await dock.evaluate((d) => {
+            const r = d.getBoundingClientRect();
+            const seats = [...d.querySelectorAll("button")]
+                .filter((b) => b.getBoundingClientRect().width > 0 && !b.closest("[inert]"))
+                .map((b) => ({ name: b.getAttribute("aria-label") ?? "", w: b.getBoundingClientRect().width, h: b.getBoundingClientRect().height }));
+            return { left: r.left, right: r.right, vw: innerWidth, seats };
+        });
+        expect(g.left, "room on the left").toBeGreaterThanOrEqual(32);
+        expect(g.vw - g.right, "room on the right").toBeGreaterThanOrEqual(32);
+        expect(g.seats.map((x) => x.name.replace(/ — .*/, ""))).toEqual(["About Fourier analysis", "Navigate", "Log in", "Dark mode"]);
+        for (const x of g.seats) {
+            expect(x.w, `${x.name} width`).toBeGreaterThanOrEqual(44);
+            expect(x.h, `${x.name} height`).toBeGreaterThanOrEqual(44);
+        }
+        return dock;
+    }
+
+    test("@coarse workspace: four seats within the plate; Publish and Equation are items of the sections menu", async ({ page }) => {
+        await openWorkspace(page);
+        const dock = await seatsWithin(page);
+        await dock.getByRole("button", { name: /^Navigate/ }).click();
+        const menu = page.getByRole("menu");
+        await expect(menu.getByRole("menuitem", { name: "Paper" })).toBeVisible();
+        const tools = menu.getByRole("group", { name: "Visualize tools" });
+        await expect(tools.getByRole("menuitem", { name: "Publish to Gallery" })).toBeVisible();
+        await tools.getByRole("menuitemcheckbox", { name: "Equation" }).click();
+        await expect(page.locator(".eq-panel")).toBeVisible({ timeout: LOAD });
+        await expect(page).toHaveURL(/[?&]eq=1/);
+    });
+
+    test("@coarse equation: four seats within the plate; Copy LaTeX and the approximation's facts are in the sections menu", async ({ page }) => {
+        await page.goto("/equation");
+        await expect(page.locator(".eq-card .katex").first()).toBeVisible({ timeout: LOAD });
+        const dock = await seatsWithin(page);
+        await dock.getByRole("button", { name: /^Navigate/ }).click();
+        const tools = page.getByRole("menu").getByRole("group", { name: "Equation tools" });
+        await expect(tools.getByRole("menuitem", { name: "Copy LaTeX" })).toBeVisible();
+        await expect(page.getByRole("menu")).toContainText("About this approximation");
+    });
+
+    test("@coarse a page with no tools of its own: the same four seats", async ({ page }) => {
+        await page.goto("/gallery");
+        await seatsWithin(page);
+    });
+});
+
+for (const vp of [
+    { tag: "1440", viewport: { width: 1440, height: 900 } },
+    { tag: "390 @coarse", viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+] as const) {
+    test.describe(`f1 — the page's tools in fullscreen (${vp.tag})`, () => {
+        test.use({ viewport: vp.viewport, ...("isMobile" in vp ? { isMobile: true, hasTouch: true } : {}) });
+
+        test(`${vp.tag.includes("@coarse") ? "@coarse " : ""}Publish and Equation stand outside the takeover's stage dock fold`, async ({ page }) => {
+            await openWorkspace(page);
+            const dock = await openCanvasDock(page);
+            await dock.getByRole("button", { name: "Fullscreen", exact: true }).click();
+            const takeover = page.getByRole("dialog");
+            await expect(takeover).toBeVisible();
+            const stage = takeover.locator(".controls-dock-anchor .glass-dock");
+            // The one live stage moved into the takeover with its dock still open
+            // from the press; a press on the drawing folds it.
+            const area = (await takeover.boundingBox())!;
+            await expect(async () => {
+                if (/\bexpanded\b/.test((await stage.getAttribute("class")) ?? "")) await page.mouse.click(area.x + 24, area.y + area.height / 2);
+                await expect(stage).toHaveClass(/\bcollapsed\b/, { timeout: 2_000 });
+            }).toPass({ timeout: 15_000 });
+            // Folded, and reachable: no press on the fold first.
+            await expect(stage.getByRole("button", { name: "Publish to Gallery" })).toBeVisible();
+            const eq = stage.getByRole("button", { name: "Equation", exact: true });
+            await expect(eq).toBeVisible();
+            // Full seats: the size of the editor's door beside them (and glass's
+            // 44 px coarse cell on a phone).
+            await expect(stage).not.toHaveAttribute("data-morphing", { timeout: 5_000 });
+            await page.waitForTimeout(400);
+            const edit = (await stage.getByRole("button", { name: "Edit contour" }).boundingBox())!;
+            for (const name of ["Publish to Gallery", "Equation"]) {
+                const box = (await stage.getByRole("button", { name, exact: true }).boundingBox())!;
+                expect(Math.abs(box.width - edit.width), `${name}: the seat's width`).toBeLessThan(1);
+                expect(Math.abs(box.height - edit.height), `${name}: the seat's height`).toBeLessThan(1);
+                if (page.viewportSize()!.width < 640) expect(Math.min(box.width, box.height), `${name}: the coarse cell`).toBeGreaterThanOrEqual(43.5);
+            }
+            await eq.click();
+            await expect(takeover.locator(".eq-panel")).toBeVisible({ timeout: LOAD });
+            await expect(page).toHaveURL(/[?&]eq=1/);
+            await expect(page).toHaveURL(/[?&]fs=1/);
+            // One Equation seat in reach: the app dock's copy is under the modal.
+            await expect(page.getByRole("button", { name: "Equation", exact: true })).toHaveCount(1);
+        });
+    });
+}
 
 test.describe("u1 — URL state (1440)", () => {
     test.use({ viewport: { width: 1440, height: 900 } });
@@ -189,6 +294,61 @@ test.describe("u1 — URL state (1440)", () => {
                 .not.toBeNull();
             const top = await fresh.evaluate((s) => document.getElementById(s)!.getBoundingClientRect().top, id);
             expect(Math.abs(top), `section #${id} is in view`).toBeLessThan(900);
+        } finally {
+            await fresh.close();
+        }
+    });
+
+    test("morph: a deep link reopens the picture, the previewed level and the tuning", async ({ page }) => {
+        await page.goto("/morph?shape=moon&n=8&lo=3&hi=35&out=300&emid=ease-out");
+        const card = page.locator(".morph-card");
+        await expect(card).toBeVisible({ timeout: LOAD });
+        await expect(card.locator(".shape-value")).toHaveText("Moon");
+        // The readout row reads "phase idle · n 8 · shape Moon · total 500 ms".
+        await expect(card.locator(".demo-info")).toContainText(/n\s*8(?!\d)/);
+        await expect(page.getByRole("slider", { name: "Low harmonic level" })).toHaveAttribute("aria-valuenow", "3");
+        await expect(page.getByRole("slider", { name: "High harmonic level" })).toHaveAttribute("aria-valuenow", "35");
+        await expect(page.getByRole("slider", { name: "Settle Out duration (ms)" })).toHaveAttribute("aria-valuenow", "300");
+        await expect(page.getByRole("group", { name: "Morph", exact: true }).getByRole("combobox")).toContainText("Ease Out");
+        await expect(card.locator(".demo-info"), "settle out 300 + blend 50 + settle in 150").toContainText(/500\s*ms/);
+    });
+
+    test("morph: the picture pushes and Back plays the morph back; a tuning replaces", async ({ page }) => {
+        await page.goto("/morph");
+        const card = page.locator(".morph-card");
+        await expect(card.locator(".shape-value")).toHaveText("Sun", { timeout: LOAD });
+        const morphButton = page.getByRole("button", { name: "Morph between the sun and moon shapes" });
+        await morphButton.click();
+        await expect(page).toHaveURL(/[?&]shape=moon/);
+        await expect(card.locator(".shape-value")).toHaveText("Moon");
+        await expect(morphButton).not.toHaveAttribute("aria-busy", "true");
+        // A tile previews a level: a push.
+        await page.locator(".levels-card .grid-cell").first().click();
+        await expect(page).toHaveURL(/[?&]n=1\b/);
+        await page.goBack();
+        await expect(page).not.toHaveURL(/[?&]n=/);
+        await expect(page).toHaveURL(/[?&]shape=moon/);
+        // Back across the picture plays the morph (busy while it runs), then lands on the sun.
+        await page.goBack();
+        await expect(page).not.toHaveURL(/shape=/);
+        await expect(card.locator(".shape-value")).toHaveText("Sun");
+        await expect(morphButton).not.toHaveAttribute("aria-busy", "true");
+        await page.goForward();
+        await expect(card.locator(".shape-value")).toHaveText("Moon");
+        // A tuning is a replace.
+        const len = await page.evaluate(() => history.length);
+        const low = page.getByRole("slider", { name: "Low harmonic level" });
+        await low.focus();
+        await page.keyboard.press("ArrowUp");
+        await expect(page).toHaveURL(/[?&]lo=6/);
+        expect(await page.evaluate(() => history.length), "a tuning is a replace").toBe(len);
+        // Cold, the link reopens the same view.
+        const url = page.url();
+        const fresh = await page.context().newPage();
+        try {
+            await fresh.goto(url);
+            await expect(fresh.locator(".morph-card .shape-value")).toHaveText("Moon", { timeout: LOAD });
+            await expect(fresh.getByRole("slider", { name: "Low harmonic level" })).toHaveAttribute("aria-valuenow", "6");
         } finally {
             await fresh.close();
         }

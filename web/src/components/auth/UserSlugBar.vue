@@ -97,7 +97,7 @@ const describedBy = computed(
 );
 
 /** UIA-F-232: the dock face reads the slug's first word, not "j-n-o-r". */
-const handle = computed(() => userSlug.value?.split("-")[0] ?? "");
+const handle = computed(() => shownSlug.value?.split("-")[0] ?? "");
 
 /** UIA-F-121: a 404 on login is an unknown slug, said with what to do next. */
 function loginFailure(e: unknown): string {
@@ -153,14 +153,47 @@ function closeLogin() {
  * once the card has left. Swapping on `isLoggedIn` unmounted the card the
  * moment the log-in succeeded, in one frame. `loginPresent` is the card's own
  * lifetime: from its opening to the end of its leave.
+ *
+ * The other way round is the same rule: Log out is an item of the account
+ * menu, so the menu is closing when the session ends. Swapping the seat on
+ * `isLoggedIn` unmounted the menu mid-exit, a cut, while every other popup
+ * leaves on glass's exit. `accountPresent` is the menu's lifetime (open to the
+ * end of its leave); the seat turns to Log in only after it, and the menu
+ * keeps showing the slug it was opened with (`shownSlug`) while it leaves.
  */
 const loginPresent = ref(false);
 const accountSeat = ref(isLoggedIn.value);
 watch(showLogin, (open) => {
     if (open) loginPresent.value = true;
 }, { immediate: true, flush: "sync" });
+
+const accountOpen = ref(false);
+const accountPresent = ref(false);
+const shownSlug = ref(userSlug.value);
+watch(userSlug, (slug) => {
+    if (slug) shownSlug.value = slug;
+});
+/*
+ * The menu stays uncontrolled (reka moves focus into it on open, so Escape is
+ * the menu's; held as a controlled `open`, focus stayed on the trigger and
+ * the dock took the Escape and folded). Its open edges are read here; one edge
+ * takes or gives back exactly one keep-open count.
+ */
+function onAccountOpen(open: boolean) {
+    if (open === accountOpen.value) return;
+    accountOpen.value = open;
+    if (open) accountPresent.value = true;
+    holdDockWhileOpen(open);
+}
+function onAccountLeft() {
+    if (accountOpen.value) return;
+    accountPresent.value = false;
+    accountSeat.value = isLoggedIn.value;
+}
+
 watch(isLoggedIn, (signedIn) => {
-    if (!signedIn || !loginPresent.value) accountSeat.value = signedIn;
+    const leaving = signedIn ? loginPresent.value : accountPresent.value;
+    if (!leaving) accountSeat.value = signedIn;
 });
 
 function onLoginLeft() {
@@ -223,15 +256,16 @@ async function copySlug() {
          (UIA-F-219: no consumer literal). X.F.W14U.shell — UIA-F-150: the
          admin state lives in this menu, not as a disc beside it. -->
     <div class="flex items-center">
-        <DropdownMenu v-if="accountSeat" @update:open="holdDockWhileOpen">
-            <DockTrigger for="dropdown" class="account-trigger" :aria-label="`Account: ${userSlug}`">
+        <DropdownMenu v-if="accountSeat" @update:open="onAccountOpen">
+            <DockTrigger for="dropdown" class="account-trigger" :aria-label="`Account: ${shownSlug}`">
                 <User aria-hidden="true" />
                 <span class="fira-code hidden sm:inline">{{ handle }}</span>
             </DockTrigger>
             <DropdownMenuContent align="end">
+                <LeaveSignal @left="onAccountLeft" />
                 <DropdownMenuLabel>
                     <span class="sr-only">Logged in as </span>
-                    <span class="fira-code">{{ userSlug }}</span>
+                    <span class="fira-code">{{ shownSlug }}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuLabel v-if="gallery.adminMode" class="flex items-center gap-2">
                     <Shield aria-hidden="true" />

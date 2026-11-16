@@ -91,7 +91,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { Button } from "@mkbabb/glass-ui/button";
 import { ClipboardCopy, Check, RotateCcw } from "@lucide/vue";
 import MorphShapePreview from "@/components/morph/MorphShapePreview.vue";
@@ -103,8 +104,21 @@ import { nearestLevel } from "@/lib/svg-fourier";
 // ── Shapes ───────────────────────────────────────────────────────
 // X·OD19 ALL — the header toggle's own two shapes, from their one home.
 import { moonShape, sunShape } from "@/lib/sun-moon-shapes";
+import { isOwnWrite, pageOf, writeParams } from "@/lib/urlState";
+import { formatMorphConfig, formatMorphView, parseMorphQuery } from "./morph-query";
 
-const isMoon = ref(false);
+/*
+ * Owner, 2026-11-15: "Each page should have state defined in the URL". The
+ * morph's view is its query (`morph-query.ts`): the picture showing, a
+ * previewed level, and the morph's tuning. The link is read before the
+ * composables are made, so a cold link opens on its picture and config.
+ */
+const route = useRoute();
+const router = useRouter();
+const ownPage = pageOf(route);
+const linked = parseMorphQuery(route.query);
+
+const isMoon = ref(linked.shape === "moon");
 const currentShapeName = computed(() => (isMoon.value ? "Moon" : "Sun"));
 const currentShape = computed(() => (isMoon.value ? moonShape : sunShape));
 
@@ -115,7 +129,7 @@ const shapeMaxLevel = computed(() => {
     const levels = currentShape.value.data.levels;
     return levels[levels.length - 1] ?? DEFAULT_MORPH_CONFIG.highLevel;
 });
-const morphConfig = useMorphConfig(undefined, shapeMaxLevel);
+const morphConfig = useMorphConfig(linked.config, shapeMaxLevel);
 const morph = useFourierMorph({ config: { ...morphConfig.config } });
 
 // Sync live config changes into the morph composable
@@ -130,17 +144,71 @@ const nearestActiveLevel = computed(() =>
     ),
 );
 
-// ── Handlers ─────────────────────────────────────────────────────
-onMounted(() => {
-    morph.setShape(sunShape);
+/** The level a tile previews on the stage; null shows the High level. */
+const previewLevel = ref<number | null>(null);
+
+/** The stage at the current picture: its previewed level, or High. */
+function showStill(n: number | null) {
+    const level = n !== null && morphConfig.previewLevels.value.includes(n) ? n : null;
+    previewLevel.value = level;
+    if (level === null) morph.setShape(currentShape.value);
+    else morph.setLevel(currentShape.value, level);
+}
+
+// ── URL ──────────────────────────────────────────────────────────
+const writeView = (push: boolean) =>
+    writeParams(router, formatMorphView(isMoon.value ? "moon" : "sun", previewLevel.value), push, ownPage);
+// The tunings move continuously (sliders): a replace.
+watch(
+    () => ({ ...morphConfig.config }),
+    (c) => writeParams(router, formatMorphConfig(c), false, ownPage),
+);
+
+/*
+ * Back and Forward apply the URL they reach: the tunings at once, and the
+ * picture by playing the morph to it (a change of picture is never a cut).
+ * A URL that arrives mid-morph is applied when the morph lands.
+ */
+let urlWaiting = false;
+function applyUrl() {
+    if (isAnimating.value) {
+        urlWaiting = true;
+        return;
+    }
+    const v = parseMorphQuery(route.query);
+    Object.assign(morphConfig.config, v.config);
+    if ((v.shape === "moon") !== isMoon.value) void toggle(false);
+    else showStill(v.n);
+}
+watch(
+    () => route.fullPath,
+    () => {
+        if (isOwnWrite(route.fullPath) || pageOf(route) !== ownPage) return;
+        applyUrl();
+    },
+);
+watch(isAnimating, (animating) => {
+    if (animating || !urlWaiting) return;
+    urlWaiting = false;
+    applyUrl();
 });
 
-async function handleToggle() {
+// ── Handlers ─────────────────────────────────────────────────────
+onMounted(() => showStill(linked.n));
+
+function handleToggle() {
+    void toggle(true);
+}
+
+/** Morph to the other picture; `write` pushes the new picture (a reader's press, not Back). */
+async function toggle(write: boolean) {
     if (isAnimating.value) return;
 
     const from = isMoon.value ? moonShape : sunShape;
     const to = isMoon.value ? sunShape : moonShape;
     isMoon.value = !isMoon.value;
+    previewLevel.value = null;
+    if (write) writeView(true);
 
     try {
         await morph.morphTo(from, to);
@@ -158,7 +226,8 @@ async function handleToggle() {
    range; the range is the two sliders' alone now. */
 function handlePreviewClick(level: number) {
     if (isAnimating.value) return;
-    morph.setLevel(currentShape.value, level);
+    showStill(level === morphConfig.config.highLevel ? null : level);
+    writeView(true);
 }
 
 function handleReset() {
@@ -169,7 +238,8 @@ function handleReset() {
        the first place. */
     if (isAnimating.value) return;
     morphConfig.reset();
-    morph.setShape(currentShape.value);
+    showStill(null);
+    writeView(true);
 }
 </script>
 

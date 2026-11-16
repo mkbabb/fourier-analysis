@@ -36,7 +36,7 @@
  *    above the dock (`--space-body`).
  */
 import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
-import { useEventListener, useResizeObserver } from "@vueuse/core";
+import { useEventListener, useMediaQuery, useResizeObserver } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { prefetchRoute } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
@@ -46,13 +46,20 @@ import { sectionNav } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+} from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
 import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
 import { usePageScroll } from "@/composables/usePageScroll";
-import { usePageTools } from "@/composables/usePageTools";
+import { PAGE_TOOLS_COMPACT, usePageTools, type PageToolsForm } from "@/composables/usePageTools";
 
 const route = useRoute();
 const router = useRouter();
@@ -236,11 +243,21 @@ function holdDockWhileOpen(open: boolean) {
  * Owner, 2026-11-15: "Each page should have a tool set in the main dock". The
  * page's own seats (`providePageTools`) follow the sections, behind one
  * separator, rendered in this dock's tree so they are its children.
+ *
+ * Under 40rem the page draws no seat: the sections menu absorbs its acts, as
+ * items under the five sections and the page's tools label. Four seats (About,
+ * Sections, Account, Dark mode) are the phone's run on every route, ~303 px
+ * of 390 with ~44 px either side; a fifth seat took it to 370 (10 px either
+ * side). Every seat keeps glass's 44 px coarse cell.
  */
 const pageTools = usePageTools();
-const PageToolsOutlet = () => pageTools.value?.render({ hold: holdDockWhileOpen }) ?? null;
+const compact = useMediaQuery(PAGE_TOOLS_COMPACT);
+const PageToolsOutlet = (props: { form: PageToolsForm }) =>
+    pageTools.value?.render({ form: props.form }) ?? null;
+const pageSeats = computed(() => !compact.value && !!pageTools.value?.shown());
+const pageItems = computed(() => compact.value && !!pageTools.value?.shown());
 // The page's seats change the run's width, so the label's fit is read again.
-watch(pageTools, () => void fitNavLabel(), { flush: "post" });
+watch(pageSeats, () => void fitNavLabel(), { flush: "post" });
 const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLElement | undefined) ?? null);
 </script>
 
@@ -317,13 +334,21 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         <component :is="tab.icon" aria-hidden="true" />
                         <span>{{ tab.label }}</span>
                     </DropdownMenuItem>
+                    <!-- Under 40rem: the page's acts, absorbed (see `pageItems`). -->
+                    <template v-if="pageItems && pageTools">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>{{ pageTools.label }}</DropdownMenuLabel>
+                        <DropdownMenuGroup :aria-label="pageTools.label" data-page-tools>
+                            <PageToolsOutlet form="items" />
+                        </DropdownMenuGroup>
+                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <template v-if="pageTools?.shown()">
+            <template v-if="pageSeats && pageTools">
                 <DockSeparator />
                 <div class="contents" role="group" :aria-label="pageTools.label" data-page-tools>
-                    <PageToolsOutlet />
+                    <PageToolsOutlet form="seats" />
                 </div>
             </template>
 
