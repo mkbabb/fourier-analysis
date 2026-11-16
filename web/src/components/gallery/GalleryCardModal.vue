@@ -19,6 +19,7 @@ import { basisChips } from "@/components/visualization/lib/basis-display";
 import { VIZ_COLORS } from "@/lib/colors";
 import TierMark from "./TierMark.vue";
 import TierControl from "./TierControl.vue";
+import LeaveSignal from "@/components/shared/LeaveSignal";
 import {
     ArrowRight,
     Eye,
@@ -26,6 +27,11 @@ import {
 } from "@lucide/vue";
 
 const props = defineProps<{
+    /**
+     * The host keeps the card mounted and drives it by `open`, so glass's
+     * leave runs to its end; `entry` stays set until `left`.
+     */
+    open: boolean;
     entry: Visualization;
     adminMode?: boolean;
     isLiked?: boolean;
@@ -42,6 +48,8 @@ const imageSource = useImageSources(() => [overlayHref.value]);
  */
 const emit = defineEmits<{
     close: [];
+    /** The card's leave has finished (its content unmounted). */
+    left: [];
     like: [slug: string];
     /** UIA-F-96: the visualization's slug — the saved entity opens at `/v/`. */
     "open-visualizer": [slug: string];
@@ -54,7 +62,7 @@ const emit = defineEmits<{
 // Escape-close + return-focus for free — the previous hand-rolled Teleport
 // + Transition + Escape listener retires.
 const open = computed({
-    get: () => true,
+    get: () => props.open,
     set: (v: boolean) => { if (!v) emit("close"); },
 });
 
@@ -114,6 +122,7 @@ function focusTitle(e: Event) {
             class="max-w-[28rem]"
             @open-auto-focus="focusTitle"
         >
+            <LeaveSignal @left="emit('left')" />
             <DialogHeader>
                 <DialogTitle class="font-serif-math" tabindex="-1" data-initial-focus>
                     {{ name }}

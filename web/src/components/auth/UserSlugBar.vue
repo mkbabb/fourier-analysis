@@ -20,6 +20,7 @@ import { toast } from "@mkbabb/glass-ui/toast";
 import { errorToast } from "@/lib/toast-policy";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { User, LogIn, LogOut, Copy, Check, Dices, Shield } from "@lucide/vue";
+import LeaveSignal from "@/components/shared/LeaveSignal";
 
 /** O16: the open account menu holds the app dock open (its Log in popover
  *  does through `keep-dock-open`; glass's DropdownMenu has no such prop). */
@@ -137,13 +138,39 @@ async function handleGenerate() {
     }
 }
 
+/**
+ * The card closes with what it showed: the field, its hint and the server's
+ * refusal are reset when its leave has finished (`onLoginLeft`), not in the
+ * close, which emptied them on the exit's first frame.
+ */
 function closeLogin() {
     showLogin.value = false;
+    auth.endSignInRequest();
+}
+
+/**
+ * The account seat: the Log in popover gives way to the account menu only
+ * once the card has left. Swapping on `isLoggedIn` unmounted the card the
+ * moment the log-in succeeded, in one frame. `loginPresent` is the card's own
+ * lifetime: from its opening to the end of its leave.
+ */
+const loginPresent = ref(false);
+const accountSeat = ref(isLoggedIn.value);
+watch(showLogin, (open) => {
+    if (open) loginPresent.value = true;
+}, { immediate: true, flush: "sync" });
+watch(isLoggedIn, (signedIn) => {
+    if (!signedIn || !loginPresent.value) accountSeat.value = signedIn;
+});
+
+function onLoginLeft() {
+    if (showLogin.value) return;
+    loginPresent.value = false;
     slugInput.value = "";
     touched.value = false;
     submitted.value = false;
     serverError.value = null;
-    auth.endSignInRequest();
+    accountSeat.value = isLoggedIn.value;
 }
 
 /**
@@ -196,7 +223,7 @@ async function copySlug() {
          (UIA-F-219: no consumer literal). X.F.W14U.shell — UIA-F-150: the
          admin state lives in this menu, not as a disc beside it. -->
     <div class="flex items-center">
-        <DropdownMenu v-if="isLoggedIn" @update:open="holdDockWhileOpen">
+        <DropdownMenu v-if="accountSeat" @update:open="holdDockWhileOpen">
             <DockTrigger for="dropdown" class="account-trigger" :aria-label="`Account: ${userSlug}`">
                 <User aria-hidden="true" />
                 <span class="fira-code hidden sm:inline">{{ handle }}</span>
@@ -229,6 +256,7 @@ async function copySlug() {
                 <span class="hidden sm:inline">Log in</span>
             </DockTrigger>
             <PopoverContent align="end" class="login-popover">
+                <LeaveSignal @left="onLoginLeft" />
                 <form class="flex flex-col gap-2" novalidate @submit.prevent="handleLogin">
                     <!-- X-DS pass 4 · DS-F4-C6: the field's label is on screen, a
                          caption line (the P2-07 hint idiom), not screen-reader

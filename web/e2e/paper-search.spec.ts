@@ -128,9 +128,9 @@ test.describe("S3 — /paper search (G-F9-4)", () => {
         // model promises, and it is the one no test has ever taken.
         await field.press("Enter");
 
-        // `close()` is synchronous after `PSM-27`: the query clears and the
-        // panel goes with it. A search that navigates but leaves its own
-        // overlay up is the defect that fix was for.
+        // The panel leaves first, then the query clears and the paper moves
+        // (`usePaperSearch`'s `leaving`). A search that navigates but leaves
+        // its own overlay up is the defect `PSM-27` was for.
         await expect(listbox).toBeHidden({ timeout: 15_000 });
         await expect(field).toHaveValue("");
     });

@@ -79,8 +79,36 @@ export function usePaperSearch(options: {
         selectedIndex.value = 0;
     });
 
+    /**
+     * A surface is LEAVING between a close that found one presented (the
+     * inline panel or the palette) and that surface's own end of exit, which
+     * it reports through `afterLeave()`. While it leaves it keeps showing what
+     * it showed: the query and the rows are cleared, and a picked result is
+     * navigated to, only when it is gone. Clearing them in the close blanked
+     * the leaving panel to "No results" on its first frame, and navigating
+     * first stalled the panel's fade on the scroll mount (one 241 ms frame,
+     * then gone).
+     */
+    const leaving = ref(false);
+    let pendingTarget: string | null = null;
+    let disposed = false;
+
+    function settle() {
+        leaving.value = false;
+        clear();
+        const target = pendingTarget;
+        pendingTarget = null;
+        if (target !== null) options.navigateTo(target);
+    }
+
+    /** The leaving surface's end of exit (a Transition's `after-leave`, a dialog's unmount). */
+    function afterLeave() {
+        if (disposed || !leaving.value || isOpen.value) return;
+        settle();
+    }
+
     function selectResult(r: PaperSearchResult) {
-        options.navigateTo(r.id);
+        pendingTarget = r.id;
         close();
     }
 
@@ -102,10 +130,32 @@ export function usePaperSearch(options: {
     }
 
     function close() {
+        const presented = panelOpen.value || isExpanded.value;
         isOpen.value = false;
         isExpanded.value = false;
-        clear();
+        if (presented) leaving.value = true;
+        else settle();
     }
+
+    /**
+     * A reopen inside a leave (the field's focus, the bar's Search button, ⌘K)
+     * keeps the query, so the surface reverses with its rows; a pick made
+     * before it is carried out now rather than dropped.
+     */
+    watch(
+        isOpen,
+        (open) => {
+            if (!open || !leaving.value) return;
+            leaving.value = false;
+            const target = pendingTarget;
+            pendingTarget = null;
+            if (target !== null) {
+                clear();
+                options.navigateTo(target);
+            }
+        },
+        { flush: "sync" },
+    );
 
     function open() {
         isOpen.value = true;
@@ -152,6 +202,8 @@ export function usePaperSearch(options: {
     // scope disposal and the memo was module-global. Both are owned here now,
     // and the composable reaps them when its scope ends.
     onScopeDispose(() => {
+        disposed = true;
+        pendingTarget = null;
         clearTimeout(debounceTimer);
         if (_index) clearPaperSearchCache(_index);
     });
@@ -173,6 +225,8 @@ export function usePaperSearch(options: {
         panelOpen,
         selectedIndex,
         selectResult,
+        leaving,
+        afterLeave,
         close,
         clear,
         open,

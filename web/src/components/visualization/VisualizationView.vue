@@ -771,7 +771,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
             </DialogContent>
         </Dialog>
 
-        <ExportModal v-if="showExport" :has-epicycles="hasEpicycles" @export="doExport" @close="showExport = false" />
+        <ExportModal :open="showExport" :has-epicycles="hasEpicycles" @export="doExport" @close="showExport = false" />
         <FullscreenViewer :visible="showFullscreen" :is-editing="isEditing"
             @update:host="fsHost = $event" @close="showFullscreen = false" />
     </div>

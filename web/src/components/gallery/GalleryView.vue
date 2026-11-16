@@ -61,9 +61,34 @@ const activeTab = ref<GalleryTab>("gallery");
  * set. Escalated whole rather than half-landed; see the unit receipt.
  */
 const selectedSlug = ref<string | null>(null);
-const selectedEntry = computed<Visualization | null>(
-    () => gallery.entries.find((e) => e.slug === selectedSlug.value) ?? null,
+/**
+ * The entry the card SHOWS. It follows `selectedSlug` in and outlives it by the
+ * card's leave: the card stays mounted, driven by `selectedSlug`, and lets go
+ * of its entry on `left`. Unmounting it on the close (`v-if` on the selection)
+ * removed the open card in one frame.
+ */
+const shownSlug = ref<string | null>(null);
+watch(selectedSlug, (slug) => {
+    if (slug) shownSlug.value = slug;
+}, { flush: "sync" });
+const shownEntry = computed<Visualization | null>(
+    () => gallery.entries.find((e) => e.slug === shownSlug.value) ?? null,
 );
+/** "Open in visualizer": the card leaves first, then the route changes. */
+let visualizerAfterLeave: string | null = null;
+
+function openVisualizer(slug: string) {
+    visualizerAfterLeave = slug;
+    selectedSlug.value = null;
+}
+
+function onCardLeft() {
+    if (selectedSlug.value !== null) return;
+    shownSlug.value = null;
+    const slug = visualizerAfterLeave;
+    visualizerAfterLeave = null;
+    if (slug) void router.push(`/v/${slug}`);
+}
 const viewedHashes = ref(new Set<string>());
 /** UIA-F-103: the ONE draft being published; the others stay live. */
 const publishingSlug = ref<string | null>(null);
@@ -293,7 +318,8 @@ async function performBatchGallery(target: Extract<PendingIntent, { kind: "batch
 }
 
 /**
- * FR-AFP-41's rule stands (closing clears the intent); the dialog now also
+ * FR-AFP-41's rule stands (closing clears the intent, once the dialog has
+ * left: `confirmation.settle` on its `left`); the dialog now also
  * locks while the act is in flight and closes after it settles.
  */
 function performConfirmed() {
@@ -557,13 +583,15 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
         </template>
 
         <GalleryCardModal
-            v-if="selectedEntry"
-            :entry="selectedEntry"
+            v-if="shownEntry"
+            :open="selectedSlug !== null"
+            :entry="shownEntry"
             :admin-mode="gallery.adminMode"
-            :is-liked="gallery.likedSlugs.has(selectedEntry.slug)"
+            :is-liked="gallery.likedSlugs.has(shownEntry.slug)"
             @close="selectedSlug = null"
+            @left="onCardLeft"
             @like="gallery.toggleLike"
-            @open-visualizer="(slug) => { selectedSlug = null; router.push(`/v/${slug}`); }"
+            @open-visualizer="openVisualizer"
             @set-tier="handleSetTier"
         />
 
@@ -579,6 +607,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
             :confirm-label="confirmLabel"
             :tone="pending?.kind === 'single' || pending?.action === 'delete' ? 'destructive' : 'neutral'"
             @update:open="confirmation.setOpen"
+            @left="confirmation.settle"
             @confirm="performConfirmed"
         >
             <template v-if="pending?.kind === 'single'">
