@@ -16,6 +16,8 @@ import {
     type WorkspaceView,
 } from "@/components/visualization/lib/workspace-query";
 import { formatGalleryQuery, linkableTab, parseGalleryQuery, type GalleryView } from "@/components/gallery/gallery-query";
+import { formatMorphConfig, formatMorphView, parseMorphQuery } from "@/components/morph/morph-query";
+import { DEFAULT_MORPH_CONFIG, type MorphConfig } from "@/composables/useFourierMorph";
 
 /** The query a formatted view navigates to (undefined keys omitted). */
 function asQuery(raws: Record<string, string | undefined>): LocationQuery {
@@ -159,5 +161,38 @@ describe("gallery query", () => {
 
     it("rejects a slug that is not one", () => {
         expect(parseGalleryQuery({ open: "../etc" }).open).toBeNull();
+    });
+});
+
+describe("morph query", () => {
+    it("is empty at the defaults (the clean /morph link)", () => {
+        const v = parseMorphQuery({});
+        expect(v).toEqual({ shape: "sun", n: null, config: DEFAULT_MORPH_CONFIG });
+        expect(asQuery({ ...formatMorphView(v.shape, v.n), ...formatMorphConfig(v.config) })).toEqual({});
+    });
+
+    it("round-trips the picture, a previewed level and the tuning", () => {
+        const config: MorphConfig = {
+            settleOutMs: 300,
+            morphMs: 120,
+            settleInMs: 450,
+            lowLevel: 3,
+            highLevel: 35,
+            settleOutEasing: "ease-out",
+            morphEasing: "ease-in-out-sine",
+            settleInEasing: "linear",
+        };
+        const query = asQuery({ ...formatMorphView("moon", 8), ...formatMorphConfig(config) });
+        expect(query).toEqual({ shape: "moon", n: "8", lo: "3", hi: "35", out: "300", mid: "120", in: "450", eout: "ease-out", emid: "ease-in-out-sine" });
+        expect(parseMorphQuery(query)).toEqual({ shape: "moon", n: 8, config });
+    });
+
+    it("reads junk, an out-of-range value and a reversed range as the default", () => {
+        const v = parseMorphQuery({ shape: "comet", n: "99", out: "5", emid: "wobble", lo: "40", hi: "12" });
+        expect(v.shape).toBe("sun");
+        expect(v.n).toBeNull();
+        expect(v.config.settleOutMs).toBe(DEFAULT_MORPH_CONFIG.settleOutMs);
+        expect(v.config.morphEasing).toBe(DEFAULT_MORPH_CONFIG.morphEasing);
+        expect([v.config.lowLevel, v.config.highLevel]).toEqual([DEFAULT_MORPH_CONFIG.lowLevel, DEFAULT_MORPH_CONFIG.highLevel]);
     });
 });
