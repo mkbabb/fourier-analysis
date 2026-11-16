@@ -180,7 +180,10 @@ defineExpose({ resultsRef });
 
 <template>
     <Teleport to="body">
-        <Transition name="search-dropdown">
+        <!-- The panel keeps its rows through its own leave: the query is
+             cleared, and a picked result navigated to, on `after-leave`
+             (`usePaperSearch`'s `leaving`). -->
+        <Transition name="search-dropdown" @after-leave="search.afterLeave()">
             <div
                 v-if="isOpen"
                 ref="resultsRef"
@@ -289,5 +292,18 @@ defineExpose({ resultsRef });
 .search-dropdown-leave-to {
     opacity: 0;
     transform: translateY(-4px);
+}
+
+/* Reduced motion: the same fade, no travel. */
+@media (prefers-reduced-motion: reduce) {
+    .search-dropdown-enter-active,
+    .search-dropdown-leave-active {
+        transition: opacity 0.15s var(--ease-standard);
+    }
+
+    .search-dropdown-enter-from,
+    .search-dropdown-leave-to {
+        transform: none;
+    }
 }
 </style>

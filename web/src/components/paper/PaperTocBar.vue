@@ -64,17 +64,19 @@ function openMobileSearch() {
 }
 
 function closeMobileSearch() {
-    searchActive.value = false;
     props.search.close();
 }
 
-// Close search when a result is selected (navigateTo triggers).
+/**
+ * The bar swaps back to the chapter title once the search is closed AND its
+ * results panel has left (Close search, Escape, an outside press, a pick).
+ * Clearing `searchActive` in the close unmounted the field with the panel
+ * inside it, so the panel never played its leave: gone in one frame.
+ */
 watch(
-    () => props.search.isOpen.value,
-    (open) => {
-        if (!open && searchActive.value) {
-            searchActive.value = false;
-        }
+    () => !props.search.isOpen.value && !props.search.leaving.value,
+    (closed) => {
+        if (closed && searchActive.value) searchActive.value = false;
     },
 );
 </script>
@@ -94,6 +96,11 @@ watch(
                  the mechanism glass Card's `surface="opaque"` plates take; the
                  `.glass-opaque` class kept the tier's blur (DS-F7X-G1, O-87). -->
             <!-- Search mode: input replaces section title -->
+            <!-- The swap between the search field and the chapter title is a
+                 cross-fade, never a cut. Both at once (not out-in): the field
+                 must mount inside the tap that opens it, or a phone raises no
+                 keyboard. -->
+            <Transition name="toc-bar-swap">
             <div v-if="searchActive" ref="searchBarRef" class="floating-toc-bar floating-toc-bar--search glass-resting" data-surface="opaque">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" :boundary="searchBarRef" />
                 <Button emphasis="quiet" size="sm" icon-only type="button" class="floating-toc-search-close" @click="closeMobileSearch" aria-label="Close search">
@@ -171,6 +178,7 @@ watch(
                     <Search class="floating-toc-icon" />
                 </Button>
             </div>
+            </Transition>
         </div>
     </div>
 </template>
@@ -220,6 +228,30 @@ watch(
     block-size: 1px;
     background: var(--floating-toc-rule, transparent);
     pointer-events: none;
+}
+
+/* The field and the title cross-fade by opacity alone, so a reduced-motion
+   reader gets the same fade: there is no travel to drop. The leaving bar is
+   lifted out of flow over the arriving one and takes no input. */
+.floating-toc-anchor {
+    position: relative;
+}
+
+.toc-bar-swap-enter-active,
+.toc-bar-swap-leave-active {
+    transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.toc-bar-swap-leave-active {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    pointer-events: none;
+}
+
+.toc-bar-swap-enter-from,
+.toc-bar-swap-leave-to {
+    opacity: 0;
 }
 
 .floating-toc-grid {

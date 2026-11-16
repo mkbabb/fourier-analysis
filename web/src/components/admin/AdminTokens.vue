@@ -24,6 +24,7 @@ import { problemDetail } from "@/lib/api-problem";
 import { useAuthStore } from "@/stores/auth";
 import * as api from "@/lib/api";
 import type { ApiToken } from "@/lib/api";
+import LeaveSignal from "@/components/shared/LeaveSignal";
 
 const auth = useAuthStore();
 const tokens = ref<ApiToken[]>([]);
@@ -31,6 +32,15 @@ const loading = ref(true);
 const name = ref("");
 const minting = ref(false);
 const minted = ref<{ id: string; token: string } | null>(null);
+/**
+ * The token dialog is open apart from the token it shows: Done and dismissal
+ * close it, and the token is let go only when its leave has finished. Clearing
+ * the token to close it blanked the code block on the exit's first frame.
+ */
+const mintedOpen = ref(false);
+function onTokenLeft() {
+    if (!mintedOpen.value) minted.value = null;
+}
 const { status: copyStatus, copy } = useClipboard({ resetMs: 2000 });
 const relativeTimeOf = useRelativeTime();
 
@@ -57,6 +67,7 @@ async function mint() {
     minting.value = true;
     try {
         minted.value = await api.mintApiToken(adminToken(), label);
+        mintedOpen.value = true;
         name.value = "";
         await load();
     } catch (e: unknown) {
@@ -135,8 +146,9 @@ const columns: DataTableColumn<TokenRow>[] = [
             <template #empty>No tokens yet.</template>
         </DataTable>
 
-        <Dialog :open="minted !== null" @update:open="(open: boolean) => { if (!open) minted = null; }">
+        <Dialog :open="mintedOpen" @update:open="(open: boolean) => (mintedOpen = open)">
             <DialogContent>
+                <LeaveSignal @left="onTokenLeft" />
                 <DialogHeader>
                     <DialogTitle>Your new token</DialogTitle>
                     <DialogDescription>Copy it now. It won’t be shown again.</DialogDescription>
@@ -146,7 +158,7 @@ const columns: DataTableColumn<TokenRow>[] = [
                     <Button variant="outline" @click="minted && copy(minted.token)">
                         {{ copyStatus === "success" ? "Copied" : copyStatus === "failure" ? "Copy failed" : "Copy" }}
                     </Button>
-                    <Button @click="minted = null">Done</Button>
+                    <Button @click="mintedOpen = false">Done</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

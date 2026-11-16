@@ -49,6 +49,7 @@ import {
 } from "@mkbabb/glass-ui/command";
 import type { PaperSearchState } from "./usePaperSearch";
 import PaperSearchResultRow from "./PaperSearchResultRow.vue";
+import LeaveSignal from "@/components/shared/LeaveSignal";
 import { TYPE_GROUPS, groupByType } from "./searchHelpers";
 
 const props = defineProps<{
@@ -76,6 +77,9 @@ function setOpen(open: boolean) {
 <template>
     <Dialog modal :open="search.isExpanded.value" @update:open="setOpen">
         <DialogContent class="search-palette" dismiss="deliberate">
+            <!-- A pick keeps its rows through the palette's leave; the query
+                 is cleared and the result navigated to when it has left. -->
+            <LeaveSignal @left="search.afterLeave()" />
             <DialogTitle class="sr-only">Search the paper</DialogTitle>
             <DialogDescription class="sr-only">
                 Type to search sections, theorems, equations and figures. Use the up and

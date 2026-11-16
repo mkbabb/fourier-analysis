@@ -8,6 +8,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@mkbabb/glass-ui/dialog";
+import LeaveSignal from "./LeaveSignal";
 
 /**
  * X.F.W14V.au4 — A2-FO-L1-9: the one destructive-confirm dialog, over glass
@@ -36,12 +37,15 @@ withDefaults(
 const emit = defineEmits<{
     "update:open": [open: boolean];
     confirm: [];
+    /** The leave has finished: the host may let go of the words it showed. */
+    left: [];
 }>();
 </script>
 
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent surface="opaque" class="max-w-sm" :dismiss="busy ? 'locked' : 'deliberate'">
+            <LeaveSignal @left="emit('left')" />
             <DialogHeader>
                 <DialogTitle>{{ title }}</DialogTitle>
                 <DialogDescription>

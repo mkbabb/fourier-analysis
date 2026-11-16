@@ -594,6 +594,7 @@ async function performPrune() {
             :confirm-label="confirmLabel"
             :tone="pending?.kind === 'batch' && pending.action !== 'delete' ? 'neutral' : 'destructive'"
             @update:open="confirmation.setOpen"
+            @left="confirmation.settle"
             @confirm="confirmPending"
         >
             <template v-if="pending?.kind === 'delete'">

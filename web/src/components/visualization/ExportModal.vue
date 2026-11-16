@@ -14,6 +14,12 @@ import { Download } from "@lucide/vue";
 import { safeGetItem, safeSetItem } from "@/composables/useSafeStorage";
 
 const props = defineProps<{
+    /**
+     * The host keeps the dialog mounted and drives it by `open`, so glass's
+     * leave runs to its end. Mounting it per open behind a `v-if` removed it
+     * in one frame on Escape, Cancel and Export.
+     */
+    open: boolean;
     hasEpicycles: boolean;
 }>();
 
@@ -24,8 +30,9 @@ const emit = defineEmits<{
 
 /**
  * X.F.W14U.vdock — UIA-F-243: the choices are the viewer's, remembered across
- * opens (this dialog mounts per open, so its refs reset every time), through
- * `useSafeStorage`'s try/catch; a missing or unreadable record is the defaults.
+ * opens and reloads through `useSafeStorage`'s try/catch (every change is
+ * written as it is made, so the state held here is the stored record); a
+ * missing or unreadable record is the defaults.
  * Every exported layer has a switch — the reference contour included — and an
  * opaque ground is one of them.
  */
@@ -62,7 +69,7 @@ function restore(): ExportOptions {
 const options = reactive(restore());
 watch(options, (next) => safeSetItem(localStorage, STORAGE_KEY, JSON.stringify(next)));
 
-// The Dialog is rendered open; reka-ui's DialogRoot drives the focus-trap,
+// The Dialog is driven by `open`; reka-ui's DialogRoot drives the focus-trap,
 // Esc-to-close, and `aria-modal`. `@update:open` fires `false` on Esc /
 // backdrop / close-button — bridge it to the consumer's `close` event.
 function onOpenChange(open: boolean) {
@@ -75,7 +82,7 @@ function doExport() {
 </script>
 
 <template>
-    <Dialog :open="true" @update:open="onOpenChange">
+    <Dialog :open="open" @update:open="onOpenChange">
         <!-- DialogContent supplies role="dialog" + aria-modal="true" + focus-trap
              + Esc + autofocus via reka-ui's DialogPortal/DialogContent.
              X.F.W14V.au2 — A2-FO-L2-8 (BROKEN): in landscape (844x390) the plate

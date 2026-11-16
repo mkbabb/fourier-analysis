@@ -33,12 +33,33 @@ describe("useDestructiveConfirm", () => {
         expect(c.pending.value).toEqual({ kind: "delete", slug: "a" });
     });
 
-    it("dismissing clears the intent", () => {
+    it("dismissing closes, and the intent is let go only when the leave settles", () => {
         const c = useConfirm();
         c.ask({ kind: "prune" });
         c.setOpen(false);
         expect(c.open.value).toBe(false);
+        expect(c.pending.value, "the leaving dialog keeps its words").toEqual({ kind: "prune" });
+        c.settle();
         expect(c.pending.value).toBeNull();
+    });
+
+    it("a reopen inside the leave keeps the dialog: settle does not clear an open intent", () => {
+        const c = useConfirm();
+        c.ask({ kind: "prune" });
+        c.setOpen(false);
+        c.ask({ kind: "delete", slug: "b" });
+        c.settle();
+        expect(c.open.value).toBe(true);
+        expect(c.pending.value).toEqual({ kind: "delete", slug: "b" });
+    });
+
+    it("a closed (leaving) dialog cannot be confirmed", async () => {
+        const c = useConfirm();
+        c.ask({ kind: "prune" });
+        c.setOpen(false);
+        let ran = false;
+        await c.confirm(async () => void (ran = true));
+        expect(ran).toBe(false);
     });
 
     it("confirm runs the intent once, locks while in flight, and closes after it settles", async () => {
@@ -63,6 +84,7 @@ describe("useDestructiveConfirm", () => {
         expect(seen).toEqual([{ kind: "delete", slug: "a" }]);
         expect(c.busy.value).toBe(false);
         expect(c.open.value).toBe(false);
+        c.settle();
         expect(c.pending.value).toBeNull();
     });
 

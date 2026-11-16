@@ -162,7 +162,7 @@ reload();
  * X.F.W14V.au4 — A2-FO-L1-9: the destructive-confirm machine is
  * `useDestructiveConfirm`'s, and the dialog is `shared/ConfirmDialog`. The
  * rules this panel wrote for itself are the machine's now: closing clears the
- * intent (FR-AFP-41 / -68), the dialog closes only after the delete settles
+ * intent once the dialog has left (FR-AFP-41 / -68), the dialog closes only after the delete settles
  * (FR-AFP-23), and it is locked while the delete is in flight (UIA-F-251).
  */
 const confirmation = useDestructiveConfirm<{ slug: string; label: string }>();
@@ -344,6 +344,7 @@ async function handleKeep(slug: string) {
             title="Delete gallery entry?"
             confirm-label="Delete"
             @update:open="confirmation.setOpen"
+            @left="confirmation.settle"
             @confirm="confirmDelete"
         >
             This shall permanently delete the flagged entry
