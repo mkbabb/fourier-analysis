@@ -519,13 +519,6 @@ article.paper-article {
     --page-gutter: 1rem;
 }
 
-/* O16 [48] [49] [51] [57] — fully round docks, glass's own answer for 11.0.x
-   (GLASS-16 answers, 14 Nov): `--radius-dock` set once, in px, at the root.
-   DELETE AT THE glass 11.1.0 BUMP, which makes the stadium the default. */
-:root {
-    --radius-dock: 9999px;
-}
-
 /* X-DS pass 15 · DS-F17-C1 — the Configurator aside's section label on the
    app's card-title rung (subheading at 500, the /morph card titles' since
    DS-F16-C1). glass's default (`--type-heading` at 600) renders Computer
