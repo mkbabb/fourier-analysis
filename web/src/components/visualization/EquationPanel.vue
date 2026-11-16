@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, useId } from "vue";
+import { ref, computed, useId, useTemplateRef } from "vue";
 import { useEventListener, watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { NotationMode } from "@/lib/equation/types";
@@ -27,15 +27,31 @@ const series = useSimplifiedSeries(computed(() => store.epicycleData?.components
 const { latex, energy, loading, error } = series;
 
 const titleId = useId();
+const panelEl = useTemplateRef<HTMLElement>("panel");
+
+/** Surfaces that take focus when they open, and so own the Escape aimed at them. */
+const SURFACE = "[role=menu], [role=listbox], [role=dialog], [role=alertdialog]";
 
 /*
  * X.F.W14U.vedit — UIA-F-177: the panel is a non-modal dialog named by its
- * title. Escape dismissed it only with focus inside; it now dismisses it from
- * anywhere on the page, unless something nearer (a menu, a popover) already
- * took the key.
+ * title, and Escape dismisses it from anywhere on the page.
+ *
+ * P-2 (16 Nov): one Escape closes one surface, the topmost. A menu, popover,
+ * listbox or dialog opened over the panel moves focus into itself (reka), and
+ * reka closes it from a window listener that runs after this one and marks
+ * nothing, so `defaultPrevented` cannot say the key was taken. The key's
+ * target can: an Escape aimed at a surface over the panel is that surface's.
+ * This is glass's own dock rule (GlassDock leaves an Escape whose target sits
+ * in an open layer to that layer), read through the surfaces' roles. A surface
+ * that holds the panel (the fullscreen takeover) is beneath it, not over it.
+ * The Escape the panel takes is marked, so reka leaves that takeover open.
  */
 useEventListener(document, "keydown", (e: KeyboardEvent) => {
-    if (e.key === "Escape" && !e.defaultPrevented) emit("close");
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    const surface = e.target instanceof Element ? e.target.closest(SURFACE) : null;
+    if (surface && surface !== panelEl.value && !surface.contains(panelEl.value)) return;
+    e.preventDefault();
+    emit("close");
 });
 
 watchDebounced(
@@ -63,7 +79,7 @@ watchDebounced(
     <!-- The dialog role sits on the host: glass Card binds its own `role`
          (`option` when selectable, else none), so a role passed to it is
          dropped. -->
-    <section class="eq-panel" role="dialog" :aria-labelledby="titleId" tabindex="-1">
+    <section ref="panel" class="eq-panel" role="dialog" :aria-labelledby="titleId" tabindex="-1">
     <Card tier="floating" size="sm" class="eq-card">
         <CardHeader class="flex flex-row items-center justify-between gap-2">
             <CardTitle :id="titleId" as="h2" class="font-serif-math">Equation</CardTitle>
