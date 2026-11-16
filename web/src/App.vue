@@ -48,12 +48,10 @@ import { resolveVizColors } from "@/lib/colors";
  * drains in ONE coalesced post-flip task instead of paying N reflows on the
  * flip's own frame.
  *
- * ⊘ THE RESIDUE, DISCLOSED. `installVizColors()`'s own
- * `prefers-color-scheme` listener in `colors.ts` came back with the revert. It
- * is redundant beside the `"auto"` seed rather than harmful — `resolveVizColors`
- * is idempotent, so an OS flip costs one extra token re-read — and deleting it
- * is a one-line edit in a file this wave may not open. It is escalated, not
- * swept.
+ * ⊘ THE RESIDUE, CLOSED. `installVizColors()`'s own `prefers-color-scheme`
+ * listener in `colors.ts` came back with the revert. glass 11.1.0 makes the
+ * `.dark` class the only input to the scheme, so an OS flip reaches the palette
+ * only through the `"auto"` seed's class flip, and the listener is deleted.
  */
 const stopVizColorSync = useGlobalDark({ initialValue: "auto" }).onFlipSettled(
     () => resolveVizColors(),
