@@ -191,14 +191,6 @@ function sliderRoot(page: Page, name: string | RegExp) {
     return page.locator(".glass-slider").filter({ has: page.getByRole("slider", { name, includeHidden: true }) }).first();
 }
 
-/** The canvas docks rest collapsed; open every one so its controls are reachable.
- * Scoped off the app dock (fourier-dock, 2026-11-05), which now collapses too:
- * its seal is not a canvas control, and pressing it would pin the header open. */
-async function expandDocks(page: Page): Promise<void> {
-    for (const b of await page.locator(".glass-dock:not(.app-dock)").getByRole("button", { name: "Expand dock" }).all())
-        if (await b.isVisible()) await b.click();
-}
-
 async function settle(page: Page): Promise<void> {
     await page.waitForLoadState("networkidle").catch(() => undefined);
     await page.waitForFunction(() =>
@@ -269,7 +261,14 @@ for (const vp of VIEWPORTS) {
             if (vp.width === 1440) {
                 // Contour editing: the magnet popover on the editor dock.
                 await page.getByRole("button", { name: "Edit contour" }).click();
-                await expandDocks(page);
+                // glass 11.1.0: pressing Edit contour (an always-visible control)
+                // no longer opens the canvas dock behind it, so two docks now rest
+                // collapsed here, and opening the canvas dock first left the
+                // editor dock shut. The editor dock is the one opened.
+                await page
+                    .locator(".glass-dock", { has: page.getByRole("button", { name: "Save contour" }) })
+                    .getByRole("button", { name: "Expand dock" })
+                    .click();
                 // X.F.W14.u — UIA-F-12: the magnet popover opens on click (a
                 // hover preview may not hold a state-changing slider).
                 // X.F.W14U.vedit — UIA-F-88: the Magnet row is a section of the
