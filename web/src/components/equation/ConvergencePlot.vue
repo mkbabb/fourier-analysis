@@ -513,7 +513,13 @@ function togglePlay() {
 
 // ── Scrubbing ──
 
+/* True from `scrub-start` to `scrub-end`: the hand holds the sweep. Since
+   glass 11.1.0 the scrub opens on the press, before reka's seek reaches `t`, so
+   the hold's release below (ambient turning false here) would restart the loop
+   under the hand and the loop would overwrite the seek. */
+const scrubbing = ref(false);
 function onScrubStart() {
+    scrubbing.value = true;
     ambient.value = false;
     stopLoop();
 }
@@ -522,6 +528,7 @@ function onScrubMove(newT: number) {
     draw();
 }
 function onScrubEnd() {
+    scrubbing.value = false;
     if (playing.value) startLoop();
 }
 
@@ -582,7 +589,7 @@ watch(() => props.nHarmonics, () => { if (rafId === null) draw(); });
 
 /* The hold parks the loop where it stands (the frame stays); its release
    continues the sweep from there. */
-watch(holding, (h) => { if (!h && playing.value) startLoop(); });
+watch(holding, (h) => { if (!h && playing.value && !scrubbing.value) startLoop(); });
 
 /**
  * `L-M2` — `props.domain` feeds `omega`, the x-grid, the closing sample and
