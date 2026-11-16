@@ -26,6 +26,19 @@ const props = defineProps<{
     expression?: string;
     /** UIA-F-201 — the variable the rendered series is written in (one across the page). */
     variable?: string;
+    /**
+     * The sweep's paused point (owner, 2026-11-15: the sweep position is in the
+     * URL, `s`): a number holds the sweep there, null lets it play. The plot
+     * reports the reader's pause, scrub and play back through `update:sweep`.
+     */
+    sweep?: number | null;
+    /** The plot's layers (the stage dock's Plot layers menu): the original curve, the harmonics. */
+    showOriginal?: boolean;
+    showHarmonics?: boolean;
+}>();
+
+const emit = defineEmits<{
+    "update:sweep": [value: number | null];
 }>();
 
 const v = computed(() => props.variable ?? "x");
@@ -352,7 +365,7 @@ function draw() {
     // used to carry it is what put the resting curve at 1.40:1.
     const isOrigHov = hoveredCurve.value === "original";
     ctx.strokeStyle = ink;
-    ctx.globalAlpha = isOrigHov ? 1 : 0.85;
+    ctx.globalAlpha = (isOrigHov ? 1 : 0.85) * layerAlpha.orig;
     ctx.lineWidth = isOrigHov ? 3.5 : 2.5;
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
@@ -366,8 +379,9 @@ function draw() {
     ctx.globalAlpha = 1;
 
     // Individual harmonics
+    ctx.globalAlpha = layerAlpha.harm;
     for (let hi = 0; hi < totalH; hi++) {
-        if (cursors[hi] < 3) continue;
+        if (cursors[hi] < 3 || layerAlpha.harm === 0) continue;
         const isHov = hoveredCurve.value === `h-${hi}`;
         ctx.strokeStyle = spectrumColor(hi, totalH, isHov ? 1.0 : 0.55);
         ctx.lineWidth = isHov ? 3.5 : 2.5;
@@ -380,6 +394,8 @@ function draw() {
         }
         ctx.stroke();
     }
+
+    ctx.globalAlpha = 1;
 
     // Sum curve (golden)
     ctx.save();
@@ -448,7 +464,11 @@ function screenCurves(): CurveHitRegion[] {
         for (let i = 0; i < end; i++) pts.push(toScreen(xGrid[i], curves[hi][i]));
         harmPts.push({ key: `h-${hi}`, points: pts });
     }
-    cachedScreenCurves = [{ key: "sum", points: sumPts }, { key: "original", points: origPts }, ...harmPts];
+    cachedScreenCurves = [
+        { key: "sum", points: sumPts },
+        ...(props.showOriginal === false ? [] : [{ key: "original", points: origPts }]),
+        ...(props.showHarmonics === false ? [] : harmPts),
+    ];
     return cachedScreenCurves;
 }
 
@@ -509,7 +529,80 @@ function togglePlay() {
     playing.value = !playing.value;
     if (playing.value) { if (t.value >= 0.99) t.value = 0; startLoop(); }
     else { stopLoop(); draw(); }
+    emit("update:sweep", playing.value ? null : t.value);
 }
+
+/** Hold the sweep at `at` (a link's or the history's paused point). */
+function holdAt(at: number) {
+    ambient.value = false;
+    playing.value = false;
+    stopLoop();
+    t.value = at;
+    draw();
+}
+
+// Back and Forward (and a pasted link's point) move the sweep to the URL's.
+watch(() => props.sweep, (at) => {
+    if (at === null || at === undefined) {
+        if (!playing.value) togglePlayFromUrl();
+    } else if (playing.value || Math.abs(at - t.value) > 5e-4) {
+        holdAt(at);
+    }
+});
+
+function togglePlayFromUrl() {
+    ambient.value = false;
+    playing.value = true;
+    if (t.value >= 0.99) t.value = 0;
+    startLoop();
+}
+
+// ── Layers: a toggled layer fades, never cuts (motion law; reduced motion is a fade too) ──
+const layerAlpha = { orig: props.showOriginal === false ? 0 : 1, harm: props.showHarmonics === false ? 0 : 1 };
+let layerRaf = 0;
+function fadeLayers() {
+    cancelAnimationFrame(layerRaf);
+    const from = { ...layerAlpha };
+    const to = { orig: props.showOriginal === false ? 0 : 1, harm: props.showHarmonics === false ? 0 : 1 };
+    const ms = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--duration-normal")) || 240;
+    const start = performance.now();
+    const step = (now: number) => {
+        const k = Math.min(1, (now - start) / ms);
+        const e = easeInOutSine(k);
+        layerAlpha.orig = lerp(from.orig, to.orig, e);
+        layerAlpha.harm = lerp(from.harm, to.harm, e);
+        if (rafId === null) draw();
+        if (k < 1) layerRaf = requestAnimationFrame(step);
+    };
+    layerRaf = requestAnimationFrame(step);
+}
+watch(() => [props.showOriginal, props.showHarmonics], fadeLayers);
+
+/** The plot as a PNG on the stage card's ground (the stage dock's Export plot). */
+function exportPng(filename = "fourier-series.png"): void {
+    const canvas = canvasRef.value;
+    if (!canvas) return;
+    const out = document.createElement("canvas");
+    out.width = canvas.width;
+    out.height = canvas.height;
+    const ctx = out.getContext("2d");
+    if (!ctx) return;
+    const ground = getComputedStyle(containerRef.value ?? canvas).getPropertyValue("--card").trim();
+    ctx.fillStyle = ground || "#fff";
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(canvas, 0, 0);
+    out.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, "image/png");
+}
+
+defineExpose({ exportPng });
 
 // ── Scrubbing ──
 
@@ -530,6 +623,7 @@ function onScrubMove(newT: number) {
 function onScrubEnd() {
     scrubbing.value = false;
     if (playing.value) startLoop();
+    else emit("update:sweep", t.value);
 }
 
 // ── Legend ──
@@ -607,7 +701,10 @@ watch(() => [props.domain, props.expression], () => { if (rafId === null) draw()
 
 onMounted(() => {
     nextTick(() => {
-        if (prefersReducedMotion.value) {
+        if (props.sweep !== null && props.sweep !== undefined) {
+            // A link's paused point (`s`): the sweep opens held there.
+            holdAt(props.sweep);
+        } else if (prefersReducedMotion.value) {
             // The TERMINAL frame, per `M-D1`: converged, complete, and static.
             t.value = 1;
             playing.value = false;
@@ -651,6 +748,7 @@ onUnmounted(() => {
     playing.value = false;
     stopLoop();
     cancelTransition?.();
+    cancelAnimationFrame(layerRaf);
     visibilityObserver?.disconnect();
     themeObserver?.disconnect();
 });
@@ -691,6 +789,8 @@ onUnmounted(() => {
             :variable="v"
             :wrapped="legendWrapped"
             :drawn="activeCount"
+            :show-original="showOriginal !== false"
+            :show-harmonics="showHarmonics !== false"
             @hover="onLegendEnter"
             @leave="onLegendLeave"
         />

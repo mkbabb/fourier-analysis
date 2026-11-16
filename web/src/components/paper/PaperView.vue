@@ -10,7 +10,7 @@ import {
 } from "@mkbabb/latex-paper/vue";
 import "@mkbabb/latex-paper/theme";
 import { useSidebarState } from "@mkbabb/glass-ui/sidebar";
-import { useMediaQuery } from "@vueuse/core";
+import { useDebounceFn, useMediaQuery } from "@vueuse/core";
 import PaperTocBar from "./PaperTocBar.vue";
 import PaperTocDrawer from "./PaperTocDrawer.vue";
 import PaperArticleWindow from "./PaperArticleWindow.vue";
@@ -32,6 +32,8 @@ import { Button } from "@mkbabb/glass-ui/button";
 import { Card } from "@mkbabb/glass-ui/card";
 import { usePageScroll } from "@/composables/usePageScroll";
 import { Undo2 } from "@lucide/vue";
+import { useRoute, useRouter } from "vue-router";
+import { isOwnWrite, pageOf, rawOf, writeParams } from "@/lib/urlState";
 
 // ── KaTeX with app-specific macros ─────────────────────────
 const macros: Record<string, string> = {
@@ -216,12 +218,40 @@ try {
     restoreSectionId = sessionStorage.getItem(SCROLL_POS_KEY);
 } catch {}
 
+/*
+ * Owner, 2026-11-15: "Each page should have state defined in the URL". The
+ * section being read is `s=<section id>` (omitted at the paper's first
+ * section): a link opens the paper there, and the reading position writes it
+ * as the reader goes, by replace (scrolling never fills the history). The
+ * clean `/paper` still reopens where this tab last read (the session's copy).
+ */
+const route = useRoute();
+const router = useRouter();
+const ownPage = pageOf(route);
+const isSection = (id: string | undefined): id is string => !!id && flatSections.some((s) => s.id === id);
+const linkedSection = rawOf(route.query, "s");
+if (isSection(linkedSection)) restoreSectionId = linkedSection;
+const writeSection = useDebounceFn((id: string) => {
+    writeParams(router, { s: id === flatSections[0]?.id ? undefined : id }, false, ownPage);
+}, 400);
+// Back and Forward (or a link pasted on the paper) move the reading to its section.
+watch(
+    () => route.fullPath,
+    () => {
+        if (isOwnWrite(route.fullPath) || pageOf(route) !== ownPage) return;
+        const id = rawOf(route.query, "s");
+        const target = isSection(id) ? id : flatSections[0]?.id;
+        if (target && target !== activeId.value) performScroll(target);
+    },
+);
+
 watch(
     activeId,
     (id) => {
         if (!id) return;
         const page = pageMap[id];
         if (page !== undefined) currentPage.value = page;
+        writeSection(id);
         // Don't persist the first section — it's the top of the page
         try {
             if (id === flatSections[0]?.id) sessionStorage.removeItem(SCROLL_POS_KEY);

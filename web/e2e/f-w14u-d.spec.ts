@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
@@ -64,7 +65,7 @@ async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) =
 
 /** Switch the contour trace off through the canvas dock's View options menu. */
 async function traceOff(page: Page): Promise<void> {
-    await page.getByRole("button", { name: "Edit contour" }).first().hover();
+    await openCanvasDock(page);
     await page.locator(".controls-dock-anchor [aria-label='View options']").click();
     await page.getByRole("menuitemcheckbox", { name: "Original outline" }).click();
     await page.mouse.click(5, 5);

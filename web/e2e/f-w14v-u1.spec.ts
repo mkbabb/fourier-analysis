@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { clickCanvasDockExport } from "./fixtures/canvas-dock";
+import { clickCanvasDockExport, openCanvasDock } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
 
@@ -40,9 +40,9 @@ async function openViz(page: Page): Promise<void> {
 }
 
 /** Expand the canvas dock (the pointer rests on its persistent Edit control). */
-async function expandCanvasDock(page: Page): Promise<void> {
-    await page.getByRole("button", { name: "Edit contour" }).first().hover();
-    await page.waitForTimeout(700);
+/** Owner, 2026-11-15: the canvas dock opens by a press on its folded face. */
+async function expandCanvasDock(page: Page, scope: Page | Locator = page): Promise<void> {
+    await openCanvasDock(page, scope);
 }
 
 async function openFullscreen(page: Page): Promise<Locator> {
@@ -121,8 +121,7 @@ for (const vp of WIDTHS) {
             await page.keyboard.press("Delete");
             await expect(dialog.locator("[aria-label='Undo']")).toBeEnabled();
             // Leave through the dock's own Exit (the Fullscreen control, turned).
-            await dialog.locator(".controls-dock-anchor [aria-label='Edit contour']").hover();
-            await page.waitForTimeout(700);
+            await expandCanvasDock(page, dialog);
             await dialog.locator(".controls-dock-anchor [aria-label='Exit fullscreen']").click();
             await expect(dialog).toBeHidden({ timeout: 10_000 });
             // The same editor, back on the page, still holds the step.
@@ -140,11 +139,12 @@ for (const vp of WIDTHS) {
             expect(census.freeExit, "no free-floating Exit button").toBe(0);
             const dock = dialog.locator(".controls-dock-anchor .glass-dock");
             await expect(dock).toHaveCount(1);
-            for (const name of ["View options", "Equation", "Export frame", "Exit fullscreen"]) {
+            for (const name of ["View options", "Export frame", "Exit fullscreen"]) {
                 await expect(dock.locator(`[aria-label='${name}']`), name).toHaveCount(1);
             }
-            await dialog.locator(".controls-dock-anchor [aria-label='Edit contour']").hover();
-            await page.waitForTimeout(700);
+            // Owner, 2026-11-15: the series panel (Σ) is the page's tool, in the app dock.
+            await expect(dock.locator("[aria-label='Equation']")).toHaveCount(0);
+            await expandCanvasDock(page, dialog);
             await dock.locator("[aria-label='Exit fullscreen']").click();
             await expect(dialog).toBeHidden({ timeout: 10_000 });
             await expect(page.locator(".canvas-stage canvas.canvas-el")).toHaveCount(1);
@@ -193,22 +193,26 @@ test.describe("F.W14V.u1 — the canvas dock's controls (1440)", () => {
         await frame(page, "u182-fs-export");
     });
 
-    test("u79 — one View options menu on both docks: the same rows, the same order", async ({ page }) => {
+    // Owner, 2026-11-15 (one home per tool): the one View options menu is the
+    // stage dock's, in and out of the editor; the editor dock carries none.
+    test("u79 — one View options menu, on the stage dock alone: the same rows, editing or not", async ({ page }) => {
         await openViz(page);
         await expandCanvasDock(page);
         await page.locator(".controls-dock-anchor [aria-label='View options']").click();
         const viewRows = await menuRows(page);
         await frame(page, "u79-view-menu");
         await page.keyboard.press("Escape");
-        expect(viewRows).toEqual(["Image overlay", "Original outline"]);
+        expect(viewRows).toEqual(["Background image", "Original outline"]);
         await page.getByRole("button", { name: "Edit contour" }).first().click();
         await page.getByRole("button", { name: "Save contour" }).first().hover();
         await page.waitForTimeout(700);
-        await page.locator(".controls-overlay [aria-label='View options']").click();
+        await expect(page.locator(".controls-overlay [aria-label='View options']"), "the editor dock has no copy").toHaveCount(0);
+        await expandCanvasDock(page);
+        await page.locator(".controls-dock-anchor [aria-label='View options']").click();
         const editRows = await menuRows(page);
         await frame(page, "u79-edit-menu");
         await page.keyboard.press("Escape");
-        expect(editRows, "the editor dock mounts the same menu").toEqual(viewRows);
+        expect(editRows, "the same menu while editing").toEqual(viewRows);
         await page.getByRole("button", { name: "Save contour" }).first().hover();
         await page.waitForTimeout(500);
         await page.getByRole("button", { name: "More editor tools" }).click();

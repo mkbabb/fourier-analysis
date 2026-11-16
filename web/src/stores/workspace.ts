@@ -11,6 +11,7 @@ import type {
     WorkspaceDraft,
 } from "@/lib/types";
 import * as api from "@/lib/api";
+import { CARRIED_VIEW_KEYS } from "@/components/visualization/lib/workspace-query";
 import { ApiProblem, isOwnerRequired, problemMessage } from "@/lib/api-problem";
 import { saveDraft, loadDraft, listDrafts } from "@/lib/draftStorage";
 import {
@@ -178,7 +179,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             const meta = await api.uploadImage(file);
             imageSlug.value = meta.image_slug;
             imageMeta.value = meta;
-            router.push(`/w/${meta.image_slug}`);
+            // A new picture keeps how the reader looks at drawings (the view
+            // layers, `CARRIED_VIEW_KEYS`), not where the last one stood.
+            const { query } = router.currentRoute.value;
+            const carried = Object.fromEntries(CARRIED_VIEW_KEYS.filter((k) => k in query).map((k) => [k, query[k]]));
+            router.push({ path: `/w/${meta.image_slug}`, query: carried });
             await _saveDraftNow();
         } catch (e: unknown) {
             // Recorded, not rethrown: the diagnosis is `uploadError`, which the

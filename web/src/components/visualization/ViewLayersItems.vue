@@ -32,7 +32,7 @@ function keepOpen(e: Event) {
         @select="keepOpen"
         @update:model-value="emit('toggleImageOverlay')"
     >
-        Image overlay
+        Background image
     </DropdownMenuCheckboxItem>
     <DropdownMenuCheckboxItem
         :model-value="showGhost"

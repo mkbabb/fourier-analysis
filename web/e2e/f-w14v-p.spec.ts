@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { openAppDock } from "./fixtures/app-dock";
 import { ENTRY } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
 
@@ -62,8 +63,9 @@ async function routePublish(page: Page, passAnonymous = false): Promise<Tally> {
 
 async function pressPublish(page: Page): Promise<void> {
     await page.goto(`/v/${seededViz().slug}`);
-    const edit = page.getByRole("button", { name: "Edit contour" }).first();
-    await edit.hover();
+    // Owner, 2026-11-15: Publish is the page's tool, in the app dock.
+    await expect(page.getByRole("button", { name: "Edit contour" }).first()).toBeVisible({ timeout: 60_000 });
+    await openAppDock(page);
     const publish = page.getByRole("button", { name: /^Publish to Gallery/ }).first();
     await expect(publish).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);

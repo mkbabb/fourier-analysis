@@ -1,5 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { openCanvasDock } from "./fixtures/canvas-dock";
+import { pressPageTool } from "./fixtures/app-dock";
 import { setSlider, slider, controlRow } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
@@ -106,11 +108,10 @@ async function expandEditorDock(page: Page): Promise<void> {
 
 /** Reach the editor's Contour trace control, in whichever container holds it. */
 async function traceControl(page: Page): Promise<Locator> {
-    await expandEditorDock(page);
-    const dock = editorDock(page);
-    // X.F.W14V.u1 (UIA-F-79, §0bt): the view layers are the one View options menu
-    // both docks mount (they left More editor tools).
-    await dock.getByRole("button", { name: "View options" }).click();
+    // Owner, 2026-11-15: the view layers have one home, the stage's floating
+    // dock, in and out of the editor (they left the editor dock).
+    await openCanvasDock(page);
+    await page.locator(".controls-dock-anchor").getByRole("button", { name: "View options" }).click();
     await page.waitForTimeout(400);
     return page.getByRole("menuitemcheckbox", { name: "Original outline" })
         .or(page.getByRole("button", { name: "Original outline" })).first();
@@ -124,12 +125,9 @@ function isDisabled(control: Locator): Promise<boolean> {
 /** Open the equation panel through the canvas dock's Σ. */
 async function openEquation(page: Page): Promise<Locator> {
     await openViz(page);
-    // The canvas dock expands from its persistent control (UIA-F-5's path).
-    await page.getByRole("button", { name: "Edit contour" }).first().hover();
-    const eq = page.getByRole("button", { name: "Equation", exact: true }).first();
-    await expect(eq).toBeVisible();
-    await page.waitForTimeout(700);
-    await eq.click();
+    // Owner, 2026-11-15: the series panel is the page's tool, in the app dock
+    // (below 40rem an item of its one "Visualize tools" menu seat).
+    await pressPageTool(page, "Equation");
     const panel = page.locator(".eq-panel");
     await expect(panel).toBeVisible();
     await expect(panel.locator(".eq-scroll-region .katex").first()).toBeVisible({ timeout: 30_000 });
@@ -254,8 +252,11 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         await dock.getByRole("button", { name: "More editor tools" }).click();
         const menu = page.getByRole("menu");
         await expect(controlRow(menu, /Magnet/)).toBeVisible();
-        for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction", "View options", "Delete point"])
+        for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction", "Delete point"])
             await expect(menu.getByRole("menuitem", { name })).toBeVisible();
+        // Owner, 2026-11-15 (one home per tool): View options left this menu for
+        // the stage's floating dock, asserted below.
+        await expect(menu.getByRole("menuitem", { name: "View options" })).toHaveCount(0);
         // Delete is the menu's last item, behind a separator, in the rose tone.
         const order = await menu.first().evaluate((m) => {
             const kids = [...m.querySelectorAll<HTMLElement>('[role="menuitem"], [role="separator"]')];
@@ -265,9 +266,11 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         expect(order.at(-2), "a separator precedes Delete point").toBe("|");
         await expect(menu.getByRole("menuitem", { name: "Delete point" })).toHaveClass(/is-rose/);
         await frame(page, "v88-more-menu");
-        // View options opens its submenu of the same view-layer rows.
-        await menu.getByRole("menuitem", { name: "View options" }).click();
-        for (const name of ["Image overlay", "Original outline"])
+        // The view layers are one press away on the stage's floating dock.
+        await page.keyboard.press("Escape");
+        await openCanvasDock(page);
+        await page.locator(".controls-dock-anchor").getByRole("button", { name: "View options" }).click();
+        for (const name of ["Background image", "Original outline"])
             await expect(page.getByRole("menuitemcheckbox", { name })).toBeVisible();
         await frame(page, "v88-view-sub");
     });
@@ -636,11 +639,7 @@ test.describe("X.F.W14U.vedit — frames at 1440 and 390", () => {
             await page.waitForTimeout(600);
             await edit.click();
             await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "");
-            const eq = page.getByRole("button", { name: "Equation", exact: true }).first();
-            await edit.hover();
-            await expect(eq).toBeVisible();
-            await page.waitForTimeout(700);
-            await eq.click();
+            await pressPageTool(page, "Equation");
             await expect(page.locator(".eq-panel .eq-scroll-region .katex").first()).toBeVisible({ timeout: 30_000 });
             await frame(page, "frames-equation");
         });

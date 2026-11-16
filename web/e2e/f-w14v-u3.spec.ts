@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
+import { openAppDock } from "./fixtures/app-dock";
 import { ENTRY, stubAdminApi } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
 
@@ -48,8 +49,9 @@ test.describe("UIA-F-183 — publishing is not a dead end and does not duplicate
         // Publishing needs a session (UIA-F-95); the viewer is logged in the app's own way.
         await page.addInitScript(() => localStorage.setItem("fourier-user-slug", "e2e-publisher"));
         await page.goto(`/v/${viz.slug}`);
-        const edit = page.getByRole("button", { name: "Edit contour" }).first();
-        await edit.hover();
+        // Owner, 2026-11-15: Publish is the page's tool, in the app dock.
+        await expect(page.getByRole("button", { name: "Edit contour" }).first()).toBeVisible({ timeout: 60_000 });
+        await openAppDock(page);
         const publish = page.getByRole("button", { name: "Publish to Gallery" }).first();
         await expect(publish).toBeVisible({ timeout: 60_000 });
         await page.waitForTimeout(600);
@@ -63,7 +65,7 @@ test.describe("UIA-F-183 — publishing is not a dead end and does not duplicate
         await frame(page, "e183-toast");
 
         // The control shows the published state: its own name, its own glyph.
-        await edit.hover();
+        await openAppDock(page);
         const published = page.getByRole("button", { name: /^Published/ }).first();
         await expect(published).toBeVisible();
         await expect(page.getByRole("button", { name: "Publish to Gallery" })).toHaveCount(0);

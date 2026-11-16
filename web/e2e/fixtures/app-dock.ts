@@ -11,10 +11,34 @@ export async function openAppDock(page: Page): Promise<Locator> {
     const dock = page.locator(".app-dock");
     await expect(dock).toBeVisible({ timeout: 30_000 });
     const seal = dock.getByRole("button", { name: "Expand dock" });
-    if (await seal.isVisible().catch(() => false)) {
-        await seal.click();
-    }
-    await expect(dock).toHaveClass(/(^|\s)expanded(\s|$)/);
+    // The dock also opens under a resting pointer, so the seal can leave between
+    // the look and the press: press it while it is there, until the dock is open.
+    await expect(async () => {
+        if (await seal.isVisible().catch(() => false)) await seal.click({ timeout: 2_000 });
+        await expect(dock).toHaveClass(/(^|\s)expanded(\s|$)/, { timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
     await expect(dock).not.toHaveAttribute("data-morphing", { timeout: 5_000 });
     return dock;
+}
+
+/**
+ * Owner, 2026-11-15: "Each page should have a tool set in the main dock". A
+ * page's tool is a seat in the open app dock; below 40rem the page's tools
+ * are ONE menu seat ("Visualize tools", "Equation tools") whose items are the
+ * same acts. Press the named tool where it lives at the current width.
+ */
+export async function pressPageTool(page: Page, name: string): Promise<void> {
+    const dock = await openAppDock(page);
+    const menuSeat = dock.getByRole("button", { name: / tools$/ });
+    if (await menuSeat.isVisible().catch(() => false)) {
+        await menuSeat.click();
+        const menu = page.getByRole("menu");
+        await expect(menu).toBeVisible();
+        await menu.getByRole("menuitem", { name, exact: true }).or(menu.getByRole("menuitemcheckbox", { name, exact: true })).click();
+        return;
+    }
+    const seat = dock.getByRole("button", { name, exact: true });
+    await expect(seat).toBeVisible();
+    await page.waitForTimeout(700);
+    await seat.click();
 }

@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5[1m]
 import { test, expect } from "@playwright/test";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
@@ -46,14 +47,9 @@ test.describe("Fullscreen viewer (G-F9-11)", () => {
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
         await expect(page.locator("canvas").first()).toBeVisible({ timeout: 60_000 });
 
-        const dock = page.locator(".controls-dock-anchor .glass-dock");
-        await expect(dock).toBeVisible({ timeout: 10_000 });
-        await dock.hover();
-        // X.F.W14V.u1 (§0bt): the dock swallows a press that lands mid-expansion
-        // (glass's morph guard), and the wider dock (Export joined it, UIA-F-182)
-        // morphs longer; the click waits for the expansion to settle.
-        await expect(dock).toHaveClass(/\bexpanded\b/);
-        await expect(dock).not.toHaveAttribute("data-morphing");
+        // Owner, 2026-11-15: the canvas dock opens by a press on its folded
+        // face; the click waits for the morph to settle (glass's morph guard).
+        const dock = await openCanvasDock(page);
 
         const fullscreenBtn = dock.locator('[aria-label="Fullscreen"]');
         await expect(fullscreenBtn).toBeVisible({ timeout: 10_000 });
@@ -82,8 +78,8 @@ test.describe("Fullscreen viewer (G-F9-11)", () => {
 
         // ── THE EXIT ──
         // X.F.W14V.u1 (UIA-F-93 ⊕ F-244, §0bt): the takeover hosts the canvas dock,
-        // whose Fullscreen control is the Exit; the dock expands under the pointer.
-        await viewer.locator(".controls-dock-anchor .glass-dock").hover();
+        // whose Fullscreen control is the Exit; the dock opens by a press.
+        await openCanvasDock(page, viewer);
         const exit = viewer.getByRole("button", { name: "Exit fullscreen" });
         await expect(exit).toBeVisible();
         await exit.click();

@@ -13,6 +13,9 @@ defineProps<{
     /** X-DS pass 4 · DS-F4-C7: how many harmonics the plot has drawn so far
      *  (the timeline's N); entries past it are named but not yet on screen. */
     drawn?: number;
+    /** The plot's layers shown (a hidden layer's rows dim with it, on a fade). */
+    showOriginal?: boolean;
+    showHarmonics?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -40,7 +43,7 @@ const emit = defineEmits<{
             <span class="legend-dot legend-dot--golden" />
             <span class="legend-label legend-label--golden">Sum</span>
         </div>
-        <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'original' }"
+        <div class="legend-entry" :class="{ 'is-hovered': hoveredCurve === 'original', 'is-layer-off': showOriginal === false }"
             @pointerenter="emit('hover', 'original')" @pointerleave="emit('leave')">
             <span class="legend-dot legend-dot--dashed" />
             <span class="legend-label">f({{ variable ?? "x" }})</span>
@@ -49,7 +52,7 @@ const emit = defineEmits<{
         <div
             v-for="(h, i) in harmonics" :key="h.k"
             class="legend-entry"
-            :class="{ 'is-hovered': hoveredCurve === `h-${i}`, 'is-undrawn': drawn != null && i >= drawn }"
+            :class="{ 'is-hovered': hoveredCurve === `h-${i}`, 'is-undrawn': drawn != null && i >= drawn, 'is-layer-off': showHarmonics === false }"
             @pointerenter="emit('hover', `h-${i}`)"
             @pointerleave="emit('leave')"
         >
@@ -102,7 +105,13 @@ const emit = defineEmits<{
 .legend-entry {
     @apply flex items-center gap-2.5 px-2 py-1 rounded cursor-default;
     /* LAST-TEN F-27: the small-state clock (it was 100 ms `ease`). */
-    transition: background-color var(--duration-control) var(--spring-press);
+    transition:
+        background-color var(--duration-control) var(--spring-press),
+        opacity var(--duration-normal) var(--ease-standard);
+}
+/* A layer the stage dock hides dims its rows with it, on a fade. */
+.legend-entry.is-layer-off {
+    opacity: 0.4;
 }
 .legend-entry:hover,
 .legend-entry.is-hovered {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * X.F.W14V.u1 — UIA-F-79 ⊕ F-77 (consumer half) ⊕ F-173: the ONE view-layers
- * control, mounted by both docks over the same canvas.
+ * control. Owner, 2026-11-15: it has one home, the stage's floating dock
+ * (`CanvasControlsDock`), in and out of the editor.
  *
  * The canvas dock carried a "View options" popover (Image overlay → Contour
  * trace as two unlabelled 40 px icons on a 336×118 plate, labels only in

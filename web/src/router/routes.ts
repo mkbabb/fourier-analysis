@@ -1,5 +1,5 @@
 import type { Component } from "vue";
-import type { RouteLocationNormalized, RouteMeta, RouteRecordRaw } from "vue-router";
+import type { RouteLocationNormalized, RouteLocationRaw, RouteMeta, RouteRecordRaw } from "vue-router";
 import { Eye, FileText, LayoutGrid, Shuffle, Sigma } from "@lucide/vue";
 import { getImageMeta, getVisualization } from "@/lib/api";
 import { ApiProblem } from "@/lib/api-problem";
@@ -104,19 +104,20 @@ const isNotFound = (e: unknown) => e instanceof ApiProblem && e.status === 404;
  * neither stays and renders the not-found card. A failure other than 404
  * opens `/v/`, whose loader reports it.
  */
-async function resolveShareSlug(to: RouteLocationNormalized): Promise<string | true> {
+async function resolveShareSlug(to: RouteLocationNormalized): Promise<RouteLocationRaw | true> {
     const slug = to.params.slug as string;
+    // The view a shared link names (its query, owner 2026-11-15) goes with it.
     try {
         await getVisualization(slug);
-        return `/v/${slug}`;
+        return { path: `/v/${slug}`, query: to.query };
     } catch (e) {
-        if (!isNotFound(e)) return `/v/${slug}`;
+        if (!isNotFound(e)) return { path: `/v/${slug}`, query: to.query };
     }
     try {
         await getImageMeta(slug);
-        return `/w/${slug}`;
+        return { path: `/w/${slug}`, query: to.query };
     } catch (e) {
-        return isNotFound(e) ? true : `/w/${slug}`;
+        return isNotFound(e) ? true : { path: `/w/${slug}`, query: to.query };
     }
 }
 

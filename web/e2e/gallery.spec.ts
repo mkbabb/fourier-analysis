@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5[1m]
 import { test, expect } from "@playwright/test";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 
 import { ENTRY, stubGallery } from "./fixtures/gallery";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
@@ -241,10 +242,8 @@ test.describe("Visualizer overlay dock", () => {
 
         // `.glass-dock` IS reachable HERE — this is the route that mounts one,
         // which is exactly why the `/gallery` `.or()` mask above was a mask and
-        // this is not. The dock starts collapsed; hovering expands it.
-        const dock = page.locator(".controls-dock-anchor .glass-dock");
-        await expect(dock).toBeVisible({ timeout: 10_000 });
-        await dock.hover();
+        // this is not. The dock starts folded; a press opens it (owner, 2026-11-15).
+        const dock = await openCanvasDock(page);
 
         // The dock's actions are keyed by aria-label (the dock idiom). "View
         // options" (image-overlay / contour-trace toggles) is the canonical

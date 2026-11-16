@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EditorState } from "./lib/editor-state";
-import { ref, shallowRef, computed, watch, nextTick, useTemplateRef, provide } from "vue";
-import { watchDebounced, useEventListener } from "@vueuse/core";
+import { ref, shallowRef, computed, watch, nextTick, useTemplateRef, provide, h } from "vue";
+import { watchDebounced, useElementSize, useEventListener } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
 import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import { useRoute, useRouter } from "vue-router";
@@ -10,6 +10,9 @@ import { useAnimationStore } from "@/stores/animation";
 import { useImageUpload, IMAGE_UPLOAD_KEY } from "./composables/useImageUpload";
 import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
+import { useWorkspaceUrl } from "./composables/useWorkspaceUrl";
+import { providePageTools } from "@/composables/usePageTools";
+import WorkspaceTools from "./WorkspaceTools.vue";
 import { Upload } from "@lucide/vue";
 import { useGalleryStore } from "@/stores/gallery";
 import { isOwnerRequired } from "@/lib/api-problem";
@@ -49,8 +52,8 @@ const anim = useAnimationStore();
 const gallery = useGalleryStore();
 const auth = useAuthStore();
 
-// ── View state (editing, ghost, overlay — persisted to localStorage) ──
-const { isEditing, showGhost, showImageOverlay, showEquation } = useViewState();
+// ── View state (editing, ghost, overlay, the series panel, fullscreen — in the URL) ──
+const { isEditing, showGhost, showImageOverlay, showEquation, showFullscreen } = useViewState();
 
 // ── Image drag-and-drop ──
 const { isDragging: globalDragging, rejection: dropRejection, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave, handleFileSelect: globalFileSelect, preview: uploadPreview, clearPreview: clearUploadPreview } =
@@ -84,7 +87,10 @@ const activeBases = ref<string[]>(
 );
 
 // ── Workspace loading, contour settings, auto-play ──
-const { nHarmonics, nPoints } = useWorkspaceLoader(activeBases);
+// The budget, rate, easing and paused moment a link names (owner, 2026-11-15).
+let readUrlTime: () => number | null = () => null;
+const { nHarmonics, nPoints } = useWorkspaceLoader(activeBases, () => readUrlTime());
+readUrlTime = useWorkspaceUrl(nHarmonics).initialTime;
 
 // ── Persist animation settings to workspace on change ──
 watchDebounced(
@@ -115,7 +121,6 @@ const workspace = useTemplateRef<HTMLElement>("workspace");
 const form = useWorkspaceForm(computed(() => workspace.value?.querySelector<HTMLElement>(".viz-configurator") ?? null));
 const tabbed = computed(() => form.value === "sheet");
 const showExport = ref(false);
-const showFullscreen = ref(false);
 /*
  * X.F.W14V.u1 — UIA-F-14 (BROKEN) ⊕ F-93: the takeover's stage host. While the
  * takeover is open the ONE live stage below is teleported into it (never a
@@ -125,16 +130,6 @@ const fsHost = shallowRef<HTMLElement | null>(null);
 const stageInTakeover = computed(() => showFullscreen.value && fsHost.value !== null);
 
 // ── Editor state ──
-// B.W2 — `CanvasControlsDock` now emits `update:expanded` (sibling W2-C
-// converts its out-of-band `defineExpose(dockExpanded)` to a typed emit); the
-// parent owns the `dockExpanded` ref and listens via `v-model:expanded`.
-const dockExpanded = ref(false);
-// X-DS pass 5 · DS-F7-C6: the stage's legend inset follows the dock's state
-// (`[data-dock-expanded]`); the canvas re-reads it once the attribute lands.
-watch(dockExpanded, async () => {
-    await nextTick();
-    canvasComponent.value?.readInsets();
-});
 const editorState = ref<EditorState>({ canUndo: false, canRedo: false, canDelete: false, pointCount: 0 });
 const editorRef = ref<InstanceType<typeof ContourEditorCanvas> | null>(null);
 const editorSaved = ref(false);
@@ -293,6 +288,32 @@ async function handlePublish() {
 
 // ── Derived state ──
 const hasData = computed(() => store.epicycleData || store.basesData || store.computing);
+
+// The page's tool set in the app dock (owner, 2026-11-15: "Each page should
+// have a tool set in the main dock"): Publish and the series panel.
+/**
+ * The stage dock's measured width, for what must clear it: on a phone the dock
+ * is a column down the stage's right edge (`StageDock`), so the series panel
+ * keeps to its left (`EquationPanel.vue`).
+ */
+const stageDockAnchor = useTemplateRef<HTMLElement>("stageDockAnchor");
+const { width: stageDockWidth } = useElementSize(stageDockAnchor, undefined, { box: "border-box" });
+
+providePageTools(
+    "Visualize tools",
+    ({ hold }) =>
+        h(WorkspaceTools, {
+            hold,
+            hasData: !!hasData.value,
+            hasContour: !!store.contour,
+            publishing: publishing.value,
+            published: !!store.publishedSlug,
+            showEquation: showEquation.value,
+            onPublish: handlePublish,
+            onToggleEquation: () => (showEquation.value = !showEquation.value),
+        }),
+    () => !!hasData.value || !!store.contour,
+);
 const hasEpicycles = computed(() => activeBases.value.includes("fourier-epicycles"));
 const hasImage = computed(() => !!store.imageMeta);
 
@@ -552,7 +573,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                          an edit, a view toggle or an Export there is this stage's. -->
                     <Teleport v-else :to="fsHost" :disabled="!stageInTakeover">
                     <div class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
-                        :data-dock-expanded="dockExpanded || undefined"
+                        :style="{ '--stage-dock-inline': `${Math.ceil(stageDockWidth)}px` }"
                         :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && tabbed }">
                         <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
@@ -642,25 +663,22 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 @state-change="onEditorStateChange" />
                         </div>
 
-                        <!-- Top controls dock -->
-                        <div v-if="hasData || (isEditing && store.contour)" class="controls-dock-anchor">
+                        <!-- The stage's floating dock: the canvas's tools, folded at the
+                             stage card's top-right corner (owner, 2026-11-15). -->
+                        <div v-if="hasData || (isEditing && store.contour)" ref="stageDockAnchor" class="controls-dock-anchor">
                             <CanvasControlsDock
-                                v-model:expanded="dockExpanded"
                                 :is-editing="isEditing"
                                 v-model:is-fullscreen="showFullscreen"
                                 :show-image-overlay="showImageOverlay"
                                 :show-ghost="showGhost"
-                                :show-equation="showEquation"
                                 :has-data="!!hasData"
                                 :has-contour="!!store.contour"
-                                :publishing="publishing"
-                                :published="!!store.publishedSlug"
+                                :view-moved="!!canvasComponent?.viewMoved"
                                 @toggle-edit="toggleEdit"
                                 @export-frame="handleExportFrame"
-                                @toggle-equation="showEquation = !showEquation"
+                                @reset-view="canvasComponent?.resetView()"
                                 @toggle-image-overlay="showImageOverlay = !showImageOverlay"
                                 @toggle-ghost="showGhost = !showGhost"
-                                @publish="handlePublish"
                             />
                         </div>
 
@@ -676,11 +694,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <div v-if="isEditing && store.contour" class="controls-overlay">
                             <EditorControlsDock :can-undo="editorState.canUndo" :can-redo="editorState.canRedo"
                                 :can-delete="editorState.canDelete" :point-count="editorState.pointCount"
-                                :show-image-overlay="showImageOverlay" :show-ghost="showGhost"
                                 :magnet-radius="magnetRadius" :is-saved="editorSaved"
                                 @undo="editorRef?.undo()" @redo="editorRef?.redo()" @smooth="editorRef?.applySmooth()"
                                 @simplify="editorRef?.applySimplify()" @delete="editorRef?.deleteSelected()"
-                                @toggle-overlay="showImageOverlay = !showImageOverlay" @toggle-ghost="showGhost = !showGhost"
                                 @update:magnet-radius="magnetRadius = $event"
                                 @reset="editorRef?.resetToExtraction()" @save="onEditorSave" />
                         </div>
@@ -989,12 +1005,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 /* Both canvases are always absolutely positioned so switching between them
    is a pure opacity crossfade with no layout shift. */
 /* X.F.W14V.u4 — UIA-F-239: the legend's first row (BasisCanvas reads this).
-   Below `sm` the expanded canvas dock (anchored 0.5rem in, glass's `--dock-h`
-   tall) spans the stage's width, so the legend starts under it; wider, the
-   dock sits right of the legend and the legend keeps its 16 px.
-   X-DS pass 5 · DS-F7-C6: keyed on the dock's state, not the width alone. A
-   collapsed dock is two buttons at the top right, so the legend keeps its
-   16 px and shares the toolbar row, as it does at 1440. */
+   The stage dock never spans the stage (owner, 2026-11-15): below `sm` it opens
+   as a column down the right edge, wider as a row from the corner, so the
+   legend keeps its 16 px at every width and in either state. */
 .canvas-stage {
     --legend-inset-top: 16px;
     /* X-DS pass 8 · DS-F10-C2: the legend's and the epicycle inset's shared
@@ -1004,11 +1017,6 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
        reserved block (`.controls-overlay`'s offset plus glass's `--dock-h`),
        with the inset's own 12 px over it. */
     --epicycle-inset-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px) + var(--dock-h) + 12px);
-}
-@media (width < 40rem) {
-    .canvas-stage[data-dock-expanded] {
-        --legend-inset-top: calc(0.5rem + var(--dock-h) + 1rem);
-    }
 }
 
 .canvas-stage > .canvas-container,

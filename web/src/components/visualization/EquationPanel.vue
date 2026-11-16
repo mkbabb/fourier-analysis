@@ -124,6 +124,15 @@ watchDebounced(
     max-width: min(28rem, calc(100% - 1rem));
 }
 
+/* Owner, 2026-11-15: on a phone the stage dock is a column down the stage's
+   right edge, so the panel keeps to its left (the stage measures the dock's
+   width into `--stage-dock-inline`). */
+@media (width < 40rem) {
+    .eq-panel {
+        max-width: calc(100% - 1rem - var(--stage-dock-inline, 0px) - var(--space-atom));
+    }
+}
+
 /* The body holds its height while a refetch runs: the busy bar rides over
    the equation, never in its place (UIA-F-177). */
 .eq-body {

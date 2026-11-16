@@ -27,7 +27,11 @@ function prefersReducedMotion(): boolean {
     );
 }
 
-export function useWorkspaceLoader(activeBases: Ref<string[]>) {
+export function useWorkspaceLoader(
+    activeBases: Ref<string[]>,
+    /** The paused moment a link names (`t`), read as the first drawing lands. */
+    initialTime: () => number | null = () => null,
+) {
     const route = useRoute();
     const router = useRouter();
     const store = useWorkspaceStore();
@@ -175,6 +179,13 @@ export function useWorkspaceLoader(activeBases: Ref<string[]>) {
                             (b) => normalizeBasisKey(b) !== "fourier",
                         ),
                     ];
+                }
+                // A link's paused moment (`t`, owner 2026-11-15: a copied link
+                // reopens the same time) holds the first drawing there.
+                const t0 = initialTime();
+                if (t0 !== null) {
+                    anim.holdAt(t0);
+                    return;
                 }
                 if (reduced) {
                     // Stop first, THEN seed: `reset()` pauses and zeroes, so

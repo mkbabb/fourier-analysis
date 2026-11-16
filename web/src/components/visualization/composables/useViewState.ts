@@ -1,16 +1,7 @@
-import { ref, watch } from "vue";
+import { computed } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { safeGetItem, safeSetItem, safeStorage } from "@/composables/useSafeStorage";
-
-const VIEW_STATE_KEY = "fourier_visualizer_view_state";
-
-function loadViewState(): { editing?: boolean; overlay?: boolean; equation?: boolean } {
-    try {
-        return JSON.parse(safeGetItem(safeStorage("local"), VIEW_STATE_KEY) ?? "{}");
-    } catch {
-        return {};
-    }
-}
+import { useQueryParam } from "@/lib/urlState";
+import { WORKSPACE_QUERY } from "../lib/workspace-query";
 
 /**
  * X.F.W14V.u1 — UIA-F-173: the view layers' defaults, in one place. The view
@@ -22,44 +13,29 @@ export function isViewOffDefault(view: { ghost: boolean; overlay: boolean }): bo
     return view.ghost !== VIEW_DEFAULTS.ghost || view.overlay !== VIEW_DEFAULTS.overlay;
 }
 
+/**
+ * The workspace's view state, held in the URL (owner, 2026-11-15: "Each page
+ * should have state defined in the URL ... background showing, etc.";
+ * `lib/workspace-query.ts` names the keys). Each ref reads the current URL, so
+ * Back and Forward restore it, and each write is a push, so Back undoes it.
+ * The URL is the one home: the per-browser copy this composable kept in
+ * localStorage is retired with it (a clean link opens the defaults).
+ */
 export function useViewState() {
     const store = useWorkspaceStore();
-    const saved = loadViewState();
 
-    const isEditing = ref(false);
-    const showGhost = ref<boolean>(VIEW_DEFAULTS.ghost);
-    const showImageOverlay = ref<boolean>(typeof saved.overlay === "boolean" ? saved.overlay : VIEW_DEFAULTS.overlay);
-    const showEquation = ref(typeof saved.equation === "boolean" ? saved.equation : false);
-
-    // Restore editing immediately once contour is available
-    if (saved.editing) {
-        let restored = false;
-        watch(
-            () => store.contour,
-            (contour) => {
-                if (contour && !restored) {
-                    restored = true;
-                    isEditing.value = true;
-                }
-            },
-            { immediate: true },
-        );
-    }
-
-    // Auto-exit editing if contour disappears
-    watch(() => store.contour, (c) => {
-        if (!c && isEditing.value) isEditing.value = false;
+    const showImageOverlay = useQueryParam("bg", WORKSPACE_QUERY.bg, true);
+    const showGhost = useQueryParam("trace", WORKSPACE_QUERY.trace, true);
+    const showEquation = useQueryParam("eq", WORKSPACE_QUERY.eq, true);
+    const showFullscreen = useQueryParam("fs", WORKSPACE_QUERY.fs, true);
+    const editParam = useQueryParam("edit", WORKSPACE_QUERY.edit, true);
+    /** The editor is open only over a contour: `edit=1` waits for one to load. */
+    const isEditing = computed<boolean>({
+        get: () => editParam.value && !!store.contour,
+        set: (v) => {
+            editParam.value = v;
+        },
     });
 
-    watch([isEditing, showImageOverlay, showEquation], () => {
-        // X.F.W14U.misc — UIA-F-213: the write goes through the safe accessor
-        // (it threw on every toggle with site data blocked).
-        safeSetItem(safeStorage("local"), VIEW_STATE_KEY, JSON.stringify({
-            editing: isEditing.value,
-            overlay: showImageOverlay.value,
-            equation: showEquation.value,
-        }));
-    });
-
-    return { isEditing, showGhost, showImageOverlay, showEquation };
+    return { isEditing, showGhost, showImageOverlay, showEquation, showFullscreen };
 }

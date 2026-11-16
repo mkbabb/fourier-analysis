@@ -2,7 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { slider, sliderValue } from "./fixtures/slider";
 import { ADMIN_TOKEN, ADMIN_USERS, ENTRY, stubAdminApi, stubGallery } from "./fixtures/gallery";
-import { clickCanvasDockExport } from "./fixtures/canvas-dock";
+import { clickCanvasDockExport, openCanvasDock } from "./fixtures/canvas-dock";
 import { seededViz, type SeededViz } from "./fixtures/seed";
 import { showView, selectTab } from "./fixtures/workspace";
 import { openAppDock } from "./fixtures/app-dock";
@@ -352,8 +352,8 @@ test.describe("UIA-F-18 — one Publish action gives one outcome", () => {
         // Publish sends nothing); the viewer is logged in the app's own way.
         await page.addInitScript(() => localStorage.setItem("fourier-user-slug", "e2e-publisher"));
         await page.goto(`/v/${viz.slug}`);
-        // The canvas dock expands under the pointer (its persistent control).
-        await page.getByRole("button", { name: "Edit contour" }).first().hover();
+        // Owner, 2026-11-15: Publish is the page's tool, in the app dock.
+        await openAppDock(page);
         const publish = page.getByRole("button", { name: "Publish to Gallery" }).first();
         await expect(publish).toBeVisible();
         await page.waitForTimeout(600);
@@ -668,8 +668,11 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
         await publish.first().click();
         await expect(page.getByText(/^Published /).first()).toBeVisible();
         await expect(publish).toHaveCount(before - 1);
+        // The tab is in the URL (owner, 2026-11-15: "each page should have state
+        // defined in the URL"), so the reload reopens the Drafts list itself.
         await page.reload();
-        await page.getByRole("tab", { name: "Drafts" }).click();
+        await expect(page).toHaveURL(/[?&]tab=drafts/);
+        await expect(page.getByRole("tab", { name: "Drafts" })).toHaveAttribute("aria-selected", "true");
         await expect(page.getByRole("button", { name: /^Publish/ })).toHaveCount(before - 1);
     });
 });
@@ -693,7 +696,11 @@ for (const vp of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
             await page.waitForTimeout(400);
             const m = await card.evaluate((c) => {
                 const r = (e: Element) => e.getBoundingClientRect();
-                const btns = [...c.querySelectorAll("button")].map(r);
+                // The controls on screen: a folded dock's seats are inert and hidden
+                // until a press opens it (the stage dock, owner 2026-11-15).
+                const shown = (b: Element) =>
+                    !b.closest("[inert]") && getComputedStyle(b).visibility !== "hidden" && r(b).width > 0;
+                const btns = [...c.querySelectorAll("button, [role=button]")].filter(shown).map(r);
                 const eq = r(c.querySelector(".eq-scroll-region")!);
                 const inner = r(c.querySelector(".eq-scroll-region .katex-display, .eq-scroll-region .katex")!);
                 return { btns: btns.map((b) => [b.left, b.top, b.right, b.bottom]), eq: [eq.left, eq.top, eq.right, eq.bottom], inner: [inner.top, inner.bottom], card: [r(c).top, r(c).bottom] };
@@ -740,7 +747,7 @@ test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyb
     test("Enter opens the menu and the keys reach both rows; Enter toggles one", async ({ page }) => {
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
-        await page.getByRole("button", { name: "Edit contour" }).first().hover();
+        await openCanvasDock(page);
         const view = page.getByRole("button", { name: "View options" }).first();
         await expect(view).toBeVisible();
         await page.waitForTimeout(600);
@@ -753,7 +760,7 @@ test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyb
             await page.keyboard.press("ArrowDown");
         }
         expect(names).toContain("Original outline");
-        expect(names).toContain("Image overlay");
+        expect(names).toContain("Background image");
         const trace = page.getByRole("menuitemcheckbox", { name: "Original outline" });
         await trace.focus();
         const was = await trace.getAttribute("aria-checked");
@@ -769,9 +776,8 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await showView(page, "Canvas");
-        await page.getByRole("button", { name: "Edit contour" }).first().hover();
-        await expect(page.getByRole("button", { name: "Equation" }).first()).toBeVisible();
-        await page.waitForTimeout(700);
+        await openCanvasDock(page);
+        await expect(page.locator(".controls-dock-anchor [aria-label='Export frame']")).toBeVisible();
         const res = await page.evaluate(() => {
             const anchor = document.querySelector(".controls-dock-anchor")!;
             return [...anchor.querySelectorAll<HTMLElement>("button[aria-label]")]

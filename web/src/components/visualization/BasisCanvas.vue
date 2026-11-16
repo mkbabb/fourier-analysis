@@ -700,7 +700,13 @@ function readInsets(): void {
     else drawPlaceholderFrame(surface.value);
 }
 
-defineExpose({ anim, exportFrame, drawImageOverlay, readInsets });
+/** The view is zoomed or panned off the fit; `resetView` returns it (as a double-tap does). */
+const viewMoved = gestures.moved;
+function resetView(): void {
+    gestures.reset();
+}
+
+defineExpose({ anim, exportFrame, drawImageOverlay, readInsets, viewMoved, resetView });
 </script>
 
 <template>

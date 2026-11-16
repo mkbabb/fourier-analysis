@@ -69,10 +69,16 @@ async function open(page: Page, path: string): Promise<Locator> {
     return dock;
 }
 
-/** A point in the header band beside the dock: outside the dock, outside the page's content. */
+/**
+ * A point beside the dock: outside the dock, outside the page's content. In the
+ * header band when the band has room; a touch press snaps to a control within
+ * a finger's reach (Chromium's touch adjustment), so when the run nearly spans
+ * the band (a page's own tool seat beside the shell's, owner 2026-11-15) the
+ * point is the page margin just below the dock instead.
+ */
 async function besideDock(dock: Locator): Promise<{ x: number; y: number }> {
     const b = (await dock.boundingBox())!;
-    return { x: 3, y: b.y + b.height / 2 };
+    return b.x >= 24 ? { x: 3, y: b.y + b.height / 2 } : { x: 3, y: b.y + b.height + 24 };
 }
 
 /** The fine-pointer path: the pointer enters the dock, then leaves it for the page; the idle window folds it. */

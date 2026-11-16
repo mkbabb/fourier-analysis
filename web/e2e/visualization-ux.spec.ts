@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 import { checkA11y } from "./a11y";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { controlRow } from "./fixtures/slider";
@@ -142,11 +143,8 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own control
         // (it left the AnimationControls "More options" menu); expand the canvas
         // dock and trigger it to raise the Dialog.
-        const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
-        await canvasDock.hover();
-        // The dock swallows a press that lands mid-expansion (glass's morph guard).
-        await expect(canvasDock).toHaveClass(/\bexpanded\b/);
-        await expect(canvasDock).not.toHaveAttribute("data-morphing");
+        // Owner, 2026-11-15: the canvas dock opens by a press on its folded face.
+        await openCanvasDock(page);
         await page.locator('.controls-dock-anchor [aria-label="Export frame"]').click();
 
         // The glass-ui Dialog should expose role="dialog".
@@ -354,7 +352,6 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // contour editor from the canvas dock (keyboard activation — the path
         // every control owes), then press the editor's Save.
         const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
-        await canvasDock.hover();
         const editToggle = canvasDock.locator('[aria-label="Edit contour"]');
         await expect(editToggle).toBeVisible({ timeout: 10_000 });
         await editToggle.press("Enter");
