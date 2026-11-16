@@ -173,7 +173,14 @@ const shownSlug = ref(userSlug.value);
 watch(userSlug, (slug) => {
     if (slug) shownSlug.value = slug;
 });
+/*
+ * The menu stays uncontrolled (reka moves focus into it on open, so Escape is
+ * the menu's; held as a controlled `open`, focus stayed on the trigger and
+ * the dock took the Escape and folded). Its open edges are read here; one edge
+ * takes or gives back exactly one keep-open count.
+ */
 function onAccountOpen(open: boolean) {
+    if (open === accountOpen.value) return;
     accountOpen.value = open;
     if (open) accountPresent.value = true;
     holdDockWhileOpen(open);
@@ -249,7 +256,7 @@ async function copySlug() {
          (UIA-F-219: no consumer literal). X.F.W14U.shell — UIA-F-150: the
          admin state lives in this menu, not as a disc beside it. -->
     <div class="flex items-center">
-        <DropdownMenu v-if="accountSeat" :open="accountOpen" @update:open="onAccountOpen">
+        <DropdownMenu v-if="accountSeat" @update:open="onAccountOpen">
             <DockTrigger for="dropdown" class="account-trigger" :aria-label="`Account: ${shownSlug}`">
                 <User aria-hidden="true" />
                 <span class="fira-code hidden sm:inline">{{ handle }}</span>

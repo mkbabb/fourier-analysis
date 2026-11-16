@@ -20,6 +20,7 @@ import { computed } from "vue";
 import { Check, Copy, Info } from "@lucide/vue";
 import { DockControl } from "@mkbabb/glass-ui/dock";
 import {
+    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -72,14 +73,18 @@ function onCopyItem(e: Event) {
         </DropdownMenuItem>
         <template v-if="tier">
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>About this approximation</DropdownMenuLabel>
-            <div class="equation-tools-facts">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <Badge :tone="tierTone">{{ tier.label }}</Badge>
-                    <Metric :value="formatNumber(energy * 100, 3)" unit="% energy" size="sm" />
+            <!-- Its own group, so its label names it (a menu label names the
+                 group it sits in), not the page's tools around it. -->
+            <DropdownMenuGroup>
+                <DropdownMenuLabel>About this approximation</DropdownMenuLabel>
+                <div class="equation-tools-facts">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <Badge :tone="tierTone">{{ tier.label }}</Badge>
+                        <Metric :value="formatNumber(energy * 100, 3)" unit="% energy" size="sm" />
+                    </div>
+                    <p class="text-small text-muted-foreground mt-2">{{ tier.description }}</p>
                 </div>
-                <p class="text-small text-muted-foreground mt-2">{{ tier.description }}</p>
-            </div>
+            </DropdownMenuGroup>
         </template>
     </template>
     <template v-else>
