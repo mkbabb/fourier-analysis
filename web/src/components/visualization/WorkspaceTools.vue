@@ -45,7 +45,8 @@ const emit = defineEmits<{
             <span>{{ published ? "Published — open it" : "Publish to Gallery" }}</span>
         </DropdownMenuItem>
         <DropdownMenuCheckboxItem v-if="hasData" :model-value="showEquation" @update:model-value="emit('toggleEquation')">
-            Equation
+            <Sigma aria-hidden="true" />
+            <span>Equation</span>
         </DropdownMenuCheckboxItem>
     </template>
     <template v-else>

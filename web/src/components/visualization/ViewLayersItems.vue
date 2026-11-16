@@ -7,6 +7,7 @@
  * inside the editor dock's More editor tools menu. One state, one set of rows,
  * one order (UIA-F-79 standing). A row toggles without closing the menu.
  */
+import { ImageIcon, Spline } from "@lucide/vue";
 import { DropdownMenuCheckboxItem, DropdownMenuLabel } from "@mkbabb/glass-ui/menu";
 
 defineProps<{
@@ -32,13 +33,15 @@ function keepOpen(e: Event) {
         @select="keepOpen"
         @update:model-value="emit('toggleImageOverlay')"
     >
-        Background image
+        <ImageIcon aria-hidden="true" />
+        <span>Background image</span>
     </DropdownMenuCheckboxItem>
     <DropdownMenuCheckboxItem
         :model-value="showGhost"
         @select="keepOpen"
         @update:model-value="emit('toggleGhost')"
     >
-        Original outline
+        <Spline aria-hidden="true" />
+        <span>Original outline</span>
     </DropdownMenuCheckboxItem>
 </template>
