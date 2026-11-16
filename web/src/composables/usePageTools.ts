@@ -9,21 +9,24 @@ import { onScopeDispose, shallowRef, type VNodeChild } from "vue";
  * page's. A page with no tools of its own provides nothing and the seat is
  * not drawn.
  *
- * The dock hands the render its `hold`: a menu opened from a page's seat holds
- * the dock open while it is open (glass's keep-open count), as the sections
- * menu does. Under 40rem a page draws its tools as ONE menu seat (the run
- * holds the shell's four seats and one more, not the page's every act).
+ * The dock hands the render the `form` it wants: `seats` (each act a dock
+ * control) or `items` (each act a menu item). Under 40rem the run holds only four seats with honest
+ * room either side, so the dock draws no seat for the page: the sections menu
+ * absorbs the page's acts as items under the five sections (one menu, one
+ * seat). The fullscreen takeover hosts the same seats on its stage dock.
  */
+export type PageToolsForm = "seats" | "items";
+
 export interface PageToolsContext {
-    hold: (open: boolean) => void;
+    form: PageToolsForm;
 }
 
-/** The phone's run: the page's tools are one menu seat below this width. */
+/** The phone's run: the page's tools are items of the sections menu below this width. */
 export const PAGE_TOOLS_COMPACT = "(width < 40rem)";
 
 interface PageTools {
     owner: symbol;
-    /** The seats' accessible group name, e.g. "Visualize tools". */
+    /** The tools' accessible group name, e.g. "Visualize tools" (the menu's label for them). */
     label: string;
     render: (ctx: PageToolsContext) => VNodeChild;
     /** Whether the page has a seat to show now (an empty group draws no separator). */

@@ -561,9 +561,9 @@ watch(
 // About this approximation.
 providePageTools(
     "Equation tools",
-    ({ hold }) =>
+    ({ form }) =>
         h(EquationTools, {
-            hold,
+            form,
             latex: activeLatex.value,
             tier: tier.value,
             tierTone: tierTone.value,

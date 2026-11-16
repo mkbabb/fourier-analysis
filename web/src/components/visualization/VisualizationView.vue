@@ -299,19 +299,19 @@ const hasData = computed(() => store.epicycleData || store.basesData || store.co
 const stageDockAnchor = useTemplateRef<HTMLElement>("stageDockAnchor");
 const { width: stageDockWidth } = useElementSize(stageDockAnchor, undefined, { box: "border-box" });
 
+/** The page's tools' state and acts, one record for both hosts (the app dock, and the takeover's stage dock). */
+const workspaceTools = computed(() => ({
+    hasData: !!hasData.value,
+    hasContour: !!store.contour,
+    publishing: publishing.value,
+    published: !!store.publishedSlug,
+    showEquation: showEquation.value,
+    onPublish: handlePublish,
+    onToggleEquation: () => (showEquation.value = !showEquation.value),
+}));
 providePageTools(
     "Visualize tools",
-    ({ hold }) =>
-        h(WorkspaceTools, {
-            hold,
-            hasData: !!hasData.value,
-            hasContour: !!store.contour,
-            publishing: publishing.value,
-            published: !!store.publishedSlug,
-            showEquation: showEquation.value,
-            onPublish: handlePublish,
-            onToggleEquation: () => (showEquation.value = !showEquation.value),
-        }),
+    ({ form }) => h(WorkspaceTools, { form, ...workspaceTools.value }),
     () => !!hasData.value || !!store.contour,
 );
 const hasEpicycles = computed(() => activeBases.value.includes("fourier-epicycles"));
@@ -679,7 +679,13 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 @reset-view="canvasComponent?.resetView()"
                                 @toggle-image-overlay="showImageOverlay = !showImageOverlay"
                                 @toggle-ghost="showGhost = !showGhost"
-                            />
+                            >
+                                <!-- The takeover covers the app dock, so the page's
+                                     tools stand on this dock there (item 2). -->
+                                <template #page-tools="{ column }">
+                                    <WorkspaceTools form="seats" :tooltip-side="column ? 'left' : 'bottom'" v-bind="workspaceTools" />
+                                </template>
+                            </CanvasControlsDock>
                         </div>
 
                         <!-- Equation overlay panel -->
