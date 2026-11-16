@@ -8,7 +8,7 @@
  * harmonics; the sum is the figure itself) and Export plot. The series' own
  * acts (Copy LaTeX, About this approximation) are the app dock's.
  */
-import { Download, Ellipsis, Layers } from "@lucide/vue";
+import { Download, Ellipsis, Layers, Spline, Waves } from "@lucide/vue";
 import { DockControl } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import {
@@ -63,14 +63,16 @@ function keepOpen(e: Event) {
                         @select="keepOpen"
                         @update:model-value="showOriginal = !showOriginal"
                     >
-                        Original f({{ variable }})
+                        <Spline aria-hidden="true" />
+                        <span>Original f({{ variable }})</span>
                     </DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem
                         :model-value="showHarmonics"
                         @select="keepOpen"
                         @update:model-value="showHarmonics = !showHarmonics"
                     >
-                        Harmonics
+                        <Waves aria-hidden="true" />
+                        <span>Harmonics</span>
                     </DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
             </DropdownMenu>
