@@ -69,6 +69,11 @@ async function openViz(page: Page): Promise<void> {
 async function toEnd(page: Page): Promise<void> {
     const pause = page.getByRole("button", { name: "Pause animation" });
     if (await pause.isVisible()) await pause.click();
+    // glass 11.1.0: pressing Pause (an always-visible control) only pauses; the
+    // collapsed dock no longer opens behind it, and its timeline stays inert
+    // until the dock is opened.
+    const expand = page.locator(".animation-dock").getByRole("button", { name: "Expand dock" });
+    if (await expand.isVisible()) await expand.click();
     const thumb = page.locator(".animation-dock [role=slider]").first();
     await thumb.focus();
     await page.keyboard.press("End");

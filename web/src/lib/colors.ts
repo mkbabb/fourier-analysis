@@ -181,23 +181,19 @@ export function resolveVizColors(): void {
 }
 
 /**
- * Resolve the palette and keep it in step with the cascade.
+ * Resolve the palette once, before the app mounts.
  *
  * Called from `main.ts` BEFORE `app.mount()`: a root `onMounted` fires after
  * every child's, so a child that reads the palette while it mounts would win
  * the race and keep the authored fallback for the session.
  *
- * `.dark` class flips are observed by the app root. An OS-level scheme change
- * is not a class mutation at all — `light-dark()` follows `color-scheme: light
- * dark` — so it is observed here, where the palette lives.
+ * `.dark` class flips are observed by the app root (`onFlipSettled`). Since
+ * glass 11.1.0 the class alone decides the scheme (`:root` pins `light`, `.dark`
+ * pins `dark`), so an OS-level change that leaves the class alone changes no
+ * token, and the `prefers-color-scheme` listener that stood here is gone.
  */
 export function installVizColors(): void {
     resolveVizColors();
-
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    window
-        .matchMedia("(prefers-color-scheme: dark)")
-        .addEventListener("change", () => resolveVizColors());
 }
 
 /**
