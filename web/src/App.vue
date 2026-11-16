@@ -125,10 +125,12 @@ const stopBefore = router.beforeEach(() => {
     }
 });
 
-const stopAfter = router.afterEach(async (to) => {
+const stopAfter = router.afterEach(async (to, from) => {
     currentKey = historyKey();
     currentOwnsScroll = to.meta.ownsScroll === true;
-    if (currentOwnsScroll) return;
+    // A move within one page (its URL state, owner 2026-11-15: a layer
+    // toggle, a search, an opened card) keeps the page where it stands.
+    if (currentOwnsScroll || to.path === from.path) return;
     const restored = offsets.get(currentKey) ?? 0;
     await nextTick();
     requestAnimationFrame(() => {

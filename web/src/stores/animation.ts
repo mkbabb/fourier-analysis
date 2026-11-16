@@ -254,6 +254,13 @@ export const useAnimationStore = defineStore("animation", () => {
     }
 
     /** A new drawing: the reader's pause belonged to the one it replaced. */
+    /** Hold the drawing paused at `normalizedT`, as the reader's own pause does (a link's paused moment). */
+    function holdAt(normalizedT: number) {
+        pause();
+        seek(normalizedT);
+        heldByReader.value = true;
+    }
+
     function releaseHold() {
         heldByReader.value = false;
     }
@@ -312,5 +319,5 @@ export const useAnimationStore = defineStore("animation", () => {
         onScopeDispose(() => query.removeEventListener("change", onPreferenceChange));
     }
 
-    return { t, easedT, playing, heldByReader, speed, duration, easing, scrubbing, anyCanvasVisible, play, pause, toggle, autoPlay, releaseHold, seek, startScrub, endScrub, reset, setCanvasVisible };
+    return { t, easedT, playing, heldByReader, speed, duration, easing, scrubbing, anyCanvasVisible, play, pause, toggle, autoPlay, holdAt, releaseHold, seek, startScrub, endScrub, reset, setCanvasVisible };
 });

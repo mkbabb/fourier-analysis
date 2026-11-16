@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page } from "@playwright/test";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 import { slider, sliderValue } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
@@ -306,8 +307,8 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await page.setViewportSize({ width: 390, height: 844 });
         await recordCanvasText(page);
         await openViz(page);
-        await page.getByRole("button", { name: "Edit contour" }).first().hover();
-        await page.waitForTimeout(900);
+        await openCanvasDock(page);
+        await page.waitForTimeout(400);
         const mark = (await canvasTexts(page)).length;
         await page.waitForTimeout(400);
         const legend = (await canvasTexts(page, mark)).filter(([t, x]) => x < 120 && /Epicycles|circles|^N = /.test(t.trim()));
@@ -315,11 +316,12 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         const geo = await page.evaluate(() => {
             const dock = document.querySelector(".controls-dock-anchor .glass-dock")!.getBoundingClientRect();
             const canvas = document.querySelector(".canvas-stage canvas.canvas-el")!.getBoundingClientRect();
-            return { dockBottom: dock.bottom, dockLeft: dock.left, canvasTop: canvas.top, canvasLeft: canvas.left };
+            return { dockBottom: dock.bottom, dockLeft: dock.left, dockW: dock.width, dockH: dock.height, canvasTop: canvas.top, canvasLeft: canvas.left };
         });
         await frame(page, "u239-dock-expanded");
-        expect(geo.dockLeft, "the dock is expanded across the legend's column").toBeLessThan(geo.canvasLeft + 120);
-        const top = Math.min(...legend.map(([, , y]) => y)) - 8; // the ℱ glyph rides 8 px above its row
-        expect(geo.canvasTop + top, "the legend's top is below the expanded dock").toBeGreaterThanOrEqual(geo.dockBottom);
+        // Owner, 2026-11-15: on a phone the stage dock opens as a column down the
+        // right edge, so it never reaches the legend's column (the legend keeps its row).
+        expect(geo.dockH, "the expanded dock is a column").toBeGreaterThan(geo.dockW);
+        expect(geo.dockLeft, "the column stands clear of the legend's column").toBeGreaterThanOrEqual(geo.canvasLeft + 120);
     });
 });

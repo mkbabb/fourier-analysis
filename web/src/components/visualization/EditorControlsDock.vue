@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { EditorState } from "./lib/editor-state";
-import { computed, useTemplateRef } from "vue";
+import { useTemplateRef } from "vue";
 import { useMediaQuery } from "@vueuse/core";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
@@ -10,17 +10,10 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
 } from "@mkbabb/glass-ui/menu";
 import { Metric } from "@mkbabb/glass-ui/metric";
 import { Button } from "@mkbabb/glass-ui/button";
-import { StatusDot } from "@mkbabb/glass-ui/status-dot";
 import { Tooltip } from "@/components/ui/tooltip";
-import ViewLayersMenu from "./ViewLayersMenu.vue";
-import ViewLayersItems from "./ViewLayersItems.vue";
-import { isViewOffDefault } from "./composables/useViewState";
 import {
     Undo2,
     Redo2,
@@ -33,7 +26,6 @@ import {
     Save,
     Check,
     Magnet,
-    Eye,
 } from "@lucide/vue";
 
 /*
@@ -50,9 +42,7 @@ function keepSliderKeys(e: KeyboardEvent) {
     if (e.key !== "Escape" && e.key !== "Tab") e.stopPropagation();
 }
 
-const props = defineProps<EditorState & {
-    showImageOverlay: boolean;
-    showGhost?: boolean;
+defineProps<EditorState & {
     magnetRadius: number;
     isSaved: boolean;
 }>();
@@ -63,8 +53,6 @@ const emit = defineEmits<{
     smooth: [];
     simplify: [];
     delete: [];
-    toggleOverlay: [];
-    toggleGhost: [];
     "update:magnetRadius": [value: number];
     reset: [];
     save: [];
@@ -76,17 +64,14 @@ const emit = defineEmits<{
  * More tools, 243 px of content) overran the 167 px layer at 360 into a
  * sideways scroll. Ruled: below `sm` the row holds Undo, Redo and More editor
  * tools only; Delete moves into that menu as its last item behind a separator
- * (the rose tone and the same `delete` emit, disabled with no selection), and
- * View options becomes a submenu of the same `ViewLayersItems` rows. At ≥ sm
- * nothing changes. `sm` is Tailwind's 40rem (640 px). The glass idiom for this
+ * (the rose tone and the same `delete` emit, disabled with no selection). At
+ * ≥ sm nothing changes. (Owner, 2026-11-15: the view layers left this dock for
+ * the stage dock, their one home; the editor dock holds the editor's tools.) `sm` is Tailwind's 40rem (640 px). The glass idiom for this
  * (a dock priority-overflow seat) is relayed as O-85 DOCK-PRIORITY-OVERFLOW;
  * at its landing this manual split becomes glass's (ADOPT-AT-LANDING).
  */
 const isSm = useMediaQuery("(min-width: 640px)");
 
-const viewOffDefault = computed(() =>
-    isViewOffDefault({ overlay: props.showImageOverlay, ghost: !!props.showGhost }),
-);
 /**
  * X-OD19 · F4 — an open dock menu holds its dock open: each menu's
  * `update:open` edge takes or gives back one glass keep-open count, so the
@@ -220,18 +205,6 @@ function holdDockWhileOpen(open: boolean) {
                         <Trash2 />
                     </DockControl>
                 </Tooltip>
-
-                <!-- X.F.W14V.u1 — UIA-F-79: the view layers are the ONE menu both docks
-                     mount (the rows sat in More tools here, under another order); it
-                     opens up from this bottom dock. -->
-                <ViewLayersMenu
-                    side="top"
-                    :show-image-overlay="showImageOverlay"
-                    :show-ghost="!!showGhost"
-                    @toggle-image-overlay="emit('toggleOverlay')"
-                    @toggle-ghost="emit('toggleGhost')"
-                    @update:open="holdDockWhileOpen"
-                />
             </template>
 
             <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
@@ -285,30 +258,10 @@ function holdDockWhileOpen(open: boolean) {
                             </DropdownMenuItem>
                         </Button>
                     </div>
-                    <!-- X.F.W14V.r1 — below sm only (addendum (h) 1): View options as a
-                         submenu of the same rows, then Delete last, behind a separator. -->
+                    <!-- X.F.W14V.r1 — below sm only (addendum (h) 1): Delete last, behind
+                         a separator. The view layers are the stage dock's alone
+                         (owner, 2026-11-15: one home per tool). -->
                     <template v-if="!isSm">
-                        <DropdownMenuSeparator />
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                                <Eye class="h-4 w-4" />
-                                View options
-                                <StatusDot
-                                    v-if="viewOffDefault"
-                                    state="active"
-                                    size="sm"
-                                    motion="off"
-                                />
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                                <ViewLayersItems
-                                    :show-image-overlay="showImageOverlay"
-                                    :show-ghost="!!showGhost"
-                                    @toggle-image-overlay="emit('toggleOverlay')"
-                                    @toggle-ghost="emit('toggleGhost')"
-                                />
-                            </DropdownMenuSubContent>
-                        </DropdownMenuSub>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             class="tool-row is-rose"

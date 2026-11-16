@@ -284,7 +284,7 @@ test.describe("F.W14U.vstage — upload and publish (1440)", () => {
         await page.goto(`/v/${viz.slug}`);
         await openAppDock(page);
         await expect(page.getByRole("button", { name: "Log in" })).toBeVisible({ timeout: 30_000 });
-        await page.getByRole("button", { name: "Edit contour" }).first().hover();
+        // Owner, 2026-11-15: Publish is the page's tool, in the (open) app dock.
         const publish = page.getByRole("button", { name: "Publish to Gallery" }).first();
         await expect(publish).toBeVisible();
         await page.waitForTimeout(600);

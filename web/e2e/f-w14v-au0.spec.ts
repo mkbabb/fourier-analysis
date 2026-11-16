@@ -1,12 +1,13 @@
 // SERVED MODEL: claude-opus-5-5
 import * as fs from "node:fs";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 import * as path from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
 import { ADMIN_TOKEN, ENTRY, stubAdminApi } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
-import { openAppDock } from "./fixtures/app-dock";
+import { openAppDock, pressPageTool } from "./fixtures/app-dock";
 
 /**
  * X.F.W14V `.au0` — the AUDIT-2 fourier register re-baselined at HEAD
@@ -202,9 +203,9 @@ async function openViz(page: Page, tag: string): Promise<void> {
     await page.waitForTimeout(600);
 }
 
+/** Owner, 2026-11-15: the canvas dock opens by a press on its folded face. */
 async function expandCanvasDock(page: Page): Promise<void> {
-    await page.getByRole("button", { name: "Edit contour" }).first().hover();
-    await page.waitForTimeout(700);
+    await openCanvasDock(page);
 }
 
 /** Open a trigger if it is on the page at this width, else record why not. */
@@ -269,13 +270,12 @@ async function walkWorkspace(page: Page, run: Run, tag: string): Promise<void> {
     await expandCanvasDock(page);
     await openIf(page, run, tag, "view-options", `${anchor} [aria-label='View options']`, "no View options control");
 
-    await expandCanvasDock(page);
-    const eq = page.locator(`${anchor} [aria-label='Equation']`).first();
-    await eq.click();
+    // Owner, 2026-11-15: the series panel (Σ) is the page's tool, in the app dock
+    // (below 40rem an item of its one "Visualize tools" menu seat).
+    await pressPageTool(page, "Equation");
     await page.waitForTimeout(1500);
     await shot(page, run, tag, "equation-panel");
-    await expandCanvasDock(page);
-    await eq.click();
+    await pressPageTool(page, "Equation");
     await page.waitForTimeout(400);
 
     await expandCanvasDock(page);

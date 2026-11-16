@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { openAppDock } from "./fixtures/app-dock";
 import { setSlider, slider, sliderValue } from "./fixtures/slider";
 import { EQUATION_JOB } from "./fixtures/jobs";
 
@@ -379,7 +380,9 @@ test.describe("q253 · UIA-F-253 — the equation's micro-issues", () => {
         const play = page.getByRole("button", { name: /convergence sweep/ });
         await expect(play.locator("svg.lucide")).toHaveCount(1);
         await expect(play.locator('path[d^="M48 64C"], path[d^="M73 39c"]')).toHaveCount(0);
-        await card.getByRole("button", { name: "About this approximation" }).hover();
+        // Owner, 2026-11-15: About this approximation is the page's tool, in the app dock.
+        await expect(card).toBeVisible();
+        await (await openAppDock(page)).getByRole("button", { name: "About this approximation" }).hover();
         const badge = page.locator('[data-slot="badge"]').filter({ hasText: /Exact|Conjectured|Approximate/ });
         await expect(badge.first()).toBeVisible({ timeout: 10_000 });
         await frame(page, "q253-tier-badge");

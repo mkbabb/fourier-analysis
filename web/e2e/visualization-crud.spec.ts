@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Response } from "@playwright/test";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 import { checkA11y } from "./a11y";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { showViewIfTabbed } from "./fixtures/workspace";
@@ -671,11 +672,8 @@ for (const vp of VIEWPORTS) {
 
             // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own
             // control; expand the canvas dock, then trigger Export.
-            const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
-            await canvasDock.hover();
-            // The dock swallows a press that lands mid-expansion (glass's morph guard).
-            await expect(canvasDock).toHaveClass(/\bexpanded\b/);
-            await expect(canvasDock).not.toHaveAttribute("data-morphing");
+            // Owner, 2026-11-15: the canvas dock opens by a press on its folded face.
+            await openCanvasDock(page);
             await page.locator('.controls-dock-anchor [aria-label="Export frame"]').click();
 
             // The glass-ui Dialog exposes role="dialog" + aria-modal.

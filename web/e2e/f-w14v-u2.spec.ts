@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { openAppDock } from "./fixtures/app-dock";
 import { slider, sliderValue } from "./fixtures/slider";
 
 /**
@@ -142,7 +143,8 @@ test.describe("e253 · UIA-F-253 (server limbs) — expanded hover; an honest ti
 
     test("the default x(π−x) is Exact, not Conjectured", async ({ page }) => {
         await openEquation(page);
-        await page.getByRole("button", { name: "About this approximation" }).hover();
+        // Owner, 2026-11-15: About this approximation is the page's tool, in the app dock.
+        await (await openAppDock(page)).getByRole("button", { name: "About this approximation" }).hover();
         const info = page.getByRole("dialog", { name: "About this approximation" })
             .or(page.locator(".info-hovercard"));
         await expect(info.first()).toBeVisible();

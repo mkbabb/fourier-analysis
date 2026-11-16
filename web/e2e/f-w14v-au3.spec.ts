@@ -19,6 +19,7 @@
  * :8000 (BASE_URL), Chromium.
  */
 import { expect, test, type Page } from "@playwright/test";
+import { openAppDock } from "./fixtures/app-dock";
 
 import { seededViz } from "./fixtures/seed";
 import { showViewIfTabbed } from "./fixtures/workspace";
@@ -39,7 +40,8 @@ async function openViz(page: Page): Promise<void> {
 
 async function openEquationPanel(page: Page) {
     await openViz(page);
-    await page.getByRole("button", { name: "Edit contour" }).first().hover();
+    // Owner, 2026-11-15: the series panel is the page's tool, in the app dock.
+    await openAppDock(page);
     const eq = page.getByRole("button", { name: "Equation", exact: true }).first();
     await expect(eq).toBeVisible();
     await page.waitForTimeout(700);

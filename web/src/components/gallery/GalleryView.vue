@@ -24,6 +24,8 @@ import GalleryDraftsSection from "./GalleryDraftsSection.vue";
 import BatchActionBar from "@/components/admin/BatchActionBar.vue";
 import ConfirmDialog from "@/components/shared/ConfirmDialog.vue";
 import { prefetchRoute } from "@/router";
+import { isOwnWrite, pageOf, writeParams } from "@/lib/urlState";
+import { formatGalleryQuery, linkableTab, parseGalleryQuery, type GalleryTab, type GalleryView } from "./gallery-query";
 
 const loadAdminUserList = () => import("@/components/admin/AdminUserList.vue");
 const loadAdminFlaggedPanel = () => import("@/components/admin/AdminFlaggedPanel.vue");
@@ -41,8 +43,19 @@ const gallery = useGalleryStore();
 const auth = useAuthStore();
 const { isLoggedIn } = storeToRefs(auth);
 
-type GalleryTab = "gallery" | "drafts" | "users" | "flagged" | "audit" | "tokens";
-const activeTab = ref<GalleryTab>("gallery");
+/*
+ * Owner, 2026-11-15: "Each page should have state defined in the URL". The
+ * gallery's view is its query (`gallery-query.ts`): the search, the order,
+ * the filters, the tab and the open card. The link is read before the
+ * watchers below are made, so a cold link fetches once, already filtered.
+ */
+const ownPage = pageOf(route);
+const linked = parseGalleryQuery(route.query);
+gallery.searchQuery = linked.q;
+gallery.sort = linked.sort;
+gallery.tierFilter = linked.tier;
+gallery.basisFilter = linked.basis;
+const activeTab = ref<GalleryTab>(linked.tab);
 /**
  * X·F F.W4 `.d` — GCM-3 (the GCM restore family's core): the modal held a
  * SNAPSHOT.
@@ -136,10 +149,49 @@ onMounted(async () => {
         gallery.resetAndFetch(),
         workspace.refreshDrafts(),
         adminToken
-            ? gallery.activateAdmin(adminToken).then(() => router.replace({ query: {} }))
+            ? gallery.activateAdmin(adminToken).then(() => writeParams(router, { admin: undefined }, false, ownPage))
             : undefined,
     ]);
+    // A link's open card opens once the grid holds it; a card the first page
+    // does not hold leaves the link (replace), never a blank card.
+    openLinkedCard(linked.open, false);
 });
+
+function openLinkedCard(slug: string | null, push: boolean) {
+    if (slug === selectedSlug.value) return;
+    if (!slug) {
+        selectedSlug.value = null;
+        return;
+    }
+    const entry = gallery.entries.find((e) => e.slug === slug);
+    if (entry) openModal(entry);
+    else writeParams(router, formatGalleryQuery({ open: null }), push, ownPage);
+}
+
+function writeView(view: Partial<GalleryView>, push = false) {
+    writeParams(router, formatGalleryQuery(view), push, ownPage);
+}
+// Typing replaces; a filter, the tab and the card push (Back undoes them).
+watch(() => gallery.searchQuery, (q) => writeView({ q }));
+watch([() => gallery.sort, () => gallery.tierFilter, () => gallery.basisFilter], ([sort, tier, basis]) =>
+    writeView({ sort, tier, basis }, true),
+);
+watch(activeTab, (tab) => writeView({ tab: linkableTab(tab) }, true));
+watch(selectedSlug, (slug) => writeView({ open: slug }, true));
+// Back and Forward apply the URL they reach.
+watch(
+    () => route.fullPath,
+    () => {
+        if (isOwnWrite(route.fullPath) || pageOf(route) !== ownPage) return;
+        const v = parseGalleryQuery(route.query);
+        gallery.searchQuery = v.q;
+        gallery.sort = v.sort;
+        gallery.tierFilter = v.tier;
+        gallery.basisFilter = v.basis;
+        if (linkableTab(activeTab.value) !== v.tab) activeTab.value = v.tab;
+        openLinkedCard(v.open, false);
+    },
+);
 
 // Debounced search
 let searchTimer: ReturnType<typeof setTimeout> | null = null;

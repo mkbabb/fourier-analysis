@@ -141,7 +141,13 @@ function takePrefetch(key: string): Promise<ComputeEquationResponse> | null {
 </script>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch, onScopeDispose, useTemplateRef } from "vue";
+import { ref, shallowRef, computed, watch, onScopeDispose, useTemplateRef, h } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { formatEquationQuery, hasEquationState, parseEquationQuery, type EquationView as EquationUrlView } from "@/lib/equation/query";
+import { isOwnWrite, pageOf, writeParams } from "@/lib/urlState";
+import { providePageTools } from "@/composables/usePageTools";
+import EquationTools from "./EquationTools.vue";
+import PlotToolsDock from "./PlotToolsDock.vue";
 import type { JobStage } from "@/lib/api";
 import { jobProgressValue, jobStageLabel } from "@/lib/jobProgress";
 import { watchDebounced } from "@vueuse/core";
@@ -151,14 +157,9 @@ import type { BasisComponent } from "@/lib/types";
 import { tierInfo } from "@/lib/equation/notation";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { Button } from "@mkbabb/glass-ui/button";
-import { DockControl } from "@mkbabb/glass-ui/dock";
-import { Badge } from "@mkbabb/glass-ui/badge";
 import { Progress } from "@mkbabb/glass-ui/progress";
 import { Skeleton } from "@mkbabb/glass-ui";
-import { Popover, PopoverTrigger, PopoverContent } from "@mkbabb/glass-ui/popover";
-import { Metric } from "@mkbabb/glass-ui/metric";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
-import { Info } from "@lucide/vue";
 
 import FunctionInput from "./FunctionInput.vue";
 import EquationResult from "./EquationResult.vue";
@@ -167,16 +168,32 @@ import ConvergencePlot from "./ConvergencePlot.vue";
 import CoefficientsPanel from "@/components/shared/CoefficientsPanel.vue";
 
 import { useCoeffHover } from "./composables/useCoeffHover";
-import { formatNumber } from "@/lib/format";
 import { useSimplifiedSeries } from "./composables/useSimplifiedSeries";
 
 // ── Input state (restore from cache) ──
-const cached = loadCachedInputState();
-const expression = ref(cached?.expression ?? DEFAULT_INPUT.expression);
-const domainStart = ref(cached?.domainStart ?? DEFAULT_INPUT.domainStart);
-const domainEnd = ref(cached?.domainEnd ?? DEFAULT_INPUT.domainEnd);
-const nHarmonics = ref(cached?.nHarmonics ?? DEFAULT_INPUT.nHarmonics);
-const notation = ref<NotationMode>(cached?.notation ?? DEFAULT_INPUT.notation);
+/*
+ * Owner, 2026-11-15: "Each page should have state defined in the URL". The
+ * explorer's view is in its query (`lib/equation/query.ts`): a link that names
+ * any of it is the whole view (an absent key is its default); the clean
+ * `/equation` restores this reader's last session (the cache) and writes it
+ * into the URL, so a copied link is the view on screen.
+ */
+const route = useRoute();
+const router = useRouter();
+const ownPage = pageOf(route);
+const fromUrl = hasEquationState(route.query) ? parseEquationQuery(route.query) : null;
+const cached = fromUrl ? null : loadCachedInputState();
+const expression = ref(fromUrl?.f ?? cached?.expression ?? DEFAULT_INPUT.expression);
+const domainStart = ref(fromUrl?.a ?? cached?.domainStart ?? DEFAULT_INPUT.domainStart);
+const domainEnd = ref(fromUrl?.b ?? cached?.domainEnd ?? DEFAULT_INPUT.domainEnd);
+const nHarmonics = ref(fromUrl?.n ?? cached?.nHarmonics ?? DEFAULT_INPUT.nHarmonics);
+const notation = ref<NotationMode>(fromUrl?.nt ?? cached?.notation ?? DEFAULT_INPUT.notation);
+/** The sweep's paused point (`s`), null while it plays. */
+const sweep = ref<number | null>(fromUrl?.s ?? null);
+/** The plot's layers (`orig`, `harm`), the stage dock's menu. */
+const showOriginal = ref(fromUrl?.orig ?? true);
+const showHarmonics = ref(fromUrl?.harm ?? true);
+const plotRef = useTemplateRef<{ exportPng: () => void }>("plot");
 
 // ── Result state ──
 const computing = ref(false);
@@ -219,8 +236,8 @@ const plotCoefficients = computed(() => (showLive.value ? liveTerms.value : resu
 const plotDomain = computed<[number, number]>(() => (showLive.value ? liveDomain.value : resultDomain.value));
 const jobValue = computed(() => jobProgressValue(jobStage.value));
 const jobLabel = computed(() => jobStageLabel(jobStage.value));
-const autoHarmonics = ref(true);
-const eqMode = ref<EquationDisplayMode>("sigma");
+const autoHarmonics = ref(fromUrl?.auto ?? true);
+const eqMode = ref<EquationDisplayMode>(fromUrl?.m ?? "sigma");
 const mobileView = ref<"controls" | "canvas">("canvas");
 /* X.F.W14V.au1 — A2-FO-X-1 ⊕ L2-4: /visualize's form rule (`useWorkspaceForm`),
    read from glass's shell at glass's split threshold. */
@@ -485,7 +502,75 @@ watch(
 // restored result whose own key disagrees with the restored inputs is a result
 // for a different request, and the corrective recompute the old `!result.value`
 // test could never fire now does.
+// A link's view that the cached result does not answer shows the skeleton
+// until its own compute lands, never another expression's series.
+if (fromUrl && result.value && computeKey(currentRequest()) !== lastComputeKey) result.value = null;
 if (!result.value || computeKey(currentRequest()) !== lastComputeKey) doCompute();
+
+// ── The URL (owner, 2026-11-15) ──
+function currentView(): EquationUrlView {
+    return {
+        f: expression.value,
+        a: domainStart.value,
+        b: domainEnd.value,
+        n: nHarmonics.value,
+        auto: autoHarmonics.value,
+        nt: notation.value,
+        m: eqMode.value,
+        s: sweep.value,
+        orig: showOriginal.value,
+        harm: showHarmonics.value,
+    };
+}
+function writeView(view: Partial<EquationUrlView>, push = false) {
+    writeParams(router, formatEquationQuery(view), push, ownPage);
+}
+// The clean link restored the reader's last session: the URL now names it.
+if (!fromUrl) writeView(currentView());
+// Typing settles before it is written; a drag of the domain or the count, and
+// the sweep, replace; the toggles and menus push (Back undoes them).
+watchDebounced(expression, (f) => writeView({ f }), { debounce: 400 });
+watch([domainStart, domainEnd, nHarmonics], ([a, b, n]) => writeView({ a, b, n }));
+watch(sweep, (at) => writeView({ s: at }));
+watch([autoHarmonics, notation, eqMode, showOriginal, showHarmonics], ([auto, nt, m, orig, harm]) =>
+    writeView({ auto, nt, m, orig, harm }, true),
+);
+// Back and Forward (or a link pasted on this page) apply the URL they reach.
+watch(
+    () => route.fullPath,
+    () => {
+        if (isOwnWrite(route.fullPath) || pageOf(route) !== ownPage) return;
+        const v = parseEquationQuery(route.query);
+        const inputChanged =
+            v.f !== expression.value || v.a !== domainStart.value || v.b !== domainEnd.value || v.n !== nHarmonics.value;
+        expression.value = v.f;
+        domainStart.value = v.a;
+        domainEnd.value = v.b;
+        nHarmonics.value = v.n;
+        autoHarmonics.value = v.auto;
+        notation.value = v.nt;
+        eqMode.value = v.m;
+        sweep.value = v.s;
+        showOriginal.value = v.orig;
+        showHarmonics.value = v.harm;
+        if (inputChanged) doCompute();
+    },
+);
+
+// The page's tool set in the app dock (owner, 2026-11-15): Copy LaTeX and
+// About this approximation.
+providePageTools(
+    "Equation tools",
+    ({ hold }) =>
+        h(EquationTools, {
+            hold,
+            latex: activeLatex.value,
+            tier: tier.value,
+            tierTone: tierTone.value,
+            energy: displayEnergy.value,
+        }),
+    () => !!result.value,
+);
 
 // `B-1` — the Notation control used to be inert in the DEFAULT mode: `eqMode`
 // starts at `"sigma"`, `activeLatex` prefers `displayLatexSigma`, and the ONLY
@@ -551,6 +636,10 @@ watchDebounced(
                     <Transition name="status-fade" mode="out-in">
                         <div v-if="plotPoints" class="px-3 py-2 flex-1 min-h-0 flex flex-col eq-plot-card">
                             <ConvergencePlot
+                                ref="plot"
+                                v-model:sweep="sweep"
+                                :show-original="showOriginal"
+                                :show-harmonics="showHarmonics"
                                 class="flex-1"
                                 :original-points="plotPoints"
                                 :coefficients="plotCoefficients"
@@ -596,34 +685,14 @@ watchDebounced(
                                 <EquationModeToggle v-model="eqMode" />
                             </template>
                             <template #actions>
-                                <!-- Info card. F.W1 / FR-COB-19 — the Popover union's hover
-                                     arm; `D·D-B2` names the icon-only trigger. -->
-                                <Popover v-if="tier" trigger="hover" :open-delay="200" :close-delay="150">
-                                    <PopoverTrigger as-child>
-                                        <!-- X-DS F4R · DS-F4R-C4: a control of the stage-tools
-                                             dock (EquationResult's), on the dock's own glyph rung. -->
-                                        <DockControl aria-label="About this approximation">
-                                            <Info />
-                                        </DockControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent class="info-hovercard" side="bottom" :side-offset="6" align="end"
-                                        aria-label="About this approximation">
-                                        <!-- UIA-F-253 — glass Badge on its tone register; the
-                                             energy Metric keeps glass's ink (R-2). -->
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <Badge :tone="tierTone">{{ tier.label }}</Badge>
-                                            <Metric
-                                                :value="formatNumber(displayEnergy * 100, 3)"
-                                                unit="% energy"
-                                                size="sm"
-                                            />
-                                        </div>
-                                        <div class="flex gap-1.5 items-start text-small text-muted-foreground mt-2">
-                                            <Info class="size-3.5 shrink-0 mt-0.5" />
-                                            <p>{{ tier.description }}</p>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
+                                <!-- The stage's floating dock: the plot's tools at the stage
+                                     card's top-right corner (owner, 2026-11-15). -->
+                                <PlotToolsDock
+                                    v-model:show-original="showOriginal"
+                                    v-model:show-harmonics="showHarmonics"
+                                    :variable="seriesVariable"
+                                    @export-plot="plotRef?.exportPng()"
+                                />
                             </template>
                         </EquationResult>
 
@@ -658,6 +727,10 @@ watchDebounced(
                     <!-- Convergence plot -->
                     <div class="px-3 py-2 flex-1 min-h-0 flex flex-col eq-plot-card" :data-stale="stale || undefined">
                         <ConvergencePlot
+                            ref="plot"
+                            v-model:sweep="sweep"
+                            :show-original="showOriginal"
+                            :show-harmonics="showHarmonics"
                             class="flex-1"
                             :original-points="plotPoints ?? result.original_points"
                             :coefficients="plotCoefficients"

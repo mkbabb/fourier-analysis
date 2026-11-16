@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, type Ref } from "vue";
+import { onMounted, onUnmounted, readonly, ref, type Ref } from "vue";
 import {
     IDENTITY_VIEW,
     approach,
@@ -36,6 +36,8 @@ export function useStageGestures(opts: {
     onChange: () => void;
 }) {
     let view: StageView = { ...IDENTITY_VIEW };
+    /** The view is off the fitted drawing (zoomed or panned): the stage dock's Reset view shows. */
+    const offFit = ref(false);
     const pointers = new Map<number, { x: number; y: number }>();
     let pinch: { mid: { x: number; y: number }; dist: number } | null = null;
     let moved = false;
@@ -57,6 +59,7 @@ export function useStageGestures(opts: {
 
     function set(v: StageView) {
         view = v;
+        offFit.value = !isIdentity(v);
         const zoomed = v.k > 1.001;
         const el = opts.el.value;
         if (el && (el.dataset.zoomed !== undefined) !== zoomed) {
@@ -291,5 +294,5 @@ export function useStageGestures(opts: {
         el.removeEventListener("gesturechange", onGesture);
     });
 
-    return { getView: () => view, reset };
+    return { getView: () => view, reset, moved: readonly(offFit) };
 }

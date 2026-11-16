@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { clickCanvasDockExport } from "./fixtures/canvas-dock";
+import { clickCanvasDockExport, openCanvasDock } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
 
@@ -65,11 +65,10 @@ async function openMore(page: Page, seat: "Playback speed" | "Easing") {
     return menu;
 }
 
-/** Expand the canvas dock (the pointer rests on its persistent Edit control). */
+/** Open the canvas dock: owner 2026-11-15, it opens by a press on its folded face. */
 async function expandCanvasDock(page: Page): Promise<void> {
-    await page.getByRole("button", { name: "Edit contour" }).first().hover();
+    await openCanvasDock(page);
     await expect(page.getByRole("button", { name: "View options" }).first()).toBeVisible();
-    await page.waitForTimeout(700);
 }
 
 const WIDTHS = [
@@ -152,14 +151,14 @@ for (const vp of WIDTHS) {
             const trigger = page.getByRole("button", { name: "View options" }).first();
             await trigger.click();
             // X.F.W14V.u1 (UIA-F-79, §0bt): View options is a menu of labelled rows.
-            await expect(page.getByRole("menuitemcheckbox", { name: "Image overlay" })).toBeVisible();
+            await expect(page.getByRole("menuitemcheckbox", { name: "Background image" })).toBeVisible();
             await page.waitForTimeout(400);
             await frame(page, "v76-view-options");
             const g = await page.evaluate(() => {
                 const t = document.querySelector("[aria-label='View options']")!.getBoundingClientRect();
                 // The popover's own plate: the popper wrapper holding its toggles.
                 const c = [...document.querySelectorAll("[role=menuitemcheckbox]")]
-                    .find((e) => e.textContent?.trim() === "Image overlay")!
+                    .find((e) => e.textContent?.trim() === "Background image")!
                     .closest("[data-reka-popper-content-wrapper]")!
                     .getBoundingClientRect();
                 const stage = document.querySelector(".canvas-stage")!.getBoundingClientRect();
@@ -369,7 +368,7 @@ test.describe("F.W14U.vdock — the image overlay in dark (1440)", () => {
         await pause(page);
         await expandCanvasDock(page);
         await page.getByRole("button", { name: "View options" }).first().click();
-        await page.getByRole("menuitemcheckbox", { name: "Image overlay" }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Background image" }).click();
         await page.keyboard.press("Escape");
         await page.waitForTimeout(900);
         await frame(page, "v174-overlay-dark");

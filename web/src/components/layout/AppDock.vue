@@ -52,6 +52,7 @@ import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
 import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
 import { usePageScroll } from "@/composables/usePageScroll";
+import { usePageTools } from "@/composables/usePageTools";
 
 const route = useRoute();
 const router = useRouter();
@@ -231,6 +232,15 @@ function holdDockWhileOpen(open: boolean) {
     if (open) dockRef.value?.keepOpen();
     else dockRef.value?.release();
 }
+/**
+ * Owner, 2026-11-15: "Each page should have a tool set in the main dock". The
+ * page's own seats (`providePageTools`) follow the sections, behind one
+ * separator, rendered in this dock's tree so they are its children.
+ */
+const pageTools = usePageTools();
+const PageToolsOutlet = () => pageTools.value?.render({ hold: holdDockWhileOpen }) ?? null;
+// The page's seats change the run's width, so the label's fit is read again.
+watch(pageTools, () => void fitNavLabel(), { flush: "post" });
 const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLElement | undefined) ?? null);
 </script>
 
@@ -309,6 +319,13 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            <template v-if="pageTools?.shown()">
+                <DockSeparator />
+                <div class="contents" role="group" :aria-label="pageTools.label" data-page-tools>
+                    <PageToolsOutlet />
+                </div>
+            </template>
 
             <DockSeparator />
 

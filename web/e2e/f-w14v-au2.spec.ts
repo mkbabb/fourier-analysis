@@ -19,6 +19,7 @@
  * Served from :3100 against :8000 (BASE_URL), Chromium (CDP insets).
  */
 import { expect, test, type Page } from "@playwright/test";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 
 import { seededViz } from "./fixtures/seed";
 
@@ -68,7 +69,7 @@ test("L2-8 · 844×390: the Export dialog fits the viewport; title and footer re
     await insets(page, L_INSETS);
     await openWorkspace(page);
     await toCanvas(page);
-    await expand(page, ".canvas-controls-dock, .controls-dock-anchor");
+    await openCanvasDock(page);
     await page.getByRole("button", { name: "Export frame" }).first().click();
     const dialog = page.getByRole("dialog", { name: "Export Frame" });
     await expect(dialog).toBeVisible();
