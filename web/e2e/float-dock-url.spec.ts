@@ -182,9 +182,16 @@ for (const vp of [
             await expect(stage.getByRole("button", { name: "Publish to Gallery" })).toBeVisible();
             const eq = stage.getByRole("button", { name: "Equation", exact: true });
             await expect(eq).toBeVisible();
+            // Full seats: the size of the editor's door beside them (and glass's
+            // 44 px coarse cell on a phone).
+            await expect(stage).not.toHaveAttribute("data-morphing", { timeout: 5_000 });
+            await page.waitForTimeout(400);
+            const edit = (await stage.getByRole("button", { name: "Edit contour" }).boundingBox())!;
             for (const name of ["Publish to Gallery", "Equation"]) {
                 const box = (await stage.getByRole("button", { name, exact: true }).boundingBox())!;
-                expect(Math.min(box.width, box.height), `${name}: a full seat`).toBeGreaterThanOrEqual(page.viewportSize()!.width < 640 ? 44 : 40);
+                expect(Math.abs(box.width - edit.width), `${name}: the seat's width`).toBeLessThan(1);
+                expect(Math.abs(box.height - edit.height), `${name}: the seat's height`).toBeLessThan(1);
+                if (page.viewportSize()!.width < 640) expect(Math.min(box.width, box.height), `${name}: the coarse cell`).toBeGreaterThanOrEqual(43.5);
             }
             await eq.click();
             await expect(takeover.locator(".eq-panel")).toBeVisible({ timeout: LOAD });
@@ -297,7 +304,8 @@ test.describe("u1 — URL state (1440)", () => {
         const card = page.locator(".morph-card");
         await expect(card).toBeVisible({ timeout: LOAD });
         await expect(card.locator(".shape-value")).toHaveText("Moon");
-        await expect(card.locator(".demo-info")).toContainText(/\bn\s*8\b|\b8\s*n\b/);
+        // The readout row reads "phase idle · n 8 · shape Moon · total 500 ms".
+        await expect(card.locator(".demo-info")).toContainText(/n\s*8(?!\d)/);
         await expect(page.getByRole("slider", { name: "Low harmonic level" })).toHaveAttribute("aria-valuenow", "3");
         await expect(page.getByRole("slider", { name: "High harmonic level" })).toHaveAttribute("aria-valuenow", "35");
         await expect(page.getByRole("slider", { name: "Settle Out duration (ms)" })).toHaveAttribute("aria-valuenow", "300");

@@ -142,8 +142,12 @@ for (const vp of WIDTHS) {
             for (const name of ["View options", "Export frame", "Exit fullscreen"]) {
                 await expect(dock.locator(`[aria-label='${name}']`), name).toHaveCount(1);
             }
-            // Owner, 2026-11-15: the series panel (Σ) is the page's tool, in the app dock.
-            await expect(dock.locator("[aria-label='Equation']")).toHaveCount(0);
+            // Owner, 2026-11-15: the series panel (Σ) is the page's tool, in the app
+            // dock. Owner, 2026-11-16: the takeover covers the app dock, so there the
+            // page's tools (Publish, Σ) stand on this dock too, outside its fold.
+            for (const name of ["Equation", "Publish to Gallery"]) {
+                await expect(dock.locator(`[aria-label='${name}']`), name).toBeVisible();
+            }
             await expandCanvasDock(page, dialog);
             await dock.locator("[aria-label='Exit fullscreen']").click();
             await expect(dialog).toBeHidden({ timeout: 10_000 });
