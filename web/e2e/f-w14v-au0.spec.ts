@@ -271,7 +271,7 @@ async function walkWorkspace(page: Page, run: Run, tag: string): Promise<void> {
     await openIf(page, run, tag, "view-options", `${anchor} [aria-label='View options']`, "no View options control");
 
     // Owner, 2026-11-15: the series panel (Σ) is the page's tool, in the app dock
-    // (below 40rem an item of its one "Visualize tools" menu seat).
+    // (below 40rem an item of the sections menu, which absorbs the page's tools).
     await pressPageTool(page, "Equation");
     await page.waitForTimeout(1500);
     await shot(page, run, tag, "equation-panel");
