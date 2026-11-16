@@ -176,8 +176,11 @@ test.describe("X·F F.W3 — g4: the scrub session cannot freeze the transport",
         // A UA cancels a pointer for reasons the page does not choose — a scroll
         // gesture claiming the touch, a system dialog, the pointer leaving the
         // surface. reka emits nothing at all for it, and the fork handled it
-        // nowhere, so this gesture froze the transport outright.
-        await row.dispatchEvent("pointercancel", { bubbles: true });
+        // nowhere, so this gesture froze the transport outright. The UA sends the
+        // cancel to the element holding the pointer, inside the slider, and it
+        // bubbles to the Slider root, where glass's `release` (11.1.0) closes the
+        // session; it is dispatched there, not on the row around the slider.
+        await thumb.dispatchEvent("pointercancel", { bubbles: true });
         await expect(row).not.toHaveAttribute("data-scrubbing", "true");
 
         const afterCancel = await valueNow(thumb);

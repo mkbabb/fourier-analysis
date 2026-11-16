@@ -6,10 +6,10 @@
  * X.F.W14V.au2 — A2-FO-L1-16, the consumer half: the component lives in
  * `components/shared/` (its hosts are /visualize's playback dock and
  * /equation's convergence timeline; it sat in `visualization/`, so equation
- * imported across). Its name left glass's namespace at UIA-F-239. The re-derived
- * session below retires, and the file cuts to the axis and the readout, when
- * glass `Slider` publishes the scrub session (the L1-16 glass ask, O-74):
- * ADOPT-AT-LANDING.
+ * imported across). Its name left glass's namespace at UIA-F-239. glass 11.1.0
+ * publishes the scrub session (the L1-16 glass ask, O-74): `Slider` emits
+ * `grab` and `release`, so the re-derived session is retired and this file is
+ * the axis and the readout.
  *
  * X.F.W3 `.a` — `fr-AnimationControls C-4 / M-1 / M-14` ⊕ `fr-GlassTimeline
  * C-9 / L-m3 / L-i4`. This file and `equation/convergence/ConvergenceTimeline.vue`
@@ -26,36 +26,18 @@
  * hardcoded "Timeline". What is re-derived here is the SESSION, over the
  * producer's own `<Slider>`.
  *
- * ── THE SESSION CONTRACT (`fr-GlassTimeline D-11 / L-m2` ⊕ `L-m6`) ──
- * The docblock this replaces stated the FREEZE as the file's contract, and it
- * was wrong three ways: there is no `valueCommit` "trio"; pointerup did NOT
- * close the scrub (reka's `valueCommit` is `hasChanged`-gated, so a null-delta
- * press emitted nothing and left the session open forever, the rAF cancelled
- * and the pause glyph asserting motion); and it named an `onValueCommitStart`
- * emit the primitive has never had. The emit surface is exactly
- * `"update:modelValue"` and `valueCommit`.
- *
- * What is true instead, and is the contract this component now keeps:
- *
- *   OPEN   `pointerdown`, primary button only, on the RESOLVED HOST.
- *   CLOSE  `pointerup` · `pointercancel` · `blur` at the window, and
- *          `lostpointercapture` at the host — UNCONDITIONALLY, so the pair can
- *          never be left half-open by a gesture that moved nothing or by a UA
- *          that cancelled the pointer.
- *
- * The listeners are NATIVE and attach to the element `$el` resolves to
- * (`PD-1`'s channel lock: *native-listeners-on-resolved-host or an upstream
- * session-pair prop, never template bindings on the forwarding chain*). A
- * template `@pointerdown` rides attribute fallthrough across four component
- * boundaries — a channel the producer's own `Slider` docblock declares dead,
- * and whose liveness at this pin is an observation, not a contract.
- *
- * ORDER, and it is provable rather than lucky (`C·C-9`, `rK-22`): reka's own
- * `pointerdown` handler is a template binding inside `SliderImpl`, installed
- * when that child mounts; ours is installed in THIS component's `onMounted`,
- * and a child's mounted hook runs before its parent's. Same element, same
- * phase, registration order ⇒ invocation order `[rekaImpl, consumer]`. Reka
- * seeks first; the session opens on the value it seeked to.
+ * ── THE SESSION (`fr-GlassTimeline D-11 / L-m2` ⊕ `L-m6`) ──
+ * The session is glass's own since 11.1.0. `grab` opens it when a primary
+ * pointer takes the slider, before reka seeks (glass listens in the capture
+ * phase), so the host pauses its clock first and the seek reaches it on the
+ * next frame. `release` closes it on `pointerup`, `pointercancel` or
+ * `lostpointercapture`, unconditionally, so a gesture that moved nothing (reka
+ * emits no `valueCommit` for it) or a pointer the UA cancelled can no longer
+ * leave it half-open. While the hand holds the slider, glass keeps the thumb
+ * under the pointer and ignores the clock's writes to `modelValue`; after the
+ * release it follows the model again from where the hand left it. The native
+ * listeners on the resolved host, and the window `blur` closer, are retired
+ * with the re-derivation.
  *
  * ── THE AXIS (`fr-ConvergenceTimeline C·C-7`, decided here, inside the
  * re-derivation, which is where the row says the decision belongs) ──
@@ -74,7 +56,7 @@
  * float does. The announcement rate is bounded by the quantity, never by the
  * step, which is the whole of the anti-cure's objection.
  */
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from "vue";
+import { computed, onMounted, ref, shallowRef, useTemplateRef } from "vue";
 import { Slider } from "@mkbabb/glass-ui/slider";
 import { Tooltip, TooltipContent } from "@mkbabb/glass-ui/tooltip";
 
@@ -144,16 +126,10 @@ const thumbValueText = computed(() => {
     return fn ? (value: number) => fn(value) : undefined;
 });
 
-// ── The session ──────────────────────────────────────────────────────────
+// ── The session (glass's `grab` / `release`) ─────────────────────────────
 const sliderHost = useTemplateRef<{ $el?: unknown } | HTMLElement | null>("sliderHost");
 
-/**
- * Session state — NOT the `scrub-start` de-dup latch the forks carried. That
- * latch existed because the close was conditional and could fail to fire, and
- * once it had, a single freeze suppressed every subsequent `scrub-start` for the
- * life of the page. This flag is transient by construction: every open registers
- * its own unconditional closers and every close removes them.
- */
+/** True from glass's `grab` to its `release`: the caret's scrub reader and `data-scrubbing`. */
 const scrubbing = ref(false);
 
 function resolveHost(): HTMLElement | null {
@@ -162,6 +138,18 @@ function resolveHost(): HTMLElement | null {
     if (held instanceof HTMLElement) return held;
     const el = held.$el;
     return el instanceof HTMLElement ? el : null;
+}
+
+function onGrab(): void {
+    if (scrubbing.value) return;
+    scrubbing.value = true;
+    emit("scrub-start");
+}
+
+function onRelease(): void {
+    if (!scrubbing.value) return;
+    scrubbing.value = false;
+    emit("scrub-end");
 }
 
 /**
@@ -185,51 +173,8 @@ const hovered = ref(false);
 const focused = ref(false);
 const caretOpen = computed(() => !!thumbEl.value && (hovered.value || focused.value || scrubbing.value));
 
-function endSession(): void {
-    if (!scrubbing.value) return;
-    scrubbing.value = false;
-    detachClosers();
-    emit("scrub-end");
-}
-
-function attachClosers(): void {
-    resolveHost()?.addEventListener("lostpointercapture", endSession);
-    window.addEventListener("pointerup", endSession);
-    window.addEventListener("pointercancel", endSession);
-    window.addEventListener("blur", endSession);
-}
-
-function detachClosers(): void {
-    resolveHost()?.removeEventListener("lostpointercapture", endSession);
-    window.removeEventListener("pointerup", endSession);
-    window.removeEventListener("pointercancel", endSession);
-    window.removeEventListener("blur", endSession);
-}
-
-function beginSession(event: PointerEvent): void {
-    // `fr-GlassTimeline DT-1` — there was no `event.button` filter, so a
-    // secondary or middle click opened a scrub that no pointerup would close.
-    if (event.button !== 0) return;
-    if (scrubbing.value) return;
-    scrubbing.value = true;
-    attachClosers();
-    emit("scrub-start");
-}
-
-/**
- * `fr-GlassTimeline DT-1` — dual mount, no lifecycle. The forks declared no
- * mounted or unmounted hook at all; the session now owns both ends of its own
- * listeners, which is what makes the pair auditable.
- */
 onMounted(() => {
-    const host = resolveHost();
-    host?.addEventListener("pointerdown", beginSession);
-    thumbEl.value = host?.querySelector<HTMLElement>('[role="slider"]') ?? null;
-});
-
-onBeforeUnmount(() => {
-    resolveHost()?.removeEventListener("pointerdown", beginSession);
-    detachClosers();
+    thumbEl.value = resolveHost()?.querySelector<HTMLElement>('[role="slider"]') ?? null;
 });
 
 defineExpose({ scrubbing });
@@ -281,6 +226,8 @@ defineExpose({ scrubbing });
             :aria-label="accessibleName"
             :value-text="thumbValueText"
             class="timeline-slider"
+            @grab="onGrab"
+            @release="onRelease"
         />
     </div>
 </template>
