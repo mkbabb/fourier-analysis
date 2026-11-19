@@ -6,7 +6,7 @@ import { Toaster } from "@mkbabb/glass-ui/toast";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import AppDock from "@/components/layout/AppDock.vue";
 import { usePageScroll } from "@/composables/usePageScroll";
-import { resolveVizColors } from "@/lib/colors";
+import { resolveVizColors, tokenHex } from "@/lib/colors";
 
 /**
  * X.F.W3 `.e` / `fr-App MG-γ` ⊕ `m-2`/`L-3`/`C-7` ⊕ `L-6` — THE ONE DARK-MODE
@@ -53,10 +53,21 @@ import { resolveVizColors } from "@/lib/colors";
  * `.dark` class the only input to the scheme, so an OS flip reaches the palette
  * only through the `"auto"` seed's class flip, and the listener is deleted.
  */
-const stopVizColorSync = useGlobalDark({ initialValue: "auto" }).onFlipSettled(
-    () => resolveVizColors(),
-);
+/**
+ * The browser's chrome (`<meta name="theme-color">`) takes the resolved
+ * theme's page ground, so it follows the site's own toggle and not only the
+ * OS. It is set once here and again after each flip, after the palette.
+ */
+function syncThemeColor(): void {
+    const ground = tokenHex("--background");
+    if (ground) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", ground);
+}
+const stopVizColorSync = useGlobalDark({ initialValue: "auto" }).onFlipSettled(() => {
+    resolveVizColors();
+    syncThemeColor();
+});
 onScopeDispose(stopVizColorSync);
+syncThemeColor();
 
 /**
  * X.F.W3 `.e` / `fr-App MG-alpha` — SCROLL POSITION, RESTORED; and the one

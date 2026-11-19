@@ -40,6 +40,7 @@ import { useEventListener, useMediaQuery, useResizeObserver } from "@vueuse/core
 import { useRoute, useRouter } from "vue-router";
 import { prefetchRoute } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
+import FourierMark from "./FourierMark.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, ExternalLink, Info, SlidersHorizontal } from "@lucide/vue";
 import { sectionNav, type SectionTab } from "@/router/routes";
@@ -484,10 +485,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 </DockControl>
             </template>
 
-            <!-- O16 [49] [57] (owner, 13 Nov): collapsed, the seal is the
-                 Fourier F, the wordmark's own ℱ (not redrawn), on every route. -->
+            <!-- Collapsed, the seal is the fourier mark (FORTY-FIRST B: "an
+                 actual epicycle/series image"), the drawing the tab, the touch
+                 icon and the share card carry, on every route. -->
             <template #collapsed>
-                <span class="dock-summary-mark font-serif-math font-semibold select-none" aria-hidden="true">&#x2131;</span>
+                <FourierMark />
             </template>
         </GlassDock>
         <Teleport v-if="dockEl && rimValue !== null" :to="dockEl">
@@ -561,14 +563,6 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     .logo-text {
         display: inline;
     }
-}
-
-/* The collapsed seal's ℱ: the wordmark's glyph at the dock's glyph rung,
-   in the Fourier amber the section glyphs wear. */
-.dock-summary-mark {
-    font-size: calc(var(--dock-icon-glyph) * 1.6);
-    line-height: 1;
-    color: var(--viz-amber);
 }
 
 /* ── Section faces: the Fourier amber marks the section glyph ── */
