@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { EditorState } from "./lib/editor-state";
-import { ref, computed, watch } from "vue";
+import { ref, computed, shallowRef, watch, onBeforeUnmount } from "vue";
 import { useMediaQuery, useResizeObserver } from "@vueuse/core";
 import type { ContourAsset } from "@/lib/types";
 import {
+    alignClosed,
+    blendClosed,
+    closedPolylinePath,
     closedSplinePath,
     nearestSegmentIndex,
+    sampleClosedSpline,
     simplifyClosedPoints,
     smoothClosedPoints,
     zipPoints,
@@ -130,8 +134,57 @@ const viewBox = computed(() => {
     return `${b.minX - padX} ${-(b.maxY + padY)} ${b.width + padX * 2} ${b.height + padY * 2}`;
 });
 
-// Spline path
-const splinePath = computed(() => closedSplinePath(points.value));
+/*
+ * LAST-TEN F-13: Smooth, Simplify and Reset replaced the outline in one frame.
+ * The outline now travels to its new form: both forms are sampled along the
+ * curve at one count (`sampleClosedSpline`), and the drawn path blends the one
+ * into the other, then hands over to the new form's own spline. A second
+ * press mid-way starts from where the line stands. Under reduced motion the
+ * old line fades out over the new one as it fades in.
+ */
+const MORPH_MS = 220;
+const MORPH_SAMPLES = 512;
+const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+const morph = shallowRef<{ from: Point2D[]; to: Point2D[]; leaving: string } | null>(null);
+/** The morph's eased progress, 0 → 1. */
+const morphT = ref(1);
+let morphFrame = 0;
+
+const easeOut = (t: number) => 1 - (1 - t) ** 3;
+
+/** The outline as it is drawn this frame (mid-morph, the blend). */
+function drawnSamples(): Point2D[] {
+    const m = morph.value;
+    return m ? blendClosed(m.from, m.to, morphT.value) : sampleClosedSpline(points.value, MORPH_SAMPLES);
+}
+
+/** Replace the outline with `next`, drawn as a short travel from the old form. */
+function replaceOutline(next: Point2D[]) {
+    const from = drawnSamples();
+    const leaving = splinePath.value;
+    points.value = next;
+    cancelAnimationFrame(morphFrame);
+    morph.value = { from, to: alignClosed(sampleClosedSpline(next, MORPH_SAMPLES), from), leaving };
+    morphT.value = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+        const t = Math.min(1, (now - start) / MORPH_MS);
+        morphT.value = easeOut(t);
+        if (t < 1) morphFrame = requestAnimationFrame(step);
+        else morph.value = null;
+    };
+    morphFrame = requestAnimationFrame(step);
+}
+onBeforeUnmount(() => cancelAnimationFrame(morphFrame));
+
+// Spline path (mid-morph, the blend between the two forms)
+const splinePath = computed(() => {
+    const m = morph.value;
+    if (m && !reducedMotion.value) return closedPolylinePath(blendClosed(m.from, m.to, morphT.value));
+    return closedSplinePath(points.value);
+});
+/** Under reduced motion, the old line fading out over the new one. */
+const leavingPath = computed(() => (morph.value && reducedMotion.value ? morph.value.leaving : null));
 
 /* UIA-F-86: the dock's Contour trace acted on nothing here. On the editing
    surface it draws the saved outline under the edit, so every change reads
@@ -305,14 +358,14 @@ function deleteSelected() {
 }
 
 function applySmooth() {
-    points.value = smoothClosedPoints(points.value);
+    replaceOutline(smoothClosedPoints(points.value));
     deselect();
     pushHistory();
     emitState();
 }
 
 function applySimplify() {
-    points.value = simplifyClosedPoints(points.value);
+    replaceOutline(simplifyClosedPoints(points.value));
     deselect();
     pushHistory();
     emitState();
@@ -321,7 +374,7 @@ function applySimplify() {
 /* UIA-F-180: Reset wiped the undo history with no confirmation. It is an
    edit like any other now — one history step, so Undo brings the work back. */
 function resetToExtraction() {
-    points.value = zipPoints(props.contour.points.x, props.contour.points.y);
+    replaceOutline(zipPoints(props.contour.points.x, props.contour.points.y));
     deselect();
     pushHistory();
     emitState();
@@ -329,6 +382,8 @@ function resetToExtraction() {
 
 /** Drop the unsaved edits: back to the saved contour, with a fresh history. */
 function discardEdits() {
+    cancelAnimationFrame(morphFrame);
+    morph.value = null;
     initFromContour();
 }
 
@@ -405,12 +460,23 @@ defineExpose({
                     :data-shown="showGhost ? '' : undefined"
                 />
 
+                <!-- Under reduced motion, the replaced line fading out -->
+                <path
+                    v-if="leavingPath"
+                    :d="leavingPath"
+                    fill="none"
+                    stroke="var(--contour-stroke)"
+                    :stroke-opacity="0.85 * (1 - morphT)"
+                    stroke-width="3"
+                    vector-effect="non-scaling-stroke"
+                    class="spline-path-leaving"
+                />
                 <!-- Spline path -->
                 <path
                     :d="splinePath"
                     fill="none"
                     stroke="var(--contour-stroke)"
-                    stroke-opacity="0.85"
+                    :stroke-opacity="leavingPath ? 0.85 * morphT : 0.85"
                     stroke-width="3"
                     vector-effect="non-scaling-stroke"
                     class="spline-path"

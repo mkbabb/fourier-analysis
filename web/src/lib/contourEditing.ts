@@ -51,6 +51,97 @@ export function closedSplinePath(points: Point2D[]): string {
     return parts.join("");
 }
 
+/**
+ * The closed spline `closedSplinePath` draws through `points`, sampled at
+ * `count` points evenly spaced along its length, starting at `points[0]`.
+ *
+ * Two outlines with different point counts (an outline and its simplified
+ * form) have no point-for-point correspondence; sampled this way, both are
+ * the same number of points in the same order along the curve, so one can be
+ * blended into the other (`blendClosed`).
+ */
+export function sampleClosedSpline(points: Point2D[], count: number): Point2D[] {
+    const n = points.length;
+    if (n === 0 || count < 1) return [];
+    if (n < 3) return Array.from({ length: count }, (_, i) => ({ ...points[i % n] }));
+
+    // The spline's segments, each flattened into a few chords.
+    const STEPS = 8;
+    const dense: Point2D[] = [];
+    for (let i = 0; i < n; i++) {
+        const p0 = points[(i - 1 + n) % n];
+        const p1 = points[i];
+        const p2 = points[(i + 1) % n];
+        const p3 = points[(i + 2) % n];
+        const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+        const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+        for (let s = 0; s < STEPS; s++) {
+            const t = s / STEPS;
+            const u = 1 - t;
+            const a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+            dense.push({
+                x: a * p1.x + b * c1.x + c * c2.x + d * p2.x,
+                y: a * p1.y + b * c1.y + c * c2.y + d * p2.y,
+            });
+        }
+    }
+
+    // Cumulative length around the closed polyline, back to the start.
+    const m = dense.length;
+    const at = new Float64Array(m + 1);
+    for (let i = 0; i < m; i++) {
+        const q = dense[i];
+        const r = dense[(i + 1) % m];
+        at[i + 1] = at[i] + Math.hypot(r.x - q.x, r.y - q.y);
+    }
+    const total = at[m];
+    if (total === 0) return Array.from({ length: count }, () => ({ ...dense[0] }));
+
+    const out: Point2D[] = [];
+    let j = 0;
+    for (let k = 0; k < count; k++) {
+        const want = (k / count) * total;
+        while (j < m - 1 && at[j + 1] < want) j++;
+        const span = at[j + 1] - at[j];
+        const f = span > 0 ? (want - at[j]) / span : 0;
+        const q = dense[j];
+        const r = dense[(j + 1) % m];
+        out.push({ x: q.x + (r.x - q.x) * f, y: q.y + (r.y - q.y) * f });
+    }
+    return out;
+}
+
+/**
+ * `to` turned (cyclically) so that it starts at its point nearest `from[0]`:
+ * an edit that drops the first point (Simplify can) still blends each part of
+ * the outline into its own new place, not into a neighbour's.
+ */
+export function alignClosed(to: Point2D[], from: Point2D[]): Point2D[] {
+    if (!to.length || !from.length) return to;
+    const o = from[0];
+    let best = 0;
+    let bestD = Infinity;
+    to.forEach((p, i) => {
+        const d = (p.x - o.x) ** 2 + (p.y - o.y) ** 2;
+        if (d < bestD) {
+            bestD = d;
+            best = i;
+        }
+    });
+    return best === 0 ? to : [...to.slice(best), ...to.slice(0, best)];
+}
+
+/** The point-for-point blend of two equal-length outlines, `t` = 0 at `from`, 1 at `to`. */
+export function blendClosed(from: Point2D[], to: Point2D[], t: number): Point2D[] {
+    return from.map((p, i) => ({ x: p.x + (to[i].x - p.x) * t, y: p.y + (to[i].y - p.y) * t }));
+}
+
+/** A closed polyline through `points` as an SVG path `d`. */
+export function closedPolylinePath(points: Point2D[]): string {
+    if (points.length < 2) return "";
+    return `M${points.map((p) => `${p.x},${p.y}`).join("L")}Z`;
+}
+
 /** Find the nearest segment index for inserting a new point */
 export function nearestSegmentIndex(points: Point2D[], click: Point2D): number {
     let bestDist = Infinity;
