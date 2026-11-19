@@ -25,6 +25,7 @@ import AnimationControls from "./AnimationControls.vue";
 import ContourEditorCanvas from "./ContourEditorCanvas.vue";
 import EditorControlsDock from "./EditorControlsDock.vue";
 import CanvasControlsDock from "./CanvasControlsDock.vue";
+import RestDrawing from "./RestDrawing.vue";
 import CoefficientsPanel from "@/components/shared/CoefficientsPanel.vue";
 import ExportModal from "./ExportModal.vue";
 import FullscreenViewer from "./FullscreenViewer.vue";
@@ -594,6 +595,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <!-- Canon F14 (restraint, C-21): one grid, the page's. The
                              plate's own second grid is gone. -->
                         <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
+                            <!-- The stage at rest is alive (critique V1): an outline
+                                 drawn in circles, the invitation on it. -->
+                            <RestDrawing />
                             <!-- X-DS DS-F4R-C1: the zone draws no frame of its own.
                                  The stage's hairline is the frame, and the stage's
                                  ring is the one drop signal. -->
@@ -1167,6 +1171,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
    frame of its own (X-DS F4R · DS-F4R-C1): the stage's hairline is the frame
    at rest and the stage's ring (below) is the one drop signal. */
 .drop-zone {
+    position: relative;
     flex: 1;
     align-self: stretch;
     display: flex;
