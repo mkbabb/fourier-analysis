@@ -462,6 +462,9 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                     v-model="activeTab"
                 />
             </div>
+            <!-- The search is the Gallery tab's: on Drafts or an admin tab it
+                 leaves by a short fade (and returns the same way), never a cut. -->
+            <Transition name="gallery-search">
             <GallerySearchBar
                 v-if="activeTab === 'gallery'"
                 class="sm:min-w-0 sm:flex-1"
@@ -474,8 +477,13 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 @update:tier-filter="gallery.tierFilter = $event"
                 @update:basis-filter="gallery.basisFilter = $event"
             />
+            </Transition>
         </div>
 
+        <!-- One tab's body at a time, keyed by the tab: the old one leaves
+             quickly and the new one fades in, so a tab change is never a cut. -->
+        <Transition name="gallery-body" mode="out-in">
+        <div :key="activeTab" class="gallery-body flex flex-1 flex-col gap-4">
         <!-- Gallery tab -->
         <template v-if="activeTab === 'gallery'">
             <GalleryAdminBanner
@@ -633,6 +641,8 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
         <template v-if="activeTab === 'tokens' && gallery.adminMode">
             <AdminTokens />
         </template>
+        </div>
+        </Transition>
 
         <GalleryCardModal
             v-if="shownEntry"
@@ -680,3 +690,33 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
         </ConfirmDialog>
     </div>
 </template>
+
+<style scoped>
+/* The search's exit and return: opacity in its held row (beside the tabs from
+   sm up), on glass's tokens. Reduced motion keeps the fade. */
+.gallery-search-enter-active,
+.gallery-search-leave-active {
+    transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.gallery-search-enter-from,
+.gallery-search-leave-to {
+    opacity: 0;
+}
+
+/* A tab's body: the old leaves at the control step, the new fades in at the
+   fast step, in place (a row is never moving under a pointer that arrives to
+   press it). Reduced motion keeps the fade. */
+.gallery-body {
+    min-block-size: 0;
+}
+.gallery-body-leave-active {
+    transition: opacity var(--duration-control) var(--ease-standard);
+}
+.gallery-body-enter-active {
+    transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.gallery-body-enter-from,
+.gallery-body-leave-to {
+    opacity: 0;
+}
+</style>
