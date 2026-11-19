@@ -59,6 +59,7 @@ import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
 import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
 import { usePageScroll } from "@/composables/usePageScroll";
+import { safeGetItem, safeSetItem, safeStorage } from "@/composables/useSafeStorage";
 import { PAGE_TOOLS_COMPACT, usePageTools, type PageToolsForm } from "@/composables/usePageTools";
 
 const route = useRoute();
@@ -124,7 +125,39 @@ function goHome(e: MouseEvent) {
 // DOCK-PRIORITY-OVERFLOW lands, this measure is retired for it.
 const headerRef = useTemplateRef<HTMLElement>("header");
 const dockRef = useTemplateRef<InstanceType<typeof GlassDock>>("dockRef");
+
+/*
+ * LAST-TEN F-08 (the site's half): the fit is read on the
+ * resting expanded run, so the phone's first open showed the name and then
+ * dropped it, the dock snapping 334 -> 283 px inside 450 ms of opening. The
+ * dock now opens at its final width: an open dock never takes the name on
+ * (a name the run turns out to hold waits for the next fold, unseen behind
+ * the seal, and the next open reserves it); it only drops one the run cannot
+ * hold, which a resize can force. The answer is remembered per header width
+ * and run (session storage), so a later page load opens right the first
+ * time; with no answer yet a header under 40rem opens without the name.
+ */
+const FIT_KEY = "fourier_dock_label_fit";
+let fitKey = "";
+function readFitMemory(key: string): boolean | null {
+    const v = safeGetItem(safeStorage("session"), `${FIT_KEY}:${key}`);
+    return v === null ? null : v === "1";
+}
 const showNavLabel = ref(true);
+/** The measured answer the next fold applies, when it grows the run. */
+let pendingLabel: boolean | null = null;
+
+function settleLabel(fits: boolean): void {
+    if (fitKey) safeSetItem(safeStorage("session"), `${FIT_KEY}:${fitKey}`, fits ? "1" : "0");
+    const dock = dockRef.value;
+    // Dropping is never deferred (an overflowing run pans); taking the name on is.
+    if (!fits || !dock?.expanded) {
+        pendingLabel = null;
+        showNavLabel.value = fits;
+    } else if (!showNavLabel.value) {
+        pendingLabel = true;
+    }
+}
 
 /** The dock run: the nearest ancestor that scrolls inline (glass's overflow contract). */
 function scrollPort(el: Element): HTMLElement | null {
@@ -171,6 +204,7 @@ async function fitNavLabel(): Promise<void> {
     const dock = dockRef.value;
     if (!dock?.expanded || dock.isTransitioning) return;
     const run0 = ++fitRun;
+    const shown = showNavLabel.value;
     showNavLabel.value = true;
     let fits = true;
     for (const label of navLabels) {
@@ -185,7 +219,8 @@ async function fitNavLabel(): Promise<void> {
         }
     }
     probeLabel.value = null;
-    showNavLabel.value = fits;
+    showNavLabel.value = shown;
+    settleLabel(fits);
 }
 
 // The header spans the viewport, so its inline size changes only with the
@@ -195,13 +230,24 @@ useResizeObserver(headerRef, (entries) => {
     const width = Math.round(entries[0]?.contentRect.width ?? 0);
     if (width === headerWidth) return;
     headerWidth = width;
+    rememberedFit();
     void fitNavLabel();
 });
+/** The remembered answer for this header and run, applied while the dock is folded. */
+function rememberedFit(): void {
+    fitKey = `${headerWidth}|${pageSeats.value ? "seats" : "-"}|${auth.userSlug ? "in" : "out"}`;
+    if (dockRef.value?.expanded) return;
+    const known = readFitMemory(fitKey);
+    showNavLabel.value = known ?? !matchMedia(PAGE_TOOLS_COMPACT).matches;
+}
 // The web fonts' arrival changes every name's measure, and signing in or out
 // changes the Account seat beside it. A route switch does not: the answer
 // already covers every section's name.
 const auth = useAuthStore();
-watch(() => auth.userSlug, () => void fitNavLabel(), { flush: "post" });
+watch(() => auth.userSlug, () => {
+    rememberedFit();
+    void fitNavLabel();
+}, { flush: "post" });
 // Only an expansion re-measures, once its morph has settled (glass 11 holds a
 // morphing dock at its reserved width, so a fit read on the expand flip itself
 // saw every longer name overflow and dropped the label for good). The ref's
@@ -218,6 +264,15 @@ watch(
     },
     (resting, was) => resting && was === false && void fitNavLabel(),
     { flush: "post" },
+);
+// The fold applies what the open run measured, behind the seal.
+watch(
+    () => dockRef.value?.expanded,
+    (expanded) => {
+        if (expanded !== false || pendingLabel === null) return;
+        showNavLabel.value = pendingLabel;
+        pendingLabel = null;
+    },
 );
 if (typeof document !== "undefined" && document.fonts) {
     useEventListener(document.fonts, "loadingdone", () => void fitNavLabel());
@@ -277,7 +332,10 @@ const PageToolsOutlet = (props: { form: PageToolsForm }) =>
 const pageSeats = computed(() => !compact.value && !!pageTools.value?.shown());
 const pageItems = computed(() => compact.value && !!pageTools.value?.shown());
 // The page's seats change the run's width, so the label's fit is read again.
-watch(pageSeats, () => void fitNavLabel(), { flush: "post" });
+watch(pageSeats, () => {
+    rememberedFit();
+    void fitNavLabel();
+}, { flush: "post" });
 const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLElement | undefined) ?? null);
 </script>
 

@@ -404,6 +404,14 @@ test.describe("s128 UIA-F-128 ⊕ s233 (nav) ⊕ s231 UIA-F-231 — the phone na
         // under a pixel, so the dock rightly drops the label on every route.
         const gutter = await page.evaluate(() => innerWidth - document.body.clientWidth);
         if (gutter > 0) await page.setViewportSize({ width: PHONE.width + gutter, height: PHONE.height });
+        // Under 40rem an open dock never takes the name on (it would widen the
+        // run under the reader): the first open reads the fit, and the fold
+        // applies it, so the name shows from the next open.
+        const dock = page.locator(".app-dock");
+        const b = (await dock.boundingBox())!;
+        await page.mouse.click(3, b.y + b.height + 24);
+        await expect(dock).toHaveClass(/(^|\s)collapsed(\s|$)/, { timeout: 8_000 });
+        await openAppDock(page);
         await expect(trigger, "the phone trigger has no visible label").toHaveText("Gallery", { useInnerText: true });
         await trigger.click();
         const menu = page.getByRole("menu");
