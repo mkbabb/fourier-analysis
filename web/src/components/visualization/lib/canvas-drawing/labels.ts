@@ -60,6 +60,8 @@ export function drawBasisLabels(
      *  the epicycle inset shares. */
     left = 16,
     inks: StageInks = { foreground: "", muted: "", textFace: "" },
+    /** The legend's fade, 0..1 (it rides the layer it names). */
+    alpha = 1,
 ): LabelDrawResult {
     // X.F.W4 · G-F4-VUE-TSC-CLEAN — `width`/`height` were destructured and
     // never read here or in `drawEpicycleLabel`: both routines anchor to the
@@ -90,7 +92,7 @@ export function drawBasisLabels(
         const isHovered = hoveredBasis === basisKey;
 
         ctx.fillStyle = cfg.color;
-        ctx.globalAlpha = isHovered ? 1 : hoveredBasis ? 0.45 : 0.9;
+        ctx.globalAlpha = (isHovered ? 1 : hoveredBasis ? 0.45 : 0.9) * alpha;
 
         // Draw icon — fourier ℱ is slightly larger
         const isFourier = basisName === "fourier";
@@ -115,11 +117,12 @@ export function drawBasisLabels(
     }
 
     // N count: the legend's caption line, under the title rows (DS-F4R-C5).
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = alpha;
     setCaptionInk(ctx, inks);
     ctx.font = CAPTION_FONT;
     ctx.textBaseline = "top";
     ctx.fillText(levelText, xBase, yOff - 4);
+    ctx.globalAlpha = 1;
 
     return { hitRegions };
 }

@@ -131,12 +131,14 @@ export class TrailManager {
         return this.path;
     }
 
-    draw(surface: CanvasSurface, view: ViewTransform, color: string): void {
+    /** Stroke the line at `alpha` (0..1, the layer's fade). */
+    draw(surface: CanvasSurface, view: ViewTransform, color: string, alpha = 1): void {
+        if (alpha <= 0) return;
         const { ctx } = surface;
         const { toScreen } = view;
         ctx.strokeStyle = color;
         ctx.lineWidth = 3.5;
-        ctx.globalAlpha = 0.9;
+        ctx.globalAlpha = 0.9 * Math.min(1, alpha);
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
 

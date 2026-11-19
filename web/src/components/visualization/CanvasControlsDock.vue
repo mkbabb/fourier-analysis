@@ -13,8 +13,7 @@
  * (`WorkspaceTools.vue`); the editor's tools are the editor dock's, which no
  * longer carries a second copy of the view layers.
  *
- * Kept from the prior dock: UIA-F-79 (one labelled view-layers menu),
- * UIA-F-173 (the folded face marks only a view off the default), UIA-F-182
+ * Kept from the prior dock: UIA-F-79 (one labelled layers menu), UIA-F-182
  * (one Export, which opens the export dialog), UIA-F-93 ⊕ F-244 (in the
  * takeover this dock is hosted there and Fullscreen is the way out), UIA-F-94
  * (the folded face is a neutral glyph that names no action).
@@ -22,21 +21,19 @@
  * In the takeover it also hosts the page's own tools (`page-tools` slot),
  * outside the fold: the takeover covers the app dock that holds them.
  */
-import { computed } from "vue";
 import { Download, Ellipsis, Maximize2, Minimize2, Pencil, ScanSearch } from "@lucide/vue";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
-import { StatusDot } from "@mkbabb/glass-ui/status-dot";
 import StageDock from "@/components/shared/StageDock.vue";
 import ViewLayersMenu from "./ViewLayersMenu.vue";
-import { isViewOffDefault } from "./composables/useViewState";
+import type { Layers } from "./lib/layers";
 
-const props = defineProps<{
+defineProps<{
     isEditing: boolean;
     /** The stage is hosted in the fullscreen takeover (X.F.W14V.u1). */
     isFullscreen: boolean;
-    showImageOverlay: boolean;
-    showGhost: boolean;
+    layers: Layers;
+    justThePicture: boolean;
     hasData: boolean;
     hasContour: boolean;
     /** The drawing is zoomed or panned off its fit. */
@@ -47,34 +44,27 @@ const emit = defineEmits<{
     toggleEdit: [];
     /** The control sets the state it shows (idempotent under a replayed click). */
     "update:isFullscreen": [value: boolean];
-    toggleImageOverlay: [];
-    toggleGhost: [];
+    toggleLayer: [layer: keyof Layers];
+    justThePicture: [];
     exportFrame: [];
     resetView: [];
 }>();
-
-const viewOffDefault = computed(() =>
-    isViewOffDefault({ overlay: props.showImageOverlay, ghost: props.showGhost }),
-);
 </script>
 
 <template>
     <StageDock label="Canvas tools">
         <template #collapsed>
-            <span class="summary-glyph-wrap">
-                <Ellipsis class="dock-summary-glyph" aria-hidden="true" />
-                <StatusDot v-if="viewOffDefault" class="view-dot" state="active" size="sm" motion="off" />
-            </span>
+            <Ellipsis class="dock-summary-glyph" aria-hidden="true" />
         </template>
 
         <template #default="{ hold, column }">
             <!-- UIA-F-76 (kept): the menu opens below its trigger, into the canvas. -->
             <ViewLayersMenu
                 side="bottom"
-                :show-image-overlay="showImageOverlay"
-                :show-ghost="showGhost"
-                @toggle-image-overlay="emit('toggleImageOverlay')"
-                @toggle-ghost="emit('toggleGhost')"
+                :layers="layers"
+                :just-the-picture="justThePicture"
+                @toggle="emit('toggleLayer', $event)"
+                @just-the-picture="emit('justThePicture')"
                 @update:open="hold"
             />
             <Tooltip v-if="!isEditing && hasData && viewMoved" text="Reset view" :side="column ? 'left' : 'bottom'">
@@ -116,22 +106,6 @@ const viewOffDefault = computed(() =>
 </template>
 
 <style scoped>
-.summary-glyph-wrap {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* X.F.W14U.d — OA-68: the dot sits just outside the glyph's top-right corner,
-   on the plate, never on the glyph. */
-.summary-glyph-wrap > .view-dot {
-    position: absolute;
-    bottom: 100%;
-    left: 100%;
-    pointer-events: none;
-}
-
 /* X.F.W4 — the folded face's glyph reads the dock's glyph rung and the
    substrate's muted-glyph dial. */
 .dock-summary-glyph {

@@ -12,6 +12,9 @@ import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
 import { useWorkspaceUrl } from "./composables/useWorkspaceUrl";
 import { providePageTools } from "@/composables/usePageTools";
+import { pageOf, useQueryParam, writeParams } from "@/lib/urlState";
+import { formatWorkspaceQuery, WORKSPACE_QUERY } from "./lib/workspace-query";
+import type { StageLink } from "./lib/stage-view";
 import WorkspaceTools from "./WorkspaceTools.vue";
 import { Upload } from "@lucide/vue";
 import { useGalleryStore } from "@/stores/gallery";
@@ -53,8 +56,26 @@ const anim = useAnimationStore();
 const gallery = useGalleryStore();
 const auth = useAuthStore();
 
-// ── View state (editing, ghost, overlay, the series panel, fullscreen — in the URL) ──
-const { isEditing, showGhost, showImageOverlay, showEquation, showFullscreen } = useViewState();
+// ── View state (editing, the four layers, the series panel, fullscreen — in the URL) ──
+const {
+    isEditing, showGhost, showImageOverlay, showLine, showCircles, showEquation, showFullscreen,
+    layers, justThePicture, toggleJustPicture,
+} = useViewState();
+const LAYER_REFS = { picture: showImageOverlay, outline: showGhost, line: showLine, circles: showCircles };
+
+// ── The view (zoom and centre) in the URL, by replace, written as a gesture ends ──
+const ownPage = pageOf(route);
+const linkZ = useQueryParam("z", WORKSPACE_QUERY.z);
+const linkC = useQueryParam("c", WORKSPACE_QUERY.c);
+const linkView = computed<StageLink | null>(() =>
+    linkZ.value !== null && linkC.value !== null ? { z: linkZ.value, c: linkC.value } : null,
+);
+function writeLinkView(link: StageLink | null): void {
+    writeParams(router, formatWorkspaceQuery({ z: link?.z ?? null, c: link?.c ?? null }), false, ownPage);
+}
+function toggleLayer(layer: keyof typeof LAYER_REFS): void {
+    LAYER_REFS[layer].value = !LAYER_REFS[layer].value;
+}
 
 // ── Image drag-and-drop ──
 const { isDragging: globalDragging, rejection: dropRejection, handleDrop: globalDrop, handleDragOver: globalDragOver, handleDragEnter: globalDragEnter, handleDragLeave: globalDragLeave, handleFileSelect: globalFileSelect, preview: uploadPreview, clearPreview: clearUploadPreview } =
@@ -88,10 +109,13 @@ const activeBases = ref<string[]>(
 );
 
 // ── Workspace loading, contour settings, auto-play ──
-// The budget, rate, easing and paused moment a link names (owner, 2026-11-15).
-let readUrlTime: () => number | null = () => null;
-const { nHarmonics, nPoints } = useWorkspaceLoader(activeBases, () => readUrlTime());
-readUrlTime = useWorkspaceUrl(nHarmonics).initialTime;
+// The budget, rate, easing, bases and paused moment a link names (owner, 2026-11-15).
+const urlLink = { time: (): number | null => null, bases: (): string[] | null => null };
+const { nHarmonics, nPoints } = useWorkspaceLoader(activeBases, {
+    time: () => urlLink.time(),
+    bases: () => urlLink.bases(),
+});
+Object.assign(urlLink, useWorkspaceUrl(nHarmonics, activeBases).link);
 
 // ── Persist animation settings to workspace on change ──
 watchDebounced(
@@ -577,7 +601,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         :class="{ 'panel-inactive': hasSidebar && mobileView !== 'canvas' && tabbed }">
                         <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
-                                :show-ghost="showGhost" :show-image-overlay="showImageOverlay" />
+                                :show-ghost="showGhost" :show-image-overlay="showImageOverlay"
+                                :show-line="showLine" :show-circles="showCircles"
+                                :link-view="linkView" @update:link-view="writeLinkView" />
                         </div>
                         <!-- X.F.W13.c — the ONE upload affordance (owner frame 4). The
                              sidebar's "Drop or click to upload — PNG/JPG/SVG ≤ 10 MB" card
@@ -672,16 +698,16 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                             <CanvasControlsDock
                                 :is-editing="isEditing"
                                 v-model:is-fullscreen="showFullscreen"
-                                :show-image-overlay="showImageOverlay"
-                                :show-ghost="showGhost"
+                                :layers="layers"
+                                :just-the-picture="justThePicture"
                                 :has-data="!!hasData"
                                 :has-contour="!!store.contour"
                                 :view-moved="!!canvasComponent?.viewMoved"
                                 @toggle-edit="toggleEdit"
                                 @export-frame="handleExportFrame"
                                 @reset-view="canvasComponent?.resetView()"
-                                @toggle-image-overlay="showImageOverlay = !showImageOverlay"
-                                @toggle-ghost="showGhost = !showGhost"
+                                @toggle-layer="toggleLayer"
+                                @just-the-picture="toggleJustPicture"
                             >
                                 <!-- The takeover covers the app dock, so the page's
                                      tools stand on this dock there (item 2). -->

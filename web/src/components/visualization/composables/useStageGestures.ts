@@ -34,6 +34,8 @@ export function useStageGestures(opts: {
     fadeEl: () => HTMLElement | undefined;
     size: () => { w: number; h: number };
     onChange: () => void;
+    /** A gesture (a drag, a pinch, the wheel, a double-tap) has come to rest. */
+    onSettle?: () => void;
 }) {
     let view: StageView = { ...IDENTITY_VIEW };
     /** The view is off the fitted drawing (zoomed or panned): the stage dock's Reset view shows. */
@@ -114,6 +116,7 @@ export function useStageGestures(opts: {
         const done = !target && Math.hypot(velocity.x, velocity.y) < 0.01 && isAtRest(v, w, h, 0.05);
         set(done ? clampView(v, w, h) : v);
         raf = done ? 0 : requestAnimationFrame(step);
+        if (done) opts.onSettle?.();
     }
 
     /** Fade the canvas out, apply `v`, fade it back: the reduced-motion settle. */
@@ -125,6 +128,7 @@ export function useStageGestures(opts: {
             set(v);
             el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: "ease-out" });
             out.cancel();
+            opts.onSettle?.();
         };
     }
 
@@ -133,6 +137,7 @@ export function useStageGestures(opts: {
         const { w, h } = opts.size();
         if (reduced()) {
             if (!isAtRest(view, w, h)) fadeTo(clampView(view, w, h));
+            else opts.onSettle?.();
             return;
         }
         const now = performance.now();
@@ -241,7 +246,7 @@ export function useStageGestures(opts: {
         const p = local(e);
         const { w, h } = opts.size();
         const next = clampView(zoomAbout(target ?? view, factor, p.x, p.y), w, h);
-        if (reduced()) { stopLoop(); set(next); return; }
+        if (reduced()) { stopLoop(); set(next); opts.onSettle?.(); return; }
         velocity = { x: 0, y: 0 };
         target = next;
         startLoop();
@@ -294,5 +299,12 @@ export function useStageGestures(opts: {
         el.removeEventListener("gesturechange", onGesture);
     });
 
-    return { getView: () => view, reset, moved: readonly(offFit) };
+    /** Put the view at `v` (a link's view, read back), held inside its limits; no settle is reported. */
+    function setView(v: StageView) {
+        stopLoop();
+        const { w, h } = opts.size();
+        set(clampView(v, w, h));
+    }
+
+    return { getView: () => view, setView, reset, moved: readonly(offFit) };
 }

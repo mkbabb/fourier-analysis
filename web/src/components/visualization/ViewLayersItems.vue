@@ -1,23 +1,21 @@
 <script setup lang="ts">
 /**
- * X.F.W14V.r1 — F-W14V.md addendum (h) item 1 (COHESION §0eb): the view-layer
- * ROWS, lifted out of `ViewLayersMenu.vue` so that one set of rows serves both
- * of its mounts: the View options menu on each dock (≥ sm on the editor dock,
- * every width on the canvas dock) and, below sm, the View options submenu
- * inside the editor dock's More editor tools menu. One state, one set of rows,
- * one order (UIA-F-79 standing). A row toggles without closing the menu.
+ * The layer rows: Picture, Outline, Line and Circles, each on its own, then
+ * "Just the picture" (the drawn layers hidden, pressed again they return).
+ * A row toggles its layer and keeps the menu open.
  */
-import { ImageIcon, Spline } from "@lucide/vue";
-import { DropdownMenuCheckboxItem, DropdownMenuLabel } from "@mkbabb/glass-ui/menu";
+import { CircleDashed, Focus, ImageIcon, Orbit, Spline } from "@lucide/vue";
+import { DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@mkbabb/glass-ui/menu";
+import type { Layers } from "./lib/layers";
 
 defineProps<{
-    showImageOverlay: boolean;
-    showGhost: boolean;
+    layers: Layers;
+    justThePicture: boolean;
 }>();
 
 const emit = defineEmits<{
-    toggleImageOverlay: [];
-    toggleGhost: [];
+    toggle: [layer: keyof Layers];
+    justThePicture: [];
 }>();
 
 /** A row toggles its layer and keeps the menu open. */
@@ -27,21 +25,25 @@ function keepOpen(e: Event) {
 </script>
 
 <template>
-    <DropdownMenuLabel>View layers</DropdownMenuLabel>
-    <DropdownMenuCheckboxItem
-        :model-value="showImageOverlay"
-        @select="keepOpen"
-        @update:model-value="emit('toggleImageOverlay')"
-    >
+    <DropdownMenuCheckboxItem :model-value="layers.picture" @select="keepOpen" @update:model-value="emit('toggle', 'picture')">
         <ImageIcon aria-hidden="true" />
-        <span>Background image</span>
+        <span>Picture</span>
     </DropdownMenuCheckboxItem>
-    <DropdownMenuCheckboxItem
-        :model-value="showGhost"
-        @select="keepOpen"
-        @update:model-value="emit('toggleGhost')"
-    >
+    <DropdownMenuCheckboxItem :model-value="layers.outline" @select="keepOpen" @update:model-value="emit('toggle', 'outline')">
+        <CircleDashed aria-hidden="true" />
+        <span>Outline</span>
+    </DropdownMenuCheckboxItem>
+    <DropdownMenuCheckboxItem :model-value="layers.line" @select="keepOpen" @update:model-value="emit('toggle', 'line')">
         <Spline aria-hidden="true" />
-        <span>Original outline</span>
+        <span>Line</span>
+    </DropdownMenuCheckboxItem>
+    <DropdownMenuCheckboxItem :model-value="layers.circles" @select="keepOpen" @update:model-value="emit('toggle', 'circles')">
+        <Orbit aria-hidden="true" />
+        <span>Circles</span>
+    </DropdownMenuCheckboxItem>
+    <DropdownMenuSeparator />
+    <DropdownMenuCheckboxItem :model-value="justThePicture" @select="keepOpen" @update:model-value="emit('justThePicture')">
+        <Focus aria-hidden="true" />
+        <span>Just the picture</span>
     </DropdownMenuCheckboxItem>
 </template>

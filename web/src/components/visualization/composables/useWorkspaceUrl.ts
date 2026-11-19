@@ -4,22 +4,25 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
 import { DEFAULT_ANIMATION_EASING } from "@/lib/easings";
+import { sameBases, withEpicycles, type BasisKey } from "@/lib/basis";
 import { isOwnWrite, pageOf, writeParams } from "@/lib/urlState";
 import { formatWorkspaceQuery, parseWorkspaceQuery } from "../lib/workspace-query";
 
 /**
  * The workspace's tuned state in the URL (`lib/workspace-query.ts`): the
- * harmonic budget `n`, the paused moment `t`, the rate `speed` and the
- * `ease`. Each is written by replace, and only off the piece's own value: the
- * piece (the picture the path names) brings its saved budget, rate and easing,
- * captured once as it loads, and the URL carries what this view changed.
+ * harmonic budget `n`, the paused moment `t`, the rate `speed`, the `ease`
+ * and the active bases `basis`. Each is written only off the piece's own
+ * value: the piece (the picture the path names) brings its saved budget,
+ * rate, easing and bases, captured once as it loads, and the URL carries what
+ * this view changed. The bases are a push (a choice Back undoes); the rest
+ * are replaces.
  *
  * A link read cold applies over the piece as it lands; Back and Forward apply
  * the URL they arrive at. The moment `t` is written only while the reader
  * holds the drawing paused (absent, it plays), so a running clock never
  * writes the URL.
  */
-export function useWorkspaceUrl(nHarmonics: Ref<number>) {
+export function useWorkspaceUrl(nHarmonics: Ref<number>, activeBases: Ref<string[]>) {
     const route = useRoute();
     const router = useRouter();
     const store = useWorkspaceStore();
@@ -29,7 +32,12 @@ export function useWorkspaceUrl(nHarmonics: Ref<number>) {
     const write = (raws: Record<string, string | undefined>) => writeParams(router, raws, false, own);
 
     /** The piece's own values, captured as it loads (null until then). */
-    const base = { n: null as number | null, speed: null as number | null, ease: null as string | null };
+    const base = {
+        n: null as number | null,
+        speed: null as number | null,
+        ease: null as string | null,
+        basis: null as string[] | null,
+    };
     let baseFor: string | null = null;
     const pieceKey = () => `${store.visualizationSlug ?? ""}|${store.imageSlug ?? ""}`;
 
@@ -46,6 +54,8 @@ export function useWorkspaceUrl(nHarmonics: Ref<number>) {
             base.n = cs?.n_harmonics ?? CONTOUR_DEFAULTS.n_harmonics;
             base.speed = as?.speed ?? 1;
             base.ease = as?.easing ?? DEFAULT_ANIMATION_EASING;
+            // The bases the piece opens with (the loader's first-drawing rule).
+            base.basis = withEpicycles(as?.active_bases ?? ["fourier-epicycles"]);
             applyUrl();
         },
         { immediate: true, flush: "post" },
@@ -59,6 +69,11 @@ export function useWorkspaceUrl(nHarmonics: Ref<number>) {
         }
         if (base.speed !== null) anim.speed = v.speed ?? base.speed;
         if (base.ease !== null) anim.easing = (v.ease ?? base.ease) as typeof anim.easing;
+        // Before the first drawing the loader applies the link's bases itself.
+        if (base.basis !== null && (store.epicycleData || store.basesData)) {
+            const b = v.basis ?? base.basis;
+            if (!sameBases(activeBases.value, b)) activeBases.value = [...b];
+        }
     }
 
     // Back and Forward (or any navigation to a different query on this page).
@@ -90,6 +105,15 @@ export function useWorkspaceUrl(nHarmonics: Ref<number>) {
             write(formatWorkspaceQuery({ ease: e === base.ease ? null : e }));
         },
     );
+    watch(
+        activeBases,
+        (b) => {
+            if (base.basis === null || (!store.epicycleData && !store.basesData)) return;
+            const raws = formatWorkspaceQuery({ basis: sameBases(b, base.basis) ? null : (b as BasisKey[]) });
+            writeParams(router, raws, true, own);
+        },
+        { deep: true },
+    );
     // The paused moment: held by the reader, not playing, not mid-scrub.
     // A scrub writes once, as the hand lets go.
     watch(
@@ -109,10 +133,11 @@ export function useWorkspaceUrl(nHarmonics: Ref<number>) {
         }
     }
 
-    /** The URL's paused moment, read as the first drawing lands (the loader asks). */
-    function initialTime(): number | null {
-        return url().t;
-    }
+    /** What the URL names, read as the first drawing lands (the loader asks). */
+    const link = {
+        time: (): number | null => url().t,
+        bases: (): string[] | null => url().basis,
+    };
 
-    return { initialTime };
+    return { link };
 }

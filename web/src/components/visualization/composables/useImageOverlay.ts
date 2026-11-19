@@ -9,8 +9,14 @@ const MAX_CACHE_SIZE = 10;
 /** The picture's strength under the drawing: a wash, so the line reads over it. */
 export const PICTURE_WASH = 0.22;
 
+/** A picture twice: as it is, and keyed by its darkness (the wash under a drawing). */
+interface Picture {
+    whole: HTMLCanvasElement;
+    keyed: HTMLCanvasElement;
+}
+
 // Module-scoped cache survives component unmount/remount (e.g. gallery → visualizer)
-const cache = new Map<string, HTMLCanvasElement>();
+const cache = new Map<string, Picture>();
 
 /**
  * Luminance-key the loaded overlay once (UIA-F-174): each pixel's alpha is
@@ -18,7 +24,11 @@ const cache = new Map<string, HTMLCanvasElement>();
  * overlay is drawn over a transparent canvas, where a blend mode has no
  * backdrop to act on; the key is the multiply the canvas cannot do.
  */
-function luminanceKeyed(img: HTMLImageElement): HTMLCanvasElement {
+function luminanceKeyed(img: HTMLImageElement): Picture {
+    const whole = document.createElement("canvas");
+    whole.width = img.naturalWidth;
+    whole.height = img.naturalHeight;
+    whole.getContext("2d")!.drawImage(img, 0, 0);
     const out = document.createElement("canvas");
     out.width = img.naturalWidth;
     out.height = img.naturalHeight;
@@ -31,7 +41,7 @@ function luminanceKeyed(img: HTMLImageElement): HTMLCanvasElement {
         px[i + 3] = Math.round(px[i + 3] * (1 - lum));
     }
     ctx.putImageData(data, 0, 0);
-    return out;
+    return { whole, keyed: out };
 }
 
 /**
@@ -52,7 +62,7 @@ function resizeFromBounds(store: ReturnType<typeof useWorkspaceStore>): number {
 export function useImageOverlay(onImageLoaded?: () => void) {
     const store = useWorkspaceStore();
     const loading = ref(false);
-    let currentImage: HTMLCanvasElement | null = null;
+    let currentImage: Picture | null = null;
 
     function cacheKey(): string | null {
         if (!store.imageSlug) return null;
@@ -106,8 +116,14 @@ export function useImageOverlay(onImageLoaded?: () => void) {
         { immediate: true },
     );
 
-    /** Draw the picture at `strength` (0..1, the layer's fade) of its wash. */
-    function drawImageOverlay(s: CanvasSurface, view: ViewTransform, strength = 1) {
+    /**
+     * Draw the picture at `strength` (0..1, the layer's fade). `under` is how
+     * much drawing is over it (0..1, the strongest drawn layer): under a
+     * drawing it is the keyed wash; with nothing drawn it is the whole
+     * picture at full strength. Between the two it crosses over, in the
+     * drawing's own transform, so nothing moves.
+     */
+    function drawImageOverlay(s: CanvasSurface, view: ViewTransform, strength = 1, under = 1) {
         if (!currentImage || strength <= 0) return;
 
         const bounds = store.contour?.image_bounds;
@@ -119,9 +135,17 @@ export function useImageOverlay(onImageLoaded?: () => void) {
         const boxH = sy2 - sy1;
         if (boxW <= 0 || boxH <= 0) return;
 
+        const k = Math.min(1, strength);
+        const u = Math.min(1, Math.max(0, under));
         s.ctx.save();
-        s.ctx.globalAlpha = PICTURE_WASH * Math.min(1, strength);
-        s.ctx.drawImage(currentImage, sx1, sy1, boxW, boxH);
+        if (u > 0) {
+            s.ctx.globalAlpha = PICTURE_WASH * k * u;
+            s.ctx.drawImage(currentImage.keyed, sx1, sy1, boxW, boxH);
+        }
+        if (u < 1) {
+            s.ctx.globalAlpha = k * (1 - u);
+            s.ctx.drawImage(currentImage.whole, sx1, sy1, boxW, boxH);
+        }
         s.ctx.restore();
     }
 

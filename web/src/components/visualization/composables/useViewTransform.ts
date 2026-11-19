@@ -74,5 +74,11 @@ export function useViewTransform() {
         };
     }
 
-    return { getViewTransform };
+    /** The drawing's size in its own units (the larger side of its box): the link's unit for the view's centre. */
+    function extent(): number {
+        const bbox = dataBbox.value;
+        return bbox ? Math.max(bbox.maxX - bbox.minX, bbox.maxY - bbox.minY) || 1 : 1;
+    }
+
+    return { getViewTransform, extent };
 }

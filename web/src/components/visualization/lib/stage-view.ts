@@ -108,3 +108,30 @@ export function composeView(base: ViewTransform, v: StageView, w: number, h: num
         },
     };
 }
+
+/**
+ * The view as a link carries it (`z`, `c` in the URL): the zoom, and the point
+ * at the stage's centre as an offset from the drawing's centre in units of
+ * the drawing's size (`extent`, y up), so a link reads the same on any screen.
+ * The fit is no link (null). `fitScale` is the fitted transform's scale.
+ */
+export interface StageLink {
+    z: number;
+    c: [number, number];
+}
+
+export function linkOfView(v: StageView, w: number, h: number, fitScale: number, extent: number): StageLink | null {
+    if (isIdentity(v)) return null;
+    const px = (w / 2 - v.x) / v.k;
+    const py = (h / 2 - v.y) / v.k;
+    const unit = fitScale * extent || 1;
+    return { z: v.k, c: [(px - w / 2) / unit, -(py - h / 2) / unit] };
+}
+
+/** The view a link names, on this stage (the inverse of `linkOfView`). */
+export function viewOfLink(link: StageLink, w: number, h: number, fitScale: number, extent: number): StageView {
+    const unit = fitScale * extent;
+    const px = w / 2 + link.c[0] * unit;
+    const py = h / 2 - link.c[1] * unit;
+    return { k: link.z, x: w / 2 - px * link.z, y: h / 2 - py * link.z };
+}

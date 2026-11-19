@@ -360,11 +360,15 @@ export function drawTipDot(
     view: ViewTransform,
     tipX: number,
     tipY: number,
+    /** The circles layer's fade, 0..1. */
+    alpha = 1,
 ): void {
     const { ctx } = surface;
     const [sx, sy] = view.toScreen(tipX, tipY);
     ctx.beginPath();
     ctx.arc(sx, sy, 9, 0, Math.PI * 2);
     ctx.fillStyle = VIZ_COLORS.fourier;
+    ctx.globalAlpha = Math.min(1, alpha);
     ctx.fill();
+    ctx.globalAlpha = 1;
 }

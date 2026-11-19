@@ -11,7 +11,9 @@ import {
     clampView,
     composeView,
     isAtRest,
+    linkOfView,
     overshoot,
+    viewOfLink,
     resistance,
     zoomAbout,
 } from "./stage-view";
@@ -73,5 +75,33 @@ describe("composeView", () => {
         expect(sx).toBeCloseTo(W / 2, 6);
         expect(sy).toBeCloseTo(H / 2, 6);
         expect(c.scale).toBe(20);
+    });
+});
+
+describe("the view in a link", () => {
+    it("the fit is no link", () => {
+        expect(linkOfView(IDENTITY_VIEW, W, H, 2, 300)).toBeNull();
+    });
+
+    it("a zoomed view round-trips through its link", () => {
+        const v = clampView(zoomAbout(IDENTITY_VIEW, 3, 500, 200), W, H);
+        const link = linkOfView(v, W, H, 2, 300)!;
+        expect(link.z).toBeCloseTo(3, 9);
+        const back = viewOfLink(link, W, H, 2, 300);
+        expect(back.k).toBeCloseTo(v.k, 9);
+        expect(back.x).toBeCloseTo(v.x, 6);
+        expect(back.y).toBeCloseTo(v.y, 6);
+    });
+
+    it("names the same point of the drawing on a stage of another size", () => {
+        // The point at the stage's centre, in the drawing's units, is the same on both stages.
+        const link = { z: 2, c: [0.1, -0.05] as [number, number] };
+        for (const [w, h, scale] of [[800, 600, 2], [390, 700, 1.2]] as const) {
+            const v = viewOfLink(link, w, h, scale, 300);
+            const px = (w / 2 - v.x) / v.k;
+            const py = (h / 2 - v.y) / v.k;
+            expect((px - w / 2) / scale / 300).toBeCloseTo(0.1, 9);
+            expect(-(py - h / 2) / scale / 300).toBeCloseTo(-0.05, 9);
+        }
     });
 });
