@@ -600,11 +600,7 @@ defineExpose({
     pointer-events: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .control-point {
-        transition: none;
-    }
-}
+/* The handles' arrival is a fade already, so reduced motion keeps it. */
 
 /* X-DS pass 1 · F1-02 — the spline's drop-shadow glow and the infinite
    hover shimmer that pulsed it are DELETED. The path is a flat stroke. */

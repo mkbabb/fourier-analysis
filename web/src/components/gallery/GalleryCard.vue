@@ -426,10 +426,16 @@ const created = useTimeAgo(() => props.entry.created_at);
     100% { transform: scale(1); }
 }
 
+/* Reduced motion: no bounce; the heart fades into its pressed ink instead. */
 @media (prefers-reduced-motion: reduce) {
     .like-btn[aria-pressed="true"] :deep(svg) {
-        animation: none;
+        animation: like-fade var(--duration-fast) var(--ease-standard);
     }
+}
+
+@keyframes like-fade {
+    from { opacity: 0.35; }
+    to { opacity: 1; }
 }
 
 /* X.F.W14V.au4 — A2-FO-L3-4: the compact card (the phone's two-column grid,

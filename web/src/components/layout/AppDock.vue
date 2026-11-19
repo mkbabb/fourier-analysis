@@ -583,9 +583,10 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     transform: rotate(180deg);
 }
 
+/* Reduced motion: the chevron still turns, on the shortest clock, never in one frame. */
 @media (prefers-reduced-motion: reduce) {
     .nav-trigger-chevron {
-        transition: none;
+        transition-duration: var(--duration-instant);
     }
 }
 

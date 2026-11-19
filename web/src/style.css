@@ -435,10 +435,16 @@ article.paper-article {
     to { opacity: 1; transform: translateX(0); }
 }
 
+/* Reduced motion: the panel fades in without its travel (a fade, never a cut). */
 @media (prefers-reduced-motion: reduce) {
     [data-state="active"][role="tabpanel"] {
-        animation: none;
+        animation-name: tab-fade-in;
     }
+}
+
+@keyframes tab-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* X.F.W14V.au3 — A2-FO-L1-13: the D.W4.a `.cartoon-card` shim (the
@@ -754,10 +760,11 @@ article.paper-article {
     transform: translateY(-4px);
 }
 
+/* Reduced motion: no travel, and the fade stays (a fade, never a cut). */
 @media (prefers-reduced-motion: reduce) {
     .slide-down-enter-active,
     .slide-down-leave-active {
-        transition: none;
+        transition-property: opacity;
     }
     .slide-down-enter-from,
     .slide-down-leave-to {

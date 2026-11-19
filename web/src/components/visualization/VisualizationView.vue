@@ -1352,11 +1352,12 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     opacity: 0;
     transform: translateX(var(--enter-overlay-slide, 0.5rem));
 }
-/* Reduced motion: the column does not travel, and the content fades rather
-   than cutting in or out (owner law: a fade, never a cut). */
+/* Reduced motion: the column opens on a short tween, not its spring, and the
+   content fades rather than cutting in or out (owner law: a fade, never a cut). */
 @media (prefers-reduced-motion: reduce) {
     :deep(.viz-configurator > [data-slot="configurator"]) {
-        transition: none;
+        transition-duration: var(--duration-fast);
+        transition-timing-function: var(--ease-standard);
     }
     .viz-sidebar-enter-active,
     .viz-sidebar-leave-active {

@@ -299,10 +299,14 @@ function toggleDrawer() {
     line-height: 1.25;
 }
 
+/* Reduced motion: the rail still opens and closes on a tween, a short one,
+   and its list leaves when that tween ends (never a cut). */
 @media (prefers-reduced-motion: reduce) {
-    .paper-sidebar,
+    .paper-sidebar {
+        transition-duration: var(--duration-fast);
+    }
     .paper-sidebar[data-state="closed"] .sidebar-nav {
-        transition: none;
+        transition-delay: var(--duration-fast);
     }
 }
 
