@@ -569,7 +569,6 @@ providePageTools(
             tierTone: tierTone.value,
             energy: displayEnergy.value,
         }),
-    () => !!result.value,
 );
 
 // `B-1` — the Notation control used to be inert in the DEFAULT mode: `eqMode`

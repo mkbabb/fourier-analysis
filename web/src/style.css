@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@mkbabb/glass-ui/styles";
+@import "./styles/workspace.css";
 
 /* X.F.W4 / SP-6 — THE ONE CASCADE DECISION (FR-AH-11 + MISS-3 ⊕ FMD-13 ⊕
    FMD-N3 ⊕ FMD-27, adjudicated cure-shape FR-AH-30).

@@ -1,0 +1,43 @@
+/*
+ * The stage-plus-inspector routes (`/w`, `/v`, `/equation`): one page shape,
+ * one file. A view puts `class="workspace-host"` on its root beside the
+ * `:data-form` it already sets (`useWorkspaceForm`: split, rail or sheet) and
+ * `:data-pane` (`useWorkspacePane`: canvas or controls). Its direct child is
+ * glass's `Configurator` (`.configurator-shell`). Everything else here is this
+ * file's: the gutters, the foot, the page radius and the sheet form's panes.
+ * The split and rail layouts of each region stay with their view.
+ */
+
+.workspace-host {
+    /* The page gutter at every width. It is the host's padding, not the
+       shell's margin: glass's shell floor `min-inline-size: min(20rem, 100%)`
+       reads 100% off the containing box, so a gutter set as margin pushed a
+       column under 20rem plus two gutters past the right edge. */
+    --workspace-gutter: var(--page-gutter);
+    padding-inline: var(--workspace-gutter);
+}
+
+.workspace-host > .configurator-shell {
+    flex: 1;
+    min-height: 0;
+    margin-block: 0.25rem;
+}
+
+@media (min-width: 1024px) {
+    .workspace-host > .configurator-shell {
+        margin-block: 0.5rem 0.75rem;
+    }
+}
+
+/* The sheet form: one column the shell cannot outgrow (as the shell grid's
+   one `auto` track item its automatic minimum was its content's
+   min-content), the stage filling it. */
+.workspace-host[data-form="sheet"] > .configurator-shell > [data-slot="configurator"] {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.workspace-host[data-form="sheet"] > .configurator-shell > [data-slot="configurator"] > .configurator-stage {
+    flex: 1 1 0%;
+    min-height: 0;
+}
