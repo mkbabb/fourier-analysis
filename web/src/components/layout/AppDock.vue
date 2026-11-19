@@ -41,7 +41,7 @@ import { useRoute, useRouter } from "vue-router";
 import { prefetchRoute } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
-import { ChevronDown, Compass, ExternalLink, Info } from "@lucide/vue";
+import { ChevronDown, Compass, ExternalLink, Info, SlidersHorizontal } from "@lucide/vue";
 import { sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
@@ -61,6 +61,8 @@ import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
 import { usePageScroll } from "@/composables/usePageScroll";
 import { safeGetItem, safeSetItem, safeStorage } from "@/composables/useSafeStorage";
 import { PAGE_TOOLS_COMPACT, usePageTools, type PageToolsForm } from "@/composables/usePageTools";
+import { useDockPane } from "@/composables/useWorkspacePane";
+import { useDockProgress } from "@/composables/useDockProgress";
 
 const route = useRoute();
 const router = useRouter();
@@ -317,20 +319,32 @@ function holdDockWhileOpen(open: boolean) {
 /**
  * Owner, 2026-11-15: "Each page should have a tool set in the main dock". The
  * page's own seats (`providePageTools`) follow the sections, behind one
- * separator, rendered in this dock's tree so they are its children.
+ * separator, rendered in this dock's tree so they are its children. A page
+ * declares them in setup, so they are here from its first frame.
  *
- * Under 40rem the page draws no seat: the sections menu absorbs its acts, as
- * items under the five sections and the page's tools label. Four seats (About,
- * Sections, Account, Dark mode) are the phone's run on every route, ~303 px
- * of 390 with ~44 px either side; a fifth seat took it to 370 (10 px either
- * side). Every seat keeps glass's 44 px coarse cell.
+ * Under 40rem the dock draws no page tools: the page renders them on its own
+ * stage surface. Every seat keeps glass's 44 px coarse cell.
  */
 const pageTools = usePageTools();
 const compact = useMediaQuery(PAGE_TOOLS_COMPACT);
 const PageToolsOutlet = (props: { form: PageToolsForm }) =>
     pageTools.value?.render({ form: props.form }) ?? null;
-const pageSeats = computed(() => !compact.value && !!pageTools.value?.shown());
-const pageItems = computed(() => compact.value && !!pageTools.value?.shown());
+const pageSeats = computed(() => !compact.value && !!pageTools.value);
+/**
+ * Owner, 19 Nov: "the tabs toggle for controls should potentially be
+ * re-integrated into the top dock". On a phone a stage route shows one pane
+ * at a time (`useWorkspacePane`); its switch is one seat in glass's
+ * `#persistent-end` region, outside the fold, so it is one press from rest.
+ */
+const dockPane = useDockPane();
+const paneSeat = computed(() => (dockPane.value?.tabbed.value ? dockPane.value : null));
+function togglePane() {
+    const seat = paneSeat.value;
+    if (seat) seat.pane.value = seat.pane.value === "controls" ? "canvas" : "controls";
+}
+/** The rim: a page's own measure (a job on the stage), else its reading progress. */
+const dockProgress = useDockProgress();
+const rimValue = computed(() => dockProgress.value ?? pageScroll.progress.value);
 // The page's seats change the run's width, so the label's fit is read again.
 watch(pageSeats, () => {
     rememberedFit();
@@ -383,14 +397,6 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         <component :is="tab.icon" aria-hidden="true" />
                         <span>{{ tab.label }}</span>
                     </DropdownMenuItem>
-                    <!-- Under 40rem: the page's acts, absorbed (see `pageItems`). -->
-                    <template v-if="pageItems && pageTools">
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>{{ pageTools.label }}</DropdownMenuLabel>
-                        <DropdownMenuGroup :aria-label="pageTools.label" data-page-tools>
-                            <PageToolsOutlet form="items" />
-                        </DropdownMenuGroup>
-                    </template>
                     <!-- Under 40rem: About, absorbed as the page's tools are
                          (its seat beside the theme is the desk's). -->
                     <template v-if="compact">
@@ -465,14 +471,27 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
             <DarkModeToggle class="dark-mode-toggle" />
 
+            <!-- The phone's pane switch (`useWorkspacePane`): outside the fold. -->
+            <template v-if="paneSeat" #persistent-end>
+                <DockControl
+                    class="pane-seat"
+                    aria-label="Controls"
+                    title="Controls"
+                    :active="paneSeat.pane.value === 'controls'"
+                    @click="togglePane"
+                >
+                    <SlidersHorizontal aria-hidden="true" />
+                </DockControl>
+            </template>
+
             <!-- O16 [49] [57] (owner, 13 Nov): collapsed, the seal is the
                  Fourier F, the wordmark's own ℱ (not redrawn), on every route. -->
             <template #collapsed>
                 <span class="dock-summary-mark font-serif-math font-semibold select-none" aria-hidden="true">&#x2131;</span>
             </template>
         </GlassDock>
-        <Teleport v-if="dockEl && pageScroll.progress.value !== null" :to="dockEl">
-            <ScrollProgressRim :value="pageScroll.progress.value" :stops="pageScroll.progressStops.value" class="dock-progress" />
+        <Teleport v-if="dockEl && rimValue !== null" :to="dockEl">
+            <ScrollProgressRim :value="rimValue" :stops="pageScroll.progressStops.value" class="dock-progress" />
         </Teleport>
     </header>
 </template>

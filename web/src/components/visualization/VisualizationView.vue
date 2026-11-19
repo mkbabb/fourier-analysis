@@ -313,7 +313,6 @@ const workspaceTools = computed(() => ({
 providePageTools(
     "Visualize tools",
     ({ form }) => h(WorkspaceTools, { form, ...workspaceTools.value }),
-    () => !!hasData.value || !!store.contour,
 );
 const hasEpicycles = computed(() => activeBases.value.includes("fourier-epicycles"));
 const hasImage = computed(() => !!store.imageMeta);
