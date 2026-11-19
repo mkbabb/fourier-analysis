@@ -51,6 +51,8 @@ const SCRIM_CLEARANCE_PX = 40;
 export function useScrollNavigation(opts: ScrollNavigationOptions) {
     const MAX_STACK = 20;
     const MIN_OVERLAY_MS = 200;
+    /** A far jump's text fade-out, before the page moves under it. */
+    const TEXT_FADE_OUT_MS = 100;
     const MAX_CORRECTIONS = 10;
     const STABLE_TARGET = 2;
     const STABILITY_PX = 6;
@@ -170,14 +172,25 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
 
     onScopeDispose(dispose);
 
+    /**
+     * PAPER-CRITIQUE finding 1 (O16 [59]'s cure, taken to every far jump):
+     * a far jump no longer raises the viewport veil, the page-tone layer that
+     * faded the card, the rail, the grid and the dock to the ground and back.
+     * Only the article's text changes, so only the text cross-fades: the
+     * window root goes out (about 100 ms), `run` jumps and corrects behind it,
+     * and on `finish` the text comes back (160 ms). The plate, the title, the
+     * rail and the dock stay painted throughout. Contents rows, search hits,
+     * cross-references and Back all take this path. Reduced motion: the fade
+     * alone (glass's guard holds it to a cut until it carves opacity out).
+     */
     function withOverlay(
         scroller: HTMLElement,
         run: (finish: () => void) => void,
     ) {
-        const overlay = scroller.querySelector(
-            ".teleport-overlay",
+        const root = scroller.querySelector(
+            ".paper-window-root",
         ) as HTMLElement | null;
-        if (!overlay) {
+        if (!root) {
             run(() => opts.recalculate());
             return;
         }
@@ -189,10 +202,12 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
         //
         // Serialised by SUPERSESSION, not by refusal: a later jump is the
         // user's latest intent, so it cancels the loop and the hide-timer the
-        // earlier one left running and takes the overlay over. Dropping it
+        // earlier one left running and takes the fade over. Dropping it
         // would trade a visual race for a dead control — the same bargain the
         // rest of this record refuses.
         supersedeOverlayRun?.();
+        // A scroll-to-top cross-fade in flight hands the text over too.
+        fadeRun++;
 
         let finished = false;
         const shownAt = performance.now();
@@ -206,27 +221,32 @@ export function useScrollNavigation(opts: ScrollNavigationOptions) {
         const finish = () => {
             if (finished) return;
             finished = true;
-            const hide = () => {
+            const show = () => {
                 opts.recalculate();
                 requestAnimationFrame(() => {
-                    overlay.style.opacity = "0";
-                    overlay.style.pointerEvents = "none";
+                    root.style.transition = "opacity 160ms var(--ease-out, ease-out)";
+                    root.style.opacity = "";
                     supersedeOverlayRun = null;
+                    overlayTimer = setTimeout(() => {
+                        if (!supersedeOverlayRun) root.style.transition = "";
+                    }, 200);
                 });
             };
             const remaining = Math.max(
                 0,
                 MIN_OVERLAY_MS - (performance.now() - shownAt),
             );
-            if (remaining === 0) hide();
-            else overlayTimer = setTimeout(hide, remaining);
+            if (remaining === 0) show();
+            else overlayTimer = setTimeout(show, remaining);
         };
 
-        overlay.style.pointerEvents = "auto";
-        overlay.style.opacity = "1";
+        root.style.transition = "opacity 100ms var(--ease-in, ease-in)";
+        root.style.opacity = "0";
 
-        // One frame for the browser to paint the overlay, then run
-        requestAnimationFrame(() => run(finish));
+        // The text is out before the page moves under it.
+        overlayTimer = setTimeout(() => {
+            if (!finished) run(finish);
+        }, TEXT_FADE_OUT_MS);
     }
 
     // ── Teleport (far jump) ──────────────────────────────────
