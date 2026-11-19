@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Response
@@ -15,10 +17,11 @@ from api.models.equations import (
     SimplifyResponse,
 )
 from api.routers.jobs import JobCreated, created, job_error
-from api.services import jobs
-from api.services.computation import submit_compute_job, submit_process_job
+from api.services import compute_cache, jobs
+from api.services.computation import get_process_pool, submit_compute_job, submit_process_job
 from api.services.equation_series import (
     STAGES,
+    WARM_REQUEST,
     ExpressionInvalid,
     compute_series,
     displayed_n,
@@ -28,6 +31,10 @@ from api.services.equation_series import (
 )
 
 router = APIRouter(prefix="/api/equations", tags=["equations"])
+logger = logging.getLogger(__name__)
+
+# The compute cache's subject for a series: its request is the whole key.
+CACHE_SUBJECT = "equation"
 
 
 def _response(result: dict) -> ComputeEquationResponse:
@@ -44,6 +51,51 @@ def _response(result: dict) -> ComputeEquationResponse:
     )
 
 
+async def _file(params: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+    """The answer's wire form, filed in the compute cache when it is exact.
+
+    An answer with a missed harmonic or from a lower tier may be the host's
+    load, not the function's (``compute_series``'s ``exact``), so it is sent
+    and not kept: the next asker computes again.
+    """
+    wire = _response(result).model_dump(mode="json")
+    if not result["exact"]:
+        return wire
+    return await compute_cache.store(CACHE_SUBJECT, params, wire, label="equation")
+
+
+async def series_data(req: ComputeEquationRequest) -> dict[str, Any]:
+    """The series' answer in its wire form, from the compute cache or computed
+    in a worker process and filed there. A request answered once is the same
+    answer for everyone (the page's default f(x) is every first visitor's)."""
+    params = req.model_dump()
+    cached = await compute_cache.lookup(CACHE_SUBJECT, params, label="equation")
+    if cached is not None:
+        return cached
+    return await _file(params, await submit_process_job("equation", compute_series, params))
+
+
+async def warm() -> None:
+    """Ready the series for the first visitor, at boot.
+
+    A cold API answered the first POST in ~3.5 s (its first ``parse`` imports
+    sympy) and its worker then spent ~4 s spawning and importing before it
+    integrated. This imports the parser here, starts the worker and computes
+    the page's first request in it, and files that answer in the cache. The
+    worker's own task is sent to the pool directly, not through a compute slot:
+    a visitor's job takes the slot and queues behind it on the one worker.
+    """
+    try:
+        await asyncio.to_thread(parse_function_of_x, WARM_REQUEST["expression"])
+        req = ComputeEquationRequest(**WARM_REQUEST)
+        params = req.model_dump()
+        loop = asyncio.get_running_loop()
+        await _file(params, await loop.run_in_executor(get_process_pool(), compute_series, params))
+    except Exception:
+        # A warm-up is an accelerator: the first request computes as before.
+        logger.warning("equation warm-up failed", exc_info=True)
+
+
 @router.post("/compute", response_model=ComputeEquationResponse)
 async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationResponse | Response:
     """Compute closed-form Fourier series for a user-supplied f(x).
@@ -56,10 +108,9 @@ async def compute_equation(req: ComputeEquationRequest) -> ComputeEquationRespon
     The job runs in a worker process (``equation_series`` says why).
     """
     try:
-        result = await submit_process_job("equation", compute_series, req.model_dump())
+        return ComputeEquationResponse(**await series_data(req))
     except ExpressionInvalid as e:
         return errors.validation_failed(detail=str(e))
-    return _response(result)
 
 
 @router.post("/jobs", status_code=202, response_model=JobCreated)
@@ -75,8 +126,7 @@ async def start_equation_job(req: ComputeEquationRequest) -> Any:
         return errors.validation_failed(detail=str(e))
 
     async def work(progress: jobs.Progress) -> dict:
-        result = await submit_process_job("equation", compute_series, req.model_dump())
-        return _response(result).model_dump(mode="json")
+        return await series_data(req)
 
     try:
         job = jobs.registry.start("equation", STAGES, work, job_error)

@@ -32,6 +32,21 @@ STAGES: dict[str, tuple[float, float]] = {
     "render": (0.92, 1.0),
 }
 
+# The page's first request: what /equation sends on a first visit
+# (web/src/components/equation/EquationView.vue, DEFAULT_INPUT through
+# requestFor(input, true, input.nHarmonics + 1)). The API computes it at boot
+# (``api.routers.equations.warm``), so the first visitor reads it from the cache.
+WARM_REQUEST: dict[str, Any] = {
+    "expression": "x*(pi - x)",
+    "domain_start": 0.0,
+    "domain_end": 3.141592653589793,
+    "n_harmonics": 20,
+    "n_eval_points": 500,
+    "notation": "trig",
+    "budget": 21,
+    "auto_harmonics": True,
+}
+
 
 class ExpressionInvalid(ValueError):
     """The user's f(x) is not a finite real function of ``x`` (a client error)."""
@@ -136,7 +151,10 @@ def compute_series(req: dict[str, Any], progress: Any = None) -> dict[str, Any]:
 
     # Tier 1: Symbolic integration
     tier = "symbolic"
-    terms = symbolic_fourier_coefficients(expr, n_harmonics, domain, period, on_term=on_term)
+    missed: list[int] = []
+    terms = symbolic_fourier_coefficients(
+        expr, n_harmonics, domain, period, on_term=on_term, on_miss=missed.append
+    )
 
     # Tier 2: Sequence identification
     if terms is None:
@@ -178,4 +196,9 @@ def compute_series(req: dict[str, Any], progress: Any = None) -> dict[str, Any]:
         "reconstructed_points": {"x": x_eval.tolist(), "y": y_recon.real.tolist()},
         "energy_captured": energy,
         "effective_n": compute_effective_n(terms),
+        # Every coefficient integrated exactly. Each integral runs under a
+        # wall-clock timeout, so a busy host can miss a harmonic (a zero in its
+        # place) or fall to a lower tier; only an exact answer is the same for
+        # every asker, and only it is kept (``api.routers.equations``).
+        "exact": tier == "symbolic" and not missed,
     }

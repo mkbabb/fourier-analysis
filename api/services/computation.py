@@ -82,7 +82,7 @@ async def submit_compute_job(name: str, fn: Callable[[], Any]) -> Any:
     return await _bounded(name, lambda: loop.run_in_executor(None, call))
 
 
-def _get_process_pool() -> ProcessPoolExecutor:
+def get_process_pool() -> ProcessPoolExecutor:
     """The worker processes for jobs that need a process's main thread.
 
     ``spawn``, never ``fork``: the server process runs threads (the event loop's
@@ -170,9 +170,9 @@ async def submit_process_job(name: str, fn: Callable[..., Any], *args: Any) -> A
     loop = asyncio.get_running_loop()
     progress = jobs.current_progress()
     if progress is None:
-        return await _bounded(name, lambda: loop.run_in_executor(_get_process_pool(), fn, *args))
+        return await _bounded(name, lambda: loop.run_in_executor(get_process_pool(), fn, *args))
 
-    pool = _get_process_pool()
+    pool = get_process_pool()
     serial = next(_serials)
     end: asyncio.Future[None] = loop.create_future()
     _bridged[serial] = (progress, end)
