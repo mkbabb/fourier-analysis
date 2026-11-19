@@ -269,6 +269,38 @@ defineEmits<{
     transform: scale(0.98);
 }
 
+/* The shape is the page's one control, and it says so before it is pressed:
+   at rest it breathes (a scale of under 2 %, slow), and a hovering pointer
+   draws it a step nearer (intent, inside the plate, moving no other box).
+   Mid-morph the breath holds where it stands, so nothing snaps; under reduced
+   motion the shape is still. The breath is `transform`, the intent `scale`,
+   so the two compose. */
+@media (prefers-reduced-motion: no-preference) {
+    .morph-button :deep(svg) {
+        animation: morph-breath 4.8s var(--ease-standard) infinite;
+    }
+    .morph-button:disabled :deep(svg) {
+        animation-play-state: paused;
+    }
+}
+.morph-button :deep(svg) {
+    transition: scale var(--duration-normal) var(--ease-standard);
+}
+@media (hover: hover) {
+    .morph-button:hover:not(:disabled) :deep(svg) {
+        scale: 1.03;
+    }
+}
+@keyframes morph-breath {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.018);
+    }
+}
+
 .morph-button:disabled {
     cursor: wait;
 }
