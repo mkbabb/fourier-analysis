@@ -32,6 +32,7 @@ import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";
 import { useViewTransform } from "./composables/useViewTransform";
 import { useStageGestures } from "./composables/useStageGestures";
+import { useLayerFade } from "./composables/useLayerFade";
 import { composeView } from "./lib/stage-view";
 
 const props = withDefaults(
@@ -163,10 +164,8 @@ function drawFrame() {
     // Background grid
     drawGrid(s, view);
 
-    // Image overlay (behind curves)
-    if (props.showImageOverlay) {
-        drawImageOverlay(s, view);
-    }
+    // The picture (behind the curves), at its fade.
+    drawImageOverlay(s, view, pictureFade.strength());
 
     const hasEpicycles = props.activeBases.includes("fourier-epicycles");
     const onlyEpicycles = hasEpicycles && props.activeBases.length === 1;
@@ -199,30 +198,16 @@ interface FrameLayers {
     labels: boolean;
 }
 function liveLayers(): FrameLayers {
-    return { epicycles: true, trail: true, ghost: ghostFade, labels: true };
+    return { epicycles: true, trail: true, ghost: ghostFade.strength(), labels: true };
 }
 
-// ── Original outline fade (O16 [52]) ──
-// The View layers toggle tweens the outline in and out over the stage's
-// standard duration; reduced motion keeps the fade, shorter. The stage repaints
-// each step, so the change reads even while the animation clock is parked.
-let ghostFade = props.showGhost ? 1 : 0;
-let ghostRaf = 0;
-function tweenGhost(to: number): void {
-    cancelAnimationFrame(ghostRaf);
-    const from = ghostFade;
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const dur = reduce ? 120 : 280;
-    const t0 = performance.now();
-    const step = (now: number) => {
-        const k = Math.min(1, (now - t0) / dur);
-        const e = 1 - (1 - k) ** 3;
-        ghostFade = from + (to - from) * e;
-        if (surface.value) drawFrame();
-        if (k < 1) ghostRaf = requestAnimationFrame(step);
-    };
-    ghostRaf = requestAnimationFrame(step);
-}
+// ── The layers' fades (O16 [52]) ──
+// A toggled layer tweens in and out over the stage's standard duration;
+// reduced motion keeps the fade, shorter. The stage repaints each step, so the
+// change reads even while the animation clock is parked.
+const repaint = () => { if (surface.value) drawFrame(); };
+const ghostFade = useLayerFade(() => props.showGhost, repaint);
+const pictureFade = useLayerFade(() => props.showImageOverlay, repaint);
 
 /*
  * `view` is the stage's transform (zoom and pan included) for everything drawn
@@ -555,7 +540,7 @@ watch(
 // minimum: animation clock ticks and the two display-toggle props.
 // basesData is intentionally NOT here — it belongs in the data watcher above.
 watch(
-    [() => anim.t, () => anim.easedT, () => props.showImageOverlay],
+    [() => anim.t, () => anim.easedT],
     () => {
         if (surface.value) drawFrame();
     },
@@ -590,8 +575,6 @@ onMounted(() => {
     visibilityObserver.observe(containerRef.value);
 });
 
-watch(() => props.showGhost, (on) => tweenGhost(on ? 1 : 0));
-
 // A new drawing opens at its fit (LAST-TEN F-01).
 watch(() => store.epicycleData, () => gestures.reset(false));
 
@@ -608,7 +591,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    cancelAnimationFrame(ghostRaf);
     themeObserver?.disconnect();
     visibilityObserver?.disconnect();
     visibilityObserver = null;

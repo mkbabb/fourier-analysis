@@ -6,6 +6,9 @@ import type { ViewTransform } from "../lib/canvas-drawing";
 
 const MAX_CACHE_SIZE = 10;
 
+/** The picture's strength under the drawing: a wash, so the line reads over it. */
+export const PICTURE_WASH = 0.22;
+
 // Module-scoped cache survives component unmount/remount (e.g. gallery → visualizer)
 const cache = new Map<string, HTMLCanvasElement>();
 
@@ -103,8 +106,9 @@ export function useImageOverlay(onImageLoaded?: () => void) {
         { immediate: true },
     );
 
-    function drawImageOverlay(s: CanvasSurface, view: ViewTransform) {
-        if (!currentImage) return;
+    /** Draw the picture at `strength` (0..1, the layer's fade) of its wash. */
+    function drawImageOverlay(s: CanvasSurface, view: ViewTransform, strength = 1) {
+        if (!currentImage || strength <= 0) return;
 
         const bounds = store.contour?.image_bounds;
         if (!bounds) return;
@@ -116,7 +120,7 @@ export function useImageOverlay(onImageLoaded?: () => void) {
         if (boxW <= 0 || boxH <= 0) return;
 
         s.ctx.save();
-        s.ctx.globalAlpha = 0.28;
+        s.ctx.globalAlpha = PICTURE_WASH * Math.min(1, strength);
         s.ctx.drawImage(currentImage, sx1, sy1, boxW, boxH);
         s.ctx.restore();
     }
