@@ -91,12 +91,15 @@ test.describe("UIA-F-50 / UIA-F-4 / UIA-F-49 — not-found and load-error states
         await page.goto("/nope/deeper");
         const card = page.getByTestId("not-found");
         await expect(card.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
-        await expect(card.getByRole("button", { name: "Browse the gallery" })).toBeVisible();
+        // Home first (critique N1), then the app's one making act.
+        const actions = card.getByRole("button");
+        await expect(actions.first()).toHaveAccessibleName("Home");
+        await expect(card.getByRole("button", { name: "Upload a new image" })).toBeVisible();
         await expect(page).toHaveTitle("Not found — Fourier Analysis");
         await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
         // Leaving the not-found route drops the noindex again.
-        await card.getByRole("button", { name: "Browse the gallery" }).click();
-        await expect(page).toHaveURL(/\/gallery$/);
+        await actions.first().click();
+        await expect(page).toHaveURL(/\/paper$/);
         await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
     });
 

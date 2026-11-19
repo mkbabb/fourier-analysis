@@ -113,14 +113,15 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
         const dock = await openAppDock(page);
         const g = await dock.evaluate((d) => {
             const r = d.getBoundingClientRect();
-            const seats = [...d.querySelectorAll("button")]
+            const seats = [...d.querySelectorAll("button, a[href]")]
                 .filter((b) => b.getBoundingClientRect().width > 0 && !b.closest("[inert]"))
                 .map((b) => ({ name: b.getAttribute("aria-label") ?? "", w: b.getBoundingClientRect().width, h: b.getBoundingClientRect().height }));
             return { left: r.left, right: r.right, vw: innerWidth, seats };
         });
         expect(g.left, "room on the left").toBeGreaterThanOrEqual(32);
         expect(g.vw - g.right, "room on the right").toBeGreaterThanOrEqual(32);
-        expect(g.seats.map((x) => x.name.replace(/ — .*/, ""))).toEqual(["About Fourier analysis", "Navigate", "Log in", "Dark mode"]);
+        // Home first; About rides the sections menu under 40rem (four seats).
+        expect(g.seats.map((x) => x.name.replace(/ — .*/, ""))).toEqual(["Home", "Navigate", "Log in", "Dark mode"]);
         for (const x of g.seats) {
             expect(x.w, `${x.name} width`).toBeGreaterThanOrEqual(44);
             expect(x.h, `${x.name} height`).toBeGreaterThanOrEqual(44);

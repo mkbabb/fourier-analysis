@@ -239,7 +239,7 @@ const SURFACES = [
 /** Past glass's idle window (6000 ms since glass 11.0.2) and the morph. */
 const IDLE = 7_000;
 
-async function openSurface(page: Page, dock: Locator, s: (typeof SURFACES)[number], touch: boolean): Promise<Locator> {
+async function openSurface(page: Page, dock: Locator, s: { trigger: RegExp; content: string }, touch: boolean): Promise<Locator> {
     const trigger = dock.getByRole("button", { name: s.trigger });
     if (touch) await trigger.tap();
     else await trigger.click();
@@ -280,7 +280,9 @@ for (const s of SURFACES) {
         test.use({ viewport: { width: 390, height: 844 } });
         test(`@coarse U3 F-3 ${s.name}: an open surface outlasts the idle window and a tap outside lets the dock yield`, async ({ page }) => {
             const dock = await open(page, "/gallery");
-            const content = await openSurface(page, dock, s, true);
+            // Under 40rem About is a group in the sections menu, so its surface is that menu.
+            const phone = s.name === "About" ? { trigger: /^Navigate/, content: "[data-about]" } : s;
+            const content = await openSurface(page, dock, phone, true);
             await page.waitForTimeout(IDLE);
             await expect(content).toBeVisible();
             await expect(dock).toHaveClass(EXPANDED);
@@ -347,11 +349,11 @@ test.describe("U5 disclosure, focus and axe 1440", () => {
         await expect(dock.locator(".dock-layer--full")).toHaveAttribute("inert", "");
         await checkA11y(page, "app dock collapsed", { include: ".app-header" });
 
-        // Enter on the seal opens it and focus enters the run.
+        // Enter on the seal opens it and focus enters the run, on its first seat (Home).
         await page.keyboard.press("Enter");
         await expect(dock).toHaveClass(EXPANDED);
         await settled(dock);
-        await expect(dock.getByRole("button", { name: "About Fourier analysis" })).toBeFocused();
+        await expect(dock.getByRole("link", { name: "Home" })).toBeFocused();
         await expect(dock.getByRole("button", { name: "Expand dock" })).toHaveCount(0);
     });
 });

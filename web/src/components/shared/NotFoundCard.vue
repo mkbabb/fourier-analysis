@@ -8,7 +8,7 @@
  * buttons (never a tooltip carrying the meaning, FR-TT-2).
  */
 import { useRouter } from "vue-router";
-import { Upload } from "@lucide/vue";
+import { House, Upload } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
     Card,
@@ -61,10 +61,12 @@ const router = useRouter();
                 <!-- A host that owns state to clear on the way out (the
                      workspace store) supplies its own actions. -->
                 <slot name="actions">
-                    <Button emphasis="primary" size="md" @click="router.push('/visualize')"><Upload />Upload a new image</Button>
+                    <!-- Home first (the design critique's N1): a lost visitor is
+                         offered the way Home, then the one thing the app makes. -->
+                    <Button emphasis="primary" size="md" @click="router.push('/paper')"><House />Home</Button>
                     <!-- X-DS pass 4 · DS-F4-C2: one grammar for "go back", as on the load
                          error and the empty stage: one primary and one quiet link. -->
-                    <Button emphasis="text" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
+                    <Button emphasis="text" size="sm" @click="router.push('/visualize')"><Upload />Upload a new image</Button>
                 </slot>
             </CardFooter>
         </Card>

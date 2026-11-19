@@ -4,9 +4,9 @@
  * X.F.W11.c (COHESION §0ao OA-3) — the app's chrome is a `GlassDock`.
  *
  * `AppHeader.vue` is RETIRED, not reduced: every control it carried has one
- * home here, on the producer's dock family (`@mkbabb/glass-ui/dock`) — `About
- * Fourier analysis` · the sections · the account group (`UserSlugBar`) · `Dark
- * mode`.
+ * home here, on the producer's dock family (`@mkbabb/glass-ui/dock`) — `Home`
+ * (the wordmark) · the sections · the page's tools · the account group
+ * (`UserSlugBar`) · `About Fourier analysis` beside `Dark mode`.
  *
  * FACES. Transient surfaces (the attribution card, the section menu) ride
  * `DockTrigger`; the dark-mode control wears `DockControl` (`DarkModeToggle.vue`).
@@ -41,10 +41,10 @@ import { useRoute, useRouter } from "vue-router";
 import { prefetchRoute } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
-import { ChevronDown, Compass, ExternalLink } from "@lucide/vue";
-import { sectionNav } from "@/router/routes";
+import { ChevronDown, Compass, ExternalLink, Info } from "@lucide/vue";
+import { sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
-import { GlassDock, DockSeparator } from "@mkbabb/glass-ui/dock";
+import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import {
     DropdownMenu,
@@ -64,6 +64,11 @@ import { PAGE_TOOLS_COMPACT, usePageTools, type PageToolsForm } from "@/composab
 const route = useRoute();
 const router = useRouter();
 const baseUrl = import.meta.env.BASE_URL;
+const REPO_URL = "https://github.com/mkbabb/fourier-analysis";
+const ABOUT_TAGLINE = "Orthogonal decomposition, drawn with epicycles.";
+function openRepo() {
+    window.open(REPO_URL, "_blank", "noopener,noreferrer");
+}
 
 /**
  * X.F.W14V.au6 — A2-FO-L1-25: the sections are the routes' `meta.nav`, read
@@ -88,6 +93,21 @@ const navName = computed(() =>
 
 function onTabSelect(path: string) {
     router.push(path);
+}
+
+/**
+ * Home (owner, "a home button" on every site; the design critique's S2 and
+ * N1): the dock's first seat, the wordmark, goes to the paper, the page a
+ * first visit opens on. On the paper itself it is the current page and a
+ * press does nothing, so Home never re-runs the route's entrance.
+ */
+const HOME: SectionTab = "/paper";
+const homeHref = router.resolve(HOME).href;
+const atHome = computed(() => activeTab.value === HOME);
+function goHome(e: MouseEvent) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (!atHome.value) void router.push(HOME);
 }
 
 // ── F.REL `.x5` (COHESION §0fo.2 arm (a), the §0fh.4 idiom): the run keeps what fits ──
@@ -264,51 +284,22 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 <template>
     <header ref="header" class="app-header">
         <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed">
-            <!-- Logo + attribution card. The wordmark is the trigger's whole
-                 face; at <640px it is the lone ℱ glyph and the dock's control
-                 cell (≥44px coarse) is its hit box. -->
-            <!-- keep-dock-open: the dock does not fold an open card under the
-                 user when the pointer leaves straight to the page (F-3b). -->
-            <Popover keep-dock-open>
-                <DockTrigger for="popover" class="logo-trigger" aria-label="About Fourier analysis">
-                    <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
-                        <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
-                    </span>
-                </DockTrigger>
-                <PopoverContent align="start" class="about-card">
-                    <div class="flex items-center gap-3">
-                        <!-- Self-hosted maintainer avatar (zero third-party
-                             origins; 80px source for 2× density in the 40px box). -->
-                        <img
-                            :src="`${baseUrl}assets/maintainer-avatar.png`"
-                            alt=""
-                            width="80"
-                            height="80"
-                            decoding="async"
-                            class="about-avatar"
-                        />
-                        <div class="flex-1 min-w-0">
-                            <p class="text-mono-small text-foreground">@mbabb</p>
-                            <p class="text-caption text-muted-foreground">Orthogonal decomposition, drawn with epicycles.</p>
-                        </div>
-                    </div>
-                    <Separator class="my-2" />
-                    <!-- X-DS pass 3 · DS-F3-C12: the card's one action reads as one:
-                         glass's text Button (its link ink) with an external-link glyph. -->
-                    <Button
-                        as="a"
-                        emphasis="text"
-                        size="sm"
-                        href="https://github.com/mkbabb/fourier-analysis"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="about-link"
-                    >
-                        View the project on GitHub
-                        <ExternalLink class="size-3.5" aria-hidden="true" />
-                    </Button>
-                </PopoverContent>
-            </Popover>
+            <!-- Home: the wordmark (at <640px the lone ℱ glyph, the dock's
+                 control cell its hit box), a link to the paper. -->
+            <DockControl
+                as="a"
+                compact
+                :href="homeHref"
+                class="logo-trigger"
+                aria-label="Home — Fourier analysis"
+                title="Home"
+                :aria-current="atHome ? 'page' : undefined"
+                @click="goHome"
+            >
+                <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
+                    <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
+                </span>
+            </DockControl>
 
             <DockSeparator />
 
@@ -342,6 +333,19 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                             <PageToolsOutlet form="items" />
                         </DropdownMenuGroup>
                     </template>
+                    <!-- Under 40rem: About, absorbed as the page's tools are
+                         (its seat beside the theme is the desk's). -->
+                    <template v-if="compact">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup aria-label="About Fourier analysis" data-about>
+                            <DropdownMenuLabel>About</DropdownMenuLabel>
+                            <p class="about-menu-line text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
+                            <DropdownMenuItem @select="openRepo">
+                                <ExternalLink aria-hidden="true" />
+                                <span>View the project on GitHub</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -359,6 +363,47 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
             </div>
 
             <DockSeparator />
+
+            <!-- About ("i"), beside the theme seat. Under 40rem the sections
+                 menu carries it (below), so the phone's run keeps four seats. -->
+            <Popover v-if="!compact" keep-dock-open>
+                <DockTrigger for="popover" class="about-trigger" aria-label="About Fourier analysis" title="About">
+                    <Info aria-hidden="true" />
+                </DockTrigger>
+                <PopoverContent align="end" class="about-card">
+                    <div class="flex items-center gap-3">
+                        <!-- Self-hosted maintainer avatar (zero third-party
+                             origins; 80px source for 2× density in the 40px box). -->
+                        <img
+                            :src="`${baseUrl}assets/maintainer-avatar.png`"
+                            alt=""
+                            width="80"
+                            height="80"
+                            decoding="async"
+                            class="about-avatar"
+                        />
+                        <div class="flex-1 min-w-0">
+                            <p class="text-mono-small text-foreground">@mbabb</p>
+                            <p class="text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
+                        </div>
+                    </div>
+                    <Separator class="my-2" />
+                    <!-- X-DS pass 3 · DS-F3-C12: the card's one action reads as one:
+                         glass's text Button (its link ink) with an external-link glyph. -->
+                    <Button
+                        as="a"
+                        emphasis="text"
+                        size="sm"
+                        :href="REPO_URL"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="about-link"
+                    >
+                        View the project on GitHub
+                        <ExternalLink class="size-3.5" aria-hidden="true" />
+                    </Button>
+                </PopoverContent>
+            </Popover>
 
             <DarkModeToggle class="dark-mode-toggle" />
 
@@ -415,6 +460,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 .logo-trigger,
 .nav-trigger {
     min-inline-size: var(--dock-control-size);
+}
+/* Home is a compact (auto-sized) control so the wordmark sets its width; its
+   height keeps the dock's control cell (44 px on a coarse pointer). */
+.logo-trigger {
+    min-block-size: var(--dock-control-size);
 }
 
 /* ── Wordmark ── */
@@ -504,6 +554,12 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     .app-dock {
         --dock-padding-block: calc(var(--dock-density-compact-padding-block, 0.25rem) * var(--dock-scale));
     }
+}
+
+/* The phone's About group in the sections menu: the tagline under its label. */
+.about-menu-line {
+    padding: 0 var(--space-atom) var(--space-residue);
+    max-inline-size: 16rem;
 }
 
 .about-avatar {

@@ -486,10 +486,13 @@ for (const scheme of ["light", "dark"] as const) {
                 await page.waitForTimeout(300);
                 await frame(page, `login-error-${scheme}`);
                 await page.keyboard.press("Escape");
-                await page.getByRole("button", { name: "About Fourier analysis" }).click();
-                await page.waitForTimeout(300);
-                await frame(page, `about-${scheme}`);
-                await page.keyboard.press("Escape");
+                // Under 40rem About is a group in the sections menu, framed with it below.
+                if (vp.width >= 640) {
+                    await page.getByRole("button", { name: "About Fourier analysis" }).click();
+                    await page.waitForTimeout(300);
+                    await frame(page, `about-${scheme}`);
+                    await page.keyboard.press("Escape");
+                }
                 const navBtn = page.getByRole("button", { name: /^Navigate/ });
                 if (await navBtn.count()) {
                     await navBtn.click();
