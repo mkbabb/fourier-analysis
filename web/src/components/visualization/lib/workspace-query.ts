@@ -3,8 +3,8 @@
  * path names the picture). Short stable keys, each omitted at its default, so
  * the plain path is the clean link:
  *
- *   bg=1      the background image is shown under the drawing (default off)
- *   trace=0   the original outline is hidden (default shown)
+ *   bg=0      the picture under the drawing is hidden (default shown)
+ *   trace=1   the original outline is shown (default hidden)
  *   eq=1      the series panel is open
  *   edit=1    the contour editor is open
  *   fs=1      the fullscreen takeover is open
@@ -37,8 +37,10 @@ const easeCodec: Codec<AnimationEasingName | null> = {
 };
 
 export const WORKSPACE_QUERY = {
-    bg: flagOn,
-    trace: flagOff,
+    // The picture shows and the dashed outline does not, by default; a link
+    // written before the flip (`bg=1`, `trace=0`) still reads as it was.
+    bg: flagOff,
+    trace: flagOn,
     eq: flagOn,
     edit: flagOn,
     fs: flagOn,

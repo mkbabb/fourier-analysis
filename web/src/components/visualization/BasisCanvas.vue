@@ -40,7 +40,7 @@ const props = withDefaults(
         showGhost?: boolean;
         showImageOverlay?: boolean;
     }>(),
-    { activeBases: () => ["fourier-epicycles"], showGhost: true, showImageOverlay: false },
+    { activeBases: () => ["fourier-epicycles"], showGhost: false, showImageOverlay: true },
 );
 
 const store = useWorkspaceStore();

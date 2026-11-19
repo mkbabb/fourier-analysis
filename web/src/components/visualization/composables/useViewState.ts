@@ -4,10 +4,10 @@ import { useQueryParam } from "@/lib/urlState";
 import { WORKSPACE_QUERY } from "../lib/workspace-query";
 
 /**
- * X.F.W14V.u1 — UIA-F-173: the view layers' defaults, in one place. The view
- * mark shows only a state off these (the trace off, or the overlay on).
+ * X.F.W14V.u1 — UIA-F-173: the view layers' defaults, in one place: the
+ * picture under the drawing, and no dashed outline over it.
  */
-export const VIEW_DEFAULTS = { ghost: true, overlay: false } as const;
+export const VIEW_DEFAULTS = { ghost: false, overlay: true } as const;
 
 export function isViewOffDefault(view: { ghost: boolean; overlay: boolean }): boolean {
     return view.ghost !== VIEW_DEFAULTS.ghost || view.overlay !== VIEW_DEFAULTS.overlay;

@@ -208,7 +208,7 @@ test.describe("u1 — URL state (1440)", () => {
     test.use({ viewport: { width: 1440, height: 900 } });
 
     test("workspace: a deep link reopens the layers, the series panel, the rate and the paused moment", async ({ page }) => {
-        await openWorkspace(page, "?bg=1&trace=0&eq=1&speed=2&t=0.42");
+        await openWorkspace(page, "?bg=0&trace=1&eq=1&speed=2&t=0.42");
         await expect(page.locator(".eq-panel")).toBeVisible({ timeout: LOAD });
         await expect(page.getByRole("button", { name: "Play animation" }).first(), "paused at the link's moment").toBeVisible();
         await expect(page.locator(".animation-dock [aria-label='Playback speed']")).toContainText("2");
@@ -217,8 +217,8 @@ test.describe("u1 — URL state (1440)", () => {
         expect(Math.abs(Number(value) - 0.42)).toBeLessThan(0.011);
         const dock = await openCanvasDock(page);
         await dock.getByRole("button", { name: "View options" }).click();
-        await expect(page.getByRole("menuitemcheckbox", { name: "Background image" })).toHaveAttribute("aria-checked", "true");
-        await expect(page.getByRole("menuitemcheckbox", { name: "Original outline" })).toHaveAttribute("aria-checked", "false");
+        await expect(page.getByRole("menuitemcheckbox", { name: "Background image" })).toHaveAttribute("aria-checked", "false");
+        await expect(page.getByRole("menuitemcheckbox", { name: "Original outline" })).toHaveAttribute("aria-checked", "true");
     });
 
     test("workspace: a layer toggle pushes, Back undoes it, Forward redoes it; pausing writes t by replace", async ({ page }) => {
@@ -227,12 +227,15 @@ test.describe("u1 — URL state (1440)", () => {
         const dock = await openCanvasDock(page);
         await dock.getByRole("button", { name: "View options" }).click();
         await page.getByRole("menuitemcheckbox", { name: "Background image" }).click();
-        await expect(page).toHaveURL(/[?&]bg=1/);
+        await expect(page).toHaveURL(/[?&]bg=0/);
+        await page.getByRole("menuitemcheckbox", { name: "Original outline" }).click();
+        await expect(page).toHaveURL(/[?&]trace=1/);
         await page.keyboard.press("Escape");
+        await page.goBack();
         await page.goBack();
         await expect(page).toHaveURL(before);
         await page.goForward();
-        await expect(page).toHaveURL(/[?&]bg=1/);
+        await expect(page).toHaveURL(/[?&]bg=0/);
         const len = await page.evaluate(() => history.length);
         await page.getByRole("button", { name: "Pause animation" }).first().click();
         await expect(page).toHaveURL(/[?&]t=0?\.\d+/);
