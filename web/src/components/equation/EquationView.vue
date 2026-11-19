@@ -590,7 +590,7 @@ watchDebounced(
 </script>
 
 <template>
-    <div ref="workspace" class="eq-workspace flex flex-col flex-1 min-h-0" :data-form="form">
+    <div ref="workspace" class="eq-workspace workspace-host flex flex-col flex-1 min-h-0" :data-form="form">
         <!-- The sheet form's Controls/Canvas strip: /visualize's one shared bar
              (X.F.W14V.au1 — A2-FO-L2-5), on the page's own ground (UIA-F-253). -->
         <WorkspaceTabs v-if="tabbed" v-model="mobileView" />
@@ -790,26 +790,13 @@ watchDebounced(
 
 /* ── The Configurator chassis (X.F.W14V.eq2) ──
    glass's `Configurator` supplies the stage|aside grid and, detached, each
-   region's card and the gap between them. The host only makes the shell
-   flex-fill the column and sets the aside's width band, as /visualize does
-   (`:deep`, because the shell is glass's element, not this component's root). */
-:deep(.eq-configurator) {
-    flex: 1;
-    min-height: 0;
-    /* X.F.W14V.au1 — A2-FO-L3-6: the one page gutter, at every width. It is
-       the workspace's padding, not this shell's margin: glass's shell floor
-       `min-inline-size: min(20rem, 100%)` reads 100% off the containing box,
-       so with the gutter as margin a column under 20rem + 2 gutters (a 360
-       viewport less glass 11's stable scrollbar gutter) pushed the shell 7 px
-       past the right gutter. */
-    margin-block: 0.25rem;
-}
-.eq-workspace {
-    padding-inline: var(--page-gutter);
-}
+   region's card and the gap between them. The gutters, the foot, the page
+   radius and the sheet form are the stage routes' one file
+   (`styles/workspace.css`, `.workspace-host`); this view sets the aside's
+   width band, as /visualize does (`:deep`, because the shell is glass's
+   element, not this component's root). */
 @media (min-width: 1024px) {
     :deep(.eq-configurator) {
-        margin-block: 0.5rem 0.75rem;
         --configurator-aside-min: calc(320px + 2 * var(--space-body));
         --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }
@@ -825,8 +812,6 @@ watchDebounced(
    carries: the column may not outgrow the shell, the active stage fills it,
    and an inactive region takes no box (a detached card would otherwise paint
    an empty border and hold a gap). */
-.eq-workspace[data-form="sheet"] :deep(.eq-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
-.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-stage) { flex: 1 1 0%; min-height: 0; }
 .eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-stage:has(> .panel-inactive)),
 .eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-aside:has(.eq-panel-left-wrap.panel-inactive)) {
     display: none;

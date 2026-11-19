@@ -41,3 +41,22 @@
     flex: 1 1 0%;
     min-height: 0;
 }
+
+/* A phone (FORTY-FIRST A: "fourier is too square on mobile, the main
+   container is"). The card stood 16 px from the sides and 4 px off the
+   screen's foot, a 16 px corner meeting the device's own curve: a screen
+   drawn inside the screen. Here the gutters are 12 px (the measure color's
+   plate keeps), the air under the dock is the gutter, the foot clears the
+   gutter and the home indicator, and the cards take glass's room radius
+   through the token they read. */
+@media (width < 40rem) {
+    .workspace-host {
+        --workspace-gutter: 0.75rem;
+        --radius-card: var(--radius-3xl);
+        padding-block: calc(var(--workspace-gutter) - var(--space-body))
+            calc(var(--workspace-gutter) + env(safe-area-inset-bottom, 0px));
+    }
+    .workspace-host > .configurator-shell {
+        margin-block: 0;
+    }
+}
