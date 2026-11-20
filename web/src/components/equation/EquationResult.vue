@@ -132,7 +132,7 @@ async function copyLatex() {
 }
 
 /* The seat: the row's trailing end, 0.5rem in from the stage's top-right as
-   /v's `.controls-dock-anchor` is. On the stage it holds the tools' dock. */
+   /v's `.controls-overlay` is. On the stage it holds the tools' dock. */
 .eq-result-actions {
     display: flex;
     align-items: center;

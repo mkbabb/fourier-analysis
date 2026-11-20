@@ -1,6 +1,5 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { openCanvasDock } from "./fixtures/canvas-dock";
 import { pressPageTool } from "./fixtures/app-dock";
 import { setSlider, slider, controlRow } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
@@ -58,7 +57,7 @@ async function openViz(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
     if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
-    await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator(".controls-overlay")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
 }
 
@@ -108,13 +107,16 @@ async function expandEditorDock(page: Page): Promise<void> {
 
 /** Reach the editor's Contour trace control, in whichever container holds it. */
 async function traceControl(page: Page): Promise<Locator> {
-    // Owner, 2026-11-15: the view layers have one home, the stage's floating
-    // dock, in and out of the editor (they left the editor dock).
-    await openCanvasDock(page);
-    await page.locator(".controls-dock-anchor").getByRole("button", { name: "View options" }).click();
+    // FORTY-FIRST H: with the stage's second dock gone the editor's dock carries
+    // the outline layer: a seat of its open row from 40rem, a row of its More
+    // editor tools on a phone.
+    if (page.viewportSize()!.width >= 640) {
+        await expandEditorDock(page);
+        return editorDock(page).getByRole("button", { name: "Outline", exact: true });
+    }
+    await editorDock(page).getByRole("button", { name: "More editor tools" }).click();
     await page.waitForTimeout(400);
-    return page.getByRole("menuitemcheckbox", { name: "Original outline" })
-        .or(page.getByRole("button", { name: "Original outline" })).first();
+    return page.getByRole("menuitemcheckbox", { name: "Outline" });
 }
 
 /** The disabled state of a dock control, read off the element. */
@@ -127,7 +129,7 @@ async function openEquation(page: Page): Promise<Locator> {
     await openViz(page);
     // Owner, 2026-11-15: the series panel is the page's tool, in the app dock
     // (below 40rem an item of the sections menu, which absorbs the page's tools).
-    await pressPageTool(page, "Equation");
+    await pressPageTool(page, "Series");
     const panel = page.locator(".eq-panel");
     await expect(panel).toBeVisible();
     await expect(panel.locator(".eq-scroll-region .katex").first()).toBeVisible({ timeout: 30_000 });
@@ -254,8 +256,8 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         await expect(controlRow(menu, /Magnet/)).toBeVisible();
         for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction", "Delete point"])
             await expect(menu.getByRole("menuitem", { name })).toBeVisible();
-        // Owner, 2026-11-15 (one home per tool): View options left this menu for
-        // the stage's floating dock, asserted below.
+        // FORTY-FIRST H: the two view layers the editor shows are rows of this
+        // menu on a phone (asserted below), not a submenu.
         await expect(menu.getByRole("menuitem", { name: "View options" })).toHaveCount(0);
         // Delete is the menu's last item, behind a separator, in the rose tone.
         const order = await menu.first().evaluate((m) => {
@@ -266,12 +268,9 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         expect(order.at(-2), "a separator precedes Delete point").toBe("|");
         await expect(menu.getByRole("menuitem", { name: "Delete point" })).toHaveClass(/is-rose/);
         await frame(page, "v88-more-menu");
-        // The view layers are one press away on the stage's floating dock.
-        await page.keyboard.press("Escape");
-        await openCanvasDock(page);
-        await page.locator(".controls-dock-anchor").getByRole("button", { name: "View options" }).click();
-        for (const name of ["Background image", "Original outline"])
-            await expect(page.getByRole("menuitemcheckbox", { name })).toBeVisible();
+        // The view layers are rows of the same menu, before Delete.
+        for (const name of ["Picture", "Outline"])
+            await expect(menu.getByRole("menuitemcheckbox", { name })).toBeVisible();
         await frame(page, "v88-view-sub");
     });
 
@@ -572,7 +571,7 @@ test.describe("X.F.W14U.vedit — the equation panel", () => {
         await frame(page, "v177-390");
         const overlap = await page.evaluate(() => {
             const a = document.querySelector(".eq-panel")!.getBoundingClientRect();
-            const b = document.querySelector(".controls-dock-anchor .glass-dock, .controls-dock-anchor > *")!.getBoundingClientRect();
+            const b = document.querySelector(".controls-overlay .glass-dock, .controls-overlay > *")!.getBoundingClientRect();
             const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
             const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
             return w > 0 && h > 0 ? h : 0;
@@ -639,7 +638,7 @@ test.describe("X.F.W14U.vedit — frames at 1440 and 390", () => {
             await page.waitForTimeout(600);
             await edit.click();
             await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "");
-            await pressPageTool(page, "Equation");
+            await pressPageTool(page, "Series");
             await expect(page.locator(".eq-panel .eq-scroll-region .katex").first()).toBeVisible({ timeout: 30_000 });
             await frame(page, "frames-equation");
         });

@@ -674,7 +674,7 @@ for (const vp of VIEWPORTS) {
             // control; expand the canvas dock, then trigger Export.
             // Owner, 2026-11-15: the canvas dock opens by a press on its folded face.
             await openCanvasDock(page);
-            await page.locator('.controls-dock-anchor [aria-label="Export frame"]').click();
+            await page.locator('.controls-overlay [aria-label="Export frame"]').click();
 
             // The glass-ui Dialog exposes role="dialog" + aria-modal.
             const dialog = page.locator('[role="dialog"]').first();

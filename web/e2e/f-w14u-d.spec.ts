@@ -43,12 +43,12 @@ async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) =
     if (setup) await setup(page);
     await page.mouse.move(5, 5);
     await expect(page.locator(".animation-dock")).toHaveClass(/\bcollapsed\b/, { timeout: 30_000 });
-    await expect(page.locator(".controls-dock-anchor .glass-dock")).toHaveClass(/\bcollapsed\b/, {
+    await expect(page.locator(".controls-overlay .glass-dock")).toHaveClass(/\bcollapsed\b/, {
         timeout: 30_000,
     });
     // Every time-based animation on both docks has ended.
     await page.waitForFunction(() =>
-        [".animation-dock", ".controls-dock-anchor .glass-dock"].every((s) =>
+        [".animation-dock", ".controls-overlay .glass-dock"].every((s) =>
             [...document.querySelectorAll(s)].every((d) =>
                 d
                     .getAnimations({ subtree: true })
@@ -63,15 +63,16 @@ async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) =
     );
 }
 
-/** Switch the contour trace off through the canvas dock's View options menu. */
+/** Leave the stage with the outline off (FORTY-FIRST K: it is off by default)
+ *  and the stage dock folded, at rest. */
 async function traceOff(page: Page): Promise<void> {
     await openCanvasDock(page);
-    await page.locator(".controls-dock-anchor [aria-label='View options']").click();
-    await page.getByRole("menuitemcheckbox", { name: "Original outline" }).click();
+    const outline = page.locator(".controls-overlay [aria-label='Outline']");
+    if ((await outline.getAttribute("aria-pressed")) === "true") await outline.click();
     await page.mouse.click(5, 5);
     // The dock's collapse after an expansion settles in stages (its anchor
     // re-seats after the layer swap); wait until its box holds still.
-    const dock = page.locator(".controls-dock-anchor .glass-dock");
+    const dock = page.locator(".controls-overlay .glass-dock");
     await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 30_000 });
     let last = "";
     await expect
@@ -136,14 +137,14 @@ for (const c of CASES) {
             // X.F.W14V.u1 (UIA-F-173, §0bt setup only): the dot now shows only off the
             // default view, so the trace is switched off before the collapsed dot is read.
             await loadCollapsed(page, mobile, traceOff);
-            const dock = page.locator(".controls-dock-anchor .glass-dock");
+            const dock = page.locator(".controls-overlay .glass-dock");
             const box = (await dock.boundingBox())!;
             await page.screenshot({
                 path: `${FRAMES}/${PHASE}-${c.width}-${c.scheme}-canvas-dock.png`,
                 clip: { x: box.x - 20, y: Math.max(0, box.y - 20), width: box.width + 40, height: box.height + 40 },
             });
             const m = await page.evaluate(() => {
-                const d = document.querySelector(".controls-dock-anchor .glass-dock")!;
+                const d = document.querySelector(".controls-overlay .glass-dock")!;
                 const r = (e: Element) => e.getBoundingClientRect();
                 return {
                     dot: r(d.querySelector(".dock-layer--summary .view-dot")!).toJSON(),

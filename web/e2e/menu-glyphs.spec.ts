@@ -60,22 +60,29 @@ for (const vp of [
             });
         }
 
-        test(`${coarse}the sections menu on a saved visualization, with the page's tools`, async ({ page }) => {
+        test(`${coarse}the sections menu on a saved visualization: the five places`, async ({ page }) => {
             await openWorkspace(page);
             const menu = await openSections(page);
-            if (page.viewportSize()!.width < 640) {
-                const tools = menu.getByRole("group", { name: "Visualize tools" });
-                await expect(tools.getByRole("menuitemcheckbox", { name: "Equation" })).toBeVisible();
-            }
+            await expect(menu.getByRole("menuitem")).toHaveCount(5);
             expect(await itemsWithoutGlyph(menu)).toEqual([]);
         });
 
-        test(`${coarse}the View options menu`, async ({ page }) => {
+        test(`${coarse}the stage dock's menus`, async ({ page }) => {
             await openWorkspace(page);
             const dock = await openCanvasDock(page);
-            await dock.getByRole("button", { name: "View options" }).click();
+            // A phone's More holds the layers and the page's acts, each row with its glyph.
+            if (page.viewportSize()!.width < 640) {
+                await dock.getByRole("button", { name: "Layers and more" }).click();
+                const more = page.getByRole("menu");
+                await expect(more.getByRole("menuitemcheckbox", { name: "Line" })).toBeVisible();
+                await page.waitForTimeout(400);
+                expect(await itemsWithoutGlyph(more)).toEqual([]);
+                await page.keyboard.press("Escape");
+                await expect(more).toBeHidden();
+            }
+            await dock.getByRole("button", { name: "Easing" }).click();
             const menu = page.getByRole("menu");
-            await expect(menu.getByRole("menuitemcheckbox", { name: "Original outline" })).toBeVisible();
+            await expect(menu).toBeVisible();
             await page.waitForTimeout(400);
             expect(await itemsWithoutGlyph(menu)).toEqual([]);
         });

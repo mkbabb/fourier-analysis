@@ -46,8 +46,18 @@ const props = withDefaults(
         showCircles?: boolean;
         /** The view a link names (zoom and centre), or null for the fit. */
         linkView?: StageLink | null;
+        /** The stage's foot the dock covers (px): the drawing is fitted to the box above it. */
+        fitInsetBottom?: number;
     }>(),
-    { activeBases: () => ["fourier-epicycles"], showGhost: false, showImageOverlay: true, showLine: true, showCircles: true, linkView: null },
+    {
+        activeBases: () => ["fourier-epicycles"],
+        showGhost: false,
+        showImageOverlay: true,
+        showLine: true,
+        showCircles: true,
+        linkView: null,
+        fitInsetBottom: 0,
+    },
 );
 const emit = defineEmits<{
     /** A gesture came to rest: the view as a link carries it (null at the fit). */
@@ -154,7 +164,8 @@ const gestures = useStageGestures({
 function currentLink(): StageLink | null {
     const s = surface.value;
     if (!s) return null;
-    return linkOfView(gestures.getView(), s.width, s.height, getViewTransform(s).scale, extent());
+    const base = getViewTransform(s, props.fitInsetBottom);
+    return linkOfView(gestures.getView(), base.toScreen(base.cx, base.cy), base.scale * extent());
 }
 const linkKey = (link: StageLink | null) => JSON.stringify(formatWorkspaceQuery({ z: link?.z ?? null, c: link?.c ?? null }));
 /** Put the stage at the view a link names (the fit for none), unless it is already there as written. */
@@ -163,16 +174,23 @@ function applyLink(link: StageLink | null): void {
     if (!s) return;
     linkPending = false;
     if (linkKey(link) === linkKey(currentLink())) return;
+    const base = getViewTransform(s, props.fitInsetBottom);
     if (!link) gestures.reset();
-    else gestures.setView(viewOfLink(link, s.width, s.height, getViewTransform(s).scale, extent()));
+    else gestures.setView(viewOfLink(link, base.toScreen(base.cx, base.cy), base.scale * extent()));
 }
+// The dock's foot changed (a form change): refit the drawing above it.
+watch(() => props.fitInsetBottom, () => {
+    stableEpicycleBbox = null;
+    baseFitCenter = null;
+    if (surface.value && (store.epicycleData || store.basesData)) drawFrame();
+});
 watch(() => props.linkView, (link) => {
     if (store.epicycleData || store.basesData) applyLink(link);
 });
 
 /** The fitted transform and the one the stage draws with (zoom and pan applied). */
 function views(s: CanvasSurface): { base: ViewTransform; view: ViewTransform } {
-    const base = getViewTransform(s);
+    const base = getViewTransform(s, props.fitInsetBottom);
     return { base, view: composeView(base, gestures.getView(), s.width, s.height) };
 }
 

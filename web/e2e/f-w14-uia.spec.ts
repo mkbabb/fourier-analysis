@@ -744,31 +744,23 @@ test.describe("UIA-F-32 — the coefficient popover escapes the equation card", 
     });
 });
 
-test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyboard", () => {
-    // X.F.W14V.u1 (UIA-F-79, §0bt): View options is a menu now (UIA-F-77/F-79), so its
-    // rows are reached with the menu's own keys (focus enters the menu; arrows move).
-    test("Enter opens the menu and the keys reach both rows; Enter toggles one", async ({ page }) => {
+test.describe("UIA-F-12 — the stage's layers are reachable by keyboard", () => {
+    // FORTY-FIRST Q: the layers are seats of the stage's one dock (Picture,
+    // Outline, Line, Circles), each a toggle the keyboard reaches and presses.
+    test("Tab reaches the layer seats; Enter toggles one", async ({ page }) => {
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await openCanvasDock(page);
-        const view = page.getByRole("button", { name: "View options" }).first();
-        await expect(view).toBeVisible();
+        const outline = page.locator(".controls-overlay").getByRole("button", { name: "Outline", exact: true });
+        await expect(outline).toBeVisible();
         await page.waitForTimeout(600);
-        await view.focus();
+        const picture = page.locator(".controls-overlay").getByRole("button", { name: "Picture", exact: true });
+        await picture.focus();
+        await page.keyboard.press("Tab");
+        await expect(outline).toBeFocused();
+        const was = await outline.getAttribute("aria-pressed");
         await page.keyboard.press("Enter");
-        await expect(page.getByRole("menu")).toBeVisible();
-        const names: string[] = [];
-        for (let i = 0; i < 3; i++) {
-            names.push((await page.evaluate(() => document.activeElement?.textContent?.trim())) ?? "");
-            await page.keyboard.press("ArrowDown");
-        }
-        expect(names).toContain("Original outline");
-        expect(names).toContain("Background image");
-        const trace = page.getByRole("menuitemcheckbox", { name: "Original outline" });
-        await trace.focus();
-        const was = await trace.getAttribute("aria-checked");
-        await page.keyboard.press("Enter");
-        await expect(trace).not.toHaveAttribute("aria-checked", was ?? "");
+        await expect(outline).not.toHaveAttribute("aria-pressed", was ?? "");
     });
 });
 
@@ -780,9 +772,9 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
         await page.goto(`/v/${viz.slug}`);
         await showView(page, "Canvas");
         await openCanvasDock(page);
-        await expect(page.locator(".controls-dock-anchor [aria-label='Export frame']")).toBeVisible();
+        await expect(page.locator(".controls-overlay [aria-label='Export frame']")).toBeVisible();
         const res = await page.evaluate(() => {
-            const anchor = document.querySelector(".controls-dock-anchor")!;
+            const anchor = document.querySelector(".controls-overlay")!;
             return [...anchor.querySelectorAll<HTMLElement>("button[aria-label]")]
                 .filter((b) => !b.closest("[inert]") && b.getClientRects().length)
                 .map((b) => {

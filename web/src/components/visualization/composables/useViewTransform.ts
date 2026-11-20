@@ -10,6 +10,9 @@ interface Bbox {
     maxY: number;
 }
 
+/** The fit's free margin on each side, as a fraction of the drawing's size. */
+export const FIT_MARGIN = 0.06;
+
 export function useViewTransform() {
     const store = useWorkspaceStore();
 
@@ -46,7 +49,12 @@ export function useViewTransform() {
         return { minX, maxX, minY, maxY };
     });
 
-    function getViewTransform(s: CanvasSurface): ViewTransform {
+    /**
+     * The fit: the drawing centred in the stage's box above `insetBottom`
+     * (the foot the bottom dock covers), with `FIT_MARGIN` of its size free on
+     * each side.
+     */
+    function getViewTransform(s: CanvasSurface, insetBottom = 0): ViewTransform {
         const bbox = dataBbox.value;
         if (!bbox) {
             const noop: ViewTransform = { cx: 0, cy: 0, scale: 1, toScreen: (x, y) => [x, y] };
@@ -56,15 +64,14 @@ export function useViewTransform() {
         const { minX, maxX, minY, maxY } = bbox;
         const rangeX = maxX - minX || 1;
         const rangeY = maxY - minY || 1;
-        const margin = 0.15;
+        const w = s.width;
+        const h = Math.max(1, s.height - Math.max(0, insetBottom));
         const scale = Math.min(
-            s.width / (rangeX * (1 + margin * 2)),
-            s.height / (rangeY * (1 + margin * 2)),
+            w / (rangeX * (1 + FIT_MARGIN * 2)),
+            h / (rangeY * (1 + FIT_MARGIN * 2)),
         );
         const cx = (minX + maxX) / 2;
         const cy = (minY + maxY) / 2;
-        const w = s.width;
-        const h = s.height;
 
         return {
             cx, cy, scale,

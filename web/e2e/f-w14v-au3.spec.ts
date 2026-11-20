@@ -42,7 +42,7 @@ async function openEquationPanel(page: Page) {
     await openViz(page);
     // Owner, 2026-11-15: the series panel is the page's tool, in the app dock.
     await openAppDock(page);
-    const eq = page.getByRole("button", { name: "Equation", exact: true }).first();
+    const eq = page.getByRole("button", { name: "Series", exact: true }).first();
     await expect(eq).toBeVisible();
     await page.waitForTimeout(700);
     await eq.click();

@@ -13,7 +13,8 @@
  *
  * Two forms of the same acts (`usePageTools`): `seats`, dock controls (the app
  * dock from 40rem, and the fullscreen takeover's stage dock), and `items`,
- * menu items (a stage dock's menu).
+ * menu items (the stage dock's More on a phone). `acts` names which to draw,
+ * in that order (More places each act in its own group).
  */
 import { computed } from "vue";
 import { Check, Globe, GlobeCheck, Link, SquareFunction } from "@lucide/vue";
@@ -23,8 +24,12 @@ import { useClipboard } from "@mkbabb/glass-ui";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { PageToolsForm } from "@/composables/usePageTools";
 
-const { tooltipSide = "bottom" } = defineProps<{
+export type PageAct = "publish" | "series" | "link";
+
+const { tooltipSide = "bottom", acts = ["publish", "series", "link"] } = defineProps<{
     form: PageToolsForm;
+    /** The acts to draw, in order (all three by default). */
+    acts?: readonly PageAct[];
     hasData: boolean;
     hasContour: boolean;
     publishing: boolean;
@@ -56,41 +61,43 @@ function onCopyItem(e: Event): void {
 </script>
 
 <template>
-    <template v-if="form === 'items'">
-        <DropdownMenuItem :disabled="!hasData" @select="onCopyItem">
-            <Transition name="icon-swap" mode="out-in">
-                <Check v-if="status === 'success'" class="copy-ok" aria-hidden="true" />
-                <Link v-else aria-hidden="true" />
-            </Transition>
-            <span>Copy link</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem :disabled="!hasContour" @select="emit('publish')">
-            <GlobeCheck v-if="published" aria-hidden="true" />
-            <Globe v-else aria-hidden="true" />
-            <span>{{ published ? "Published — open it" : "Publish to Gallery" }}</span>
-        </DropdownMenuItem>
-        <DropdownMenuCheckboxItem :disabled="!hasData" :model-value="showEquation" @update:model-value="emit('toggleEquation')">
-            <SquareFunction aria-hidden="true" />
-            <span>Series</span>
-        </DropdownMenuCheckboxItem>
-    </template>
-    <template v-else>
-        <Tooltip v-if="published" text="Published — open it" :side="tooltipSide">
-            <DockControl aria-label="Published — open it" :disabled="!hasContour" @click="emit('publish')">
-                <GlobeCheck />
-            </DockControl>
-        </Tooltip>
-        <Tooltip v-else text="Publish to Gallery" :side="tooltipSide">
-            <DockControl aria-label="Publish to Gallery" :disabled="!hasContour" :active="publishing" @click="emit('publish')">
-                <Globe :class="{ 'animate-pulse': publishing }" />
-            </DockControl>
-        </Tooltip>
-        <Tooltip text="Series" :side="tooltipSide">
+    <template v-for="act in acts" :key="act">
+        <template v-if="form === 'items'">
+            <DropdownMenuItem v-if="act === 'link'" :disabled="!hasData" @select="onCopyItem">
+                <Transition name="icon-swap" mode="out-in">
+                    <Check v-if="status === 'success'" class="copy-ok" aria-hidden="true" />
+                    <Link v-else aria-hidden="true" />
+                </Transition>
+                <span>Copy link</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem v-else-if="act === 'publish'" :disabled="!hasContour" @select="emit('publish')">
+                <GlobeCheck v-if="published" aria-hidden="true" />
+                <Globe v-else aria-hidden="true" />
+                <span>{{ published ? "Published — open it" : "Publish to Gallery" }}</span>
+            </DropdownMenuItem>
+            <DropdownMenuCheckboxItem v-else :disabled="!hasData" :model-value="showEquation" @update:model-value="emit('toggleEquation')">
+                <SquareFunction aria-hidden="true" />
+                <span>Series</span>
+            </DropdownMenuCheckboxItem>
+        </template>
+        <template v-else-if="act === 'publish'">
+            <Tooltip v-if="published" text="Published — open it" :side="tooltipSide">
+                <DockControl aria-label="Published — open it" :disabled="!hasContour" @click="emit('publish')">
+                    <GlobeCheck />
+                </DockControl>
+            </Tooltip>
+            <Tooltip v-else text="Publish to Gallery" :side="tooltipSide">
+                <DockControl aria-label="Publish to Gallery" :disabled="!hasContour" :active="publishing" @click="emit('publish')">
+                    <Globe :class="{ 'animate-pulse': publishing }" />
+                </DockControl>
+            </Tooltip>
+        </template>
+        <Tooltip v-else-if="act === 'series'" text="Series" :side="tooltipSide">
             <DockControl aria-label="Series" :disabled="!hasData" :active="showEquation" @click="emit('toggleEquation')">
                 <SquareFunction />
             </DockControl>
         </Tooltip>
-        <Tooltip text="Copy link" :side="tooltipSide">
+        <Tooltip v-else text="Copy link" :side="tooltipSide">
             <DockControl aria-label="Copy link" :disabled="!hasData" @click="copyLink">
                 <Transition name="icon-swap" mode="out-in">
                     <Check v-if="status === 'success'" class="copy-ok" />
@@ -99,7 +106,7 @@ function onCopyItem(e: Event): void {
             </DockControl>
         </Tooltip>
     </template>
-    <p class="sr-only" role="status">{{ copyAnnouncement }}</p>
+    <p v-if="acts.includes('link')" class="sr-only" role="status">{{ copyAnnouncement }}</p>
 </template>
 
 <style scoped>

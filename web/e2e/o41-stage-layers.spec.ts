@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openAppDock } from "./fixtures/app-dock";
+import { openCanvasDock } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 import { showViewIfTabbed } from "./fixtures/workspace";
 import { SAMPLE_STAGE, type StageInk } from "./fixtures/stage-ink";
@@ -28,12 +29,25 @@ function stageSeat(page: Page, name: string): Locator {
     return page.locator(".animation-dock").getByRole("button", { name, exact: true });
 }
 
-/** Open the stage dock's More and return its menu. */
+/** Open the stage dock's More (a phone) and return its menu. */
 async function openMore(page: Page): Promise<Locator> {
     await page.locator(".animation-dock").getByRole("button", { name: "Layers and more" }).click();
     const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
     return menu;
+}
+
+/** Press "Just the picture" where it lives: a row of More on a phone, a seat
+ *  of the dock's open face on a desk (two choices are not a menu). */
+async function pressJustThePicture(page: Page): Promise<void> {
+    if (page.viewportSize()!.width < 640) {
+        const menu = await openMore(page);
+        await menu.getByRole("menuitemcheckbox", { name: "Just the picture" }).click();
+        await page.keyboard.press("Escape");
+        return;
+    }
+    const dock = await openCanvasDock(page);
+    await dock.getByRole("button", { name: "Just the picture", exact: true }).click();
 }
 
 /** Toggle the picture where it lives: one press on its seat. */
@@ -129,11 +143,9 @@ for (const vp of WIDTHS) {
         test("Just the picture hides the drawn layers and the grid, shows the picture whole; pressed again they return", async ({ page }) => {
             await openPaused(page);
             const washed = await stage(page);
-            let menu = await openMore(page);
-            await menu.getByRole("menuitemcheckbox", { name: "Just the picture" }).click();
+            await pressJustThePicture(page);
             await expect(page).toHaveURL(/[?&]line=0/);
             await expect(page).toHaveURL(/[?&]circles=0/);
-            await page.keyboard.press("Escape");
             // The picture is whole: much more paint than its wash under the drawing.
             const whole = await stage(page);
             expect(whole.alpha, "the picture at full strength").toBeGreaterThan(2 * washed.alpha);
@@ -143,8 +155,7 @@ for (const vp of WIDTHS) {
             await page.waitForTimeout(600);
             expect(await gridInk(page), "no grid pixel").toBe(0);
             await togglePicture(page);
-            menu = await openMore(page);
-            await menu.getByRole("menuitemcheckbox", { name: "Just the picture" }).click();
+            await pressJustThePicture(page);
             await expect(page).not.toHaveURL(/[?&](line|circles)=/);
         });
     });

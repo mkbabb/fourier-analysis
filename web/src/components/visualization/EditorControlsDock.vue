@@ -7,6 +7,7 @@ import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import {
     DropdownMenu,
+    DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
@@ -26,6 +27,9 @@ import {
     Save,
     Check,
     Magnet,
+    ImageIcon,
+    CircleDashed,
+    Pencil,
 } from "@lucide/vue";
 
 /*
@@ -45,6 +49,10 @@ function keepSliderKeys(e: KeyboardEvent) {
 defineProps<EditorState & {
     magnetRadius: number;
     isSaved: boolean;
+    /** The two layers the editor shows (FORTY-FIRST H: with the stage's other
+     *  dock gone, the editor carries them; one press each from a desk). */
+    picture: boolean;
+    outline: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -56,6 +64,8 @@ const emit = defineEmits<{
     "update:magnetRadius": [value: number];
     reset: [];
     save: [];
+    toggleLayer: [layer: "picture" | "outline"];
+    done: [];
 }>();
 
 /*
@@ -134,6 +144,13 @@ function holdDockWhileOpen(open: boolean) {
                     <Save v-else />
                 </DockControl>
             </Tooltip>
+            <!-- FORTY-FIRST H: the stage's one dock leaves while editing, so the
+                 editor's door is here, last and lit: the same pencil, pressed. -->
+            <Tooltip text="Done">
+                <DockControl aria-label="Edit contour" :active="true" @click.stop="emit('done')">
+                    <Pencil />
+                </DockControl>
+            </Tooltip>
         </template>
 
         <!--
@@ -205,6 +222,16 @@ function holdDockWhileOpen(open: boolean) {
                         <Trash2 />
                     </DockControl>
                 </Tooltip>
+                <Tooltip text="Picture">
+                    <DockControl aria-label="Picture" :active="picture" @click="emit('toggleLayer', 'picture')">
+                        <ImageIcon />
+                    </DockControl>
+                </Tooltip>
+                <Tooltip text="Outline">
+                    <DockControl aria-label="Outline" :active="outline" @click="emit('toggleLayer', 'outline')">
+                        <CircleDashed />
+                    </DockControl>
+                </Tooltip>
             </template>
 
             <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
@@ -262,6 +289,15 @@ function holdDockWhileOpen(open: boolean) {
                          a separator. The view layers are the stage dock's alone
                          (owner, 2026-11-15: one home per tool). -->
                     <template v-if="!isSm">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem :model-value="picture" @select.prevent @update:model-value="emit('toggleLayer', 'picture')">
+                            <ImageIcon class="h-4 w-4" />
+                            Picture
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem :model-value="outline" @select.prevent @update:model-value="emit('toggleLayer', 'outline')">
+                            <CircleDashed class="h-4 w-4" />
+                            Outline
+                        </DropdownMenuCheckboxItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             class="tool-row is-rose"

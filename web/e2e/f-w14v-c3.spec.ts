@@ -34,7 +34,7 @@ async function openEditor(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
     if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
-    await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator(".controls-overlay")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
     const edit = page.getByRole("button", { name: "Edit contour" }).first();
     await edit.hover();

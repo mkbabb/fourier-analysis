@@ -145,7 +145,7 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // dock and trigger it to raise the Dialog.
         // Owner, 2026-11-15: the canvas dock opens by a press on its folded face.
         await openCanvasDock(page);
-        await page.locator('.controls-dock-anchor [aria-label="Export frame"]').click();
+        await page.locator('.controls-overlay [aria-label="Export frame"]').click();
 
         // The glass-ui Dialog should expose role="dialog".
         const dialog = page.locator('[role="dialog"]').first();
@@ -351,7 +351,7 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // Drive the save through the product, not a store hook: open the
         // contour editor from the canvas dock (keyboard activation — the path
         // every control owes), then press the editor's Save.
-        const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
+        const canvasDock = page.locator(".controls-overlay .glass-dock");
         const editToggle = canvasDock.locator('[aria-label="Edit contour"]');
         await expect(editToggle).toBeVisible({ timeout: 10_000 });
         await editToggle.press("Enter");

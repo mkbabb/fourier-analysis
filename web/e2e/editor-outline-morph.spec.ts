@@ -11,7 +11,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
 
 async function openEditor(page: Page): Promise<void> {
     await page.goto(`/v/${seededViz().slug}`);
-    await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator(".controls-overlay")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
     const edit = page.getByRole("button", { name: "Edit contour" }).first();
     await edit.hover();
