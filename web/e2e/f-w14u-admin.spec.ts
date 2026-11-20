@@ -59,6 +59,11 @@ async function openAdmin(page: Page, before?: (page: Page) => Promise<void>): Pr
 
 async function openTab(page: Page, tab: string): Promise<void> {
     await selectTab(page, tab);
+    // A tab's body fades in once the old one has left (the gallery's tab
+    // motion); the checks read the body that has arrived.
+    const body = page.locator(".gallery-body");
+    await expect(body).toHaveCount(1);
+    await expect.poll(() => body.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
 }
 
 async function openUsers(page: Page, before?: (page: Page) => Promise<void>): Promise<Locator> {

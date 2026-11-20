@@ -420,6 +420,19 @@ watch(selectedSlug, (slug) => {
 });
 watch(activeTab, (tab) => { if (tab !== "gallery") clearGallerySelection(); });
 
+/**
+ * The search row moves with the bodies, never under one. Below sm it stands on
+ * its own row over the body, so its arrival or removal moves the body by its
+ * height: removed after the old body had gone (its fade ran longer), it moved
+ * the new body up about 50 px while that body faded in. It leaves with the old
+ * body, at the same step, and returns with the new one, once the old has gone.
+ */
+const searchShown = ref(activeTab.value === "gallery");
+watch(activeTab, (tab) => { if (tab !== "gallery") searchShown.value = false; });
+function onBodyGone() {
+    searchShown.value = activeTab.value === "gallery";
+}
+
 // UIA-F-103 ⊕ UIA-F-248: the store owns the publish's one error channel; this
 // host only marks which draft is busy and reloads the list afterwards.
 async function handlePublishDraft(draft: WorkspaceDraft) {
@@ -463,10 +476,11 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
                 />
             </div>
             <!-- The search is the Gallery tab's: on Drafts or an admin tab it
-                 leaves by a short fade (and returns the same way), never a cut. -->
+                 leaves by a short fade with the old body, and returns with the
+                 new one (see `searchShown`), never a cut. -->
             <Transition name="gallery-search">
             <GallerySearchBar
-                v-if="activeTab === 'gallery'"
+                v-if="searchShown"
                 class="sm:min-w-0 sm:flex-1"
                 :search-query="gallery.searchQuery"
                 :sort="gallery.sort"
@@ -482,7 +496,7 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
 
         <!-- One tab's body at a time, keyed by the tab: the old one leaves
              quickly and the new one fades in, so a tab change is never a cut. -->
-        <Transition name="gallery-body" mode="out-in">
+        <Transition name="gallery-body" mode="out-in" @after-leave="onBodyGone">
         <div :key="activeTab" class="gallery-body flex flex-1 flex-col gap-4">
         <!-- Gallery tab -->
         <template v-if="activeTab === 'gallery'">
@@ -692,10 +706,13 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
 </template>
 
 <style scoped>
-/* The search's exit and return: opacity in its held row (beside the tabs from
-   sm up), on glass's tokens. Reduced motion keeps the fade. */
-.gallery-search-enter-active,
+/* The search's exit and return: opacity, at the bodies' steps (it leaves with
+   the old body and arrives with the new one), on glass's tokens. Reduced motion
+   keeps the fade. */
 .gallery-search-leave-active {
+    transition: opacity var(--duration-control) var(--ease-standard);
+}
+.gallery-search-enter-active {
     transition: opacity var(--duration-fast) var(--ease-standard);
 }
 .gallery-search-enter-from,
