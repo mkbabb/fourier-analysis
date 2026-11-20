@@ -33,7 +33,9 @@ import { showView } from "./fixtures/workspace";
  */
 
 /** The producer's own coarse contract, read from its shipped stylesheet. */
-const COARSE_UI_SCALE = 1.5; // `:root{--ui-scale: var(--ui-coarse-scale,1.5)}`
+// `:root{--ui-scale: var(--ui-coarse-scale,1.5)}`; the site sets
+// `--ui-coarse-scale: 1.25` (FORTY-SECOND D, theming glass allows).
+const COARSE_UI_SCALE = 1.25;
 const TOUCH_TARGET_PX = 44; // `--touch-target: 2.75rem` at the 16px root
 
 /** The smaller of a box's two axes, or null when the element has no box. */

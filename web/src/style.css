@@ -526,6 +526,15 @@ article.paper-article {
     --page-gutter: 1rem;
 }
 
+/* FORTY-SECOND D ("our controls should be re-designed to not have so much
+   padding"): on a touch screen glass scales its controls by
+   `--ui-coarse-scale` (1.5 by default: 54 px chips, 60 px fields). The site
+   takes 1.25 as theming (glass, 19 Nov: yes); the 44 px touch floor is held
+   apart by glass's `--control-floor`, so no target falls under it. */
+:root {
+    --ui-coarse-scale: 1.25;
+}
+
 /* X-DS pass 15 · DS-F17-C1 — the Configurator aside's section label on the
    app's card-title rung (subheading at 500, the /morph card titles' since
    DS-F16-C1). glass's default (`--type-heading` at 600) renders Computer
