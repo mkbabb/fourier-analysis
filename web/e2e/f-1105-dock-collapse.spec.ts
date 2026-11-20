@@ -5,16 +5,16 @@ import { expectHardwareGpu } from "./fixtures/gpu";
 
 /**
  * Owner order 2026-11-05: "fourier should have a dock collapse state, too".
- * Owner, 13 Nov (O16 [49] [57]): "it should by default be collapsed", and its
- * seal is the Fourier F.
+ * Owner, 13 Nov (O16 [49] [57]): "it should by default be collapsed"; its seal
+ * is the fourier mark (19 Nov, O41 B: "an actual epicycle/series image").
  *
  * The app dock is glass's `collapse="closed"`: it rests at its seal from first
  * paint at every width, opens on hover, focus or a press, yields to work (the
- * pointer leaving it, a press on the page), and collapsed it wears the
- * wordmark's ℱ. Nothing below the dock moves when it folds.
+ * pointer leaving it, a press on the page), and collapsed it wears the mark.
+ * Nothing below the dock moves when it folds.
  *
- * U0      it arrives collapsed, wearing the ℱ.
- * U1 F-1  the seal is the ℱ mark, every section and a 404.
+ * U0      it arrives collapsed, wearing the mark.
+ * U1 F-1  the seal is the mark, every section and a 404.
  * U2 F-2  the content below the dock does not move across the morph; the gate
  *         is shown to see a block-size mutant.
  * U3 F-3  an open dock surface (About, Sections, Log in) is not folded under
@@ -98,15 +98,23 @@ async function collapseByTap(page: Page, dock: Locator): Promise<void> {
     await settled(dock);
 }
 
-/** The seal's face: the ℱ marks in the summary layer, and any glyph beside them. */
-async function readSeal(dock: Locator): Promise<{ marks: string[]; glyphs: number }> {
-    return dock.evaluate((d) => ({
-        marks: [...d.querySelectorAll(".dock-layer--summary .dock-summary-mark")].map((e) => e.textContent ?? ""),
-        glyphs: d.querySelectorAll(".dock-layer--summary svg").length,
-    }));
+/**
+ * The seal's face: the mark's drawings in the summary layer, any other glyph
+ * beside them, and whether the letter ℱ is still set there (O41 B: the seal is
+ * the fourier mark, an epicycle figure, not the wordmark's letter).
+ */
+async function readSeal(dock: Locator): Promise<{ marks: number; glyphs: number; letter: boolean }> {
+    return dock.evaluate((d) => {
+        const summary = d.querySelector(".dock-layer--summary");
+        return {
+            marks: summary?.querySelectorAll("svg[data-mark]").length ?? 0,
+            glyphs: summary?.querySelectorAll("svg:not([data-mark])").length ?? 0,
+            letter: (summary?.textContent ?? "").includes("\u2131"),
+        };
+    });
 }
 
-// ── U1 · F-1: the seal is the Fourier F ──────────────────────────────────────
+// ── U1 · F-1: the seal is the fourier mark ─────────────────────────────────
 const U1_CELLS = [
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
@@ -122,7 +130,7 @@ async function sealEverySection(page: Page, collapse: (page: Page, dock: Locator
             await collapse(page, dock);
             const summary = dock.locator(".dock-layer--summary");
             await expect(summary).toHaveClass(/is-active/);
-            expect(await readSeal(dock), `the seal at ${s.path} is the one Fourier F`).toEqual({ marks: ["\u2131"], glyphs: 0 });
+            expect(await readSeal(dock), `the seal at ${s.path} is the one fourier mark`).toEqual({ marks: 1, glyphs: 0, letter: false });
         });
     }
 }
@@ -131,11 +139,11 @@ async function sealEverySection(page: Page, collapse: (page: Page, dock: Locator
 for (const vp of U1_CELLS) {
     test.describe(`U0 arrives collapsed ${vp.width}x${vp.height}`, () => {
         test.use({ viewport: vp });
-        test("U0 the app dock arrives collapsed, wearing the Fourier F", async ({ page }) => {
+        test("U0 the app dock arrives collapsed, wearing the fourier mark", async ({ page }) => {
             await page.goto("/equation");
             const dock = appDock(page);
             await expect(dock).toHaveClass(COLLAPSED, { timeout: 30_000 });
-            expect(await readSeal(dock)).toEqual({ marks: ["\u2131"], glyphs: 0 });
+            expect(await readSeal(dock)).toEqual({ marks: 1, glyphs: 0, letter: false });
         });
     });
 }
@@ -144,7 +152,7 @@ for (const scheme of ["light", "dark"] as const) {
     for (const vp of U1_CELLS) {
         test.describe(`U1 F-1 seal ${vp.width}x${vp.height} ${scheme}`, () => {
             test.use({ viewport: vp, colorScheme: scheme });
-            test("U1 the seal is the Fourier F on every section and a 404", async ({ page }) => {
+            test("U1 the seal is the fourier mark on every section and a 404", async ({ page }) => {
                 test.setTimeout(120_000);
                 await sealEverySection(page, collapseByLeaving, scheme);
             });
@@ -153,7 +161,7 @@ for (const scheme of ["light", "dark"] as const) {
     for (const vp of [U1_CELLS[0], U1_CELLS[2]]) {
         test.describe(`U1 F-1 seal touch ${vp.width}x${vp.height} ${scheme}`, () => {
             test.use({ viewport: vp, colorScheme: scheme });
-            test("@coarse U1 the seal is the Fourier F on every section and a 404 (touch)", async ({ page }) => {
+            test("@coarse U1 the seal is the fourier mark on every section and a 404 (touch)", async ({ page }) => {
                 test.setTimeout(120_000);
                 await sealEverySection(page, collapseByTap, scheme);
             });
@@ -280,9 +288,8 @@ for (const s of SURFACES) {
         test.use({ viewport: { width: 390, height: 844 } });
         test(`@coarse U3 F-3 ${s.name}: an open surface outlasts the idle window and a tap outside lets the dock yield`, async ({ page }) => {
             const dock = await open(page, "/gallery");
-            // Under 40rem About is a group in the sections menu, so its surface is that menu.
-            const phone = s.name === "About" ? { trigger: /^Navigate/, content: "[data-about]" } : s;
-            const content = await openSurface(page, dock, phone, true);
+            // O41 S4: About is the "i" beside the theme seat at every width.
+            const content = await openSurface(page, dock, s, true);
             await page.waitForTimeout(IDLE);
             await expect(content).toBeVisible();
             await expect(dock).toHaveClass(EXPANDED);

@@ -118,10 +118,11 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
                 .map((b) => ({ name: b.getAttribute("aria-label") ?? "", w: b.getBoundingClientRect().width, h: b.getBoundingClientRect().height }));
             return { left: r.left, right: r.right, vw: innerWidth, seats };
         });
-        expect(g.left, "room on the left").toBeGreaterThanOrEqual(32);
-        expect(g.vw - g.right, "room on the right").toBeGreaterThanOrEqual(32);
-        // Home first; About rides the sections menu under 40rem (four seats).
-        expect(g.seats.map((x) => x.name.replace(/ — .*/, ""))).toEqual(["Home", "Navigate", "Log in", "Dark mode"]);
+        // O41 S4: the open dock keeps the page gutter (358 of 390 at most).
+        expect(g.left, "room on the left").toBeGreaterThanOrEqual(16);
+        expect(g.vw - g.right, "room on the right").toBeGreaterThanOrEqual(16);
+        // Home first; About is the "i" beside the theme seat at every width.
+        expect(g.seats.map((x) => x.name.replace(/ — .*/, ""))).toEqual(["Home", "Navigate", "Log in", "About Fourier analysis", "Dark mode"]);
         for (const x of g.seats) {
             expect(x.w, `${x.name} width`).toBeGreaterThanOrEqual(44);
             expect(x.h, `${x.name} height`).toBeGreaterThanOrEqual(44);
@@ -129,27 +130,27 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
         return dock;
     }
 
-    test("@coarse workspace: four seats within the plate; Publish and Equation are items of the sections menu", async ({ page }) => {
+    test("@coarse workspace: the seats within the plate; the sections menu holds only the five places", async ({ page }) => {
         await openWorkspace(page);
         const dock = await seatsWithin(page);
         await dock.getByRole("button", { name: /^Navigate/ }).click();
         const menu = page.getByRole("menu");
         await expect(menu.getByRole("menuitem", { name: "Paper" })).toBeVisible();
-        const tools = menu.getByRole("group", { name: "Visualize tools" });
-        await expect(tools.getByRole("menuitem", { name: "Publish to Gallery" })).toBeVisible();
-        await tools.getByRole("menuitemcheckbox", { name: "Equation" }).click();
-        await expect(page.locator(".eq-panel")).toBeVisible({ timeout: LOAD });
-        await expect(page).toHaveURL(/[?&]eq=1/);
+        await expect(menu.getByRole("menuitem")).toHaveCount(5);
+        await expect(menu.locator("[data-page-tools]")).toHaveCount(0);
     });
 
-    test("@coarse equation: four seats within the plate; Copy LaTeX and the approximation's facts are in the sections menu", async ({ page }) => {
+    test("@coarse equation: the seats within the plate; Copy LaTeX and the approximation's facts are seats of the plot's dock", async ({ page }) => {
         await page.goto("/equation");
         await expect(page.locator(".eq-card .katex").first()).toBeVisible({ timeout: LOAD });
         const dock = await seatsWithin(page);
         await dock.getByRole("button", { name: /^Navigate/ }).click();
-        const tools = page.getByRole("menu").getByRole("group", { name: "Equation tools" });
-        await expect(tools.getByRole("menuitem", { name: "Copy LaTeX" })).toBeVisible();
-        await expect(page.getByRole("menu")).toContainText("About this approximation");
+        await expect(page.getByRole("menu").getByRole("menuitem")).toHaveCount(5);
+        await page.keyboard.press("Escape");
+        const stage = page.locator(".eq-card");
+        await stage.getByRole("button", { name: "Plot tools" }).click();
+        await expect(stage.getByRole("button", { name: "Copy LaTeX" })).toBeVisible();
+        await expect(stage.getByRole("button", { name: "About this approximation" })).toBeVisible();
     });
 
     test("@coarse a page with no tools of its own: the same four seats", async ({ page }) => {

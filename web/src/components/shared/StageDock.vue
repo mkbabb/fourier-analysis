@@ -119,5 +119,12 @@ defineExpose({
     display: flex;
     justify-content: end;
     align-items: start;
+    /* Every trigger takes the dock's control cell (a DockTrigger is shorter
+       unless asked: 28 to 32 px on a phone), every glyph the dock's glyph. */
+    --dock-trigger-min-height: var(--dock-control-size);
+}
+.stage-dock :deep(.dock-trigger > svg) {
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
 }
 </style>

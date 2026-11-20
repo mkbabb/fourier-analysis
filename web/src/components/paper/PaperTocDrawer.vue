@@ -122,8 +122,9 @@ function toggleDrawer() {
                                  it never adds a line under the row (the tools' dock
                                  is taller than both); at the top of the paper it
                                  fades out in place and leaves no chin. -->
+                            <!-- Audit 27: no "Contents" heading over the contents
+                                 (the rail is named "Table of contents"). -->
                             <div class="sidebar-title">
-                                <p class="sidebar-label font-serif-math">Contents</p>
                                 <PaperPageReadout v-if="drawerOpen" :current-page="currentPage" class="sidebar-page" />
                             </div>
                             <!-- X.F.W14.r — r1: the scroll-to-top sits BESIDE the
@@ -402,16 +403,6 @@ function toggleDrawer() {
 /* O16 [58]: the tools' dock sits at the row's end; glass owns its plate. */
 .sidebar-header-actions {
     flex: none;
-}
-
-/* Canon F9 (restraint, C-9): the label is set in sentence case at the body
-   weight; caps, tracking and bold restated a word the rail's place already says. */
-.sidebar-label {
-    font-size: var(--type-small);
-    /* `D-B2`: full strength is 5.021:1 light / 5.440:1 dark over `--card`
-       (the 60% dilution measured 2.39:1 / 3.00:1 against a 4.5:1 floor). */
-    color: var(--muted-foreground);
-    margin: 0;
 }
 
 /* X.F.W13.a — OA-13: the glass `Button icon-only` owns its geometry and ink;

@@ -251,6 +251,15 @@ function handleReset() {
    rail mid-page inside `<main>`, the app's one scroller. `clip` keeps the
    horizontal guard without minting a scroll container, which is also what
    lets the stage stick to `<main>` (UIA-F-115). */
+/* FORTY-FIRST A: on a phone the page's cards take glass's room radius, the
+   one the stage routes' cards take (`styles/workspace.css`), so the site
+   keeps one set of radii. */
+@media (width < 40rem) {
+    .demo-page {
+        --radius-card: var(--radius-3xl);
+    }
+}
+
 .demo-page {
     width: 100%;
     max-width: 72rem;

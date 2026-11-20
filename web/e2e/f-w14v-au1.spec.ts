@@ -376,12 +376,13 @@ test.describe("au1 L2-17 (390 touch)", () => {
         await appDock.getByRole("button", { name: "Expand dock" }).click();
         await expect(appDock).toHaveClass(/(^|\s)expanded(\s|$)/);
         await expect(appDock).not.toHaveAttribute("data-morphing");
-        // Under 40rem About rides the sections menu: its link is a menu row.
-        await page.locator(".nav-trigger").click();
-        const about = page.locator("[data-about]");
+        // O41 S4: About is the "i" beside the theme seat at every width; its
+        // card's link is glass's text Button, on the touch floor.
+        await appDock.getByRole("button", { name: "About Fourier analysis" }).click();
+        const about = page.locator(".about-card");
         await expect(about).toBeVisible();
         await settle(page, 400);
-        for (const a of await about.getByRole("menuitem").all()) {
+        for (const a of await about.getByRole("link").all()) {
             const b = await a.boundingBox();
             expect.soft(b!.height, `About link "${(await a.textContent())?.trim()}"`).toBeGreaterThanOrEqual(44);
         }

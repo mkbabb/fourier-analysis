@@ -110,14 +110,17 @@ function computeKey(req: ComputeEquationRequest): string {
  * that request's answer.
  */
 let pending: { key: string; response: Promise<ComputeEquationResponse> } | null = null;
+/** The request a mounted view is computing now (its own job; no prefetch joins it). */
+let viewComputing: string | null = null;
 
 export function prefetch(): void {
     const input = loadCachedInputState() ?? DEFAULT_INPUT;
     const req = requestFor(input, true, input.nHarmonics + 1);
     if (!req.expression) return;
     const key = computeKey(req);
-    if (pending?.key === key || loadCachedResult()?.key === key) return;
-    const response = computeEquation(req);
+    if (pending?.key === key || viewComputing === key || loadCachedResult()?.key === key) return;
+    // Its own inflight key: a prefetch never cancels the view's job.
+    const response = computeEquation(req, {}, "eq-prefetch");
     pending = { key, response };
     response.then(
         (res) => {
@@ -145,14 +148,14 @@ import { ref, shallowRef, computed, watch, onScopeDispose, useTemplateRef, h } f
 import { useRoute, useRouter } from "vue-router";
 import { formatEquationQuery, hasEquationState, parseEquationQuery, type EquationView as EquationUrlView } from "@/lib/equation/query";
 import { isOwnWrite, pageOf, writeParams } from "@/lib/urlState";
-import { providePageTools } from "@/composables/usePageTools";
+import { PAGE_TOOLS_COMPACT, providePageTools } from "@/composables/usePageTools";
 import EquationTools from "./EquationTools.vue";
 import PlotToolsDock from "./PlotToolsDock.vue";
 import type { JobStage } from "@/lib/api";
 import { jobProgressValue, jobStageLabel } from "@/lib/jobProgress";
-import { watchDebounced } from "@vueuse/core";
+import { useMediaQuery, watchDebounced } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
-import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
+import { useWorkspacePane } from "@/composables/useWorkspacePane";
 import type { BasisComponent } from "@/lib/types";
 import { tierInfo } from "@/lib/equation/notation";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
@@ -238,12 +241,14 @@ const jobValue = computed(() => jobProgressValue(jobStage.value));
 const jobLabel = computed(() => jobStageLabel(jobStage.value));
 const autoHarmonics = ref(fromUrl?.auto ?? true);
 const eqMode = ref<EquationDisplayMode>(fromUrl?.m ?? "sigma");
-const mobileView = ref<"controls" | "canvas">("canvas");
 /* X.F.W14V.au1 — A2-FO-X-1 ⊕ L2-4: /visualize's form rule (`useWorkspaceForm`),
    read from glass's shell at glass's split threshold. */
 const workspace = useTemplateRef<HTMLElement>("workspace");
 const form = useWorkspaceForm(computed(() => workspace.value?.querySelector<HTMLElement>(".eq-configurator") ?? null));
 const tabbed = computed(() => form.value === "sheet");
+/* FORTY-SECOND D: on a phone the pane is the top dock's Controls seat, in the
+   URL (`tab=controls`); the two regions slide on one track (`workspace.css`). */
+const { pane } = useWorkspacePane(tabbed);
 const eqCardRef = ref<HTMLDivElement>();
 
 // ── Derived state ──
@@ -422,9 +427,13 @@ async function doCompute(force = false) {
         },
     };
     const run = () => computeEquation(req, live);
+    viewComputing = key;
     try {
-        // X·OD19 ALL: the intent prefetch for this very request, if one is in flight.
-        const res = await (takePrefetch(key)?.catch(run) ?? run());
+        // X·OD19 ALL: the intent prefetch for this very request, if one is in
+        // flight; otherwise this view's own job, and any other prefetch goes.
+        const taken = takePrefetch(key);
+        if (!taken) abortInflight(["eq-prefetch"]);
+        const res = await (taken?.catch(run) ?? run());
         if (gen !== computeGeneration) return;
         result.value = res;
         lastComputeKey = key;
@@ -444,6 +453,7 @@ async function doCompute(force = false) {
         }
     } finally {
         if (gen === computeGeneration) {
+            if (viewComputing === key) viewComputing = null;
             computing.value = false;
             jobStage.value = null;
             liveSamples.value = null;
@@ -481,7 +491,10 @@ async function doSimplify() {
  * `lib/api.ts:61` with four call sites, all in `stores/workspace.ts`; the
  * equation route was the one async surface not using it.
  */
-onScopeDispose(() => abortInflight([...EQUATION_ABORT_KEYS]));
+onScopeDispose(() => {
+    viewComputing = null;
+    abortInflight([...EQUATION_ABORT_KEYS]);
+});
 
 // UIA-F-112 — an edit answers the field's error; the next compute re-judges it.
 watch(expression, () => { expressionError.value = null; });
@@ -557,19 +570,19 @@ watch(
     },
 );
 
-// The page's tool set in the app dock (owner, 2026-11-15): Copy LaTeX and
-// About this approximation.
-providePageTools(
-    "Equation tools",
-    ({ form }) =>
-        h(EquationTools, {
-            form,
-            latex: activeLatex.value,
-            tier: tier.value,
-            tierTone: tierTone.value,
-            energy: displayEnergy.value,
-        }),
-);
+// The page's tool set (owner, 2026-11-15; 19 Nov, the top bar contextual by
+// design): Copy LaTeX and About this approximation, declared once and present
+// from the first frame. From 40rem the app dock's centre holds them; under
+// 40rem the app dock draws no page tools and they stand in the plot's stage
+// dock (the template's `PlotToolsDock`).
+const toolsProps = computed(() => ({
+    latex: activeLatex.value,
+    tier: tier.value,
+    tierTone: tierTone.value,
+    energy: displayEnergy.value,
+}));
+providePageTools("Equation tools", () => h(EquationTools, toolsProps.value));
+const compact = useMediaQuery(PAGE_TOOLS_COMPACT);
 
 // `B-1` — the Notation control used to be inert in the DEFAULT mode: `eqMode`
 // starts at `"sigma"`, `activeLatex` prefers `displayLatexSigma`, and the ONLY
@@ -590,10 +603,12 @@ watchDebounced(
 </script>
 
 <template>
-    <div ref="workspace" class="eq-workspace flex flex-col flex-1 min-h-0" :data-form="form">
-        <!-- The sheet form's Controls/Canvas strip: /visualize's one shared bar
-             (X.F.W14V.au1 — A2-FO-L2-5), on the page's own ground (UIA-F-253). -->
-        <WorkspaceTabs v-if="tabbed" v-model="mobileView" />
+    <div
+        ref="workspace"
+        class="eq-workspace workspace-host flex flex-col flex-1 min-h-0"
+        :data-form="form"
+        :data-pane="tabbed ? pane : undefined"
+    >
 
         <!-- X.F.W14V.eq2 — F-W14V.md addendum (b), COHESION §0dh. /equation is a
              stage (the series and its convergence plot) plus a controls
@@ -610,7 +625,8 @@ watchDebounced(
             <template #stage>
             <div
                 class="eq-panel-right"
-                :class="{ 'panel-inactive': mobileView !== 'canvas' && tabbed, 'is-busy': loading }"
+                :class="{ 'is-busy': loading }"
+                :inert="tabbed && pane !== 'canvas'"
                 :aria-busy="loading"
             >
                 <!-- Loading (no prior result). X.F.W14U.eq — UIA-F-202 ⊕ F-71's
@@ -691,7 +707,11 @@ watchDebounced(
                                     v-model:show-harmonics="showHarmonics"
                                     :variable="seriesVariable"
                                     @export-plot="plotRef?.exportPng()"
-                                />
+                                >
+                                    <template v-if="compact" #tools="{ column }">
+                                        <EquationTools v-bind="toolsProps" :tooltip-side="column ? 'left' : 'bottom'" />
+                                    </template>
+                                </PlotToolsDock>
                             </template>
                         </EquationResult>
 
@@ -755,7 +775,7 @@ watchDebounced(
                  fuses them into one group). No layer carries a reset; a reset
                  would sit in its layer's `#actions`. -->
             <div class="eq-panel-left-wrap" role="group" aria-label="Equation controls"
-                :class="{ 'panel-inactive': mobileView !== 'controls' && tabbed }">
+                :inert="tabbed && pane !== 'controls'">
                 <div class="eq-layers">
                     <FunctionInput
                         v-model:expression="expression"
@@ -790,26 +810,13 @@ watchDebounced(
 
 /* ── The Configurator chassis (X.F.W14V.eq2) ──
    glass's `Configurator` supplies the stage|aside grid and, detached, each
-   region's card and the gap between them. The host only makes the shell
-   flex-fill the column and sets the aside's width band, as /visualize does
-   (`:deep`, because the shell is glass's element, not this component's root). */
-:deep(.eq-configurator) {
-    flex: 1;
-    min-height: 0;
-    /* X.F.W14V.au1 — A2-FO-L3-6: the one page gutter, at every width. It is
-       the workspace's padding, not this shell's margin: glass's shell floor
-       `min-inline-size: min(20rem, 100%)` reads 100% off the containing box,
-       so with the gutter as margin a column under 20rem + 2 gutters (a 360
-       viewport less glass 11's stable scrollbar gutter) pushed the shell 7 px
-       past the right gutter. */
-    margin-block: 0.25rem;
-}
-.eq-workspace {
-    padding-inline: var(--page-gutter);
-}
+   region's card and the gap between them. The gutters, the foot, the page
+   radius and the sheet form are the stage routes' one file
+   (`styles/workspace.css`, `.workspace-host`); this view sets the aside's
+   width band, as /visualize does (`:deep`, because the shell is glass's
+   element, not this component's root). */
 @media (min-width: 1024px) {
     :deep(.eq-configurator) {
-        margin-block: 0.5rem 0.75rem;
         --configurator-aside-min: calc(320px + 2 * var(--space-body));
         --configurator-aside-max: calc(360px + 2 * var(--space-body));
     }
@@ -820,17 +827,9 @@ watchDebounced(
 @media (min-width: 1536px) {
     :deep(.eq-configurator) { --configurator-aside-min: calc(400px + 2 * var(--space-body)); --configurator-aside-max: calc(440px + 2 * var(--space-body)); }
 }
-/* The sheet form (`data-form="sheet"`, read from glass's shell): one column,
-   and the Controls/Canvas tabs pick a region, the same rules /visualize
-   carries: the column may not outgrow the shell, the active stage fills it,
-   and an inactive region takes no box (a detached card would otherwise paint
-   an empty border and hold a gap). */
-.eq-workspace[data-form="sheet"] :deep(.eq-configurator > [data-slot="configurator"]) { display: flex; flex-direction: column; min-width: 0; }
-.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-stage) { flex: 1 1 0%; min-height: 0; }
-.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-stage:has(> .panel-inactive)),
-.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-aside:has(.eq-panel-left-wrap.panel-inactive)) {
-    display: none;
-}
+/* The sheet form (`data-form="sheet"`, read from glass's shell): the two
+   regions on one track, one in view, the top dock's Controls seat choosing
+   (`styles/workspace.css`). */
 /* X.F.W14V.au1 — A2-FO-L2-4 ⊕ X-1: the rail form (landscape, narrower than
    glass's split), /visualize's rule: the stage and the controls rail sit in a
    row. X §0hm D-8: inside the stage the series stands OVER the plot at the
@@ -868,6 +867,12 @@ watchDebounced(
    (glass relay: an empty gallery row should not hold the aside down). */
 .eq-workspace:not([data-form="sheet"]):not([data-form="rail"]) :deep(.eq-configurator > [data-slot="configurator"] > .configurator-aside) {
     grid-row: 1 / span 2;
+    /* The card ends with its content, as /visualize's does (it ran on ~170 px
+       as an empty slab under the coefficients): it starts at the row's top, is
+       as tall as its sections and at most the stage's height, past which glass's
+       own fading scroll scrolls inside it. */
+    align-self: start;
+    max-block-size: 100%;
 }
 
 /* ── Controls (the aside body) ── */
@@ -1051,11 +1056,6 @@ watchDebounced(
 .eq-card :deep(.eq-coeff:hover) {
     color: var(--viz-amber) !important;
     background: color-mix(in srgb, var(--viz-amber) 10%, transparent);
-}
-
-/* ── Sheet panel toggle ── (`panel-inactive` is only set in the sheet form) */
-.panel-inactive {
-    display: none;
 }
 
 /* ── Transitions (A.W3.d — bezier→token; transition:all→named properties) ── */

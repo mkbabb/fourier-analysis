@@ -605,6 +605,14 @@ onUnmounted(() => {
     }
 }
 
+/* FORTY-FIRST A: on a phone the reading card takes glass's room radius, the
+   one the stage routes' cards take (`styles/workspace.css`). */
+@media (width < 40rem) {
+    .paper-article {
+        --radius-card: var(--radius-3xl);
+    }
+}
+
 /* X §0hm D-22 — short landscape (844×390): the dock, the ToC band and the
    card top spent the whole first screen, so the first line of the paper stood
    under the fold. There the title takes display-1 (its fluid floor is the

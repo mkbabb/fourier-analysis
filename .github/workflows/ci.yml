@@ -7,7 +7,7 @@
 #                       container so the @requires_mongo tests run live.
 #
 #   2. web-build      — `npm run ci:actions` in web/: unit floor, vue-tsc,
-#                       lint, vite build. No Mongo.
+#                       lint, the mark's generator check, vite build. No Mongo.
 #
 #   3. prod-compose   — X·F F.REL `.h`. Builds the production images and boots
 #                       docker-compose.prod.yml under its full hardening; the
@@ -131,6 +131,12 @@ jobs:
       - name: Install web deps
         working-directory: web
         run: npm ci
+      # The gate's one Python step (the mark's generator check) runs in uv's
+      # ephemeral environment: numpy and Pillow, pinned in the script line.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
       # The web gate is ONE script, `web/package.json` `ci:actions`, the same
       # one a local run calls: the node:test seat (F.W0 G-9), the vitest unit
       # floor (F.W4 + F.W9 G-F9-1, population asserted by

@@ -40,20 +40,14 @@ import { useEventListener, useMediaQuery, useResizeObserver } from "@vueuse/core
 import { useRoute, useRouter } from "vue-router";
 import { prefetchRoute } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
+import FourierMark from "./FourierMark.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, ExternalLink, Info, SlidersHorizontal } from "@lucide/vue";
 import { sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-} from "@mkbabb/glass-ui/menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -69,9 +63,6 @@ const router = useRouter();
 const baseUrl = import.meta.env.BASE_URL;
 const REPO_URL = "https://github.com/mkbabb/fourier-analysis";
 const ABOUT_TAGLINE = "Orthogonal decomposition, drawn with epicycles.";
-function openRepo() {
-    window.open(REPO_URL, "_blank", "noopener,noreferrer");
-}
 
 /**
  * X.F.W14V.au6 — A2-FO-L1-25: the sections are the routes' `meta.nav`, read
@@ -94,8 +85,18 @@ const navName = computed(() =>
     activeTabData.value ? `Navigate — current section ${activeTabData.value.label}` : "Navigate",
 );
 
+/**
+ * FORTY-FIRST E: on a touch screen the dock folds once a section has been
+ * chosen (it stayed open after the menu's hold was released, a finger has no
+ * leave). After the navigation, as the scroll fold calls it, and never while
+ * another surface holds the dock.
+ */
+const coarsePointer = useMediaQuery("(pointer: coarse)");
 function onTabSelect(path: string) {
-    router.push(path);
+    void router.push(path).then(() => {
+        const dock = dockRef.value;
+        if (coarsePointer.value && dock?.expanded && !dock.isHeld) dock.collapse();
+    });
 }
 
 /**
@@ -317,10 +318,15 @@ function holdDockWhileOpen(open: boolean) {
     else dockRef.value?.release();
 }
 /**
- * Owner, 2026-11-15: "Each page should have a tool set in the main dock". The
- * page's own seats (`providePageTools`) follow the sections, behind one
- * separator, rendered in this dock's tree so they are its children. A page
- * declares them in setup, so they are here from its first frame.
+ * Owner, 2026-11-15: "Each page should have a tool set in the main dock"; 19
+ * Nov: "if you want to go this route, we should better contextually display
+ * controls in the top bar depending on page". The dock has three zones: Home
+ * and the sections lead, the page's own seats stand in the centre, the account,
+ * About and the theme close it. Only the centre changes with the page. A page
+ * declares its seats in setup (`providePageTools`), so they are here from its
+ * first frame, rendered in this dock's tree so they are its children. Between
+ * pages the old seats leave before the new arrive (opacity, on the centre's
+ * own wrapper); the plate's width is glass's.
  *
  * Under 40rem the dock draws no page tools: the page renders them on its own
  * stage surface. Every seat keeps glass's 44 px coarse cell.
@@ -373,8 +379,6 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 </span>
             </DockControl>
 
-            <DockSeparator />
-
             <!-- The sections: ONE affordance at every width (owner ruling,
                  §0dw) whose name carries the current section, and a non-modal
                  menu (UIA-F-231) whose current row is `aria-current` (its
@@ -397,40 +401,33 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         <component :is="tab.icon" aria-hidden="true" />
                         <span>{{ tab.label }}</span>
                     </DropdownMenuItem>
-                    <!-- Under 40rem: About, absorbed as the page's tools are
-                         (its seat beside the theme is the desk's). -->
-                    <template v-if="compact">
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup aria-label="About Fourier analysis" data-about>
-                            <DropdownMenuLabel>About</DropdownMenuLabel>
-                            <p class="about-menu-line text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
-                            <DropdownMenuItem @select="openRepo">
-                                <ExternalLink aria-hidden="true" />
-                                <span>View the project on GitHub</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <template v-if="pageSeats && pageTools">
-                <DockSeparator />
-                <div class="contents" role="group" :aria-label="pageTools.label" data-page-tools>
-                    <PageToolsOutlet form="seats" />
-                </div>
-            </template>
-
             <DockSeparator />
+
+            <!-- The centre: the page's own seats, from 40rem. The old group
+                 leaves before the next arrives; its rule leaves with it. -->
+            <Transition name="page-seats" mode="out-in">
+                <div
+                    v-if="pageSeats && pageTools"
+                    :key="pageTools.label"
+                    class="page-seats"
+                    role="group"
+                    :aria-label="pageTools.label"
+                    data-page-tools
+                >
+                    <PageToolsOutlet form="seats" />
+                    <DockSeparator />
+                </div>
+            </Transition>
 
             <div class="contents" role="group" aria-label="Account">
                 <UserSlugBar />
             </div>
 
-            <DockSeparator />
-
-            <!-- About ("i"), beside the theme seat. Under 40rem the sections
-                 menu carries it (below), so the phone's run keeps four seats. -->
-            <Popover v-if="!compact" keep-dock-open>
+            <!-- About ("i"), beside the theme seat, at every width. -->
+            <Popover keep-dock-open>
                 <DockTrigger for="popover" class="about-trigger" aria-label="About Fourier analysis" title="About">
                     <Info aria-hidden="true" />
                 </DockTrigger>
@@ -484,29 +481,20 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 </DockControl>
             </template>
 
-            <!-- O16 [49] [57] (owner, 13 Nov): collapsed, the seal is the
-                 Fourier F, the wordmark's own ℱ (not redrawn), on every route. -->
+            <!-- Collapsed, the seal is the fourier mark (FORTY-FIRST B: "an
+                 actual epicycle/series image"), the drawing the tab, the touch
+                 icon and the share card carry, on every route. -->
             <template #collapsed>
-                <span class="dock-summary-mark font-serif-math font-semibold select-none" aria-hidden="true">&#x2131;</span>
+                <FourierMark />
             </template>
         </GlassDock>
         <Teleport v-if="dockEl && rimValue !== null" :to="dockEl">
-            <ScrollProgressRim :value="rimValue" :stops="pageScroll.progressStops.value" class="dock-progress" />
+            <ScrollProgressRim edge="border" :value="rimValue" :stops="pageScroll.progressStops.value" class="dock-progress" />
         </Teleport>
     </header>
 </template>
 
 <style scoped>
-/* Canon F6: the reading progress is the dock's bottom border, a hairline
-   running edge to edge and clipped to the dock's rounding (glass's rim
-   geometry, with its inset and side margins taken to zero). */
-.dock-progress {
-    --scroll-progress-rim-width: 1.5px;
-    --scroll-progress-rim-inset: 0px;
-    --scroll-progress-rim-margin: 0px;
-    border-radius: inherit;
-    overflow: hidden;
-}
 @reference "tailwindcss";
 
 /* The landmark is a plain flex row: no plate of its own (the dock IS the
@@ -529,9 +517,49 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
 /* Every face in this dock sits in the dock's control cell: the producer's
    `--dock-trigger-min-height` hook for the trigger faces' block size and a
-   matching inline floor — one measure, read from one token. */
+   matching inline floor — one measure, read from one token.
+   One glyph size in this dock (STUDY 2.7; owner question 4 holds any growth
+   past it): glass's seats read `--dock-icon-glyph`, set here to the rung the
+   site's trigger glyphs already wore (24 px), and every trigger glyph reads
+   the same token. */
 .app-dock {
     --dock-trigger-min-height: var(--dock-control-size);
+    --dock-icon-glyph: var(--icon-xl);
+}
+.app-dock :deep(.dock-trigger > svg:not(.nav-trigger-chevron)) {
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
+}
+
+/* The centre group: the page's seats in a row at the run's own gap, and the
+   rule that closes it. It leaves (120 ms) before the next group arrives
+   (160 ms), by opacity alone; under reduced motion each is 120 ms. */
+.page-seats {
+    display: flex;
+    align-items: center;
+    gap: var(--dock-layer-gap, 0.375rem);
+}
+.page-seats-enter-active {
+    transition: opacity 160ms var(--ease-standard);
+}
+.page-seats-leave-active {
+    transition: opacity 120ms var(--ease-in);
+}
+.page-seats-enter-from,
+.page-seats-leave-to {
+    opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+    .page-seats-enter-active {
+        transition-duration: 120ms;
+    }
+}
+
+/* FORTY-FIRST E: the header is its own view-transition group, so a route
+   change does not cross-fade the dock with the page (it is the same live dock
+   on both routes). The rules for its images are in the unscoped block below. */
+.app-header {
+    view-transition-name: app-header;
 }
 
 .logo-trigger,
@@ -561,14 +589,6 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     .logo-text {
         display: inline;
     }
-}
-
-/* The collapsed seal's ℱ: the wordmark's glyph at the dock's glyph rung,
-   in the Fourier amber the section glyphs wear. */
-.dock-summary-mark {
-    font-size: calc(var(--dock-icon-glyph) * 1.6);
-    line-height: 1;
-    color: var(--viz-amber);
 }
 
 /* ── Section faces: the Fourier amber marks the section glyph ── */
@@ -634,16 +654,23 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     }
 }
 
-/* The phone's About group in the sections menu: the tagline under its label. */
-.about-menu-line {
-    padding: 0 var(--space-atom) var(--space-residue);
-    max-inline-size: 16rem;
-}
-
 .about-avatar {
     inline-size: 2.5rem;
     block-size: 2.5rem;
     border-radius: var(--radius-circle);
     flex-shrink: 0;
+}
+</style>
+
+<!-- The header's view-transition images (unscoped: they are pseudo-elements
+     of the document). The old image is not shown and the new one is not
+     animated, so across a route change the dock is the live dock, never dimmed
+     or doubled. -->
+<style>
+::view-transition-old(app-header) {
+    display: none;
+}
+::view-transition-new(app-header) {
+    animation: none;
 }
 </style>

@@ -32,9 +32,18 @@ import { apiFetch, runJob, type JobHandlers } from "../api";
 export async function computeEquation(
     req: ComputeEquationRequest,
     on: JobHandlers = {},
+    abortKey: EquationComputeKey = "eq-compute",
 ): Promise<ComputeEquationResponse> {
-    return runJob<ComputeEquationResponse>("/api/equations/jobs", req, "eq-compute", on);
+    return runJob<ComputeEquationResponse>("/api/equations/jobs", req, abortKey, on);
 }
+
+/**
+ * The view's compute and the route's intent prefetch each keep their own
+ * inflight key: a job started on one never cancels the other's (a prefetch
+ * that started second used to cancel the view's own job, and the stage never
+ * took an answer).
+ */
+export type EquationComputeKey = "eq-compute" | "eq-prefetch";
 
 export async function simplifyCoefficients(
     components: BasisComponent[],
@@ -66,6 +75,6 @@ export async function simplifyCoefficients(
  * The two abort keys this route owns. Named here so the teardown that cancels
  * them cannot drift from the calls that register them (`L·M-7`).
  */
-export const EQUATION_ABORT_KEYS = ["eq-compute", "eq-simplify"] as const;
+export const EQUATION_ABORT_KEYS = ["eq-compute", "eq-prefetch", "eq-simplify"] as const;
 
 export { isAbortError, abortInflight } from "../api";
