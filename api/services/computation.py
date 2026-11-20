@@ -200,8 +200,10 @@ async def submit_process_job(name: str, fn: Callable[..., Any], *args: Any) -> A
 async def compute_contours(
     image_path: Path,
     config: ContourConfig,
+    on_stage: Callable[[float], None] | None = None,
 ) -> dict[str, Any]:
-    """Extract contours using the given config, returning serializable results."""
+    """Extract contours using the given config, returning serializable results.
+    ``on_stage`` hears the drawing's progress (0..1), on the worker thread."""
     def _run():
         from PIL import Image, ImageOps
 
@@ -218,7 +220,7 @@ async def compute_contours(
         else:
             rw, rh = orig_w, orig_h
 
-        contours = extract_contours(image_path, config)
+        contours = extract_contours(image_path, config, on_stage)
         contour_data = [
             {"x": c.real.tolist(), "y": c.imag.tolist(), "n_points": len(c)}
             for c in contours

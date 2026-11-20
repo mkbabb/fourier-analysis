@@ -78,9 +78,11 @@ Partials:
 0.85 – 0.88, `bases` 0.88 – 1 with `{done, total}` per level. **Contour**
 (`/api/contours/{hash}/jobs`): `epicycles` 0 – 0.05, `bases` 0.05 – 1. The weights are
 measured costs (extraction ~5 s of a ~6 s first compute on this Mac, about twice that
-in production). Extraction is one library call and reports only its start and end, so
-while `stage` is `extract` the bar has nothing to move on: show the stage's name and
-let the bar breathe there rather than inventing motion; the `contour` partial ends it.
+in production). Extraction reports its start, four checkpoints of the drawing (after
+the subject mask, the line maps, the vectorised lines and the routing: about 0.47,
+0.80, 0.84 and 0.98 of the stage) and its end, so the bar moves through it in real
+steps; the `contour` partial ends it. A cache hit, or an explicit strategy other than
+`auto`, sends only the start and end.
 
 Partials:
 

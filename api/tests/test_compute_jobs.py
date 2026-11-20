@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 
 from api.services import computation, jobs
-from conftest import asgi
+from conftest import asgi, requires_mongo, run_db
 
 JSON = [("content-type", "application/json")]
 STAGES = {"a": (0.0, 0.5), "b": (0.5, 1.0)}
@@ -410,6 +410,84 @@ def test_cancel_through_the_api_frees_the_slot():
     assert seen[-1][1] == "cancelled" and seen[-1][2] == {"reason": "client"}
     assert polled["state"] == "cancelled"
     assert sum(1 for _, ev, d in seen if ev == "partial" and d["stage"] == "coefficient") < 101
+
+
+# ---------------------------------------------------------------------------
+# The image job: extraction moves its bar in real steps
+# ---------------------------------------------------------------------------
+
+
+def _disc_png(size: int = 64) -> bytes:
+    import io
+
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (size, size), (250, 250, 250))
+    ImageDraw.Draw(img).ellipse((12, 12, size - 12, size - 12), fill=(20, 20, 20))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+@requires_mongo
+def test_the_image_jobs_extraction_reports_the_drawings_checkpoints(monkeypatch, tmp_path):
+    """Extraction reports the drawing's four checkpoints (after the subject
+    mask, the line maps, the vectorised lines and the routing), so before the
+    ``contour`` partial the stream carries ``extract`` fractions rising strictly
+    inside the stage, not only its start and end. The drawing itself is stood in
+    for (its models are not part of this suite); the router, the compute thread,
+    the job's context and the stream are the real ones."""
+    import numpy as np
+
+    from api.config import settings
+    from api.routers.images import IMAGE_JOB_STAGES
+    from api.services import database
+    from fourier_analysis.contours import drawing
+
+    monkeypatch.setattr(settings, "blob_dir", str(tmp_path))
+    checkpoints = [drawing.STAGE_MASK, drawing.STAGE_LINES, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED]
+
+    def drawn(image_path, config, on_stage=None):
+        assert on_stage is not None
+        for fraction in checkpoints:
+            on_stage(fraction)
+        t = np.linspace(0.0, 2.0 * np.pi, 96, endpoint=False)
+        return [20.0 * np.exp(1j * t)]
+
+    monkeypatch.setattr(computation, "extract_contours", drawn)
+    boundary = "image-job-boundary"
+    upload = (
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="file"; filename="disc.png"\r\n'
+        "Content-Type: image/png\r\n\r\n"
+    ).encode() + _disc_png() + f"\r\n--{boundary}--\r\n".encode()
+
+    async def body(db):
+        database._db = db
+        await db.images.create_index("image_slug", unique=True)
+        await db.images.create_index("sha256", unique=True)
+        await db.contours.create_index("contour_hash", unique=True)
+        status, raw = await asgi(
+            "POST", "/api/images", upload, [("content-type", f"multipart/form-data; boundary={boundary}")]
+        )
+        assert status == 200, raw
+        slug = json.loads(raw)["image_slug"]
+        status, raw = await asgi("POST", f"/api/images/{slug}/jobs", b"{}", JSON)
+        assert status == 202, raw
+        s = Stream(json.loads(raw)["events_url"])
+        got = [e async for e in s.events(timeout=60.0)]
+        await s.close()
+        return got
+
+    got = run_db(body)
+    names = [(ev, d.get("stage")) for _, ev, d in got]
+    assert got[-1][1] == "result", names
+    cut = names.index(("partial", "contour"))
+    lo, hi = IMAGE_JOB_STAGES["extract"]
+    inner = [d["fraction"] for _, ev, d in got[:cut] if ev == "stage" and d["stage"] == "extract" and lo < d["fraction"] < hi]
+    assert len(inner) >= 4, names
+    assert inner == sorted(set(inner))
+    assert inner == pytest.approx([lo + (hi - lo) * f for f in checkpoints])
 
 
 def test_bad_expression_is_422_before_any_job():
