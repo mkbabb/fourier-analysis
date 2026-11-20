@@ -238,7 +238,8 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await page.goto("/visualize");
         await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
         await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
-        const status = page.locator(".canvas-stage [role=status]").filter({ hasText: "Computing" });
+        // The stage's busy mark, named by the job's stage (FORTY-FIRST F: no caption).
+        const status = page.locator(".canvas-stage").getByRole("status", { name: "Computing" });
         await expect(status).toBeVisible({ timeout: 30_000 });
         const layer = page.locator("[data-slot=configurator-layer]").filter({ has: page.locator("[data-slot=configurator-layer-trigger]", { hasText: /^Basis/ }) }).first();
         // Read once the sidebar's entrance (the glass panel spring) has settled,

@@ -235,9 +235,14 @@ for (const scheme of ["light", "dark"] as const) {
                 await new Promise((r) => setTimeout(r, 6000));
                 await route.fallback();
             });
+            // FORTY-FIRST F: the first compute shows the picture on the canvas
+            // (o41-stage-progress); with no picture to show, the canvas must
+            // still paint no box of its own.
+            await page.route("**/api/images/*/overlay*", (route) => route.fulfill({ status: 404 }));
             const viz = seededViz();
             await page.goto(`/v/${viz.slug}`);
-            const busy = page.locator(".configurator-stage").getByRole("status").filter({ hasText: /Computing/ });
+            // The busy mark is named by the job's stage and has no caption.
+            const busy = page.locator(".configurator-stage").getByRole("status", { name: /Computing/ });
             await expect(busy).toBeVisible({ timeout: 20_000 });
             await page.waitForTimeout(300);
             await frame(page, `e73-computing-${scheme}`);

@@ -30,10 +30,10 @@ import {
 import { useCanvasSetup, type CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";
-import { useViewTransform } from "./composables/useViewTransform";
+import { fitTransform, useViewTransform } from "./composables/useViewTransform";
 import { useStageGestures } from "./composables/useStageGestures";
-import { useLayerFade } from "./composables/useLayerFade";
-import { composeView, linkOfView, viewOfLink, type StageLink } from "./lib/stage-view";
+import { LAYER_FADE_MS, LAYER_FADE_REDUCED_MS, useLayerFade } from "./composables/useLayerFade";
+import { composeView, IDENTITY_VIEW, linkOfView, viewOfLink, type StageLink, type StageView } from "./lib/stage-view";
 import { formatWorkspaceQuery } from "./lib/workspace-query";
 
 const props = withDefaults(
@@ -124,13 +124,12 @@ function readLegendTop(): void {
     insetInline = Number.isFinite(pi) ? pi : 16;
 }
 
-const { surface, setupCanvas } = useCanvasSetup(canvasRef, (s) => {
+const { surface, setupCanvas } = useCanvasSetup(canvasRef, () => {
     readLegendTop();
     stableEpicycleBbox = null;
     baseFitCenter = null;
     if (linkPending && (store.epicycleData || store.basesData)) applyLink(props.linkView);
-    if (store.epicycleData) drawFrame();
-    else drawPlaceholderFrame(s);
+    drawFrame();
 });
 
 // ── Hover ──
@@ -182,7 +181,7 @@ function applyLink(link: StageLink | null): void {
 watch(() => props.fitInsetBottom, () => {
     stableEpicycleBbox = null;
     baseFitCenter = null;
-    if (surface.value && (store.epicycleData || store.basesData)) drawFrame();
+    if (surface.value) drawFrame();
 });
 watch(() => props.linkView, (link) => {
     if (store.epicycleData || store.basesData) applyLink(link);
@@ -191,17 +190,95 @@ watch(() => props.linkView, (link) => {
 /** The fitted transform and the one the stage draws with (zoom and pan applied). */
 function views(s: CanvasSurface): { base: ViewTransform; view: ViewTransform } {
     const base = getViewTransform(s, props.fitInsetBottom);
-    return { base, view: composeView(base, gestures.getView(), s.width, s.height) };
+    return { base, view: composeView(base, introView(s, base) ?? gestures.getView(), s.width, s.height) };
 }
 
 // ── Image overlay (extracted composable) ──
-const { drawImageOverlay } = useImageOverlay(() => {
+const { drawImageOverlay, pictureBounds, hasPicture } = useImageOverlay(() => {
     if (surface.value) drawFrame();
 });
+
+// ── The picture before the drawing (FORTY-FIRST F) ──
+// While the first compute runs the stage shows the picture, whole, fitted to
+// the box above the dock: it is already in the browser, so the stage is never
+// an empty plate while the outline is found. When the drawing lands the view
+// travels from the picture's fit to the drawing's, the picture recedes to its
+// wash and the drawing's layers come in (280 ms, cubic-out). Under reduced
+// motion nothing travels: the two frames cross by a 120 ms fade.
+interface Intro {
+    t0: number;
+    reduce: boolean;
+    /** The picture's fit, as it stood when the drawing landed. */
+    picture: ViewTransform;
+    /** The stage view that puts the drawing's fit where the picture's was (set on the first frame). */
+    from: StageView | null;
+}
+let intro: Intro | null = null;
+let introRaf = 0;
+function pictureFit(s: CanvasSurface): ViewTransform | null {
+    const bounds = pictureBounds();
+    return bounds ? fitTransform(bounds, s, props.fitInsetBottom) : null;
+}
+/** How far the intro has come, eased (1 when there is none). */
+function introProgress(): number {
+    if (!intro) return 1;
+    const k = Math.min(1, (performance.now() - intro.t0) / (intro.reduce ? LAYER_FADE_REDUCED_MS : LAYER_FADE_MS));
+    return 1 - (1 - k) ** 3;
+}
+/** The intro's stage view: from where the picture stood to the drawing's fit. */
+function introView(s: CanvasSurface, base: ViewTransform): StageView | null {
+    if (!intro || intro.reduce) return null;
+    if (!intro.from) {
+        // Both fits are a scale about the stage's centre and a shift; the view
+        // that maps the drawing's screen points onto the picture's is exact.
+        const p = intro.picture;
+        const k = p.scale / base.scale;
+        const w = s.width;
+        const h = Math.max(1, s.height - Math.max(0, props.fitInsetBottom));
+        intro.from = {
+            k,
+            x: (w / 2) * (1 - k) + (base.cx - p.cx) * p.scale,
+            y: (h / 2) * (1 - k) - (base.cy - p.cy) * p.scale,
+        };
+    }
+    const e = introProgress();
+    const f = intro.from;
+    return { k: f.k + (IDENTITY_VIEW.k - f.k) * e, x: f.x * (1 - e), y: f.y * (1 - e) };
+}
+function startIntro(): void {
+    const s = surface.value;
+    const picture = s ? pictureFit(s) : null;
+    if (!s || !picture) return;
+    const reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || !!props.linkView;
+    intro = { t0: performance.now(), reduce, picture, from: null };
+    cancelAnimationFrame(introRaf);
+    const step = () => {
+        const done = introProgress() >= 1;
+        if (done) intro = null;
+        if (surface.value) drawFrame();
+        if (!done) introRaf = requestAnimationFrame(step);
+    };
+    introRaf = requestAnimationFrame(step);
+}
+// The first drawing lands while the picture stands alone: travel from it.
+// (Sync, so the frame the data's own watchers draw is already the intro's.)
+watch(() => store.epicycleData, (data, before) => {
+    if (data && !before && firstPictureFade.strength() > 0) startIntro();
+}, { flush: "sync" });
 
 // ── Draw placeholder ──
 function drawPlaceholderFrame(s: CanvasSurface) {
     drawPlaceholder(s, !!store.imageMeta);
+}
+
+/** The first compute's frame: the picture whole, at its own fit. False when there is no picture to show. */
+function drawFirstPicture(s: CanvasSurface): boolean {
+    const k = firstPictureFade.strength() * pictureFade.strength();
+    const fit = k > 0 ? pictureFit(s) : null;
+    if (!fit) return false;
+    s.ctx.clearRect(0, 0, s.width, s.height);
+    drawImageOverlay(s, fit, k, 0);
+    return true;
 }
 
 // ── Main draw frame ──
@@ -210,7 +287,10 @@ function drawFrame() {
     if (!s) return;
     const data = store.epicycleData;
     const basesData = store.basesData;
-    if (!data && !basesData) { drawPlaceholderFrame(s); return; }
+    if (!data && !basesData) {
+        if (!drawFirstPicture(s)) drawPlaceholderFrame(s);
+        return;
+    }
 
     s.ctx.clearRect(0, 0, s.width, s.height);
     const { base, view } = views(s);
@@ -227,8 +307,11 @@ function drawFrame() {
     }
 
     // The picture (behind the curves), at its fade: a wash under a drawing,
-    // the whole picture alone.
-    drawImageOverlay(s, view, pictureFade.strength(), drawn);
+    // the whole picture alone. Under reduced motion the intro crosses the
+    // picture's own frame out as the drawing's comes in.
+    const crossing = intro?.reduce ? introProgress() : 1;
+    drawImageOverlay(s, view, pictureFade.strength() * crossing, drawn);
+    if (intro?.reduce && crossing < 1) drawImageOverlay(s, intro.picture, pictureFade.strength() * (1 - crossing), 0);
 
     const hasEpicycles = props.activeBases.includes("fourier-epicycles");
     const onlyEpicycles = hasEpicycles && props.activeBases.length === 1;
@@ -263,14 +346,16 @@ interface FrameLayers {
     labels: number;
 }
 function liveLayers(): FrameLayers {
-    const circles = circlesFade.strength();
-    const line = lineFade.strength();
+    // The drawing's layers come in with the intro (FORTY-FIRST F).
+    const arriving = introProgress();
+    const circles = circlesFade.strength() * arriving;
+    const line = lineFade.strength() * arriving;
     // The epicycle legend counts circles; the bases' legend names the curves.
     const onlyEpicycles = props.activeBases.length === 1 && props.activeBases[0] === "fourier-epicycles";
     return {
         epicycles: circles,
         trail: line,
-        ghost: ghostFade.strength(),
+        ghost: ghostFade.strength() * arriving,
         labels: onlyEpicycles ? circles : Math.max(circles, line),
     };
 }
@@ -284,6 +369,11 @@ const ghostFade = useLayerFade(() => props.showGhost, repaint);
 const pictureFade = useLayerFade(() => props.showImageOverlay, repaint);
 const lineFade = useLayerFade(() => props.showLine, repaint);
 const circlesFade = useLayerFade(() => props.showCircles, repaint);
+/** The first compute's picture: shown while the first drawing is found, and only once it is in hand. */
+const firstPictureFade = useLayerFade(
+    () => store.computing && !store.epicycleData && !store.basesData && hasPicture(),
+    repaint,
+);
 
 /*
  * `view` is the stage's transform (zoom and pan included) for everything drawn
@@ -674,6 +764,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    cancelAnimationFrame(introRaf);
     themeObserver?.disconnect();
     visibilityObserver?.disconnect();
     visibilityObserver = null;
@@ -765,9 +856,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
 /** Re-read the stage's insets and repaint (the dock expanded or collapsed). */
 function readInsets(): void {
     readLegendTop();
-    if (!surface.value) return;
-    if (store.epicycleData) drawFrame();
-    else drawPlaceholderFrame(surface.value);
+    if (surface.value) drawFrame();
 }
 
 /** The view is zoomed or panned off the fit; `resetView` returns it (as a double-tap does). */

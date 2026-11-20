@@ -12,6 +12,7 @@ import { useViewState } from "./composables/useViewState";
 import { useWorkspaceLoader } from "./composables/useWorkspaceLoader";
 import { useWorkspaceUrl } from "./composables/useWorkspaceUrl";
 import { providePageTools } from "@/composables/usePageTools";
+import { provideDockProgress } from "@/composables/useDockProgress";
 import { pageOf, useQueryParam, writeParams } from "@/lib/urlState";
 import { formatWorkspaceQuery, WORKSPACE_QUERY } from "./lib/workspace-query";
 import type { StageLink } from "./lib/stage-view";
@@ -42,7 +43,6 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@mkbabb/glass-ui/dialog";
-import { Progress } from "@mkbabb/glass-ui/progress";
 import { jobProgressValue, jobStageLabel } from "@/lib/jobProgress";
 import { Skeleton } from "@mkbabb/glass-ui";
 
@@ -443,36 +443,15 @@ const stageErrorDetail = computed(() => {
     if ((slug && error.includes(slug)) || /\bnot found\.?$/i.test(error.trim())) return null;
     return error;
 });
-/** UIA-F-73 ⊕ F-71: the first compute has nothing to draw yet; the stage says
- *  so in the DOM (one busy mark), not with a painted box. */
-const firstCompute = computed(() => store.computing && !store.epicycleData && !store.basesData);
-
 /*
- * O16 (owner frame 50: "realtime updates as progress completes ... visualize
- * it too"). The compute job's stage and fraction drive one determinate line
- * and its caption (extraction, one library call with no inner progress, keeps
- * the line indeterminate: honest). The outline is drawn the moment the job's
- * `contour` partial lands, before any series; then the epicycles take the
- * stage, and the line stays until the bases land.
+ * O16 (owner frame 50) and FORTY-FIRST F: progress is drawn, not described.
+ * While the first compute runs the stage shows the picture itself (the
+ * canvas, BasisCanvas), and the job's measure is the top dock's rim, which
+ * moves through extraction in real steps (the drawing's four checkpoints).
+ * The stage keeps one status, named by the job's stage, with no caption.
  */
-const jobValue = computed(() => jobProgressValue(store.job));
 const jobLabel = computed(() => jobStageLabel(store.job));
-/** The first compute's outline: the contour as one SVG path, y up, in its own box. */
-const firstOutline = computed(() => {
-    const pts = store.contour?.points;
-    if (!firstCompute.value || !pts || pts.x.length < 2) return null;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (let i = 0; i < pts.x.length; i++) {
-        minX = Math.min(minX, pts.x[i]); maxX = Math.max(maxX, pts.x[i]);
-        minY = Math.min(minY, pts.y[i]); maxY = Math.max(maxY, pts.y[i]);
-    }
-    const w = maxX - minX || 1;
-    const h = maxY - minY || 1;
-    const pad = Math.max(w, h) * 0.06;
-    let d = "";
-    for (let i = 0; i < pts.x.length; i++) d += `${i ? "L" : "M"}${pts.x[i]} ${-pts.y[i]}`;
-    return { d: `${d}Z`, viewBox: `${minX - pad} ${-maxY - pad} ${w + 2 * pad} ${h + 2 * pad}` };
-});
+provideDockProgress(computed(() => (store.computing && store.job ? jobProgressValue(store.job) : null)));
 /** X-DS fourier pass 6 · DS-F6C-C1: a background compute failed with nothing
  *  drawn. The stage, the primary surface, carries the same one line the Basis
  *  layer does (one channel: `store.computeError`), not a void plate. */
@@ -652,32 +631,10 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                      stage; the gallery is a place in the top dock. -->
                             </div>
                         </div>
-                        <!-- UIA-F-73 ⊕ F-71: the first compute's one busy mark, in the DOM
-                             (the canvas no longer paints a dashed "drop here" box). -->
-                        <!-- O16 frame 50: the first compute shows what it has: the outline
-                             once extracted (it fades in), and the job's line and stage. -->
-                        <Transition name="stage-job-fade">
-                            <div v-if="firstCompute" class="stage-state stage-state--over stage-first" role="status">
-                                <Transition name="stage-job-fade">
-                                    <svg v-if="firstOutline" class="stage-outline" :viewBox="firstOutline.viewBox"
-                                        preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-                                        <path :d="firstOutline.d" vector-effect="non-scaling-stroke" />
-                                    </svg>
-                                </Transition>
-                                <Progress :model-value="jobValue" :max="1" size="sm" class="stage-busy-bar"
-                                    :aria-label="jobLabel" />
-                                <p class="text-caption text-muted-foreground">{{ jobLabel }}</p>
-                            </div>
-                        </Transition>
-                        <!-- O16 frame 50: drawn, but still computing (the bases after the
-                             epicycles, or a recompute): the line and its stage, quietly. -->
-                        <Transition name="stage-job-fade">
-                            <div v-if="store.computing && !firstCompute && store.job" class="stage-job" role="status">
-                                <Progress :model-value="jobValue" :max="1" size="sm" class="stage-job-bar"
-                                    :aria-label="jobLabel" />
-                                <span class="text-caption text-muted-foreground">{{ jobLabel }}</span>
-                            </div>
-                        </Transition>
+                        <!-- UIA-F-73 ⊕ F-71 and FORTY-FIRST F: the stage's one busy mark,
+                             in the DOM and named by the job's stage. It paints nothing:
+                             the picture is on the canvas and the measure on the dock's rim. -->
+                        <div v-if="store.computing" class="stage-status" role="status" :aria-label="jobLabel" />
                         <!-- X-DS fourier pass 6 · DS-F6C-C1: a failed background compute
                              with nothing drawn says so where the outline would be, in the
                              first compute's slot: the shared `.compute-status` line (the
@@ -1239,48 +1196,11 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     align-items: center;
     gap: 0.5rem;
 }
-.stage-busy-bar {
-    inline-size: min(12rem, 60%);
-}
-
-/* O16 frame 50 — the first compute's outline, then the series. */
-.stage-first {
-    padding: var(--space-body);
-}
-.stage-outline {
-    inline-size: min(28rem, 80%);
-    max-block-size: 55%;
-    fill: none;
-    stroke: var(--viz-fourier);
-    stroke-width: 2;
-    stroke-linejoin: round;
-    opacity: 0.85;
-}
-/* Still computing with a drawing on the stage: one slim line and its stage,
-   above the transport, out of the drawing's way. */
-.stage-job {
+/* FORTY-FIRST F: the busy mark spans the stage and paints nothing. */
+.stage-status {
     position: absolute;
-    inset-inline: 0;
-    margin-inline: auto;
-    inline-size: min(14rem, 60%);
-    bottom: calc(var(--epicycle-inset-bottom, 4rem) + 0.25rem);
-    z-index: var(--z-controls);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-residue);
+    inset: 0;
     pointer-events: none;
-}
-.stage-job-bar {
-    inline-size: 100%;
-}
-.stage-job-fade-enter-active,
-.stage-job-fade-leave-active {
-    transition: opacity var(--duration-normal) var(--ease-standard);
-}
-.stage-job-fade-enter-from,
-.stage-job-fade-leave-to {
-    opacity: 0;
 }
 
 /* ── X.F.W13.c — the sidebar arrives with content ──
