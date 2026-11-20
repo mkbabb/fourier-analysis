@@ -120,13 +120,31 @@ test.describe("FORTY-SECOND B — the dock on a phone @coarse", () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
     test("@coarse the sections menu holds the five places and no group label", async ({ page }) => {
-        await page.goto("/equation");
+        await page.goto("/gallery");
         const dock = await openAppDock(page);
         await dock.getByRole("button", { name: /^Navigate/ }).click();
         const menu = page.getByRole("menu");
         await expect(menu).toBeVisible();
         await expect(menu.getByRole("menuitem")).toHaveCount(5);
         await expect(menu.locator('[role="group"], [data-slot="dropdown-menu-label"]')).toHaveCount(0);
+    });
+
+    test("@coarse where the pane seat stands, About is the menu's last group and the run keeps the gutter", async ({ page }) => {
+        // S4's fallback: with the Controls seat the "i" would take the open run
+        // past the gutter (367 of 358 px), so it returns to the Sections menu.
+        await page.goto("/equation");
+        const dock = await openAppDock(page);
+        await expect(dock.locator(".pane-seat")).toBeVisible();
+        await expect(dock.getByRole("button", { name: "About Fourier analysis" })).toHaveCount(0);
+        const box = (await dock.boundingBox())!;
+        expect(box.width, "the open run").toBeLessThanOrEqual(358);
+        await dock.getByRole("button", { name: /^Navigate/ }).click();
+        const menu = page.getByRole("menu");
+        await expect(menu).toBeVisible();
+        const about = menu.getByRole("group", { name: "About Fourier analysis" });
+        await expect(about.getByRole("menuitem", { name: "View the project on GitHub" })).toBeVisible();
+        await expect(menu.getByRole("menuitem")).toHaveCount(6);
+        await expect(menu.locator('[role="group"]')).toHaveCount(1);
     });
 
     test("@coarse the dock folds once a section has been chosen", async ({ page }) => {
