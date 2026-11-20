@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Response } from "@playwright/test";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { checkA11y } from "./a11y";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { showViewIfTabbed } from "./fixtures/workspace";
@@ -670,11 +670,10 @@ for (const vp of VIEWPORTS) {
             await establishSession(page);
             await openWorkspace(page);
 
-            // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the canvas dock's own
-            // control; expand the canvas dock, then trigger Export.
-            // Owner, 2026-11-15: the canvas dock opens by a press on its folded face.
-            await openCanvasDock(page);
-            await page.locator('.controls-overlay [aria-label="Export frame"]').click();
+            // X.F.W14V.u1 (UIA-F-182, §0bt): Export is the stage dock's own
+            // control: a seat of its open face on a desk, a row of its More on a
+            // phone (FORTY-FIRST H).
+            await clickCanvasDockExport(page);
 
             // The glass-ui Dialog exposes role="dialog" + aria-modal.
             const dialog = page.locator('[role="dialog"]').first();

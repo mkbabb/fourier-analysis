@@ -160,9 +160,12 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
         await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
         await page.waitForURL(/\/w\//, { timeout: 20_000 });
-        await expect(page.locator(".canvas-stage")).not.toHaveClass(/panel-inactive/, { timeout: 30_000 });
-        await expect(page.locator(".viz-panel-left-wrap")).toHaveClass(/panel-inactive/);
-        await expect(page.getByRole("tab", { name: "Canvas" })).toHaveAttribute("aria-selected", "true");
+        // FORTY-SECOND D: the pane switch is the top dock's Controls seat; the
+        // pane out of view is inert (the old `.panel-inactive` is gone with the strip).
+        await expect(page.locator(".app-dock .pane-seat")).toHaveAttribute("aria-pressed", "false", { timeout: 30_000 });
+        await expect(page.locator(".canvas-stage")).toBeInViewport({ ratio: 0.9 });
+        await expect(page.locator(".viz-panel-left-wrap")).toHaveAttribute("inert", "");
+        await expect(page.locator(".viz-panel-left-wrap")).not.toBeInViewport();
         await page.waitForTimeout(800);
         await frame(page, "u74-after-upload");
     });
@@ -224,7 +227,9 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         expect(await shown(), "radius 0 reads Off").toBe("Off");
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(200);
-        expect(await shown(), "radius 1 reads its radius").toBe("1");
+        // FORTY-FIRST L: the Magnet is a reach along the curve, read in screen
+        // pixels (16 px a step).
+        expect(await shown(), "radius 1 reads its reach").toBe("16 px");
         await frame(page, "u172-magnet-on");
         await page.keyboard.press("Home");
     });
@@ -311,13 +316,18 @@ test.describe("X.F.W14V.u4 — the stage surface and its readouts", () => {
         expect(legend.length, "the legend draws").toBeGreaterThan(0);
         const geo = await page.evaluate(() => {
             const dock = document.querySelector(".controls-overlay .glass-dock")!.getBoundingClientRect();
-            const canvas = document.querySelector(".canvas-stage canvas.canvas-el")!.getBoundingClientRect();
-            return { dockBottom: dock.bottom, dockLeft: dock.left, dockW: dock.width, dockH: dock.height, canvasTop: canvas.top, canvasLeft: canvas.left };
+            const el = document.querySelector<HTMLCanvasElement>(".canvas-stage canvas.canvas-el")!;
+            const canvas = el.getBoundingClientRect();
+            // fillText's y is in the context's units; the canvas maps them to css px
+            // by the context's own transform (its device-pixel scale).
+            const t = el.getContext("2d")!.getTransform();
+            const cssPerUnit = (t.d || 1) / (el.height / canvas.height);
+            return { dockTop: dock.top, dockBottom: dock.bottom, dockLeft: dock.left, dockW: dock.width, dockH: dock.height, canvasTop: canvas.top, canvasLeft: canvas.left, cssPerUnit };
         });
         await frame(page, "u239-dock-expanded");
-        // Owner, 2026-11-15: on a phone the stage dock opens as a column down the
-        // right edge, so it never reaches the legend's column (the legend keeps its row).
-        expect(geo.dockH, "the expanded dock is a column").toBeGreaterThan(geo.dockW);
-        expect(geo.dockLeft, "the column stands clear of the legend's column").toBeGreaterThanOrEqual(geo.canvasLeft + 120);
+        // FORTY-FIRST H: on a phone the stage's one dock is a plate at the
+        // stage's foot, so it stands below every line of the legend.
+        const legendBottom = Math.max(...legend.map(([, , y]) => y)) * geo.cssPerUnit + geo.canvasTop;
+        expect(geo.dockTop, `the plate stands below the legend (${legendBottom.toFixed(0)})`).toBeGreaterThan(legendBottom + 8);
     });
 });

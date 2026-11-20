@@ -49,10 +49,12 @@ test.describe("t1 — one tool model (1440)", () => {
         for (const name of ["Publish to Gallery", "Series", "Copy link"])
             await expect(app.getByRole("button", { name, exact: true }), name).toHaveCount(1);
         await expect(dock.locator("[aria-label='Publish to Gallery'], [aria-label='Series'], [aria-label='Copy link']")).toHaveCount(0);
-        // The editor's dock carries no second copy of the view layers.
+        // While editing the editor's dock takes the transport's place (FORTY-FIRST
+        // H): one dock on the stage, so one copy of the view layers, the editor's.
         await page.getByRole("button", { name: "Edit contour" }).click();
         await expect(page.getByRole("button", { name: "Save contour" }).first()).toBeVisible();
-        await expect(page.locator(".controls-overlay [aria-label='Picture']")).toHaveCount(0);
+        await expect(page.locator(".canvas-stage .glass-dock")).toHaveCount(1);
+        await expect(page.locator(".controls-overlay [aria-label='Picture']")).toHaveCount(1);
     });
 
     test("workspace: a menu opened from the stage dock holds it open; a press outside folds it", async ({ page }) => {

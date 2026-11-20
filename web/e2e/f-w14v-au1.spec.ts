@@ -24,7 +24,7 @@
  * Served from :3100 against :8000 (BASE_URL), Chromium (CDP).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { pressStageTool } from "./fixtures/canvas-dock";
 
 import { ENTRY, stubGallery } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
@@ -142,10 +142,9 @@ test.describe("au1 L2-2 consumer half (390 portrait)", () => {
         const stage = await box(page, ".animation-dock");
         expect(stage, "animation dock present").not.toBeNull();
         expect.soft(stage!.b, `stage dock bottom vs ${limit}`).toBeLessThanOrEqual(limit);
-        // The canvas dock opens by a press (owner, 2026-11-15); its Fullscreen
-        // control opens the takeover, which re-hosts the one stage.
-        await openCanvasDock(page);
-        await page.locator(".controls-overlay [aria-label='Fullscreen']").first().click();
+        // The stage dock's Fullscreen (a row of its More on a phone, FORTY-FIRST
+        // H) opens the takeover, which re-hosts the one stage.
+        await pressStageTool(page, "Fullscreen");
         await expect(page.getByRole("dialog", { name: /fullscreen/i })).toBeVisible({ timeout: 10_000 });
         await settle(page, 600);
         const fs = await box(page, ".animation-dock");

@@ -199,7 +199,27 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         expect(ring.stroke, "the ring is not the fill").not.toBe(ring.fill);
         await page.mouse.move(2, 2);
         await page.waitForTimeout(300);
-        expect(await shown(), "the selection stays found when the pointer leaves").toBe(1);
+        // FORTY-FIRST L: once the pointer leaves, the selection is the active
+        // point, so it stays painted with its reach: the handles at their
+        // stations within the Magnet's 96 px of it, and nothing else.
+        const left = await svg.evaluate((s) => {
+            const sel = s.querySelector("circle.control-point.selected")!;
+            const c = sel.getBoundingClientRect();
+            const cx = c.left + c.width / 2;
+            const cy = c.top + c.height / 2;
+            const on = [...s.querySelectorAll("circle.control-point")].filter((e) => Number(getComputedStyle(e).opacity) > 0.05);
+            return {
+                selected: Number(getComputedStyle(sel).opacity),
+                shown: on.length,
+                far: Math.max(...on.map((e) => {
+                    const r = e.getBoundingClientRect();
+                    return Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy);
+                })),
+            };
+        });
+        expect(left.selected, "the selection stays found when the pointer leaves").toBeGreaterThan(0.9);
+        expect(left.shown, "the selection and its reach, not a mat").toBeLessThanOrEqual(16);
+        expect(left.far, "nothing shows beyond the selection's reach").toBeLessThanOrEqual(97);
         await frame(page, "v87-selected");
     });
 
@@ -275,12 +295,16 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         await showView(page, "Controls");
         await page.waitForTimeout(600);
         await frame(page, "v89-controls-tab");
+        // FORTY-SECOND D: the two panes stand on one track and the stage slides
+        // out of view (and out of reach) instead of collapsing in place.
         const read = await page.evaluate(() => {
             const stage = document.querySelector(".viz-configurator .configurator-stage") as HTMLElement;
             const pane = document.querySelector(".viz-panel-left-wrap") as HTMLElement;
-            return { stageH: stage.getBoundingClientRect().height, paneTop: pane.getBoundingClientRect().top };
+            const s = stage.getBoundingClientRect();
+            return { stageRight: s.right, stageLeft: s.left, paneTop: pane.getBoundingClientRect().top };
         });
-        expect(read.stageH, "the inactive stage takes no height").toBeLessThanOrEqual(1);
+        expect(read.stageRight <= 0 || read.stageLeft >= 390, `the inactive stage is out of view (${read.stageLeft}..${read.stageRight})`).toBe(true);
+        await expect(page.locator(".viz-configurator .configurator-stage")).not.toBeInViewport();
         expect(read.paneTop, "the pane starts in the first screen").toBeLessThan(844 / 2);
     });
 

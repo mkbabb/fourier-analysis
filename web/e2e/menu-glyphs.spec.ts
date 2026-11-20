@@ -20,12 +20,14 @@ async function openWorkspace(page: Page, query = ""): Promise<void> {
     await expect(page.locator(".animation-dock")).toBeVisible({ timeout: LOAD });
 }
 
-/** The text of every item in `menu` that has no glyph of its own beside its label. */
+/** The text of every item in `menu` that has no glyph of its own beside its
+ *  label. An easing's row wears the curve's own plot (glass's EasingCurve) as
+ *  its glyph, read by the plot's drawing. */
 function itemsWithoutGlyph(menu: Locator): Promise<string[]> {
     return menu.evaluate((m) =>
         [...m.querySelectorAll("[role=menuitem], [role=menuitemcheckbox], [role=menuitemradio]")]
             .filter((item) => {
-                const glyph = item.querySelector(":scope > svg");
+                const glyph = item.querySelector(":scope > svg, :scope > .easing-curve svg");
                 const r = glyph?.getBoundingClientRect();
                 return !r || r.width < 8 || r.height < 8;
             })

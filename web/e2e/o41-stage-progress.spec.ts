@@ -39,6 +39,9 @@ async function startSampling(page: Page): Promise<void> {
             }
             const rim = document.querySelector(".app-dock .dock-progress");
             const stage = document.querySelector(".canvas-stage");
+            // The stage's own statuses: the dock standing on it keeps glass's
+            // live region for its own fold, which is the dock's, not the stage's.
+            const statuses = stage ? [...stage.querySelectorAll("[role=status]")].filter((e) => !e.closest(".glass-dock")) : [];
             const shown = (els: Iterable<Element>) =>
                 [...els].filter((e) => {
                     const r = e.getBoundingClientRect();
@@ -48,7 +51,7 @@ async function startSampling(page: Page): Promise<void> {
                 at: performance.now() - t0,
                 painted,
                 rim: rim ? Number(rim.getAttribute("aria-valuenow")) : null,
-                captions: stage ? shown([...stage.querySelectorAll("[role=status]")].filter((e) => (e.textContent ?? "").trim())) : 0,
+                captions: shown(statuses.filter((e) => (e.textContent ?? "").trim())),
                 bars: stage ? shown(stage.querySelectorAll("[role=progressbar]")) : 0,
                 outlines: stage ? shown(stage.querySelectorAll("svg.stage-outline")) : 0,
             });
@@ -83,8 +86,9 @@ async function uploadAndWatch(page: Page): Promise<Sample[]> {
     await showViewIfTabbed(page, "Canvas");
     await startSampling(page);
     // Until the drawing is on the stage and the job is done (the busy mark goes).
-    await expect(page.locator(".canvas-stage").getByRole("status")).toHaveCount(1, { timeout: 10_000 });
-    await expect(page.locator(".canvas-stage").getByRole("status")).toHaveCount(0, { timeout: LOAD });
+    const busy = page.locator(".canvas-stage [role=status]:not(.dock-run-status)");
+    await expect(busy).toHaveCount(1, { timeout: 10_000 });
+    await expect(busy).toHaveCount(0, { timeout: LOAD });
     return stopSampling(page);
 }
 

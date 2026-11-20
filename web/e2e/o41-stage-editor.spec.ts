@@ -109,6 +109,74 @@ test.describe("o41 stage — the curve editor (1440)", () => {
     });
 });
 
+/** The drawn line in viewport px: `n` points evenly along it, and the arc length to each. */
+async function screenLine(page: Page, n = 1600): Promise<{ x: number; y: number; s: number }[]> {
+    return editorSvg(page)
+        .locator("path.spline-path")
+        .evaluate((el, n) => {
+            const path = el as SVGPathElement;
+            const m = path.getScreenCTM()!;
+            const len = path.getTotalLength();
+            const out: { x: number; y: number; s: number }[] = [];
+            let s = 0;
+            for (let i = 0; i < n; i++) {
+                const a = path.getPointAtLength((i / n) * len);
+                const p = { x: a.x * m.a + a.y * m.c + m.e, y: a.x * m.b + a.y * m.d + m.f, s: 0 };
+                if (i) s += Math.hypot(p.x - out[i - 1]!.x, p.y - out[i - 1]!.y);
+                p.s = s;
+                out.push(p);
+            }
+            return out;
+        }, n);
+}
+
+test.describe("o41 stage — the Magnet and the handles (1440)", () => {
+    test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: "dark" });
+    test.setTimeout(120_000);
+
+    test("a drag bends the line over the Magnet's reach: the bend is 96 px wide at half its height", async ({ page }) => {
+        await openEditor(page);
+        const before = await screenLine(page);
+        const u = 0.37;
+        const at = await linePoint(page, u);
+        const n = await normalAt(page, u);
+        await dragFrom(page, at, 24 * n.x, 24 * n.y);
+        await page.waitForTimeout(600);
+        const after = await screenLine(page, 3200);
+        // How far each point of the old line now stands from the new one.
+        const moved = before.map((p) => Math.min(...after.map((q) => Math.hypot(p.x - q.x, p.y - q.y))));
+        const peak = moved.indexOf(Math.max(...moved));
+        const half = moved[peak]! / 2;
+        const N = before.length;
+        let lo = peak;
+        while (moved[(lo - 1 + N) % N]! >= half && (peak - lo) < N / 2) lo--;
+        let hi = peak;
+        while (moved[(hi + 1) % N]! >= half && (hi - peak) < N / 2) hi++;
+        const arc = (i: number) => before[((i % N) + N) % N]!.s + Math.floor(i / N) * before.at(-1)!.s;
+        const width = arc(hi) - arc(lo);
+        expect(moved[peak]!, "the drag moved the line").toBeGreaterThan(18);
+        // The Magnet's default reach is 96 px along the line with a raised-cosine
+        // falloff, whose width at half height is the reach itself.
+        expect(Math.abs(width - 96), `the bend's width at half height (${width.toFixed(1)} px)`).toBeLessThanOrEqual(9.6);
+    });
+
+    test("under reduced motion a handle fades in 120 ms", async ({ page }) => {
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await openEditor(page);
+        const at = await linePoint(page, 0.3);
+        await page.mouse.move(at.x + 3, at.y + 3, { steps: 3 });
+        const handle = editorSvg(page).locator("circle.control-point").first();
+        await expect(handle).toBeAttached();
+        const t = await handle.evaluate((c) => {
+            const s = getComputedStyle(c);
+            const props = s.transitionProperty.split(",").map((x) => x.trim());
+            const durs = s.transitionDuration.split(",").map((x) => x.trim());
+            return durs[props.indexOf("opacity")] ?? "";
+        });
+        expect(t, "the handle's opacity transition").toBe("0.12s");
+    });
+});
+
 test.describe("o41 stage — the curve editor under a finger (390, 4x CPU) @coarse", () => {
     test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: "dark" });
     test.setTimeout(150_000);
@@ -120,8 +188,12 @@ test.describe("o41 stage — the curve editor under a finger (390, 4x CPU) @coar
         const u = 0.3;
         const from = await linePoint(page, u);
         const n = await normalAt(page, u);
-        const to = { x: from.x + 40 * n.x, y: from.y + 40 * n.y };
-        const gapBefore = await distanceToLine(page, to);
+        // The finger goes 40 px off the line, to whichever side of it is open
+        // (a drawing's outline can fold back within 40 px on one side).
+        const sides = [1, -1].map((k) => ({ x: from.x + 40 * k * n.x, y: from.y + 40 * k * n.y }));
+        const gaps = await Promise.all(sides.map((p) => distanceToLine(page, p)));
+        const to = gaps[0]! >= gaps[1]! ? sides[0]! : sides[1]!;
+        const gapBefore = Math.max(...gaps);
         await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
         try {
             await touch(cdp, "touchStart", [from]);

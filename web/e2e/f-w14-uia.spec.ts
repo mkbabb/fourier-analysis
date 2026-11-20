@@ -769,7 +769,10 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
         await page.goto(`/v/${viz.slug}`);
         await showView(page, "Canvas");
         await openCanvasDock(page);
-        await expect(page.locator(".controls-overlay [aria-label='Export frame']")).toBeVisible();
+        // FORTY-FIRST H: on a phone the stage's one dock is a plate that never
+        // folds. Its seven seats stand on it; Export frame, Fullscreen and the
+        // rest are rows of its More, read below.
+        await expect(page.locator(".controls-overlay [aria-label='Edit contour']")).toBeVisible();
         const res = await page.evaluate(() => {
             const anchor = document.querySelector(".controls-overlay")!;
             return [...anchor.querySelectorAll<HTMLElement>("button[aria-label]")]
@@ -780,8 +783,30 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
                     return { name: b.getAttribute("aria-label"), ok: !!hit && (hit === b || b.contains(hit)), inView: r.left >= 0 && r.right <= innerWidth };
                 });
         });
-        expect(res.length).toBeGreaterThanOrEqual(4);
+        expect(res.length).toBeGreaterThanOrEqual(7);
         for (const c of res) {
+            expect(c.ok, `${c.name} is hittable`).toBe(true);
+            expect(c.inView, `${c.name} is in view`).toBe(true);
+        }
+        await page.locator(".controls-overlay [aria-label='Layers and more']").click();
+        const menu = page.getByRole("menu");
+        await expect(menu.getByRole("menuitem", { name: "Export frame" })).toBeVisible();
+        await page.waitForTimeout(400);
+        const rows = await menu.evaluate((m) =>
+            [...m.querySelectorAll<HTMLElement>("[role^=menuitem]")]
+                .filter((r) => !r.hasAttribute("data-disabled"))
+                .map((r) => {
+                    const b = r.getBoundingClientRect();
+                    const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+                    return {
+                        name: (r.textContent ?? "").trim(),
+                        ok: !!hit && (hit === r || r.contains(hit)),
+                        inView: b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight,
+                    };
+                }),
+        );
+        expect(rows.length).toBeGreaterThanOrEqual(6);
+        for (const c of rows) {
             expect(c.ok, `${c.name} is hittable`).toBe(true);
             expect(c.inView, `${c.name} is in view`).toBe(true);
         }

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { clickCanvasDockExport, openCanvasDock } from "./fixtures/canvas-dock";
+import { clickCanvasDockExport, openCanvasDock, pressStageTool } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
 import { editorReady } from "./fixtures/editor";
@@ -47,8 +47,8 @@ async function expandCanvasDock(page: Page, scope: Page | Locator = page): Promi
 }
 
 async function openFullscreen(page: Page): Promise<Locator> {
-    await expandCanvasDock(page);
-    await page.locator(".controls-overlay [aria-label='Fullscreen']").first().click();
+    // A seat of the open dock on a desk, a row of More on a phone (FORTY-FIRST H).
+    await pressStageTool(page, "Fullscreen");
     const dialog = page.getByRole("dialog", { name: /fullscreen/i });
     await expect(dialog).toBeVisible();
     await page.waitForTimeout(900);
@@ -150,25 +150,38 @@ for (const vp of WIDTHS) {
             expect(census.freeExit, "no free-floating Exit button").toBe(0);
             const dock = dialog.locator(".controls-overlay .glass-dock");
             await expect(dock).toHaveCount(1);
-            for (const name of ["Picture", "Export frame", "Exit fullscreen"]) {
-                await expect(dock.locator(`[aria-label='${name}']`), name).toHaveCount(1);
-            }
             // Owner, 2026-11-15: the series panel is the page's tool, in the app
             // dock. Owner, 2026-11-16: the takeover covers the app dock, so there the
-            // page's tools (Publish, Series, Copy link) stand on this dock too,
-            // outside its fold.
-            for (const name of ["Series", "Publish to Gallery", "Copy link"]) {
-                await expect(dock.locator(`[aria-label='${name}']`), name).toBeVisible();
+            // page's tools (Publish, Series, Copy link) are this dock's too: seats
+            // outside its fold on a desk, rows of its More on a phone (FORTY-FIRST H),
+            // with Export frame and Exit fullscreen.
+            const phone = page.viewportSize()!.width < 640;
+            await expect(dock.locator("[aria-label='Picture']"), "Picture").toHaveCount(1);
+            if (!phone) {
+                for (const name of ["Export frame", "Exit fullscreen"]) {
+                    await expect(dock.locator(`[aria-label='${name}']`), name).toHaveCount(1);
+                }
+                for (const name of ["Series", "Publish to Gallery", "Copy link"]) {
+                    await expect(dock.locator(`[aria-label='${name}']`), name).toBeVisible();
+                }
+                await expandCanvasDock(page, dialog);
+                await dock.locator("[aria-label='Exit fullscreen']").click();
+            } else {
+                await dock.getByRole("button", { name: "Layers and more" }).click();
+                const menu = page.getByRole("menu");
+                for (const name of ["Series", "Publish to Gallery", "Copy link", "Export frame", "Exit fullscreen"]) {
+                    await expect(menu.getByRole("menuitem", { name, exact: true }), name).toBeVisible();
+                }
+                await menu.getByRole("menuitem", { name: "Exit fullscreen", exact: true }).click();
             }
-            await expandCanvasDock(page, dialog);
-            await dock.locator("[aria-label='Exit fullscreen']").click();
             await expect(dialog).toBeHidden({ timeout: 10_000 });
             await expect(page.locator(".canvas-stage canvas.canvas-el")).toHaveCount(1);
             // A second takeover hosts the same stage again (the host is a new element).
             await openFullscreen(page);
             expect(await stageCensus(page)).toMatchObject({ canvases: 1, canvasesInTakeover: 1 });
             // Nothing the takeover hosts is hidden from assistive technology.
-            await expect(dialog.getByRole("button", { name: "Exit fullscreen" })).toHaveCount(1);
+            if (!phone) await expect(dialog.getByRole("button", { name: "Exit fullscreen" })).toHaveCount(1);
+            else await expect(dialog.getByRole("button", { name: "Layers and more" })).toHaveCount(1);
         });
     });
 }

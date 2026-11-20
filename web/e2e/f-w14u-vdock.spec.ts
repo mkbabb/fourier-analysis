@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { clickCanvasDockExport, openCanvasDock } from "./fixtures/canvas-dock";
+import { clickCanvasDockExport, openCanvasDock, pressStageTool } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
 
@@ -171,11 +171,14 @@ for (const vp of WIDTHS) {
             await openViz(page);
             const dock = page.locator(".controls-overlay .glass-dock");
             if (vp.width < 640) {
-                // A phone's plate never folds: no summary face to wear a glyph.
+                // A phone's plate never folds: its summary face (glass mounts the
+                // layer on every dock) never shows and holds nothing to wear a glyph.
                 await page.waitForTimeout(600);
                 await frame(page, "v94-collapsed");
                 await expect(dock).toHaveClass(/animation-dock--card/);
-                await expect(dock.locator(".dock-layer--summary")).toHaveCount(0);
+                await expect(dock).not.toHaveClass(/\bcollapsed\b/);
+                await expect(dock.locator(".dock-layer--summary.is-active")).toHaveCount(0);
+                await expect(dock.locator(".dock-layer--summary > *")).toHaveCount(0);
                 return;
             }
             await page.mouse.move(5, 5);
@@ -196,8 +199,8 @@ for (const vp of WIDTHS) {
         test.setTimeout(90_000);
 
         async function openFullscreen(page: Page) {
-            await expandCanvasDock(page);
-            await page.getByRole("button", { name: "Fullscreen" }).first().click();
+            // A seat of the open dock on a desk, a row of More on a phone.
+            await pressStageTool(page, "Fullscreen");
             const dialog = page.getByRole("dialog", { name: /fullscreen/i });
             await expect(dialog).toBeVisible();
             await page.waitForTimeout(900);
