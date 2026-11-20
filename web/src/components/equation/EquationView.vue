@@ -110,14 +110,17 @@ function computeKey(req: ComputeEquationRequest): string {
  * that request's answer.
  */
 let pending: { key: string; response: Promise<ComputeEquationResponse> } | null = null;
+/** The request a mounted view is computing now (its own job; no prefetch joins it). */
+let viewComputing: string | null = null;
 
 export function prefetch(): void {
     const input = loadCachedInputState() ?? DEFAULT_INPUT;
     const req = requestFor(input, true, input.nHarmonics + 1);
     if (!req.expression) return;
     const key = computeKey(req);
-    if (pending?.key === key || loadCachedResult()?.key === key) return;
-    const response = computeEquation(req);
+    if (pending?.key === key || viewComputing === key || loadCachedResult()?.key === key) return;
+    // Its own inflight key: a prefetch never cancels the view's job.
+    const response = computeEquation(req, {}, "eq-prefetch");
     pending = { key, response };
     response.then(
         (res) => {
@@ -424,9 +427,13 @@ async function doCompute(force = false) {
         },
     };
     const run = () => computeEquation(req, live);
+    viewComputing = key;
     try {
-        // X·OD19 ALL: the intent prefetch for this very request, if one is in flight.
-        const res = await (takePrefetch(key)?.catch(run) ?? run());
+        // X·OD19 ALL: the intent prefetch for this very request, if one is in
+        // flight; otherwise this view's own job, and any other prefetch goes.
+        const taken = takePrefetch(key);
+        if (!taken) abortInflight(["eq-prefetch"]);
+        const res = await (taken?.catch(run) ?? run());
         if (gen !== computeGeneration) return;
         result.value = res;
         lastComputeKey = key;
@@ -446,6 +453,7 @@ async function doCompute(force = false) {
         }
     } finally {
         if (gen === computeGeneration) {
+            if (viewComputing === key) viewComputing = null;
             computing.value = false;
             jobStage.value = null;
             liveSamples.value = null;
@@ -483,7 +491,10 @@ async function doSimplify() {
  * `lib/api.ts:61` with four call sites, all in `stores/workspace.ts`; the
  * equation route was the one async surface not using it.
  */
-onScopeDispose(() => abortInflight([...EQUATION_ABORT_KEYS]));
+onScopeDispose(() => {
+    viewComputing = null;
+    abortInflight([...EQUATION_ABORT_KEYS]);
+});
 
 // UIA-F-112 — an edit answers the field's error; the next compute re-judges it.
 watch(expression, () => { expressionError.value = null; });
@@ -856,6 +867,12 @@ watchDebounced(
    (glass relay: an empty gallery row should not hold the aside down). */
 .eq-workspace:not([data-form="sheet"]):not([data-form="rail"]) :deep(.eq-configurator > [data-slot="configurator"] > .configurator-aside) {
     grid-row: 1 / span 2;
+    /* The card ends with its content, as /visualize's does (it ran on ~170 px
+       as an empty slab under the coefficients): it starts at the row's top, is
+       as tall as its sections and at most the stage's height, past which glass's
+       own fading scroll scrolls inside it. */
+    align-self: start;
+    max-block-size: 100%;
 }
 
 /* ── Controls (the aside body) ── */
