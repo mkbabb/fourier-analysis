@@ -185,6 +185,8 @@ for (const c of CELLS) {
             await expect(menu).toBeVisible();
             await expect(menu.getByRole("group", { name: "Speed" })).toHaveCount(1);
             await expect(menu.getByRole("group", { name: "Easing" })).toHaveCount(0);
+            // O41 audit 47: no heading over the rows; the name is the group's.
+            await expect(menu.locator('[data-slot="menu-label"]')).toHaveCount(0);
             await menu.getByRole("menuitemradio", { name: /^2\s*×$/ }).click();
             await expect(speed).toHaveText(/^\s*2\s*×\s*$/);
             await page.keyboard.press("Escape");
@@ -195,6 +197,7 @@ for (const c of CELLS) {
             await expect(menu).toBeVisible();
             await expect(menu.getByRole("group", { name: "Easing" })).toHaveCount(1);
             await expect(menu.getByRole("group", { name: "Speed" })).toHaveCount(0);
+            await expect(menu.locator('[data-slot="menu-label"]')).toHaveCount(0);
             await expect(menu.getByRole("separator")).toHaveCount(0);
         });
 
