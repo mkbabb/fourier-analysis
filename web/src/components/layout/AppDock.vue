@@ -47,7 +47,14 @@ import { sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+} from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -348,6 +355,17 @@ function togglePane() {
     const seat = paneSeat.value;
     if (seat) seat.pane.value = seat.pane.value === "controls" ? "canvas" : "controls";
 }
+/**
+ * O41 S4's fallback: on a phone the open run with the pane seat (Home,
+ * Sections, the rule, Account, About, the theme and Controls, every seat on
+ * the 44 px cell) is 367 px, over the 358 the page gutter leaves. So where the
+ * pane seat stands, the "i" returns to the Sections menu (fronts-1119's form)
+ * and no seat shrinks; on every other page it stays beside the theme seat.
+ */
+const aboutInMenu = computed(() => compact.value && !!paneSeat.value);
+function openRepo() {
+    window.open(REPO_URL, "_blank", "noopener,noreferrer");
+}
 /** The rim: a page's own measure (a job on the stage), else its reading progress. */
 const dockProgress = useDockProgress();
 const rimValue = computed(() => dockProgress.value ?? pageScroll.progress.value);
@@ -401,6 +419,19 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         <component :is="tab.icon" aria-hidden="true" />
                         <span>{{ tab.label }}</span>
                     </DropdownMenuItem>
+                    <!-- Where the pane seat stands on a phone: About, after the places
+                         (see `aboutInMenu`). -->
+                    <template v-if="aboutInMenu">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup aria-label="About Fourier analysis" data-about>
+                            <DropdownMenuLabel>About</DropdownMenuLabel>
+                            <p class="about-menu-line text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
+                            <DropdownMenuItem @select="openRepo">
+                                <ExternalLink aria-hidden="true" />
+                                <span>View the project on GitHub</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -426,8 +457,9 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 <UserSlugBar />
             </div>
 
-            <!-- About ("i"), beside the theme seat, at every width. -->
-            <Popover keep-dock-open>
+            <!-- About ("i"), beside the theme seat; in the Sections menu where a
+                 phone's pane seat stands (see `aboutInMenu`). -->
+            <Popover v-if="!aboutInMenu" keep-dock-open>
                 <DockTrigger for="popover" class="about-trigger" aria-label="About Fourier analysis" title="About">
                     <Info aria-hidden="true" />
                 </DockTrigger>
@@ -563,8 +595,15 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 }
 
 .logo-trigger,
-.nav-trigger {
+.nav-trigger,
+.about-trigger {
     min-inline-size: var(--dock-control-size);
+}
+
+/* The phone's About group in the sections menu: the tagline under its label. */
+.about-menu-line {
+    padding: 0 var(--space-atom) var(--space-residue);
+    max-inline-size: 16rem;
 }
 /* Home is a compact (auto-sized) control so the wordmark sets its width; its
    height keeps the dock's control cell (44 px on a coarse pointer). */
