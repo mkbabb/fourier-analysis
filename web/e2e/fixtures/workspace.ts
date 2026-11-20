@@ -9,8 +9,12 @@ import { expect, type Page } from "@playwright/test";
  * when that view is not already the one showing, and the slide is let land.
  */
 export async function showView(page: Page, name: "Canvas" | "Controls"): Promise<void> {
+    // /equation's switch is the seat. /w and /v keep their Controls/Canvas
+    // strip until the stage's view takes the pane (the stage track's T-A).
     const seat = page.locator(".app-dock .pane-seat");
-    await expect(seat).toBeVisible({ timeout: 30_000 });
+    const strip = page.getByRole("tab", { name }).filter({ visible: true }).first();
+    await expect(seat.or(strip).first()).toBeVisible({ timeout: 30_000 });
+    if (!(await seat.isVisible())) return selectTab(page, name);
     const want = String(name === "Controls");
     if ((await seat.getAttribute("aria-pressed")) !== want) await seat.click();
     await expect(seat).toHaveAttribute("aria-pressed", want);
