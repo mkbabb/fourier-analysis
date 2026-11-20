@@ -4,7 +4,7 @@ import { seededViz } from "./fixtures/seed";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { showView } from "./fixtures/workspace";
 import { openAppDock } from "./fixtures/app-dock";
-import { CONTOUR_JOB } from "./fixtures/jobs";
+import { CONTOUR_JOB, IMAGE_JOB } from "./fixtures/jobs";
 
 /**
  * X.F.W14U.vstage — the Visualize stage's family (spec `F-W14U.md` Units :8-18;
@@ -231,10 +231,16 @@ for (const scheme of ["light", "dark"] as const) {
         test.setTimeout(90_000);
 
         test("e73 · F-73 — the stage says computing in the DOM; the canvas paints no drop box", async ({ page }) => {
-            await page.route(CONTOUR_JOB, async (route) => {
-                await new Promise((r) => setTimeout(r, 6000));
-                await route.fallback();
-            });
+            // The job is held before it starts, so the stage stands in its first
+            // computing state. /v's first compute is the image job (it was the
+            // contour job's pattern alone, which /v never posts, so nothing was
+            // held and the name moved on to the job's stages at once).
+            for (const job of [IMAGE_JOB, CONTOUR_JOB]) {
+                await page.route(job, async (route) => {
+                    await new Promise((r) => setTimeout(r, 6000));
+                    await route.fallback();
+                });
+            }
             // FORTY-FIRST F: the first compute shows the picture on the canvas
             // (o41-stage-progress); with no picture to show, the canvas must
             // still paint no box of its own.
