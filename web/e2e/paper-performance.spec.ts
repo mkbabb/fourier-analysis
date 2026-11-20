@@ -141,6 +141,20 @@ async function activateTocEntry(page: Page, id: string) {
 
     await entry.first().evaluate((element) => (element as HTMLButtonElement).click());
     await expect(page.locator(`#${id}`)).toBeVisible({ timeout: 10_000 });
+    // A far jump takes the article's text out, moves the page behind it and
+    // brings the text back (`useScrollNavigation`'s `withOverlay`); the section
+    // counts as visible while the text is still out and the page still moving.
+    // The steps after a jump act on the page it landed on: the text is back.
+    await expect
+        .poll(
+            () =>
+                page.evaluate(() => {
+                    const root = document.querySelector<HTMLElement>(".paper-scroll .paper-window-root");
+                    return root && root.style.opacity === "" ? getComputedStyle(root).opacity : "out";
+                }),
+            { timeout: 10_000 },
+        )
+        .toBe("1");
 }
 
 test.describe("Paper performance", () => {
