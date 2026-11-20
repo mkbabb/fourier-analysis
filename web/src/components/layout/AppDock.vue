@@ -423,7 +423,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                          (see `aboutInMenu`). -->
                     <template v-if="aboutInMenu">
                         <DropdownMenuSeparator />
-                        <DropdownMenuGroup aria-label="About Fourier analysis" data-about>
+                        <DropdownMenuGroup data-about>
                             <DropdownMenuLabel>About</DropdownMenuLabel>
                             <p class="about-menu-line text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
                             <DropdownMenuItem @select="openRepo">
@@ -600,9 +600,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     min-inline-size: var(--dock-control-size);
 }
 
-/* The phone's About group in the sections menu: the tagline under its label. */
+/* The phone's About group in the sections menu: the tagline under its label,
+   on the label's own inline measure (glass's .menu__label, 0.5rem) so the two
+   lines share one edge with the row's glyph below. */
 .about-menu-line {
-    padding: 0 var(--space-atom) var(--space-residue);
+    padding: 0 0.5rem var(--space-residue);
     max-inline-size: 16rem;
 }
 /* Home is a compact (auto-sized) control so the wordmark sets its width; its

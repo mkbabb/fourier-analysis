@@ -141,7 +141,8 @@ test.describe("FORTY-SECOND B — the dock on a phone @coarse", () => {
         await dock.getByRole("button", { name: /^Navigate/ }).click();
         const menu = page.getByRole("menu");
         await expect(menu).toBeVisible();
-        const about = menu.getByRole("group", { name: "About Fourier analysis" });
+        // The group takes its label's name, "About".
+        const about = menu.getByRole("group", { name: "About" });
         await expect(about.getByRole("menuitem", { name: "View the project on GitHub" })).toBeVisible();
         await expect(menu.getByRole("menuitem")).toHaveCount(6);
         await expect(menu.locator('[role="group"]')).toHaveCount(1);
