@@ -109,25 +109,25 @@ test.describe("o41 stage — the curve editor (1440)", () => {
     });
 });
 
-/** The drawn line in viewport px: `n` points evenly along it, and the arc length to each. */
-async function screenLine(page: Page, n = 1600): Promise<{ x: number; y: number; s: number }[]> {
+/** The curve's own points in viewport px, in order: the end of each of the
+ *  line's cubics (the line is one Catmull-Rom cubic per point, so each ends on
+ *  a point, and a drag keeps the count and the order). */
+async function curvePoints(page: Page): Promise<{ x: number; y: number }[]> {
     return editorSvg(page)
         .locator("path.spline-path")
-        .evaluate((el, n) => {
+        .evaluate((el) => {
             const path = el as SVGPathElement;
             const m = path.getScreenCTM()!;
-            const len = path.getTotalLength();
-            const out: { x: number; y: number; s: number }[] = [];
-            let s = 0;
-            for (let i = 0; i < n; i++) {
-                const a = path.getPointAtLength((i / n) * len);
-                const p = { x: a.x * m.a + a.y * m.c + m.e, y: a.x * m.b + a.y * m.d + m.f, s: 0 };
-                if (i) s += Math.hypot(p.x - out[i - 1]!.x, p.y - out[i - 1]!.y);
-                p.s = s;
-                out.push(p);
+            const num = "(-?[\\d.]+(?:e[-+]?\\d+)?)";
+            const re = new RegExp(`C${num},${num} ${num},${num} ${num},${num}`, "gi");
+            const out: { x: number; y: number }[] = [];
+            for (const c of (path.getAttribute("d") ?? "").matchAll(re)) {
+                const x = Number(c[5]);
+                const y = Number(c[6]);
+                out.push({ x: x * m.a + y * m.c + m.e, y: x * m.b + y * m.d + m.f });
             }
             return out;
-        }, n);
+        });
 }
 
 test.describe("o41 stage — the Magnet and the handles (1440)", () => {
@@ -136,7 +136,7 @@ test.describe("o41 stage — the Magnet and the handles (1440)", () => {
 
     test("a drag bends the line over the Magnet's reach: the bend is 96 px wide at half its height", async ({ page }) => {
         await openEditor(page);
-        const before = await screenLine(page);
+        const before = await curvePoints(page);
         const u = 0.37;
         const at = await linePoint(page, u);
         const n = await normalAt(page, u);
@@ -146,23 +146,35 @@ test.describe("o41 stage — the Magnet and the handles (1440)", () => {
         await page.mouse.down();
         await page.mouse.move(at.x + 24 * n.x, at.y + 24 * n.y, { steps: 6 });
         await page.waitForTimeout(300);
-        const after = await screenLine(page, 3200);
+        const after = await curvePoints(page);
         await page.mouse.up();
-        // How far each point of the old line now stands from the new one.
-        const moved = before.map((p) => Math.min(...after.map((q) => Math.hypot(p.x - q.x, p.y - q.y))));
+        const N = before.length;
+        expect(after.length, "a drag keeps the curve's points").toBe(N);
+        // How far each point moved, and the old curve's arc length to each.
+        const moved = before.map((p, i) => Math.hypot(after[i]!.x - p.x, after[i]!.y - p.y));
         const peak = moved.indexOf(Math.max(...moved));
         const half = moved[peak]! / 2;
-        const N = before.length;
-        let lo = peak;
-        while (moved[(lo - 1 + N) % N]! >= half && (peak - lo) < N / 2) lo--;
-        let hi = peak;
-        while (moved[(hi + 1) % N]! >= half && (hi - peak) < N / 2) hi++;
-        const arc = (i: number) => before[((i % N) + N) % N]!.s + Math.floor(i / N) * before.at(-1)!.s;
-        const width = arc(hi) - arc(lo);
+        const at_ = (i: number) => ((i % N) + N) % N;
+        const step = (i: number) => Math.hypot(before[at_(i + 1)]!.x - before[at_(i)]!.x, before[at_(i + 1)]!.y - before[at_(i)]!.y);
+        // Walk out each side to where the bend falls under half its height,
+        // reading the crossing between the two points that straddle it.
+        const side = (dir: 1 | -1) => {
+            let along = 0;
+            for (let k = 0; k < N / 2; k++) {
+                const i = at_(peak + dir * k);
+                const j = at_(peak + dir * (k + 1));
+                const seg = dir === 1 ? step(i) : step(j);
+                if (moved[j]! < half) return along + (seg * (moved[i]! - half)) / (moved[i]! - moved[j]!);
+                along += seg;
+            }
+            return along;
+        };
+        const width = side(1) + side(-1);
         const read = `peak ${moved[peak]!.toFixed(1)} px, width ${width.toFixed(1)} px`;
-        expect(moved[peak]!, `the drag moved the line (${read})`).toBeGreaterThan(18);
-        // The Magnet's default reach is 96 px along the line with a raised-cosine
-        // falloff, whose width at half height is the reach itself.
+        // The point under the press moves the pointer's whole travel.
+        expect(moved[peak]!, `the drag moved the line (${read})`).toBeGreaterThan(22);
+        // The Magnet's default reach is 96 px along the line each side with a
+        // raised-cosine falloff, so its width at half height is 96 px.
         expect(Math.abs(width - 96), `the bend's width at half height (${read})`).toBeLessThanOrEqual(9.6);
     });
 
