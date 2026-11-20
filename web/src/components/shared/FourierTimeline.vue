@@ -283,11 +283,14 @@ defineExpose({ scrubbing });
    the 56 px dock no longer sits dead around a 24 px band); on a coarse one it
    is glass's slider touch target at the 44 px cell. The band is block padding,
    which reka's inline-axis pointer mapping never reads. The fill wears the
-   site's amber through glass's own `--slider-range-bg`; the thumb, its held
-   stretch and the drag's grain are glass's. */
+   site's amber through glass's own `--slider-range-bg`, and the thumb wears
+   the fill's colour through glass's documented `--slider-thumb-bg` (theming:
+   the fill's end reads as the handle); the thumb's shape, its held stretch and
+   the drag's grain are glass's. */
 .timeline-slider {
     --slider-track-height: var(--timeline-track-height, 0.5rem);
     --slider-range-bg: var(--viz-amber);
+    --slider-thumb-bg: var(--slider-range-bg);
     padding-block: calc((var(--dock-layer-height, 2.5rem) - var(--slider-track-height)) / 2);
     cursor: grab;
 }

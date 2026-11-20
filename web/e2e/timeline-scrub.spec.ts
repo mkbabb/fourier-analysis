@@ -300,6 +300,21 @@ test.describe("FORTY-SECOND C — the timeline's band and fill", () => {
         });
         expect(m.fill).toBe(m.amber);
     });
+
+    test("the thumb wears the fill's colour, with nothing painted inside it", async ({ page }) => {
+        const { row } = await openTimeline(page);
+        const m = await row.evaluate((r) => {
+            const thumb = r.querySelector<HTMLElement>(".slider-thumb")!;
+            const probe = document.createElement("span");
+            probe.style.color = "var(--viz-amber)";
+            r.appendChild(probe);
+            const amber = getComputedStyle(probe).color;
+            probe.remove();
+            return { image: getComputedStyle(thumb).backgroundImage, color: getComputedStyle(thumb).backgroundColor, amber };
+        });
+        expect(m.image, "no disc painted in the thumb").toBe("none");
+        expect(m.color, "the thumb is the fill's amber").toBe(m.amber);
+    });
 });
 
 test.describe("FORTY-SECOND C — the timeline under a coarse pointer @coarse", () => {
