@@ -17,7 +17,7 @@ import { openAppDock } from "./fixtures/app-dock";
  *   · `:21-22`  `expect(glassDock.or(searchInput)).toBeVisible()` — a mask.
  *     `/gallery` renders `GallerySearchBar`, a plain `<div role="search">`;
  *     `.glass-dock` is glass-ui's DOCK class and on this route nothing mounts
- *     one (it lives on `/visualize`, in `CanvasControlsDock`). The assertion
+ *     one (it lives on `/visualize`, on the stage dock). The assertion
  *     passed on the right-hand side while claiming to check either, so deleting
  *     the search bar would have been caught only by luck. `FR-GSB-17`.
  *   · `:49-53`  `if (await glassDock.locator(".dock-layer--summary").isVisible()
@@ -229,14 +229,14 @@ test.describe("Visualizer overlay dock", () => {
     test("visualizer surfaces its overlay control dock", async ({ page }) => {
         await page.goto("/visualize");
 
-        // Upload an image so the canvas + overlaid CanvasControlsDock mount.
+        // Upload an image so the canvas + the stage dock mount.
         const fileInput = page.getByTestId("image-file-input");
         await fileInput.setInputFiles(SAMPLE_IMAGE);
 
         await page.waitForURL(/\/w\//, { timeout: 15_000 });
 
         // Wait for canvas (auto-compute populates `hasData`, which mounts the
-        // top controls dock in `.controls-dock-anchor`).
+        // top controls dock in `.controls-overlay`).
         const canvas = page.locator("canvas").first();
         await expect(canvas).toBeVisible({ timeout: 60_000 });
 
@@ -245,11 +245,10 @@ test.describe("Visualizer overlay dock", () => {
         // this is not. The dock starts folded; a press opens it (owner, 2026-11-15).
         const dock = await openCanvasDock(page);
 
-        // The dock's actions are keyed by aria-label (the dock idiom). "View
-        // options" (image-overlay / contour-trace toggles) is the canonical
-        // overlay affordance; "Fullscreen" is always present.
-        await expect(dock.locator('[aria-label="View options"]')).toBeVisible({
-            timeout: 5_000,
-        });
+        // The dock's actions are keyed by aria-label (the dock idiom). The
+        // layers (FORTY-FIRST Q) are the canonical overlay affordance: Picture
+        // and Outline are seats in view at rest.
+        await expect(dock.locator('[aria-label="Picture"]')).toBeVisible({ timeout: 5_000 });
+        await expect(dock.locator('[aria-label="Outline"]')).toBeVisible({ timeout: 5_000 });
     });
 });

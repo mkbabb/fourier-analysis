@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 
@@ -153,13 +154,15 @@ def _empty_result(
 def extract_contours_result(
     image_path: str | Path,
     config: ContourConfig = DEFAULT_CONTOUR_CONFIG,
+    on_stage: Callable[[float], None] | None = None,
 ) -> ContourExtractionResult:
-    """Extract contours from an image, returning the full result with diagnostics."""
+    """Extract contours from an image, returning the full result with
+    diagnostics. ``on_stage`` hears the AUTO drawing's progress (0..1)."""
     config = config.normalized()
     image = load_image_inputs(image_path, config)
 
     if config.strategy == ContourStrategy.AUTO and config.alpha_mode != AlphaMode.ONLY:
-        return extract_contours_pipeline(image, config)
+        return extract_contours_pipeline(image, config, on_stage)
     else:
         return _select_explicit_candidate(image, config)
 
@@ -167,6 +170,7 @@ def extract_contours_result(
 def extract_contours(
     image_path: str | Path,
     config: ContourConfig = DEFAULT_CONTOUR_CONFIG,
+    on_stage: Callable[[float], None] | None = None,
 ) -> list[NDArray[np.complex128]]:
     """Extract contours from an image, returning only the contour list."""
-    return extract_contours_result(image_path, config).contours
+    return extract_contours_result(image_path, config, on_stage).contours

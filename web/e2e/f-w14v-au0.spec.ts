@@ -1,6 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import * as fs from "node:fs";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { openCanvasDock, pressStageTool } from "./fixtures/canvas-dock";
 import * as path from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
@@ -261,25 +261,26 @@ async function walkMorph(page: Page, run: Run, tag: string): Promise<void> {
     await shot(page, run, tag, "morph");
 }
 
-/** The loaded workspace: View options, Σ panel, Export, More options, fullscreen, editor. */
+/** The loaded workspace: the stage dock's menu, the series panel, Export, the rate and easing, fullscreen, editor. */
 async function walkWorkspace(page: Page, run: Run, tag: string): Promise<void> {
     await openViz(page, tag);
     await shot(page, run, tag, "workspace");
-    const anchor = ".controls-dock-anchor";
+    const anchor = ".controls-overlay";
 
     await expandCanvasDock(page);
-    await openIf(page, run, tag, "view-options", `${anchor} [aria-label='View options']`, "no View options control");
+    // FORTY-FIRST H: the stage's one dock; a phone's More holds the layers and the page's acts.
+    const more = page.viewportSize()!.width < 640 ? "Layers and more" : "Playback speed";
+    await openIf(page, run, tag, "view-options", `${anchor} [aria-label='${more}']`, `no ${more} control`);
 
     // Owner, 2026-11-15: the series panel (Σ) is the page's tool, in the app dock
     // (below 40rem an item of the sections menu, which absorbs the page's tools).
-    await pressPageTool(page, "Equation");
+    await pressPageTool(page, "Series");
     await page.waitForTimeout(1500);
     await shot(page, run, tag, "equation-panel");
-    await pressPageTool(page, "Equation");
+    await pressPageTool(page, "Series");
     await page.waitForTimeout(400);
 
-    await expandCanvasDock(page);
-    await page.locator(`${anchor} [aria-label='Export frame']`).first().click();
+    await pressStageTool(page, "Export frame");
     await expect(page.getByRole("dialog", { name: "Export Frame" })).toBeVisible();
     await shot(page, run, tag, "export");
     await page.keyboard.press("Escape");
@@ -294,8 +295,7 @@ async function walkWorkspace(page: Page, run: Run, tag: string): Promise<void> {
     await page.waitForTimeout(800);
     await openIf(page, run, tag, "easing", ".animation-dock [aria-label='Easing']", "no Easing control");
 
-    await expandCanvasDock(page);
-    await page.locator(`${anchor} [aria-label='Fullscreen']`).first().click();
+    await pressStageTool(page, "Fullscreen");
     await expect(page.getByRole("dialog", { name: /fullscreen/i })).toBeVisible();
     await shot(page, run, tag, "fullscreen");
     await page.keyboard.press("Escape");

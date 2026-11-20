@@ -1,9 +1,8 @@
 <template>
     <div class="demo-page">
-        <!-- ── Header ──────────────────────────────────────────── -->
-        <div class="demo-header">
-            <h1 class="demo-title">Fourier Morph</h1>
-        </div>
+        <!-- The dock already names the page (Morph); its heading is for
+             assistive technology only, so the stage leads the page. -->
+        <h1 class="demo-title sr-only">Fourier Morph</h1>
 
         <!-- X.F.W14U.misc — UIA-F-115: the morph is the page's dominant
              content. At >=1024px the stage takes the wider column (about 55%)
@@ -35,7 +34,9 @@
                         <component :is="morphConfig.status.value === 'success' ? Check : ClipboardCopy" />
                         {{ morphConfig.status.value === 'success' ? 'Copied' : 'Export' }}
                     </Button>
-                    <Button emphasis="quiet" size="sm" :disabled="isAnimating" @click="handleReset">
+                    <!-- Enabled, it reads as enabled: Export's emphasis, not
+                         glass's quiet ink, which dims by design. -->
+                    <Button emphasis="secondary" size="sm" :disabled="isAnimating" @click="handleReset">
                         <RotateCcw />
                         Reset
                     </Button>
@@ -250,6 +251,15 @@ function handleReset() {
    rail mid-page inside `<main>`, the app's one scroller. `clip` keeps the
    horizontal guard without minting a scroll container, which is also what
    lets the stage stick to `<main>` (UIA-F-115). */
+/* FORTY-FIRST A: on a phone the page's cards take glass's room radius, the
+   one the stage routes' cards take (`styles/workspace.css`), so the site
+   keeps one set of radii. */
+@media (width < 40rem) {
+    .demo-page {
+        --radius-card: var(--radius-3xl);
+    }
+}
+
 .demo-page {
     width: 100%;
     max-width: 72rem;
@@ -262,12 +272,6 @@ function handleReset() {
     font-family: var(--font-serif);
     overflow-x: clip;
     box-sizing: border-box;
-}
-
-/* ── Header ─────────────────────────────────── */
-
-.demo-header {
-    margin-bottom: var(--space-family);
 }
 
 /* X.F.W14.h · OA-45 — the page title and lede on glass's type scale

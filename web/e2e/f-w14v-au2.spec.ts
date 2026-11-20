@@ -19,7 +19,7 @@
  * Served from :3100 against :8000 (BASE_URL), Chromium (CDP insets).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 
 import { seededViz } from "./fixtures/seed";
 
@@ -69,8 +69,10 @@ test("L2-8 · 844×390: the Export dialog fits the viewport; title and footer re
     await insets(page, L_INSETS);
     await openWorkspace(page);
     await toCanvas(page);
-    await openCanvasDock(page);
-    await page.getByRole("button", { name: "Export frame" }).first().click();
+    // The one path every spec that exports a frame takes: a seat of the stage's
+    // dock, or a row of its More where the stage carries the plate (844x390's
+    // stage, beside the rail, is under 40rem).
+    await clickCanvasDockExport(page);
     const dialog = page.getByRole("dialog", { name: "Export Frame" });
     await expect(dialog).toBeVisible();
     await page.waitForTimeout(500);
@@ -153,8 +155,14 @@ for (const width of [360, 390, 430, 768, 1440]) {
         await openWorkspace(page);
         await toCanvas(page);
         await expand(page, ".animation-dock");
+        // glass 11.0.1 defect: its `.dock-run` reads 4 px wider than its box
+        // (the focus-ring reserve at each end), relayed to glass; the same
+        // exclusion as f-w14u-vedit v88 and au1 X-5, met here since the stage's
+        // one dock is glass's run. Every element's reach inside the plate is
+        // asserted by f-w14v-pd. REMOVE this exclusion when glass fixes the run.
         const read = await page.locator(".animation-dock").evaluate((root) => {
             return [...root.querySelectorAll<HTMLElement>("*")]
+                .filter((e) => !e.classList.contains("dock-run"))
                 .filter((e) => e.scrollWidth > e.clientWidth + 0.5 && /auto|scroll|hidden/.test(getComputedStyle(e).overflowX) && e.clientWidth > 0)
                 .map((e) => `${e.className.toString().slice(0, 60)} ${e.scrollWidth}/${e.clientWidth}`);
         });

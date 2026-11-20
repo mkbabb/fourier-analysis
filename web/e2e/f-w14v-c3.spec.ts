@@ -1,5 +1,6 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { editorReady } from "./fixtures/editor";
 import { setSlider } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
@@ -34,14 +35,15 @@ async function openEditor(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
     if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
-    await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator(".controls-overlay")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
     const edit = page.getByRole("button", { name: "Edit contour" }).first();
     await edit.hover();
     await page.waitForTimeout(600);
     await edit.click();
     await expect(page.locator(".canvas-stage > .editor-shell:not(.is-hidden) svg.editor-svg")).toBeVisible();
-    await expect(page.locator("circle.control-point").nth(10)).toBeAttached();
+    // FORTY-FIRST L: only the handles near the pointer are mounted.
+    await editorReady(page);
     const dock = editorDock(page);
     const summary = dock.getByRole("button", { name: "Expand dock" });
     if (await summary.isVisible()) {

@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { useId } from "vue";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
 import {
-    DropdownMenuLabel,
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
 } from "@mkbabb/glass-ui/menu";
@@ -61,8 +59,6 @@ import { useAnimationStore } from "@/stores/animation";
  */
 const anim = useAnimationStore();
 
-const easingLabelId = useId();
-
 /**
  * `AC-L-11 + M-10`'s posture, applied at the menu seam: the radio group's model
  * is a producer `SelectionValue` (an open scalar), and the store's `easing` is a
@@ -78,10 +74,11 @@ function selectEasing(value: unknown) {
 </script>
 
 <template>
-    <DropdownMenuLabel :id="easingLabelId">Easing</DropdownMenuLabel>
+    <!-- O41 audit 47: no heading over the rows; the trigger already says
+         Easing, and the group keeps the name for a screen reader. -->
     <DropdownMenuRadioGroup
         :model-value="anim.easing"
-        :aria-labelledby="easingLabelId"
+        aria-label="Easing"
         @update:model-value="selectEasing"
     >
         <DropdownMenuRadioItem

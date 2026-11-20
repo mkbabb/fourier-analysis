@@ -449,7 +449,6 @@ onUnmounted(() => {
 <template>
     <div class="paper-root" :style="paperRootStyle">
         <div ref="scrollContainer" class="paper-scroll" :data-scrolled="readingProgress > 0 || undefined">
-            <div class="teleport-overlay" />
             <!-- Mobile floating TOC bar -->
             <!-- UIA-F-162: content first. The floating bar is the phone's one
                  ToC from the top of the paper (the inline chapter list it used
@@ -587,27 +586,6 @@ onUnmounted(() => {
     --floating-toc-rule: var(--border);
 }
 
-.teleport-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-overlay);
-    /* X-DS pass 3 · DS-F3-C16: the page tone alone; a 92→98% vignette over an
-       opaque ground could not show. */
-    background: var(--background);
-    opacity: 0;
-    pointer-events: none;
-    /* A.W3.d — bezier→`--ease-out-expo`. */
-    transition: opacity 180ms var(--ease-out-expo);
-}
-
-/* `★MF-7`: `will-change: opacity` stood permanently on a fixed full-viewport
-   element for chrome that only appears during a far jump — a compositor layer
-   the size of the window, held for the whole session. It is declared only while
-   the overlay is actually being shown. */
-.teleport-overlay[style*="opacity: 1"] {
-    will-change: opacity;
-}
-
 .paper-article {
     font-feature-settings: "liga", "kern";
     text-rendering: optimizeLegibility;
@@ -624,6 +602,14 @@ onUnmounted(() => {
 @media (min-width: 640px) {
     .paper-article {
         padding: 2rem 2.5rem;
+    }
+}
+
+/* FORTY-FIRST A: on a phone the reading card takes glass's room radius, the
+   one the stage routes' cards take (`styles/workspace.css`). */
+@media (width < 40rem) {
+    .paper-article {
+        --radius-card: var(--radius-3xl);
     }
 }
 

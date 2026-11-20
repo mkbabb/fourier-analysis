@@ -362,8 +362,8 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
         owner: ".b",
     },
     // fr-EditorControlsDock `ECD D-5` — the `.dock-badge` is glass `Metric`
-    // `.dock-count` now (`visualization/EditorControlsDock.vue` `#persistent`,
-    // UIA-F-242): value `--foreground`, unit "pts" `--muted-foreground`, the
+    // `.tool-count` now, set into the tools menu's Simplify row
+    // (`visualization/EditorControlsDock.vue`, UIA-F-242; FORTY-FIRST L): value `--foreground`, unit "pts" `--muted-foreground`, the
     // weaker ink graded. `D-6` — the saved Check: `.is-save.saved { color:
     // var(--success) }` on `.is-save`'s plate `color-mix(in srgb,
     // var(--foreground) 6%, transparent)`. Both over the page, the registry's

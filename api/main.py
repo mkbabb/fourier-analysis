@@ -61,8 +61,11 @@ async def lifespan(app: FastAPI):
     )
     await connect_db()
     janitor_task = asyncio.create_task(run_janitor())
+    # The equation series' first answer, computed before anyone asks for it.
+    warm_task = asyncio.create_task(equations.warm())
     yield
     janitor_task.cancel()
+    warm_task.cancel()
     shutdown_process_pool()
     await close_db()
 

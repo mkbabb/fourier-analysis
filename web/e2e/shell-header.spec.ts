@@ -50,8 +50,8 @@ test.describe("Shell header (G-F9-12)", () => {
         await page.goto("/");
         await openAppDock(page);
 
-        // `.logo-trigger` is a `PopoverTrigger` whose accessible name is the
-        // component's own `aria-label`; the mark itself is decorative text.
+        // About is a `PopoverTrigger` beside the theme seat whose accessible
+        // name is its own `aria-label`; its face is the "i" glyph.
         const logo = page.getByRole("button", { name: "About Fourier analysis" });
         await expect(logo).toBeVisible({ timeout: 30_000 });
 

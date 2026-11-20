@@ -105,6 +105,7 @@ def symbolic_fourier_coefficients(
     domain: tuple[float, float],
     period: float | None = None,
     on_term: Callable[[FourierTerm, int, int], None] | None = None,
+    on_miss: Callable[[int], None] | None = None,
 ) -> list[FourierTerm] | None:
     """Compute Fourier coefficients via symbolic integration.
 
@@ -126,6 +127,9 @@ def symbolic_fourier_coefficients(
     on_term : callable, optional
         Called as ``on_term(term, done, total)`` after each coefficient, in the
         order 0, +1, -1, +2, -2, ... (a progress report; it may raise to stop).
+    on_miss : callable, optional
+        Called as ``on_miss(n)`` for a harmonic neither form could integrate
+        (its timeout, or sympy's failure); the series carries a zero for it.
 
     Returns
     -------
@@ -188,6 +192,8 @@ def symbolic_fourier_coefficients(
                 cn = _compute_cn(expr, x, n_val, a, b, T, omega)
             if cn is None:
                 failed += 1
+                if on_miss is not None:
+                    on_miss(n_val)
                 # Without a general form sympy could not do the integral for
                 # symbolic n, and a harmonic it cannot do either says the rest
                 # will each spend their timeout the same way: hand over to the

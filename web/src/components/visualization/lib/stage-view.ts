@@ -108,3 +108,31 @@ export function composeView(base: ViewTransform, v: StageView, w: number, h: num
         },
     };
 }
+
+/**
+ * The view as a link carries it (`z`, `c` in the URL): the zoom, and the
+ * drawing's point under the fit's centre `o` (the drawing's centre at the
+ * fit, on screen), as an offset from the drawing's centre in units of the
+ * drawing's size (`unit`: the fit's scale times the drawing's extent, so the
+ * offset is in drawings, y up). A link reads the same on any screen. The fit
+ * is no link (null).
+ */
+export interface StageLink {
+    z: number;
+    c: [number, number];
+}
+
+export function linkOfView(v: StageView, o: readonly [number, number], unit: number): StageLink | null {
+    if (isIdentity(v)) return null;
+    const u = unit || 1;
+    const px = (o[0] - v.x) / v.k;
+    const py = (o[1] - v.y) / v.k;
+    return { z: v.k, c: [(px - o[0]) / u, -(py - o[1]) / u] };
+}
+
+/** The view a link names, on this stage (the inverse of `linkOfView`). */
+export function viewOfLink(link: StageLink, o: readonly [number, number], unit: number): StageView {
+    const px = o[0] + link.c[0] * unit;
+    const py = o[1] - link.c[1] * unit;
+    return { k: link.z, x: o[0] - px * link.z, y: o[1] - py * link.z };
+}

@@ -44,7 +44,7 @@ const emit = defineEmits<{
 
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
-        <DialogContent surface="opaque" class="max-w-sm" :dismiss="busy ? 'locked' : 'deliberate'">
+        <DialogContent class="max-w-sm" :dismiss="busy ? 'locked' : 'deliberate'">
             <LeaveSignal @left="emit('left')" />
             <DialogHeader>
                 <DialogTitle>{{ title }}</DialogTitle>

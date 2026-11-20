@@ -151,8 +151,9 @@ const emit = defineEmits<{
     @apply select-none;
     font-family: var(--font-mono);
     color: var(--muted-foreground);
-    font-size: var(--type-caption);
-    line-height: var(--type-leading-caption);
+    /* FORTY-SECOND A: the legend is read, so it takes the small step (14 px). */
+    font-size: var(--type-small);
+    line-height: var(--type-leading-small);
 }
 /* DS-F4-C7: a drawn harmonic is named in full ink; one the sweep has not
    reached yet keeps the muted ink and a hollow dot (its hue as a ring). */

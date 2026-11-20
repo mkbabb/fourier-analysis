@@ -26,8 +26,10 @@ const widestChars = `pg ${totalPages}/${totalPages}`.length;
 <style scoped>
 .page-readout {
     flex: none;
-    font-size: var(--type-caption);
-    line-height: var(--type-leading-caption);
+    /* FORTY-SECOND A: the page being read is read, so it takes the small step
+       (14 px), quieter by its ink. */
+    font-size: var(--type-small);
+    line-height: var(--type-leading-small);
     letter-spacing: 0.02em;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
@@ -39,7 +41,7 @@ const widestChars = `pg ${totalPages}/${totalPages}`.length;
 }
 
 .page-readout-sep {
-    opacity: 0.4;
+    color: var(--muted-foreground);
     margin: 0 1px;
 }
 </style>

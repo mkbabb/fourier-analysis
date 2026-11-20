@@ -452,7 +452,8 @@ test.describe("g101 g102 g189 — the drafts are gallery cards with one keyboard
             return { got: getComputedStyle(el).borderTopLeftRadius, want };
         });
         expect(r.got).toBe(r.want);
-        await expect(card.getByText("Draft", { exact: true })).toBeVisible();
+        // Audit 49: every card here is a draft, so no card says so.
+        await expect(card.getByText("Draft", { exact: true })).toHaveCount(0);
         // F-189: a broken thumbnail paints no alt text.
         const broken = page.locator("article.card").filter({ has: page.getByRole("link", { name: "img-draft-broken" }) });
         await expect(broken.locator("img")).toHaveCount(0);

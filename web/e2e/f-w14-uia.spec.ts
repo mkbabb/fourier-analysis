@@ -7,6 +7,7 @@ import { seededViz, type SeededViz } from "./fixtures/seed";
 import { showView, selectTab } from "./fixtures/workspace";
 import { openAppDock } from "./fixtures/app-dock";
 import { JOB_EVENTS, isJobStream } from "./fixtures/jobs";
+import { dragFrom, editorReady, linePoint, linePointCount } from "./fixtures/editor";
 
 /**
  * X.F.W14.u — the UIA-F register (`value.js/docs/tranches/X/audit/UI-AUDIT-fourier.md`).
@@ -91,12 +92,15 @@ test.describe("UIA-F-50 / UIA-F-4 / UIA-F-49 — not-found and load-error states
         await page.goto("/nope/deeper");
         const card = page.getByTestId("not-found");
         await expect(card.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
-        await expect(card.getByRole("button", { name: "Browse the gallery" })).toBeVisible();
+        // Home first (critique N1), then the app's one making act.
+        const actions = card.getByRole("button");
+        await expect(actions.first()).toHaveAccessibleName("Home");
+        await expect(card.getByRole("button", { name: "Upload a new image" })).toBeVisible();
         await expect(page).toHaveTitle("Not found — Fourier Analysis");
         await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
         // Leaving the not-found route drops the noindex again.
-        await card.getByRole("button", { name: "Browse the gallery" }).click();
-        await expect(page).toHaveURL(/\/gallery$/);
+        await actions.first().click();
+        await expect(page).toHaveURL(/\/paper$/);
         await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
     });
 
@@ -231,20 +235,16 @@ async function openEditor(page: Page) {
     await page.waitForTimeout(600);
     await edit.click();
     const shell = page.locator(".editor-shell:not(.is-hidden) > .editor-shell").first();
-    const point = page.locator("circle.control-point").nth(10);
-    await expect(point).toBeVisible();
+    // FORTY-FIRST L: only the handles near the pointer are mounted; a point is
+    // read off the drawn line.
+    await editorReady(page);
+    const point = await linePoint(page, 10 / 1024);
     return { shell, point };
 }
 
-/** Drag a control point by a few screen pixels. */
-async function dragPoint(page: Page, point: ReturnType<Page["locator"]>) {
-    const box = (await point.boundingBox())!;
-    const x = box.x + box.width / 2;
-    const y = box.y + box.height / 2;
-    await page.mouse.move(x, y);
-    await page.mouse.down();
-    await page.mouse.move(x + 12, y + 9, { steps: 4 });
-    await page.mouse.up();
+/** Drag the line at `at` by a few screen pixels. */
+async function dragPoint(page: Page, at: { x: number; y: number }) {
+    await dragFrom(page, at);
 }
 
 test.describe("UIA-F-16 — Undo enables after a point drag", () => {
@@ -264,14 +264,14 @@ test.describe("UIA-F-16 — Undo enables after a point drag", () => {
 test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
     test("Delete works on a picked point; out of edit mode a sidebar field keeps its Backspace", async ({ page }) => {
         const { point } = await openEditor(page);
-        const points = page.locator("circle.control-point");
-        const before = await points.count();
+        const count = () => linePointCount(page);
+        const before = await count();
         await dragPoint(page, point); // picks (selects) the point
         await page.keyboard.press("Delete");
-        await expect(points).toHaveCount(before - 1);
+        await expect.poll(count).toBe(before - 1);
 
         // Pick another point, then leave edit mode with it still selected.
-        await dragPoint(page, points.nth(20));
+        await dragPoint(page, await linePoint(page, 0.3));
         const edit = page.getByRole("button", { name: "Edit contour" }).first();
         await edit.hover();
         await page.waitForTimeout(600);
@@ -286,7 +286,7 @@ test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
         await field.focus();
         const typed = await sliderValue(field);
         await page.keyboard.press("Backspace");
-        await expect(points).toHaveCount(before - 1);
+        expect(await linePointCount(page, ".canvas-stage > .editor-shell"), "the editor kept its points").toBe(before - 1);
         await expect(field).toHaveAttribute("aria-valuenow", String(typed));
         await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "");
     });
@@ -376,7 +376,7 @@ test.describe("UIA-F-19 — one drop, one upload", () => {
             await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(meta) });
         });
         await page.goto(`/v/${viz.slug}`);
-        await expect(page.locator("circle.control-point, canvas").first()).toBeAttached();
+        await expect(page.locator(".canvas-stage canvas").first()).toBeAttached();
         await page.evaluate(() => {
             const bytes = Uint8Array.from(
                 atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="),
@@ -741,31 +741,23 @@ test.describe("UIA-F-32 — the coefficient popover escapes the equation card", 
     });
 });
 
-test.describe("UIA-F-12 — the canvas dock's View options are reachable by keyboard", () => {
-    // X.F.W14V.u1 (UIA-F-79, §0bt): View options is a menu now (UIA-F-77/F-79), so its
-    // rows are reached with the menu's own keys (focus enters the menu; arrows move).
-    test("Enter opens the menu and the keys reach both rows; Enter toggles one", async ({ page }) => {
+test.describe("UIA-F-12 — the stage's layers are reachable by keyboard", () => {
+    // FORTY-FIRST Q: the layers are seats of the stage's one dock (Picture,
+    // Outline, Line, Circles), each a toggle the keyboard reaches and presses.
+    test("Tab reaches the layer seats; Enter toggles one", async ({ page }) => {
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await openCanvasDock(page);
-        const view = page.getByRole("button", { name: "View options" }).first();
-        await expect(view).toBeVisible();
+        const outline = page.locator(".controls-overlay").getByRole("button", { name: "Outline", exact: true });
+        await expect(outline).toBeVisible();
         await page.waitForTimeout(600);
-        await view.focus();
+        const picture = page.locator(".controls-overlay").getByRole("button", { name: "Picture", exact: true });
+        await picture.focus();
+        await page.keyboard.press("Tab");
+        await expect(outline).toBeFocused();
+        const was = await outline.getAttribute("aria-pressed");
         await page.keyboard.press("Enter");
-        await expect(page.getByRole("menu")).toBeVisible();
-        const names: string[] = [];
-        for (let i = 0; i < 3; i++) {
-            names.push((await page.evaluate(() => document.activeElement?.textContent?.trim())) ?? "");
-            await page.keyboard.press("ArrowDown");
-        }
-        expect(names).toContain("Original outline");
-        expect(names).toContain("Background image");
-        const trace = page.getByRole("menuitemcheckbox", { name: "Original outline" });
-        await trace.focus();
-        const was = await trace.getAttribute("aria-checked");
-        await page.keyboard.press("Enter");
-        await expect(trace).not.toHaveAttribute("aria-checked", was ?? "");
+        await expect(outline).not.toHaveAttribute("aria-pressed", was ?? "");
     });
 });
 
@@ -777,9 +769,12 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
         await page.goto(`/v/${viz.slug}`);
         await showView(page, "Canvas");
         await openCanvasDock(page);
-        await expect(page.locator(".controls-dock-anchor [aria-label='Export frame']")).toBeVisible();
+        // FORTY-FIRST H: on a phone the stage's one dock is a plate that never
+        // folds. Its seven seats stand on it; Export frame, Fullscreen and the
+        // rest are rows of its More, read below.
+        await expect(page.locator(".controls-overlay [aria-label='Edit contour']")).toBeVisible();
         const res = await page.evaluate(() => {
-            const anchor = document.querySelector(".controls-dock-anchor")!;
+            const anchor = document.querySelector(".controls-overlay")!;
             return [...anchor.querySelectorAll<HTMLElement>("button[aria-label]")]
                 .filter((b) => !b.closest("[inert]") && b.getClientRects().length)
                 .map((b) => {
@@ -788,8 +783,30 @@ test.describe("UIA-F-5 — at 390 every expanded canvas-dock control is visible 
                     return { name: b.getAttribute("aria-label"), ok: !!hit && (hit === b || b.contains(hit)), inView: r.left >= 0 && r.right <= innerWidth };
                 });
         });
-        expect(res.length).toBeGreaterThanOrEqual(4);
+        expect(res.length).toBeGreaterThanOrEqual(7);
         for (const c of res) {
+            expect(c.ok, `${c.name} is hittable`).toBe(true);
+            expect(c.inView, `${c.name} is in view`).toBe(true);
+        }
+        await page.locator(".controls-overlay [aria-label='Layers and more']").click();
+        const menu = page.getByRole("menu");
+        await expect(menu.getByRole("menuitem", { name: "Export frame" })).toBeVisible();
+        await page.waitForTimeout(400);
+        const rows = await menu.evaluate((m) =>
+            [...m.querySelectorAll<HTMLElement>("[role^=menuitem]")]
+                .filter((r) => !r.hasAttribute("data-disabled"))
+                .map((r) => {
+                    const b = r.getBoundingClientRect();
+                    const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+                    return {
+                        name: (r.textContent ?? "").trim(),
+                        ok: !!hit && (hit === r || r.contains(hit)),
+                        inView: b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight,
+                    };
+                }),
+        );
+        expect(rows.length).toBeGreaterThanOrEqual(6);
+        for (const c of rows) {
             expect(c.ok, `${c.name} is hittable`).toBe(true);
             expect(c.inView, `${c.name} is in view`).toBe(true);
         }
@@ -823,7 +840,7 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
         await page.getByRole("button", { name: "Log in" }).click();
         const field = page.getByRole("textbox", { name: /Your slug/ });
         await field.fill("quiet-amber-lattice-fox");
-        await allHittable(page, ["Your slug — four lowercase words joined by hyphens", "Generate a new slug", "Submit slug and log in"]);
+        await allHittable(page, ["Your slug", "Generate a new slug", "Submit slug and log in"]);
         expect(await page.locator("header").first().evaluate((h) => h.getBoundingClientRect().width)).toBe(dockBefore);
         await page.getByRole("button", { name: "Submit slug and log in" }).click();
         const err = page.locator("#user-slug-error");

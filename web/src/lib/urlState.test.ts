@@ -76,6 +76,11 @@ describe("workspace query", () => {
         t: 0.418,
         speed: 2,
         ease: "ease-in-out-cubic",
+        line: false,
+        circles: true,
+        basis: ["fourier-epicycles", "legendre"],
+        z: 2.5,
+        c: [0.1, -0.2],
     };
 
     it("round-trips a full view", () => {
@@ -84,12 +89,12 @@ describe("workspace query", () => {
 
     it("writes nothing for the default view, so the path is the clean link", () => {
         const clean = parseWorkspaceQuery({});
-        expect(clean).toEqual({ bg: false, trace: true, eq: false, edit: false, fs: false, n: null, t: null, speed: null, ease: null });
+        expect(clean).toEqual({ bg: true, trace: false, eq: false, edit: false, fs: false, n: null, t: null, speed: null, ease: null, line: true, circles: true, basis: null, z: null, c: null });
         expect(Object.values(formatWorkspaceQuery(clean)).filter((v) => v !== undefined)).toEqual([]);
     });
 
     it("uses short keys", () => {
-        expect(asQuery(formatWorkspaceQuery({ bg: true, trace: false, t: 0.5 }))).toEqual({ bg: "1", trace: "0", t: "0.5" });
+        expect(asQuery(formatWorkspaceQuery({ bg: false, trace: true, t: 0.5 }))).toEqual({ bg: "0", trace: "1", t: "0.5" });
     });
 
     it("reads an off-catalogue rate or easing as the piece's own", () => {

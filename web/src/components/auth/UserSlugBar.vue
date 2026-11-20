@@ -296,7 +296,7 @@ async function copySlug() {
                          caption line (the P2-07 hint idiom), not screen-reader
                          only behind a placeholder. -->
                     <label class="text-caption text-muted-foreground" for="user-slug-input">
-                        Your slug — four lowercase words joined by hyphens
+                        Your slug
                     </label>
                     <Input
                         id="user-slug-input"

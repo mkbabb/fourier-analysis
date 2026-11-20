@@ -112,7 +112,7 @@ const PAD: PlotPadding = { top: 14, bottom: 18, left: 12, right: 12 };
  */
 const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
-/** `L-M3 + D-26` — false while the panel is `display:none` (mobile `panel-inactive`). */
+/** `L-M3 + D-26` — false while the plot is out of view (a phone with its controls pane shown). */
 const isVisible = ref(true);
 
 // ── Animation loop ──
@@ -722,11 +722,11 @@ onMounted(() => {
         if (rafId === null) draw();
     });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
-    // `L-M3 + D-26` — neither clock was visibility-gated, and the mobile panel is
-    // `display:none` WHILE MOUNTED (`EquationView`'s `.panel-inactive`, default
-    // tab `controls`), so the loop, the per-frame layout read and the reactive
-    // cascade all ran unseen. A `display:none` element never intersects, which
-    // is precisely the signal needed.
+    // `L-M3 + D-26` — neither clock was visibility-gated, and on a phone the
+    // plot stays mounted while the controls pane is shown (the stage then
+    // stands off-screen beside it, `styles/workspace.css`), so the loop, the
+    // per-frame layout read and the reactive cascade would run unseen. An
+    // element out of the viewport never intersects, which is the signal needed.
     visibilityObserver = new IntersectionObserver((entries) => {
         const visible = entries.some((e) => e.isIntersecting);
         if (visible === isVisible.value) return;

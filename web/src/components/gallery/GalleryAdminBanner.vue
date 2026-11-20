@@ -42,14 +42,25 @@ const errorSentence = computed(() => {
 /**
  * X.F.W14U.admin — UIA-F-192: Log out unmounts this banner (and the button),
  * so focus fell to `<body>`. The stable neighbour is the block mounted before
- * the banner — the gallery's tabs and search, which outlive admin mode.
+ * the banner — the gallery's tabs and search, which outlive admin mode. The
+ * banner opens the tab's body (a wrapper of its own since the bodies fade), so
+ * the block is the nearest one before it or before an ancestor that holds a
+ * control.
  */
 const root = useTemplateRef<InstanceType<typeof Card>>("root");
 const FOCUSABLE =
     'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+function blockBefore(el: HTMLElement | undefined): HTMLElement | null {
+    for (let n = el ?? null; n; n = n.parentElement) {
+        const before = n.previousElementSibling as HTMLElement | null;
+        if (before?.querySelector(FOCUSABLE)) return before;
+    }
+    return null;
+}
+
 async function logout() {
-    const neighbour = (root.value?.$el as HTMLElement | undefined)?.previousElementSibling as HTMLElement | null;
+    const neighbour = blockBefore(root.value?.$el as HTMLElement | undefined);
     emit("logout");
     await nextTick();
     neighbour?.querySelector<HTMLElement>(FOCUSABLE)?.focus();

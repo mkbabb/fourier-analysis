@@ -26,9 +26,7 @@
  * escalated (F.W14U.vdock receipt). This section is the register's interim for
  * F-9 and moves with the picker when the pane lands.
  */
-import { useId } from "vue";
 import {
-    DropdownMenuLabel,
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
 } from "@mkbabb/glass-ui/menu";
@@ -36,7 +34,6 @@ import { ANIMATION_SPEEDS, isAnimationSpeed } from "@/lib/defaults";
 import { useAnimationStore } from "@/stores/animation";
 
 const anim = useAnimationStore();
-const speedLabelId = useId();
 
 function selectSpeed(value: unknown) {
     if (isAnimationSpeed(value)) anim.speed = value;
@@ -44,10 +41,11 @@ function selectSpeed(value: unknown) {
 </script>
 
 <template>
-    <DropdownMenuLabel :id="speedLabelId">Speed</DropdownMenuLabel>
+    <!-- O41 audit 47: no heading over the rows; the trigger already says the
+         rate, and the group keeps the name for a screen reader. -->
     <DropdownMenuRadioGroup
         :model-value="anim.speed"
-        :aria-labelledby="speedLabelId"
+        aria-label="Speed"
         @update:model-value="selectSpeed"
     >
         <DropdownMenuRadioItem

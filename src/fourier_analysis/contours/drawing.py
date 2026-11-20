@@ -46,6 +46,7 @@ the drawing's own measured line width.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -123,11 +124,27 @@ class Drawing:
         return self.graph.polylines(self.shape)
 
 
-def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
+# How far through the drawing each step leaves it, by measured cost (a
+# portrait at the web's defaults): the subject mask, the learned line maps, the
+# vectorised lines, and the routed connectors and pen jumps.
+STAGE_MASK = 0.47
+STAGE_LINES = 0.80
+STAGE_VECTORS = 0.84
+STAGE_ROUTED = 0.98
+
+
+def draw_subject(
+    image: LoadedImage,
+    config: ContourConfig,
+    on_stage: Callable[[float], None] | None = None,
+) -> Drawing | None:
     """The subject's drawing as a stroke graph (module docstring); ``None``
-    when there is no subject."""
+    when there is no subject. ``on_stage`` hears how far through the drawing
+    it is (0..1) after each of its four costly steps."""
+    report = on_stage or (lambda _fraction: None)
     shape = image.grayscale.shape
     mask, saliency = subject_mask(image, config)
+    report(STAGE_MASK)
     if not mask.any():
         return None
     parts = part_labels(image, mask)
@@ -136,6 +153,7 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     lab = cielab(image)
 
     fine, strength = line_maps(image, soft_alpha(saliency, mask))
+    report(STAGE_LINES)
     ink = strength >= INK_LEVEL
     width = line_width(ink)
     ink |= lone_lines(fine >= INK_LEVEL, ink, width, MIN_PART_FRACTION * diag)
@@ -159,6 +177,7 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
     if earlier.any():
         ink &= ndi.distance_transform_edt(~earlier) > SUPPRESS_FRACTION * diag
     lines = vectorise(ink, width, bridge=BRIDGE_WIDTHS * width)
+    report(STAGE_VECTORS)
     lines = drop_doubles(lines, earlier, DOUBLE_REACH_FRACTION * diag)
 
     graph = bridge_gaps(base.merged(lines), BRIDGE_WIDTHS * width)
@@ -202,6 +221,7 @@ def draw_subject(image: LoadedImage, config: ContourConfig) -> Drawing | None:
         graph, path_strength, reach, wall=wall, faces=zones, kinds=feature_kinds(parts.labels)
     )
     graph = route_jumps(graph, path_strength, reach, wall=wall)
+    report(STAGE_ROUTED)
     return Drawing(graph, mask, parts.source, parts.faces)
 
 

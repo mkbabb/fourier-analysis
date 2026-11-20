@@ -59,6 +59,19 @@ async function openAdmin(page: Page, before?: (page: Page) => Promise<void>): Pr
 
 async function openTab(page: Page, tab: string): Promise<void> {
     await selectTab(page, tab);
+    // A tab's body fades in once the old one has left (the gallery's tab
+    // motion); the checks read the body that has arrived. The old body reads
+    // opacity 1 as it starts to leave, so the wait is for one body with no
+    // enter or leave in flight, at full opacity.
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const bodies = [...document.querySelectorAll<HTMLElement>(".gallery-body")];
+                if (bodies.length !== 1 || /gallery-body-(enter|leave)/.test(bodies[0]!.className)) return "moving";
+                return getComputedStyle(bodies[0]!).opacity;
+            }),
+        )
+        .toBe("1");
 }
 
 async function openUsers(page: Page, before?: (page: Page) => Promise<void>): Promise<Locator> {

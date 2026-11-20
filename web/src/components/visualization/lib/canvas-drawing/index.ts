@@ -1,5 +1,5 @@
 export type { ViewTransform } from "./types";
-export { spectrumColor, getPathBounds } from "./transforms";
+export { spectrumColor } from "./transforms";
 export { drawGrid } from "./grid";
 export { drawGhostPath } from "./ghost-path";
 export { TrailManager } from "./trail";

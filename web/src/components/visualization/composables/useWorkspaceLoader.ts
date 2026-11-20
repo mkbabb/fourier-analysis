@@ -4,7 +4,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { errorToast } from "@/lib/toast-policy";
 import { CONTOUR_DEFAULTS } from "@/lib/defaults";
-import { normalizeBasisKey } from "@/lib/basis";
+import { sameBases, withEpicycles } from "@/lib/basis";
 
 /**
  * X.F.W4 · SP-4 — `prefers-reduced-motion`, read LIVE at every call.
@@ -29,8 +29,8 @@ function prefersReducedMotion(): boolean {
 
 export function useWorkspaceLoader(
     activeBases: Ref<string[]>,
-    /** The paused moment a link names (`t`), read as the first drawing lands. */
-    initialTime: () => number | null = () => null,
+    /** What a link names, read as the first drawing lands: the paused moment (`t`) and the bases (`basis`). */
+    link: { time: () => number | null; bases: () => string[] | null } = { time: () => null, bases: () => null },
 ) {
     const route = useRoute();
     const router = useRouter();
@@ -166,23 +166,14 @@ export function useWorkspaceLoader(
             const reduced = prefersReducedMotion();
             if (!hadDataBefore) {
                 hadDataBefore = true;
-                // First data arrival: ensure fourier-epicycles is selected
-                if (!activeBases.value.includes("fourier-epicycles")) {
-                    // X.F.W3 `.e` / `fr-BasisSelector M-10` — the key->family
-                    // bridge, one of seven inline spellings, retired onto the
-                    // canon. The predicate is "not a Fourier basis", and saying
-                    // so through `normalizeBasisKey` is what keeps the family
-                    // question answered in one place when a fifth basis lands.
-                    activeBases.value = [
-                        "fourier-epicycles",
-                        ...activeBases.value.filter(
-                            (b) => normalizeBasisKey(b) !== "fourier",
-                        ),
-                    ];
-                }
+                // First data arrival: the bases a link names, else the
+                // epicycles in place of any other Fourier mode (`withEpicycles`).
+                const named = link.bases();
+                const opening = named ? [...named] : withEpicycles(activeBases.value);
+                if (!sameBases(opening, activeBases.value)) activeBases.value = opening;
                 // A link's paused moment (`t`, owner 2026-11-15: a copied link
                 // reopens the same time) holds the first drawing there.
-                const t0 = initialTime();
+                const t0 = link.time();
                 if (t0 !== null) {
                     anim.holdAt(t0);
                     return;

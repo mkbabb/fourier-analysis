@@ -93,10 +93,13 @@ async function shoot(page: Page, name: string): Promise<void> {
     });
 }
 
+// O41 T3: a stage under 40rem (the phone's, and the 1024 split's at 626 px)
+// carries the plate of two rows, which never folds; there the falsifier reads
+// the plate at rest, and the fold is the 1440 row's.
 const CASES = [
-    { width: 1440, height: 900 },
-    { width: 1024, height: 900 },
-    { width: 390, height: 844 },
+    { width: 1440, height: 900, plate: false },
+    { width: 1024, height: 900, plate: true },
+    { width: 390, height: 844, plate: true },
 ];
 
 for (const c of CASES) {
@@ -109,6 +112,21 @@ for (const c of CASES) {
                 ...(mobile ? { isMobile: true, hasTouch: true } : {}),
             });
             test.setTimeout(120_000);
+
+            if (c.plate) {
+                test("the plate: it never folds, and every element is inside it", async ({ page }) => {
+                    await openDock(page, mobile);
+                    const dock = page.locator(".animation-dock");
+                    await expect(dock).toHaveClass(/\banimation-dock--card\b/);
+                    if (!mobile) await page.mouse.move(2, 2);
+                    await page.waitForTimeout(6500);
+                    await expect(dock).not.toHaveClass(/\bcollapsed\b/);
+                    await settle(page);
+                    await shoot(page, `plate-${c.width}-${scheme}`);
+                    expect(await outside(page), "the plate: elements outside the glass surface").toEqual([]);
+                });
+                return;
+            }
 
             test("collapsed: every element inside the plate", async ({ page }) => {
                 await openDock(page, mobile);

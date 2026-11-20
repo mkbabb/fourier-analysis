@@ -94,6 +94,20 @@ function onHostBeforeUnmount() {
 function onOpenChange(open: boolean) {
     if (!open) emit("close");
 }
+
+/**
+ * A press in one of the takeover's own menus is the takeover's. The stage
+ * dock's menus (More, the rate, the easing) portal to the body, outside this
+ * dialog's box, so a press in one read as a press outside and the takeover left
+ * under the finger: on a phone, More's "Exit fullscreen" left on the press and
+ * its click, landing on the same row (now "Fullscreen"), opened it again.
+ * While the takeover is open it covers the page, so every open menu is its own.
+ */
+function keepOwnMenuPresses(event: Event) {
+    const press = (event as CustomEvent<{ originalEvent?: PointerEvent }>).detail?.originalEvent;
+    const target = press?.target instanceof Element ? press.target : null;
+    if (target?.closest('[role="menu"]')) event.preventDefault();
+}
 </script>
 
 <template>
@@ -103,6 +117,7 @@ function onOpenChange(open: boolean) {
             surface="opaque"
             dismiss="deliberate"
             :scroll="false"
+            @pointer-down-outside="keepOwnMenuPresses"
         >
             <!-- Every modal surface owes a name. The old one had none at all;
                  this one says what it is and keeps the chrome the viewport
@@ -163,6 +178,19 @@ function onOpenChange(open: boolean) {
     padding: 0;
     display: flex;
     flex-direction: column;
+}
+
+/* The takeover is glass's modal (`--z-modal`), and the stage it hosts opens
+   glass's menus, hints and popovers, which glass paints at `--z-popover` and
+   `--z-tooltip` (both under the modal's rung) from the body. So in fullscreen
+   every one of them opened under the takeover: the rate, the easing, a
+   phone's More (and with it Exit fullscreen) and the editor's tools. While the
+   takeover is open the two rungs stand above the modal's, in their own order.
+   The rungs are glass's tokens, set here only for this surface's lifetime;
+   a menu opened inside a modal painting under it is listed for glass. */
+:root:has(.fs-dialog[data-state="open"]) {
+    --z-tooltip: calc(var(--z-modal) + 1);
+    --z-popover: calc(var(--z-modal) + 2);
 }
 
 /* X.F.W4 · `fr-FullscreenViewer FV-14` (R-2) — `flex: 1` and `min-height: 0`

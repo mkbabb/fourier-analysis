@@ -1,5 +1,5 @@
-import { ref, type Ref } from "vue";
-import type { Point2D } from "@/lib/contourEditing";
+import { ref, shallowRef, type Ref } from "vue";
+import { reachSamples, type Point2D, type ReachSample } from "@/lib/contourEditing";
 
 /** The rectangle, in data coordinates, a dragged point may not leave. */
 export interface DragBounds {
@@ -18,89 +18,137 @@ export function clampToBounds(p: Point2D, b: DragBounds | null): Point2D {
     };
 }
 
+/**
+ * One point's drag. The curve at the press is kept whole (`base`) and every
+ * frame is that curve plus the pointer's travel, weighted along the reach, so
+ * a drag never accumulates rounding, a second finger can hand the curve back
+ * untouched, and Undo has one clean step. The point arrays are never mutated:
+ * each frame is a new array, so the history may keep them by reference.
+ */
 export function usePointDrag(
     points: Ref<Point2D[]>,
-    magnetRadius: Ref<number>,
-    svgPoint: (e: PointerEvent) => Point2D,
+    /** How far along the curve a drag carries its neighbours, in the points'
+     *  unit (0: the point alone). The editor passes screen pixels over its scale. */
+    reach: () => number,
+    toPoint: (e: PointerEvent) => Point2D,
     onDragEnd: () => void,
     /** LAST-TEN F-03: the stage's data rectangle. A point dragged past the
      *  stage edge stops at the edge and slides along it; it is never dropped
      *  outside the image. */
     bounds: () => DragBounds | null = () => null,
+    /** Brought back inside this distance of where it was grabbed, the point
+     *  returns there exactly (the points' unit; 0: no snap). */
+    snap: () => number = () => 0,
 ) {
     const dragging = ref(false);
     const selectedIdx = ref<number | null>(null);
-    let dragStartIdx: number | null = null;
+    /** Where the held point was grabbed, once the drag has moved it. */
+    const home = shallowRef<Point2D | null>(null);
+    /** The held point is back on its home (the snap). */
+    const atHome = ref(false);
+
+    let base: Point2D[] | null = null;
+    let carried: ReachSample[] = [];
+    let idx: number | null = null;
     /** The point's offset from the pointer at the press, so the point keeps
      *  that offset wherever the pointer goes (and re-syncs after the edge). */
     let grab: Point2D | null = null;
-    // X.F.W14U.vedit — UIA-F-242: a press that never moves is a selection, not
-    // an edit; only a drag that moved a point ends in a history snapshot.
+    // A press that never moves is a selection, not an edit.
     let moved = false;
+    /** The snap arms once the point has left its home's neighbourhood, so the
+     *  first pixels of a drag are never swallowed. */
+    let armed = false;
+    let farthest = 0;
 
-    function onPointPointerDown(idx: number, e: PointerEvent) {
+    function onPointPointerDown(i: number, e: PointerEvent) {
         e.preventDefault();
         e.stopPropagation();
-        selectedIdx.value = idx;
-        dragStartIdx = idx;
+        selectedIdx.value = i;
+        idx = i;
+        base = points.value;
+        carried = reachSamples(base, i, reach());
         // The drag keeps the press's offset from the point, so a press beside
         // a point (inside its target floor) moves it without a jump.
-        const at = svgPoint(e);
-        const p = points.value[idx];
+        const at = toPoint(e);
+        const p = base[i];
         grab = { x: p.x - at.x, y: p.y - at.y };
         dragging.value = true;
         moved = false;
-        // The press may land on the surface near the point (the editor picks
-        // the nearest point within its target floor), so the capture is taken
-        // by the element the handler is bound to.
-        ((e.currentTarget ?? e.target) as Element).setPointerCapture(e.pointerId);
+        armed = false;
+        farthest = 0;
+        home.value = null;
+        atHome.value = false;
+        ((e.currentTarget ?? e.target) as Element).setPointerCapture?.(e.pointerId);
     }
 
     function onPointerMove(e: PointerEvent) {
-        if (!dragging.value || dragStartIdx === null || !grab) return;
-        const pt = svgPoint(e);
+        if (!dragging.value || idx === null || !grab || !base) return;
+        const at = toPoint(e);
         const box = bounds();
-        const p = points.value[dragStartIdx];
-        const target = clampToBounds({ x: pt.x + grab.x, y: pt.y + grab.y }, box);
-        const dx = target.x - p.x;
-        const dy = target.y - p.y;
-        if (dx === 0 && dy === 0) return;
+        const origin = base[idx];
+        let target = clampToBounds({ x: at.x + grab.x, y: at.y + grab.y }, box);
+        const away = Math.hypot(target.x - origin.x, target.y - origin.y);
+        farthest = Math.max(farthest, away);
+        const r = snap();
+        if (r > 0 && away > r * 2) armed = true;
+        const snapped = armed && away <= r;
+        if (snapped) target = origin;
+        const dx = target.x - origin.x;
+        const dy = target.y - origin.y;
+        if (!moved && dx === 0 && dy === 0) return;
         moved = true;
+        home.value = origin;
+        atHome.value = snapped;
 
-        points.value[dragStartIdx] = target;
-
-        const n = points.value.length;
-        const radius = magnetRadius.value;
-        if (radius > 0) {
-            for (let offset = 1; offset <= radius; offset++) {
-                const falloff = 1 - offset / (radius + 1);
-                const before = (dragStartIdx - offset + n) % n;
-                const after = (dragStartIdx + offset) % n;
-                points.value[before] = clampToBounds({
-                    x: points.value[before].x + dx * falloff,
-                    y: points.value[before].y + dy * falloff,
-                }, box);
-                points.value[after] = clampToBounds({
-                    x: points.value[after].x + dx * falloff,
-                    y: points.value[after].y + dy * falloff,
-                }, box);
-            }
+        const next = base.slice();
+        for (const s of carried) {
+            const b = base[s.index];
+            next[s.index] = clampToBounds({ x: b.x + dx * s.weight, y: b.y + dy * s.weight }, box);
         }
+        points.value = next;
+    }
+
+    function end(commit: boolean) {
+        if (dragging.value && moved && base) {
+            // Dropped back on its home (or handed back): the curve is as it was.
+            if (!commit || atHome.value) points.value = base;
+            else onDragEnd();
+        }
+        dragging.value = false;
+        idx = null;
+        base = null;
+        carried = [];
+        grab = null;
+        moved = false;
+        home.value = null;
+        atHome.value = false;
     }
 
     function onPointerUp() {
-        if (dragging.value && dragStartIdx !== null && moved) {
-            onDragEnd();
-        }
-        dragging.value = false;
-        dragStartIdx = null;
-        grab = null;
-        moved = false;
+        end(true);
+    }
+
+    /** The gesture is taken away (a second finger: the view's pinch). The
+     *  curve goes back unless the drag was already a real edit. */
+    function handBack(keep: boolean) {
+        end(keep);
     }
 
     function deselect() {
         selectedIdx.value = null;
     }
 
-    return { dragging, selectedIdx, onPointPointerDown, onPointerMove, onPointerUp, deselect };
+    return {
+        dragging,
+        selectedIdx,
+        home,
+        atHome,
+        /** How far the held point has been from its home in this drag (the points' unit). */
+        travelled: () => farthest,
+        onPointPointerDown,
+        onPointerMove,
+        onPointerUp,
+        handBack,
+        deselect,
+    };
 }

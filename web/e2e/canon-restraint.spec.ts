@@ -105,13 +105,14 @@ test.describe("canon · restraint · fourier", () => {
         }
     });
 
-    test("F4 · F5 · 390 opens on the canvas, on glass's default tabs", async ({ page }) => {
+    test("F4 · F5 · 390 opens on the canvas, the Controls seat in the top dock unlit", async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto("/equation");
-        const tabs = page.locator(".workspace-tabs .segmented-tabs");
-        await expect(tabs).toBeVisible({ timeout: LOAD });
-        await expect(tabs).not.toHaveClass(/segmented-tabs--underline/);
-        await expect(page.getByRole("tab", { name: "Canvas" })).toHaveAttribute("aria-selected", "true");
+        const seat = page.locator(".app-dock .pane-seat");
+        await expect(seat).toBeVisible({ timeout: LOAD });
+        await expect(seat).toHaveAttribute("aria-pressed", "false");
+        await expect(page.locator(".workspace-tabs")).toHaveCount(0);
+        await expect(page.locator(".eq-panel-right")).toBeInViewport();
     });
 
     test("F5 · 820 shows the plot beside the controls, no tabs", async ({ page }) => {
@@ -139,9 +140,9 @@ test.describe("canon · restraint · fourier", () => {
     test("F9 · F14 · /paper: sentence-case contents, body-face numerals, no dead gap", async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto("/paper");
-        const label = page.locator(".sidebar-label");
-        await expect(label).toBeVisible({ timeout: LOAD });
-        expect(await label.evaluate((e) => getComputedStyle(e).textTransform)).toBe("none");
+        // Audit 27: no "Contents" heading restates the rail (it is named).
+        await expect(page.getByRole("navigation", { name: "Table of contents" })).toBeVisible({ timeout: LOAD });
+        await expect(page.locator(".sidebar-head").getByText("Contents", { exact: true })).toHaveCount(0);
         const numeral = page.locator(".toc-number").first();
         expect(await numeral.evaluate((e) => getComputedStyle(e).fontFamily)).not.toMatch(/Fira|mono/i);
         await expect(page.locator(".page-readout").first()).toBeHidden();

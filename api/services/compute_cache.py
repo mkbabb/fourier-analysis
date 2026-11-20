@@ -36,6 +36,10 @@ basis-projection chain from scratch. The cache:
 The cache is fail-open: a Mongo failure during `lookup` or `store` does NOT
 break the request — the route falls through to compute as if the cache
 weren't there. The compute is the source-of-truth; the cache is an accelerator.
+
+The equation series (`/api/equations`) files its answers here too, under the
+subject `"equation"`: its request is the whole parameter set, and the page's
+default f(x) is the same request for every first visitor.
 """
 
 from __future__ import annotations
@@ -60,14 +64,15 @@ _TTL_SECONDS = 7 * 24 * 60 * 60  # 7 days
 logger = logging.getLogger(__name__)
 
 
-def cache_key(contour_hash: str, params: dict[str, Any]) -> str:
-    """SHA256 of the contour hash + canonical-JSON params + code version.
+def cache_key(subject: str, params: dict[str, Any]) -> str:
+    """SHA256 of the subject (a contour's hash, or ``"equation"``) +
+    canonical-JSON params + code version.
 
     `params` is serialised with `sort_keys=True` and compact separators so the
     key is invariant to dict ordering and whitespace.
     """
     canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
-    payload = f"{contour_hash}|{canonical}|{COMPUTE_VERSION}"
+    payload = f"{subject}|{canonical}|{COMPUTE_VERSION}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -82,12 +87,12 @@ def wire_form(result: dict[str, Any]) -> dict[str, Any]:
 
 
 async def lookup(
-    contour_hash: str, params: dict[str, Any], *, label: str
+    subject: str, params: dict[str, Any], *, label: str
 ) -> dict[str, Any] | None:
     """Cache lookup. Returns the cached wire-form payload on hit; None on miss (or error)."""
     try:
         db = get_db()
-        key = cache_key(contour_hash, params)
+        key = cache_key(subject, params)
         doc = await db[_CACHE_COLL].find_one({"_id": key})
         if doc is None:
             logger.info("CACHE_MISS %s %s", label, key[:12])
@@ -101,7 +106,7 @@ async def lookup(
 
 
 async def store(
-    contour_hash: str,
+    subject: str,
     params: dict[str, Any],
     result: dict[str, Any],
     *,
@@ -114,7 +119,7 @@ async def store(
     wire = wire_form(result)
     try:
         db = get_db()
-        key = cache_key(contour_hash, params)
+        key = cache_key(subject, params)
         await db[_CACHE_COLL].update_one(
             {"_id": key},
             {
@@ -122,7 +127,7 @@ async def store(
                     "result": wire,
                     "compute_version": COMPUTE_VERSION,
                     "label": label,
-                    "contour_hash": contour_hash,
+                    "subject": subject,
                     "params": params,
                     "created_at": datetime.now(tz=UTC),
                 }

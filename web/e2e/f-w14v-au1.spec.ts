@@ -12,10 +12,12 @@
  *   L2-3   landscape: no interactive content under the notch sides.
  *   L2-4   short landscape: the controls sit beside the stage (no tab row);
  *          /equation puts its plot beside the series.
- *   L2-5   the mobile Controls/Canvas strip is centred on the column's axis.
+ *   L2-5   the mobile pane switch is centred on the column's axis (on /equation
+ *          the top dock's Controls seat, FORTY-SECOND D).
  *   L2-16  landscape paper chrome: the floating bar is one title rung and the
  *          ToC plate ends above the inset.
- *   L3-6ˢ  one page gutter across the routes (the glass gutter token is O-68).
+ *   L3-6ˢ  one page gutter across the routes (the glass gutter token is O-68);
+ *          on a phone a workspace route keeps its own 12 px gutter (O41 S1).
  *   L2-17  the Like control and the About links are ≥ 44 px on touch.
  *   X-1    1024×768: the workspace takes one coherent form (never a stacked
  *          strip beside a hidden tab row).
@@ -24,7 +26,7 @@
  * Served from :3100 against :8000 (BASE_URL), Chromium (CDP).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { pressStageTool } from "./fixtures/canvas-dock";
 
 import { ENTRY, stubGallery } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
@@ -142,10 +144,9 @@ test.describe("au1 L2-2 consumer half (390 portrait)", () => {
         const stage = await box(page, ".animation-dock");
         expect(stage, "animation dock present").not.toBeNull();
         expect.soft(stage!.b, `stage dock bottom vs ${limit}`).toBeLessThanOrEqual(limit);
-        // The canvas dock opens by a press (owner, 2026-11-15); its Fullscreen
-        // control opens the takeover, which re-hosts the one stage.
-        await openCanvasDock(page);
-        await page.locator(".controls-dock-anchor [aria-label='Fullscreen']").first().click();
+        // The stage dock's Fullscreen (a row of its More on a phone, FORTY-FIRST
+        // H) opens the takeover, which re-hosts the one stage.
+        await pressStageTool(page, "Fullscreen");
         await expect(page.getByRole("dialog", { name: /fullscreen/i })).toBeVisible({ timeout: 10_000 });
         await settle(page, 600);
         const fs = await box(page, ".animation-dock");
@@ -248,25 +249,34 @@ test.describe("au1 L2-4 (844×390)", () => {
     });
 });
 
-// ── L2-5: the mobile tab strip spans the column on its gutter ────────────────
+// ── L2-5: the mobile pane switch is centred on the column, on its gutter ─────
+// FORTY-SECOND D: the Controls/Canvas strip is gone from every stage route; the
+// switch is the top dock's Controls seat, so the box centred on the column is
+// that dock.
 for (const width of [360, 390, 430]) {
     test.describe(`au1 L2-5 (${width})`, () => {
         test.use({ viewport: { width, height: 844 }, hasTouch: true });
-        test("the Controls/Canvas strip is centred on the column, inside its gutter", async ({ page }) => {
+        test("the pane switch is centred on the column, inside its gutter", async ({ page }) => {
             test.setTimeout(90_000);
             await insets(page, P_INSETS);
-            for (const [route, shell] of [[`/v/${seededViz().slug}`, ".viz-configurator"], ["/equation", ".eq-configurator"]] as const) {
+            const routes = [
+                [`/v/${seededViz().slug}`, ".viz-configurator"],
+                ["/equation", ".eq-configurator"],
+            ] as const;
+            for (const [route, shell] of routes) {
                 await page.goto(route);
                 await expect(page.locator(shell)).toBeVisible({ timeout: 30_000 });
                 await settle(page, 700);
                 const f = await form(page, shell);
-                expect(f.tabs, `${route}: tab row present`).not.toBeNull();
+                expect(f.tabs, `${route}: no tab row`).toBeNull();
+                await expect(page.locator(".app-dock .pane-seat"), `${route}: the Controls seat`).toBeVisible();
+                const sw = (await box(page, ".app-dock"))!;
                 // Centred on the column's axis (the register's second arm): the
-                // strip is glass's content-width tablist, so its centre is the
+                // switch's box (the top dock that carries the seat) has the
                 // column's centre, and it stays inside the column's gutter.
                 const cx = (b: { x: number; r: number }) => (b.x + b.r) / 2;
-                expect.soft(Math.abs(cx(f.tabs!) - cx(f.shell!)), `${route}: strip centre vs column centre`).toBeLessThanOrEqual(1);
-                expect.soft(f.tabs!.x, `${route}: strip left vs column left`).toBeGreaterThanOrEqual(f.shell!.x - 0.5);
+                expect.soft(Math.abs(cx(sw) - cx(f.shell!)), `${route}: switch centre vs column centre`).toBeLessThanOrEqual(1);
+                expect.soft(sw.x, `${route}: switch left vs column left`).toBeGreaterThanOrEqual(f.shell!.x - 0.5);
             }
         });
     });
@@ -315,7 +325,7 @@ test.describe("au1 L2-16 (844×390 /paper)", () => {
 
 // ── L3-6ˢ: one page gutter across the routes ─────────────────────────────────
 /** The route's content edge: a border box, or (`content`) a padded root's content box. */
-async function gutter(page: Page, route: string, sel: string, content = false): Promise<number> {
+async function edge(page: Page, route: string, sel: string, content = false): Promise<{ edge: number; workspace: boolean }> {
     await page.goto(route);
     await expect(page.locator(sel).first()).toBeVisible({ timeout: 30_000 });
     await settle(page, 700);
@@ -323,8 +333,11 @@ async function gutter(page: Page, route: string, sel: string, content = false): 
         const el = document.querySelector(s)!;
         const r = el.getBoundingClientRect();
         const pl = c ? parseFloat(getComputedStyle(el).paddingLeft) || 0 : 0;
-        return Math.round(r.left + pl);
+        return { edge: Math.round(r.left + pl), workspace: !!el.closest(".workspace-host") };
     }, { s: sel, c: content });
+}
+async function gutter(page: Page, route: string, sel: string, content = false): Promise<number> {
+    return (await edge(page, route, sel, content)).edge;
 }
 for (const vp of [{ width: 1440, height: 900 }, PORTRAIT]) {
     test.describe(`au1 L3-6 consumer half (${vp.width})`, () => {
@@ -332,8 +345,20 @@ for (const vp of [{ width: 1440, height: 900 }, PORTRAIT]) {
         test("the content edge holds across route switches", async ({ page }) => {
             test.setTimeout(120_000);
             const g: Record<string, number> = {};
-            g.visualize = await gutter(page, `/v/${seededViz().slug}`, ".viz-configurator");
-            g.equation = await gutter(page, "/equation", ".eq-configurator");
+            // O41 S1: on a phone a workspace route (a `.workspace-host`) keeps
+            // its own 12 px gutter (color's measure); every other route keeps
+            // the page gutter. Each set holds one edge.
+            const workspaces = new Set<string>();
+            for (const [key, route, sel] of [
+                ["visualize", `/v/${seededViz().slug}`, ".viz-configurator"],
+                ["equation", "/equation", ".eq-configurator"],
+            ] as const) {
+                const e = await edge(page, route, sel);
+                g[key] = e.edge;
+                if (e.workspace) workspaces.add(key);
+            }
+            expect(workspaces.has("equation"), "/equation is a workspace route").toBe(true);
+            expect(workspaces.has("visualize"), "/v is a workspace route").toBe(true);
             // X-DS fourier pass 8 · DS-F8C-C1: /gallery is a content route. At
             // >= 640 it sits in /paper's 72rem measure, so its content edge is
             // /paper's, not the workspace routes' gutter; below 640 the measure
@@ -348,8 +373,20 @@ for (const vp of [{ width: 1440, height: 900 }, PORTRAIT]) {
                 const paper = await gutter(page, "/paper", ".paper-layout", true);
                 expect.soft(gallery, `gallery edge ${gallery} vs /paper's measure ${paper}`).toBe(paper);
             }
-            const vals = Object.values(g);
-            expect.soft(Math.max(...vals) - Math.min(...vals), `gutters ${JSON.stringify(g)}`).toBe(0);
+            const spread = (keys: string[]) => {
+                const vals = keys.map((k) => g[k]);
+                return Math.max(...vals) - Math.min(...vals);
+            };
+            if (vp.width < 640) {
+                const ws = Object.keys(g).filter((k) => workspaces.has(k));
+                const pages = Object.keys(g).filter((k) => !workspaces.has(k));
+                expect.soft(spread(ws), `workspace gutters ${JSON.stringify(g)}`).toBe(0);
+                expect.soft(spread(pages), `page gutters ${JSON.stringify(g)}`).toBe(0);
+                expect.soft(g.equation, "the workspace gutter is 12 px").toBe(12);
+                expect.soft(g.paper, "the page gutter is 16 px").toBe(16);
+            } else {
+                expect.soft(spread(Object.keys(g)), `gutters ${JSON.stringify(g)}`).toBe(0);
+            }
         });
     });
 }
@@ -376,11 +413,13 @@ test.describe("au1 L2-17 (390 touch)", () => {
         await appDock.getByRole("button", { name: "Expand dock" }).click();
         await expect(appDock).toHaveClass(/(^|\s)expanded(\s|$)/);
         await expect(appDock).not.toHaveAttribute("data-morphing");
-        await page.locator(".logo-trigger").click();
+        // O41 S4: About is the "i" beside the theme seat at every width; its
+        // card's link is glass's text Button, on the touch floor.
+        await appDock.getByRole("button", { name: "About Fourier analysis" }).click();
         const about = page.locator(".about-card");
         await expect(about).toBeVisible();
         await settle(page, 400);
-        for (const a of await about.locator("a[href]").all()) {
+        for (const a of await about.getByRole("link").all()) {
             const b = await a.boundingBox();
             expect.soft(b!.height, `About link "${(await a.textContent())?.trim()}"`).toBeGreaterThanOrEqual(44);
         }

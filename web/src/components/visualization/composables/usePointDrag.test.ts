@@ -25,7 +25,7 @@ function ev(x: number, y: number): PointerEvent {
 }
 const svgPoint = (e: PointerEvent): Point2D => ({ x: (e as unknown as Point2D).x, y: (e as unknown as Point2D).y });
 
-function setup(magnet = 0) {
+function setup(reach = 0, snap = 0) {
     const points = ref<Point2D[]>([
         { x: 100, y: 100 },
         { x: 675, y: 441 },
@@ -33,7 +33,7 @@ function setup(magnet = 0) {
         { x: 300, y: 300 },
     ]);
     let ended = 0;
-    const drag = usePointDrag(points, ref(magnet), svgPoint, () => ended++, () => BOUNDS);
+    const drag = usePointDrag(points, () => reach, svgPoint, () => ended++, () => BOUNDS, () => snap);
     return { points, drag, ended: () => ended };
 }
 
@@ -66,7 +66,7 @@ describe("usePointDrag", () => {
     });
 
     it("clamps the magnet's neighbours too", () => {
-        const { points, drag } = setup(1);
+        const { points, drag } = setup(2000);
         drag.onPointPointerDown(1, ev(675, 441));
         drag.onPointerMove(ev(5000, 441));
         for (const p of points.value) {
@@ -80,5 +80,60 @@ describe("usePointDrag", () => {
         drag.onPointPointerDown(1, ev(675, 441));
         drag.onPointerUp();
         expect(ended()).toBe(0);
+    });
+
+    it("carries its neighbours by distance along the curve, most at the point, none at the reach", () => {
+        // A straight run of samples 10 apart; the reach is 35 along it.
+        const points = ref<Point2D[]>(Array.from({ length: 12 }, (_, i) => ({ x: 100 + i * 10, y: 400 })));
+        const drag = usePointDrag(points, () => 35, svgPoint, () => {}, () => BOUNDS);
+        drag.onPointPointerDown(5, ev(150, 400));
+        drag.onPointerMove(ev(150, 300));
+        const lift = points.value.map((p) => 400 - p.y);
+        expect(lift[5]).toBe(100);
+        // Raised cosine: 0.5 * (1 + cos(pi * d / 35)) at d = 10, 20, 30.
+        expect(lift[4]).toBeCloseTo(50 * (1 + Math.cos((Math.PI * 10) / 35)), 6);
+        expect(lift[6]).toBeCloseTo(lift[4], 6);
+        expect(lift[3]).toBeCloseTo(50 * (1 + Math.cos((Math.PI * 20) / 35)), 6);
+        expect(lift[2]).toBeCloseTo(50 * (1 + Math.cos((Math.PI * 30) / 35)), 6);
+        expect(lift[1]).toBe(0);
+        expect(lift[9]).toBe(0);
+        // The bend is monotone from the point outward: no tooth.
+        expect(lift[4]).toBeGreaterThan(lift[3]);
+        expect(lift[3]).toBeGreaterThan(lift[2]);
+    });
+
+    it("is the pointer's travel from the press, not a sum of steps", () => {
+        const { points, drag } = setup(2000);
+        const before = points.value.map((p) => ({ ...p }));
+        drag.onPointPointerDown(1, ev(675, 441));
+        for (const x of [600, 520, 610, 675]) drag.onPointerMove(ev(x, 441));
+        // Back where it started: every carried neighbour is back too.
+        expect(points.value).toEqual(before);
+    });
+
+    it("snaps back to where it was grabbed, and that is not an edit", () => {
+        const { points, drag, ended } = setup(0, 6);
+        drag.onPointPointerDown(1, ev(675, 441));
+        // The first pixels are never swallowed by the snap.
+        drag.onPointerMove(ev(672, 441));
+        expect(points.value[1]).toEqual({ x: 672, y: 441 });
+        drag.onPointerMove(ev(600, 441));
+        expect(drag.atHome.value).toBe(false);
+        drag.onPointerMove(ev(671, 444));
+        expect(drag.atHome.value).toBe(true);
+        expect(points.value[1]).toEqual({ x: 675, y: 441 });
+        drag.onPointerUp();
+        expect(ended()).toBe(0);
+    });
+
+    it("hands the curve back untouched to a second finger", () => {
+        const { points, drag, ended } = setup(2000);
+        const before = points.value;
+        drag.onPointPointerDown(1, ev(675, 441));
+        drag.onPointerMove(ev(660, 441));
+        drag.handBack(false);
+        expect(points.value).toBe(before);
+        expect(ended()).toBe(0);
+        expect(drag.dragging.value).toBe(false);
     });
 });
