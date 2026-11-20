@@ -25,11 +25,18 @@ test.describe("nav falsifier (1440): one section trigger, no inline section link
         await expect(dock.locator(".nav-trigger")).toHaveCount(1);
         await expect(dock.getByRole("button", { name: /^Navigate/ })).toHaveCount(1);
         await expect(dock.locator('nav[aria-label="Sections"]')).toHaveCount(0);
+        // Home is the dock's first seat (the wordmark, to the paper: the page a
+        // first visit opens on); it is Home, not a section row, and it is the
+        // only link in the dock. Every other section is in the one menu.
+        const home = dock.getByRole("link", { name: "Home — Fourier analysis" });
+        await expect(home).toHaveCount(1);
         const inlineLinks = await dock.locator("a[href]").evaluateAll(
-            (as, paths) => as.filter((a) => paths.some((p) => new URL((a as HTMLAnchorElement).href).pathname.endsWith(p))).length,
+            (as, paths) =>
+                as.filter((a) => a.getAttribute("aria-label") !== "Home — Fourier analysis" && paths.some((p) => new URL((a as HTMLAnchorElement).href).pathname.endsWith(p))).length,
             SECTIONS,
         );
         expect(inlineLinks, "inline section links in the dock").toBe(0);
+        await expect(dock.locator("a[href]")).toHaveCount(1);
     });
 });
 
