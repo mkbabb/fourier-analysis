@@ -330,6 +330,18 @@ const stageDock = computed(
 );
 const controlsOverlay = useTemplateRef<HTMLElement>("controlsOverlay");
 const { height: overlayHeight } = useElementSize(controlsOverlay, undefined, { box: "border-box" });
+/*
+ * FORTY-FIRST H: the stage dock's form follows the stage, not the viewport.
+ * The desk's row keeps six seats outside its fold and six more in its open
+ * face, so a stage under 40rem (a tablet's split, 768 px wide, leaves the
+ * stage 445 px) cannot hold it open: the face ran under the controls card.
+ * Such a stage takes the phone's plate of two rows, which holds everything
+ * in 358 px. The phone's own sheet form keeps it at every width.
+ */
+const stageEl = useTemplateRef<HTMLElement>("stageEl");
+const { width: stageWidth } = useElementSize(stageEl);
+const STAGE_ROW_MIN = 640;
+const plateDock = computed(() => tabbed.value || (stageWidth.value > 0 && stageWidth.value < STAGE_ROW_MIN));
 /** The stage's foot the dock covers: its height and its offset from the foot. */
 const fitInsetBottom = computed(() => {
     const el = controlsOverlay.value;
@@ -548,15 +560,6 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
             <Configurator scroll-mode="auto" layout="detached" class="viz-configurator glass-opaque" :data-sidebar="!sidebarPresent ? 'none' : sidebarReserved ? 'reserved' : undefined">
                 <!-- ── Stage: canvas + overlaid controls ── -->
                 <template #stage>
-                    <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark, announced
-                         as a status. X·OD19 ALL (owner: "the loading text should be
-                         removed in favor of a skeleton shimmer"): glass's `Skeleton shimmer` (10.1.1) in
-                         the stage's own shape (the canvas it stands in for), the region
-                         `aria-busy`; the status keeps its name for AT, with no text. -->
-                    <div v-if="stageLoading" class="stage-state stage-state--skeleton" role="status" aria-busy="true"
-                        :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'">
-                        <Skeleton shimmer class="stage-skeleton" />
-                    </div>
                     <!-- Error (no workspace). X.F.W14.u — UIA-F-4: route-aware copy
                          naming the slug that failed; UIA-F-49: the button's own label
                          carries the meaning. Inside the stage (UIA-F-70). -->
@@ -566,7 +569,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                          diagnosis, one centred action row). NotFoundCard keeps its
                          Card for the catch-all route only, where it sits on the page
                          ground; here it was a resting plate inside a resting plate. -->
-                    <div v-else-if="stageError" class="stage-state stage-error" data-testid="not-found">
+                    <div v-if="stageError && !stageLoading" class="stage-state stage-error" data-testid="not-found">
                         <h1 class="stage-error-title font-serif-math">
                             {{ isSavedRoute ? "Could not open this visualization" : "Could not load this workspace" }}
                         </h1>
@@ -590,7 +593,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                          it into the takeover's host rather than mounting a copy, so
                          an edit, a view toggle or an Export there is this stage's. -->
                     <Teleport v-else :to="fsHost" :disabled="!stageInTakeover">
-                    <div class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
+                    <div ref="stageEl" class="viz-panel-right canvas-stage" :data-dragging="globalDragging || undefined"
                         :inert="hasSidebar && tabbed && pane !== 'canvas'">
                         <div class="canvas-container" :class="{ 'is-hidden': isEditing && store.contour }">
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
@@ -613,7 +616,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              upload is said here, where it was dropped (UIA-F-166 ⊕ F-167). -->
                         <!-- Canon F14 (restraint, C-21): one grid, the page's. The
                              plate's own second grid is gone. -->
-                        <div v-if="!hasImage && !hasData" class="drop-target" :data-dragging="globalDragging || undefined">
+                        <div v-if="!hasImage && !hasData && !stageLoading" class="drop-target" :data-dragging="globalDragging || undefined">
                             <!-- The stage at rest is alive (critique V1): an outline
                                  drawn in circles, the invitation on it. -->
                             <RestDrawing />
@@ -635,6 +638,18 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              in the DOM and named by the job's stage. It paints nothing:
                              the picture is on the canvas and the measure on the dock's rim. -->
                         <div v-if="store.computing" class="stage-status" role="status" :aria-label="jobLabel" />
+                        <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark, announced
+                             as a status. X·OD19 ALL (owner: "the loading text should be
+                             removed in favor of a skeleton shimmer"): glass's `Skeleton shimmer` (10.1.1) in
+                             the stage's own shape (the canvas it stands in for), the region
+                             `aria-busy`; the status keeps its name for AT, with no text.
+                             FORTY-FIRST H: it stands over the stage rather than in its
+                             place, so the stage's dock is there from the first frame,
+                             its seats disabled until there is a drawing. -->
+                        <div v-if="stageLoading" class="stage-state stage-state--over stage-state--skeleton" role="status" aria-busy="true"
+                            :aria-label="isSavedRoute ? 'Loading the visualization' : 'Loading the workspace'">
+                            <Skeleton shimmer class="stage-skeleton" />
+                        </div>
                         <!-- X-DS fourier pass 6 · DS-F6C-C1: a failed background compute
                              with nothing drawn says so where the outline would be, in the
                              first compute's slot: the shared `.compute-status` line (the
@@ -672,7 +687,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <div v-if="stageDock" ref="controlsOverlay" key="stage" class="controls-overlay">
                             <AnimationControls
                                 :active-bases="activeBases"
-                                :compact="tabbed"
+                                :compact="plateDock"
                                 v-model:is-fullscreen="showFullscreen"
                                 :layers="layers"
                                 :just-the-picture="justThePicture"

@@ -410,6 +410,16 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
     /* Groups are told apart by a gap, never a rule. */
     --stage-group-gap: 0.5rem;
 }
+/* A trigger's box is its padding around its content, so a glyph trigger
+   stood 40 px wide beside 44 px seats on a phone (glass has no width token
+   for it): it is as wide as the cell, and its glyph is the dock's glyph. */
+.animation-dock :deep(.dock-trigger) {
+    min-inline-size: var(--dock-control-size);
+}
+.animation-dock :deep(.dock-trigger > svg.lucide) {
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
+}
 
 /* A seat that opens a group stands a group's gap from the one before it. */
 .seat-group-start {

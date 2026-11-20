@@ -122,9 +122,12 @@ test.describe("FORTY-FIRST H — the phone plate", () => {
         const track = (await page.locator(".animation-dock .card-scrub").boundingBox())!;
         const before = Number(await slider.getAttribute("aria-valuenow"));
         const y = track.y + track.height / 2;
-        await page.mouse.move(track.x + track.width * 0.2, y);
+        // From the far end of the row to its near end: the scrub's track is
+        // inset in its row, so a drag across 0.2..0.8 of the row from t = 0.5
+        // could only ever move the position 0.3 or a little less.
+        await page.mouse.move(track.x + track.width * 0.9, y);
         await page.mouse.down();
-        await page.mouse.move(track.x + track.width * 0.8, y, { steps: 8 });
+        await page.mouse.move(track.x + track.width * 0.1, y, { steps: 8 });
         await page.mouse.up();
         const after = Number(await slider.getAttribute("aria-valuenow"));
         expect(Math.abs(after - before), "the drag moved the position").toBeGreaterThan(0.3);
