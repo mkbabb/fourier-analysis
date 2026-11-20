@@ -27,7 +27,9 @@ function itemsWithoutGlyph(menu: Locator): Promise<string[]> {
     return menu.evaluate((m) =>
         [...m.querySelectorAll("[role=menuitem], [role=menuitemcheckbox], [role=menuitemradio]")]
             .filter((item) => {
-                const glyph = item.querySelector(":scope > svg, :scope > .easing-curve svg");
+                // An easing row's glyph is glass's EasingCurve plot (its svg in
+                // a `data-slot="easing-curve"` box).
+                const glyph = item.querySelector(':scope > svg, :scope > [data-slot="easing-curve"] > svg');
                 const r = glyph?.getBoundingClientRect();
                 return !r || r.width < 8 || r.height < 8;
             })

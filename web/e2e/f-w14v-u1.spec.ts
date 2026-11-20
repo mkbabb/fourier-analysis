@@ -169,7 +169,9 @@ for (const vp of WIDTHS) {
             } else {
                 await dock.getByRole("button", { name: "Layers and more" }).click();
                 const menu = page.getByRole("menu");
-                for (const name of ["Series", "Publish to Gallery", "Copy link", "Export frame", "Exit fullscreen"]) {
+                // Series is a toggle (a checkbox row); the acts are rows.
+                await expect(menu.getByRole("menuitemcheckbox", { name: "Series", exact: true }), "Series").toBeVisible();
+                for (const name of ["Publish to Gallery", "Copy link", "Export frame", "Exit fullscreen"]) {
                     await expect(menu.getByRole("menuitem", { name, exact: true }), name).toBeVisible();
                 }
                 await menu.getByRole("menuitem", { name: "Exit fullscreen", exact: true }).click();

@@ -39,9 +39,12 @@ async function startSampling(page: Page): Promise<void> {
             }
             const rim = document.querySelector(".app-dock .dock-progress");
             const stage = document.querySelector(".canvas-stage");
-            // The stage's own statuses: the dock standing on it keeps glass's
-            // live region for its own fold, which is the dock's, not the stage's.
-            const statuses = stage ? [...stage.querySelectorAll("[role=status]")].filter((e) => !e.closest(".glass-dock")) : [];
+            // The stage's own statuses and bars: the dock standing on it keeps
+            // glass's live region for its own fold and the clock's position
+            // readout (a progressbar of the animation, not of the job), which
+            // are the dock's, not the stage's.
+            const own = (sel: string) => (stage ? [...stage.querySelectorAll(sel)].filter((e) => !e.closest(".glass-dock")) : []);
+            const statuses = own("[role=status]");
             const shown = (els: Iterable<Element>) =>
                 [...els].filter((e) => {
                     const r = e.getBoundingClientRect();
@@ -52,7 +55,7 @@ async function startSampling(page: Page): Promise<void> {
                 painted,
                 rim: rim ? Number(rim.getAttribute("aria-valuenow")) : null,
                 captions: shown(statuses.filter((e) => (e.textContent ?? "").trim())),
-                bars: stage ? shown(stage.querySelectorAll("[role=progressbar]")) : 0,
+                bars: shown(own("[role=progressbar]")),
                 outlines: stage ? shown(stage.querySelectorAll("svg.stage-outline")) : 0,
             });
         }, 50);

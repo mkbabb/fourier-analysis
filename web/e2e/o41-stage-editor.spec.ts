@@ -140,9 +140,14 @@ test.describe("o41 stage — the Magnet and the handles (1440)", () => {
         const u = 0.37;
         const at = await linePoint(page, u);
         const n = await normalAt(page, u);
-        await dragFrom(page, at, 24 * n.x, 24 * n.y);
-        await page.waitForTimeout(600);
+        // Read mid-drag, with the press held: the bend the Magnet makes, before
+        // the release commits the curve.
+        await page.mouse.move(at.x, at.y);
+        await page.mouse.down();
+        await page.mouse.move(at.x + 24 * n.x, at.y + 24 * n.y, { steps: 6 });
+        await page.waitForTimeout(300);
         const after = await screenLine(page, 3200);
+        await page.mouse.up();
         // How far each point of the old line now stands from the new one.
         const moved = before.map((p) => Math.min(...after.map((q) => Math.hypot(p.x - q.x, p.y - q.y))));
         const peak = moved.indexOf(Math.max(...moved));
@@ -154,10 +159,11 @@ test.describe("o41 stage — the Magnet and the handles (1440)", () => {
         while (moved[(hi + 1) % N]! >= half && (hi - peak) < N / 2) hi++;
         const arc = (i: number) => before[((i % N) + N) % N]!.s + Math.floor(i / N) * before.at(-1)!.s;
         const width = arc(hi) - arc(lo);
-        expect(moved[peak]!, "the drag moved the line").toBeGreaterThan(18);
+        const read = `peak ${moved[peak]!.toFixed(1)} px, width ${width.toFixed(1)} px`;
+        expect(moved[peak]!, `the drag moved the line (${read})`).toBeGreaterThan(18);
         // The Magnet's default reach is 96 px along the line with a raised-cosine
         // falloff, whose width at half height is the reach itself.
-        expect(Math.abs(width - 96), `the bend's width at half height (${width.toFixed(1)} px)`).toBeLessThanOrEqual(9.6);
+        expect(Math.abs(width - 96), `the bend's width at half height (${read})`).toBeLessThanOrEqual(9.6);
     });
 
     test("under reduced motion a handle fades in 120 ms", async ({ page }) => {
@@ -173,7 +179,10 @@ test.describe("o41 stage — the Magnet and the handles (1440)", () => {
             const durs = s.transitionDuration.split(",").map((x) => x.trim());
             return durs[props.indexOf("opacity")] ?? "";
         });
-        expect(t, "the handle's opacity transition").toBe("0.12s");
+        // Producer-held (e2e/producer-held.json, O-308): glass's reduced-motion
+        // guard zeroes every transition, this fade included, until it carves
+        // opacity out.
+        expect(t, "REDUCED-MOTION-CUT: the handle's opacity transition").toBe("0.12s");
     });
 });
 
