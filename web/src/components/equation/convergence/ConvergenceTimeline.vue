@@ -119,9 +119,11 @@ const harmonicValueText = (): string =>
 
 .timeline-count {
     font-family: var(--font-mono);
-    font-size: var(--type-caption);
+    font-size: var(--type-small);
     color: var(--muted-foreground);
-    width: 3.5rem;
+    /* Read text at the small step (audit 42); "N=100/100" at most, so the
+       track never moves as the digits change. */
+    width: 9ch;
     text-align: right;
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;

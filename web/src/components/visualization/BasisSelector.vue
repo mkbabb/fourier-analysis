@@ -195,7 +195,6 @@ function resetDefaults() {
         />
         <SliderControl
             label="Sample Points"
-            subtitle="points traced on the outline"
             :model-value="nPoints ?? 1024"
             :min="128"
             :max="4096"

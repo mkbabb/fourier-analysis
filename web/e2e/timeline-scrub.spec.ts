@@ -263,3 +263,51 @@ test.describe("X·F F.W3 — g5: a keyboard seek reaches the axis", () => {
         await expect(thumb).toHaveAttribute("aria-valuetext", /of \d+ harmonics$/);
     });
 });
+
+/**
+ * FORTY-SECOND C and audit 42: the band that takes a press is the dock layer's
+ * height on a desk and glass's 44 px touch cell under a coarse pointer; the
+ * fill wears the site's amber.
+ */
+test.describe("FORTY-SECOND C — the timeline's band and fill", () => {
+    test.use({ viewport: { width: 1440, height: 900 } });
+
+    test("a press 18 px above or below the track's centre scrubs on a desk", async ({ page }) => {
+        const { thumb, track, play } = await openTimeline(page);
+        await setPlaying(play, false);
+        await thumb.focus();
+        await page.keyboard.press("Home");
+        const t = (await track.boundingBox())!;
+        const cy = t.y + t.height / 2;
+        for (const [dy, at] of [[-18, 0.7], [18, 0.3]] as const) {
+            await page.mouse.click(t.x + t.width * at, cy + dy);
+            await expect.poll(() => valueNow(thumb), `a press ${dy} px off the centre`).toBeCloseTo(at, 1);
+        }
+    });
+
+    test("the fill is the amber token", async ({ page }) => {
+        const { row } = await openTimeline(page);
+        const m = await row.evaluate((r) => {
+            const range = r.querySelector<HTMLElement>(".slider-range")!;
+            const probe = document.createElement("span");
+            probe.style.color = "var(--viz-amber)";
+            r.appendChild(probe);
+            const amber = getComputedStyle(probe).color;
+            probe.style.color = getComputedStyle(range).getPropertyValue("--liquid-fill-tint");
+            const fill = getComputedStyle(probe).color;
+            probe.remove();
+            return { amber, fill };
+        });
+        expect(m.fill).toBe(m.amber);
+    });
+});
+
+test.describe("FORTY-SECOND C — the timeline under a coarse pointer @coarse", () => {
+    test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+    test("@coarse the slider's box is 44 px tall", async ({ page }) => {
+        const { row } = await openTimeline(page);
+        const h = await row.locator(".glass-slider").evaluate((s) => s.getBoundingClientRect().height);
+        expect(h).toBeGreaterThanOrEqual(43.5);
+    });
+});

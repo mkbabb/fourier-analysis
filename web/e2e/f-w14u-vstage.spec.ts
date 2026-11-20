@@ -119,18 +119,21 @@ for (const vp of WIDTHS) {
             await expect(primary).toHaveCount(1);
             await expect(primary).toHaveAccessibleName(/choose an image/i);
             await expect(primary).not.toHaveAccessibleName(/click/i);
-            // F-69: a secondary path.
-            await expect(page.locator(".drop-target").getByRole("button", { name: "Browse the gallery" })).toBeVisible();
+            // FORTY-FIRST D (owner, 19 Nov): the empty stage carries one action;
+            // the gallery is a place of the top dock, not a second button here.
+            await expect(page.getByText("Browse the gallery")).toHaveCount(0);
             // F-237: the canvas paints no second grid under the page's.
             expect(await painted(page)).toBe(0);
-            // F-237: the 16 px gutter at 390.
+            // F-237: the gutter. FORTY-FIRST H: on a phone it is 12 px, so the
+            // stage takes more of the screen; at 640 and up, 16 px.
             if (vp.width < 1024) {
                 const r = await page.locator(".viz-configurator").evaluate((el) => {
                     const b = el.getBoundingClientRect();
                     return { l: b.left, r: document.documentElement.clientWidth - b.right };
                 });
-                expect(r.l).toBeGreaterThanOrEqual(15.5);
-                expect(r.r).toBeGreaterThanOrEqual(15.5);
+                const gutter = vp.width < 640 ? 12 : 16;
+                expect(r.l).toBeGreaterThanOrEqual(gutter - 0.5);
+                expect(r.r).toBeGreaterThanOrEqual(gutter - 0.5);
             }
         });
     });
