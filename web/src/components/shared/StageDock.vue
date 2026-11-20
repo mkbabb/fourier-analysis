@@ -119,8 +119,13 @@ defineExpose({
     display: flex;
     justify-content: end;
     align-items: start;
-    /* Every trigger takes the dock's control cell (a DockTrigger is shorter
-       unless asked: 28 to 32 px on a phone), every glyph the dock's glyph. */
+}
+/* Every trigger takes the dock's control cell (a DockTrigger is shorter
+   unless asked: 28 to 32 px on a phone), every glyph the dock's glyph. The
+   token is set on glass's dock itself, where `--dock-control-size` is
+   declared: set on this box it read an undefined cell, so it resolved to
+   nothing and the Plot layers trigger stood 30 px tall. */
+.stage-dock :deep(.glass-dock) {
     --dock-trigger-min-height: var(--dock-control-size);
 }
 .stage-dock :deep(.dock-trigger > svg) {
