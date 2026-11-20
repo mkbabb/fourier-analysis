@@ -826,7 +826,7 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
         await page.getByRole("button", { name: "Log in" }).click();
         const field = page.getByRole("textbox", { name: /Your slug/ });
         await field.fill("quiet-amber-lattice-fox");
-        await allHittable(page, ["Your slug — four lowercase words joined by hyphens", "Generate a new slug", "Submit slug and log in"]);
+        await allHittable(page, ["Your slug", "Generate a new slug", "Submit slug and log in"]);
         expect(await page.locator("header").first().evaluate((h) => h.getBoundingClientRect().width)).toBe(dockBefore);
         await page.getByRole("button", { name: "Submit slug and log in" }).click();
         const err = page.locator("#user-slug-error");

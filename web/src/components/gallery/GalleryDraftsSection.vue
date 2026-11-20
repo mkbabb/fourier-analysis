@@ -7,7 +7,6 @@ import { useImageSources } from "@/composables/useImageSources";
 import { useRelativeTime } from "@/lib/time";
 import { basisChips } from "@/components/visualization/lib/basis-display";
 import { Upload } from "@lucide/vue";
-import { Badge } from "@mkbabb/glass-ui/badge";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Card } from "@mkbabb/glass-ui/card";
 
@@ -79,7 +78,6 @@ function markBroken(slug: string) {
                     <span class="draft-title">{{ draft.imageSlug }}</span>
                 </RouterLink>
                 <div class="draft-meta">
-                    <Badge variant="outline" size="sm">Draft</Badge>
                     <span v-for="b in basisOf(draft)" :key="b.label" class="whitespace-nowrap">{{ b.label }}</span>
                     <time
                         class="ml-auto whitespace-nowrap"

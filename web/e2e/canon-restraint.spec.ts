@@ -140,9 +140,9 @@ test.describe("canon · restraint · fourier", () => {
     test("F9 · F14 · /paper: sentence-case contents, body-face numerals, no dead gap", async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto("/paper");
-        const label = page.locator(".sidebar-label");
-        await expect(label).toBeVisible({ timeout: LOAD });
-        expect(await label.evaluate((e) => getComputedStyle(e).textTransform)).toBe("none");
+        // Audit 27: no "Contents" heading restates the rail (it is named).
+        await expect(page.getByRole("navigation", { name: "Table of contents" })).toBeVisible({ timeout: LOAD });
+        await expect(page.locator(".sidebar-head").getByText("Contents", { exact: true })).toHaveCount(0);
         const numeral = page.locator(".toc-number").first();
         expect(await numeral.evaluate((e) => getComputedStyle(e).fontFamily)).not.toMatch(/Fira|mono/i);
         await expect(page.locator(".page-readout").first()).toBeHidden();

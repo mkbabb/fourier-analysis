@@ -28,7 +28,8 @@ withDefaults(
     }>(),
     {
         title: "Page not found",
-        description: "Nothing lives at this address.",
+        // The title says it; a line that restates it goes (amendment 7).
+        description: "",
         detail: null,
     },
 );
@@ -49,7 +50,7 @@ const router = useRouter();
                 <!-- X-DS F4R · DS-F4R-C5: this h1 is the route's title, so it sets
                      on the route rung (see the style), not glass's card-title rung. -->
                 <CardTitle as="h1" class="not-found-title">{{ title }}</CardTitle>
-                <CardDescription>{{ description }}</CardDescription>
+                <CardDescription v-if="description">{{ description }}</CardDescription>
             </CardHeader>
             <CardContent v-if="detail">
                 <!-- X-DS pass 1 · F1-16: the diagnosis on the caption rung, under the description. -->
