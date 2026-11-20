@@ -80,25 +80,32 @@ test.describe("FORTY-SECOND B — the page's seats", () => {
         const header = page.locator(".app-header");
         await expect(header).toBeVisible({ timeout: 30_000 });
         expect(await header.evaluate((h) => getComputedStyle(h).viewTransitionName)).toBe("app-header");
+        const dock = await openAppDock(page);
+        await dock.getByRole("button", { name: /^Navigate/ }).click();
+        const morph = page.getByRole("menu").getByRole("menuitem", { name: "Morph" });
+        await expect(morph).toBeVisible();
+        // Read from the press on, through the whole route transition (a window
+        // opened before the dock's open could close before the press).
         await page.evaluate(() => {
-            const seen: string[] = [];
+            const seen = { header: [] as string[], transition: false };
             const t0 = performance.now();
             const tick = () => {
                 for (const a of document.getAnimations()) {
                     const pseudo = (a.effect as KeyframeEffect | null)?.pseudoElement ?? "";
-                    if (pseudo.includes("app-header")) seen.push(pseudo);
+                    if (pseudo.startsWith("::view-transition")) seen.transition = true;
+                    if (pseudo.includes("app-header")) seen.header.push(pseudo);
                 }
                 if (performance.now() - t0 < 1200) requestAnimationFrame(tick);
             };
-            (window as unknown as { __hdr: string[] }).__hdr = seen;
+            (window as unknown as { __hdr: typeof seen }).__hdr = seen;
             requestAnimationFrame(tick);
         });
-        const dock = await openAppDock(page);
-        await dock.getByRole("button", { name: /^Navigate/ }).click();
-        await page.getByRole("menu").getByRole("menuitem", { name: "Morph" }).click();
+        await morph.click();
         await page.waitForURL(/\/morph/);
         await page.waitForTimeout(1300);
-        expect(await page.evaluate(() => (window as unknown as { __hdr: string[] }).__hdr)).toEqual([]);
+        const seen = await page.evaluate(() => (window as unknown as { __hdr: { header: string[]; transition: boolean } }).__hdr);
+        expect(seen.transition, "the route change ran as a view transition inside the window").toBe(true);
+        expect(seen.header).toEqual([]);
     });
 
     test("one glyph size in the open dock", async ({ page }) => {

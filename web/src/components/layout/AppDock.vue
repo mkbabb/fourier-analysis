@@ -706,8 +706,14 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 <!-- The header's view-transition images (unscoped: they are pseudo-elements
      of the document). The old image is not shown and the new one is not
      animated, so across a route change the dock is the live dock, never dimmed
-     or doubled. -->
+     or doubled. The group is not animated either: the browser gives every
+     named group a 250 ms move from the old box to the new, which here would
+     stretch the dock's picture whenever its width changes with the route; the
+     group takes the live dock's box instead, and the dock's own width glides. -->
 <style>
+::view-transition-group(app-header) {
+    animation: none;
+}
 ::view-transition-old(app-header) {
     display: none;
 }
