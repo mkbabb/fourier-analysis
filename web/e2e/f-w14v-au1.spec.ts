@@ -250,8 +250,9 @@ test.describe("au1 L2-4 (844×390)", () => {
 });
 
 // ── L2-5: the mobile pane switch is centred on the column, on its gutter ─────
-// FORTY-SECOND D: /equation's Controls/Canvas strip is gone; its switch is the
-// top dock's Controls seat, so the box centred on the column is that dock.
+// FORTY-SECOND D: the Controls/Canvas strip is gone from every stage route; the
+// switch is the top dock's Controls seat, so the box centred on the column is
+// that dock.
 for (const width of [360, 390, 430]) {
     test.describe(`au1 L2-5 (${width})`, () => {
         test.use({ viewport: { width, height: 844 }, hasTouch: true });
@@ -259,27 +260,20 @@ for (const width of [360, 390, 430]) {
             test.setTimeout(90_000);
             await insets(page, P_INSETS);
             const routes = [
-                [`/v/${seededViz().slug}`, ".viz-configurator", "strip"],
-                ["/equation", ".eq-configurator", "seat"],
+                [`/v/${seededViz().slug}`, ".viz-configurator"],
+                ["/equation", ".eq-configurator"],
             ] as const;
-            for (const [route, shell, kind] of routes) {
+            for (const [route, shell] of routes) {
                 await page.goto(route);
                 await expect(page.locator(shell)).toBeVisible({ timeout: 30_000 });
                 await settle(page, 700);
                 const f = await form(page, shell);
-                let sw: Box;
-                if (kind === "strip") {
-                    expect(f.tabs, `${route}: tab row present`).not.toBeNull();
-                    sw = f.tabs!;
-                } else {
-                    expect(f.tabs, `${route}: no tab row`).toBeNull();
-                    await expect(page.locator(".app-dock .pane-seat"), `${route}: the Controls seat`).toBeVisible();
-                    sw = (await box(page, ".app-dock"))!;
-                }
+                expect(f.tabs, `${route}: no tab row`).toBeNull();
+                await expect(page.locator(".app-dock .pane-seat"), `${route}: the Controls seat`).toBeVisible();
+                const sw = (await box(page, ".app-dock"))!;
                 // Centred on the column's axis (the register's second arm): the
-                // switch's box (glass's content-width tablist, or the top dock
-                // that carries the seat) has the column's centre, and it stays
-                // inside the column's gutter.
+                // switch's box (the top dock that carries the seat) has the
+                // column's centre, and it stays inside the column's gutter.
                 const cx = (b: { x: number; r: number }) => (b.x + b.r) / 2;
                 expect.soft(Math.abs(cx(sw) - cx(f.shell!)), `${route}: switch centre vs column centre`).toBeLessThanOrEqual(1);
                 expect.soft(sw.x, `${route}: switch left vs column left`).toBeGreaterThanOrEqual(f.shell!.x - 0.5);
@@ -364,6 +358,7 @@ for (const vp of [{ width: 1440, height: 900 }, PORTRAIT]) {
                 if (e.workspace) workspaces.add(key);
             }
             expect(workspaces.has("equation"), "/equation is a workspace route").toBe(true);
+            expect(workspaces.has("visualize"), "/v is a workspace route").toBe(true);
             // X-DS fourier pass 8 · DS-F8C-C1: /gallery is a content route. At
             // >= 640 it sits in /paper's 72rem measure, so its content edge is
             // /paper's, not the workspace routes' gutter; below 640 the measure
