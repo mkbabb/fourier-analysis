@@ -73,13 +73,16 @@ test.describe("X.F.W14V.eq2 — q2 /equation below lg (390)", () => {
         const stage = cfg.locator(":scope > .configurator-stage");
         const aside = cfg.locator(":scope > .configurator-aside");
         await expect(aside.locator(".configurator-layer").first()).toBeVisible();
-        const sb = await stage.boundingBox();
-        expect(sb === null || sb.height === 0, "no empty stage box above the controls").toBe(true);
+        // O41 S5 (FORTY-SECOND D): the two panes stand on one track and slide,
+        // so the pane not shown waits beside the viewport instead of folding to
+        // nothing; neither shows as an empty box over the other.
+        await expect(stage, "no empty stage box above the controls").not.toBeInViewport();
+        await expect(aside).toBeInViewport({ ratio: 0.9 });
 
         await showView(page, "Canvas");
         await expect(stage.locator(".eq-card .katex").first()).toBeVisible({ timeout: LOAD });
-        const ab = await aside.boundingBox();
-        expect(ab === null || ab.height === 0, "the aside is hidden on the Canvas tab").toBe(true);
+        await expect(aside, "the aside is hidden on the Canvas tab").not.toBeInViewport();
+        await expect(stage).toBeInViewport({ ratio: 0.9 });
         const vw = page.viewportSize()!.width;
         const s = (await stage.boundingBox())!;
         expect(s.x + s.width, "the stage fits the viewport").toBeLessThanOrEqual(vw);
