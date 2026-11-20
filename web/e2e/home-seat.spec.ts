@@ -54,21 +54,18 @@ for (const vp of [
             expect(await page.evaluate(() => ({ url: location.href, entries: history.length }))).toEqual(before);
         });
 
-        test("About sits beside the theme seat on a desk, in the sections menu on a phone", async ({ page }) => {
+        test("About sits beside the theme seat at every width, and the sections menu holds only places", async ({ page }) => {
             await page.goto("/gallery");
             const run = await seats(page);
             const names = run.map((s) => s.name);
-            if (vp.width >= 640) {
-                expect(names.slice(-2)).toEqual(["About Fourier analysis", "Dark mode"]);
-                await page.getByRole("button", { name: "About Fourier analysis" }).click();
-                await expect(page.locator(".about-card")).toContainText(/orthogonal decomposition/i);
-            } else {
-                expect(names).toEqual(["Home", "Navigate", "Log in", "Dark mode"]);
-                await page.locator(".app-dock").getByRole("button", { name: /^Navigate/ }).click();
-                const about = page.getByRole("menu").locator("[data-about]");
-                await expect(about).toContainText(/orthogonal decomposition/i);
-                await expect(about.getByRole("menuitem", { name: "View the project on GitHub" })).toBeVisible();
-            }
+            expect(names.slice(-2)).toEqual(["About Fourier analysis", "Dark mode"]);
+            if (vp.width < 640) expect(names).toEqual(["Home", "Navigate", "Log in", "About Fourier analysis", "Dark mode"]);
+            await page.getByRole("button", { name: "About Fourier analysis" }).click();
+            await expect(page.locator(".about-card")).toContainText(/orthogonal decomposition/i);
+            await page.keyboard.press("Escape");
+            await page.locator(".app-dock").getByRole("button", { name: /^Navigate/ }).click();
+            await expect(page.getByRole("menu").getByRole("menuitem")).toHaveCount(5);
+            await expect(page.getByRole("menu").locator("[data-about]")).toHaveCount(0);
         });
     });
 }

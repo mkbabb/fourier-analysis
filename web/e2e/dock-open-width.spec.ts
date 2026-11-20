@@ -36,6 +36,9 @@ for (const path of ["/gallery", "/equation"]) {
         const after = widths.slice(widths.indexOf(peak));
         const rest = after.at(-1)!;
         expect(peak - rest, `the open dock shrank after its rest: ${peak.toFixed(1)} -> ${rest.toFixed(1)} px`).toBeLessThanOrEqual(6);
+        // O41 S4: with About's "i" beside the theme seat (and the Controls
+        // seat on a stage route) the open dock keeps the page gutter.
+        expect(rest, "the open dock's width").toBeLessThanOrEqual(358);
         // Whatever the dock holds, the run never pans.
         const run = await dock.evaluate((d) => {
             const port = [...d.querySelectorAll<HTMLElement>("*")].find((n) => {

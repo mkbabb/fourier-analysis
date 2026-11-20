@@ -288,9 +288,8 @@ for (const s of SURFACES) {
         test.use({ viewport: { width: 390, height: 844 } });
         test(`@coarse U3 F-3 ${s.name}: an open surface outlasts the idle window and a tap outside lets the dock yield`, async ({ page }) => {
             const dock = await open(page, "/gallery");
-            // Under 40rem About is a group in the sections menu, so its surface is that menu.
-            const phone = s.name === "About" ? { trigger: /^Navigate/, content: "[data-about]" } : s;
-            const content = await openSurface(page, dock, phone, true);
+            // O41 S4: About is the "i" beside the theme seat at every width.
+            const content = await openSurface(page, dock, s, true);
             await page.waitForTimeout(IDLE);
             await expect(content).toBeVisible();
             await expect(dock).toHaveClass(EXPANDED);

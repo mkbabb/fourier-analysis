@@ -145,12 +145,12 @@ import { ref, shallowRef, computed, watch, onScopeDispose, useTemplateRef, h } f
 import { useRoute, useRouter } from "vue-router";
 import { formatEquationQuery, hasEquationState, parseEquationQuery, type EquationView as EquationUrlView } from "@/lib/equation/query";
 import { isOwnWrite, pageOf, writeParams } from "@/lib/urlState";
-import { providePageTools } from "@/composables/usePageTools";
+import { PAGE_TOOLS_COMPACT, providePageTools } from "@/composables/usePageTools";
 import EquationTools from "./EquationTools.vue";
 import PlotToolsDock from "./PlotToolsDock.vue";
 import type { JobStage } from "@/lib/api";
 import { jobProgressValue, jobStageLabel } from "@/lib/jobProgress";
-import { watchDebounced } from "@vueuse/core";
+import { useMediaQuery, watchDebounced } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
 import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
 import type { BasisComponent } from "@/lib/types";
@@ -557,19 +557,19 @@ watch(
     },
 );
 
-// The page's tool set in the app dock (owner, 2026-11-15): Copy LaTeX and
-// About this approximation.
-providePageTools(
-    "Equation tools",
-    ({ form }) =>
-        h(EquationTools, {
-            form,
-            latex: activeLatex.value,
-            tier: tier.value,
-            tierTone: tierTone.value,
-            energy: displayEnergy.value,
-        }),
-);
+// The page's tool set (owner, 2026-11-15; 19 Nov, the top bar contextual by
+// design): Copy LaTeX and About this approximation, declared once and present
+// from the first frame. From 40rem the app dock's centre holds them; under
+// 40rem the app dock draws no page tools and they stand in the plot's stage
+// dock (the template's `PlotToolsDock`).
+const toolsProps = computed(() => ({
+    latex: activeLatex.value,
+    tier: tier.value,
+    tierTone: tierTone.value,
+    energy: displayEnergy.value,
+}));
+providePageTools("Equation tools", () => h(EquationTools, toolsProps.value));
+const compact = useMediaQuery(PAGE_TOOLS_COMPACT);
 
 // `B-1` — the Notation control used to be inert in the DEFAULT mode: `eqMode`
 // starts at `"sigma"`, `activeLatex` prefers `displayLatexSigma`, and the ONLY
@@ -691,7 +691,11 @@ watchDebounced(
                                     v-model:show-harmonics="showHarmonics"
                                     :variable="seriesVariable"
                                     @export-plot="plotRef?.exportPng()"
-                                />
+                                >
+                                    <template v-if="compact" #tools="{ column }">
+                                        <EquationTools v-bind="toolsProps" :tooltip-side="column ? 'left' : 'bottom'" />
+                                    </template>
+                                </PlotToolsDock>
                             </template>
                         </EquationResult>
 

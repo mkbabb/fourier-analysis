@@ -6,7 +6,9 @@
  * top-right corner, folded to one glyph and opened by a press (`StageDock`),
  * a downward column on a phone. Plot layers (the original curve, the
  * harmonics; the sum is the figure itself) and Export plot. The series' own
- * acts (Copy LaTeX, About this approximation) are the app dock's.
+ * acts (Copy LaTeX, About this approximation) are the app dock's from 40rem;
+ * under 40rem the app dock draws no page tools and the page hands them to
+ * this dock's `tools` slot, after the plot's own seats.
  */
 import { Download, Ellipsis, Layers, Spline, Waves } from "@lucide/vue";
 import { DockControl } from "@mkbabb/glass-ui/dock";
@@ -81,6 +83,7 @@ function keepOpen(e: Event) {
                     <Download />
                 </DockControl>
             </Tooltip>
+            <slot name="tools" :column="column" />
         </template>
     </StageDock>
     </div>
