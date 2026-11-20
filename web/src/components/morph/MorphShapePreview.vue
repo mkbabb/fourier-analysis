@@ -135,6 +135,11 @@ defineEmits<{
 /* ── Preview stage ──────────────────────────── */
 
 .demo-stage {
+    /* A plate's corner is glass's context radius, resolved at the root from
+       the card radius; the stage plate resolves it here instead, as glass's
+       Card does for itself, so the page's phone radius (FORTY-FIRST A) reaches
+       it as it reaches the cards beside it. */
+    --radius-ctx: var(--radius-card);
     display: flex;
     flex-direction: column;
     align-items: stretch;
