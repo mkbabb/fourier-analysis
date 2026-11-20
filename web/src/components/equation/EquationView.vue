@@ -152,7 +152,7 @@ import type { JobStage } from "@/lib/api";
 import { jobProgressValue, jobStageLabel } from "@/lib/jobProgress";
 import { useMediaQuery, watchDebounced } from "@vueuse/core";
 import { useWorkspaceForm } from "@/composables/useWorkspaceForm";
-import WorkspaceTabs from "@/components/layout/WorkspaceTabs.vue";
+import { useWorkspacePane } from "@/composables/useWorkspacePane";
 import type { BasisComponent } from "@/lib/types";
 import { tierInfo } from "@/lib/equation/notation";
 import { ApiProblem, problemMessage } from "@/lib/api-problem";
@@ -238,12 +238,14 @@ const jobValue = computed(() => jobProgressValue(jobStage.value));
 const jobLabel = computed(() => jobStageLabel(jobStage.value));
 const autoHarmonics = ref(fromUrl?.auto ?? true);
 const eqMode = ref<EquationDisplayMode>(fromUrl?.m ?? "sigma");
-const mobileView = ref<"controls" | "canvas">("canvas");
 /* X.F.W14V.au1 — A2-FO-X-1 ⊕ L2-4: /visualize's form rule (`useWorkspaceForm`),
    read from glass's shell at glass's split threshold. */
 const workspace = useTemplateRef<HTMLElement>("workspace");
 const form = useWorkspaceForm(computed(() => workspace.value?.querySelector<HTMLElement>(".eq-configurator") ?? null));
 const tabbed = computed(() => form.value === "sheet");
+/* FORTY-SECOND D: on a phone the pane is the top dock's Controls seat, in the
+   URL (`tab=controls`); the two regions slide on one track (`workspace.css`). */
+const { pane } = useWorkspacePane(tabbed);
 const eqCardRef = ref<HTMLDivElement>();
 
 // ── Derived state ──
@@ -590,10 +592,12 @@ watchDebounced(
 </script>
 
 <template>
-    <div ref="workspace" class="eq-workspace workspace-host flex flex-col flex-1 min-h-0" :data-form="form">
-        <!-- The sheet form's Controls/Canvas strip: /visualize's one shared bar
-             (X.F.W14V.au1 — A2-FO-L2-5), on the page's own ground (UIA-F-253). -->
-        <WorkspaceTabs v-if="tabbed" v-model="mobileView" />
+    <div
+        ref="workspace"
+        class="eq-workspace workspace-host flex flex-col flex-1 min-h-0"
+        :data-form="form"
+        :data-pane="tabbed ? pane : undefined"
+    >
 
         <!-- X.F.W14V.eq2 — F-W14V.md addendum (b), COHESION §0dh. /equation is a
              stage (the series and its convergence plot) plus a controls
@@ -610,7 +614,8 @@ watchDebounced(
             <template #stage>
             <div
                 class="eq-panel-right"
-                :class="{ 'panel-inactive': mobileView !== 'canvas' && tabbed, 'is-busy': loading }"
+                :class="{ 'is-busy': loading }"
+                :inert="tabbed && pane !== 'canvas'"
                 :aria-busy="loading"
             >
                 <!-- Loading (no prior result). X.F.W14U.eq — UIA-F-202 ⊕ F-71's
@@ -759,7 +764,7 @@ watchDebounced(
                  fuses them into one group). No layer carries a reset; a reset
                  would sit in its layer's `#actions`. -->
             <div class="eq-panel-left-wrap" role="group" aria-label="Equation controls"
-                :class="{ 'panel-inactive': mobileView !== 'controls' && tabbed }">
+                :inert="tabbed && pane !== 'controls'">
                 <div class="eq-layers">
                     <FunctionInput
                         v-model:expression="expression"
@@ -811,15 +816,9 @@ watchDebounced(
 @media (min-width: 1536px) {
     :deep(.eq-configurator) { --configurator-aside-min: calc(400px + 2 * var(--space-body)); --configurator-aside-max: calc(440px + 2 * var(--space-body)); }
 }
-/* The sheet form (`data-form="sheet"`, read from glass's shell): one column,
-   and the Controls/Canvas tabs pick a region, the same rules /visualize
-   carries: the column may not outgrow the shell, the active stage fills it,
-   and an inactive region takes no box (a detached card would otherwise paint
-   an empty border and hold a gap). */
-.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-stage:has(> .panel-inactive)),
-.eq-workspace[data-form="sheet"] :deep(.eq-configurator .configurator-aside:has(.eq-panel-left-wrap.panel-inactive)) {
-    display: none;
-}
+/* The sheet form (`data-form="sheet"`, read from glass's shell): the two
+   regions on one track, one in view, the top dock's Controls seat choosing
+   (`styles/workspace.css`). */
 /* X.F.W14V.au1 — A2-FO-L2-4 ⊕ X-1: the rail form (landscape, narrower than
    glass's split), /visualize's rule: the stage and the controls rail sit in a
    row. X §0hm D-8: inside the stage the series stands OVER the plot at the
@@ -1040,11 +1039,6 @@ watchDebounced(
 .eq-card :deep(.eq-coeff:hover) {
     color: var(--viz-amber) !important;
     background: color-mix(in srgb, var(--viz-amber) 10%, transparent);
-}
-
-/* ── Sheet panel toggle ── (`panel-inactive` is only set in the sheet form) */
-.panel-inactive {
-    display: none;
 }
 
 /* ── Transitions (A.W3.d — bezier→token; transition:all→named properties) ── */

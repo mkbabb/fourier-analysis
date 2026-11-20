@@ -199,9 +199,10 @@ test.describe("@coarse — the coarse-pointer cell (G-F9-13)", () => {
         await expect(readout, "a tap on a coefficient opens no readout").toBeVisible();
         await expect(readout).toContainText(/=/);
 
-        // A tap outside the equation: on the selected Canvas tab, where glass's
-        // indicator sits.
-        const outside = (await page.getByRole("tab", { name: "Canvas", exact: true }).boundingBox())!;
+        // A tap outside the equation: on the page's ground beside the stage
+        // card's foot (the gutter), which no control holds.
+        const stage = (await page.locator(".eq-panel-right").boundingBox())!;
+        const outside = { x: 1, y: stage.y + stage.height - 40, width: 4, height: 4 };
         await page.touchscreen.tap(outside.x + outside.width / 2, outside.y + outside.height / 2);
         await expect(readout, "a tap outside the equation leaves the readout open").toBeHidden();
     });

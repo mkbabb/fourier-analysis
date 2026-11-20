@@ -34,7 +34,7 @@ test.describe("FORTY-FIRST A — the phone container @coarse", () => {
         expect(box.y + box.height, "the foot clears the gutter").toBeCloseTo(844 - GUTTER, 0);
         expect(await radiusOf(stage), "the stage card's corner").toBe(RADIUS);
         // The configurator takes no block margin of its own on a phone.
-        const shell = page.locator(".workspace-host > .configurator-shell");
+        const shell = page.locator(".workspace-host .configurator-shell");
         expect(await shell.evaluate((n) => getComputedStyle(n).marginBlockEnd)).toBe("0px");
     });
 
