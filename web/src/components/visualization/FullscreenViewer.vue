@@ -165,6 +165,19 @@ function onOpenChange(open: boolean) {
     flex-direction: column;
 }
 
+/* The takeover is glass's modal (`--z-modal`), and the stage it hosts opens
+   glass's menus, hints and popovers, which glass paints at `--z-popover` and
+   `--z-tooltip` (both under the modal's rung) from the body. So in fullscreen
+   every one of them opened under the takeover: the rate, the easing, a
+   phone's More (and with it Exit fullscreen) and the editor's tools. While the
+   takeover is open the two rungs stand above the modal's, in their own order.
+   The rungs are glass's tokens, set here only for this surface's lifetime;
+   a menu opened inside a modal painting under it is listed for glass. */
+:root:has(.fs-dialog[data-state="open"]) {
+    --z-tooltip: calc(var(--z-modal) + 1);
+    --z-popover: calc(var(--z-modal) + 2);
+}
+
 /* X.F.W4 · `fr-FullscreenViewer FV-14` (R-2) — `flex: 1` and `min-height: 0`
    are DELETED, not kept "for safety": both children declare the pair on their
    own roots in their own scoped blocks (`BasisCanvas.vue`'s
