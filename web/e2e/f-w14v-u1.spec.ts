@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { clickCanvasDockExport, openCanvasDock } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
+import { editorReady } from "./fixtures/editor";
 
 /**
  * X.F.W14V `.u1` — the stage and its docks (F-W14V.md addendum (c) ⊕
@@ -87,7 +88,13 @@ for (const vp of WIDTHS) {
             await expandCanvasDock(page);
             await page.getByRole("button", { name: "Edit contour" }).first().click();
             await expect(page.getByRole("button", { name: "Save contour" }).first()).toBeVisible();
-            const dialog = await openFullscreen(page);
+            // FORTY-FIRST L: while editing the stage has one dock, the editor's;
+            // Fullscreen is a row of its tools menu.
+            await page.locator(".controls-overlay").last().getByRole("button", { name: "More editor tools" }).click();
+            await page.getByRole("menuitem", { name: "Fullscreen", exact: true }).click();
+            const dialog = page.getByRole("dialog", { name: /fullscreen/i });
+            await expect(dialog).toBeVisible();
+            await page.waitForTimeout(900);
             await frame(page, "u14-fs-editing");
             const census = await stageCensus(page);
             test.info().annotations.push({ type: "u14-census", description: JSON.stringify(census) });
@@ -100,17 +107,21 @@ for (const vp of WIDTHS) {
             });
             // The editor's own dock rides with it.
             await expect(dialog.getByRole("button", { name: "Save contour" })).toBeVisible();
-            // An edit made in the takeover: pick the point nearest the centre and
-            // delete it by key (menus opened inside the takeover still sit under
-            // the dialog until glass 10.2.0, UIA-F-13 / O-78, so no menu is used).
+            // An edit made in the takeover: pick the point of the line nearest the
+            // centre (read off the drawn line: only the handles near the pointer
+            // are mounted) and delete it by key.
+            await editorReady(page, ".fs-dialog .editor-shell:not(.is-hidden)");
             const pt = await page.evaluate(() => {
+                const path = document.querySelector(".fs-dialog path.spline-path") as SVGPathElement;
+                const m = path.getScreenCTM()!;
                 const cx = innerWidth / 2;
                 const cy = innerHeight / 2;
+                const len = path.getTotalLength();
                 let best = { x: 0, y: 0, d: Infinity };
-                for (const c of document.querySelectorAll(".fs-dialog .control-point")) {
-                    const r = c.getBoundingClientRect();
-                    const x = r.left + r.width / 2;
-                    const y = r.top + r.height / 2;
+                for (let i = 0; i < 400; i++) {
+                    const p = path.getPointAtLength((i / 400) * len);
+                    const x = p.x * m.a + p.y * m.c + m.e;
+                    const y = p.x * m.b + p.y * m.d + m.f;
                     const d = Math.hypot(x - cx, y - cy);
                     if (d < best.d) best = { x, y, d };
                 }
@@ -120,9 +131,9 @@ for (const vp of WIDTHS) {
             await page.mouse.click(pt.x, pt.y);
             await page.keyboard.press("Delete");
             await expect(dialog.locator("[aria-label='Undo']")).toBeEnabled();
-            // Leave through the dock's own Exit (the Fullscreen control, turned).
-            await expandCanvasDock(page, dialog);
-            await dialog.locator(".controls-overlay [aria-label='Exit fullscreen']").click();
+            // Leave through the dock's own Exit (the Fullscreen row, turned).
+            await dialog.locator(".controls-overlay").getByRole("button", { name: "More editor tools" }).click();
+            await page.getByRole("menuitem", { name: "Exit fullscreen" }).click();
             await expect(dialog).toBeHidden({ timeout: 10_000 });
             // The same editor, back on the page, still holds the step.
             await expect(page.locator(".controls-overlay [aria-label='Undo']")).toBeEnabled();

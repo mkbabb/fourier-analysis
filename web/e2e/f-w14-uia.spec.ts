@@ -7,6 +7,7 @@ import { seededViz, type SeededViz } from "./fixtures/seed";
 import { showView, selectTab } from "./fixtures/workspace";
 import { openAppDock } from "./fixtures/app-dock";
 import { JOB_EVENTS, isJobStream } from "./fixtures/jobs";
+import { dragFrom, editorReady, linePoint, linePointCount } from "./fixtures/editor";
 
 /**
  * X.F.W14.u — the UIA-F register (`value.js/docs/tranches/X/audit/UI-AUDIT-fourier.md`).
@@ -234,20 +235,16 @@ async function openEditor(page: Page) {
     await page.waitForTimeout(600);
     await edit.click();
     const shell = page.locator(".editor-shell:not(.is-hidden) > .editor-shell").first();
-    const point = page.locator("circle.control-point").nth(10);
-    await expect(point).toBeVisible();
+    // FORTY-FIRST L: only the handles near the pointer are mounted; a point is
+    // read off the drawn line.
+    await editorReady(page);
+    const point = await linePoint(page, 10 / 1024);
     return { shell, point };
 }
 
-/** Drag a control point by a few screen pixels. */
-async function dragPoint(page: Page, point: ReturnType<Page["locator"]>) {
-    const box = (await point.boundingBox())!;
-    const x = box.x + box.width / 2;
-    const y = box.y + box.height / 2;
-    await page.mouse.move(x, y);
-    await page.mouse.down();
-    await page.mouse.move(x + 12, y + 9, { steps: 4 });
-    await page.mouse.up();
+/** Drag the line at `at` by a few screen pixels. */
+async function dragPoint(page: Page, at: { x: number; y: number }) {
+    await dragFrom(page, at);
 }
 
 test.describe("UIA-F-16 — Undo enables after a point drag", () => {
@@ -267,14 +264,14 @@ test.describe("UIA-F-16 — Undo enables after a point drag", () => {
 test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
     test("Delete works on a picked point; out of edit mode a sidebar field keeps its Backspace", async ({ page }) => {
         const { point } = await openEditor(page);
-        const points = page.locator("circle.control-point");
-        const before = await points.count();
+        const count = () => linePointCount(page);
+        const before = await count();
         await dragPoint(page, point); // picks (selects) the point
         await page.keyboard.press("Delete");
-        await expect(points).toHaveCount(before - 1);
+        await expect.poll(count).toBe(before - 1);
 
         // Pick another point, then leave edit mode with it still selected.
-        await dragPoint(page, points.nth(20));
+        await dragPoint(page, await linePoint(page, 0.3));
         const edit = page.getByRole("button", { name: "Edit contour" }).first();
         await edit.hover();
         await page.waitForTimeout(600);
@@ -289,7 +286,7 @@ test.describe("UIA-F-15 — editor shortcuts act only on the editor", () => {
         await field.focus();
         const typed = await sliderValue(field);
         await page.keyboard.press("Backspace");
-        await expect(points).toHaveCount(before - 1);
+        expect(await linePointCount(page, ".canvas-stage > .editor-shell"), "the editor kept its points").toBe(before - 1);
         await expect(field).toHaveAttribute("aria-valuenow", String(typed));
         await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "");
     });
@@ -379,7 +376,7 @@ test.describe("UIA-F-19 — one drop, one upload", () => {
             await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(meta) });
         });
         await page.goto(`/v/${viz.slug}`);
-        await expect(page.locator("circle.control-point, canvas").first()).toBeAttached();
+        await expect(page.locator(".canvas-stage canvas").first()).toBeAttached();
         await page.evaluate(() => {
             const bytes = Uint8Array.from(
                 atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="),

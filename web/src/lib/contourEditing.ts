@@ -287,38 +287,55 @@ export function simplifyClosedPoints(
     return result.length >= 3 ? result : points;
 }
 
-/** Laplacian smoothing for closed curves (centroid-preserving) */
-export function smoothClosedPoints(
-    points: Point2D[],
-    iterations = 4,
-    alpha = 0.4,
-): Point2D[] {
-    let pts = points.map((p) => ({ ...p }));
-    const n = pts.length;
+/** Smooth's reach: a Gaussian along the curve, its sigma this fraction of the outline's length. */
+export const SMOOTH_SIGMA_FRACTION = 0.0025;
 
-    // Save original centroid
-    const cx0 = pts.reduce((s, p) => s + p.x, 0) / n;
-    const cy0 = pts.reduce((s, p) => s + p.y, 0) / n;
-
-    for (let iter = 0; iter < iterations; iter++) {
-        const next = pts.map((_, i) => {
-            const prev = pts[(i - 1 + n) % n];
-            const curr = pts[i];
-            const nxt = pts[(i + 1) % n];
-            return {
-                x: curr.x + alpha * ((prev.x + nxt.x) / 2 - curr.x),
-                y: curr.y + alpha * ((prev.y + nxt.y) / 2 - curr.y),
-            };
-        });
-        pts = next;
+/**
+ * Smooth a closed curve by a Gaussian along its length, keeping its centroid.
+ * The reach is a fraction of the outline's own length and each neighbour
+ * weighs as much curve as it stands for, so the result is the same at every
+ * zoom, on every screen and at every sample density: Smooth changes the saved
+ * outline, so it must not depend on the view. (It counted samples, and moved a
+ * dense outline by a twentieth of a pixel.)
+ */
+export function smoothClosedPoints(points: Point2D[], sigmaFraction = SMOOTH_SIGMA_FRACTION): Point2D[] {
+    const n = points.length;
+    const c = cumulativeLengths(points);
+    const sigma = sigmaFraction * c[n];
+    if (n < 3 || !(sigma > 0)) return points.map((p) => ({ ...p }));
+    const seg = (i: number) => c[i + 1] - c[i];
+    // The curve each sample stands for: half of each segment beside it.
+    const share = (i: number) => (seg((i - 1 + n) % n) + seg(i)) / 2;
+    const reach = 3 * sigma;
+    const half = Math.floor((n - 1) / 2);
+    const out: Point2D[] = Array.from({ length: n });
+    for (let i = 0; i < n; i++) {
+        let w = share(i);
+        let x = points[i].x * w;
+        let y = points[i].y * w;
+        for (const dir of [1, -1]) {
+            let d = 0;
+            for (let k = 1; k <= half; k++) {
+                const j = (i + dir * k + n) % n;
+                d += dir > 0 ? seg((j - 1 + n) % n) : seg(j);
+                if (d > reach) break;
+                const wj = Math.exp(-(d * d) / (2 * sigma * sigma)) * share(j);
+                x += points[j].x * wj;
+                y += points[j].y * wj;
+                w += wj;
+            }
+        }
+        out[i] = { x: x / w, y: y / w };
     }
-
-    // Restore centroid
-    const cx1 = pts.reduce((s, p) => s + p.x, 0) / n;
-    const cy1 = pts.reduce((s, p) => s + p.y, 0) / n;
-    const dx = cx0 - cx1;
-    const dy = cy0 - cy1;
-    return pts.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+    let dx = 0;
+    let dy = 0;
+    for (let i = 0; i < n; i++) {
+        dx += points[i].x - out[i].x;
+        dy += points[i].y - out[i].y;
+    }
+    dx /= n;
+    dy /= n;
+    return out.map((p) => ({ x: p.x + dx, y: p.y + dy }));
 }
 
 /** The bounding box of a point set, with a per-axis pad already applied. */
@@ -407,4 +424,109 @@ export function contourBounds(
         // Y is flipped because every consumer draws inside a `scale(1,-1)`.
         viewBox: `${minX - padX} ${-(maxY + padY)} ${width + padX * 2} ${height + padY * 2}`,
     };
+}
+
+/* ── The editor's geometry (pure; the editor composes it) ── */
+
+/** `p` dropped onto the segment a-b. */
+export function projectOntoSegment(p: Point2D, a: Point2D, b: Point2D): Point2D {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return { x: a.x, y: a.y };
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
+    return { x: a.x + t * dx, y: a.y + t * dy };
+}
+
+/** One sample inside a drag's reach: its index, its signed distance along the
+ *  curve from the grabbed sample, and how much of the drag it takes (0 to 1). */
+export interface ReachSample {
+    index: number;
+    along: number;
+    weight: number;
+}
+
+/**
+ * The samples a drag of `index` carries: every sample within `reach` of it,
+ * measured ALONG the curve, each with a raised-cosine weight (1 at the grabbed
+ * sample, 0 at the reach, flat at both ends, so the bend joins the untouched
+ * curve without a corner). The grabbed sample comes first. `reach` is in the
+ * points' own unit; the editor passes screen pixels over its scale, so a bend
+ * has the same width on screen at every zoom and every sample density.
+ */
+export function reachSamples(points: readonly Point2D[], index: number, reach: number): ReachSample[] {
+    const n = points.length;
+    const out: ReachSample[] = [{ index, along: 0, weight: 1 }];
+    if (!(reach > 0) || n < 3) return out;
+    // Each side stops at the reach, or half-way round a small curve.
+    const half = Math.floor((n - 1) / 2);
+    for (const dir of [1, -1] as const) {
+        let along = 0;
+        let prev = points[index];
+        for (let step = 1; step <= half; step++) {
+            const i = (((index + dir * step) % n) + n) % n;
+            const p = points[i];
+            along += Math.hypot(p.x - prev.x, p.y - prev.y);
+            if (along >= reach) break;
+            out.push({ index: i, along: dir * along, weight: 0.5 * (1 + Math.cos((Math.PI * along) / reach)) });
+            prev = p;
+        }
+    }
+    return out;
+}
+
+/**
+ * The curve's handle stations: samples at least `gap` apart along the curve,
+ * from the first. They stay where they are while the pointer moves, so the
+ * handles near it light and dim in place; nothing slides or swaps. `gap` is in
+ * the points' unit (the editor passes screen pixels over its scale, so a zoom
+ * brings more handles out).
+ */
+export function handleStations(points: readonly Point2D[], gap: number): Uint8Array {
+    const n = points.length;
+    const mask = new Uint8Array(n);
+    if (n === 0) return mask;
+    mask[0] = 1;
+    let since = 0;
+    for (let i = 1; i < n; i++) {
+        since += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+        if (since >= gap) {
+            mask[i] = 1;
+            since = 0;
+        }
+    }
+    // The last station must not crowd the first across the seam.
+    let tail = Math.hypot(points[0].x - points[n - 1].x, points[0].y - points[n - 1].y);
+    for (let i = n - 1; i > 0 && tail < gap; i--) {
+        if (mask[i]) {
+            mask[i] = 0;
+            break;
+        }
+        tail += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    }
+    return mask;
+}
+
+function cumulativeLengths(points: readonly Point2D[]): Float64Array {
+    const n = points.length;
+    const c = new Float64Array(n + 1);
+    for (let i = 0; i < n; i++) {
+        const a = points[i];
+        const b = points[(i + 1) % n];
+        c[i + 1] = c[i] + Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    return c;
+}
+
+/** The points of `before` that `after` no longer has (Simplify keeps the
+ *  survivors' coordinates and order, so one pass finds what it took). */
+export function removedPoints(before: readonly Point2D[], after: readonly Point2D[]): Point2D[] {
+    const out: Point2D[] = [];
+    let j = 0;
+    for (const p of before) {
+        const q = after[j];
+        if (q && q.x === p.x && q.y === p.y) j++;
+        else out.push(p);
+    }
+    return out;
 }

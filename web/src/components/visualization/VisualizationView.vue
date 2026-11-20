@@ -696,11 +696,14 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 :can-delete="editorState.canDelete" :point-count="editorState.pointCount"
                                 :magnet-radius="magnetRadius" :is-saved="editorSaved"
                                 :picture="layers.picture" :outline="layers.outline"
+                                :view-moved="!!editorRef?.viewMoved" :is-fullscreen="showFullscreen"
                                 @toggle-layer="toggleLayer"
                                 @undo="editorRef?.undo()" @redo="editorRef?.redo()" @smooth="editorRef?.applySmooth()"
                                 @simplify="editorRef?.applySimplify()" @delete="editorRef?.deleteSelected()"
                                 @update:magnet-radius="magnetRadius = $event"
-                                @reset="editorRef?.resetToExtraction()" @save="onEditorSave" @done="toggleEdit" />
+                                @reset="editorRef?.resetToExtraction()" @save="onEditorSave"
+                                @done="toggleEdit" @reset-view="editorRef?.resetView()"
+                                @toggle-fullscreen="showFullscreen = !showFullscreen" />
                         </div>
                         </Transition>
                     </div>

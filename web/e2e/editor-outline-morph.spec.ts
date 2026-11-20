@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { editorReady } from "./fixtures/editor";
 import { seededViz } from "./fixtures/seed";
 
 /**
@@ -18,7 +19,8 @@ async function openEditor(page: Page): Promise<void> {
     await page.waitForTimeout(600);
     await edit.click();
     await expect(page.locator(".canvas-stage > .editor-shell:not(.is-hidden) svg.editor-svg")).toBeVisible();
-    await expect(page.locator("circle.control-point").nth(10)).toBeAttached();
+    // FORTY-FIRST L: only the handles near the pointer are mounted.
+    await editorReady(page);
     const dock = page.locator(".controls-overlay").last();
     const summary = dock.getByRole("button", { name: "Expand dock" });
     if (await summary.isVisible()) {
