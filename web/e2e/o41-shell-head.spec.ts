@@ -2,10 +2,9 @@ import { expect, test, type APIResponse, type Page } from "@playwright/test";
 import { openAppDock } from "./fixtures/app-dock";
 
 /**
- * FORTY-FIRST B (owner, 19 Nov: "the fourier SVG icon should be redesigned to
- * be more like the daraksha one, more fourier like, an actual epicycle/series
- * image"), with the head the mark needs (the touch icon, the share card, the
- * theme colour). One drawing, from `scripts/precompute_mark.py`, on every
+ * FORTY-FIRST B (19 Nov): the mark is redrawn as an actual epicycle or series
+ * figure, in the manner of the other apps' marks, with the head the mark needs
+ * (the touch icon, the share card, the theme colour). One drawing, from `scripts/precompute_mark.py`, on every
  * surface: the tab (SVG, 16 and 32 px PNG, ICO), the home-screen icon (180 px),
  * the share card (1200 x 630) and the app dock's folded seal (inline, in the
  * page's tokens). The seal is no longer the letter U+2131 set by whatever font

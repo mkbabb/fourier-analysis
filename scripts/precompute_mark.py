@@ -50,7 +50,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PUBLIC = PROJECT_ROOT / "web" / "public"
 SEAT = PROJECT_ROOT / "web" / "src" / "components" / "layout" / "FourierMark.vue"
 
-# The tile's corner, as a share of its side (1/phi^3; daraksha's tile has the same corner).
+# The tile's corner, as a share of its side (1/phi^3, the corner the other apps' tiles share).
 TILE_RADIUS = 23.6
 
 TOK = {
