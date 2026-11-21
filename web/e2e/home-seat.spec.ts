@@ -3,9 +3,10 @@ import { openAppDock } from "./fixtures/app-dock";
 
 /**
  * Home on every page (owner: "a home button" on every site; the design
- * critique's S2 and N1). The app dock's first seat is Home, the wordmark,
- * and goes to the paper, the page a first visit opens on. On the paper it is
- * the current page and a press does nothing (no second entrance). About is
+ * critique's S2 and N1). The app dock's first seat is Home (a house on a
+ * phone, the wordmark on a desk) and goes to the paper, the page a first
+ * visit opens on. On the paper a press does nothing (no second entrance), and
+ * the seat is never marked current, so it keeps its own width. About is
  * the "i" beside the theme seat on a desk; under 40rem the sections menu
  * carries it, so the phone's run keeps its four seats. The not-found card
  * offers Home first.
@@ -42,12 +43,36 @@ for (const vp of [
             await expect(page).toHaveURL(/\/paper$/);
         });
 
-        test("on the paper Home is the current page and a press changes nothing", async ({ page }) => {
+        test("on the paper Home keeps its own seat and a press changes nothing", async ({ page }) => {
             await page.goto("/paper");
             await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: 60_000 });
             const dock = await openAppDock(page);
             const home = dock.getByRole("link", { name: "Home" });
-            await expect(home).toHaveAttribute("aria-current", "page");
+            // Not a current seat: glass gives one three pitches of the run, which
+            // put the phone's theme seat off the screen and hung the desk's
+            // wordmark over its plate (PR 33 review, blocker 1).
+            await expect(home).not.toHaveAttribute("aria-current");
+            const g = await home.evaluate((a) => {
+                const seat = a.getBoundingClientRect();
+                const shown = [...a.children].filter((c) => c.getClientRects().length > 0);
+                const ink = shown.map((c) => c.getBoundingClientRect());
+                return {
+                    w: seat.width,
+                    left: seat.left,
+                    right: seat.right,
+                    inkLeft: Math.min(...ink.map((r) => r.left)),
+                    inkRight: Math.max(...ink.map((r) => r.right)),
+                    glyph: shown.length === 1 && shown[0]!.tagName.toLowerCase() === "svg",
+                };
+            });
+            if (vp.width < 640) {
+                // A phone: the house, on the dock's cell.
+                expect(g.glyph, "the phone's Home is the house glyph").toBe(true);
+                expect(g.w, "the phone's Home seat").toBeLessThanOrEqual(46);
+            }
+            // At every width the seat holds what it shows.
+            expect(g.inkLeft, "Home's content starts inside its seat").toBeGreaterThanOrEqual(g.left - 0.5);
+            expect(g.inkRight, "Home's content ends inside its seat").toBeLessThanOrEqual(g.right + 0.5);
             const before = await page.evaluate(() => ({ url: location.href, entries: history.length }));
             await home.click();
             await page.waitForTimeout(400);

@@ -27,6 +27,9 @@
  *   `type=search` cancel glyph is withdrawn).
  * - The type register is the field's (glass `Input`); a host that keeps its
  *   own (the paper's 16 px iOS floor) sets it on `.search-field-input`.
+ * - A host that seats the field on its own cell sets `--search-field-height`
+ *   on itself (the paper's contents bar); unset, the field is glass's height
+ *   for its size.
  */
 import { computed, ref, useAttrs, useSlots } from "vue";
 import { Input } from "@mkbabb/glass-ui/input";
@@ -86,6 +89,7 @@ defineExpose({ focus });
 .search-field-input {
     flex: 1;
     min-width: 0;
+    block-size: var(--search-field-height, var(--field-control-height));
     padding-inline-start: calc(2 * var(--search-field-inset) + var(--search-field-glyph));
     padding-inline-end: var(--search-field-end, var(--search-field-inset));
 }

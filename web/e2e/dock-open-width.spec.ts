@@ -9,7 +9,10 @@ import { expect, test } from "@playwright/test";
  */
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-for (const path of ["/gallery", "/equation"]) {
+// "/" opens the paper (the first visit's page) and /paper is Home's own page:
+// the Home seat must not take a current seat's three pitches there (PR 33
+// review, blocker 1: the theme seat stood at x 371 to 415 of 390).
+for (const path of ["/", "/paper", "/gallery", "/equation"]) {
     test(`the phone dock opens at its final width (${path})`, async ({ page }) => {
         await page.goto(path);
         const dock = page.locator(".app-dock");
@@ -40,6 +43,23 @@ for (const path of ["/gallery", "/equation"]) {
         // on a stage route the "i" would take it past, so there About is a
         // group of the Sections menu instead (S4's fallback).
         expect(rest, "the open dock's width").toBeLessThanOrEqual(358);
+        // Every seat is on the screen, inside the gutter, and pressable.
+        const seats = await dock.evaluate((d) =>
+            [...d.querySelectorAll<HTMLElement>("button, a[href]")]
+                .filter((b) => b.getBoundingClientRect().width > 0 && !b.closest("[inert]"))
+                .map((b) => {
+                    const r = b.getBoundingClientRect();
+                    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                    return { name: b.getAttribute("aria-label") ?? "", left: r.left, right: r.right, w: r.width, hit: !!hit && (hit === b || b.contains(hit)) };
+                }),
+        );
+        const home = seats.find((x) => x.name.startsWith("Home"));
+        expect(home?.w, "Home stands on the dock's cell, never a current seat's three pitches").toBeLessThanOrEqual(46);
+        for (const x of seats) {
+            expect(x.left, `${x.name}: left edge`).toBeGreaterThanOrEqual(16 - 0.5);
+            expect(x.right, `${x.name}: right edge`).toBeLessThanOrEqual(390 - 16 + 0.5);
+            expect(x.hit, `${x.name}: pressable at its centre`).toBe(true);
+        }
         // Whatever the dock holds, the run never pans.
         const run = await dock.evaluate((d) => {
             const port = [...d.querySelectorAll<HTMLElement>("*")].find((n) => {

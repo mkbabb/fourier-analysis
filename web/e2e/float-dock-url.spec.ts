@@ -169,6 +169,17 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
         await page.goto("/gallery");
         expect((await seatsWithin(page)).pane).toBe(false);
     });
+
+    // Home's own page, cold ("/" opens it) and by name: Home is not a current
+    // seat there, so every seat stays within the plate (PR 33 review, blocker 1).
+    for (const path of ["/", "/paper"]) {
+        test(`@coarse Home's own page (${path}): the same seats, all within the plate`, async ({ page }) => {
+            await page.goto(path);
+            await expect(page).toHaveURL(/\/paper(?:[?#]|$)/);
+            await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: LOAD });
+            expect((await seatsWithin(page)).pane).toBe(false);
+        });
+    }
 });
 
 for (const vp of [

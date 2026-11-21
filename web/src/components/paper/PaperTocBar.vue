@@ -297,9 +297,9 @@ watch(
 }
 
 /* The search field sits on the same cell, so the search state is the trigger
-   state's height. */
-.floating-toc-bar--search :deep(.search-field-input) {
-    --field-control-height: var(--toc-bar-control);
+   state's height (SearchField's own hook, set on the bar). */
+.floating-toc-bar--search {
+    --search-field-height: var(--toc-bar-control);
 }
 
 /* X-DS fourier pass 9 (critic F9C) · DS-F9C-L2: in short landscape the plate

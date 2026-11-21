@@ -56,7 +56,7 @@ function keepOpen(e: Event) {
         <template #default="{ hold, column }">
             <DropdownMenu :modal="false" @update:open="hold">
                 <DockTrigger for="dropdown" aria-label="Plot layers">
-                    <Layers />
+                    <Layers class="plot-tools-glyph" aria-hidden="true" />
                 </DockTrigger>
                 <DropdownMenuContent side="bottom" align="end" :side-offset="8">
                     <DropdownMenuLabel>Plot layers</DropdownMenuLabel>
@@ -118,6 +118,12 @@ function keepOpen(e: Event) {
     bottom: 100%;
     left: 100%;
     pointer-events: none;
+}
+
+/* The trigger's glyph on the dock's one glyph size (DockControl seats take it from glass). */
+.plot-tools-glyph {
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
 }
 
 .dock-summary-glyph {

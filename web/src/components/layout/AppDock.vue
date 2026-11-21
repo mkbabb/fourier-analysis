@@ -42,7 +42,7 @@ import { prefetchRoute } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import FourierMark from "./FourierMark.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
-import { ChevronDown, Compass, ExternalLink, Info, SlidersHorizontal } from "@lucide/vue";
+import { ChevronDown, Compass, ExternalLink, House, Info, SlidersHorizontal } from "@lucide/vue";
 import { sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
@@ -108,9 +108,14 @@ function onTabSelect(path: string) {
 
 /**
  * Home (owner, "a home button" on every site; the design critique's S2 and
- * N1): the dock's first seat, the wordmark, goes to the paper, the page a
- * first visit opens on. On the paper itself it is the current page and a
- * press does nothing, so Home never re-runs the route's entrance.
+ * N1): the dock's first seat goes to the paper, the page a first visit opens
+ * on. It is a house on a phone (the shared map's Home glyph; the ℱ is the
+ * Fourier basis on the stage and the chips) and the wordmark where a desk has
+ * room for the word. On the paper a press does nothing, so Home never re-runs
+ * the route's entrance (his [110]). It never claims `aria-current`: glass
+ * gives a current seat three pitches of the run (`--dock-open-seat`), which
+ * pushed the theme seat off a phone's screen and left the desk's wordmark
+ * hanging over its own plate. The Sections seat already names where you are.
  */
 const HOME: SectionTab = "/paper";
 const homeHref = router.resolve(HOME).href;
@@ -380,7 +385,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 <template>
     <header ref="header" class="app-header">
         <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed">
-            <!-- Home: the wordmark (at <640px the lone ℱ glyph, the dock's
+            <!-- Home: a house on a phone, the wordmark on a desk (the dock's
                  control cell its hit box), a link to the paper. -->
             <DockControl
                 as="a"
@@ -389,11 +394,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 class="logo-trigger"
                 aria-label="Home — Fourier analysis"
                 title="Home"
-                :aria-current="atHome ? 'page' : undefined"
                 @click="goHome"
             >
+                <House class="home-glyph" aria-hidden="true" />
                 <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
-                    <span class="fourier-f">&#x2131;</span><span class="logo-text">ourier analysis</span>
+                    <span class="fourier-f">&#x2131;</span>ourier analysis
                 </span>
             </DockControl>
 
@@ -461,7 +466,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                  phone's pane seat stands (see `aboutInMenu`). -->
             <Popover v-if="!aboutInMenu" keep-dock-open>
                 <DockTrigger for="popover" class="about-trigger" aria-label="About Fourier analysis" title="About">
-                    <Info aria-hidden="true" />
+                    <Info class="about-glyph" aria-hidden="true" />
                 </DockTrigger>
                 <PopoverContent align="end" class="about-card">
                     <div class="flex items-center gap-3">
@@ -552,13 +557,15 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
    matching inline floor — one measure, read from one token.
    One glyph size in this dock (STUDY 2.7; owner question 4 holds any growth
    past it): glass's seats read `--dock-icon-glyph`, set here to the rung the
-   site's trigger glyphs already wore (24 px), and every trigger glyph reads
-   the same token. */
+   site's trigger glyphs already wore (24 px), and every trigger glyph the
+   site draws reads the same token by its own class (here, and the account
+   glyphs in `UserSlugBar.vue`). */
 .app-dock {
     --dock-trigger-min-height: var(--dock-control-size);
     --dock-icon-glyph: var(--icon-xl);
 }
-.app-dock :deep(.dock-trigger > svg:not(.nav-trigger-chevron)) {
+.nav-tab-icon,
+.about-glyph {
     inline-size: var(--dock-icon-glyph);
     block-size: var(--dock-icon-glyph);
 }
@@ -613,21 +620,22 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     min-block-size: var(--dock-control-size);
 }
 
-/* ── Wordmark ── */
+/* ── Home: the house on a phone, the wordmark from 640px ── */
+.home-glyph {
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
+}
 .logo-mark {
-    @apply text-2xl;
+    display: none;
+    @apply text-xl;
     line-height: 1;
 }
 
-.logo-text {
-    display: none;
-}
-
 @media (min-width: 640px) {
-    .logo-mark {
-        @apply text-xl;
+    .home-glyph {
+        display: none;
     }
-    .logo-text {
+    .logo-mark {
         display: inline;
     }
 }
