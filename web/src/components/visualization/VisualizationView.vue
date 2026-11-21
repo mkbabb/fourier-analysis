@@ -330,23 +330,54 @@ const stageDock = computed(
 );
 const controlsOverlay = useTemplateRef<HTMLElement>("controlsOverlay");
 const { height: overlayHeight } = useElementSize(controlsOverlay, undefined, { box: "border-box" });
+/** The dock itself (the overlay spans the stage's width; the dock is as wide as it needs). Re-read
+ *  after each render that can swap it: the row and the plate are two docks. */
+const stageDockEl = shallowRef<HTMLElement | null>(null);
+const { width: stageDockWidth } = useElementSize(stageDockEl, undefined, { box: "border-box" });
 /*
  * FORTY-FIRST H: the stage dock's form follows the stage, not the viewport.
- * The desk's row keeps six seats outside its fold and six more in its open
+ * The desk's row keeps six seats outside its fold and four more in its open
  * face, so a stage under 40rem (a tablet's split, 768 px wide, leaves the
  * stage 445 px) cannot hold it open: the face ran under the controls card.
- * Such a stage takes the phone's plate of two rows, which holds everything
- * in 358 px. The phone's own sheet form keeps it at every width.
+ * Such a stage takes the phone's plate, which holds everything in 358 px. The
+ * phone's own sheet form keeps it at every width.
+ *
+ * A short landscape stage (a phone held sideways: 526x320 at 844x390) takes
+ * the strip: the plate's seats in a card on the stage's trailing edge. There
+ * the drawing is bound by the stage's height, so a plate across the foot cost
+ * it a third of its size (152x186 -> 101x128 px) and the box beside the strip
+ * costs it nothing (STUDY 2.10, F-26: "controls take a side strip").
  */
 const stageEl = useTemplateRef<HTMLElement>("stageEl");
-const { width: stageWidth } = useElementSize(stageEl);
+const { width: stageWidth, height: stageHeight } = useElementSize(stageEl);
 const STAGE_ROW_MIN = 640;
-const plateDock = computed(() => tabbed.value || (stageWidth.value > 0 && stageWidth.value < STAGE_ROW_MIN));
-/** The stage's foot the dock covers: its height and its offset from the foot. */
+/** A stage shorter than this and wider than tall is a landscape phone's. */
+const STAGE_STRIP_MAX_HEIGHT = 480;
+const dockForm = computed<"row" | "plate" | "strip">(() => {
+    if (tabbed.value) return "plate";
+    const w = stageWidth.value;
+    const h = stageHeight.value;
+    if (!(w > 0) || w >= STAGE_ROW_MIN) return "row";
+    return h > 0 && h < STAGE_STRIP_MAX_HEIGHT && w > h ? "strip" : "plate";
+});
+/** The stage's foot the dock covers (a row or a plate): its height and its offset from the foot. */
 const fitInsetBottom = computed(() => {
     const el = controlsOverlay.value;
-    if (!el || !overlayHeight.value) return 0;
+    if (dockForm.value === "strip" || !el || !overlayHeight.value) return 0;
     return overlayHeight.value + parseFloat(getComputedStyle(el).bottom || "0");
+});
+watch(
+    [controlsOverlay, dockForm],
+    ([overlay]) => {
+        stageDockEl.value = (overlay?.firstElementChild as HTMLElement | null | undefined) ?? null;
+    },
+    { flush: "post", immediate: true },
+);
+/** The stage's trailing edge the strip covers: its width and its offset from the edge. */
+const fitInsetEnd = computed(() => {
+    const el = controlsOverlay.value;
+    if (dockForm.value !== "strip" || !el || !stageDockWidth.value) return 0;
+    return stageDockWidth.value + parseFloat(getComputedStyle(el).right || "0");
 });
 
 /** The page's tools' state and acts, one record for both hosts (the app dock, and the takeover's stage dock). */
@@ -599,7 +630,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                             <BasisCanvas ref="canvasComponent" :active-bases="activeBases"
                                 :show-ghost="showGhost" :show-image-overlay="showImageOverlay"
                                 :show-line="showLine" :show-circles="showCircles"
-                                :link-view="linkView" :fit-inset-bottom="fitInsetBottom"
+                                :link-view="linkView" :fit-inset-bottom="fitInsetBottom" :fit-inset-end="fitInsetEnd"
                                 @update:link-view="writeLinkView" />
                         </div>
                         <!-- X.F.W13.c — the ONE upload affordance (owner frame 4). The
@@ -684,10 +715,10 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                         <!-- The transport and the editor change places at the foot: the
                              one leaves, then the other arrives (120 ms, 160 ms). -->
                         <Transition name="dock-swap" mode="out-in">
-                        <div v-if="stageDock" ref="controlsOverlay" key="stage" class="controls-overlay">
+                        <div v-if="stageDock" ref="controlsOverlay" key="stage" class="controls-overlay" :data-form="dockForm">
                             <AnimationControls
                                 :active-bases="activeBases"
-                                :compact="plateDock"
+                                :form="dockForm"
                                 v-model:is-fullscreen="showFullscreen"
                                 :layers="layers"
                                 :just-the-picture="justThePicture"
@@ -1034,6 +1065,15 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     container-type: inline-size;
 }
 .controls-overlay > * { pointer-events: auto; }
+/* The strip stands on the stage's trailing edge, at its foot, the foot's own
+   inset from the edge. glass centres a fit-content dock by its own auto
+   margins, so the strip takes the free room before it. */
+.controls-overlay[data-form="strip"] {
+    right: calc(0.75rem + env(safe-area-inset-right, 0px));
+}
+.controls-overlay[data-form="strip"] > * {
+    margin-inline: auto 0;
+}
 
 /* X.F.W4 · SP-6 / `fr-VisualizationView L-17 · D-16 · MIN-3` — the dead-CSS
    census, all five declarations, deleted with their zero-consumer proofs:

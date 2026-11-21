@@ -95,6 +95,7 @@ test.describe("FORTY-FIRST H — the phone plate", () => {
         const seats = await dock.locator(".card-seats").evaluate((row) =>
             [...row.querySelectorAll<HTMLElement>("button")].map((b) => ({
                 name: b.getAttribute("aria-label"),
+                trigger: b.classList.contains("dock-trigger"),
                 w: b.getBoundingClientRect().width,
                 h: b.getBoundingClientRect().height,
             })),
@@ -109,11 +110,29 @@ test.describe("FORTY-FIRST H — the phone plate", () => {
             "Edit contour",
         ]);
         for (const s of seats) {
-            expect(s.w, `${s.name} width`).toBeGreaterThanOrEqual(43.5);
+            // A menu trigger's width is glass's (its geometry on touch, study G4),
+            // asserted in the held test below; every seat is the cell's height.
+            if (!s.trigger) expect(s.w, `${s.name} width`).toBeGreaterThanOrEqual(43.5);
             expect(s.h, `${s.name} height`).toBeGreaterThanOrEqual(43.5);
         }
         const scrub = (await dock.locator(".card-scrub").boundingBox())!;
         expect(scrub.width, "the scrub's length").toBeGreaterThanOrEqual(300);
+    });
+
+    // Glass's (study G4: "a trigger falls under the control cell unless each
+    // consumer sets a hook"; glass books the trigger at the cell on touch in
+    // 11.1.2 and in the run in 11.2.0). The site set the width itself and that
+    // rule is gone (PR 33 review, blocker 4): held in e2e/producer-held.json.
+    test("every menu trigger on the plate is as wide as the touch cell", async ({ page }) => {
+        await openViz(page);
+        const triggers = await page.locator(".animation-dock .card-seats").evaluate((row) =>
+            [...row.querySelectorAll<HTMLElement>("button.dock-trigger")].map((b) => ({
+                name: b.getAttribute("aria-label"),
+                w: b.getBoundingClientRect().width,
+            })),
+        );
+        expect(triggers.length).toBe(3);
+        for (const t of triggers) expect(t.w, `TRIGGER-CELL-WIDTH: ${t.name} width`).toBeGreaterThanOrEqual(43.5);
     });
 
     test("the scrub is dragged from rest, with no press before it", async ({ page }) => {
@@ -172,3 +191,82 @@ test.describe("audit 26 — a phone held sideways", () => {
         expect((stage.width * stage.height) / (844 * 390)).toBeGreaterThan(0.5);
     });
 });
+
+/** The drawn line's box on the stage canvas (viewport CSS px), or null. */
+async function inkBox(page: Page): Promise<{ left: number; right: number; top: number; bottom: number } | null> {
+    return page.evaluate(() => {
+        const c = document.querySelector<HTMLCanvasElement>(".canvas-stage > .canvas-container canvas")!;
+        const r = c.getBoundingClientRect();
+        const ctx = c.getContext("2d")!;
+        const d = ctx.getImageData(0, 0, c.width, c.height).data;
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (let y = 0; y < c.height; y += 2) {
+            for (let x = 0; x < c.width; x += 2) {
+                const i = (y * c.width + x) * 4;
+                const red = d[i]!, g = d[i + 1]!, b = d[i + 2]!, a = d[i + 3]!;
+                if (a > 60 && red > 120 && red > g + 45 && red > b + 45) {
+                    if (x < x0) x0 = x;
+                    if (x > x1) x1 = x;
+                    if (y < y0) y0 = y;
+                    if (y > y1) y1 = y;
+                }
+            }
+        }
+        if (!(x1 > x0)) return null;
+        const k = r.width / c.width;
+        return { left: r.left + x0 * k, right: r.left + x1 * k, top: r.top + y0 * k, bottom: r.top + y1 * k };
+    });
+}
+
+// STUDY 2.10, F-26 ("landscape is designed, not inherited: controls take a
+// side strip"; PR 33 review, blocker 2): on a short landscape stage the dock is
+// a card on the stage's trailing edge, not the upright plate across its foot.
+// The drawing, bound by the stage's height, keeps that height beside it.
+for (const vp of [
+    { width: 844, height: 390 },
+    { width: 932, height: 430 },
+]) {
+    test.describe(`FORTY-FIRST H — a phone held sideways (${vp.width}x${vp.height})`, () => {
+        test.use({ viewport: vp, isMobile: true, hasTouch: true });
+
+        test("the dock stands on the stage's trailing edge and the drawing keeps the height beside it", async ({ page }) => {
+            await openViz(page);
+            await page.waitForTimeout(600);
+            const stage = (await page.locator(".canvas-stage").boundingBox())!;
+            const overlay = page.locator(".controls-overlay");
+            await expect(overlay).toHaveAttribute("data-form", "strip");
+            const dock = (await page.locator(".animation-dock").boundingBox())!;
+            // On the trailing edge, at the foot, a third of the stage wide or less.
+            expect(stage.x + stage.width - (dock.x + dock.width), "the strip's inset from the trailing edge").toBeLessThanOrEqual(24);
+            expect(dock.x + dock.width).toBeLessThanOrEqual(stage.x + stage.width);
+            expect(dock.width, "the strip's width").toBeLessThanOrEqual(stage.width / 2.5);
+            expect(stage.y + stage.height - (dock.y + dock.height), "the strip's inset from the foot").toBeLessThanOrEqual(24);
+            // Every seat is on the screen and pressable at its centre.
+            const seats = await page.locator(".animation-dock").evaluate((d) =>
+                [...d.querySelectorAll<HTMLElement>("button")]
+                    .filter((b) => b.getClientRects().length && !b.closest("[inert]"))
+                    .map((b) => {
+                        const r = b.getBoundingClientRect();
+                        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                        return { name: b.getAttribute("aria-label"), ok: !!hit && (hit === b || b.contains(hit)), right: r.right, bottom: r.bottom, h: r.height };
+                    }),
+            );
+            expect(seats.length).toBeGreaterThanOrEqual(7);
+            for (const x of seats) {
+                expect(x.ok, `${x.name} is pressable`).toBe(true);
+                expect(x.right, `${x.name} is in view`).toBeLessThanOrEqual(vp.width);
+                expect(x.bottom, `${x.name} is in view`).toBeLessThanOrEqual(vp.height);
+                expect(x.h, `${x.name} height`).toBeGreaterThanOrEqual(43.5);
+            }
+            // The drawing stands in the box beside the strip, clear of it, and
+            // fills that box at the fit (6 % a side) in the dimension that binds
+            // it: the stage's height, or the box's width (the upright plate's
+            // foot cut the drawing to two fifths of the stage's height at 844x390).
+            const ink = await inkBox(page);
+            expect(ink, "the drawing is on the stage").not.toBeNull();
+            expect(ink!.right, "the drawing ends before the strip").toBeLessThan(dock.x);
+            const fill = Math.max((ink!.bottom - ink!.top) / stage.height, (ink!.right - ink!.left) / (dock.x - stage.x));
+            expect(fill, "the drawing fills the box beside the strip").toBeGreaterThanOrEqual(0.8);
+        });
+    });
+}

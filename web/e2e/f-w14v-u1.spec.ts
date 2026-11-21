@@ -154,28 +154,48 @@ for (const vp of WIDTHS) {
             // dock. Owner, 2026-11-16: the takeover covers the app dock, so there the
             // page's tools (Publish, Series, Copy link) are this dock's too: seats
             // outside its fold on a desk, rows of its More on a phone (FORTY-FIRST H),
-            // with Export frame and Exit fullscreen.
+            // with Export frame.
             const phone = page.viewportSize()!.width < 640;
             await expect(dock.locator("[aria-label='Picture']"), "Picture").toHaveCount(1);
             if (!phone) {
-                for (const name of ["Export frame", "Exit fullscreen"]) {
-                    await expect(dock.locator(`[aria-label='${name}']`), name).toHaveCount(1);
-                }
                 for (const name of ["Series", "Publish to Gallery", "Copy link"]) {
                     await expect(dock.locator(`[aria-label='${name}']`), name).toBeVisible();
                 }
                 await expandCanvasDock(page, dialog);
-                await dock.locator("[aria-label='Exit fullscreen']").click();
+                await dock.getByRole("button", { name: "More", exact: true }).click();
+                const menu = page.getByRole("menu");
+                await expect(menu.getByRole("menuitem", { name: "Export frame", exact: true })).toBeVisible();
+                // The way out is a seat, so More does not offer it twice.
+                await expect(menu.getByRole("menuitem", { name: /fullscreen/i })).toHaveCount(0);
+                await page.keyboard.press("Escape");
+                await expect(menu).toBeHidden();
+                await expect(dialog, "one Escape closes the menu, not the takeover").toBeVisible();
             } else {
                 await dock.getByRole("button", { name: "Layers and more" }).click();
                 const menu = page.getByRole("menu");
-                // Series is a toggle (a checkbox row); the acts are rows.
+                // Series is a toggle (a checkbox row); the acts are rows. In the
+                // takeover Edit is a row here, since its seat is the way out.
                 await expect(menu.getByRole("menuitemcheckbox", { name: "Series", exact: true }), "Series").toBeVisible();
-                for (const name of ["Publish to Gallery", "Copy link", "Export frame", "Exit fullscreen"]) {
+                for (const name of ["Publish to Gallery", "Copy link", "Export frame", "Edit contour"]) {
                     await expect(menu.getByRole("menuitem", { name, exact: true }), name).toBeVisible();
                 }
-                await menu.getByRole("menuitem", { name: "Exit fullscreen", exact: true }).click();
+                await expect(menu.getByRole("menuitem", { name: /fullscreen/i })).toHaveCount(0);
+                await page.keyboard.press("Escape");
+                await expect(menu).toBeHidden();
             }
+            // Leaving the takeover is one press from rest at both widths (PR 33
+            // review, blocker 3; STUDY section 8, check 1): the way out is a seat
+            // in view, outside any fold or menu, on the plate's own row on a phone.
+            const exit = dock.getByRole("button", { name: "Exit fullscreen", exact: true });
+            await expect(exit, "Exit fullscreen stands in view without opening anything").toBeVisible();
+            await expect(exit).toBeInViewport({ ratio: 1 });
+            const hit = await exit.evaluate((b) => {
+                const r = b.getBoundingClientRect();
+                const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                return !!at && (at === b || b.contains(at));
+            });
+            expect(hit, "the way out is pressable at its centre").toBe(true);
+            await exit.click();
             await expect(dialog).toBeHidden({ timeout: 10_000 });
             await expect(page.locator(".canvas-stage canvas.canvas-el")).toHaveCount(1);
             // A second takeover hosts the same stage again (the host is a new element).
@@ -250,4 +270,27 @@ test.describe("F.W14V.u1 — the canvas dock's controls (1440)", () => {
         await frame(page, "u173-trace-off");
     });
 
+});
+
+// PR 33 review, blocker 3 (STUDY section 8, check 1, "none got longer"): on a
+// touch phone the takeover is left by one press from rest, as before the one
+// stage dock; its way out is a seat on the plate's own row. Back leaves it too.
+test.describe("F.W14V.u1 — leaving the takeover on a touch phone (390)", () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    test.setTimeout(120_000);
+
+    test("u93t — one tap on the plate leaves fullscreen; Back leaves it too", async ({ page }) => {
+        await openViz(page);
+        for (const leave of ["tap", "back"] as const) {
+            const dialog = await openFullscreen(page);
+            const dock = dialog.locator(".controls-overlay .animation-dock");
+            await expect(dock).toHaveClass(/animation-dock--card/);
+            const exit = dock.getByRole("button", { name: "Exit fullscreen", exact: true });
+            await expect(exit).toBeInViewport({ ratio: 1 });
+            if (leave === "tap") await exit.tap();
+            else await page.goBack();
+            await expect(dialog).toBeHidden({ timeout: 10_000 });
+            await expect(page.locator(".canvas-stage canvas.canvas-el")).toHaveCount(1);
+        }
+    });
 });

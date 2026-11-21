@@ -1,25 +1,34 @@
 <script setup lang="ts">
 /**
  * The stage's one dock: the transport, the layers, the canvas's tools and the
- * door to the editor, at the stage's foot (owner, 19 Nov: "the visualize area
- * should take up more of the screen and not have two docks of controls").
- * Every seat is there from the first frame, disabled until there is a drawing
- * to act on.
+ * door to the editor (owner, 19 Nov: "the visualize area should take up more
+ * of the screen and not have two docks of controls"). Every seat is there
+ * from the first frame, disabled until there is a drawing to act on.
  *
- * Two forms of one dock:
- *  · desk and rail: one row, folding as glass folds it. Outside the fold,
- *    Play and the four layers (`#persistent`), the position readout
- *    (`#collapsed`) and Edit (`#persistent-end`). Open, the scrub, the rate,
- *    the easing, Just the picture, Reset view, Export frame and Fullscreen.
- *  · phone (`compact`, the sheet form): one plate of two rows, never folded.
- *    The scrub alone, then seven seats in groups by gap: Play | Picture,
- *    Outline, More | the rate, the easing | Edit. More holds the rest in three
- *    groups: the drawn layers; what the stage shows; what leaves the page.
+ * Three forms of one dock, chosen by the host from the stage's own box:
+ *  · `row` (a desk, the rail): one row at the stage's foot, folding as glass
+ *    folds it. Outside the fold, Play and the four layers (`#persistent`), the
+ *    position readout (`#collapsed`) and Edit (`#persistent-end`). Open, the
+ *    scrub, the rate, the easing and More (Just the picture, Reset view,
+ *    Fullscreen, Export frame), so the scrub keeps most of the row.
+ *  · `plate` (a phone held upright): one plate of two rows at the stage's
+ *    foot, never folded. The scrub alone, then seven seats in groups by gap:
+ *    Play | Picture, Outline, More | the rate, the easing | Edit. More holds
+ *    the rest in three groups: the drawn layers; what the stage shows; what
+ *    leaves the page.
+ *  · `strip` (a short landscape stage, a phone held sideways): the plate's
+ *    scrub and seats in a card standing on the stage's trailing edge. There
+ *    the drawing is bound by the stage's height, so the box beside the card
+ *    costs it nothing (STUDY 2.10: "landscape is designed, not inherited").
+ *
+ * In the fullscreen takeover the way out is a seat in every form (one press;
+ * Back and Escape leave it too): on a desk beside Edit, on a phone in Edit's
+ * place, Edit becoming a row of More there.
  *
  * The page's own acts (Publish, the series panel, Copy link) are the app
- * dock's on a desk. On a phone they are rows of More; in the fullscreen
- * takeover, which covers the app dock, a desk shows them as seats here. The
- * host renders them through the `page-tools` slot (`WorkspaceTools`).
+ * dock's on a desk. On a phone they are rows of More; in the takeover, which
+ * covers the app dock, a desk shows them as seats here. The host renders them
+ * through the `page-tools` slot (`WorkspaceTools`).
  */
 import { computed, h, useTemplateRef } from "vue";
 import { createReusableTemplate } from "@vueuse/core";
@@ -65,8 +74,8 @@ const props = withDefaults(
         activeBases?: string[];
         /** The open desk dock's widest (the fullscreen takeover's is wider). */
         maxWidth?: string;
-        /** The phone's form: one plate of two rows, never folded. */
-        compact?: boolean;
+        /** The dock's form (see above): a folding row, a phone's plate, or a landscape stage's strip. */
+        form?: "row" | "plate" | "strip";
         layers: Layers;
         justThePicture: boolean;
         hasContour: boolean;
@@ -75,7 +84,7 @@ const props = withDefaults(
         /** The drawing is zoomed or panned off its fit (Reset view is live). */
         viewMoved: boolean;
     }>(),
-    { activeBases: () => ["fourier-epicycles"], maxWidth: "960px", compact: false },
+    { activeBases: () => ["fourier-epicycles"], maxWidth: "960px", form: "row" },
 );
 
 const emit = defineEmits<{
@@ -184,6 +193,7 @@ const [DefineLayer, ReuseLayer] = createReusableTemplate<{ seat: (typeof LAYER_S
 const [DefineSpeed, ReuseSpeed] = createReusableTemplate();
 const [DefineEasing, ReuseEasing] = createReusableTemplate();
 const [DefineEdit, ReuseEdit] = createReusableTemplate();
+const [DefineExit, ReuseExit] = createReusableTemplate();
 </script>
 
 <template>
@@ -261,11 +271,21 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
         </Tooltip>
     </DefineEdit>
 
-    <!-- ═══ PHONE: one plate, two rows, never folded ═══ -->
+    <!-- The takeover's way out, a seat in every form while it is up. -->
+    <DefineExit>
+        <Tooltip text="Exit fullscreen" side="top">
+            <DockControl aria-label="Exit fullscreen" @click="emit('update:isFullscreen', false)">
+                <Minimize2 />
+            </DockControl>
+        </Tooltip>
+    </DefineExit>
+
+    <!-- ═══ PHONE: one plate, never folded (two rows upright; a card on the trailing edge sideways) ═══ -->
     <GlassDock
-        v-if="compact"
+        v-if="form !== 'row'"
         ref="dock"
         class="animation-dock animation-dock--card"
+        :class="{ 'animation-dock--strip': form === 'strip' }"
         shape="card"
         :collapse="false"
         fit-content
@@ -284,7 +304,7 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
                     <ReuseLayer :seat="LAYER_SEATS[1]" />
                     <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
                         <DockTrigger for="dropdown" aria-label="Layers and more" :disabled="!ready">
-                            <Ellipsis />
+                            <Ellipsis class="stage-glyph" aria-hidden="true" />
                         </DockTrigger>
                         <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end">
                             <div class="menu-sections">
@@ -306,10 +326,14 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
                                     <ScanSearch aria-hidden="true" />
                                     <span>Reset view</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem @select="emit('update:isFullscreen', !isFullscreen)">
-                                    <Minimize2 v-if="isFullscreen" aria-hidden="true" />
-                                    <Maximize2 v-else aria-hidden="true" />
-                                    <span>{{ isFullscreen ? "Exit fullscreen" : "Fullscreen" }}</span>
+                                <!-- In the takeover its way out is a seat, and Edit is this row. -->
+                                <DropdownMenuItem v-if="isFullscreen" :disabled="!hasContour" @select="emit('toggleEdit')">
+                                    <Pencil aria-hidden="true" />
+                                    <span>Edit contour</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem v-else @select="emit('update:isFullscreen', true)">
+                                    <Maximize2 aria-hidden="true" />
+                                    <span>Fullscreen</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <slot name="page-tools" form="items" :acts="['link']" tooltip-side="top" />
@@ -327,7 +351,8 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
                     <ReuseEasing />
                 </div>
                 <div class="seat-group">
-                    <ReuseEdit />
+                    <ReuseExit v-if="isFullscreen" />
+                    <ReuseEdit v-else />
                 </div>
             </div>
         </div>
@@ -356,45 +381,46 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
         </template>
 
         <!-- X-OD19 · F1: the face has a definite inline size, so glass measures a
-             real expanded endpoint and morphs to it. -->
+             real expanded endpoint and morphs to it. The scrub takes what the
+             rate, the easing and More leave of it. -->
         <div class="transport-face flex items-center" :data-page-tools="isFullscreen || undefined">
             <TimelineReadout />
             <ReuseSpeed />
             <ReuseEasing />
-            <!-- A desk has every layer as a seat, so "Just the picture" is a
-                 seat of the open face here (two choices are not a menu). -->
-            <Tooltip text="Just the picture" side="top">
-                <DockControl
-                    class="seat-group-start"
-                    aria-label="Just the picture"
-                    :active="justThePicture"
-                    :disabled="!ready"
-                    @click="emit('justThePicture')"
-                >
-                    <Focus />
-                </DockControl>
-            </Tooltip>
-            <Tooltip text="Reset view" side="top">
-                <DockControl aria-label="Reset view" :disabled="!viewMoved" @click="emit('resetView')">
-                    <ScanSearch />
-                </DockControl>
-            </Tooltip>
-            <Tooltip text="Export frame" side="top">
-                <DockControl aria-label="Export frame" :disabled="!ready" @click="emit('exportFrame')">
-                    <Download />
-                </DockControl>
-            </Tooltip>
-            <Tooltip :text="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'" side="top">
-                <DockControl :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'" @click="emit('update:isFullscreen', !isFullscreen)">
-                    <Minimize2 v-if="isFullscreen" />
-                    <Maximize2 v-else />
-                </DockControl>
-            </Tooltip>
+            <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
+                <DockTrigger for="dropdown" aria-label="More" :disabled="!ready">
+                    <Ellipsis class="stage-glyph" aria-hidden="true" />
+                </DockTrigger>
+                <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end">
+                    <div class="menu-sections">
+                        <DropdownMenuCheckboxItem :model-value="justThePicture" @select="keepOpen" @update:model-value="emit('justThePicture')">
+                            <Focus aria-hidden="true" />
+                            <span>Just the picture</span>
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuItem :disabled="!viewMoved" @select="emit('resetView')">
+                            <ScanSearch aria-hidden="true" />
+                            <span>Reset view</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem v-if="!isFullscreen" @select="emit('update:isFullscreen', true)">
+                            <Maximize2 aria-hidden="true" />
+                            <span>Fullscreen</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem @select="emit('exportFrame')">
+                            <Download aria-hidden="true" />
+                            <span>Export frame</span>
+                        </DropdownMenuItem>
+                    </div>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
 
         <template #persistent-end>
-            <!-- The takeover covers the app dock: the page's acts stand here. -->
-            <slot v-if="isFullscreen" name="page-tools" form="seats" :acts="['publish', 'series', 'link']" tooltip-side="top" />
+            <!-- The takeover covers the app dock: the page's acts stand here, and its way out. -->
+            <template v-if="isFullscreen">
+                <slot name="page-tools" form="seats" :acts="['publish', 'series', 'link']" tooltip-side="top" />
+                <ReuseExit />
+            </template>
             <ReuseEdit />
         </template>
     </GlassDock>
@@ -403,20 +429,17 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
 <style scoped>
 @reference "tailwindcss";
 
-/* One glyph size and one cell in this dock: every trigger takes the control
-   cell (glass's own token; a DockTrigger is shorter unless asked). */
+/* One glyph size and one cell height in this dock: every trigger takes the
+   control cell's height through glass's documented hook. A trigger's width is
+   glass's to bring to the cell (STUDY G4, booked for glass 11.1.2); until
+   then a glyph trigger is 40 px wide beside 44 px seats on touch. */
 .animation-dock {
     --dock-trigger-min-height: var(--dock-control-size);
     /* Groups are told apart by a gap, never a rule. */
     --stage-group-gap: 0.5rem;
 }
-/* A trigger's box is its padding around its content, so a glyph trigger
-   stood 40 px wide beside 44 px seats on a phone (glass has no width token
-   for it): it is as wide as the cell, and its glyph is the dock's glyph. */
-.animation-dock :deep(.dock-trigger) {
-    min-inline-size: var(--dock-control-size);
-}
-.animation-dock :deep(.dock-trigger > svg.lucide) {
+/* The site's own trigger glyphs on the dock's glyph size (DockControl seats take it from glass). */
+.stage-glyph {
     inline-size: var(--dock-icon-glyph);
     block-size: var(--dock-icon-glyph);
 }
@@ -431,7 +454,8 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
    paddings; the seats outside the fold (Play and the four layers before it,
    Edit after it) with their gaps and the group gap; the layers' two edges.
    `100cqi` is the controls overlay (VisualizationView `.controls-overlay`, an
-   inline-size container). In the takeover three page seats join Edit. */
+   inline-size container). In the takeover three page seats and the way out
+   join Edit. */
 .transport-face {
     --stage-seat: var(--dock-control-size, var(--dock-layer-height, 2.5rem));
     --stage-gap: var(--dock-layer-gap, 0.375rem);
@@ -447,12 +471,13 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
     inline-size: calc(min(var(--animation-dock-max-width, 960px), 100cqi) - var(--transport-chrome));
 }
 .transport-face[data-page-tools] {
-    --stage-end-seats: 4;
+    --stage-end-seats: 5;
 }
 
-/* ── Phone: one plate of two rows ──
-   The scrub runs the plate's width; under it seven seats in four groups. The
-   plate pads 6 px, so seven 44 px seats and their gaps stay inside 358 px. */
+/* ── Phone: one plate ──
+   Upright, the scrub runs the plate's width; under it seven seats in four
+   groups. The plate pads 6 px, so seven 44 px seats and their gaps stay
+   inside 358 px. */
 .animation-dock--card {
     --dock-padding-inline: 0.375rem;
     --dock-padding-block: 0.375rem;
@@ -476,6 +501,16 @@ const [DefineEdit, ReuseEdit] = createReusableTemplate();
     display: flex;
     align-items: center;
     gap: 0.125rem;
+}
+/* Sideways, the same plate is a card on the stage's trailing edge, four
+   seats wide: the scrub on top (182 px), then Play | Picture, Outline, More,
+   then the rate and the easing | Edit, each row's groups at its two ends. */
+.animation-dock--strip .card-face {
+    inline-size: calc(4 * var(--dock-control-size) + 2 * 0.125rem + var(--stage-group-gap));
+}
+.animation-dock--strip .card-seats {
+    flex-wrap: wrap;
+    row-gap: 0.125rem;
 }
 
 /* ── Collapsed summary ── */

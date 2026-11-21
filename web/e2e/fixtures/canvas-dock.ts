@@ -9,12 +9,18 @@ import { expect, type Locator, type Page } from "@playwright/test";
  *
  *  · Desk (and the rail form): one row that folds as glass folds it. Play, the
  *    four layers and Edit stand outside the fold; the scrub, the rate, the
- *    easing, Just the picture, Reset view, Export frame and Fullscreen are in
- *    its open face.
+ *    easing and More are in its open face, and More holds Just the picture,
+ *    Reset view, Fullscreen and Export frame (PR 33 review: the scrub keeps
+ *    most of the row).
  *  · Phone (the sheet form): one plate of two rows, never folded: the scrub,
  *    then Play | Picture, Outline, More | the rate, the easing | Edit. More
  *    ("Layers and more") holds Line, Circles, Just the picture, Series, Reset
  *    view, Fullscreen, Copy link, Export frame and Publish to Gallery.
+ *  · A short landscape stage (844x390): the phone's plate as a card on the
+ *    stage's trailing edge, the same seats and the same More.
+ *  · In the fullscreen takeover its way out, Exit fullscreen, is a seat in
+ *    every form (one press): beside Edit on a desk, in Edit's place on a phone,
+ *    where Edit becomes a row of More.
  *
  * `scope` is the surface that hosts the dock: the page, or the fullscreen
  * takeover's dialog (the same dock, hosted there). The dock is returned open.
@@ -36,7 +42,9 @@ export async function openCanvasDock(page: Page, scope: Page | Locator = page): 
 
 /**
  * Press one of the stage dock's tools by its name, where it lives at this
- * width: a seat of the dock (opened first), else a row of its More.
+ * width: a seat of the dock (opened first), else a row of its More (named
+ * "Layers and more" on the plate, where it holds the layers, and "More" on
+ * the desk's row).
  */
 export async function pressStageTool(page: Page, name: string, scope: Page | Locator = page): Promise<void> {
     const dock = await openCanvasDock(page, scope);
@@ -45,7 +53,7 @@ export async function pressStageTool(page: Page, name: string, scope: Page | Loc
         await seat.click();
         return;
     }
-    await dock.getByRole("button", { name: "Layers and more" }).click();
+    await dock.getByRole("button", { name: /^(Layers and more|More)$/ }).click();
     const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
     await menu.getByRole("menuitem", { name, exact: true }).or(menu.getByRole("menuitemcheckbox", { name, exact: true })).click();

@@ -30,7 +30,7 @@ import {
 import { useCanvasSetup, type CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";
-import { fitTransform, useViewTransform } from "./composables/useViewTransform";
+import { fitBox, fitTransform, useViewTransform, type FitInset } from "./composables/useViewTransform";
 import { useStageGestures } from "./composables/useStageGestures";
 import { LAYER_FADE_MS, LAYER_FADE_REDUCED_MS, useLayerFade } from "./composables/useLayerFade";
 import { composeView, IDENTITY_VIEW, linkOfView, viewOfLink, type StageLink, type StageView } from "./lib/stage-view";
@@ -48,6 +48,8 @@ const props = withDefaults(
         linkView?: StageLink | null;
         /** The stage's foot the dock covers (px): the drawing is fitted to the box above it. */
         fitInsetBottom?: number;
+        /** The stage's trailing edge a landscape strip covers (px): the drawing is fitted to the box beside it. */
+        fitInsetEnd?: number;
     }>(),
     {
         activeBases: () => ["fourier-epicycles"],
@@ -57,6 +59,7 @@ const props = withDefaults(
         showCircles: true,
         linkView: null,
         fitInsetBottom: 0,
+        fitInsetEnd: 0,
     },
 );
 const emit = defineEmits<{
@@ -146,6 +149,8 @@ const hover = useCanvasHover({
 
 // ── View transform (extracted composable) ──
 const { getViewTransform, extent } = useViewTransform();
+/** What the stage's dock covers: its foot (a row or a plate) or its trailing edge (a landscape strip). */
+const fitInset = computed<FitInset>(() => ({ bottom: props.fitInsetBottom, end: props.fitInsetEnd }));
 
 // ── The stage's own gestures (LAST-TEN F-01) ──
 // Pinch, wheel and drag zoom and pan the drawing (the page never zooms under
@@ -163,7 +168,7 @@ const gestures = useStageGestures({
 function currentLink(): StageLink | null {
     const s = surface.value;
     if (!s) return null;
-    const base = getViewTransform(s, props.fitInsetBottom);
+    const base = getViewTransform(s, fitInset.value);
     return linkOfView(gestures.getView(), base.toScreen(base.cx, base.cy), base.scale * extent());
 }
 const linkKey = (link: StageLink | null) => JSON.stringify(formatWorkspaceQuery({ z: link?.z ?? null, c: link?.c ?? null }));
@@ -173,12 +178,12 @@ function applyLink(link: StageLink | null): void {
     if (!s) return;
     linkPending = false;
     if (linkKey(link) === linkKey(currentLink())) return;
-    const base = getViewTransform(s, props.fitInsetBottom);
+    const base = getViewTransform(s, fitInset.value);
     if (!link) gestures.reset();
     else gestures.setView(viewOfLink(link, base.toScreen(base.cx, base.cy), base.scale * extent()));
 }
-// The dock's foot changed (a form change): refit the drawing above it.
-watch(() => props.fitInsetBottom, () => {
+// What the dock covers changed (a form change): refit the drawing beside it.
+watch(fitInset, () => {
     stableEpicycleBbox = null;
     baseFitCenter = null;
     if (surface.value) drawFrame();
@@ -189,7 +194,7 @@ watch(() => props.linkView, (link) => {
 
 /** The fitted transform and the one the stage draws with (zoom and pan applied). */
 function views(s: CanvasSurface): { base: ViewTransform; view: ViewTransform } {
-    const base = getViewTransform(s, props.fitInsetBottom);
+    const base = getViewTransform(s, fitInset.value);
     return { base, view: composeView(base, introView(s, base) ?? gestures.getView(), s.width, s.height) };
 }
 
@@ -217,7 +222,7 @@ let intro: Intro | null = null;
 let introRaf = 0;
 function pictureFit(s: CanvasSurface): ViewTransform | null {
     const bounds = pictureBounds();
-    return bounds ? fitTransform(bounds, s, props.fitInsetBottom) : null;
+    return bounds ? fitTransform(bounds, s, fitInset.value) : null;
 }
 /** How far the intro has come, eased (1 when there is none). */
 function introProgress(): number {
@@ -233,8 +238,7 @@ function introView(s: CanvasSurface, base: ViewTransform): StageView | null {
         // that maps the drawing's screen points onto the picture's is exact.
         const p = intro.picture;
         const k = p.scale / base.scale;
-        const w = s.width;
-        const h = Math.max(1, s.height - Math.max(0, props.fitInsetBottom));
+        const { w, h } = fitBox(s, fitInset.value);
         intro.from = {
             k,
             x: (w / 2) * (1 - k) + (base.cx - p.cx) * p.scale,

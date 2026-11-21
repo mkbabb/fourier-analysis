@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openAppDock } from "./fixtures/app-dock";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { openCanvasDock, pressStageTool } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
 
@@ -80,8 +80,7 @@ test.describe("e2 — Escape in the fullscreen takeover (1440)", () => {
 
     test("the panel is the takeover's topmost surface: Escape closes it and keeps fullscreen; a second leaves", async ({ page }) => {
         await openWorkspace(page, "?eq=1");
-        const dock = await openCanvasDock(page);
-        await dock.getByRole("button", { name: "Fullscreen", exact: true }).click();
+        await pressStageTool(page, "Fullscreen");
         const takeover = page.getByRole("dialog", { name: /fullscreen/ });
         await expect(takeover).toBeVisible();
         await expect(takeover.locator(".eq-panel")).toBeVisible({ timeout: LOAD });

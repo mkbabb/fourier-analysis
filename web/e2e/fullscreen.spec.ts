@@ -1,6 +1,6 @@
 // SERVED MODEL: claude-opus-5[1m]
 import { test, expect } from "@playwright/test";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { pressStageTool } from "./fixtures/canvas-dock";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 
 /**
@@ -49,11 +49,8 @@ test.describe("Fullscreen viewer (G-F9-11)", () => {
 
         // Owner, 2026-11-15: the canvas dock opens by a press on its folded
         // face; the click waits for the morph to settle (glass's morph guard).
-        const dock = await openCanvasDock(page);
-
-        const fullscreenBtn = dock.locator('[aria-label="Fullscreen"]');
-        await expect(fullscreenBtn).toBeVisible({ timeout: 10_000 });
-        await fullscreenBtn.click();
+        // Fullscreen is a row of the dock's More (PR 33 review, should-fix 1).
+        await pressStageTool(page, "Fullscreen");
 
         // ── THE DIALOG ──
         // Named, because `FV-2` books that the old hand-rolled overlay had no
@@ -78,8 +75,8 @@ test.describe("Fullscreen viewer (G-F9-11)", () => {
 
         // ── THE EXIT ──
         // X.F.W14V.u1 (UIA-F-93 ⊕ F-244, §0bt): the takeover hosts the canvas dock,
-        // whose Fullscreen control is the Exit; the dock opens by a press.
-        await openCanvasDock(page, viewer);
+        // whose way out is a seat outside its fold, in view from rest (PR 33
+        // review, blocker 3).
         const exit = viewer.getByRole("button", { name: "Exit fullscreen" });
         await expect(exit).toBeVisible();
         await exit.click();

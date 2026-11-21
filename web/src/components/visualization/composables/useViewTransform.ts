@@ -13,17 +13,32 @@ export interface Bbox {
 /** The fit's free margin on each side, as a fraction of the drawing's size. */
 export const FIT_MARGIN = 0.06;
 
+/** What the stage's dock covers (px): its foot (a row or a plate), or its trailing edge (a landscape strip). */
+export interface FitInset {
+    bottom: number;
+    end: number;
+}
+export const NO_INSET: Readonly<FitInset> = Object.freeze({ bottom: 0, end: 0 });
+
+/** The stage's box the drawing is fitted to: the stage less what the dock covers. */
+export function fitBox(s: { width: number; height: number }, inset: FitInset = NO_INSET): { w: number; h: number } {
+    return {
+        w: Math.max(1, s.width - Math.max(0, inset.end)),
+        h: Math.max(1, s.height - Math.max(0, inset.bottom)),
+    };
+}
+
 /**
- * The fit of a box: centred in the stage's box above `insetBottom` (the foot
- * the bottom dock covers), with `FIT_MARGIN` of its size free on each side.
- * The drawing's fit, and the picture's while the first compute runs.
+ * The fit of a box: centred in the stage's box less what the dock covers (the
+ * foot under a row or a plate, the trailing edge beside a strip), with
+ * `FIT_MARGIN` of its size free on each side. The drawing's fit, and the
+ * picture's while the first compute runs.
  */
-export function fitTransform(bbox: Bbox, s: { width: number; height: number }, insetBottom = 0): ViewTransform {
+export function fitTransform(bbox: Bbox, s: { width: number; height: number }, inset: FitInset = NO_INSET): ViewTransform {
     const { minX, maxX, minY, maxY } = bbox;
     const rangeX = maxX - minX || 1;
     const rangeY = maxY - minY || 1;
-    const w = s.width;
-    const h = Math.max(1, s.height - Math.max(0, insetBottom));
+    const { w, h } = fitBox(s, inset);
     const scale = Math.min(
         w / (rangeX * (1 + FIT_MARGIN * 2)),
         h / (rangeY * (1 + FIT_MARGIN * 2)),
@@ -75,10 +90,10 @@ export function useViewTransform() {
     });
 
     /** The drawing's fit (`fitTransform`); the identity before there is a drawing. */
-    function getViewTransform(s: CanvasSurface, insetBottom = 0): ViewTransform {
+    function getViewTransform(s: CanvasSurface, inset: FitInset = NO_INSET): ViewTransform {
         const bbox = dataBbox.value;
         if (!bbox) return { cx: 0, cy: 0, scale: 1, toScreen: (x, y) => [x, y] };
-        return fitTransform(bbox, s, insetBottom);
+        return fitTransform(bbox, s, inset);
     }
 
     /** The drawing's size in its own units (the larger side of its box): the link's unit for the view's centre. */

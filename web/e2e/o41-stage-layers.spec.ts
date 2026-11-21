@@ -37,8 +37,9 @@ async function openMore(page: Page): Promise<Locator> {
     return menu;
 }
 
-/** Press "Just the picture" where it lives: a row of More on a phone, a seat
- *  of the dock's open face on a desk (two choices are not a menu). */
+/** Press "Just the picture" where it lives: a row of More, on a phone's plate
+ *  ("Layers and more") and in the desk row's open face ("More"; PR 33 review,
+ *  should-fix 1: the scrub keeps most of the row). */
 async function pressJustThePicture(page: Page): Promise<void> {
     if (page.viewportSize()!.width < 640) {
         const menu = await openMore(page);
@@ -47,7 +48,11 @@ async function pressJustThePicture(page: Page): Promise<void> {
         return;
     }
     const dock = await openCanvasDock(page);
-    await dock.getByRole("button", { name: "Just the picture", exact: true }).click();
+    await dock.getByRole("button", { name: "More", exact: true }).click();
+    const menu = page.getByRole("menu");
+    await menu.getByRole("menuitemcheckbox", { name: "Just the picture" }).click();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
 }
 
 /** Toggle the picture where it lives: one press on its seat. */

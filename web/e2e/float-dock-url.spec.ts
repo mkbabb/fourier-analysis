@@ -43,8 +43,17 @@ test.describe("t1 — one tool model (1440)", () => {
         const dock = page.locator(".controls-overlay .glass-dock");
         await expect(dock).toHaveClass(/\bcollapsed\b/);
         await openCanvasDock(page);
-        for (const name of ["Picture", "Outline", "Line", "Circles", "Just the picture", "Export frame", "Fullscreen", "Edit contour"])
+        for (const name of ["Picture", "Outline", "Line", "Circles", "More", "Edit contour"])
             await expect(page.getByRole("button", { name, exact: true }), name).toHaveCount(1);
+        // The open face keeps the scrub most of the row: the rest is one More
+        // (STUDY 2.10, line 3; PR 33 review, should-fix 1).
+        await dock.getByRole("button", { name: "More", exact: true }).click();
+        const more = page.getByRole("menu");
+        for (const name of ["Reset view", "Fullscreen", "Export frame"])
+            await expect(more.getByRole("menuitem", { name, exact: true }), name).toHaveCount(1);
+        await expect(more.getByRole("menuitemcheckbox", { name: "Just the picture", exact: true })).toHaveCount(1);
+        await page.keyboard.press("Escape");
+        await expect(more).toBeHidden();
         const app = await openAppDock(page);
         for (const name of ["Publish to Gallery", "Series", "Copy link"])
             await expect(app.getByRole("button", { name, exact: true }), name).toHaveCount(1);
