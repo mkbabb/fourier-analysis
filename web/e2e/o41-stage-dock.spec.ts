@@ -258,14 +258,24 @@ for (const vp of [
                 expect(x.bottom, `${x.name} is in view`).toBeLessThanOrEqual(vp.height);
                 expect(x.h, `${x.name} height`).toBeGreaterThanOrEqual(43.5);
             }
-            // The drawing stands in the box beside the strip, clear of it, and
-            // fills that box at the fit (6 % a side) in the dimension that binds
-            // it: the stage's height, or the box's width (the upright plate's
-            // foot cut the drawing to two fifths of the stage's height at 844x390).
+            // The drawing stands in the box beside the strip and under the
+            // legend's rows, clear of both, and fills that box at the fit (6 % a
+            // side) in the dimension that binds it: its height, or its width (the
+            // upright plate's foot cut the drawing to two fifths of the stage's
+            // height at 844x390). The line is read alone: hiding the circles
+            // takes the legend (red like the line) with them, and moves nothing.
+            await page.goto(`/v/${seededViz().slug}?t=0.5&circles=0`);
+            await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeEnabled({ timeout: LOAD });
+            await page.waitForTimeout(800);
+            // The legend: a title row (26 px) and its caption line, from the stage's legend inset.
+            const legendEnd = await page.locator(".canvas-stage > .canvas-container").evaluate(
+                (el) => parseFloat(getComputedStyle(el).getPropertyValue("--legend-inset-top")) + 26 - 4 + 13,
+            );
             const ink = await inkBox(page);
             expect(ink, "the drawing is on the stage").not.toBeNull();
             expect(ink!.right, "the drawing ends before the strip").toBeLessThan(dock.x);
-            const fill = Math.max((ink!.bottom - ink!.top) / stage.height, (ink!.right - ink!.left) / (dock.x - stage.x));
+            expect(ink!.top - stage.y, "the drawing starts under the legend").toBeGreaterThanOrEqual(legendEnd);
+            const fill = Math.max((ink!.bottom - ink!.top) / (stage.height - legendEnd), (ink!.right - ink!.left) / (dock.x - stage.x));
             expect(fill, "the drawing fills the box beside the strip").toBeGreaterThanOrEqual(0.8);
         });
     });

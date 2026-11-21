@@ -13,18 +13,25 @@ export interface Bbox {
 /** The fit's free margin on each side, as a fraction of the drawing's size. */
 export const FIT_MARGIN = 0.06;
 
-/** What the stage's dock covers (px): its foot (a row or a plate), or its trailing edge (a landscape strip). */
+/**
+ * What the drawing keeps clear of on the stage (px): the dock's foot (a row or
+ * a plate) or its trailing edge (a landscape strip), and the legend's rows at
+ * the top where the stage is short enough for the drawing to reach them.
+ */
 export interface FitInset {
     bottom: number;
     end: number;
+    top: number;
 }
-export const NO_INSET: Readonly<FitInset> = Object.freeze({ bottom: 0, end: 0 });
+export const NO_INSET: Readonly<FitInset> = Object.freeze({ bottom: 0, end: 0, top: 0 });
 
-/** The stage's box the drawing is fitted to: the stage less what the dock covers. */
-export function fitBox(s: { width: number; height: number }, inset: FitInset = NO_INSET): { w: number; h: number } {
+/** The stage's box the drawing is fitted to: the stage less its insets; `top` is where the box starts. */
+export function fitBox(s: { width: number; height: number }, inset: FitInset = NO_INSET): { w: number; h: number; top: number } {
+    const top = Math.max(0, inset.top);
     return {
         w: Math.max(1, s.width - Math.max(0, inset.end)),
-        h: Math.max(1, s.height - Math.max(0, inset.bottom)),
+        h: Math.max(1, s.height - Math.max(0, inset.bottom) - top),
+        top,
     };
 }
 
@@ -38,7 +45,7 @@ export function fitTransform(bbox: Bbox, s: { width: number; height: number }, i
     const { minX, maxX, minY, maxY } = bbox;
     const rangeX = maxX - minX || 1;
     const rangeY = maxY - minY || 1;
-    const { w, h } = fitBox(s, inset);
+    const { w, h, top } = fitBox(s, inset);
     const scale = Math.min(
         w / (rangeX * (1 + FIT_MARGIN * 2)),
         h / (rangeY * (1 + FIT_MARGIN * 2)),
@@ -48,7 +55,7 @@ export function fitTransform(bbox: Bbox, s: { width: number; height: number }, i
     return {
         cx, cy, scale,
         toScreen(x: number, y: number): [number, number] {
-            return [w / 2 + (x - cx) * scale, h / 2 - (y - cy) * scale];
+            return [w / 2 + (x - cx) * scale, top + h / 2 - (y - cy) * scale];
         },
     };
 }
