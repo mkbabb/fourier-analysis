@@ -1,1 +1,6 @@
 *.png
+# The fourier mark's rasters (scripts/precompute_mark.py) are source.
+!public/favicon-16.png
+!public/favicon-32.png
+!public/apple-touch-icon.png
+!public/og.png

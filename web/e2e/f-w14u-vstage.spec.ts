@@ -4,7 +4,7 @@ import { seededViz } from "./fixtures/seed";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { showView } from "./fixtures/workspace";
 import { openAppDock } from "./fixtures/app-dock";
-import { CONTOUR_JOB } from "./fixtures/jobs";
+import { CONTOUR_JOB, IMAGE_JOB } from "./fixtures/jobs";
 
 /**
  * X.F.W14U.vstage — the Visualize stage's family (spec `F-W14U.md` Units :8-18;
@@ -119,18 +119,21 @@ for (const vp of WIDTHS) {
             await expect(primary).toHaveCount(1);
             await expect(primary).toHaveAccessibleName(/choose an image/i);
             await expect(primary).not.toHaveAccessibleName(/click/i);
-            // F-69: a secondary path.
-            await expect(page.locator(".drop-target").getByRole("button", { name: "Browse the gallery" })).toBeVisible();
+            // FORTY-FIRST D (owner, 19 Nov): the empty stage carries one action;
+            // the gallery is a place of the top dock, not a second button here.
+            await expect(page.getByText("Browse the gallery")).toHaveCount(0);
             // F-237: the canvas paints no second grid under the page's.
             expect(await painted(page)).toBe(0);
-            // F-237: the 16 px gutter at 390.
+            // F-237: the gutter. FORTY-FIRST H: on a phone it is 12 px, so the
+            // stage takes more of the screen; at 640 and up, 16 px.
             if (vp.width < 1024) {
                 const r = await page.locator(".viz-configurator").evaluate((el) => {
                     const b = el.getBoundingClientRect();
                     return { l: b.left, r: document.documentElement.clientWidth - b.right };
                 });
-                expect(r.l).toBeGreaterThanOrEqual(15.5);
-                expect(r.r).toBeGreaterThanOrEqual(15.5);
+                const gutter = vp.width < 640 ? 12 : 16;
+                expect(r.l).toBeGreaterThanOrEqual(gutter - 0.5);
+                expect(r.r).toBeGreaterThanOrEqual(gutter - 0.5);
             }
         });
     });
@@ -228,13 +231,24 @@ for (const scheme of ["light", "dark"] as const) {
         test.setTimeout(90_000);
 
         test("e73 · F-73 — the stage says computing in the DOM; the canvas paints no drop box", async ({ page }) => {
-            await page.route(CONTOUR_JOB, async (route) => {
-                await new Promise((r) => setTimeout(r, 6000));
-                await route.fallback();
-            });
+            // The job is held before it starts, so the stage stands in its first
+            // computing state. /v's first compute is the image job (it was the
+            // contour job's pattern alone, which /v never posts, so nothing was
+            // held and the name moved on to the job's stages at once).
+            for (const job of [IMAGE_JOB, CONTOUR_JOB]) {
+                await page.route(job, async (route) => {
+                    await new Promise((r) => setTimeout(r, 6000));
+                    await route.fallback();
+                });
+            }
+            // FORTY-FIRST F: the first compute shows the picture on the canvas
+            // (o41-stage-progress); with no picture to show, the canvas must
+            // still paint no box of its own.
+            await page.route("**/api/images/*/overlay*", (route) => route.fulfill({ status: 404 }));
             const viz = seededViz();
             await page.goto(`/v/${viz.slug}`);
-            const busy = page.locator(".configurator-stage").getByRole("status").filter({ hasText: /Computing/ });
+            // The busy mark is named by the job's stage and has no caption.
+            const busy = page.locator(".configurator-stage").getByRole("status", { name: /Computing/ });
             await expect(busy).toBeVisible({ timeout: 20_000 });
             await page.waitForTimeout(300);
             await frame(page, `e73-computing-${scheme}`);

@@ -1,6 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openAppDock } from "./fixtures/app-dock";
+import { showView } from "./fixtures/workspace";
 import { setSlider, slider, sliderValue } from "./fixtures/slider";
 import { EQUATION_JOB } from "./fixtures/jobs";
 
@@ -48,8 +49,9 @@ async function frame(page: Page, name: string): Promise<void> {
 /** Open /equation and wait for the first rendered series. */
 async function openEquation(page: Page, canvas = false): Promise<Locator> {
     await page.goto("/equation");
-    // Canon F5: a phone opens on the canvas; the controls are a tab away.
-    if (page.viewportSize()!.width < 640) await page.getByRole("tab", { name: canvas ? "Canvas" : "Controls" }).click();
+    // Canon F5: a phone opens on the canvas; the controls are one press of the
+    // top dock's Controls seat away.
+    if (page.viewportSize()!.width < 640) await showView(page, canvas ? "Canvas" : "Controls");
     const card = page.locator(".eq-card");
     if (canvas || page.viewportSize()!.width >= 1024) {
         await expect(card.locator(".katex").first()).toBeVisible({ timeout: LOAD });
@@ -388,18 +390,13 @@ test.describe("q253 · UIA-F-253 — the equation's micro-issues", () => {
         await frame(page, "q253-tier-badge");
     });
 
-    test("the 390 tab strip is not an opaque band", async ({ page }) => {
+    test("the 390 pane switch is no band of its own: it is a seat of the glass dock", async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto("/equation");
-        // The row that seats the tab list: the shared WorkspaceTabs bar (X.F.W14V.au1).
-        const strip = page.getByRole("tablist").first().locator("xpath=ancestor::div[contains(@class,'workspace-tabs')][1]");
-        await expect(strip).toBeVisible();
-        const alpha = await strip.evaluate((e) => {
-            const m = getComputedStyle(e).backgroundColor.match(/rgba?\(([^)]+)\)/);
-            const parts = m ? m[1].split(/[ ,/]+/).filter(Boolean) : [];
-            return parts.length === 4 ? Number(parts[3]) : 1;
-        });
-        expect(alpha).toBeLessThan(1);
+        // FORTY-SECOND D: the Controls/Canvas strip went into the top dock.
+        await expect(page.locator(".app-dock .pane-seat")).toBeVisible({ timeout: 30_000 });
+        await expect(page.locator(".workspace-tabs")).toHaveCount(0);
+        await expect(page.getByRole("tablist")).toHaveCount(0);
         await frame(page, "q253-tab-strip");
     });
 });

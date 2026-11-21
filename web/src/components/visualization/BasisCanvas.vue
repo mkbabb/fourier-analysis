@@ -18,6 +18,7 @@ import {
     drawEpicycleCircles,
     drawConnectingLine,
     drawBasisLabels,
+    legendBottom,
     type StageInks,
     TrailManager,
     BASE_EPICYCLE_SCALE,
@@ -30,18 +31,42 @@ import {
 import { useCanvasSetup, type CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
 import { useImageOverlay } from "./composables/useImageOverlay";
-import { useViewTransform } from "./composables/useViewTransform";
+import { fitBox, fitTransform, useViewTransform, type FitInset } from "./composables/useViewTransform";
 import { useStageGestures } from "./composables/useStageGestures";
-import { composeView } from "./lib/stage-view";
+import { LAYER_FADE_MS, LAYER_FADE_REDUCED_MS, useLayerFade } from "./composables/useLayerFade";
+import { composeView, IDENTITY_VIEW, linkOfView, viewOfLink, type StageLink, type StageView } from "./lib/stage-view";
+import { formatWorkspaceQuery } from "./lib/workspace-query";
 
 const props = withDefaults(
     defineProps<{
         activeBases?: string[];
+        /** The four layers (`lib/layers.ts`): the dashed outline, the picture, the line, the circles. */
         showGhost?: boolean;
         showImageOverlay?: boolean;
+        showLine?: boolean;
+        showCircles?: boolean;
+        /** The view a link names (zoom and centre), or null for the fit. */
+        linkView?: StageLink | null;
+        /** The stage's foot the dock covers (px): the drawing is fitted to the box above it. */
+        fitInsetBottom?: number;
+        /** The stage's trailing edge a landscape strip covers (px): the drawing is fitted to the box beside it. */
+        fitInsetEnd?: number;
     }>(),
-    { activeBases: () => ["fourier-epicycles"], showGhost: true, showImageOverlay: false },
+    {
+        activeBases: () => ["fourier-epicycles"],
+        showGhost: false,
+        showImageOverlay: true,
+        showLine: true,
+        showCircles: true,
+        linkView: null,
+        fitInsetBottom: 0,
+        fitInsetEnd: 0,
+    },
 );
+const emit = defineEmits<{
+    /** A gesture came to rest: the view as a link carries it (null at the fit). */
+    "update:linkView": [link: StageLink | null];
+}>();
 
 const store = useWorkspaceStore();
 // The chain as a spectrum, once per result. The API sends its components in
@@ -63,6 +88,9 @@ let epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
 
 // ── Trail ──
 const trail = new TrailManager();
+
+/** A drawing that has landed applies its link (`z`, `c`) once the stage is sized. */
+let linkPending = false;
 
 // ── Canvas setup ──
 /*
@@ -100,12 +128,12 @@ function readLegendTop(): void {
     insetInline = Number.isFinite(pi) ? pi : 16;
 }
 
-const { surface, setupCanvas } = useCanvasSetup(canvasRef, (s) => {
+const { surface, setupCanvas } = useCanvasSetup(canvasRef, () => {
     readLegendTop();
     stableEpicycleBbox = null;
     baseFitCenter = null;
-    if (store.epicycleData) drawFrame();
-    else drawPlaceholderFrame(s);
+    if (linkPending && (store.epicycleData || store.basesData)) applyLink(props.linkView);
+    drawFrame();
 });
 
 // ── Hover ──
@@ -121,7 +149,21 @@ const hover = useCanvasHover({
 });
 
 // ── View transform (extracted composable) ──
-const { getViewTransform } = useViewTransform();
+const { getViewTransform, extent } = useViewTransform();
+/**
+ * What the drawing keeps clear of: the dock's foot (a row or a plate) or its
+ * trailing edge (a landscape strip). Beside a strip the stage is short and the
+ * drawing is bound by its height, so its top would cross the legend: there the
+ * box starts under the legend's rows (one for the epicycles, one a basis), shown
+ * or not, so hiding the circles never moves the drawing.
+ */
+function fitInset(): FitInset {
+    const rows = isOnlyEpicycles() ? 1 : Math.max(1, props.activeBases.length);
+    return { bottom: props.fitInsetBottom, end: props.fitInsetEnd, top: props.fitInsetEnd > 0 ? legendBottom(legendTop, rows) : 0 };
+}
+function isOnlyEpicycles(): boolean {
+    return props.activeBases.length === 1 && props.activeBases[0] === "fourier-epicycles";
+}
 
 // ── The stage's own gestures (LAST-TEN F-01) ──
 // Pinch, wheel and drag zoom and pan the drawing (the page never zooms under
@@ -131,22 +173,129 @@ const gestures = useStageGestures({
     fadeEl: () => canvasRef.value,
     size: () => (surface.value ? { w: surface.value.width, h: surface.value.height } : { w: 1, h: 1 }),
     onChange: () => { if (surface.value) drawFrame(); },
+    onSettle: () => emit("update:linkView", currentLink()),
+});
+
+// ── The view in the link (`z`, `c`) ──
+/** The current view as a link carries it, on this stage. */
+function currentLink(): StageLink | null {
+    const s = surface.value;
+    if (!s) return null;
+    const base = getViewTransform(s, fitInset());
+    return linkOfView(gestures.getView(), base.toScreen(base.cx, base.cy), base.scale * extent());
+}
+const linkKey = (link: StageLink | null) => JSON.stringify(formatWorkspaceQuery({ z: link?.z ?? null, c: link?.c ?? null }));
+/** Put the stage at the view a link names (the fit for none), unless it is already there as written. */
+function applyLink(link: StageLink | null): void {
+    const s = surface.value;
+    if (!s) return;
+    linkPending = false;
+    if (linkKey(link) === linkKey(currentLink())) return;
+    const base = getViewTransform(s, fitInset());
+    if (!link) gestures.reset();
+    else gestures.setView(viewOfLink(link, base.toScreen(base.cx, base.cy), base.scale * extent()));
+}
+// What the drawing keeps clear of changed (a form change): refit it.
+watch(() => Object.values(fitInset()).join(" "), () => {
+    stableEpicycleBbox = null;
+    baseFitCenter = null;
+    if (surface.value) drawFrame();
+});
+watch(() => props.linkView, (link) => {
+    if (store.epicycleData || store.basesData) applyLink(link);
 });
 
 /** The fitted transform and the one the stage draws with (zoom and pan applied). */
 function views(s: CanvasSurface): { base: ViewTransform; view: ViewTransform } {
-    const base = getViewTransform(s);
-    return { base, view: composeView(base, gestures.getView(), s.width, s.height) };
+    const base = getViewTransform(s, fitInset());
+    return { base, view: composeView(base, introView(s, base) ?? gestures.getView(), s.width, s.height) };
 }
 
 // ── Image overlay (extracted composable) ──
-const { drawImageOverlay } = useImageOverlay(() => {
+const { drawImageOverlay, pictureBounds, hasPicture } = useImageOverlay(() => {
     if (surface.value) drawFrame();
 });
+
+// ── The picture before the drawing (FORTY-FIRST F) ──
+// While the first compute runs the stage shows the picture, whole, fitted to
+// the box above the dock: it is already in the browser, so the stage is never
+// an empty plate while the outline is found. When the drawing lands the view
+// travels from the picture's fit to the drawing's, the picture recedes to its
+// wash and the drawing's layers come in (280 ms, cubic-out). Under reduced
+// motion nothing travels: the two frames cross by a 120 ms fade.
+interface Intro {
+    t0: number;
+    reduce: boolean;
+    /** The picture's fit, as it stood when the drawing landed. */
+    picture: ViewTransform;
+    /** The stage view that puts the drawing's fit where the picture's was (set on the first frame). */
+    from: StageView | null;
+}
+let intro: Intro | null = null;
+let introRaf = 0;
+function pictureFit(s: CanvasSurface): ViewTransform | null {
+    const bounds = pictureBounds();
+    return bounds ? fitTransform(bounds, s, fitInset()) : null;
+}
+/** How far the intro has come, eased (1 when there is none). */
+function introProgress(): number {
+    if (!intro) return 1;
+    const k = Math.min(1, (performance.now() - intro.t0) / (intro.reduce ? LAYER_FADE_REDUCED_MS : LAYER_FADE_MS));
+    return 1 - (1 - k) ** 3;
+}
+/** The intro's stage view: from where the picture stood to the drawing's fit. */
+function introView(s: CanvasSurface, base: ViewTransform): StageView | null {
+    if (!intro || intro.reduce) return null;
+    if (!intro.from) {
+        // Both fits are a scale about the stage's centre and a shift; the view
+        // that maps the drawing's screen points onto the picture's is exact.
+        const p = intro.picture;
+        const k = p.scale / base.scale;
+        const { w, h, top } = fitBox(s, fitInset());
+        intro.from = {
+            k,
+            x: (w / 2) * (1 - k) + (base.cx - p.cx) * p.scale,
+            y: (top + h / 2) * (1 - k) - (base.cy - p.cy) * p.scale,
+        };
+    }
+    const e = introProgress();
+    const f = intro.from;
+    return { k: f.k + (IDENTITY_VIEW.k - f.k) * e, x: f.x * (1 - e), y: f.y * (1 - e) };
+}
+function startIntro(): void {
+    const s = surface.value;
+    const picture = s ? pictureFit(s) : null;
+    if (!s || !picture) return;
+    const reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || !!props.linkView;
+    intro = { t0: performance.now(), reduce, picture, from: null };
+    cancelAnimationFrame(introRaf);
+    const step = () => {
+        const done = introProgress() >= 1;
+        if (done) intro = null;
+        if (surface.value) drawFrame();
+        if (!done) introRaf = requestAnimationFrame(step);
+    };
+    introRaf = requestAnimationFrame(step);
+}
+// The first drawing lands while the picture stands alone: travel from it.
+// (Sync, so the frame the data's own watchers draw is already the intro's.)
+watch(() => store.epicycleData, (data, before) => {
+    if (data && !before && firstPictureFade.strength() > 0) startIntro();
+}, { flush: "sync" });
 
 // ── Draw placeholder ──
 function drawPlaceholderFrame(s: CanvasSurface) {
     drawPlaceholder(s, !!store.imageMeta);
+}
+
+/** The first compute's frame: the picture whole, at its own fit. False when there is no picture to show. */
+function drawFirstPicture(s: CanvasSurface): boolean {
+    const k = firstPictureFade.strength() * pictureFade.strength();
+    const fit = k > 0 ? pictureFit(s) : null;
+    if (!fit) return false;
+    s.ctx.clearRect(0, 0, s.width, s.height);
+    drawImageOverlay(s, fit, k, 0);
+    return true;
 }
 
 // ── Main draw frame ──
@@ -155,26 +304,39 @@ function drawFrame() {
     if (!s) return;
     const data = store.epicycleData;
     const basesData = store.basesData;
-    if (!data && !basesData) { drawPlaceholderFrame(s); return; }
+    if (!data && !basesData) {
+        if (!drawFirstPicture(s)) drawPlaceholderFrame(s);
+        return;
+    }
 
     s.ctx.clearRect(0, 0, s.width, s.height);
     const { base, view } = views(s);
+    const layers = liveLayers();
 
-    // Background grid
-    drawGrid(s, view);
-
-    // Image overlay (behind curves)
-    if (props.showImageOverlay) {
-        drawImageOverlay(s, view);
+    // The grid and its axes belong to the drawing: they fade out with the
+    // last drawn layer, and with none on the picture is drawn whole.
+    const drawn = Math.max(layers.ghost, layers.trail, layers.epicycles);
+    if (drawn > 0) {
+        s.ctx.save();
+        s.ctx.globalAlpha = drawn;
+        drawGrid(s, view);
+        s.ctx.restore();
     }
+
+    // The picture (behind the curves), at its fade: a wash under a drawing,
+    // the whole picture alone. Under reduced motion the intro crosses the
+    // picture's own frame out as the drawing's comes in.
+    const crossing = intro?.reduce ? introProgress() : 1;
+    drawImageOverlay(s, view, pictureFade.strength() * crossing, drawn);
+    if (intro?.reduce && crossing < 1) drawImageOverlay(s, intro.picture, pictureFade.strength() * (1 - crossing), 0);
 
     const hasEpicycles = props.activeBases.includes("fourier-epicycles");
     const onlyEpicycles = hasEpicycles && props.activeBases.length === 1;
 
     if (onlyEpicycles && data) {
-        drawEpicycleFrame(s, data, view, base);
+        drawEpicycleFrame(s, data, view, base, layers);
     } else {
-        drawMultiBasesFrame(s, view, base);
+        drawMultiBasesFrame(s, view, base, layers);
     }
 }
 
@@ -190,39 +352,45 @@ function drawFrame() {
 // fixed corner — grid included — whatever the labels' real extent. Both are
 // layers now: `ghost` (the live draw follows the view's trace toggle) and
 // `labels` (skipped, never erased).
-// O16 [52]: `ghost` is the outline layer's strength, 0..1 (an export is 0 or
-// 1; the live draw follows `ghostFade`, the toggle's tween).
+// O16 [52]: each layer is a strength, 0..1 (an export's is 0 or 1; the live
+// draw follows each layer's fade). `epicycles` is the circles layer (the
+// chain, its tip, the desktop inset), `trail` the line, `ghost` the outline;
+// the legend rides the layer it names (`labels`).
 interface FrameLayers {
-    epicycles: boolean;
-    trail: boolean;
+    epicycles: number;
+    trail: number;
     ghost: number;
-    labels: boolean;
+    labels: number;
 }
 function liveLayers(): FrameLayers {
-    return { epicycles: true, trail: true, ghost: ghostFade, labels: true };
+    // The drawing's layers come in with the intro (FORTY-FIRST F).
+    const arriving = introProgress();
+    const circles = circlesFade.strength() * arriving;
+    const line = lineFade.strength() * arriving;
+    // The epicycle legend counts circles; the bases' legend names the curves.
+    const onlyEpicycles = isOnlyEpicycles();
+    return {
+        epicycles: circles,
+        trail: line,
+        ghost: ghostFade.strength() * arriving,
+        labels: onlyEpicycles ? circles : Math.max(circles, line),
+    };
 }
 
-// ── Original outline fade (O16 [52]) ──
-// The View layers toggle tweens the outline in and out over the stage's
-// standard duration; reduced motion keeps the fade, shorter. The stage repaints
-// each step, so the change reads even while the animation clock is parked.
-let ghostFade = props.showGhost ? 1 : 0;
-let ghostRaf = 0;
-function tweenGhost(to: number): void {
-    cancelAnimationFrame(ghostRaf);
-    const from = ghostFade;
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const dur = reduce ? 120 : 280;
-    const t0 = performance.now();
-    const step = (now: number) => {
-        const k = Math.min(1, (now - t0) / dur);
-        const e = 1 - (1 - k) ** 3;
-        ghostFade = from + (to - from) * e;
-        if (surface.value) drawFrame();
-        if (k < 1) ghostRaf = requestAnimationFrame(step);
-    };
-    ghostRaf = requestAnimationFrame(step);
-}
+// ── The layers' fades (O16 [52]) ──
+// A toggled layer tweens in and out over the stage's standard duration;
+// reduced motion keeps the fade, shorter. The stage repaints each step, so the
+// change reads even while the animation clock is parked.
+const repaint = () => { if (surface.value) drawFrame(); };
+const ghostFade = useLayerFade(() => props.showGhost, repaint);
+const pictureFade = useLayerFade(() => props.showImageOverlay, repaint);
+const lineFade = useLayerFade(() => props.showLine, repaint);
+const circlesFade = useLayerFade(() => props.showCircles, repaint);
+/** The first compute's picture: shown while the first drawing is found, and only once it is in hand. */
+const firstPictureFade = useLayerFade(
+    () => store.computing && !store.epicycleData && !store.basesData && hasPicture(),
+    repaint,
+);
 
 /*
  * `view` is the stage's transform (zoom and pan included) for everything drawn
@@ -255,7 +423,7 @@ function drawEpicycleFrame(
     // Trail: the fourier identity hue, at rest and on hover (the golden
     // hover re-ink was deleted at X-DS pass 1, F1-05).
     trail.update(anim.t, tipX, tipY, anim.scrubbing, spectrum);
-    if (layers.trail) trail.draw(s, view, trailColor);
+    trail.draw(s, view, trailColor, layers.trail);
 
     // The original outline, over the trail (O16 [52]).
     drawGhostPath(s, view, data.path.x, data.path.y, true, layers.ghost, inks.foreground);
@@ -283,12 +451,12 @@ function drawEpicycleFrame(
 
     // X-DS pass 1 · F1-05 — a hovered chain keeps its spectrum hues and steps
     // its stroke once; no gold re-ink, no time-based alpha.
-    if (layers.epicycles) {
-        drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 5, arm: 4.5 } : { circle: 4, arm: 3.5 });
+    if (layers.epicycles > 0) {
+        drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha * layers.epicycles, epicycleHovered ? { circle: 5, arm: 4.5 } : { circle: 4, arm: 3.5 });
     }
 
-    // Update epicycle bounds for hover detection
-    if (fit) {
+    // Update epicycle bounds for hover detection (none while the circles are hidden)
+    if (fit && layers.epicycles > 0) {
         epicycleBounds = {
             x: fit.targetCX - fit.scaledW / 2,
             y: fit.targetCY - fit.scaledH / 2,
@@ -299,24 +467,25 @@ function drawEpicycleFrame(
         epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
     }
 
-    if (layers.epicycles) {
+    if (layers.epicycles > 0) {
         // Connecting line
         if (fit) {
-            drawConnectingLine(s, view, base, visPositions, tipX, tipY, fit, eAlpha);
+            drawConnectingLine(s, view, base, visPositions, tipX, tipY, fit, eAlpha * layers.epicycles);
         }
 
         // Tip dot
-        drawTipDot(s, view, tipX, tipY);
+        drawTipDot(s, view, tipX, tipY, layers.epicycles);
     }
 
-    // Label with hit regions for hover detection
-    if (layers.labels) {
+    // Label with hit regions for hover detection (none while it is hidden)
+    hover.setLabelHitRegions([]);
+    if (layers.labels > 0) {
         const level = Math.max(1, Math.ceil(anim.easedT * components.length));
         // X.F.W14V.u4 — UIA-F-170 (legend limb): this count is CIRCLES drawn
         // (every ±k term of the series is its own circle, 2N + 1 of them), not
         // the Harmonics N beside it in the pane, so it says what it counts.
         const { hitRegions } = drawBasisLabels(
-            s, ["fourier-epicycles"], `${level} of ${components.length} circles`, hoveredBasis, legendTop, insetInline, inks,
+            s, ["fourier-epicycles"], `${level} of ${components.length} circles`, hoveredBasis, legendTop, insetInline, inks, layers.labels,
         );
         hover.setLabelHitRegions(hitRegions);
     }
@@ -385,10 +554,11 @@ function drawMultiBasesFrame(
         // hue at full strength and one width step, against dimmed siblings.
         // No glow, no gold re-ink, no time-based alpha.
         const isHovered = hoveredBasis === basisKey;
+        if (layers.trail <= 0) continue;
         ctx.beginPath();
         ctx.strokeStyle = cfg.color;
         ctx.lineWidth = isHovered ? 4 : 3;
-        ctx.globalAlpha = isHovered ? 1 : hoveredBasis ? 0.4 : 0.85;
+        ctx.globalAlpha = (isHovered ? 1 : hoveredBasis ? 0.4 : 0.85) * layers.trail;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
 
@@ -458,10 +628,10 @@ function drawMultiBasesFrame(
 
         // Trail
         trail.update(anim.t, tipX, tipY, anim.scrubbing, spectrum);
-        if (layers.trail) trail.draw(s, view, epicycleColor);
+        trail.draw(s, view, epicycleColor, layers.trail);
 
         // Tip dot
-        if (layers.epicycles) drawTipDot(s, view, tipX, tipY);
+        if (layers.epicycles > 0) drawTipDot(s, view, tipX, tipY, layers.epicycles);
 
         // Epicycle overlay — prefix slice, no recomputation
         const visPositions = nVis === components.length
@@ -484,28 +654,29 @@ function drawMultiBasesFrame(
             }
         }
 
-        if (layers.epicycles) {
-            drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha, epicycleHovered ? { circle: 6, arm: 5.5 } : { circle: 5, arm: 4.5 });
+        if (layers.epicycles > 0) {
+            drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha * layers.epicycles, epicycleHovered ? { circle: 6, arm: 5.5 } : { circle: 5, arm: 4.5 });
         }
 
-        if (fit) {
+        if (fit && layers.epicycles > 0) {
             epicycleBounds = {
                 x: fit.targetCX - fit.scaledW / 2,
                 y: fit.targetCY - fit.scaledH / 2,
                 w: fit.scaledW,
                 h: fit.scaledH,
             };
-            if (layers.epicycles) {
-                drawConnectingLine(s, view, base, visPositions, tipX, tipY, fit, eAlpha);
-            }
+            drawConnectingLine(s, view, base, visPositions, tipX, tipY, fit, eAlpha * layers.epicycles);
+        } else {
+            epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
         }
     }
 
-    // Labels
-    if (layers.labels) {
+    // Labels (no hit regions while the legend is hidden)
+    hover.setLabelHitRegions([]);
+    if (layers.labels > 0) {
         // The partial-sum level IS the Harmonics N (the levels run 1…N), so it
         // keeps the pane's own name for it.
-        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis, legendTop, insetInline, inks);
+        const { hitRegions } = drawBasisLabels(s, props.activeBases, `N = ${level}`, hoveredBasis, legendTop, insetInline, inks, layers.labels);
         hover.setLabelHitRegions(hitRegions);
     }
 }
@@ -555,7 +726,7 @@ watch(
 // minimum: animation clock ticks and the two display-toggle props.
 // basesData is intentionally NOT here — it belongs in the data watcher above.
 watch(
-    [() => anim.t, () => anim.easedT, () => props.showImageOverlay],
+    [() => anim.t, () => anim.easedT],
     () => {
         if (surface.value) drawFrame();
     },
@@ -590,10 +761,12 @@ onMounted(() => {
     visibilityObserver.observe(containerRef.value);
 });
 
-watch(() => props.showGhost, (on) => tweenGhost(on ? 1 : 0));
-
-// A new drawing opens at its fit (LAST-TEN F-01).
-watch(() => store.epicycleData, () => gestures.reset(false));
+// A new drawing opens at its fit (LAST-TEN F-01), or at the view its link names.
+watch(() => store.epicycleData, (data) => {
+    gestures.reset(false);
+    linkPending = !!data;
+    if (data && surface.value) applyLink(props.linkView);
+});
 
 /* LAST-TEN F-04: the inks are read once per theme, not per frame. A theme
    change rewrites the root's class (or its colour-scheme style); re-read the
@@ -608,7 +781,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    cancelAnimationFrame(ghostRaf);
+    cancelAnimationFrame(introRaf);
     themeObserver?.disconnect();
     visibilityObserver?.disconnect();
     visibilityObserver = null;
@@ -641,7 +814,12 @@ function exportFrame(options: Record<string, boolean> = {}) {
         withReference = true,
         withBackground = false,
     } = options;
-    const layers: FrameLayers = { epicycles: withEpicycles, trail: withTrail, ghost: withReference ? 1 : 0, labels: showLabels };
+    const layers: FrameLayers = {
+        epicycles: withEpicycles ? 1 : 0,
+        trail: withTrail ? 1 : 0,
+        ghost: withReference ? 1 : 0,
+        labels: showLabels ? 1 : 0,
+    };
 
     // Create an offscreen canvas at the same resolution
     const offCanvas = document.createElement("canvas");
@@ -695,9 +873,7 @@ function exportFrame(options: Record<string, boolean> = {}) {
 /** Re-read the stage's insets and repaint (the dock expanded or collapsed). */
 function readInsets(): void {
     readLegendTop();
-    if (!surface.value) return;
-    if (store.epicycleData) drawFrame();
-    else drawPlaceholderFrame(surface.value);
+    if (surface.value) drawFrame();
 }
 
 /** The view is zoomed or panned off the fit; `resetView` returns it (as a double-tap does). */

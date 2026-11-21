@@ -2,7 +2,7 @@ import { evaluateAt, type Spectrum } from "@mkbabb/fourier";
 import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import type { ViewTransform } from "./types";
 
-const TRAIL_RESOLUTION = 1200;
+export const TRAIL_RESOLUTION = 1200;
 /** The largest advance of t one played tick makes; a larger jump is a seek. */
 const MAX_TICK_STEP = 0.05;
 
@@ -22,11 +22,10 @@ export class TrailManager {
     private preX: Float64Array | null = null;
     private preY: Float64Array | null = null;
     /**
-     * LAST-TEN F-04: with the path precomputed, the trail is a PREFIX of it.
-     * `hi` is the furthest index the trail reaches. A played tick only ever
-     * raises it, so the reverse half of the ping-pong (which used to append
-     * every tip again, an array that grew by 60 points a second for as long as
-     * the page stayed open and was stroked whole every frame) adds nothing.
+     * LAST-TEN F-04: with the path precomputed, the trail is a PREFIX of it,
+     * so no array grows while the page stays open. `hi` is the index the
+     * prefix reaches: the sample at or before t on every tick, so the line
+     * writes itself on the forward leg and un-writes on the reverse one.
      */
     private hi = -1;
     /** The tip, drawn as the trail's last point while it leads the prefix. */
@@ -36,6 +35,11 @@ export class TrailManager {
     private path: Path2D | null = null;
     private pathKey = "";
     private pathHi = -1;
+
+    /** The last index of the precomputed path the drawn line reaches. */
+    get end(): number {
+        return this.hi;
+    }
 
     precompute(spectrum: Spectrum): void {
         const n = TRAIL_RESOLUTION;
@@ -65,10 +69,12 @@ export class TrailManager {
     }
 
     /**
-     * Update trail with the current tip position. A played tick appends the
-     * tip; anything else (a scrub, a loop back, the first frame, a seek such as
-     * the reduced-motion terminal frame) rebuilds the trail as the whole path
-     * up to t, so a still frame carries the same curve a played one does.
+     * Update the trail with the current tip position: the line is the curve
+     * up to t. With the precomputed path that is its prefix to t, closed by
+     * the tip, whichever way t moved. Without it, a played forward tick
+     * appends the tip; anything else (a reverse tick, a scrub, a loop back,
+     * the first frame, a seek such as the reduced-motion terminal frame)
+     * rebuilds the trail as the whole path up to t.
      */
     update(
         t: number,
@@ -77,19 +83,19 @@ export class TrailManager {
         scrubbing: boolean,
         spectrum: Spectrum,
     ): void {
-        const continuous =
-            this.lastT >= 0 &&
-            t >= this.lastT - 0.01 &&
-            t - this.lastT <= MAX_TICK_STEP;
         if (this.preX && this.preY) {
             const idx = Math.min(Math.floor(t * TRAIL_RESOLUTION), TRAIL_RESOLUTION);
-            this.hi = scrubbing || !continuous ? idx : Math.max(this.hi, idx);
+            this.hi = idx;
             this.tip = [tipX, tipY];
-            this.tipLeads = idx >= this.hi && idx < TRAIL_RESOLUTION;
+            this.tipLeads = idx < TRAIL_RESOLUTION;
             this.lastT = t;
             return;
         }
-        if (scrubbing || !continuous) {
+        const forward =
+            this.lastT >= 0 &&
+            t >= this.lastT &&
+            t - this.lastT <= MAX_TICK_STEP;
+        if (scrubbing || !forward) {
             this.x.length = 0;
             this.y.length = 0;
             const nPts = Math.max(2, Math.ceil(t * 600));
@@ -125,12 +131,14 @@ export class TrailManager {
         return this.path;
     }
 
-    draw(surface: CanvasSurface, view: ViewTransform, color: string): void {
+    /** Stroke the line at `alpha` (0..1, the layer's fade). */
+    draw(surface: CanvasSurface, view: ViewTransform, color: string, alpha = 1): void {
+        if (alpha <= 0) return;
         const { ctx } = surface;
         const { toScreen } = view;
         ctx.strokeStyle = color;
         ctx.lineWidth = 3.5;
-        ctx.globalAlpha = 0.9;
+        ctx.globalAlpha = 0.9 * Math.min(1, alpha);
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
 

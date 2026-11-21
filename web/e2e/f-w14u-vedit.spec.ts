@@ -1,10 +1,10 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { openCanvasDock } from "./fixtures/canvas-dock";
 import { pressPageTool } from "./fixtures/app-dock";
 import { setSlider, slider, controlRow } from "./fixtures/slider";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
+import { editorReady, linePoint } from "./fixtures/editor";
 
 /**
  * X.F.W14U.vedit — the contour editor and the equation panel (spec
@@ -58,7 +58,7 @@ async function openViz(page: Page): Promise<void> {
     const viz = seededViz();
     await page.goto(`/v/${viz.slug}`);
     if (page.viewportSize()!.width < 640) await showView(page, "Canvas");
-    await expect(page.locator(".controls-dock-anchor")).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator(".controls-overlay")).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(600);
 }
 
@@ -69,17 +69,16 @@ async function openEditor(page: Page): Promise<Locator> {
     await edit.hover();
     await page.waitForTimeout(600);
     await edit.click();
-    const svg = page.locator(".canvas-stage > .editor-shell:not(.is-hidden) svg.editor-svg");
-    await expect(svg).toBeVisible();
-    await expect(page.locator("circle.control-point").nth(10)).toBeAttached();
+    // FORTY-FIRST L: only the handles near the pointer are mounted, so the
+    // editor is ready when its line is drawn.
+    const svg = await editorReady(page);
     await page.waitForTimeout(400);
     return svg;
 }
 
-/** The screen position of contour point `i`. */
+/** The screen position of the line `i` samples of 1024 round (read off the drawn line). */
 async function pointXY(page: Page, i: number): Promise<{ x: number; y: number }> {
-    const box = (await page.locator("circle.control-point").nth(i).boundingBox())!;
-    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    return linePoint(page, i / 1024);
 }
 
 /** Press on point `i` and drag it a few pixels (a real edit). */
@@ -108,13 +107,16 @@ async function expandEditorDock(page: Page): Promise<void> {
 
 /** Reach the editor's Contour trace control, in whichever container holds it. */
 async function traceControl(page: Page): Promise<Locator> {
-    // Owner, 2026-11-15: the view layers have one home, the stage's floating
-    // dock, in and out of the editor (they left the editor dock).
-    await openCanvasDock(page);
-    await page.locator(".controls-dock-anchor").getByRole("button", { name: "View options" }).click();
+    // FORTY-FIRST H: with the stage's second dock gone the editor's dock carries
+    // the outline layer: a seat of its open row from 40rem, a row of its More
+    // editor tools on a phone.
+    if (page.viewportSize()!.width >= 640) {
+        await expandEditorDock(page);
+        return editorDock(page).getByRole("button", { name: "Outline", exact: true });
+    }
+    await editorDock(page).getByRole("button", { name: "More editor tools" }).click();
     await page.waitForTimeout(400);
-    return page.getByRole("menuitemcheckbox", { name: "Original outline" })
-        .or(page.getByRole("button", { name: "Original outline" })).first();
+    return page.getByRole("menuitemcheckbox", { name: "Outline" });
 }
 
 /** The disabled state of a dock control, read off the element. */
@@ -127,7 +129,7 @@ async function openEquation(page: Page): Promise<Locator> {
     await openViz(page);
     // Owner, 2026-11-15: the series panel is the page's tool, in the app dock
     // (below 40rem an item of the sections menu, which absorbs the page's tools).
-    await pressPageTool(page, "Equation");
+    await pressPageTool(page, "Series");
     const panel = page.locator(".eq-panel");
     await expect(panel).toBeVisible();
     await expect(panel.locator(".eq-scroll-region .katex").first()).toBeVisible({ timeout: 30_000 });
@@ -170,10 +172,13 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         await frame(page, "v87-near");
         const near = await shown();
         expect(near, "the pointer reveals the handles near it").toBeGreaterThan(0);
-        expect(near, "…and only those").toBeLessThan(await page.locator("circle.control-point").count() / 4);
-        const r = await page.locator("circle.control-point").nth(40).evaluate((c) => {
-            const b = (c as SVGCircleElement).getBoundingClientRect();
-            return b.width / 2;
+        // FORTY-FIRST L: handles stand at stations along the reach; about a
+        // dozen are ever mounted, never one per sample (1024 before).
+        expect(near, "…and only those").toBeLessThanOrEqual(16);
+        expect(await page.locator("circle.control-point").count(), "a dozen mounted, not a mat").toBeLessThanOrEqual(16);
+        const r = await page.locator("circle.control-point").evaluateAll((cs) => {
+            const c = cs.find((e) => Number(getComputedStyle(e).opacity) > 0.05);
+            return c ? (c as SVGCircleElement).getBoundingClientRect().width / 2 : 0;
         });
         expect(r, "a shown handle is at least 4 px in radius").toBeGreaterThanOrEqual(4);
 
@@ -194,7 +199,27 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         expect(ring.stroke, "the ring is not the fill").not.toBe(ring.fill);
         await page.mouse.move(2, 2);
         await page.waitForTimeout(300);
-        expect(await shown(), "the selection stays found when the pointer leaves").toBe(1);
+        // FORTY-FIRST L: once the pointer leaves, the selection is the active
+        // point, so it stays painted with its reach: the handles at their
+        // stations within the Magnet's 96 px of it, and nothing else.
+        const left = await svg.evaluate((s) => {
+            const sel = s.querySelector("circle.control-point.selected")!;
+            const c = sel.getBoundingClientRect();
+            const cx = c.left + c.width / 2;
+            const cy = c.top + c.height / 2;
+            const on = [...s.querySelectorAll("circle.control-point")].filter((e) => Number(getComputedStyle(e).opacity) > 0.05);
+            return {
+                selected: Number(getComputedStyle(sel).opacity),
+                shown: on.length,
+                far: Math.max(...on.map((e) => {
+                    const r = e.getBoundingClientRect();
+                    return Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy);
+                })),
+            };
+        });
+        expect(left.selected, "the selection stays found when the pointer leaves").toBeGreaterThan(0.9);
+        expect(left.shown, "the selection and its reach, not a mat").toBeLessThanOrEqual(16);
+        expect(left.far, "nothing shows beyond the selection's reach").toBeLessThanOrEqual(97);
         await frame(page, "v87-selected");
     });
 
@@ -237,41 +262,30 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         });
         expect(read.out, "no expanded tool is clipped or off-screen").toEqual([]);
         expect(read.scrollers, "no unmarked sideways scroller").toBe(0);
-        // X.F.W14V.r1 — NAMED OWNER-RULING RE-BASELINE (§0bt; F-W14V.md
-        // addendum (h) item 1, COHESION §0eb): below sm the row's set moves
-        // from Undo · Redo · Delete to Undo · Redo · More editor tools. Delete
-        // and View options are no longer row controls; both are asserted
-        // inside the menu below (Delete last behind a separator, View options
-        // a submenu of the same rows). No limb is deleted: each moved control
-        // is still asserted present and reachable.
-        for (const name of ["Undo", "Redo", "More editor tools"])
+        // FORTY-FIRST L (re-baselined from X.F.W14V.r1's Undo · Redo · More):
+        // the editor's dock never folds, and at 390 its row is Undo, Redo,
+        // Delete point, the tools menu, Save and the lit pencil, each one press.
+        for (const name of ["Undo", "Redo", "Delete point", "More editor tools", "Save contour", "Edit contour"])
             await expect(dock.getByRole("button", { name, exact: true })).toBeVisible();
-        for (const name of ["Delete point", "View options"])
-            await expect(dock.getByRole("button", { name, exact: true })).toHaveCount(0);
+        await expect(dock.getByRole("button", { name: "Expand dock" })).toHaveCount(0);
+        await expect(dock.getByRole("button", { name: "Delete point" })).toHaveClass(/is-rose/);
         // The rest are one menu away.
         await dock.getByRole("button", { name: "More editor tools" }).click();
         const menu = page.getByRole("menu");
         await expect(controlRow(menu, /Magnet/)).toBeVisible();
-        for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction", "Delete point"])
+        for (const name of ["Smooth contour", "Simplify contour", "Reset to extraction", "Reset view", "Fullscreen"])
             await expect(menu.getByRole("menuitem", { name })).toBeVisible();
-        // Owner, 2026-11-15 (one home per tool): View options left this menu for
-        // the stage's floating dock, asserted below.
         await expect(menu.getByRole("menuitem", { name: "View options" })).toHaveCount(0);
-        // Delete is the menu's last item, behind a separator, in the rose tone.
+        await frame(page, "v88-more-menu");
+        // The two layers the editor shows are the menu's last rows on a phone,
+        // behind a separator.
         const order = await menu.first().evaluate((m) => {
-            const kids = [...m.querySelectorAll<HTMLElement>('[role="menuitem"], [role="separator"]')];
+            const kids = [...m.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemcheckbox"], [role="separator"]')];
             return kids.map((k) => (k.getAttribute("role") === "separator" ? "|" : (k.textContent ?? "").trim()));
         });
-        expect(order.at(-1), "Delete point is the last item").toBe("Delete point");
-        expect(order.at(-2), "a separator precedes Delete point").toBe("|");
-        await expect(menu.getByRole("menuitem", { name: "Delete point" })).toHaveClass(/is-rose/);
-        await frame(page, "v88-more-menu");
-        // The view layers are one press away on the stage's floating dock.
-        await page.keyboard.press("Escape");
-        await openCanvasDock(page);
-        await page.locator(".controls-dock-anchor").getByRole("button", { name: "View options" }).click();
-        for (const name of ["Background image", "Original outline"])
-            await expect(page.getByRole("menuitemcheckbox", { name })).toBeVisible();
+        expect(order.slice(-3), "the layers close the menu, behind a separator").toEqual(["|", "Picture", "Outline"]);
+        for (const name of ["Picture", "Outline"])
+            await expect(menu.getByRole("menuitemcheckbox", { name })).toBeVisible();
         await frame(page, "v88-view-sub");
     });
 
@@ -281,12 +295,16 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         await showView(page, "Controls");
         await page.waitForTimeout(600);
         await frame(page, "v89-controls-tab");
+        // FORTY-SECOND D: the two panes stand on one track and the stage slides
+        // out of view (and out of reach) instead of collapsing in place.
         const read = await page.evaluate(() => {
             const stage = document.querySelector(".viz-configurator .configurator-stage") as HTMLElement;
             const pane = document.querySelector(".viz-panel-left-wrap") as HTMLElement;
-            return { stageH: stage.getBoundingClientRect().height, paneTop: pane.getBoundingClientRect().top };
+            const s = stage.getBoundingClientRect();
+            return { stageRight: s.right, stageLeft: s.left, paneTop: pane.getBoundingClientRect().top };
         });
-        expect(read.stageH, "the inactive stage takes no height").toBeLessThanOrEqual(1);
+        expect(read.stageRight <= 0 || read.stageLeft >= 390, `the inactive stage is out of view (${read.stageLeft}..${read.stageRight})`).toBe(true);
+        await expect(page.locator(".viz-configurator .configurator-stage")).not.toBeInViewport();
         expect(read.paneTop, "the pane starts in the first screen").toBeLessThan(844 / 2);
     });
 
@@ -360,11 +378,20 @@ test.describe("X.F.W14U.vedit — the contour editor", () => {
         const dock = editorDock(page);
         await page.mouse.move(2, 2);
         await page.waitForTimeout(800);
-        await frame(page, "v242-collapsed");
-        expect(await dock.locator('svg[class*="lucide-wand"]').count(),
-            "the collapsed summary does not wear an action's wand").toBe(0);
-        expect(await dock.locator(".metric").count(), "the point count is a glass Metric").toBeGreaterThan(0);
+        await frame(page, "v242-rest");
+        // FORTY-FIRST L: the editor's dock never folds, so it has no summary
+        // face; no action's wand stands in it.
+        await expect(dock.getByRole("button", { name: "Expand dock" })).toHaveCount(0);
+        expect(await dock.locator('svg[class*="lucide-wand"]').count(), "no action's wand in the dock").toBe(0);
         expect(await dock.locator(".dock-badge").count(), "no hand-rolled badge").toBe(0);
+        // The point count is a glass Metric in the row of the one tool that
+        // changes it (Simplify), not a readout in the dock.
+        expect(await dock.locator(".metric").count(), "no readout in the dock").toBe(0);
+        await dock.getByRole("button", { name: "More editor tools" }).click();
+        const simplify = page.getByRole("menu").getByRole("menuitem", { name: /Simplify contour/ });
+        await expect(simplify.locator(".metric.tool-count")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(300);
 
         // A bare click on a handle is not an edit.
         const undo = dock.locator('[aria-label="Undo"]').first();
@@ -572,7 +599,7 @@ test.describe("X.F.W14U.vedit — the equation panel", () => {
         await frame(page, "v177-390");
         const overlap = await page.evaluate(() => {
             const a = document.querySelector(".eq-panel")!.getBoundingClientRect();
-            const b = document.querySelector(".controls-dock-anchor .glass-dock, .controls-dock-anchor > *")!.getBoundingClientRect();
+            const b = document.querySelector(".controls-overlay .glass-dock, .controls-overlay > *")!.getBoundingClientRect();
             const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
             const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
             return w > 0 && h > 0 ? h : 0;
@@ -639,7 +666,7 @@ test.describe("X.F.W14U.vedit — frames at 1440 and 390", () => {
             await page.waitForTimeout(600);
             await edit.click();
             await expect(page.locator(".canvas-stage > .editor-shell")).toHaveAttribute("inert", "");
-            await pressPageTool(page, "Equation");
+            await pressPageTool(page, "Series");
             await expect(page.locator(".eq-panel .eq-scroll-region .katex").first()).toBeVisible({ timeout: 30_000 });
             await frame(page, "frames-equation");
         });

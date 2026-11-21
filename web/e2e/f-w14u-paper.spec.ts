@@ -199,10 +199,13 @@ test.describe("paper-desktop 1440", () => {
         const rim = page.locator(".app-dock .scroll-progress-rim");
         await expect(rim).toHaveCount(1);
         await scroller.evaluate((el) => el.scrollTo({ top: (el.scrollHeight - el.clientHeight) / 2 }));
-        await expect
-            .poll(() => rim.evaluate((el) => parseFloat(getComputedStyle(el).getPropertyValue("--scroll-progress-rim-fill"))), { timeout: 5_000 })
-            .toBeGreaterThan(40);
-        const fill = await rim.evaluate((el) => parseFloat(getComputedStyle(el).getPropertyValue("--scroll-progress-rim-fill")));
+        // The rim is drawn as the dock's own border (`edge="border"`, so the
+        // folded circle wears it too); glass then paints the fill on the rim's
+        // stroke, so the fill is read where it is painted.
+        const read = (el: Element) =>
+            parseFloat(getComputedStyle(el.querySelector(".scroll-progress-rim__stroke") ?? el).getPropertyValue("--scroll-progress-rim-fill"));
+        await expect.poll(() => rim.evaluate(read), { timeout: 5_000 }).toBeGreaterThan(40);
+        const fill = await rim.evaluate(read);
         expect(fill).toBeLessThan(60);
     });
 });
@@ -370,6 +373,7 @@ test.describe("paper-mobile 390", () => {
         await expect(bar).toBeVisible();
         const read = await page.evaluate(() => {
             const b = document.querySelector(".floating-toc-bar")!.getBoundingClientRect();
+            const dockH = document.querySelector(".app-dock")!.getBoundingClientRect().height;
             const h1 = document.querySelector(".paper-article h1")!.getBoundingClientRect();
             const title = document.querySelector(".floating-toc-section") as HTMLElement;
             const btns = [...document.querySelectorAll(".floating-toc-bar button")] as HTMLElement[];
@@ -381,15 +385,18 @@ test.describe("paper-mobile 390", () => {
             return {
                 rung,
                 barH: b.height,
+                dockH,
                 barBottom: b.bottom,
                 h1Top: h1.top,
                 titleFont: parseFloat(getComputedStyle(title).fontSize),
                 radii: btns.map((el) => getComputedStyle(el).borderTopLeftRadius),
             };
         });
-        // The bar is the title's own rung (glass `sm`, at the touch floor on a
-        // phone) plus its inset — the 81 px bar was the defect.
-        expect(read.barH, JSON.stringify(read)).toBeLessThanOrEqual(read.rung + 12);
+        // The 81 px bar was the defect. O41 S3 (FORTY-FIRST C, owner: "more
+        // like glass-ui dock") sets the bar on the dock's measure: the dock's
+        // height, every control on the dock's cell. The earlier bound, the
+        // title's rung plus 12 px, is 57 px; the dock is 60.
+        expect(read.barH, JSON.stringify(read)).toBeCloseTo(read.dockH, 0);
         expect(read.titleFont, JSON.stringify(read)).toBeLessThanOrEqual(16);
         expect(read.h1Top, "the bar covers the title").toBeGreaterThanOrEqual(read.barBottom);
         expect(new Set(read.radii).size, JSON.stringify(read.radii)).toBe(1);

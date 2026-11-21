@@ -34,6 +34,18 @@ export function useStageGestures(opts: {
     fadeEl: () => HTMLElement | undefined;
     size: () => { w: number; h: number };
     onChange: () => void;
+    /** A gesture (a drag, a pinch, the wheel, a double-tap) has come to rest. */
+    onSettle?: () => void;
+    /** A one-pointer press the host takes for itself (the contour editor's
+     *  point drag): it starts its own gesture and answers true. The view does
+     *  not pan under it. */
+    claim?: (e: PointerEvent) => boolean;
+    /** A second pointer landed during a claimed press: two fingers are always
+     *  the view's, so the host gives its gesture up. */
+    unclaim?: () => void;
+    /** A double-click or double-tap the host takes (true) in place of the
+     *  return to the fit. */
+    onDouble?: (e: MouseEvent | PointerEvent) => boolean;
 }) {
     let view: StageView = { ...IDENTITY_VIEW };
     /** The view is off the fitted drawing (zoomed or panned): the stage dock's Reset view shows. */
@@ -49,6 +61,8 @@ export function useStageGestures(opts: {
     let raf = 0;
     let lastFrame = 0;
     let suppressClick = false;
+    /** The one pointer down belongs to the host (`claim`). */
+    let hostOwns = false;
 
     const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
@@ -114,6 +128,7 @@ export function useStageGestures(opts: {
         const done = !target && Math.hypot(velocity.x, velocity.y) < 0.01 && isAtRest(v, w, h, 0.05);
         set(done ? clampView(v, w, h) : v);
         raf = done ? 0 : requestAnimationFrame(step);
+        if (done) opts.onSettle?.();
     }
 
     /** Fade the canvas out, apply `v`, fade it back: the reduced-motion settle. */
@@ -125,6 +140,7 @@ export function useStageGestures(opts: {
             set(v);
             el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: "ease-out" });
             out.cancel();
+            opts.onSettle?.();
         };
     }
 
@@ -133,6 +149,7 @@ export function useStageGestures(opts: {
         const { w, h } = opts.size();
         if (reduced()) {
             if (!isAtRest(view, w, h)) fadeTo(clampView(view, w, h));
+            else opts.onSettle?.();
             return;
         }
         const now = performance.now();
@@ -161,6 +178,17 @@ export function useStageGestures(opts: {
         if (e.pointerType === "mouse" && e.button !== 0) return;
         stopLoop();
         const p = local(e);
+        if (pointers.size === 0 && opts.claim?.(e)) {
+            // The host's press: tracked here only so a second finger can turn
+            // the pair into a pinch.
+            hostOwns = true;
+            pointers.set(e.pointerId, p);
+            return;
+        }
+        if (hostOwns) {
+            hostOwns = false;
+            opts.unclaim?.();
+        }
         pointers.set(e.pointerId, p);
         opts.el.value?.setPointerCapture?.(e.pointerId);
         if (pointers.size === 1) {
@@ -182,6 +210,7 @@ export function useStageGestures(opts: {
         if (!prev) return;
         const p = local(e);
         pointers.set(e.pointerId, p);
+        if (hostOwns) return;
         if (pointers.size >= 2 && pinch) {
             const [a, b] = [...pointers.values()];
             const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -206,6 +235,10 @@ export function useStageGestures(opts: {
 
     function onPointerUp(e: PointerEvent) {
         if (!pointers.delete(e.pointerId)) return;
+        if (hostOwns) {
+            hostOwns = false;
+            return;
+        }
         if (pointers.size === 1) {
             // A pinch that leaves one finger down continues as a drag from here.
             pinch = null;
@@ -226,7 +259,7 @@ export function useStageGestures(opts: {
             const now = performance.now();
             if (lastTap && now - lastTap.t < 300 && Math.hypot(downAt.x - lastTap.x, downAt.y - lastTap.y) < 24) {
                 lastTap = null;
-                reset();
+                if (!opts.onDouble?.(e)) reset();
             } else {
                 lastTap = { x: downAt.x, y: downAt.y, t: now };
             }
@@ -241,7 +274,7 @@ export function useStageGestures(opts: {
         const p = local(e);
         const { w, h } = opts.size();
         const next = clampView(zoomAbout(target ?? view, factor, p.x, p.y), w, h);
-        if (reduced()) { stopLoop(); set(next); return; }
+        if (reduced()) { stopLoop(); set(next); opts.onSettle?.(); return; }
         velocity = { x: 0, y: 0 };
         target = next;
         startLoop();
@@ -257,7 +290,7 @@ export function useStageGestures(opts: {
 
     function onDblClick(e: MouseEvent) {
         e.preventDefault();
-        reset();
+        if (!opts.onDouble?.(e)) reset();
     }
 
     /** WebKit's own pinch events: the stage is the pinch's owner. */
@@ -294,5 +327,12 @@ export function useStageGestures(opts: {
         el.removeEventListener("gesturechange", onGesture);
     });
 
-    return { getView: () => view, reset, moved: readonly(offFit) };
+    /** Put the view at `v` (a link's view, read back), held inside its limits; no settle is reported. */
+    function setView(v: StageView) {
+        stopLoop();
+        const { w, h } = opts.size();
+        set(clampView(v, w, h));
+    }
+
+    return { getView: () => view, setView, reset, moved: readonly(offFit) };
 }

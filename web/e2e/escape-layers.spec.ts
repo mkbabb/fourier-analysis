@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openAppDock } from "./fixtures/app-dock";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { openCanvasDock, pressStageTool } from "./fixtures/canvas-dock";
 import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
 
@@ -10,8 +10,8 @@ import { showView } from "./fixtures/workspace";
  *
  * e1 — with a menu open over the series panel, Escape closes the menu and
  *      leaves the panel and the URL as they were; a second Escape closes the
- *      panel and drops `eq`. At 1440 the menu is the stage dock's View
- *      options; at 390 it is the app dock's sections menu.
+ *      panel and drops `eq`. At 1440 the menu is the stage dock's Easing
+ *      menu; at 390 it is the app dock's sections menu.
  * e2 — in the fullscreen takeover the panel is the topmost surface: Escape
  *      closes it and leaves the takeover open; a second Escape leaves it.
  */
@@ -57,9 +57,9 @@ test.describe("e1 — Escape over the series panel (1440)", () => {
         await openWorkspace(page, "?eq=1");
         await expect(page.locator(".eq-panel")).toBeVisible({ timeout: LOAD });
         const dock = await openCanvasDock(page);
-        await dock.getByRole("button", { name: "View options" }).click();
+        await dock.getByRole("button", { name: "Easing" }).click();
         const menu = page.getByRole("menu");
-        await expect(menu.getByRole("menuitemcheckbox", { name: "Background image" })).toBeVisible();
+        await expect(menu).toBeVisible();
         await escapeMenuThenPanel(page, menu);
     });
 });
@@ -80,8 +80,7 @@ test.describe("e2 — Escape in the fullscreen takeover (1440)", () => {
 
     test("the panel is the takeover's topmost surface: Escape closes it and keeps fullscreen; a second leaves", async ({ page }) => {
         await openWorkspace(page, "?eq=1");
-        const dock = await openCanvasDock(page);
-        await dock.getByRole("button", { name: "Fullscreen", exact: true }).click();
+        await pressStageTool(page, "Fullscreen");
         const takeover = page.getByRole("dialog", { name: /fullscreen/ });
         await expect(takeover).toBeVisible();
         await expect(takeover.locator(".eq-panel")).toBeVisible({ timeout: LOAD });

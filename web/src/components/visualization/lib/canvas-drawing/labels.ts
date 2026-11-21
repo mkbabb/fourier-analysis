@@ -28,7 +28,19 @@ export interface StageInks {
  * `--muted-foreground` (it was a literal grey, the one canvas ink off the
  * tokens, and bold at the title's size).
  */
-const CAPTION_FONT = "400 13px 'Fira Code', monospace";
+const CAPTION_PX = 13;
+const CAPTION_FONT = `400 ${CAPTION_PX}px 'Fira Code', monospace`;
+/** A legend title row's height: every basis takes one, the same for all. */
+const LEGEND_ROW = 26;
+
+/**
+ * Where a legend of `rows` title rows drawn from `top` ends: under its caption
+ * line (`drawBasisLabels`). A drawing fitted beside a landscape strip starts
+ * under it.
+ */
+export function legendBottom(top: number, rows: number): number {
+    return top + LEGEND_ROW * rows - 4 + CAPTION_PX;
+}
 function setCaptionInk(ctx: CanvasRenderingContext2D, inks: StageInks): void {
     // The grey stays only as the fallback a canvas keeps if the token's
     // computed colour does not parse.
@@ -60,6 +72,8 @@ export function drawBasisLabels(
      *  the epicycle inset shares. */
     left = 16,
     inks: StageInks = { foreground: "", muted: "", textFace: "" },
+    /** The legend's fade, 0..1 (it rides the layer it names). */
+    alpha = 1,
 ): LabelDrawResult {
     // X.F.W4 · G-F4-VUE-TSC-CLEAN — `width`/`height` were destructured and
     // never read here or in `drawEpicycleLabel`: both routines anchor to the
@@ -90,7 +104,7 @@ export function drawBasisLabels(
         const isHovered = hoveredBasis === basisKey;
 
         ctx.fillStyle = cfg.color;
-        ctx.globalAlpha = isHovered ? 1 : hoveredBasis ? 0.45 : 0.9;
+        ctx.globalAlpha = (isHovered ? 1 : hoveredBasis ? 0.45 : 0.9) * alpha;
 
         // Draw icon — fourier ℱ is slightly larger
         const isFourier = basisName === "fourier";
@@ -109,17 +123,17 @@ export function drawBasisLabels(
         // Store hit region — uniform row height for all bases
         const labelW = ctx.measureText(` ${modeLabel}`).width;
         const totalW = iconW + labelW;
-        const rowH = 26;
-        hitRegions.push({ key: basisKey, x: xBase, y: yOff - iconYAdj, w: totalW + 8, h: rowH });
-        yOff += 26;
+        hitRegions.push({ key: basisKey, x: xBase, y: yOff - iconYAdj, w: totalW + 8, h: LEGEND_ROW });
+        yOff += LEGEND_ROW;
     }
 
     // N count: the legend's caption line, under the title rows (DS-F4R-C5).
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = alpha;
     setCaptionInk(ctx, inks);
     ctx.font = CAPTION_FONT;
     ctx.textBaseline = "top";
     ctx.fillText(levelText, xBase, yOff - 4);
+    ctx.globalAlpha = 1;
 
     return { hitRegions };
 }

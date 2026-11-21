@@ -261,14 +261,11 @@ for (const vp of VIEWPORTS) {
             if (vp.width === 1440) {
                 // Contour editing: the magnet popover on the editor dock.
                 await page.getByRole("button", { name: "Edit contour" }).click();
-                // glass 11.1.0: pressing Edit contour (an always-visible control)
-                // no longer opens the canvas dock behind it, so two docks now rest
-                // collapsed here, and opening the canvas dock first left the
-                // editor dock shut. The editor dock is the one opened.
-                await page
-                    .locator(".glass-dock", { has: page.getByRole("button", { name: "Save contour" }) })
-                    .getByRole("button", { name: "Expand dock" })
-                    .click();
+                // FORTY-FIRST L: the editor's dock is the stage's one dock while
+                // editing, and it never folds: its tools menu is one press away.
+                const editorDock = page.locator(".glass-dock", { has: page.getByRole("button", { name: "Save contour" }) });
+                await expect(editorDock).toBeVisible();
+                await expect(editorDock.getByRole("button", { name: "Expand dock" })).toHaveCount(0);
                 // X.F.W14.u — UIA-F-12: the magnet popover opens on click (a
                 // hover preview may not hold a state-changing slider).
                 // X.F.W14U.vedit — UIA-F-88: the Magnet row is a section of the

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@mkbabb/glass-ui/styles";
+@import "./styles/workspace.css";
 
 /* X.F.W4 / SP-6 — THE ONE CASCADE DECISION (FR-AH-11 + MISS-3 ⊕ FMD-13 ⊕
    FMD-N3 ⊕ FMD-27, adjudicated cure-shape FR-AH-30).
@@ -435,10 +436,16 @@ article.paper-article {
     to { opacity: 1; transform: translateX(0); }
 }
 
+/* Reduced motion: the panel fades in without its travel (a fade, never a cut). */
 @media (prefers-reduced-motion: reduce) {
     [data-state="active"][role="tabpanel"] {
-        animation: none;
+        animation-name: tab-fade-in;
     }
+}
+
+@keyframes tab-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* X.F.W14V.au3 — A2-FO-L1-13: the D.W4.a `.cartoon-card` shim (the
@@ -517,6 +524,15 @@ article.paper-article {
    this one line reads it. */
 :root {
     --page-gutter: 1rem;
+}
+
+/* FORTY-SECOND D ("our controls should be re-designed to not have so much
+   padding"): on a touch screen glass scales its controls by
+   `--ui-coarse-scale` (1.5 by default: 54 px chips, 60 px fields). The site
+   takes 1.25 as theming (glass, 19 Nov: yes); the 44 px touch floor is held
+   apart by glass's `--control-floor`, so no target falls under it. */
+:root {
+    --ui-coarse-scale: 1.25;
 }
 
 /* X-DS pass 15 · DS-F17-C1 — the Configurator aside's section label on the
@@ -754,10 +770,11 @@ article.paper-article {
     transform: translateY(-4px);
 }
 
+/* Reduced motion: no travel, and the fade stays (a fade, never a cut). */
 @media (prefers-reduced-motion: reduce) {
     .slide-down-enter-active,
     .slide-down-leave-active {
-        transition: none;
+        transition-property: opacity;
     }
     .slide-down-enter-from,
     .slide-down-leave-to {

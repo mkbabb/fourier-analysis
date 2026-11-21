@@ -8,7 +8,7 @@
  * buttons (never a tooltip carrying the meaning, FR-TT-2).
  */
 import { useRouter } from "vue-router";
-import { Upload } from "@lucide/vue";
+import { House, Upload } from "@lucide/vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import {
     Card,
@@ -28,7 +28,8 @@ withDefaults(
     }>(),
     {
         title: "Page not found",
-        description: "Nothing lives at this address.",
+        // The title says it; a line that restates it goes (amendment 7).
+        description: "",
         detail: null,
     },
 );
@@ -43,13 +44,16 @@ const router = useRouter();
              its pad takes the step above `md` (see the style) so the route-rung
              title has room. X-DS fourier pass 18 · DS-F18C-T2: the card takes
              its content's measure up to 28rem (a full 28rem left ~70px of empty
-             slack beside left-set content); on a phone it still fills the gutter. -->
-        <Card surface="opaque" size="md" class="not-found-card w-fit max-w-md" data-testid="not-found">
+             slack beside left-set content). On a phone it fills the column, so
+             its edge is the page gutter whatever its text's measure (with the
+             line under the title gone, its content alone left it centred 42 px
+             in). -->
+        <Card surface="opaque" size="md" class="not-found-card w-full sm:w-fit max-w-md" data-testid="not-found">
             <CardHeader>
                 <!-- X-DS F4R · DS-F4R-C5: this h1 is the route's title, so it sets
                      on the route rung (see the style), not glass's card-title rung. -->
                 <CardTitle as="h1" class="not-found-title">{{ title }}</CardTitle>
-                <CardDescription>{{ description }}</CardDescription>
+                <CardDescription v-if="description">{{ description }}</CardDescription>
             </CardHeader>
             <CardContent v-if="detail">
                 <!-- X-DS pass 1 · F1-16: the diagnosis on the caption rung, under the description. -->
@@ -61,10 +65,12 @@ const router = useRouter();
                 <!-- A host that owns state to clear on the way out (the
                      workspace store) supplies its own actions. -->
                 <slot name="actions">
-                    <Button emphasis="primary" size="md" @click="router.push('/visualize')"><Upload />Upload a new image</Button>
+                    <!-- Home first (the design critique's N1): a lost visitor is
+                         offered the way Home, then the one thing the app makes. -->
+                    <Button emphasis="primary" size="md" @click="router.push('/paper')"><House />Home</Button>
                     <!-- X-DS pass 4 · DS-F4-C2: one grammar for "go back", as on the load
                          error and the empty stage: one primary and one quiet link. -->
-                    <Button emphasis="text" size="sm" @click="router.push('/gallery')">Browse the gallery</Button>
+                    <Button emphasis="text" size="sm" @click="router.push('/visualize')"><Upload />Upload a new image</Button>
                 </slot>
             </CardFooter>
         </Card>

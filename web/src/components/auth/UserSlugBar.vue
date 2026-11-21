@@ -258,7 +258,7 @@ async function copySlug() {
     <div class="flex items-center">
         <DropdownMenu v-if="accountSeat" @update:open="onAccountOpen">
             <DockTrigger for="dropdown" class="account-trigger" :aria-label="`Account: ${shownSlug}`">
-                <User aria-hidden="true" />
+                <User class="account-glyph" aria-hidden="true" />
                 <span class="fira-code hidden sm:inline">{{ handle }}</span>
             </DockTrigger>
             <DropdownMenuContent align="end">
@@ -286,7 +286,7 @@ async function copySlug() {
 
         <Popover v-else keep-dock-open :open="showLogin" @update:open="(open) => (open ? (showLogin = true) : closeLogin())">
             <DockTrigger for="popover" class="account-trigger" aria-label="Log in">
-                <LogIn aria-hidden="true" />
+                <LogIn class="account-glyph" aria-hidden="true" />
                 <span class="hidden sm:inline">Log in</span>
             </DockTrigger>
             <PopoverContent align="end" class="login-popover">
@@ -296,7 +296,7 @@ async function copySlug() {
                          caption line (the P2-07 hint idiom), not screen-reader
                          only behind a placeholder. -->
                     <label class="text-caption text-muted-foreground" for="user-slug-input">
-                        Your slug — four lowercase words joined by hyphens
+                        Your slug
                     </label>
                     <Input
                         id="user-slug-input"
@@ -365,6 +365,11 @@ async function copySlug() {
    the ≥44 px coarse cell (`--dock-control-size`). */
 .account-trigger {
     min-inline-size: var(--dock-control-size);
+}
+/* The dock's one glyph size (AppDock sets `--dock-icon-glyph` on the dock). */
+.account-glyph {
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
 }
 
 .login-popover {

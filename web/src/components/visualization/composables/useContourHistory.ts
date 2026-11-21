@@ -1,36 +1,50 @@
-import { ref, type Ref } from "vue";
+import { ref } from "vue";
 import type { Point2D } from "@/lib/contourEditing";
 
-export function useContourHistory(points: Ref<Point2D[]>) {
-    const history = ref<Point2D[][]>([]);
+/**
+ * The editor's history: whole curves, kept by reference. The editor never
+ * mutates a point array (each edit is a new array), so a step costs one
+ * pointer, and Undo and Redo hand back the very curve that was there for the
+ * editor to travel to.
+ */
+export function useContourHistory() {
+    // Plain, not reactive: a reactive wrapper would proxy every point read
+    // while the editor builds its path. The editor reports its state itself.
+    let history: Point2D[][] = [];
     const historyIndex = ref(-1);
 
-    function pushHistory() {
-        const snapshot = points.value.map((p) => ({ ...p }));
-        history.value = history.value.slice(0, historyIndex.value + 1);
-        history.value.push(snapshot);
-        historyIndex.value = history.value.length - 1;
+    function pushHistory(points: Point2D[]) {
+        history = history.slice(0, historyIndex.value + 1);
+        history.push(points);
+        historyIndex.value = history.length - 1;
     }
 
-    function undo() {
-        if (historyIndex.value <= 0) return;
+    /** Replace the present step (a run of keyboard nudges is one step). */
+    function amendHistory(points: Point2D[]) {
+        if (historyIndex.value >= 0) history[historyIndex.value] = points;
+    }
+
+    /** One step back: the curve to show, or null at the start. */
+    function undo(): Point2D[] | null {
+        if (historyIndex.value <= 0) return null;
         historyIndex.value--;
-        points.value = history.value[historyIndex.value].map((p) => ({ ...p }));
+        return history[historyIndex.value];
     }
 
-    function redo() {
-        if (historyIndex.value >= history.value.length - 1) return;
+    /** One step forward: the curve to show, or null at the end. */
+    function redo(): Point2D[] | null {
+        if (historyIndex.value >= history.length - 1) return null;
         historyIndex.value++;
-        points.value = history.value[historyIndex.value].map((p) => ({ ...p }));
+        return history[historyIndex.value];
     }
 
-    function initHistory(pts: Point2D[]) {
-        history.value = [pts.map((p) => ({ ...p }))];
+    function initHistory(points: Point2D[]) {
+        history = [points];
         historyIndex.value = 0;
     }
 
     const canUndo = () => historyIndex.value > 0;
-    const canRedo = () => historyIndex.value < history.value.length - 1;
+    const canRedo = () => historyIndex.value < history.length - 1;
 
-    return { pushHistory, undo, redo, initHistory, canUndo, canRedo, historyIndex };
+    return { pushHistory, amendHistory, undo, redo, initHistory, canUndo, canRedo, historyIndex };
 }

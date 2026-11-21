@@ -319,7 +319,7 @@ registry = JobRegistry()
 # A job's work in a pool worker (the equation series: its symbolic tier needs a
 # process's main thread) cannot reach the registry. The pool is built with one
 # queue the worker posts its reports to and one shared ring of cancelled job
-# serials it reads (``computation._get_process_pool`` passes both through the
+# serials it reads (``computation.get_process_pool`` passes both through the
 # pool initializer). The API process drains the queue on a thread and replays
 # each report through the job's ``Progress``.
 

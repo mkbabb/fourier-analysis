@@ -82,8 +82,10 @@ const props = withDefaults(
         step?: number;
         /** Humane readout, announced on the thumb through the producer's own prop. */
         valueText?: (t: number) => string;
+        /** No drawing to scrub yet: the slider stands, and takes no input. */
+        disabled?: boolean;
     }>(),
-    { step: 0.01 },
+    { step: 0.01, disabled: false },
 );
 
 const emit = defineEmits<{
@@ -225,6 +227,7 @@ defineExpose({ scrubbing });
             :step="step"
             :aria-label="accessibleName"
             :value-text="thumbValueText"
+            :disabled="disabled"
             class="timeline-slider"
             @grab="onGrab"
             @release="onRelease"
@@ -273,15 +276,32 @@ defineExpose({ scrubbing });
    The deletion is producer-owned and rides the SS-6 relay; the consumer may not
    ship a cursor-less drag surface while it waits.
 */
-/* X-DS pass 3 · DS-F3-C5: the track is a thin rule, not a slab. A 20–24 px
-   band of the identity amber was the heaviest paint on the stage, louder than
-   the curve it indexes. The visual track is glass's unsized slider rule
-   (0.375rem); the hit area keeps glass's slider touch target (1.5rem) through
-   block padding, which reka's inline-axis pointer mapping never reads. */
+/* X-DS pass 3 · DS-F3-C5: the track is a thin rule, not a slab: a 20–24 px
+   band of the identity amber was louder than the curve it indexes.
+   FORTY-SECOND C and audit 42: the rule is 8 px, and the band that takes a
+   press is the dock layer's own height on a fine pointer (on a desk 32 px of
+   the 56 px dock no longer sits dead around a 24 px band); on a coarse one it
+   is glass's slider touch target at the 44 px cell. The band is block padding,
+   which reka's inline-axis pointer mapping never reads. The fill wears the
+   site's amber through glass's own `--slider-range-bg`, and the thumb wears
+   the fill's colour through glass's documented `--slider-thumb-bg` (theming:
+   the fill's end reads as the handle); the thumb's shape, its held stretch and
+   the drag's grain are glass's. */
 .timeline-slider {
-    --slider-track-height: var(--timeline-track-height, 0.375rem);
-    padding-block: calc((var(--slider-touch-target, 1.5rem) - var(--slider-track-height)) / 2);
+    --slider-track-height: var(--timeline-track-height, 0.5rem);
+    --slider-range-bg: var(--viz-amber);
+    --slider-thumb-bg: var(--slider-range-bg);
+    padding-block: calc((var(--dock-layer-height, 2.5rem) - var(--slider-track-height)) / 2);
     cursor: grab;
+}
+@media (pointer: coarse) {
+    .timeline-slider {
+        --slider-touch-target: 2.75rem;
+        padding-block: 0;
+    }
+}
+.timeline-slider[data-disabled] {
+    cursor: default;
 }
 
 .timeline-row[data-scrubbing] .timeline-slider,

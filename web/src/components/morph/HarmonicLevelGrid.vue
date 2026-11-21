@@ -38,7 +38,7 @@
             :style="{ '--levels-per-row': Math.ceil(levels.length / 2) }"
         >
             <Button
-                v-for="level in levels"
+                v-for="(level, index) in levels"
                 :key="level"
                 emphasis="quiet"
                 class="grid-cell"
@@ -51,7 +51,7 @@
             >
                 <!-- X-DS fourier pass 14 · DS-F14X-P1: the stage plate's
                      mechanism; the line is 1.5 css px at every tile size. -->
-                <svg viewBox="0 0 200 200" class="grid-svg">
+                <svg v-if="index < drawn" viewBox="0 0 200 200" class="grid-svg">
                     <path
                         :d="getPath(level)"
                         fill="none"
@@ -62,6 +62,7 @@
                         stroke-linejoin="round"
                     />
                 </svg>
+                <span v-else class="grid-svg" aria-hidden="true" />
                 <span class="grid-label">
                     n={{ level }}
                 </span>
@@ -71,6 +72,7 @@
 </template>
 
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Card } from "@mkbabb/glass-ui/card";
 import SliderControl from "@/components/ui/SliderControl.vue";
@@ -148,6 +150,30 @@ function onSelect(level: number) {
  * the sun's path.
  */
 const pathCache = new Map<FourierShape, Map<number, string>>();
+
+/*
+ * LAST-TEN F-07: entering /morph drew all ten tiles in the
+ * route's first frame (a 150 ms frame on the GPU lane, inside glass's 200 ms
+ * route crossfade). The tiles' drawings now wait out the crossfade and arrive
+ * two a frame, each fading in; the tiles themselves hold their place from the
+ * first frame, so nothing moves.
+ */
+const ROUTE_FADE_MS = 200;
+const PER_FRAME = 2;
+const drawn = ref(0);
+let drawTimer: ReturnType<typeof setTimeout> | undefined;
+let drawFrame = 0;
+onMounted(() => {
+    const step = () => {
+        drawn.value = Math.min(props.levels.length, drawn.value + PER_FRAME);
+        if (drawn.value < props.levels.length) drawFrame = requestAnimationFrame(step);
+    };
+    drawTimer = setTimeout(() => (drawFrame = requestAnimationFrame(step)), ROUTE_FADE_MS);
+});
+onBeforeUnmount(() => {
+    clearTimeout(drawTimer);
+    cancelAnimationFrame(drawFrame);
+});
 
 function getPath(level: number): string {
     let byLevel = pathCache.get(props.shape);
@@ -317,11 +343,21 @@ function getPath(level: number): string {
    shape, the gap and the caption label fit inside the square (at 390 the
    full-track shape stood the tile 60 x 80; at 1024, 96 x 108). */
 .grid-svg {
+    display: block;
     inline-size: 100%;
     max-inline-size: min(64px, 65%);
     aspect-ratio: 1;
     block-size: auto;
     overflow: visible;
+}
+/* A drawing's arrival is a fade (F-07's turns, above); reduced motion keeps it. */
+svg.grid-svg {
+    animation: tile-drawing-in var(--duration-fast) var(--ease-standard);
+}
+@keyframes tile-drawing-in {
+    from {
+        opacity: 0;
+    }
 }
 
 /* X.F.W14U.misc — UIA-F-57 (the morph remainder, `.shell` R-1): `text-sm` is

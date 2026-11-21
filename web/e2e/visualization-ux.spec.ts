@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { openCanvasDock } from "./fixtures/canvas-dock";
+import { clickCanvasDockExport } from "./fixtures/canvas-dock";
 import { checkA11y } from "./a11y";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
 import { controlRow } from "./fixtures/slider";
@@ -144,8 +144,8 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // (it left the AnimationControls "More options" menu); expand the canvas
         // dock and trigger it to raise the Dialog.
         // Owner, 2026-11-15: the canvas dock opens by a press on its folded face.
-        await openCanvasDock(page);
-        await page.locator('.controls-dock-anchor [aria-label="Export frame"]').click();
+        // Export frame is a row of its More (PR 33 review, should-fix 1).
+        await clickCanvasDockExport(page);
 
         // The glass-ui Dialog should expose role="dialog".
         const dialog = page.locator('[role="dialog"]').first();
@@ -351,7 +351,7 @@ test.describe("B.W2 — visualization UX coherence (a11y keystones)", () => {
         // Drive the save through the product, not a store hook: open the
         // contour editor from the canvas dock (keyboard activation — the path
         // every control owes), then press the editor's Save.
-        const canvasDock = page.locator(".controls-dock-anchor .glass-dock");
+        const canvasDock = page.locator(".controls-overlay .glass-dock");
         const editToggle = canvasDock.locator('[aria-label="Edit contour"]');
         await expect(editToggle).toBeVisible({ timeout: 10_000 });
         await editToggle.press("Enter");

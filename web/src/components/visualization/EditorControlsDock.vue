@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { EditorState } from "./lib/editor-state";
-import { useTemplateRef } from "vue";
 import { useMediaQuery } from "@vueuse/core";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
 import {
     DropdownMenu,
+    DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
@@ -18,7 +18,6 @@ import {
     Undo2,
     Redo2,
     Ellipsis,
-    EllipsisVertical,
     Sparkles,
     Minimize2,
     Trash2,
@@ -26,14 +25,24 @@ import {
     Save,
     Check,
     Magnet,
+    ImageIcon,
+    CircleDashed,
+    Pencil,
+    ScanSearch,
+    Maximize2,
+    Shrink,
 } from "@lucide/vue";
+
+/** One Magnet step carries this much more of the curve, each side of the point. */
+const REACH_STEP_PX = 16;
 
 /*
  * X.F.W14V.u4 — UIA-F-172 (the non-colour limb; the Fourier hue on the glyph
  * stays, §0da): the magnet's on/off state reads in text, not by hue alone. At
- * radius 0 the magnet is off and its field says so; on, it shows its radius.
+ * 0 the magnet is off and its field says so; on, it shows its reach along the
+ * curve, in pixels on screen.
  */
-const magnetReadout = (radius: number) => (radius === 0 ? "Off" : String(radius));
+const magnetReadout = (radius: number) => (radius === 0 ? "Off" : `${radius * REACH_STEP_PX} px`);
 /* The slider's keys stay with the slider (the menu would read its arrows as
    item navigation), except Escape and Tab, which leave the menu. With the
    slider the row's one control (canon F2), a blanket stop kept a keyboard user
@@ -45,6 +54,13 @@ function keepSliderKeys(e: KeyboardEvent) {
 defineProps<EditorState & {
     magnetRadius: number;
     isSaved: boolean;
+    /** The two layers the editor shows (FORTY-FIRST H: with the stage's other
+     *  dock gone, the editor carries them; one press each from a desk). */
+    picture: boolean;
+    outline: boolean;
+    /** The editor's view is zoomed or panned off the fit. */
+    viewMoved: boolean;
+    isFullscreen: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -56,136 +72,25 @@ const emit = defineEmits<{
     "update:magnetRadius": [value: number];
     reset: [];
     save: [];
+    toggleLayer: [layer: "picture" | "outline"];
+    /** Leave the editor (the host asks first when there are unsaved edits). */
+    done: [];
+    resetView: [];
+    toggleFullscreen: [];
 }>();
 
 /*
- * X.F.W14V.r1 — F-W14V.md addendum (h) item 1 (COHESION §0eb, A2-FO-L2-15 ⊕
- * UIA-F-88): below `sm` the expanded row (Undo · Redo · Delete · View options ·
- * More tools, 243 px of content) overran the 167 px layer at 360 into a
- * sideways scroll. Ruled: below `sm` the row holds Undo, Redo and More editor
- * tools only; Delete moves into that menu as its last item behind a separator
- * (the rose tone and the same `delete` emit, disabled with no selection). At
- * ≥ sm nothing changes. (Owner, 2026-11-15: the view layers left this dock for
- * the stage dock, their one home; the editor dock holds the editor's tools.) `sm` is Tailwind's 40rem (640 px). The glass idiom for this
- * (a dock priority-overflow seat) is relayed as O-85 DOCK-PRIORITY-OVERFLOW;
- * at its landing this manual split becomes glass's (ADOPT-AT-LANDING).
+ * The editor's seats, in the stage's one dock (FORTY-FIRST L). Nothing folds:
+ * an edit is made of Undo, Delete and Save, and each is one press at every
+ * width. From `sm` (Tailwind's 40rem) the two layers stand in the row as
+ * toggles; below it they are rows of the tools menu, so the row holds at 390.
  */
 const isSm = useMediaQuery("(min-width: 640px)");
-
-/**
- * X-OD19 · F4 — an open dock menu holds its dock open: each menu's
- * `update:open` edge takes or gives back one glass keep-open count, so the
- * collapse timer never folds the dock (and inerts the trigger) under an open menu.
- */
-const dock = useTemplateRef<InstanceType<typeof GlassDock>>("dock");
-function holdDockWhileOpen(open: boolean) {
-    if (open) dock.value?.keepOpen();
-    else dock.value?.release();
-}
 </script>
 
 <template>
-    <GlassDock ref="dock" fit-content>
-        <!--
-          X.F.W4 · SP-5 — `fr-EditorControlsDock B-2` ⊕ `fr-CanvasControlsDock M-2`,
-          THE INVERSION LOCK, cured on both faces in one edit.
-
-          At 4.0.0 the two docks failed inversely: this one put a real focusable
-          Save inside `#collapsed`, so keyboard entry expanded the dock, which
-          stamped `inert` on the summary layer out from under the focused button
-          and threw focus to the body (B-2); the sibling put only glyphs there,
-          so a keyboard user could never open it at all (M-2). The sibling's
-          booked cure — "focusable summary content" — would have MANUFACTURED
-          B-2 there, which is why the two rows are one object.
-
-          glass-ui 8.0.0 ships the producer half both relay letters asked for:
-          the summary layer is itself the disclosure (`role="button"`,
-          `tabindex="0"`, `aria-label="Expand dock"`, `aria-expanded`,
-          `aria-controls`), its `focusin` is `.stop`-modified so focus into the
-          summary no longer triggers the expand-flip, and its Enter/Space
-          handler expands and then MOVES focus into the full layer. The
-          destruction chain is gone at the producer.
-
-          What that leaves is a consumer defect the producer's cure creates
-          here and nowhere else: a `role="button"` host may not contain
-          interactive content, and this file's `#collapsed` did. So the Save
-          leaves the summary for `#persistent` — the never-inert region the
-          producer renders OUTSIDE `.dock-layers`, present at both poles. The
-          collapsed summary keeps a non-interactive identity glyph, the
-          disclosure semantics stay valid, and S-4/M-9's design fact — the one
-          action that persists work survives the auto-collapse — is not merely
-          preserved but strengthened: Save is now reachable in EVERY state.
-          The expanded row's duplicate Save and badge go with it (one action,
-          one control).
-        -->
-        <!-- X.F.W14U.vedit — UIA-F-242: the point count is glass's Metric (was
-             a hand-rolled 50%-alpha span); UIA-F-88: at the Metric's small
-             rung it leaves the 390 row its width. -->
-        <template #persistent>
-            <Metric :value="pointCount" unit="pts" size="sm" class="dock-count" />
-            <Tooltip text="Save contour">
-                <DockControl
-                    class="is-save"
-                    :class="{ saved: isSaved }"
-                    aria-label="Save contour"
-                    @click.stop="emit('save')"
-                >
-                    <Check v-if="isSaved" />
-                    <Save v-else />
-                </DockControl>
-            </Tooltip>
-        </template>
-
-        <!--
-          Collapsed summary — identity mark only; NO interactive content.
-
-          X.F.W4 · `fr-EditorControlsDock M-5` ⊕ `fr-CanvasControlsDock M-8 / C-9`
-          — ONE GLYPH PER MEANING, across BOTH docks, because they swap in place
-          over one canvas on the `isEditing` flip and a reader sees them as one
-          surface. `Wand2` was this dock's identity mark AND its Smooth action,
-          one gesture apart (Smooth is now `Sparkles`); `Eye` was the overlay
-          MENU trigger here and the ghost-ON STATE glyph, so the trigger painted
-          identically in all four overlay states, while the sibling spelt the
-          same trace toggle `Spline` (both are `Spline` now, and the state rides
-          `aria-pressed`/`data-active` where it belongs); and `import { Image }`
-          shadowed the global (C-17) for a glyph lucide also exports as
-          `ImageIcon`, which is what the sibling already imports.
-        -->
-        <!-- X.F.W14U.vedit — UIA-F-242: the resting face wore Wand2, an action's
-             glyph (and the Auto strategy's); it wears the neutral Ellipsis the
-             sibling canvas dock wears (UIA-F-94), one glyph per meaning. -->
-        <template #collapsed>
-            <Ellipsis class="shrink-0 dock-summary-glyph" aria-hidden="true" />
-        </template>
-
-        <!--
-          Expanded controls.
-
-          X.F.W4 · SP-6 / `fr-EditorControlsDock D-18` — `gap-2` pinned the row
-          at a fixed 0.5rem against the family's `--dock-layer-gap`
-          (0.375rem × `--dock-scale`): 33% wide at 1×, and frozen on touch where
-          the scale moves and the literal does not. The token governs now.
-
-          ⊘ The row's banked cure was "discharged for free by INFO-3's
-          `DockLayerGroup` adoption", and that premise has MOVED at 8.0.0 — see
-          the separator note below. The defect is cured directly instead, which
-          is what the row actually describes.
-        -->
-        <!--
-          X.F.W14U.vedit — UIA-F-88: at 390 the nine-tool row clipped mid-glyph
-          and six tools sat behind an unmarked sideways scroll. The row keeps
-          Undo, Redo and Delete; the Magnet radius, Smooth, Simplify, the two
-          view layers and Reset move into one menu, as the sibling
-          AnimationControls folds its secondaries. X.F.W14U.c2 (COHESION §0db,
-          addendum (g)'s "and the like"): UIA-F-242's "one hover ink" is
-          reversed; the tools keep their hues (Smooth amber, Simplify sky,
-          Delete rose, Save the Fourier red, the Magnet glyph red while on).
-          The Magnet radius shapes the contour, so its track wears the
-          contour's hue (`--viz-amber`, the stroke's ink), the owner's hue per
-          F-W14U addendum (g) (§0da). UIA-F-86: Contour trace acts
-          on the editing surface (ContourEditorCanvas draws the saved outline).
-        -->
-        <div class="dock-row flex items-center w-full">
+    <GlassDock :collapse="false" fit-content aria-label="Editor tools">
+        <div class="dock-row flex items-center">
             <Tooltip text="Undo">
                 <DockControl aria-label="Undo" :disabled="!canUndo" @click="emit('undo')">
                     <Undo2 />
@@ -196,28 +101,21 @@ function holdDockWhileOpen(open: boolean) {
                     <Redo2 />
                 </DockControl>
             </Tooltip>
+            <Tooltip text="Delete point">
+                <DockControl class="is-rose" aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
+                    <Trash2 />
+                </DockControl>
+            </Tooltip>
 
-            <DockSeparator />
-
-            <template v-if="isSm">
-                <Tooltip text="Delete point">
-                    <DockControl class="is-rose" aria-label="Delete point" :disabled="!canDelete" @click="emit('delete')">
-                        <Trash2 />
-                    </DockControl>
-                </Tooltip>
-            </template>
-
-            <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
+            <DropdownMenu :modal="false">
                 <DockTrigger for="dropdown" aria-label="More editor tools">
-                    <!-- X.F.W14V.u4 — UIA-F-146: no Tooltip around the glyph. It was the
-                     as-child of a bare SVG (never focusable, so no keyboard path);
-                     the trigger's own aria-label names the control. -->
-                    <EllipsisVertical />
+                    <!-- X.F.W14V.u4 — UIA-F-146: no Tooltip around the glyph; the
+                         trigger's own aria-label names the control. -->
+                    <Ellipsis />
                 </DockTrigger>
-                <DropdownMenuContent :side-offset="8" align="end">
-                    <!-- The magnet radius is the menu's one setting section (the
-                         app's control-row idiom), as AnimationControls' menu
-                         carries speed and easing; X.F.W14.h · OA-45. -->
+                <DropdownMenuContent :side-offset="8" align="center">
+                    <!-- The magnet is the menu's one setting section (the app's
+                         control-row idiom); X.F.W14.h · OA-45. -->
                     <div class="magnet-section">
                         <Magnet class="magnet-glyph" :class="{ 'is-on': magnetRadius > 0 }" aria-hidden="true" />
                         <SliderControl
@@ -235,7 +133,7 @@ function holdDockWhileOpen(open: boolean) {
                         />
                     </div>
                     <DropdownMenuSeparator />
-                    <!-- O16 [53] [54]: the three commands are buttons (glass Button
+                    <!-- O16 [53] [54]: the commands are buttons (glass Button
                          merged onto the menu item, so the menu's roving focus and
                          `select` stay), on the menu's one inset and glyph column. -->
                     <div class="tool-commands">
@@ -245,10 +143,14 @@ function holdDockWhileOpen(open: boolean) {
                                 Smooth contour
                             </DropdownMenuItem>
                         </Button>
+                        <!-- The point count belongs to the one tool that changes
+                             it, so it is set into that row (nothing in the dock
+                             is a readout). -->
                         <Button as-child emphasis="quiet" size="sm">
                             <DropdownMenuItem class="tool-row is-sky" @select="emit('simplify')">
                                 <Minimize2 class="tool-glyph" />
                                 Simplify contour
+                                <Metric :value="pointCount" unit="pts" size="sm" class="tool-count" />
                             </DropdownMenuItem>
                         </Button>
                         <Button as-child emphasis="quiet" size="sm">
@@ -257,23 +159,70 @@ function holdDockWhileOpen(open: boolean) {
                                 Reset to extraction
                             </DropdownMenuItem>
                         </Button>
+                        <Button as-child emphasis="quiet" size="sm">
+                            <DropdownMenuItem class="tool-row is-neutral" :disabled="!viewMoved" @select="emit('resetView')">
+                                <ScanSearch class="tool-glyph" />
+                                Reset view
+                            </DropdownMenuItem>
+                        </Button>
+                        <!-- While editing, Fullscreen's home is here. (Minimize2 is
+                             Simplify's glyph in this menu: one glyph per meaning.) -->
+                        <Button as-child emphasis="quiet" size="sm">
+                            <DropdownMenuItem class="tool-row is-neutral" @select="emit('toggleFullscreen')">
+                                <Shrink v-if="isFullscreen" class="tool-glyph" />
+                                <Maximize2 v-else class="tool-glyph" />
+                                {{ isFullscreen ? "Exit fullscreen" : "Fullscreen" }}
+                            </DropdownMenuItem>
+                        </Button>
                     </div>
-                    <!-- X.F.W14V.r1 — below sm only (addendum (h) 1): Delete last, behind
-                         a separator. The view layers are the stage dock's alone
-                         (owner, 2026-11-15: one home per tool). -->
+                    <!-- Below sm the two layers are the menu's last rows. -->
                     <template v-if="!isSm">
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            class="tool-row is-rose"
-                            :disabled="!canDelete"
-                            @select="emit('delete')"
-                        >
-                            <Trash2 class="h-4 w-4" />
-                            Delete point
-                        </DropdownMenuItem>
+                        <DropdownMenuCheckboxItem :model-value="picture" @select.prevent @update:model-value="emit('toggleLayer', 'picture')">
+                            <ImageIcon class="h-4 w-4" />
+                            Picture
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem :model-value="outline" @select.prevent @update:model-value="emit('toggleLayer', 'outline')">
+                            <CircleDashed class="h-4 w-4" />
+                            Outline
+                        </DropdownMenuCheckboxItem>
                     </template>
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            <template v-if="isSm">
+                <DockSeparator />
+                <Tooltip text="Picture">
+                    <DockControl aria-label="Picture" :active="picture" @click="emit('toggleLayer', 'picture')">
+                        <ImageIcon />
+                    </DockControl>
+                </Tooltip>
+                <Tooltip text="Outline">
+                    <DockControl aria-label="Outline" :active="outline" @click="emit('toggleLayer', 'outline')">
+                        <CircleDashed />
+                    </DockControl>
+                </Tooltip>
+            </template>
+
+            <DockSeparator />
+
+            <Tooltip text="Save contour">
+                <DockControl
+                    class="is-save"
+                    :class="{ saved: isSaved }"
+                    aria-label="Save contour"
+                    @click.stop="emit('save')"
+                >
+                    <Check v-if="isSaved" />
+                    <Save v-else />
+                </DockControl>
+            </Tooltip>
+            <!-- The door out is the door in: the stage's Edit seat, lit. -->
+            <Tooltip text="Done">
+                <DockControl aria-label="Edit contour" :active="true" @click.stop="emit('done')">
+                    <Pencil />
+                </DockControl>
+            </Tooltip>
         </div>
     </GlassDock>
 </template>
@@ -308,26 +257,14 @@ function holdDockWhileOpen(open: boolean) {
  * the same authority. Recorded as a dated addendum-beside (E-3).
  */
 
-/* X.F.W4 · SP-5 (B-2) + `fr-CanvasControlsDock M-7`'s token leg — the collapsed
-   identity glyph reads the dock's own glyph rung and the substrate's muted-glyph
-   dial instead of a literal size and an ad-hoc `/50` alpha, so it tracks the
-   `--dock-scale` ladder (including the coarse-pointer re-declaration) the way
-   every other glyph in the dock does. */
-.dock-summary-glyph {
-    width: var(--dock-icon-glyph);
-    height: var(--dock-icon-glyph);
-    color: color-mix(
-        in srgb,
-        var(--foreground) calc(var(--opacity-icon-muted) * 100%),
-        transparent
-    );
-}
-
 .dock-row {
     gap: var(--dock-layer-gap);
 }
 
-.dock-count {
+/* The count rides the end of its row, on the row's own line. */
+.tool-count {
+    margin-inline-start: auto;
+    padding-inline-start: 1rem;
     white-space: nowrap;
 }
 

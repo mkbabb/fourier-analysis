@@ -315,9 +315,12 @@ async def extract_contour_doc(imageSlug: str, cs: ContourSettings) -> dict:
     with _blob_not_found_as_404():
         tmp = image_tempfile(asset)
     try:
+        # Inside an image job the drawing's four checkpoints move its bar
+        # (``jobs.report`` is a no-op on the synchronous route).
         result = await computation.compute_contours(
             Path(tmp.name),
             cs.to_contour_config(),  # type: ignore[no-untyped-call]
+            on_stage=lambda fraction: jobs.report("extract", fraction),
         )
     except HTTPException:
         raise
@@ -353,7 +356,7 @@ async def extract_contour_doc(imageSlug: str, cs: ContourSettings) -> dict:
 
 # The image job's bar, weighted by measured cost (giraffe.webp at the web's
 # defaults, 2026-11-14: extract 5.0-5.6 s, epicycles 0.02 s, bases 0.6-0.7 s).
-# Extraction is one opaque library call, so it reports only its start and end;
+# Extraction reports its start, the drawing's four checkpoints and its end;
 # the bases report per level.
 IMAGE_JOB_STAGES: dict[str, tuple[float, float]] = {
     "extract": (0.0, 0.85),

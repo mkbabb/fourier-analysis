@@ -104,7 +104,7 @@ watch(
             <div v-if="searchActive" ref="searchBarRef" class="floating-toc-bar floating-toc-bar--search glass-resting" data-surface="opaque">
                 <PaperSearch ref="mobileSearchRef" :search="search" variant="floating" :boundary="searchBarRef" />
                 <Button emphasis="quiet" size="sm" icon-only type="button" class="floating-toc-search-close" @click="closeMobileSearch" aria-label="Close search">
-                    <X class="floating-toc-icon" />
+                    <X class="floating-toc-glyph" />
                 </Button>
             </div>
             <!-- Normal mode: section title + search icon. `D/B-4`: the search
@@ -175,7 +175,7 @@ watch(
                     aria-label="Search paper"
                     @click="openMobileSearch"
                 >
-                    <Search class="floating-toc-icon" />
+                    <Search class="floating-toc-glyph" />
                 </Button>
             </div>
             </Transition>
@@ -209,8 +209,9 @@ watch(
        their edges line up (it was inset 8 px over a 16 px article). */
     padding: 0.5rem var(--page-gutter) 0;
     /* X-DS fourier pass 7 · DS-F7C-C1: the band's foot is where the scrolled
-       paper is cut, one atom under the bar, as /morph's band (DS-F5-C4). */
-    padding-block-end: var(--space-atom);
+       paper is cut. FORTY-FIRST C: the band keeps the header's air, the
+       body gutter above and below the bar, as the header does the dock. */
+    padding-block-end: var(--space-body);
 }
 
 /* DS-F7C-C1: the cut's rule, the app's one hairline, hung just under the band's
@@ -273,11 +274,32 @@ watch(
     }
 }
 
+/* FORTY-FIRST C (owner, 19 Nov: "the font and margins in the searchbar/toc
+   bar on mobile is a bit too small or a bit too much padding thereon? more
+   like glass-ui dock"). The bar takes the dock's measure: a pill plate the
+   dock's height, its 8 px block pad (the plate's 1 px edge inside it), every
+   control on the dock's cell (44 px on touch, 40 px with a mouse), and the
+   dock's type and glyphs. Both of the bar's states are the same height, so
+   the page under the band never moves when search opens. */
 .floating-toc-bar {
+    --toc-bar-control: max(var(--control-h-xs), 2.5rem);
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.25rem;
+    padding: calc(0.5rem - 1px);
+    border-radius: var(--radius-dock);
+}
+
+.floating-toc-title-btn,
+.floating-toc-search-btn,
+.floating-toc-search-close {
+    --button-size: var(--toc-bar-control);
+}
+
+/* The search field sits on the same cell, so the search state is the trigger
+   state's height (SearchField's own hook, set on the bar). */
+.floating-toc-bar--search {
+    --search-field-height: var(--toc-bar-control);
 }
 
 /* X-DS fourier pass 9 (critic F9C) · DS-F9C-L2: in short landscape the plate
@@ -287,10 +309,6 @@ watch(
 @media (orientation: landscape) and (max-height: 500px) {
     .floating-toc-bar {
         padding-block: 0;
-    }
-    .floating-toc-search-btn,
-    .floating-toc-search-close {
-        --button-size: var(--control-h-xs);
     }
 }
 
@@ -311,6 +329,7 @@ watch(
     min-width: 0;
     justify-content: flex-start;
     text-align: start;
+    padding-inline: 0.75rem;
 }
 
 /* X-DS fourier pass 8 (critic F8C) · DS-F8C-T2: on a wide bar (landscape
@@ -340,7 +359,7 @@ watch(
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    font-size: var(--type-small);
+    font-size: var(--type-body);
     color: var(--foreground);
 }
 
@@ -355,18 +374,32 @@ watch(
     white-space: nowrap;
 }
 
-/* UIA-F-236: the numerals' own size (a `text-xs` that lost to the row's type
-   had no effect). */
+/* UIA-F-236: the numerals' own size. FORTY-SECOND A: the number is read, so
+   it takes the small step (14 px); it is quieter by its ink, not by size. */
 .floating-toc-number {
-    font-size: var(--type-caption);
+    font-size: var(--type-small);
     color: var(--muted-foreground);
     margin-inline-end: 0.25rem;
 }
 
-.floating-toc-icon,
-.floating-toc-chevron {
+/* The popover's row glyph (Scroll to top). */
+.floating-toc-icon {
     width: 0.875rem;
     height: 0.875rem;
+    flex: none;
+}
+
+/* The bar's glyphs are the dock's: its glyph rung for search and close, its
+   menu chevron beside the label (`AppDock.vue`, `.nav-trigger-chevron`). */
+.floating-toc-glyph {
+    width: var(--icon-xl);
+    height: var(--icon-xl);
+    flex: none;
+}
+
+.floating-toc-chevron {
+    width: 1rem;
+    height: 1rem;
     flex: none;
 }
 

@@ -9,11 +9,12 @@
         "preview": "vite preview",
         "lint": "eslint src",
         "derive:loops": "node --experimental-strip-types scripts/derive-loops.ts",
+        "mark:check": "uv run --no-project --quiet --with numpy==2.4.2 --with pillow==12.1.1 python ../scripts/precompute_mark.py --check",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:e2e": "playwright test",
         "test:e2e:ui": "playwright test --ui",
-        "ci:actions": "node --test --experimental-strip-types e2e/unit/figure-dimensions.unit.ts && vitest run && vue-tsc -b --force && npx --yes oxlint@1.42.0 --deny-warnings src e2e vite.config.ts playwright.config.ts && eslint src && npm run derive:loops && vite build"
+        "ci:actions": "node --test --experimental-strip-types e2e/unit/figure-dimensions.unit.ts && vitest run && vue-tsc -b --force && npx --yes oxlint@1.42.0 --deny-warnings src e2e vite.config.ts playwright.config.ts && eslint src && npm run derive:loops && npm run mark:check && vite build"
     },
     "dependencies": {
         "@lucide/vue": "^1.16.0",

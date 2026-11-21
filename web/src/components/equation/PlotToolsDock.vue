@@ -6,7 +6,9 @@
  * top-right corner, folded to one glyph and opened by a press (`StageDock`),
  * a downward column on a phone. Plot layers (the original curve, the
  * harmonics; the sum is the figure itself) and Export plot. The series' own
- * acts (Copy LaTeX, About this approximation) are the app dock's.
+ * acts (Copy LaTeX, About this approximation) are the app dock's from 40rem;
+ * under 40rem the app dock draws no page tools and the page hands them to
+ * this dock's `tools` slot, after the plot's own seats.
  */
 import { Download, Ellipsis, Layers, Spline, Waves } from "@lucide/vue";
 import { DockControl } from "@mkbabb/glass-ui/dock";
@@ -54,7 +56,7 @@ function keepOpen(e: Event) {
         <template #default="{ hold, column }">
             <DropdownMenu :modal="false" @update:open="hold">
                 <DockTrigger for="dropdown" aria-label="Plot layers">
-                    <Layers />
+                    <Layers class="plot-tools-glyph" aria-hidden="true" />
                 </DockTrigger>
                 <DropdownMenuContent side="bottom" align="end" :side-offset="8">
                     <DropdownMenuLabel>Plot layers</DropdownMenuLabel>
@@ -81,6 +83,7 @@ function keepOpen(e: Event) {
                     <Download />
                 </DockControl>
             </Tooltip>
+            <slot name="tools" :column="column" />
         </template>
     </StageDock>
     </div>
@@ -115,6 +118,12 @@ function keepOpen(e: Event) {
     bottom: 100%;
     left: 100%;
     pointer-events: none;
+}
+
+/* The trigger's glyph on the dock's one glyph size (DockControl seats take it from glass). */
+.plot-tools-glyph {
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
 }
 
 .dock-summary-glyph {

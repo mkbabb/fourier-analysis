@@ -89,3 +89,18 @@ const MODE_LABELS = {
 export function basisModeLabel(key: string, familyLabel: string): string {
     return MODE_LABELS[key as keyof typeof MODE_LABELS] ?? familyLabel;
 }
+
+/**
+ * The bases a drawing opens with: the epicycles first, in place of any other
+ * Fourier mode, and the polynomial bases kept. (The first drawing of a piece
+ * shows its circles; a link that names its bases opens on those instead.)
+ */
+export function withEpicycles(keys: readonly string[]): string[] {
+    if (keys.includes("fourier-epicycles")) return [...keys];
+    return ["fourier-epicycles", ...keys.filter((b) => normalizeBasisKey(b) !== "fourier")];
+}
+
+/** The same set of bases, in any order. */
+export function sameBases(a: readonly string[], b: readonly string[]): boolean {
+    return a.length === b.length && a.every((k) => b.includes(k));
+}

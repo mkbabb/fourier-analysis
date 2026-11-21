@@ -1,0 +1,121 @@
+/*
+ * The stage-plus-inspector routes (`/w`, `/v`, `/equation`): one page shape,
+ * one file. A view puts `class="workspace-host"` on its root beside the
+ * `:data-form` it already sets (`useWorkspaceForm`: split, rail or sheet) and
+ * `:data-pane` (`useWorkspacePane`: canvas or controls). Inside it stands
+ * glass's `Configurator`, whose class lands on `.configurator-shell` one level
+ * down (its root is a `display: contents` wrapper, or the expand host), so
+ * these rules read the shell as a descendant. Everything else here is this
+ * file's: the gutters, the foot, the page radius and the sheet form's panes.
+ * The split and rail layouts of each region stay with their view.
+ */
+
+.workspace-host {
+    /* The page gutter at every width. It is the host's padding, not the
+       shell's margin: glass's shell floor `min-inline-size: min(20rem, 100%)`
+       reads 100% off the containing box, so a gutter set as margin pushed a
+       column under 20rem plus two gutters past the right edge. */
+    --workspace-gutter: var(--page-gutter);
+    padding-inline: var(--workspace-gutter);
+}
+
+.workspace-host .configurator-shell {
+    flex: 1;
+    min-height: 0;
+    margin-block: 0.25rem;
+}
+
+@media (min-width: 1024px) {
+    .workspace-host .configurator-shell {
+        margin-block: 0.5rem 0.75rem;
+    }
+}
+
+/* The sheet form (a phone): the two regions on one track, the stage first
+   and the controls to its right (where they stand on a desk), each the
+   column's full width, one in view. The track slides one pane and the gutter
+   (280 ms, eased out; a CSS transition, so a press mid-way turns it back from
+   where it is), so the swap is a movement, never a cut, a blank face or a
+   ghost. The pane out of view is hidden once the slide has ended (the view
+   makes it `inert` at once); the one arriving shows from the slide's start.
+   The host clips at its own edge, where the leaving pane goes. Under reduced
+   motion the panes cross by opacity in 120 ms, in place. */
+.workspace-host[data-form="sheet"] {
+    overflow-x: clip;
+}
+.workspace-host[data-form="sheet"] .configurator-shell > [data-slot="configurator"] {
+    display: grid;
+    grid-template-columns: 100% 100%;
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: var(--workspace-gutter);
+    flex: 1 1 0%;
+    min-width: 0;
+    min-height: 0;
+}
+.workspace-host[data-form="sheet"] .configurator-shell > [data-slot="configurator"] > :is(.configurator-stage, .configurator-aside) {
+    grid-row: 1;
+    min-width: 0;
+    min-height: 0;
+    transition:
+        transform 280ms var(--ease-out),
+        visibility 0s linear 0s;
+}
+.workspace-host[data-form="sheet"] .configurator-shell > [data-slot="configurator"] > .configurator-stage {
+    grid-column: 1;
+}
+.workspace-host[data-form="sheet"] .configurator-shell > [data-slot="configurator"] > .configurator-aside {
+    grid-column: 2;
+    /* The controls card ends with its content, as on a desk (PR 33 review: on
+       /w it ran on ~110 px as an empty plate under Coefficients): it starts at
+       the pane's top, is as tall as its sections and at most the pane's
+       height, past which glass's own fading scroll scrolls inside it. */
+    align-self: start;
+    max-block-size: 100%;
+}
+.workspace-host[data-form="sheet"][data-pane="controls"] .configurator-shell > [data-slot="configurator"] > :is(.configurator-stage, .configurator-aside) {
+    transform: translateX(calc(-100% - var(--workspace-gutter)));
+}
+.workspace-host[data-form="sheet"]:not([data-pane="controls"]) .configurator-shell > [data-slot="configurator"] > .configurator-aside,
+.workspace-host[data-form="sheet"][data-pane="controls"] .configurator-shell > [data-slot="configurator"] > .configurator-stage {
+    visibility: hidden;
+    transition:
+        transform 280ms var(--ease-out),
+        visibility 0s linear 280ms;
+}
+@media (prefers-reduced-motion: reduce) {
+    .workspace-host[data-form="sheet"] .configurator-shell > [data-slot="configurator"] > :is(.configurator-stage, .configurator-aside) {
+        grid-column: 1;
+        transition:
+            opacity 120ms var(--ease-standard),
+            visibility 0s linear 0s;
+    }
+    .workspace-host[data-form="sheet"][data-pane="controls"] .configurator-shell > [data-slot="configurator"] > :is(.configurator-stage, .configurator-aside) {
+        transform: none;
+    }
+    .workspace-host[data-form="sheet"]:not([data-pane="controls"]) .configurator-shell > [data-slot="configurator"] > .configurator-aside,
+    .workspace-host[data-form="sheet"][data-pane="controls"] .configurator-shell > [data-slot="configurator"] > .configurator-stage {
+        opacity: 0;
+        transition:
+            opacity 120ms var(--ease-standard),
+            visibility 0s linear 120ms;
+    }
+}
+
+/* A phone (FORTY-FIRST A: "fourier is too square on mobile, the main
+   container is"). The card stood 16 px from the sides and 4 px off the
+   screen's foot, a 16 px corner meeting the device's own curve: a screen
+   drawn inside the screen. Here the gutters are 12 px (the measure color's
+   plate keeps), the air under the dock is the gutter, the foot clears the
+   gutter and the home indicator, and the cards take glass's room radius
+   through the token they read. */
+@media (width < 40rem) {
+    .workspace-host {
+        --workspace-gutter: 0.75rem;
+        --radius-card: var(--radius-3xl);
+        padding-block: calc(var(--workspace-gutter) - var(--space-body))
+            calc(var(--workspace-gutter) + env(safe-area-inset-bottom, 0px));
+    }
+    .workspace-host .configurator-shell {
+        margin-block: 0;
+    }
+}

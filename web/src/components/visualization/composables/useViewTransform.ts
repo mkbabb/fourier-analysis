@@ -3,11 +3,61 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import type { ViewTransform } from "../lib/canvas-drawing";
 
-interface Bbox {
+export interface Bbox {
     minX: number;
     maxX: number;
     minY: number;
     maxY: number;
+}
+
+/** The fit's free margin on each side, as a fraction of the drawing's size. */
+export const FIT_MARGIN = 0.06;
+
+/**
+ * What the drawing keeps clear of on the stage (px): the dock's foot (a row or
+ * a plate) or its trailing edge (a landscape strip), and the legend's rows at
+ * the top where the stage is short enough for the drawing to reach them.
+ */
+export interface FitInset {
+    bottom: number;
+    end: number;
+    top: number;
+}
+export const NO_INSET: Readonly<FitInset> = Object.freeze({ bottom: 0, end: 0, top: 0 });
+
+/** The stage's box the drawing is fitted to: the stage less its insets; `top` is where the box starts. */
+export function fitBox(s: { width: number; height: number }, inset: FitInset = NO_INSET): { w: number; h: number; top: number } {
+    const top = Math.max(0, inset.top);
+    return {
+        w: Math.max(1, s.width - Math.max(0, inset.end)),
+        h: Math.max(1, s.height - Math.max(0, inset.bottom) - top),
+        top,
+    };
+}
+
+/**
+ * The fit of a box: centred in the stage's box less what the dock covers (the
+ * foot under a row or a plate, the trailing edge beside a strip), with
+ * `FIT_MARGIN` of its size free on each side. The drawing's fit, and the
+ * picture's while the first compute runs.
+ */
+export function fitTransform(bbox: Bbox, s: { width: number; height: number }, inset: FitInset = NO_INSET): ViewTransform {
+    const { minX, maxX, minY, maxY } = bbox;
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const { w, h, top } = fitBox(s, inset);
+    const scale = Math.min(
+        w / (rangeX * (1 + FIT_MARGIN * 2)),
+        h / (rangeY * (1 + FIT_MARGIN * 2)),
+    );
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    return {
+        cx, cy, scale,
+        toScreen(x: number, y: number): [number, number] {
+            return [w / 2 + (x - cx) * scale, top + h / 2 - (y - cy) * scale];
+        },
+    };
 }
 
 export function useViewTransform() {
@@ -46,33 +96,18 @@ export function useViewTransform() {
         return { minX, maxX, minY, maxY };
     });
 
-    function getViewTransform(s: CanvasSurface): ViewTransform {
+    /** The drawing's fit (`fitTransform`); the identity before there is a drawing. */
+    function getViewTransform(s: CanvasSurface, inset: FitInset = NO_INSET): ViewTransform {
         const bbox = dataBbox.value;
-        if (!bbox) {
-            const noop: ViewTransform = { cx: 0, cy: 0, scale: 1, toScreen: (x, y) => [x, y] };
-            return noop;
-        }
-
-        const { minX, maxX, minY, maxY } = bbox;
-        const rangeX = maxX - minX || 1;
-        const rangeY = maxY - minY || 1;
-        const margin = 0.15;
-        const scale = Math.min(
-            s.width / (rangeX * (1 + margin * 2)),
-            s.height / (rangeY * (1 + margin * 2)),
-        );
-        const cx = (minX + maxX) / 2;
-        const cy = (minY + maxY) / 2;
-        const w = s.width;
-        const h = s.height;
-
-        return {
-            cx, cy, scale,
-            toScreen(x: number, y: number): [number, number] {
-                return [w / 2 + (x - cx) * scale, h / 2 - (y - cy) * scale];
-            },
-        };
+        if (!bbox) return { cx: 0, cy: 0, scale: 1, toScreen: (x, y) => [x, y] };
+        return fitTransform(bbox, s, inset);
     }
 
-    return { getViewTransform };
+    /** The drawing's size in its own units (the larger side of its box): the link's unit for the view's centre. */
+    function extent(): number {
+        const bbox = dataBbox.value;
+        return bbox ? Math.max(bbox.maxX - bbox.minX, bbox.maxY - bbox.minY) || 1 : 1;
+    }
+
+    return { getViewTransform, extent };
 }

@@ -1,14 +1,22 @@
 import { expect, type Page } from "@playwright/test";
 
 /**
- * Canon F5 (restraint, C-47): below 640 px a stage-plus-inspector route is a
- * Controls/Canvas strip, and it opens on the canvas. Glass's default tabs seat
- * their indicator over the selected tab, so the selected tab is never clicked:
- * a spec asks for a view, and the tab is pressed only when it is not already
- * the one showing.
+ * Canon F5 (restraint, C-47): below 640 px a stage-plus-inspector route shows
+ * one pane, and it opens on the canvas. FORTY-SECOND D (owner, 19 Nov: "the
+ * tabs toggle for controls should potentially be re-integrated into the top
+ * dock"): the switch is the top dock's Controls seat, outside its fold, lit
+ * while the controls show. A spec asks for a view; the seat is pressed only
+ * when that view is not already the one showing, and the slide is let land.
  */
 export async function showView(page: Page, name: "Canvas" | "Controls"): Promise<void> {
-    await selectTab(page, name);
+    // Every stage route's switch is the seat now (/w and /v took the pane in
+    // the stage track's T-A); no route keeps a Controls/Canvas strip.
+    const seat = page.locator(".app-dock .pane-seat");
+    await expect(seat).toBeVisible({ timeout: 30_000 });
+    const want = String(name === "Controls");
+    if ((await seat.getAttribute("aria-pressed")) !== want) await seat.click();
+    await expect(seat).toHaveAttribute("aria-pressed", want);
+    await page.waitForTimeout(350);
 }
 
 /** Any glass tab strip: press the tab unless it is the one already selected. */

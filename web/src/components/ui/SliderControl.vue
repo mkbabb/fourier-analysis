@@ -57,6 +57,9 @@
  * lays line 1 and the track on one line, the track taking the rest. A hint row
  * keeps P2-07's caption line, and the coarse and phone ramps keep the stack.
  * Where the row is too narrow for a usable track it wraps back to the stack.
+ * A plain row beside a hint row keeps the stack too, so a card holds one form
+ * (PR 33 review: Sample Points went one-line beside Harmonics' stack when its
+ * hint went, and its track shrank to ~230 px).
  *
  * ⊘ X·OD19-F7 (owner, 2026-10-19, frame-12.50.45.png: "Sliders have a double
  * border: use glass-ui sliders with the integrated thumb") — BL-FW14H-1's
@@ -231,8 +234,9 @@ const displayValue = computed(() =>
 
 .control-row-sub {
     margin-top: calc(-1 * var(--space-atom) / 2);
-    font-size: var(--type-caption);
-    line-height: var(--type-leading-caption);
+    /* FORTY-SECOND A: a line that is read takes the small step (14 px). */
+    font-size: var(--type-small);
+    line-height: var(--type-leading-small);
     color: var(--muted-foreground);
 }
 
@@ -259,20 +263,13 @@ const displayValue = computed(() =>
    full strength (MPC-10), and `D-14`'s empty `color` leaves glass's capsule tint.
    The local gradient rule and the thumb paint are deleted (BL-FW14H-1's
    visible thumb, reversed by the owner). */
-/* OD19-F7 under glass 11.0.2: the fill's leading edge stays the handle, with a
-   light disc inside the fill's round end, as on 11.0.1. 11.0.2 made the
-   scrubber thumb as tall as the track and painted it --foreground. Its
-   supported token --slider-thumb-bg takes a CSS background, so the 11.0.1 disc
-   is painted back inside the new thumb: --card, --slider-thumb-size (1rem)
-   across, centred on the fill's round end (half the track less the disc past
-   the thumb box's centre), the fill showing around it. */
+/* FORTY-SECOND C (owner, 19 Nov: the thumbs "capped and invisible, like
+   you're just pulling the track"). The thumbless slider is glass's (booked);
+   until it lands nothing the site paints sits inside the thumb (the light disc
+   of OD19-F7 is gone). glass's documented thumb token takes the fill's own
+   colour (glass, 19 Nov: yes), so the fill's round end reads as the handle. */
 .control-row-track {
-    --slider-thumb-bg: radial-gradient(
-        circle calc(var(--slider-thumb-size, 1rem) / 2)
-            at calc(50% + (var(--slider-track-height, 1.25rem) - var(--slider-thumb-size, 1rem)) / 2 - 0.25px) 50%,
-        var(--card) calc(100% - 0.5px),
-        transparent 100%
-    );
+    --slider-thumb-bg: var(--slider-range-bg, var(--slider-fill-ink));
 }
 /* X-DS pass 7 · DS-F7X-C2 — the plain row on one line (see the docblock). The
    order is the DOM's and PRE-DOCK's: label, field, track. The track has a floor
@@ -281,7 +278,7 @@ const displayValue = computed(() =>
    stack, with no second rule. On one line the track takes the free space
    (grow 999 : 1). */
 @media (min-width: 1024px) and (pointer: fine) {
-    .control-row[data-row-kind="plain"] {
+    .control-row[data-row-kind="plain"]:not([data-row-kind="hint"] ~ .control-row):not(:has(~ [data-row-kind="hint"])) {
         --row-track-min: 8rem;
         flex-direction: row;
         flex-wrap: wrap;
@@ -289,7 +286,7 @@ const displayValue = computed(() =>
         column-gap: var(--space-body);
     }
 
-    .control-row[data-row-kind="plain"] > .control-row-line {
+    .control-row[data-row-kind="plain"]:not([data-row-kind="hint"] ~ .control-row):not(:has(~ [data-row-kind="hint"])) > .control-row-line {
         flex: 1 0 auto;
     }
 
@@ -297,11 +294,11 @@ const displayValue = computed(() =>
        stacked in one card (Low, High) start their fields and tracks on one x.
        X-DS pass 15 · DS-F15X-C2 / pass 16 · DS-F16X-C1: a surface whose rows
        share one column (/morph's controls column) sets `--row-label-col`. */
-    .control-row[data-row-kind="plain"] .control-row-label {
+    .control-row[data-row-kind="plain"]:not([data-row-kind="hint"] ~ .control-row):not(:has(~ [data-row-kind="hint"])) .control-row-label {
         min-width: var(--row-label-col, 2.5rem);
     }
 
-    .control-row[data-row-kind="plain"] > .control-row-track {
+    .control-row[data-row-kind="plain"]:not([data-row-kind="hint"] ~ .control-row):not(:has(~ [data-row-kind="hint"])) > .control-row-track {
         flex: 999 1 var(--row-track-min);
         min-width: var(--row-track-min);
     }

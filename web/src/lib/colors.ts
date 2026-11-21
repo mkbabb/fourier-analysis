@@ -181,6 +181,16 @@ export function resolveVizColors(): void {
 }
 
 /**
+ * A theme token's used colour as hex (the page ground for the browser's
+ * `theme-color`, which reads no tokens), or null when it cannot be read.
+ * Read after `resolveVizColors` on a flip, so the probe cache is current.
+ */
+export function tokenHex(property: string): string | null {
+    if (typeof document === "undefined") return null;
+    return cssColorToHex(tokenColors.resolve(`var(${property})`, document.documentElement));
+}
+
+/**
  * Resolve the palette once, before the app mounts.
  *
  * Called from `main.ts` BEFORE `app.mount()`: a root `onMounted` fires after

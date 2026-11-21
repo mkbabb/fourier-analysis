@@ -280,11 +280,13 @@ function choose(node: PaperSectionData) {
     flex: none;
     font-variant-numeric: tabular-nums;
     min-inline-size: calc(var(--toc-ord) * 1ch);
-    font-size: 0.72rem;
-    opacity: 0.5;
+    /* FORTY-SECOND A: a number that is read takes the small step (14 px) and
+       is quieter by its ink, never by opacity (it was 11.5 px at half). */
+    font-size: var(--type-small);
+    color: var(--muted-foreground);
 }
 .toc-link[aria-current] .toc-number {
-    opacity: 0.8;
+    color: var(--muted-foreground-strong);
 }
 .toc-disclosure {
     flex-shrink: 0;

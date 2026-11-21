@@ -33,12 +33,11 @@ export function jobStageLabel(s: JobStage | null): string {
 }
 
 /**
- * The line's value: a fraction for a stage that reports one, `null`
- * (indeterminate) for a stage that cannot. Image extraction is one library
- * call that reports only its start and end, so while it runs the line breathes
- * rather than inventing motion.
+ * The measure's value: the job's fraction, or `null` (none) while it waits
+ * for a worker. Image extraction reports the drawing's four checkpoints, so
+ * it moves in real steps too (docs/api/compute-jobs.md).
  */
 export function jobProgressValue(s: JobStage | null): number | null {
-    if (!s || s.stage === "extract" || s.stage === "queued") return null;
+    if (!s || s.stage === "queued") return null;
     return Math.max(0, Math.min(1, s.fraction));
 }

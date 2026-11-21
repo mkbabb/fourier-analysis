@@ -85,12 +85,13 @@ defineExpose({
 
 <template>
     <div ref="root" class="stage-dock" :data-column="column || undefined">
-        <GlassDock v-if="!fold" ref="dock" :collapse="false" fit-content :aria-label="label">
+        <GlassDock v-if="!fold" ref="dock" class="stage-dock-plate" :collapse="false" fit-content :aria-label="label">
             <slot :hold="hold" :column="column" />
         </GlassDock>
         <GlassDock
             v-else
             ref="dock"
+            class="stage-dock-plate"
             collapse="closed"
             expand-on="press"
             fit-content
@@ -119,5 +120,13 @@ defineExpose({
     display: flex;
     justify-content: end;
     align-items: start;
+}
+/* Every trigger takes the dock's control cell through glass's documented
+   hook (a DockTrigger is shorter unless asked: 28 to 32 px on a phone). The
+   hook is set on the dock itself, where `--dock-control-size` is declared:
+   set on this box it read an undefined cell and resolved to nothing. The
+   hosts size their own trigger glyphs by their own classes. */
+.stage-dock-plate {
+    --dock-trigger-min-height: var(--dock-control-size);
 }
 </style>

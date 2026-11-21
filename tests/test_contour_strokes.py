@@ -285,6 +285,10 @@ def test_iris_is_a_disc_clipped_by_the_lids():
     assert not (irises(labels, flat) == IRIS).any()
 
 
+# What the drawing reported (``on_stage``) while the fixture below drew it.
+DRAWING_REPORTS: list[float] = []
+
+
 @pytest.fixture(scope="module")
 def daraksha():
     from fourier_analysis.contours.drawing import draw_subject
@@ -296,7 +300,15 @@ def daraksha():
     config = ContourConfig().normalized()
     image = load_image_inputs(ASSETS / "portraits" / "daraksha.jpg", config)
     mask, _ = subject_mask(image, config)
-    return part_labels(image, mask), draw_subject(image, config)
+    return part_labels(image, mask), draw_subject(image, config, DRAWING_REPORTS.append)
+
+
+def test_the_drawing_reports_its_four_checkpoints(daraksha):
+    """The drawing says how far through it is after each costly step, in order,
+    so an image job's bar moves through extraction in real steps."""
+    from fourier_analysis.contours import drawing
+
+    assert DRAWING_REPORTS == [drawing.STAGE_MASK, drawing.STAGE_LINES, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED]
 
 
 def test_daraksha_has_her_named_face_parts(daraksha):
