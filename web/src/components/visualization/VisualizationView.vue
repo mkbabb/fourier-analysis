@@ -649,7 +649,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              plate's own second grid is gone. -->
                         <div v-if="!hasImage && !hasData && !stageLoading" class="drop-target" :data-dragging="globalDragging || undefined">
                             <!-- The stage at rest is alive (critique V1): an outline
-                                 drawn in circles, the invitation on it. -->
+                                 drawn in circles, the invitation under it. -->
                             <RestDrawing />
                             <!-- X-DS DS-F4R-C1: the zone draws no frame of its own.
                                  The stage's hairline is the frame, and the stage's
@@ -1165,6 +1165,13 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
    line never runs through the words. It draws no frame of its own (X-DS F4R ·
    DS-F4R-C1): the stage's hairline is the frame at rest and the stage's ring
    (below) is the one drop signal. */
+/* The drawing stands over the invitation and the two are centred as one
+   group, the drawing at most a little over half the stage's height. */
+.drop-target > .rest-drawing {
+    flex: 0 1 auto;
+    align-self: stretch;
+    block-size: min(55%, 22rem);
+}
 .drop-zone {
     position: relative;
     flex: none;
@@ -1188,6 +1195,10 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 @media (orientation: landscape) and (height < 30rem) {
     .drop-target {
         flex-direction: row;
+    }
+    .drop-target > .rest-drawing {
+        flex: 1 1 0;
+        block-size: auto;
     }
     .drop-zone {
         flex: 0 1 auto;

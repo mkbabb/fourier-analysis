@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 /**
  * The design critique's V1: /visualize opened as a dead slab (one line, one
  * button, one link in a 1408 x 800 card). At rest the stage now draws an
- * outline in circles with the site's own engine, the invitation on it; under
+ * outline in circles with the site's own engine, the invitation under it; under
  * reduced motion it is the still drawing.
  */
 
@@ -27,14 +27,18 @@ for (const vp of [
     test.describe(`/visualize at rest (${vp.width})`, () => {
         test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch, isMobile: vp.touch });
 
-        test("the stage draws an outline in circles, the invitation on it", async ({ page }) => {
+        test("the stage draws an outline in circles, the invitation under it", async ({ page }) => {
             await page.goto("/visualize");
             const stage = page.locator(".drop-target");
             await expect(stage.locator(".rest-drawing")).toBeVisible({ timeout: 30_000 });
             expect((await sampleTrail(page, 700)).length, "the line is being written").toBeGreaterThan(8);
             expect(await stage.locator(".rest-chain circle").count()).toBeGreaterThan(10);
 
-            // The invitation sits on the drawing and takes the press.
+            // The drawing stands clear of the words (PR 33 review: the line ran
+            // through the title and the button), and the invitation takes the press.
+            const drawing = (await stage.locator(".rest-drawing").boundingBox())!;
+            const title = (await stage.getByRole("heading", { level: 1 }).boundingBox())!;
+            expect(drawing.y + drawing.height, "the drawing ends above the title").toBeLessThanOrEqual(title.y);
             const upload = stage.getByRole("button", { name: /upload|choose/i }).first();
             const box = (await upload.boundingBox())!;
             const hit = await page.evaluate(
