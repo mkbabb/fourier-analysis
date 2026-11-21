@@ -19,7 +19,9 @@ async function openPaused(page: Page, query = ""): Promise<void> {
     await page.goto(`/v/${seededViz().slug}?t=0.5${query}`);
     await showViewIfTabbed(page, "Canvas");
     await expect(page.locator(".animation-dock")).toBeVisible({ timeout: LOAD });
-    await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeAttached({ timeout: LOAD });
+    // The drawing has landed (the stage's seats wait on it, disabled until then;
+    // under load the first compute can take longer than the old 1.5 s grace).
+    await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeEnabled({ timeout: LOAD });
     // The picture is fetched and keyed after the drawing lands.
     await page.waitForTimeout(1500);
 }
