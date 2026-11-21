@@ -19,11 +19,24 @@ interface Picture {
 // Module-scoped cache survives component unmount/remount (e.g. gallery → visualizer)
 const cache = new Map<string, Picture>();
 
+/** The wash's feathered edge, as a share of the picture's shorter side. */
+export const WASH_FEATHER = 0.12;
+
+/** 0 at the picture's edge, rising smoothly to 1 at the feather's depth. */
+function feather(d: number, depth: number): number {
+    const t = Math.min(1, d / depth);
+    return t * t * (3 - 2 * t);
+}
+
 /**
  * Luminance-key the loaded overlay once (UIA-F-174): each pixel's alpha is
  * scaled by its darkness, so a white ground keys out and ink stays. The
  * overlay is drawn over a transparent canvas, where a blend mode has no
  * backdrop to act on; the key is the multiply the canvas cannot do.
+ *
+ * The keyed wash also fades out toward the picture's four edges (PR 33
+ * review: on by default, its hard edge read as a pale box across the stage).
+ * The whole picture, shown alone, keeps its edges.
  */
 function luminanceKeyed(img: HTMLImageElement): Picture {
     const whole = document.createElement("canvas");
@@ -37,9 +50,18 @@ function luminanceKeyed(img: HTMLImageElement): Picture {
     ctx.drawImage(img, 0, 0);
     const data = ctx.getImageData(0, 0, out.width, out.height);
     const px = data.data;
-    for (let i = 0; i < px.length; i += 4) {
-        const lum = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
-        px[i + 3] = Math.round(px[i + 3] * (1 - lum));
+    const w = out.width;
+    const h = out.height;
+    const depth = Math.max(1, WASH_FEATHER * Math.min(w, h));
+    const edgeX = new Float32Array(w);
+    for (let x = 0; x < w; x++) edgeX[x] = feather(Math.min(x, w - 1 - x) + 0.5, depth);
+    for (let y = 0; y < h; y++) {
+        const fy = feather(Math.min(y, h - 1 - y) + 0.5, depth);
+        for (let x = 0; x < w; x++) {
+            const i = (y * w + x) * 4;
+            const lum = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+            px[i + 3] = Math.round(px[i + 3] * (1 - lum) * fy * edgeX[x]);
+        }
     }
     ctx.putImageData(data, 0, 0);
     return { whole, keyed: out };

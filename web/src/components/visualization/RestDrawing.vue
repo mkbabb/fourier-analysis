@@ -6,7 +6,8 @@
  * the site's engine (`@mkbabb/fourier`): the line writes itself in over one
  * turn, holds, fades and begins again. The invitation sits on it. Only while
  * the stage is on screen and the page visible (`frameLoop`); under reduced
- * motion it is the still drawing.
+ * motion it is the still drawing. It stands above the invitation (beside it on
+ * a short landscape stage), never under its words.
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from "vue";
 import { useMediaQuery } from "@vueuse/core";
@@ -130,11 +131,14 @@ onBeforeUnmount(() => loop?.dispose());
 </template>
 
 <style scoped>
+/* The drawing takes the stage's room the invitation leaves (its host stacks
+   the two; PR 33 review: the line ran through the title and the button). */
 .rest-drawing {
-    position: absolute;
-    inset: var(--space-family);
-    inline-size: calc(100% - 2 * var(--space-family));
-    block-size: calc(100% - 2 * var(--space-family));
+    position: relative;
+    flex: 1 1 0;
+    align-self: stretch;
+    min-block-size: 0;
+    min-inline-size: 0;
     pointer-events: none;
     user-select: none;
 }

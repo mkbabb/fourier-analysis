@@ -1160,12 +1160,14 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 .drop-target > * {
     pointer-events: auto;
 }
-/* The empty stage's prompt and its action, centred in the stage. It draws no
-   frame of its own (X-DS F4R · DS-F4R-C1): the stage's hairline is the frame
-   at rest and the stage's ring (below) is the one drop signal. */
+/* The empty stage's prompt and its action, under the drawing (it takes the
+   room above; on a short landscape stage the two stand side by side), so the
+   line never runs through the words. It draws no frame of its own (X-DS F4R ·
+   DS-F4R-C1): the stage's hairline is the frame at rest and the stage's ring
+   (below) is the one drop signal. */
 .drop-zone {
     position: relative;
-    flex: 1;
+    flex: none;
     align-self: stretch;
     display: flex;
     flex-direction: column;
@@ -1180,6 +1182,17 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
 @media (width < 40rem) {
     .drop-zone {
         padding-inline: var(--page-gutter);
+    }
+}
+/* A short landscape stage: the drawing and the invitation side by side. */
+@media (orientation: landscape) and (height < 30rem) {
+    .drop-target {
+        flex-direction: row;
+    }
+    .drop-zone {
+        flex: 0 1 auto;
+        max-inline-size: 55%;
+        padding-block: 1rem;
     }
 }
 /* UIA-F-166 — the whole stage signals a file dragged over it; inset, so the
