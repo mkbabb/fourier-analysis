@@ -710,27 +710,29 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
    the old body and arrives with the new one), on glass's tokens. Reduced motion
    keeps the fade. */
 .gallery-search-leave-active {
-    transition: opacity var(--duration-control) var(--ease-standard);
+    transition: opacity var(--duration-instant) var(--ease-standard);
 }
 .gallery-search-enter-active {
-    transition: opacity var(--duration-fast) var(--ease-standard);
+    transition: opacity var(--duration-control) var(--ease-standard);
 }
 .gallery-search-enter-from,
 .gallery-search-leave-to {
     opacity: 0;
 }
 
-/* A tab's body: the old leaves at the control step, the new fades in at the
-   fast step, in place (a row is never moving under a pointer that arrives to
-   press it). Reduced motion keeps the fade. */
+/* A tab's body: the old leaves at the instant step, the new fades in at the
+   control step, in place (a row is never moving under a pointer that arrives to
+   press it). The change reads as done in about 220 ms, under the 250 ms a tab
+   body is given (STUDY 2.11; it took about 0.4 s at 120 out and 200 in), and
+   the exit is the quicker. Reduced motion keeps the fade. */
 .gallery-body {
     min-block-size: 0;
 }
 .gallery-body-leave-active {
-    transition: opacity var(--duration-control) var(--ease-standard);
+    transition: opacity var(--duration-instant) var(--ease-standard);
 }
 .gallery-body-enter-active {
-    transition: opacity var(--duration-fast) var(--ease-standard);
+    transition: opacity var(--duration-control) var(--ease-standard);
 }
 .gallery-body-enter-from,
 .gallery-body-leave-to {
