@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { seededViz } from "./fixtures/seed";
 import { showView } from "./fixtures/workspace";
 
 /**
@@ -84,6 +85,20 @@ test.describe("phone rows @coarse", () => {
         for (const b of boxes) expect(b.h, `${b.name} height`).toBeGreaterThanOrEqual(44 - 0.5);
         const chips = await page.locator(".eq-panel-left-wrap [role=radio]").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
         for (const h of chips) expect(h).toBeLessThanOrEqual(46);
+    });
+
+    test("@coarse /w's controls card ends with its content", async ({ page }) => {
+        await page.goto(`/v/${seededViz().slug}`);
+        await showView(page, "Controls");
+        await expect(page.getByText("Coefficients").first()).toBeVisible({ timeout: 60_000 });
+        await page.waitForTimeout(600);
+        const g = await page.evaluate(() => {
+            const aside = document.querySelector(".viz-configurator [data-slot='configurator'] > .configurator-aside")!.getBoundingClientRect();
+            const layers = [...document.querySelectorAll<HTMLElement>(".viz-configurator [data-slot='configurator-layer']")];
+            const last = layers.at(-1)!.getBoundingClientRect();
+            return { asideBottom: aside.bottom, lastBottom: last.bottom };
+        });
+        expect(g.asideBottom - g.lastBottom, "the card runs on past its last section").toBeLessThanOrEqual(16);
     });
 
     test("@coarse G: every seat in the open plot column is 44 by 44", async ({ page }) => {

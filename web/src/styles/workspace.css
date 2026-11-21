@@ -65,6 +65,12 @@
 }
 .workspace-host[data-form="sheet"] .configurator-shell > [data-slot="configurator"] > .configurator-aside {
     grid-column: 2;
+    /* The controls card ends with its content, as on a desk (PR 33 review: on
+       /w it ran on ~110 px as an empty plate under Coefficients): it starts at
+       the pane's top, is as tall as its sections and at most the pane's
+       height, past which glass's own fading scroll scrolls inside it. */
+    align-self: start;
+    max-block-size: 100%;
 }
 .workspace-host[data-form="sheet"][data-pane="controls"] .configurator-shell > [data-slot="configurator"] > :is(.configurator-stage, .configurator-aside) {
     transform: translateX(calc(-100% - var(--workspace-gutter)));
