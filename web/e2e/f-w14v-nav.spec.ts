@@ -43,7 +43,10 @@ test.describe("nav falsifier (1440): one section trigger, no inline section link
 /**
  * X.F.W14V `.dm` — addendum (f), COHESION §0dx. The owner: "the darkmode
  * toggle is too small as well". The morph glyph's box is the sibling dock
- * glyphs' box (the section glyph and the account glyph), at 1440 and 390.
+ * glyphs' box (the section glyph, and the account glyph where the account has
+ * a seat), at 1440 and 390. On a phone the account is the "i" card's last
+ * part (PR 33 review, should-fix 2), so there the sibling is the "i" glyph;
+ * at 1440 both are read.
  *
  * FALSIFIER: RED at the before bytes, where glass's `.dock-icon-button > svg`
  * sized the morph to `--dock-icon-glyph` (20 px) beside 24 px siblings.
@@ -52,26 +55,32 @@ for (const vp of [
     { width: 1440, height: 900 },
     { width: 390, height: 844 },
 ]) {
+    const accountSeat = vp.width >= 640;
     test.describe(`dm falsifier (${vp.width}): the dark-mode glyph is the dock's glyph box`, () => {
         test.use({ viewport: vp });
-        test("morph glyph bbox equals the section and account glyph bboxes", async ({ page }) => {
+        test(`morph glyph bbox equals the section, "i"${accountSeat ? " and account" : ""} glyph bboxes`, async ({ page }) => {
             await page.goto("/gallery");
             await openAppDock(page);
             await expect(page.locator(".app-dock .sun-moon-toggle svg")).toBeVisible({ timeout: 30_000 });
             await page.waitForTimeout(400);
-            const read = await page.evaluate(() => {
+            const read = await page.evaluate((accountSeat) => {
                 const box = (sel: string) => {
-                    const r = document.querySelector(sel)!.getBoundingClientRect();
+                    const el = document.querySelector(sel);
+                    if (!el) return null;
+                    const r = el.getBoundingClientRect();
                     return { w: Math.round(r.width), h: Math.round(r.height) };
                 };
                 return {
                     morph: box(".app-dock .sun-moon-toggle svg"),
                     section: box(".app-dock .dock-layer--full .nav-tab-icon"),
-                    account: box(".app-dock .account-trigger svg"),
+                    about: box(".app-dock .about-trigger svg"),
+                    account: accountSeat ? box(".app-dock .account-trigger svg") : null,
                 };
-            });
+            }, accountSeat);
+            expect(read.morph, `the morph glyph ${JSON.stringify(read)}`).not.toBeNull();
             expect(read.morph, `morph vs section glyph ${JSON.stringify(read)}`).toEqual(read.section);
-            expect(read.morph, `morph vs account glyph ${JSON.stringify(read)}`).toEqual(read.account);
+            expect(read.morph, `morph vs "i" glyph ${JSON.stringify(read)}`).toEqual(read.about);
+            if (accountSeat) expect(read.morph, `morph vs account glyph ${JSON.stringify(read)}`).toEqual(read.account);
         });
     });
 }
