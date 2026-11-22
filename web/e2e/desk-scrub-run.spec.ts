@@ -78,3 +78,91 @@ for (const scheme of ["dark", "light"] as const) {
         });
     });
 }
+
+/**
+ * The epicycle inset stands on the plate (PR 35 review, should-fix 1). The
+ * plate is two rows at a desk now, and the inset's reserve was one dock row
+ * (about 79 px at 1440 against the plate's top at about 106): its chain could
+ * pass under the glass. The inset stands on the dock's measured foot.
+ *
+ * The inset is the only figure drawn under its own fit's scale; its circles
+ * and arms are recorded where the stage canvas draws them, in the canvas's
+ * CSS px, while the scrub steps through a whole cycle with the pointer away.
+ */
+function recordInsetInk(): void {
+    const rec = { bottom: -Infinity, n: 0 };
+    (window as unknown as { __inset: typeof rec }).__inset = rec;
+    const proto = CanvasRenderingContext2D.prototype;
+    const note = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number) => {
+        if (!ctx.canvas.classList.contains("canvas-el")) return;
+        const dpr = devicePixelRatio || 1;
+        const m = ctx.getTransform();
+        const k = Math.hypot(m.c, m.d);
+        if (Math.abs(k / dpr - 1) < 0.02) return;
+        const p = m.transformPoint(new DOMPoint(x, y));
+        if (p.x / dpr > ctx.canvas.clientWidth / 2) return;
+        rec.bottom = Math.max(rec.bottom, (p.y + r * k) / dpr);
+        rec.n++;
+    };
+    const arc = proto.arc;
+    proto.arc = function (this: CanvasRenderingContext2D, x: number, y: number, r: number, ...rest: [number, number, boolean?]) {
+        note(this, x, y, r);
+        return arc.call(this, x, y, r, ...rest);
+    };
+    const moveTo = proto.moveTo;
+    proto.moveTo = function (this: CanvasRenderingContext2D, x: number, y: number) {
+        note(this, x, y, 0);
+        return moveTo.call(this, x, y);
+    };
+    const lineTo = proto.lineTo;
+    proto.lineTo = function (this: CanvasRenderingContext2D, x: number, y: number) {
+        note(this, x, y, 0);
+        return lineTo.call(this, x, y);
+    };
+}
+
+for (const vp of [
+    { width: 1440, height: 900 },
+    { width: 1280, height: 800 },
+]) {
+    test.describe(`the epicycle inset stands on the plate (${vp.width})`, () => {
+        test.use({ viewport: vp, colorScheme: "dark" });
+        test.setTimeout(120_000);
+
+        test("across a cycle the inset's circles and arms stay above the plate's top", async ({ page }) => {
+            await page.addInitScript(recordInsetInk);
+            await page.goto(`/v/${seededViz().slug}`);
+            await expect(page.locator(".animation-dock")).toBeVisible({ timeout: LOAD });
+            await expect(page.getByRole("button", { name: /^(Play|Pause) animation$/ }).first()).toBeEnabled({ timeout: LOAD });
+            const pause = page.getByRole("button", { name: "Pause animation" });
+            if (await pause.isVisible()) await pause.click();
+            // The pointer off the stage: the inset at its resting size.
+            await page.mouse.move(vp.width - 4, 4);
+            await page.waitForTimeout(400);
+            const slider = page.locator(".animation-dock [role=slider]").first();
+            await slider.focus();
+            await page.keyboard.press("Home");
+            await page.waitForTimeout(200);
+            await page.evaluate(() => {
+                const r = (window as unknown as { __inset: { bottom: number; n: number } }).__inset;
+                r.bottom = -Infinity;
+                r.n = 0;
+            });
+            // t from 0 to 1 in steps of 0.01, each step drawn.
+            for (let step = 0; step < 100; step++) {
+                await page.keyboard.press("ArrowRight");
+                await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+            }
+            expect(Number(await slider.getAttribute("aria-valuenow")), "the scrub reached the cycle's end").toBeGreaterThanOrEqual(0.99);
+            const read = await page.evaluate(() => {
+                const c = document.querySelector(".canvas-stage canvas.canvas-el")!.getBoundingClientRect();
+                const plate = document.querySelector(".controls-overlay > *")!.getBoundingClientRect();
+                const r = (window as unknown as { __inset: { bottom: number; n: number } }).__inset;
+                return { inkBottom: r.bottom, drawn: r.n, plateTop: plate.top - c.top };
+            });
+            test.info().annotations.push({ type: "inset-vs-plate", description: JSON.stringify(read) });
+            expect(read.drawn, "the inset was drawn across the cycle").toBeGreaterThan(0);
+            expect(read.inkBottom, `the inset's lowest ink against the plate's top ${JSON.stringify(read)}`).toBeLessThanOrEqual(read.plateTop);
+        });
+    });
+}

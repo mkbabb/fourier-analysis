@@ -106,6 +106,17 @@ let legendTop = 16;
    stage's `--epicycle-inset-bottom` (registered like `--legend-inset-top`):
    the bottom dock's reserved block, so the chain's tip is never under it. */
 let epicycleBottom = 12;
+/** The inset's own gap over the dock. */
+const INSET_GAP = 12;
+/**
+ * The inset stands on the dock's measured foot when there is one (the plate,
+ * two rows at a desk since the scrub took its own row: the stylesheet's
+ * reserve is one dock row, and the chain could pass under the plate's top),
+ * else on the stylesheet's reserve.
+ */
+function insetBottom(): number {
+    return props.fitInsetBottom > 0 ? props.fitInsetBottom + INSET_GAP : epicycleBottom;
+}
 /* X-DS pass 8 · DS-F10-C2: the stage's inline-start inset (`--stage-inset-inline`),
    one edge for the legend and the epicycle inset. */
 let insetInline = 16;
@@ -442,7 +453,7 @@ function drawEpicycleFrame(
 
     let fit: EpicycleFit | null = null;
     if (isDesktop && nVis > 0) {
-        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom, insetInline);
+        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, insetBottom(), insetInline);
         if (result) {
             fit = result.fit;
             baseFitCenter = result.baseFitCenter;
@@ -647,7 +658,7 @@ function drawMultiBasesFrame(
 
         let fit: EpicycleFit | null = null;
         if (isDesktop && nVis > 0) {
-            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom, insetInline);
+            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, insetBottom(), insetInline);
             if (result) {
                 fit = result.fit;
                 baseFitCenter = result.baseFitCenter;

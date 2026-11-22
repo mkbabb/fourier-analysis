@@ -1033,7 +1033,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     --stage-inset-inline: 16px;
     /* X-DS pass 4 · DS-F4-C8: the epicycle inset sits above the bottom dock's
        reserved block (`.controls-overlay`'s offset plus glass's `--dock-h`),
-       with the inset's own 12 px over it. */
+       with the inset's own 12 px over it. Once the dock is measured the inset
+       stands on its foot instead (BasisCanvas `insetBottom`: the plate is two
+       rows at a desk); this is the reserve until then. */
     --epicycle-inset-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px) + var(--dock-h) + 12px);
 }
 
