@@ -386,7 +386,10 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     <header ref="header" class="app-header">
         <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed">
             <!-- Home: a house on a phone, the wordmark on a desk (the dock's
-                 control cell its hit box), a link to the paper. -->
+                 control cell its hit box), a link to the paper. The wordmark
+                 opens with the site's mark, the epicycle figure the folded
+                 seal and the tab carry, never the font's ℱ (which names the
+                 Fourier basis on the stage). -->
             <DockControl
                 as="a"
                 compact
@@ -398,7 +401,8 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
             >
                 <House class="home-glyph" aria-hidden="true" />
                 <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
-                    <span class="fourier-f">&#x2131;</span>ourier analysis
+                    <FourierMark />
+                    <span>Fourier analysis</span>
                 </span>
             </DockControl>
 
@@ -627,8 +631,12 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 }
 .logo-mark {
     display: none;
+    align-items: center;
+    gap: 0.375rem;
     @apply text-xl;
     line-height: 1;
+    /* The mark on the dock's one glyph size (FourierMark's own hook). */
+    --fourier-mark-size: var(--dock-icon-glyph);
 }
 
 @media (min-width: 640px) {
@@ -636,7 +644,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
         display: none;
     }
     .logo-mark {
-        display: inline;
+        display: inline-flex;
     }
 }
 
