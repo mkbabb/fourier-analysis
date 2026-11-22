@@ -366,6 +366,12 @@ function togglePane() {
  * and the card, with the field focused; closing the card settles the request.
  */
 const aboutOpen = ref(false);
+/** Every control explains itself: on a phone the "i" is the way to sign in, and its name says so. */
+const aboutName = computed(() =>
+    compact.value
+        ? { label: "About Fourier analysis and your account", title: "About and your account" }
+        : { label: "About Fourier analysis", title: "About" },
+);
 const signInPending = computed(() => compact.value && auth.signInRequested);
 watch(signInPending, (pending) => {
     if (!pending) return;
@@ -469,9 +475,10 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 <UserSlugBar />
             </div>
 
-            <!-- About ("i"), beside the theme seat on every route. -->
+            <!-- About ("i"), beside the theme seat on every route. On a phone it
+                 holds the account too, and is named for both. -->
             <Popover keep-dock-open :open="aboutOpen" @update:open="onAboutOpen">
-                <DockTrigger for="popover" class="about-trigger" aria-label="About Fourier analysis" title="About">
+                <DockTrigger for="popover" class="about-trigger" :aria-label="aboutName.label" :title="aboutName.title">
                     <Info class="about-glyph" aria-hidden="true" />
                 </DockTrigger>
                 <PopoverContent align="end" class="about-card" :class="{ 'about-card--account': compact }" @open-auto-focus="onAboutFocus" @focus-outside="onAboutFocusOutside">

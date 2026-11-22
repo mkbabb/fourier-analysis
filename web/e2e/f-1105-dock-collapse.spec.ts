@@ -244,6 +244,9 @@ const SURFACES = [
     { name: "Log in", trigger: /^Log in$/, content: ".login-popover" },
 ] as const;
 
+/** On a phone the "i" holds the account too, and is named for both. */
+const PHONE_TRIGGER: Partial<Record<string, RegExp>> = { About: /^About Fourier analysis and your account$/ };
+
 /** Past glass's idle window (6000 ms since glass 11.0.2) and the morph. */
 const IDLE = 7_000;
 
@@ -292,7 +295,7 @@ for (const s of SURFACES) {
         test(`@coarse U3 F-3 ${s.name}: an open surface outlasts the idle window and a tap outside lets the dock yield`, async ({ page }) => {
             const dock = await open(page, "/gallery");
             // O41 S4: About is the "i" beside the theme seat at every width.
-            const content = await openSurface(page, dock, s, true);
+            const content = await openSurface(page, dock, { ...s, trigger: PHONE_TRIGGER[s.name] ?? s.trigger }, true);
             await page.waitForTimeout(IDLE);
             await expect(content).toBeVisible();
             await expect(dock).toHaveClass(EXPANDED);

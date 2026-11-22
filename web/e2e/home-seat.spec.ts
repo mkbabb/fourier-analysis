@@ -83,8 +83,10 @@ for (const vp of [
             await page.goto("/gallery");
             const run = await seats(page);
             const names = run.map((s) => s.name);
-            expect(names.slice(-2)).toEqual(["About Fourier analysis", "Dark mode"]);
-            if (vp.width < 640) expect(names).toEqual(["Home", "Navigate", "About Fourier analysis", "Dark mode"]);
+            // On a phone the "i" holds the account too, and is named for both.
+            const about = vp.width < 640 ? "About Fourier analysis and your account" : "About Fourier analysis";
+            expect(names.slice(-2)).toEqual([about, "Dark mode"]);
+            if (vp.width < 640) expect(names).toEqual(["Home", "Navigate", about, "Dark mode"]);
             await page.getByRole("button", { name: "About Fourier analysis" }).click();
             await expect(page.locator(".about-card")).toContainText(/orthogonal decomposition/i);
             await page.keyboard.press("Escape");

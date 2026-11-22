@@ -20,6 +20,8 @@ import { seededViz } from "./fixtures/seed";
 
 const PHONE = { width: 390, height: 844 };
 const SLUG = "quiet-amber-lattice-fox";
+/** The "i" on a phone: About, and the account (sign-in has no other control there). */
+const ABOUT = "About Fourier analysis and your account";
 
 /** The open dock's seats in order, by accessible name, and the run's room. */
 async function run(page: Page) {
@@ -64,8 +66,9 @@ test.describe("the phone's run: About stays beside the theme seat on every route
             const g = await run(page);
             const names = g.seats.map((s) => s.name);
             const pane = names.includes("Controls");
+            // The "i" holds the account on a phone, and its name says so.
             expect(names).toEqual(
-                pane ? ["Home", "Navigate", "About Fourier analysis", "Dark mode", "Controls"] : ["Home", "Navigate", "About Fourier analysis", "Dark mode"],
+                pane ? ["Home", "Navigate", ABOUT, "Dark mode", "Controls"] : ["Home", "Navigate", ABOUT, "Dark mode"],
             );
             if (route === "/equation" || route === "saved") expect(pane, "the pane seat stands here").toBe(true);
             expect(g.left, "room on the left").toBeGreaterThanOrEqual(16);
@@ -87,7 +90,8 @@ test.describe("the phone's sign-in, in the About card", () => {
         const tally = await sessionRoutes(page);
         await page.goto("/equation");
         await openAppDock(page);
-        const about = page.locator(".app-dock").getByRole("button", { name: "About Fourier analysis" });
+        const about = page.locator(".app-dock").getByRole("button", { name: ABOUT, exact: true });
+        await expect(about).toHaveAttribute("title", "About and your account");
         await about.click();
         const card = page.locator(".about-card");
         await expect(card).toContainText(/orthogonal decomposition/i);

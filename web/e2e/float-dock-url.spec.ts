@@ -137,8 +137,8 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
         const pane = g.seats.some((x) => x.name === "Controls");
         expect(g.seats.map((x) => x.name.replace(/ — .*/, ""))).toEqual(
             pane
-                ? ["Home", "Navigate", "About Fourier analysis", "Dark mode", "Controls"]
-                : ["Home", "Navigate", "About Fourier analysis", "Dark mode"],
+                ? ["Home", "Navigate", "About Fourier analysis and your account", "Dark mode", "Controls"]
+                : ["Home", "Navigate", "About Fourier analysis and your account", "Dark mode"],
         );
         for (const x of g.seats) {
             expect(x.w, `${x.name} width`).toBeGreaterThanOrEqual(44);
