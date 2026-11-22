@@ -35,6 +35,7 @@ import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
+import { Progress } from "@mkbabb/glass-ui/progress";
 import {
     Dialog,
     DialogContent,
@@ -97,10 +98,11 @@ const dropMessage = computed(() =>
 );
 
 /* UIA-F-237: "Drop or click" is wrong on touch; the primary action names the
-   act, which is pointer-neutral, and while uploading it says that (UIA-F-133).
-   X-DS pass 2 · DS-F2-C13: one label at every width — "Tap to choose an
-   image" wrapped to two lines in its pill at 390, stranding the glyph. */
-const primaryUploadLabel = computed(() => (store.uploading ? "Uploading…" : "Choose an image"));
+   act, which is pointer-neutral. X-DS pass 2 · DS-F2-C13: one label at every
+   width — "Tap to choose an image" wrapped to two lines in its pill at 390,
+   stranding the glyph. The upload says nothing here: from the drop the stage
+   shows the file's own picture (`store.localPicture`), and the drop target
+   has left. */
 
 // ── Active bases ──
 const activeBases = ref<string[]>(
@@ -647,7 +649,8 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              upload is said here, where it was dropped (UIA-F-166 ⊕ F-167). -->
                         <!-- Canon F14 (restraint, C-21): one grid, the page's. The
                              plate's own second grid is gone. -->
-                        <div v-if="!hasImage && !hasData && !stageLoading" class="drop-target" :data-dragging="globalDragging || undefined">
+                        <Transition name="stage-fade">
+                        <div v-if="!hasImage && !store.localPicture && !hasData && !stageLoading" class="drop-target" :data-dragging="globalDragging || undefined">
                             <!-- The stage at rest is alive (critique V1): an outline
                                  drawn in circles, the invitation under it. -->
                             <RestDrawing />
@@ -656,19 +659,29 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                  ring is the one drop signal. -->
                             <div class="drop-zone">
                                 <h1 class="drop-target-title font-serif-math">Draw any outline in circles</h1>
-                                <Button emphasis="primary" size="md" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
-                                    <Upload v-if="!store.uploading" />
-                                    {{ primaryUploadLabel }}
+                                <Button emphasis="primary" size="md" class="drop-target-button" @click="openFilePicker">
+                                    <Upload />
+                                    Choose an image
                                 </Button>
                                 <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
                                 <!-- FORTY-FIRST D: "Browse the gallery" is gone from the
                                      stage; the gallery is a place in the top dock. -->
                             </div>
                         </div>
+                        </Transition>
                         <!-- UIA-F-73 ⊕ F-71 and FORTY-FIRST F: the stage's one busy mark,
                              in the DOM and named by the job's stage. It paints nothing:
                              the picture is on the canvas and the measure on the dock's rim. -->
                         <div v-if="store.computing" class="stage-status" role="status" :aria-label="jobLabel" />
+                        <!-- A first upload's one busy mark: from the drop the stage shows
+                             the file's own picture (`store.localPicture`), and under it,
+                             where the dock will stand, glass's indeterminate bar, with no
+                             words. A replace's mark is the Image layer's bar. -->
+                        <Transition name="stage-fade">
+                            <div v-if="store.uploading && !hasImage" class="stage-upload">
+                                <Progress :model-value="null" size="sm" aria-label="Uploading the image" />
+                            </div>
+                        </Transition>
                         <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark, announced
                              as a status. X·OD19 ALL (owner: "the loading text should be
                              removed in favor of a skeleton shimmer"): glass's `Skeleton shimmer` (10.1.1) in
@@ -1283,6 +1296,31 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     position: absolute;
     inset: 0;
     pointer-events: none;
+}
+/* The first upload's bar stands where the dock will, at the stage's foot. */
+.stage-upload {
+    position: absolute;
+    inset-inline: 0;
+    bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    z-index: var(--z-controls);
+}
+.stage-upload > * {
+    inline-size: min(12rem, 50%);
+}
+/* The drop target and the upload's bar arrive and leave on a fade (the
+   leave the quicker half). */
+.stage-fade-enter-active {
+    transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.stage-fade-leave-active {
+    transition: opacity 0.12s var(--ease-standard);
+}
+.stage-fade-enter-from,
+.stage-fade-leave-to {
+    opacity: 0;
 }
 
 /* ── X.F.W13.c — the sidebar arrives with content ──

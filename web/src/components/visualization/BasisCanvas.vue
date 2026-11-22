@@ -386,9 +386,9 @@ const ghostFade = useLayerFade(() => props.showGhost, repaint);
 const pictureFade = useLayerFade(() => props.showImageOverlay, repaint);
 const lineFade = useLayerFade(() => props.showLine, repaint);
 const circlesFade = useLayerFade(() => props.showCircles, repaint);
-/** The first compute's picture: shown while the first drawing is found, and only once it is in hand. */
+/** The first compute's picture: shown from the drop (the file's own, while it uploads) until the first drawing lands, and only once it is in hand. */
 const firstPictureFade = useLayerFade(
-    () => store.computing && !store.epicycleData && !store.basesData && hasPicture(),
+    () => (store.uploading || store.computing) && !store.epicycleData && !store.basesData && hasPicture(),
     repaint,
 );
 

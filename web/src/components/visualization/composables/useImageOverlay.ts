@@ -14,6 +14,8 @@ export const PICTURE_WASH = 0.22;
 interface Picture {
     whole: HTMLCanvasElement;
     keyed: HTMLCanvasElement;
+    /** Made from the dropped file in the browser, standing in until the server's overlay lands. */
+    local?: boolean;
 }
 
 // Module-scoped cache survives component unmount/remount (e.g. gallery → visualizer)
@@ -38,20 +40,18 @@ function feather(d: number, depth: number): number {
  * review: on by default, its hard edge read as a pale box across the stage).
  * The whole picture, shown alone, keeps its edges.
  */
-function luminanceKeyed(img: HTMLImageElement): Picture {
+function luminanceKeyed(img: HTMLImageElement, w = img.naturalWidth, h = img.naturalHeight): Picture {
     const whole = document.createElement("canvas");
-    whole.width = img.naturalWidth;
-    whole.height = img.naturalHeight;
-    whole.getContext("2d")!.drawImage(img, 0, 0);
+    whole.width = w;
+    whole.height = h;
+    whole.getContext("2d")!.drawImage(img, 0, 0, w, h);
     const out = document.createElement("canvas");
-    out.width = img.naturalWidth;
-    out.height = img.naturalHeight;
+    out.width = w;
+    out.height = h;
     const ctx = out.getContext("2d")!;
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, w, h);
     const data = ctx.getImageData(0, 0, out.width, out.height);
     const px = data.data;
-    const w = out.width;
-    const h = out.height;
     const depth = Math.max(1, WASH_FEATHER * Math.min(w, h));
     const edgeX = new Float32Array(w);
     for (let x = 0; x < w; x++) edgeX[x] = feather(Math.min(x, w - 1 - x) + 0.5, depth);
@@ -93,18 +93,53 @@ export function useImageOverlay(onImageLoaded?: () => void) {
         return `${store.imageSlug}:${resizeFromBounds(store)}`;
     }
 
+    /** The dropped file's picture stands while its upload runs, and after, until the server's lands. */
+    function localStands(): boolean {
+        return !!current.value?.local && !!store.localPicture;
+    }
+
+    /*
+     * The dropped file, decoded in the browser at the extraction's size (the
+     * overlay is the image at `resize` on its longer side), so the server's
+     * overlay takes its place without the picture moving.
+     */
+    let localUrl: string | null = null;
+    function loadLocal(url: string) {
+        if (localUrl === url) return;
+        localUrl = url;
+        const img = new Image();
+        img.onload = () => {
+            if (store.localPicture !== url || !img.naturalWidth || !img.naturalHeight) return;
+            // The server's overlay for this upload is in hand already: it stays.
+            if (!store.uploading && current.value && !current.value.local) return;
+            const k = resizeFromBounds(store) / Math.max(img.naturalWidth, img.naturalHeight);
+            const picture = luminanceKeyed(img, Math.round(img.naturalWidth * k), Math.round(img.naturalHeight * k));
+            current.value = { ...picture, local: true };
+            onImageLoaded?.();
+        };
+        img.src = url;
+    }
+
     watch(
-        () => [store.imageSlug, store.contour] as const,
+        () => [store.imageSlug, store.contour, store.localPicture, store.uploading] as const,
         () => {
+            if (store.uploading && store.localPicture) {
+                loadLocal(store.localPicture);
+                return;
+            }
             const key = cacheKey();
-            if (!key) { current.value = null; loading.value = false; return; }
+            if (!key) {
+                if (!localStands()) current.value = null;
+                loading.value = false;
+                return;
+            }
             if (cache.has(key)) {
                 current.value = cache.get(key)!;
                 loading.value = false;
                 onImageLoaded?.();
                 return;
             }
-            current.value = null;
+            if (!localStands()) current.value = null;
             loading.value = true;
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -123,7 +158,7 @@ export function useImageOverlay(onImageLoaded?: () => void) {
             };
             img.onerror = () => {
                 if (cacheKey() === key) {
-                    current.value = null;
+                    if (!localStands()) current.value = null;
                     loading.value = false;
                 }
             };

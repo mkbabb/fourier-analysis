@@ -78,6 +78,17 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     // sidebar could never arrive — it could only remount. The upload's busy
     // signal is its own flag, read by the drop target that started it.
     const uploading = ref(false);
+    /*
+     * The dropped file's own picture (an object URL), shown on the stage from
+     * the drop while the file uploads and until the server's overlay lands. It
+     * is already in the browser: waiting for the upload's round trip and the
+     * overlay's fetch held the stage on "Uploading…" for a second or more.
+     */
+    const localPicture = shallowRef<string | null>(null);
+    function setLocalPicture(url: string | null) {
+        if (localPicture.value) URL.revokeObjectURL(localPicture.value);
+        localPicture.value = url;
+    }
     // X.F.W14U.vstage — UIA-F-167: an upload failure is the drop target's to
     // show. Written into the shared `error`, it read as a failed WORKSPACE load
     // ("Could not load this workspace") on a route that had loaded nothing.
@@ -164,6 +175,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         // one upload; loading suppresses activation).
         if (uploading.value) return;
         uploading.value = true;
+        setLocalPicture(URL.createObjectURL(file));
         draftSnapshots = [];
         error.value = null;
         computeError.value = null;
@@ -191,6 +203,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             // file-pick listeners do not await), so it surfaced as an
             // unhandled rejection beside the message.
             if (!api.isAbortError(e)) uploadError.value = problemMessage(e, "Upload failed");
+            setLocalPicture(null);
         } finally {
             uploading.value = false;
         }
@@ -204,6 +217,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
      * the card that already said so.
      */
     async function loadWorkspace(slug: string) {
+        setLocalPicture(null);
         loading.value = true;
         error.value = null;
         computeError.value = null;
@@ -266,6 +280,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
      * asset FKs are KEPT under the convergence.
      */
     async function loadVisualization(slug: string) {
+        setLocalPicture(null);
         loading.value = true;
         error.value = null;
         computeError.value = null;
@@ -579,6 +594,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         visualizationSlug.value = null;
         visualizationETag.value = null;
         imageMeta.value = null;
+        setLocalPicture(null);
         contour.value = null;
         epicycleData.value = null;
         basesData.value = null;
@@ -608,6 +624,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         drafts,
         loading,
         uploading,
+        localPicture,
         uploadError,
         computing,
         error,

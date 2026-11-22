@@ -12,8 +12,9 @@ import { SAMPLE_IMAGE } from "./fixtures/sample";
  *         when the upload response lands. Its busy mark follows `.u4`'s rule
  *         (`8e19043`, UIA-F-71 ⊕ F-238; re-baselined at X.F.W14V Repair 1,
  *         addendum (g) routing 1, §0bt): a FIRST upload's one mark is the
- *         stage's drop-target button (glass's dot ring) and the aside has no
- *         bar; a REPLACE upload's mark is the aside's "Uploading the image" bar.
+ *         stage's wordless bar under the file's own picture (the drop target
+ *         has left) and the aside has no bar; a REPLACE upload's mark is the
+ *         aside's "Uploading the image" bar.
  *   G-c2  `.c` r2: the leave path — an upload that fails clears the flight
  *         with no image; the sidebar is gone, and the chassis re-mounted from
  *         the not-found card opens no empty column.
@@ -97,8 +98,8 @@ test.describe("F.W14.r — the image sidebar (F.W13 `.c` residuals)", () => {
         const side = page.locator(".viz-panel-left-wrap");
         const asideBar = side.getByRole("progressbar", { name: "Uploading the image" });
         await expect(side).toBeVisible();
-        // First upload (`.u4` rule): the stage button is the one busy mark; no aside bar.
-        await expect(page.locator(".drop-target-button [data-slot=dot-ring]")).toBeVisible();
+        // First upload (`.u4` rule): the stage's bar is the one busy mark; no aside bar.
+        await expect(page.locator(".canvas-stage").getByRole("progressbar", { name: "Uploading the image" })).toBeVisible();
         await expect(asideBar).toHaveCount(0);
         // The column opens on the panel spring; read it once the enter settles.
         await expect
