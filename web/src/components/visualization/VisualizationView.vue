@@ -35,7 +35,6 @@ import FullscreenViewer from "./FullscreenViewer.vue";
 import EquationPanel from "./EquationPanel.vue";
 import { Configurator } from "@mkbabb/glass-ui/configurator";
 import { Button } from "@mkbabb/glass-ui/button";
-import { Progress } from "@mkbabb/glass-ui/progress";
 import {
     Dialog,
     DialogContent,
@@ -326,9 +325,13 @@ const hasData = computed(() => store.epicycleData || store.basesData || store.co
  * its foot (`AnimationControls`). It is there from the first frame of a route
  * that names an image, its seats disabled until there is a drawing. The
  * drawing is fitted to the box above it (`fitInsetBottom`).
+ *
+ * A first upload stands it from the drop, under the file's own picture
+ * (`store.localPicture`): the picture is first fitted above the plate, so the
+ * plate's arrival when the upload lands no longer lifts it in one frame.
  */
 const stageDock = computed(
-    () => !isEditing.value && (!!hasData.value || hasImage.value || routeNamesImage.value),
+    () => !isEditing.value && (!!hasData.value || hasImage.value || routeNamesImage.value || !!store.localPicture),
 );
 const controlsOverlay = useTemplateRef<HTMLElement>("controlsOverlay");
 const { height: overlayHeight } = useElementSize(controlsOverlay, undefined, { box: "border-box" });
@@ -673,15 +676,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              in the DOM and named by the job's stage. It paints nothing:
                              the picture is on the canvas and the measure on the dock's rim. -->
                         <div v-if="store.computing" class="stage-status" role="status" :aria-label="jobLabel" />
-                        <!-- A first upload's one busy mark: from the drop the stage shows
-                             the file's own picture (`store.localPicture`), and under it,
-                             where the dock will stand, glass's indeterminate bar, with no
-                             words. A replace's mark is the Image layer's bar. -->
-                        <Transition name="stage-fade">
-                            <div v-if="store.uploading && !hasImage" class="stage-upload">
-                                <Progress :model-value="null" size="sm" aria-label="Uploading the image" />
-                            </div>
-                        </Transition>
+                        <!-- A first upload's one busy mark is in the stage dock's scrub
+                             row (`AnimationControls`): the dock stands from the drop under
+                             the file's own picture. A replace's mark is the Image layer's bar. -->
                         <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark, announced
                              as a status. X·OD19 ALL (owner: "the loading text should be
                              removed in favor of a skeleton shimmer"): glass's `Skeleton shimmer` (10.1.1) in
@@ -1297,21 +1294,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     inset: 0;
     pointer-events: none;
 }
-/* The first upload's bar stands where the dock will, at the stage's foot. */
-.stage-upload {
-    position: absolute;
-    inset-inline: 0;
-    bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
-    display: flex;
-    justify-content: center;
-    pointer-events: none;
-    z-index: var(--z-controls);
-}
-.stage-upload > * {
-    inline-size: min(12rem, 50%);
-}
-/* The drop target and the upload's bar arrive and leave on a fade (the
-   leave the quicker half). */
+/* The drop target arrives and leaves on a fade (the leave the quicker half). */
 .stage-fade-enter-active {
     transition: opacity var(--duration-fast) var(--ease-standard);
 }

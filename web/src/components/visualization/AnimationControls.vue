@@ -62,6 +62,7 @@ import {
     DropdownMenuSeparator,
 } from "@mkbabb/glass-ui/menu";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
+import { Progress } from "@mkbabb/glass-ui/progress";
 import { getEasingSVGPath } from "@/lib/easings";
 import FourierTimeline from "@/components/shared/FourierTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
@@ -117,6 +118,14 @@ function keepFocusForSignIn(e: Event) {
 
 /** There is a drawing to act on: until then every seat is present and disabled. */
 const ready = computed(() => !!store.epicycleData || !!store.basesData);
+
+/**
+ * A first upload: the plate stands from the drop under the file's own picture
+ * (the host's `stageDock`), and the scrub's row holds the upload's one busy
+ * mark, glass's indeterminate bar on the track's own line, with no words. When
+ * the upload lands the bar gives the row back to the scrub.
+ */
+const firstUpload = computed(() => store.uploading && !store.imageMeta);
 
 const isEpicycleOnly = computed(() =>
     props.activeBases.includes("fourier-epicycles") && props.activeBases.length === 1,
@@ -274,8 +283,13 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
         aria-label="Stage controls"
     >
         <div class="card-face">
-            <div class="card-scrub">
+            <div class="card-scrub" :data-busy="firstUpload || undefined">
                 <TimelineReadout />
+                <Transition name="scrub-busy">
+                    <div v-if="firstUpload" class="scrub-busy">
+                        <Progress :model-value="null" size="sm" aria-label="Uploading the image" />
+                    </div>
+                </Transition>
             </div>
             <div class="card-seats">
                 <div class="seat-group">
@@ -413,6 +427,34 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
 }
 .card-scrub {
     display: flex;
+    position: relative;
+}
+/* A first upload's bar lies on the track's line (the timeline row's own
+   inline padding), and the scrub stands back under it until the upload lands.
+   Neither changes the row's height, so the plate never moves the picture. */
+.card-scrub :deep(.timeline-row) {
+    transition: opacity 120ms var(--ease-standard);
+}
+.card-scrub[data-busy] :deep(.timeline-row) {
+    opacity: 0;
+}
+.scrub-busy {
+    position: absolute;
+    inset-block: 0;
+    inset-inline: 0.25rem;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+.scrub-busy-enter-active {
+    transition: opacity 160ms var(--ease-standard);
+}
+.scrub-busy-leave-active {
+    transition: opacity 120ms var(--ease-standard);
+}
+.scrub-busy-enter-from,
+.scrub-busy-leave-to {
+    opacity: 0;
 }
 .card-seats {
     display: flex;

@@ -8,6 +8,12 @@ import { SAMPLE_IMAGE } from "./fixtures/sample";
  * stage shows its own picture, while it uploads, with one wordless bar where
  * the dock will stand; when the server's overlay lands it takes the picture's
  * place with no blank frame between.
+ *
+ * And it never jumps (PR 35 review, blocker 3): the stage's plate stands from
+ * the drop, so the picture is first fitted above it, and nothing moves it
+ * when the upload lands. Its painted box is filmed from the drop to the first
+ * drawing; between two frames it moves at most 2 px, except while the stage
+ * itself is resized (the aside opening at a desk), which carries it.
  */
 
 /** Painted (alpha > 40) samples in the middle of the stage canvas. */
@@ -23,6 +29,65 @@ async function painted(page: Page): Promise<number> {
         for (let i = 3; i < d.length; i += 16) if (d[i]! > 40) n++;
         return n;
     });
+}
+
+interface PictureBox {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+}
+interface BoxFrame {
+    /** The canvas's backing size: a change is the stage's own resize. */
+    w: number;
+    h: number;
+    /** The picture's painted box in CSS px (alpha > 40), or null while nothing is painted. */
+    box: PictureBox | null;
+}
+
+/**
+ * Film the stage canvas's painted box on every frame, until the first drawing
+ * (the Play seat comes alive, and the intro takes the view from the picture's
+ * fit to the drawing's). The box is read on the column through the stage's
+ * centre (the picture's top and bottom) and the row through its middle (its
+ * sides), at full resolution.
+ */
+function filmPictureBox(): void {
+    const rec = { frames: [] as unknown[], done: false };
+    (window as unknown as { __box: typeof rec }).__box = rec;
+    const tick = () => {
+        const play = document.querySelector(
+            '.animation-dock button[aria-label="Play animation"], .animation-dock button[aria-label="Pause animation"]',
+        );
+        if (play && play.getAttribute("aria-disabled") !== "true") {
+            rec.done = true;
+            return;
+        }
+        const c = document.querySelector<HTMLCanvasElement>(".canvas-stage > .canvas-container canvas");
+        const ctx = c?.getContext("2d");
+        if (c && ctx && c.width && c.height) {
+            const W = c.width;
+            const H = c.height;
+            const dpr = devicePixelRatio || 1;
+            const col = ctx.getImageData(Math.floor(W / 2), 0, 1, H).data;
+            let top = -1;
+            let bottom = -1;
+            for (let y = 0; y < H; y++) if (col[y * 4 + 3]! > 40) { top = y; break; }
+            for (let y = H - 1; y >= 0; y--) if (col[y * 4 + 3]! > 40) { bottom = y; break; }
+            let box: PictureBox | null = null;
+            if (top >= 0) {
+                const row = ctx.getImageData(0, Math.floor((top + bottom) / 2), W, 1).data;
+                let left = -1;
+                let right = -1;
+                for (let x = 0; x < W; x++) if (row[x * 4 + 3]! > 40) { left = x; break; }
+                for (let x = W - 1; x >= 0; x--) if (row[x * 4 + 3]! > 40) { right = x; break; }
+                box = { top: top / dpr, bottom: (bottom + 1) / dpr, left: left / dpr, right: (right + 1) / dpr };
+            }
+            rec.frames.push({ w: W, h: H, box });
+        }
+        requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
 }
 
 const CELLS = [
@@ -108,6 +173,52 @@ for (const c of CELLS) {
             });
             expect(film.frames).toBeGreaterThan(10);
             expect(film.low, `the picture's middle never blanks (at release ${atRelease})`).toBeGreaterThan(atRelease * 0.5);
+        });
+
+        test("from the drop to the first drawing the picture never jumps: at most 2 px between two frames", async ({ page }) => {
+            test.setTimeout(120_000);
+            let release!: () => void;
+            const held = new Promise<void>((r) => (release = r));
+            await page.route("**/api/images", async (route) => {
+                if (route.request().method() !== "POST") return route.fallback();
+                await held;
+                await route.fallback();
+            });
+            await page.goto("/visualize");
+            await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
+            await page.evaluate(filmPictureBox);
+            await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
+            // The upload is held until the file's own picture stands, so the
+            // upload's landing (where the plate used to arrive) is filmed.
+            await expect.poll(() => painted(page), { timeout: 1_500, intervals: [50] }).toBeGreaterThan(300);
+            await page.waitForTimeout(400);
+            release();
+            await page.waitForURL(/\/w\//, { timeout: 20_000 });
+            await page.waitForFunction(() => (window as unknown as { __box: { done: boolean } }).__box.done, null, { timeout: 60_000 });
+            const frames = (await page.evaluate(() => (window as unknown as { __box: { frames: BoxFrame[] } }).__box.frames)) as BoxFrame[];
+
+            let pairs = 0;
+            let worst = { d: 0, i: -1 };
+            for (let i = 1; i < frames.length; i++) {
+                const a = frames[i - 1]!;
+                const b = frames[i]!;
+                // The stage's own resize carries the picture with it (the aside's spring at a desk).
+                if (!a.box || !b.box || a.w !== b.w || a.h !== b.h) continue;
+                pairs++;
+                const d = Math.max(
+                    Math.abs(b.box.top - a.box.top),
+                    Math.abs(b.box.bottom - a.box.bottom),
+                    Math.abs(b.box.left - a.box.left),
+                    Math.abs(b.box.right - a.box.right),
+                );
+                if (d > worst.d) worst = { d, i };
+            }
+            const shown = frames.filter((f) => f.box).length;
+            test.info().annotations.push({ type: "picture-box-film", description: JSON.stringify({ frames: frames.length, shown, pairs, worst }) });
+            expect(shown, "frames with the picture on the stage before the first drawing").toBeGreaterThan(20);
+            expect(pairs, "frame pairs compared").toBeGreaterThan(20);
+            const around = frames.slice(Math.max(0, worst.i - 2), worst.i + 2);
+            expect(worst.d, `the picture's largest move between two frames ${JSON.stringify(around)}`).toBeLessThanOrEqual(2);
         });
     });
 }
