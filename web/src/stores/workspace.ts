@@ -89,6 +89,15 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         if (localPicture.value) URL.revokeObjectURL(localPicture.value);
         localPicture.value = url;
     }
+    /**
+     * Let the dropped file go: the server's overlay has taken its place (the
+     * object URL held the whole file until the next load), or the browser
+     * cannot draw it (HEIC in a desk's Chrome), so the stage keeps the drop
+     * target, busy, until the upload lands.
+     */
+    function releaseLocalPicture() {
+        setLocalPicture(null);
+    }
     // X.F.W14U.vstage — UIA-F-167: an upload failure is the drop target's to
     // show. Written into the shared `error`, it read as a failed WORKSPACE load
     // ("Could not load this workspace") on a route that had loaded nothing.
@@ -632,6 +641,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         revision,
         // Methods
         uploadImage,
+        releaseLocalPicture,
         loadWorkspace,
         loadVisualization,
         // `loadSnapshot` is a compatibility alias over `loadVisualization`

@@ -101,7 +101,8 @@ const dropMessage = computed(() =>
    width — "Tap to choose an image" wrapped to two lines in its pill at 390,
    stranding the glyph. The upload says nothing here: from the drop the stage
    shows the file's own picture (`store.localPicture`), and the drop target
-   has left. */
+   has left. A file the browser cannot draw (HEIC in a desk's Chrome) has no
+   picture: the drop target stays, its button busy until the upload lands. */
 
 // ── Active bases ──
 const activeBases = ref<string[]>(
@@ -662,7 +663,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                  ring is the one drop signal. -->
                             <div class="drop-zone">
                                 <h1 class="drop-target-title font-serif-math">Draw any outline in circles</h1>
-                                <Button emphasis="primary" size="md" class="drop-target-button" @click="openFilePicker">
+                                <Button emphasis="primary" size="md" class="drop-target-button" :loading="store.uploading && !store.localPicture" @click="openFilePicker">
                                     <Upload />
                                     Choose an image
                                 </Button>
