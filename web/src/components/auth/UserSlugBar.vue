@@ -273,10 +273,10 @@ async function copySlug() {
     <!-- The form, once: the seat's popover and the phone's "i" card hold it. -->
     <DefineLoginForm>
         <form class="flex flex-col gap-2" novalidate @submit.prevent="handleLogin">
-            <!-- X-DS pass 4 · DS-F4-C6: the field's label is on screen, a
-                 caption line (the P2-07 hint idiom), not screen-reader
-                 only behind a placeholder. -->
-            <label class="text-caption text-muted-foreground" for="user-slug-input">
+            <!-- X-DS pass 4 · DS-F4-C6: the field's label is on screen, not
+                 screen-reader only behind a placeholder. It is read, so it
+                 takes the small step (14 px on a phone), in quieter ink. -->
+            <label class="text-small text-muted-foreground" for="user-slug-input">
                 Your slug
             </label>
             <Input

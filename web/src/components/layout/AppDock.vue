@@ -488,7 +488,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         />
                         <div class="flex-1 min-w-0">
                             <p class="text-mono-small text-foreground">@mbabb</p>
-                            <p class="text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
+                            <p class="text-small text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
                         </div>
                     </div>
                     <Separator class="my-2" />
