@@ -92,15 +92,25 @@ for (const scheme of ["dark", "light"] as const) {
             await undo.click();
             await page.waitForTimeout(1200);
             const film = await progress(page);
-            const at = (ms: number) => film.find((f) => f.at >= ms)!;
+            // The line's progress at a moment, read between the two frames
+            // around it (the press itself is 0): a dropped frame under load
+            // must not make "by 40 ms" the ~73 ms frame.
+            const at = (ms: number) => {
+                const frames = [{ at: 0, p: 0 }, ...film.filter((f) => f.at > 0)];
+                const after = frames.findIndex((f) => f.at >= ms);
+                expect(after, `a frame at or after ${ms} ms`).toBeGreaterThanOrEqual(0);
+                const b = frames[after]!;
+                const a = frames[Math.max(0, after - 1)]!;
+                return b.at === a.at ? b.p : a.p + ((b.p - a.p) * (ms - a.at)) / (b.at - a.at);
+            };
             // The first frames after the press: a start, never half the way.
-            expect(at(40).p, `the line's share of its way by 40 ms ${JSON.stringify(film.slice(0, 6))}`).toBeLessThanOrEqual(0.25);
+            expect(at(40), `the line's share of its way by 40 ms ${JSON.stringify(film.slice(0, 6))}`).toBeLessThanOrEqual(0.25);
             // The press is answered within 100 ms.
-            expect(at(100).p, "the line has visibly moved by 100 ms").toBeGreaterThanOrEqual(0.08);
+            expect(at(100), "the line has visibly moved by 100 ms").toBeGreaterThanOrEqual(0.08);
             // Several frames carry it, and it lands within 300 ms.
             const moving = film.filter((f) => f.p > 0.02 && f.p < 0.98);
             expect(moving.length, "frames between the press and the landing").toBeGreaterThanOrEqual(8);
-            expect(at(300).p, "landed by 300 ms").toBeGreaterThanOrEqual(0.98);
+            expect(at(300), "landed by 300 ms").toBeGreaterThanOrEqual(0.98);
         });
     });
 }
