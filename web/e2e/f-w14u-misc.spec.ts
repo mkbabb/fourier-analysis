@@ -167,11 +167,17 @@ test.describe("D-21 X §0hm — the morph stage is a full-width square (390)", (
         expect(s!.width, "the plate fills the card inside its edge").toBeGreaterThanOrEqual(card!.width - edge - 0.5);
         expect(Math.abs(s!.width - s!.height), "stage is 1:1").toBeLessThanOrEqual(1);
         expect(info!.y, "readings sit under the stage").toBeGreaterThanOrEqual(s!.y + s!.height);
-        const [label, value] = await page.locator(".demo-info .metric").first().evaluate((m) => [
-            parseFloat(getComputedStyle(m.querySelector(".metric__label")!).fontSize),
-            parseFloat(getComputedStyle(m.querySelector(".metric__value")!).fontSize),
-        ]);
-        expect(label, "a reading's label is under its value's size").toBeLessThan(value);
+        // D-21's label under its value now holds by ink, at the floor (the
+        // study's line 7, after FORTY-SECOND A: "secondary text is quieter
+        // ink, not smaller type"; the caption step it took was 12.2 px here).
+        const [label, value] = await page.locator(".demo-info .metric").first().evaluate((m) => {
+            const l = getComputedStyle(m.querySelector(".metric__label")!);
+            const v = getComputedStyle(m.querySelector(".metric__value")!);
+            return [{ px: parseFloat(l.fontSize), ink: l.color }, { px: parseFloat(v.fontSize), ink: v.color }];
+        });
+        expect(label.px, "a reading's label is at the 14 px floor").toBeGreaterThanOrEqual(13.95);
+        expect(label.px, "and never over its value's size").toBeLessThanOrEqual(value.px);
+        expect(label.ink, "a reading's label is quieter ink than its value").not.toBe(value.ink);
     });
 });
 
