@@ -170,25 +170,17 @@ for (const vp of WIDTHS) {
         test("v94 — the collapsed canvas dock's face is not the Fullscreen glyph", async ({ page }) => {
             await openViz(page);
             const dock = page.locator(".controls-overlay .glass-dock");
-            if (vp.width < 640) {
-                // A phone's plate never folds: its summary face (glass mounts the
-                // layer on every dock) never shows and holds nothing to wear a glyph.
-                await page.waitForTimeout(600);
-                await frame(page, "v94-collapsed");
-                await expect(dock).toHaveClass(/animation-dock--card/);
-                await expect(dock).not.toHaveClass(/\bcollapsed\b/);
-                await expect(dock.locator(".dock-layer--summary.is-active")).toHaveCount(0);
-                await expect(dock.locator(".dock-layer--summary > *")).toHaveCount(0);
-                return;
-            }
+            // The stage's plate never folds, at any width (a phone's since
+            // FORTY-FIRST H, a desk's since its scrub took a row of its own): its
+            // summary face (glass mounts the layer on every dock) never shows
+            // and holds nothing to wear a glyph.
             await page.mouse.move(5, 5);
-            await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 30_000 });
             await page.waitForTimeout(600);
             await frame(page, "v94-collapsed");
-            // The folded face is the position readout, and no action's glyph.
-            const face = page.locator(".controls-overlay .glass-dock .dock-layer--summary");
-            await expect(face.getByRole("progressbar", { name: "Animation position" })).toHaveCount(1);
-            await expect(face.locator("svg")).toHaveCount(0);
+            await expect(dock).toHaveClass(/animation-dock--card/);
+            await expect(dock).not.toHaveClass(/\bcollapsed\b/);
+            await expect(dock.locator(".dock-layer--summary.is-active")).toHaveCount(0);
+            await expect(dock.locator(".dock-layer--summary > *")).toHaveCount(0);
         });
     });
 }

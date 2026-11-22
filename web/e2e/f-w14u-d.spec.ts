@@ -27,12 +27,14 @@ import { SAMPLE_IMAGE } from "./fixtures/sample";
  *
  * d3 — a phone's stage dock is one plate that never folds (FORTY-FIRST H), so
  * it has no collapsed face to crowd: it keeps its open face at rest, inside
- * the viewport.
+ * the viewport. Since the desk's scrub took back its run on a row of its own,
+ * the desk's stage dock is the same plate, so d1's and d2's folded face is
+ * gone at every width, and d3 holds at the desk too.
  */
 const PHASE = process.env.FW14U_PHASE ?? "after";
 const FRAMES = "e2e/screenshots/f-w14u/d";
 
-async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) => Promise<void>): Promise<void> {
+async function loadAtRest(page: Page, mobile: boolean, setup?: (page: Page) => Promise<void>): Promise<void> {
     await page.goto("/visualize");
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
     await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
@@ -49,13 +51,8 @@ async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) =
     }
     if (setup) await setup(page);
     await page.mouse.move(5, 5);
-    // A phone's plate never folds (d3); a desk's dock folds once the pointer leaves.
-    if (!mobile) {
-        await expect(page.locator(".animation-dock")).toHaveClass(/\bcollapsed\b/, { timeout: 30_000 });
-        await expect(page.locator(".controls-overlay .glass-dock")).toHaveClass(/\bcollapsed\b/, {
-            timeout: 30_000,
-        });
-    }
+    // The stage's plate never folds (d3), at any width.
+    await expect(page.locator(".animation-dock")).toBeVisible({ timeout: 60_000 });
     // Every time-based animation on both docks has ended.
     await page.waitForFunction(() =>
         [".animation-dock", ".controls-overlay .glass-dock"].every((s) =>
@@ -74,16 +71,14 @@ async function loadCollapsed(page: Page, mobile: boolean, setup?: (page: Page) =
 }
 
 /** Leave the stage with the outline off (FORTY-FIRST K: it is off by default)
- *  and the stage dock folded, at rest (a desk's; a phone's plate never folds). */
+ *  and the stage dock at rest. */
 async function traceOff(page: Page): Promise<void> {
     await openCanvasDock(page);
     const outline = page.locator(".controls-overlay [aria-label='Outline']");
     if ((await outline.getAttribute("aria-pressed")) === "true") await outline.click();
     await page.mouse.click(5, 5);
-    // The dock's collapse after an expansion settles in stages (its anchor
-    // re-seats after the layer swap); wait until its box holds still.
+    // Wait until the dock's box holds still.
     const dock = page.locator(".controls-overlay .glass-dock");
-    if (page.viewportSize()!.width >= 640) await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 30_000 });
     let last = "";
     await expect
         .poll(async () => {
@@ -111,86 +106,24 @@ for (const c of CASES) {
         });
         test.setTimeout(120_000);
 
-        if (mobile) {
-            test("d3 — the phone's plate never folds: no summary face, open at rest, in view", async ({ page }) => {
-                await loadCollapsed(page, mobile, traceOff);
-                await page.waitForTimeout(1200);
-                const dock = page.locator(".controls-overlay .glass-dock");
-                await expect(dock).toHaveCount(1);
-                await expect(dock).toHaveClass(/animation-dock--card/);
-                await expect(dock).not.toHaveClass(/\bcollapsed\b/);
-                await expect(dock.locator(".dock-layer--summary.is-active")).toHaveCount(0);
-                await expect(dock.locator(".dock-layer--summary > *")).toHaveCount(0);
-                await expect(dock.locator(".view-dot, .status-dot")).toHaveCount(0);
-                const box = (await dock.boundingBox())!;
-                await page.screenshot({
-                    path: `${FRAMES}/${PHASE}-${c.width}-${c.scheme}-stage-dock.png`,
-                    clip: { x: Math.max(0, box.x - 12), y: box.y - 12, width: Math.min(c.width, box.width + 24), height: box.height + 24 },
-                });
-                expect(box.x).toBeGreaterThanOrEqual(0);
-                expect(box.x + box.width).toBeLessThanOrEqual(c.width);
-                expect(box.y + box.height).toBeLessThanOrEqual(c.height);
-            });
-            return;
-        }
-
-        // X-OD19 · F1 (owner row OD19-F1): the speed Metric left the collapsed summary
-        // (it overflowed glass's 40 px summary square, "×" outside the pill); speed
-        // reads on its own dock seat. The summary is one readout inside the plate.
-        test("d1 — the collapsed summary is one readout, inside the plate", async ({
-            page,
-        }) => {
-            await loadCollapsed(page, mobile);
-            const dock = page.locator(".animation-dock");
-            const box = (await dock.boundingBox())!;
-            await page.screenshot({
-                path: `${FRAMES}/${PHASE}-${c.width}-${c.scheme}-animation-dock.png`,
-                clip: { x: Math.max(0, box.x - 40), y: box.y - 20, width: box.width + 120, height: box.height + 40 },
-            });
-            const m = await page.evaluate(() => {
-                const dock = document.querySelector(".animation-dock")!;
-                const summary = dock.querySelector(".dock-layer--summary")!;
-                const p = dock.getBoundingClientRect();
-                const kids = [...summary.children];
-                return {
-                    kids: kids.map((k) => k.className.toString()),
-                    outside: kids.filter((k) => {
-                        const r = k.getBoundingClientRect();
-                        return r.left < p.left - 0.5 || r.right > p.right + 0.5;
-                    }).length,
-                };
-            });
-            expect(m.kids).toEqual(["mini-progress"]);
-            expect(m.outside).toBe(0);
-        });
-
-        test("d2 — the stage has one dock; its folded face wears no view dot and no glyph", async ({
-            page,
-        }) => {
-            // X.F.W14V.u1 (UIA-F-173, §0bt setup only): the dot showed only off the
-            // default view, so the trace is switched off before the folded face is read.
-            await loadCollapsed(page, mobile, traceOff);
-            await expect(page.locator(".canvas-stage .glass-dock")).toHaveCount(1);
+        test("d3 — the stage's plate never folds: no summary face, open at rest, in view", async ({ page }) => {
+            await loadAtRest(page, mobile, traceOff);
+            await page.waitForTimeout(1200);
             const dock = page.locator(".controls-overlay .glass-dock");
+            await expect(dock).toHaveCount(1);
+            await expect(dock).toHaveClass(/animation-dock--card/);
+            await expect(dock).not.toHaveClass(/\bcollapsed\b/);
+            await expect(dock.locator(".dock-layer--summary.is-active")).toHaveCount(0);
+            await expect(dock.locator(".dock-layer--summary > *")).toHaveCount(0);
+            await expect(dock.locator(".view-dot, .status-dot")).toHaveCount(0);
             const box = (await dock.boundingBox())!;
             await page.screenshot({
-                path: `${FRAMES}/${PHASE}-${c.width}-${c.scheme}-canvas-dock.png`,
-                clip: { x: box.x - 20, y: Math.max(0, box.y - 20), width: box.width + 40, height: box.height + 40 },
+                path: `${FRAMES}/${PHASE}-${c.width}-${c.scheme}-stage-dock.png`,
+                clip: { x: Math.max(0, box.x - 12), y: box.y - 12, width: Math.min(c.width, box.width + 24), height: box.height + 24 },
             });
-            const m = await page.evaluate(() => {
-                const d = document.querySelector(".controls-overlay .glass-dock")!;
-                const face = d.querySelector(".dock-layer--summary")!;
-                return {
-                    transport: d.classList.contains("animation-dock"),
-                    dots: d.querySelectorAll(".view-dot, .status-dot").length,
-                    glyphs: face.querySelectorAll("svg").length,
-                    kids: [...face.children].map((k) => k.className.toString()),
-                };
-            });
-            expect(m.transport, "the stage's one dock is the transport's").toBe(true);
-            expect(m.dots, "no view dot on the dock").toBe(0);
-            expect(m.glyphs, "no glyph on the folded face").toBe(0);
-            expect(m.kids, "the folded face is the readout alone").toEqual(["mini-progress"]);
+            expect(box.x).toBeGreaterThanOrEqual(0);
+            expect(box.x + box.width).toBeLessThanOrEqual(c.width);
+            expect(box.y + box.height).toBeLessThanOrEqual(c.height);
         });
     });
 }

@@ -126,26 +126,27 @@ test.describe("UIA-F-50 / UIA-F-4 / UIA-F-49 — not-found and load-error states
     });
 });
 
-test.describe("UIA-F-7 — the collapsed dock's position readout paints its fill", () => {
-    test("the mini readout is a progressbar whose painted fill tracks the clock", async ({ page }) => {
+// UIA-F-7: the collapsed dock's position readout had no painted fill. The
+// stage's dock no longer folds (its scrub took a row of its own at a desk, as
+// on a phone), so its position reads on the scrub, which tracks the clock.
+test.describe("UIA-F-7 — the dock's position reads on the scrub, and tracks the clock", () => {
+    test("the scrub is a slider whose value and painted fill follow the clock", async ({ page }) => {
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await page.mouse.move(5, 5);
-        const bar = page.locator(".mini-progress").first();
-        await expect(bar).toHaveAttribute("role", "progressbar");
-        await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0);
-        const fill = await bar.evaluate((el) => {
-            const ind = el.firstElementChild as HTMLElement;
-            const r = ind.getBoundingClientRect();
-            const box = el.getBoundingClientRect();
-            const bg = getComputedStyle(ind).backgroundColor;
-            // The painted span is the part of the indicator inside the rail.
-            const painted = Math.max(0, Math.min(r.right, box.right) - Math.max(r.left, box.left));
-            return { h: r.height, painted, transparent: bg === "transparent" || /,\s*0\)$/.test(bg) };
+        const scrub = page.locator('.animation-dock [role="slider"][aria-label="Timeline"]').first();
+        await expect.poll(async () => Number(await scrub.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0);
+        const fill = await page.locator(".animation-dock .timeline-slider").first().evaluate((el) => {
+            const range = el.querySelector<HTMLElement>('[data-slot="slider-range"]');
+            if (!range) return null;
+            const r = range.getBoundingClientRect();
+            const bg = getComputedStyle(range).backgroundColor;
+            return { w: r.width, h: r.height, transparent: bg === "transparent" || /,\s*0\)$/.test(bg) };
         });
-        expect(fill.h).toBeGreaterThan(0);
-        expect(fill.transparent).toBe(false);
-        expect(fill.painted).toBeGreaterThan(0);
+        expect(fill, "the scrub has a painted range").not.toBeNull();
+        expect(fill!.h).toBeGreaterThan(0);
+        expect(fill!.w).toBeGreaterThan(0);
+        expect(fill!.transparent).toBe(false);
     });
 });
 
@@ -179,7 +180,7 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
         test.setTimeout(60_000);
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
-        const bar = page.locator(".mini-progress").first();
+        const bar = page.locator('.animation-dock [role="slider"][aria-label="Timeline"]').first();
         await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0.2);
         // Paused by keyboard: a pointer press on a persistent dock control can
         // be discarded by the producer's click-integrity guard mid-morph
@@ -634,7 +635,7 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
         // Open the workspace and let it extract + compute, so the local draft it
         // saves carries a contour (a draft without one cannot be published).
         await page.goto(`/w/${viz.image_slug}`);
-        await expect(page.locator(".mini-progress")).toBeAttached({ timeout: 30_000 });
+        await expect(page.locator(".animation-dock .timeline-slider")).toBeAttached({ timeout: 30_000 });
         // The workspace's debounced draft save lands the contour after extraction;
         // read the stored draft itself (`lib/draftStorage.ts`), not a fixed wait.
         await expect

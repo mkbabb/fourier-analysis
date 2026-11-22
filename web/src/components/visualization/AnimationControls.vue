@@ -5,17 +5,18 @@
  * of the screen and not have two docks of controls"). Every seat is there
  * from the first frame, disabled until there is a drawing to act on.
  *
- * Three forms of one dock, chosen by the host from the stage's own box:
- *  · `row` (a desk, the rail): one row at the stage's foot, folding as glass
- *    folds it. Outside the fold, Play and the four layers (`#persistent`), the
- *    position readout (`#collapsed`) and Edit (`#persistent-end`). Open, the
- *    scrub, the rate, the easing and More (Just the picture, Reset view,
- *    Fullscreen, Export frame), so the scrub keeps most of the row.
- *  · `plate` (a phone held upright): one plate of two rows at the stage's
- *    foot, never folded. The scrub alone, then seven seats in groups by gap:
- *    Play | Picture, Outline, More | the rate, the easing | Edit. More holds
- *    the rest in three groups: the drawn layers; what the stage shows; what
- *    leaves the page.
+ * One plate in every form, never folded: the scrub alone on its row, the
+ * seats under it in groups told apart by a gap. Three forms, chosen by the
+ * host from the stage's own box:
+ *  · `row` (a desk, the rail): the plate at the stage's foot, the scrub's run
+ *    as long as the stage allows up to 52rem (a one-row dock left it under
+ *    half that once the seats had their room). Under it Play | the four
+ *    layers | the rate, the easing, More (Just the picture, Reset view,
+ *    Fullscreen, Export frame) | Edit.
+ *  · `plate` (a phone held upright): the plate inside the gutter. The scrub,
+ *    then seven seats: Play | Picture, Outline, More | the rate, the easing |
+ *    Edit. More holds the rest in three groups: the drawn layers; what the
+ *    stage shows; what leaves the page.
  *  · `strip` (a short landscape stage, a phone held sideways): the plate's
  *    scrub and seats in a card standing on the stage's trailing edge. There
  *    the drawing is bound by the stage's height, so the box beside the card
@@ -30,7 +31,7 @@
  * covers the app dock, a desk shows them as seats here. The host renders them
  * through the `page-tools` slot (`WorkspaceTools`).
  */
-import { computed, h, useTemplateRef } from "vue";
+import { computed, h } from "vue";
 import { createReusableTemplate } from "@vueuse/core";
 import {
     CircleDashed,
@@ -73,9 +74,7 @@ import type { PageAct } from "./WorkspaceTools.vue";
 const props = withDefaults(
     defineProps<{
         activeBases?: string[];
-        /** The open desk dock's widest (the fullscreen takeover's is wider). */
-        maxWidth?: string;
-        /** The dock's form (see above): a folding row, a phone's plate, or a landscape stage's strip. */
+        /** The dock's form (see above): a desk's plate, a phone's plate, or a landscape stage's strip. */
         form?: "row" | "plate" | "strip";
         layers: Layers;
         justThePicture: boolean;
@@ -85,7 +84,7 @@ const props = withDefaults(
         /** The drawing is zoomed or panned off its fit (Reset view is live). */
         viewMoved: boolean;
     }>(),
-    { activeBases: () => ["fourier-epicycles"], maxWidth: "960px", form: "row" },
+    { activeBases: () => ["fourier-epicycles"], form: "row" },
 );
 
 const emit = defineEmits<{
@@ -119,17 +118,6 @@ function keepFocusForSignIn(e: Event) {
 /** There is a drawing to act on: until then every seat is present and disabled. */
 const ready = computed(() => !!store.epicycleData || !!store.basesData);
 
-/**
- * X-OD19 · F4 — an open dock menu holds its dock open: glass's collapse timer
- * reads only the dock's keep-open count, so each menu's `update:open` edge
- * takes and gives back exactly one count.
- */
-const dock = useTemplateRef<InstanceType<typeof GlassDock>>("dock");
-function holdDockWhileOpen(open: boolean) {
-    if (open) dock.value?.keepOpen();
-    else dock.value?.release();
-}
-
 const isEpicycleOnly = computed(() =>
     props.activeBases.includes("fourier-epicycles") && props.activeBases.length === 1,
 );
@@ -152,28 +140,11 @@ const caretLabel = computed(() =>
 );
 
 /**
- * X.F.W4 · SP-4 / `fr-AnimationControls M-12` — the two 60Hz readouts render
- * in scopes of their own, so the clock re-renders the two nodes that display
- * it and not the dock's whole tree. The fill's `:deep()` rule reaches the
- * render-function child (X.F.W14.u — UIA-F-7); the root is a real
- * `progressbar`.
+ * X.F.W4 · SP-4 / `fr-AnimationControls M-12` — the 60Hz readout renders in a
+ * scope of its own, so the clock re-renders the node that displays it and not
+ * the dock's whole tree. The scrub (X.F.W3 `.a`): `t` is continuous, one arrow
+ * key moves 1 %.
  */
-const MiniProgressReadout = () =>
-    h(
-        "div",
-        {
-            class: "mini-progress",
-            role: "progressbar",
-            "aria-label": "Animation position",
-            "aria-valuemin": 0,
-            "aria-valuemax": 1,
-            "aria-valuenow": Math.round(anim.t * 100) / 100,
-            "aria-valuetext": `${Math.round(anim.t * 100)}%`,
-        },
-        [h("div", { class: "mini-fill", style: { width: `${anim.t * 100}%` } })],
-    );
-
-/** The scrub (X.F.W3 `.a`): `t` is continuous, one arrow key moves 1 %. */
 const TimelineReadout = () =>
     h(FourierTimeline, {
         modelValue: anim.t,
@@ -201,7 +172,7 @@ function keepOpen(e: Event) {
 
 /* Each seat once, placed by each form. */
 const [DefinePlay, ReusePlay] = createReusableTemplate();
-const [DefineLayer, ReuseLayer] = createReusableTemplate<{ seat: (typeof LAYER_SEATS)[number]; groupStart?: boolean }>();
+const [DefineLayer, ReuseLayer] = createReusableTemplate<{ seat: (typeof LAYER_SEATS)[number] }>();
 const [DefineSpeed, ReuseSpeed] = createReusableTemplate();
 const [DefineEasing, ReuseEasing] = createReusableTemplate();
 const [DefineEdit, ReuseEdit] = createReusableTemplate();
@@ -228,10 +199,9 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
         </Tooltip>
     </DefinePlay>
 
-    <DefineLayer v-slot="{ seat, groupStart }">
+    <DefineLayer v-slot="{ seat }">
         <Tooltip :text="seat.label" side="top">
             <DockControl
-                :class="{ 'seat-group-start': groupStart }"
                 :aria-label="seat.label"
                 :active="layers[seat.key]"
                 :disabled="!ready"
@@ -245,7 +215,7 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
     <!-- X-OD19 · F3: Speed and Easing are each their own seat and menu; the
          trigger names the control, its face shows the value. -->
     <DefineSpeed>
-        <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
+        <DropdownMenu :modal="false">
             <DockTrigger for="dropdown" class="speed-trigger" aria-label="Playback speed" :disabled="!ready">
                 {{ anim.speed }}&times;
             </DockTrigger>
@@ -258,7 +228,7 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
     </DefineSpeed>
 
     <DefineEasing>
-        <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
+        <DropdownMenu :modal="false">
             <DockTrigger for="dropdown" aria-label="Easing" :disabled="!ready">
                 <EasingCurve
                     :strokes="[{ d: getEasingSVGPath(anim.easing) }]"
@@ -292,12 +262,12 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
         </Tooltip>
     </DefineExit>
 
-    <!-- ═══ PHONE: one plate, never folded (two rows upright; a card on the trailing edge sideways) ═══ -->
+    <!-- ═══ One plate, never folded: the scrub on its own row, the seats under it
+         (a phone's two rows upright, a card on the trailing edge sideways, a
+         desk's long bar) ═══ -->
     <GlassDock
-        v-if="form !== 'row'"
-        ref="dock"
         class="animation-dock animation-dock--card"
-        :class="{ 'animation-dock--strip': form === 'strip' }"
+        :class="{ 'animation-dock--strip': form === 'strip', 'animation-dock--bar': form === 'row' }"
         shape="card"
         :collapse="false"
         fit-content
@@ -311,10 +281,16 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
                 <div class="seat-group">
                     <ReusePlay />
                 </div>
-                <div class="seat-group">
+                <!-- A desk has room for the four layers as seats, and its More
+                     holds the stage's own acts; a phone keeps Picture and
+                     Outline as seats and the rest of the layers in More. -->
+                <div v-if="form === 'row'" class="seat-group">
+                    <ReuseLayer v-for="seat in LAYER_SEATS" :key="seat.key" :seat="seat" />
+                </div>
+                <div v-else class="seat-group">
                     <ReuseLayer :seat="LAYER_SEATS[0]" />
                     <ReuseLayer :seat="LAYER_SEATS[1]" />
-                    <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
+                    <DropdownMenu :modal="false">
                         <DockTrigger for="dropdown" aria-label="Layers and more" :disabled="!ready">
                             <Ellipsis class="stage-glyph" aria-hidden="true" />
                         </DockTrigger>
@@ -361,80 +337,45 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
                 <div class="seat-group">
                     <ReuseSpeed />
                     <ReuseEasing />
+                    <DropdownMenu v-if="form === 'row'" :modal="false">
+                        <DockTrigger for="dropdown" aria-label="More" :disabled="!ready">
+                            <Ellipsis class="stage-glyph" aria-hidden="true" />
+                        </DockTrigger>
+                        <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end">
+                            <div class="menu-sections">
+                                <DropdownMenuCheckboxItem :model-value="justThePicture" @select="keepOpen" @update:model-value="emit('justThePicture')">
+                                    <Focus aria-hidden="true" />
+                                    <span>Just the picture</span>
+                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuItem :disabled="!viewMoved" @select="emit('resetView')">
+                                    <ScanSearch aria-hidden="true" />
+                                    <span>Reset view</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem v-if="!isFullscreen" @select="emit('update:isFullscreen', true)">
+                                    <Maximize2 aria-hidden="true" />
+                                    <span>Fullscreen</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem @select="emit('exportFrame')">
+                                    <Download aria-hidden="true" />
+                                    <span>Export frame</span>
+                                </DropdownMenuItem>
+                            </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
                 <div class="seat-group">
-                    <ReuseExit v-if="isFullscreen" />
+                    <!-- At a desk the takeover covers the app dock: the page's acts stand here, and its way out. -->
+                    <template v-if="form === 'row' && isFullscreen">
+                        <slot name="page-tools" form="seats" :acts="['publish', 'series', 'link']" tooltip-side="top" />
+                        <ReuseExit />
+                        <ReuseEdit />
+                    </template>
+                    <ReuseExit v-else-if="isFullscreen" />
                     <ReuseEdit v-else />
                 </div>
             </div>
         </div>
-    </GlassDock>
-
-    <!-- ═══ DESK AND RAIL: one row, folding ═══ -->
-    <GlassDock
-        v-else
-        ref="dock"
-        class="animation-dock"
-        :style="{ '--animation-dock-max-width': maxWidth }"
-        aria-label="Stage controls"
-    >
-        <!-- X.F.W10S.b — the summary is glass's own disclosure, so nothing
-             interactive sits in `#collapsed`; the seats that outlive the fold
-             stand in `#persistent` and `#persistent-end`, the never-inert
-             regions at both poles. -->
-        <template #persistent>
-            <ReusePlay />
-            <ReuseLayer v-for="(seat, i) in LAYER_SEATS" :key="seat.key" :seat="seat" :group-start="i === 0" />
-        </template>
-
-        <!-- The position readout, alone in glass's summary square (X-OD19 · F1). -->
-        <template #collapsed>
-            <MiniProgressReadout />
-        </template>
-
-        <!-- X-OD19 · F1: the face has a definite inline size, so glass measures a
-             real expanded endpoint and morphs to it. The scrub takes what the
-             rate, the easing and More leave of it. -->
-        <div class="transport-face flex items-center" :data-page-tools="isFullscreen || undefined">
-            <TimelineReadout />
-            <ReuseSpeed />
-            <ReuseEasing />
-            <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
-                <DockTrigger for="dropdown" aria-label="More" :disabled="!ready">
-                    <Ellipsis class="stage-glyph" aria-hidden="true" />
-                </DockTrigger>
-                <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end">
-                    <div class="menu-sections">
-                        <DropdownMenuCheckboxItem :model-value="justThePicture" @select="keepOpen" @update:model-value="emit('justThePicture')">
-                            <Focus aria-hidden="true" />
-                            <span>Just the picture</span>
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuItem :disabled="!viewMoved" @select="emit('resetView')">
-                            <ScanSearch aria-hidden="true" />
-                            <span>Reset view</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem v-if="!isFullscreen" @select="emit('update:isFullscreen', true)">
-                            <Maximize2 aria-hidden="true" />
-                            <span>Fullscreen</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem @select="emit('exportFrame')">
-                            <Download aria-hidden="true" />
-                            <span>Export frame</span>
-                        </DropdownMenuItem>
-                    </div>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-
-        <template #persistent-end>
-            <!-- The takeover covers the app dock: the page's acts stand here, and its way out. -->
-            <template v-if="isFullscreen">
-                <slot name="page-tools" form="seats" :acts="['publish', 'series', 'link']" tooltip-side="top" />
-                <ReuseExit />
-            </template>
-            <ReuseEdit />
-        </template>
     </GlassDock>
 </template>
 
@@ -456,40 +397,10 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
     block-size: var(--dock-icon-glyph);
 }
 
-/* A seat that opens a group stands a group's gap from the one before it. */
-.seat-group-start {
-    margin-inline-start: var(--stage-group-gap);
-}
-
-/* ── Desk: the open face's definite inline size ──
-   The dock's chrome around the face, in glass's tokens: the plate's two inline
-   paddings; the seats outside the fold (Play and the four layers before it,
-   Edit after it) with their gaps and the group gap; the layers' two edges.
-   `100cqi` is the controls overlay (VisualizationView `.controls-overlay`, an
-   inline-size container). In the takeover three page seats and the way out
-   join Edit. */
-.transport-face {
-    --stage-seat: var(--dock-control-size, var(--dock-layer-height, 2.5rem));
-    --stage-gap: var(--dock-layer-gap, 0.375rem);
-    --stage-end-seats: 1;
-    --transport-chrome: calc(
-        2 * var(--dock-padding-inline, 0.5rem)
-        + (5 + var(--stage-end-seats)) * var(--stage-seat)
-        + (4 + var(--stage-end-seats) - 1) * var(--stage-gap)
-        + var(--stage-group-gap)
-        + 2 * (var(--stage-gap) + var(--dock-ring-reserve, 0px))
-    );
-    gap: var(--stage-gap);
-    inline-size: calc(min(var(--animation-dock-max-width, 960px), 100cqi) - var(--transport-chrome));
-}
-.transport-face[data-page-tools] {
-    --stage-end-seats: 5;
-}
-
-/* ── Phone: one plate ──
-   Upright, the scrub runs the plate's width; under it seven seats in four
-   groups. The plate pads 6 px, so seven 44 px seats and their gaps stay
-   inside 358 px. */
+/* ── One plate ──
+   The scrub runs the plate's width; under it the seats in four groups. On a
+   phone the plate pads 6 px, so seven 44 px seats and their gaps stay inside
+   358 px. */
 .animation-dock--card {
     --dock-padding-inline: 0.375rem;
     --dock-padding-block: 0.375rem;
@@ -524,12 +435,16 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
     flex-wrap: wrap;
     row-gap: 0.125rem;
 }
-
-/* ── Collapsed summary ── */
-.mini-progress { width: 2rem; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 8%, transparent); overflow: hidden; flex-shrink: 0; }
-.mini-progress :deep(.mini-fill) { height: 100%; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--foreground) 25%, transparent); }
-/* X.F.W4 · SP-4 / `fr-AnimationControls M-8` — no transition on the fill's
-   width: it is rewritten every frame, so a transition could never complete. */
+/* At a desk the plate takes the stage's foot up to 52rem, less its own
+   paddings and its layer's edges. `100cqi` is the controls overlay
+   (VisualizationView `.controls-overlay`, an inline-size container). */
+.animation-dock--bar .card-face {
+    inline-size: calc(
+        min(52rem, 100cqi)
+        - 2 * var(--dock-padding-inline)
+        - 2 * (var(--dock-layer-gap, 0.375rem) + var(--dock-ring-reserve, 0px))
+    );
+}
 
 /* ── Speed + easing seats ── */
 /* The rate reads as numerals in the mono family (the menu's rates do the same). */

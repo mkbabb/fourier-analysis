@@ -13,8 +13,10 @@
  * (O-102), not asserted here.
  *
  * O41 FORTY-FIRST H: on a phone the transport is the stage's plate of two rows,
- * which never folds, so F1's fold and F4's collapse are the desk's; the 390
- * cells assert the plate stands open with every seat inside it, and F3 there.
+ * which never folds. Since the desk's scrub took back its run (its own row,
+ * as on the phone) the desk's dock is the same plate: there is no fold at any
+ * width, so F1 and F4 read as the plate standing open with every seat inside
+ * it, the pointer away and a menu open or closed; F3 holds as before.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { seededViz } from "./fixtures/seed";
@@ -33,23 +35,8 @@ async function openViz(page: Page): Promise<void> {
     if (phone) await showView(page, "Canvas");
     const dock = page.locator(".animation-dock");
     await expect(dock).toBeVisible({ timeout: 30_000 });
-    // A phone's plate never folds (FORTY-FIRST H): it stands open from the start.
-    if (phone) {
-        await expect(dock).toHaveClass(/\bexpanded\b/);
-        return;
-    }
-    await page.mouse.move(2, page.viewportSize()!.height / 2);
-    await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 15_000 });
-    await expect.poll(() => dock.evaluate((d) => d.hasAttribute("data-morphing")), { timeout: 10_000 }).toBe(false);
-}
-
-async function expandTransport(page: Page): Promise<void> {
-    const dock = page.locator(".animation-dock");
-    if (page.viewportSize()!.width < 640) return expect(dock).toHaveClass(/\bexpanded\b/);
-    const b = (await dock.boundingBox())!;
-    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-    await expect(dock).toHaveClass(/\bexpanded\b/, { timeout: 5_000 });
-    await expect.poll(() => dock.evaluate((d) => d.hasAttribute("data-morphing")), { timeout: 10_000 }).toBe(false);
+    // The plate never folds: it stands open from the start.
+    await expect(dock).toHaveClass(/\bexpanded\b/);
 }
 
 for (const c of CELLS) {
@@ -57,169 +44,39 @@ for (const c of CELLS) {
         test.use({ viewport: { width: c.width, height: c.height }, colorScheme: c.scheme });
         test.setTimeout(90_000);
 
-        if (c.width < 640) {
-            test("F1 (phone) — the plate never folds: no summary, every seat inside it, with the pointer away", async ({ page }) => {
-                await openViz(page);
-                const dock = page.locator(".animation-dock");
-                await page.mouse.move(2, c.height / 2);
-                const collapsedSeen = await dock.evaluate(
-                    (d, ms) =>
-                        new Promise<boolean>((res) => {
-                            let seen = d.classList.contains("collapsed");
-                            const t0 = performance.now();
-                            const f = () => {
-                                seen ||= d.classList.contains("collapsed");
-                                if (performance.now() - t0 < ms) requestAnimationFrame(f);
-                                else res(seen);
-                            };
-                            requestAnimationFrame(f);
-                        }),
-                    6500,
-                );
-                expect(collapsedSeen, "the phone's plate reached .collapsed").toBe(false);
-                await expect(dock.locator(".dock-layer--summary.is-active")).toHaveCount(0);
-                const out = await dock.evaluate((d) => {
-                    const p = d.getBoundingClientRect();
-                    return [...d.querySelectorAll("button, [role=slider]")]
-                        .map((e) => ({ e, r: e.getBoundingClientRect() }))
-                        .filter(({ e, r }) => r.width > 0 && r.height > 0 && !e.closest("[inert]"))
-                        .filter(({ r }) => r.left < p.left - 0.5 || r.right > p.right + 0.5 || r.top < p.top - 0.5 || r.bottom > p.bottom + 0.5)
-                        .map(({ e, r }) => `${e.getAttribute("aria-label")} ${Math.round(r.left)}..${Math.round(r.right)} plate ${Math.round(p.left)}..${Math.round(p.right)}`);
-                });
-                expect(out, "seats outside the plate").toEqual([]);
-            });
-        }
-
-        if (c.width >= 640) test("F1 — every collapsed-summary kid lies inside the plate", async ({ page }) => {
+        test("F1 — the plate never folds: no summary, every seat inside it, with the pointer away", async ({ page }) => {
             await openViz(page);
-            const out = await page.locator(".animation-dock").evaluate((d) => {
-                const p = d.getBoundingClientRect();
-                return [...d.querySelectorAll(".dock-layer--summary *, .dock-persistent > *")]
-                    .map((e) => ({ e, r: e.getBoundingClientRect() }))
-                    .filter(({ r }) => r.width > 0 && r.height > 0)
-                    .filter(({ r }) => r.left < p.left - 0.5 || r.right > p.right + 0.5 || r.top < p.top - 0.5 || r.bottom > p.bottom + 0.5)
-                    .map(({ e, r }) => `${e.className?.toString().slice(0, 24)} ${Math.round(r.left)}..${Math.round(r.right)} plate ${Math.round(p.left)}..${Math.round(p.right)}`);
-            });
-            expect(out, "collapsed kids outside the plate").toEqual([]);
-            // One readout: the summary holds the position bar and nothing else.
-            await expect(page.locator(".animation-dock .dock-layer--summary .metric")).toHaveCount(0);
-        });
-
-        if (c.width >= 640) test("F1 — the expand is a measured morph: >=5 monotone frames, no Play snap; the collapse never undershoots", async ({
-            page,
-        }) => {
-            await openViz(page);
-            type Row = { t: number; w: number; play: number; morphing: boolean };
-            const sample = (ms: number) =>
-                page.evaluate(
-                    (ms) =>
-                        new Promise<Row[]>((res) => {
-                            const rows: Row[] = [];
-                            const t0 = performance.now();
-                            const f = () => {
-                                const d = document.querySelector(".animation-dock")!;
-                                const p = d.querySelector(".dock-persistent")!.getBoundingClientRect();
-                                rows.push({ t: performance.now(), w: d.getBoundingClientRect().width, play: p.left, morphing: d.hasAttribute("data-morphing") });
-                                if (performance.now() - t0 < ms) requestAnimationFrame(f);
-                                else res(rows);
-                            };
-                            requestAnimationFrame(f);
-                        }),
-                    ms,
-                );
-            const read = (rows: Row[]) => {
-                let growing = 0;
-                let reversals = 0;
-                let maxPlayJump = 0;
-                let growFrom = NaN;
-                let growTo = NaN;
-                for (let i = 1; i < rows.length; i++) {
-                    const dw = rows[i].w - rows[i - 1].w;
-                    if (dw > 0.5) {
-                        growing++;
-                        if (Number.isNaN(growFrom)) growFrom = rows[i - 1].t;
-                        growTo = rows[i].t;
-                    }
-                    if (dw < -0.5) reversals++;
-                    maxPlayJump = Math.max(maxPlayJump, Math.abs(rows[i].play - rows[i - 1].play));
-                }
-                const playTravel = Math.abs(rows.at(-1)!.play - rows[0].play);
-                // Play rides the morph: in every sampled frame, the share of its
-                // travel it has made stays near the share of the width's growth.
-                // A snap (Play's whole travel in one frame while the width still
-                // grows) breaks this at any frame cadence.
-                const wSpan = rows.at(-1)!.w - rows[0].w;
-                const pSpan = rows.at(-1)!.play - rows[0].play;
-                const maxDrift =
-                    Math.abs(wSpan) > 0.5 && Math.abs(pSpan) > 0.5
-                        ? Math.max(...rows.map((r) => Math.abs((r.play - rows[0].play) / pSpan - (r.w - rows[0].w) / wSpan)))
-                        : 1;
-                // The growth's span on the page clock: from the last frame before
-                // the width moved to the last frame it grew.
-                const growSpanMs = Number.isNaN(growFrom) ? 0 : Math.round(growTo - growFrom);
-                return { n: rows.length, w0: rows[0].w, wEnd: rows.at(-1)!.w, growing, growSpanMs, reversals, maxPlayJump, playTravel, maxDrift: +maxDrift.toFixed(3) };
-            };
             const dock = page.locator(".animation-dock");
-            const b = (await dock.boundingBox())!;
-            const centre = () => page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-            // The FIRST flip publishes glass's unmeasured endpoint (G-F2a, O-102):
-            // read and banked, not asserted.
-            const firstP = sample(1400);
-            await centre();
-            const first = read(await firstP);
-            test.info().annotations.push({ type: "first-flip (G-F2a)", description: JSON.stringify(first) });
             await page.mouse.move(2, c.height / 2);
-            await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 15_000 });
-            await expect.poll(() => dock.evaluate((d) => d.hasAttribute("data-morphing")), { timeout: 10_000 }).toBe(false);
-            // Every later expand runs to the face's real, definite endpoint.
-            const expP = sample(1400);
-            await centre();
-            const exp = read(await expP);
-            test.info().annotations.push({ type: "expand-trace", description: JSON.stringify(exp) });
-            expect(exp.wEnd, "the dock expanded").toBeGreaterThan(exp.w0 + 100);
-            // ">=5 frames" is five frames of the 60 Hz clock. glass's morph is a
-            // spring stepped on rAF, so a host whose main thread paints slower
-            // (CI 39577437998: 4 and 3 sampled growth frames at 1440) shows the
-            // same morph in fewer, longer frames. Lawful arms (ESC-FREL-v3-1,
-            // COHESION §0gj.2: a slow host's few frames are a reading, never
-            // inflated): five sampled growth frames, or growth spanning five
-            // 60 Hz frame periods; either way the no-snap bound below holds.
-            expect(
-                exp.growing >= 5 || exp.growSpanMs >= (5 * 1000) / 60,
-                `frames of width growth (>= 5, or >= 5 frame periods of the 60 Hz clock) ${JSON.stringify(exp)}`,
-            ).toBe(true);
-            expect(exp.reversals, "the width never reverses on expand").toBe(0);
-            // Before: Play's whole travel (459 -> 31 px) landed in ONE frame. A 428 px
-            // travel at a headless rAF cadence cannot step <=12 px per frame, so the
-            // snap is read as "no single frame carries half the travel".
-            // ESC-FREL-v3-1: "no single frame carries half the travel" presumes a
-            // 60 Hz cadence. glass's spring covers most of its distance in its
-            // first ~80 ms, so a host painting at ~12 fps puts 88% of Play's
-            // travel in one frame without any snap (CI 39586131046: 372 of
-            // 424 px; locally at CPU x6, 52%, Play's share within 0.06 of the
-            // width's in every frame). Lawful arms: the half-travel bound, or Play
-            // riding the width (share drift <= 0.25 in every sampled frame; the
-            // one-frame snap against a growing width drifts by nearly 1).
-            expect(
-                exp.maxPlayJump < exp.playTravel / 2 || exp.maxDrift <= 0.25,
-                `largest single-frame Play shift (px) < half its travel, or Play rides the width ${JSON.stringify(exp)}`,
-            ).toBe(true);
-            // Collapse: monotone, never under the settled collapsed width (before: 57 px, then a snap to 102).
-            await page.mouse.move(2, c.height / 2);
-            const colRows = await sample(6500);
-            const settled = colRows.at(-1)!.w;
-            const under = Math.min(...colRows.map((r) => r.w));
-            let grows = 0;
-            for (let i = 1; i < colRows.length; i++) if (colRows[i].w - colRows[i - 1].w > 0.5) grows++;
-            test.info().annotations.push({ type: "collapse-trace", description: JSON.stringify({ n: colRows.length, settled, under, grows }) });
-            await expect(dock).toHaveClass(/\bcollapsed\b/);
-            expect(under, "the collapse never undershoots the settled pill").toBeGreaterThanOrEqual(settled - 1);
-            expect(grows, "the width never grows back on collapse").toBe(0);
+            const collapsedSeen = await dock.evaluate(
+                (d, ms) =>
+                    new Promise<boolean>((res) => {
+                        let seen = d.classList.contains("collapsed");
+                        const t0 = performance.now();
+                        const f = () => {
+                            seen ||= d.classList.contains("collapsed");
+                            if (performance.now() - t0 < ms) requestAnimationFrame(f);
+                            else res(seen);
+                        };
+                        requestAnimationFrame(f);
+                    }),
+                6500,
+            );
+            expect(collapsedSeen, "the plate reached .collapsed").toBe(false);
+            await expect(dock.locator(".dock-layer--summary.is-active")).toHaveCount(0);
+            const out = await dock.evaluate((d) => {
+                const p = d.getBoundingClientRect();
+                return [...d.querySelectorAll("button, [role=slider]")]
+                    .map((e) => ({ e, r: e.getBoundingClientRect() }))
+                    .filter(({ e, r }) => r.width > 0 && r.height > 0 && !e.closest("[inert]"))
+                    .filter(({ r }) => r.left < p.left - 0.5 || r.right > p.right + 0.5 || r.top < p.top - 0.5 || r.bottom > p.bottom + 0.5)
+                    .map(({ e, r }) => `${e.getAttribute("aria-label")} ${Math.round(r.left)}..${Math.round(r.right)} plate ${Math.round(p.left)}..${Math.round(p.right)}`);
+            });
+            expect(out, "seats outside the plate").toEqual([]);
         });
 
         test("F3 — Speed and Easing are dock seats, each with its own menu", async ({ page }) => {
             await openViz(page);
-            await expandTransport(page);
             const dock = page.locator(".animation-dock");
             await expect(dock.locator("[aria-label='More options']")).toHaveCount(0);
             const speed = dock.getByRole("button", { name: "Playback speed" });
@@ -235,7 +92,6 @@ for (const c of CELLS) {
             await expect(speed).toHaveText(/^\s*2\s*×\s*$/);
             await page.keyboard.press("Escape");
             await expect(menu).toBeHidden();
-            await expandTransport(page);
             await dock.getByRole("button", { name: "Easing" }).click();
             menu = page.getByRole("menu");
             await expect(menu).toBeVisible();
@@ -245,9 +101,8 @@ for (const c of CELLS) {
             await expect(menu.getByRole("separator")).toHaveCount(0);
         });
 
-        if (c.width >= 640) test("F4 — an open menu holds the dock open; closing it lets the dock collapse", async ({ page }) => {
+        test("F4 — the plate stands open with a menu open and after it closes", async ({ page }) => {
             await openViz(page);
-            await expandTransport(page);
             const dock = page.locator(".animation-dock");
             await dock.getByRole("button", { name: "Playback speed" }).click();
             await expect(page.getByRole("menu")).toBeVisible();
@@ -273,11 +128,11 @@ for (const c of CELLS) {
             await expect(page.getByRole("menu")).toBeVisible();
             await page.keyboard.press("Escape");
             await expect(page.getByRole("menu")).toBeHidden();
-            // The token is given back: with the pointer away and focus out of the dock
-            // (Escape returns focus to the trigger, which holds the dock by itself),
-            // the idle timer collapses it again.
+            // With the pointer away and the focus out of the dock, it still stands open.
             await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-            await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 10_000 });
+            await page.waitForTimeout(3000);
+            await expect(dock).toHaveClass(/\bexpanded\b/);
+            await expect(dock).not.toHaveClass(/\bcollapsed\b/);
         });
     });
 }

@@ -94,12 +94,13 @@ async function shoot(page: Page, name: string): Promise<void> {
 }
 
 // O41 T3: a stage under 40rem (the phone's, and the 1024 split's at 626 px)
-// carries the plate of two rows, which never folds; there the falsifier reads
-// the plate at rest, and the fold is the 1440 row's.
+// carries the plate of two rows, which never folds; since the desk's scrub
+// took back its run on a row of its own, the 1440 stage carries the same
+// plate, made long. The falsifier reads the plate at rest at every width.
 const CASES = [
-    { width: 1440, height: 900, plate: false },
-    { width: 1024, height: 900, plate: true },
-    { width: 390, height: 844, plate: true },
+    { width: 1440, height: 900 },
+    { width: 1024, height: 900 },
+    { width: 390, height: 844 },
 ];
 
 for (const c of CASES) {
@@ -113,45 +114,16 @@ for (const c of CASES) {
             });
             test.setTimeout(120_000);
 
-            if (c.plate) {
-                test("the plate: it never folds, and every element is inside it", async ({ page }) => {
-                    await openDock(page, mobile);
-                    const dock = page.locator(".animation-dock");
-                    await expect(dock).toHaveClass(/\banimation-dock--card\b/);
-                    if (!mobile) await page.mouse.move(2, 2);
-                    await page.waitForTimeout(6500);
-                    await expect(dock).not.toHaveClass(/\bcollapsed\b/);
-                    await settle(page);
-                    await shoot(page, `plate-${c.width}-${scheme}`);
-                    expect(await outside(page), "the plate: elements outside the glass surface").toEqual([]);
-                });
-                return;
-            }
-
-            test("collapsed: every element inside the plate", async ({ page }) => {
-                await openDock(page, mobile);
-                if (!mobile) await page.mouse.move(2, 2);
-                await expect(page.locator(".animation-dock")).toHaveClass(/\bcollapsed\b/, { timeout: 15_000 });
-                await settle(page);
-                await shoot(page, `collapsed-${c.width}-${scheme}`);
-                expect(await outside(page), "collapsed: elements outside the glass surface (DOCK-SUMMARY-SQUARE while any)").toEqual([]);
-            });
-
-            test("expanded: every element inside the plate", async ({ page }) => {
+            test("the plate: it never folds, and every element is inside it", async ({ page }) => {
                 await openDock(page, mobile);
                 const dock = page.locator(".animation-dock");
-                if (mobile) {
-                    await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 15_000 });
-                    await dock.getByRole("button", { name: "Expand dock" }).tap();
-                } else {
-                    await page.getByRole("button", { name: /(Play|Pause) animation/ }).first().hover();
-                }
-                await expect(dock).toHaveClass(/\bexpanded\b/, { timeout: 10_000 });
+                await expect(dock).toHaveClass(/\banimation-dock--card\b/);
+                if (!mobile) await page.mouse.move(2, 2);
+                await page.waitForTimeout(6500);
+                await expect(dock).not.toHaveClass(/\bcollapsed\b/);
                 await settle(page);
-                // The pointer leaves the timeline, so its caret (its own surface) is at rest.
-                if (!mobile) await page.getByRole("button", { name: /(Play|Pause) animation/ }).first().hover();
-                await shoot(page, `expanded-${c.width}-${scheme}`);
-                expect(await outside(page), "expanded: elements outside the glass surface").toEqual([]);
+                await shoot(page, `plate-${c.width}-${scheme}`);
+                expect(await outside(page), "the plate: elements outside the glass surface").toEqual([]);
             });
         });
     }

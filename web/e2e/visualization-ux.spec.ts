@@ -47,17 +47,8 @@ async function openWorkspace(page: Page): Promise<void> {
     await expect(canvas).toBeVisible({ timeout: 60_000 });
     expect((await computes).post.status()).toBe(202);
     // Then the mounted landmark the keystones depend on — NOT a blind fixed
-    // timeout. The dock starts collapsed by default (AnimationControls'
-    // GlassDock sets `:start-collapsed="true"`), and GlassDock hides the
-    // EXPANDED layer (`.dock-layer--full`, `visibility:hidden`) until the dock
-    // expands — so the "More options" trigger that lives there is not visible
-    // in the default state Keystone-1 asserts against. We therefore settle on
-    // the dock's Play/Pause control (the glass `DockControl` in the dock's
-    // never-inert `#persistent` region — X.F.W13.b retired the hand-rolled
-    // `.play-btn--mini`), which is visible in the default collapsed dock. Using
-    // the default-state element keeps the helper from corrupting Keystone-1's
-    // default-state a11y check (expanding the dock here would change every
-    // keystone's measured DOM).
+    // timeout: the stage dock's Play/Pause control (the stage's one dock is a
+    // plate that stands open in every form, so its seats are there at rest).
     await expect(
         page.getByRole("button", { name: /(Play|Pause) animation/ }).first(),
     ).toBeVisible({
@@ -66,15 +57,8 @@ async function openWorkspace(page: Page): Promise<void> {
 }
 
 /**
- * Open the AnimationControls "More options" dropdown.
- *
- * The trigger (`[aria-label="More options"]`) lives in the dock's EXPANDED
- * layer (`.dock-layer--full`), which GlassDock keeps `visibility:hidden` while
- * the dock is in its default COLLAPSED state. Hovering the `.animation-dock`
- * container drives the dock's hover state-machine to `expanded`, swapping the
- * full layer to `layer-active` (`visibility:visible`); only then is the
- * trigger clickable. We settle on the `expanded` class (the FLIP-crossfade
- * completion signal) rather than a blind timeout before clicking.
+ * Open a dropdown of the AnimationControls dock (the plate stands open, so its
+ * seats take a press from rest).
  */
 async function openMoreOptions(page: Page): Promise<void> {
     const dock = page.locator(".animation-dock").first();

@@ -331,15 +331,15 @@ const stageDock = computed(
 const controlsOverlay = useTemplateRef<HTMLElement>("controlsOverlay");
 const { height: overlayHeight } = useElementSize(controlsOverlay, undefined, { box: "border-box" });
 /** The dock itself (the overlay spans the stage's width; the dock is as wide as it needs). Re-read
- *  after each render that can swap it: the row and the plate are two docks. */
+ *  after each render that can swap it (the editor's dock takes its place). */
 const stageDockEl = shallowRef<HTMLElement | null>(null);
 const { width: stageDockWidth } = useElementSize(stageDockEl, undefined, { box: "border-box" });
 /*
  * FORTY-FIRST H: the stage dock's form follows the stage, not the viewport.
- * The desk's row keeps six seats outside its fold and four more in its open
- * face, so a stage under 40rem (a tablet's split, 768 px wide, leaves the
- * stage 445 px) cannot hold it open: the face ran under the controls card.
- * Such a stage takes the phone's plate, which holds everything in 358 px. The
+ * The desk's plate has nine seats under its scrub, so a stage under 40rem (a
+ * tablet's split, 768 px wide, leaves the stage 445 px) cannot hold them: they
+ * ran under the controls card. Such a stage takes the phone's plate, which
+ * holds everything in 358 px. The
  * phone's own sheet form keeps it at every width.
  *
  * A short landscape stage (a phone held sideways: 526x320 at 844x390) takes
