@@ -47,14 +47,7 @@ import { sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-} from "@mkbabb/glass-ui/menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -361,15 +354,37 @@ function togglePane() {
     if (seat) seat.pane.value = seat.pane.value === "controls" ? "canvas" : "controls";
 }
 /**
- * O41 S4's fallback: on a phone the open run with the pane seat (Home,
- * Sections, the rule, Account, About, the theme and Controls, every seat on
- * the 44 px cell) is 367 px, over the 358 the page gutter leaves. So where the
- * pane seat stands, the "i" returns to the Sections menu (fronts-1119's form)
- * and no seat shrinks; on every other page it stays beside the theme seat.
+ * On a phone the account has no seat of its own: it is the "i" card's last
+ * part (`UserSlugBar` form "card"). With an account seat the open run with the
+ * pane seat (Home, Sections, the rule, Account, About, the theme and Controls,
+ * each on the 44 px cell) was 367 px, over the 358 the page gutter leaves, so
+ * the "i" used to leave for the Sections menu where the pane seat stood. Log
+ * in is not a primary function (STUDY 2.1); the "i" and the theme seat close
+ * the run on every route, and the Sections menu holds only places.
+ *
+ * An act that asks for a sign-in (Publish, `auth.requestSignIn`) opens the dock
+ * and the card, with the field focused; closing the card settles the request.
  */
-const aboutInMenu = computed(() => compact.value && !!paneSeat.value);
-function openRepo() {
-    window.open(REPO_URL, "_blank", "noopener,noreferrer");
+const aboutOpen = ref(false);
+const signInPending = computed(() => compact.value && auth.signInRequested);
+watch(signInPending, (pending) => {
+    if (!pending) return;
+    dockRef.value?.expand();
+    aboutOpen.value = true;
+}, { immediate: true, flush: "post" });
+function onAboutOpen(open: boolean) {
+    aboutOpen.value = open;
+    if (!open && auth.signInRequested) auth.endSignInRequest();
+}
+/** Asked for a sign-in, the card's focus goes to the field (else reka's first stop). */
+function onAboutFocus(e: Event) {
+    if (!signInPending.value) return;
+    e.preventDefault();
+    void nextTick(() => document.getElementById("user-slug-input")?.focus());
+}
+/** While a request is open, focus handed back elsewhere by the surface that asked does not dismiss the card. */
+function onAboutFocusOutside(e: Event) {
+    if (signInPending.value) e.preventDefault();
 }
 /** The rim: a page's own measure (a job on the stage), else its reading progress. */
 const dockProgress = useDockProgress();
@@ -428,19 +443,6 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         <component :is="tab.icon" aria-hidden="true" />
                         <span>{{ tab.label }}</span>
                     </DropdownMenuItem>
-                    <!-- Where the pane seat stands on a phone: About, after the places
-                         (see `aboutInMenu`). -->
-                    <template v-if="aboutInMenu">
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup data-about>
-                            <DropdownMenuLabel>About</DropdownMenuLabel>
-                            <p class="about-menu-line text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
-                            <DropdownMenuItem @select="openRepo">
-                                <ExternalLink aria-hidden="true" />
-                                <span>View the project on GitHub</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -462,17 +464,17 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 </div>
             </Transition>
 
-            <div class="contents" role="group" aria-label="Account">
+            <!-- The account seat from 40rem; on a phone it is the "i" card's last part. -->
+            <div v-if="!compact" class="contents" role="group" aria-label="Account">
                 <UserSlugBar />
             </div>
 
-            <!-- About ("i"), beside the theme seat; in the Sections menu where a
-                 phone's pane seat stands (see `aboutInMenu`). -->
-            <Popover v-if="!aboutInMenu" keep-dock-open>
+            <!-- About ("i"), beside the theme seat on every route. -->
+            <Popover keep-dock-open :open="aboutOpen" @update:open="onAboutOpen">
                 <DockTrigger for="popover" class="about-trigger" aria-label="About Fourier analysis" title="About">
                     <Info class="about-glyph" aria-hidden="true" />
                 </DockTrigger>
-                <PopoverContent align="end" class="about-card">
+                <PopoverContent align="end" class="about-card" :class="{ 'about-card--account': compact }" @open-auto-focus="onAboutFocus" @focus-outside="onAboutFocusOutside">
                     <div class="flex items-center gap-3">
                         <!-- Self-hosted maintainer avatar (zero third-party
                              origins; 80px source for 2× density in the 40px box). -->
@@ -504,6 +506,10 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         View the project on GitHub
                         <ExternalLink class="size-3.5" aria-hidden="true" />
                     </Button>
+                    <template v-if="compact">
+                        <Separator class="my-2" />
+                        <UserSlugBar form="card" @done="onAboutOpen(false)" />
+                    </template>
                 </PopoverContent>
             </Popover>
 
@@ -611,13 +617,6 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     min-inline-size: var(--dock-control-size);
 }
 
-/* The phone's About group in the sections menu: the tagline under its label,
-   on the label's own inline measure (glass's .menu__label, 0.5rem) so the two
-   lines share one edge with the row's glyph below. */
-.about-menu-line {
-    padding: 0 0.5rem var(--space-residue);
-    max-inline-size: 16rem;
-}
 /* Home is a compact (auto-sized) control so the wordmark sets its width; its
    height keeps the dock's control cell (44 px on a coarse pointer). */
 .logo-trigger {
@@ -709,6 +708,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     .app-dock {
         --dock-padding-block: calc(var(--dock-density-compact-padding-block, 0.25rem) * var(--dock-scale));
     }
+}
+
+/* With the account in it (a phone), the card takes the sign-in form's measure. */
+.about-card--account {
+    inline-size: min(22rem, calc(100vw - 2rem));
 }
 
 .about-avatar {

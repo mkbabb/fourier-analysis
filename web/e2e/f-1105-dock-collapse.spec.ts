@@ -284,6 +284,9 @@ for (const s of SURFACES) {
             await expect(dock).toHaveClass(COLLAPSED, { timeout: IDLE });
         });
     });
+    // On a phone the sign-in is the About card's last part (PR 33 review,
+    // should-fix 2): the About surface is the one that holds it there.
+    if (s.name === "Log in") continue;
     test.describe(`U3 F-3 ${s.name} touch 390`, () => {
         test.use({ viewport: { width: 390, height: 844 } });
         test(`@coarse U3 F-3 ${s.name}: an open surface outlasts the idle window and a tap outside lets the dock yield`, async ({ page }) => {

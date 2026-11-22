@@ -40,10 +40,19 @@ function toasts(page: Page) {
     return page.getByRole("region", { name: /Notifications/ }).locator("li");
 }
 
+/**
+ * The sign-in's trigger: the account seat from 40rem; on a phone the account is
+ * the "i" card's last part (PR 33 review, should-fix 2), so the "i" opens it.
+ */
+function loginTrigger(page: Page) {
+    const phone = page.viewportSize()!.width < 640;
+    return page.locator(".app-dock").getByRole("button", { name: phone ? "About Fourier analysis" : "Log in" });
+}
+
 async function openLogin(page: Page): Promise<void> {
     await page.goto("/gallery");
     await openAppDock(page);
-    await page.getByRole("button", { name: "Log in" }).click();
+    await loginTrigger(page).click();
     await expect(page.getByRole("textbox", { name: /Your slug/ })).toBeVisible({ timeout: 10_000 });
 }
 
@@ -59,11 +68,18 @@ for (const vp of [DESKTOP, PHONE]) {
         test.use({ viewport: vp });
         test("open focuses the field; Escape and an outside press close and return focus", async ({ page }) => {
             await openLogin(page);
-            await expect(page.getByRole("textbox", { name: /Your slug/ })).toBeFocused();
+            if (vp.width < 640) {
+                // The "i" opens to read About too: focus moves into the card,
+                // and the field waits for its own tap (no keyboard on reading).
+                await expect(page.getByRole("textbox", { name: /Your slug/ })).not.toBeFocused();
+                expect(await page.locator(".about-card").evaluate((c) => c.contains(document.activeElement))).toBe(true);
+            } else {
+                await expect(page.getByRole("textbox", { name: /Your slug/ })).toBeFocused();
+            }
             await page.keyboard.press("Escape");
             await expect(page.getByRole("textbox", { name: /Your slug/ })).toHaveCount(0);
-            await expect(page.getByRole("button", { name: "Log in" })).toBeFocused();
-            await page.getByRole("button", { name: "Log in" }).click();
+            await expect(loginTrigger(page)).toBeFocused();
+            await loginTrigger(page).click();
             await expect(page.getByRole("textbox", { name: /Your slug/ })).toBeVisible();
             await page.mouse.click(vp.width / 2, vp.height - 40);
             await expect(page.getByRole("textbox", { name: /Your slug/ })).toHaveCount(0);
@@ -75,9 +91,9 @@ for (const vp of [DESKTOP, PHONE]) {
         test("opening the form and a slug error leave the dock box unchanged", async ({ page }) => {
             await page.goto("/gallery");
             await openAppDock(page);
-            await expect(page.getByRole("button", { name: "Log in" })).toBeVisible({ timeout: 30_000 });
+            await expect(loginTrigger(page)).toBeVisible({ timeout: 30_000 });
             const before = await dockBox(page);
-            await page.getByRole("button", { name: "Log in" }).click();
+            await loginTrigger(page).click();
             const field = page.getByRole("textbox", { name: /Your slug/ });
             await field.fill("Not A Slug");
             expect(await dockBox(page)).toEqual(before);
@@ -485,16 +501,16 @@ for (const scheme of ["light", "dark"] as const) {
             test("dock, login, error, About, nav, account", async ({ page }) => {
                 await page.goto("/gallery");
                 await openAppDock(page);
-                await expect(page.getByRole("button", { name: "Log in" })).toBeVisible({ timeout: 30_000 });
+                await expect(loginTrigger(page)).toBeVisible({ timeout: 30_000 });
                 await page.waitForTimeout(400);
                 await frame(page, `dock-${scheme}`);
-                await page.getByRole("button", { name: "Log in" }).click();
+                await loginTrigger(page).click();
                 await page.getByRole("textbox", { name: /Your slug/ }).fill("Not A Slug");
                 await page.getByRole("textbox", { name: /Your slug/ }).press("Enter");
                 await page.waitForTimeout(300);
                 await frame(page, `login-error-${scheme}`);
                 await page.keyboard.press("Escape");
-                // Under 40rem About is a group in the sections menu, framed with it below.
+                // Under 40rem the About card is the sign-in's card, framed above.
                 if (vp.width >= 640) {
                     await page.getByRole("button", { name: "About Fourier analysis" }).click();
                     await page.waitForTimeout(300);
@@ -511,7 +527,8 @@ for (const scheme of ["light", "dark"] as const) {
                 await loggedIn(page);
                 await page.goto("/gallery");
                 await openAppDock(page);
-                await page.getByRole("button", { name: /^Account: / }).click();
+                // On a phone the account is the About card's last part.
+                await page.locator(".app-dock").getByRole("button", { name: vp.width < 640 ? "About Fourier analysis" : /^Account: / }).click();
                 await page.waitForTimeout(300);
                 await frame(page, `account-${scheme}`);
             });

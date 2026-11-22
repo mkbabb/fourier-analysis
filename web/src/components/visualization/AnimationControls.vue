@@ -49,6 +49,7 @@ import {
 } from "@lucide/vue";
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useAuthStore } from "@/stores/auth";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockControl } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
@@ -103,6 +104,17 @@ defineSlots<{
 
 const anim = useAnimationStore();
 const store = useWorkspaceStore();
+const auth = useAuthStore();
+
+/**
+ * A row of the phone's More whose act asked for a sign-in (a signed-out
+ * Publish) has opened the "i" card with its field focused: the closing menu
+ * leaves the focus there rather than handing it back to its trigger, which
+ * would take it out of the card.
+ */
+function keepFocusForSignIn(e: Event) {
+    if (auth.signInRequested) e.preventDefault();
+}
 
 /** There is a drawing to act on: until then every seat is present and disabled. */
 const ready = computed(() => !!store.epicycleData || !!store.basesData);
@@ -306,7 +318,7 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
                         <DockTrigger for="dropdown" aria-label="Layers and more" :disabled="!ready">
                             <Ellipsis class="stage-glyph" aria-hidden="true" />
                         </DockTrigger>
-                        <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end">
+                        <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end" @close-auto-focus="keepFocusForSignIn">
                             <div class="menu-sections">
                                 <DropdownMenuCheckboxItem :model-value="layers.line" @select="keepOpen" @update:model-value="emit('toggleLayer', 'line')">
                                     <Spline aria-hidden="true" />

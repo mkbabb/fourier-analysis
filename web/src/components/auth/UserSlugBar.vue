@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
+import { createReusableTemplate } from "@vueuse/core";
 import { Button } from "@mkbabb/glass-ui/button";
 import { Input } from "@mkbabb/glass-ui/input";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
@@ -22,6 +23,20 @@ import { ApiProblem, problemMessage } from "@/lib/api-problem";
 import { User, LogIn, LogOut, Copy, Check, Dices, Shield } from "@lucide/vue";
 import LeaveSignal from "@/components/shared/LeaveSignal";
 
+/**
+ * Two forms of one account (STUDY 2.1; PR 33 review, should-fix 2):
+ *  · `seat` (from 40rem): one dock trigger, "Log in" opening a popover that
+ *    holds the form, or the account menu once signed in.
+ *  · `card` (a phone): no seat of its own. The run is Home, the sections, the
+ *    page's pane seat, About ("i") and the theme, so the "i" keeps its place
+ *    on every route; the account is the "i" card's last part: the form inline
+ *    when signed out, the slug with Copy and Log out when signed in. A
+ *    finished act (signed in, or out) says so with `done`, and the card's
+ *    owner closes the card; the card shows what it opened with until then.
+ */
+const { form = "seat" } = defineProps<{ form?: "seat" | "card" }>();
+const emit = defineEmits<{ done: [] }>();
+const [DefineLoginForm, ReuseLoginForm] = createReusableTemplate();
 /** O16: the open account menu holds the app dock open (its Log in popover
  *  does through `keep-dock-open`; glass's DropdownMenu has no such prop). */
 const dock = useOptionalDockContext();
@@ -48,7 +63,7 @@ const { signInRequested } = storeToRefs(auth);
 watch(
     signInRequested,
     (requested) => {
-        if (requested) showLogin.value = true;
+        if (requested && form === "seat") showLogin.value = true;
     },
     { immediate: true },
 );
@@ -144,9 +159,16 @@ async function handleGenerate() {
  * close, which emptied them on the exit's first frame.
  */
 function closeLogin() {
+    if (form === "card") {
+        emit("done");
+        return;
+    }
     showLogin.value = false;
     auth.endSignInRequest();
 }
+
+/** The card's state is the one it opened with (it closes on a finished act). */
+const cardSignedIn = isLoggedIn.value;
 
 /**
  * The account seat: the Log in popover gives way to the account menu only
@@ -218,6 +240,7 @@ async function handleLogout() {
     try {
         await logout();
         toast({ title: "Logged out", tone: "info" });
+        if (form === "card") emit("done");
     } catch {
         // UIA-F-256 (the logout limb): the store rethrows only a failure that
         // left the server session live; the account stays signed in and says so.
@@ -247,6 +270,68 @@ async function copySlug() {
 </script>
 
 <template>
+    <!-- The form, once: the seat's popover and the phone's "i" card hold it. -->
+    <DefineLoginForm>
+        <form class="flex flex-col gap-2" novalidate @submit.prevent="handleLogin">
+            <!-- X-DS pass 4 · DS-F4-C6: the field's label is on screen, a
+                 caption line (the P2-07 hint idiom), not screen-reader
+                 only behind a placeholder. -->
+            <label class="text-caption text-muted-foreground" for="user-slug-input">
+                Your slug
+            </label>
+            <Input
+                id="user-slug-input"
+                v-model="slugInput"
+                name="username"
+                type="text"
+                size="sm"
+                autocomplete="username"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="go"
+                :pattern="SLUG_PATTERN_ATTR"
+                :invalid="invalid"
+                :aria-describedby="describedBy"
+                placeholder="your-four-word-slug"
+                class="w-full fira-code"
+                @blur="touched = trimmed.length > 0"
+            />
+            <p v-if="shapeError" id="user-slug-hint" role="alert" class="login-error text-small text-destructive">
+                {{ shapeError }}
+            </p>
+            <p v-if="serverMessage" id="user-slug-error" role="alert" class="login-error text-small text-destructive">
+                {{ serverMessage }}
+            </p>
+            <!-- DS-F4-C6: each action names itself (the glyph sits inside
+                 its label); the accessible names keep the visible words. -->
+            <div class="flex items-center justify-end gap-2">
+                <Button
+                    type="button"
+                    emphasis="secondary"
+                    size="sm"
+                    :disabled="loggingIn"
+                    aria-label="Generate a new slug"
+                    @click="handleGenerate"
+                >
+                    <Dices aria-hidden="true" />
+                    New slug
+                </Button>
+                <Button
+                    type="submit"
+                    emphasis="primary"
+                    size="sm"
+                    aria-label="Submit slug and log in"
+                    :disabled="loggingIn"
+                    :loading="loggingIn"
+                >
+                    <LogIn aria-hidden="true" />
+                    Log in
+                </Button>
+            </div>
+        </form>
+    </DefineLoginForm>
+
     <!-- X.F.W14.u — UIA-F-28 · UIA-F-29 · UIA-F-30: the account group is one
          dock trigger, never a run of controls in the dock row. Logged out, "Log
          in" opens a popover holding the form (focus moves in to the field,
@@ -255,7 +340,7 @@ async function copySlug() {
          slug, Copy and Log out. The popovers take glass's own offset
          (UIA-F-219: no consumer literal). X.F.W14U.shell — UIA-F-150: the
          admin state lives in this menu, not as a disc beside it. -->
-    <div class="flex items-center">
+    <div v-if="form === 'seat'" class="flex items-center">
         <DropdownMenu v-if="accountSeat" @update:open="onAccountOpen">
             <DockTrigger for="dropdown" class="account-trigger" :aria-label="`Account: ${shownSlug}`">
                 <User class="account-glyph" aria-hidden="true" />
@@ -291,69 +376,40 @@ async function copySlug() {
             </DockTrigger>
             <PopoverContent align="end" class="login-popover">
                 <LeaveSignal @left="onLoginLeft" />
-                <form class="flex flex-col gap-2" novalidate @submit.prevent="handleLogin">
-                    <!-- X-DS pass 4 · DS-F4-C6: the field's label is on screen, a
-                         caption line (the P2-07 hint idiom), not screen-reader
-                         only behind a placeholder. -->
-                    <label class="text-caption text-muted-foreground" for="user-slug-input">
-                        Your slug
-                    </label>
-                    <Input
-                        id="user-slug-input"
-                        v-model="slugInput"
-                        name="username"
-                        type="text"
-                        size="sm"
-                        autocomplete="username"
-                        autocapitalize="none"
-                        autocorrect="off"
-                        spellcheck="false"
-                        enterkeyhint="go"
-                        :pattern="SLUG_PATTERN_ATTR"
-                        :invalid="invalid"
-                        :aria-describedby="describedBy"
-                        placeholder="your-four-word-slug"
-                        class="w-full fira-code"
-                        @blur="touched = trimmed.length > 0"
-                    />
-                    <p v-if="shapeError" id="user-slug-hint" role="alert" class="login-error text-small text-destructive">
-                        {{ shapeError }}
-                    </p>
-                    <p v-if="serverMessage" id="user-slug-error" role="alert" class="login-error text-small text-destructive">
-                        {{ serverMessage }}
-                    </p>
-                    <!-- DS-F4-C6: each action names itself (the glyph sits inside
-                         its label); the accessible names keep the visible words. -->
-                    <div class="flex items-center justify-end gap-2">
-                        <Button
-                            type="button"
-                            emphasis="secondary"
-                            size="sm"
-                            :disabled="loggingIn"
-                            aria-label="Generate a new slug"
-                            @click="handleGenerate"
-                        >
-                            <Dices aria-hidden="true" />
-                            New slug
-                        </Button>
-                        <Button
-                            type="submit"
-                            emphasis="primary"
-                            size="sm"
-                            aria-label="Submit slug and log in"
-                            :disabled="loggingIn"
-                            :loading="loggingIn"
-                        >
-                            <LogIn aria-hidden="true" />
-                            Log in
-                        </Button>
-                    </div>
-                </form>
+                <ReuseLoginForm />
             </PopoverContent>
         </Popover>
 
         <!-- UIA-F-232: the copy success, said to assistive tech. -->
         <span class="sr-only" aria-live="polite">{{ status === "success" ? "Slug copied to the clipboard" : "" }}</span>
+    </div>
+
+    <!-- A phone: the account as the "i" card's last part (see `form`). -->
+    <div v-else class="account-card" role="group" aria-label="Account">
+        <template v-if="cardSignedIn">
+            <p class="account-card-slug text-small">
+                <User class="account-card-glyph" aria-hidden="true" />
+                <span class="sr-only">Logged in as </span>
+                <span class="fira-code">{{ shownSlug }}</span>
+            </p>
+            <p v-if="gallery.adminMode" class="account-card-slug text-small text-muted-foreground">
+                <Shield class="account-card-glyph" aria-hidden="true" />
+                Admin mode
+            </p>
+            <div class="flex items-center justify-end gap-2">
+                <Button type="button" emphasis="secondary" size="sm" @click="copySlug">
+                    <Check v-if="status === 'success'" aria-hidden="true" />
+                    <Copy v-else aria-hidden="true" />
+                    Copy your slug
+                </Button>
+                <Button type="button" emphasis="secondary" size="sm" :disabled="loggingOut" @click="handleLogout">
+                    <LogOut aria-hidden="true" />
+                    Log out
+                </Button>
+            </div>
+            <span class="sr-only" aria-live="polite">{{ status === "success" ? "Slug copied to the clipboard" : "" }}</span>
+        </template>
+        <ReuseLoginForm v-else />
     </div>
 </template>
 
@@ -380,5 +436,25 @@ async function copySlug() {
 .login-error {
     white-space: normal;
     overflow-wrap: anywhere;
+}
+
+/* The phone's account, in the "i" card: the slug on the card's text column
+   with the account glyph before it, then its two acts at the end. */
+.account-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.account-card-slug {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+}
+.account-card-glyph {
+    inline-size: 1rem;
+    block-size: 1rem;
+    flex: none;
 }
 </style>

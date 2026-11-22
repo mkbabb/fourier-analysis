@@ -136,23 +136,21 @@ test.describe("FORTY-SECOND B — the dock on a phone @coarse", () => {
         await expect(menu.locator('[role="group"], [data-slot="dropdown-menu-label"]')).toHaveCount(0);
     });
 
-    test("@coarse where the pane seat stands, About is the menu's last group and the run keeps the gutter", async ({ page }) => {
-        // S4's fallback: with the Controls seat the "i" would take the open run
-        // past the gutter (367 of 358 px), so it returns to the Sections menu.
+    test("@coarse where the pane seat stands, About keeps its seat and the run keeps the gutter", async ({ page }) => {
+        // With the account in the "i" card on a phone, the run with the
+        // Controls seat fits the gutter and the "i" never leaves for the
+        // Sections menu (PR 33 review, should-fix 2).
         await page.goto("/equation");
         const dock = await openAppDock(page);
         await expect(dock.locator(".pane-seat")).toBeVisible();
-        await expect(dock.getByRole("button", { name: "About Fourier analysis" })).toHaveCount(0);
+        await expect(dock.getByRole("button", { name: "About Fourier analysis" })).toBeVisible();
         const box = (await dock.boundingBox())!;
         expect(box.width, "the open run").toBeLessThanOrEqual(358);
         await dock.getByRole("button", { name: /^Navigate/ }).click();
         const menu = page.getByRole("menu");
         await expect(menu).toBeVisible();
-        // The group takes its label's name, "About".
-        const about = menu.getByRole("group", { name: "About" });
-        await expect(about.getByRole("menuitem", { name: "View the project on GitHub" })).toBeVisible();
-        await expect(menu.getByRole("menuitem")).toHaveCount(6);
-        await expect(menu.locator('[role="group"]')).toHaveCount(1);
+        await expect(menu.getByRole("menuitem")).toHaveCount(5);
+        await expect(menu.locator('[role="group"], [data-slot="dropdown-menu-label"]')).toHaveCount(0);
     });
 
     test("@coarse the dock folds once a section has been chosen", async ({ page }) => {

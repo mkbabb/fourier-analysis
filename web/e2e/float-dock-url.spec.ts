@@ -128,14 +128,14 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
         // O41 S4: the open dock keeps the page gutter (358 of 390 at most).
         expect(g.left, "room on the left").toBeGreaterThanOrEqual(16);
         expect(g.vw - g.right, "room on the right").toBeGreaterThanOrEqual(16);
-        // Home first; About is the "i" beside the theme seat. Where the pane
-        // seat stands it closes the run and About is the Sections menu's last
-        // group instead (S4's fallback: the "i" would pass the gutter).
+        // Home first; About is the "i" beside the theme seat on every route,
+        // the pane seat closing the run where it stands. The account is the
+        // "i" card's last part on a phone, so the run keeps the gutter.
         const pane = g.seats.some((x) => x.name === "Controls");
         expect(g.seats.map((x) => x.name.replace(/ — .*/, ""))).toEqual(
             pane
-                ? ["Home", "Navigate", "Log in", "Dark mode", "Controls"]
-                : ["Home", "Navigate", "Log in", "About Fourier analysis", "Dark mode"],
+                ? ["Home", "Navigate", "About Fourier analysis", "Dark mode", "Controls"]
+                : ["Home", "Navigate", "About Fourier analysis", "Dark mode"],
         );
         for (const x of g.seats) {
             expect(x.w, `${x.name} width`).toBeGreaterThanOrEqual(44);
@@ -144,12 +144,12 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
         return { dock, pane };
     }
 
-    /** The Sections menu: the five places, then About's one row where the pane seat stands. */
-    async function placesOnly(page: Page, pane: boolean) {
+    /** The Sections menu: the five places and nothing else, with or without the pane seat. */
+    async function placesOnly(page: Page, _pane: boolean) {
         const menu = page.getByRole("menu");
         await expect(menu.getByRole("menuitem", { name: "Paper" })).toBeVisible();
-        await expect(menu.getByRole("menuitem")).toHaveCount(pane ? 6 : 5);
-        await expect(menu.locator("[data-about]")).toHaveCount(pane ? 1 : 0);
+        await expect(menu.getByRole("menuitem")).toHaveCount(5);
+        await expect(menu.locator("[data-about]")).toHaveCount(0);
         await expect(menu.locator("[data-page-tools]")).toHaveCount(0);
     }
 

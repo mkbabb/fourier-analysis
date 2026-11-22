@@ -837,7 +837,8 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
         await page.goto("/gallery");
         await openAppDock(page);
         const dockBefore = await page.locator("header").first().evaluate((h) => h.getBoundingClientRect().width);
-        await page.getByRole("button", { name: "Log in" }).click();
+        // On a phone the account is the "i" card's last part (PR 33 review, should-fix 2).
+        await page.getByRole("button", { name: "About Fourier analysis" }).click();
         const field = page.getByRole("textbox", { name: /Your slug/ });
         await field.fill("quiet-amber-lattice-fox");
         await allHittable(page, ["Your slug", "Generate a new slug", "Submit slug and log in"]);
@@ -851,15 +852,14 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
         await allHittable(page, ["Generate a new slug", "Submit slug and log in"]);
     });
 
-    test("F-30: logged in, the account is one trigger and the dark-mode toggle stays on the plate", async ({ page }) => {
+    test("F-30: logged in, the account is in the About card and the dark-mode toggle stays on the plate", async ({ page }) => {
         await page.addInitScript(() => {
             localStorage.setItem("fourier-user-slug", "quiet-amber-lattice-fox");
             localStorage.setItem("fourier-user-token", "e2e-token");
         });
         await page.goto("/gallery");
         await openAppDock(page);
-        const trigger = page.getByRole("button", { name: /^Account: |^Copy your slug$/ }).first();
-        await expect(trigger).toBeAttached();
+        await expect(page.locator(".app-dock").getByRole("button", { name: /^Account: / }), "no account seat in the phone's run").toHaveCount(0);
         await page.waitForTimeout(500);
         const toggle = page.locator(".dark-mode-toggle").first();
         await expect(toggle).toBeVisible();
@@ -869,9 +869,10 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
             return { inView: r.right <= innerWidth, hit: !!hit && (hit === b || b.contains(hit)) };
         });
         expect(t).toEqual({ inView: true, hit: true });
-        await page.getByRole("button", { name: /^Account: / }).click();
-        await expect(page.getByRole("menuitem", { name: "Copy your slug" })).toBeVisible();
-        await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
+        await page.getByRole("button", { name: "About Fourier analysis" }).click();
+        const card = page.locator(".about-card");
+        await expect(card.getByText("quiet-amber-lattice-fox")).toBeVisible();
+        await allHittable(page, ["Copy your slug", "Log out"]);
     });
 });
 
