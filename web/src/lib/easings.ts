@@ -92,7 +92,7 @@ function solveCubicBezierX(x: number, x1: number, x2: number, epsilon = 1e-6): n
 }
 
 /** A CSS `cubic-bezier(x1, y1, x2, y2)` timing function. */
-const cssCubicBezier =
+export const cssCubicBezier =
     (x1: number, y1: number, x2: number, y2: number): EasingFn =>
     (x: number) => {
         if (x <= 0) return 0;
