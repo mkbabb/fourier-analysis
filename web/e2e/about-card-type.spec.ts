@@ -10,17 +10,16 @@ import { openAppDock } from "./fixtures/app-dock";
  * account seat's popover.
  */
 
-async function openCard(page: Page, phone: boolean) {
-    await page.goto("/gallery");
-    const dock = await openAppDock(page);
-    await dock.getByRole("button", { name: "About Fourier analysis" }).click();
-    const card = page.locator(".about-card");
-    await expect(card).toContainText(/orthogonal decomposition/i);
-    if (!phone) {
-        await page.keyboard.press("Escape");
-        await dock.getByRole("button", { name: "Log in" }).click();
-    }
-    return card;
+/** The font size of the first element matching `selector` (and `text`, when given). */
+function sizeOf(page: Page, selector: string, text?: RegExp): Promise<number | null> {
+    return page.evaluate(
+        ([sel, src]) => {
+            const re = src ? new RegExp(src, "i") : null;
+            const el = [...document.querySelectorAll(sel)].find((e) => !re || re.test(e.textContent?.trim() ?? ""));
+            return el ? parseFloat(getComputedStyle(el).fontSize) : null;
+        },
+        [selector, text?.source ?? ""] as const,
+    );
 }
 
 for (const vp of [
@@ -33,17 +32,24 @@ for (const vp of [
 
             test("the tagline, the handle and the field's label are 14 px or larger", async ({ page }) => {
                 const phone = vp.width < 640;
-                await openCard(page, phone);
-                const read = await page.evaluate(() => {
-                    const px = (el: Element | null) => (el ? parseFloat(getComputedStyle(el).fontSize) : null);
-                    const tagline = [...document.querySelectorAll(".about-card p")].find((p) => /orthogonal decomposition/i.test(p.textContent ?? ""));
-                    const handle = [...document.querySelectorAll(".about-card p")].find((p) => p.textContent?.trim() === "@mbabb");
-                    const label = document.querySelector('label[for="user-slug-input"]');
-                    return { tagline: px(tagline ?? null), handle: px(handle ?? null), label: px(label) };
-                });
-                expect(read.tagline, "the tagline").toBeGreaterThanOrEqual(13.95);
-                expect(read.handle, "the handle").toBeGreaterThanOrEqual(13.95);
-                expect(read.label, "the field's label").toBeGreaterThanOrEqual(13.95);
+                await page.goto("/gallery");
+                const dock = await openAppDock(page);
+                await dock.getByRole("button", { name: "About Fourier analysis" }).click();
+                await expect(page.locator(".about-card")).toContainText(/orthogonal decomposition/i);
+                const tagline = await sizeOf(page, ".about-card p", /orthogonal decomposition/);
+                const handle = await sizeOf(page, ".about-card p", /^@mbabb$/);
+                // On a phone the card holds the sign-in; at a desk it is the
+                // account seat's popover.
+                if (!phone) {
+                    await page.keyboard.press("Escape");
+                    await expect(page.locator(".about-card")).toHaveCount(0);
+                    await dock.getByRole("button", { name: "Log in" }).click();
+                }
+                await expect(page.locator('label[for="user-slug-input"]')).toBeVisible();
+                const label = await sizeOf(page, 'label[for="user-slug-input"]');
+                expect(tagline, "the tagline").toBeGreaterThanOrEqual(13.95);
+                expect(handle, "the handle").toBeGreaterThanOrEqual(13.95);
+                expect(label, "the field's label").toBeGreaterThanOrEqual(13.95);
             });
         });
     }
