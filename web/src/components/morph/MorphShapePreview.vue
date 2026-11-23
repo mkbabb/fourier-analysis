@@ -188,7 +188,9 @@ defineEmits<{
         min-width: var(--plate-measure);
         margin-inline: 0;
     }
-    .morph-button {
+    /* The square itself (two classes: it holds over the plate's own
+       `width: 100%`, which comes later in this file). */
+    .demo-stage .morph-button {
         width: var(--plate-measure);
     }
 }
