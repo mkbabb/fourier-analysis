@@ -49,6 +49,9 @@ const DWELL_TURNS = 1.25;
 const MORPH_MS = 1800;
 /** Reduced motion: a shape changes by this fade, a pull returns by this ease. */
 const FADE_MS = 150;
+/** The loop is idle under reduced motion, and its first frame back steps no time
+    (`frameLoop`), so a fade starts one frame in: the press shows in that frame. */
+const FADE_FIRST_MS = 1000 / 60;
 /** The circles drawn, and the vectors the arms run through before the pen. */
 const CIRCLES = 28;
 const ARMS = 40;
@@ -63,6 +66,8 @@ const PULL_WIDTH = 0.06;
 const PULL_BAND = 16;
 /** The number-of-terms readout stays this long after the last change. */
 const READOUT_MS = 1200;
+/** A change in the number of terms eases over this long (no circle pops in or out). */
+const TERMS_MS = 200;
 /** Ink: circles, arms, and the line from its far end to the pen. */
 const CIRCLE_INK = 0.1;
 const ARM_INK = 0.3;
@@ -110,6 +115,8 @@ let morph: Morph | null = null;
 /** The visitor's own number of terms (null: the shape's own). */
 let visitorN: number | null = null;
 let level = deck.current.n;
+/** The number of terms on its way to the visitor's (a key, the wheel, a pinch). */
+let terms: { from: number; ms: number } | null = null;
 /** The pen's place (turns), the turns this shape has stood, and how much of the line is written. */
 let pen = 0;
 let dwell = 0;
@@ -376,18 +383,21 @@ function advance(to: HeroShape): void {
     // From wherever the drawing stands, toward the next (a tap mid-morph turns it).
     shape.value = to;
     visitorN = null;
+    terms = null;
     dwell = 0;
     if (reduce.value) {
-        fade = { pts: pts.slice(), joints: joints.slice(), vectors: Math.min(2 * bandNow() + 1, LEN / 2), ms: 0 };
+        fade = { pts: pts.slice(), joints: joints.slice(), vectors: Math.min(2 * bandNow() + 1, LEN / 2), ms: FADE_FIRST_MS };
         morph = null;
         live.set(to.spectrum.c);
         level = to.n;
+        drawing.value = to.key;
         kick();
         return;
     }
     const from: Spectrum = { c: live.slice() };
     const aligned = alignStart(from, to.spectrum);
     morph = { from, circle: circleBetween(from, aligned), to: aligned, fromN: level, toN: to.n, ms: 0 };
+    drawing.value = "morph";
     kick();
 }
 const next = () => advance(deck.next());
@@ -411,6 +421,17 @@ function stepMorph(dt: number): void {
         level = morph.toN;
         morph = null;
     }
+}
+
+function stepTerms(dt: number): void {
+    if (!terms || visitorN === null || morph) {
+        terms = null;
+        return;
+    }
+    terms.ms += dt;
+    const s = Math.min(1, terms.ms / TERMS_MS);
+    level = terms.from + (visitorN - terms.from) * smooth(s);
+    if (s >= 1) terms = null;
 }
 
 function stepPull(dt: number): void {
@@ -437,7 +458,7 @@ function stepTwist(dt: number): void {
 
 /** Whether anything still moves (the loop stops when nothing does). */
 function moving(): boolean {
-    if (fade || inkFrom || morph || pull || twist !== 0 || readoutShown.value) return true;
+    if (fade || inkFrom || morph || terms || pull || twist !== 0 || readoutShown.value) return true;
     return !reduce.value && !paused.value;
 }
 
@@ -452,6 +473,7 @@ function tick(dt: number, now: number): boolean {
         }
     }
     stepMorph(dt);
+    stepTerms(dt);
     stepPull(dt);
     stepTwist(dt);
     if (fade) {
@@ -625,7 +647,14 @@ function onPointerLeave(): void {
 function setTerms(n: number): void {
     const cap = Math.min(BAND, Math.max(OWN_TERMS_CAP, 2 * shape.value.n));
     visitorN = Math.min(cap, Math.max(1, n));
-    if (!morph) level = visitorN;
+    if (!morph) {
+        // Eased from where the line stands (a change mid-way turns it); under
+        // reduced motion the drawing fades to its new terms.
+        if (reduce.value) {
+            fade = { pts: pts.slice(), joints: joints.slice(), vectors: Math.min(2 * bandNow() + 1, LEN / 2), ms: FADE_FIRST_MS };
+            level = visitorN;
+        } else terms = { from: level, ms: 0 };
+    }
     readoutN.value = Math.round(visitorN);
     readoutShown.value = true;
     readoutUntil = performance.now() + READOUT_MS;

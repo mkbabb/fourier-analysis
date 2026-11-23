@@ -199,15 +199,10 @@ test.describe("the resting stage at a desk", () => {
         await page.keyboard.press("ArrowRight");
         await expect(canvas).toHaveAttribute("data-shape", second);
 
-        await page.waitForTimeout(2_000); // the morph done: the shape's own terms
-        const readout = page.locator(".rest-drawing .rest-terms");
-        await page.keyboard.press("ArrowUp");
-        const n = Number((await readout.textContent())!.slice(4));
-        await page.keyboard.press("ArrowUp");
-        await expect(readout).toHaveText(`n = ${n + 1}`);
-        await page.keyboard.press("ArrowDown");
-        await page.keyboard.press("ArrowDown");
-        await expect(readout).toHaveText(`n = ${n - 1}`);
+        // The morph under way, then done (the drawing is the shape again), so
+        // nothing but the pen moves.
+        await expect(canvas).toHaveAttribute("data-drawing", "morph");
+        await expect(canvas).not.toHaveAttribute("data-drawing", "morph", { timeout: 20_000 });
 
         await page.keyboard.press(" ");
         await expect(canvas).toHaveAttribute("data-paused", /.*/);
@@ -215,6 +210,35 @@ test.describe("the resting stage at a desk", () => {
         const still = await print(page);
         await page.waitForTimeout(400);
         expect(await print(page), "paused, it holds still").toBe(still);
+
+        // Paused, so the terms are all that move: a key's term comes in by a
+        // tween over several frames, never in one, and then holds.
+        const readout = page.locator(".rest-drawing .rest-terms");
+        const film = page.evaluate(async (sel) => {
+            const c = document.querySelector<HTMLCanvasElement>(sel)!;
+            const ctx = c.getContext("2d")!;
+            const seen = new Set<number>();
+            const t0 = performance.now();
+            while (performance.now() - t0 < 700) {
+                await new Promise(requestAnimationFrame);
+                const d = ctx.getImageData(0, 0, c.width, c.height).data;
+                let h = 0;
+                for (let i = 3; i < d.length; i += 4) if (d[i]) h = (h * 31 + i * d[i]!) % 2147483647;
+                seen.add(h);
+            }
+            return seen.size;
+        }, CANVAS);
+        // Down, since a term past a shape's own may be a zero one (a rose has
+        // no more to add), while its own last term always carries ink.
+        await page.keyboard.press("ArrowDown");
+        expect(await film, "a term goes out over several frames").toBeGreaterThanOrEqual(3);
+        const n = Number((await readout.textContent())!.slice(4));
+        await page.keyboard.press("ArrowUp");
+        await expect(readout).toHaveText(`n = ${n + 1}`);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
+        await expect(readout).toHaveText(`n = ${n - 1}`);
+
         await page.keyboard.press(" ");
         await expect(canvas).not.toHaveAttribute("data-paused", /.*/);
         await page.waitForTimeout(300);
@@ -260,8 +284,12 @@ test("under reduced motion it is still, and a tap changes it by a short fade", a
     const settled = frames.find((f) => f.h === last)!.t;
     const between = new Set(frames.filter((f) => f.t < settled && f.h !== a).map((f) => f.h));
     expect(first, `the first changed frame ${first.toFixed(0)} ms after the tap`).toBeLessThanOrEqual(50);
-    // The fade's own length, first changed frame to last, within a frame of 150 ms.
-    expect(settled - first, `the fade took ${(settled - first).toFixed(0)} ms`).toBeLessThanOrEqual(150 + 17);
+    // The fade's own length, first changed frame to last, within a frame of
+    // 150 ms: the film's own longest frame (17 ms on an idle desk, more on a
+    // loaded host, where the fade's clock still steps at most 50 ms a frame).
+    const during = frames.filter((f) => f.t >= first && f.t <= settled);
+    const frame = Math.max(17, ...during.slice(1).map((f, i) => f.t - during[i]!.t));
+    expect(settled - first, `the fade took ${(settled - first).toFixed(0)} ms (frames up to ${frame.toFixed(0)} ms)`).toBeLessThanOrEqual(150 + frame);
     expect(between.size, "a fade, not a cut").toBeGreaterThanOrEqual(3);
 });
 
