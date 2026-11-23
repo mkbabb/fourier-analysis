@@ -40,6 +40,26 @@ for (const vp of [
             expect(under, "text under the 14 px floor").toEqual([]);
         });
 
+        test("every reading ends inside the card, whole", async ({ page }) => {
+            await openMorph(page);
+            const out = await page.locator(".demo-info").evaluate((row) => {
+                const card = row.closest(".demo-stage")!.getBoundingClientRect();
+                const bad: string[] = [];
+                const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+                for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+                    const text = n.textContent?.trim() ?? "";
+                    if (!text || n.parentElement!.closest(".sr-only")) continue;
+                    const range = document.createRange();
+                    range.selectNodeContents(n);
+                    for (const r of range.getClientRects()) {
+                        if (r.width && (r.left < card.left - 0.5 || r.right > card.right + 0.5)) bad.push(`${text} [${Math.round(r.left)}, ${Math.round(r.right)}] in [${Math.round(card.left)}, ${Math.round(card.right)}]`);
+                    }
+                }
+                return bad;
+            });
+            expect(out, "a reading cut by the card's edge").toEqual([]);
+        });
+
         test("a label is quieter than its value by its ink", async ({ page }) => {
             await openMorph(page);
             const inks = await page.locator(".demo-info .metric").evaluateAll((ms) =>

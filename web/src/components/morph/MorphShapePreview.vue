@@ -180,8 +180,16 @@ defineEmits<{
    what the shell's header, the page's top padding and the readout foot leave. */
 @media (orientation: landscape) and (max-height: 500px) {
     .demo-stage {
-        width: min(26rem, calc(100svh - 10rem));
+        /* The plate keeps the square the height allows; the card is as wide
+           as its readings, so at the 14 px labels "total 350 ms" still ends
+           inside it (the plate's ~230 px measure no longer holds the four). */
+        --plate-measure: min(26rem, calc(100svh - 10rem));
+        width: max-content;
+        min-width: var(--plate-measure);
         margin-inline: 0;
+    }
+    .morph-button {
+        width: var(--plate-measure);
     }
 }
 
