@@ -102,11 +102,16 @@ def resolve_blob(uri: str) -> Path:
 def _generate_thumbnail(content: bytes, content_type: str) -> tuple[bytes, str]:
     """Generate an AVIF thumbnail from image bytes.
 
+    A picture with transparency keeps it (AVIF carries alpha): flattened to
+    RGB, its clear ground came out black, so a drawing on a clear ground showed
+    in its card as a black square.
+
     Returns (thumbnail_bytes, "image/avif").
     """
     opened = Image.open(io.BytesIO(content))
     transposed = ImageOps.exif_transpose(opened)
-    img: Image.Image = (transposed or opened).convert("RGB")
+    img: Image.Image = transposed or opened
+    img = img.convert("RGBA" if img.has_transparency_data else "RGB")
     img.thumbnail((_THUMBNAIL_MAX_DIM, _THUMBNAIL_MAX_DIM), Image.Resampling.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, format="AVIF", quality=_THUMBNAIL_QUALITY)
