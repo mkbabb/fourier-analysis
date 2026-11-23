@@ -52,6 +52,7 @@ import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
 import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
+import { Tooltip } from "@/components/ui/tooltip";
 import { usePageScroll } from "@/composables/usePageScroll";
 import { safeGetItem, safeSetItem, safeStorage } from "@/composables/useSafeStorage";
 import { PAGE_TOOLS_COMPACT, usePageTools, type PageToolsForm } from "@/composables/usePageTools";
@@ -432,21 +433,25 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                  opens with the site's mark, the epicycle figure the folded
                  seal and the tab carry, never the font's ℱ (which names the
                  Fourier basis on the stage). -->
-            <DockControl
-                as="a"
-                compact
-                :href="homeHref"
-                class="logo-trigger"
-                aria-label="Home — Fourier analysis"
-                title="Home"
-                @click="goHome"
-            >
-                <House class="home-glyph" aria-hidden="true" />
-                <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
-                    <FourierMark />
-                    <span>Fourier analysis</span>
-                </span>
-            </DockControl>
+            <!-- FORTY-SIXTH A (F-3): every seat's words are glass's Tooltip,
+                 standing on the seat, never the browser's native title; none
+                 on a touch screen (STUDY 2.1). -->
+            <Tooltip text="Home" side="bottom" :disabled="coarsePointer">
+                <DockControl
+                    as="a"
+                    compact
+                    :href="homeHref"
+                    class="logo-trigger"
+                    aria-label="Home — Fourier analysis"
+                    @click="goHome"
+                >
+                    <House class="home-glyph" aria-hidden="true" />
+                    <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
+                        <FourierMark />
+                        <span>Fourier analysis</span>
+                    </span>
+                </DockControl>
+            </Tooltip>
 
             <!-- The sections: ONE affordance at every width (owner ruling,
                  §0dw) whose name carries the current section, and a non-modal
@@ -515,9 +520,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
             <!-- About ("i"), beside the theme seat on every route. On a phone it
                  holds the account too, and is named for both. -->
             <Popover keep-dock-open :open="aboutOpen" @update:open="onAboutOpen">
-                <DockTrigger for="popover" class="about-trigger" :aria-label="aboutName.label" :title="aboutName.title">
-                    <Info class="about-glyph" aria-hidden="true" />
-                </DockTrigger>
+                <Tooltip :text="aboutName.title" side="bottom" :disabled="coarsePointer || aboutOpen">
+                    <DockTrigger for="popover" class="about-trigger" :aria-label="aboutName.label">
+                        <Info class="about-glyph" aria-hidden="true" />
+                    </DockTrigger>
+                </Tooltip>
                 <PopoverContent align="end" class="about-card" :class="{ 'about-card--account': compact }" @open-auto-focus="onAboutFocus" @focus-outside="onAboutFocusOutside">
                     <div class="flex items-center gap-3">
                         <!-- Self-hosted maintainer avatar (zero third-party
@@ -561,15 +568,16 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
             <!-- The phone's pane switch (`useWorkspacePane`): outside the fold. -->
             <template v-if="paneSeat" #persistent-end>
-                <DockControl
-                    class="pane-seat"
-                    aria-label="Controls"
-                    title="Controls"
-                    :active="paneSeat.pane.value === 'controls'"
-                    @click="togglePane"
-                >
-                    <SlidersHorizontal aria-hidden="true" />
-                </DockControl>
+                <Tooltip text="Controls" side="bottom" :disabled="coarsePointer">
+                    <DockControl
+                        class="pane-seat"
+                        aria-label="Controls"
+                        :active="paneSeat.pane.value === 'controls'"
+                        @click="togglePane"
+                    >
+                        <SlidersHorizontal aria-hidden="true" />
+                    </DockControl>
+                </Tooltip>
             </template>
 
             <!-- Collapsed, the seal is the fourier mark (FORTY-FIRST B: "an

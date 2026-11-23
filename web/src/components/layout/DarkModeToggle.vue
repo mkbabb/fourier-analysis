@@ -28,20 +28,24 @@
          glass half, O-59); adopting it would delete the glyph. `aria-pressed`
          is the state (N-2), passed as an attribute: `DockControl`'s `active`
          would also paint the selected seat, which is not what "dark" means. -->
-    <DockControl
-        class="sun-moon-toggle"
-        aria-label="Dark mode"
-        :aria-pressed="isDark"
-        :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-        @click="handleToggle"
-    >
-        <FourierMorphSvg
-            :path="morph.currentPath.value"
-            :stroke-width="strokeWidth"
-            :stroke-color="strokeColor"
-            :view-box="viewBox"
-        />
-    </DockControl>
+    <!-- FORTY-SIXTH A (the dock study's F-3): the action's words are glass's
+         Tooltip, standing on the seat. As a native `title` the browser drew
+         them wherever it chose (his frame: the far left of the screen). -->
+    <Tooltip :text="isDark ? 'Switch to light mode' : 'Switch to dark mode'" side="bottom" :disabled="coarsePointer">
+        <DockControl
+            class="sun-moon-toggle"
+            aria-label="Dark mode"
+            :aria-pressed="isDark"
+            @click="handleToggle"
+        >
+            <FourierMorphSvg
+                :path="morph.currentPath.value"
+                :stroke-width="strokeWidth"
+                :stroke-color="strokeColor"
+                :view-box="viewBox"
+            />
+        </DockControl>
+    </Tooltip>
 </template>
 
 <script setup lang="ts">
@@ -89,6 +93,8 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useGlobalDark } from "@mkbabb/glass-ui/dark";
 import { DockControl } from "@mkbabb/glass-ui/dock";
+import { useMediaQuery } from "@vueuse/core";
+import { Tooltip } from "@/components/ui/tooltip";
 import FourierMorphSvg from "@/components/decorative/FourierMorphSvg.vue";
 import { DEFAULT_MORPH_CONFIG, useFourierMorph } from "@/composables/useFourierMorph";
 import type { FourierShape } from "@/lib/svg-fourier";
@@ -97,6 +103,8 @@ import type { FourierShape } from "@/lib/svg-fourier";
 import { moonShape, sunShape } from "@/lib/sun-moon-shapes";
 
 const { isDark, toggleDark } = useGlobalDark();
+/** Tooltips are a desk's: a tap on a touch screen shows none. */
+const coarsePointer = useMediaQuery("(pointer: coarse)");
 /** true when morphing toward dark (moon), false when morphing toward light (sun) */
 const morphingToDark = ref(false);
 

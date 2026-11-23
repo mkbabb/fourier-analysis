@@ -88,6 +88,12 @@ const props = withDefaults(
          * whose docblock cites the tooltip register. Any CSS length.
          */
         measure?: string;
+        /**
+         * Shows nothing while true (glass's own `disabled`). The app dock's
+         * seats set it on a touch screen: tooltips are a desk's (STUDY 2.1),
+         * and a tap must not leave one standing under the dock.
+         */
+        disabled?: boolean;
     }>(),
     { side: "top", sideOffset: 6, measure: "16rem" },
 );
@@ -131,7 +137,7 @@ if (import.meta.env.DEV) {
 </script>
 
 <template>
-    <GlassTooltip>
+    <GlassTooltip :disabled="disabled">
         <TooltipTrigger ref="trigger" as-child>
             <slot />
         </TooltipTrigger>
