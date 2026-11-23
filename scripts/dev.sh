@@ -195,6 +195,15 @@ start_backend() {
         --reload --reload-dir api >"$LOG_DIR/api.log" 2>&1 &
     track $!
 }
+# The gallery's demo pieces (api/seeds/gallery.json), seeded as production's
+# are, so a local gallery is never empty; idempotent, one compute at a time.
+# The local account is a placeholder; production's is a deployment secret.
+seed_gallery() {
+    MONGO_URI="$MONGO_URI" COMPUTE_CONCURRENCY=1 \
+    FOURIER_SITE_OWNER="${FOURIER_SITE_OWNER:-local-site-owner}" \
+        uv run python -m api.scripts.seed_gallery >"$LOG_DIR/seed.log" 2>&1 &
+    track $!
+}
 start_frontend() {
     # @mkbabb/fourier: the SPA resolves packages/fourier's built dist/; build
     # it once, then keep it current while vite runs.
@@ -230,6 +239,7 @@ cmd_up() {
     export PLAYWRIGHT_BASE_URL="http://localhost:$FRONTEND_PORT"
     if [[ "$SHAPE" == "fullstack" || "$SHAPE" == "backend" ]]; then
         start_backend; wait_port_bound "backend" "$BACKEND_PORT"
+        seed_gallery
     fi
     [[ "$SHAPE" != "backend" ]] && start_frontend
     print_summary

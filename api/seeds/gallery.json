@@ -1,0 +1,68 @@
+{
+    "about": "The gallery's demo pieces (FORTY-SIXTH C): the paper's three mathematicians, in public-domain portraits, and the site's own sun and moon. Seeded by api/scripts/seed_gallery.py; each picture's source and licence is in SOURCES.md.",
+    "animation_settings": { "speed": 1.0, "active_bases": ["fourier-epicycles"] },
+    "seeds": [
+        {
+            "key": "joseph-fourier",
+            "kind": "picture",
+            "file": "pictures/joseph-fourier.png",
+            "title": "Joseph Fourier",
+            "description": "Engraving by Amédée Félix Barthélemy Geille after Julien-Léopold Boilly, about 1823. Public domain.",
+            "tags": ["from-the-paper", "portrait"],
+            "n_harmonics": 200,
+            "contour_settings": {
+                "strategy": "multi_threshold", "resize": 768, "blur_sigma": 1.0, "n_classes": 3,
+                "min_contour_length": 40, "min_contour_area": 0.001, "max_contours": 16,
+                "smooth_contours": 0.03, "n_points": 1024
+            }
+        },
+        {
+            "key": "leonhard-euler",
+            "kind": "picture",
+            "file": "pictures/leonhard-euler.jpg",
+            "title": "Leonhard Euler",
+            "description": "Pastel by Jakob Emanuel Handmann, 1753 (Kunstmuseum Basel). Public domain.",
+            "tags": ["from-the-paper", "portrait"],
+            "n_harmonics": 200,
+            "contour_settings": {
+                "strategy": "multi_threshold", "resize": 768, "blur_sigma": 1.0, "n_classes": 3,
+                "min_contour_length": 40, "min_contour_area": 0.001, "max_contours": 16,
+                "smooth_contours": 0.03, "n_points": 1024
+            }
+        },
+        {
+            "key": "augustin-louis-cauchy",
+            "kind": "picture",
+            "file": "pictures/augustin-louis-cauchy.png",
+            "title": "Augustin-Louis Cauchy",
+            "description": "Lithograph by Grégoire et Deneux, Paris, about 1840. Public domain.",
+            "tags": ["from-the-paper", "portrait"],
+            "n_harmonics": 200,
+            "contour_settings": {
+                "strategy": "multi_threshold", "resize": 768, "blur_sigma": 1.0, "n_classes": 3,
+                "min_contour_length": 40, "min_contour_area": 0.001, "max_contours": 16,
+                "smooth_contours": 0.03, "n_points": 1024
+            }
+        },
+        {
+            "key": "the-sun",
+            "kind": "drawing",
+            "drawing": "web/src/assets/fourier-paths/sun.json",
+            "title": "The sun",
+            "description": "The theme seat's sun, the site's own drawing.",
+            "tags": ["the-site", "drawing"],
+            "n_harmonics": 50,
+            "contour_settings": { "n_points": 1024 }
+        },
+        {
+            "key": "the-moon",
+            "kind": "drawing",
+            "drawing": "web/src/assets/fourier-paths/moon.json",
+            "title": "The moon",
+            "description": "The theme seat's moon, the site's own drawing.",
+            "tags": ["the-site", "drawing"],
+            "n_harmonics": 50,
+            "contour_settings": { "n_points": 1024 }
+        }
+    ]
+}
