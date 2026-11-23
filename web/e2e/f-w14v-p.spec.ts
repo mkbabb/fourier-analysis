@@ -1,6 +1,7 @@
 // SERVED MODEL: claude-opus-5-5
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { openAppDock } from "./fixtures/app-dock";
+import { pressStageTool } from "./fixtures/canvas-dock";
 import { ENTRY } from "./fixtures/gallery";
 import { seededViz } from "./fixtures/seed";
 
@@ -105,6 +106,29 @@ test.describe("F.W14V.p — a signed-out Publish reaches the inline sign-in and 
         await frame(page, "p1-published");
     });
 
+    test("p1b @844x390: asked from the stage, the sign-in stands inside the screen under its open dock", async ({ page }) => {
+        // Landscape phone: not the compact form (Log in keeps its seat), and
+        // the app dock rests at its seal while the stage plate holds Publish.
+        await page.setViewportSize({ width: 844, height: 390 });
+        await routePublish(page);
+        await page.goto(`/v/${seededViz().slug}`);
+        await expect(page.getByRole("button", { name: "Edit contour" }).first()).toBeEnabled({ timeout: 60_000 });
+        await page.waitForTimeout(600);
+        await pressStageTool(page, "Publish to Gallery");
+        const field = page.locator("#user-slug-input");
+        await expect(field).toBeFocused({ timeout: 10_000 });
+        await expect(page.locator(".app-dock"), "the dock opens to the seat the sign-in hangs from").toHaveClass(/(^|\s)expanded(\s|$)/);
+        await expect(page.locator(".app-dock").getByRole("button", { name: /^Log in$/ })).toBeVisible();
+        await page.waitForTimeout(900);
+        const box = await page.locator(".login-popover").evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+        });
+        expect(box.left, "the sign-in's left edge").toBeGreaterThanOrEqual(0);
+        expect(box.right, "the sign-in's right edge").toBeLessThanOrEqual(844);
+        expect(box.bottom, "the sign-in's foot").toBeLessThanOrEqual(390);
+        await frame(page, "p1b-signin");
+    });
     test("p2: a stale sign-in → the server's owner_required reaches the inline sign-in, never the raw toast", async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.addInitScript(() => {
