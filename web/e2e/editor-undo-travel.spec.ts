@@ -30,7 +30,14 @@ async function openEditor(page: Page): Promise<void> {
     await page.waitForTimeout(500);
 }
 
-/** Film the drawn line from the next press on: each frame's time after the press and its path. */
+/**
+ * Film the drawn line from the next press on: each change of its path, with
+ * the time after the press of the frame it was drawn for. The change is read
+ * where it happens (a mutation of the path), on the frame's own clock, the one
+ * the travel reads: a reader on its own frame callback sees a frame's line only
+ * if it happens to run after the travel's, so on a slow host it read each line
+ * a frame late (at ~75 ms frames the old curve read 0.14 at 40 ms).
+ */
 async function filmLine(page: Page): Promise<void> {
     await editorSvg(page).evaluate((svg) => {
         const path = svg.querySelector("path.spline-path")!;
@@ -38,12 +45,13 @@ async function filmLine(page: Page): Promise<void> {
         w.__film = [{ at: -1, d: path.getAttribute("d")! }];
         w.__pressAt = NaN;
         document.addEventListener("click", () => (w.__pressAt = performance.now()), { capture: true, once: true });
-        const t0 = performance.now();
-        const tick = (now: number) => {
-            if (!Number.isNaN(w.__pressAt)) w.__film.push({ at: now - w.__pressAt, d: path.getAttribute("d")! });
-            if (now - t0 < 4000 && (Number.isNaN(w.__pressAt) || now - w.__pressAt < 900)) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
+        const seen = new MutationObserver(() => {
+            if (Number.isNaN(w.__pressAt)) return;
+            const frame = Number(document.timeline.currentTime ?? performance.now());
+            w.__film.push({ at: frame - w.__pressAt, d: path.getAttribute("d")! });
+        });
+        seen.observe(path, { attributes: true, attributeFilter: ["d"] });
+        setTimeout(() => seen.disconnect(), 5000);
     });
 }
 
@@ -92,6 +100,7 @@ for (const scheme of ["dark", "light"] as const) {
             await undo.click();
             await page.waitForTimeout(1200);
             const film = await progress(page);
+            test.info().annotations.push({ type: "undo-film", description: JSON.stringify(film.filter((f) => f.at > 0).slice(0, 24)) });
             // The line's progress at a moment, read between the two frames
             // around it (the press itself is 0): a dropped frame under load
             // must not make "by 40 ms" the ~73 ms frame.

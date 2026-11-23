@@ -423,6 +423,15 @@ watch(signInPending, (pending) => {
     dockRef.value?.expand();
     aboutOpen.value = true;
 }, { immediate: true, flush: "post" });
+/*
+ * Wider, the request opens the Log in seat's popover (`UserSlugBar`). Asked
+ * from the stage with the dock resting at its seal (844x390), the popover hung
+ * from a seat folded out of view and ran off the screen's right edge: the dock
+ * opens first, so the popover stands under its own seat.
+ */
+watch(() => !compact.value && auth.signInRequested, (pending) => {
+    if (pending) dockRef.value?.expand();
+}, { flush: "post" });
 function onAboutOpen(open: boolean) {
     aboutOpen.value = open;
     if (!open && auth.signInRequested) auth.endSignInRequest();

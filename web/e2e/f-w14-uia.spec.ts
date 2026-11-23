@@ -137,7 +137,7 @@ test.describe("UIA-F-7 — the dock's position reads on the scrub, and tracks th
         const scrub = page.locator('.animation-dock [role="slider"][aria-label="Timeline"]').first();
         await expect.poll(async () => Number(await scrub.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0);
         const fill = await page.locator(".animation-dock .timeline-slider").first().evaluate((el) => {
-            const range = el.querySelector<HTMLElement>('[data-slot="slider-range"]');
+            const range = el.querySelector<HTMLElement>(".slider-range");
             if (!range) return null;
             const r = range.getBoundingClientRect();
             const bg = getComputedStyle(range).backgroundColor;

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { IMAGE_JOB } from "./fixtures/jobs";
 
 /**
  * The first compute, cut where the site can (PR 33 review, should-fix 10: the
@@ -117,6 +118,17 @@ for (const c of CELLS) {
                 await held;
                 await route.fallback();
             });
+            // The first drawing is held too, until the film ends: its intro
+            // dims the picture to the drawing's ground by design, and on a fast
+            // host it lands within a quarter second of the upload, inside the
+            // window this film reads (the server's picture taking the file's).
+            let releaseCompute!: () => void;
+            const computeHeld = new Promise<void>((r) => (releaseCompute = r));
+            await page.route(IMAGE_JOB, async (route) => {
+                if (route.request().method() !== "POST") return route.fallback();
+                await computeHeld;
+                await route.fallback();
+            });
             await page.goto("/visualize");
             await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
             await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
@@ -171,6 +183,7 @@ for (const c of CELLS) {
                 w.__stop = true;
                 return { low: w.__low, frames: w.__frames };
             });
+            releaseCompute();
             expect(film.frames).toBeGreaterThan(10);
             expect(film.low, `the picture's middle never blanks (at release ${atRelease})`).toBeGreaterThan(atRelease * 0.5);
         });
@@ -191,7 +204,16 @@ for (const c of CELLS) {
             // The upload is held until the file's own picture stands, so the
             // upload's landing (where the plate used to arrive) is filmed.
             await expect.poll(() => painted(page), { timeout: 1_500, intervals: [50] }).toBeGreaterThan(300);
-            await page.waitForTimeout(400);
+            // Held until the picture has stood for 30 frames of one stage size,
+            // whatever the host's frame rate (a slow raster at a desk paints
+            // fewer frames in a fixed wait, and the aside's spring resizes the
+            // stage for the first of them).
+            await page.waitForFunction(() => {
+                const f = (window as unknown as { __box: { frames: { w: number; h: number; box: unknown }[] } }).__box.frames;
+                let run = 0;
+                for (let i = f.length - 1; i > 0 && f[i]!.box && f[i]!.w === f[i - 1]!.w && f[i]!.h === f[i - 1]!.h; i--) run++;
+                return run >= 30;
+            }, null, { timeout: 30_000, polling: 50 });
             release();
             await page.waitForURL(/\/w\//, { timeout: 20_000 });
             await page.waitForFunction(() => (window as unknown as { __box: { done: boolean } }).__box.done, null, { timeout: 60_000 });
