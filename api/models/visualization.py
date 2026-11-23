@@ -350,7 +350,7 @@ class ProvenanceNode(BaseModel):
 
     slug: str
     set_hash: str
-    author_slug: str
+    author_slug: str | None = None  # the author, shown to that author only (FORTY-SIXTH C)
     depth: int
     is_fork: bool
     created_at: datetime
@@ -366,7 +366,7 @@ class ForkCrumb(BaseModel):
     kind: Literal["visualization"] = "visualization"
     slug: str
     set_hash: str
-    author_slug: str
+    author_slug: str | None = None  # the author, shown to that author only (FORTY-SIXTH C)
     fork_of: str | None = None
     created_at: datetime
 
@@ -401,7 +401,7 @@ class VersionEntry(BaseModel):
 
     set_hash: str
     depth: int
-    author_slug: str
+    author_slug: str | None = None  # the author, shown to that author only (FORTY-SIXTH C)
     atom_diff: list[AtomOp]
     created_at: datetime
 
