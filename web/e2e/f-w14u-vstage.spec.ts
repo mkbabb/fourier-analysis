@@ -274,7 +274,12 @@ test.describe("F.W14U.vstage — upload and publish (1440)", () => {
     test.use({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
     test.setTimeout(90_000);
 
-    test("e133 · F-133 (consumer) — the upload button says it is uploading", async ({ page }) => {
+    // F-133 asked that the upload say it is uploading. Since FORTY-FIRST F
+    // (progress drawn, not described) and the PR 33 review (should-fix 10:
+    // "Uploading…" under the button for the first second), it is said to
+    // assistive technology and drawn: from the drop the stage shows the
+    // file's own picture and one indeterminate bar named for the upload.
+    test("e133 · F-133 (consumer) — the upload is named, and drawn without words", async ({ page }) => {
         await page.route("**/api/images", async (route) => {
             if (route.request().method() !== "POST") return route.fallback();
             await new Promise((r) => setTimeout(r, 4000));
@@ -282,9 +287,10 @@ test.describe("F.W14U.vstage — upload and publish (1440)", () => {
         });
         await openEmpty(page);
         await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
-        const primary = page.locator(".drop-target button").first();
-        await expect(primary).toHaveAttribute("aria-busy", "true", { timeout: 3000 });
-        await expect(primary).toHaveAccessibleName(/Uploading/);
+        const bar = page.locator(".canvas-stage").getByRole("progressbar", { name: "Uploading the image" });
+        await expect(bar).toBeVisible({ timeout: 3000 });
+        await expect(bar).not.toHaveAttribute("aria-valuenow");
+        await expect(page.getByText(/Uploading/)).toHaveCount(0);
         await frame(page, "e133-uploading");
     });
 

@@ -229,7 +229,7 @@ async function walkShell(page: Page, run: Run, tag: string): Promise<void> {
     await expect(page.locator(".app-dock")).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(800);
     await shot(page, run, tag, "shell");
-    await openIf(page, run, tag, "about", "[aria-label='About Fourier analysis']", "no About trigger");
+    await openIf(page, run, tag, "about", "[aria-label^='About Fourier analysis']", "no About trigger");
     await openIf(page, run, tag, "login", "[aria-label='Log in']", "no Log in trigger (session present)");
     await openIf(page, run, tag, "nav", ".nav-trigger", "inline Sections nav at this width (no dropdown)");
 }

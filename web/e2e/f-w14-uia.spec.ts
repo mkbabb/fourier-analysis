@@ -126,26 +126,27 @@ test.describe("UIA-F-50 / UIA-F-4 / UIA-F-49 — not-found and load-error states
     });
 });
 
-test.describe("UIA-F-7 — the collapsed dock's position readout paints its fill", () => {
-    test("the mini readout is a progressbar whose painted fill tracks the clock", async ({ page }) => {
+// UIA-F-7: the collapsed dock's position readout had no painted fill. The
+// stage's dock no longer folds (its scrub took a row of its own at a desk, as
+// on a phone), so its position reads on the scrub, which tracks the clock.
+test.describe("UIA-F-7 — the dock's position reads on the scrub, and tracks the clock", () => {
+    test("the scrub is a slider whose value and painted fill follow the clock", async ({ page }) => {
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
         await page.mouse.move(5, 5);
-        const bar = page.locator(".mini-progress").first();
-        await expect(bar).toHaveAttribute("role", "progressbar");
-        await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0);
-        const fill = await bar.evaluate((el) => {
-            const ind = el.firstElementChild as HTMLElement;
-            const r = ind.getBoundingClientRect();
-            const box = el.getBoundingClientRect();
-            const bg = getComputedStyle(ind).backgroundColor;
-            // The painted span is the part of the indicator inside the rail.
-            const painted = Math.max(0, Math.min(r.right, box.right) - Math.max(r.left, box.left));
-            return { h: r.height, painted, transparent: bg === "transparent" || /,\s*0\)$/.test(bg) };
+        const scrub = page.locator('.animation-dock [role="slider"][aria-label="Timeline"]').first();
+        await expect.poll(async () => Number(await scrub.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0);
+        const fill = await page.locator(".animation-dock .timeline-slider").first().evaluate((el) => {
+            const range = el.querySelector<HTMLElement>(".slider-range");
+            if (!range) return null;
+            const r = range.getBoundingClientRect();
+            const bg = getComputedStyle(range).backgroundColor;
+            return { w: r.width, h: r.height, transparent: bg === "transparent" || /,\s*0\)$/.test(bg) };
         });
-        expect(fill.h).toBeGreaterThan(0);
-        expect(fill.transparent).toBe(false);
-        expect(fill.painted).toBeGreaterThan(0);
+        expect(fill, "the scrub has a painted range").not.toBeNull();
+        expect(fill!.h).toBeGreaterThan(0);
+        expect(fill!.w).toBeGreaterThan(0);
+        expect(fill!.transparent).toBe(false);
     });
 });
 
@@ -179,7 +180,7 @@ test.describe("UIA-F-17 — every export switch changes the PNG", () => {
         test.setTimeout(60_000);
         const viz = firstSavedViz();
         await page.goto(`/v/${viz.slug}`);
-        const bar = page.locator(".mini-progress").first();
+        const bar = page.locator('.animation-dock [role="slider"][aria-label="Timeline"]').first();
         await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow")), { timeout: 10_000 }).toBeGreaterThan(0.2);
         // Paused by keyboard: a pointer press on a persistent dock control can
         // be discarded by the producer's click-integrity guard mid-morph
@@ -634,7 +635,7 @@ test.describe("UIA-F-47 — a published draft leaves the Drafts list", () => {
         // Open the workspace and let it extract + compute, so the local draft it
         // saves carries a contour (a draft without one cannot be published).
         await page.goto(`/w/${viz.image_slug}`);
-        await expect(page.locator(".mini-progress")).toBeAttached({ timeout: 30_000 });
+        await expect(page.locator(".animation-dock .timeline-slider")).toBeAttached({ timeout: 30_000 });
         // The workspace's debounced draft save lands the contour after extraction;
         // read the stored draft itself (`lib/draftStorage.ts`), not a fixed wait.
         await expect
@@ -837,7 +838,8 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
         await page.goto("/gallery");
         await openAppDock(page);
         const dockBefore = await page.locator("header").first().evaluate((h) => h.getBoundingClientRect().width);
-        await page.getByRole("button", { name: "Log in" }).click();
+        // On a phone the account is the "i" card's last part (PR 33 review, should-fix 2).
+        await page.getByRole("button", { name: "About Fourier analysis" }).click();
         const field = page.getByRole("textbox", { name: /Your slug/ });
         await field.fill("quiet-amber-lattice-fox");
         await allHittable(page, ["Your slug", "Generate a new slug", "Submit slug and log in"]);
@@ -851,15 +853,14 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
         await allHittable(page, ["Generate a new slug", "Submit slug and log in"]);
     });
 
-    test("F-30: logged in, the account is one trigger and the dark-mode toggle stays on the plate", async ({ page }) => {
+    test("F-30: logged in, the account is in the About card and the dark-mode toggle stays on the plate", async ({ page }) => {
         await page.addInitScript(() => {
             localStorage.setItem("fourier-user-slug", "quiet-amber-lattice-fox");
             localStorage.setItem("fourier-user-token", "e2e-token");
         });
         await page.goto("/gallery");
         await openAppDock(page);
-        const trigger = page.getByRole("button", { name: /^Account: |^Copy your slug$/ }).first();
-        await expect(trigger).toBeAttached();
+        await expect(page.locator(".app-dock").getByRole("button", { name: /^Account: / }), "no account seat in the phone's run").toHaveCount(0);
         await page.waitForTimeout(500);
         const toggle = page.locator(".dark-mode-toggle").first();
         await expect(toggle).toBeVisible();
@@ -869,9 +870,10 @@ test.describe("UIA-F-28 / UIA-F-29 / UIA-F-30 — the account group fits the doc
             return { inView: r.right <= innerWidth, hit: !!hit && (hit === b || b.contains(hit)) };
         });
         expect(t).toEqual({ inView: true, hit: true });
-        await page.getByRole("button", { name: /^Account: / }).click();
-        await expect(page.getByRole("menuitem", { name: "Copy your slug" })).toBeVisible();
-        await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
+        await page.getByRole("button", { name: "About Fourier analysis" }).click();
+        const card = page.locator(".about-card");
+        await expect(card.getByText("quiet-amber-lattice-fox")).toBeVisible();
+        await allHittable(page, ["Copy your slug", "Log out"]);
     });
 });
 

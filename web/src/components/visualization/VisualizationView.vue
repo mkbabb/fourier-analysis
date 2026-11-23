@@ -97,10 +97,12 @@ const dropMessage = computed(() =>
 );
 
 /* UIA-F-237: "Drop or click" is wrong on touch; the primary action names the
-   act, which is pointer-neutral, and while uploading it says that (UIA-F-133).
-   X-DS pass 2 · DS-F2-C13: one label at every width — "Tap to choose an
-   image" wrapped to two lines in its pill at 390, stranding the glyph. */
-const primaryUploadLabel = computed(() => (store.uploading ? "Uploading…" : "Choose an image"));
+   act, which is pointer-neutral. X-DS pass 2 · DS-F2-C13: one label at every
+   width — "Tap to choose an image" wrapped to two lines in its pill at 390,
+   stranding the glyph. The upload says nothing here: from the drop the stage
+   shows the file's own picture (`store.localPicture`), and the drop target
+   has left. A file the browser cannot draw (HEIC in a desk's Chrome) has no
+   picture: the drop target stays, its button busy until the upload lands. */
 
 // ── Active bases ──
 const activeBases = ref<string[]>(
@@ -324,22 +326,26 @@ const hasData = computed(() => store.epicycleData || store.basesData || store.co
  * its foot (`AnimationControls`). It is there from the first frame of a route
  * that names an image, its seats disabled until there is a drawing. The
  * drawing is fitted to the box above it (`fitInsetBottom`).
+ *
+ * A first upload stands it from the drop, under the file's own picture
+ * (`store.localPicture`): the picture is first fitted above the plate, so the
+ * plate's arrival when the upload lands no longer lifts it in one frame.
  */
 const stageDock = computed(
-    () => !isEditing.value && (!!hasData.value || hasImage.value || routeNamesImage.value),
+    () => !isEditing.value && (!!hasData.value || hasImage.value || routeNamesImage.value || !!store.localPicture),
 );
 const controlsOverlay = useTemplateRef<HTMLElement>("controlsOverlay");
 const { height: overlayHeight } = useElementSize(controlsOverlay, undefined, { box: "border-box" });
 /** The dock itself (the overlay spans the stage's width; the dock is as wide as it needs). Re-read
- *  after each render that can swap it: the row and the plate are two docks. */
+ *  after each render that can swap it (the editor's dock takes its place). */
 const stageDockEl = shallowRef<HTMLElement | null>(null);
 const { width: stageDockWidth } = useElementSize(stageDockEl, undefined, { box: "border-box" });
 /*
  * FORTY-FIRST H: the stage dock's form follows the stage, not the viewport.
- * The desk's row keeps six seats outside its fold and four more in its open
- * face, so a stage under 40rem (a tablet's split, 768 px wide, leaves the
- * stage 445 px) cannot hold it open: the face ran under the controls card.
- * Such a stage takes the phone's plate, which holds everything in 358 px. The
+ * The desk's plate has nine seats under its scrub, so a stage under 40rem (a
+ * tablet's split, 768 px wide, leaves the stage 445 px) cannot hold them: they
+ * ran under the controls card. Such a stage takes the phone's plate, which
+ * holds everything in 358 px. The
  * phone's own sheet form keeps it at every width.
  *
  * A short landscape stage (a phone held sideways: 526x320 at 844x390) takes
@@ -647,7 +653,8 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                              upload is said here, where it was dropped (UIA-F-166 ⊕ F-167). -->
                         <!-- Canon F14 (restraint, C-21): one grid, the page's. The
                              plate's own second grid is gone. -->
-                        <div v-if="!hasImage && !hasData && !stageLoading" class="drop-target" :data-dragging="globalDragging || undefined">
+                        <Transition name="stage-fade">
+                        <div v-if="!hasImage && !store.localPicture && !hasData && !stageLoading" class="drop-target" :data-dragging="globalDragging || undefined">
                             <!-- The stage at rest is alive (critique V1): an outline
                                  drawn in circles, the invitation under it. -->
                             <RestDrawing />
@@ -656,19 +663,23 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                  ring is the one drop signal. -->
                             <div class="drop-zone">
                                 <h1 class="drop-target-title font-serif-math">Draw any outline in circles</h1>
-                                <Button emphasis="primary" size="md" class="drop-target-button" :loading="store.uploading" @click="openFilePicker">
-                                    <Upload v-if="!store.uploading" />
-                                    {{ primaryUploadLabel }}
+                                <Button emphasis="primary" size="md" class="drop-target-button" :loading="store.uploading && !store.localPicture" @click="openFilePicker">
+                                    <Upload />
+                                    Choose an image
                                 </Button>
                                 <p v-if="dropMessage" role="alert" class="drop-target-message text-caption">{{ dropMessage }}</p>
                                 <!-- FORTY-FIRST D: "Browse the gallery" is gone from the
                                      stage; the gallery is a place in the top dock. -->
                             </div>
                         </div>
+                        </Transition>
                         <!-- UIA-F-73 ⊕ F-71 and FORTY-FIRST F: the stage's one busy mark,
                              in the DOM and named by the job's stage. It paints nothing:
                              the picture is on the canvas and the measure on the dock's rim. -->
                         <div v-if="store.computing" class="stage-status" role="status" :aria-label="jobLabel" />
+                        <!-- A first upload's one busy mark is in the stage dock's scrub
+                             row (`AnimationControls`): the dock stands from the drop under
+                             the file's own picture. A replace's mark is the Image layer's bar. -->
                         <!-- UIA-F-70 ⊕ F-71 ⊕ F-238: the cold load's one busy mark, announced
                              as a status. X·OD19 ALL (owner: "the loading text should be
                              removed in favor of a skeleton shimmer"): glass's `Skeleton shimmer` (10.1.1) in
@@ -1023,7 +1034,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     --stage-inset-inline: 16px;
     /* X-DS pass 4 · DS-F4-C8: the epicycle inset sits above the bottom dock's
        reserved block (`.controls-overlay`'s offset plus glass's `--dock-h`),
-       with the inset's own 12 px over it. */
+       with the inset's own 12 px over it. Once the dock is measured the inset
+       stands on its foot instead (BasisCanvas `insetBottom`: the plate is two
+       rows at a desk); this is the reserve until then. */
     --epicycle-inset-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px) + var(--dock-h) + 12px);
 }
 
@@ -1283,6 +1296,17 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
     position: absolute;
     inset: 0;
     pointer-events: none;
+}
+/* The drop target arrives and leaves on a fade (the leave the quicker half). */
+.stage-fade-enter-active {
+    transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.stage-fade-leave-active {
+    transition: opacity 0.12s var(--ease-standard);
+}
+.stage-fade-enter-from,
+.stage-fade-leave-to {
+    opacity: 0;
 }
 
 /* ── X.F.W13.c — the sidebar arrives with content ──

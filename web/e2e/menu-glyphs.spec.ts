@@ -67,11 +67,10 @@ for (const vp of [
         test(`${coarse}the sections menu on a saved visualization: the five places`, async ({ page }) => {
             await openWorkspace(page);
             const menu = await openSections(page);
-            // On a phone the pane seat stands here, so About is the menu's last
-            // group (O41 S4's fallback); its one row carries its glyph too.
-            const phone = page.viewportSize()!.width < 640;
-            await expect(menu.getByRole("menuitem")).toHaveCount(phone ? 6 : 5);
-            await expect(menu.locator("[data-about]")).toHaveCount(phone ? 1 : 0);
+            // The five places at every width: About is the "i" beside the
+            // theme seat even where a phone's pane seat stands.
+            await expect(menu.getByRole("menuitem")).toHaveCount(5);
+            await expect(menu.locator("[data-about]")).toHaveCount(0);
             expect(await itemsWithoutGlyph(menu)).toEqual([]);
         });
 

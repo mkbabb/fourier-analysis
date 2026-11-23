@@ -14,6 +14,8 @@ export const PICTURE_WASH = 0.22;
 interface Picture {
     whole: HTMLCanvasElement;
     keyed: HTMLCanvasElement;
+    /** Made from the dropped file in the browser, standing in until the server's overlay lands. */
+    local?: boolean;
 }
 
 // Module-scoped cache survives component unmount/remount (e.g. gallery → visualizer)
@@ -38,20 +40,18 @@ function feather(d: number, depth: number): number {
  * review: on by default, its hard edge read as a pale box across the stage).
  * The whole picture, shown alone, keeps its edges.
  */
-function luminanceKeyed(img: HTMLImageElement): Picture {
+function luminanceKeyed(img: CanvasImageSource, w: number, h: number): Picture {
     const whole = document.createElement("canvas");
-    whole.width = img.naturalWidth;
-    whole.height = img.naturalHeight;
-    whole.getContext("2d")!.drawImage(img, 0, 0);
+    whole.width = w;
+    whole.height = h;
+    whole.getContext("2d")!.drawImage(img, 0, 0, w, h);
     const out = document.createElement("canvas");
-    out.width = img.naturalWidth;
-    out.height = img.naturalHeight;
+    out.width = w;
+    out.height = h;
     const ctx = out.getContext("2d")!;
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, w, h);
     const data = ctx.getImageData(0, 0, out.width, out.height);
     const px = data.data;
-    const w = out.width;
-    const h = out.height;
     const depth = Math.max(1, WASH_FEATHER * Math.min(w, h));
     const edgeX = new Float32Array(w);
     for (let x = 0; x < w; x++) edgeX[x] = feather(Math.min(x, w - 1 - x) + 0.5, depth);
@@ -65,6 +65,30 @@ function luminanceKeyed(img: HTMLImageElement): Picture {
     }
     ctx.putImageData(data, 0, 0);
     return { whole, keyed: out };
+}
+
+/**
+ * The dropped file at w x h. `createImageBitmap` decodes and resizes it off the
+ * main thread: a 12 MP photo drawn through an <img> is decoded on it, a long
+ * frame at the drop while the drop target fades and the aside opens. Where it
+ * cannot (an engine that refuses an option, or one that sized the file before
+ * turning it upright), the <img> is drawn as before.
+ */
+async function decodedAt(url: string, img: HTMLImageElement, w: number, h: number): Promise<CanvasImageSource> {
+    try {
+        const file = await (await fetch(url)).blob();
+        const bitmap = await createImageBitmap(file, {
+            resizeWidth: w,
+            resizeHeight: h,
+            resizeQuality: "high",
+            imageOrientation: "from-image",
+        });
+        if (bitmap.width === w && bitmap.height === h) return bitmap;
+        bitmap.close();
+    } catch {
+        // The <img> below.
+    }
+    return img;
 }
 
 /**
@@ -93,18 +117,72 @@ export function useImageOverlay(onImageLoaded?: () => void) {
         return `${store.imageSlug}:${resizeFromBounds(store)}`;
     }
 
-    watch(
-        () => [store.imageSlug, store.contour] as const,
-        () => {
-            const key = cacheKey();
-            if (!key) { current.value = null; loading.value = false; return; }
-            if (cache.has(key)) {
-                current.value = cache.get(key)!;
-                loading.value = false;
+    /** The dropped file's picture stands while its upload runs, and after, until the server's lands. */
+    function localStands(): boolean {
+        return !!current.value?.local && !!store.localPicture;
+    }
+
+    /*
+     * The dropped file, decoded in the browser at the extraction's size (the
+     * overlay is the image at `resize` on its longer side), so the server's
+     * overlay takes its place without the picture moving.
+     */
+    let localUrl: string | null = null;
+    function loadLocal(url: string) {
+        if (localUrl === url) return;
+        localUrl = url;
+        const img = new Image();
+        /** This file is still the stage's, and the server's picture for it is not in hand. */
+        const wanted = () => store.localPicture === url && (store.uploading || !current.value || !!current.value.local);
+        // The <img> reads the file's size (and its orientation) without drawing it.
+        img.onload = async () => {
+            if (!wanted() || !img.naturalWidth || !img.naturalHeight) return;
+            const k = resizeFromBounds(store) / Math.max(img.naturalWidth, img.naturalHeight);
+            const w = Math.max(1, Math.round(img.naturalWidth * k));
+            const h = Math.max(1, Math.round(img.naturalHeight * k));
+            const source = await decodedAt(url, img, w, h);
+            try {
+                if (!wanted()) return;
+                current.value = { ...luminanceKeyed(source, w, h), local: true };
                 onImageLoaded?.();
+            } finally {
+                if (source instanceof ImageBitmap) source.close();
+            }
+        };
+        // A file the browser cannot draw (HEIC in a desk's Chrome) leaves no
+        // blank stage: it is let go, and the drop target stays, busy.
+        img.onerror = () => {
+            if (store.localPicture === url) store.releaseLocalPicture();
+        };
+        img.src = url;
+    }
+
+    /** The server's picture is in hand: it stands, and the dropped file (held whole until now) is let go. */
+    function showServer(picture: Picture) {
+        current.value = picture;
+        loading.value = false;
+        if (!store.uploading && store.localPicture) store.releaseLocalPicture();
+        onImageLoaded?.();
+    }
+
+    watch(
+        () => [store.imageSlug, store.contour, store.localPicture, store.uploading] as const,
+        () => {
+            if (store.uploading && store.localPicture) {
+                loadLocal(store.localPicture);
                 return;
             }
-            current.value = null;
+            const key = cacheKey();
+            if (!key) {
+                if (!localStands()) current.value = null;
+                loading.value = false;
+                return;
+            }
+            if (cache.has(key)) {
+                showServer(cache.get(key)!);
+                return;
+            }
+            if (!localStands()) current.value = null;
             loading.value = true;
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -113,17 +191,13 @@ export function useImageOverlay(onImageLoaded?: () => void) {
                     const oldest = cache.keys().next().value!;
                     cache.delete(oldest);
                 }
-                const keyed = luminanceKeyed(img);
+                const keyed = luminanceKeyed(img, img.naturalWidth, img.naturalHeight);
                 cache.set(key, keyed);
-                if (cacheKey() === key) {
-                    current.value = keyed;
-                    loading.value = false;
-                    onImageLoaded?.();
-                }
+                if (cacheKey() === key) showServer(keyed);
             };
             img.onerror = () => {
                 if (cacheKey() === key) {
-                    current.value = null;
+                    if (!localStands()) current.value = null;
                     loading.value = false;
                 }
             };

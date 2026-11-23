@@ -106,6 +106,17 @@ let legendTop = 16;
    stage's `--epicycle-inset-bottom` (registered like `--legend-inset-top`):
    the bottom dock's reserved block, so the chain's tip is never under it. */
 let epicycleBottom = 12;
+/** The inset's own gap over the dock. */
+const INSET_GAP = 12;
+/**
+ * The inset stands on the dock's measured foot when there is one (the plate,
+ * two rows at a desk since the scrub took its own row: the stylesheet's
+ * reserve is one dock row, and the chain could pass under the plate's top),
+ * else on the stylesheet's reserve.
+ */
+function insetBottom(): number {
+    return props.fitInsetBottom > 0 ? props.fitInsetBottom + INSET_GAP : epicycleBottom;
+}
 /* X-DS pass 8 · DS-F10-C2: the stage's inline-start inset (`--stage-inset-inline`),
    one edge for the legend and the epicycle inset. */
 let insetInline = 16;
@@ -224,6 +235,7 @@ const { drawImageOverlay, pictureBounds, hasPicture } = useImageOverlay(() => {
 // wash and the drawing's layers come in (280 ms, cubic-out). Under reduced
 // motion nothing travels: the two frames cross by a 120 ms fade.
 interface Intro {
+    /** The intro's first painted frame (NaN until then). */
     t0: number;
     reduce: boolean;
     /** The picture's fit, as it stood when the drawing landed. */
@@ -240,6 +252,7 @@ function pictureFit(s: CanvasSurface): ViewTransform | null {
 /** How far the intro has come, eased (1 when there is none). */
 function introProgress(): number {
     if (!intro) return 1;
+    if (Number.isNaN(intro.t0)) return 0;
     const k = Math.min(1, (performance.now() - intro.t0) / (intro.reduce ? LAYER_FADE_REDUCED_MS : LAYER_FADE_MS));
     return 1 - (1 - k) ** 3;
 }
@@ -267,9 +280,16 @@ function startIntro(): void {
     const picture = s ? pictureFit(s) : null;
     if (!s || !picture) return;
     const reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || !!props.linkView;
-    intro = { t0: performance.now(), reduce, picture, from: null };
+    // The clock starts on the intro's first painted frame, read in that
+    // frame's callback. The drawing lands inside a long task (the result's
+    // arrival, about 100 ms), so a clock started at the landing, or at the
+    // frame's own timestamp (the frame's start, before that task), had run on
+    // before the intro was first seen: its first frame stood the picture 15
+    // to 85 % washed, in one step.
+    intro = { t0: NaN, reduce, picture, from: null };
     cancelAnimationFrame(introRaf);
     const step = () => {
+        if (intro && Number.isNaN(intro.t0)) intro.t0 = performance.now();
         const done = introProgress() >= 1;
         if (done) intro = null;
         if (surface.value) drawFrame();
@@ -386,9 +406,9 @@ const ghostFade = useLayerFade(() => props.showGhost, repaint);
 const pictureFade = useLayerFade(() => props.showImageOverlay, repaint);
 const lineFade = useLayerFade(() => props.showLine, repaint);
 const circlesFade = useLayerFade(() => props.showCircles, repaint);
-/** The first compute's picture: shown while the first drawing is found, and only once it is in hand. */
+/** The first compute's picture: shown from the drop (the file's own, while it uploads) until the first drawing lands, and only once it is in hand. */
 const firstPictureFade = useLayerFade(
-    () => store.computing && !store.epicycleData && !store.basesData && hasPicture(),
+    () => (store.uploading || store.computing) && !store.epicycleData && !store.basesData && hasPicture(),
     repaint,
 );
 
@@ -442,7 +462,7 @@ function drawEpicycleFrame(
 
     let fit: EpicycleFit | null = null;
     if (isDesktop && nVis > 0) {
-        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom, insetInline);
+        const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, insetBottom(), insetInline);
         if (result) {
             fit = result.fit;
             baseFitCenter = result.baseFitCenter;
@@ -647,7 +667,7 @@ function drawMultiBasesFrame(
 
         let fit: EpicycleFit | null = null;
         if (isDesktop && nVis > 0) {
-            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, epicycleBottom, insetInline);
+            const result = computeEpicycleFit(stableEpicycleBbox, s, currentScale, baseFitCenter, insetBottom(), insetInline);
             if (result) {
                 fit = result.fit;
                 baseFitCenter = result.baseFitCenter;

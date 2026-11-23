@@ -338,7 +338,8 @@ def seat_sfc(f: Fig) -> str:
  * The fourier mark, bare, for a seat whose plate is its tile (the app dock's
  * folded seal): the same drawing as the tab icon, the touch icon and the
  * share card, in the page's own tokens, so it follows the theme. Its
- * 100-unit box is 0.74 of the plate's diameter.
+ * 100-unit box is 0.74 of the plate's diameter, unless the seat names its
+ * own size (`--fourier-mark-size`: the desk's Home seat sets the dock's glyph).
  */
 </script>
 
@@ -349,8 +350,8 @@ def seat_sfc(f: Fig) -> str:
 <style scoped>
 .fourier-mark {{
     display: block;
-    inline-size: calc(var(--dock-h) * 0.74);
-    block-size: calc(var(--dock-h) * 0.74);
+    inline-size: var(--fourier-mark-size, calc(var(--dock-h) * 0.74));
+    block-size: var(--fourier-mark-size, calc(var(--dock-h) * 0.74));
     flex: none;
 }}
 {inks}

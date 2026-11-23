@@ -41,12 +41,12 @@ test.describe("t1 — one tool model (1440)", () => {
         await openWorkspace(page);
         await expect(page.locator(".canvas-stage .glass-dock")).toHaveCount(1);
         const dock = page.locator(".controls-overlay .glass-dock");
-        await expect(dock).toHaveClass(/\bcollapsed\b/);
+        await expect(dock).toHaveClass(/\bexpanded\b/);
         await openCanvasDock(page);
         for (const name of ["Picture", "Outline", "Line", "Circles", "More", "Edit contour"])
             await expect(page.getByRole("button", { name, exact: true }), name).toHaveCount(1);
-        // The open face keeps the scrub most of the row: the rest is one More
-        // (STUDY 2.10, line 3; PR 33 review, should-fix 1).
+        // The scrub has its own row, and the rest of the stage's acts are one
+        // More (STUDY 2.10, line 3; PR 33 review, should-fix 1).
         await dock.getByRole("button", { name: "More", exact: true }).click();
         const more = page.getByRole("menu");
         for (const name of ["Reset view", "Fullscreen", "Export frame"])
@@ -66,7 +66,7 @@ test.describe("t1 — one tool model (1440)", () => {
         await expect(page.locator(".controls-overlay [aria-label='Picture']")).toHaveCount(1);
     });
 
-    test("workspace: a menu opened from the stage dock holds it open; a press outside folds it", async ({ page }) => {
+    test("workspace: the stage dock stands open under its menu and after a press outside", async ({ page }) => {
         await openWorkspace(page);
         const dock = await openCanvasDock(page);
         await dock.getByRole("button", { name: "Easing" }).click();
@@ -74,8 +74,11 @@ test.describe("t1 — one tool model (1440)", () => {
         await page.waitForTimeout(1500);
         await expect(dock).toHaveClass(/\bexpanded\b/);
         await page.keyboard.press("Escape");
+        await expect(page.getByRole("menu")).toBeHidden();
         await page.mouse.click(5, 300);
-        await expect(dock).toHaveClass(/\bcollapsed\b/, { timeout: 10_000 });
+        await page.waitForTimeout(3000);
+        await expect(dock).toHaveClass(/\bexpanded\b/);
+        await expect(dock).not.toHaveClass(/\bcollapsed\b/);
     });
 
     test("equation: Copy LaTeX and About in the app dock; plot tools in the folded stage dock", async ({ page }) => {
@@ -128,14 +131,14 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
         // O41 S4: the open dock keeps the page gutter (358 of 390 at most).
         expect(g.left, "room on the left").toBeGreaterThanOrEqual(16);
         expect(g.vw - g.right, "room on the right").toBeGreaterThanOrEqual(16);
-        // Home first; About is the "i" beside the theme seat. Where the pane
-        // seat stands it closes the run and About is the Sections menu's last
-        // group instead (S4's fallback: the "i" would pass the gutter).
+        // Home first; About is the "i" beside the theme seat on every route,
+        // the pane seat closing the run where it stands. The account is the
+        // "i" card's last part on a phone, so the run keeps the gutter.
         const pane = g.seats.some((x) => x.name === "Controls");
         expect(g.seats.map((x) => x.name.replace(/ — .*/, ""))).toEqual(
             pane
-                ? ["Home", "Navigate", "Log in", "Dark mode", "Controls"]
-                : ["Home", "Navigate", "Log in", "About Fourier analysis", "Dark mode"],
+                ? ["Home", "Navigate", "About Fourier analysis and your account", "Dark mode", "Controls"]
+                : ["Home", "Navigate", "About Fourier analysis and your account", "Dark mode"],
         );
         for (const x of g.seats) {
             expect(x.w, `${x.name} width`).toBeGreaterThanOrEqual(44);
@@ -144,12 +147,12 @@ test.describe("p1 — the app dock on a phone @coarse", () => {
         return { dock, pane };
     }
 
-    /** The Sections menu: the five places, then About's one row where the pane seat stands. */
-    async function placesOnly(page: Page, pane: boolean) {
+    /** The Sections menu: the five places and nothing else, with or without the pane seat. */
+    async function placesOnly(page: Page, _pane: boolean) {
         const menu = page.getByRole("menu");
         await expect(menu.getByRole("menuitem", { name: "Paper" })).toBeVisible();
-        await expect(menu.getByRole("menuitem")).toHaveCount(pane ? 6 : 5);
-        await expect(menu.locator("[data-about]")).toHaveCount(pane ? 1 : 0);
+        await expect(menu.getByRole("menuitem")).toHaveCount(5);
+        await expect(menu.locator("[data-about]")).toHaveCount(0);
         await expect(menu.locator("[data-page-tools]")).toHaveCount(0);
     }
 
@@ -211,13 +214,8 @@ for (const vp of [
                 for (const name of ["Publish to Gallery", "Copy link"]) await expect(menu.getByRole("menuitem", { name })).toBeVisible();
                 await menu.getByRole("menuitemcheckbox", { name: "Series" }).click();
             } else {
-                // A desk: seats outside the fold, the size of the editor's door beside them.
-                const area = (await takeover.boundingBox())!;
-                await expect(async () => {
-                    if (/\bexpanded\b/.test((await stage.getAttribute("class")) ?? "")) await page.mouse.click(area.x + 24, area.y + area.height / 2);
-                    await expect(stage).toHaveClass(/\bcollapsed\b/, { timeout: 2_000 });
-                }).toPass({ timeout: 15_000 });
-                await expect(stage).not.toHaveAttribute("data-morphing", { timeout: 5_000 });
+                // A desk: seats of the plate, the size of the editor's door beside them.
+                await expect(stage).toHaveClass(/\bexpanded\b/);
                 await page.waitForTimeout(400);
                 const edit = (await stage.getByRole("button", { name: "Edit contour" }).boundingBox())!;
                 for (const name of ["Publish to Gallery", "Series", "Copy link"]) {
@@ -242,8 +240,8 @@ test.describe("u1 — URL state (1440)", () => {
         await expect(page.locator(".eq-panel")).toBeVisible({ timeout: LOAD });
         await expect(page.getByRole("button", { name: "Play animation" }).first(), "paused at the link's moment").toBeVisible();
         await expect(page.locator(".animation-dock [aria-label='Playback speed']")).toContainText("2");
-        // The folded transport's readout (glass progressbar) holds the link's moment.
-        const value = await page.locator(".mini-progress").first().getAttribute("aria-valuenow");
+        // The scrub holds the link's moment.
+        const value = await page.locator('.animation-dock [role="slider"][aria-label="Timeline"]').first().getAttribute("aria-valuenow");
         expect(Math.abs(Number(value) - 0.42)).toBeLessThan(0.011);
         const dock = page.locator(".animation-dock");
         await expect(dock.getByRole("button", { name: "Picture", exact: true })).toHaveAttribute("aria-pressed", "false");

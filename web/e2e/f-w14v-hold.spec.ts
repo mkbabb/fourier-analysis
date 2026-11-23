@@ -45,7 +45,7 @@ test.describe("F.W14U R-1 — a reader's pause survives a late data write", () =
         await expect(play).toBeVisible();
 
         await basesLanded;
-        const bar = page.locator(".mini-progress").first();
+        const bar = page.locator('.animation-dock [role="slider"][aria-label="Timeline"]').first();
         const at = Number(await bar.getAttribute("aria-valuenow"));
         // Let any watcher the arrival fired run its course.
         await page.waitForTimeout(1_500);

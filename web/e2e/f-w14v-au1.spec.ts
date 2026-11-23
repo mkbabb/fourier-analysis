@@ -21,7 +21,8 @@
  *   L2-17  the Like control and the About links are ≥ 44 px on touch.
  *   X-1    1024×768: the workspace takes one coherent form (never a stacked
  *          strip beside a hidden tab row).
- *   X-5    the logged-in app dock at 360 does not pan sideways.
+ *   X-5    the logged-in app dock at 360 does not pan sideways (on a phone
+ *          the account is the "i" card's last part: the card open too).
  *
  * Served from :3100 against :8000 (BASE_URL), Chromium (CDP).
  */
@@ -455,36 +456,66 @@ test.describe("au1 X-1 (1024×768)", () => {
 });
 
 // ── X-5: the logged-in app dock at 360 (and 390), on every section ──────────
+// On a phone the account is the "i" card's last part (PR 33 review, should-fix
+// 2): the run is Home, Navigate, the "i" and the theme (and Controls on a stage
+// route). Signed in, it still never pans sideways, nor does the card open.
+const X5_SLUG = "quiet-amber-lattice-fox";
+/** Boxes in the shell (and the "i" card) that scroll sideways. */
+function sidewaysScrollers(): string[] {
+    // glass 11.0.1 defect: its `.dock-run` reads 4 px wider than its box at
+    // 360/390 logged in (the focus-ring reserve), relayed to glass; the same
+    // exclusion as f-w14u-vedit v88. REMOVE this exclusion when glass fixes the run.
+    return Array.from(document.querySelectorAll(".app-header *, .about-card, .about-card *"))
+        .filter((e) => !e.classList.contains("dock-run"))
+        // A visually hidden live region (1 px, clipped) holds its words wider
+        // than its box by design and never pans: the card's open announces in one.
+        .filter((e) => e.clientWidth > 1)
+        .filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX !== "visible")
+        .map((e) => `${e.className.toString().slice(0, 40)} ${e.scrollWidth}/${e.clientWidth}`);
+}
 for (const width of [360, 390]) {
     test.describe(`au1 X-5 (${width} logged in)`, () => {
         test.use({ viewport: { width, height: 780 }, hasTouch: true });
-        test("the app dock's layer does not pan sideways once the Account group mounts", async ({ page }) => {
-            test.setTimeout(120_000);
+        test.beforeEach(async ({ page }) => {
             await insets(page, P_INSETS);
-            await page.addInitScript(() => {
-                localStorage.setItem("fourier-user-slug", "quiet-amber-lattice-fox");
+            await page.addInitScript((slug) => {
+                localStorage.setItem("fourier-user-slug", slug);
                 localStorage.setItem("fourier-user-token", "e2e-token");
-            });
+            }, X5_SLUG);
+        });
+        test("the app dock's layer does not pan sideways, signed in, on every section", async ({ page }) => {
+            test.setTimeout(120_000);
             // Every section's name rides the nav trigger, so each is measured.
             for (const route of ["/gallery", "/paper", "/visualize", "/equation", "/morph"]) {
                 await page.goto(route);
                 await openAppDock(page);
-                await expect(page.locator(".account-trigger")).toBeVisible({ timeout: 10_000 });
+                await expect(page.locator(".app-dock").getByRole("button", { name: "About Fourier analysis" })).toBeVisible({ timeout: 10_000 });
                 await settle(page, 800);
-                const pans = await page.evaluate(() =>
-                    // glass 11.0.1 defect: its `.dock-run` reads 4 px wider than its
-                    // box at 360/390 logged in (the focus-ring reserve), relayed to
-                    // glass; the same exclusion as f-w14u-vedit v88. REMOVE this
-                    // exclusion when glass fixes the run.
-                    Array.from(document.querySelectorAll(".app-header *"))
-                        .filter((e) => !e.classList.contains("dock-run"))
-                        .filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX !== "visible")
-                        .map((e) => `${e.className.toString().slice(0, 40)} ${e.scrollWidth}/${e.clientWidth}`),
-                );
+                const pans = await page.evaluate(sidewaysScrollers);
                 expect.soft(pans, `${route}: app-dock scrollers`).toEqual([]);
                 const dock = await box(page, ".app-dock");
                 expect.soft(dock!.r, `${route}: app dock right edge`).toBeLessThanOrEqual(width);
             }
+        });
+        test(`the "i" card holds the account inside the screen, and nothing pans sideways`, async ({ page }) => {
+            test.setTimeout(90_000);
+            // A stage route: its run carries the pane seat too.
+            await page.goto("/equation");
+            await openAppDock(page);
+            await page.locator(".app-dock").getByRole("button", { name: "About Fourier analysis" }).click();
+            const card = page.locator(".about-card");
+            await expect(card).toContainText(X5_SLUG);
+            await expect(card.getByRole("button", { name: "Log out" })).toBeVisible();
+            await settle(page, 600);
+            const pans = await page.evaluate(sidewaysScrollers);
+            expect.soft(pans, "/equation, the card open: scrollers").toEqual([]);
+            const c = (await box(page, ".about-card"))!;
+            expect.soft(c.x, "the card's left edge").toBeGreaterThanOrEqual(0);
+            expect.soft(c.r, "the card's right edge").toBeLessThanOrEqual(width);
+            const doc = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, vw: innerWidth }));
+            expect.soft(doc.sw, "the page's own width").toBeLessThanOrEqual(doc.vw);
+            const dock = await box(page, ".app-dock");
+            expect.soft(dock!.r, "app dock right edge, the card open").toBeLessThanOrEqual(width);
         });
     });
 }

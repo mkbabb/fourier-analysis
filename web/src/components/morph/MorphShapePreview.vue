@@ -91,7 +91,11 @@
                     <span class="shape-value">{{ shapeName }}</span>
                 </template>
             </Metric>
-            <Metric label="total" :value="totalMs" unit="ms" size="sm" posture="inline" />
+            <!-- The unit rides the value at the value's size, in quieter ink
+                 (glass's unit slot sits on the caption step, under the floor). -->
+            <Metric label="total" :value="totalMs" size="sm" posture="inline">
+                <template #value>{{ totalMs }}<span class="reading-unit"> ms</span></template>
+            </Metric>
         </div>
     </Surface>
 </template>
@@ -176,8 +180,18 @@ defineEmits<{
    what the shell's header, the page's top padding and the readout foot leave. */
 @media (orientation: landscape) and (max-height: 500px) {
     .demo-stage {
-        width: min(26rem, calc(100svh - 10rem));
+        /* The plate keeps the square the height allows; the card is as wide
+           as its readings, so at the 14 px labels "total 350 ms" still ends
+           inside it (the plate's ~230 px measure no longer holds the four). */
+        --plate-measure: min(26rem, calc(100svh - 10rem));
+        width: max-content;
+        min-width: var(--plate-measure);
         margin-inline: 0;
+    }
+    /* The square itself (two classes: it holds over the plate's own
+       `width: 100%`, which comes later in this file). */
+    .demo-stage .morph-button {
+        width: var(--plate-measure);
     }
 }
 
@@ -328,10 +342,12 @@ defineEmits<{
    The phase and shape values keep their reservations, so a reading that
    changes at animation rate still cannot re-flow the grid. */
 .demo-info {
-    /* X §0hm D-21: a reading's label is the caption step under its value
-       (glass Metric labels at `--control-label`, the coarse control rung,
-       which out-sized the `sm` value: 18.6 px over 16). */
-    --control-label: var(--type-caption);
+    /* X §0hm D-21: glass Metric labels at `--control-label`, the coarse
+       control rung, which out-sized the `sm` value (18.6 px over 16). A
+       reading's label is read, so it takes the small step (14 px on a phone,
+       the floor), the value's own size; it stays quieter by its ink, case and
+       tracking, not by a smaller size (the caption step was 12.2 px at 390). */
+    --control-label: var(--type-small);
     display: grid;
     grid-template-columns: repeat(2, auto);
     justify-content: center;
@@ -352,6 +368,11 @@ defineEmits<{
     display: inline-block;
     min-inline-size: 10ch;
     color: color-mix(in oklab, var(--phase-tone, var(--foreground)) 75%, var(--foreground));
+}
+/* The total's unit: the value's size and face, the label's quieter ink and weight. */
+.reading-unit {
+    color: var(--muted-foreground);
+    font-weight: 400;
 }
 /* X-DS pass 12 · DS-F14-C2: the shape value's guard, its longest word ("Moon"). */
 .shape-value {

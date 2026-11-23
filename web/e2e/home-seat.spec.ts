@@ -7,9 +7,9 @@ import { openAppDock } from "./fixtures/app-dock";
  * phone, the wordmark on a desk) and goes to the paper, the page a first
  * visit opens on. On the paper a press does nothing (no second entrance), and
  * the seat is never marked current, so it keeps its own width. About is
- * the "i" beside the theme seat on a desk; under 40rem the sections menu
- * carries it, so the phone's run keeps its four seats. The not-found card
- * offers Home first.
+ * the "i" beside the theme seat at every width; on a phone the account is
+ * the "i" card's last part, so the run is Home, Navigate, About and the theme.
+ * The not-found card offers Home first.
  */
 
 /** The open dock's seats in order: their accessible names and tags. */
@@ -83,8 +83,10 @@ for (const vp of [
             await page.goto("/gallery");
             const run = await seats(page);
             const names = run.map((s) => s.name);
-            expect(names.slice(-2)).toEqual(["About Fourier analysis", "Dark mode"]);
-            if (vp.width < 640) expect(names).toEqual(["Home", "Navigate", "Log in", "About Fourier analysis", "Dark mode"]);
+            // On a phone the "i" holds the account too, and is named for both.
+            const about = vp.width < 640 ? "About Fourier analysis and your account" : "About Fourier analysis";
+            expect(names.slice(-2)).toEqual([about, "Dark mode"]);
+            if (vp.width < 640) expect(names).toEqual(["Home", "Navigate", about, "Dark mode"]);
             await page.getByRole("button", { name: "About Fourier analysis" }).click();
             await expect(page.locator(".about-card")).toContainText(/orthogonal decomposition/i);
             await page.keyboard.press("Escape");

@@ -34,15 +34,35 @@ export const router = createRouter({
 // `/visualize` → `/w/<slug>` replace, a second click mid-fade) opens none: its
 // DOM change shows through the running transition's live new image, so it is
 // never aborted by, or aborts, the transition that is already landing.
+//
+// The page naming what it already shows is not a route change: the upload's
+// `/visualize` → `/w/<slug>` (and the loader's replace) gives the address the
+// picture the stage already holds; the page stays mounted. A view transition
+// there froze the stage while the swap was pending (the first picture's
+// fade-in stalled, then stepped to full), then laid the old page's image over
+// the live stage while it ran: the whole picture at its old fit over the first
+// drawing's wash, two faces at once (PR 35 review). It opens none. Every other
+// navigation keeps its transition (Back to a bare `/visualize`, one picture's
+// address to another's).
 let releaseSwap: (() => void) | null = null;
 let transitionRunning = false;
+
+/** Same route record (an alias renders the record it aliases), from its bare address to one that names its subject. */
+function namesItsSubject(to: RouteLocationNormalized, from: RouteLocationNormalized): boolean {
+    const page = (route: RouteLocationNormalized) => {
+        const leaf = route.matched.at(-1);
+        return leaf?.aliasOf ?? leaf;
+    };
+    const bare = (route: RouteLocationNormalized) => Object.values(route.params).every((v) => !v?.length);
+    return page(to) !== undefined && page(to) === page(from) && bare(from) && !bare(to);
+}
 
 router.beforeResolve((to, from) => {
     // Flush any release left parked by a prior aborted navigation so the
     // browser's view-transition queue can never deadlock.
     releaseSwap?.();
     releaseSwap = null;
-    if (from === START_LOCATION || to.path === from.path || transitionRunning) return;
+    if (from === START_LOCATION || to.path === from.path || namesItsSubject(to, from) || transitionRunning) return;
     const swapped = new Promise<void>((resolve) => {
         releaseSwap = resolve;
     });

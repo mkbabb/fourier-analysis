@@ -21,6 +21,7 @@ import {
     type Point2D,
 } from "@/lib/contourEditing";
 import { overlayUrl } from "@/lib/api";
+import { cssCubicBezier } from "@/lib/easings";
 import { useImageSources } from "@/composables/useImageSources";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useContourHistory } from "./composables/useContourHistory";
@@ -64,7 +65,14 @@ const SNAP_PX = 6;
 /** One step of the Magnet: this much more of the curve, each side. */
 const REACH_STEP_PX = 16;
 /** A scene change (Smooth, Simplify, Reset, Undo, Redo) travels for this long. */
-const TRAVEL_MS = 220;
+const TRAVEL_MS = 240;
+/**
+ * ...on the house's standard ease (glass's `--ease-standard`, the curve a
+ * thing moving across the screen takes). A cubic-out put half the way in the
+ * first 40 ms, so Undo read as a jump and a settle (PR 33 frames: 47 % of the
+ * change in one frame); this one answers within 100 ms and spreads the way.
+ */
+const travelEase = cssCubicBezier(0.4, 0, 0.2, 1);
 
 const isCoarse = useMediaQuery("(pointer: coarse)");
 const hitPx = computed(() => (isCoarse.value ? 22 : 12));
@@ -179,8 +187,8 @@ const home = drag.home;
 // ── A scene change travels (LAST-TEN F-13) ──
 // Smooth, Simplify, Reset, Undo and Redo. The curve is its new form at once
 // (a pick or a drag reads it), and the drawn line travels to it: both forms
-// sampled along the curve at one count, aligned, and blended (220 ms,
-// cubic-out), then the new form's own spline. A press mid-way lands the line
+// sampled along the curve at one count, aligned, and blended (240 ms, the
+// standard ease), then the new form's own spline. A press mid-way lands the line
 // at its end; a second change mid-way starts from where the line stands.
 // Under reduced motion the old line fades out over the new one.
 const MORPH_SAMPLES = 512;
@@ -213,7 +221,7 @@ function travelTo(next: Point2D[]) {
     const t0 = performance.now();
     const step = (now: number) => {
         const t = Math.min(1, (now - t0) / TRAVEL_MS);
-        morphT.value = 1 - (1 - t) ** 3;
+        morphT.value = travelEase(t);
         if (t < 1) travelRaf = requestAnimationFrame(step);
         else morph.value = null;
     };

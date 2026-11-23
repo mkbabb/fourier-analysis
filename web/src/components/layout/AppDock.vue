@@ -47,14 +47,7 @@ import { sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-} from "@mkbabb/glass-ui/menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@mkbabb/glass-ui/menu";
 import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
@@ -361,15 +354,94 @@ function togglePane() {
     if (seat) seat.pane.value = seat.pane.value === "controls" ? "canvas" : "controls";
 }
 /**
- * O41 S4's fallback: on a phone the open run with the pane seat (Home,
- * Sections, the rule, Account, About, the theme and Controls, every seat on
- * the 44 px cell) is 367 px, over the 358 the page gutter leaves. So where the
- * pane seat stands, the "i" returns to the Sections menu (fronts-1119's form)
- * and no seat shrinks; on every other page it stays beside the theme seat.
+ * On a phone the account has no seat of its own: it is the "i" card's last
+ * part (`UserSlugBar` form "card"). With an account seat the open run with the
+ * pane seat (Home, Sections, the rule, Account, About, the theme and Controls,
+ * each on the 44 px cell) was 367 px, over the 358 the page gutter leaves, so
+ * the "i" used to leave for the Sections menu where the pane seat stood. Log
+ * in is not a primary function (STUDY 2.1); the "i" and the theme seat close
+ * the run on every route, and the Sections menu holds only places.
+ *
+ * An act that asks for a sign-in (Publish, `auth.requestSignIn`) opens the dock
+ * and the card, with the field focused; closing the card settles the request.
  */
-const aboutInMenu = computed(() => compact.value && !!paneSeat.value);
-function openRepo() {
-    window.open(REPO_URL, "_blank", "noopener,noreferrer");
+const aboutOpen = ref(false);
+/** Every control explains itself: on a phone the "i" is the way to sign in, and its name says so. */
+const aboutName = computed(() =>
+    compact.value
+        ? { label: "About Fourier analysis and your account", title: "About and your account" }
+        : { label: "About Fourier analysis", title: "About" },
+);
+const signInPending = computed(() => compact.value && auth.signInRequested);
+watch(signInPending, (pending) => {
+    if (!pending) return;
+    dockRef.value?.expand();
+    aboutOpen.value = true;
+}, { immediate: true, flush: "post" });
+/*
+ * Wider, the request opens the Log in seat's popover (`UserSlugBar`). Asked
+ * from the stage with the dock resting at its seal (844x390), the popover hung
+ * from a seat folded out of view and ran off the screen's right edge: the dock
+ * opens first, so the popover stands under its own seat. It opens once the
+ * dock has settled open: opened with the expand, it faded in under a seat
+ * still outside the growing plate and hopped 7 px onto it about a second later.
+ */
+const loginRequest = ref(false);
+/** The dock stands open and its morph has ended. */
+function dockOpenAndStill(): boolean {
+    const dock = dockRef.value;
+    return !dock || (dock.expanded && !dock.isTransitioning);
+}
+/** The longest the popover waits on the dock's morph. */
+const DOCK_SETTLE_MS = 1200;
+/**
+ * The dock has come to rest open: its morph has ended, or, once it has grown,
+ * its width has held within half a pixel for two frames (the spring's last
+ * ~300 ms move it by less than that, and the popover waited on them with the
+ * dock already still).
+ */
+function dockSettled(): Promise<void> {
+    return new Promise((done) => {
+        const t0 = performance.now();
+        const from = dockEl.value?.getBoundingClientRect().width ?? Number.NaN;
+        let last = from;
+        let moved = false;
+        let still = 0;
+        const frame = () => {
+            const width = dockEl.value?.getBoundingClientRect().width ?? Number.NaN;
+            moved ||= Math.abs(width - from) > 1;
+            still = moved && Math.abs(width - last) < 0.5 ? still + 1 : 0;
+            last = width;
+            if (dockOpenAndStill() || still >= 2 || performance.now() - t0 > DOCK_SETTLE_MS) done();
+            else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+    });
+}
+watch(() => !compact.value && auth.signInRequested, async (pending) => {
+    loginRequest.value = false;
+    if (!pending) return;
+    if (!dockOpenAndStill()) {
+        dockRef.value?.expand();
+        // The morph starts on the frame after the flip.
+        await new Promise((frame) => requestAnimationFrame(() => requestAnimationFrame(frame)));
+        await dockSettled();
+    }
+    loginRequest.value = !compact.value && auth.signInRequested;
+}, { flush: "post" });
+function onAboutOpen(open: boolean) {
+    aboutOpen.value = open;
+    if (!open && auth.signInRequested) auth.endSignInRequest();
+}
+/** Asked for a sign-in, the card's focus goes to the field (else reka's first stop). */
+function onAboutFocus(e: Event) {
+    if (!signInPending.value) return;
+    e.preventDefault();
+    void nextTick(() => document.getElementById("user-slug-input")?.focus());
+}
+/** While a request is open, focus handed back elsewhere by the surface that asked does not dismiss the card. */
+function onAboutFocusOutside(e: Event) {
+    if (signInPending.value) e.preventDefault();
 }
 /** The rim: a page's own measure (a job on the stage), else its reading progress. */
 const dockProgress = useDockProgress();
@@ -386,7 +458,10 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     <header ref="header" class="app-header">
         <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed">
             <!-- Home: a house on a phone, the wordmark on a desk (the dock's
-                 control cell its hit box), a link to the paper. -->
+                 control cell its hit box), a link to the paper. The wordmark
+                 opens with the site's mark, the epicycle figure the folded
+                 seal and the tab carry, never the font's ℱ (which names the
+                 Fourier basis on the stage). -->
             <DockControl
                 as="a"
                 compact
@@ -398,7 +473,8 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
             >
                 <House class="home-glyph" aria-hidden="true" />
                 <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
-                    <span class="fourier-f">&#x2131;</span>ourier analysis
+                    <FourierMark />
+                    <span>Fourier analysis</span>
                 </span>
             </DockControl>
 
@@ -424,19 +500,6 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         <component :is="tab.icon" aria-hidden="true" />
                         <span>{{ tab.label }}</span>
                     </DropdownMenuItem>
-                    <!-- Where the pane seat stands on a phone: About, after the places
-                         (see `aboutInMenu`). -->
-                    <template v-if="aboutInMenu">
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup data-about>
-                            <DropdownMenuLabel>About</DropdownMenuLabel>
-                            <p class="about-menu-line text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
-                            <DropdownMenuItem @select="openRepo">
-                                <ExternalLink aria-hidden="true" />
-                                <span>View the project on GitHub</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -458,17 +521,18 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 </div>
             </Transition>
 
-            <div class="contents" role="group" aria-label="Account">
-                <UserSlugBar />
+            <!-- The account seat from 40rem; on a phone it is the "i" card's last part. -->
+            <div v-if="!compact" class="contents" role="group" aria-label="Account">
+                <UserSlugBar :open-request="loginRequest" />
             </div>
 
-            <!-- About ("i"), beside the theme seat; in the Sections menu where a
-                 phone's pane seat stands (see `aboutInMenu`). -->
-            <Popover v-if="!aboutInMenu" keep-dock-open>
-                <DockTrigger for="popover" class="about-trigger" aria-label="About Fourier analysis" title="About">
+            <!-- About ("i"), beside the theme seat on every route. On a phone it
+                 holds the account too, and is named for both. -->
+            <Popover keep-dock-open :open="aboutOpen" @update:open="onAboutOpen">
+                <DockTrigger for="popover" class="about-trigger" :aria-label="aboutName.label" :title="aboutName.title">
                     <Info class="about-glyph" aria-hidden="true" />
                 </DockTrigger>
-                <PopoverContent align="end" class="about-card">
+                <PopoverContent align="end" class="about-card" :class="{ 'about-card--account': compact }" @open-auto-focus="onAboutFocus" @focus-outside="onAboutFocusOutside">
                     <div class="flex items-center gap-3">
                         <!-- Self-hosted maintainer avatar (zero third-party
                              origins; 80px source for 2× density in the 40px box). -->
@@ -482,7 +546,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         />
                         <div class="flex-1 min-w-0">
                             <p class="text-mono-small text-foreground">@mbabb</p>
-                            <p class="text-caption text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
+                            <p class="text-small text-muted-foreground">{{ ABOUT_TAGLINE }}</p>
                         </div>
                     </div>
                     <Separator class="my-2" />
@@ -500,6 +564,10 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                         View the project on GitHub
                         <ExternalLink class="size-3.5" aria-hidden="true" />
                     </Button>
+                    <template v-if="compact">
+                        <Separator class="my-2" />
+                        <UserSlugBar form="card" @done="onAboutOpen(false)" />
+                    </template>
                 </PopoverContent>
             </Popover>
 
@@ -607,13 +675,6 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     min-inline-size: var(--dock-control-size);
 }
 
-/* The phone's About group in the sections menu: the tagline under its label,
-   on the label's own inline measure (glass's .menu__label, 0.5rem) so the two
-   lines share one edge with the row's glyph below. */
-.about-menu-line {
-    padding: 0 0.5rem var(--space-residue);
-    max-inline-size: 16rem;
-}
 /* Home is a compact (auto-sized) control so the wordmark sets its width; its
    height keeps the dock's control cell (44 px on a coarse pointer). */
 .logo-trigger {
@@ -627,8 +688,12 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 }
 .logo-mark {
     display: none;
+    align-items: center;
+    gap: 0.375rem;
     @apply text-xl;
     line-height: 1;
+    /* The mark on the dock's one glyph size (FourierMark's own hook). */
+    --fourier-mark-size: var(--dock-icon-glyph);
 }
 
 @media (min-width: 640px) {
@@ -636,7 +701,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
         display: none;
     }
     .logo-mark {
-        display: inline;
+        display: inline-flex;
     }
 }
 
@@ -701,6 +766,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
     .app-dock {
         --dock-padding-block: calc(var(--dock-density-compact-padding-block, 0.25rem) * var(--dock-scale));
     }
+}
+
+/* With the account in it (a phone), the card takes the sign-in form's measure. */
+.about-card--account {
+    inline-size: min(22rem, calc(100vw - 2rem));
 }
 
 .about-avatar {
