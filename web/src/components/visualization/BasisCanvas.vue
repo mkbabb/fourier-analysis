@@ -35,7 +35,7 @@ import { fitBox, fitTransform, useViewTransform, type FitInset } from "./composa
 import { useStageGestures } from "./composables/useStageGestures";
 import { LAYER_FADE_MS, LAYER_FADE_REDUCED_MS, useLayerFade } from "./composables/useLayerFade";
 import { composeView, IDENTITY_VIEW, linkOfView, viewOfLink, type StageLink, type StageView } from "./lib/stage-view";
-import { formatWorkspaceQuery } from "./lib/workspace-query";
+import { formatWorkspaceQuery, WASH_DEFAULT } from "./lib/workspace-query";
 
 const props = withDefaults(
     defineProps<{
@@ -51,6 +51,10 @@ const props = withDefaults(
         fitInsetBottom?: number;
         /** The stage's trailing edge a landscape strip covers (px): the drawing is fitted to the box beside it. */
         fitInsetEnd?: number;
+        /** The picture's strength under a drawing, in percent (`wash`). */
+        wash?: number;
+        /** The strength is in the hand: the stage follows it 1:1, with no tween. */
+        washLive?: boolean;
     }>(),
     {
         activeBases: () => ["fourier-epicycles"],
@@ -61,6 +65,8 @@ const props = withDefaults(
         linkView: null,
         fitInsetBottom: 0,
         fitInsetEnd: 0,
+        wash: WASH_DEFAULT,
+        washLive: false,
     },
 );
 const emit = defineEmits<{
@@ -338,7 +344,7 @@ function drawFrame() {
     // the whole picture alone. Under reduced motion the intro crosses the
     // picture's own frame out as the drawing's comes in.
     const crossing = intro?.reduce ? introProgress() : 1;
-    drawImageOverlay(s, view, pictureFade.strength() * crossing, drawn);
+    drawImageOverlay(s, view, pictureFade.strength() * crossing, drawn, washNow);
     if (intro?.reduce && crossing < 1) drawImageOverlay(s, intro.picture, pictureFade.strength() * (1 - crossing), 0);
 
     const hasEpicycles = props.activeBases.includes("fourier-epicycles");
@@ -395,6 +401,34 @@ function liveLayers(): FrameLayers {
 const repaint = () => { if (surface.value) drawFrame(); };
 const ghostFade = useLayerFade(() => props.showGhost, repaint);
 const pictureFade = useLayerFade(() => props.showImageOverlay, repaint);
+/*
+ * FORTY-SIXTH D: the picture's strength under a drawing. Under the hand it
+ * follows 1:1; from a link, Back or Forward it travels on the layer's own
+ * fade (280 ms, 120 under reduced motion), never in one frame.
+ */
+let washNow = props.wash / 100;
+let washRaf = 0;
+watch(() => props.wash, (percent) => {
+    cancelAnimationFrame(washRaf);
+    const to = percent / 100;
+    if (props.washLive) {
+        washNow = to;
+        repaint();
+        return;
+    }
+    const from = washNow;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const dur = reduce ? LAYER_FADE_REDUCED_MS : LAYER_FADE_MS;
+    const t0 = performance.now();
+    const step = (now: number) => {
+        const k = Math.min(1, Math.max(0, (now - t0) / dur));
+        washNow = from + (to - from) * (1 - (1 - k) ** 3);
+        repaint();
+        if (k < 1) washRaf = requestAnimationFrame(step);
+    };
+    washRaf = requestAnimationFrame(step);
+});
+onUnmounted(() => cancelAnimationFrame(washRaf));
 const lineFade = useLayerFade(() => props.showLine, repaint);
 const circlesFade = useLayerFade(() => props.showCircles, repaint);
 /** The first compute's picture: shown from the drop (the file's own, while it uploads) until the first drawing lands, and only once it is in hand. */

@@ -58,7 +58,7 @@ const auth = useAuthStore();
 // ── View state (editing, the four layers, the series panel, fullscreen — in the URL) ──
 const {
     isEditing, showGhost, showImageOverlay, showLine, showCircles, showEquation, showFullscreen,
-    layers, justThePicture, toggleJustPicture,
+    layers, justThePicture, toggleJustPicture, wash, washDragging, holdWash, commitWash,
 } = useViewState();
 const LAYER_REFS = { picture: showImageOverlay, outline: showGhost, line: showLine, circles: showCircles };
 
@@ -637,6 +637,7 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 :show-ghost="showGhost" :show-image-overlay="showImageOverlay"
                                 :show-line="showLine" :show-circles="showCircles"
                                 :link-view="linkView" :fit-inset-bottom="fitInsetBottom" :fit-inset-end="fitInsetEnd"
+                                :wash="wash" :wash-live="washDragging"
                                 @update:link-view="writeLinkView" />
                         </div>
                         <!-- X.F.W13.c — the ONE upload affordance (owner frame 4). The
@@ -735,6 +736,9 @@ provide(IMAGE_UPLOAD_KEY, { openPicker: openFilePicker, isDragging: globalDraggi
                                 :just-the-picture="justThePicture"
                                 :has-contour="!!store.contour"
                                 :view-moved="!!canvasComponent?.viewMoved"
+                                :wash="wash"
+                                @hold-wash="holdWash"
+                                @commit-wash="commitWash"
                                 @toggle-edit="toggleEdit"
                                 @export-frame="handleExportFrame"
                                 @reset-view="canvasComponent?.resetView()"

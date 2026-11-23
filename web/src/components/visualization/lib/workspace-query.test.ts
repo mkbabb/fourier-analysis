@@ -76,3 +76,25 @@ describe("the view", () => {
         expect(parseWorkspaceQuery({ c: "5,0" }).c).toBeNull();
     });
 });
+
+describe("the picture's strength (wash)", () => {
+    it("is today's 22 % by default, written as nothing", () => {
+        expect(parseWorkspaceQuery({}).wash).toBeNull();
+        expect(formatWorkspaceQuery({ wash: null })).toEqual({ wash: undefined });
+        expect(formatWorkspaceQuery({ wash: 22 })).toEqual({ wash: undefined });
+    });
+
+    it("reads a whole percent in 5..100 and writes it back", () => {
+        expect(parseWorkspaceQuery({ wash: "45" }).wash).toBe(45);
+        expect(parseWorkspaceQuery({ wash: "5" }).wash).toBe(5);
+        expect(parseWorkspaceQuery({ wash: "100" }).wash).toBe(100);
+        expect(formatWorkspaceQuery({ wash: 45 })).toEqual({ wash: "45" });
+        expect(formatWorkspaceQuery({ wash: 44.6 })).toEqual({ wash: "45" });
+    });
+
+    it("reads junk and out-of-range values as the default", () => {
+        for (const raw of ["4", "101", "0", "-3", "12.5", "abc", ""]) {
+            expect(parseWorkspaceQuery({ wash: raw }).wash, raw).toBeNull();
+        }
+    });
+});

@@ -79,6 +79,7 @@ describe("workspace query", () => {
         line: false,
         circles: true,
         basis: ["fourier-epicycles", "legendre"],
+        wash: 45,
         z: 2.5,
         c: [0.1, -0.2],
     };
@@ -89,7 +90,7 @@ describe("workspace query", () => {
 
     it("writes nothing for the default view, so the path is the clean link", () => {
         const clean = parseWorkspaceQuery({});
-        expect(clean).toEqual({ bg: true, trace: false, eq: false, edit: false, fs: false, n: null, t: null, speed: null, ease: null, line: true, circles: true, basis: null, z: null, c: null });
+        expect(clean).toEqual({ bg: true, trace: false, eq: false, edit: false, fs: false, n: null, t: null, speed: null, ease: null, line: true, circles: true, basis: null, wash: null, z: null, c: null });
         expect(Object.values(formatWorkspaceQuery(clean)).filter((v) => v !== undefined)).toEqual([]);
     });
 
