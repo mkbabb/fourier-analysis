@@ -6,7 +6,8 @@ import { seededViz } from "./fixtures/seed";
  * had one dock, 350 px after, the seats taking the row). The stage keeps one
  * dock, and at a desk it is the phone's plate made long: the scrub alone on
  * its row, as long as the stage allows up to 52rem, and the seats under it in
- * four groups (Play | the four layers | the rate, the easing, More | Edit).
+ * four groups (Play | the four layers | the rate, the easing, More | Edit),
+ * gathered at its two ends.
  * The plate stands open: a fold would have to morph its height, and the
  * scrub is pressed from rest.
  */
@@ -40,6 +41,7 @@ for (const scheme of ["dark", "light"] as const) {
                     scrubBottom: box(scrubRow).bottom,
                     seatsTop: Math.min(...seats.map((b) => box(b).top)),
                     names: seats.map((b) => b.getAttribute("aria-label")),
+                    edges: seats.map((b) => ({ l: box(b).left, r: box(b).right })),
                     outside: seats
                         .map((b) => ({ n: b.getAttribute("aria-label"), r: box(b) }))
                         .filter(({ r }) => r.left < p.left - 0.5 || r.right > p.right + 0.5 || r.top < p.top - 0.5 || r.bottom > p.bottom + 0.5)
@@ -52,6 +54,13 @@ for (const scheme of ["dark", "light"] as const) {
             expect(read.names[0]).toMatch(/^(Play|Pause) animation$/);
             expect(read.names.slice(1)).toEqual(["Picture", "Outline", "Line", "Circles", "Playback speed", "Easing", "More", "Edit contour"]);
             expect(read.outside, "seats outside the plate").toEqual([]);
+            // The seats gather at the plate's two ends, as a media bar's do: Play
+            // and the four layers at the start, the rate, the easing, More and
+            // Edit at the end; inside each end no gap is wider than a group's.
+            const gaps = read.edges.slice(1).map((e, i) => e.l - read.edges[i]!.r);
+            expect(gaps.slice(0, 4).every((g) => g <= 12), `the start's gaps ${JSON.stringify(gaps)}`).toBe(true);
+            expect(gaps.slice(5).every((g) => g <= 12), `the end's gaps ${JSON.stringify(gaps)}`).toBe(true);
+            expect(gaps[4], "the one open stretch, between the layers and the rate").toBeGreaterThan(200);
             const stage = (await page.locator(".canvas-stage").boundingBox())!;
             const plate = (await dock.boundingBox())!;
             expect(plate.x).toBeGreaterThanOrEqual(stage.x);
@@ -71,7 +80,11 @@ for (const scheme of ["dark", "light"] as const) {
             const y = track.y + track.height / 2;
             await page.mouse.move(track.x + track.width * 0.9, y);
             await page.mouse.down();
-            await page.mouse.move(track.x + track.width * 0.1, y, { steps: 8 });
+            // In moves of about 20 px, as a hand drags. Glass's Slider measures the
+            // drag from the first move after the press, so the thumb trails the
+            // pointer by that move (an 80 px first step left it 0.1 short; base
+            // and head alike, relayed to glass).
+            await page.mouse.move(track.x + track.width * 0.1, y, { steps: 32 });
             await page.mouse.up();
             const after = Number(await slider.getAttribute("aria-valuenow"));
             expect(Math.abs(after - before), "the drag moved the position").toBeGreaterThan(0.3);

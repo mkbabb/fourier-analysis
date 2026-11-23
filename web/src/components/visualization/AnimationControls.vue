@@ -487,6 +487,12 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
         - 2 * (var(--dock-layer-gap, 0.375rem) + var(--dock-ring-reserve, 0px))
     );
 }
+/* Its seats gather at the plate's two ends, as a media bar's do: Play and the
+   layers at the start, the rate, the easing, More and Edit at the end. Spread
+   across ~800 px, four groups read as islands (three gaps of ~145 px). */
+.animation-dock--bar .card-seats > .seat-group:nth-child(2) {
+    margin-inline-end: auto;
+}
 
 /* ── Speed + easing seats ── */
 /* The rate reads as numerals in the mono family (the menu's rates do the same). */
