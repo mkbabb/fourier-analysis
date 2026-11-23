@@ -8,6 +8,8 @@
  *   line=0    the drawn line is hidden (default shown)
  *   circles=0 the circles (the chain, its inset and its legend) are hidden (default shown)
  *   eq=1      the series panel is open
+ *   nt=<word> the series panel's notation, `exponential` or `polar` (default trig)
+ *   en=<2..20> the series panel's term budget (default 6)
  *   edit=1    the contour editor is open
  *   fs=1      the fullscreen takeover is open
  *   n=<1..500>    the harmonic budget, when it differs from the piece's own
@@ -21,12 +23,13 @@
  *   c=<x>,<y>     the point at the stage's centre, off the drawing's centre in
  *                 units of the drawing's size (y up), off the fitted drawing
  *
- * The toggles and the bases are pushes (Back undoes them); `n`, `t`, `speed`,
- * `ease`, `wash`, `z` and `c` are replaces (a drag or a menu tune never fills
+ * The toggles, the bases and the notation are pushes (Back undoes them); `n`,
+ * `t`, `speed`, `ease`, `wash`, `en`, `z` and `c` are replaces (a drag or a menu tune never fills
  * the history; the view is written once, as a gesture ends).
  */
 import type { LocationQuery } from "vue-router";
-import { flagOff, flagOn, intIn, rawOf, unit, type Codec } from "@/lib/urlState";
+import { flagOff, flagOn, intIn, oneOf, rawOf, unit, type Codec } from "@/lib/urlState";
+import type { NotationMode } from "@/lib/equation/types";
 import { ANIMATION_SPEEDS, type AnimationSpeed } from "@/lib/defaults";
 import { isAnimationEasingName, type AnimationEasingName } from "@/lib/easings";
 import type { BasisKey } from "@/lib/basis";
@@ -114,6 +117,25 @@ const washCodec: Codec<number | null> = {
     },
 };
 
+/** The series panel's term budget: its default, and its range. */
+export const EN_DEFAULT = 6;
+export const EN_MIN = 2;
+export const EN_MAX = 20;
+
+/** The series panel's term budget; the default and junk read as null (the default). */
+const budgetCodec: Codec<number | null> = {
+    parse: (raw) => {
+        if (raw === undefined || !/^\d+$/.test(raw)) return null;
+        const v = Number(raw);
+        return v >= EN_MIN && v <= EN_MAX && v !== EN_DEFAULT ? v : null;
+    },
+    format: (v) => {
+        if (v === null) return undefined;
+        const r = Math.round(Math.min(EN_MAX, Math.max(EN_MIN, v)));
+        return r === EN_DEFAULT ? undefined : String(r);
+    },
+};
+
 export const WORKSPACE_QUERY = {
     // The picture shows and the dashed outline does not, by default; a link
     // written before the flip (`bg=1`, `trace=0`) still reads as it was.
@@ -122,6 +144,9 @@ export const WORKSPACE_QUERY = {
     line: flagOff,
     circles: flagOff,
     eq: flagOn,
+    // FORTY-SIXTH D: the series panel's notation (the word /equation uses) and budget.
+    nt: oneOf<NotationMode>(["trig", "exponential", "polar"], "trig"),
+    en: budgetCodec,
     edit: flagOn,
     fs: flagOn,
     n: intIn(1, 500),
