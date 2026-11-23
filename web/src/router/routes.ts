@@ -3,15 +3,14 @@ import type { RouteLocationNormalized, RouteLocationRaw, RouteMeta, RouteRecordR
 import { Eye, FileText, LayoutGrid, Shuffle, Sigma } from "@lucide/vue";
 import { getImageMeta, getVisualization } from "@/lib/api";
 import { ApiProblem } from "@/lib/api-problem";
-import { safeGetItem, safeStorage } from "@/composables/useSafeStorage";
 
 /**
  * X.F.W14V.au6 — A2-FO-L1-25: the route table, and with it the app's one
  * section registry. A section is declared once, on its route: `meta.tab` says
  * which section a route belongs to (UIA-F-119/F-212), and `meta.nav` on the
  * one route that names the section gives the dock its label, glyph and place.
- * The dock (`AppDock.vue`) builds its tabs, its current section and the
- * remembered-tab set from these records (`sectionNav`); nothing else lists
+ * The dock (`AppDock.vue`) builds its tabs and its current section from
+ * these records (`sectionNav`); nothing else lists
  * the sections. The router itself (`./index.ts`) is built from `routes`.
  */
 
@@ -32,8 +31,8 @@ declare module "vue-router" {
         noindex?: boolean;
         /**
          * X.F.W14U.misc — UIA-F-119 / UIA-F-212: the section this route belongs
-         * to, declared once, here. The dock's current section and the
-         * remembered tab both read it; a route without one (the internal tool,
+         * to, declared once, here. The dock's current section and each
+         * section's last URL read it; a route without one (the internal tool,
          * the not-found page) belongs to no section.
          */
         tab?: SectionTab;
@@ -81,19 +80,12 @@ export function sectionNav(records: readonly { meta?: RouteMeta; aliasOf?: unkno
 }
 
 /**
- * X.F.W14U.misc — UIA-F-212: the remembered tab has ONE writer (`afterEach`,
- * from `meta.tab`) and one reader (the `/` redirect), both through the safe
- * accessor (UIA-F-120: with site data blocked, reading `localStorage` itself
- * throws; losing storage only means no remembered tab).
+ * FORTY-SIXTH D (owner, 23 Nov: "if we go back to a bare keyframes.babb.dev,
+ * it should be the homescreen"): a bare `/` opens Home, the page the dock's
+ * Home seat opens, never a section browser storage remembered. A bare URL
+ * means the defaults; where a reader was lives in the URL itself.
  */
-export const SAVED_TAB_KEY = "fourier_active_tab";
-const DEFAULT_TAB: SectionTab = "/paper";
-
-function getSavedTab(): string {
-    const saved = safeGetItem(safeStorage("local"), SAVED_TAB_KEY);
-    const tabs = new Set(routes.map((r) => r.meta?.tab));
-    return saved && tabs.has(saved as SectionTab) ? saved : DEFAULT_TAB;
-}
+export const HOME_PATH: SectionTab = "/paper";
 
 const isNotFound = (e: unknown) => e instanceof ApiProblem && e.status === 404;
 
@@ -124,7 +116,7 @@ async function resolveShareSlug(to: RouteLocationNormalized): Promise<RouteLocat
 export const routes: RouteRecordRaw[] = [
     {
         path: "/",
-        redirect: getSavedTab,
+        redirect: HOME_PATH,
     },
     {
         path: "/paper",

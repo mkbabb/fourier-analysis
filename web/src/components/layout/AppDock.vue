@@ -38,12 +38,12 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
 import { useEventListener, useMediaQuery, useResizeObserver } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
-import { prefetchRoute } from "@/router";
+import { prefetchRoute, sectionHref } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import FourierMark from "./FourierMark.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, ExternalLink, House, Info, SlidersHorizontal } from "@lucide/vue";
-import { sectionNav, type SectionTab } from "@/router/routes";
+import { HOME_PATH, sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
@@ -94,8 +94,9 @@ const navName = computed(() =>
  * another surface holds the dock.
  */
 const coarsePointer = useMediaQuery("(pointer: coarse)");
-function onTabSelect(path: string) {
-    void router.push(path).then(() => {
+function onTabSelect(tab: SectionTab) {
+    // FORTY-SIXTH D: a section opens where the reader left it in this tab.
+    void router.push(sectionHref(tab)).then(() => {
         const dock = dockRef.value;
         if (coarsePointer.value && dock?.expanded && !dock.isHeld) dock.collapse();
     });
@@ -112,7 +113,7 @@ function onTabSelect(path: string) {
  * pushed the theme seat off a phone's screen and left the desk's wordmark
  * hanging over its own plate. The Sections seat already names where you are.
  */
-const HOME: SectionTab = "/paper";
+const HOME: SectionTab = HOME_PATH;
 const homeHref = router.resolve(HOME).href;
 const atHome = computed(() => activeTab.value === HOME);
 function goHome(e: MouseEvent) {

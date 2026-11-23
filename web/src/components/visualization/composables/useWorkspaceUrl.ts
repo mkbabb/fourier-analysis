@@ -47,7 +47,18 @@ export function useWorkspaceUrl(nHarmonics: Ref<number>, activeBases: Ref<string
     watch(
         () => [store.contourSettings, store.animationSettings, pieceKey(), store.loading] as const,
         ([cs, as, key, loading]) => {
-            if (loading || (!store.imageSlug && !store.visualizationSlug)) return;
+            // A load (the view's own mount reloads the piece the store already
+            // held, as on a return by the dock) puts the piece's values back:
+            // the base is captured again once it lands, and the URL applied
+            // over it, so the reload's seeding never writes the link's keys
+            // away (FORTY-SIXTH D: `n` was lost on every return).
+            if (loading) {
+                baseFor = null;
+                base.n = base.speed = base.ease = null;
+                base.basis = null;
+                return;
+            }
+            if (!store.imageSlug && !store.visualizationSlug) return;
             if (!cs && !as) return;
             if (baseFor === key && base.n !== null) return;
             baseFor = key;

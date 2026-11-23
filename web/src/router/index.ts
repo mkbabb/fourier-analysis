@@ -1,8 +1,7 @@
 import { nextTick } from "vue";
 import { createRouter, createWebHistory, START_LOCATION, type RouteLocationNormalized, type RouteLocationRaw } from "vue-router";
 import { routeTransition } from "@mkbabb/glass-ui/motion-core";
-import { safeSetItem, safeStorage } from "@/composables/useSafeStorage";
-import { routes, SAVED_TAB_KEY } from "./routes";
+import { routes } from "./routes";
 
 export const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -100,8 +99,23 @@ function applyRouteMeta(to: RouteLocationNormalized) {
     }
 }
 
+/**
+ * FORTY-SIXTH D: each section's last full URL in this tab (path and query),
+ * held in memory, never in storage. The dock's sections menu opens a section
+ * where the reader left it: going to the paper and back by the dock restores
+ * the picture, its layers and its view, which the URL already names. A bare
+ * section path (`/visualize`) is that section's defaults.
+ */
+const lastInSection = new Map<string, string>();
+
+/** Where the dock opens `tab`: its last URL in this tab, else its own path. */
+export function sectionHref(tab: string): string {
+    return lastInSection.get(tab) ?? tab;
+}
+
 router.afterEach((to: RouteLocationNormalized) => {
     applyRouteMeta(to);
+    if (to.meta.tab) lastInSection.set(to.meta.tab, to.fullPath);
 
     // Release the route transition's update callback once the DOM has
     // committed the new route component: Vue's next flush patches the
@@ -111,8 +125,6 @@ router.afterEach((to: RouteLocationNormalized) => {
         releaseSwap = null;
         void nextTick(release);
     }
-
-    if (to.meta.tab) safeSetItem(safeStorage("local"), SAVED_TAB_KEY, to.meta.tab);
 });
 
 export default router;
