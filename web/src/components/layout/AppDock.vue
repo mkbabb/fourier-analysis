@@ -405,7 +405,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
 <template>
     <header ref="header" class="app-header">
-        <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed">
+        <!-- `fit-content`: glass's content-sized run (FORTY-SIXTH A, the dock
+             study's F-1). Without it the run spanned the plate's box, 4 px
+             wider than its port, so a press on the theme seat (focus on the
+             run's end) scrolled every seat 4 px left in one frame. -->
+        <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed" fit-content>
             <!-- Home: a house on a phone, the wordmark on a desk (the dock's
                  control cell its hit box), a link to the paper. The wordmark
                  opens with the site's mark, the epicycle figure the folded
