@@ -57,6 +57,7 @@ import { safeGetItem, safeSetItem, safeStorage } from "@/composables/useSafeStor
 import { PAGE_TOOLS_COMPACT, usePageTools, type PageToolsForm } from "@/composables/usePageTools";
 import { useDockPane } from "@/composables/useWorkspacePane";
 import { useDockProgress } from "@/composables/useDockProgress";
+import { useContentWidth } from "@/composables/useContentWidth";
 
 const route = useRoute();
 const router = useRouter();
@@ -196,7 +197,23 @@ function overflows(run: HTMLElement): boolean {
  * all. Each trial is a microtask turn, so no trial name is ever painted.
  */
 const probeLabel = ref<string | null>(null);
-const navLabel = computed(() => probeLabel.value ?? activeTabData.value?.label ?? "Sections");
+
+/*
+ * FORTY-SIXTH A (F-2): the section's name and the page's seats sit in boxes
+ * that glide their width to their content's (`useContentWidth`). A fit trial
+ * reads the run at its content's own widths, so while one runs (never
+ * painted: each trial is a microtask turn) the boxes take their natural size.
+ */
+const labelSlot = useTemplateRef<HTMLElement>("labelSlot");
+const seatsSlot = useTemplateRef<HTMLElement>("seatsSlot");
+const labelWidth = useContentWidth(labelSlot);
+const seatsWidth = useContentWidth(seatsSlot);
+function glideStyle(width: number | null): { inlineSize?: string } {
+    return width === null || probeLabel.value !== null ? {} : { inlineSize: `${width}px` };
+}
+/** The section's name; a fit trial writes its trial name into the same word, never re-keying it. */
+const shownLabel = computed(() => activeTabData.value?.label ?? "Sections");
+const navLabel = computed(() => probeLabel.value ?? shownLabel.value);
 
 /** Every name the trigger can show: the five sections, and "Sections" off them. */
 const navLabels = [...tabs.map((t) => t.label), "Sections"];
@@ -438,7 +455,14 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
             <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
                     <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
-                    <span v-show="showNavLabel" class="nav-trigger-label">{{ navLabel }}</span>
+                    <!-- The name's box glides between two sections' names while
+                         the old word leaves and the new comes in (F-2: the swap
+                         in place stepped every seat 12.5 px in one frame). -->
+                    <span v-show="showNavLabel" ref="labelSlot" class="nav-trigger-label" :style="glideStyle(labelWidth)">
+                        <Transition name="nav-label" mode="out-in">
+                            <span :key="shownLabel" class="nav-trigger-word">{{ navLabel }}</span>
+                        </Transition>
+                    </span>
                     <ChevronDown class="nav-trigger-chevron" aria-hidden="true" />
                 </DockTrigger>
                 <DropdownMenuContent align="start">
@@ -458,21 +482,30 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
             <DockSeparator />
 
-            <!-- The centre: the page's own seats, from 40rem. The old group
-                 leaves before the next arrives; its rule leaves with it. -->
-            <Transition name="page-seats" mode="out-in">
-                <div
-                    v-if="pageSeats && pageTools"
-                    :key="pageTools.label"
-                    class="page-seats"
-                    role="group"
-                    :aria-label="pageTools.label"
-                    data-page-tools
-                >
-                    <PageToolsOutlet form="seats" />
-                    <DockSeparator />
-                </div>
-            </Transition>
+            <!-- The centre: the page's own seats, from 40rem. The old group's
+                 ink leaves before the next arrives, and its rule with it; the
+                 slot around them glides its width between the two (FORTY-SIXTH
+                 A, F-2: the group's removal was a 159 px cut of the plate). -->
+            <div
+                v-if="!compact"
+                ref="seatsSlot"
+                class="page-seats-slot"
+                :style="glideStyle(seatsWidth)"
+            >
+                <Transition name="page-seats" mode="out-in">
+                    <div
+                        v-if="pageSeats && pageTools"
+                        :key="pageTools.label"
+                        class="page-seats"
+                        role="group"
+                        :aria-label="pageTools.label"
+                        data-page-tools
+                    >
+                        <PageToolsOutlet form="seats" />
+                        <DockSeparator />
+                    </div>
+                </Transition>
+            </div>
 
             <!-- The account seat from 40rem; on a phone it is the "i" card's last part. -->
             <div v-if="!compact" class="contents" role="group" aria-label="Account">
@@ -592,15 +625,34 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 }
 
 /* The centre group: the page's seats in a row at the run's own gap, and the
-   rule that closes it. It leaves (120 ms) before the next group arrives
-   (160 ms), by opacity alone; under reduced motion each is 120 ms. */
+   rule that closes it. Its ink leaves (120 ms) before the next group's comes
+   in (160 ms, once its box has room), by opacity alone; under reduced motion
+   each is 120 ms.
+
+   FORTY-SIXTH A (F-2): the group sits in a slot that glides its width to the
+   group's (`useContentWidth`), so the plate never jumps when a page brings or
+   takes its seats: the box moves first and the ink waits for it (motion canon
+   P0a, "the fade lands before the stretch"). The slot cancels the run's gap
+   before it and the group carries that gap as its own leading inset, so an
+   empty slot adds nothing to the run and a full one spaces as the bare group
+   did. It clips only along the run, while its width is short of the group's. */
+.page-seats-slot {
+    display: flex;
+    flex: none;
+    margin-inline-start: calc(-1 * var(--dock-layer-gap, 0.375rem));
+    overflow-x: clip;
+    transition: inline-size var(--duration-slow) var(--spring-dock);
+}
 .page-seats {
     display: flex;
+    flex: none;
+    inline-size: max-content;
     align-items: center;
     gap: var(--dock-layer-gap, 0.375rem);
+    padding-inline-start: var(--dock-layer-gap, 0.375rem);
 }
 .page-seats-enter-active {
-    transition: opacity 160ms var(--ease-standard);
+    transition: opacity 160ms var(--ease-standard) 160ms;
 }
 .page-seats-leave-active {
     transition: opacity 120ms var(--ease-in);
@@ -609,9 +661,37 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 .page-seats-leave-to {
     opacity: 0;
 }
+
+/* The section's name: its box glides between two names' widths while the
+   old word leaves (90 ms) and the new comes in (120 ms) once the box has
+   moved; two words of two sizes go out, then in (motion canon P0a). */
+.nav-trigger-label {
+    display: inline-flex;
+    overflow-x: clip;
+    transition: inline-size var(--duration-fast) var(--spring-dock);
+}
+.nav-trigger-word {
+    flex: none;
+    inline-size: max-content;
+}
+.nav-label-enter-active {
+    transition: opacity 120ms var(--ease-standard) 80ms;
+}
+.nav-label-leave-active {
+    transition: opacity 90ms var(--ease-in);
+}
+.nav-label-enter-from,
+.nav-label-leave-to {
+    opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .page-seats-enter-active {
+    .page-seats-enter-active,
+    .page-seats-slot {
         transition-duration: 120ms;
+    }
+    .nav-trigger-label {
+        transition-duration: 100ms;
     }
 }
 
