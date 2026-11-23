@@ -16,18 +16,37 @@ interface Frame {
     w: number;
 }
 
-async function film(page: Page, ms: number): Promise<void> {
-    await page.evaluate((ms) => {
-        const dock = document.querySelector<HTMLElement>(".app-dock")!;
-        const frames: Frame[] = [];
-        (window as unknown as { __frames: Frame[] }).__frames = frames;
-        const t0 = performance.now();
-        const tick = () => {
-            frames.push({ t: performance.now() - t0, w: dock.getBoundingClientRect().width });
-            if (performance.now() - t0 < ms) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-    }, ms);
+/**
+ * Films the plate's width every animation frame until `settleMs` after the
+ * page's group has arrived (`want: true`) or left (`want: false`), so a page
+ * whose seats come late is filmed through their glide all the same.
+ */
+async function film(page: Page, want: boolean, settleMs = 1600): Promise<void> {
+    await page.evaluate(
+        ([want, settleMs]) => {
+            const dock = document.querySelector<HTMLElement>(".app-dock")!;
+            const frames: Frame[] = [];
+            (window as unknown as { __frames: Frame[] }).__frames = frames;
+            const t0 = performance.now();
+            let since = -1;
+            const tick = () => {
+                const now = performance.now() - t0;
+                frames.push({ t: now, w: dock.getBoundingClientRect().width });
+                const there = dock.querySelector("[data-page-tools]") !== null;
+                if (there === want && since < 0) since = now;
+                if ((since < 0 || now - since < settleMs) && now < 10_000) requestAnimationFrame(tick);
+                else (window as unknown as { __filmed: boolean }).__filmed = true;
+            };
+            (window as unknown as { __filmed: boolean }).__filmed = false;
+            requestAnimationFrame(tick);
+        },
+        [want, settleMs] as const,
+    );
+}
+
+async function filmed(page: Page): Promise<Frame[]> {
+    await page.waitForFunction(() => (window as unknown as { __filmed: boolean }).__filmed, null, { timeout: 15_000 });
+    return page.evaluate(() => (window as unknown as { __frames: Frame[] }).__frames);
 }
 
 async function openDock(page: Page): Promise<void> {
@@ -65,16 +84,15 @@ for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme });
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.goto("/w");
-        await expect(page.locator(".app-dock [data-page-tools]")).toBeVisible({ timeout: 30_000 });
         await openDock(page);
+        await expect(page.locator(".app-dock [data-page-tools]")).toBeVisible({ timeout: 30_000 });
 
         // Home goes to the paper, the pointer stays on the dock, so it stays open.
-        await film(page, 1400);
+        await film(page, false);
+        await page.waitForTimeout(150); // the film holds the plate at rest before the press
         await page.locator(".app-dock .logo-trigger").click();
         await expect(page).toHaveURL(/\/paper/);
-        await page.waitForTimeout(1500);
-        const fs = await page.evaluate(() => (window as unknown as { __frames: Frame[] }).__frames);
-        assertGlides(fs, "/w -> /paper");
+        assertGlides(await filmed(page), "/w -> /paper");
 
         // And back, by the dock's sections menu from the keyboard (focus holds
         // the dock open): the page's group comes in along a glide.
@@ -83,11 +101,10 @@ for (const scheme of ["light", "dark"] as const) {
         const visualize = page.getByRole("menuitem", { name: "Visualize" });
         await expect(visualize).toBeVisible();
         await visualize.focus();
-        await film(page, 1400);
+        await film(page, true);
+        await page.waitForTimeout(150);
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(/\/(w|visualize)/);
-        await page.waitForTimeout(1500);
-        const back = await page.evaluate(() => (window as unknown as { __frames: Frame[] }).__frames);
-        assertGlides(back, "/paper -> /w");
+        assertGlides(await filmed(page), "/paper -> /w");
     });
 }

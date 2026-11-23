@@ -204,6 +204,10 @@ const probeLabel = ref<string | null>(null);
  * that glide their width to their content's (`useContentWidth`). A fit trial
  * reads the run at its content's own widths, so while one runs (never
  * painted: each trial is a microtask turn) the boxes take their natural size.
+ * Taking a box off its width cancels a glide under way, so a trial notes where
+ * each box stood and, once it ends, sets the box back there and lets it glide
+ * on to its width (`resumeGlides`): without it, the page's seats that arrived
+ * as a trial ran (the fonts' `loadingdone` on a section change) came in at once.
  */
 const labelSlot = useTemplateRef<HTMLElement>("labelSlot");
 const seatsSlot = useTemplateRef<HTMLElement>("seatsSlot");
@@ -211,6 +215,25 @@ const labelWidth = useContentWidth(labelSlot);
 const seatsWidth = useContentWidth(seatsSlot);
 function glideStyle(width: number | null): { inlineSize?: string } {
     return width === null || probeLabel.value !== null ? {} : { inlineSize: `${width}px` };
+}
+/** Where each gliding box stood when the trial began (null between trials). */
+let glidesAt: [HTMLElement, number][] | null = null;
+function noteGlides(): void {
+    glidesAt ??= [labelSlot.value, seatsSlot.value]
+        .filter((box): box is HTMLElement => box !== null)
+        .map((box) => [box, box.getBoundingClientRect().width]);
+}
+function resumeGlides(): void {
+    for (const [box, was] of glidesAt ?? []) {
+        const to = box.style.inlineSize;
+        if (!to || !box.isConnected) continue;
+        box.style.transition = "none";
+        box.style.inlineSize = `${was}px`;
+        void box.offsetWidth;
+        box.style.transition = "";
+        box.style.inlineSize = to;
+    }
+    glidesAt = null;
 }
 /** The section's name; a fit trial writes its trial name into the same word, never re-keying it. */
 const shownLabel = computed(() => activeTabData.value?.label ?? "Sections");
@@ -230,6 +253,7 @@ async function fitNavLabel(): Promise<void> {
     const dock = dockRef.value;
     if (!dock?.expanded || dock.isTransitioning) return;
     const run0 = ++fitRun;
+    noteGlides();
     const shown = showNavLabel.value;
     showNavLabel.value = true;
     let fits = true;
@@ -247,6 +271,8 @@ async function fitNavLabel(): Promise<void> {
     probeLabel.value = null;
     showNavLabel.value = shown;
     settleLabel(fits);
+    await nextTick();
+    if (run0 === fitRun) resumeGlides();
 }
 
 // The header spans the viewport, so its inline size changes only with the
