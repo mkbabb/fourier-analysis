@@ -467,6 +467,9 @@ function sidewaysScrollers(): string[] {
     // exclusion as f-w14u-vedit v88. REMOVE this exclusion when glass fixes the run.
     return Array.from(document.querySelectorAll(".app-header *, .about-card, .about-card *"))
         .filter((e) => !e.classList.contains("dock-run"))
+        // A visually hidden live region (1 px, clipped) holds its words wider
+        // than its box by design and never pans: the card's open announces in one.
+        .filter((e) => e.clientWidth > 1)
         .filter((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflowX !== "visible")
         .map((e) => `${e.className.toString().slice(0, 40)} ${e.scrollWidth}/${e.clientWidth}`);
 }
