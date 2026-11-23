@@ -438,9 +438,13 @@ test.describe("r119 UIA-F-119 — the dock's section comes from the route's meta
     });
 });
 
-test.describe("r212 UIA-F-212 — one remembered-tab writer, from the route's meta", () => {
+// FORTY-SIXTH D (owner, 23 Nov): a bare root opens Home, never a section browser
+// storage remembered, so the remembered tab and its one writer are gone; the
+// route's meta still names the section (`expectSection`), and `/` after either
+// path is Home (`root-opens-home.spec.ts` holds it whatever storage says).
+test.describe("r212 UIA-F-212 — the section from the route's meta; the root opens Home", () => {
     test.use({ viewport: DESKTOP });
-    test("a saved visualization and a trailing-slash path are remembered as Visualize", async ({ page }) => {
+    test("a saved visualization and a trailing-slash path are Visualize, and / after either is Home", async ({ page }) => {
         await stubGallery(page);
         for (const url of [`/v/${ENTRY.slug}`, "/visualize/"]) {
             await page.goto("/gallery");
@@ -448,7 +452,7 @@ test.describe("r212 UIA-F-212 — one remembered-tab writer, from the route's me
             await page.goto(url);
             await expectSection(page, "Visualize", url);
             await page.goto("/");
-            await expect(page, `after ${url}`).toHaveURL(/\/visualize$/, { timeout: 30_000 });
+            await expect(page, `after ${url}`).toHaveURL(/\/paper$/, { timeout: 30_000 });
         }
     });
 });
