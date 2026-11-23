@@ -382,10 +382,52 @@ watch(signInPending, (pending) => {
  * Wider, the request opens the Log in seat's popover (`UserSlugBar`). Asked
  * from the stage with the dock resting at its seal (844x390), the popover hung
  * from a seat folded out of view and ran off the screen's right edge: the dock
- * opens first, so the popover stands under its own seat.
+ * opens first, so the popover stands under its own seat. It opens once the
+ * dock has settled open: opened with the expand, it faded in under a seat
+ * still outside the growing plate and hopped 7 px onto it about a second later.
  */
-watch(() => !compact.value && auth.signInRequested, (pending) => {
-    if (pending) dockRef.value?.expand();
+const loginRequest = ref(false);
+/** The dock stands open and its morph has ended. */
+function dockOpenAndStill(): boolean {
+    const dock = dockRef.value;
+    return !dock || (dock.expanded && !dock.isTransitioning);
+}
+/** The longest the popover waits on the dock's morph. */
+const DOCK_SETTLE_MS = 1200;
+/**
+ * The dock has come to rest open: its morph has ended, or, once it has grown,
+ * its width has held within half a pixel for two frames (the spring's last
+ * ~300 ms move it by less than that, and the popover waited on them with the
+ * dock already still).
+ */
+function dockSettled(): Promise<void> {
+    return new Promise((done) => {
+        const t0 = performance.now();
+        const from = dockEl.value?.getBoundingClientRect().width ?? Number.NaN;
+        let last = from;
+        let moved = false;
+        let still = 0;
+        const frame = () => {
+            const width = dockEl.value?.getBoundingClientRect().width ?? Number.NaN;
+            moved ||= Math.abs(width - from) > 1;
+            still = moved && Math.abs(width - last) < 0.5 ? still + 1 : 0;
+            last = width;
+            if (dockOpenAndStill() || still >= 2 || performance.now() - t0 > DOCK_SETTLE_MS) done();
+            else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+    });
+}
+watch(() => !compact.value && auth.signInRequested, async (pending) => {
+    loginRequest.value = false;
+    if (!pending) return;
+    if (!dockOpenAndStill()) {
+        dockRef.value?.expand();
+        // The morph starts on the frame after the flip.
+        await new Promise((frame) => requestAnimationFrame(() => requestAnimationFrame(frame)));
+        await dockSettled();
+    }
+    loginRequest.value = !compact.value && auth.signInRequested;
 }, { flush: "post" });
 function onAboutOpen(open: boolean) {
     aboutOpen.value = open;
@@ -481,7 +523,7 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
             <!-- The account seat from 40rem; on a phone it is the "i" card's last part. -->
             <div v-if="!compact" class="contents" role="group" aria-label="Account">
-                <UserSlugBar />
+                <UserSlugBar :open-request="loginRequest" />
             </div>
 
             <!-- About ("i"), beside the theme seat on every route. On a phone it
