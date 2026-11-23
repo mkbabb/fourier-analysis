@@ -411,6 +411,12 @@ function togglePane() {
  * and the card, with the field focused; closing the card settles the request.
  */
 const aboutOpen = ref(false);
+/* The card stands under its "i" by name: the seat's glass Tooltip wraps the
+   trigger, and reka's nearest popper root is then the tooltip's, so the
+   trigger registered itself as the tooltip's anchor and the card had none
+   (placed off the top of the screen at every width). */
+const aboutTrigger = useTemplateRef<InstanceType<typeof DockTrigger>>("aboutTrigger");
+const aboutAnchor = computed(() => (aboutTrigger.value?.$el as Element | null | undefined) ?? undefined);
 /** Every control explains itself: on a phone the "i" is the way to sign in, and its name says so. */
 const aboutName = computed(() =>
     compact.value
@@ -557,11 +563,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                  holds the account too, and is named for both. -->
             <Popover keep-dock-open :open="aboutOpen" @update:open="onAboutOpen">
                 <Tooltip :text="aboutName.title" side="bottom" :disabled="coarsePointer || aboutOpen">
-                    <DockTrigger for="popover" class="about-trigger" :aria-label="aboutName.label">
+                    <DockTrigger ref="aboutTrigger" for="popover" class="about-trigger" :aria-label="aboutName.label">
                         <Info class="about-glyph" aria-hidden="true" />
                     </DockTrigger>
                 </Tooltip>
-                <PopoverContent align="end" class="about-card" :class="{ 'about-card--account': compact }" @open-auto-focus="onAboutFocus" @focus-outside="onAboutFocusOutside">
+                <PopoverContent :reference="aboutAnchor" align="end" class="about-card" :class="{ 'about-card--account': compact }" @open-auto-focus="onAboutFocus" @focus-outside="onAboutFocusOutside">
                     <div class="flex items-center gap-3">
                         <!-- Self-hosted maintainer avatar (zero third-party
                              origins; 80px source for 2× density in the 40px box). -->

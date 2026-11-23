@@ -50,6 +50,18 @@ for (const scheme of ["light", "dark"] as const) {
             // The far-left fault: never at the screen's edge.
             expect(b!.x, `${seat.what}: the tooltip is not at the screen's left edge`).toBeGreaterThan(a!.x - b!.width);
         }
+
+        // The tooltip wraps About's trigger and must not take its card's anchor:
+        // pressed, the card stands under its "i", inside the screen.
+        const about = page.locator(".app-dock .about-trigger");
+        await about.click();
+        const card = page.locator(".about-card");
+        await expect(card).toBeVisible();
+        await card.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+        const [i, c] = await Promise.all([about.boundingBox(), card.boundingBox()]);
+        expect(c!.y, "the card opens below its seat").toBeGreaterThanOrEqual(i!.y + i!.height);
+        expect(c!.y + c!.height, "and ends inside the screen").toBeLessThanOrEqual(900);
+        expect(c!.x + c!.width, "its end edge at its seat's").toBeCloseTo(i!.x + i!.width, -1);
     });
 }
 
