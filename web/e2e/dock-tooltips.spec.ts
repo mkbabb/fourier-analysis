@@ -36,7 +36,11 @@ for (const scheme of ["light", "dark"] as const) {
 
         for (const seat of SEATS) {
             const el = page.locator(seat.locator);
+            // A hand arrives over a seat in several moves; one jump from the
+            // last seat lands while the last tooltip's pointer grace is open.
             await el.hover();
+            const at = (await el.boundingBox())!;
+            await page.mouse.move(at.x + at.width / 2 + 2, at.y + at.height / 2, { steps: 4 });
             const tip = page.locator(".app-tooltip-content").filter({ hasText: seat.text });
             await expect(tip, `${seat.what}: its tooltip shows on hover`).toBeVisible({ timeout: 3_000 });
             const [a, b] = await Promise.all([el.boundingBox(), tip.boundingBox()]);
