@@ -15,6 +15,9 @@ import { IMAGE_JOB } from "./fixtures/jobs";
  * when the upload lands. Its painted box is filmed from the drop to the first
  * drawing; between two frames it moves at most 2 px, except while the stage
  * itself is resized (the aside opening at a desk), which carries it.
+ *
+ * And it is never laid under the old page (PR 35 review): the address taking
+ * the picture's name is no route change, so no view transition runs over it.
  */
 
 /** Painted (alpha > 40) samples in the middle of the stage canvas. */
@@ -241,6 +244,32 @@ for (const c of CELLS) {
             expect(pairs, "frame pairs compared").toBeGreaterThan(20);
             const around = frames.slice(Math.max(0, worst.i - 2), worst.i + 2);
             expect(worst.d, `the picture's largest move between two frames ${JSON.stringify(around)}`).toBeLessThanOrEqual(2);
+        });
+
+        // The upload's `/visualize` → `/w/<slug>` is the page naming the picture
+        // it already shows. Run as a route change, its view transition froze the
+        // stage (the picture's fade-in stalled) and then laid the old page's
+        // image, the whole picture at its fit, over the live stage while the
+        // first drawing's intro ran there: two faces at once (PR 35 review).
+        test("the address takes the picture's name with no page transition over the stage", async ({ page }) => {
+            await page.addInitScript(() => {
+                const w = window as unknown as { __vt: { api: boolean; started: number } };
+                const start = document.startViewTransition?.bind(document);
+                w.__vt = { api: !!start, started: 0 };
+                if (!start) return;
+                document.startViewTransition = ((arg: unknown) => {
+                    w.__vt.started++;
+                    return start(arg as never);
+                }) as typeof document.startViewTransition;
+            });
+            await page.goto("/visualize");
+            await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
+            await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
+            await page.waitForURL(/\/w\//, { timeout: 60_000 });
+            await expect(page.getByRole("button", { name: /^(Play|Pause) animation$/ }).first()).toBeEnabled({ timeout: 60_000 });
+            const vt = await page.evaluate(() => (window as unknown as { __vt: { api: boolean; started: number } }).__vt);
+            expect(vt.api, "the engine has view transitions").toBe(true);
+            expect(vt.started, "view transitions from the drop to the first drawing").toBe(0);
         });
     });
 }
