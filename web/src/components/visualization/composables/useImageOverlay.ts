@@ -7,7 +7,7 @@ import { imageSrc, overlayUrl } from "@/lib/api";
 import { keeper, laid, lightness, measureTones, washGain, type Tones } from "../lib/picture-key";
 import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import type { ViewTransform } from "../lib/canvas-drawing";
-import type { Bbox } from "./useViewTransform";
+import type { Bbox } from "../lib/stage-view";
 
 const MAX_CACHE_SIZE = 10;
 
@@ -332,8 +332,10 @@ export function useImageOverlay(onImageLoaded?: () => void) {
      * strength. Between the two it crosses over, in the drawing's own
      * transform, so nothing moves. On a ground where a photograph reads
      * faintly its wash is laid thicker (`laid`, the picture's own gain).
+     * `whole` is the whole picture's own share (0..1): it gives way a step
+     * while the first compute's found lines stand on it (FORTY-SIXTH G).
      */
-    function drawImageOverlay(s: CanvasSurface, view: ViewTransform, strength = 1, under = 1, wash = PICTURE_WASH) {
+    function drawImageOverlay(s: CanvasSurface, view: ViewTransform, strength = 1, under = 1, wash = PICTURE_WASH, whole = 1) {
         const picture = current.value;
         if (!picture || strength <= 0) return;
         if (under > 0) rekey(picture, groundFor(s.ctx.canvas));
@@ -362,7 +364,7 @@ export function useImageOverlay(onImageLoaded?: () => void) {
             }
         }
         if (u < 1) {
-            s.ctx.globalAlpha = k * (1 - u);
+            s.ctx.globalAlpha = k * (1 - u) * Math.min(1, Math.max(0, whole));
             s.ctx.drawImage(picture.whole, sx1, sy1, boxW, boxH);
         }
         s.ctx.restore();

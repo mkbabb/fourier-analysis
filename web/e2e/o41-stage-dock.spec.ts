@@ -192,9 +192,9 @@ test.describe("audit 26 — a phone held sideways", () => {
     });
 });
 
-/** The drawn line's box on the stage canvas (viewport CSS px), or null. */
-async function inkBox(page: Page): Promise<{ left: number; right: number; top: number; bottom: number } | null> {
-    return page.evaluate(() => {
+/** The drawn line's box on the stage canvas (viewport CSS px), or null; with `any`, every painted pixel's. */
+async function inkBox(page: Page, any = false): Promise<{ left: number; right: number; top: number; bottom: number } | null> {
+    return page.evaluate((any) => {
         const c = document.querySelector<HTMLCanvasElement>(".canvas-stage > .canvas-container canvas")!;
         const r = c.getBoundingClientRect();
         const ctx = c.getContext("2d")!;
@@ -204,7 +204,7 @@ async function inkBox(page: Page): Promise<{ left: number; right: number; top: n
             for (let x = 0; x < c.width; x += 2) {
                 const i = (y * c.width + x) * 4;
                 const red = d[i]!, g = d[i + 1]!, b = d[i + 2]!, a = d[i + 3]!;
-                if (a > 60 && red > 120 && red > g + 45 && red > b + 45) {
+                if (any ? a > 40 : a > 60 && red > 120 && red > g + 45 && red > b + 45) {
                     if (x < x0) x0 = x;
                     if (x > x1) x1 = x;
                     if (y < y0) y0 = y;
@@ -215,7 +215,7 @@ async function inkBox(page: Page): Promise<{ left: number; right: number; top: n
         if (!(x1 > x0)) return null;
         const k = r.width / c.width;
         return { left: r.left + x0 * k, right: r.left + x1 * k, top: r.top + y0 * k, bottom: r.top + y1 * k };
-    });
+    }, any);
 }
 
 // STUDY 2.10, F-26 ("landscape is designed, not inherited: controls take a
@@ -264,7 +264,11 @@ for (const vp of [
             // upright plate's foot cut the drawing to two fifths of the stage's
             // height at 844x390). The line is read alone: hiding the circles
             // takes the legend (red like the line) with them, and moves nothing.
-            await page.goto(`/v/${seededViz().slug}?t=0.5&circles=0`);
+            // FORTY-SIXTH H: with the picture shown the fit holds the whole
+            // picture, the drawing registered on it, so the drawing alone is
+            // fitted with the picture hidden (`bg=0`); the picture, shown, fills
+            // the same box (below).
+            await page.goto(`/v/${seededViz().slug}?t=0.5&circles=0&bg=0`);
             await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeEnabled({ timeout: LOAD });
             await page.waitForTimeout(800);
             // The legend: a title row (26 px) and its caption line, from the stage's legend inset.
@@ -277,6 +281,16 @@ for (const vp of [
             expect(ink!.top - stage.y, "the drawing starts under the legend").toBeGreaterThanOrEqual(legendEnd);
             const fill = Math.max((ink!.bottom - ink!.top) / (stage.height - legendEnd), (ink!.right - ink!.left) / (dock.x - stage.x));
             expect(fill, "the drawing fills the box beside the strip").toBeGreaterThanOrEqual(0.8);
+            // The picture alone, whole, fills that box the same way, clear of the strip and the legend.
+            await page.goto(`/v/${seededViz().slug}?line=0&circles=0`);
+            await expect(page.getByRole("button", { name: /Play animation|Pause animation/ }).first()).toBeEnabled({ timeout: LOAD });
+            await page.waitForTimeout(800);
+            const picture = await inkBox(page, true);
+            expect(picture, "the picture is on the stage").not.toBeNull();
+            expect(picture!.right, "the picture ends before the strip").toBeLessThan(dock.x);
+            expect(picture!.top - stage.y, "the picture starts under the legend").toBeGreaterThanOrEqual(legendEnd - 1);
+            const pictureFill = Math.max((picture!.bottom - picture!.top) / (stage.height - legendEnd), (picture!.right - picture!.left) / (dock.x - stage.x));
+            expect(pictureFill, "the picture fills the box beside the strip").toBeGreaterThanOrEqual(0.8);
         });
     });
 }

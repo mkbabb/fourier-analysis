@@ -303,6 +303,16 @@ async def extract_contour(imageSlug: str, req: ExtractContourRequest, request: R
     return contour_response(await extract_contour_doc(imageSlug, req.contour_settings))
 
 
+def _report_extract(fraction: float, sketch: list[np.ndarray] | None = None) -> None:
+    """An extraction checkpoint, inside an image job: the drawing's sketch so far
+    as a ``sketch`` partial (FORTY-SIXTH G: the outline traces in on the stage
+    while the drawing is found), then the stage's fraction. A no-op outside a
+    job (the synchronous route), where the sketch is not even resampled."""
+    if sketch and jobs.current_progress() is not None:
+        jobs.report_partial("sketch", {"lines": computation.sketch_lines(sketch)})
+    jobs.report("extract", fraction)
+
+
 async def extract_contour_doc(imageSlug: str, cs: ContourSettings) -> dict:
     """The image's contour document for ``cs``: the cached one, else extracted
     and stored (the caller has checked the image is readable)."""
@@ -327,7 +337,7 @@ async def extract_contour_doc(imageSlug: str, cs: ContourSettings) -> dict:
         result = await computation.compute_contours(
             Path(tmp.name),
             cs.to_contour_config(),  # type: ignore[no-untyped-call]
-            on_stage=lambda fraction: jobs.report("extract", fraction),
+            on_stage=_report_extract,
         )
     except HTTPException:
         raise

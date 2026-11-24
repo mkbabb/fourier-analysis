@@ -10,6 +10,7 @@ import {
     approach,
     clampView,
     composeView,
+    stageBox,
     isAtRest,
     linkOfView,
     overshoot,
@@ -105,5 +106,40 @@ describe("the view in a link", () => {
             expect((px - o[0]) / unit).toBeCloseTo(0.1, 9);
             expect(-(py - o[1]) / unit).toBeCloseTo(-0.05, 9);
         }
+    });
+});
+
+/**
+ * FORTY-SIXTH H (FORTY-NINTH: "the background image is far too zoomed in"):
+ * the stage fitted the outline's box, so a picture larger than its outline was
+ * magnified past the stage and cropped (the giraffe's outline is 48 % of its
+ * picture's width). While the picture shows, the fitted box holds the whole
+ * picture, and the outline keeps its place in it.
+ */
+describe("stageBox", () => {
+    // The giraffe at the web's defaults: a 1024x576 picture, its outline off-centre and narrow.
+    const picture = { minX: -512, maxX: 512, minY: -288, maxY: 288 };
+    const outline = { minX: -302, maxX: 193, minY: -252, maxY: 276 };
+
+    it("holds the whole picture while the picture shows", () => {
+        expect(stageBox(outline, picture, 1)).toEqual(picture);
+    });
+
+    it("is the outline's own box with the picture off or unknown", () => {
+        expect(stageBox(outline, picture, 0)).toEqual(outline);
+        expect(stageBox(outline, null, 1)).toEqual(outline);
+    });
+
+    it("glides between the two on the layer's fade", () => {
+        const half = stageBox(outline, picture, 0.5);
+        expect(half.minX).toBeCloseTo(-407);
+        expect(half.maxX).toBeCloseTo(352.5);
+        expect(half.minY).toBeCloseTo(-270);
+        expect(half.maxY).toBeCloseTo(282);
+    });
+
+    it("never cuts the outline, even where it runs past the picture's edge", () => {
+        const past = { ...outline, minX: -512.5 };
+        expect(stageBox(past, picture, 1).minX).toBe(-512.5);
     });
 });

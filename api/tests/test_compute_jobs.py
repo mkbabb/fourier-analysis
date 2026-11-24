@@ -507,3 +507,73 @@ def test_unknown_job_is_404():
         )
 
     assert [s for s, _ in asyncio.run(body())] == [404, 404, 404]
+
+
+@requires_mongo
+def test_the_image_job_streams_the_drawings_sketch_before_its_contour(monkeypatch, tmp_path):
+    """FORTY-SIXTH G: while the outline is found the stage shows it arriving. At
+    the mask and the vectorised lines the drawing reports what it has drawn so
+    far, and the image job streams it as a ``sketch`` partial (each line a flat
+    ``[x0, y0, ...]`` in the contour's frame, resampled every 4 px), before the
+    ``contour`` partial and each ahead of its own stage event; a checkpoint
+    with nothing to show sends none."""
+    import numpy as np
+
+    from api.config import settings
+    from api.services import database
+    from fourier_analysis.contours import drawing
+
+    monkeypatch.setattr(settings, "blob_dir", str(tmp_path))
+    t = np.linspace(0.0, 2.0 * np.pi, 96, endpoint=False)
+    ring = 20.0 * np.exp(1j * t)
+    ring = np.append(ring, ring[0])
+    stroke = np.linspace(-10 + 0j, 10 + 0j, 3)
+    sketches = {drawing.STAGE_MASK: [ring], drawing.STAGE_VECTORS: [ring, stroke]}
+
+    def drawn(image_path, config, on_stage=None):
+        assert on_stage is not None
+        for fraction in (drawing.STAGE_MASK, drawing.STAGE_LINES, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED):
+            on_stage(fraction, sketches.get(fraction))
+        return [20.0 * np.exp(1j * t)]
+
+    monkeypatch.setattr(computation, "extract_contours", drawn)
+    boundary = "image-job-boundary"
+    upload = (
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="file"; filename="disc.png"\r\n'
+        "Content-Type: image/png\r\n\r\n"
+    ).encode() + _disc_png() + f"\r\n--{boundary}--\r\n".encode()
+
+    async def body(db):
+        database._db = db
+        await db.images.create_index("image_slug", unique=True)
+        await db.images.create_index("sha256", unique=True)
+        await db.contours.create_index("contour_hash", unique=True)
+        status, raw = await asgi(
+            "POST", "/api/images", upload, [("content-type", f"multipart/form-data; boundary={boundary}")]
+        )
+        assert status == 200, raw
+        slug = json.loads(raw)["image_slug"]
+        status, raw = await asgi("POST", f"/api/images/{slug}/jobs", b"{}", JSON)
+        assert status == 202, raw
+        s = Stream(json.loads(raw)["events_url"])
+        got = [e async for e in s.events(timeout=60.0)]
+        await s.close()
+        return got
+
+    got = run_db(body)
+    names = [(ev, d.get("stage")) for _, ev, d in got]
+    assert got[-1][1] == "result", names
+    cut = names.index(("partial", "contour"))
+    at = [i for i, n in enumerate(names) if n == ("partial", "sketch")]
+    assert len(at) == 2 and at[-1] < cut, names
+    # Each sketch comes just before its checkpoint's stage event.
+    for i in at:
+        assert names[i + 1] == ("stage", "extract"), names
+    first, second = (got[i][2]["lines"] for i in at)
+    assert len(first) == 1 and len(second) == 2
+    xy = np.array(first[0]).reshape(-1, 2)
+    # On the ring (radius 20, the contour's frame), every 4 px or closer.
+    assert np.allclose(np.hypot(xy[:, 0], xy[:, 1]), 20.0, atol=0.15)
+    assert np.hypot(*np.diff(xy, axis=0).T).max() <= 4.0 + 1e-6
+    assert np.array(second[1]).reshape(-1, 2)[[0, -1]].tolist() == [[-10.0, 0.0], [10.0, 0.0]]

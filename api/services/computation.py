@@ -17,6 +17,7 @@ from fastapi import HTTPException
 
 from fourier_analysis.bases import build_animation_data
 from fourier_analysis.contours import ContourConfig, extract_contours, resample_arc_length
+from fourier_analysis.contours.drawing import StageReport
 from fourier_analysis.epicycles import EpicycleChain
 from fourier_analysis.shortest_tour import build_contour_tour
 
@@ -200,10 +201,11 @@ async def submit_process_job(name: str, fn: Callable[..., Any], *args: Any) -> A
 async def compute_contours(
     image_path: Path,
     config: ContourConfig,
-    on_stage: Callable[[float], None] | None = None,
+    on_stage: StageReport | None = None,
 ) -> dict[str, Any]:
     """Extract contours using the given config, returning serializable results.
-    ``on_stage`` hears the drawing's progress (0..1), on the worker thread."""
+    ``on_stage`` hears the drawing's progress (0..1) and its sketch so far
+    (``drawing.StageReport``), on the worker thread."""
     def _run():
         from PIL import Image, ImageOps
 
@@ -240,6 +242,39 @@ async def compute_contours(
         }
 
     return await submit_compute_job("contours", _run)
+
+
+# The sketch a job streams while its drawing is found (FORTY-SIXTH G): each
+# line resampled at this spacing (px of the extraction's frame), lines shorter
+# than the floor dropped, and the whole held under the point budget by widening
+# the spacing. Enough to trace the outline in on any stage, at tens of kB.
+SKETCH_SPACING = 4.0
+SKETCH_MIN_LENGTH = 8.0
+SKETCH_MAX_POINTS = 6000
+
+
+def sketch_lines(lines: list[np.ndarray]) -> list[list[float]]:
+    """The drawing's sketch as a job's ``sketch`` partial carries it: each line a
+    flat ``[x0, y0, x1, y1, ...]`` in the contour's frame (centred, y up, as
+    ``image_bounds``), resampled by arc length, at one decimal."""
+    kept = []
+    for z in lines:
+        z = np.asarray(z, dtype=np.complex128)
+        if len(z) < 2:
+            continue
+        arc = np.concatenate([[0.0], np.cumsum(np.abs(np.diff(z)))])
+        if arc[-1] >= SKETCH_MIN_LENGTH:
+            kept.append((z, arc))
+    total = sum(arc[-1] for _, arc in kept)
+    spacing = max(SKETCH_SPACING, total / SKETCH_MAX_POINTS)
+    out = []
+    for z, arc in kept:
+        n = max(2, int(np.ceil(arc[-1] / spacing)) + 1)
+        at = np.linspace(0.0, arc[-1], n)
+        xs = np.round(np.interp(at, arc, z.real), 1)
+        ys = np.round(np.interp(at, arc, z.imag), 1)
+        out.append(np.column_stack([xs, ys]).ravel().tolist())
+    return out
 
 
 def contour_path(contours: list[np.ndarray], n_points: int) -> np.ndarray:

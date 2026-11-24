@@ -2,13 +2,7 @@ import { computed } from "vue";
 import { useWorkspaceStore } from "@/stores/workspace";
 import type { CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import type { ViewTransform } from "../lib/canvas-drawing";
-
-export interface Bbox {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-}
+import { stageBox, type Bbox } from "../lib/stage-view";
 
 /** The fit's free margin on each side, as a fraction of the drawing's size. */
 export const FIT_MARGIN = 0.06;
@@ -60,6 +54,12 @@ export function fitTransform(bbox: Bbox, s: { width: number; height: number }, i
     };
 }
 
+/** The picture's frame and its share of the stage's box (`stageBox`). */
+export interface PictureFrame {
+    bounds: Bbox | null;
+    weight: number;
+}
+
 export function useViewTransform() {
     const store = useWorkspaceStore();
 
@@ -96,11 +96,14 @@ export function useViewTransform() {
         return { minX, maxX, minY, maxY };
     });
 
-    /** The drawing's fit (`fitTransform`); the identity before there is a drawing. */
-    function getViewTransform(s: CanvasSurface, inset: FitInset = NO_INSET): ViewTransform {
+    /**
+     * The drawing's fit (`fitTransform` of `stageBox`): with `picture`, the
+     * picture's frame joined at its share; the identity before there is a drawing.
+     */
+    function getViewTransform(s: CanvasSurface, inset: FitInset = NO_INSET, picture: PictureFrame | null = null): ViewTransform {
         const bbox = dataBbox.value;
         if (!bbox) return { cx: 0, cy: 0, scale: 1, toScreen: (x, y) => [x, y] };
-        return fitTransform(bbox, s, inset);
+        return fitTransform(picture ? stageBox(bbox, picture.bounds, picture.weight) : bbox, s, inset);
     }
 
     /** The drawing's size in its own units (the larger side of its box): the link's unit for the view's centre. */

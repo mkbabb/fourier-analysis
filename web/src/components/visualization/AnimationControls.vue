@@ -51,6 +51,8 @@ import {
 import { useAnimationStore } from "@/stores/animation";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAuthStore } from "@/stores/auth";
+import { useJobMeasure } from "@/composables/useJobMeasure";
+import { jobStageLabel } from "@/lib/jobProgress";
 import { Tooltip } from "@/components/ui/tooltip";
 import { GlassDock, DockControl } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
@@ -128,12 +130,21 @@ function keepFocusForSignIn(e: Event) {
 const ready = computed(() => !!store.epicycleData || !!store.basesData);
 
 /**
- * A first upload: the plate stands from the drop under the file's own picture
- * (the host's `stageDock`), and the scrub's row holds the upload's one busy
- * mark, glass's indeterminate bar on the track's own line, with no words. When
- * the upload lands the bar gives the row back to the scrub.
+ * A first compute: the plate stands from the drop under the file's own picture
+ * (the host's `stageDock`), and until there is a drawing the scrub's row holds
+ * the compute's one measure, glass's bar on the track's own line, with no
+ * words (FORTY-SIXTH G, FORTY-EIGHTH: the timeline stood empty at its start).
+ * It is indeterminate while the file uploads and the job waits for a worker,
+ * then the job's fraction (`useJobMeasure`: eased to each report, creeping
+ * between them). When the drawing lands the bar runs on to full and then gives
+ * the row back to the scrub, which plays from its start. It is the job's one
+ * measure: the top dock's rim no longer carries it.
  */
-const firstUpload = computed(() => store.uploading && !store.imageMeta);
+const firstCompute = computed(() => !ready.value && (store.uploading || store.computing));
+const measure = useJobMeasure(() => store.job, () => firstCompute.value && !store.uploading, () => ready.value);
+/** The row holds the measure until it has run on to full (a leaving bar is frozen: it must fill while it stands). */
+const measuring = computed(() => firstCompute.value || (measure.value !== null && measure.value < 1));
+const measureName = computed(() => (store.uploading ? "Uploading the image" : jobStageLabel(store.job)));
 
 const isEpicycleOnly = computed(() =>
     props.activeBases.includes("fourier-epicycles") && props.activeBases.length === 1,
@@ -331,11 +342,11 @@ function onWashCommit(v: number[]) {
         aria-label="Stage controls"
     >
         <div class="card-face">
-            <div class="card-scrub" :data-busy="firstUpload || undefined">
+            <div class="card-scrub" :data-busy="measuring || undefined">
                 <TimelineReadout />
                 <Transition name="scrub-busy">
-                    <div v-if="firstUpload" class="scrub-busy">
-                        <Progress :model-value="null" size="sm" aria-label="Uploading the image" />
+                    <div v-if="measuring" class="scrub-busy" data-job-measure>
+                        <Progress :model-value="measure" :max="1" size="sm" :aria-label="measureName" />
                     </div>
                 </Transition>
             </div>
@@ -479,14 +490,17 @@ function onWashCommit(v: number[]) {
     display: flex;
     position: relative;
 }
-/* A first upload's bar lies on the track's line (the timeline row's own
-   inline padding), and the scrub stands back under it until the upload lands.
-   Neither changes the row's height, so the plate never moves the picture. */
+/* A first compute's measure lies on the track's line (the timeline row's own
+   inline padding), and the scrub stands back under it until the drawing lands.
+   Neither changes the row's height, so the plate never moves the picture. On
+   the landing the bar runs on to full (`useJobMeasure`), then it and the scrub
+   cross. */
 .card-scrub :deep(.timeline-row) {
-    transition: opacity 120ms var(--ease-standard);
+    transition: opacity 160ms var(--ease-standard);
 }
 .card-scrub[data-busy] :deep(.timeline-row) {
     opacity: 0;
+    transition: opacity 120ms var(--ease-standard);
 }
 .scrub-busy {
     position: absolute;
@@ -495,12 +509,15 @@ function onWashCommit(v: number[]) {
     display: flex;
     align-items: center;
     pointer-events: none;
+    /* The measure fills in the timeline's own amber (`FourierTimeline`), on
+       the line where the drawing will play: one fill, one hue. */
+    --progress-fill: var(--viz-amber);
 }
 .scrub-busy-enter-active {
     transition: opacity 160ms var(--ease-standard);
 }
 .scrub-busy-leave-active {
-    transition: opacity 120ms var(--ease-standard);
+    transition: opacity 160ms var(--ease-standard);
 }
 .scrub-busy-enter-from,
 .scrub-busy-leave-to {

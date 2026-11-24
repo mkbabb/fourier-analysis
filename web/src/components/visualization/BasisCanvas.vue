@@ -30,9 +30,10 @@ import {
 } from "./lib/canvas-drawing";
 import { useCanvasSetup, type CanvasSurface } from "@/components/shared/canvas/useCanvasSetup";
 import { useCanvasHover } from "./composables/useCanvasHover";
-import { useImageOverlay } from "./composables/useImageOverlay";
-import { fitBox, fitTransform, useViewTransform, type FitInset } from "./composables/useViewTransform";
+import { PICTURE_WASH, useImageOverlay } from "./composables/useImageOverlay";
+import { fitBox, fitTransform, useViewTransform, type FitInset, type PictureFrame } from "./composables/useViewTransform";
 import { useStageGestures } from "./composables/useStageGestures";
+import { useFoundLines } from "./composables/useFoundLines";
 import { LAYER_FADE_MS, LAYER_FADE_REDUCED_MS, useLayerFade } from "./composables/useLayerFade";
 import { composeView, IDENTITY_VIEW, linkOfView, viewOfLink, type StageLink, type StageView } from "./lib/stage-view";
 import { formatWorkspaceQuery, WASH_DEFAULT } from "./lib/workspace-query";
@@ -198,7 +199,7 @@ const gestures = useStageGestures({
 function currentLink(): StageLink | null {
     const s = surface.value;
     if (!s) return null;
-    const base = getViewTransform(s, fitInset());
+    const base = getViewTransform(s, fitInset(), pictureFrame());
     return linkOfView(gestures.getView(), base.toScreen(base.cx, base.cy), base.scale * extent());
 }
 const linkKey = (link: StageLink | null) => JSON.stringify(formatWorkspaceQuery({ z: link?.z ?? null, c: link?.c ?? null }));
@@ -208,7 +209,7 @@ function applyLink(link: StageLink | null): void {
     if (!s) return;
     linkPending = false;
     if (linkKey(link) === linkKey(currentLink())) return;
-    const base = getViewTransform(s, fitInset());
+    const base = getViewTransform(s, fitInset(), pictureFrame());
     if (!link) gestures.reset();
     else gestures.setView(viewOfLink(link, base.toScreen(base.cx, base.cy), base.scale * extent()));
 }
@@ -222,16 +223,36 @@ watch(() => props.linkView, (link) => {
     if (store.epicycleData || store.basesData) applyLink(link);
 });
 
-/** The fitted transform and the one the stage draws with (zoom and pan applied). */
-function views(s: CanvasSurface): { base: ViewTransform; view: ViewTransform } {
-    const base = getViewTransform(s, fitInset());
-    return { base, view: composeView(base, introView(s, base) ?? gestures.getView(), s.width, s.height) };
+/**
+ * The fitted transform, the one the stage draws with (zoom and pan applied),
+ * and the outline's own fit, which the desk's epicycle inset is fitted from
+ * (the inset is refitted to its corner, so the picture's share of the stage's
+ * box never moves or rescales it).
+ */
+function views(s: CanvasSurface): { base: ViewTransform; view: ViewTransform; chain: ViewTransform } {
+    const base = getViewTransform(s, fitInset(), pictureFrame());
+    return {
+        base,
+        view: composeView(base, introView(s, base) ?? gestures.getView(), s.width, s.height),
+        chain: getViewTransform(s, fitInset()),
+    };
 }
 
 // ── Image overlay (extracted composable) ──
 const { drawImageOverlay, pictureBounds, hasPicture } = useImageOverlay(() => {
     if (surface.value) drawFrame();
 });
+
+/**
+ * FORTY-SIXTH H: the picture's frame and its share of the stage's box
+ * (`stageBox`): the layer's fade, so a toggle glides the fit between the
+ * whole picture and the outline alone. Under reduced motion nothing zooms:
+ * the fit keeps the picture's frame whatever the toggle.
+ */
+function pictureFrame(): PictureFrame {
+    const reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    return { bounds: pictureBounds(), weight: reduce ? 1 : pictureFade.strength() };
+}
 
 // ── The picture before the drawing (FORTY-FIRST F) ──
 // While the first compute runs the stage shows the picture, whole, fitted to
@@ -319,10 +340,19 @@ function drawFirstPicture(s: CanvasSurface): boolean {
     const k = firstPictureFade.strength() * pictureFade.strength();
     const fit = k > 0 ? pictureFit(s) : null;
     if (!fit) return false;
+    const now = performance.now();
     s.ctx.clearRect(0, 0, s.width, s.height);
-    drawImageOverlay(s, fit, k, 0);
+    drawImageOverlay(s, fit, k, 0, PICTURE_WASH, pictureGive(now));
+    drawFoundLines(s, fit, now);
     return true;
 }
+
+// ── The drawing as it is found, and its landing (FORTY-SIXTH G) ──
+const { drawFoundLines, drawGuide, pictureGive, wholeShare, giveAtLanding, growthOf, grownEnd } = useFoundLines({
+    repaint: () => { if (surface.value) drawFrame(); },
+    introProgress: () => introProgress(),
+    outlineShown: () => ghostFade.strength(),
+});
 
 // ── Main draw frame ──
 function drawFrame() {
@@ -336,7 +366,7 @@ function drawFrame() {
     }
 
     s.ctx.clearRect(0, 0, s.width, s.height);
-    const { base, view } = views(s);
+    const { view, chain } = views(s);
     const layers = liveLayers();
 
     // The grid and its axes belong to the drawing: they fade out with the
@@ -353,16 +383,18 @@ function drawFrame() {
     // the whole picture alone. Under reduced motion the intro crosses the
     // picture's own frame out as the drawing's comes in.
     const crossing = intro?.reduce ? introProgress() : 1;
-    drawImageOverlay(s, view, pictureFade.strength() * crossing, drawn, washNow);
-    if (intro?.reduce && crossing < 1) drawImageOverlay(s, intro.picture, pictureFade.strength() * (1 - crossing), 0);
+    const whole = wholeShare();
+    drawImageOverlay(s, view, pictureFade.strength() * crossing, drawn, washNow, whole);
+    if (intro?.reduce && crossing < 1) drawImageOverlay(s, intro.picture, pictureFade.strength() * (1 - crossing), 0, PICTURE_WASH, giveAtLanding());
+    drawGuide(s, view);
 
     const hasEpicycles = props.activeBases.includes("fourier-epicycles");
     const onlyEpicycles = hasEpicycles && props.activeBases.length === 1;
 
     if (onlyEpicycles && data) {
-        drawEpicycleFrame(s, data, view, base, layers);
+        drawEpicycleFrame(s, data, view, chain, layers);
     } else {
-        drawMultiBasesFrame(s, view, base, layers);
+        drawMultiBasesFrame(s, view, chain, layers);
     }
 }
 
@@ -448,8 +480,9 @@ const firstPictureFade = useLayerFade(
 
 /*
  * `view` is the stage's transform (zoom and pan included) for everything drawn
- * on the drawing itself; `base` is the fitted one, which the desktop epicycle
- * inset keeps, so the inset stays put while the drawing is zoomed.
+ * on the drawing itself; `base` is the outline's own fit, which the desktop
+ * epicycle inset keeps, so the inset stays put while the drawing is zoomed or
+ * the fit takes in the picture (FORTY-SIXTH H).
  */
 function drawEpicycleFrame(
     s: CanvasSurface,
@@ -505,8 +538,9 @@ function drawEpicycleFrame(
 
     // X-DS pass 1 · F1-05 — a hovered chain keeps its spectrum hues and steps
     // its stroke once; no gold re-ink, no time-based alpha.
+    const growth = growthOf(nVis);
     if (layers.epicycles > 0) {
-        drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha * layers.epicycles, epicycleHovered ? { circle: 5, arm: 4.5 } : { circle: 4, arm: 3.5 });
+        drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha * layers.epicycles, epicycleHovered ? { circle: 5, arm: 4.5 } : { circle: 4, arm: 3.5 }, growth);
     }
 
     // Update epicycle bounds for hover detection (none while the circles are hidden)
@@ -524,7 +558,7 @@ function drawEpicycleFrame(
     if (layers.epicycles > 0) {
         // Connecting line
         if (fit) {
-            drawConnectingLine(s, view, base, visPositions, tipX, tipY, fit, eAlpha * layers.epicycles);
+            drawConnectingLine(s, view, base, grownEnd(visPositions, growth, nVis), tipX, tipY, fit, eAlpha * layers.epicycles);
         }
 
         // Tip dot
@@ -708,8 +742,9 @@ function drawMultiBasesFrame(
             }
         }
 
+        const growth = growthOf(nVis);
         if (layers.epicycles > 0) {
-            drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha * layers.epicycles, epicycleHovered ? { circle: 6, arm: 5.5 } : { circle: 5, arm: 4.5 });
+            drawEpicycleCircles(s, fit ? base : view, visPositions, components, nVis, fit, eAlpha * layers.epicycles, epicycleHovered ? { circle: 6, arm: 5.5 } : { circle: 5, arm: 4.5 }, growth);
         }
 
         if (fit && layers.epicycles > 0) {
@@ -719,7 +754,7 @@ function drawMultiBasesFrame(
                 w: fit.scaledW,
                 h: fit.scaledH,
             };
-            drawConnectingLine(s, view, base, visPositions, tipX, tipY, fit, eAlpha * layers.epicycles);
+            drawConnectingLine(s, view, base, grownEnd(visPositions, growth, nVis), tipX, tipY, fit, eAlpha * layers.epicycles);
         } else {
             epicycleBounds = { x: 0, y: 0, w: 0, h: 0 };
         }
@@ -898,16 +933,16 @@ function exportFrame(options: Record<string, boolean> = {}) {
             offCtx.fillRect(0, 0, s.width, s.height);
         }
         // The export is the frame on screen, zoom and pan included.
-        const { base, view } = views(s);
+        const { view, chain } = views(s);
         if (showGrid) drawGrid(s, view);
 
         const hasEpic = props.activeBases.includes("fourier-epicycles");
         const onlyEpic = hasEpic && props.activeBases.length === 1;
 
         if (onlyEpic && data) {
-            drawEpicycleFrame(s, data, view, base, layers);
+            drawEpicycleFrame(s, data, view, chain, layers);
         } else {
-            drawMultiBasesFrame(s, view, base, layers);
+            drawMultiBasesFrame(s, view, chain, layers);
         }
 
     }

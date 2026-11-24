@@ -136,3 +136,33 @@ export function viewOfLink(link: StageLink, o: readonly [number, number], unit: 
     const py = o[1] - link.c[1] * unit;
     return { k: link.z, x: o[0] - px * link.z, y: o[1] - py * link.z };
 }
+
+/** A box in the drawing's own units (y up). */
+export interface Bbox {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+}
+
+/**
+ * FORTY-SIXTH H: the box the stage fits. The picture a drawing was traced from
+ * is shown whole and registered to it, so while the picture layer is on the
+ * fitted box is the outline's joined with the picture's own (`image_bounds`,
+ * the frame the outline's points live in): the outline lies on the picture at
+ * the scale and place it was traced from, and the picture is never cropped by
+ * the stage nor magnified past its edges. With the layer off the box is the
+ * outline's own, so the drawing alone fills the stage. `weight` is the
+ * picture's share, 0..1 (the layer's fade), so a toggle glides between them.
+ */
+export function stageBox(outline: Bbox, picture: Bbox | null, weight: number): Bbox {
+    const w = Math.min(1, Math.max(0, weight));
+    if (!picture || w <= 0) return outline;
+    const lerp = (a: number, b: number) => a + (b - a) * w;
+    return {
+        minX: lerp(outline.minX, Math.min(outline.minX, picture.minX)),
+        maxX: lerp(outline.maxX, Math.max(outline.maxX, picture.maxX)),
+        minY: lerp(outline.minY, Math.min(outline.minY, picture.minY)),
+        maxY: lerp(outline.maxY, Math.max(outline.maxY, picture.maxY)),
+    };
+}

@@ -15,14 +15,13 @@ ink budget instead (``drawing.INK_BUDGET_DIAGONALS``).
 
 from __future__ import annotations
 
-from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
 
 from fourier_analysis.contours.geometry import _polygon_area
 from fourier_analysis.contours.image import LoadedImage
-from fourier_analysis.contours.drawing import draw_subject
+from fourier_analysis.contours.drawing import StageReport, draw_subject
 from fourier_analysis.contours.models import (
     ContourConfig,
     ContourDiagnostics,
@@ -34,10 +33,10 @@ from fourier_analysis.shortest_tour import build_contour_tour
 def extract_contours_pipeline(
     image: LoadedImage,
     config: ContourConfig,
-    on_stage: Callable[[float], None] | None = None,
+    on_stage: StageReport | None = None,
 ) -> ContourExtractionResult:
     """Run the drawing pipeline (module docstring). ``on_stage`` hears the
-    drawing's progress (``drawing.draw_subject``)."""
+    drawing's progress and its sketch so far (``drawing.StageReport``)."""
     drawing = draw_subject(image, config, on_stage)
     contours = drawing.strokes if drawing is not None else []
     if drawing is None or not contours:

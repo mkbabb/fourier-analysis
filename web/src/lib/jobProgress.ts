@@ -41,3 +41,47 @@ export function jobProgressValue(s: JobStage | null): number | null {
     if (!s || s.stage === "queued") return null;
     return Math.max(0, Math.min(1, s.fraction));
 }
+
+/*
+ * FORTY-SIXTH G (FORTY-EIGHTH: "a better way to display partial progress"):
+ * the measure the stage's timeline shows while a picture's first compute runs.
+ * The job reports real checkpoints, seconds apart (the subject mask alone is
+ * 2.5 to 4 s here, about twice that in production), so the bar shown is the
+ * reported fraction eased to each report and creeping between reports: from
+ * each report it closes, ever more slowly, on a point `MEASURE_CREEP_SHARE` of
+ * the way from the report to the end. It never stands still, never passes that
+ * point, and never moves back (a later report under it holds it until the
+ * creep from that report passes it).
+ */
+
+/** How quickly the bar closes on its target (ms, an exponential's time constant). */
+export const MEASURE_EASE_MS = 160;
+/** How slowly the creep after a report runs (ms, its time constant). */
+export const MEASURE_CREEP_MS = 4000;
+/** The creep's ceiling: this share of the room left above the report. */
+export const MEASURE_CREEP_SHARE = 0.5;
+
+/** Where the bar is heading `since` ms after a report of `reported`. */
+export function measureTarget(reported: number, since: number): number {
+    const room = MEASURE_CREEP_SHARE * (1 - reported);
+    return reported + room * (1 - Math.exp(-Math.max(0, since) / MEASURE_CREEP_MS));
+}
+
+/** The bar after `dt` ms from `shown`, heading for `target`: eased, never back. */
+export function stepMeasure(shown: number, target: number, dt: number): number {
+    const to = Math.max(shown, target);
+    return shown + (to - shown) * (1 - Math.exp(-Math.max(0, dt) / MEASURE_EASE_MS));
+}
+
+/** How long the bar takes to run on to full when the drawing lands (ms). */
+export const MEASURE_RUN_OUT_MS = 280;
+
+/**
+ * The bar `elapsed` ms into its run-on to full from `from` (the drawing has
+ * landed): cubic out over `MEASURE_RUN_OUT_MS`, so it reads as done at once and
+ * never crawls through its last few per cent while the drawing already plays.
+ */
+export function runOut(from: number, elapsed: number): number {
+    const k = Math.min(1, Math.max(0, elapsed) / MEASURE_RUN_OUT_MS);
+    return from + (1 - from) * (1 - (1 - k) ** 3);
+}
