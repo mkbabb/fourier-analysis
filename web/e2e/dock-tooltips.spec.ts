@@ -79,3 +79,65 @@ test("a phone's tap on a dock seat shows no tooltip @coarse", async ({ page }) =
     await page.waitForTimeout(900);
     await expect(page.locator(".app-tooltip-content")).toHaveCount(0);
 });
+
+/*
+ * The theme seat's tooltip names the press's action, and the press flips the
+ * theme. Its words were read from the theme, so the leaving tooltip swapped to
+ * the opposite action in the same frame as the ground ("Switch to dark mode"
+ * became "Switch to light mode", at full strength 8 ms after the press in
+ * dark, at two thirds 20 ms after it in light, then faded). It keeps the words
+ * it opened with until it has left. Filmed per animation frame from the press.
+ */
+for (const scheme of ["light", "dark"] as const) {
+    test(`the theme seat's tooltip keeps its words until it has left (${scheme})`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto("/w");
+        const dock = page.locator(".app-dock");
+        await expect(dock).toHaveClass(/(^|\s)collapsed(\s|$)/, { timeout: 30_000 });
+        await page.waitForTimeout(600);
+        await dock.getByRole("button", { name: "Expand dock" }).hover();
+        await expect(dock).not.toHaveAttribute("data-morphing", /.*/, { timeout: 5_000 });
+
+        const seat = page.locator(".app-dock .sun-moon-toggle");
+        await seat.hover();
+        const at = (await seat.boundingBox())!;
+        await page.mouse.move(at.x + at.width / 2 + 2, at.y + at.height / 2, { steps: 4 });
+        const opened = scheme === "light" ? "Switch to dark mode" : "Switch to light mode";
+        const other = scheme === "light" ? "Switch to light mode" : "Switch to dark mode";
+        await expect(page.locator(".app-tooltip-content").filter({ hasText: opened })).toBeVisible({ timeout: 3_000 });
+
+        await page.evaluate(() => {
+            const seen: { t: number; words: string; ink: number }[] = [];
+            const w = window as unknown as { __tip: typeof seen; __tipDone: boolean };
+            w.__tip = seen;
+            w.__tipDone = false;
+            const t0 = performance.now();
+            const tick = () => {
+                for (const el of document.querySelectorAll<HTMLElement>(".app-tooltip-content")) {
+                    let ink = 1;
+                    for (let e: HTMLElement | null = el; e; e = e.parentElement) ink *= Number.parseFloat(getComputedStyle(e).opacity);
+                    seen.push({ t: performance.now() - t0, words: (el.textContent ?? "").trim(), ink });
+                }
+                if (performance.now() - t0 < 1200) requestAnimationFrame(tick);
+                else w.__tipDone = true;
+            };
+            requestAnimationFrame(tick);
+        });
+        await seat.click();
+        await page.waitForFunction(() => (window as unknown as { __tipDone: boolean }).__tipDone);
+        const seen = await page.evaluate(() => (window as unknown as { __tip: { t: number; words: string; ink: number }[] }).__tip);
+        await expect(seat).toHaveAttribute("aria-pressed", scheme === "light" ? "true" : "false");
+
+        expect(seen.length, "the leaving tooltip was filmed").toBeGreaterThan(0);
+        // Until the tooltip has gone, every frame that shows it shows the words it opened with.
+        const gone = seen.findIndex((f) => f.ink < 0.01);
+        const leaving = gone < 0 ? seen : seen.slice(0, gone);
+        // (The content also carries its words once more for a screen reader.)
+        for (const f of leaving) {
+            const what = `at ${f.t.toFixed(0)} ms the leaving tooltip reads "${f.words}" at ${f.ink.toFixed(2)}`;
+            expect(f.words, what).toContain(opened);
+            expect(f.words, what).not.toContain(other);
+        }
+    });
+}

@@ -30,8 +30,9 @@
          would also paint the selected seat, which is not what "dark" means. -->
     <!-- FORTY-SIXTH A (the dock study's F-3): the action's words are glass's
          Tooltip, standing on the seat. As a native `title` the browser drew
-         them wherever it chose (his frame: the far left of the screen). -->
-    <Tooltip :text="isDark ? 'Switch to light mode' : 'Switch to dark mode'" side="bottom" :disabled="coarsePointer">
+         them wherever it chose (his frame: the far left of the screen). The
+         words are the ones it opened with until it has left (`tipWords`). -->
+    <Tooltip :text="tipWords" side="bottom" :disabled="coarsePointer" @update:open="onTipOpen">
         <DockControl
             class="sun-moon-toggle"
             aria-label="Dark mode"
@@ -105,6 +106,18 @@ import { moonShape, sunShape } from "@/lib/sun-moon-shapes";
 const { isDark, toggleDark } = useGlobalDark();
 /** Tooltips are a desk's: a tap on a touch screen shows none. */
 const coarsePointer = useMediaQuery("(pointer: coarse)");
+/*
+ * The tooltip names the press's action, and the press flips the theme, so
+ * words read from `isDark` swapped to the opposite action in the leaving
+ * tooltip, in the same frame as the ground ("Switch to dark mode" became
+ * "Switch to light mode" as it faded). The words are taken when the tooltip
+ * opens and kept until it opens again.
+ */
+const actionWords = (dark: boolean) => (dark ? "Switch to light mode" : "Switch to dark mode");
+const tipWords = ref(actionWords(isDark.value));
+function onTipOpen(open: boolean) {
+    if (open) tipWords.value = actionWords(isDark.value);
+}
 /** true when morphing toward dark (moon), false when morphing toward light (sun) */
 const morphingToDark = ref(false);
 

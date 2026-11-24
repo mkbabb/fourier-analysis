@@ -98,6 +98,13 @@ const props = withDefaults(
     { side: "top", sideOffset: 6, measure: "16rem" },
 );
 
+/**
+ * Whether the tooltip shows (glass's own `update:open`). Declared so it is not
+ * an attribute of the content: a seat whose words follow its state reads it to
+ * keep the words a tooltip opened with until it has left (the theme seat).
+ */
+const emit = defineEmits<{ "update:open": [open: boolean] }>();
+
 const triggerRef = useTemplateRef<{ $el?: unknown }>("trigger");
 
 const contentStyle = computed(() => ({ "--app-tooltip-measure": props.measure }));
@@ -137,7 +144,7 @@ if (import.meta.env.DEV) {
 </script>
 
 <template>
-    <GlassTooltip :disabled="disabled">
+    <GlassTooltip :disabled="disabled" @update:open="emit('update:open', $event)">
         <TooltipTrigger ref="trigger" as-child>
             <slot />
         </TooltipTrigger>
