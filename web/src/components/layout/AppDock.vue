@@ -35,7 +35,7 @@
  *  - UIA-F-152: the header clears the content by the same gutter it keeps
  *    above the dock (`--space-body`).
  */
-import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
+import { computed, nextTick, ref, shallowRef, useTemplateRef, watch } from "vue";
 import { useEventListener, useMediaQuery, useResizeObserver } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { prefetchRoute, sectionHref } from "@/router";
@@ -92,14 +92,33 @@ const navName = computed(() =>
  * chosen (it stayed open after the menu's hold was released, a finger has no
  * leave). After the navigation, as the scroll fold calls it, and never while
  * another surface holds the dock.
+ *
+ * FORTY-SIXTH A ("the last few frames of the collapse animation shift"): the
+ * run is held from the pick until that fold has landed (`holdRun`, below), so
+ * the new section's name and seats never change its width while it folds.
  */
 const coarsePointer = useMediaQuery("(pointer: coarse)");
-function onTabSelect(tab: SectionTab) {
-    // FORTY-SIXTH D: a section opens where the reader left it in this tab.
-    void router.push(sectionHref(tab)).then(() => {
+async function onTabSelect(tab: SectionTab) {
+    const fold = coarsePointer.value;
+    if (fold) {
+        pickHold = true;
+        holdRun();
+    }
+    try {
+        // FORTY-SIXTH D: a section opens where the reader left it in this tab.
+        await router.push(sectionHref(tab));
         const dock = dockRef.value;
-        if (coarsePointer.value && dock?.expanded && !dock.isHeld) dock.collapse();
-    });
+        if (fold && dock?.expanded && !dock.isHeld) {
+            dock.collapse();
+            // glass starts its morph in the flip's own flush, so the fold is under way here.
+            await nextTick();
+        }
+    } finally {
+        if (fold) {
+            pickHold = false;
+            if (!dockFolding.value) releaseRun();
+        }
+    }
 }
 
 /**
@@ -214,9 +233,62 @@ const labelSlot = useTemplateRef<HTMLElement>("labelSlot");
 const seatsSlot = useTemplateRef<HTMLElement>("seatsSlot");
 const labelWidth = useContentWidth(labelSlot);
 const seatsWidth = useContentWidth(seatsSlot);
-function glideStyle(width: number | null): { inlineSize?: string } {
+function glideStyle(width: number | null, slot: "label" | "seats"): { inlineSize?: string } {
+    const hold = held.value;
+    if (hold) return hold.widths[slot] === null ? {} : { inlineSize: `${hold.widths[slot]}px` };
     return width === null || probeLabel.value !== null ? {} : { inlineSize: `${width}px` };
 }
+
+/*
+ * FORTY-SIXTH A, the collapse's last frames (the owner: "the last few frames
+ * of the collapse animation shift and are buggy"). While glass folds the dock
+ * it draws the seal on the run's box, not the plate's, and centres it on the
+ * plate in one frame when the fold ends. So the run must keep its width until
+ * the fold has landed. It did not: on a phone a section's pick pushed the
+ * route and then folded, so the new route's name and seats grew or shrank the
+ * run mid-fold, and a name the open run had measured as fitting was taken on
+ * as the fold began. The seal stood up to 66 px off its plate for 200-450 ms
+ * (at 390 and 844x390), cut at the plate's edge or leaving it empty, then
+ * jumped home. Now, from a pick, and whenever the dock is folding, the run is
+ * held as it stood: the section's glyph and name, whether the name shows, the
+ * page's seats (a new group waits; a leaving one fades as the run does), and
+ * the two gliding boxes at the widths they had. Once the fold has landed the
+ * run takes the route's, behind the seal.
+ */
+interface HeldRun {
+    tab: string | null;
+    label: boolean;
+    seats: string | null;
+    widths: { label: number | null; seats: number | null };
+}
+const held = shallowRef<HeldRun | null>(null);
+/** A pick holds the run until its own fold has landed. */
+let pickHold = false;
+const dockFolding = computed(() => {
+    const dock = dockRef.value;
+    return !!dock && !dock.expanded && dock.isTransitioning;
+});
+function boxWidth(box: HTMLElement | null): number | null {
+    return box?.isConnected ? box.getBoundingClientRect().width : null;
+}
+function holdRun(): void {
+    if (held.value) return;
+    held.value = {
+        tab: activeTab.value,
+        label: showNavLabel.value,
+        seats: liveSeats.value?.label ?? null,
+        widths: { label: boxWidth(labelSlot.value), seats: boxWidth(seatsSlot.value) },
+    };
+}
+function releaseRun(): void {
+    if (!held.value) return;
+    held.value = null;
+    applyPendingLabel();
+}
+watch(dockFolding, (folding) => {
+    if (folding) holdRun();
+    else if (!pickHold) releaseRun();
+});
 /** Where each gliding box stood when the trial began (null between trials). */
 let glidesAt: [HTMLElement, number][] | null = null;
 function noteGlides(): void {
@@ -236,8 +308,15 @@ function resumeGlides(): void {
     }
     glidesAt = null;
 }
+/** The section the trigger shows: the route's, or the held run's while it folds. */
+const runTabData = computed(() => {
+    const hold = held.value;
+    return hold ? (tabs.find((t) => t.value === hold.tab) ?? null) : activeTabData.value;
+});
+/** Whether the trigger shows the section's name (held while the run is). */
+const labelShown = computed(() => held.value?.label ?? showNavLabel.value);
 /** The section's name; a fit trial writes its trial name into the same word, never re-keying it. */
-const shownLabel = computed(() => activeTabData.value?.label ?? "Sections");
+const shownLabel = computed(() => runTabData.value?.label ?? "Sections");
 const navLabel = computed(() => probeLabel.value ?? shownLabel.value);
 
 /** Every name the trigger can show: the five sections, and "Sections" off them. */
@@ -251,8 +330,9 @@ async function fitNavLabel(): Promise<void> {
     // a longer trial name overflows that box whatever room the header has. The
     // fit is read on the RESTING expanded run only, and read again when an
     // opening morph settles (the watch below).
+    // A held run is not the route's: the next open measures it.
     const dock = dockRef.value;
-    if (!dock?.expanded || dock.isTransitioning) return;
+    if (!dock?.expanded || dock.isTransitioning || held.value) return;
     const run0 = ++fitRun;
     noteGlides();
     const shown = showNavLabel.value;
@@ -318,13 +398,23 @@ watch(
     (resting, was) => resting && was === false && void fitNavLabel(),
     { flush: "post" },
 );
-// The fold applies what the open run measured, behind the seal.
+/*
+ * The fold applies what the open run measured, behind the seal: once the fold
+ * has landed (`releaseRun`), never as it begins, when taking the name on grew
+ * the run under the folding seal (FORTY-SIXTH A). With no morph to wait for
+ * (reduced motion), the fold has landed on the flip's own flush.
+ */
+function applyPendingLabel(): void {
+    if (pendingLabel === null || dockRef.value?.expanded !== false) return;
+    showNavLabel.value = pendingLabel;
+    pendingLabel = null;
+}
 watch(
     () => dockRef.value?.expanded,
-    (expanded) => {
-        if (expanded !== false || pendingLabel === null) return;
-        showNavLabel.value = pendingLabel;
-        pendingLabel = null;
+    async (expanded) => {
+        if (expanded !== false) return;
+        await nextTick();
+        if (!held.value) applyPendingLabel();
     },
 );
 if (typeof document !== "undefined" && document.fonts) {
@@ -383,9 +473,17 @@ function holdDockWhileOpen(open: boolean) {
  */
 const pageTools = usePageTools();
 const compact = useMediaQuery(PAGE_TOOLS_COMPACT);
-const PageToolsOutlet = (props: { form: PageToolsForm }) =>
-    pageTools.value?.render({ form: props.form }) ?? null;
 const pageSeats = computed(() => !compact.value && !!pageTools.value);
+/** The page's seat group the centre draws: the route's, null where it has none. */
+const liveSeats = computed(() => (pageSeats.value ? pageTools.value : null));
+/** While the run is held it keeps its group; a new page's group waits for the fold to land. */
+const seatsGroup = computed(() => {
+    const hold = held.value;
+    const live = liveSeats.value;
+    return !hold || live?.label === hold.seats ? live : null;
+});
+const PageToolsOutlet = (props: { form: PageToolsForm }) =>
+    seatsGroup.value?.render({ form: props.form }) ?? null;
 /**
  * Owner, 19 Nov: "the tabs toggle for controls should potentially be
  * re-integrated into the top dock". On a phone a stage route shows one pane
@@ -543,11 +641,11 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                  paint is glass's half, UIA-F-128). -->
             <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
-                    <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
+                    <component :is="runTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
                     <!-- The name's box glides between two sections' names while
                          the old word leaves and the new comes in (F-2: the swap
                          in place stepped every seat 12.5 px in one frame). -->
-                    <span v-show="showNavLabel" ref="labelSlot" class="nav-trigger-label" :style="glideStyle(labelWidth)">
+                    <span v-show="labelShown" ref="labelSlot" class="nav-trigger-label" :style="glideStyle(labelWidth, 'label')">
                         <Transition name="nav-label" mode="out-in">
                             <span :key="shownLabel" class="nav-trigger-word">{{ navLabel }}</span>
                         </Transition>
@@ -579,15 +677,15 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                 v-if="!compact"
                 ref="seatsSlot"
                 class="page-seats-slot"
-                :style="glideStyle(seatsWidth)"
+                :style="glideStyle(seatsWidth, 'seats')"
             >
                 <Transition name="page-seats" mode="out-in">
                     <div
-                        v-if="pageSeats && pageTools"
-                        :key="pageTools.label"
+                        v-if="seatsGroup"
+                        :key="seatsGroup.label"
                         class="page-seats"
                         role="group"
-                        :aria-label="pageTools.label"
+                        :aria-label="seatsGroup.label"
                         data-page-tools
                     >
                         <PageToolsOutlet form="seats" />
