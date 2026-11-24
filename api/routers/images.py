@@ -244,6 +244,33 @@ async def get_image_thumbnail(imageSlug: str, request: Request) -> FileResponse:
     )
 
 
+def overlay_image(data: bytes, resize: int) -> tuple[bytes, str, tuple[int, int]]:
+    """The picture at ``resize`` on its longer side, upright, as AVIF (WEBP where AVIF fails).
+
+    A picture with transparency keeps it (AVIF carries alpha), as its thumbnail
+    does: flattened to RGB, a portrait with its ground cut away came out on a
+    black box, which the stage drew as a grey slab around the figure.
+    """
+    from PIL import Image as PILImage
+    from PIL import ImageOps
+
+    opened = PILImage.open(io.BytesIO(data))
+    img: PILImage.Image = ImageOps.exif_transpose(opened) or opened
+    img = img.convert("RGBA" if img.has_transparency_data else "RGB")
+    if resize:
+        ratio = resize / max(img.size)
+        new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
+        img = img.resize(new_size, PILImage.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    try:
+        img.save(buf, format="AVIF", quality=70)
+        ct = "image/avif"
+    except Exception:
+        img.save(buf, format="WEBP", quality=80)
+        ct = "image/webp"
+    return buf.getvalue(), ct, img.size
+
+
 @router.get("/{imageSlug}/overlay")
 async def get_image_overlay(imageSlug: str, request: Request, resize: int = 1024) -> StreamingResponse:
     """Serve the image resized to match contour extraction dimensions.
@@ -251,33 +278,13 @@ async def get_image_overlay(imageSlug: str, request: Request, resize: int = 1024
     The returned image is in the same pixel space that contour coordinates
     were extracted from, enabling pixel-perfect overlay alignment.
     """
-    from PIL import Image as PILImage
-
     public = await _readable(request, imageSlug)
     asset = await get_image_asset(imageSlug)
     with _blob_not_found_as_404():
         data, _ = image_bytes(asset)
 
-    def _resize() -> tuple[bytes, str, tuple[int, int]]:
-        from PIL import ImageOps
-        opened = PILImage.open(io.BytesIO(data))
-        transposed = ImageOps.exif_transpose(opened)
-        img: PILImage.Image = (transposed or opened).convert("RGB")
-        if resize:
-            ratio = resize / max(img.size)
-            new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
-            img = img.resize(new_size, PILImage.Resampling.LANCZOS)
-        buf = io.BytesIO()
-        try:
-            img.save(buf, format="AVIF", quality=70)
-            ct = "image/avif"
-        except Exception:
-            img.save(buf, format="WEBP", quality=80)
-            ct = "image/webp"
-        return buf.getvalue(), ct, img.size
-
     import asyncio
-    overlay_bytes, content_type, (w, h) = await asyncio.to_thread(_resize)
+    overlay_bytes, content_type, (w, h) = await asyncio.to_thread(overlay_image, data, resize)
 
     return StreamingResponse(
         io.BytesIO(overlay_bytes),
