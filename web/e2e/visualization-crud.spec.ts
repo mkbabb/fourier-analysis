@@ -16,8 +16,8 @@ import { showViewIfTabbed } from "./fixtures/workspace";
  *   • A fresh `fourier` Mongo DB (the migration source collections are empty per
  *     audit/challenge.md §2 — the spec seeds its own image/contour/visualization).
  *   • Run:  `cd web && npx playwright test e2e/visualization-crud.spec.ts --project=chromium`
- * The fixture image is `SAMPLE_IMAGE` (`fixtures/sample.ts`): the owner's standard
- * sample, `assets/portraits/daraksha.jpg` (repo-root).
+ * The fixture image is `SAMPLE_IMAGE` (`fixtures/sample.ts`): the standard
+ * sample, `assets/portraits/human.png` (repo-root).
  *
  * SCOPE (W4 scope item 10 + 15; hard-gate items 5 + 13; Wχ H-W4-1)
  * ----------------------------------------------------------------
