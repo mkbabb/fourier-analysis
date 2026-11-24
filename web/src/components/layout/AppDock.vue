@@ -401,11 +401,15 @@ watch(
 /*
  * The fold applies what the open run measured, behind the seal: once the fold
  * has landed (`releaseRun`), never as it begins, when taking the name on grew
- * the run under the folding seal (FORTY-SIXTH A). With no morph to wait for
- * (reduced motion), the fold has landed on the flip's own flush.
+ * the run under the folding seal (FORTY-SIXTH A). A fold turned round by a
+ * re-open applies it too: that is the next open, and glass measures the
+ * opening run after this flush, so it reserves the name. An open dock at rest
+ * never takes it on. With no morph to wait for (reduced motion), the fold has
+ * landed on the flip's own flush.
  */
 function applyPendingLabel(): void {
-    if (pendingLabel === null || dockRef.value?.expanded !== false) return;
+    const dock = dockRef.value;
+    if (pendingLabel === null || !dock || (dock.expanded && !dock.isTransitioning)) return;
     showNavLabel.value = pendingLabel;
     pendingLabel = null;
 }
