@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import * as path from "node:path";
 import { seededViz } from "./fixtures/seed";
 import { slider } from "./fixtures/slider";
 
@@ -158,6 +160,91 @@ test("in dark the default wash reads against the stage's ground as it does in li
     const dark = await standing(page);
     expect(light, "in light the picture stands off the cream stage").toBeGreaterThan(20);
     expect(dark, `in dark the 22 % wash stands ${dark.toFixed(1)} levels off the ground, against ${light.toFixed(1)} in light`).toBeGreaterThanOrEqual(0.5 * light);
+});
+
+/*
+ * One rule for every picture (`lib/picture-key.ts`), decided from its own
+ * pixels: the tone it lies on gives way. A photograph lies on the stage's
+ * ground, so in dark its lights carry it; a drawing lies on its paper, so in
+ * dark the paper vanishes and the ink stays (UIA-F-174). The two cases below
+ * serve repo pictures as the drawing's picture, whatever the seed is.
+ * f2a2fa1^'s darkness key failed the photographs (a fifth as far as in light);
+ * a420cee's key by contrast with the ground failed them too on these pictures
+ * (about a quarter), and kept the drawing's paper as a pale slab.
+ */
+const REPO = path.resolve(import.meta.dirname, "../..");
+
+/** Serve `body` as the picture under the drawing (the overlay the stage draws). */
+async function pictureIs(page: Page, body: Buffer, contentType: string): Promise<void> {
+    await page.route("**/api/images/*/overlay*", (route) => route.fulfill({ status: 200, contentType, body }));
+}
+
+const PHOTOGRAPHS = [
+    { name: "the standard sample, a photograph", file: "assets/portraits/human.png", type: "image/png" },
+    { name: "the gallery's Euler, a pastel", file: "api/seeds/pictures/leonhard-euler.jpg", type: "image/jpeg" },
+] as const;
+
+for (const photo of PHOTOGRAPHS) {
+    test(`in dark a photograph reads at least half as far off the ground as in light (${photo.name})`, async ({ page }) => {
+        await pictureIs(page, readFileSync(path.join(REPO, photo.file)), photo.type);
+        await page.emulateMedia({ colorScheme: "light" });
+        const light = await standing(page);
+        await page.emulateMedia({ colorScheme: "dark" });
+        const dark = await standing(page);
+        test.info().annotations.push({ type: "standing", description: JSON.stringify({ light, dark }) });
+        expect(light, "in light the picture stands off the cream stage").toBeGreaterThan(20);
+        expect(dark, `in dark it stands ${dark.toFixed(1)} levels off the ground, against ${light.toFixed(1)} in light`).toBeGreaterThanOrEqual(0.5 * light);
+    });
+}
+
+/** The paper's Fourier engraving (cut from its ground) laid back on a white sheet, as a scan of it would be. */
+async function engravingOnItsSheet(page: Page): Promise<Buffer> {
+    const figure = readFileSync(path.join(REPO, "api/seeds/pictures/joseph-fourier.png")).toString("base64");
+    await page.goto("about:blank");
+    const png = await page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const side = 1024;
+        const c = document.createElement("canvas");
+        c.width = c.height = side;
+        const g = c.getContext("2d")!;
+        g.fillStyle = "#fff";
+        g.fillRect(0, 0, side, side);
+        const k = (0.7 * side) / Math.max(img.width, img.height);
+        g.drawImage(img, (side - img.width * k) / 2, (side - img.height * k) / 2, img.width * k, img.height * k);
+        return c.toDataURL("image/png").split(",")[1]!;
+    }, figure);
+    return Buffer.from(png, "base64");
+}
+
+test("in dark a drawing on its sheet gives its paper way, and its ink stays at the wash or more", async ({ page }) => {
+    await pictureIs(page, await engravingOnItsSheet(page), "image/png");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await openStill(page, "");
+    const m = await page.evaluate(() => {
+        const c = document.querySelector<HTMLCanvasElement>(".canvas-stage > .canvas-container canvas")!;
+        const px = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+        let pale = 0;
+        let ink = 0;
+        let inkAlpha = 0;
+        for (let i = 0; i < px.length; i += 4) {
+            const a = px[i + 3]!;
+            const lo = Math.min(px[i]!, px[i + 1]!, px[i + 2]!);
+            const hi = Math.max(px[i]!, px[i + 1]!, px[i + 2]!);
+            // Paper: near-white drawn strongly enough to lift the ground by about ten levels.
+            if (lo >= 235 && a >= 12) pale++;
+            else if (hi <= 20 && a >= 12) {
+                ink++;
+                inkAlpha += a;
+            }
+        }
+        return { pale, ink, inkAlpha: ink ? inkAlpha / ink : 0, total: px.length / 4 };
+    });
+    test.info().annotations.push({ type: "drawing-dark", description: JSON.stringify(m) });
+    expect(m.pale, "no pale slab: the sheet gives way").toBeLessThan(m.total * 0.001);
+    expect(m.ink, "the engraving's ink stays").toBeGreaterThan(m.total * 0.01);
+    expect(m.inkAlpha, "at the wash's strength or more (22 %)").toBeGreaterThanOrEqual(0.22 * 255 * 0.95);
 });
 
 /*
