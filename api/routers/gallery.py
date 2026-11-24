@@ -30,8 +30,12 @@ gallery_router = APIRouter(prefix="/api/gallery", tags=["gallery"])
 
 
 def _public_doc(doc: dict) -> dict:
-    """Strip non-user-facing internals from a visualization document."""
-    return {k: v for k, v in doc.items() if k not in ("_id", "liked_ips")}
+    """Strip non-user-facing internals from a visualization document.
+
+    ``owner_slug`` never rides a public list: a user slug alone signs in, so
+    it is a credential, not a byline (FORTY-SIXTH C).
+    """
+    return {k: v for k, v in doc.items() if k not in ("_id", "liked_ips", "owner_slug")}
 
 
 @gallery_router.get("/cursor")

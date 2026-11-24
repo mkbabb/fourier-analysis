@@ -136,8 +136,9 @@ const created = useTimeAgo(() => props.entry.created_at);
             <span class="card-title font-serif-math">{{ name }}</span>
         </button>
 
+        <!-- FORTY-SIXTH C: a titled card no longer repeats itself as its slug
+             (the words test); an untitled card is named by its slug above. -->
         <div class="card-meta">
-            <span v-if="entry.title" class="card-slug truncate min-w-0">{{ entry.slug }}</span>
             <time class="whitespace-nowrap shrink-0" :datetime="created.datetime" :title="created.absolute">{{ created.text }}</time>
         </div>
 
@@ -215,9 +216,6 @@ const created = useTimeAgo(() => props.entry.created_at);
    cartoon offset stamp and the tier border/glow rules are deleted. Hover is
    the tone step below (F1-13), never a cast promotion or a transform. */
 .gallery-card {
-    /* X.F.W14V.au4 — A2-FO-L3-4: the card reads its own width (the compact
-       arm below). */
-    container: gallery-card / inline-size;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -304,14 +302,19 @@ const created = useTimeAgo(() => props.entry.created_at);
     object-fit: cover;
 }
 
+/* FORTY-SIXTH C: a title takes two lines before it is cut ("Augustin-Louis
+   Cauc..." on a phone's card); visitors' titles run long too. */
 .card-title {
     font-size: 1rem;
     font-weight: 500;
     line-height: 1.3;
     color: var(--foreground);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 .card-meta,
@@ -323,7 +326,7 @@ const created = useTimeAgo(() => props.entry.created_at);
     color: var(--muted-foreground);
 }
 .card-meta {
-    justify-content: space-between;
+    justify-content: flex-start;
 }
 /* X-DS fourier pass 10 · DS-F10C-C1: the row is drawn at its glyphs' height
    (the `size-3.5` stat glyphs), so its ink ends one `--card-pad` from the
@@ -436,20 +439,5 @@ const created = useTimeAgo(() => props.entry.created_at);
 @keyframes like-fade {
     from { opacity: 0.35; }
     to { opacity: 1; }
-}
-
-/* X.F.W14V.au4 — A2-FO-L3-4: the compact card (the phone's two-column grid,
-   about 171 px wide; X-DS pass 1 · F1-08: keyed below 12rem of content box):
-   the title and one meta line (the age; the slug steps back, the title names
-   the card). X-DS DS-F-C10: the basis chips keep their word ("Epicycles"); a
-   bare glyph in a ringed chip read as a stamp. The admin grid never takes this
-   arm (GalleryInfiniteGrid.vue). */
-@container gallery-card (width < 12rem) {
-    .card-slug {
-        display: none;
-    }
-    .card-meta {
-        justify-content: flex-start;
-    }
 }
 </style>

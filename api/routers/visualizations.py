@@ -83,9 +83,22 @@ def _store() -> idempotency.IdempotencyStore:
 # ---------------------------------------------------------------------------
 
 
-def _public_doc(doc: dict) -> dict:
-    """Strip non-user-facing internals (``_id`` per CRUD-CONTRACT §1 C1.3)."""
-    return {k: v for k, v in doc.items() if k not in ("_id", "liked_ips")}
+def _public_doc(doc: dict, viewer: str | None = None) -> dict:
+    """Strip non-user-facing internals (``_id`` per CRUD-CONTRACT §1 C1.3).
+
+    ``owner_slug`` is shown to its owner only. A user slug alone signs in
+    (``POST /api/sessions/login``), so a row that carried it to every reader
+    handed its owner's account to anyone who read the gallery (FORTY-SIXTH C,
+    the blocker before any public row). Ownership is decided on the server
+    against the session, never from this field.
+    """
+    hidden = ("_id", "liked_ips") if viewer is not None and viewer == doc.get("owner_slug") else ("_id", "liked_ips", "owner_slug")
+    return {k: v for k, v in doc.items() if k not in hidden}
+
+
+def _author_shown(author: str | None, viewer: str | None) -> str | None:
+    """A version's or crumb's author, shown to that author only (see ``_public_doc``)."""
+    return author if author and viewer is not None and viewer == author else None
 
 
 def _content_hash(*, image_slug: str, contour_hash: str, active_bases: list[str], n_harmonics: int) -> str:
@@ -246,7 +259,7 @@ async def create_visualization(body: VisualizationCreate, request: Request) -> R
         await touch_document("contours", {"contour_hash": body.contour_hash})
         saved = await db.visualizations.find_one({"slug": slug})
         response = Response(
-            content=json.dumps(_public_doc(saved), default=str),
+            content=json.dumps(_public_doc(saved, owner_slug), default=str),
             status_code=201,
             media_type="application/json",
         )
@@ -286,7 +299,7 @@ async def get_visualization(slug: str, request: Request, response: Response) -> 
         if await _readable_or_none(db, slug, viewer) is None:
             return errors.not_found(detail=f"no visualization {slug!r}")
 
-    body = _public_doc(doc)
+    body = _public_doc(doc, viewer)
     out = Response(
         content=json.dumps(body, default=str),
         status_code=200,
@@ -331,6 +344,7 @@ async def list_visualizations(
     db = get_db()
 
     base_query: dict = softdelete.not_deleted_filter()
+    viewer: str | None = None
     if owner == "me":
         viewer = await resolve_session(request)
         if not viewer:
@@ -371,7 +385,7 @@ async def list_visualizations(
     )
 
     body = {
-        "items": [_public_doc(d) for d in docs],
+        "items": [_public_doc(d, viewer) for d in docs],
         "next_cursor": next_cursor,
         "has_more": has_more,
     }
@@ -474,7 +488,7 @@ async def update_visualization(slug: str, body: VisualizationUpdate, request: Re
 
     updated = await db.visualizations.find_one({"slug": slug})
     out = Response(
-        content=json.dumps(_public_doc(updated), default=str),
+        content=json.dumps(_public_doc(updated, owner_slug), default=str),
         status_code=200,
         media_type="application/json",
     )
@@ -540,7 +554,7 @@ async def restore_visualization(slug: str, request: Request) -> Response:
 
     restored = await db.visualizations.find_one({"slug": slug})
     out = Response(
-        content=json.dumps(_public_doc(restored), default=str),
+        content=json.dumps(_public_doc(restored, owner_slug), default=str),
         status_code=200,
         media_type="application/json",
     )
@@ -732,7 +746,7 @@ async def remix_visualization(slug: str, body: VisualizationRemix, request: Requ
 
         saved = await db.visualizations.find_one({"slug": child_slug})
         response = Response(
-            content=json.dumps(_public_doc(saved), default=str),
+            content=json.dumps(_public_doc(saved, owner_slug), default=str),
             status_code=201,
             media_type="application/json",
         )
@@ -790,7 +804,7 @@ async def _visibility_verb(slug: str, request: Request, *, verb: str) -> Respons
         )
 
     updated = await db.visualizations.find_one({"slug": slug})
-    body = _public_doc(updated)
+    body = _public_doc(updated, owner_slug)
     body["published"] = updated.get("visibility") == "public"  # derived convenience (§6)
     out = Response(content=json.dumps(body, default=str), status_code=200, media_type="application/json")
     etag.set_etag_header(out, updated)
@@ -952,7 +966,7 @@ async def get_provenance(slug: str, request: Request) -> Response:
         ProvenanceNode(
             slug=slug,
             set_hash=v["set_hash"],
-            author_slug=v["author_slug"],
+            author_slug=_author_shown(v.get("author_slug"), viewer),
             depth=v["depth"],
             is_fork=v.get("forked_from_hash") is not None,
             created_at=v["created_at"],
@@ -982,7 +996,7 @@ async def get_provenance(slug: str, request: Request) -> Response:
             ForkCrumb(
                 slug=cur_slug,
                 set_hash=_head_set_hash(cur),
-                author_slug=cur.get("owner_slug", ""),
+                author_slug=_author_shown(cur.get("owner_slug"), viewer),
                 # A pointer to an unreadable parent is that parent's identity.
                 fork_of=parent_slug if parent is not None else None,
                 created_at=cur["created_at"],
@@ -1086,7 +1100,7 @@ async def list_versions(slug: str, request: Request) -> Response:
         VersionEntry(
             set_hash=v["set_hash"],
             depth=v["depth"],
-            author_slug=v["author_slug"],
+            author_slug=_author_shown(v.get("author_slug"), viewer),
             atom_diff=[AtomOp(**op) for op in v.get("atom_diff", [])],
             created_at=v["created_at"],
         )

@@ -92,19 +92,38 @@ export function evaluateAt(s: Spectrum, t: number, terms?: number): [number, num
     return [x, y];
 }
 
+/** How `chainAt` orders the chain's vectors, and where it writes. */
+export interface ChainOptions {
+    /**
+     * `"amplitude"` (the default): the largest first, as the Python
+     * `EpicycleChain` orders them. `"frequency"`: the stored order 0, +1, −1,
+     * +2, −2, ..., which never changes while the coefficients move, so a curve
+     * morphing between two shapes never reorders its circles.
+     */
+    order?: "amplitude" | "frequency";
+    /** Written into when given (length at least `2 · (terms + 1)`); no allocation. */
+    out?: Float64Array;
+}
+
 /**
  * The chain's cumulative positions at θ = `t`: `[0, 0, x1, y1, ...]`, the
- * origin and then the tip of each of the first `terms` vectors in descending
- * amplitude (Python's `positions_at`). The last pair is `evaluateAt(s, t, terms)`.
+ * origin and then the tip of each of the first `terms` vectors (Python's
+ * `positions_at` in the default order). The last pair is `evaluateAt(s, t,
+ * terms)` in that order.
  */
-export function chainAt(s: Spectrum, t: number, terms?: number): Float64Array {
-    const order = amplitudeOrder(s);
-    const n = Math.min(terms ?? order.length, order.length);
-    const out = new Float64Array(2 * (n + 1));
+export function chainAt(s: Spectrum, t: number, terms?: number, opts: ChainOptions = {}): Float64Array {
+    const frequency = opts.order === "frequency";
+    const order = frequency ? null : amplitudeOrder(s);
+    const pairs = s.c.length >> 1;
+    const n = Math.min(terms ?? pairs, pairs);
+    const out = opts.out ?? new Float64Array(2 * (n + 1));
+    if (out.length < 2 * (n + 1)) throw new RangeError(`chainAt: out holds ${out.length >> 1} points, not ${n + 1}`);
+    out[0] = 0;
+    out[1] = 0;
     let x = 0;
     let y = 0;
     for (let i = 0; i < n; i++) {
-        const j = order[i]!;
+        const j = order ? order[i]! : i;
         const a = 2 * Math.PI * frequencyAt(j) * t;
         const ca = Math.cos(a);
         const sa = Math.sin(a);

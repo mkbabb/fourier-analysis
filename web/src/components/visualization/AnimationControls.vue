@@ -63,6 +63,8 @@ import {
 } from "@mkbabb/glass-ui/menu";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
 import { Progress } from "@mkbabb/glass-ui/progress";
+import { Slider } from "@mkbabb/glass-ui/slider";
+import { WASH_DEFAULT, WASH_MAX, WASH_MIN } from "./lib/workspace-query";
 import { getEasingSVGPath } from "@/lib/easings";
 import FourierTimeline from "@/components/shared/FourierTimeline.vue";
 import EasingPicker from "./EasingPicker.vue";
@@ -84,8 +86,10 @@ const props = withDefaults(
         isFullscreen: boolean;
         /** The drawing is zoomed or panned off its fit (Reset view is live). */
         viewMoved: boolean;
+        /** The picture's strength under a drawing, in percent (`wash`). */
+        wash?: number;
     }>(),
-    { activeBases: () => ["fourier-epicycles"], form: "row" },
+    { activeBases: () => ["fourier-epicycles"], form: "row", wash: WASH_DEFAULT },
 );
 
 const emit = defineEmits<{
@@ -96,6 +100,10 @@ const emit = defineEmits<{
     /** The control sets the state it shows (idempotent under a replayed click). */
     "update:isFullscreen": [value: boolean];
     toggleEdit: [];
+    /** The strength row moves (the stage follows 1:1). */
+    holdWash: [percent: number];
+    /** The strength row is let go, or stepped by a key: written once. */
+    commitWash: [percent: number];
 }>();
 
 defineSlots<{
@@ -186,6 +194,16 @@ const [DefineSpeed, ReuseSpeed] = createReusableTemplate();
 const [DefineEasing, ReuseEasing] = createReusableTemplate();
 const [DefineEdit, ReuseEdit] = createReusableTemplate();
 const [DefineExit, ReuseExit] = createReusableTemplate();
+const [DefineStrength, ReuseStrength] = createReusableTemplate();
+
+/** The strength row's readout for a screen reader. */
+const washText = (v: number) => `${v} percent`;
+function onWash(v: number[] | undefined) {
+    if (v?.length) emit("holdWash", Math.round(v[0]));
+}
+function onWashCommit(v: number[]) {
+    if (v.length) emit("commitWash", Math.round(v[0]));
+}
 </script>
 
 <template>
@@ -262,6 +280,36 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
         </Tooltip>
     </DefineEdit>
 
+    <!-- FORTY-SIXTH D (owner: "we should be able to tune the background
+         layer's transparency"): the picture's strength, the first row of More
+         in every form, beside the picture's other act, Just the picture. The
+         stage under the open menu is its preview; a drag on a hidden picture
+         shows it. glass's slider, its fill's end the handle, the value set into
+         the row, a tick at today's 22 %. It is the site's one slider form
+         (CONVERGE amendment 1, STUDY 8 check 7): glass's scrubber at the `md`
+         rung every row uses, no thumb of its own, the fill the accent. -->
+    <DefineStrength>
+        <div class="strength-row" data-strength>
+            <ImageIcon class="strength-glyph" aria-hidden="true" />
+            <Slider
+                class="strength-slider"
+                variant="scrubber"
+                size="md"
+                :model-value="[wash]"
+                :min="WASH_MIN"
+                :max="WASH_MAX"
+                :step="1"
+                :marks="[WASH_DEFAULT]"
+                :value-text="washText"
+                aria-label="Picture strength"
+                @update:model-value="onWash"
+                @value-commit="onWashCommit"
+            />
+            <span class="strength-value" aria-hidden="true">{{ wash }}%</span>
+        </div>
+        <DropdownMenuSeparator />
+    </DefineStrength>
+
     <!-- The takeover's way out, a seat in every form while it is up. -->
     <DefineExit>
         <Tooltip text="Exit fullscreen" side="top">
@@ -310,6 +358,7 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
                         </DockTrigger>
                         <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end" @close-auto-focus="keepFocusForSignIn">
                             <div class="menu-sections">
+                                <ReuseStrength />
                                 <DropdownMenuCheckboxItem :model-value="layers.line" @select="keepOpen" @update:model-value="emit('toggleLayer', 'line')">
                                     <Spline aria-hidden="true" />
                                     <span>Line</span>
@@ -357,6 +406,7 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
                         </DockTrigger>
                         <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end">
                             <div class="menu-sections">
+                                <ReuseStrength />
                                 <DropdownMenuCheckboxItem :model-value="justThePicture" @select="keepOpen" @update:model-value="emit('justThePicture')">
                                     <Focus aria-hidden="true" />
                                     <span>Just the picture</span>
@@ -502,6 +552,48 @@ const [DefineExit, ReuseExit] = createReusableTemplate();
 /* ── Transitions ── */
 .icon-swap-enter-active, .icon-swap-leave-active { transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard); }
 .icon-swap-enter-from, .icon-swap-leave-to { opacity: 0; transform: scale(0.7); }
+
+
+/* FORTY-SIXTH D: the picture's strength row, the first of More. The glyph,
+   glass's slider taking the rest, the value set in; a coarse pointer's 44 px
+   floor is the row's (the whole row the slider's target). */
+.strength-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-block-size: var(--dock-control-size, 2.75rem);
+    min-inline-size: 14rem;
+    padding-inline: 0.5rem;
+}
+.strength-glyph {
+    inline-size: 1rem;
+    block-size: 1rem;
+    flex: none;
+    opacity: 0.7;
+}
+/* The fill is the site's amber through glass's own `--slider-range-bg`, and
+   the thumb wears the fill's colour (glass's documented `--slider-thumb-bg`),
+   so the fill's rounded end is the handle, as on the timeline and every
+   control row; it was glass's default `lg` slider, a black or white disc on a
+   fill that read grey in dark. On touch its band is the 44 px cell. */
+.strength-slider {
+    flex: 1;
+    min-inline-size: 0;
+    --slider-range-bg: var(--viz-amber);
+    --slider-thumb-bg: var(--slider-range-bg);
+}
+@media (pointer: coarse) {
+    .strength-slider {
+        --slider-touch-target: 2.75rem;
+    }
+}
+.strength-value {
+    flex: none;
+    min-inline-size: 2.75rem;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+    font-size: var(--type-small, 0.9375rem);
+}
 </style>
 
 <!-- Global style for the portaled glass-ui DropdownMenuContent: the column

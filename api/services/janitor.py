@@ -228,7 +228,9 @@ async def _cleanup_cycle() -> None:
     # soft-delete their visualizations
     user_cutoff = now - timedelta(days=settings.user_max_age_days)
     stale_slugs: list[str] = []
-    async for user in db.users.find({"last_seen_at": {"$lt": user_cutoff}}, {"_id": 1}):
+    # A pinned account (the site's own, which holds the gallery's seeds,
+    # ``api/scripts/seed_gallery.py``) is never stale.
+    async for user in db.users.find({"last_seen_at": {"$lt": user_cutoff}, "pinned": {"$ne": True}}, {"_id": 1}):
         stale_slugs.append(user["_id"])
 
     if stale_slugs:

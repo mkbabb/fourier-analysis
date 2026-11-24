@@ -91,7 +91,9 @@ test.describe("the phone's sign-in, in the About card", () => {
         await page.goto("/equation");
         await openAppDock(page);
         const about = page.locator(".app-dock").getByRole("button", { name: ABOUT, exact: true });
-        await expect(about).toHaveAttribute("title", "About and your account");
+        // Named for both by its accessible name (ABOUT); its words are never a
+        // native title, which the browser anchors to nothing (FORTY-SIXTH A, F-3).
+        await expect(about).not.toHaveAttribute("title", /.*/);
         await about.click();
         const card = page.locator(".about-card");
         await expect(card).toContainText(/orthogonal decomposition/i);

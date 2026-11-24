@@ -35,15 +35,15 @@
  *  - UIA-F-152: the header clears the content by the same gutter it keeps
  *    above the dock (`--space-body`).
  */
-import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
+import { computed, nextTick, ref, shallowRef, useTemplateRef, watch } from "vue";
 import { useEventListener, useMediaQuery, useResizeObserver } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
-import { prefetchRoute } from "@/router";
+import { prefetchRoute, sectionHref } from "@/router";
 import DarkModeToggle from "./DarkModeToggle.vue";
 import FourierMark from "./FourierMark.vue";
 import UserSlugBar from "@/components/auth/UserSlugBar.vue";
 import { ChevronDown, Compass, ExternalLink, House, Info, SlidersHorizontal } from "@lucide/vue";
-import { sectionNav, type SectionTab } from "@/router/routes";
+import { HOME_PATH, sectionNav, type SectionTab } from "@/router/routes";
 import { useAuthStore } from "@/stores/auth";
 import { GlassDock, DockControl, DockSeparator } from "@mkbabb/glass-ui/dock";
 import { DockTrigger } from "@mkbabb/glass-ui/dock-trigger";
@@ -52,11 +52,13 @@ import { Popover, PopoverContent } from "@mkbabb/glass-ui/popover";
 import { Separator } from "@mkbabb/glass-ui/separator";
 import { Button } from "@mkbabb/glass-ui/button";
 import { ScrollProgressRim } from "@mkbabb/glass-ui/scroll-progress-rim";
+import { Tooltip } from "@/components/ui/tooltip";
 import { usePageScroll } from "@/composables/usePageScroll";
 import { safeGetItem, safeSetItem, safeStorage } from "@/composables/useSafeStorage";
 import { PAGE_TOOLS_COMPACT, usePageTools, type PageToolsForm } from "@/composables/usePageTools";
 import { useDockPane } from "@/composables/useWorkspacePane";
 import { useDockProgress } from "@/composables/useDockProgress";
+import { useContentWidth } from "@/composables/useContentWidth";
 
 const route = useRoute();
 const router = useRouter();
@@ -90,13 +92,33 @@ const navName = computed(() =>
  * chosen (it stayed open after the menu's hold was released, a finger has no
  * leave). After the navigation, as the scroll fold calls it, and never while
  * another surface holds the dock.
+ *
+ * FORTY-SIXTH A ("the last few frames of the collapse animation shift"): the
+ * run is held from the pick until that fold has landed (`holdRun`, below), so
+ * the new section's name and seats never change its width while it folds.
  */
 const coarsePointer = useMediaQuery("(pointer: coarse)");
-function onTabSelect(path: string) {
-    void router.push(path).then(() => {
+async function onTabSelect(tab: SectionTab) {
+    const fold = coarsePointer.value;
+    if (fold) {
+        pickHold = true;
+        holdRun();
+    }
+    try {
+        // FORTY-SIXTH D: a section opens where the reader left it in this tab.
+        await router.push(sectionHref(tab));
         const dock = dockRef.value;
-        if (coarsePointer.value && dock?.expanded && !dock.isHeld) dock.collapse();
-    });
+        if (fold && dock?.expanded && !dock.isHeld) {
+            dock.collapse();
+            // glass starts its morph in the flip's own flush, so the fold is under way here.
+            await nextTick();
+        }
+    } finally {
+        if (fold) {
+            pickHold = false;
+            if (!dockFolding.value) releaseRun();
+        }
+    }
 }
 
 /**
@@ -110,7 +132,7 @@ function onTabSelect(path: string) {
  * pushed the theme seat off a phone's screen and left the desk's wordmark
  * hanging over its own plate. The Sections seat already names where you are.
  */
-const HOME: SectionTab = "/paper";
+const HOME: SectionTab = HOME_PATH;
 const homeHref = router.resolve(HOME).href;
 const atHome = computed(() => activeTab.value === HOME);
 function goHome(e: MouseEvent) {
@@ -196,7 +218,106 @@ function overflows(run: HTMLElement): boolean {
  * all. Each trial is a microtask turn, so no trial name is ever painted.
  */
 const probeLabel = ref<string | null>(null);
-const navLabel = computed(() => probeLabel.value ?? activeTabData.value?.label ?? "Sections");
+
+/*
+ * FORTY-SIXTH A (F-2): the section's name and the page's seats sit in boxes
+ * that glide their width to their content's (`useContentWidth`). A fit trial
+ * reads the run at its content's own widths, so while one runs (never
+ * painted: each trial is a microtask turn) the boxes take their natural size.
+ * Taking a box off its width cancels a glide under way, so a trial notes where
+ * each box stood and, once it ends, sets the box back there and lets it glide
+ * on to its width (`resumeGlides`): without it, the page's seats that arrived
+ * as a trial ran (the fonts' `loadingdone` on a section change) came in at once.
+ */
+const labelSlot = useTemplateRef<HTMLElement>("labelSlot");
+const seatsSlot = useTemplateRef<HTMLElement>("seatsSlot");
+const labelWidth = useContentWidth(labelSlot);
+const seatsWidth = useContentWidth(seatsSlot);
+function glideStyle(width: number | null, slot: "label" | "seats"): { inlineSize?: string } {
+    const hold = held.value;
+    if (hold) return hold.widths[slot] === null ? {} : { inlineSize: `${hold.widths[slot]}px` };
+    return width === null || probeLabel.value !== null ? {} : { inlineSize: `${width}px` };
+}
+
+/*
+ * FORTY-SIXTH A, the collapse's last frames (the owner: "the last few frames
+ * of the collapse animation shift and are buggy"). While glass folds the dock
+ * it draws the seal on the run's box, not the plate's, and centres it on the
+ * plate in one frame when the fold ends. So the run must keep its width until
+ * the fold has landed. It did not: on a phone a section's pick pushed the
+ * route and then folded, so the new route's name and seats grew or shrank the
+ * run mid-fold, and a name the open run had measured as fitting was taken on
+ * as the fold began. The seal stood up to 66 px off its plate for 200-450 ms
+ * (at 390 and 844x390), cut at the plate's edge or leaving it empty, then
+ * jumped home. Now, from a pick, and whenever the dock is folding, the run is
+ * held as it stood: the section's glyph and name, whether the name shows, the
+ * page's seats (a new group waits; a leaving one fades as the run does), and
+ * the two gliding boxes at the widths they had. Once the fold has landed the
+ * run takes the route's, behind the seal.
+ */
+interface HeldRun {
+    tab: string | null;
+    label: boolean;
+    seats: string | null;
+    widths: { label: number | null; seats: number | null };
+}
+const held = shallowRef<HeldRun | null>(null);
+/** A pick holds the run until its own fold has landed. */
+let pickHold = false;
+const dockFolding = computed(() => {
+    const dock = dockRef.value;
+    return !!dock && !dock.expanded && dock.isTransitioning;
+});
+function boxWidth(box: HTMLElement | null): number | null {
+    return box?.isConnected ? box.getBoundingClientRect().width : null;
+}
+function holdRun(): void {
+    if (held.value) return;
+    held.value = {
+        tab: activeTab.value,
+        label: showNavLabel.value,
+        seats: liveSeats.value?.label ?? null,
+        widths: { label: boxWidth(labelSlot.value), seats: boxWidth(seatsSlot.value) },
+    };
+}
+function releaseRun(): void {
+    if (!held.value) return;
+    held.value = null;
+    applyPendingLabel();
+}
+watch(dockFolding, (folding) => {
+    if (folding) holdRun();
+    else if (!pickHold) releaseRun();
+});
+/** Where each gliding box stood when the trial began (null between trials). */
+let glidesAt: [HTMLElement, number][] | null = null;
+function noteGlides(): void {
+    glidesAt ??= [labelSlot.value, seatsSlot.value]
+        .filter((box): box is HTMLElement => box !== null)
+        .map((box) => [box, box.getBoundingClientRect().width]);
+}
+function resumeGlides(): void {
+    for (const [box, was] of glidesAt ?? []) {
+        const to = box.style.inlineSize;
+        if (!to || !box.isConnected) continue;
+        box.style.transition = "none";
+        box.style.inlineSize = `${was}px`;
+        void box.offsetWidth;
+        box.style.transition = "";
+        box.style.inlineSize = to;
+    }
+    glidesAt = null;
+}
+/** The section the trigger shows: the route's, or the held run's while it folds. */
+const runTabData = computed(() => {
+    const hold = held.value;
+    return hold ? (tabs.find((t) => t.value === hold.tab) ?? null) : activeTabData.value;
+});
+/** Whether the trigger shows the section's name (held while the run is). */
+const labelShown = computed(() => held.value?.label ?? showNavLabel.value);
+/** The section's name; a fit trial writes its trial name into the same word, never re-keying it. */
+const shownLabel = computed(() => runTabData.value?.label ?? "Sections");
+const navLabel = computed(() => probeLabel.value ?? shownLabel.value);
 
 /** Every name the trigger can show: the five sections, and "Sections" off them. */
 const navLabels = [...tabs.map((t) => t.label), "Sections"];
@@ -209,9 +330,11 @@ async function fitNavLabel(): Promise<void> {
     // a longer trial name overflows that box whatever room the header has. The
     // fit is read on the RESTING expanded run only, and read again when an
     // opening morph settles (the watch below).
+    // A held run is not the route's: the next open measures it.
     const dock = dockRef.value;
-    if (!dock?.expanded || dock.isTransitioning) return;
+    if (!dock?.expanded || dock.isTransitioning || held.value) return;
     const run0 = ++fitRun;
+    noteGlides();
     const shown = showNavLabel.value;
     showNavLabel.value = true;
     let fits = true;
@@ -229,6 +352,8 @@ async function fitNavLabel(): Promise<void> {
     probeLabel.value = null;
     showNavLabel.value = shown;
     settleLabel(fits);
+    await nextTick();
+    if (run0 === fitRun) resumeGlides();
 }
 
 // The header spans the viewport, so its inline size changes only with the
@@ -273,13 +398,27 @@ watch(
     (resting, was) => resting && was === false && void fitNavLabel(),
     { flush: "post" },
 );
-// The fold applies what the open run measured, behind the seal.
+/*
+ * The fold applies what the open run measured, behind the seal: once the fold
+ * has landed (`releaseRun`), never as it begins, when taking the name on grew
+ * the run under the folding seal (FORTY-SIXTH A). A fold turned round by a
+ * re-open applies it too: that is the next open, and glass measures the
+ * opening run after this flush, so it reserves the name. An open dock at rest
+ * never takes it on. With no morph to wait for (reduced motion), the fold has
+ * landed on the flip's own flush.
+ */
+function applyPendingLabel(): void {
+    const dock = dockRef.value;
+    if (pendingLabel === null || !dock || (dock.expanded && !dock.isTransitioning)) return;
+    showNavLabel.value = pendingLabel;
+    pendingLabel = null;
+}
 watch(
     () => dockRef.value?.expanded,
-    (expanded) => {
-        if (expanded !== false || pendingLabel === null) return;
-        showNavLabel.value = pendingLabel;
-        pendingLabel = null;
+    async (expanded) => {
+        if (expanded !== false) return;
+        await nextTick();
+        if (!held.value) applyPendingLabel();
     },
 );
 if (typeof document !== "undefined" && document.fonts) {
@@ -338,9 +477,17 @@ function holdDockWhileOpen(open: boolean) {
  */
 const pageTools = usePageTools();
 const compact = useMediaQuery(PAGE_TOOLS_COMPACT);
-const PageToolsOutlet = (props: { form: PageToolsForm }) =>
-    pageTools.value?.render({ form: props.form }) ?? null;
 const pageSeats = computed(() => !compact.value && !!pageTools.value);
+/** The page's seat group the centre draws: the route's, null where it has none. */
+const liveSeats = computed(() => (pageSeats.value ? pageTools.value : null));
+/** While the run is held it keeps its group; a new page's group waits for the fold to land. */
+const seatsGroup = computed(() => {
+    const hold = held.value;
+    const live = liveSeats.value;
+    return !hold || live?.label === hold.seats ? live : null;
+});
+const PageToolsOutlet = (props: { form: PageToolsForm }) =>
+    seatsGroup.value?.render({ form: props.form }) ?? null;
 /**
  * Owner, 19 Nov: "the tabs toggle for controls should potentially be
  * re-integrated into the top dock". On a phone a stage route shows one pane
@@ -366,6 +513,12 @@ function togglePane() {
  * and the card, with the field focused; closing the card settles the request.
  */
 const aboutOpen = ref(false);
+/* The card stands under its "i" by name: the seat's glass Tooltip wraps the
+   trigger, and reka's nearest popper root is then the tooltip's, so the
+   trigger registered itself as the tooltip's anchor and the card had none
+   (placed off the top of the screen at every width). */
+const aboutTrigger = useTemplateRef<InstanceType<typeof DockTrigger>>("aboutTrigger");
+const aboutAnchor = computed(() => (aboutTrigger.value?.$el as Element | null | undefined) ?? undefined);
 /** Every control explains itself: on a phone the "i" is the way to sign in, and its name says so. */
 const aboutName = computed(() =>
     compact.value
@@ -456,27 +609,35 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
 <template>
     <header ref="header" class="app-header">
-        <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed">
+        <!-- `fit-content`: glass's content-sized run (FORTY-SIXTH A, the dock
+             study's F-1). Without it the run spanned the plate's box, 4 px
+             wider than its port, so a press on the theme seat (focus on the
+             run's end) scrolled every seat 4 px left in one frame. -->
+        <GlassDock ref="dockRef" class="app-dock" orientation="horizontal" shape="pill" collapse="closed" fit-content>
             <!-- Home: a house on a phone, the wordmark on a desk (the dock's
                  control cell its hit box), a link to the paper. The wordmark
                  opens with the site's mark, the epicycle figure the folded
                  seal and the tab carry, never the font's ℱ (which names the
                  Fourier basis on the stage). -->
-            <DockControl
-                as="a"
-                compact
-                :href="homeHref"
-                class="logo-trigger"
-                aria-label="Home — Fourier analysis"
-                title="Home"
-                @click="goHome"
-            >
-                <House class="home-glyph" aria-hidden="true" />
-                <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
-                    <FourierMark />
-                    <span>Fourier analysis</span>
-                </span>
-            </DockControl>
+            <!-- FORTY-SIXTH A (F-3): every seat's words are glass's Tooltip,
+                 standing on the seat, never the browser's native title; none
+                 on a touch screen (STUDY 2.1). -->
+            <Tooltip text="Home" side="bottom" :disabled="coarsePointer">
+                <DockControl
+                    as="a"
+                    compact
+                    :href="homeHref"
+                    class="logo-trigger"
+                    aria-label="Home — Fourier analysis"
+                    @click="goHome"
+                >
+                    <House class="home-glyph" aria-hidden="true" />
+                    <span class="logo-mark font-serif-math font-semibold tracking-tight select-none">
+                        <FourierMark />
+                        <span>Fourier analysis</span>
+                    </span>
+                </DockControl>
+            </Tooltip>
 
             <!-- The sections: ONE affordance at every width (owner ruling,
                  §0dw) whose name carries the current section, and a non-modal
@@ -484,8 +645,23 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                  paint is glass's half, UIA-F-128). -->
             <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
-                    <component :is="activeTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
-                    <span v-show="showNavLabel" class="nav-trigger-label">{{ navLabel }}</span>
+                    <!-- The section's glyph leaves and arrives with its name, on
+                         the name's clock, in a box of the glyph's own size: the
+                         icon cut in one frame while the name faded, so the new
+                         glyph stood beside the old name (motion canon P0a.4). -->
+                    <span class="nav-tab-glyph" aria-hidden="true">
+                        <Transition name="nav-label" mode="out-in">
+                            <component :is="runTabData?.icon ?? Compass" :key="shownLabel" class="nav-tab-icon" />
+                        </Transition>
+                    </span>
+                    <!-- The name's box glides between two sections' names while
+                         the old word leaves and the new comes in (F-2: the swap
+                         in place stepped every seat 12.5 px in one frame). -->
+                    <span v-show="labelShown" ref="labelSlot" class="nav-trigger-label" :style="glideStyle(labelWidth, 'label')">
+                        <Transition name="nav-label" mode="out-in">
+                            <span :key="shownLabel" class="nav-trigger-word">{{ navLabel }}</span>
+                        </Transition>
+                    </span>
                     <ChevronDown class="nav-trigger-chevron" aria-hidden="true" />
                 </DockTrigger>
                 <DropdownMenuContent align="start">
@@ -505,21 +681,30 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
             <DockSeparator />
 
-            <!-- The centre: the page's own seats, from 40rem. The old group
-                 leaves before the next arrives; its rule leaves with it. -->
-            <Transition name="page-seats" mode="out-in">
-                <div
-                    v-if="pageSeats && pageTools"
-                    :key="pageTools.label"
-                    class="page-seats"
-                    role="group"
-                    :aria-label="pageTools.label"
-                    data-page-tools
-                >
-                    <PageToolsOutlet form="seats" />
-                    <DockSeparator />
-                </div>
-            </Transition>
+            <!-- The centre: the page's own seats, from 40rem. The old group's
+                 ink leaves before the next arrives, and its rule with it; the
+                 slot around them glides its width between the two (FORTY-SIXTH
+                 A, F-2: the group's removal was a 159 px cut of the plate). -->
+            <div
+                v-if="!compact"
+                ref="seatsSlot"
+                class="page-seats-slot"
+                :style="glideStyle(seatsWidth, 'seats')"
+            >
+                <Transition name="page-seats" mode="out-in">
+                    <div
+                        v-if="seatsGroup"
+                        :key="seatsGroup.label"
+                        class="page-seats"
+                        role="group"
+                        :aria-label="seatsGroup.label"
+                        data-page-tools
+                    >
+                        <PageToolsOutlet form="seats" />
+                        <DockSeparator />
+                    </div>
+                </Transition>
+            </div>
 
             <!-- The account seat from 40rem; on a phone it is the "i" card's last part. -->
             <div v-if="!compact" class="contents" role="group" aria-label="Account">
@@ -529,10 +714,12 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
             <!-- About ("i"), beside the theme seat on every route. On a phone it
                  holds the account too, and is named for both. -->
             <Popover keep-dock-open :open="aboutOpen" @update:open="onAboutOpen">
-                <DockTrigger for="popover" class="about-trigger" :aria-label="aboutName.label" :title="aboutName.title">
-                    <Info class="about-glyph" aria-hidden="true" />
-                </DockTrigger>
-                <PopoverContent align="end" class="about-card" :class="{ 'about-card--account': compact }" @open-auto-focus="onAboutFocus" @focus-outside="onAboutFocusOutside">
+                <Tooltip :text="aboutName.title" side="bottom" :disabled="coarsePointer || aboutOpen">
+                    <DockTrigger ref="aboutTrigger" for="popover" class="about-trigger" :aria-label="aboutName.label">
+                        <Info class="about-glyph" aria-hidden="true" />
+                    </DockTrigger>
+                </Tooltip>
+                <PopoverContent :reference="aboutAnchor" align="end" class="about-card" :class="{ 'about-card--account': compact }" @open-auto-focus="onAboutFocus" @focus-outside="onAboutFocusOutside">
                     <div class="flex items-center gap-3">
                         <!-- Self-hosted maintainer avatar (zero third-party
                              origins; 80px source for 2× density in the 40px box). -->
@@ -575,15 +762,16 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
             <!-- The phone's pane switch (`useWorkspacePane`): outside the fold. -->
             <template v-if="paneSeat" #persistent-end>
-                <DockControl
-                    class="pane-seat"
-                    aria-label="Controls"
-                    title="Controls"
-                    :active="paneSeat.pane.value === 'controls'"
-                    @click="togglePane"
-                >
-                    <SlidersHorizontal aria-hidden="true" />
-                </DockControl>
+                <Tooltip text="Controls" side="bottom" :disabled="coarsePointer">
+                    <DockControl
+                        class="pane-seat"
+                        aria-label="Controls"
+                        :active="paneSeat.pane.value === 'controls'"
+                        @click="togglePane"
+                    >
+                        <SlidersHorizontal aria-hidden="true" />
+                    </DockControl>
+                </Tooltip>
             </template>
 
             <!-- Collapsed, the seal is the fourier mark (FORTY-FIRST B: "an
@@ -639,15 +827,34 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 }
 
 /* The centre group: the page's seats in a row at the run's own gap, and the
-   rule that closes it. It leaves (120 ms) before the next group arrives
-   (160 ms), by opacity alone; under reduced motion each is 120 ms. */
+   rule that closes it. Its ink leaves (120 ms) before the next group's comes
+   in (160 ms, once its box has room), by opacity alone; under reduced motion
+   each is 120 ms.
+
+   FORTY-SIXTH A (F-2): the group sits in a slot that glides its width to the
+   group's (`useContentWidth`), so the plate never jumps when a page brings or
+   takes its seats: the box moves first and the ink waits for it (motion canon
+   P0a, "the fade lands before the stretch"). The slot cancels the run's gap
+   before it and the group carries that gap as its own leading inset, so an
+   empty slot adds nothing to the run and a full one spaces as the bare group
+   did. It clips only along the run, while its width is short of the group's. */
+.page-seats-slot {
+    display: flex;
+    flex: none;
+    margin-inline-start: calc(-1 * var(--dock-layer-gap, 0.375rem));
+    overflow-x: clip;
+    transition: inline-size var(--duration-slow) var(--spring-dock);
+}
 .page-seats {
     display: flex;
+    flex: none;
+    inline-size: max-content;
     align-items: center;
     gap: var(--dock-layer-gap, 0.375rem);
+    padding-inline-start: var(--dock-layer-gap, 0.375rem);
 }
 .page-seats-enter-active {
-    transition: opacity 160ms var(--ease-standard);
+    transition: opacity 160ms var(--ease-standard) 160ms;
 }
 .page-seats-leave-active {
     transition: opacity 120ms var(--ease-in);
@@ -656,9 +863,50 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 .page-seats-leave-to {
     opacity: 0;
 }
+
+/* The section's name: its box glides between two names' widths while the
+   old word leaves (90 ms) and the new comes in (120 ms) once the box has
+   moved; two words of two sizes go out, then in (motion canon P0a). The
+   name's box rides glass's dock spring on that spring's own clock (canon P4).
+   The seats' slot keeps the slow clock: on the dock spring's 0.21 s, a desk's
+   page change stepped 43 to 75 % of the plate's travel in one frame (six of
+   six runs), against the canon's two fifths. Both animate `inline-size`, a
+   layout property (P5), until glass's page-change glide (G3) takes the
+   plate's width and these boxes with it. The glyph trades places with the
+   name on the name's clock, in a box of its own size. */
+.nav-tab-glyph {
+    display: inline-grid;
+    flex: none;
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
+}
+.nav-trigger-label {
+    display: inline-flex;
+    overflow-x: clip;
+    transition: inline-size var(--spring-dock-duration) var(--spring-dock);
+}
+.nav-trigger-word {
+    flex: none;
+    inline-size: max-content;
+}
+.nav-label-enter-active {
+    transition: opacity 120ms var(--ease-standard) 80ms;
+}
+.nav-label-leave-active {
+    transition: opacity 90ms var(--ease-in);
+}
+.nav-label-enter-from,
+.nav-label-leave-to {
+    opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .page-seats-enter-active {
+    .page-seats-enter-active,
+    .page-seats-slot {
         transition-duration: 120ms;
+    }
+    .nav-trigger-label {
+        transition-duration: 100ms;
     }
 }
 

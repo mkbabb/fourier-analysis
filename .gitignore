@@ -77,6 +77,7 @@ scripts/*
 !scripts/gen-mongo-certs.sh
 !scripts/gen_fourier_fixtures.py
 !scripts/precompute_sun.py
+!scripts/precompute_hero.py
 !scripts/conformance/
 !scripts/update-webhook-urls.sh
 !scripts/conformance-probe.sh
@@ -99,6 +100,7 @@ mongo_data/
 !assets/**/*.png
 !docs/**/*.png
 !tests/fixtures/*.png
+!api/seeds/pictures/*.png
 
 # Playwright
 web/test-results/

@@ -598,6 +598,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
 
     function reset() {
+        // A reset drops whatever was on its way: a load or a job that lands
+        // after it would put the last picture back on an empty stage (a bare
+        // `/visualize` reached by Back while a picture was still loading).
+        invalidateInFlightComputation();
         published.value = null;
         imageSlug.value = null;
         visualizationSlug.value = null;

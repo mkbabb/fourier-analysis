@@ -88,9 +88,22 @@ const props = withDefaults(
          * whose docblock cites the tooltip register. Any CSS length.
          */
         measure?: string;
+        /**
+         * Shows nothing while true (glass's own `disabled`). The app dock's
+         * seats set it on a touch screen: tooltips are a desk's (STUDY 2.1),
+         * and a tap must not leave one standing under the dock.
+         */
+        disabled?: boolean;
     }>(),
     { side: "top", sideOffset: 6, measure: "16rem" },
 );
+
+/**
+ * Whether the tooltip shows (glass's own `update:open`). Declared so it is not
+ * an attribute of the content: a seat whose words follow its state reads it to
+ * keep the words a tooltip opened with until it has left (the theme seat).
+ */
+const emit = defineEmits<{ "update:open": [open: boolean] }>();
 
 const triggerRef = useTemplateRef<{ $el?: unknown }>("trigger");
 
@@ -131,7 +144,7 @@ if (import.meta.env.DEV) {
 </script>
 
 <template>
-    <GlassTooltip>
+    <GlassTooltip :disabled="disabled" @update:open="emit('update:open', $event)">
         <TooltipTrigger ref="trigger" as-child>
             <slot />
         </TooltipTrigger>

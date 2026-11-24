@@ -244,7 +244,8 @@ export type Visibility = "draft" | "unlisted" | "public";
 
 export interface Visualization {
     slug: string;
-    owner_slug: string;
+    /** Present for its owner only: a user slug alone signs in (FORTY-SIXTH C). */
+    owner_slug?: string;
     visibility: Visibility;
     content_hash: string; // dedup key, never identity (§1)
     image_slug: string; // image asset FK — kept
@@ -352,7 +353,8 @@ export interface DiffResponse {
 export interface ProvenanceNode {
     slug: string;
     set_hash: string;
-    author_slug: string;
+    /** The author, present for that author only (FORTY-SIXTH C). */
+    author_slug: string | null;
     depth: number;
     is_fork: boolean;
     created_at: string;
@@ -363,7 +365,8 @@ export interface ForkCrumb {
     kind: "visualization";
     slug: string;
     set_hash: string;
-    author_slug: string;
+    /** The author, present for that author only (FORTY-SIXTH C). */
+    author_slug: string | null;
     fork_of?: string | null;
     created_at: string;
 }
@@ -390,7 +393,8 @@ export interface UnavailableCrumb {
 export interface VersionEntry {
     set_hash: string;
     depth: number;
-    author_slug: string;
+    /** The author, present for that author only (FORTY-SIXTH C). */
+    author_slug: string | null;
     atom_diff: AtomOp[];
     created_at: string;
 }

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, useId, useTemplateRef } from "vue";
+import { computed, useId, useTemplateRef } from "vue";
 import { useEventListener, watchDebounced } from "@vueuse/core";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { useQueryParam } from "@/lib/urlState";
+import { EN_DEFAULT, EN_MAX, EN_MIN, WORKSPACE_QUERY } from "./lib/workspace-query";
 import type { NotationMode } from "@/lib/equation/types";
 import SliderControl from "@/components/ui/SliderControl.vue";
 import NotationPills from "@/components/shared/NotationPills.vue";
@@ -16,8 +18,14 @@ import { Progress } from "@mkbabb/glass-ui/progress";
 const emit = defineEmits<{ close: [] }>();
 
 const store = useWorkspaceStore();
-const notation = ref<NotationMode>("trig");
-const budget = ref(6);
+/* FORTY-SIXTH D: the panel's notation and budget live in the link (`nt`, a
+   push; `en`, a replace), so a link reopens the panel as it was left. */
+const notation = useQueryParam<NotationMode>("nt", WORKSPACE_QUERY.nt, true);
+const budgetParam = useQueryParam("en", WORKSPACE_QUERY.en);
+const budget = computed<number>({
+    get: () => budgetParam.value ?? EN_DEFAULT,
+    set: (v) => (budgetParam.value = v),
+});
 
 /* X.F.W14V.au3 — A2-FO-L1-5: the simplify flow is the /equation route's own
    (`useSimplifiedSeries`), and the body is its renderer (`EquationResult`), so
@@ -108,7 +116,7 @@ watchDebounced(
                 <SliderControl
                     label="Terms"
                     :model-value="budget"
-                    :min="2" :max="20" :step="1"
+                    :min="EN_MIN" :max="EN_MAX" :step="1"
                     color="var(--viz-fourier)"
                     @update:model-value="budget = $event"
                 />

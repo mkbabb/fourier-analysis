@@ -76,3 +76,45 @@ describe("the view", () => {
         expect(parseWorkspaceQuery({ c: "5,0" }).c).toBeNull();
     });
 });
+
+describe("the picture's strength (wash)", () => {
+    it("is today's 22 % by default, written as nothing", () => {
+        expect(parseWorkspaceQuery({}).wash).toBeNull();
+        expect(formatWorkspaceQuery({ wash: null })).toEqual({ wash: undefined });
+        expect(formatWorkspaceQuery({ wash: 22 })).toEqual({ wash: undefined });
+    });
+
+    it("reads a whole percent in 5..100 and writes it back", () => {
+        expect(parseWorkspaceQuery({ wash: "45" }).wash).toBe(45);
+        expect(parseWorkspaceQuery({ wash: "5" }).wash).toBe(5);
+        expect(parseWorkspaceQuery({ wash: "100" }).wash).toBe(100);
+        expect(formatWorkspaceQuery({ wash: 45 })).toEqual({ wash: "45" });
+        expect(formatWorkspaceQuery({ wash: 44.6 })).toEqual({ wash: "45" });
+    });
+
+    it("reads junk and out-of-range values as the default", () => {
+        for (const raw of ["4", "101", "0", "-3", "12.5", "abc", ""]) {
+            expect(parseWorkspaceQuery({ wash: raw }).wash, raw).toBeNull();
+        }
+    });
+});
+
+describe("the series panel (nt, en)", () => {
+    it("reads the notation's words, trig being the default and written as nothing", () => {
+        expect(parseWorkspaceQuery({ nt: "polar" }).nt).toBe("polar");
+        expect(parseWorkspaceQuery({ nt: "exponential" }).nt).toBe("exponential");
+        expect(parseWorkspaceQuery({}).nt).toBe("trig");
+        expect(parseWorkspaceQuery({ nt: "sine" }).nt).toBe("trig");
+        expect(formatWorkspaceQuery({ nt: "trig" }).nt).toBeUndefined();
+        expect(formatWorkspaceQuery({ nt: "polar" }).nt).toBe("polar");
+    });
+
+    it("reads a budget in 2..20, six being the default and written as nothing", () => {
+        expect(parseWorkspaceQuery({ en: "9" }).en).toBe(9);
+        expect(parseWorkspaceQuery({ en: "6" }).en).toBeNull();
+        for (const junk of ["1", "21", "x", "3.5", ""]) expect(parseWorkspaceQuery({ en: junk }).en).toBeNull();
+        expect(formatWorkspaceQuery({ en: 6 }).en).toBeUndefined();
+        expect(formatWorkspaceQuery({ en: 12 }).en).toBe("12");
+        expect(formatWorkspaceQuery({ en: 40 }).en).toBe("20");
+    });
+});

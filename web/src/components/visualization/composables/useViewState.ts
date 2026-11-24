@@ -1,8 +1,8 @@
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { pageOf, useQueryParam, writeParams } from "@/lib/urlState";
-import { formatWorkspaceQuery, WORKSPACE_QUERY } from "../lib/workspace-query";
+import { formatWorkspaceQuery, WASH_DEFAULT, WORKSPACE_QUERY } from "../lib/workspace-query";
 import { isJustThePicture, toggleJustThePicture, type DrawnLayer, type Layers } from "../lib/layers";
 
 /**
@@ -23,6 +23,36 @@ export function useViewState() {
     const showGhost = useQueryParam("trace", WORKSPACE_QUERY.trace, true);
     const showLine = useQueryParam("line", WORKSPACE_QUERY.line, true);
     const showCircles = useQueryParam("circles", WORKSPACE_QUERY.circles, true);
+    /**
+     * FORTY-SIXTH D: the picture's strength under a drawing, in percent (`wash`,
+     * a replace: the view is tuned, not navigated). `held` is the value under
+     * the hand while the strength row is dragged; the URL is written once, as
+     * the hand lets go, so Back never walks through a drag.
+     */
+    const washParam = useQueryParam("wash", WORKSPACE_QUERY.wash, false);
+    /** The value under the hand, until the URL says otherwise. */
+    const washHeld = ref<number | null>(null);
+    /** The row is in the hand: the stage follows it 1:1, with no tween. */
+    const washDragging = ref(false);
+    const wash = computed(() => washHeld.value ?? washParam.value ?? WASH_DEFAULT);
+    // A URL that moves under the row (Back, Forward, a link) is the strength.
+    watch(washParam, () => {
+        if (!washDragging.value) washHeld.value = null;
+    });
+    /** The row moves: the stage follows 1:1. A drag on a hidden picture shows it (one replace). */
+    function holdWash(percent: number): void {
+        washHeld.value = percent;
+        washDragging.value = true;
+        if (!showImageOverlay.value) {
+            writeParams(router, formatWorkspaceQuery({ bg: true }), false, own);
+        }
+    }
+    /** The hand lets go (or a key steps it): the strength is written to the URL once. */
+    function commitWash(percent: number): void {
+        washHeld.value = percent;
+        washDragging.value = false;
+        writeParams(router, formatWorkspaceQuery({ wash: percent, bg: true }), false, own);
+    }
     const showEquation = useQueryParam("eq", WORKSPACE_QUERY.eq, true);
     const showFullscreen = useQueryParam("fs", WORKSPACE_QUERY.fs, true);
     const editParam = useQueryParam("edit", WORKSPACE_QUERY.edit, true);
@@ -72,5 +102,9 @@ export function useViewState() {
         layers,
         justThePicture,
         toggleJustPicture,
+        wash,
+        washDragging,
+        holdWash,
+        commitWash,
     };
 }

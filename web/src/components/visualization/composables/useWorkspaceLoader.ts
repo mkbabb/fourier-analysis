@@ -1,5 +1,5 @@
 import { ref, watch, onMounted, type Ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { useAnimationStore } from "@/stores/animation";
 import { errorToast } from "@/lib/toast-policy";
@@ -33,7 +33,6 @@ export function useWorkspaceLoader(
     link: { time: () => number | null; bases: () => string[] | null } = { time: () => null, bases: () => null },
 ) {
     const route = useRoute();
-    const router = useRouter();
     const store = useWorkspaceStore();
     const anim = useAnimationStore();
 
@@ -65,7 +64,15 @@ export function useWorkspaceLoader(
         if (route.name !== "workspace") return;
         const imageSlug = route.params.imageSlug as string | undefined;
         if (!imageSlug) {
-            if (store.imageSlug) router.replace(`/w/${store.imageSlug}`);
+            // FORTY-SIXTH D: a bare `/visualize` is the defaults, the empty
+            // stage and its drawing, even mid-session. It used to be replaced
+            // by `/w/<the last picture>` with no query, which reset every
+            // layer and the view on each return by the dock; the dock now
+            // carries the section's last full URL (`sectionHref`).
+            if (!store.uploading && (store.imageSlug || store.visualizationSlug || store.localPicture)) {
+                anim.releaseHold();
+                store.reset();
+            }
             return;
         }
         // Skip if we already have this workspace loaded (uploadImage just set

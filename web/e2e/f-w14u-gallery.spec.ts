@@ -132,7 +132,8 @@ test.describe("g39 UIA-F-39 — search, tier and basis narrow on the server", ()
             const u = new URL(r.url());
             if (u.pathname === "/api/visualizations" && r.method() === "GET") listed.push(u);
         });
-        const seedCard = page.locator(".gallery-card").filter({ hasText: new RegExp(`${viz.slug}|${viz.image_slug}`) });
+        // The seed's card, by the name it carries (its title; a titled card shows no slug line).
+        const seedCard = cardRoot(page, { title: SEED_NAMESPACE, image_slug: viz.image_slug });
         await page.goto("/gallery");
         await expect(seedCard.first()).toBeVisible({ timeout: 30_000 });
         await frame(page, "g39-loaded");
@@ -183,7 +184,7 @@ test.describe("g46 UIA-F-46 — Like is a toggle, and it persists", () => {
         });
         const openSeed = async () => {
             await page.goto("/gallery");
-            const card = page.locator(".gallery-card").filter({ hasText: new RegExp(`${viz.slug}|${viz.image_slug}`) }).first();
+            const card = cardRoot(page, { title: SEED_NAMESPACE, image_slug: viz.image_slug });
             await expect(card).toBeVisible({ timeout: 30_000 });
             await card.getByRole("button", { name: /^Open / }).or(card.and(page.getByRole("button", { name: /^Open / }))).first().click();
             const dialog = page.getByRole("dialog");

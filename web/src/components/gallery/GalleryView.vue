@@ -447,11 +447,17 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
 
 <template>
     <!-- X-DS fourier pass 8 · DS-F8C-C1: the route's page measure. The column
-         is the scroller, so it stays full width (the wheel and the scrollbar
-         live at the window's edge) and centres its content in the same 72rem
-         measure /paper's `max-w-6xl` and /morph use, by inline padding. Every
-         child keeps its own gutter inside the measure, as /paper's does. -->
-    <div class="flex flex-col gap-4 overflow-y-auto h-full py-4 px-[max(0px,calc((100%-var(--container-6xl))/2))]">
+         stays full width and centres its content in the same 72rem measure
+         /paper's `max-w-6xl` and /morph use, by inline padding. Every child
+         keeps its own gutter inside the measure, as /paper's does.
+         FORTY-SIXTH C: the shell's `<main>` is the one scroller (the dock folds
+         and draws its progress on it). The column scrolled as well, and a card's
+         out-of-flow label (laid out against `<main>`) gave `<main>` a range of
+         its own, so the two scrolled together past the last card: at 844x390
+         every card stood above the screen, at 390 about 160 px of empty page
+         stood under the last. The column grows with its content and fills the
+         window when there is less. -->
+    <div class="flex flex-1 flex-col gap-4 py-4 px-[max(0px,calc((100%-var(--container-6xl))/2))]">
         <!-- Tab toggle + search (tight grouping). X.F.W14V.au4 — A2-FO-L3-3:
              at >= sm one toolbar row — the tabs lead, the search trails them
              (the 512 px field on its own row left 896 px of it empty and
@@ -463,8 +469,8 @@ async function handlePublishDraft(draft: WorkspaceDraft) {
              search on them. Below sm the tabs own a row. -->
         <div class="flex flex-col gap-1.5 px-[var(--page-gutter)] sm:flex-row sm:items-center sm:gap-4">
             <!-- X.F.W14.u — UIA-F-41 (consumer half): the strip scrolls in its
-                 own inline track. The column is `overflow-y: auto`, which makes
-                 its `overflow-x` compute to `auto` as well, so at 390 the 5-tab
+                 own inline track. The page's scroller is `overflow-y: auto`, which
+                 makes its `overflow-x` compute to `auto` as well, so at 390 the 5-tab
                  admin strip (456 px in a 358 px column) turned the whole column
                  into a sideways scroller and focusing a tab slid every section
                  ~80 px left. A producer overflow track or compact mode for
