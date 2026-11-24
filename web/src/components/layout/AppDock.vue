@@ -641,7 +641,15 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
                  paint is glass's half, UIA-F-128). -->
             <DropdownMenu :modal="false" @update:open="holdDockWhileOpen">
                 <DockTrigger for="dropdown" class="nav-trigger" :aria-label="navName">
-                    <component :is="runTabData?.icon ?? Compass" class="nav-tab-icon" aria-hidden="true" />
+                    <!-- The section's glyph leaves and arrives with its name, on
+                         the name's clock, in a box of the glyph's own size: the
+                         icon cut in one frame while the name faded, so the new
+                         glyph stood beside the old name (motion canon P0a.4). -->
+                    <span class="nav-tab-glyph" aria-hidden="true">
+                        <Transition name="nav-label" mode="out-in">
+                            <component :is="runTabData?.icon ?? Compass" :key="shownLabel" class="nav-tab-icon" />
+                        </Transition>
+                    </span>
                     <!-- The name's box glides between two sections' names while
                          the old word leaves and the new comes in (F-2: the swap
                          in place stepped every seat 12.5 px in one frame). -->
@@ -854,11 +862,24 @@ const dockEl = computed<HTMLElement | null>(() => (dockRef.value?.$el as HTMLEle
 
 /* The section's name: its box glides between two names' widths while the
    old word leaves (90 ms) and the new comes in (120 ms) once the box has
-   moved; two words of two sizes go out, then in (motion canon P0a). */
+   moved; two words of two sizes go out, then in (motion canon P0a). The
+   name's box rides glass's dock spring on that spring's own clock (canon P4).
+   The seats' slot keeps the slow clock: on the dock spring's 0.21 s, a desk's
+   page change stepped 43 to 75 % of the plate's travel in one frame (six of
+   six runs), against the canon's two fifths. Both animate `inline-size`, a
+   layout property (P5), until glass's page-change glide (G3) takes the
+   plate's width and these boxes with it. The glyph trades places with the
+   name on the name's clock, in a box of its own size. */
+.nav-tab-glyph {
+    display: inline-grid;
+    flex: none;
+    inline-size: var(--dock-icon-glyph);
+    block-size: var(--dock-icon-glyph);
+}
 .nav-trigger-label {
     display: inline-flex;
     overflow-x: clip;
-    transition: inline-size var(--duration-fast) var(--spring-dock);
+    transition: inline-size var(--spring-dock-duration) var(--spring-dock);
 }
 .nav-trigger-word {
     flex: none;

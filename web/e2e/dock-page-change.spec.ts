@@ -108,3 +108,71 @@ for (const scheme of ["light", "dark"] as const) {
         assertGlides(await filmed(page), "/paper -> /w");
     });
 }
+
+/*
+ * At a page change the section seat's glyph changed in one frame while its
+ * name faded, so for about 90 ms the new glyph stood beside the old name (the
+ * eye beside "Paper"). The motion canon (P0a, in against out, 4): two marks
+ * trade places, neither above half strength while the other shows. The glyph
+ * now leaves and arrives with its name: on every frame the glyph and the name
+ * that both show at more than half strength belong to one section.
+ */
+for (const scheme of ["light", "dark"] as const) {
+    test(`a desk's page change trades the section's glyph with its name (${scheme})`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto("/w");
+        await openDock(page);
+        await expect(page.locator(".app-dock .nav-trigger .lucide-eye")).toBeVisible();
+        await expect(page.locator(".app-dock .nav-trigger-word")).toHaveText("Visualize");
+
+        await page.evaluate(() => {
+            const seen: { t: number; glyphs: [string, number][]; words: [string, number][] }[] = [];
+            const w = window as unknown as { __swap: typeof seen; __swapDone: boolean };
+            w.__swap = seen;
+            w.__swapDone = false;
+            const ink = (el: Element) => {
+                let o = 1;
+                for (let e: Element | null = el; e; e = e.parentElement) o *= Number.parseFloat(getComputedStyle(e).opacity);
+                return o;
+            };
+            const trigger = document.querySelector(".app-dock .nav-trigger")!;
+            const t0 = performance.now();
+            const tick = () => {
+                seen.push({
+                    t: performance.now() - t0,
+                    // Each glyph by the section it names.
+                    glyphs: [...trigger.querySelectorAll("svg[class*=lucide-]:not(.nav-trigger-chevron)")].map((g) => [
+                        g.classList.contains("lucide-eye") ? "Visualize" : g.classList.contains("lucide-file-text") ? "Paper" : g.getAttribute("class") ?? "",
+                        ink(g),
+                    ]),
+                    words: [...trigger.querySelectorAll(".nav-trigger-word")].map((n) => [(n.textContent ?? "").trim(), ink(n)]),
+                });
+                if (performance.now() - t0 < 1500) requestAnimationFrame(tick);
+                else w.__swapDone = true;
+            };
+            requestAnimationFrame(tick);
+        });
+        await page.locator(".app-dock .logo-trigger").click();
+        await expect(page).toHaveURL(/\/paper/);
+        await page.waitForFunction(() => (window as unknown as { __swapDone: boolean }).__swapDone);
+        const seen = await page.evaluate(
+            () => (window as unknown as { __swap: { t: number; glyphs: [string, number][]; words: [string, number][] }[] }).__swap,
+        );
+        await expect(page.locator(".app-dock .nav-trigger .lucide-file-text")).toBeVisible();
+        await expect(page.locator(".app-dock .nav-trigger-word")).toHaveText("Paper");
+
+        let traded = false;
+        for (const f of seen) {
+            const glyphs = f.glyphs.filter(([, o]) => o > 0.5).map(([g]) => g);
+            const words = f.words.filter(([, o]) => o > 0.5).map(([w]) => w);
+            if (f.glyphs.some(([g]) => g === "Paper")) traded = true;
+            for (const g of glyphs) {
+                for (const w of words) {
+                    expect(w, `at ${f.t.toFixed(0)} ms the glyph of ${g} stands beside the name "${w}"`).toBe(g);
+                }
+            }
+        }
+        expect(traded, "the paper's glyph arrived while filmed").toBe(true);
+    });
+}
