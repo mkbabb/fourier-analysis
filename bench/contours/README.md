@@ -15,7 +15,7 @@ reference outline green; the N=50, N=100 and N=200 epicycle traces to the right)
 `<out>/<tag>/metrics.json`. Flags: `--only NAME…`, `--no-private`,
 `--no-overlays`, `--write-references`.
 
-Image set: the private sample `~/.fourier-samples/daraksha.jpeg` (skipped when
+Image set: the private sample `~/.fourier-samples/private-sample.jpeg` (skipped when
 absent) plus `assets/portraits/*` and `assets/animals/*`.
 
 **Privacy.** The private sample and every derivative (overlay, reference mask,

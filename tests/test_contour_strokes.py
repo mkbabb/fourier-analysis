@@ -1,7 +1,7 @@
 """The stroke graph (``contours.strokes``), the layers composed into it
 (``contours.drawing``) and the part map (``contours.parts``).
 
-``portraits/daraksha.jpg`` is the primary sample (F.CT addendum (b))."""
+``portraits/human.png`` is the primary sample."""
 
 from pathlib import Path
 
@@ -290,7 +290,7 @@ DRAWING_REPORTS: list[float] = []
 
 
 @pytest.fixture(scope="module")
-def daraksha():
+def primary():
     from fourier_analysis.contours.drawing import draw_subject
     from fourier_analysis.contours.image import load_image_inputs
     from fourier_analysis.contours.isolation import subject_mask
@@ -298,12 +298,12 @@ def daraksha():
     from fourier_analysis.contours.parts import part_labels
 
     config = ContourConfig().normalized()
-    image = load_image_inputs(ASSETS / "portraits" / "daraksha.jpg", config)
+    image = load_image_inputs(ASSETS / "portraits" / "human.png", config)
     mask, _ = subject_mask(image, config)
     return part_labels(image, mask), draw_subject(image, config, DRAWING_REPORTS.append)
 
 
-def test_the_drawing_reports_its_four_checkpoints(daraksha):
+def test_the_drawing_reports_its_four_checkpoints(primary):
     """The drawing says how far through it is after each costly step, in order,
     so an image job's bar moves through extraction in real steps."""
     from fourier_analysis.contours import drawing
@@ -311,16 +311,16 @@ def test_the_drawing_reports_its_four_checkpoints(daraksha):
     assert DRAWING_REPORTS == [drawing.STAGE_MASK, drawing.STAGE_LINES, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED]
 
 
-def test_daraksha_has_her_named_face_parts(daraksha):
+def test_the_primary_sample_has_its_named_face_parts(primary):
     """The primary sample: one confirmed face with skin, both brows, both
-    eyes, the nose, both lips and the hair, and an iris in each eye (her
-    upper lip, thin in her smile, is drawn by both its edges: see
-    ``test_daraksha_brows_are_strokes_and_the_upper_lip_is_drawn``)."""
+    eyes, the nose, both lips and the hair, and an iris in each eye (the
+    upper lip, closed on the lower, is drawn by both its edges: see
+    ``test_the_primary_brows_are_strokes_and_the_upper_lip_is_drawn``)."""
     from scipy import ndimage as ndi
 
     from fourier_analysis.contours.parts import EYES, FACE_CLASSES, HAIR, IRIS, NOSE, SKIN
 
-    parts, _ = daraksha
+    parts, _ = primary
     assert parts.source == "face-parsing"
     assert len(parts.faces) == 1
     present = set(np.unique(parts.labels).tolist())
@@ -334,14 +334,13 @@ def test_daraksha_has_her_named_face_parts(daraksha):
         assert (beside_eye & (irises == k)).any()
 
 
-def test_daraksha_drawing_has_the_centre_part(daraksha):
-    """The learned line layer draws the hair's centre part: a line in the
-    hair, above the face, within the middle third of the face box, running
-    more down than across.  The face's material parts (brows, lids, lips) are
-    drawn by the parser alone."""
+def test_the_primary_drawing_has_a_line_in_the_hair(primary):
+    """The learned line layer draws a strand of the hair: a line in the hair,
+    above the face, running more down than across.  The face's material
+    parts (brows, lids, lips) are drawn by the parser alone."""
     from fourier_analysis.contours.parts import HAIR
 
-    parts, drawing = daraksha
+    parts, drawing = primary
     assert drawing is not None and drawing.source == "face-parsing"
     x, y, w, h = parts.faces[0].box
     lines = [e.pts for e in drawing.graph.edges if e.layer == LINES]
@@ -353,25 +352,24 @@ def test_daraksha_drawing_has_the_centre_part(daraksha):
         c = np.clip(np.rint(pts[:, 1]).astype(int), 0, hair.shape[1] - 1)
         assert parts.face_core[r, c].mean() < 0.2  # no learned line on a face part
         rows, cols = np.ptp(pts[:, 0]), np.ptp(pts[:, 1])
-        in_middle = abs(pts[:, 1].mean() - (x + w / 2)) < w / 6
-        if hair[r, c].mean() > 0.7 and pts[:, 0].mean() < y + h / 4 and in_middle and rows > cols and rows > 0.05 * h:
+        if hair[r, c].mean() > 0.7 and pts[:, 0].mean() < y + h / 4 and rows > cols and rows > 0.05 * h:
             found = True
     assert found
     assert {e.layer for e in drawing.graph.edges} <= {SILHOUETTE, PARTS, LINES, CONNECT}
     assert {SILHOUETTE, PARTS, LINES} <= {e.layer for e in drawing.graph.edges}
 
 
-def test_daraksha_drawing_is_one_figure_with_teeth_and_a_drawn_nose(daraksha):
+def test_the_primary_drawing_is_one_figure_with_a_drawn_nose(primary):
     """The drawing is one connected figure (its pieces joined by routed
-    connectors on the subject, so the tour needs no jump); the open mouth is
-    split into teeth; the nose is drawn by part of its outline (its bridge
+    connectors on the subject, so the tour needs no jump); the closed mouth
+    shows no teeth; the nose is drawn by part of its outline (its bridge
     down both sides from the eyes' inner corners, and its base), never over
     the bridge's root between the brows, so it is no closed balloon."""
     from fourier_analysis.contours.parts import NOSE, TEETH
 
-    parts, drawing = daraksha
+    parts, drawing = primary
     assert len(drawing.graph.components()) == 1
-    assert (parts.labels == TEETH).any()
+    assert not (parts.labels == TEETH).any()
     for e in drawing.graph.edges:
         if e.layer == CONNECT:
             r = np.clip(np.rint(e.pts[:, 0]).astype(int), 0, parts.labels.shape[0] - 1)
@@ -572,7 +570,7 @@ def test_portrait_parts_come_from_the_face_parser():
     from fourier_analysis.contours.models import ContourConfig
     from fourier_analysis.contours.parts import EYES, NOSE, part_labels
 
-    path = ASSETS / "portraits" / "daraksha.jpg"
+    path = ASSETS / "portraits" / "human.png"
     config = ContourConfig().normalized()
     image = load_image_inputs(path, config)
     mask, _ = subject_mask(image, config)
@@ -583,25 +581,25 @@ def test_portrait_parts_come_from_the_face_parser():
     assert NOSE in present and present & set(EYES)
 
 
-def test_daraksha_brows_are_strokes_and_the_upper_lip_is_drawn(daraksha):
+def test_the_primary_brows_are_strokes_and_the_upper_lip_is_drawn(primary):
     """Each brow is drawn by one open stroke along it (its spine), not by its
-    outline; the upper lip, thin in her smile, keeps its label, so it is
-    drawn apart from the teeth (its border on the skin above, its edge on
-    the teeth below), as the full lower lip is."""
+    outline; the upper lip keeps its label, so it is drawn apart from the
+    lower lip it closes on (its border on the skin above, its edge on the
+    lower lip below), as the lower lip is."""
     from scipy import ndimage as ndi
 
     from fourier_analysis.contours.parts import BROWS, FACE_CLASSES
 
-    parts, drawing = daraksha
+    parts, drawing = primary
     name = {n: i for i, n in enumerate(FACE_CLASSES)}
     present = set(np.unique(parts.labels).tolist())
     assert name["u_lip"] in present and name["l_lip"] in present
-    from fourier_analysis.contours.parts import SKIN, TEETH
+    from fourier_analysis.contours.parts import SKIN
 
     upper = parts.labels == name["u_lip"]
     ring = ndi.binary_dilation(upper) & ~upper
-    # Between the skin and the teeth: both of its edges are part boundaries.
-    assert (parts.labels[ring] == SKIN).any() and (parts.labels[ring] == TEETH).any()
+    # Between the skin and the lower lip: both of its edges are part boundaries.
+    assert (parts.labels[ring] == SKIN).any() and (parts.labels[ring] == name["l_lip"]).any()
     assert parts.spined == BROWS
     for k in BROWS:
         brow = parts.labels == k
