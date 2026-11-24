@@ -285,13 +285,16 @@ function onWashCommit(v: number[]) {
          in every form, beside the picture's other act, Just the picture. The
          stage under the open menu is its preview; a drag on a hidden picture
          shows it. glass's slider, its fill's end the handle, the value set into
-         the row, a tick at today's 22 %. -->
+         the row, a tick at today's 22 %. It is the site's one slider form
+         (CONVERGE amendment 1, STUDY 8 check 7): glass's scrubber at the `md`
+         rung every row uses, no thumb of its own, the fill the accent. -->
     <DefineStrength>
         <div class="strength-row" data-strength>
             <ImageIcon class="strength-glyph" aria-hidden="true" />
             <Slider
                 class="strength-slider"
-                size="lg"
+                variant="scrubber"
+                size="md"
                 :model-value="[wash]"
                 :min="WASH_MIN"
                 :max="WASH_MAX"
@@ -568,9 +571,21 @@ function onWashCommit(v: number[]) {
     flex: none;
     opacity: 0.7;
 }
+/* The fill is the site's amber through glass's own `--slider-range-bg`, and
+   the thumb wears the fill's colour (glass's documented `--slider-thumb-bg`),
+   so the fill's rounded end is the handle, as on the timeline and every
+   control row; it was glass's default `lg` slider, a black or white disc on a
+   fill that read grey in dark. On touch its band is the 44 px cell. */
 .strength-slider {
     flex: 1;
     min-inline-size: 0;
+    --slider-range-bg: var(--viz-amber);
+    --slider-thumb-bg: var(--slider-range-bg);
+}
+@media (pointer: coarse) {
+    .strength-slider {
+        --slider-touch-target: 2.75rem;
+    }
 }
 .strength-value {
     flex: none;

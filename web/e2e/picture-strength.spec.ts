@@ -159,3 +159,47 @@ test("in dark the default wash reads against the stage's ground as it does in li
     expect(light, "in light the picture stands off the cream stage").toBeGreaterThan(20);
     expect(dark, `in dark the 22 % wash stands ${dark.toFixed(1)} levels off the ground, against ${light.toFixed(1)} in light`).toBeGreaterThanOrEqual(0.5 * light);
 });
+
+/*
+ * The row is the site's one slider form (CONVERGE amendment 1, STUDY 8 check
+ * 7): glass's scrubber with no thumb of its own, the fill's rounded end the
+ * handle, the fill the accent. It was glass's default `lg` slider: a 28 px
+ * disc, black on light and white on dark, on a fill that read grey in dark.
+ */
+for (const scheme of ["light", "dark"] as const) {
+    test(`the strength row's fill is the accent and its end the handle (${scheme})`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await openStill(page, "");
+        const thumb = await openMore(page);
+        const paint = await thumb.evaluate((el) => {
+            const root = el.closest(".glass-slider")!;
+            const range = root.querySelector<HTMLElement>(".slider-range")!;
+            const track = root.querySelector<HTMLElement>(".slider-track")!;
+            // Every colour as straight RGBA through one canvas, whatever its notation.
+            const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
+            const rgba = (css: string) => {
+                ctx.clearRect(0, 0, 1, 1);
+                ctx.fillStyle = css;
+                ctx.fillRect(0, 0, 1, 1);
+                return [...ctx.getImageData(0, 0, 1, 1).data];
+            };
+            const accent = document.createElement("span");
+            accent.style.color = "var(--viz-amber)";
+            root.appendChild(accent);
+            const amber = rgba(getComputedStyle(accent).color);
+            accent.remove();
+            return {
+                amber,
+                fill: rgba(getComputedStyle(range).backgroundColor),
+                thumb: rgba(getComputedStyle(el).backgroundColor),
+                thumbBlock: el.getBoundingClientRect().height,
+                trackBlock: track.getBoundingClientRect().height,
+            };
+        });
+        const near = (a: number[], b: number[]) => Math.max(...[0, 1, 2].map((k) => Math.abs(a[k]! - b[k]!)));
+        expect(near(paint.fill, paint.amber), `the fill (${paint.fill}) is the site's amber (${paint.amber})`).toBeLessThanOrEqual(4);
+        expect(paint.fill[3], "and stands at glass's strength").toBeGreaterThan(200);
+        expect(near(paint.thumb, paint.fill), `the thumb (${paint.thumb}) wears the fill's colour, so the fill's end is the handle`).toBeLessThanOrEqual(4);
+        expect(paint.thumbBlock, "no thumb stands taller than the bar").toBeLessThanOrEqual(paint.trackBlock + 0.5);
+    });
+}
