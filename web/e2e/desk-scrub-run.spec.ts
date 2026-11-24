@@ -142,7 +142,7 @@ for (const vp of [
         test.use({ viewport: vp, colorScheme: "dark" });
         test.setTimeout(120_000);
 
-        test("across a cycle the inset's circles and arms stay above the plate's top", async ({ page }) => {
+        test("across a cycle the inset's circles and arms stay 8 px or more above the plate's top", async ({ page }) => {
             await page.addInitScript(recordInsetInk);
             await page.goto(`/v/${seededViz().slug}`);
             await expect(page.locator(".animation-dock")).toBeVisible({ timeout: LOAD });
@@ -175,7 +175,11 @@ for (const vp of [
             });
             test.info().annotations.push({ type: "inset-vs-plate", description: JSON.stringify(read) });
             expect(read.drawn, "the inset was drawn across the cycle").toBeGreaterThan(0);
-            expect(read.inkBottom, `the inset's lowest ink against the plate's top ${JSON.stringify(read)}`).toBeLessThanOrEqual(read.plateTop);
+            // The fit keeps 12 px of air over the plate (BasisCanvas INSET_GAP).
+            // PR 35 review: the fit sampled the cycle at 33 moments and missed
+            // the chain's lowest reach, so the lowest ink came 3.2 px over the
+            // plate at 1440 and 4.3 at 1280. Sampled finely, it keeps 13 px.
+            expect(read.inkBottom, `the inset's lowest ink against the plate's top ${JSON.stringify(read)}`).toBeLessThanOrEqual(read.plateTop - 8);
         });
     });
 }

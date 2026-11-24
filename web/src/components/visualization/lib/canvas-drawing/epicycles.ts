@@ -29,7 +29,16 @@ export interface EpicycleBbox {
  * Compute a stable (time-invariant) bounding box for the epicycle chain
  * by sampling positions across the full animation cycle and taking the union
  * of all circle extents. This gives a tight but stable bound.
+ *
+ * The cycle is sampled finely enough for its fastest visible circle: 16
+ * samples a turn of the highest frequency shown, at least 64 in all. At a
+ * fixed 33 the samples stepped past the chain's lowest moments, and the inset
+ * stood about 9 px lower than its fit (at 1440 the lowest ink came 3.2 px over
+ * the plate, against the 12 px the fit keeps).
  */
+const SAMPLES_PER_TURN = 16;
+const MIN_SAMPLES = 64;
+const MAX_SAMPLES = 2048;
 export function computeStableEpicycleBbox(
     spectrum: Spectrum,
     components: BasisComponent[],
@@ -38,7 +47,9 @@ export function computeStableEpicycleBbox(
     scale: number,
 ): EpicycleBbox {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const nSamples = 32;
+    let fastest = 0;
+    for (let i = 0; i < nVis; i++) fastest = Math.max(fastest, Math.abs(components[i].index));
+    const nSamples = Math.min(MAX_SAMPLES, Math.max(MIN_SAMPLES, SAMPLES_PER_TURN * fastest));
     for (let s = 0; s <= nSamples; s++) {
         const t = s / nSamples;
         const positions = chainAt(spectrum, t, nVis);

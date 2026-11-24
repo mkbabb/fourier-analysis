@@ -241,6 +241,7 @@ const { drawImageOverlay, pictureBounds, hasPicture } = useImageOverlay(() => {
 // wash and the drawing's layers come in (280 ms, cubic-out). Under reduced
 // motion nothing travels: the two frames cross by a 120 ms fade.
 interface Intro {
+    /** The intro's first painted frame (NaN until then). */
     t0: number;
     reduce: boolean;
     /** The picture's fit, as it stood when the drawing landed. */
@@ -257,6 +258,7 @@ function pictureFit(s: CanvasSurface): ViewTransform | null {
 /** How far the intro has come, eased (1 when there is none). */
 function introProgress(): number {
     if (!intro) return 1;
+    if (Number.isNaN(intro.t0)) return 0;
     const k = Math.min(1, (performance.now() - intro.t0) / (intro.reduce ? LAYER_FADE_REDUCED_MS : LAYER_FADE_MS));
     return 1 - (1 - k) ** 3;
 }
@@ -284,9 +286,16 @@ function startIntro(): void {
     const picture = s ? pictureFit(s) : null;
     if (!s || !picture) return;
     const reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || !!props.linkView;
-    intro = { t0: performance.now(), reduce, picture, from: null };
+    // The clock starts on the intro's first painted frame, read in that
+    // frame's callback. The drawing lands inside a long task (the result's
+    // arrival, about 100 ms), so a clock started at the landing, or at the
+    // frame's own timestamp (the frame's start, before that task), had run on
+    // before the intro was first seen: its first frame stood the picture 15
+    // to 85 % washed, in one step.
+    intro = { t0: NaN, reduce, picture, from: null };
     cancelAnimationFrame(introRaf);
     const step = () => {
+        if (intro && Number.isNaN(intro.t0)) intro.t0 = performance.now();
         const done = introProgress() >= 1;
         if (done) intro = null;
         if (surface.value) drawFrame();

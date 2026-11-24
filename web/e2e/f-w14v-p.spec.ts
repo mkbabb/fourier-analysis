@@ -129,6 +129,48 @@ test.describe("F.W14V.p — a signed-out Publish reaches the inline sign-in and 
         expect(box.bottom, "the sign-in's foot").toBeLessThanOrEqual(390);
         await frame(page, "p1b-signin");
     });
+
+    test("p1c @844x390: the sign-in opens once its dock has settled, out of a seat that stands still", async ({ page }) => {
+        // PR 35 review: opened with the dock's expand, the popover faded in under
+        // a seat still outside the growing plate, sat 7 px short of the seat's
+        // end, and hopped onto it about a second after the press.
+        await page.setViewportSize({ width: 844, height: 390 });
+        await routePublish(page);
+        await page.goto(`/v/${seededViz().slug}`);
+        await expect(page.getByRole("button", { name: "Edit contour" }).first()).toBeEnabled({ timeout: 60_000 });
+        await page.waitForTimeout(600);
+        await page.evaluate(() => {
+            type Row = { op: number; pop: number; seat: number; dock: number };
+            const w = window as unknown as { __p1c: Row[] };
+            w.__p1c = [];
+            const t0 = performance.now();
+            const tick = (now: number) => {
+                const pop = document.querySelector(".login-popover");
+                const seat = [...document.querySelectorAll(".app-dock button")].find((b) => b.getAttribute("aria-label") === "Log in");
+                const dock = document.querySelector(".app-dock");
+                if (pop && seat && dock) {
+                    w.__p1c.push({
+                        op: parseFloat(getComputedStyle(pop).opacity),
+                        pop: pop.getBoundingClientRect().right,
+                        seat: seat.getBoundingClientRect().right,
+                        dock: dock.getBoundingClientRect().right,
+                    });
+                }
+                if (now - t0 < 4000) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        });
+        await pressStageTool(page, "Publish to Gallery");
+        await expect(page.locator("#user-slug-input")).toBeFocused({ timeout: 10_000 });
+        await page.waitForTimeout(1_800);
+        const rows = (await page.evaluate(() => (window as unknown as { __p1c: { op: number; pop: number; seat: number; dock: number }[] }).__p1c)).filter((r) => r.op > 0);
+        expect(rows.length, "frames with the sign-in showing").toBeGreaterThan(5);
+        const first = rows[0]!;
+        expect(first.seat, `at the sign-in's first frame its seat stands inside the dock ${JSON.stringify(first)}`).toBeLessThanOrEqual(first.dock + 0.5);
+        expect(Math.abs(first.pop - first.seat), `at its first frame the sign-in's end meets its seat's ${JSON.stringify(first)}`).toBeLessThanOrEqual(1);
+        const ends = rows.map((r) => r.pop);
+        expect(Math.max(...ends) - Math.min(...ends), "the sign-in's end never moves once it shows").toBeLessThanOrEqual(1);
+    });
     test("p2: a stale sign-in → the server's owner_required reaches the inline sign-in, never the raw toast", async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.addInitScript(() => {

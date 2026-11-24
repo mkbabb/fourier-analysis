@@ -15,6 +15,11 @@ import { IMAGE_JOB } from "./fixtures/jobs";
  * when the upload lands. Its painted box is filmed from the drop to the first
  * drawing; between two frames it moves at most 2 px, except while the stage
  * itself is resized (the aside opening at a desk), which carries it.
+ *
+ * And it is never laid under the old page (PR 35 review): the address taking
+ * the picture's name is no route change, so no view transition runs over it.
+ * The first drawing's intro starts from the picture as it stood: its first
+ * frame carries no more than a tenth of the picture's crossing to the wash.
  */
 
 /** Painted (alpha > 40) samples in the middle of the stage canvas. */
@@ -241,6 +246,77 @@ for (const c of CELLS) {
             expect(pairs, "frame pairs compared").toBeGreaterThan(20);
             const around = frames.slice(Math.max(0, worst.i - 2), worst.i + 2);
             expect(worst.d, `the picture's largest move between two frames ${JSON.stringify(around)}`).toBeLessThanOrEqual(2);
+        });
+
+        // The intro crosses the whole picture into its wash under the drawing
+        // (one box: the wash, then the whole at the rest of the strength). Its
+        // clock ran from the drawing's landing, inside the result's long task,
+        // so the first frame anyone saw stood the picture 15 to 30 % washed (on
+        // 36c9386; 70 to 85 % with the frame's timestamp for a clock).
+        test("the first drawing's intro starts from the picture as it stood", async ({ page }) => {
+            // Each stage frame clears the canvas, then draws; a frame that draws
+            // two pictures is the intro's crossing (the wash, then the whole).
+            await page.addInitScript(() => {
+                const w = window as unknown as { __pics: { g: number; src: number; a: number }[] };
+                w.__pics = [];
+                let g = 0;
+                let next = 1;
+                const ids = new WeakMap<object, number>();
+                const proto = CanvasRenderingContext2D.prototype;
+                const clearRect = proto.clearRect;
+                proto.clearRect = function (this: CanvasRenderingContext2D, x: number, y: number, cw: number, ch: number) {
+                    if (this.canvas.classList?.contains("canvas-el") && x === 0 && y === 0 && cw >= 200 && ch >= 200) g++;
+                    return clearRect.call(this, x, y, cw, ch);
+                };
+                const drawImage = proto.drawImage as (...a: unknown[]) => void;
+                proto.drawImage = function (this: CanvasRenderingContext2D, ...a: unknown[]) {
+                    const src = a[0] as { width: number };
+                    if (this.canvas.classList?.contains("canvas-el") && src && src.width > 200 && a.length === 5) {
+                        if (!ids.has(src)) ids.set(src, next++);
+                        w.__pics.push({ g, src: ids.get(src)!, a: Math.round(this.globalAlpha * 1000) / 1000 });
+                    }
+                    return drawImage.apply(this, a);
+                } as typeof proto.drawImage;
+            });
+            await page.goto("/visualize");
+            await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
+            await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
+            await page.waitForURL(/\/w\//, { timeout: 60_000 });
+            await expect(page.getByRole("button", { name: /^(Play|Pause) animation$/ }).first()).toBeEnabled({ timeout: 60_000 });
+            await page.waitForTimeout(600);
+            const pics = await page.evaluate(() => (window as unknown as { __pics: { g: number; src: number; a: number }[] }).__pics);
+            // The intro's first frame: the first that draws the wash under the whole.
+            const i = pics.findIndex((p, k) => k + 1 < pics.length && pics[k + 1]!.g === p.g && pics[k + 1]!.src !== p.src);
+            const around = JSON.stringify(pics.slice(Math.max(0, i - 2), i + 8));
+            expect(i, `the intro crossed the picture into its wash ${JSON.stringify(pics.slice(-8))}`).toBeGreaterThanOrEqual(0);
+            test.info().annotations.push({ type: "intro-first-frame", description: around });
+            expect(pics[i + 1]!.a, `the whole picture's strength in the intro's first frame ${around}`).toBeGreaterThanOrEqual(0.9);
+        });
+
+        // The upload's `/visualize` → `/w/<slug>` is the page naming the picture
+        // it already shows. Run as a route change, its view transition froze the
+        // stage (the picture's fade-in stalled) and then laid the old page's
+        // image, the whole picture at its fit, over the live stage while the
+        // first drawing's intro ran there: two faces at once (PR 35 review).
+        test("the address takes the picture's name with no page transition over the stage", async ({ page }) => {
+            await page.addInitScript(() => {
+                const w = window as unknown as { __vt: { api: boolean; started: number } };
+                const start = document.startViewTransition?.bind(document);
+                w.__vt = { api: !!start, started: 0 };
+                if (!start) return;
+                document.startViewTransition = ((arg: unknown) => {
+                    w.__vt.started++;
+                    return start(arg as never);
+                }) as typeof document.startViewTransition;
+            });
+            await page.goto("/visualize");
+            await expect(page.locator(".drop-target")).toBeVisible({ timeout: 60_000 });
+            await page.getByTestId("image-file-input").setInputFiles(SAMPLE_IMAGE);
+            await page.waitForURL(/\/w\//, { timeout: 60_000 });
+            await expect(page.getByRole("button", { name: /^(Play|Pause) animation$/ }).first()).toBeEnabled({ timeout: 60_000 });
+            const vt = await page.evaluate(() => (window as unknown as { __vt: { api: boolean; started: number } }).__vt);
+            expect(vt.api, "the engine has view transitions").toBe(true);
+            expect(vt.started, "view transitions from the drop to the first drawing").toBe(0);
         });
     });
 }

@@ -34,7 +34,11 @@ import LeaveSignal from "@/components/shared/LeaveSignal";
  *    finished act (signed in, or out) says so with `done`, and the card's
  *    owner closes the card; the card shows what it opened with until then.
  */
-const { form = "seat" } = defineProps<{ form?: "seat" | "card" }>();
+const { form = "seat", openRequest = false } = defineProps<{
+    form?: "seat" | "card";
+    /** The seat's popover opens for a sign-in request once its dock has settled open (`AppDock`). */
+    openRequest?: boolean;
+}>();
 const emit = defineEmits<{ done: [] }>();
 const [DefineLoginForm, ReuseLoginForm] = createReusableTemplate();
 /** O16: the open account menu holds the app dock open (its Log in popover
@@ -58,10 +62,11 @@ const loggingIn = ref(false);
  * X.F.W14V.p — an act that needs the account (a signed-out Publish) opens THIS
  * sign-in rather than ending in a refusal toast; closing it, signed in or not,
  * settles the request so the act resumes or stands down (`auth.requestSignIn`).
+ * The seat opens when its dock says the request may (`openRequest`: the dock
+ * stands open and still); the card opens with the "i" card that holds it.
  */
-const { signInRequested } = storeToRefs(auth);
 watch(
-    signInRequested,
+    () => openRequest,
     (requested) => {
         if (requested && form === "seat") showLogin.value = true;
     },
