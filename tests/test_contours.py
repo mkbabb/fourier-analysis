@@ -252,7 +252,7 @@ class TestExtractContours:
     def test_corpus_preserves_subject_extent_or_internal_structure(self):
         assets = Path(__file__).resolve().parents[1] / "assets"
 
-        for name in ["portraits/daraksha.jpg", "animals/golden-retriever.webp",
+        for name in ["portraits/human.png", "animals/golden-retriever.webp",
                      "animals/giraffe.webp", "animals/llama-1.webp", "animals/sun.png"]:
             result = extract_contours_result(assets / name)
 
@@ -537,7 +537,7 @@ class TestSimplifyAndOpenStrokes:
         assert np.abs(np.diff(z)).max() < 20  # no segment jumps across the arc
 
 
-FRAME_TOUCHING = ("portraits/daraksha.jpg", "portraits/euler.jpg", "portraits/chef.png",
+FRAME_TOUCHING = ("portraits/human.png", "portraits/euler.jpg", "portraits/chef.png",
                   "animals/giraffe.webp", "animals/llama-1.webp",
                   "animals/sponge-pineapple.JPG", "animals/sponge-scared.jpeg")
 

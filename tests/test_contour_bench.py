@@ -20,7 +20,7 @@ from bench.contours.harness import (  # noqa: E402
     image_set,
 )
 
-SAMPLES = ("portraits-daraksha", "portraits-euler", "animals-golden-retriever", "animals-sun")
+SAMPLES = ("portraits-human", "portraits-euler", "animals-golden-retriever", "animals-sun")
 
 
 @pytest.fixture(scope="module")

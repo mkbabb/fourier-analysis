@@ -7,19 +7,20 @@ curve at a few t), and ``positions_at`` (the chain). The package's
 ``test/golden.test.ts`` holds ``spectrumOf``, ``partialSum``, ``evaluateAt`` and
 ``chainAt`` to these within 1e-9.
 
-    uv run python scripts/gen_fourier_fixtures.py [--name-art PATH]
+    uv run python scripts/gen_fourier_fixtures.py
 
-``--name-art`` is daraksha's ``src/art/name-art.json`` (a font outline's
-coefficients, public data); without it the letter fixture is not rewritten.
+The letter is the outline of a glyph (``S`` in DejaVu Sans, the font
+matplotlib ships), so every fixture is made from this file alone.
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 from pathlib import Path
 
 import numpy as np
+from matplotlib.font_manager import FontProperties
+from matplotlib.textpath import TextPath
 
 from fourier_analysis.contours import resample_arc_length
 from fourier_analysis.epicycles import EpicycleChain
@@ -67,10 +68,19 @@ def fixture(name: str, signal: np.ndarray, harmonics: int, level: int, m: int) -
     print(f"{name}: N={len(signal)} harmonics={harmonics} level={level} m={m}")
 
 
+def glyph_outline(ch: str) -> np.ndarray:
+    """The outer contour of one glyph of DejaVu Sans, as a closed polygon."""
+    path = TextPath((0, 0), ch, size=100, prop=FontProperties(family="DejaVu Sans"))
+
+    def area(p: np.ndarray) -> float:
+        x, y = p[:, 0], p[:, 1]
+        return 0.5 * abs(float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))))
+
+    outer = max(path.to_polygons(closed_only=True), key=area)
+    return outer[:, 0] + 1j * outer[:, 1]
+
+
 def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--name-art", type=Path)
-    args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
 
     th = 2 * np.pi * np.arange(512) / 512
@@ -93,18 +103,7 @@ def main() -> None:
     loop = (30 + 4 * np.sin(5 * th) + rng.normal(0, 0.8, 4096)) * np.exp(1j * th)
     fixture("noisy-loop", loop, 200, 60, 1024)
 
-    if args.name_art:
-        art = json.loads(args.name_art.read_text())
-        body = next(c for c in art["contours"] if c["role"] == "body")
-        cs = body["c"]
-        top = (len(cs) // 2 - 1) // 2
-        n = 2048
-        spec = np.zeros(n, dtype=np.complex128)
-        for j in range(2 * top + 1):
-            k = 0 if j == 0 else ((j + 1) // 2 if j % 2 else -(j // 2))
-            spec[k % n] = cs[2 * j] + 1j * cs[2 * j + 1]
-        signal = np.fft.ifft(spec) * n
-        fixture("letter", signal, top, body["n"], 512)
+    fixture("letter", resample_arc_length(glyph_outline("S"), 2048), 52, 32, 512)
 
 
 if __name__ == "__main__":

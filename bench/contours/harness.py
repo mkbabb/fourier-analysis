@@ -68,7 +68,7 @@ from scipy import ndimage as ndi
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PRIVATE_ROOT = Path.home() / ".fourier-samples"
-PRIVATE_SAMPLE = PRIVATE_ROOT / "daraksha.jpeg"
+PRIVATE_SAMPLE = PRIVATE_ROOT / "private-sample.jpeg"
 PRIVATE_NAME = "private-sample"
 PUBLIC_REFERENCE_DIR = Path(__file__).resolve().parent / "reference"
 PRIVATE_REFERENCE_DIR = PRIVATE_ROOT / "reference"
@@ -94,7 +94,7 @@ class BenchImage:
     private: bool
 
 
-PRIMARY_NAME = "portraits-daraksha"  # the owner's standard sample (F-CT addendum b)
+PRIMARY_NAME = "portraits-human"  # the standard sample
 
 
 def image_set(include_private: bool = True) -> list[BenchImage]:

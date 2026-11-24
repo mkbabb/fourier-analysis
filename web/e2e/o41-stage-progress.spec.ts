@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
+import { extname } from "node:path";
 import { randomBytes } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { SAMPLE_IMAGE, SAMPLE_MIME } from "./fixtures/sample";
 import { isJobPost } from "./fixtures/jobs";
 import { showViewIfTabbed } from "./fixtures/workspace";
 
@@ -77,7 +78,7 @@ async function stopSampling(page: Page): Promise<Sample[]> {
  * checkpoints) instead of answered from the extraction cache.
  */
 function freshSample(): { name: string; mimeType: string; buffer: Buffer } {
-    return { name: "sample.jpg", mimeType: "image/jpeg", buffer: Buffer.concat([readFileSync(SAMPLE_IMAGE), randomBytes(16)]) };
+    return { name: `sample${extname(SAMPLE_IMAGE)}`, mimeType: SAMPLE_MIME, buffer: Buffer.concat([readFileSync(SAMPLE_IMAGE), randomBytes(16)]) };
 }
 
 async function uploadAndWatch(page: Page): Promise<Sample[]> {
