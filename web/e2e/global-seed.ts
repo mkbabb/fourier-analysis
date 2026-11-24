@@ -6,7 +6,7 @@ import * as path from "node:path";
 import { request, type APIRequestContext, type FullConfig } from "@playwright/test";
 
 import { SEED_ENV, SEED_NAMESPACE, type SeededViz } from "./fixtures/seed";
-import { SAMPLE_IMAGE } from "./fixtures/sample";
+import { SAMPLE_IMAGE, SAMPLE_MIME } from "./fixtures/sample";
 
 /**
  * X.F.W14.s (addendum (f), COHESION §0cm) — the suite seeds what it assumes,
@@ -103,7 +103,7 @@ async function mint(api: APIRequestContext): Promise<SeedRecord> {
     const image = await api.post("/api/images", {
         headers,
         multipart: {
-            file: { name: path.basename(SAMPLE_IMAGE), mimeType: "image/jpeg", buffer: fs.readFileSync(SAMPLE_IMAGE) },
+            file: { name: path.basename(SAMPLE_IMAGE), mimeType: SAMPLE_MIME, buffer: fs.readFileSync(SAMPLE_IMAGE) },
         },
     });
     await ok(image, "POST /api/images");

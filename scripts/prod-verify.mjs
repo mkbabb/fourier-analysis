@@ -3,7 +3,7 @@
 // Usage: node scripts/prod-verify.mjs <spa-origin> <api-origin> <out-dir> <image>...
 // e.g.   node scripts/prod-verify.mjs https://fourier.babb.dev \
 //            https://api.fourier.babb.dev ~/.dev-logs/frel/d-verify \
-//            assets/portraits/daraksha.jpg ~/.fourier-samples/daraksha.jpeg
+//            assets/portraits/joseph-fourier.png   (a portrait image: see `upright` below)
 //
 // Every API call is made from a page on <spa-origin>, so the browser enforces
 // the real cross-origin contract (preflights for PATCH/DELETE + If-Match, the
@@ -127,7 +127,7 @@ try {
         );
 
     // A thumbnail decoded in the browser: portrait means the EXIF orientation was
-    // honoured (both samples are portrait photographs). It is read as the app
+    // honoured (pass portrait images only). It is read as the app
     // reads it (`imageSrc`, web/src/lib/api.ts): with the uploader's session. An
     // image is content-addressed and inherits its readability from the live
     // visualizations that reference it (F-D5), so while another session's draft
