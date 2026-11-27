@@ -13,8 +13,11 @@ export {
     drawEpicycleCircles,
     drawConnectingLine,
     drawTipDot,
+    grownCircles,
+    chainGrowth,
 } from "./epicycles";
-export type { EpicycleFit, EpicycleBbox } from "./epicycles";
+export type { EpicycleFit, EpicycleBbox, ChainGrowth } from "./epicycles";
 export { drawBasisLabels, legendBottom } from "./labels";
 export type { LabelDrawResult, StageInks } from "./labels";
 export { drawPlaceholder } from "./placeholder";
+export { drawSketch, prefixOf } from "./sketch";

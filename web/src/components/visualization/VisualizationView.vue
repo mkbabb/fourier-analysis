@@ -493,14 +493,26 @@ const stageErrorDetail = computed(() => {
     return error;
 });
 /*
- * O16 (owner frame 50) and FORTY-FIRST F: progress is drawn, not described.
- * While the first compute runs the stage shows the picture itself (the
- * canvas, BasisCanvas), and the job's measure is the top dock's rim, which
- * moves through extraction in real steps (the drawing's four checkpoints).
- * The stage keeps one status, named by the job's stage, with no caption.
+ * O16 (owner frame 50), FORTY-FIRST F and FORTY-SIXTH G: progress is drawn,
+ * not described. While the first compute runs the stage shows the picture
+ * itself and the drawing as it is found (the canvas, BasisCanvas), and the
+ * job's measure is the stage dock's timeline row (`AnimationControls`), where
+ * the drawing will play. A job over a drawing already standing (a recompute)
+ * leaves the timeline to that drawing, and its measure is the top dock's rim.
+ * Each job has one measure; the stage keeps one status, named by the job's
+ * stage, with no caption.
  */
 const jobLabel = computed(() => jobStageLabel(store.job));
-provideDockProgress(computed(() => (store.computing && store.job ? jobProgressValue(store.job) : null)));
+/** The running job began over a standing drawing. */
+const overDrawing = ref(false);
+watch(
+    () => store.computing,
+    (computing) => {
+        if (computing) overDrawing.value = !!(store.epicycleData || store.basesData);
+    },
+    { immediate: true },
+);
+provideDockProgress(computed(() => (store.computing && overDrawing.value && store.job ? jobProgressValue(store.job) : null)));
 /** X-DS fourier pass 6 · DS-F6C-C1: a background compute failed with nothing
  *  drawn. The stage, the primary surface, carries the same one line the Basis
  *  layer does (one channel: `store.computeError`), not a void plate. */

@@ -37,6 +37,11 @@ export interface SavedVisualizationRef {
     slug: string;
 }
 
+/** The drawing so far, while a job finds it: lines of points `[x0, y0, x1, y1, ...]` in the contour's frame. */
+export interface Sketch {
+    lines: Float64Array[];
+}
+
 /**
  * The two loaders' fallback messages, for a failure that carries no detail of
  * its own. X-DS fourier pass 11 · DS-F11X-T1: exported so the stage can tell a
@@ -114,6 +119,13 @@ export const useWorkspaceStore = defineStore("workspace", () => {
      * started), and the Basis layer keeps its place and says so in one line.
      */
     const computeError = ref<string | null>(null);
+    /*
+     * FORTY-SIXTH G: the drawing so far while the job's extraction runs (its
+     * `sketch` partials: the subject's outline, then the strokes found), each
+     * superseding the last, in the contour's frame. The stage traces it in over
+     * the picture until the drawing lands. Cleared by a new job, a load or a reset.
+     */
+    const sketch = shallowRef<Sketch | null>(null);
     const revision = ref(0);
     // The current compute job's generation: a later job, a load or an
     // invalidation bumps it, so a superseded job's partials and answer are dropped.
@@ -194,6 +206,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             contour.value = null;
             epicycleData.value = null;
             basesData.value = null;
+            sketch.value = null;
             // Always upload: store_image_asset deduplicates by sha256 and
             // regenerates the thumbnail with current processing (EXIF transpose).
             // Skipping the upload on hash match would leave stale thumbnails.
@@ -231,6 +244,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         error.value = null;
         computeError.value = null;
         jobRevision++;
+        sketch.value = null;
         api.abortInflight(["computeJob", "getContour"]);
         const rev = ++revision.value;
         try {
@@ -294,6 +308,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         error.value = null;
         computeError.value = null;
         jobRevision++;
+        sketch.value = null;
         api.abortInflight(["computeJob", "getContour"]);
         const rev = ++revision.value;
         try {
@@ -362,6 +377,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         };
     }
 
+    /** A `sketch` partial's lines, each a flat `[x0, y0, x1, y1, ...]`, as typed arrays. */
+    function sketchOf(d: api.JobPartial): Sketch {
+        const lines = Array.isArray(d.lines) ? (d.lines as number[][]) : [];
+        return { lines: lines.map((l) => Float64Array.from(l)) };
+    }
+
     /** A partial without its `stage` key: the payload the sync route returned. */
     function payload<T>(d: api.JobPartial): T {
         const { stage: _stage, ...rest } = d;
@@ -375,7 +396,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             },
             partial: (d) => {
                 if (rev !== jobRevision) return;
-                if (d.stage === "contour") contour.value = markRaw(payload<ContourAsset>(d));
+                if (d.stage === "sketch") sketch.value = markRaw(sketchOf(d));
+                else if (d.stage === "contour") contour.value = markRaw(payload<ContourAsset>(d));
                 else if (d.stage === "epicycles") epicycleData.value = markRaw(payload<EpicycleData>(d));
             },
         };
@@ -391,6 +413,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         computeError.value = null;
         const rev = ++jobRevision;
         job.value = null;
+        sketch.value = null;
         try {
             const res = await api.runJob<{ contour?: ContourAsset; epicycles: EpicycleData; bases: AnimationData }>(
                 path,
@@ -611,6 +634,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         contour.value = null;
         epicycleData.value = null;
         basesData.value = null;
+        sketch.value = null;
         contourSettings.value = defaultContourSettings();
         animationSettings.value = defaultAnimationSettings();
         error.value = null;
@@ -657,6 +681,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         computeContour,
         retryCompute,
         job,
+        sketch,
         saveVisualization,
         markPublished,
         // `createSnapshot` is retained as an alias for the (unmigrated)

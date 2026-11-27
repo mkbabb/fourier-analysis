@@ -285,8 +285,8 @@ def test_iris_is_a_disc_clipped_by_the_lids():
     assert not (irises(labels, flat) == IRIS).any()
 
 
-# What the drawing reported (``on_stage``) while the fixture below drew it.
-DRAWING_REPORTS: list[float] = []
+# What the drawing reported (``on_stage``: each checkpoint and its sketch) while the fixture below drew it.
+DRAWING_REPORTS: list[tuple[float, list | None]] = []
 
 
 @pytest.fixture(scope="module")
@@ -300,15 +300,32 @@ def primary():
     config = ContourConfig().normalized()
     image = load_image_inputs(ASSETS / "portraits" / "human.png", config)
     mask, _ = subject_mask(image, config)
-    return part_labels(image, mask), draw_subject(image, config, DRAWING_REPORTS.append)
+    return part_labels(image, mask), draw_subject(
+        image, config, lambda fraction, sketch: DRAWING_REPORTS.append((fraction, sketch))
+    )
 
 
 def test_the_drawing_reports_its_four_checkpoints(primary):
     """The drawing says how far through it is after each costly step, in order,
-    so an image job's bar moves through extraction in real steps."""
+    so an image job's bar moves through extraction in real steps; and what it
+    has drawn so far where there is something to show (FORTY-SIXTH G): the
+    subject's outline at the mask, the parts' borders at the vectorised lines,
+    the drawing's strokes once routed, each a list of lines inside the frame."""
     from fourier_analysis.contours import drawing
 
-    assert DRAWING_REPORTS == [drawing.STAGE_MASK, drawing.STAGE_LINES, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED]
+    fractions = [f for f, _ in DRAWING_REPORTS]
+    assert fractions == [drawing.STAGE_MASK, drawing.STAGE_LINES, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED]
+    sketches = dict(DRAWING_REPORTS)
+    assert sketches[drawing.STAGE_LINES] is None
+    h, w = primary[0].labels.shape
+    for at in (drawing.STAGE_MASK, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED):
+        lines = sketches[at]
+        assert lines, at
+        z = np.concatenate(lines)
+        assert np.abs(z.real).max() <= w / 2 + 1 and np.abs(z.imag).max() <= h / 2 + 1, at
+    # The subject's outline is one ring or a few; the strokes found are more.
+    assert len(sketches[drawing.STAGE_MASK]) <= 4
+    assert len(sketches[drawing.STAGE_ROUTED]) > len(sketches[drawing.STAGE_MASK])
 
 
 def test_the_primary_sample_has_its_named_face_parts(primary):

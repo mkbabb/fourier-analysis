@@ -86,6 +86,12 @@ steps; the `contour` partial ends it. A cache hit, or an explicit strategy other
 
 Partials:
 
+- `sketch` `{stage: "sketch", lines: [[x0, y0, x1, y1, ...], ...]}`: the drawing so far,
+  while extraction runs: the subject's outline at the mask checkpoint, the parts' borders
+  (the outline and the features) at the vectorised lines, and the drawing's strokes once
+  routed. Each supersedes the last. Lines are in the contour's frame (centred, y up, as `image_bounds`), resampled
+  every 4 px (wider for a long drawing: at most 6000 points), lines under 8 px dropped.
+  Draw it over the picture as it lands. Absent on a cache hit or an explicit strategy.
 - `contour` `{stage: "contour", ...extract-contour's response}`: the outline, before
   any series. Draw it at once.
 - `epicycles` `{stage: "epicycles", ...compute/epicycles' data}`: the whole spectrum;

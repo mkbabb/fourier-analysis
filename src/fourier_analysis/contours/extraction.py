@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 
@@ -16,6 +15,7 @@ from fourier_analysis.contours.models import (
     ContourStrategy,
     DEFAULT_CONTOUR_CONFIG,
 )
+from fourier_analysis.contours.drawing import StageReport
 from fourier_analysis.contours.pipeline import extract_contours_pipeline
 
 
@@ -154,10 +154,11 @@ def _empty_result(
 def extract_contours_result(
     image_path: str | Path,
     config: ContourConfig = DEFAULT_CONTOUR_CONFIG,
-    on_stage: Callable[[float], None] | None = None,
+    on_stage: StageReport | None = None,
 ) -> ContourExtractionResult:
     """Extract contours from an image, returning the full result with
-    diagnostics. ``on_stage`` hears the AUTO drawing's progress (0..1)."""
+    diagnostics. ``on_stage`` hears the AUTO drawing's progress (0..1) and
+    its sketch so far (``drawing.StageReport``)."""
     config = config.normalized()
     image = load_image_inputs(image_path, config)
 
@@ -170,7 +171,7 @@ def extract_contours_result(
 def extract_contours(
     image_path: str | Path,
     config: ContourConfig = DEFAULT_CONTOUR_CONFIG,
-    on_stage: Callable[[float], None] | None = None,
+    on_stage: StageReport | None = None,
 ) -> list[NDArray[np.complex128]]:
     """Extract contours from an image, returning only the contour list."""
     return extract_contours_result(image_path, config, on_stage).contours

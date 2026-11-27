@@ -146,8 +146,34 @@ export function epicycleAlphaFromScale(currentScale: number): number {
 }
 
 /**
+ * FORTY-SIXTH G: how many circles a landing chain shows `k` (0..1) of the way
+ * through its growth, fractional (the newest circle is that share grown). The
+ * count runs on a log scale, `(n + 1)^k - 1`: the largest circles arrive one
+ * by one (the first alone for the first sixth of the growth at 80), the small
+ * ones in a rush at the end.
+ */
+export function grownCircles(n: number, k: number): number {
+    const at = Math.min(1, Math.max(0, k));
+    return Math.min(n, Math.max(0, (n + 1) ** at - 1));
+}
+
+/** The first `drawn` circles of a chain, the last of them `share` grown (radius and arm). */
+export interface ChainGrowth {
+    drawn: number;
+    share: number;
+}
+
+/** A fractional circle count as the circles drawn and the last one's share. */
+export function chainGrowth(count: number): ChainGrowth {
+    const drawn = Math.ceil(count);
+    return { drawn, share: drawn > 0 ? count - (drawn - 1) : 0 };
+}
+
+/**
  * Draw epicycle circles, arms, center dots, and endpoint dots.
- * Uses bbox-fitting transform when fit is provided (desktop).
+ * Uses bbox-fitting transform when fit is provided (desktop). `growth` draws
+ * only the chain's first circles, the last partly grown (FORTY-SIXTH G); the
+ * hues and the tail's cut stay the whole chain's, so nothing recolours as it grows.
  */
 export function drawEpicycleCircles(
     surface: CanvasSurface,
@@ -159,12 +185,14 @@ export function drawEpicycleCircles(
     fit: EpicycleFit | null,
     epicycleAlpha: number,
     lineWidths: { circle: number; arm: number },
+    growth: ChainGrowth | null = null,
 ): void {
     const { ctx } = surface;
     const { toScreen, scale } = view;
+    const end = growth ? Math.min(nVis, growth.drawn) : nVis;
 
     // Guard: an empty visible-circle count has nothing to draw.
-    if (nVis <= 0) {
+    if (end <= 0) {
         return;
     }
 
@@ -214,10 +242,14 @@ export function drawEpicycleCircles(
         tailOpen = false;
     };
 
-    for (let i = 0; i < nVis; i++) {
+    for (let i = 0; i < end; i++) {
         const [ccx, ccy] = toScreen(visPositions[2 * i], visPositions[2 * i + 1]);
-        const [tx, ty] = toScreen(visPositions[2 * i + 2], visPositions[2 * i + 3]);
-        const r = components[i].amplitude * scale;
+        const [ex, ey] = toScreen(visPositions[2 * i + 2], visPositions[2 * i + 3]);
+        // The growing circle: its radius and its arm at their share.
+        const grown = growth && i === end - 1 ? Math.min(1, Math.max(0, growth.share)) : 1;
+        const tx = ccx + (ex - ccx) * grown;
+        const ty = ccy + (ey - ccy) * grown;
+        const r = components[i].amplitude * scale * grown;
         const color = spectrumColor(i, nVis);
         // X-DS DS-F-C2 — the chain's tail is hundreds of circles a pixel or
         // two across. At the full 4–5 px stroke each one paints a filled disc,
@@ -225,7 +257,9 @@ export function drawEpicycleCircles(
         // scale with the circle's on-screen radius (full weight from ~10 px),
         // over a 1 px floor; widths are on screen, divided back out of the fit
         // scale as below (OA-44).
-        const rScreen = r * strokeScale;
+        // The circle's whole on-screen radius (a growing circle keeps its
+        // weights and its place in or out of the tail while it grows).
+        const rScreen = components[i].amplitude * scale * strokeScale;
         const thin = Math.max(1, rScreen * 0.5);
         // X-DS pass 2 · DS-F2-C19 — the 1 px floor still stacked dozens of
         // 2–5 px circles into a translucent fuzz at the tip, and the large

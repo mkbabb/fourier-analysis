@@ -132,19 +132,43 @@ STAGE_LINES = 0.80
 STAGE_VECTORS = 0.84
 STAGE_ROUTED = 0.98
 
+StageReport = Callable[[float, "list[NDArray[np.complex128]] | None"], None]
+"""Hears the drawing's progress (0..1) after each costly step, with what the
+step has drawn so far where there is something to show (the sketch, in
+pipeline coordinates): the subject's outline at the mask, the parts' borders
+at the vectorised lines, the drawing's strokes once routed.  ``None`` at the
+line maps."""
+
+
+def mask_outline(mask: NDArray[np.bool_]) -> list[NDArray[np.complex128]]:
+    """The subject mask's outline in pipeline coordinates (centred, y up): each
+    closed boundary of the mask, by marching squares at the half level.  The
+    mask is padded by a pixel so a subject that touches the frame still closes."""
+    from skimage import measure
+
+    h, w = mask.shape
+    cy, cx = h / 2, w / 2
+    rings = measure.find_contours(np.pad(mask, 1).astype(np.float64), 0.5)
+    return [(r[:, 1] - 1 - cx) + 1j * (cy - (r[:, 0] - 1)) for r in rings]
+
 
 def draw_subject(
     image: LoadedImage,
     config: ContourConfig,
-    on_stage: Callable[[float], None] | None = None,
+    on_stage: StageReport | None = None,
 ) -> Drawing | None:
     """The subject's drawing as a stroke graph (module docstring); ``None``
     when there is no subject. ``on_stage`` hears how far through the drawing
-    it is (0..1) after each of its four costly steps."""
-    report = on_stage or (lambda _fraction: None)
+    it is (0..1) after each of its four costly steps, and its sketch so far
+    (``StageReport``)."""
+
+    def report(fraction: float, sketch: list[NDArray[np.complex128]] | None = None) -> None:
+        if on_stage is not None:
+            on_stage(fraction, sketch)
+
     shape = image.grayscale.shape
     mask, saliency = subject_mask(image, config)
-    report(STAGE_MASK)
+    report(STAGE_MASK, mask_outline(mask) if on_stage is not None else None)
     if not mask.any():
         return None
     parts = part_labels(image, mask)
@@ -177,7 +201,9 @@ def draw_subject(
     if earlier.any():
         ink &= ndi.distance_transform_edt(~earlier) > SUPPRESS_FRACTION * diag
     lines = vectorise(ink, width, bridge=BRIDGE_WIDTHS * width)
-    report(STAGE_VECTORS)
+    # The parts' borders (the outline and the features), not the raw lines:
+    # those are pruned and thinned below, and shown now they read as noise.
+    report(STAGE_VECTORS, base.polylines(shape) if on_stage is not None else None)
     lines = drop_doubles(lines, earlier, DOUBLE_REACH_FRACTION * diag)
 
     graph = bridge_gaps(base.merged(lines), BRIDGE_WIDTHS * width)
@@ -221,7 +247,7 @@ def draw_subject(
         graph, path_strength, reach, wall=wall, faces=zones, kinds=feature_kinds(parts.labels)
     )
     graph = route_jumps(graph, path_strength, reach, wall=wall)
-    report(STAGE_ROUTED)
+    report(STAGE_ROUTED, graph.polylines(shape) if on_stage is not None else None)
     return Drawing(graph, mask, parts.source, parts.faces)
 
 
