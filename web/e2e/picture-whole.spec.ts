@@ -16,12 +16,13 @@ import { showViewIfTabbed } from "./fixtures/workspace";
  * left of centre; the cat: 768x1024, upright, its outline against the left
  * edge and short of the right), traced at the web's defaults (200 harmonics:
  * 401 circles), at a desk and on a phone, light and dark:
- *  · with only the picture shown, its painted box lies inside the stage with
- *    room on every side, at the picture's own aspect: whole, never cropped;
+ *  · playing from t = 0.6 (about 240 of the 401 circles, as in his frame) with
+ *    only the picture shown, its painted box lies inside the stage with room
+ *    on every side, at the picture's own aspect: whole, never cropped;
  *  · with the line drawn over it in full (`t=1`), the line's box stands in that
  *    box where the contour's `image_bounds` say it was traced;
- *  · while the drawing plays at its 401 circles, the line written so far stays
- *    inside that box.
+ *  · playing on from t = 0.6 with the line drawn, the line written so far
+ *    stays inside that box.
  */
 
 const PICTURES = [
@@ -116,6 +117,18 @@ async function open(page: Page, slug: string, query: string): Promise<void> {
     await page.waitForTimeout(1500);
 }
 
+/** Open the drawing paused at t = 0.6 and play on from there: most of its 401 circles turning. */
+async function playFromMost(page: Page, slug: string, query: string, touch: boolean): Promise<void> {
+    await open(page, slug, `?t=0.6${query}`);
+    const play = page.locator(".animation-dock").getByRole("button", { name: "Play animation" });
+    if (touch) await play.tap();
+    else await play.click();
+    await expect(page.locator(".animation-dock").getByRole("button", { name: "Pause animation" })).toBeVisible();
+    await page.waitForTimeout(1500);
+    const t = Number(await page.getByRole("slider", { name: "Timeline" }).getAttribute("aria-valuenow"));
+    expect(t, "playing on past t = 0.6, at most of the circles").toBeGreaterThan(0.6);
+}
+
 const CELLS = [
     { name: "1440 dark", viewport: { width: 1440, height: 900 }, colorScheme: "dark" as const, phone: false },
     { name: "1440 light", viewport: { width: 1440, height: 900 }, colorScheme: "light" as const, phone: false },
@@ -146,8 +159,9 @@ for (const source of PICTURES) {
                     const iw = ib.maxX - ib.minX;
                     const ih = ib.maxY - ib.minY;
 
-                    // The picture alone (no drawn layer): drawn whole, unfeathered.
-                    await open(page, picture.slug, "?line=0&circles=0");
+                    // The picture alone (no drawn layer), playing at most of its circles:
+                    // drawn whole, unfeathered.
+                    await playFromMost(page, picture.slug, "&line=0&circles=0", cell.phone);
                     const p = await paintedBox(page, 40);
                     expect(p.left, "room at the picture's left").toBeGreaterThanOrEqual(4);
                     expect(p.top, "room above the picture").toBeGreaterThanOrEqual(4);
@@ -170,17 +184,17 @@ for (const source of PICTURES) {
                         expect(Math.abs(o[side] - want[side]), `the outline's ${side} on the picture (${o[side].toFixed(1)} vs ${want[side].toFixed(1)})`).toBeLessThanOrEqual(tol);
                     }
 
-                    // Playing at its 401 circles (the circles' layer hidden, so only the
-                    // line wears the hue): the line written so far stays on the picture.
-                    await open(page, picture.slug, "?circles=0");
-                    await expect(page.getByRole("button", { name: "Pause animation" }).first()).toBeVisible();
-                    await page.waitForTimeout(2500);
+                    // Playing on from t = 0.6 (the circles' layer hidden, so only the line
+                    // wears the hue): the line written so far stays on the picture, in the
+                    // box the picture had alone.
+                    await playFromMost(page, picture.slug, "&circles=0", cell.phone);
                     const line = await paintedBox(page, 160, true);
-                    expect(line.w, "the line is writing itself").toBeGreaterThan(8);
+                    expect(line.w, "the line is written across most of the subject").toBeGreaterThan(0.3 * (o0.maxX - o0.minX) / iw * p.w);
                     expect(line.left).toBeGreaterThanOrEqual(p.left - 3);
                     expect(line.right).toBeLessThanOrEqual(p.right + 3);
                     expect(line.top).toBeGreaterThanOrEqual(p.top - 3);
                     expect(line.bottom).toBeLessThanOrEqual(p.bottom + 3);
+
                 });
             });
         }

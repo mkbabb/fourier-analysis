@@ -14,8 +14,8 @@ import { showViewIfTabbed } from "./fixtures/workspace";
 
 const LOAD = 60_000;
 
-async function openViz(page: Page): Promise<void> {
-    await page.goto(`/v/${seededViz().slug}?t=0.5`);
+async function openViz(page: Page, query = ""): Promise<void> {
+    await page.goto(`/v/${seededViz().slug}?t=0.5${query}`);
     await showViewIfTabbed(page, "Canvas");
     await expect(page.locator(".animation-dock")).toBeVisible({ timeout: LOAD });
     await expect(page.getByRole("button", { name: "Play animation" }).first()).toBeEnabled({ timeout: LOAD });
@@ -69,7 +69,10 @@ for (const vp of [
         });
 
         test("the drawing is fitted with a 6 % margin, above the dock", async ({ page }) => {
-            await openViz(page);
+            // FORTY-SIXTH H: with the picture shown the fit holds the whole
+            // picture the drawing was traced from; with it hidden (`bg=0`) the
+            // fit is the drawing's own, which this measures.
+            await openViz(page, "&bg=0");
             const stage = (await page.locator(".canvas-stage").boundingBox())!;
             const ink = await inkWidth(page);
             // The seed's outline is wider than tall: at the fit it spans the
@@ -230,6 +233,8 @@ for (const vp of [
         test.use({ viewport: vp, isMobile: true, hasTouch: true });
 
         test("the dock stands on the stage's trailing edge and the drawing keeps the height beside it", async ({ page }) => {
+            // Three loads of the piece, each allowed `LOAD`.
+            test.setTimeout(3 * LOAD);
             await openViz(page);
             await page.waitForTimeout(600);
             const stage = (await page.locator(".canvas-stage").boundingBox())!;
@@ -284,8 +289,11 @@ for (const vp of [
             // the box at 932x430 (three runs); the bound sits under it with room for the fit's rounding.
             expect(fill, "the drawing fills the box beside the strip").toBeGreaterThanOrEqual(0.65);
             // The picture alone, whole, fills that box the same way, clear of the strip and the legend.
+            // The picture's file arrives on its own (up to a second after the
+            // drawing here), then fades in and the fit settles on it.
             await page.goto(`/v/${seededViz().slug}?line=0&circles=0`);
             await expect(page.getByRole("button", { name: /Play animation|Pause animation/ }).first()).toBeEnabled({ timeout: LOAD });
+            await expect.poll(() => inkBox(page, true), { message: "the picture is on the stage", timeout: 10_000 }).not.toBeNull();
             await page.waitForTimeout(800);
             const picture = await inkBox(page, true);
             expect(picture, "the picture is on the stage").not.toBeNull();
