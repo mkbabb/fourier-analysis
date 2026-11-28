@@ -34,7 +34,7 @@ export function jobStageLabel(s: JobStage | null): string {
 
 /**
  * The measure's value: the job's fraction, or `null` (none) while it waits
- * for a worker. Image extraction reports the drawing's four checkpoints, so
+ * for a worker. Image extraction reports the drawing's checkpoints, so
  * it moves in real steps too (docs/api/compute-jobs.md).
  */
 export function jobProgressValue(s: JobStage | null): number | null {
@@ -50,8 +50,9 @@ export function jobProgressValue(s: JobStage | null): number | null {
  * reported fraction eased to each report and creeping between reports: from
  * each report it closes, ever more slowly, on a point `MEASURE_CREEP_SHARE` of
  * the way from the report to the end. It never stands still, never passes that
- * point, and never moves back (a later report under it holds it until the
- * creep from that report passes it).
+ * point, and never moves back: a report under what the creep has already shown
+ * (an early one, such as the first subject model's) is a new start from where
+ * the bar stands (`creepBase`), never a hold until a creep from below catches up.
  */
 
 /** How quickly the bar closes on its target (ms, an exponential's time constant). */
@@ -61,7 +62,12 @@ export const MEASURE_CREEP_MS = 4000;
 /** The creep's ceiling: this share of the room left above the report. */
 export const MEASURE_CREEP_SHARE = 0.5;
 
-/** Where the bar is heading `since` ms after a report of `reported`. */
+/** Where a report of `reported` starts the creep from, with the bar at `shown`: the higher of the two. */
+export function creepBase(reported: number, shown: number): number {
+    return Math.max(reported, shown);
+}
+
+/** Where the bar is heading `since` ms after a creep's start at `reported` (`creepBase`). */
 export function measureTarget(reported: number, since: number): number {
     const room = MEASURE_CREEP_SHARE * (1 - reported);
     return reported + room * (1 - Math.exp(-Math.max(0, since) / MEASURE_CREEP_MS));
@@ -75,13 +81,23 @@ export function stepMeasure(shown: number, target: number, dt: number): number {
 
 /** How long the bar takes to run on to full when the drawing lands (ms). */
 export const MEASURE_RUN_OUT_MS = 280;
+/**
+ * The fewest painted frames the run-on takes (the motion canon: a leg is at
+ * least five frames long, and no frame lands more than two fifths of it; a cut
+ * given two frames is still a cut). On a busy phone the landing's frames come
+ * slowly, and 280 ms was two or three of them. Seven keeps the cubic's first
+ * frame at 37 % of the travel.
+ */
+export const MEASURE_RUN_OUT_FRAMES = 7;
 
 /**
- * The bar `elapsed` ms into its run-on to full from `from` (the drawing has
- * landed): cubic out over `MEASURE_RUN_OUT_MS`, so it reads as done at once and
- * never crawls through its last few per cent while the drawing already plays.
+ * The bar `elapsed` ms and `frames` painted frames into its run-on to full
+ * from `from` (the drawing has landed): cubic out over `MEASURE_RUN_OUT_MS`
+ * and never fewer than `MEASURE_RUN_OUT_FRAMES` frames, so it reads as done at
+ * once and never crawls through its last few per cent while the drawing
+ * already plays, nor jumps to full on a slow display.
  */
-export function runOut(from: number, elapsed: number): number {
-    const k = Math.min(1, Math.max(0, elapsed) / MEASURE_RUN_OUT_MS);
+export function runOut(from: number, elapsed: number, frames = Infinity): number {
+    const k = Math.min(1, Math.max(0, elapsed) / MEASURE_RUN_OUT_MS, Math.max(0, frames) / MEASURE_RUN_OUT_FRAMES);
     return from + (1 - from) * (1 - (1 - k) ** 3);
 }

@@ -10,7 +10,7 @@ import { showViewIfTabbed } from "./fixtures/workspace";
  * Progress drawn, not described: while an upload's first compute runs the
  * stage shows the picture itself within a second of the job starting, no
  * caption or second copy of the outline stands on it, and the job's measure
- * moves through extraction in real steps (the drawing's four checkpoints)
+ * moves through extraction in real steps (the drawing's checkpoints)
  * rather than breathing until the outline lands.
  *
  * FORTY-SIXTH G (FORTY-EIGHTH, his frame: the photo alone, the timeline empty
@@ -19,7 +19,8 @@ import { showViewIfTabbed } from "./fixtures/workspace";
  * carries none). It is determinate from the job's first stage to the landing,
  * rising and never standing still for more than 400 ms. And the drawing shows
  * as it is found: the found lines, in the line's own hue, are on the stage
- * before the drawing lands.
+ * before the drawing lands, the first of them (the subject's outline as the
+ * first subject model sees it) before the subject mask is done.
  */
 
 const LOAD = 90_000;
@@ -30,10 +31,14 @@ interface Sample {
     rim: number | null;
     /** The timeline row's measure: its value, null while indeterminate, undefined when there is none. */
     bar: number | null | undefined;
+    /** The measure's painted fill in px (glass's unrounded value across its rail; its value is read to 1 %). */
+    fill: number | null;
     /** Pixels in the line's hue on the stage canvas (every 16th sampled). */
     line: number;
     /** The drawing has landed (the transport's Play seat is live). */
     landed: boolean;
+    /** The job's own last report (its fraction), read from the workspace store; null before the first. */
+    job: number | null;
     captions: number;
     bars: number;
     outlines: number;
@@ -63,9 +68,19 @@ async function startSampling(page: Page): Promise<void> {
             }
             const measure = document.querySelector(".canvas-stage [data-job-measure] [role=progressbar]");
             const now = measure?.getAttribute("aria-valuenow");
+            let fill: number | null = null;
+            if (measure) {
+                const percent = [measure, ...measure.querySelectorAll("*")]
+                    .map((e) => parseFloat(getComputedStyle(e).getPropertyValue("--progress-value-percent")))
+                    .find((v) => Number.isFinite(v));
+                if (percent !== undefined) fill = (percent / 100) * measure.getBoundingClientRect().width;
+            }
             const play = document.querySelector<HTMLButtonElement>('.canvas-stage button[aria-label="Play animation"], .canvas-stage button[aria-label="Pause animation"]');
             const rim = document.querySelector(".app-dock .dock-progress");
             const stage = document.querySelector(".canvas-stage");
+            type Store = { state: { value: { workspace?: { job?: { fraction?: number } | null } } } };
+            const app = (document.querySelector("#app") as unknown as { __vue_app__?: { config: { globalProperties: { $pinia?: Store } } } }).__vue_app__;
+            const job = app?.config.globalProperties.$pinia?.state.value.workspace?.job?.fraction;
             // The stage's own statuses and bars: the dock standing on it keeps
             // glass's live region for its own fold and the clock's position
             // readout (a progressbar of the animation, not of the job), which
@@ -82,23 +97,50 @@ async function startSampling(page: Page): Promise<void> {
                 painted,
                 rim: rim ? Number(rim.getAttribute("aria-valuenow")) : null,
                 bar: measure ? (now == null ? null : Number(now)) : undefined,
+                fill,
                 line,
                 // glass's DockControl marks a seat off with `aria-disabled`.
                 landed: !!play && !play.disabled && play.getAttribute("aria-disabled") !== "true",
+                job: typeof job === "number" ? job : null,
                 captions: shown(statuses.filter((e) => (e.textContent ?? "").trim())),
                 bars: shown(own("[role=progressbar]")),
                 outlines: stage ? shown(stage.querySelectorAll("svg.stage-outline")) : 0,
             });
         }, 50);
-        w.__stop = () => window.clearInterval(id);
+        // The measure on every painted frame as well (what the eye sees): on a
+        // throttled phone the timer above is starved by long frames, and a
+        // run-on of a few frames can fall between its samples.
+        const frames: { at: number; bar: number | null; landed: boolean }[] = [];
+        (window as unknown as { __frames: typeof frames }).__frames = frames;
+        let raf = 0;
+        const frame = () => {
+            const m = document.querySelector(".canvas-stage [data-job-measure] [role=progressbar]");
+            if (m) {
+                const v = m.getAttribute("aria-valuenow");
+                const play = document.querySelector<HTMLButtonElement>('.canvas-stage button[aria-label="Play animation"], .canvas-stage button[aria-label="Pause animation"]');
+                frames.push({ at: performance.now() - t0, bar: v == null ? null : Number(v), landed: !!play && !play.disabled && play.getAttribute("aria-disabled") !== "true" });
+            }
+            raf = requestAnimationFrame(frame);
+        };
+        raf = requestAnimationFrame(frame);
+        w.__stop = () => {
+            window.clearInterval(id);
+            cancelAnimationFrame(raf);
+        };
     });
 }
 
-async function stopSampling(page: Page): Promise<Sample[]> {
+interface Frame {
+    at: number;
+    bar: number | null;
+    landed: boolean;
+}
+
+async function stopSampling(page: Page): Promise<{ samples: Sample[]; frames: Frame[] }> {
     return page.evaluate(() => {
-        const w = window as unknown as { __samples: Sample[]; __stop: () => void };
+        const w = window as unknown as { __samples: Sample[]; __frames: Frame[]; __stop: () => void };
         w.__stop();
-        return w.__samples;
+        return { samples: w.__samples, frames: w.__frames };
     });
 }
 
@@ -111,7 +153,7 @@ function freshSample(): { name: string; mimeType: string; buffer: Buffer } {
     return { name: `sample${extname(SAMPLE_IMAGE)}`, mimeType: SAMPLE_MIME, buffer: Buffer.concat([readFileSync(SAMPLE_IMAGE), randomBytes(16)]) };
 }
 
-async function uploadAndWatch(page: Page): Promise<Sample[]> {
+async function uploadAndWatch(page: Page): Promise<{ samples: Sample[]; frames: Frame[] }> {
     await page.goto("/visualize");
     await expect(page.locator(".drop-target")).toBeVisible({ timeout: LOAD });
     const job = page.waitForResponse((r) => isJobPost(r, "images"), { timeout: LOAD });
@@ -119,14 +161,17 @@ async function uploadAndWatch(page: Page): Promise<Sample[]> {
     await job;
     await showViewIfTabbed(page, "Canvas");
     await startSampling(page);
-    // Until the drawing is on the stage and the job is done (the busy mark goes).
+    // Until the drawing is on the stage and the job is done (the busy mark goes),
+    // and the measure has run on and left the timeline's row (on a throttled
+    // phone its run-on outlasts the job's last stages).
     const busy = page.locator(".canvas-stage [role=status]:not(.dock-run-status)");
     await expect(busy).toHaveCount(1, { timeout: 10_000 });
     await expect(busy).toHaveCount(0, { timeout: LOAD });
+    await expect(page.locator(".canvas-stage [data-job-measure]")).toHaveCount(0, { timeout: 10_000 });
     return stopSampling(page);
 }
 
-function judge(samples: Sample[]): void {
+function judge({ samples, frames }: { samples: Sample[]; frames: Frame[] }): void {
     expect(samples.length, "the first compute was sampled").toBeGreaterThan(10);
     // The picture is on the stage within a second of the job starting.
     const firstPaint = samples.find((s) => s.painted > 50);
@@ -153,23 +198,40 @@ function judge(samples: Sample[]): void {
     expect(steps.length, `the measure rose in steps (${steps.length})`).toBeGreaterThanOrEqual(4);
     const inExtraction = steps.filter((v) => v < 0.85);
     expect(inExtraction.length, `the measure moves inside extraction (${inExtraction.length})`).toBeGreaterThanOrEqual(3);
-    // Never a still measure: no stretch of more than 400 ms at one value.
+    // Never a still measure: no stretch of more than 400 ms in which its fill
+    // moved less than half a pixel (its value is read to 1 %, finer than a
+    // creep the eye sees on a long rail).
     let still = 0;
-    let from = run[0]!.at;
+    let where = "";
+    let from = run[0]!;
     for (let i = 1; i < run.length; i++) {
-        if (run[i]!.bar !== run[i - 1]!.bar) from = run[i]!.at;
-        still = Math.max(still, run[i]!.at - from);
+        if (Math.abs((run[i]!.fill ?? 0) - (from.fill ?? 0)) >= 0.5) from = run[i]!;
+        if (run[i]!.at - from.at > still) {
+            still = run[i]!.at - from.at;
+            where = `from ${from.at.toFixed(0)} ms (job ${from.job}, fill ${from.fill?.toFixed(1)} px) to ${run[i]!.at.toFixed(0)} ms (job ${run[i]!.job}); samples between: ${i - run.indexOf(from)}`;
+        }
     }
-    expect(still, "the longest stretch the measure stood still (ms)").toBeLessThanOrEqual(400);
-    // On the landing it runs on to full as it leaves, never back to indeterminate.
-    const leaving = samples.slice(landing).filter((s) => s.bar !== undefined);
-    expect(leaving.every((s) => typeof s.bar === "number"), "determinate on its way out").toBe(true);
-    expect(Math.max(...leaving.map((s) => s.bar as number)), "the measure runs on to full as it leaves").toBeGreaterThanOrEqual(0.95);
+    expect(still, `the longest stretch the measure stood still (ms): ${where}`).toBeLessThanOrEqual(400);
+    // On the landing it runs on to full as it leaves, never back to
+    // indeterminate: read on every painted frame from the landing on.
+    const landedAt = frames.findIndex((f) => f.landed);
+    expect(landedAt, "the landing was painted with the measure standing").toBeGreaterThanOrEqual(0);
+    const leaving = frames.slice(landedAt);
+    expect(leaving.every((f) => typeof f.bar === "number"), "determinate on its way out").toBe(true);
+    const runOn = leaving.map((f) => f.bar as number);
+    expect(Math.max(...runOn), `the measure runs on to full as it leaves (${runOn.join(", ")})`).toBeGreaterThanOrEqual(0.95);
+    expect(runOn.length, `the run-on is painted over five frames or more, never a cut (${runOn.length})`).toBeGreaterThanOrEqual(5);
     // The drawing as it is found: lines in the line's hue before the landing,
     // well past what the picture itself holds in that hue at the job's start.
     const atStart = Math.max(...before.slice(0, Math.max(1, first + 1)).map((s) => s.line));
     const found = Math.max(...before.map((s) => s.line));
     expect(found, `the found lines are on the stage before the drawing lands (${atStart} -> ${found})`).toBeGreaterThan(atStart + 40);
+    // The first light comes early: the subject's outline as the first subject
+    // model sees it is on the stage while the job is still short of its mask
+    // checkpoint (0.47 of the drawing, 0.40 of the job), not after it.
+    const firstLight = before.find((s) => s.line > atStart + 40)!;
+    expect(firstLight.job, "the job had reported before its outline stood").not.toBeNull();
+    expect(firstLight.job!, `the outline stood at the job's ${firstLight.job} (the mask is 0.40)`).toBeLessThan(0.39);
 }
 
 test.describe("o41 stage — progress drawn, not described (1440)", () => {

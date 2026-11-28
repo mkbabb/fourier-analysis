@@ -1,6 +1,6 @@
 import { onScopeDispose, shallowRef, watch, type Ref } from "vue";
 import type { JobStage } from "@/lib/api";
-import { jobProgressValue, measureTarget, MEASURE_RUN_OUT_MS, runOut, stepMeasure } from "@/lib/jobProgress";
+import { creepBase, jobProgressValue, measureTarget, MEASURE_RUN_OUT_FRAMES, MEASURE_RUN_OUT_MS, runOut, stepMeasure } from "@/lib/jobProgress";
 
 /**
  * FORTY-SIXTH G: the job's measure as the stage's timeline shows it while a
@@ -17,10 +17,12 @@ export function useJobMeasure(
     landed: () => boolean,
 ): Readonly<Ref<number | null>> {
     const shown = shallowRef<number | null>(null);
+    /** The job's last report, and where its creep started (`creepBase`) and when. */
     let reported = 0;
+    let base = 0;
     let reportedAt = 0;
-    /** The drawing landed while measured: the run-on's start value and its first painted frame (NaN until then). */
-    let finish: { from: number; t0: number } | null = null;
+    /** The drawing landed while measured: the run-on's start value, its first painted frame (NaN until then) and the frames painted since. */
+    let finish: { from: number; t0: number; frames: number } | null = null;
     let last = 0;
     let raf = 0;
 
@@ -37,11 +39,12 @@ export function useJobMeasure(
             // a clock started before it had run on unseen (the stage's intro).
             const t = performance.now();
             if (Number.isNaN(finish.t0)) finish.t0 = t;
-            shown.value = runOut(finish.from, t - finish.t0);
-            if (t - finish.t0 < MEASURE_RUN_OUT_MS) raf = requestAnimationFrame(tick);
+            else finish.frames++;
+            shown.value = runOut(finish.from, t - finish.t0, finish.frames);
+            if (t - finish.t0 < MEASURE_RUN_OUT_MS || finish.frames < MEASURE_RUN_OUT_FRAMES) raf = requestAnimationFrame(tick);
             return;
         }
-        shown.value = stepMeasure(shown.value ?? 0, measureTarget(reported, now - reportedAt), now - last);
+        shown.value = stepMeasure(shown.value ?? 0, measureTarget(base, now - reportedAt), now - last);
         last = now;
         raf = requestAnimationFrame(tick);
     }
@@ -56,7 +59,7 @@ export function useJobMeasure(
         ([value, isLanded]) => {
             if (value === null) {
                 if (isLanded && shown.value !== null) {
-                    finish ??= { from: shown.value, t0: NaN };
+                    finish ??= { from: shown.value, t0: NaN, frames: 0 };
                     return run();
                 }
                 finish = null;
@@ -67,6 +70,7 @@ export function useJobMeasure(
             finish = null;
             if (value !== reported || shown.value === null) {
                 reported = value;
+                base = creepBase(value, shown.value ?? 0);
                 reportedAt = performance.now();
             }
             if (shown.value === null) shown.value = 0;
