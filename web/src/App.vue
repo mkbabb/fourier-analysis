@@ -207,11 +207,16 @@ onScopeDispose(() => {
                  X·OD19 F5 ⊕ ALL: `<main>` is the route window of glass's route
                  grammar (`data-route-window`); every path change crossfades
                  under `routeTransition({ nav: "route" })` at the router seam
-                 (`router/index.ts`), and the dock above it stays put. -->
+                 (`router/index.ts`), and the dock above it stays put.
+                 FORTY-SEVENTH (the sideways-scroll census): it scrolls on y
+                 only. `overflow-y: auto` alone computes x to `auto` too, so
+                 anything that ever spilled a pixel panned the whole page
+                 sideways under a phone's thumb; x is clipped (`hidden`, as
+                 `clip` cannot sit beside a scrolling axis). -->
             <main
                 ref="main"
                 data-route-window
-                class="relative flex-1 min-h-0 flex flex-col overflow-y-auto -mt-px border-t border-transparent data-[scrolled]:border-[var(--border)] data-[owns-cut]:data-[scrolled]:border-transparent"
+                class="relative flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden -mt-px border-t border-transparent data-[scrolled]:border-[var(--border)] data-[owns-cut]:data-[scrolled]:border-transparent"
                 :data-scrolled="mainScrolled || undefined"
                 :data-owns-cut="$route.meta.ownsCut || undefined"
                 @scroll.passive="onMainScroll"
