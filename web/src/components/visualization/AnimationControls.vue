@@ -15,8 +15,9 @@
  *    Fullscreen, Export frame) | Edit.
  *  · `plate` (a phone held upright): the plate inside the gutter. The scrub,
  *    then seven seats: Play | Picture, Outline, More | the rate, the easing |
- *    Edit. More holds the rest in three groups: the drawn layers; what the
- *    stage shows; what leaves the page.
+ *    Edit. More holds rows only, in four groups: the picture's strength; the
+ *    drawn layers; what the stage shows; what leaves the page. The strength's
+ *    slider has a seat of its own on a phone (below).
  *  · `strip` (a short landscape stage, a phone held sideways): the plate's
  *    scrub and seats in a card standing on the stage's trailing edge. There
  *    the drawing is bound by the stage's height, so the box beside the card
@@ -31,7 +32,7 @@
  * covers the app dock, a desk shows them as seats here. The host renders them
  * through the `page-tools` slot (`WorkspaceTools`).
  */
-import { computed, h } from "vue";
+import { computed, h, ref, useTemplateRef } from "vue";
 import { createReusableTemplate } from "@vueuse/core";
 import {
     CircleDashed,
@@ -64,6 +65,7 @@ import {
     DropdownMenuSeparator,
 } from "@mkbabb/glass-ui/menu";
 import { EasingCurve } from "@mkbabb/glass-ui/easing";
+import { Popover, PopoverContent, type PopoverVirtualElement } from "@mkbabb/glass-ui/popover";
 import { Progress } from "@mkbabb/glass-ui/progress";
 import { Slider } from "@mkbabb/glass-ui/slider";
 import { WASH_DEFAULT, WASH_MAX, WASH_MIN } from "./lib/workspace-query";
@@ -124,6 +126,49 @@ const auth = useAuthStore();
  */
 function keepFocusForSignIn(e: Event) {
     if (auth.signInRequested) e.preventDefault();
+}
+
+/*
+ * The picture's strength on a phone (O48 follow-up G-1: the menu that held its
+ * slider covered most of the stage the slider previews, 517 of 750 px at
+ * 390x844). More keeps rows only; its first row names the strength with its
+ * value, and choosing it opens the slider's own seat: a glass popover one row
+ * tall standing on the plate's top edge, so the stage above stays in
+ * view while the hand tunes it. The menu leaves before the popover arrives
+ * (the popover opens on the menu's close, which keeps the focus for it), and
+ * the popover gives the focus back to More when it closes.
+ */
+const strengthOpen = ref(false);
+let strengthAsked = false;
+const layersTrigger = useTemplateRef<{ $el: HTMLElement }>("layersTrigger");
+const plate = useTemplateRef<HTMLElement>("plate");
+/**
+ * The plate's top edge, across the plate: the popover stands on it, its end
+ * at the plate's end, so it never reaches past the stage (sideways, the plate
+ * is a card at the stage's trailing edge).
+ */
+const strengthAnchor: PopoverVirtualElement = {
+    getBoundingClientRect() {
+        const r = plate.value?.getBoundingClientRect();
+        const x = r?.left ?? 0;
+        const y = r?.top ?? 0;
+        const width = r?.width ?? 0;
+        return { x, y, width, height: 0, top: y, bottom: y, left: x, right: x + width };
+    },
+};
+function askStrength() {
+    strengthAsked = true;
+}
+function onMenuClosed(e: Event) {
+    keepFocusForSignIn(e);
+    if (!strengthAsked) return;
+    strengthAsked = false;
+    e.preventDefault();
+    strengthOpen.value = true;
+}
+function onStrengthClosed(e: Event) {
+    e.preventDefault();
+    layersTrigger.value?.$el?.focus({ preventScroll: true });
 }
 
 /** There is a drawing to act on: until then every seat is present and disabled. */
@@ -318,7 +363,6 @@ function onWashCommit(v: number[]) {
             />
             <span class="strength-value" aria-hidden="true">{{ wash }}%</span>
         </div>
-        <DropdownMenuSeparator />
     </DefineStrength>
 
     <!-- The takeover's way out, a seat in every form while it is up. -->
@@ -341,7 +385,7 @@ function onWashCommit(v: number[]) {
         fit-content
         aria-label="Stage controls"
     >
-        <div class="card-face">
+        <div ref="plate" class="card-face">
             <div class="card-scrub" :data-busy="measuring || undefined">
                 <TimelineReadout />
                 <Transition name="scrub-busy">
@@ -364,12 +408,17 @@ function onWashCommit(v: number[]) {
                     <ReuseLayer :seat="LAYER_SEATS[0]" />
                     <ReuseLayer :seat="LAYER_SEATS[1]" />
                     <DropdownMenu :modal="false">
-                        <DockTrigger for="dropdown" aria-label="Layers and more" :disabled="!ready">
+                        <DockTrigger ref="layersTrigger" for="dropdown" aria-label="Layers and more" :disabled="!ready">
                             <Ellipsis class="stage-glyph" aria-hidden="true" />
                         </DockTrigger>
-                        <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end" @close-auto-focus="keepFocusForSignIn">
+                        <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end" @close-auto-focus="onMenuClosed">
                             <div class="menu-sections">
-                                <ReuseStrength />
+                                <DropdownMenuItem class="strength-item" @select="askStrength">
+                                    <ImageIcon aria-hidden="true" />
+                                    <span>Picture strength</span>
+                                    <span class="strength-item-value">{{ wash }}%</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuCheckboxItem :model-value="layers.line" @select="keepOpen" @update:model-value="emit('toggleLayer', 'line')">
                                     <Spline aria-hidden="true" />
                                     <span>Line</span>
@@ -407,6 +456,19 @@ function onWashCommit(v: number[]) {
                             </div>
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    <Popover v-model:open="strengthOpen">
+                        <PopoverContent
+                            :reference="strengthAnchor"
+                            side="top"
+                            align="end"
+                            :side-offset="8"
+                            class="strength-popover"
+                            aria-label="Picture strength"
+                            @close-auto-focus="onStrengthClosed"
+                        >
+                            <ReuseStrength />
+                        </PopoverContent>
+                    </Popover>
                 </div>
                 <div class="seat-group">
                     <ReuseSpeed />
@@ -418,6 +480,7 @@ function onWashCommit(v: number[]) {
                         <DropdownMenuContent class="menu-popup" side="top" :side-offset="8" align="end">
                             <div class="menu-sections">
                                 <ReuseStrength />
+                                <DropdownMenuSeparator />
                                 <DropdownMenuCheckboxItem :model-value="justThePicture" @select="keepOpen" @update:model-value="emit('justThePicture')">
                                     <Focus aria-hidden="true" />
                                     <span>Just the picture</span>
@@ -610,6 +673,12 @@ function onWashCommit(v: number[]) {
     text-align: end;
     font-variant-numeric: tabular-nums;
     font-size: var(--type-small, 0.9375rem);
+}
+/* The phone's strength row in More: the value set in at the row's end. */
+.strength-item-value {
+    margin-inline-start: auto;
+    padding-inline-start: 1rem;
+    font-variant-numeric: tabular-nums;
 }
 </style>
 
