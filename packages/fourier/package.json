@@ -1,6 +1,6 @@
 {
     "name": "@mkbabb/fourier",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Fourier series of closed curves: spectra, partial sums, epicycle chains, and a small client for the fourier.babb.dev API.",
     "license": "MIT",
     "author": "Mike Babb",
