@@ -431,8 +431,9 @@ def _disc_png(size: int = 64) -> bytes:
 
 @requires_mongo
 def test_the_image_jobs_extraction_reports_the_drawings_checkpoints(monkeypatch, tmp_path):
-    """Extraction reports the drawing's four checkpoints (after the subject
-    mask, the line maps, the vectorised lines and the routing), so before the
+    """Extraction reports the drawing's five checkpoints (after the first
+    subject model, the subject mask, the line maps, the vectorised lines and
+    the routing), so before the
     ``contour`` partial the stream carries ``extract`` fractions rising strictly
     inside the stage, not only its start and end. The drawing itself is stood in
     for (its models are not part of this suite); the router, the compute thread,
@@ -445,7 +446,13 @@ def test_the_image_jobs_extraction_reports_the_drawings_checkpoints(monkeypatch,
     from fourier_analysis.contours import drawing
 
     monkeypatch.setattr(settings, "blob_dir", str(tmp_path))
-    checkpoints = [drawing.STAGE_MASK, drawing.STAGE_LINES, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED]
+    checkpoints = [
+        drawing.STAGE_FIRST_MAP,
+        drawing.STAGE_MASK,
+        drawing.STAGE_LINES,
+        drawing.STAGE_VECTORS,
+        drawing.STAGE_ROUTED,
+    ]
 
     def drawn(image_path, config, on_stage=None):
         assert on_stage is not None

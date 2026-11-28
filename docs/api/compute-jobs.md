@@ -78,18 +78,19 @@ Partials:
 0.85 – 0.88, `bases` 0.88 – 1 with `{done, total}` per level. **Contour**
 (`/api/contours/{hash}/jobs`): `epicycles` 0 – 0.05, `bases` 0.05 – 1. The weights are
 measured costs (extraction ~5 s of a ~6 s first compute on this Mac, about twice that
-in production). Extraction reports its start, four checkpoints of the drawing (after
-the subject mask, the line maps, the vectorised lines and the routing: about 0.47,
-0.80, 0.84 and 0.98 of the stage) and its end, so the bar moves through it in real
-steps; the `contour` partial ends it. A cache hit, or an explicit strategy other than
+in production). Extraction reports its start, five checkpoints of the drawing (after
+the first subject model, the subject mask, the line maps, the vectorised lines and the
+routing: about 0.12, 0.47, 0.80, 0.84 and 0.98 of the stage) and its end, so the bar
+moves through it in real steps; the `contour` partial ends it. A cache hit, or an explicit strategy other than
 `auto`, sends only the start and end.
 
 Partials:
 
 - `sketch` `{stage: "sketch", lines: [[x0, y0, x1, y1, ...], ...]}`: the drawing so far,
-  while extraction runs: the subject's outline at the mask checkpoint, the parts' borders
-  (the outline and the features) at the vectorised lines, and the drawing's strokes once
-  routed. Each supersedes the last. Lines are in the contour's frame (centred, y up, as `image_bounds`), resampled
+  while extraction runs: the subject's outline as the first subject model sees it (about a
+  tenth of the way into extraction, before the second model runs), then at the mask
+  checkpoint, the parts' borders (the outline and the features) at the vectorised lines,
+  and the drawing's strokes once routed. Each supersedes the last. Lines are in the contour's frame (centred, y up, as `image_bounds`), resampled
   every 4 px (wider for a long drawing: at most 6000 points), lines under 8 px dropped.
   Draw it over the picture as it lands. Absent on a cache hit or an explicit strategy.
 - `contour` `{stage: "contour", ...extract-contour's response}`: the outline, before

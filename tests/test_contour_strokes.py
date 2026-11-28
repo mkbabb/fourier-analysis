@@ -305,25 +305,34 @@ def primary():
     )
 
 
-def test_the_drawing_reports_its_four_checkpoints(primary):
+def test_the_drawing_reports_its_checkpoints(primary):
     """The drawing says how far through it is after each costly step, in order,
     so an image job's bar moves through extraction in real steps; and what it
     has drawn so far where there is something to show (FORTY-SIXTH G): the
-    subject's outline at the mask, the parts' borders at the vectorised lines,
-    the drawing's strokes once routed, each a list of lines inside the frame."""
+    subject's outline as the first model sees it (the earliest light, before
+    the second model runs), then at the mask, the parts' borders at the
+    vectorised lines, the drawing's strokes once routed, each a list of lines
+    inside the frame."""
     from fourier_analysis.contours import drawing
 
     fractions = [f for f, _ in DRAWING_REPORTS]
-    assert fractions == [drawing.STAGE_MASK, drawing.STAGE_LINES, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED]
+    assert fractions == [
+        drawing.STAGE_FIRST_MAP,
+        drawing.STAGE_MASK,
+        drawing.STAGE_LINES,
+        drawing.STAGE_VECTORS,
+        drawing.STAGE_ROUTED,
+    ]
     sketches = dict(DRAWING_REPORTS)
     assert sketches[drawing.STAGE_LINES] is None
     h, w = primary[0].labels.shape
-    for at in (drawing.STAGE_MASK, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED):
+    for at in (drawing.STAGE_FIRST_MAP, drawing.STAGE_MASK, drawing.STAGE_VECTORS, drawing.STAGE_ROUTED):
         lines = sketches[at]
         assert lines, at
         z = np.concatenate(lines)
         assert np.abs(z.real).max() <= w / 2 + 1 and np.abs(z.imag).max() <= h / 2 + 1, at
     # The subject's outline is one ring or a few; the strokes found are more.
+    assert len(sketches[drawing.STAGE_FIRST_MAP]) <= 4
     assert len(sketches[drawing.STAGE_MASK]) <= 4
     assert len(sketches[drawing.STAGE_ROUTED]) > len(sketches[drawing.STAGE_MASK])
 

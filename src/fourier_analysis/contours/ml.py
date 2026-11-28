@@ -11,6 +11,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -269,11 +270,21 @@ def _predict_one(spec: SubjectModelSpec, rgb: Image.Image, shape: tuple[int, int
     return np.clip(np.asarray(resized, dtype=np.float64), 0.0, 1.0)
 
 
-def subject_maps(image: LoadedImage) -> list[NDArray[np.float64]]:
-    """Each subject model's [0, 1] probability map at the input resolution."""
+def subject_maps(
+    image: LoadedImage,
+    on_map: Callable[[NDArray[np.float64]], None] | None = None,
+) -> list[NDArray[np.float64]]:
+    """Each subject model's [0, 1] probability map at the input resolution, in
+    ``SUBJECT_MODELS`` order. ``on_map`` hears each map as its model finishes
+    (the first, U2-Net's, comes at about a quarter of the ensemble's time)."""
     rgb = _source_rgb(image)
     shape = image.grayscale.shape
-    return [_predict_one(spec, rgb, shape) for spec in SUBJECT_MODELS]
+    maps: list[NDArray[np.float64]] = []
+    for spec in SUBJECT_MODELS:
+        maps.append(_predict_one(spec, rgb, shape))
+        if on_map is not None:
+            on_map(maps[-1])
+    return maps
 
 
 def _predict_probability_map(image: LoadedImage) -> NDArray[np.float64]:

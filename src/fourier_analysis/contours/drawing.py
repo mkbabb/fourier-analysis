@@ -125,8 +125,11 @@ class Drawing:
 
 
 # How far through the drawing each step leaves it, by measured cost (a
-# portrait at the web's defaults): the subject mask, the learned line maps, the
-# vectorised lines, and the routed connectors and pen jumps.
+# portrait at the web's defaults): the first subject model's read (U2-Net,
+# 0.5-0.75 s here against BiRefNet's ~2 s, so about a quarter of the mask's
+# share), the subject mask, the learned line maps, the vectorised lines, and
+# the routed connectors and pen jumps.
+STAGE_FIRST_MAP = 0.12
 STAGE_MASK = 0.47
 STAGE_LINES = 0.80
 STAGE_VECTORS = 0.84
@@ -135,9 +138,9 @@ STAGE_ROUTED = 0.98
 StageReport = Callable[[float, "list[NDArray[np.complex128]] | None"], None]
 """Hears the drawing's progress (0..1) after each costly step, with what the
 step has drawn so far where there is something to show (the sketch, in
-pipeline coordinates): the subject's outline at the mask, the parts' borders
-at the vectorised lines, the drawing's strokes once routed.  ``None`` at the
-line maps."""
+pipeline coordinates): the subject's outline as the first subject model sees
+it, then as the mask has it, the parts' borders at the vectorised lines, the
+drawing's strokes once routed.  ``None`` at the line maps."""
 
 
 def mask_outline(mask: NDArray[np.bool_]) -> list[NDArray[np.complex128]]:
@@ -159,15 +162,18 @@ def draw_subject(
 ) -> Drawing | None:
     """The subject's drawing as a stroke graph (module docstring); ``None``
     when there is no subject. ``on_stage`` hears how far through the drawing
-    it is (0..1) after each of its four costly steps, and its sketch so far
-    (``StageReport``)."""
+    it is (0..1) when the first subject model has read the picture and after
+    each of its four costly steps, and its sketch so far (``StageReport``)."""
 
     def report(fraction: float, sketch: list[NDArray[np.complex128]] | None = None) -> None:
         if on_stage is not None:
             on_stage(fraction, sketch)
 
+    def first_read(first: NDArray[np.bool_]) -> None:
+        report(STAGE_FIRST_MAP, mask_outline(first))
+
     shape = image.grayscale.shape
-    mask, saliency = subject_mask(image, config)
+    mask, saliency = subject_mask(image, config, first_read if on_stage is not None else None)
     report(STAGE_MASK, mask_outline(mask) if on_stage is not None else None)
     if not mask.any():
         return None

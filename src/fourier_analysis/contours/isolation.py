@@ -3,13 +3,15 @@ agreement, alpha-intersected, reduced to its significant components."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy import ndimage as ndi
 
 from fourier_analysis.contours.image import LoadedImage
 from fourier_analysis.contours.models import ContourConfig
-from fourier_analysis.contours.ml import subject_maps
+from fourier_analysis.contours.ml import SUBJECT_MODELS, subject_maps
 
 
 # A mask component (or hole) is significant at this fraction of the largest
@@ -86,6 +88,7 @@ def leaning_on(core: NDArray[np.bool_], wide: NDArray[np.bool_]) -> NDArray[np.b
 def subject_mask(
     image: LoadedImage,
     config: ContourConfig,
+    on_first: Callable[[NDArray[np.bool_]], None] | None = None,
 ) -> tuple[NDArray[np.bool_], NDArray[np.float64]]:
     """The subject mask and the saliency map (the models' mean) it is read
     from.
@@ -95,10 +98,13 @@ def subject_mask(
     intersected with a meaningful alpha.  The models' geometric mean is the
     subject they agree on; their arithmetic mean also holds what only one of
     them sees.  The mask is the agreed subject plus the disputed regions that
-    lean on it (``leaning_on``), reduced to its significant components."""
-    maps = subject_maps(image)
-    saliency = np.mean(maps, axis=0)
-    agreed = np.exp(np.mean(np.log(np.maximum(maps, 1e-6)), axis=0))
+    lean on it (``leaning_on``), reduced to its significant components.
+
+    ``on_first`` hears the subject as the first model alone sees it (its map
+    grown the same way, reduced to its significant components), as soon as
+    that model has read the picture: an early silhouette the agreed mask then
+    refines (FORTY-SIXTH G).  Not heard with a single-model ensemble, whose
+    first map is the mask itself."""
 
     def grown(prob: NDArray[np.float64]) -> NDArray[np.bool_]:
         mask = hysteresis_subject_mask(prob, config.ml.threshold)
@@ -109,6 +115,19 @@ def subject_mask(
                 if float(np.mean(combined)) > 0.05:
                     mask = combined
         return mask
+
+    heard_first = False
+
+    def heard(prob: NDArray[np.float64]) -> None:
+        nonlocal heard_first
+        if on_first is not None and not heard_first:
+            heard_first = True
+            on_first(significant_components(grown(prob)))
+
+    early = on_first is not None and len(SUBJECT_MODELS) > 1
+    maps = subject_maps(image, heard if early else None)
+    saliency = np.mean(maps, axis=0)
+    agreed = np.exp(np.mean(np.log(np.maximum(maps, 1e-6)), axis=0))
 
     mask = significant_components(leaning_on(grown(agreed), grown(saliency)))
     return mask | confident_pieces(agreed, mask), saliency
